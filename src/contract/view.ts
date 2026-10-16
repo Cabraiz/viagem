@@ -8,6 +8,11 @@ import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState,TelegraphKin
 export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number;
   /** D-047: Dona Cida sold it a sweet ("açucarado": more damage and speed) and it still lasts. */
   sugar?:true;
+  /**
+   * D-051: a body asleep on the map (sim/ninhos/sono.ts), sent near the players (the interest area, at most
+   * ASLEEP_PER_VIEWER per client). It wakes with the same id (asleep leaves) or with the 'acordou' event.
+   */
+  asleep?:true;
   /** Bancos: it robbed an ATM and became a Cliente Prime (rules/bancos.ts BANCO.primeVida, the crown). */
   prime?:true}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
@@ -23,7 +28,12 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
   /** A defense's volleys, mod 256 (torre-contador-de-tiros): a change is a shot. */
   shots?:number;
   /** D-047, the car ('quadradao'): its fallen parts (bit i = CAR_PARTS[i]); hp = limit − hits, maxHp = limit. */
-  parts?:number}
+  parts?:number;
+  /**
+   * D-051, a nest (kind 'ninho', phase 'dormindo' | 'ativo' | 'destruido', a fallen one stays at hp 0): its size, and
+   * `seen` once someone in the team came near it (the minimap's fog).
+   */
+  size?:'P'|'M'|'G';seen?:true}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

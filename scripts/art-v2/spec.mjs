@@ -281,6 +281,17 @@ export function faceIdProblem(id){
  */
 export const RIM=Object.freeze({color:'#2A2018',alpha:.85,width:1.5});
 
+/**
+ * Rest animations of every enemy (D-051 nests; board design/proximos/11-O-QUE-FALTAVA.md §3): one row facing S, in the
+ * enemy's own cell, `<anim>.png` + an optional `<anim>.meta.json`. Optional: absent ones are not even a note. No foot
+ * rule (sitting, curled up, jumping awake). The elite layer may cover them too.
+ */
+export const REST_ANIMS=Object.freeze({sleep:6,wake:4});
+/**
+ * Round variants of the elite layer (11-O-QUE-FALTAVA §7): `elite/<id>-<variant>-<anim>.png`, the same grid as the base
+ * animation, stored under the manifest key `elite/<variant>-<anim>` (the client's costumeFile, horde-art.ts).
+ */
+export const ELITE_VARIANTS=Object.freeze({'tio-pave':Object.freeze(['picole']),pombos:Object.freeze(['gorro'])});
 const enemy=(cell,anims,priority=P0)=>({cell,anims,priority});
 /** The 9 enemies briefed first (D-033 + elenco P1), declared by hand. */
 const LEGACY_ENEMIES=Object.freeze({

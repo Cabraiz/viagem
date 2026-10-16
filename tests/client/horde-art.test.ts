@@ -1,7 +1,7 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_ART_ID,STATIC_ART,artLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
+import {ENEMY_ART_ID,STATIC_ART,artLoads,enemyPieceLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
   groundFacingRow,screenFacingRow,eliteFile,cachedAnim,fileInfo,ELITE_ART_SCALE,ELITE_LAYER_DEPTH,
   WEAPON_PROJECTILE_IDS,WEAPON_PROJECTILE_KEY} from '../../src/client/art/horde-art.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,pickupTexture} from '../../src/client/render/keys.ts';
@@ -110,7 +110,8 @@ test('a manifest with enemies and items queues every page under the art keys and
     itens:{output:'public/art/items',pieces:{'gema-pequena':{kind:'frames',files:{sheet:{file:'gema-pequena.webp',cell:[64,64],frames:4}}}}},
     projeteis:{output:'public/art/projectiles',pieces:{'tiro-aliado':{kind:'frames',files:{sheet:{file:'tiro-aliado.webp',cell:[32,32],frames:4}}}}},
   }}));
-  const loads=artLoads(),by=new Map(loads.map(l=>[l.key,l]));
+  const loads=artLoads(),by=new Map([...loads,...enemyPieceLoads('bebado'),...enemyPieceLoads('chefe')].map(l=>[l.key,l]));
+  assert.ok(loads.every(l=>!l.key.startsWith('art:enemy:')),'enemies load per match (queueEnemyArt), not up front');
   assert.equal(by.get('art:enemy:bebado:walk')?.url,'/art/lite/enemies/bebado/walk.webp','enemies load their lite copy');
   assert.deepEqual(by.get('art:enemy:bebado:walk')?.cell,[128,128]);
   assert.ok(by.has('art:enemy:bebado:idle')&&by.has('art:enemy:bebado:elite/walk'));
@@ -119,7 +120,7 @@ test('a manifest with enemies and items queues every page under the art keys and
   assert.equal(gem?.url,'/art/items/gema-pequena.webp');assert.equal(gem?.bake?.key,pickupTexture('xp'));
   assert.equal(by.get(FX.projFriendly)?.url,'/art/projectiles/tiro-aliado.webp','projectiles load under today\'s key');
   assert.equal(by.get(FX.projFriendly)?.bake,undefined);
-  assert.equal(loads.length,7);
+  assert.equal(loads.length,2);
 });
 
 test('the imported elite uses today\'s ELITE_SCALE and its layer sits a hair over its base',()=>{

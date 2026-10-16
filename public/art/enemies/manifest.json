@@ -2,6 +2,402 @@
   "version": 2,
   "group": "inimigos",
   "pieces": {
+    "agiota": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "agiota/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "03d95deb40329a895029e4c68585ddce07bdb33ad2158bdcc578c34001450412"
+            }
+          ],
+          "sha256": "03d95deb40329a895029e4c68585ddce07bdb33ad2158bdcc578c34001450412"
+        },
+        "elite/death": {
+          "file": "elite/agiota-death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/agiota-death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "675908455d06b7bccbaaae3497bcf4f2c8dd1093de75cd55ba4444699d05f1bc"
+            }
+          ],
+          "sha256": "675908455d06b7bccbaaae3497bcf4f2c8dd1093de75cd55ba4444699d05f1bc"
+        },
+        "elite/hit": {
+          "file": "elite/agiota-hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/agiota-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "a68e2bea6205bbef0a8c08826192af8793e8a4271a19b89322720d10e6c49bad"
+            }
+          ],
+          "sha256": "a68e2bea6205bbef0a8c08826192af8793e8a4271a19b89322720d10e6c49bad"
+        },
+        "elite/idle": {
+          "file": "elite/agiota-idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/agiota-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "3f7638a8f5ce93126958a698b6bd9d49d415aa1308dcf92dec08b36f73c356a7"
+            }
+          ],
+          "sha256": "3f7638a8f5ce93126958a698b6bd9d49d415aa1308dcf92dec08b36f73c356a7"
+        },
+        "elite/sleep": {
+          "file": "elite/agiota-sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/agiota-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "4d74f32eadf8edc6db57f827e5536a2ae51dba8fc9cf9ac95deb8e3cd8496e1a"
+            }
+          ],
+          "sha256": "4d74f32eadf8edc6db57f827e5536a2ae51dba8fc9cf9ac95deb8e3cd8496e1a"
+        },
+        "elite/throw": {
+          "file": "elite/agiota-throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/agiota-throw.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "1d89e45429371d3071ec6e4567b7c98a533e42edd8e671c06478a9f946dac691"
+            }
+          ],
+          "sha256": "1d89e45429371d3071ec6e4567b7c98a533e42edd8e671c06478a9f946dac691"
+        },
+        "elite/wake": {
+          "file": "elite/agiota-wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/agiota-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "944c55c979c6e2ef70f0fd33c9935bdcf81ad8e68a95f0f6fdbeadcee6c4c441"
+            }
+          ],
+          "sha256": "944c55c979c6e2ef70f0fd33c9935bdcf81ad8e68a95f0f6fdbeadcee6c4c441"
+        },
+        "elite/walk": {
+          "file": "elite/agiota-walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/agiota-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "2ee6668270f8fc891c76311187a0020c051895582a3b177ffb25f7a29b12668d"
+            }
+          ],
+          "sha256": "2ee6668270f8fc891c76311187a0020c051895582a3b177ffb25f7a29b12668d"
+        },
+        "hit": {
+          "file": "agiota/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "9b12c93d60d1c3ac12bd5044698a43b3359f4638e10bf4500ba7b8087836ef79"
+            }
+          ],
+          "sha256": "9b12c93d60d1c3ac12bd5044698a43b3359f4638e10bf4500ba7b8087836ef79"
+        },
+        "idle": {
+          "file": "agiota/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "ce89204e208848103a52df775773f175d9f338a356c44ae9d6aa5ceba5d8c4dd"
+            }
+          ],
+          "sha256": "ce89204e208848103a52df775773f175d9f338a356c44ae9d6aa5ceba5d8c4dd"
+        },
+        "sleep": {
+          "file": "agiota/sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "f89b1a5f8c48d6a591cfd0b58e470f4edaf3fbb545c8ef7e996eb48ab2e69b45"
+            }
+          ],
+          "sha256": "f89b1a5f8c48d6a591cfd0b58e470f4edaf3fbb545c8ef7e996eb48ab2e69b45"
+        },
+        "throw": {
+          "file": "agiota/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/throw.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "cd7a157d1baedd80f48940082c5d1e919aa106df283c5450c6f12fd243288902"
+            }
+          ],
+          "sha256": "cd7a157d1baedd80f48940082c5d1e919aa106df283c5450c6f12fd243288902"
+        },
+        "wake": {
+          "file": "agiota/wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "e56e052158b333104c0fd85d0b8dac07636b77cff36fb34c7da2cc7661ec974b"
+            }
+          ],
+          "sha256": "e56e052158b333104c0fd85d0b8dac07636b77cff36fb34c7da2cc7661ec974b"
+        },
+        "walk": {
+          "file": "agiota/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "agiota/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "81cece4a0d050b09fa5b3e87aa88b439454d6db983198dcd13725b48da483e42"
+            }
+          ],
+          "sha256": "81cece4a0d050b09fa5b3e87aa88b439454d6db983198dcd13725b48da483e42"
+        }
+      },
+      "sha256": "835e5062c0e7935f64e8b485408db16eceb9583d923df3a727f98d58d057d98b",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "ambulante-guarda-chuva": {
       "kind": "animations",
       "files": {
@@ -163,6 +559,402 @@
         "width": 1.5
       }
     },
+    "anao-molotov": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "anao-molotov/death.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "6cfe48e025a7598c5198ac88b0ddd92b17f7b361c04f0ebe796cc0143f4bfe93"
+            }
+          ],
+          "sha256": "6cfe48e025a7598c5198ac88b0ddd92b17f7b361c04f0ebe796cc0143f4bfe93"
+        },
+        "elite/death": {
+          "file": "elite/anao-molotov-death.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "149a2472e4e68cdd52f9f0b02287a751384de5079d3f2556b271e89498f78a57"
+            }
+          ],
+          "sha256": "149a2472e4e68cdd52f9f0b02287a751384de5079d3f2556b271e89498f78a57"
+        },
+        "elite/hit": {
+          "file": "elite/anao-molotov-hit.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "a581c586bcc6f36f2a7b198be402d8e9529430774705bf8309aaed89187e3ddd"
+            }
+          ],
+          "sha256": "a581c586bcc6f36f2a7b198be402d8e9529430774705bf8309aaed89187e3ddd"
+        },
+        "elite/idle": {
+          "file": "elite/anao-molotov-idle.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "753b1a12b792afb471658318552c995e186821e608d912b06d2f9c98606d626f"
+            }
+          ],
+          "sha256": "753b1a12b792afb471658318552c995e186821e608d912b06d2f9c98606d626f"
+        },
+        "elite/sleep": {
+          "file": "elite/anao-molotov-sleep.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "cccb526ac2c8c9984b646ba677bbd9c2d111521babf039c41329206394b99a97"
+            }
+          ],
+          "sha256": "cccb526ac2c8c9984b646ba677bbd9c2d111521babf039c41329206394b99a97"
+        },
+        "elite/throw": {
+          "file": "elite/anao-molotov-throw.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "dbb2067645a0e78e5d26bc0331e0a66e7ce935fc558658b6983dc6688e4560a7"
+            }
+          ],
+          "sha256": "dbb2067645a0e78e5d26bc0331e0a66e7ce935fc558658b6983dc6688e4560a7"
+        },
+        "elite/wake": {
+          "file": "elite/anao-molotov-wake.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "b4c785bec384da093d881d49452c0c88479e25e6d48c16e3313b3e49d2927c3a"
+            }
+          ],
+          "sha256": "b4c785bec384da093d881d49452c0c88479e25e6d48c16e3313b3e49d2927c3a"
+        },
+        "elite/walk": {
+          "file": "elite/anao-molotov-walk.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/anao-molotov-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "37622ac15a4e308b46806d3ca337595a2fa4427ad2640c932877aee2c0a545b1"
+            }
+          ],
+          "sha256": "37622ac15a4e308b46806d3ca337595a2fa4427ad2640c932877aee2c0a545b1"
+        },
+        "hit": {
+          "file": "anao-molotov/hit.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "3c57ebaafa2d7f6380e15ea14d6de3fa1745851b44368d6972a430832ef08ab3"
+            }
+          ],
+          "sha256": "3c57ebaafa2d7f6380e15ea14d6de3fa1745851b44368d6972a430832ef08ab3"
+        },
+        "idle": {
+          "file": "anao-molotov/idle.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5ca9c47cde35227519723290bae0c3a168b862a6b9add4fc6a324212c73fd023"
+            }
+          ],
+          "sha256": "5ca9c47cde35227519723290bae0c3a168b862a6b9add4fc6a324212c73fd023"
+        },
+        "sleep": {
+          "file": "anao-molotov/sleep.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "c688e212472335aa6e6647eab3b895a67eb6498134bbdeb4802feb287fb761bb"
+            }
+          ],
+          "sha256": "c688e212472335aa6e6647eab3b895a67eb6498134bbdeb4802feb287fb761bb"
+        },
+        "throw": {
+          "file": "anao-molotov/throw.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "b9d3f454630e5e207400d9d9a981fc13a0d5ef3416766020156849c59c30fcff"
+            }
+          ],
+          "sha256": "b9d3f454630e5e207400d9d9a981fc13a0d5ef3416766020156849c59c30fcff"
+        },
+        "wake": {
+          "file": "anao-molotov/wake.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2ae12309eb82ec9e7db93550793eb4e428e1d7d328388a97ffad366743cfa16b"
+            }
+          ],
+          "sha256": "2ae12309eb82ec9e7db93550793eb4e428e1d7d328388a97ffad366743cfa16b"
+        },
+        "walk": {
+          "file": "anao-molotov/walk.webp",
+          "cell": [
+            112,
+            112
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "anao-molotov/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "9e095bfb33670520bbb0fcf7c3ecba78a5b36e6ec29cc7745dd19342c36a5e98"
+            }
+          ],
+          "sha256": "9e095bfb33670520bbb0fcf7c3ecba78a5b36e6ec29cc7745dd19342c36a5e98"
+        }
+      },
+      "sha256": "58eb8ba12e7c75a24dc29165879e9412d737d5a05a3a764fc83e84de9154073e",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "barata-voadora": {
       "kind": "animations",
       "files": {
@@ -288,6 +1080,402 @@
         }
       },
       "sha256": "fba35c72eceddc77ec5825ec2e93348dd0289ce8c1d928aac0d585c8528db402",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "bebado": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "bebado/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "35ef429b6031966c5927c2659a94aed74907a67f150ea02cd0a13e5a0ae2792c"
+            }
+          ],
+          "sha256": "35ef429b6031966c5927c2659a94aed74907a67f150ea02cd0a13e5a0ae2792c"
+        },
+        "death": {
+          "file": "bebado/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "4fd34cbca839bb079d676dfa4c0c8d7de89f81d45e80356c2b3a484b2dde006c"
+            }
+          ],
+          "sha256": "4fd34cbca839bb079d676dfa4c0c8d7de89f81d45e80356c2b3a484b2dde006c"
+        },
+        "elite/attack": {
+          "file": "elite/bebado-attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/bebado-attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "965e621182a030dfe13fac60972aedb50b3a8c5b74934b7b9c1c18a2837e8f06"
+            }
+          ],
+          "sha256": "965e621182a030dfe13fac60972aedb50b3a8c5b74934b7b9c1c18a2837e8f06"
+        },
+        "elite/death": {
+          "file": "elite/bebado-death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/bebado-death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "13f0bd926dd1aab163e68a42510e647eb99d8d0c8f45548490ec58cabfcc8469"
+            }
+          ],
+          "sha256": "13f0bd926dd1aab163e68a42510e647eb99d8d0c8f45548490ec58cabfcc8469"
+        },
+        "elite/hit": {
+          "file": "elite/bebado-hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/bebado-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "803c45972a06b7811ef154ed9fe452285dc93d1f0368aff992da78cdae8702e9"
+            }
+          ],
+          "sha256": "803c45972a06b7811ef154ed9fe452285dc93d1f0368aff992da78cdae8702e9"
+        },
+        "elite/idle": {
+          "file": "elite/bebado-idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/bebado-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "f54c70a7cde16c81d346c01713769fdf734c439216b441075a80e09433bb408c"
+            }
+          ],
+          "sha256": "f54c70a7cde16c81d346c01713769fdf734c439216b441075a80e09433bb408c"
+        },
+        "elite/sleep": {
+          "file": "elite/bebado-sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/bebado-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "8d95e2badf7d8e0bda4c49342c3496edde79def36e0c9fd4301e7c7df60e89dc"
+            }
+          ],
+          "sha256": "8d95e2badf7d8e0bda4c49342c3496edde79def36e0c9fd4301e7c7df60e89dc"
+        },
+        "elite/wake": {
+          "file": "elite/bebado-wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/bebado-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "d0e05a8c38a7b31f0f0bfcd0cd87e805f323e5e267c2572b6a690b16aab1f350"
+            }
+          ],
+          "sha256": "d0e05a8c38a7b31f0f0bfcd0cd87e805f323e5e267c2572b6a690b16aab1f350"
+        },
+        "elite/walk": {
+          "file": "elite/bebado-walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/bebado-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "baeb7c64abb677e3d0d249e1222efc657f4f4eae66ef9c221dce7eed1dbfbc2f"
+            }
+          ],
+          "sha256": "baeb7c64abb677e3d0d249e1222efc657f4f4eae66ef9c221dce7eed1dbfbc2f"
+        },
+        "hit": {
+          "file": "bebado/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "fc735409e720032ec67311fa6c226171535b5056f789a48bb88a2b665d9363bc"
+            }
+          ],
+          "sha256": "fc735409e720032ec67311fa6c226171535b5056f789a48bb88a2b665d9363bc"
+        },
+        "idle": {
+          "file": "bebado/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8de6227129e0e14b5c96983f646ea853a0b2b342758e4a4fcf0aea8b0aa251cf"
+            }
+          ],
+          "sha256": "8de6227129e0e14b5c96983f646ea853a0b2b342758e4a4fcf0aea8b0aa251cf"
+        },
+        "sleep": {
+          "file": "bebado/sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "50f92f51328c9a8f1b6fb5b971cc57b2c270a69422c73a77f433855b58ddee73"
+            }
+          ],
+          "sha256": "50f92f51328c9a8f1b6fb5b971cc57b2c270a69422c73a77f433855b58ddee73"
+        },
+        "wake": {
+          "file": "bebado/wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2e79c9fb614f73fce0346c217cb4b07fa81c653f41348ff36e00b06cebce2ad8"
+            }
+          ],
+          "sha256": "2e79c9fb614f73fce0346c217cb4b07fa81c653f41348ff36e00b06cebce2ad8"
+        },
+        "walk": {
+          "file": "bebado/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "d1a4701adc4ef13515bc3098e716d36f601a4d1db1fa476987684b3832deb4e5"
+            }
+          ],
+          "sha256": "d1a4701adc4ef13515bc3098e716d36f601a4d1db1fa476987684b3832deb4e5"
+        }
+      },
+      "sha256": "2a58f71059e1d2f5132f2733e75a93845da451c52178382e8e2a1e654c405ab0",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -1432,6 +2620,581 @@
         "width": 1.5
       }
     },
+    "chefe": {
+      "kind": "animations",
+      "files": {
+        "charge": {
+          "file": "chefe/charge.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/charge.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "5c04bd0d634cfb0e5f0c1c033841abf8f97fd10960ca019349b0ddb9a36f3ba1"
+            }
+          ],
+          "sha256": "5c04bd0d634cfb0e5f0c1c033841abf8f97fd10960ca019349b0ddb9a36f3ba1"
+        },
+        "death": {
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 16,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/death-p1.webp",
+              "columns": 10,
+              "rows": 10,
+              "firstFrame": 0,
+              "frameCount": 100,
+              "sha256": "4a87546f86793afd95e392747a01ec04e57ea0b0b92102238de3617a0ebe45b2"
+            },
+            {
+              "file": "chefe/death-p2.webp",
+              "columns": 10,
+              "rows": 3,
+              "firstFrame": 100,
+              "frameCount": 28,
+              "sha256": "af81154590b3f08f34e678e0208f8a076602c5a4e499785b63fad3e1315deb92"
+            }
+          ],
+          "sha256": "020e964abb99040767182fb4c5687e8a0845ca467bef499403f72feb59597abd"
+        },
+        "elite/charge": {
+          "file": "elite/chefe-charge.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-charge.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "1795fe452c50ad6b821ddd7d4d01548ee3a43a33f715817e9a9dfcaa54ff97d2"
+            }
+          ],
+          "sha256": "1795fe452c50ad6b821ddd7d4d01548ee3a43a33f715817e9a9dfcaa54ff97d2"
+        },
+        "elite/death": {
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 16,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-death-p1.webp",
+              "columns": 10,
+              "rows": 10,
+              "firstFrame": 0,
+              "frameCount": 100,
+              "sha256": "50e59c49ee9c5e380be4e0a119371dbd4e8bb10bc7b0b3a05911cbed211a6961"
+            },
+            {
+              "file": "elite/chefe-death-p2.webp",
+              "columns": 10,
+              "rows": 3,
+              "firstFrame": 100,
+              "frameCount": 28,
+              "sha256": "161fc8970d768694f655fade873eea5d531aab481aa2c95d3799d1e37d3ab006"
+            }
+          ],
+          "sha256": "0006239fa176c778c1f6ff2b9097f5ec8ae613786b0e7428159ad2a39f3a1585"
+        },
+        "elite/hit": {
+          "file": "elite/chefe-hit.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "2415214c435107684f15c8d98854be49bffa2daf0a95254009df2d5b28ae0d57"
+            }
+          ],
+          "sha256": "2415214c435107684f15c8d98854be49bffa2daf0a95254009df2d5b28ae0d57"
+        },
+        "elite/idle": {
+          "file": "elite/chefe-idle.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/chefe-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "875b4ca0f3e2bf42975ed193a2a17cb4f0297964df333c061cf6c611530a4258"
+            }
+          ],
+          "sha256": "875b4ca0f3e2bf42975ed193a2a17cb4f0297964df333c061cf6c611530a4258"
+        },
+        "elite/phase2-idle": {
+          "file": "elite/chefe-phase2-idle.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/chefe-phase2-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c0a1ccfd17a55e4ecf74e1d4b6f2da323b46048289973a0851d64310de5b1768"
+            }
+          ],
+          "sha256": "c0a1ccfd17a55e4ecf74e1d4b6f2da323b46048289973a0851d64310de5b1768"
+        },
+        "elite/slam": {
+          "file": "elite/chefe-slam.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-slam.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "a935922f3dd21d366a0f63e2efe5598bb7b01eb3bd827d5f575353a3c311c845"
+            }
+          ],
+          "sha256": "a935922f3dd21d366a0f63e2efe5598bb7b01eb3bd827d5f575353a3c311c845"
+        },
+        "elite/sleep": {
+          "file": "elite/chefe-sleep.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/chefe-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "c57cfb80d07df8d11b875a3bfaf055a2aa66c976ba2f1ed85617dfa7f5da9e67"
+            }
+          ],
+          "sha256": "c57cfb80d07df8d11b875a3bfaf055a2aa66c976ba2f1ed85617dfa7f5da9e67"
+        },
+        "elite/summon": {
+          "file": "elite/chefe-summon.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "0b44980aa4635dfbe607dfa7b16ab73187bf3af0106c172a27c754e0583ee866"
+            }
+          ],
+          "sha256": "0b44980aa4635dfbe607dfa7b16ab73187bf3af0106c172a27c754e0583ee866"
+        },
+        "elite/wake": {
+          "file": "elite/chefe-wake.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/chefe-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "752e4685143e9fe7c1021452ce85c66503ecbaecaf2356ece14730cb25b940dd"
+            }
+          ],
+          "sha256": "752e4685143e9fe7c1021452ce85c66503ecbaecaf2356ece14730cb25b940dd"
+        },
+        "elite/walk": {
+          "file": "elite/chefe-walk.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/chefe-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "035b1d1d0cfc5ba6627d8a48bc2f6f9743137fb8208644893754591239a094b8"
+            }
+          ],
+          "sha256": "035b1d1d0cfc5ba6627d8a48bc2f6f9743137fb8208644893754591239a094b8"
+        },
+        "hit": {
+          "file": "chefe/hit.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "789af9ce2d210b39755db9fc46734aa8172db3093a1597110bfa861c5d97a7fa"
+            }
+          ],
+          "sha256": "789af9ce2d210b39755db9fc46734aa8172db3093a1597110bfa861c5d97a7fa"
+        },
+        "idle": {
+          "file": "chefe/idle.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "6c8dad3f06042f81c6e92fc0e6fce0afe745b1ac07e440ffa46b8de7bb09673c"
+            }
+          ],
+          "sha256": "6c8dad3f06042f81c6e92fc0e6fce0afe745b1ac07e440ffa46b8de7bb09673c"
+        },
+        "phase2-idle": {
+          "file": "chefe/phase2-idle.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/phase2-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "50f542a6e040b04a077b1f91c38d5d0cf2a8ace18b72469976644409f5cfe21b"
+            }
+          ],
+          "sha256": "50f542a6e040b04a077b1f91c38d5d0cf2a8ace18b72469976644409f5cfe21b"
+        },
+        "slam": {
+          "file": "chefe/slam.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/slam.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "f63f1e5471b277fc49581e6a7ba4380f11e0a546de84c284fb28f158c3f8ab0a"
+            }
+          ],
+          "sha256": "f63f1e5471b277fc49581e6a7ba4380f11e0a546de84c284fb28f158c3f8ab0a"
+        },
+        "sleep": {
+          "file": "chefe/sleep.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "71ecb025536e86ae3a83eba4cd94901d4c5788015e92601dbd2fb094125e1711"
+            }
+          ],
+          "sha256": "71ecb025536e86ae3a83eba4cd94901d4c5788015e92601dbd2fb094125e1711"
+        },
+        "summon": {
+          "file": "chefe/summon.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "1c9f7a54aa48377c164ef07debce3030e0a6df35febc8fd320c597b8a6c2e281"
+            }
+          ],
+          "sha256": "1c9f7a54aa48377c164ef07debce3030e0a6df35febc8fd320c597b8a6c2e281"
+        },
+        "wake": {
+          "file": "chefe/wake.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2242e9a650c08ac67659c1341ba54f5ff9b17bdd0ef4c54fa451e9fdf29554d0"
+            }
+          ],
+          "sha256": "2242e9a650c08ac67659c1341ba54f5ff9b17bdd0ef4c54fa451e9fdf29554d0"
+        },
+        "walk": {
+          "file": "chefe/walk.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "chefe/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "22d1568cc7e7c3ccfa1199362a0714bda322a26cee3501ed799fd080508cbcfb"
+            }
+          ],
+          "sha256": "22d1568cc7e7c3ccfa1199362a0714bda322a26cee3501ed799fd080508cbcfb"
+        }
+      },
+      "sha256": "18ee19b0d2cf6c43ff39be20d2c8db60bd52146620b99a71261de8b84120528f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "cliente-do-gerente": {
       "kind": "animations",
       "files": {
@@ -1617,6 +3380,402 @@
         }
       },
       "sha256": "d2ef13fc8907b86d39f8a2d34348762b0314175b633c69a2080dfa41f8bbe1bc",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "coach": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "coach/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "c21a498be6bfc01c5f1a916d48e5027537fd8605f2fc783f510e3983e4764c83"
+            }
+          ],
+          "sha256": "c21a498be6bfc01c5f1a916d48e5027537fd8605f2fc783f510e3983e4764c83"
+        },
+        "elite/death": {
+          "file": "elite/coach-death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/coach-death.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "847aa9643eafd57d04aacf295dc92a51701db2a377ddd1a7970eb4baad109022"
+            }
+          ],
+          "sha256": "847aa9643eafd57d04aacf295dc92a51701db2a377ddd1a7970eb4baad109022"
+        },
+        "elite/hit": {
+          "file": "elite/coach-hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/coach-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "4dfe1dd043d3ef9ee498385a545abe5f70233e43835b120482f972cc3875885a"
+            }
+          ],
+          "sha256": "4dfe1dd043d3ef9ee498385a545abe5f70233e43835b120482f972cc3875885a"
+        },
+        "elite/idle": {
+          "file": "elite/coach-idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/coach-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "42dfed05b5f3472afd906c9e07c74d15b8a65e3784df0eab6d936335c36dc569"
+            }
+          ],
+          "sha256": "42dfed05b5f3472afd906c9e07c74d15b8a65e3784df0eab6d936335c36dc569"
+        },
+        "elite/lecture": {
+          "file": "elite/coach-lecture.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/coach-lecture.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "2d5dd7b02f4583fbeff67ef21e4ba5f7eb77c15abf49a332f6dca3246b4590bd"
+            }
+          ],
+          "sha256": "2d5dd7b02f4583fbeff67ef21e4ba5f7eb77c15abf49a332f6dca3246b4590bd"
+        },
+        "elite/sleep": {
+          "file": "elite/coach-sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/coach-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "58c590b24b810a0136ad2c7f55e80fba4264420ca125385d94e9f257478c6bf4"
+            }
+          ],
+          "sha256": "58c590b24b810a0136ad2c7f55e80fba4264420ca125385d94e9f257478c6bf4"
+        },
+        "elite/wake": {
+          "file": "elite/coach-wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/coach-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "a84391ea3442bb54157af1e4d3f672f355ddea0cb90ed2553a1ff378e36ba862"
+            }
+          ],
+          "sha256": "a84391ea3442bb54157af1e4d3f672f355ddea0cb90ed2553a1ff378e36ba862"
+        },
+        "elite/walk": {
+          "file": "elite/coach-walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/coach-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "262dc21748ad92d6a466ec6c23368fb6a6028cdc12aa62260455d5dd7dc00bba"
+            }
+          ],
+          "sha256": "262dc21748ad92d6a466ec6c23368fb6a6028cdc12aa62260455d5dd7dc00bba"
+        },
+        "hit": {
+          "file": "coach/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "b198eb6e0d137586a18a30d06a73464628b3f1f6dbc16727eaeb7d6b4ff261f1"
+            }
+          ],
+          "sha256": "b198eb6e0d137586a18a30d06a73464628b3f1f6dbc16727eaeb7d6b4ff261f1"
+        },
+        "idle": {
+          "file": "coach/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "cf480ee2f93128fb784155a55e0d42a7a858d3d008ca7ce2110bb6190aea332b"
+            }
+          ],
+          "sha256": "cf480ee2f93128fb784155a55e0d42a7a858d3d008ca7ce2110bb6190aea332b"
+        },
+        "lecture": {
+          "file": "coach/lecture.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/lecture.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "6c8e312d9d6c0075e8f55b94e4dc29a8f724ab6913450c70ea6e63fcd76f6ff5"
+            }
+          ],
+          "sha256": "6c8e312d9d6c0075e8f55b94e4dc29a8f724ab6913450c70ea6e63fcd76f6ff5"
+        },
+        "sleep": {
+          "file": "coach/sleep.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "f5de2075cb3afd69f4bac04dde41453d71ed5823947891117e955bd39ce5c1d1"
+            }
+          ],
+          "sha256": "f5de2075cb3afd69f4bac04dde41453d71ed5823947891117e955bd39ce5c1d1"
+        },
+        "wake": {
+          "file": "coach/wake.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3bf8142d1fb6b2cc616b5c4f73b7b26729a1a12333c07d52d8278b1d99d5a364"
+            }
+          ],
+          "sha256": "3bf8142d1fb6b2cc616b5c4f73b7b26729a1a12333c07d52d8278b1d99d5a364"
+        },
+        "walk": {
+          "file": "coach/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "coach/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "3451b9f22c4c130cef1c040a51a451ab1ec9c3bef011055bc7e94496892c4f27"
+            }
+          ],
+          "sha256": "3451b9f22c4c130cef1c040a51a451ab1ec9c3bef011055bc7e94496892c4f27"
+        }
+      },
+      "sha256": "778e2c9102cedeab5b5ae1e03d737a9d8919b1b15580901f1978f0907f857fb5",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -3102,6 +5261,402 @@
         "width": 1.5
       }
     },
+    "influencer": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "influencer/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "d3752821da3a568036f51354cb7a6046a0ec3a9a2883c9443c8e9d7ea8edab2d"
+            }
+          ],
+          "sha256": "d3752821da3a568036f51354cb7a6046a0ec3a9a2883c9443c8e9d7ea8edab2d"
+        },
+        "elite/death": {
+          "file": "elite/influencer-death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/influencer-death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "929ca236abb74310d5e8fb1cd08c656740c5dc164c98cec78ef0c8ef26d6d8df"
+            }
+          ],
+          "sha256": "929ca236abb74310d5e8fb1cd08c656740c5dc164c98cec78ef0c8ef26d6d8df"
+        },
+        "elite/hit": {
+          "file": "elite/influencer-hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/influencer-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "4ad4d24750f280de70fc7887405e0a713b468782a44b28928e9e4e8c6f428043"
+            }
+          ],
+          "sha256": "4ad4d24750f280de70fc7887405e0a713b468782a44b28928e9e4e8c6f428043"
+        },
+        "elite/idle": {
+          "file": "elite/influencer-idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/influencer-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "962ce0b3cfefb07ac4baf4de6313637e3c51b20e2bdfdc8b3ae1905649616724"
+            }
+          ],
+          "sha256": "962ce0b3cfefb07ac4baf4de6313637e3c51b20e2bdfdc8b3ae1905649616724"
+        },
+        "elite/pose": {
+          "file": "elite/influencer-pose.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/influencer-pose.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "e02aed450e2821666d65bd9868f8332e6f3bd1cbe6db929eb7208f13a646c9ef"
+            }
+          ],
+          "sha256": "e02aed450e2821666d65bd9868f8332e6f3bd1cbe6db929eb7208f13a646c9ef"
+        },
+        "elite/sleep": {
+          "file": "elite/influencer-sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/influencer-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "d65ecb6cc97d93929cd4fdbbc9eca3f41f5266678007f6832302ce20a99a3c87"
+            }
+          ],
+          "sha256": "d65ecb6cc97d93929cd4fdbbc9eca3f41f5266678007f6832302ce20a99a3c87"
+        },
+        "elite/wake": {
+          "file": "elite/influencer-wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/influencer-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "e5fa4c2315a472247a850285d8f7caa15041704684084b06755959217ece04ed"
+            }
+          ],
+          "sha256": "e5fa4c2315a472247a850285d8f7caa15041704684084b06755959217ece04ed"
+        },
+        "elite/walk": {
+          "file": "elite/influencer-walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/influencer-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "50f8ba7a99a492467e0c17807aceacb264e1001e9f53ba408588b774675d73eb"
+            }
+          ],
+          "sha256": "50f8ba7a99a492467e0c17807aceacb264e1001e9f53ba408588b774675d73eb"
+        },
+        "hit": {
+          "file": "influencer/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "f319348751b33948762f0790363f413e3a42a6ce33015c0c79b925a49762401d"
+            }
+          ],
+          "sha256": "f319348751b33948762f0790363f413e3a42a6ce33015c0c79b925a49762401d"
+        },
+        "idle": {
+          "file": "influencer/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "92122c11cf45468aa81d8be12094be707b75ca2018dcd032b420773850d64565"
+            }
+          ],
+          "sha256": "92122c11cf45468aa81d8be12094be707b75ca2018dcd032b420773850d64565"
+        },
+        "pose": {
+          "file": "influencer/pose.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/pose.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "dc0382f9a6f069d6d130cb7bfdc13ee29bafb870fc04ee8c31ef1bddab55df78"
+            }
+          ],
+          "sha256": "dc0382f9a6f069d6d130cb7bfdc13ee29bafb870fc04ee8c31ef1bddab55df78"
+        },
+        "sleep": {
+          "file": "influencer/sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "1117d07208382aad45b4a0136dea56baf735bb4e96c21091df8e99adf7a48876"
+            }
+          ],
+          "sha256": "1117d07208382aad45b4a0136dea56baf735bb4e96c21091df8e99adf7a48876"
+        },
+        "wake": {
+          "file": "influencer/wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "79c4f9d9a34955e5129c4e12ae6fff6b679c331179e7df635eee1f7facbb40dd"
+            }
+          ],
+          "sha256": "79c4f9d9a34955e5129c4e12ae6fff6b679c331179e7df635eee1f7facbb40dd"
+        },
+        "walk": {
+          "file": "influencer/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "influencer/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "39645625e2d94e30486c94c98646693196f6b8be99fa999075bd2bf50e123d7e"
+            }
+          ],
+          "sha256": "39645625e2d94e30486c94c98646693196f6b8be99fa999075bd2bf50e123d7e"
+        }
+      },
+      "sha256": "26eb7e2ff995c232238f74f1d3f1cd624e4390ca0e8486b816e58e9e67b413e7",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "juiz-vendido": {
       "kind": "animations",
       "files": {
@@ -3937,6 +6492,347 @@
         "width": 1.5
       }
     },
+    "motoboy": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "motoboy/aim.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "62410252d3f79500a6c3365803531d51616ad61f07526002c37adf6852597ea4"
+            }
+          ],
+          "sha256": "62410252d3f79500a6c3365803531d51616ad61f07526002c37adf6852597ea4"
+        },
+        "charge": {
+          "file": "motoboy/charge.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/charge.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "2f4977ce36a6dbe588307ffba3cb1a2117e1986bcff9a7b81d88fd02ef59b036"
+            }
+          ],
+          "sha256": "2f4977ce36a6dbe588307ffba3cb1a2117e1986bcff9a7b81d88fd02ef59b036"
+        },
+        "crash": {
+          "file": "motoboy/crash.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/crash.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "ff8dac7ded943f1b3a8418fc305fced1c8eefda8165ae6dd212e8ad004350dca"
+            }
+          ],
+          "sha256": "ff8dac7ded943f1b3a8418fc305fced1c8eefda8165ae6dd212e8ad004350dca"
+        },
+        "elite/aim": {
+          "file": "elite/motoboy-aim.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/motoboy-aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "e8eaa811910b953ba9118d17840c3ca55ae7846943a801d895be6ba87d36cdac"
+            }
+          ],
+          "sha256": "e8eaa811910b953ba9118d17840c3ca55ae7846943a801d895be6ba87d36cdac"
+        },
+        "elite/charge": {
+          "file": "elite/motoboy-charge.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/motoboy-charge.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "652e77e45200ef37a846bbd3b49fff359225b0b931fcaecb3f75ab9c7702d5a8"
+            }
+          ],
+          "sha256": "652e77e45200ef37a846bbd3b49fff359225b0b931fcaecb3f75ab9c7702d5a8"
+        },
+        "elite/crash": {
+          "file": "elite/motoboy-crash.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/motoboy-crash.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "a069e872351d86062557516a15d36be18c3ddd0081ecf8b22ffb2ddbfbab8361"
+            }
+          ],
+          "sha256": "a069e872351d86062557516a15d36be18c3ddd0081ecf8b22ffb2ddbfbab8361"
+        },
+        "elite/idle": {
+          "file": "elite/motoboy-idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/motoboy-idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "3bf15aefb1396a989b71b0a5af000fbfa323284aa80e14539b10f0796b534adb"
+            }
+          ],
+          "sha256": "3bf15aefb1396a989b71b0a5af000fbfa323284aa80e14539b10f0796b534adb"
+        },
+        "elite/sleep": {
+          "file": "elite/motoboy-sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/motoboy-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "d3fc4a09e62fa02e8fb2c7581054995af33b272a09d40d6e758b28af7e013cd2"
+            }
+          ],
+          "sha256": "d3fc4a09e62fa02e8fb2c7581054995af33b272a09d40d6e758b28af7e013cd2"
+        },
+        "elite/wake": {
+          "file": "elite/motoboy-wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/motoboy-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "c07e4228edd720039d1c4dd4468b92a53db5cb44c76e5d7661a11fff5198f953"
+            }
+          ],
+          "sha256": "c07e4228edd720039d1c4dd4468b92a53db5cb44c76e5d7661a11fff5198f953"
+        },
+        "idle": {
+          "file": "motoboy/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "3350571d2deca2c47ba0bfe469d7f47febf6547a3f6a5f9ca3642bc964f382f2"
+            }
+          ],
+          "sha256": "3350571d2deca2c47ba0bfe469d7f47febf6547a3f6a5f9ca3642bc964f382f2"
+        },
+        "sleep": {
+          "file": "motoboy/sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "e7460f27e10cda6459435c00a3787208e683bf1b4c82ce9cf07143b73bed098f"
+            }
+          ],
+          "sha256": "e7460f27e10cda6459435c00a3787208e683bf1b4c82ce9cf07143b73bed098f"
+        },
+        "wake": {
+          "file": "motoboy/wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "motoboy/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "360549f98c0be103402144e7847ccc8b2cfd32ff14ca3c78197eadafa684f0cf"
+            }
+          ],
+          "sha256": "360549f98c0be103402144e7847ccc8b2cfd32ff14ca3c78197eadafa684f0cf"
+        }
+      },
+      "sha256": "0b3c92b24596b27a1a9ea64154561d6ee0126c8e9294d50e53c03ad7d3ed3c72",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "noel-derretendo": {
       "kind": "animations",
       "files": {
@@ -4414,6 +7310,497 @@
         }
       },
       "sha256": "54d54aa3cffb1fd52b2759162892b003622594aa510a551bd61ed1b4484d96df",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "pombos": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "pombos/death.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "411b78b95eef69ff7010a2c6cbd741f72d751c5022de33b49f71236c5f30f63a"
+            }
+          ],
+          "sha256": "411b78b95eef69ff7010a2c6cbd741f72d751c5022de33b49f71236c5f30f63a"
+        },
+        "elite/death": {
+          "file": "elite/pombos-death.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5fc2fbcf9c3af20b59ab0aa5c7427c1be3e4a3b32fb03e8b57a77ed25aa9e349"
+            }
+          ],
+          "sha256": "5fc2fbcf9c3af20b59ab0aa5c7427c1be3e4a3b32fb03e8b57a77ed25aa9e349"
+        },
+        "elite/fly": {
+          "file": "elite/pombos-fly.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/pombos-fly.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "24268872203ce831ee14474df4bd0803ef24c136473075b612e2305c70b18074"
+            }
+          ],
+          "sha256": "24268872203ce831ee14474df4bd0803ef24c136473075b612e2305c70b18074"
+        },
+        "elite/gorro-death": {
+          "file": "elite/pombos-gorro-death.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d3cb9e17f6b43aa1ae6bf0e7478576451d1cb15fcec5884dbc3705d270f798ff"
+            }
+          ],
+          "sha256": "d3cb9e17f6b43aa1ae6bf0e7478576451d1cb15fcec5884dbc3705d270f798ff"
+        },
+        "elite/gorro-fly": {
+          "file": "elite/pombos-gorro-fly.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-fly.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "30d436057b9025bb8976a62a7de3aefcfe11ef58083c74dcb2e7b321fccd91b3"
+            }
+          ],
+          "sha256": "30d436057b9025bb8976a62a7de3aefcfe11ef58083c74dcb2e7b321fccd91b3"
+        },
+        "elite/gorro-hit": {
+          "file": "elite/pombos-gorro-hit.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 2,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-hit.webp",
+              "columns": 2,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c8c9fc26093a8dcb32cd8a30ff31736199fd824497bc7cc14ab7efe7f99587d4"
+            }
+          ],
+          "sha256": "c8c9fc26093a8dcb32cd8a30ff31736199fd824497bc7cc14ab7efe7f99587d4"
+        },
+        "elite/gorro-poop": {
+          "file": "elite/pombos-gorro-poop.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-poop.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8c23f490b70e60abecb492b230d8e03ba7a2b3a82acf646a6446678585d4d11f"
+            }
+          ],
+          "sha256": "8c23f490b70e60abecb492b230d8e03ba7a2b3a82acf646a6446678585d4d11f"
+        },
+        "elite/gorro-sleep": {
+          "file": "elite/pombos-gorro-sleep.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "c5b9eb0fcf551936ea204391e7da205a98a31fc0d794e1f49413a439bc7a5882"
+            }
+          ],
+          "sha256": "c5b9eb0fcf551936ea204391e7da205a98a31fc0d794e1f49413a439bc7a5882"
+        },
+        "elite/gorro-wake": {
+          "file": "elite/pombos-gorro-wake.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-gorro-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "da3c75704709ec027d201380c33f1e6122706244e3c38c5a24979482f44e5234"
+            }
+          ],
+          "sha256": "da3c75704709ec027d201380c33f1e6122706244e3c38c5a24979482f44e5234"
+        },
+        "elite/hit": {
+          "file": "elite/pombos-hit.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 2,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-hit.webp",
+              "columns": 2,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "667fcd4e454f7dfc3816db9a9f053004ccdf81a08e211025110d113a1f4cd1b3"
+            }
+          ],
+          "sha256": "667fcd4e454f7dfc3816db9a9f053004ccdf81a08e211025110d113a1f4cd1b3"
+        },
+        "elite/poop": {
+          "file": "elite/pombos-poop.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-poop.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8c05231788f5ff985aac884015ee3a66b28c08dd6c748489a8bb434f4c4ad28b"
+            }
+          ],
+          "sha256": "8c05231788f5ff985aac884015ee3a66b28c08dd6c748489a8bb434f4c4ad28b"
+        },
+        "elite/sleep": {
+          "file": "elite/pombos-sleep.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/pombos-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "a8dfb46e51273946e80aea9185315b2798b53526b23252547d80ebff991f22ee"
+            }
+          ],
+          "sha256": "a8dfb46e51273946e80aea9185315b2798b53526b23252547d80ebff991f22ee"
+        },
+        "elite/wake": {
+          "file": "elite/pombos-wake.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/pombos-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "cfc0171c652db09b68503df2bd6a05282823cd916335542b3447bd421db2e84f"
+            }
+          ],
+          "sha256": "cfc0171c652db09b68503df2bd6a05282823cd916335542b3447bd421db2e84f"
+        },
+        "fly": {
+          "file": "pombos/fly.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/fly.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "112428a7461ec11cc6a098f7348a4cb9c73684f30312f0be2662adcba448e5fa"
+            }
+          ],
+          "sha256": "112428a7461ec11cc6a098f7348a4cb9c73684f30312f0be2662adcba448e5fa"
+        },
+        "hit": {
+          "file": "pombos/hit.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 2,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/hit.webp",
+              "columns": 2,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a11dd93ed7c7abacff08996a2db5cbae1fd04a465d593dbe934187eee177ff52"
+            }
+          ],
+          "sha256": "a11dd93ed7c7abacff08996a2db5cbae1fd04a465d593dbe934187eee177ff52"
+        },
+        "poop": {
+          "file": "pombos/poop.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/poop.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "33cb7c9f5e8c2560b4c52eef8ebc3ee915d692dad1715eaa51b6a9d50d862be6"
+            }
+          ],
+          "sha256": "33cb7c9f5e8c2560b4c52eef8ebc3ee915d692dad1715eaa51b6a9d50d862be6"
+        },
+        "sleep": {
+          "file": "pombos/sleep.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "3ab935972bc6597fd27ba8c93333f6983072e6ed72b01c52cd2682e7570c0184"
+            }
+          ],
+          "sha256": "3ab935972bc6597fd27ba8c93333f6983072e6ed72b01c52cd2682e7570c0184"
+        },
+        "wake": {
+          "file": "pombos/wake.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "pombos/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "8205d5621a657cecf09c03e591228c9ad544c687c87a64fb8fd25c27202a698d"
+            }
+          ],
+          "sha256": "8205d5621a657cecf09c03e591228c9ad544c687c87a64fb8fd25c27202a698d"
+        }
+      },
+      "sha256": "f75c764eb837f3966c67fcaefc245d523211744ee20d355b14db3bd768cf0a3f",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -6084,6 +9471,657 @@
         }
       },
       "sha256": "71ec5dc3dfc22124b06aedf1b04570088fce9862b6a4f1701ac1fa28dea9a896",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "tio-pave": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "tio-pave/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "3375d478fe7301a177fe949b9314fcfe5eb5ecf0011e5768b314d4fb4f4b5a87"
+            }
+          ],
+          "sha256": "3375d478fe7301a177fe949b9314fcfe5eb5ecf0011e5768b314d4fb4f4b5a87"
+        },
+        "elite/death": {
+          "file": "elite/tio-pave-death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "9cc353d003a9729817ca894138119486144149c2ae0efd95caf6cbda76632eb0"
+            }
+          ],
+          "sha256": "9cc353d003a9729817ca894138119486144149c2ae0efd95caf6cbda76632eb0"
+        },
+        "elite/hit": {
+          "file": "elite/tio-pave-hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "ec740cea650c8b55d180141990a99a55cd1252874bdd0b3a6ac9bd577c06417b"
+            }
+          ],
+          "sha256": "ec740cea650c8b55d180141990a99a55cd1252874bdd0b3a6ac9bd577c06417b"
+        },
+        "elite/idle": {
+          "file": "elite/tio-pave-idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "80210c0058652a378eb6ac99392c937b809f50d304f9f23ba09b885f690b60af"
+            }
+          ],
+          "sha256": "80210c0058652a378eb6ac99392c937b809f50d304f9f23ba09b885f690b60af"
+        },
+        "elite/joke": {
+          "file": "elite/tio-pave-joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "c407da3a2679181d1bc4d8c05f4a2be4dcee06a372a03d0e7f3f89e10f720880"
+            }
+          ],
+          "sha256": "c407da3a2679181d1bc4d8c05f4a2be4dcee06a372a03d0e7f3f89e10f720880"
+        },
+        "elite/picole-death": {
+          "file": "elite/tio-pave-picole-death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "947b2106dee081b6063f1917e7ffc19311a1c186e8afe4ae5da0938f8c11e276"
+            }
+          ],
+          "sha256": "947b2106dee081b6063f1917e7ffc19311a1c186e8afe4ae5da0938f8c11e276"
+        },
+        "elite/picole-hit": {
+          "file": "elite/tio-pave-picole-hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "80f317cb47438f50def4ff83bda46cc7744f8eb2397c8d95fe898f5a647592ae"
+            }
+          ],
+          "sha256": "80f317cb47438f50def4ff83bda46cc7744f8eb2397c8d95fe898f5a647592ae"
+        },
+        "elite/picole-idle": {
+          "file": "elite/tio-pave-picole-idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "cac9cf8bb107a798b0e9c1e51b3d8c2faab3420dacff6db00add31288b842add"
+            }
+          ],
+          "sha256": "cac9cf8bb107a798b0e9c1e51b3d8c2faab3420dacff6db00add31288b842add"
+        },
+        "elite/picole-joke": {
+          "file": "elite/tio-pave-picole-joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f9a29c8f02985ea9008c210dabcbf5db16dd714fb972effc29a458195989fcfc"
+            }
+          ],
+          "sha256": "f9a29c8f02985ea9008c210dabcbf5db16dd714fb972effc29a458195989fcfc"
+        },
+        "elite/picole-shove": {
+          "file": "elite/tio-pave-picole-shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "37a606f0666fe3feb8d79700b09d1d21828d429e1404fda07da553ece65ca749"
+            }
+          ],
+          "sha256": "37a606f0666fe3feb8d79700b09d1d21828d429e1404fda07da553ece65ca749"
+        },
+        "elite/picole-sleep": {
+          "file": "elite/tio-pave-picole-sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "62fe229c3f5867116858edd2daa031009517ec076833102c0d2f7d3bf716a669"
+            }
+          ],
+          "sha256": "62fe229c3f5867116858edd2daa031009517ec076833102c0d2f7d3bf716a669"
+        },
+        "elite/picole-wake": {
+          "file": "elite/tio-pave-picole-wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "cbf92f022ca11bc5e37c7a5c89f7c980a464b559fb09bfa3777d5150d650028a"
+            }
+          ],
+          "sha256": "cbf92f022ca11bc5e37c7a5c89f7c980a464b559fb09bfa3777d5150d650028a"
+        },
+        "elite/picole-walk": {
+          "file": "elite/tio-pave-picole-walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-picole-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "428fa09f77c3efe51fb63d690641427f9ea1186a82b99412fd9a126d3c07a5ac"
+            }
+          ],
+          "sha256": "428fa09f77c3efe51fb63d690641427f9ea1186a82b99412fd9a126d3c07a5ac"
+        },
+        "elite/shove": {
+          "file": "elite/tio-pave-shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "44a5e7a6305119081e37cb24e67d8acaaeaae9c3a2e12dce3e13870bfb43c841"
+            }
+          ],
+          "sha256": "44a5e7a6305119081e37cb24e67d8acaaeaae9c3a2e12dce3e13870bfb43c841"
+        },
+        "elite/sleep": {
+          "file": "elite/tio-pave-sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "ba932c3ee23ef869eaf60977c7368d00f7ba56f2743f8af14fcf6fbcd01e5b48"
+            }
+          ],
+          "sha256": "ba932c3ee23ef869eaf60977c7368d00f7ba56f2743f8af14fcf6fbcd01e5b48"
+        },
+        "elite/wake": {
+          "file": "elite/tio-pave-wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "elite/tio-pave-wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "af1aa189c20b81e2d8038de7861e757b9ce0d02b9cb2b2b09630fe0ad73b6d91"
+            }
+          ],
+          "sha256": "af1aa189c20b81e2d8038de7861e757b9ce0d02b9cb2b2b09630fe0ad73b6d91"
+        },
+        "elite/walk": {
+          "file": "elite/tio-pave-walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "elite/tio-pave-walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "ad2075116de407079d723eb16007fe08bcd2431bef8771a93a7e4ecc390fbfc2"
+            }
+          ],
+          "sha256": "ad2075116de407079d723eb16007fe08bcd2431bef8771a93a7e4ecc390fbfc2"
+        },
+        "hit": {
+          "file": "tio-pave/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "c0a5ab5ea3ad094b859426e47b0b6bd8eb8915eb98e1745f87b0672afc5b4e30"
+            }
+          ],
+          "sha256": "c0a5ab5ea3ad094b859426e47b0b6bd8eb8915eb98e1745f87b0672afc5b4e30"
+        },
+        "idle": {
+          "file": "tio-pave/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8469265f05c0c2d440420047a409e8df21cf4fc3dd657064323381854a63d6e7"
+            }
+          ],
+          "sha256": "8469265f05c0c2d440420047a409e8df21cf4fc3dd657064323381854a63d6e7"
+        },
+        "joke": {
+          "file": "tio-pave/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "8654cdf8b9a443a30704cd2191ad24c25847156d2e791fd6b04d439196677a84"
+            }
+          ],
+          "sha256": "8654cdf8b9a443a30704cd2191ad24c25847156d2e791fd6b04d439196677a84"
+        },
+        "shove": {
+          "file": "tio-pave/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "55b1765183bc873dffd53f1bc08a52a710eb72634747dcd0d3f605af546ed84f"
+            }
+          ],
+          "sha256": "55b1765183bc873dffd53f1bc08a52a710eb72634747dcd0d3f605af546ed84f"
+        },
+        "sleep": {
+          "file": "tio-pave/sleep.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/sleep.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "b4b382767884f50beeb12795dd81f2ed1709626f87078c0e08114883489f9b5c"
+            }
+          ],
+          "sha256": "b4b382767884f50beeb12795dd81f2ed1709626f87078c0e08114883489f9b5c"
+        },
+        "wake": {
+          "file": "tio-pave/wake.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 1,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/wake.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "87cd9a8ff8aa52d07dc23e6ba2ff30b07604206763dddf44d6803c6258331eb0"
+            }
+          ],
+          "sha256": "87cd9a8ff8aa52d07dc23e6ba2ff30b07604206763dddf44d6803c6258331eb0"
+        },
+        "walk": {
+          "file": "tio-pave/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "tio-pave/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "23ebcad2bdf727ac34ad184afb2b1f021c7236297178148a9a591379a6b2d3dd"
+            }
+          ],
+          "sha256": "23ebcad2bdf727ac34ad184afb2b1f021c7236297178148a9a591379a6b2d3dd"
+        }
+      },
+      "sha256": "d2d5c8b5aca9b4db48fd038e79f90aacf8fc045f23f5db62b1773016b1265170",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,

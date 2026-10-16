@@ -99,6 +99,11 @@ export interface RoomOptions {
    * equipped weapon, and {t:'cast'} is answered ok:false without a cast. Absent: the automatic weapons and the skill.
    */
   combat?:CombatMode;
+  /**
+   * D-051: 'ninhos' plays the nests instead of the waves in the city with the chaveiro (Simulation mode); ignored with
+   * the wall mode and on the endless map. Absent: the rounds, as before (the default turns after the nests' bench).
+   */
+  mode?:'ninhos';
 }
 /**
  * D-047: the city rooms' objective when RoomOptions.objective is absent: the chaveiro, since it is balanced
@@ -382,11 +387,14 @@ export class Room {
   private fixedDuration:number|undefined;
   /** D-051: the Simulation option of RoomOptions.combat (nothing for the automatic weapons, so those rooms are as before). */
   private combatOption():{combat?:CombatMode}{return this.combat?{combat:this.combat}:{};}
+  /** D-051: RoomOptions.mode, kept for the city Simulation (only with the chaveiro). */
+  private readonly cityMode?:'ninhos';
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.solo=options.solo===true;
     const objective=options.objective===undefined?CITY_OBJECTIVE_DEFAULT:options.objective;if(objective)this.cityObjective=objective;
     if(options.combat==='manual')this.combat='manual';
+    if(options.mode==='ninhos')this.cityMode='ninhos';
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
@@ -804,7 +812,7 @@ export class Room {
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...this.combatOption()})
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...(this.cityMode&&this.cityObjective==='chaveiro'?{mode:this.cityMode}:{}),...this.combatOption()})
       :new Simulation(old.seed,{world:this.baseWorld,...this.combatOption()});
     sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
@@ -1214,13 +1222,14 @@ export class Room {
   }
   /**
    * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
-   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune. The
+   * same for the nests (D-051, a fallen one stays) and the sleeping bodies sent in the last frame (Simulation.sleeperIds).
    */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
-    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id)],nodes:this.sim.nodeIds});
+    this.ids.prune({enemies:[...ids(w.enemies),...this.sim.sleeperIds],pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id),...(this.sim.run.nests?.state.nests??[]).map(n=>n.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

@@ -18,14 +18,16 @@
  *  4. A required shift (grounded foot column, ground line) that would put the drawing closer than PADDING to the cell
  *     border (or out of it) refuses the enemy: no
  *     file of it is written and the reason lists the cells.
- * The elite layer `inimigos/elite/<id>-<anim>.png`, if any, gets the same per-cell shifts as its base sheet.
+ * The elite layer `inimigos/elite/<id>-<anim>.png` and its round variants `<id>-<variant>-<anim>.png` (ELITE_VARIANTS),
+ * if any, get the same per-cell shifts as their base sheet. The rest rows (REST_ANIMS: one row, no foot rule) and the
+ * per-layer `.meta.json` sidecars are copied unchanged.
  * Record per enemy: action, `shifts` {anim: max |px| moved in that sheet}, notes. Deterministic: fixed PNG options,
  * sorted inputs, untouched sheets copied byte for byte.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import {AIRBORNE_ANIMS,LUNGE_ANIMS,ALPHA_THRESHOLD,PADDING,FOOT_X_TOLERANCE,DIRECTIONS} from '../spec.mjs';
+import {AIRBORNE_ANIMS,LUNGE_ANIMS,ALPHA_THRESHOLD,PADDING,FOOT_X_TOLERANCE,DIRECTIONS,REST_ANIMS,ELITE_VARIANTS} from '../spec.mjs';
 import {cellBox} from '../validate.mjs';
 
 export const GROUP='inimigos';
@@ -56,11 +58,58 @@ export function shiftCell(cell,cw,ch,dx,dy){
   }
   return {cell:out,clipped};
 }
+/**
+ * Clears specks: drawn islands (alpha > ALPHA_THRESHOLD, 8-connected) smaller than SPECK_SHARE of the cell's largest
+ * island that come within PADDING px of the cell border, or smaller than half of that anywhere (a stray pixel from the
+ * neighbour frame of the export, which a recentring shift would push onto the border). Their
+ * faint fringe (alpha 1..ALPHA_THRESHOLD) within 1 px goes too. Returns how many islands were cleared.
+ */
+export const SPECK_SHARE=.02;
+export function despeckle(cell,cw,ch){
+  const label=new Int32Array(cw*ch).fill(-1),sizes=[],touch=[];
+  for(let i=0;i<cw*ch;i++){
+    if(label[i]>=0||cell[i*4+3]<=ALPHA_THRESHOLD)continue;
+    const id=sizes.length,stack=[i];label[i]=id;let size=0,edge=false;
+    while(stack.length){
+      const j=stack.pop(),x=j%cw,y=(j-x)/cw;size++;
+      if(x<PADDING||y<PADDING||x>cw-1-PADDING||y>ch-1-PADDING)edge=true;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy,k=ny*cw+nx;
+        if(nx<0||ny<0||nx>=cw||ny>=ch||label[k]>=0||cell[k*4+3]<=ALPHA_THRESHOLD)continue;
+        label[k]=id;stack.push(k);
+      }
+    }
+    sizes.push(size);touch.push(edge);
+  }
+  const big=Math.max(0,...sizes),drop=new Set(sizes.map((n,id)=>n<big*(touch[id]?SPECK_SHARE:SPECK_SHARE/2)?id:-1).filter(id=>id>=0));
+  if(!drop.size)return 0;
+  for(let i=0;i<cw*ch;i++)if(drop.has(label[i])){
+    const x=i%cw,y=(i-x)/cw;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const nx=x+dx,ny=y+dy,k=(ny*cw+nx)*4;
+      if(nx>=0&&ny>=0&&nx<cw&&ny<ch&&(label[ny*cw+nx]===label[i]||cell[k+3]<=ALPHA_THRESHOLD))cell.fill(0,k,k+4);
+    }
+  }
+  return drop.size;
+}
+/** Clears the PADDING px band along the cell border (an elite layer's aura edge after its base's shift). */
+export function trimBorder(cell,cw,ch){
+  let cut=0;
+  for(let y=0;y<ch;y++)for(let x=0;x<cw;x++){
+    if(x>=PADDING&&y>=PADDING&&x<=cw-1-PADDING&&y<=ch-1-PADDING)continue;
+    const i=(y*cw+x)*4;if(cell[i+3]){if(cell[i+3]>ALPHA_THRESHOLD)cut++;cell.fill(0,i,i+4);}
+  }
+  return cut;
+}
 const kindOf=anim=>AIRBORNE_ANIMS.has(anim)?'airborne':LUNGE_ANIMS.has(anim)?'lunge':'grounded';
 
 /** Fills empty cells of rows that have a drawn one; returns the filled cells as `row r col c`. */
 function fillEmpty(img,cw,ch){
-  const cols=img.width/cw,rows=img.height/ch,filled=[],emptyRows=[];
+  const cols=img.width/cw,rows=img.height/ch,filled=[],emptyRows=[],specks=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const cell=getCell(img,cw,ch,c,r),n=despeckle(cell,cw,ch);
+    if(n){putCell(img,cw,ch,c,r,cell);specks.push({r,c,n});}
+  }
   for(let r=0;r<rows;r++){
     const drawn=Array.from({length:cols},(_,c)=>cellBox(img.data,img.width,c*cw,r*ch,cw,ch).occupied>0);
     if(!drawn.some(Boolean)){emptyRows.push(r);continue;}
@@ -71,7 +120,7 @@ function fillEmpty(img,cw,ch){
       filled.push({r,c,from});
     }
   }
-  return {filled,emptyRows};
+  return {filled,emptyRows,specks};
 }
 
 /**
@@ -110,6 +159,10 @@ export function recentre(sheets,cell,anchor){
         if(kind==='grounded'){
           const err=b.footX+dx-ax;
           if(Math.abs(err)>tolX)dx-=Math.sign(err)*Math.ceil(Math.abs(err)-tolX+1);
+          // A wide pose (the boss's stamp at his side, a 3/4 stance with one foot lower) cannot take the full shift:
+          // keep the drawing in the margin and settle for the foot just inside the tolerance.
+          const lo=PADDING-b.minX,hi=cw-1-PADDING-b.maxX,fit=Math.min(hi,Math.max(lo,dx));
+          if(lo<=hi&&fit!==dx&&Math.abs(b.footX+fit-ax)<=tolX-1)dx=fit;
         }
         const dy=kind==='airborne'?0:ground-b.maxY;
         shifts[r].push([dx,dy]);
@@ -135,7 +188,7 @@ export async function adapt({src,out,log=()=>{}}){
   const dir=path.join(src,GROUP),dst=path.join(out,GROUP);
   if(!fs.existsSync(dir))return [];
   const ids=fs.readdirSync(dir).filter(f=>f!=='elite'&&fs.statSync(path.join(dir,f)).isDirectory()).sort();
-  const eliteDir=path.join(dir,'elite'),eliteFiles=fs.existsSync(eliteDir)?fs.readdirSync(eliteDir).sort():[];
+  const eliteDir=path.join(dir,'elite'),eliteFiles=fs.existsSync(eliteDir)?fs.readdirSync(eliteDir).filter(f=>/\.png$/i.test(f)).sort():[];
   const records=[],eliteHandled=new Set();
   for(const id of ids){
     const from=path.join(dir,id),to=path.join(dst,id),notes=[];
@@ -146,13 +199,15 @@ export async function adapt({src,out,log=()=>{}}){
     const cell=meta.cell,anchor=meta.anchor;
     if(!(Array.isArray(cell)&&cell.length===2&&cell.every(n=>Number.isInteger(n)&&n>0))||!(Array.isArray(anchor)&&anchor.length===2)){refuse('meta.json without a valid "cell" [w,h] and "anchor" [x,y]');continue;}
     const [cw,ch]=cell,sheets=[],grid=[];
-    for(const f of files.filter(f=>/\.png$/i.test(f))){
+    const rest=files.filter(f=>Object.hasOwn(REST_ANIMS,f.slice(0,-4))&&/\.png$/i.test(f));
+    for(const f of files.filter(f=>/\.png$/i.test(f)&&!rest.includes(f))){
       const img=await readRaw(path.join(from,f));
       if(img.width%cw||img.height!==DIRECTIONS.length*ch){grid.push(`${f} is ${img.width}x${img.height}, not ${DIRECTIONS.length} rows of ${cw}x${ch} cells`);continue;}
-      const anim=f.slice(0,-4),{filled,emptyRows}=fillEmpty(img,cw,ch);
+      const anim=f.slice(0,-4),{filled,emptyRows,specks}=fillEmpty(img,cw,ch);
+      if(specks.length)notes.push(`${anim}: stray speck(s) at the cell border cleared: ${specks.map(x=>`${DIRECTIONS[x.r]} col ${x.c+1}`).join(', ')}`);
       if(emptyRows.length)grid.push(`${f}: row(s) ${emptyRows.map(r=>DIRECTIONS[r]).join(', ')} fully empty`);
       if(filled.length)notes.push(`${anim}: empty cell(s) filled with the previous frame: ${filled.map(x=>`${DIRECTIONS[x.r]} col ${x.c+1} <- col ${x.from+1}`).join(', ')}`);
-      sheets.push({anim,file:f,img,filled:filled.length>0});
+      sheets.push({anim,file:f,img,filled:filled.length>0||specks.length>0});
     }
     if(grid.length){refuse(grid.join('; '));continue;}
     const plan=recentre(sheets,cell,anchor);
@@ -168,15 +223,27 @@ export async function adapt({src,out,log=()=>{}}){
       const p=plan[s.anim];shifts[s.anim]=p.max;
       if(p.max||s.filled){changed=true;await writePng(path.join(to,s.file),s.img);}
       else fs.copyFileSync(path.join(from,s.file),path.join(to,s.file));
-      // Elite layer: same shifts as the base sheet, so the badge stays on the figure.
-      const ef=eliteFiles.find(e=>e===`${id}-${s.anim}.png`);
-      if(ef){
+      // Elite layer and its variants: same shifts as the base sheet, so the badge stays on the figure.
+      const layers=['',...(ELITE_VARIANTS[id]??[]).map(v=>`${v}-`)].map(v=>`${id}-${v}${s.anim}.png`);
+      for(const ef of eliteFiles.filter(e=>layers.includes(e))){
         eliteHandled.add(ef);fs.mkdirSync(path.join(dst,'elite'),{recursive:true});
         const eimg=await readRaw(path.join(eliteDir,ef));
         if(p.max&&eimg.width===s.img.width&&eimg.height===s.img.height){
-          p.shifts.forEach((row,r)=>row.forEach(([dx,dy],c)=>{if(dx||dy)putCell(eimg,cw,ch,c,r,shiftCell(getCell(eimg,cw,ch,c,r),cw,ch,dx,dy).cell);}));
+          let cut=0;
+          p.shifts.forEach((row,r)=>row.forEach(([dx,dy],c)=>{
+            if(!dx&&!dy)return;
+            const moved=shiftCell(getCell(eimg,cw,ch,c,r),cw,ch,dx,dy).cell;cut+=trimBorder(moved,cw,ch);putCell(eimg,cw,ch,c,r,moved);
+          }));
+          if(cut)notes.push(`elite/${ef}: ${cut} px of the layer trimmed at the cell border after the shift`);
           await writePng(path.join(dst,'elite',ef),eimg);notes.push(`elite/${ef}: same shifts as ${s.file}`);
         }else fs.copyFileSync(path.join(eliteDir,ef),path.join(dst,'elite',ef));
+      }
+    }
+    for(const f of rest){
+      fs.copyFileSync(path.join(from,f),path.join(to,f));
+      const layers=['',...(ELITE_VARIANTS[id]??[]).map(v=>`${v}-`)].map(v=>`${id}-${v}${f}`);
+      for(const ef of eliteFiles.filter(e=>layers.includes(e))){
+        eliteHandled.add(ef);fs.mkdirSync(path.join(dst,'elite'),{recursive:true});fs.copyFileSync(path.join(eliteDir,ef),path.join(dst,'elite',ef));
       }
     }
     const max=Math.max(0,...Object.values(shifts));

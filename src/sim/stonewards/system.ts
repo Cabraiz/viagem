@@ -32,7 +32,8 @@ import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
-import {build as buildDefense,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type TowerResult} from '../towers/system.ts';
+import {build as buildDefense,buildFree,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type FreeBuildContext,type TowerResult} from '../towers/system.ts';
+import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
@@ -103,6 +104,8 @@ export interface StonewardsOptions {
    * Not called when the system is created: the blockers are raised before the run builds its grid.
    */
   onTerrainChanged?(rect:CellRect):void;
+  /** D-052 free build (the city): the car, the moto and the nests the build rules keep clear (towers/free-build.ts). */
+  freeBuild?:FreeBuildHooks;
 }
 
 export interface StonewardsSystem extends SimSystem {
@@ -114,8 +117,12 @@ export interface StonewardsSystem extends SimSystem {
   hit(ctx:SimContext,structureId:string,amount:number):void;
   /** The terrain's build sites and rail (towers/sites.ts; empty on the island). */
   readonly plan:BuildPlan;
-  /** Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id (torres-fio: the rooms' {t:'build'}). */
-  build(ctx:SimContext,playerId:string,siteId:string,requestId?:string):TowerResult;
+  /**
+   * Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id (torres-fio: the
+   * rooms' {t:'build'}). D-052, the city: a FreeOrder (a piece on a grid cell, towers/system.ts buildFree); a site id
+   * there is the root on the site's cell.
+   */
+  build(ctx:SimContext,playerId:string,order:string|FreeOrder,requestId?:string):TowerResult;
   /** Tower defense: evolves a ready defense (`branch`: 'A'|'B'|'C' at the root, a child id or label like 'A4b' at a fork). */
   upgrade(ctx:SimContext,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult;
   /** Tower defense (torres-ajustes): repairs a standing defense below its maxHp, like the forge's barricade repair. */
@@ -148,7 +155,7 @@ export function structureTargets(state:StonewardsState,wall=true):{id:string;x:n
   const out:{id:string;x:number;y:number;radius:number;blocking?:true}[]=state.wallDown||!wall?[]:[{id:state.wall.id,x:state.wall.x,y:state.wall.y,radius:state.wall.radius}];
   for(const b of state.barricades??[])if(!b.down)out.push({id:b.id,x:b.x,y:b.y,radius:b.r,blocking:true});
   // Tower defenses (torres-sim): non-blocking siege targets, like the wall; none until the first build.
-  if(state.defenses)out.push(...defenseTargets(state));
+  if(state.defenses)out.push(...defenseTargets(state),...pieceTargets(state));
   return out;
 }
 
@@ -189,6 +196,8 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     }
   }
   syncBarricades(options.terrain,state);
+  syncPieces(options.terrain,state);
+  const free:FreeBuildContext={...options.freeBuild,...(options.onTerrainChanged?{onTerrainChanged:options.onTerrainChanged}:{})};
   /** City: drops from cityHornIdle who walked or worked (`worked`) this tick; true when someone woke. */
   function wake(worked:ReadonlySet<string>){
     const idle=state.cityHornIdle;
@@ -241,7 +250,10 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     id:'structures',
     state,
     get plan(){return buildPlanFor(options.terrain);},
-    build(ctx,playerId,siteId,requestId){return buildDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,siteId,requestId);},
+    build(ctx,playerId,order,requestId){
+      const plan=buildPlanFor(ctx.terrain);
+      return typeof order==='string'?buildDefense(ctx,state,plan,playerId,order,requestId,free):buildFree(ctx,state,plan,playerId,order,requestId,free);
+    },
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId);},
     repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId);},
     buy(ctx,playerId,recipeId,requestId,targetId){
@@ -250,6 +262,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       return result;
     },
     reset(){
+      for(const rect of clearPieces(options.terrain,state))options.onTerrainChanged?.(rect);
       const fresh=createStonewardsState(options) as unknown as Record<string,unknown>,target=state as unknown as Record<string,unknown>;
       for(const key of Object.keys(target))delete target[key];
       Object.assign(target,fresh);
@@ -257,6 +270,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     },
     hit(ctx,structureId,amount){
       if(structureId===state.wall.id)damageWall(ctx,state,amount);
+      else if(state.defenses&&isPiece(state,structureId))damagePiece(ctx.terrain,state,structureId,amount,options.onTerrainChanged);
       else if(state.defenses&&!findBarricade(state,structureId))damageDefense(state,structureId,amount);
       else damageBarricade(ctx,state,structureId,amount,options.onTerrainChanged);
     },

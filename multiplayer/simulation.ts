@@ -22,7 +22,7 @@ import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
-import {DEFENSES,RAIL,phaseOf,type DefenseState,type TowerResult} from '../src/sim/index.ts';
+import {DEFENSES,RAIL,phaseOf,type DefenseState,type FreeOrder,type PieceState,type TowerResult} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
@@ -627,6 +627,8 @@ export class Simulation {
     }
     // torres-fio: the tower defenses (a ruin stays, hp 0, until a new root is built on its site).
     for(const d of this.defenses())out.push(defenseView(d,this.world.tick));
+    // D-052 free build: the wall pieces (muro, barricada) on their cells; a fallen one is gone.
+    for(const p of this.systems.stonewards.state.defenses?.pieces??[])out.push(pieceView(p,this.world.tick));
     // trilho-no-snapshot: the Gustavão's rail once laid (kind 'linha-ferrea', on the plan's rail spot; its building phase).
     const rail=this.railView();if(rail)out.push(rail);
     return out;
@@ -644,10 +646,10 @@ export class Simulation {
    * (intermission, standing, wall, balance, limits). `requestId` makes a resent tap apply once. Refused once the run
    * is decided, or for an offline or spectating player.
    */
-  build(id:string,siteId:string,requestId?:string):TowerResult{
+  build(id:string,order:string|FreeOrder,requestId?:string):TowerResult{
     const p=this.players.get(id);
     if(this.result||!p?.online||p.spectator)return {ok:false,reason:'player'};
-    return this.systems.stonewards.build(this.world,id,siteId,requestId);
+    return this.systems.stonewards.build(this.world,id,order,requestId);
   }
   /** Upgrades a ready defense to its next tier (`branch`: A/B/C at tier 2, or a label like 'A4b' for the alternative). */
   upgrade(id:string,defenseId:string,branch?:string,requestId?:string):TowerResult{
@@ -865,5 +867,10 @@ export function activeBuffs(p:SimPlayer,tick:number):{fastUntil?:number;mightUnt
 export function defenseView(d:DefenseState,tick:number):StructureView{
   const def=DEFENSES[d.kind],turn=d.aim===undefined?undefined:((d.aim/(2*Math.PI))%1+1)%1;
   return {id:d.id,kind:d.kind,x:d.x,y:d.y,hp:d.ruined?0:d.hp,maxHp:d.maxHp,tier:def.tier,...(def.branch?{branch:def.branch}:{}),
-    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn}),...(d.shots===undefined?{}:{shots:d.shots})};
+    phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn}),...(d.shots===undefined?{}:{shots:d.shots}),
+    ...(d.cell?{c:d.cell.c,r:d.cell.r}:{}),...(d.rot?{rot:d.rot}:{})};
+}
+/** D-052: a wall piece as the client sees it (kind 'muro'|'barricada', its cell and rot; phase obra → pronta/danificada). */
+export function pieceView(p:PieceState,tick:number):StructureView{
+  return {id:p.id,kind:p.kind,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,phase:phaseOf(p,tick),c:p.cell.c,r:p.cell.r,...(p.rot?{rot:p.rot}:{})};
 }

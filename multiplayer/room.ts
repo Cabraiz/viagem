@@ -7,6 +7,8 @@ import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
+import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
+import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
 import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
@@ -211,6 +213,10 @@ const AUTOPILOT_SLOT=7;
 const NO_SEATS:ReadonlySet<string>=new Set();
 /** torres-fio: what a {t:'build'} may name (a build site or the Gustavão's rail) and an upgrade's branch. */
 const BUILD_SITE=/^(obra-\d{2}|trilho)$/;
+/** D-052 free build: the pieces a {t:'build',piece,c,r,rot?} may name and the largest cell index it may carry. */
+const FREE_BUILD_PIECES:ReadonlySet<string>=new Set([ROOT_DEFENSE,...FREE_PIECES]);
+const MAX_BUILD_CELL=4095;
+const buildCellOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0&&(v as number)<=MAX_BUILD_CELL;
 /**
  * An upgrade's branch, in any form the sim's pickChild takes: A/B/C, a tree label (A2…A5, A4b, A5b, B2…B6, C2…C5: what
  * the HUD's tree sends, trilho-no-snapshot) or the child's DefenseId.
@@ -948,6 +954,10 @@ export class Room {
     this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /**
+   * D-052 free build: {t:'build',round,req,piece,c,r,rot?} (piece: the root tower, 'muro' or 'barricada'; c,r the
+   * footprint's top-left cell of the build grid; rot 0|1). The site form below stays for the bots' brain and the HUD of
+   * today: in the city the sim builds the root on the site's cell. During the D-050 level-up pause every obra is
+   * refused 'pausa'.
    * torres-fio: {t:'build',round,req,site} (a build site id 'obra-NN' or the rail 'trilho') or {t:'upgrade',round,req,
    * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative), and since torres-ajustes
    * {t:'repair',round,req,defense} (same label). Anything malformed is dropped here; the sim says no with a reason (e.g.
@@ -958,9 +968,16 @@ export class Room {
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!Number.isSafeInteger(m.req)||m.req<1)return;
     let result;
-    if(m.t==='build'){
+    if(m.t==='build'&&m.piece!==undefined){
+      if(typeof m.piece!=='string'||!FREE_BUILD_PIECES.has(m.piece)||!buildCellOk(m.c)||!buildCellOk(m.r)||!isBuildRot(m.rot))return;
+      result=this.levelup.paused?{ok:false as const,reason:'pausa' as const}
+        :this.sim.build(c.playerId!,{piece:m.piece as BuildPiece,c:m.c,r:m.r,...(m.rot===1?{rot:1 as const}:{})},`p:${m.req}`);
+    }else if(m.t==='build'){
       if(typeof m.site!=='string'||!BUILD_SITE.test(m.site))return;
-      result=this.sim.build(c.playerId!,m.site,`p:${m.req}`);
+      result=this.levelup.paused?{ok:false as const,reason:'pausa' as const}:this.sim.build(c.playerId!,m.site,`p:${m.req}`);
+    }else if(this.levelup.paused){
+      if(typeof m.defense!=='string')return;
+      result={ok:false as const,reason:'pausa' as const};
     }else{
       const id=typeof m.defense==='string'&&m.defense.length<=12?this.ids.resolve(m.defense):undefined;
       if(!id)return;

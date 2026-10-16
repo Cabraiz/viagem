@@ -19,6 +19,7 @@ import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
+import {pieceDrag} from './towers/free-build.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -194,6 +195,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
     // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
+    // D-052 free build: the car's body and the moto the pieces keep clear of (the chaveiro, created below; the wall mode
+    // has neither). The nests (D-051) join when the ninhos-sim is on main.
+    ...(objective?{freeBuild:{
+      car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
+      moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
+    }}:{}),
   },cp?.stonewards);
   structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
@@ -219,6 +226,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
     // D-047: the car (and the riding moto) instead of the wall; the car's hits go to the chaveiro, the moto takes none.
+    // D-052: an enemy on a free barricade walks slowed (towers/free-build.ts pieceDrag).
+    drag:e=>pieceDrag(stonewards.state,e),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);

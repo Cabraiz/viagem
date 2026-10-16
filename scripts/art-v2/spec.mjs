@@ -286,7 +286,7 @@ export const RIM=Object.freeze({color:'#2A2018',alpha:.85,width:1.5});
 export const REST_ANIMS=Object.freeze({sleep:6,wake:4});
 /**
  * Round variants of the elite layer (11-O-QUE-FALTAVA §7): `elite/<id>-<variant>-<anim>.png`, the same grid as the base
- * animation, stored under the manifest key `elite/<variant>/<anim>`.
+ * animation, stored under the manifest key `elite/<variant>-<anim>` (the client's costumeFile, horde-art.ts).
  */
 export const ELITE_VARIANTS=Object.freeze({'tio-pave':Object.freeze(['picole']),pombos:Object.freeze(['gorro'])});
 const enemy=(cell,anims,priority=P0)=>({cell,anims,priority});

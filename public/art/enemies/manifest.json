@@ -7399,7 +7399,7 @@
           ],
           "sha256": "24268872203ce831ee14474df4bd0803ef24c136473075b612e2305c70b18074"
         },
-        "elite/gorro/death": {
+        "elite/gorro-death": {
           "file": "elite/pombos-gorro-death.webp",
           "cell": [
             96,
@@ -7424,7 +7424,7 @@
           ],
           "sha256": "d3cb9e17f6b43aa1ae6bf0e7478576451d1cb15fcec5884dbc3705d270f798ff"
         },
-        "elite/gorro/fly": {
+        "elite/gorro-fly": {
           "file": "elite/pombos-gorro-fly.webp",
           "cell": [
             96,
@@ -7449,7 +7449,7 @@
           ],
           "sha256": "30d436057b9025bb8976a62a7de3aefcfe11ef58083c74dcb2e7b321fccd91b3"
         },
-        "elite/gorro/hit": {
+        "elite/gorro-hit": {
           "file": "elite/pombos-gorro-hit.webp",
           "cell": [
             96,
@@ -7474,7 +7474,7 @@
           ],
           "sha256": "c8c9fc26093a8dcb32cd8a30ff31736199fd824497bc7cc14ab7efe7f99587d4"
         },
-        "elite/gorro/poop": {
+        "elite/gorro-poop": {
           "file": "elite/pombos-gorro-poop.webp",
           "cell": [
             96,
@@ -7499,7 +7499,7 @@
           ],
           "sha256": "8c23f490b70e60abecb492b230d8e03ba7a2b3a82acf646a6446678585d4d11f"
         },
-        "elite/gorro/sleep": {
+        "elite/gorro-sleep": {
           "file": "elite/pombos-gorro-sleep.webp",
           "cell": [
             96,
@@ -7524,7 +7524,7 @@
           ],
           "sha256": "c5b9eb0fcf551936ea204391e7da205a98a31fc0d794e1f49413a439bc7a5882"
         },
-        "elite/gorro/wake": {
+        "elite/gorro-wake": {
           "file": "elite/pombos-gorro-wake.webp",
           "cell": [
             96,
@@ -7800,7 +7800,7 @@
           "sha256": "8205d5621a657cecf09c03e591228c9ad544c687c87a64fb8fd25c27202a698d"
         }
       },
-      "sha256": "6cc2e4f5f035836703ea874a42d62f827b9a06afcdb57afc560f5ea9268932fe",
+      "sha256": "f75c764eb837f3966c67fcaefc245d523211744ee20d355b14db3bd768cf0a3f",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -9610,7 +9610,7 @@
           ],
           "sha256": "c407da3a2679181d1bc4d8c05f4a2be4dcee06a372a03d0e7f3f89e10f720880"
         },
-        "elite/picole/death": {
+        "elite/picole-death": {
           "file": "elite/tio-pave-picole-death.webp",
           "cell": [
             160,
@@ -9635,7 +9635,7 @@
           ],
           "sha256": "947b2106dee081b6063f1917e7ffc19311a1c186e8afe4ae5da0938f8c11e276"
         },
-        "elite/picole/hit": {
+        "elite/picole-hit": {
           "file": "elite/tio-pave-picole-hit.webp",
           "cell": [
             160,
@@ -9660,7 +9660,7 @@
           ],
           "sha256": "80f317cb47438f50def4ff83bda46cc7744f8eb2397c8d95fe898f5a647592ae"
         },
-        "elite/picole/idle": {
+        "elite/picole-idle": {
           "file": "elite/tio-pave-picole-idle.webp",
           "cell": [
             160,
@@ -9685,7 +9685,7 @@
           ],
           "sha256": "cac9cf8bb107a798b0e9c1e51b3d8c2faab3420dacff6db00add31288b842add"
         },
-        "elite/picole/joke": {
+        "elite/picole-joke": {
           "file": "elite/tio-pave-picole-joke.webp",
           "cell": [
             160,
@@ -9710,7 +9710,7 @@
           ],
           "sha256": "f9a29c8f02985ea9008c210dabcbf5db16dd714fb972effc29a458195989fcfc"
         },
-        "elite/picole/shove": {
+        "elite/picole-shove": {
           "file": "elite/tio-pave-picole-shove.webp",
           "cell": [
             160,
@@ -9735,7 +9735,7 @@
           ],
           "sha256": "37a606f0666fe3feb8d79700b09d1d21828d429e1404fda07da553ece65ca749"
         },
-        "elite/picole/sleep": {
+        "elite/picole-sleep": {
           "file": "elite/tio-pave-picole-sleep.webp",
           "cell": [
             160,
@@ -9760,7 +9760,7 @@
           ],
           "sha256": "62fe229c3f5867116858edd2daa031009517ec076833102c0d2f7d3bf716a669"
         },
-        "elite/picole/wake": {
+        "elite/picole-wake": {
           "file": "elite/tio-pave-picole-wake.webp",
           "cell": [
             160,
@@ -9785,7 +9785,7 @@
           ],
           "sha256": "cbf92f022ca11bc5e37c7a5c89f7c980a464b559fb09bfa3777d5150d650028a"
         },
-        "elite/picole/walk": {
+        "elite/picole-walk": {
           "file": "elite/tio-pave-picole-walk.webp",
           "cell": [
             160,
@@ -10121,7 +10121,7 @@
           "sha256": "23ebcad2bdf727ac34ad184afb2b1f021c7236297178148a9a591379a6b2d3dd"
         }
       },
-      "sha256": "b61d8cc6cb2e81e51e49582dc45e15d59bd2bd28df7f9fe87fdfb82118b59fc4",
+      "sha256": "d2d5c8b5aca9b4db48fd038e79f90aacf8fc045f23f5db62b1773016b1265170",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,

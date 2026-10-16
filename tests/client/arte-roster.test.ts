@@ -48,15 +48,15 @@ test('art id: a legacy kind keeps its art, a roster id is its own (never its bas
   for(const id of ['grauzeiro','rato-de-boteco','tio-do-isopor','barata-voadora'])assert.equal(roster(id).id,id,'E7 imports roster ids');
 });
 
-test('loads: no enemy in the boot preload (the nine kinds load on demand too); a piece loads by its own id, without the undrawn rest rows and elite variants',()=>{
+test('loads: no enemy in the boot preload (the nine kinds load on demand too); a piece loads by its own id, without the undrawn rest rows (and their layers)',()=>{
   useArt({grauzeiro,'rato-de-boteco':rato,bebado});
   const boot=artLoads().map(l=>l.key);
   assert.ok(boot.every(k=>!k.startsWith('art:enemy:')),'no enemy sheet before the match: '+boot.join(', '));
   assert.ok(enemyPieceLoads('bebado').some(l=>l.key==='art:enemy:bebado:walk'));
   useArt({pombos:{kind:'animations',files:{fly:sheet('pombos/fly.webp',6,96),sleep:{...sheet('pombos/sleep.webp',6,96),directions:1},
     wake:{...sheet('pombos/wake.webp',4,96),directions:1},'elite/fly':sheet('elite/pombos-fly.webp',6,96),
-    'elite/sleep':{...sheet('elite/pombos-sleep.webp',6,96),directions:1},'elite/gorro/fly':sheet('elite/pombos-gorro-fly.webp',6,96)}}});
-  assert.deepEqual(enemyPieceLoads('pombos').map(l=>l.key),['art:enemy:pombos:fly','art:enemy:pombos:elite/fly']);
+    'elite/sleep':{...sheet('elite/pombos-sleep.webp',6,96),directions:1},'elite/gorro-fly':sheet('elite/pombos-gorro-fly.webp',6,96),'elite/gorro-sleep':{...sheet('elite/pombos-gorro-sleep.webp',6,96),directions:1}}}});
+  assert.deepEqual(enemyPieceLoads('pombos').map(l=>l.key),['art:enemy:pombos:fly','art:enemy:pombos:elite/fly','art:enemy:pombos:elite/gorro-fly']);
   useArt({grauzeiro,'rato-de-boteco':rato,bebado});
   assert.deepEqual(enemyPieceLoads('grauzeiro').map(l=>[l.key,l.url,l.cell[0]]),[
     ['art:enemy:grauzeiro:idle','/art/lite/enemies/grauzeiro/idle.webp',160],['art:enemy:grauzeiro:aim','/art/lite/enemies/grauzeiro/aim.webp',160],

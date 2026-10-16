@@ -298,7 +298,7 @@ async function validateAnimations(spec,id,files,ctx,r){
     }
     if(!present.length)problems.push(`${pieceLabel}/: nenhuma animação entregue. Envie pelo menos uma de ${list(anims.map(a=>`${a}.png`))} (${piece.cell} px por célula, 8 direções).`);
   }
-  // `layer`: undefined for the base sheet, else the manifest key prefix ('elite' or 'elite/<variant>').
+  // `layer`: undefined for the base sheet, else 'elite' (key elite/<anim>) or 'elite/<variant>' (key elite/<variant>-<anim>).
   const check=async(file,anim,layer,label=relName(ctx,file))=>{
     const isRest=Object.hasOwn(REST_ANIMS,anim),frames=piece.anims[anim]??REST_ANIMS[anim],c=piece.cell,dirs=isRest?1:DIRECTIONS.length;
     const img=await load(file,label,problems);if(!img)return;
@@ -314,7 +314,7 @@ async function validateAnimations(spec,id,files,ctx,r){
       anchor:layer?undefined:anchor,footY:()=>grounded,footX:()=>grounded&&!LUNGE_ANIMS.has(anim),
       allowEmpty:!!layer,character:true});
     const output=layer?`${layerName(layer,anim).slice(spec.input.length+1)}.webp`:`${id}/${anim}.webp`;
-    sheets.push({key:layer?`${layer}/${anim}`:anim,source:file,...(Buffer.isBuffer(file)?{label}:{}),output,
+    sheets.push({key:layer?`${layer}${layer==='elite'?'/':'-'}${anim}`:anim,source:file,...(Buffer.isBuffer(file)?{label}:{}),output,
       cell:[c,c],frames:img.width/c,directions:dirs,anchor:[...anchor],...(fps?.[anim]?{fps:fps[anim]}:{})});
   };
   for(const anim of present){

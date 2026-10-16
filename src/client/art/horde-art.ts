@@ -203,10 +203,10 @@ export function artLoads():ArtLoad[]{
   return out;
 }
 /**
- * Imported files no renderer draws yet, so no match downloads them: the rest rows `sleep`/`wake` (and their elite
- * layers; the nests' card draws them) and the elite round variants `elite/<variant>/<anim>` (spec.mjs ELITE_VARIANTS).
+ * Imported files no renderer draws yet, so no match downloads them: the rest rows `sleep`/`wake` and their elite and
+ * costume layers (the nests' card draws them).
  */
-export const unusedEnemyFile=(name:string)=>/^(elite\/)?(sleep|wake)$/.test(name)||/^elite\/[^/]+\/[^/]+$/.test(name);
+export const unusedEnemyFile=(name:string)=>/^(elite\/([a-z0-9]+-)?)?(sleep|wake)$/.test(name);
 /** Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
 export function enemyPieceLoads(id:string):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;

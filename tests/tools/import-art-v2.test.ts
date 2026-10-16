@@ -340,9 +340,9 @@ test('rest rows sleep/wake (one row, S) and the elite round variants: approved w
   const r:Result=await importArtV2({input,repoRoot,outRoot,groups,write:true});
   approved(piece(r,'inimigos','pombos'));
   const files=readManifestOf(outRoot,'inimigos').pieces.pombos.files;
-  assert.deepEqual(Object.keys(files).sort(),['elite/gorro/idle','elite/idle','idle','sleep','wake','walk']);
+  assert.deepEqual(Object.keys(files).sort(),['elite/gorro-idle','elite/idle','idle','sleep','wake','walk']);
   assert.equal(files.sleep.directions,1);assert.equal(files.sleep.frames,6);assert.equal(files.wake.frames,4);
-  assert.equal(files['elite/gorro/idle'].file,'elite/pombos-gorro-idle.webp');
+  assert.equal(files['elite/gorro-idle'].file,'elite/pombos-gorro-idle.webp');
   // A rest row drawn in 8 directions: refused, naming the one-row rule.
   const bad=path.join(dir,'bad');await writeEnemy(path.join(bad,'inimigos','pombos'));
   await strip(path.join(bad,'inimigos','pombos','sleep.png'),6,8);

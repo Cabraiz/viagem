@@ -572,3 +572,16 @@ if(cidade)void (async()=>{
   addEventListener('resize',draw);setInterval(draw,250);
   requestAnimationFrame(()=>{draw();document.body.dataset.cidade='1';});
 })();
+
+/**
+ * D-052 slice 3: ?carro=perto (Puxar near the car), corda (Soltar, on the rope) or obra[-muro|-barricada] (the build
+ * tray open with that piece). The buttons and the tray only; the ghost is the scene's (sandbox-cidade obra=1).
+ */
+const carro=params.get('carro');
+if(carro)void (async()=>{
+  const {FortifyHud}=await import('../hud/fortify/fortify.ts');
+  const piece=carro==='obra-muro'?'muro':carro==='obra-barricada'?'barricada':'vigia-do-predio';
+  const fort=new FortifyHud(hud.el,{onPull:()=>{},onOpen:()=>{},onPick:()=>{},onTurn:()=>{},onConfirm:()=>{},onAim:()=>{},onAimEnd:()=>{},canvas:()=>undefined});
+  const on=carro==='corda';
+  fort.update({available:true,pull:{show:carro!=='longe',on,label:on?'Soltar':'Puxar',pushing:false},open:carro.startsWith('obra'),piece,rot:0,walls:12});
+})();

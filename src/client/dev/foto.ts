@@ -39,6 +39,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
+  'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},
+  'carro-soltar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=corda',descricao:'D-052 HUD: Soltar (na corda)'},
+  'carro-obra':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=obra-muro',descricao:'D-052 HUD: a bandeja de Construir aberta (Muro escolhido)'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.
   'pausa-escolhendo':{sandbox:'hud',query:'pausa=escolhendo&frozen=1&heroi=1',descricao:'pausa do level-up: oferta aberta, 10 s, esperando você, Tia e Bruninha'},

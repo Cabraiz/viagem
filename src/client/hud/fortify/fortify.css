@@ -6,7 +6,7 @@
      map's middle where the ghost goes: title, wall counter, close, the three pieces as tags, Girar and Construir aqui. */
 .rh-fort{position:absolute;inset:0;pointer-events:none;z-index:1}
 .rh .rh-fort-puxar,.rh .rh-fort-construir{
-  --fort:60px;
+  --fort:64px;
   position:absolute;box-sizing:border-box;width:var(--fort);height:var(--fort);
   right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 16px);
   bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--fort)/2);
@@ -52,7 +52,10 @@
   .rh .rh-fort-puxar,.rh .rh-fort-construir{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px)}
   .rh .rh-fort-puxar{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--fort)/2)}
   .rh .rh-fort-construir{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 + var(--fort)/2 + 12px)}
-  .rh-fort-bandeja{bottom:max(16px,env(safe-area-inset-bottom));right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px);width:min(320px,calc(100vw - 260px))}
+  /* Above the skill button on the right, clear of the hero at the middle. */
+  .rh-fort-bandeja{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 12px);width:min(290px,40vw);gap:4px;padding:2px 6px 6px}
+  .rh-fort-head .rh-fort-close{height:36px}
+  .rh .rh-fort-girar,.rh .rh-fort-ok{min-height:40px}
   .rh-fort-peca{min-height:60px}
   .rh-fort-dica{display:none}
 }

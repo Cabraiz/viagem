@@ -153,6 +153,37 @@ test('Dona Cida through the room: {t:\'cida\'} answers {t:\'bought\'} with the s
   assert.equal(grana,85);assert.equal(camp,85,'the camp block carries the same Grana: this viewer\'s wallet');
 });
 
+test('the car\'s rope through the room (D-052): {t:\'puxar\'} answers {t:\'puxou\'} with the refusals, a resent req is duplicate, the frames carry the rope',async()=>{
+  const {room,a,ana,t:t0}=await cityRoom(77,0);
+  let t=t0;
+  const sim=room.sim,chaveiro=sim.run.chaveiro!;
+  for(let i=0;i<5;i++)room.advance(t+=50);
+  const answers=()=>a.messages.filter(m=>m.t==='puxou');
+  const pull=(req:number,on:unknown=true,r=round(room))=>say(room,a,{t:'puxar',round:r,req,on},t+=10);
+  const p=sim.players.get(ana)!,car=chaveiro.state.car;
+  p.x=car.x;p.y=car.y+10;
+  pull(1);
+  assert.deepEqual(answers().at(-1),{t:'puxou',req:1,ok:false,reason:'longe'});
+  p.y=car.y+2;
+  pull(2);
+  assert.deepEqual(answers().at(-1),{t:'puxou',req:2,ok:true});
+  pull(2);
+  assert.deepEqual(answers().at(-1),{t:'puxou',req:2,ok:false,reason:'duplicate'});
+  pull(3,true,round(room)+1);
+  assert.deepEqual(answers().at(-1),{t:'puxou',req:3,ok:false,reason:'fase'},'another round');
+  // Malformed taps are dropped (no answer).
+  const before=answers().length;
+  pull(0);pull(4,'sim');
+  assert.equal(answers().length,before);
+  room.advance(t+=50);
+  const dec=new FrameDecoder();let rope:string|undefined;
+  for(const f of a.frames){const r=dec.decode(f);if(r.ok&&r.view.objective)rope=r.view.objective.car.rope;}
+  assert.equal(rope,ana,'everyone sees who holds the rope');
+  pull(5,false);
+  assert.deepEqual(answers().at(-1),{t:'puxou',req:5,ok:true});
+  assert.equal(car.rope,undefined);
+});
+
 test('city checkpoint with the chaveiro objective: the round-2 intermission resumes on a fresh room simulation and plays on alike',async()=>{
   const loaded=await cityTerrainFrom(cityText,manifest.hash);
   if(!loaded.ok)throw new Error(loaded.error);

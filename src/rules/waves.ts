@@ -245,7 +245,10 @@ export interface RoundPlan {
   alternate?:boolean;
   /** XP drops laid around the team at the wave start (RoundDef.crumbs). */
   crumbs?:RoundDef['crumbs'];
-  /** Roles borrowed into this short round (RoundRoster.borrowed) and their band's numbers: the director applies them. */
+  /**
+   * Roles borrowed into this short round (RoundRoster.borrowed) and their band's numbers: the director applies them.
+   * Round 1 with a complete art band lists all its roles at the early band's numbers (TUTORIAL_ART_TUNE).
+   */
   borrowed?:{roles:readonly EnemyRole[];tune:BandTune};
 }
 
@@ -389,6 +392,12 @@ export interface PlanOptions {
   /** A short round's (art only) most share of its regular bodies per role, swarms included; the excess becomes its other roles. */
   roleCap?:Readonly<Partial<Record<EnemyRole,number>>>;
 }
+/**
+ * Round 1 (the tutorial) with a complete art band (importar-42-inimigos, Orquestrador 14/10/2026): the table's bodies,
+ * all corredores at full strength, downed novices once the early band stopped borrowing weaker roles; they play at the
+ * early band's borrowed numbers instead, as round 1 did with the 16-id art set. The count and timing stay the table's.
+ */
+export const TUTORIAL_ART_TUNE:BandTune=BORROW_TUNE.early;
 export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,roster?:RoundRoster,options?:PlanOptions):RoundPlan{
   const def=ROUNDS[index-1];
   if(!def)throw new Error(`no round ${index}`);
@@ -459,6 +468,7 @@ export function planRound(index:number,players:number,theme:RoundTheme,rng:Rng,r
     side:mod?.singleSide||mod?.alternateSide?rng.range(0,Math.PI*2):undefined,
     ...(mod?.alternateSide?{alternate:true}:{}),
     ...(def.crumbs?{crumbs:def.crumbs}:{}),
-    ...(roster?.borrowed?.length?{borrowed:{roles:[...roster.borrowed],tune:BORROW_TUNE[bandOf(index)]}}:{}),
+    ...(roster?.borrowed?.length?{borrowed:{roles:[...roster.borrowed],tune:BORROW_TUNE[bandOf(index)]}}
+      :roles&&index===1?{borrowed:{roles:Object.keys(roles) as EnemyRole[],tune:TUTORIAL_ART_TUNE}}:{}),
   };
 }

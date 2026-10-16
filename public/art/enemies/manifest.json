@@ -294,6 +294,197 @@
         "width": 1.5
       }
     },
+    "bebado-do-karaoke": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "bebado-do-karaoke/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "39d1b6b316a964a88b4f73a55a5a3167e9e38dfc93bfa817c14f2fac6304af1d"
+            }
+          ],
+          "sha256": "39d1b6b316a964a88b4f73a55a5a3167e9e38dfc93bfa817c14f2fac6304af1d"
+        },
+        "hit": {
+          "file": "bebado-do-karaoke/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "453b657c92ba5b83d443219ed72bb668e80bb4de2ff23b11d7a637341ea8eabb"
+            }
+          ],
+          "sha256": "453b657c92ba5b83d443219ed72bb668e80bb4de2ff23b11d7a637341ea8eabb"
+        },
+        "idle": {
+          "file": "bebado-do-karaoke/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "f5536ddf683a808f06759c9e2aac2fe75e09c367bb61be4789dc2f49025d3bd2"
+            }
+          ],
+          "sha256": "f5536ddf683a808f06759c9e2aac2fe75e09c367bb61be4789dc2f49025d3bd2"
+        },
+        "joke": {
+          "file": "bebado-do-karaoke/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "b72d138a0e9640f56f12f8089ab56ef9500dff7720f226d9f504ec8d916f67ec"
+            }
+          ],
+          "sha256": "b72d138a0e9640f56f12f8089ab56ef9500dff7720f226d9f504ec8d916f67ec"
+        },
+        "shove": {
+          "file": "bebado-do-karaoke/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "6cb1ef3fe2b275bfff9ce7f0b5cff4cebddf4ed5968f2a851fc73c125059f02c"
+            }
+          ],
+          "sha256": "6cb1ef3fe2b275bfff9ce7f0b5cff4cebddf4ed5968f2a851fc73c125059f02c"
+        },
+        "walk": {
+          "file": "bebado-do-karaoke/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bebado-do-karaoke/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "488bd428cb4894f9621cd48d1f7ec6157cad795bb777a9fc23c94610e7eff0df"
+            }
+          ],
+          "sha256": "488bd428cb4894f9621cd48d1f7ec6157cad795bb777a9fc23c94610e7eff0df"
+        }
+      },
+      "sha256": "6f254af372c7e23bde3fbe3633973b6de37d432455a7d32d6b825efa45cee26a",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "bebum-de-carrinho": {
       "kind": "animations",
       "files": {
@@ -419,6 +610,1365 @@
         }
       },
       "sha256": "4f212817df6c28a13b5bf309b131d2db0b9d78b67f3f7a30833d3540f37f538f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "boleto-vivo": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "boleto-vivo/attack.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boleto-vivo/attack.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "4002c8be378932f76f3d600a08973e1a11b0020e4f03ed1a2f0f1486e1776344"
+            }
+          ],
+          "sha256": "4002c8be378932f76f3d600a08973e1a11b0020e4f03ed1a2f0f1486e1776344"
+        },
+        "death": {
+          "file": "boleto-vivo/death.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boleto-vivo/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "cee3a0316d8ccd58ee46bed775565a97ebbe83f3d088d36a0da6dea8a1c39785"
+            }
+          ],
+          "sha256": "cee3a0316d8ccd58ee46bed775565a97ebbe83f3d088d36a0da6dea8a1c39785"
+        },
+        "walk": {
+          "file": "boleto-vivo/walk.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boleto-vivo/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9f44c7517390d89d0e32ef21c5d7c999e8555824757c453faaa4d730ff8e18cb"
+            }
+          ],
+          "sha256": "9f44c7517390d89d0e32ef21c5d7c999e8555824757c453faaa4d730ff8e18cb"
+        }
+      },
+      "sha256": "0f52aec738a59996222fe96abdb06d55012ee20ccac0e400c7003ae7be71997a",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "bolo-vivo": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "bolo-vivo/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bolo-vivo/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "18cd4e14d424d80c150f076a8cabf70ea03ceac2691e393c48751f4a7b77ab02"
+            }
+          ],
+          "sha256": "18cd4e14d424d80c150f076a8cabf70ea03ceac2691e393c48751f4a7b77ab02"
+        },
+        "hit": {
+          "file": "bolo-vivo/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bolo-vivo/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "928c0cdb4de0caf69ed7f41f5982dffbeb62b0876eaadccc8ae514703b222a07"
+            }
+          ],
+          "sha256": "928c0cdb4de0caf69ed7f41f5982dffbeb62b0876eaadccc8ae514703b222a07"
+        },
+        "idle": {
+          "file": "bolo-vivo/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bolo-vivo/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5fbd70baf4c0bd5a641f480f7b3ccc874333ff817514370bb315368d1d6a2d67"
+            }
+          ],
+          "sha256": "5fbd70baf4c0bd5a641f480f7b3ccc874333ff817514370bb315368d1d6a2d67"
+        },
+        "shove": {
+          "file": "bolo-vivo/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bolo-vivo/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "38d604ccf3d8e968ceb499b2f0087f52542799bbdbe4181ebe4bedf30378f5f2"
+            }
+          ],
+          "sha256": "38d604ccf3d8e968ceb499b2f0087f52542799bbdbe4181ebe4bedf30378f5f2"
+        },
+        "walk": {
+          "file": "bolo-vivo/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bolo-vivo/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "8d2e64c5442141cd320f4e071cb10b88273593d62dc1f492f3843c2718f69bd7"
+            }
+          ],
+          "sha256": "8d2e64c5442141cd320f4e071cb10b88273593d62dc1f492f3843c2718f69bd7"
+        }
+      },
+      "sha256": "5050f02c5d506c4fa19ac3b7487db7186d5bda7f5a21b7ca85cf9842c349ed12",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "boneco-gigante": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "boneco-gigante/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boneco-gigante/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "eb71caa58d0de432580bdfce3397e8a20b5c476f28d6c68c29cce4a20860e5b9"
+            }
+          ],
+          "sha256": "eb71caa58d0de432580bdfce3397e8a20b5c476f28d6c68c29cce4a20860e5b9"
+        },
+        "hit": {
+          "file": "boneco-gigante/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boneco-gigante/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "05234ef8bfee26259b35d7063db225a7152fbaf41d84d5d5245840d6b6b59041"
+            }
+          ],
+          "sha256": "05234ef8bfee26259b35d7063db225a7152fbaf41d84d5d5245840d6b6b59041"
+        },
+        "idle": {
+          "file": "boneco-gigante/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boneco-gigante/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "497f42c98d3fb900a0f1b7fcf5e9b439fe3df771705e39f7cdea73ccd4799896"
+            }
+          ],
+          "sha256": "497f42c98d3fb900a0f1b7fcf5e9b439fe3df771705e39f7cdea73ccd4799896"
+        },
+        "shove": {
+          "file": "boneco-gigante/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boneco-gigante/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "9a5b5a627cc6e031a197a296aed69b524b283ad3e06be3176e3cb7fce7f0085d"
+            }
+          ],
+          "sha256": "9a5b5a627cc6e031a197a296aed69b524b283ad3e06be3176e3cb7fce7f0085d"
+        },
+        "walk": {
+          "file": "boneco-gigante/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "boneco-gigante/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "26e1a5a5cde8effd5d3bc5bfd0ac437752df74dfe462f67c2a0f7e5e063a427c"
+            }
+          ],
+          "sha256": "26e1a5a5cde8effd5d3bc5bfd0ac437752df74dfe462f67c2a0f7e5e063a427c"
+        }
+      },
+      "sha256": "5f373f2322d3c775de52439ce75935b054ad968e0441b0fca22f18646f45a01c",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "bot-de-curtida": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "bot-de-curtida/attack.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bot-de-curtida/attack.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "d4bafa64828486b705606828c9a96835d46332ab3202582e6d300fac46d7db22"
+            }
+          ],
+          "sha256": "d4bafa64828486b705606828c9a96835d46332ab3202582e6d300fac46d7db22"
+        },
+        "death": {
+          "file": "bot-de-curtida/death.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bot-de-curtida/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "7b0d8c93b4a4ac59408fa11c8586296c99bc2cac1784eb0fb063ab8c4770a8c7"
+            }
+          ],
+          "sha256": "7b0d8c93b4a4ac59408fa11c8586296c99bc2cac1784eb0fb063ab8c4770a8c7"
+        },
+        "walk": {
+          "file": "bot-de-curtida/walk.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "bot-de-curtida/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "80467bc1a809a21679bfd97765581ac214ffb54a21be89f6274abdfa9a65c745"
+            }
+          ],
+          "sha256": "80467bc1a809a21679bfd97765581ac214ffb54a21be89f6274abdfa9a65c745"
+        }
+      },
+      "sha256": "9aa02fe465b55710198149076c3ba559315d37ef6a32bf0b269d4e843f8eace4",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "cachorro-de-madame": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "cachorro-de-madame/attack.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cachorro-de-madame/attack.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "363245870dc1be7b0699ae8a285787a5f3df8d34fdcafe1f59ebbeb08ad52000"
+            }
+          ],
+          "sha256": "363245870dc1be7b0699ae8a285787a5f3df8d34fdcafe1f59ebbeb08ad52000"
+        },
+        "death": {
+          "file": "cachorro-de-madame/death.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cachorro-de-madame/death.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "6114a6cd608318a41ba2b07212105ec37bf5d5c7ec07e4ec1a5daab0cc9caf2e"
+            }
+          ],
+          "sha256": "6114a6cd608318a41ba2b07212105ec37bf5d5c7ec07e4ec1a5daab0cc9caf2e"
+        },
+        "walk": {
+          "file": "cachorro-de-madame/walk.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cachorro-de-madame/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "60f3bd5dd3f19b29db92f8066455662a2fd7cb95bd62e9f137bb00be2d6363c0"
+            }
+          ],
+          "sha256": "60f3bd5dd3f19b29db92f8066455662a2fd7cb95bd62e9f137bb00be2d6363c0"
+        }
+      },
+      "sha256": "c38850ecbfaf6794fd447219604020b3efd2169eb44004b99393457c3ebef99b",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "carimbador": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "carimbador/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "2fc21dfcbbc990cc978d41c1b7c2b895785c6af65f4f7f4b3686de2bd7c46492"
+            }
+          ],
+          "sha256": "2fc21dfcbbc990cc978d41c1b7c2b895785c6af65f4f7f4b3686de2bd7c46492"
+        },
+        "attack": {
+          "file": "carimbador/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "6531b4cb4cfaad211d7230afb1d913895943f228930103beab4a26133519426b"
+            }
+          ],
+          "sha256": "6531b4cb4cfaad211d7230afb1d913895943f228930103beab4a26133519426b"
+        },
+        "death": {
+          "file": "carimbador/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "f5ffa0b634cc234cd49b057949c1bbdc19173f4fe266e133b02134b58f112431"
+            }
+          ],
+          "sha256": "f5ffa0b634cc234cd49b057949c1bbdc19173f4fe266e133b02134b58f112431"
+        },
+        "hit": {
+          "file": "carimbador/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "a8ca529ec2769a0bc5d0fbdebcebdbf9da7e756b41b1a0f8ef7a50a6e15c6a02"
+            }
+          ],
+          "sha256": "a8ca529ec2769a0bc5d0fbdebcebdbf9da7e756b41b1a0f8ef7a50a6e15c6a02"
+        },
+        "idle": {
+          "file": "carimbador/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "85c8e40282ce994efc2ba746ce617fd5f302c851a62fbbeb73048108fb1b328c"
+            }
+          ],
+          "sha256": "85c8e40282ce994efc2ba746ce617fd5f302c851a62fbbeb73048108fb1b328c"
+        },
+        "walk": {
+          "file": "carimbador/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "carimbador/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "cab98aa097ba8421db46385a9bc9dd339bc3a74c946646bac16abd02f45b6b7f"
+            }
+          ],
+          "sha256": "cab98aa097ba8421db46385a9bc9dd339bc3a74c946646bac16abd02f45b6b7f"
+        }
+      },
+      "sha256": "5a45ea174c3cfe2bee333cfb76a336258311baa714402923567232ac6f37081d",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "cliente-do-gerente": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "cliente-do-gerente/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "8a0cdf8c25806a17edc73a04ada8fd0d8e2ef81565d386432c35c23fde36813c"
+            }
+          ],
+          "sha256": "8a0cdf8c25806a17edc73a04ada8fd0d8e2ef81565d386432c35c23fde36813c"
+        },
+        "hit": {
+          "file": "cliente-do-gerente/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "ec27b6a6dbf509b65af98573e0011604bae9e83cb47104465f2e5862ef551a2a"
+            }
+          ],
+          "sha256": "ec27b6a6dbf509b65af98573e0011604bae9e83cb47104465f2e5862ef551a2a"
+        },
+        "idle": {
+          "file": "cliente-do-gerente/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "628d5447dfcabe603b6f8684c17ec0af9ec1c4ab2701e5dcd2a69499b96c78d1"
+            }
+          ],
+          "sha256": "628d5447dfcabe603b6f8684c17ec0af9ec1c4ab2701e5dcd2a69499b96c78d1"
+        },
+        "joke": {
+          "file": "cliente-do-gerente/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "98b7dc49a800edb06107c118343fe0f7c7701bd853c098fa7d34f3f88454f599"
+            }
+          ],
+          "sha256": "98b7dc49a800edb06107c118343fe0f7c7701bd853c098fa7d34f3f88454f599"
+        },
+        "shove": {
+          "file": "cliente-do-gerente/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "0086c16b7fa4f7b3c33ce79d2bcc36f5715ad92a899dacc03b656076664a3164"
+            }
+          ],
+          "sha256": "0086c16b7fa4f7b3c33ce79d2bcc36f5715ad92a899dacc03b656076664a3164"
+        },
+        "walk": {
+          "file": "cliente-do-gerente/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cliente-do-gerente/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "31ea04b076363fd30af32669869fb3e9f8b2b91ee4a8e62571d91f63e87ee17e"
+            }
+          ],
+          "sha256": "31ea04b076363fd30af32669869fb3e9f8b2b91ee4a8e62571d91f63e87ee17e"
+        }
+      },
+      "sha256": "d2ef13fc8907b86d39f8a2d34348762b0314175b633c69a2080dfa41f8bbe1bc",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "cunhado-sabe-tudo": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "cunhado-sabe-tudo/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "742a4350bc069a90e5f8dfdd90d50ca5a432c6ffa4fc0f15a1db902dc079e62c"
+            }
+          ],
+          "sha256": "742a4350bc069a90e5f8dfdd90d50ca5a432c6ffa4fc0f15a1db902dc079e62c"
+        },
+        "hit": {
+          "file": "cunhado-sabe-tudo/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "5af70f89a01d977d5d3cb11c394090fb5359379fff773f45a73374eed69553a4"
+            }
+          ],
+          "sha256": "5af70f89a01d977d5d3cb11c394090fb5359379fff773f45a73374eed69553a4"
+        },
+        "idle": {
+          "file": "cunhado-sabe-tudo/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c9b9e04be37e70d5233f625153c59ec52adfb9e136e52ca649cc0e067d66da19"
+            }
+          ],
+          "sha256": "c9b9e04be37e70d5233f625153c59ec52adfb9e136e52ca649cc0e067d66da19"
+        },
+        "joke": {
+          "file": "cunhado-sabe-tudo/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "a7b5f36a314552787dfc850d905a7ef993e6b35b624cd376f4840805d53aa57a"
+            }
+          ],
+          "sha256": "a7b5f36a314552787dfc850d905a7ef993e6b35b624cd376f4840805d53aa57a"
+        },
+        "shove": {
+          "file": "cunhado-sabe-tudo/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "998a5a749e88be456b5c7f26d6543763585a304d2d40b0c35655c48fd1341aab"
+            }
+          ],
+          "sha256": "998a5a749e88be456b5c7f26d6543763585a304d2d40b0c35655c48fd1341aab"
+        },
+        "walk": {
+          "file": "cunhado-sabe-tudo/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "cunhado-sabe-tudo/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f6cc52a48a8eb1b501210358dc362264c72246b26940a0fe939f030f0a91acbe"
+            }
+          ],
+          "sha256": "f6cc52a48a8eb1b501210358dc362264c72246b26940a0fe939f030f0a91acbe"
+        }
+      },
+      "sha256": "1f5b5fcc2b0b92c20f70d0531de50370d87c59b6634a07bb50bd7362c9444e92",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "dj-de-casamento": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "dj-de-casamento/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dj-de-casamento/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "875ff90220862a828c2cbad6fc2d440cd627581e8bbb834eb6cc53b1eee3dbee"
+            }
+          ],
+          "sha256": "875ff90220862a828c2cbad6fc2d440cd627581e8bbb834eb6cc53b1eee3dbee"
+        },
+        "hit": {
+          "file": "dj-de-casamento/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dj-de-casamento/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "3e38c89635407680f0fdfa5c8a3d539c0ea71ad26e4df1a9a651a40dbe052cfa"
+            }
+          ],
+          "sha256": "3e38c89635407680f0fdfa5c8a3d539c0ea71ad26e4df1a9a651a40dbe052cfa"
+        },
+        "idle": {
+          "file": "dj-de-casamento/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dj-de-casamento/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "859f13cf21d5012be6cecdd4bb3a9c0708290354ec83246404daa45e106dc69c"
+            }
+          ],
+          "sha256": "859f13cf21d5012be6cecdd4bb3a9c0708290354ec83246404daa45e106dc69c"
+        },
+        "summon": {
+          "file": "dj-de-casamento/summon.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dj-de-casamento/summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "29a457f8692dccc1bbc937aaa0d2a37960952c0838ca54c74a41fceaf758b32a"
+            }
+          ],
+          "sha256": "29a457f8692dccc1bbc937aaa0d2a37960952c0838ca54c74a41fceaf758b32a"
+        },
+        "walk": {
+          "file": "dj-de-casamento/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "dj-de-casamento/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "84fdee503c3ab925372c814a6e9f07f012c7d686e9084faf1f9ecc47d697251a"
+            }
+          ],
+          "sha256": "84fdee503c3ab925372c814a6e9f07f012c7d686e9084faf1f9ecc47d697251a"
+        }
+      },
+      "sha256": "121249d5fc78200a7d148e4403e822c2a949463ebee2636ec9b881a6b6fd9d3f",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -1039,6 +2589,871 @@
         "width": 1.5
       }
     },
+    "guru-cripto": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "guru-cripto/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "guru-cripto/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "e98f0caa17eeec4d2a33e7d60177d18d5157d0a3cab7bef8deba2003081805b0"
+            }
+          ],
+          "sha256": "e98f0caa17eeec4d2a33e7d60177d18d5157d0a3cab7bef8deba2003081805b0"
+        },
+        "hit": {
+          "file": "guru-cripto/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "guru-cripto/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "5f741d630f891785d7f1ca0e2e56c19fbf608be71e990f62ab2f0134082af09f"
+            }
+          ],
+          "sha256": "5f741d630f891785d7f1ca0e2e56c19fbf608be71e990f62ab2f0134082af09f"
+        },
+        "idle": {
+          "file": "guru-cripto/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "guru-cripto/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "86346964fb5c8420198b53d9eba4ef11c0bd25b24d83126b5af2a4b94edfe0c5"
+            }
+          ],
+          "sha256": "86346964fb5c8420198b53d9eba4ef11c0bd25b24d83126b5af2a4b94edfe0c5"
+        },
+        "pose": {
+          "file": "guru-cripto/pose.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "guru-cripto/pose.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "d70729ac60cff31dd4ea8a271b61ae0623d332aa0d4723ea858c3e9400baf836"
+            }
+          ],
+          "sha256": "d70729ac60cff31dd4ea8a271b61ae0623d332aa0d4723ea858c3e9400baf836"
+        },
+        "walk": {
+          "file": "guru-cripto/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "guru-cripto/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "825f073ccbca25620e5f6de6a354427ef193f4fe45693ea82b9aa7d68a5bbf26"
+            }
+          ],
+          "sha256": "825f073ccbca25620e5f6de6a354427ef193f4fe45693ea82b9aa7d68a5bbf26"
+        }
+      },
+      "sha256": "1766066eeabae22c1404c8c6310c3d013bf4836b266a44b5211a38970c196dfc",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "hater-anonimo": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "hater-anonimo/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d31aad29f3eec87ea3b2cecb99b8cb516b7a301c72b8a478f1824c8aec649c31"
+            }
+          ],
+          "sha256": "d31aad29f3eec87ea3b2cecb99b8cb516b7a301c72b8a478f1824c8aec649c31"
+        },
+        "attack": {
+          "file": "hater-anonimo/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "0d07e43b42733d56004bcdf7ec5397a7578d02670e28351a931005131561f2e9"
+            }
+          ],
+          "sha256": "0d07e43b42733d56004bcdf7ec5397a7578d02670e28351a931005131561f2e9"
+        },
+        "death": {
+          "file": "hater-anonimo/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "e3eed02145f38b3c68081d1906b7ec732beb6438a35172a29a9b4bf44153e404"
+            }
+          ],
+          "sha256": "e3eed02145f38b3c68081d1906b7ec732beb6438a35172a29a9b4bf44153e404"
+        },
+        "hit": {
+          "file": "hater-anonimo/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "f16b64d1dbe7d1ba72ebd58ab11daca19cf84b9945e4e3c34378141619334583"
+            }
+          ],
+          "sha256": "f16b64d1dbe7d1ba72ebd58ab11daca19cf84b9945e4e3c34378141619334583"
+        },
+        "idle": {
+          "file": "hater-anonimo/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "b199f6cb5bc0ac8b1d61a378ecbd0c457c56456b2a0725f3406a6d2cbae8f713"
+            }
+          ],
+          "sha256": "b199f6cb5bc0ac8b1d61a378ecbd0c457c56456b2a0725f3406a6d2cbae8f713"
+        },
+        "walk": {
+          "file": "hater-anonimo/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "hater-anonimo/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "b88aa7f95dbc4fc80cecc03fd02bc084287dca4d1f7ce3d57e707ee7d4380629"
+            }
+          ],
+          "sha256": "b88aa7f95dbc4fc80cecc03fd02bc084287dca4d1f7ce3d57e707ee7d4380629"
+        }
+      },
+      "sha256": "65e78021ee18acc9c41df033d334907d4f564c3e2ff4c17f9566db86000ad88c",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "impressora-possuida": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "impressora-possuida/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "impressora-possuida/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "67a9b55bca8ac061b071f0f98a688854e6f9248f3e7823e18624352ed2fc668b"
+            }
+          ],
+          "sha256": "67a9b55bca8ac061b071f0f98a688854e6f9248f3e7823e18624352ed2fc668b"
+        },
+        "hit": {
+          "file": "impressora-possuida/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "impressora-possuida/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "d01bee1806a779412f89d2e8da24542c1a85a803fcad9021162ef4f67392b34e"
+            }
+          ],
+          "sha256": "d01bee1806a779412f89d2e8da24542c1a85a803fcad9021162ef4f67392b34e"
+        },
+        "idle": {
+          "file": "impressora-possuida/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "impressora-possuida/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "676f79689501e39e545688751c198b61ed478cdc6dd0c5976da0217891072f7e"
+            }
+          ],
+          "sha256": "676f79689501e39e545688751c198b61ed478cdc6dd0c5976da0217891072f7e"
+        },
+        "throw": {
+          "file": "impressora-possuida/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "impressora-possuida/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f24221dba3f5203ab7300ffbd090380acf32d7d02f21421e56323429bcd0f14f"
+            }
+          ],
+          "sha256": "f24221dba3f5203ab7300ffbd090380acf32d7d02f21421e56323429bcd0f14f"
+        },
+        "walk": {
+          "file": "impressora-possuida/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "impressora-possuida/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "b8bdf6bea4cac1443e845b729846e5c95627d435753341fdf37d3f633770fef6"
+            }
+          ],
+          "sha256": "b8bdf6bea4cac1443e845b729846e5c95627d435753341fdf37d3f633770fef6"
+        }
+      },
+      "sha256": "14bbfcb9d492351311d597a0bf5a5b8488520183ffd0c12c71ae8f6e89252bd8",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "juiz-vendido": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "juiz-vendido/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "861780d1b9093c4d7a4b5f3e69bdfbe355770e0bfd1d6d79636d0294ab5c52f5"
+            }
+          ],
+          "sha256": "861780d1b9093c4d7a4b5f3e69bdfbe355770e0bfd1d6d79636d0294ab5c52f5"
+        },
+        "attack": {
+          "file": "juiz-vendido/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a6d3936d71807b36163071527526cb018c15bf0f1c794aa1c1ae676a7416ed14"
+            }
+          ],
+          "sha256": "a6d3936d71807b36163071527526cb018c15bf0f1c794aa1c1ae676a7416ed14"
+        },
+        "death": {
+          "file": "juiz-vendido/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "1a67c0500adf0b0bfb27e008b6e6ddde52905edd340bed948a2eff7c532ea898"
+            }
+          ],
+          "sha256": "1a67c0500adf0b0bfb27e008b6e6ddde52905edd340bed948a2eff7c532ea898"
+        },
+        "hit": {
+          "file": "juiz-vendido/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "bfdbf6b18663ca04c2d33eb5ad6871ac09c9035b5b636d9d90855f4bb0cccc35"
+            }
+          ],
+          "sha256": "bfdbf6b18663ca04c2d33eb5ad6871ac09c9035b5b636d9d90855f4bb0cccc35"
+        },
+        "idle": {
+          "file": "juiz-vendido/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "0b9b3a845c0841b03a8c196692097caf4859a23254809d93f008675049c183ed"
+            }
+          ],
+          "sha256": "0b9b3a845c0841b03a8c196692097caf4859a23254809d93f008675049c183ed"
+        },
+        "walk": {
+          "file": "juiz-vendido/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "juiz-vendido/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "e3c83c26a0a55cb873ad1063fa6eecfb0244e48c34f6b020019c478721c6cf6b"
+            }
+          ],
+          "sha256": "e3c83c26a0a55cb873ad1063fa6eecfb0244e48c34f6b020019c478721c6cf6b"
+        }
+      },
+      "sha256": "50a00145fbfa8cc717d5725e6ba960d6564fbed54dbe6d9d558fd5b5157920ac",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "leao-da-receita": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "leao-da-receita/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "leao-da-receita/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "0e072b5a663ce3d166db94257e10321e3fdc6a3162389bf75a2f27fcd426c4bd"
+            }
+          ],
+          "sha256": "0e072b5a663ce3d166db94257e10321e3fdc6a3162389bf75a2f27fcd426c4bd"
+        },
+        "hit": {
+          "file": "leao-da-receita/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "leao-da-receita/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "4f0dc44df098bdd2f947c3956e6ea5032699646283fa8349fb3c8c22cd0bad4f"
+            }
+          ],
+          "sha256": "4f0dc44df098bdd2f947c3956e6ea5032699646283fa8349fb3c8c22cd0bad4f"
+        },
+        "idle": {
+          "file": "leao-da-receita/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "leao-da-receita/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "0a492eaea5bcb0aced002e2ccf553dc436aa85bd9fb9a298aee9df38912c59cb"
+            }
+          ],
+          "sha256": "0a492eaea5bcb0aced002e2ccf553dc436aa85bd9fb9a298aee9df38912c59cb"
+        },
+        "shove": {
+          "file": "leao-da-receita/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "leao-da-receita/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "62daad0e2f78497f1c5dca88a483d2cdc4078c6d24f5dc00d3a98f87d8fbdf89"
+            }
+          ],
+          "sha256": "62daad0e2f78497f1c5dca88a483d2cdc4078c6d24f5dc00d3a98f87d8fbdf89"
+        },
+        "walk": {
+          "file": "leao-da-receita/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "leao-da-receita/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "87528ff7b1127f420e67e93ee4327cf3f37e4ccc3d3b8e20ba992fb4a9e870af"
+            }
+          ],
+          "sha256": "87528ff7b1127f420e67e93ee4327cf3f37e4ccc3d3b8e20ba992fb4a9e870af"
+        }
+      },
+      "sha256": "650cfc789635ddfa2c2a38cfdf69b98f3b02169856c271363f5255551597514d",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "malabarista-do-sinal": {
       "kind": "animations",
       "files": {
@@ -1522,6 +3937,167 @@
         "width": 1.5
       }
     },
+    "noel-derretendo": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "noel-derretendo/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "noel-derretendo/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "0cbf35a047446c4a8062a73ac0fe7b46f1db42f74862752c252e5f775eb4a7af"
+            }
+          ],
+          "sha256": "0cbf35a047446c4a8062a73ac0fe7b46f1db42f74862752c252e5f775eb4a7af"
+        },
+        "hit": {
+          "file": "noel-derretendo/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "noel-derretendo/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "e49d26d05149be1b3652615cec50730dfa48611cbf14e4e570fd8ffa545bd940"
+            }
+          ],
+          "sha256": "e49d26d05149be1b3652615cec50730dfa48611cbf14e4e570fd8ffa545bd940"
+        },
+        "idle": {
+          "file": "noel-derretendo/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "noel-derretendo/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "8a537e80940f8ed65b8d5ccc90ab4abbef416da8960ac89c1bf4efa04b0589ac"
+            }
+          ],
+          "sha256": "8a537e80940f8ed65b8d5ccc90ab4abbef416da8960ac89c1bf4efa04b0589ac"
+        },
+        "shove": {
+          "file": "noel-derretendo/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "noel-derretendo/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "56157588a21d89dcb644f8d2851dd7647c7fb8e2c335664b13129c40e121689f"
+            }
+          ],
+          "sha256": "56157588a21d89dcb644f8d2851dd7647c7fb8e2c335664b13129c40e121689f"
+        },
+        "walk": {
+          "file": "noel-derretendo/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "noel-derretendo/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "02a2daa7b383d3ff599425edb89d310ed0f166178377bf36602844a625fec39e"
+            }
+          ],
+          "sha256": "02a2daa7b383d3ff599425edb89d310ed0f166178377bf36602844a625fec39e"
+        }
+      },
+      "sha256": "5408c4d0a4fab1e7520ae15358b6ab27da655247caba486a05e7c872fd9b2c4a",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "pamonheiro": {
       "kind": "animations",
       "files": {
@@ -1844,6 +4420,388 @@
         "width": 1.5
       }
     },
+    "primo-do-violao": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "primo-do-violao/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "dec00921d4604603225fa5020cf643c21663ccb522a5803a163066052592ddc2"
+            }
+          ],
+          "sha256": "dec00921d4604603225fa5020cf643c21663ccb522a5803a163066052592ddc2"
+        },
+        "hit": {
+          "file": "primo-do-violao/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "90e82430c60e91bf539371d640c8942a91a6a3899dcd8ab68cf88cfd154108d6"
+            }
+          ],
+          "sha256": "90e82430c60e91bf539371d640c8942a91a6a3899dcd8ab68cf88cfd154108d6"
+        },
+        "idle": {
+          "file": "primo-do-violao/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "7a10e163151c63f3f02a163473b6dc1b66e04e79c8ea0b0d0106251aafa7f5cb"
+            }
+          ],
+          "sha256": "7a10e163151c63f3f02a163473b6dc1b66e04e79c8ea0b0d0106251aafa7f5cb"
+        },
+        "joke": {
+          "file": "primo-do-violao/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "d565a2281ac098915df179bd813b0d34d49e10c4994ce30fc0b50df00a1ca6c4"
+            }
+          ],
+          "sha256": "d565a2281ac098915df179bd813b0d34d49e10c4994ce30fc0b50df00a1ca6c4"
+        },
+        "shove": {
+          "file": "primo-do-violao/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "037318352ca5e92db5f260850b2c986ba3d84b63b732e18b21cbb878128e66fc"
+            }
+          ],
+          "sha256": "037318352ca5e92db5f260850b2c986ba3d84b63b732e18b21cbb878128e66fc"
+        },
+        "walk": {
+          "file": "primo-do-violao/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "primo-do-violao/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "ef7ee7165b4c63a46aad7c8cc523c037dd1de257f658716b90b895568a8c52a9"
+            }
+          ],
+          "sha256": "ef7ee7165b4c63a46aad7c8cc523c037dd1de257f658716b90b895568a8c52a9"
+        }
+      },
+      "sha256": "56df4b3c4e53ff6659f74c4f110b670eb9b474ea58bca30e970faf5a45d46a28",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "quadrilheiro": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "quadrilheiro/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "a2706ee11eea21bf23c9f34b18d4eb94d9deb1e9795b47ea26ffc7939e8b4452"
+            }
+          ],
+          "sha256": "a2706ee11eea21bf23c9f34b18d4eb94d9deb1e9795b47ea26ffc7939e8b4452"
+        },
+        "hit": {
+          "file": "quadrilheiro/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "9bc1c1079576794522a5e43ffceda7bdf8aea728631c5fe2163c554d336edaae"
+            }
+          ],
+          "sha256": "9bc1c1079576794522a5e43ffceda7bdf8aea728631c5fe2163c554d336edaae"
+        },
+        "idle": {
+          "file": "quadrilheiro/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "360f218f1fdf50441de32c8c328cb227b661cff2ace400b4d6d48d317978a4f0"
+            }
+          ],
+          "sha256": "360f218f1fdf50441de32c8c328cb227b661cff2ace400b4d6d48d317978a4f0"
+        },
+        "joke": {
+          "file": "quadrilheiro/joke.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/joke.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "f21f8253827d74832353b0e4f7a500024addd19d12a5f47d78f770a2e111992d"
+            }
+          ],
+          "sha256": "f21f8253827d74832353b0e4f7a500024addd19d12a5f47d78f770a2e111992d"
+        },
+        "shove": {
+          "file": "quadrilheiro/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "716b6bb5d9cc486d49de6db09de51cbdd0882258f20ac3ea4bdcb2fbbcf7b7a4"
+            }
+          ],
+          "sha256": "716b6bb5d9cc486d49de6db09de51cbdd0882258f20ac3ea4bdcb2fbbcf7b7a4"
+        },
+        "walk": {
+          "file": "quadrilheiro/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "quadrilheiro/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "0af52f3d25af4ef3e2042425245befbcf73a5902f8e480bf2b3a7994e2e0955e"
+            }
+          ],
+          "sha256": "0af52f3d25af4ef3e2042425245befbcf73a5902f8e480bf2b3a7994e2e0955e"
+        }
+      },
+      "sha256": "b171e1b163949bc450cdd6f9cf3d0d45eb2dd53270533672b0c39a6a5aaa75ce",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
     "rato-de-boteco": {
       "kind": "animations",
       "files": {
@@ -1939,6 +4897,710 @@
         }
       },
       "sha256": "38c27afea673f00c97fbd6c948f852009c13707a796f1fbcdeb2ae0fa23d166c",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "ressaca-ambulante": {
+      "kind": "animations",
+      "files": {
+        "attack": {
+          "file": "ressaca-ambulante/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ressaca-ambulante/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "395e2ce72a668fb03498783ccacd2df81348ef7ef1929deaa0229b06a15fb7f9"
+            }
+          ],
+          "sha256": "395e2ce72a668fb03498783ccacd2df81348ef7ef1929deaa0229b06a15fb7f9"
+        },
+        "death": {
+          "file": "ressaca-ambulante/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ressaca-ambulante/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "c8c5a66e1061692745a99317e28304fa2a22e5d9df644cf7c85c2ccf3370397d"
+            }
+          ],
+          "sha256": "c8c5a66e1061692745a99317e28304fa2a22e5d9df644cf7c85c2ccf3370397d"
+        },
+        "hit": {
+          "file": "ressaca-ambulante/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ressaca-ambulante/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "17f8aa94cce9f5ca0e36c5024e2c1b31fcb52cf668a038f539b75fc5d2077be7"
+            }
+          ],
+          "sha256": "17f8aa94cce9f5ca0e36c5024e2c1b31fcb52cf668a038f539b75fc5d2077be7"
+        },
+        "idle": {
+          "file": "ressaca-ambulante/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ressaca-ambulante/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a6e5373bd9461e0df57293caeb82fb48dd10fbaf48ad43404d5e5396bc3f7c18"
+            }
+          ],
+          "sha256": "a6e5373bd9461e0df57293caeb82fb48dd10fbaf48ad43404d5e5396bc3f7c18"
+        },
+        "walk": {
+          "file": "ressaca-ambulante/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "ressaca-ambulante/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "a4038dfdb2bc2dbb341cb58d3f3d00d1126ac8252050d84756e93c8308d10ede"
+            }
+          ],
+          "sha256": "a4038dfdb2bc2dbb341cb58d3f3d00d1126ac8252050d84756e93c8308d10ede"
+        }
+      },
+      "sha256": "d8671d74b88dc885fbf5285f455cdc7e2a5a28f96672eb9e3102a11f80fcfa8d",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "robo-de-atendimento": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "robo-de-atendimento/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9009247ccb8cd1d2eeb0d834dd6488c735a8019d4fa3e6160992a2d2128be6d6"
+            }
+          ],
+          "sha256": "9009247ccb8cd1d2eeb0d834dd6488c735a8019d4fa3e6160992a2d2128be6d6"
+        },
+        "attack": {
+          "file": "robo-de-atendimento/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c1170037ada00bec78f8fdd6e55f208db620d423d3e1303350e25cd4e98a923e"
+            }
+          ],
+          "sha256": "c1170037ada00bec78f8fdd6e55f208db620d423d3e1303350e25cd4e98a923e"
+        },
+        "death": {
+          "file": "robo-de-atendimento/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "93f7538db115ad080cfe445262a6fe9cefb75721e4a37f1434d83ce6010e97e5"
+            }
+          ],
+          "sha256": "93f7538db115ad080cfe445262a6fe9cefb75721e4a37f1434d83ce6010e97e5"
+        },
+        "hit": {
+          "file": "robo-de-atendimento/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "5d98b13190e5000250b2868915c9097309aa59b3b132c2a4ad7562f3d6d9d4e7"
+            }
+          ],
+          "sha256": "5d98b13190e5000250b2868915c9097309aa59b3b132c2a4ad7562f3d6d9d4e7"
+        },
+        "idle": {
+          "file": "robo-de-atendimento/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "c51d26e389089179738827abbb9449767c3984066240aa84ddcae46132406f6b"
+            }
+          ],
+          "sha256": "c51d26e389089179738827abbb9449767c3984066240aa84ddcae46132406f6b"
+        },
+        "walk": {
+          "file": "robo-de-atendimento/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "robo-de-atendimento/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "b578c03eed6a35d93b7338d5a5ef94b5c3eb9fb7e028e8956863ab42d0d8fd91"
+            }
+          ],
+          "sha256": "b578c03eed6a35d93b7338d5a5ef94b5c3eb9fb7e028e8956863ab42d0d8fd91"
+        }
+      },
+      "sha256": "bc5396c1e3f241050930363397edfcdf5f261bc2c0670a671cffe6fbd3a22a7b",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "seguranca-de-shopping": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "seguranca-de-shopping/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "seguranca-de-shopping/death.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "ad396ad004422beade56e0f4d46cbe64bca5520adf5bc318bc248a0a73f5a5b7"
+            }
+          ],
+          "sha256": "ad396ad004422beade56e0f4d46cbe64bca5520adf5bc318bc248a0a73f5a5b7"
+        },
+        "hit": {
+          "file": "seguranca-de-shopping/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "seguranca-de-shopping/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "8e38120630f121769495b543f3ed5ac5667ebf4fb95de80883adbbd93d185d6b"
+            }
+          ],
+          "sha256": "8e38120630f121769495b543f3ed5ac5667ebf4fb95de80883adbbd93d185d6b"
+        },
+        "idle": {
+          "file": "seguranca-de-shopping/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "seguranca-de-shopping/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d0528ae62eca59657fe7c4712377f996805390eb84fb4f96ff27ec065805123a"
+            }
+          ],
+          "sha256": "d0528ae62eca59657fe7c4712377f996805390eb84fb4f96ff27ec065805123a"
+        },
+        "shove": {
+          "file": "seguranca-de-shopping/shove.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 7,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "seguranca-de-shopping/shove.webp",
+              "columns": 7,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 56,
+              "sha256": "8e8089fe5f7e32468245513e5e57ce17c17fa1e30394397572f9c98c9194fe6b"
+            }
+          ],
+          "sha256": "8e8089fe5f7e32468245513e5e57ce17c17fa1e30394397572f9c98c9194fe6b"
+        },
+        "walk": {
+          "file": "seguranca-de-shopping/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "seguranca-de-shopping/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "3f9465669ed2cd8eec0fae63e07c7fb8d288d8d7157ed9d5df33b3549bb65845"
+            }
+          ],
+          "sha256": "3f9465669ed2cd8eec0fae63e07c7fb8d288d8d7157ed9d5df33b3549bb65845"
+        }
+      },
+      "sha256": "8f94ac0b1d13ced7d9db004defed678a7926a4370981fe85bab9c03c85bba256",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "sogra-do-chinelo": {
+      "kind": "animations",
+      "files": {
+        "aim": {
+          "file": "sogra-do-chinelo/aim.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/aim.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "9c17c2940590204dff0c9aa44e0791413262e1ac3502e621e1273d390adf0d14"
+            }
+          ],
+          "sha256": "9c17c2940590204dff0c9aa44e0791413262e1ac3502e621e1273d390adf0d14"
+        },
+        "attack": {
+          "file": "sogra-do-chinelo/attack.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "399f9bac01292aa83c92073bc57f2f02a9eb3d26f78232c7383590ff6b33ae5f"
+            }
+          ],
+          "sha256": "399f9bac01292aa83c92073bc57f2f02a9eb3d26f78232c7383590ff6b33ae5f"
+        },
+        "death": {
+          "file": "sogra-do-chinelo/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "8d35d88530bfe43bf2bd7dbbf074a8818e428bd55330ee7724de36915da81032"
+            }
+          ],
+          "sha256": "8d35d88530bfe43bf2bd7dbbf074a8818e428bd55330ee7724de36915da81032"
+        },
+        "hit": {
+          "file": "sogra-do-chinelo/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "1db80829c43c3264f0b29298126c8d6cc61771278530841a454bc0ddbe34a058"
+            }
+          ],
+          "sha256": "1db80829c43c3264f0b29298126c8d6cc61771278530841a454bc0ddbe34a058"
+        },
+        "idle": {
+          "file": "sogra-do-chinelo/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "db092231e8b767d2bd7149752979bd0fda677148d726be86a4398dd2a43a69d8"
+            }
+          ],
+          "sha256": "db092231e8b767d2bd7149752979bd0fda677148d726be86a4398dd2a43a69d8"
+        },
+        "walk": {
+          "file": "sogra-do-chinelo/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "sogra-do-chinelo/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "29563215e1a039d42c62911b5bee5378b738da54dec6bc981eb4010a62c06545"
+            }
+          ],
+          "sha256": "29563215e1a039d42c62911b5bee5378b738da54dec6bc981eb4010a62c06545"
+        }
+      },
+      "sha256": "b35f93890de8003b78453f9f6fe8bba1655e1339e9d132b5b8edbbc8310472bf",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -2100,6 +5762,167 @@
         }
       },
       "sha256": "8aff89573285bfb09f0afce2f9bb047cfaf0dee18d8c944224298eb025cdf499",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "telemarketing": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "telemarketing/death.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "telemarketing/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "60ee4b1a7f55498fda798918a3a257db650e77d323b5f956001186f66e7284a7"
+            }
+          ],
+          "sha256": "60ee4b1a7f55498fda798918a3a257db650e77d323b5f956001186f66e7284a7"
+        },
+        "hit": {
+          "file": "telemarketing/hit.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "telemarketing/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "1f087b42d5803b797042771487f2d503e45595267b4df4f7d1c0c3e1380cb37a"
+            }
+          ],
+          "sha256": "1f087b42d5803b797042771487f2d503e45595267b4df4f7d1c0c3e1380cb37a"
+        },
+        "idle": {
+          "file": "telemarketing/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "telemarketing/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "2a739e26724c53abfe50bdc8a0527d90e67a7d91d4fc05c8f3ce3d4fb407246c"
+            }
+          ],
+          "sha256": "2a739e26724c53abfe50bdc8a0527d90e67a7d91d4fc05c8f3ce3d4fb407246c"
+        },
+        "throw": {
+          "file": "telemarketing/throw.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "telemarketing/throw.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "4fbbf6e730f0caf3ebcbc242c46b825b693a0b2bcc2791000967859210aaad18"
+            }
+          ],
+          "sha256": "4fbbf6e730f0caf3ebcbc242c46b825b693a0b2bcc2791000967859210aaad18"
+        },
+        "walk": {
+          "file": "telemarketing/walk.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "telemarketing/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "9ebc952c0eedaf136676cedbe3fcbf36afdca9055918b38188a4a73efd06fbca"
+            }
+          ],
+          "sha256": "9ebc952c0eedaf136676cedbe3fcbf36afdca9055918b38188a4a73efd06fbca"
+        }
+      },
+      "sha256": "a3e8495e483c7f13b72f67238e3793dc80321324f436888187c4a57c76449b7b",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,
@@ -2452,6 +6275,167 @@
         }
       },
       "sha256": "d21fa53b658e4a0864e4b2f373d72770c25ee408beb42be050b1c63fabb1de4f",
+      "rim": {
+        "color": "#2A2018",
+        "alpha": 0.85,
+        "width": 1.5
+      }
+    },
+    "vendedor-de-piramide": {
+      "kind": "animations",
+      "files": {
+        "death": {
+          "file": "vendedor-de-piramide/death.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vendedor-de-piramide/death.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "751d6caeca8c06015c25cdfcf0e8ac7e893bbb968209683bac7b7df0bcbbd95d"
+            }
+          ],
+          "sha256": "751d6caeca8c06015c25cdfcf0e8ac7e893bbb968209683bac7b7df0bcbbd95d"
+        },
+        "hit": {
+          "file": "vendedor-de-piramide/hit.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 3,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vendedor-de-piramide/hit.webp",
+              "columns": 3,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "986109715dbcb33a63fcea92032dd358097e8302e1fb906dcda7c8b79e2aed75"
+            }
+          ],
+          "sha256": "986109715dbcb33a63fcea92032dd358097e8302e1fb906dcda7c8b79e2aed75"
+        },
+        "idle": {
+          "file": "vendedor-de-piramide/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vendedor-de-piramide/idle.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "d35e1aa6492c692632a874fabe14fdc7a499595663ee53d7e02bab46020ec80e"
+            }
+          ],
+          "sha256": "d35e1aa6492c692632a874fabe14fdc7a499595663ee53d7e02bab46020ec80e"
+        },
+        "summon": {
+          "file": "vendedor-de-piramide/summon.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vendedor-de-piramide/summon.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "edf6d272b41e52bcc411ec343a4f23957a08222a9306a61dd54217b41aebbb36"
+            }
+          ],
+          "sha256": "edf6d272b41e52bcc411ec343a4f23957a08222a9306a61dd54217b41aebbb36"
+        },
+        "walk": {
+          "file": "vendedor-de-piramide/walk.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vendedor-de-piramide/walk.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "ea3c293205b0cc78982217a8e7e15af5bb855607cc97d37968c95af20ace41f9"
+            }
+          ],
+          "sha256": "ea3c293205b0cc78982217a8e7e15af5bb855607cc97d37968c95af20ace41f9"
+        }
+      },
+      "sha256": "ad196a1e8256f885fa833e523ef0668f99a2e89111ac6a7e73cced0f465956b5",
       "rim": {
         "color": "#2A2018",
         "alpha": 0.85,

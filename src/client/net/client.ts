@@ -1,3 +1,4 @@
+import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
@@ -372,7 +373,7 @@ export class CoopClient {
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         // Waiting for the city: frames wait too (they are of the new map); a failed wait drops them (resync later).
         if(this.mapWait?.ws===ws){if(!this.mapWait.failed)this.mapWait.queue.push(data);return;}
-        if(this.initialized&&ws===this.socket)this.frame(ws,data);
+        if(this.initialized&&ws===this.socket){const t0=perfNow();this.frame(ws,data);perfSpan('rede',t0);}
         return;
       }
       this.bytes+=event.data.length;
@@ -460,7 +461,7 @@ export class CoopClient {
         const next=this.mapWait as MapWait|undefined;
         if(next?.ws===ws&&!next.failed){next.queue.push(...rest.slice(i));return;}
         const item=rest[i];
-        if(item instanceof ArrayBuffer){if(this.initialized&&!next)this.frame(ws,item);}
+        if(item instanceof ArrayBuffer){if(this.initialized&&!next){const t0=perfNow();this.frame(ws,item);perfSpan('rede',t0);}}
         else this.message(ws,item);
       }
     });

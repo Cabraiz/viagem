@@ -14,7 +14,8 @@
  */
 import './cida.css';
 import type {CidaItemId,RunView} from '../../contract/index.ts';
-import {icon} from '../ui/icon.ts';
+import {icon,uiArtUrl} from '../ui/icon.ts';
+import {sticker} from '../ui/sticker.ts';
 import type {HudContext,HudPart} from './model.ts';
 import {cidaOffers,reais} from './chaveiro.ts';
 import {cidaKeyOf,SHELL_DIALOG} from '../desktop-input.ts';
@@ -49,8 +50,8 @@ export function createCida(options:CidaOptions):CidaPart{
   // ---------- Button ----------
   const button=el('button','rh-cida-btn');button.type='button';button.hidden=true;
   button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-expanded','false');
-  // Popcorn, a snack (her tray of sweets): the skill button below already wears the shopping bag.
-  button.innerHTML=`${icon('pipoca',{size:32})}<span class="rh-cida-btn-text">Cida</span>`;
+  // Her own sticker (ui/cida, icones-no-hud); without that art, popcorn (her sweets: the skill button wears the bag).
+  button.innerHTML=`${uiArtUrl('cida')?sticker('cida',{size:32}):icon('pipoca',{size:32})}<span class="rh-cida-btn-text">Cida</span>`;
   // ---------- Tray ----------
   const panel=el('section','rh-cida');panel.hidden=true;panel.id='rh-cida';panel.setAttribute('aria-label','Doces da Dona Cida');
   button.setAttribute('aria-controls',panel.id);

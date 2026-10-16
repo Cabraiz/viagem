@@ -530,6 +530,7 @@ function withCast(view:RunView,x:number,y:number):RunView{
   const kinds=[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
   const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
   return {...view,
-    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:i===kinds.length-1,...at(i,2.6),hp:5,maxHp:5}))],
+    // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
     pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:kind==='xp'?5:1}))]};
 }

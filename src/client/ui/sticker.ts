@@ -16,8 +16,30 @@ export const STICKER_NAMES=[
   // Prêmios (src/client/hud/awards.ts), o figurante e os vices (balança do desempate, pódio de caixote 2 e 3, a trave).
   'banana','ambulancia','mochila','rodo','antena','ima-ferradura','camera','coxinhas','bau-aberto','galo',
   'borboleta','halter','foto','balanca','podio-2','podio-3','trave'] as const;
-export type StickerName=typeof STICKER_NAMES[number];
-const KNOWN=new Set<string>(STICKER_NAMES);
+/**
+ * Art-only stickers (arte v2, card NEW-20261016-ORQ-importar-ui-itens-efeitos): `ui/<id>` pieces with no pixel-art twin
+ * in stickers.svg. Without their WebP (an index that failed to load, a test) they draw the "mistério" box.
+ */
+export const ART_STICKER_NAMES=[
+  // D-051 arsenal: the 7 weapons, the snacks, the tower kit, the hand's passives and the legendary slot's frame.
+  'faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre',
+  'pente','silenciador','moldura-lendaria',
+  // Controls and places: attack/push buttons, the nest, the crate, the bank, the wallet, PIX, Dona Cida, the chaveiro.
+  'atacar','empurrar','ninho','caixa','banco','carteira','pix-envio','cida','chaveiro',
+  // The weapons and charms of the next arsenal (pedido 12): imported, not yet in the game.
+  'arruda','bola-de-cristal','bola-murcha','buscape','canto-da-iara','carregador-errado','carro-de-som','colher-de-pau',
+  'cristal-quantico','defumador','espeto','estilingue','facao','figa','fogo-boitata','gorro-do-saci','mangueira',
+  'mula-sem-cabeca','olho-grego','pandeiro','panela-de-pressao','papagaio','peixeira','pes-do-curupira','quadradao',
+  'sacole','sal-grosso','tampa-de-panela','taro-vencido','tijolo-baiano','traque','uivo-do-lobisomem','vaquinha',
+  'vela-esoterica','ventilador','vira-lata',
+  // Tower defenses (torres-fio): one icon per DefenseId.
+  'torre-antiaerea-quadrupla','torre-arame-e-sirene','torre-atiradores-do-telhado','torre-equipe-antimaterial',
+  'torre-guarnicao-do-predio','torre-gustavao','torre-holofote','torre-lanca-foguetes','torre-morteiro',
+  'torre-ninho-de-metralhadora','torre-ninho-do-sniper','torre-obuseiro','torre-posto-de-radar','torre-rojao-de-festa',
+  'torre-vigia-do-predio','torre-vigias-armados'] as const;
+export type StickerName=typeof STICKER_NAMES[number]|typeof ART_STICKER_NAMES[number];
+const KNOWN=new Set<string>([...STICKER_NAMES,...ART_STICKER_NAMES]);
+const SVG=new Set<string>(STICKER_NAMES);
 export const isStickerName=(name:string):name is StickerName=>KNOWN.has(name);
 
 const escape=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]!);
@@ -27,5 +49,5 @@ export function sticker(name:StickerName,options:IconOptions={}):string{
   const art=uiArtUrl(name);
   if(art)return artImg(cls,art,options.label,`data-sticker="${name}"`);
   const a11y=options.label?`role="img" aria-label="${escape(options.label)}"`:'aria-hidden="true"';
-  return `<svg class="${cls}" viewBox="0 0 24 24" ${a11y} focusable="false" data-sticker="${name}"><use href="#a-${name}"/></svg>`;
+  return `<svg class="${cls}" viewBox="0 0 24 24" ${a11y} focusable="false" data-sticker="${name}"><use href="#a-${SVG.has(name)?name:'misterio'}"/></svg>`;
 }

@@ -47,9 +47,14 @@ test('poles wire to their nearest neighbour on the same sidewalk, once per pair'
   assert.ok(keys.includes([decorKey(pole(0,0)),decorKey(pole(4,0))].sort().join('|')));
   assert.ok(!pairs.flat().includes(decorKey(pole(30,0))),'no neighbour within '+WIRE_MAX_CELLS+' cells');
   assert.ok(!pairs.flat().some(k=>k.startsWith('farmacia')));
-  // a pole two rows off and two columns off is on another sidewalk
-  assert.deepEqual(polePairs([pole(0,0),pole(2,2)]),[]);
+  // a pole off both axes is on another sidewalk: it crosses to its nearest pole only when it has no line of its own
+  assert.equal(polePairs([pole(0,0),pole(2,2)]).length,1);
+  assert.equal(polePairs([pole(0,0),pole(4,0),pole(8,0),pole(2,3),pole(2,7)]).length,3,'(2,3)-(2,7) is a line: no crossing to the other street');
   assert.deepEqual(polePairs([pole(0,0),pole(4,0)]),polePairs([pole(4,0),pole(0,0)]),'order-free');
+  // a street of evenly spaced poles is one continuous line (no gap every other span)
+  assert.equal(polePairs([pole(0,0),pole(4,0),pole(8,0),pole(12,0)]).length,3);
+  // a corner pole joins both streets
+  assert.equal(polePairs([pole(0,0),pole(4,0),pole(0,4)]).length,2);
   assert.ok(isPole('poste-concreto-3')&&isPole('poste-gato-2')&&!isPole('poste-aceso-amarelo-1'));
 });
 

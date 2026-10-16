@@ -106,24 +106,48 @@ export const WIRE_LOOK=Object.freeze({color:0x2e2f36,width:2,snow:0xf4f7fb,snowW
 export const decorKey=(e:Pick<DecorEntry,'id'|'c'|'r'>)=>`${e.id}@${e.c},${e.r}`;
 const centre=(e:DecorEntry)=>({x:e.c+e.w/2,y:e.r+e.h/2});
 /**
- * Pairs of poles to wire: each pole to its nearest neighbour on the same sidewalk (|Δrow| or |Δcol| ≤ slack,
- * ≤ WIRE_MAX_CELLS), each pair once, in a fixed order (sorted keys) so every client draws the same lines.
+ * Pairs of poles to wire: each pole to its nearest neighbour on the same sidewalk in each of the 4 grid directions
+ * (ahead ≤ WIRE_MAX_CELLS, off the line ≤ slack), so a street of poles is one continuous line and a corner pole joins
+ * both streets (nearest-only left a gap in every other span: 122 of the 760 poles of asset v3 had no wire). Each pair
+ * once, in a fixed order (sorted keys) so every client draws the same lines. Poles are bucketed by cell.
  */
 export function polePairs(entries:readonly DecorEntry[]):[string,string][]{
   const poles=entries.filter(e=>isPole(e.id)).map(e=>({key:decorKey(e),...centre(e)})).sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
+  const B=WIRE_MAX_CELLS,bucket=new Map<string,typeof poles>(),cellOf=(x:number,y:number)=>`${Math.floor(x/B)},${Math.floor(y/B)}`;
+  for(const p of poles){const k=cellOf(p.x,p.y),l=bucket.get(k);if(l)l.push(p);else bucket.set(k,[p]);}
   const seen=new Set<string>(),out:[string,string][]=[];
   for(const p of poles){
+    const near:typeof poles=[];
+    const bx=Math.floor(p.x/B),by=Math.floor(p.y/B);
+    for(let j=by-1;j<=by+1;j++)for(let i=bx-1;i<=bx+1;i++)near.push(...bucket.get(`${i},${j}`)??[]);
+    for(const [ax,ay] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      let best:typeof p|undefined,bAlong=Infinity,bAcross=Infinity;
+      for(const q of near){
+        if(q===p)continue;
+        const along=(q.x-p.x)*ax+(q.y-p.y)*ay,across=Math.abs((q.x-p.x)*ay-(q.y-p.y)*ax);
+        if(along<=0||along>WIRE_MAX_CELLS||across>WIRE_SIDEWALK_SLACK)continue;
+        if(along<bAlong||(along===bAlong&&(across<bAcross||(across===bAcross&&best&&q.key<best.key)))){best=q;bAlong=along;bAcross=across;}
+      }
+      if(!best)continue;
+      const pair:[string,string]=p.key<best.key?[p.key,best.key]:[best.key,p.key],k=pair.join('|');
+      if(!seen.has(k)){seen.add(k);out.push(pair);}
+    }
+  }
+  // A pole still alone (a corner, the other side of a crossing: 2–4 cells off both axes) crosses to its nearest pole
+  // within WIRE_MAX_CELLS in any direction, like the wires that cross Brazilian streets.
+  const linked=new Set(out.flat());
+  for(const p of poles){
+    if(linked.has(p.key))continue;
     let best:typeof p|undefined,bd=Infinity;
-    for(const q of poles){
-      if(q===p)continue;
-      const dx=Math.abs(q.x-p.x),dy=Math.abs(q.y-p.y);
-      if(Math.min(dx,dy)>WIRE_SIDEWALK_SLACK)continue;
-      const d=Math.hypot(dx,dy);
-      if(d<=WIRE_MAX_CELLS&&(d<bd||(d===bd&&best&&q.key<best.key))){best=q;bd=d;}
+    const bx=Math.floor(p.x/B),by=Math.floor(p.y/B);
+    for(let j=by-1;j<=by+1;j++)for(let i=bx-1;i<=bx+1;i++)for(const q of bucket.get(`${i},${j}`)??[]){
+      const d=Math.hypot(q.x-p.x,q.y-p.y);
+      if(q!==p&&d<=WIRE_MAX_CELLS&&(d<bd||(d===bd&&best&&q.key<best.key))){best=q;bd=d;}
     }
     if(!best)continue;
     const pair:[string,string]=p.key<best.key?[p.key,best.key]:[best.key,p.key],k=pair.join('|');
-    if(!seen.has(k)){seen.add(k);out.push(pair);}
+    if(!seen.has(k)){seen.add(k);out.push(pair);linked.add(best.key);}
+    linked.add(p.key);
   }
   return out;
 }

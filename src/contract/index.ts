@@ -6,3 +6,4 @@ export * from './offscreen.ts';
 export * from './run.ts';
 export * from './objective.ts';
 export * from './build.ts';
+export * from './wallet.ts';

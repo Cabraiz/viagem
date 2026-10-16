@@ -14,8 +14,10 @@
  *   on arrival). While the alarm sounds he rides around the block ('volta': nothing advances, except a dead moto). An
  *   enemy touching the riding moto knocks it over (TOMBO_SECONDS, then TOMBO_GAP_SECONDS without another). At the car:
  *   ABRINDO_SECONDS 'abrindo', then victory.
- * - Dona Cida sells the team's sweets (buy) and, every SALE_GAP_SECONDS, one to an enemy near the moto ("açucarado").
- * - Team Grana: GRANA_PER_KILL per kill, in the stonewards state since D-048 (read through ChaveiroOptions.wallet). The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
+ * - Dona Cida sells her sweets (buy: from the buyer's wallet, sim/wallet.ts) and, every SALE_GAP_SECONDS, one to an enemy near the moto ("açucarado").
+ * - Grana: GRANA_PER_KILL per kill into the players' wallets (NEW-20261014-ORQ-carteira-e-pix, sim/wallet.ts); the bill
+ *   is the vaquinha at the end (result: equal parts from the seated players' wallets, the richest cover the rest, then
+ *   debt; computed once and kept in ChaveiroState.vaquinha). The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
  * - The ETA waits for the later of the alarm and a fall (they run out together), and counts a dead moto ahead as the
  *   push (PUSH_SECONDS) with PUSH_PLAYERS standing players, else as its by-itself time (MORTA_ALONE_SECONDS).
  * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
@@ -25,10 +27,11 @@
  */
 import type {FlowGrid,Point} from '../../maps/index.ts';
 import {CAR_ID,CAR_PARTS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
-  type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type SimPlayer} from '../../contract/index.ts';
+  type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
+import {payFrom,vaquinha,walletOf} from '../wallet.ts';
 import {SUGAR} from '../enemies/catalog.ts';
 import {buildRoute,pointAt,type Route} from './route.ts';
 
@@ -87,7 +90,7 @@ export interface ChaveiroState {
    */
   moto:{s:number;mode:MotoMode;task:Task;left:number;stop:number;push:number;tomboUntil:number;tomboReady:number};
   route:{from:Entrance};
-  /** The bill (R$). The team's Grana lives in the stonewards state (D-048), read through ChaveiroOptions.wallet. */
+  /** The bill (R$), paid at the end from the seated players' wallets (the vaquinha, ChaveiroOptions.wallet). */
   budget:number;
   cida:{stock:number[];nextSaleTick:number};
   /** `playerId:requestId` of purchases already applied (a resent {t:'cida'} applies once), the last CIDA_HANDLED_LIMIT. */
@@ -99,10 +102,12 @@ export interface ChaveiroState {
   endTick?:number;
   /** Seconds he still needed when it ended. */
   endEta?:number;
+  /** The vaquinha, once the result paid it (wallets already deducted): the result returns the same bill again. */
+  vaquinha?:{grana:number;paid:number;debt:number;share:VaquinhaShare[]};
 }
 
-/** The team's Grana (stonewards state, D-048): what the chaveiro reads for his bill and Dona Cida's sweets spend. */
-export interface Wallet {get():number;spend(amount:number):void}
+/** The run's seated players (sim/wallet.ts seatedPlayers, join order): whose wallets pay the bill at the end. */
+export interface Wallet {seated():SimPlayer[]}
 export interface ChaveiroOptions {
   wallet:Wallet;
   /** The run seed: the entrance and the stops are drawn from Rng(seed).fork('chaveiro'). */
@@ -138,6 +143,8 @@ export interface ChaveiroSystem {
   /**
    * The bill for the result screen: the chaveiro's own end (opened: victory; car: defeat) or, when the run ended some
    * other way, `outcome` (the room's: 'defeat' = the team fell, 'timeout' = the D-043 cap). Undefined while nothing ended.
+   * The first call pays the bill (the vaquinha, sim/wallet.ts: deducts the seated players' wallets, `share`); later
+   * calls return the same numbers.
    */
   result(tick:number,round:{index:number;total:number},outcome?:'victory'|'defeat'|'timeout'):ObjectiveResult|undefined;
   /** The moto's position now. */
@@ -360,14 +367,14 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       const p=at(moto.s);
       if(!(Math.hypot(player.x-p.x,player.y-p.y)<=CIDA_REACH))return {ok:false,reason:'away'};
       if(state.cida.stock[index]<=0)return {ok:false,reason:'stock'};
-      if(options.wallet.get()<item.price)return {ok:false,reason:'grana'};
-      options.wallet.spend(item.price);state.cida.stock[index]--;
+      if(!payFrom(player,item.price))return {ok:false,reason:'grana'};
+      state.cida.stock[index]--;
       if(key!==undefined){state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);}
       const field=item.effect==='speed'?'fastUntil':item.effect==='damage'?'mightUntil':'guardUntil';
       const p2=player as SimPlayer;
       p2[field]=Math.max(p2[field]??0,ctx.tick+ticks(item.seconds));
       ctx.emit({type:'buy',player:playerId,item:item.id as CidaItemId});
-      return {ok:true,item:item.id,grana:options.wallet.get()};
+      return {ok:true,item:item.id,grana:walletOf(player)};
     },
     view(tick){
       const p=at(moto.s);
@@ -389,7 +396,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         moto:{x:p.x,y:p.y,mode:moto.mode,...(moto.task==='morta'?{push:Math.min(1,moto.push/PUSH_TICKS)}:{})},
         route:route.points.map(q=>({x:q.x,y:q.y})),
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
-        etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.get(),budget:state.budget,stock:[...state.cida.stock],
+        etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.seated().reduce((n,p)=>n+walletOf(p),0),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
         car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts},
         ...(state.ended?{ended:state.ended}:{}),
@@ -399,10 +406,12 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       const own=state.ended;
       if(!own&&!outcome)return undefined;
       const out=own??outcome!,cause:ObjectiveCause=own?(own==='victory'?'opened':'car'):outcome==='timeout'?'timeout':'team';
-      const endTick=state.endTick??tick,grana=options.wallet.get(),paid=Math.min(grana,state.budget);
+      const endTick=state.endTick??tick;
+      // The vaquinha: paid once (the wallets are deducted), the same bill on every later call.
+      const bill=state.vaquinha??=vaquinha(options.wallet.seated(),state.budget);
       return {kind:'chaveiro',outcome:out,cause,wave:round.index,extraWaves:Math.max(0,round.index-round.total),
         eta:own?state.endEta??0:Math.ceil(eta(tick)),seconds:(endTick-(state.startTick??endTick))/SIM_HZ,
-        hits:car.hits,limit:car.limit,budget:state.budget,grana,paid,debt:Math.max(0,state.budget-grana),parts:car.parts};
+        hits:car.hits,limit:car.limit,budget:state.budget,grana:bill.grana,paid:bill.paid,debt:bill.debt,parts:car.parts,share:bill.share.map(s=>({...s}))};
     },
   };
   return system;

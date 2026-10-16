@@ -59,9 +59,9 @@ test('fixtures: the "falta pouco" ring outside the forge scene, R$ 23 of Grana, 
   assert.ok(pays.includes(true)&&pays.includes(false),`the forge scene shows tags both buyable and short (R$ ${forge.grana}: ${pays})`);
 });
 
-test('the top bar\'s Grana: "R$ N" in .rh-camp-grana before the fichas, spoken "R$ N do time", always shown',()=>{
-  assert.deepEqual(granaReadout(120),{text:'R$ 120',label:'R$ 120 do time'});
-  assert.deepEqual(granaReadout(0),{text:'R$ 0',label:'R$ 0 do time'},'none yet: still shown');
+test('the top bar\'s Grana: "R$ N" in .rh-camp-grana before the fichas, spoken "Você tem R$ N" (my wallet, carteira-e-pix), always shown',()=>{
+  assert.deepEqual(granaReadout(120),{text:'R$ 120',label:'Você tem R$ 120'});
+  assert.deepEqual(granaReadout(0),{text:'R$ 0',label:'Você tem R$ 0'},'none yet: still shown');
   for(const bad of [Number.NaN,-5])assert.equal(granaReadout(bad).text,'R$ 0',String(bad));
   assert.equal(granaReadout(7.4).text,'R$ 7');
   const camp=read('camp.ts');

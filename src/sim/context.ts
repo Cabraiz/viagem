@@ -40,8 +40,10 @@ export interface SimContext {
   /**
    * Only path to hurt enemies: multiplies by the source player's stats.might (D-001), emits damage/kill and removes the
    * enemy once; drops (XP, chest) run in the integration's onKill hook, exactly once. Returns true if it killed.
+   * `credit` (NEW-20261014-ORQ-carteira-e-pix): who the kill's Grana pays without a source player (a tower's owner);
+   * never a kill, damage or might of theirs.
    */
-  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string):boolean;
+  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string,credit?:string):boolean;
   /** Only path to hurt players: armor, invulnerability; at 0 hp the integration's onPlayerZero hook downs the player (VGM-037). */
   damagePlayer(playerId:string,amount:number,source?:string):void;
 }

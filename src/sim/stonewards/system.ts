@@ -128,7 +128,7 @@ export function createStonewardsState(options:Omit<StonewardsOptions,'onWallDest
   // City only: the island and the endless world keep exactly their old state (and state hashes).
   const city=options.barricades===false?undefined:createBarricades(options.terrain,undefined,options.barricadesLater===true);
   return {
-    balance:{units:0},grana:0,
+    balance:{units:0},splitCursor:0,
     nodes:[],
     wall:createWall(placeWall(options.terrain,options.obstacles),options.wallMaxHp??WALL_MAX_HP),
     towers:[],

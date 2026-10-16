@@ -12,7 +12,11 @@ import type {SimContext,SimSystem} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
 
 export type {StampedEvent};
-export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld)=>void;
+/**
+ * `credit` (sim/wallet.ts): who the kill's Grana goes to when nobody killed it with their own weapon (`by` absent): a
+ * tower defense's owner. It never counts as that player's kill or damage.
+ */
+export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld,credit?:string)=>void;
 export type PlayerZeroHandler=(player:SimPlayer,source:string|undefined,ctx:SimWorld)=>void;
 
 /** Reference index: linear scan; nearest breaks distance ties by smallest id (D-004). VGM-032 injects SpatialHash. */
@@ -91,7 +95,7 @@ export class SimWorld implements SimContext {
   private counters=new Map<string,number>();
   private systems=new Map<string,SimSystem>();
   private killHandlers:KillHandler[]=[];
-  private pendingKills:{enemy:EnemyState;by:string|undefined}[]=[];
+  private pendingKills:{enemy:EnemyState;by:string|undefined;credit?:string}[]=[];
   private dispatchingKills=false;
   private zeroHandlers:PlayerZeroHandler[]=[];
   /**
@@ -205,7 +209,7 @@ export class SimWorld implements SimContext {
   /** Moves queued events (including ones emitted between ticks by commands) into lastEvents. */
   flush(){this.lastEvents=this.queue;this.queue=[];return this.lastEvents;}
 
-  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string){
+  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string,credit?:string){
     const enemy=this.enemies.get(enemyId);
     if(!enemy||!(enemy.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
     const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
@@ -221,12 +225,12 @@ export class SimWorld implements SimContext {
     if(enemy.hp>0)return false;
     this.enemies.delete(enemyId);
     this.emit({type:'kill',enemy:enemy.id,kind:enemy.kind,by:sourcePlayer,x:enemy.x,y:enemy.y});
-    this.pendingKills.push({enemy,by:sourcePlayer});
+    this.pendingKills.push({enemy,by:sourcePlayer,...(credit!==undefined?{credit}:{})});
     if(!this.dispatchingKills){
       this.dispatchingKills=true;
       try{
         for(let kill=this.pendingKills.shift();kill;kill=this.pendingKills.shift())
-          for(const handler of this.killHandlers)handler(kill.enemy,kill.by,this);
+          for(const handler of this.killHandlers)handler(kill.enemy,kill.by,this,kill.credit);
       }finally{this.dispatchingKills=false;this.pendingKills=[];}
     }
     return true;

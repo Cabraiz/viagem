@@ -125,6 +125,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       onForge:(recipe,target)=>net.forge(recipe,target),
       // Dona Cida (D-047): {t:'cida'}; the room answers {t:'bought'} (net.onBought below).
       onCida:item=>net.buyCida(item),
+      // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
+      onPix:(to,amount)=>net.pix(to,amount),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.

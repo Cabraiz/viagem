@@ -1,0 +1,42 @@
+/* The PIX balloon by a friend's portrait, its toast and the receiver's flash (card NEW-20261014-ORQ-carteira-e-pix,
+   hud/pix.ts). The balloon sits in the HUD's root at the spot pix.ts pixSpot computes: under the portrait on the phone
+   (the fan is in the top band: the balloon stays in the upper screen, clear of the joystick and the skill button), right
+   of it on the desktop's column. Four 44 px buttons in one row: 4 × 50 + 3 × 4 + 2 × 8 = 228 px, fits 360 px. Tokens only
+   (lint-design.mjs); text at the match's 13 px floor. */
+.rh .rh-pix{--rh-pix-bico:50%;position:absolute;z-index:var(--z-painel);box-sizing:border-box;width:228px;padding:6px 8px 8px;
+  border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);
+  pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;font:700 var(--t-13)/1.2 var(--f-sistema)}
+.rh .rh-pix[hidden]{display:none}
+/* The beak points at the portrait: on top for a balloon under it, on the left for one beside it. */
+.rh .rh-pix::before{content:'';position:absolute;width:10px;height:10px;background:var(--c-papel);border:2px solid var(--c-breu);border-right:0;border-bottom:0;
+  top:-7px;left:calc(var(--rh-pix-bico) - 7px);transform:rotate(45deg)}
+.rh .rh-pix[data-lado=right]::before{top:calc(var(--rh-pix-bico) - 7px);left:-7px;transform:rotate(-45deg)}
+.rh-pix-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin:0 0 6px;white-space:nowrap}
+.rh-pix-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-16)/1.1 var(--f-cartaz)}
+.rh-pix-saldo{flex:none;color:var(--c-lilas)}
+.rh-pix-botoes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.rh-pix-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:44px;margin:0;padding:0 2px;
+  border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-cartolina);color:var(--c-breu);box-shadow:var(--s-2);
+  font:400 var(--t-16)/1 var(--f-cartaz);white-space:nowrap;cursor:pointer;touch-action:manipulation}
+.rh-pix-btn:active:not(:disabled){transform:translateY(2px);box-shadow:none}
+.rh-pix-btn:disabled{background:var(--c-papel-claro);color:var(--c-pedra);border-style:dashed;box-shadow:none;cursor:default}
+.rh-pix-btn.rh-pix-esperando{background:var(--c-amarelo);color:var(--c-breu);border-style:solid}
+.rh-pix-sub{font:700 var(--t-13)/1 var(--f-sistema)}
+.rh-pix-sub[hidden]{display:none}
+.rh-pix-linha{margin:6px 0 0;padding:2px 6px;border-radius:var(--r-etiqueta);background:var(--c-cone);color:var(--c-breu)}
+.rh-pix-linha[hidden]{display:none}
+
+/* The toast: a row of the announcement slot (RunHud.queueRow), wrapping on a narrow phone instead of running out. */
+.rh-pix-toast{box-sizing:border-box;max-width:100%;width:max-content;padding:3px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);
+  background:var(--c-cartolina);color:var(--c-breu);box-shadow:var(--s-1);font:700 var(--t-13)/1.25 var(--f-sistema);white-space:normal;pointer-events:none}
+.rh-pix-toast[hidden]{display:none}
+.rh-ended .rh-pix-toast{display:none}
+
+/* The receiver's portrait flashes Cartolina: three beats, PIX_FLASH_MS in all. */
+.rh .rh-member[data-pix] .rh-member-ring{box-shadow:0 0 0 2px var(--c-cartolina),0 0 0 4px var(--c-breu),var(--s-2);animation:rh-pix-pisca .4s ease-in-out 3 alternate}
+@keyframes rh-pix-pisca{from{background:var(--c-papel)}to{background:var(--c-cartolina)}}
+@media (prefers-reduced-motion:reduce){.rh .rh-member[data-pix] .rh-member-ring{animation:none;background:var(--c-cartolina)}}
+
+/* The result's vaquinha (chaveiro.ts vaquinhaLine): a stats ficha that may wrap (six names don't fit one row on a phone). */
+.rh-result-stat.rh-result-vaquinha{max-width:100%;box-sizing:border-box;white-space:normal;text-align:center}
+.rh-result-stat.rh-result-vaquinha[hidden]{display:none}

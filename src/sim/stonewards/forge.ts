@@ -1,10 +1,11 @@
-/** Forge: three recipes bought from the team balance during the intermission. */
+/** Forge: three recipes bought during the intermission, each from the buyer's own wallet (sim/wallet.ts). */
 import {walkable} from '../../maps/index.ts';
 import {Rng} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {itemMaxLevel,isEvolutionId} from '../evolutions.ts';
 import {isStanding} from '../revive.ts';
+import {addGrana,walletOf} from '../wallet.ts';
 import type {StonewardsState} from './state.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {barricadeOccupied,findBarricade,setBlocking} from './barricades.ts';
@@ -27,8 +28,8 @@ export type BuyResult=
   | {ok:false;reason:'phase'|'player'|'recipe'|'balance'|'full'|'no-weapon'|'duplicate'|'wall-down'|'away'|'target'|'blocked'};
 
 /**
- * Buys a recipe for the team, validated on the server. Commands are applied one at a time, so two
- * players buying in the same tick are charged in order and the second fails if the balance ran out.
+ * Buys a recipe for the team with the buyer's wallet, validated on the server. Commands are applied one at a time, so
+ * a purchase is charged before the next one is checked.
  * A resent command with the same requestId is refused without charging again.
  */
 /** Draws from the state's own serializable stream (D-011) so a checkpoint restore replays the same picks. */
@@ -68,10 +69,11 @@ function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:str
   const site=barricade??state.wall;
   if(!(Math.hypot(player.x-site.x,player.y-site.y)<=CAMP_RADIUS))return {ok:false,reason:'away'};
   const price=forgePrice(recipe.id,state.forgeBought);
-  if(!canPay(state.grana,price))return {ok:false,reason:'balance'};
+  // NEW-20261014-ORQ-carteira-e-pix: the buyer pays from their own wallet.
+  if(!canPay(walletOf(player),price))return {ok:false,reason:'balance'};
   // Drawn only after validation, so refused purchases do not shift the stream.
   const line=()=>draw(ctx,state,recipe.lines);
-  const charge=()=>{state.grana-=price;if(INFLATING.includes(recipe.id))(state.forgeBought??={})[recipe.id]=(state.forgeBought[recipe.id]??0)+1;};
+  const charge=()=>{addGrana(player,-price);if(INFLATING.includes(recipe.id))(state.forgeBought??={})[recipe.id]=(state.forgeBought[recipe.id]??0)+1;};
   if(barricade){
     // A fallen barricade is rebuilt only on a clear mouth: never inside a body (it would trap it in the blocker).
     if(barricade.down&&barricadeOccupied(ctx,barricade))return {ok:false,reason:'blocked'};

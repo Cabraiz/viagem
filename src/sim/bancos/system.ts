@@ -29,7 +29,8 @@
  * Rules (a tick):
  *  - 'sem-cedulas': nothing until `until`; then saldo = BANCO.saldo, 'aberto', event bank-refill.
  *  - A standing hero within holdR holds it (more heroes are not faster). With no live critter within filaR ("tem gente
- *    na fila") it is 'sacando' and every saqueS pays min(nota, saldo) into the team's Grana (wallet), event bank-cash
+ *    na fila") it is 'sacando' and every saqueS pays min(nota, saldo) into the wallet of the hero holding it (the nearest
+ *    within holdR, ties by id; carteira-e-pix), event bank-cash
  *    by 'hero', and lures every critter within iscaR (not the boss, not a retreater) to the bank for iscaS (baitEnemy).
  *    With a critter in the queue it is 'aberto' and the count waits (it is kept while a hero holds it).
  *  - No hero within holdR and a live critter within bichoR (not the boss, not a retreater): 'bicho', drawer = it (kept
@@ -41,7 +42,7 @@
  * Deterministic: the placement stream is forked from the seed, the step reads ctx (players and enemies in their order).
  */
 import type {Point} from '../../maps/index.ts';
-import {BANK_IDS,Rng,ticks,type BankName,type BankState,type BankView,type EnemyState} from '../../contract/index.ts';
+import {BANK_IDS,Rng,ticks,type BankName,type BankState,type BankView,type EnemyState,type SimPlayer} from '../../contract/index.ts';
 import {BANCO} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
@@ -67,7 +68,8 @@ export interface BanksOptions {
   route?:readonly Point[];
   plaza:Point;
   /** The team's Grana (stonewards state, D-048). */
-  wallet:{add(amount:number):void};
+  /** Pays a note to the hero holding the ATM (carteira-e-pix: each player's own wallet). */
+  wallet:{add(amount:number,to:SimPlayer):void};
 }
 export interface BanksSystem {
   readonly places:readonly BankPlace[];
@@ -157,9 +159,15 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
     row.saldo=0;row.state='sem-cedulas';row.until=ctx.tick+RECARGA;row.clock=0;row.held=0;delete row.drawer;
     ctx.emit({type:'bank-empty',bank:places[i].id,until:row.until});
   }
-  function heroAt(ctx:SimContext,b:BankPlace){
-    for(const p of ctx.players.values())if(isStanding(p)&&Math.hypot(p.x-b.x,p.y-b.y)<=BANCO.holdR)return true;
-    return false;
+  /** The standing hero holding the ATM: the nearest within holdR (ties by id), or undefined. */
+  function heroAt(ctx:SimContext,b:BankPlace):SimPlayer|undefined{
+    let best:SimPlayer|undefined,bestD=Infinity;
+    for(const p of ctx.players.values()){
+      if(!isStanding(p))continue;
+      const d=Math.hypot(p.x-b.x,p.y-b.y);
+      if(d<=BANCO.holdR&&(d<bestD||d===bestD&&best!==undefined&&p.id<best.id)){best=p;bestD=d;}
+    }
+    return best;
   }
   function lure(ctx:SimContext,b:BankPlace){
     ctx.enemyIndex.query(b.x,b.y,BANCO.iscaR,near);
@@ -172,7 +180,8 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
       row.saldo=BANCO.saldo;row.state='aberto';row.until=0;row.clock=0;row.held=0;delete row.drawer;
       ctx.emit({type:'bank-refill',bank:b.id});
     }
-    if(heroAt(ctx,b)){
+    const hero=heroAt(ctx,b);
+    if(hero){
       delete row.drawer;
       if(row.held!==1){row.held=1;row.clock=0;}
       const queue=ctx.enemyIndex.nearest(b.x,b.y,BANCO.filaR,e=>robber(ctx,e));
@@ -181,7 +190,7 @@ export function createBanks(options:BanksOptions,restore?:BanksState):BanksSyste
       if(++row.clock<SAQUE)return;
       row.clock=0;
       const amount=Math.min(BANCO.nota,row.saldo);
-      options.wallet.add(amount);state.paid+=amount;
+      options.wallet.add(amount,hero);state.paid+=amount;
       ctx.emit({type:'bank-cash',bank:b.id,amount,by:'hero'});
       lure(ctx,b);
       note(ctx,i,amount);

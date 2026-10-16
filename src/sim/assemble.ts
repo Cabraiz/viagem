@@ -22,6 +22,7 @@ import {cityLoot} from './stonewards/loot.ts';
 import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
+import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -254,6 +255,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
     // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
+    // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
+    // of (the chaveiro and the nests, created below; the wall mode has none of them).
+    ...(cityWorld?{freeBuild:objective?{
+      car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
+      moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
+      nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+    }:{}}:{}),
   },cp?.stonewards);
   structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
@@ -281,6 +289,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
     // D-047: the car (and the riding moto) instead of the wall; the car's hits go to the chaveiro, the moto takes none.
+    // D-052: an enemy on a free barricade walks slowed (towers/free-build.ts pieceDrag).
+    drag:e=>pieceDrag(stonewards.state,e),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
@@ -360,7 +370,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
-      helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id)},cp?.chaveiro);
+      helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id),
+      // D-052: the moto rides around a muro built across his way.
+      muros:{radius:MURO_BLOCK_R,standing:()=>piecesOf(stonewards.state).filter(m=>m.kind==='muro')}},cp?.chaveiro);
     if(nestMode){
       const entrances={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car={x:wall.x,y:wall.y},city=cityTerrain;
       // The plan's keep-offs: the moto's four possible routes (one per entrance) and the run's start.

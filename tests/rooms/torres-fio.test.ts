@@ -162,7 +162,7 @@ test('an upgrade names its branch the way the HUD tree does (label A2, B2…, or
   assert.equal(a.messages.filter(m=>m.t==='built').length,0);
 });
 
-test('the Gustavão\'s rail is in the snapshot once laid (kind linha-ferrea, its spot and building phase), with a steady wire id',async()=>{
+test('D-052: the Gustavão\'s rail is out of the city (free build): {site:\'trilho\'} is refused (rail), the plan has none and the snapshot shows none',async()=>{
   const {readFileSync}=await import('node:fs');
   const {clientCatalog}=await import('../../src/protocol/map-catalog.ts');
   const {OWNER_GAP_MS}=await import('../../multiplayer/room.ts');
@@ -177,20 +177,14 @@ test('the Gustavão\'s rail is in the snapshot once laid (kind linha-ferrea, its
   for(let i=0;i<600&&room.run.snapshot().phase!=='combat';i++)room.advance(t+=50);
   for(let i=0;i<20_000&&room.sim.world.round.phase!=='prepare';i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
   room.sim.run.stonewards.state.balance.units=120;
-  assert.equal(lastStructures(a.frames).some(x=>x.kind==='linha-ferrea'),false,'no rail before it is laid');
-  // Ana steps next to the rail first (the sim's reach rule, torres-ajustes).
-  const ana=[...room.sim.players.values()].find(p=>!room.sim.bots.has(p.id))!,spot=room.sim.run.stonewards.plan.rail!;ana.x=spot.x;ana.y=spot.y;
+  assert.equal(room.sim.run.stonewards.plan.rail,null,'no rail in the free build\'s plan');
+  // Ana stands where the rail was (the full plan still has it): no rail anyway.
+  const ana=[...room.sim.players.values()].find(p=>!room.sim.bots.has(p.id))!,spot=buildPlanFor(room.sim.terrain).rail!;ana.x=spot.x;ana.y=spot.y;
   say(room,a,{t:'build',round:room.run.snapshot().round,req:1,site:'trilho'},t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:true,kind:'linha-ferrea'});
-  for(let i=0;i<4;i++)room.advance(t+=50);
-  const rail=lastStructures(a.frames).find(x=>x.kind==='linha-ferrea'),plan=room.sim.run.stonewards.plan.rail!;
-  assert.ok(rail,'the phone sees the rail');assert.match(rail.phase,/^obra-[123]$/);
-  assert.ok(Math.abs(rail.x-plan.x)<.01&&Math.abs(rail.y-plan.y)<.01,'on the plan\'s rail spot');
-  // Laid: pronta; the wire id survives the prunes (once a second).
-  room.sim.run.stonewards.state.defenses!.rail!.readyTick=room.sim.world.tick;
+  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:false,reason:'rail'});
   for(let i=0;i<60;i++){if(i%20===0)say(room,a,{t:'ack',seq:0},t);room.advance(t+=50);}
-  const later=lastStructures(a.frames).find(x=>x.kind==='linha-ferrea');
-  assert.equal(later.phase,'pronta');assert.equal(later.id,rail.id);
+  assert.equal(lastStructures(a.frames).some(x=>x.kind==='linha-ferrea'),false,'no rail on the wire');
+  assert.equal(room.sim.run.stonewards.state.defenses?.rail,undefined);
 });
 
 test('torres-fio review: a spectator is answered no (player); a ruin goes on the wire (hp 0, ruina) and a new root on its site is a new id',()=>{

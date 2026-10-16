@@ -396,7 +396,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     parts:c(optional(count)),
     // D-051: a nest's size and whether the team has seen it (the minimap's fog).
     size:c(optional(str)),seen:c(optional(trueFlag)),
-    // D-052 (free build): a piece's top-left cell on the build grid and its rot; they never change once built.
+    // D-052 (free build): a piece's top-left cell on the build grid and its rot; only a tower evolving to a larger
+    // square moves its cell (the square stays centred, sim towers/system.ts).
     c:c(optional(count)),r:c(optional(count)),rot:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},

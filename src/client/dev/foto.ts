@@ -29,6 +29,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
+  'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},

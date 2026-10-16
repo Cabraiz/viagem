@@ -7,7 +7,7 @@ import {treeCatalog} from '../../src/maps/tree-catalog.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {treeUrl,spriteUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from '../../src/client/sprites/art-urls.ts';
 import {setArtIndex,parseArtIndex} from '../../src/client/art/manifest.ts';
-import {artLoads,liteEnemyUrl} from '../../src/client/art/horde-art.ts';
+import {enemyPieceLoads,liteEnemyUrl} from '../../src/client/art/horde-art.ts';
 
 const manifest=JSON.parse(readFileSync('scripts/art-lite.json','utf8'));
 const sha=(path:string)=>createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -69,12 +69,12 @@ test('every enemy file (public/art/manifest.json, inimigos, every page) has its 
 test('the horde loader asks for the enemies\' lite copies; a failed copy falls back to the approved file',()=>{
   assert.equal(liteEnemyUrl('/art/enemies/pamonheiro/walk.webp'),'/art/lite/enemies/pamonheiro/walk.webp');
   assert.equal(originalUrl(liteEnemyUrl('/art/enemies/pamonheiro/walk.webp')),'/art/enemies/pamonheiro/walk.webp');
-  // The render does not draw a pack-04 enemy yet (ENEMY_ART_ID): a real piece under a kind it draws stands in for one.
-  const index=JSON.parse(readFileSync('public/art/manifest.json','utf8')),inimigos=index.groups.inimigos;
-  setArtIndex(parseArtIndex({...index,groups:{inimigos:{...inimigos,pieces:{bebado:inimigos.pieces.pamonheiro}}}}));
-  const enemies=artLoads().filter(l=>l.key.startsWith('art:enemy:'));
+  // Every imported enemy, a legacy kind or a roster id, loads per piece (enemyPieceLoads) as lite copies on disk.
+  const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));
+  setArtIndex(parseArtIndex(index));
+  const enemies=['pamonheiro','bebado','chefe'].flatMap(id=>enemyPieceLoads(id));
   setArtIndex(parseArtIndex({version:2,groups:{}}));
-  assert.ok(enemies.length>=5,`${enemies.length} pamonheiro sheets`);
+  assert.ok(enemies.length>=15,`${enemies.length} sheets`);
   for(const l of enemies){
     assert.ok(l.url.startsWith('/art/lite/enemies/'),l.url);
     assert.ok(existsSync(`public${l.url}`),`${l.url} missing`);

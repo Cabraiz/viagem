@@ -277,7 +277,17 @@ function assembled(terrain:SimWorld['terrain'],seed:number,n:number,cityBalance?
   for(const [id,dx] of [['a',0],['b',1]] as const)players.set(id,{id,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
     stats:{...BASE_STATS,maxHp:1e6},weaponReady:{},x:s.x+dx,y:s.y,ack:0,score:0} as SimPlayer);
   for(let i=0;i<n;i++)world.step();
-  return {hash:digest({state:sys.state(),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
+  return {hash:digest({state:potState(sys.state(),players),round:world.round,enemies:[...world.enemies.values()]}),round:world.round.index,sys};
+}
+/**
+ * NEW-20261014-ORQ-carteira-e-pix: the baselines were recorded with the team's pot (stonewards.grana, right after
+ * balance). With the wallets summed back into it and the split cursor left out, the state gives the same digests: the
+ * kills paid the same R$, only where they are kept moved.
+ */
+function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>,players:ReadonlyMap<string,SimPlayer>){
+  const {balance,splitCursor:_cursor,pixRng:_pix,...rest}=state.stonewards;
+  const grana=[...players.values()].reduce((n,p)=>n+(p.grana??0),0);
+  return {...state,stonewards:{balance,grana,...rest}};
 }
 /**
  * Recorded with `assembled` and no cityBalance option: island/endless on 4906ef9, the city on 11793fb (cidade-06 merged,

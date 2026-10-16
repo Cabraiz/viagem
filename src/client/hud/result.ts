@@ -16,7 +16,7 @@ import {faceExpression,faceImg} from '../ui/face-crop.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
 import {shameText} from '../fun/zueira.ts';
 import type {MapId} from '../../protocol/index.ts';
-import {objectiveBill} from './chaveiro.ts';
+import {objectiveBill,vaquinhaLine} from './chaveiro.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -155,6 +155,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   // Cone and adds what was missing (the subtitle says "Vitória com dívida: abriu e levou o volante."). One more ficha of
   // the stats line: a wide screen keeps one row; 390×844 wraps it to a second row and six cards still fit under it.
   const bill=el('span','rh-result-stat rh-result-conta',stats);bill.hidden=true;bill.setAttribute('role','img');
+  // The vaquinha (carteira-e-pix): who put how much into the bill, the R$ 0 with its joke; one more ficha, it wraps.
+  const vaquinha=el('span','rh-result-stat rh-result-vaquinha',stats);vaquinha.hidden=true;
 
   // "Momento mais vergonhoso" (VGM-053B): a notice on the condo board, from the server's moment; hidden without one.
   const shame=el('aside','rh-result-shame',root);shame.hidden=true;
@@ -368,6 +370,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
         bill.classList.toggle('rh-result-divida',conta.debtVictory);
         bill.setAttribute('aria-label',conta.aria);
       }
+      const vaca=conta?vaquinhaLine(result.objective?.share,id=>{const p=result.players.find(q=>q.id===id);return id===ctx.localId?'Você':p?railName(p.name):'Alguém';}):undefined;
+      vaquinha.hidden=!vaca;vaquinha.textContent=vaca?.text??'';
+      if(vaca)vaquinha.setAttribute('aria-label',vaca.aria);else vaquinha.removeAttribute('aria-label');
       seed.textContent=resultSeedText(result);
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;

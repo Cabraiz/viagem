@@ -15,8 +15,8 @@
  * multiplayer/simulation.ts confirmed). The effects reach the phone with that frame (PlayerRunView.slowUntil/slipUntil/slip).
  */
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
-import {heroSpeed,moveDirection,SPEED} from './world.ts';
-import {CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT} from '../contract/index.ts';
+import {heroSpeed,moveDirection,SPEED,walkable} from './world.ts';
+import {CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,SIM_HZ,carSpeed} from '../contract/index.ts';
 import type {PlayerInput,Point} from '../contract/index.ts';
 type Input=PlayerInput;
 export const STEP = 1 / 20;
@@ -24,8 +24,11 @@ export const STEP = 1 / 20;
 export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
   /** D-047 Dona Cida's brigadeiro: walking × CIDA_FAST_MULT while tick < fastUntil (on top of a slow; not the slide). */
   fastUntil?:number}
-/** Where the replay stands: the frame's tick and the player's effects in it. Absent: no effects (plain walking). */
-export interface MoveClock {tick:number;effects?:MoveEffects}
+/**
+ * Where the replay stands: the frame's tick and the player's effects in it. Absent: no effects (plain walking).
+ * `cap` (D-052, the car): the most this player may walk per tick while moving the car (carSpeed(movers)/SIM_HZ).
+ */
+export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number}
 /** The slide direction on `tick`, or undefined when the player is not slipping then (or the vector is unusable). */
 export function slipping(effects:MoveEffects|undefined,tick:number):Point|undefined{
   const s=effects?.slip;
@@ -46,12 +49,30 @@ export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects
   const speed=slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk;
   return moveDirection(p,direction,STEP,terrain,hasted(effects,tick)?speed*CIDA_FAST_MULT:speed);
 }
-/** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick. */
-export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects):Point {
-  return tick===undefined?moveDirection(p,{x:input.x,y:input.y},STEP,terrain):moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
+/**
+ * D-052, a hero moving the car walks at most `cap` u this tick (the room's players system and the phone's replay): the
+ * step from `from` to `to` is cut along its own line, and kept in place if that point is not walkable.
+ */
+export function capStep(from:Point,to:Point,cap:number|undefined,terrain:TerrainField=defaultTerrain):Point{
+  const moved=Math.hypot(to.x-from.x,to.y-from.y);
+  if(cap===undefined||!(moved>cap))return to;
+  const q={x:from.x+(to.x-from.x)*cap/moved,y:from.y+(to.y-from.y)*cap/moved};
+  return walkable(q,terrain)?q:{x:from.x,y:from.y};
 }
-/** Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036). */
+/** D-052: the cap of a hero among the car's movers (the room's moverCap, chaveiro/car.ts), else undefined (free). */
+export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):number|undefined{
+  return car?.movers?.includes(id)?carSpeed(car.movers.length)/SIM_HZ:undefined;
+}
+/** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep. */
+export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number):Point {
+  const to=tick===undefined?moveDirection(p,{x:input.x,y:input.y},STEP,terrain):moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
+  return capStep(p,to,cap,terrain);
+}
+/**
+ * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
+ * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
+ */
 export function reconcile(authoritative:Point,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):Point {
-  return pending.reduce((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects),{...authoritative});
+  return pending.reduce((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap),{...authoritative});
 }
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

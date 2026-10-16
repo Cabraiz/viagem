@@ -43,3 +43,10 @@ test('the snapshot nests: structures of kind ninho, size P|M|G (M when unknown),
   assert.equal(nestState(nests[0]),'dormindo');
   assert.equal(nestState(nests[1]),'destruido');
 });
+
+test('the scene feeds every snapshot\'s nests to the city live layer', async ()=>{
+  const {readFileSync}=await import('node:fs');
+  const src=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  assert.match(src,/this\.pushNests\(runView\)/);
+  assert.match(src,/vivo\.setNests\(nestsFromStructures\(view\.structures\),this\.view,/);
+});

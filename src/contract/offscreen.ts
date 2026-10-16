@@ -161,5 +161,7 @@ export const RING_INNER=9.4,RING_OUTER=10.4,RING_SLACK=1;
 export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SLACK+1);
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */
 export const INTEREST_HYSTERESIS=4;
+/** D-051: at most this many sleeping bodies (EnemyView.asleep) per client, the nearest ones. */
+export const ASLEEP_PER_VIEWER=48;
 /** An enemy farther than this from every player is recycled next to one of them (VS-style), beyond any interest area. */
 export const RECYCLE_DISTANCE=INTEREST_RADIUS+INTEREST_HYSTERESIS+4;

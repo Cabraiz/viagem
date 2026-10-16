@@ -1359,7 +1359,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161,161+added.length),added);
+  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1477,10 +1477,11 @@ function sameBanks(got:readonly BankView[]|undefined,want:readonly BankView[],id
   });
 }
 
-test('bancos: the bank strings are dictionary bytes appended after protocol 15, every older index unchanged',()=>{
+test('bancos: the bank strings are dictionary bytes appended after protocol 22 (the nests), every older index unchanged',()=>{
   const added=['banco-1','banco-2','banco-3',...BANK_IDS,'aberto','sacando','bicho','sem-cedulas','hero','enemy'];
   assert.equal(DICT[179],'cocada','the chaveiro indexes unchanged');
-  assert.deepEqual(DICT.slice(180),added);
+  assert.deepEqual(DICT.slice(180,187),['ninho','dormindo','ativo','destruido','P','M','G'],'the nests (protocol 22) unchanged');
+  assert.deepEqual(DICT.slice(187),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });

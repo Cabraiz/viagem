@@ -30,7 +30,7 @@ import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
+import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -177,7 +177,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let chaveiro:ChaveiroSystem|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
-  const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
+  const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??(options.combat==='manual'?MANUAL_CITY_BALANCE:CITY_BALANCE):undefined;
   // D-017 (E8-wall-siege-single-path): the enemy-ai is the only path that hurts the wall. It walks siege enemies to it
   // and its contact hit goes to damageWall; the Stonewards contact siege (siegeStep) stays off.
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later

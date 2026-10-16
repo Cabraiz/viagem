@@ -108,6 +108,21 @@ export const CITY_BALANCE:CityBalance=Object.freeze({
   // Art-only rounds (balanco-cidade-so-arte): the rats at most half of a round's regular bodies.
   roleCap:Object.freeze({enxame:.5}),
 });
+/**
+ * D-051 manual combat's city tuning (armas-caixas, Orquestrador 16/10 option A): the team-size knobs above were
+ * measured with the automatic weapons. With the faca to start and the arsenal from the crates (ARSENAL_DAMAGE ×2), the
+ * CI bench gave 1p 15/16 and 6p 5/16 (targets 2–6 and 7–11): a solo with every crate to itself is far stronger than an
+ * automatic one, six bots that aim and walk to the critters far weaker. So the solo is eased less and the six pushed
+ * less; 3 players as the city's.
+ */
+export const MANUAL_CITY_BALANCE:CityBalance=Object.freeze({
+  ...CITY_BALANCE,
+  players:Object.freeze({
+    1:Object.freeze({count:.65,hp:.9,damage:.6,bossHp:2.2,lootValue:2,siegeShare:.15}),
+    3:CITY_BALANCE.players![3],
+    6:Object.freeze({count:1,hp:1.15,damage:1.35,bossHp:1.5}),
+  }),
+});
 
 /** The `players` entry for a team of `team` (an integer 1..6), or {} (neutral). */
 export function teamKnobs(balance:Pick<CityBalance,'players'>,team:number|undefined):Readonly<CityTeamKnobs>{

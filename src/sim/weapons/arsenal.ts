@@ -38,9 +38,10 @@ const row=(damage:number,cooldown:number,amount:number,area:number,speed:number,
   ({damage,cooldown,amount,area,speed,duration,pierce,knockback,hitInterval,range});
 /**
  * Every arsenal weapon's damage over its table row (the 16/10 bench: with the faca to start and the firearms from the
- * crates, ×1 loses the team in round 3-4; ×2 lets a solo win 15/16).
+ * crates, ×1 loses the team in round 3-4; ×1.6 gave 6p 2/16 against 5/16 at ×2: the team-size gap is the manual
+ * city balance's, MANUAL_CITY_BALANCE).
  */
-export const ARSENAL_DAMAGE=1.6;
+export const ARSENAL_DAMAGE=2;
 /** Rows for rarities 1..4 from the verde row (rarity < minRarity keeps the verde numbers: never rolled anyway). */
 const byRarity=(base:WeaponLevel):WeaponLevel[]=>([1,2,3,4] as const).map(r=>({...base,damage:Math.round(base.damage*ARSENAL_DAMAGE*RARITY_DAMAGE[r]*10)/10,cooldown:Math.round(base.cooldown*RARITY_COOLDOWN[r]*1000)/1000}));
 const describe=(intro:string)=>(level:number)=>`${intro} (${RARITY_NAME[(isRarity(level)?level:1) as Rarity]})`;

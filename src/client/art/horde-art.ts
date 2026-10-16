@@ -181,13 +181,13 @@ export const liteEnemyUrl=(url:string)=>url.replace('/art/enemies/','/art/lite/e
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
- * Every texture the horde art needs, from the current manifest (empty manifest → []). Enemies: each page of each file
- * (animations, actions, death and elite layers), as its lite copy; per-source projectiles: their first page; statics:
- * frame 0 sheet of the first present id.
+ * Every texture the horde art needs up front, from the current manifest (empty manifest → []): per-source projectiles,
+ * their first page; statics, frame 0 sheet of the first present id. No enemy: every enemy's art (the nine legacy kinds'
+ * too, ~21 MB of lite base sheets and ~30 MB of elite layers since importar-todos-inimigos; the boss alone 11 + 19 MB)
+ * loads per match the first time one of them shows up (queueEnemyArt), the procedural look standing in meanwhile.
  */
 export function artLoads():ArtLoad[]{
   const out:ArtLoad[]=[];
-  for(const kind of ENEMY_KINDS)out.push(...enemyPieceLoads(ENEMY_ART_ID[kind]));
   // Per-source projectiles: the first page of each sheet (projectileLook only plays the frames of that page).
   for(const id of PROJECTILE_ART_IDS){
     const file=projectileFile(id),page=file&&artPages(file)[0],url=page&&artUrl('projeteis',page.file);
@@ -202,10 +202,16 @@ export function artLoads():ArtLoad[]{
   }
   return out;
 }
-/** Every page of every file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
+/**
+ * Imported files no renderer draws yet, so no match downloads them: the rest rows `sleep`/`wake` and their elite and
+ * costume layers (the nests' card draws them).
+ */
+export const unusedEnemyFile=(name:string)=>/^(elite\/([a-z0-9]+-)?)?(sleep|wake)$/.test(name);
+/** Every page of every drawn file of enemy art `id` (a legacy kind's or a roster id's); [] without its piece. */
 export function enemyPieceLoads(id:string):ArtLoad[]{
   const out:ArtLoad[]=[],piece=artPiece('inimigos',id);if(!piece)return out;
   for(const [name,file] of Object.entries(piece.files)){
+    if(unusedEnemyFile(name))continue;
     const pages=artPages(file);
     pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url:liteEnemyUrl(url),cell:file.cell});});
   }

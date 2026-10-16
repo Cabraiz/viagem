@@ -28,6 +28,12 @@ export interface SimContext {
   readonly offers:Map<string,LevelOffer[]>;
   readonly round:RoundState;
   readonly enemyIndex:SpatialIndex<EnemyState>;
+  /**
+   * D-051 nests (E2, city/chaveiro; not wired yet): the sleeping enemies, kept OUT of enemyIndex, in their own static
+   * index. Optional hook: the manual attack's aim (weapons/system.ts) also looks here, so a player can shoot a sleeper
+   * to start the fight; sleepers rank like any other enemy. Absent everywhere today.
+   */
+  readonly sleepers?:Pick<SpatialIndex<EnemyState>,'query'>;
   /** Deterministic, monotonic ids: prefix + counter. */
   nextId(prefix:string):string;
   emit(event:SimEvent):void;

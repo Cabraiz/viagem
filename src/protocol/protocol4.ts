@@ -66,12 +66,13 @@ import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/i
  * 17 given by the integration queue (tools/fila.mjs, lote 20261014-051017) to: NEW-20261013-ORQ-ficha-de-torre.
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
+ * 20 given by the integration queue (tools/fila.mjs, lote 20261016-191924) to: NEW-20261014-ORQ-ataque-manual-wild-rift-passo1.
  * Next (the queue numbers it) since the banks (card NEW-20261014-ORQ-bancos-e-veiculos): the banks block (flag bit 5:
  * their saldo, state, refill tick and drawer; id, place and name on full frames), `prime` on the enemies, the events
  * bank-cash/bank-prime/bank-empty/bank-refill and their strings in the DICT; an older decoder would refuse the flags.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=19;
+export const PROTOCOL_VERSION=20;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

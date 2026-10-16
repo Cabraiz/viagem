@@ -43,9 +43,14 @@
  * the first one (by teamBots order: the room's forger and tower builder) stays on the forge and the towers. In the wave
  * (a full team): with BANK_WAVE_MIN_UP standing, one bot per BANK_WAVE_PER (one per ATM, within
  * BANK_WAVE_REACH) holds an ATM while the Grana is short. Mode 'bank'. Without banks nothing changes.
+ * D-051 manual combat (BrainInput.combat 'manual'): the bot holds the attack (Decision.attack) whenever a critter is
+ * within its equipped weapon's reach (attackReach) and never taps the skill; the room's auto aim picks the target. It
+ * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
-import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
+import {BASE_STATS,CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import {equippedWeapon,manualReach} from './weapons/system.ts';
+import {resolveWeapon,weaponCatalog} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
@@ -153,9 +158,13 @@ export interface BrainInput {
    * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
    */
   teamBots?:readonly string[];
+  /** D-051: the room's combat. 'manual': hold the attack with a critter in reach, no skill. Unset: the automatic weapons. */
+  combat?:CombatMode;
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
+  /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
+  attack?:boolean;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
@@ -166,6 +175,18 @@ const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const norm=(v:Point):Point=>{const l=Math.hypot(v.x,v.y);return l>1e-6?{x:v.x/l,y:v.y/l}:{x:0,y:0};};
 const toward=(from:Point,to:Point,weight=1):Point=>{const n=norm({x:to.x-from.x,y:to.y-from.y});return {x:n.x*weight,y:n.y*weight};};
 const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
+
+/**
+ * D-051: whether a critter is within reach of the equipped weapon (weapons/system.ts manualReach, at the weapon's level
+ * with base stats: the room's aim decides the real shot). The enemy's radius counts for the patterns that touch, when
+ * the view carries it (the room bots see the live enemies).
+ */
+export function attackReach(me:Pick<PlayerRunView,'weapons'>,at:Point,enemies:readonly EnemyView[]):boolean{
+  const owned=equippedWeapon({weapons:me.weapons,passives:[]}),def=owned?weaponCatalog.get(owned.id):undefined;
+  if(!owned||!def)return false;
+  const {reach,pad}=manualReach(resolveWeapon(def,owned.level,BASE_STATS));
+  return enemies.some(e=>e.hp>0&&dist(e,at)<=reach+(pad?(e as EnemyView&{radius?:number}).radius??0:0));
+}
 
 export function wallOf(view:RunView):StructureView|undefined{return view.structures.find(s=>s.kind==='muralha');}
 /**
@@ -375,6 +396,8 @@ export function decide(input:BrainInput):Decision{
     if(tick-memory.lastSosTick>=SOS_GAP){decision.sos=true;memory.lastSosTick=tick;}
     return decision;
   }
+  // D-051 manual combat: hold the attack whenever a critter is in reach, whatever the bot is walking to.
+  if(input.combat==='manual')decision.attack=attackReach(me,at,view.enemies);
   const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
@@ -529,7 +552,8 @@ export function decide(input:BrainInput):Decision{
   if(b)memory.homing=homing;
   const close=view.enemies.filter(e=>dist(e,at)<DANGER);
   // Skill: something close and it is ready (the room answers whether it went off).
-  if(close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
+  // D-051: no skill in the manual combat.
+  if(input.combat!=='manual'&&close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
   const fallen=view.players.filter(p=>p.id!==selfId&&p.downed&&!p.eliminated&&p.online!==undefined)
     .map(p=>({p,at:positionOf(p)})).filter(f=>f.at&&dist(f.at,at)<RESCUE_REACH).sort((a,b)=>dist(a.at!,at)-dist(b.at!,at))[0];
   const hpShare=me.maxHp>0?me.hp/me.maxHp:1;

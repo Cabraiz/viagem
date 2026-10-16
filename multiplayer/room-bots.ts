@@ -152,9 +152,11 @@ export class RoomBots {
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         // Bancos: so are the ATMs (bankTask), in both city modes.
         ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
+        // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
+        ...(sim.combat?{combat:sim.combat}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
-      sim.setBotInput(mind.id,d.direction,d.cast);
+      sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);

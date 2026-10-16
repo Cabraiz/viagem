@@ -13,7 +13,7 @@ import {ART_SCALE,frameUv} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
 import type {LiveSheet} from './art.ts';
 import {
-  LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
+  LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,lightScale,liveMeta,loopFps,loopFrame,loopVisible,
   matchInsulators,NEST_SCALE,nestArtId,onCamera,polePairs,sagLine,viewIndex,
   type ArtView,type CellFrame,type DecorEntry,type LightKind,type LiveMeta,type Pt,type Rect,
 } from './rules.ts';
@@ -187,17 +187,18 @@ export class CityLive {
       const sprite=this.scene.add.sprite(p.x,p.y,tex,first).setOrigin(0,0).setScale(f.scale).setDepth(a.depth+OVERLAY_DEPTH);
       a.loops.push({sprite,key:animKey,fps,frames,first,flicker});
     };
-    for(const [name,views] of Object.entries(meta.anims??{})){const at=views[view];if(at)add(`anim-${name}`,at,`${a.key}:${name}`,name);}
+    for(const [name,views] of Object.entries(meta.anims??{}))if(loopVisible(meta,name,view))add(`anim-${name}`,views[view]!,`${a.key}:${name}`,name);
     // Lit objects: the whole cell animates (frames the size of the base cell), drawn over the base.
     if(piece.files.anim)add('anim',[0,0],`${a.key}:anim`);
   }
 
   private addLight(kind:LightKind,key:string,id:string,f:CellFrame,view:ArtView,cell:[number,number],base:Phaser.GameObjects.Image,loop?:Loop):Light{
-    const look=LIGHT_LOOK[kind],head=cellPoint(f,lightHead(id,view,cell));
+    // LIGHT_LOOK radii are delivery px: × lightScale to the imported cell, × f.scale to the screen.
+    const look=LIGHT_LOOK[kind],head=cellPoint(f,lightHead(id,view,cell)),px=f.scale*lightScale(kind,cell);
     const add=(x:number,y:number)=>this.scene.add.image(x,y,GLOW_KEY).setTint(look.color).setBlendMode(Phaser.BlendModes.ADD);
-    const halo=add(head.x,head.y).setScale(look.halo*2*f.scale/GLOW_PX).setDepth(base.depth+HALO_DEPTH).setAlpha(look.alpha);
+    const halo=add(head.x,head.y).setScale(look.halo*2*px/GLOW_PX).setDepth(base.depth+HALO_DEPTH).setAlpha(look.alpha);
     // The pool lies on the ground under the head (the base's feet line), flattened like the iso ground.
-    const pool=add(head.x,base.y).setScale(look.pool*2*f.scale/GLOW_PX,look.pool*f.scale/GLOW_PX).setDepth(this.options.groundDepth).setAlpha(look.poolAlpha);
+    const pool=add(head.x,base.y).setScale(look.pool*2*px/GLOW_PX,look.pool*px/GLOW_PX).setDepth(this.options.groundDepth).setAlpha(look.poolAlpha);
     return {kind,key,halo,pool,alpha:look.alpha,poolAlpha:look.poolAlpha,loop};
   }
 

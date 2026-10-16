@@ -39,6 +39,8 @@ export interface LiveMeta {
   cell?:[number,number];
   anims?:Record<string,ViewPoints<[number,number]>>;
   animCell?:[number,number];animFrames?:number;
+  /** Views where a loop shows (E8: one list for every loop, or one per loop name); absent = every view with an offset. */
+  animVisibleViews?:ArtView[]|Record<string,ArtView[]>;
   /** One fps for every loop, or one per loop name (both come in the delivery). */
   fps?:number|Record<string,number>;
   wires?:ViewPoints<[number,number][]>;
@@ -56,6 +58,14 @@ export function liveMeta(meta:Record<string,unknown>|undefined):LiveMeta{
     const f:Record<string,number>={};
     for(const [k,v] of Object.entries(meta.fps as Record<string,unknown>))if(/^[a-z0-9-]+$/.test(k)&&typeof v==='number'&&v>0)f[k]=v;
     if(Object.keys(f).length)out.fps=f;
+  }
+  const views=(v:unknown)=>Array.isArray(v)?v.filter((n):n is ArtView=>ART_VIEWS.includes(n as ArtView)):undefined;
+  const vis=meta.animVisibleViews;
+  if(Array.isArray(vis))out.animVisibleViews=views(vis);
+  else if(vis&&typeof vis==='object'){
+    const m:Record<string,ArtView[]>={};
+    for(const [k,v] of Object.entries(vis as Record<string,unknown>)){const l=views(v);if(l&&/^[a-z0-9-]+$/.test(k))m[k]=l;}
+    out.animVisibleViews=m;
   }
   const anims=meta.anims;
   if(anims&&typeof anims==='object'&&!Array.isArray(anims)){
@@ -78,6 +88,17 @@ export function liveMeta(meta:Record<string,unknown>|undefined):LiveMeta{
 }
 
 // ---- loops ----
+/**
+ * Overlays that are a state, not an idle loop: the banks' `sacando` and `tela-<cor>` (E8: meta.anims.<sufixo> =
+ * meta.tela). The bank render picks them; the live layer never plays them on its own.
+ */
+export const isIdleLoop=(name:string)=>name!=='sacando'&&!name.startsWith('tela');
+/** Whether loop `name` shows in art view `view` (its offset exists and animVisibleViews, when given, lists the view). */
+export function loopVisible(meta:LiveMeta,name:string,view:ArtView):boolean{
+  if(!isIdleLoop(name)||!meta.anims?.[name]?.[view])return false;
+  const vis=meta.animVisibleViews,list=Array.isArray(vis)?vis:vis?.[name];
+  return !list||list.includes(view);
+}
 /** Overlay fps: the meta's, kept in 8–10 (card) — the delivery's 4 fps flicker of the broken lamp is its own look. */
 export const LOOP_FPS={min:8,max:10,fallback:8};
 export function loopFps(fps:LiveMeta['fps'],name?:string,flicker=false){
@@ -195,8 +216,18 @@ export const LIGHT_HEADS:Readonly<Record<string,ViewPoints<[number,number]>>>=Ob
   'poste-aceso-amarelo-1':{0:[392,168],90:[362,256],180:[162,288],270:[133,197]},
   'poste-aceso-amarelo-2':{0:[410,183],90:[255,212],180:[98,184],270:[240,331]},
 });
-export const lightHead=(id:string,view:ArtView,cell:readonly [number,number]):[number,number]=>
-  LIGHT_HEADS[id]?.[view]??[cell[0]/2,cell[1]/3];
+/**
+ * Cell of each light kind as delivered (LIGHT_HEADS and LIGHT_LOOK are in its px). The importer may rescale the cell
+ * (E8: anims and wires go with it); `lightScale` is the factor from the delivery to the imported cell.
+ */
+export const LIGHT_DELIVERY_CELL:Readonly<Record<LightKind,readonly [number,number]>>=Object.freeze({fogueira:[256,256],pisca:[256,256],poste:[512,768]});
+export const lightScale=(kind:LightKind,cell:readonly [number,number])=>cell[0]/LIGHT_DELIVERY_CELL[kind][0];
+export function lightHead(id:string,view:ArtView,cell:readonly [number,number]):[number,number]{
+  const kind=lightKind(id),h=LIGHT_HEADS[id]?.[view];
+  if(!kind||!h)return [cell[0]/2,cell[1]/3];
+  const k=lightScale(kind,cell);
+  return [h[0]*k,h[1]*k];
+}
 /**
  * Light intensity (0..1) at `nowMs`: the fire breathes (two slow sines), the broken lamp follows its 4-frame flicker
  * (off on frame 2, dim on 3), the yellow lamp is steady; reduced motion keeps every light steady at 1.

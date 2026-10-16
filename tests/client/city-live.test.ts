@@ -76,11 +76,15 @@ test('a wire sags in the middle and ends on its insulators', ()=>{
   assert.ok(mid.y>10&&mid.y<=16,`sag ${mid.y}`);
 });
 
-test('lights: kinds, heads measured for every delivered variant, steady with reduced motion', ()=>{
+test('lights: kinds, heads measured for every delivered variant, steady with reduced motion', async ()=>{
   assert.equal(lightKind('fogueira-tambor-2'),'fogueira');assert.equal(lightKind('poste-aceso-amarelo-1'),'poste');
   assert.equal(lightKind('luminaria-quebrada-pisca-1'),'pisca');assert.equal(lightKind('poste-concreto-1'),undefined);
   for(const views of Object.values(LIGHT_HEADS))assert.deepEqual(Object.keys(views).sort(),['0','180','270','90']);
   assert.equal(lightLevel('fogueira',1234,'k',true),1);
+  // the importer may rescale the cell: the measured head follows
+  const {lightHead}=await import('../../src/client/render/city/live/rules.ts');
+  assert.deepEqual(lightHead('poste-aceso-amarelo-1',0,[512,768]),[392,168]);
+  assert.deepEqual(lightHead('poste-aceso-amarelo-1',0,[256,384]),[196,84]);
   assert.equal(lightLevel('pisca',0,'k',false,2)<.2,true);
   for(let t=0;t<5000;t+=37){const v=lightLevel('fogueira',t,'k',false);assert.ok(v>.65&&v<=1);}
 });
@@ -127,4 +131,16 @@ test('decals: families, corners on the footprint, the texture turned by rot', as
   // turned 90° clockwise: the image's top-left (0,0) now sits on the north-east corner
   assert.deepEqual(decalCorners({c:0,r:0,w:1,h:1,rot:90}).map(p=>[p.u,p.v]),[[0,1],[0,0],[1,0],[1,1]]);
   assert.deepEqual(decalCorners({c:0,r:0,w:1,h:1,rot:360}),decalCorners({c:0,r:0,w:1,h:1,rot:0}));
+});
+
+test('bank screens are states, not idle loops; animVisibleViews narrows the views', async ()=>{
+  const {liveMeta,loopVisible,isIdleLoop}=await import('../../src/client/render/city/live/rules.ts');
+  assert.ok(!isIdleLoop('sacando')&&!isIdleLoop('tela-azul')&&isIdleLoop('giroflex'));
+  const bank=liveMeta({anims:{sacando:{0:[1,1]},'tela-azul':{0:[1,1]}}});
+  assert.ok(!loopVisible(bank,'sacando',0)&&!loopVisible(bank,'tela-azul',0));
+  const m=liveMeta({anims:{toldo:{0:[1,1],90:[2,2]}},animVisibleViews:{toldo:[0]}});
+  assert.ok(loopVisible(m,'toldo',0)&&!loopVisible(m,'toldo',90)&&!loopVisible(m,'toldo',180));
+  const all=liveMeta({anims:{toldo:{0:[1,1],90:[2,2]}},animVisibleViews:[90,'x']});
+  assert.deepEqual(all.animVisibleViews,[90]);
+  assert.ok(!loopVisible(all,'toldo',0)&&loopVisible(all,'toldo',90));
 });

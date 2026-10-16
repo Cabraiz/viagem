@@ -56,7 +56,7 @@
 .rh .rh-ofc .rh-ofc-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px}
 .rh .rh-ofc .rh-offer-all{flex:1 0 100%;min-height:40px;margin:0;font:700 var(--t-13)/1 var(--f-sistema)}
 @media (min-width:600px){.rh .rh-ofc .rh-offer-all{flex:0 1 auto;padding:0 14px}}
-.rh .rh-ofc .rh-ofc-btn{display:inline-flex;align-items:baseline;gap:6px;min-height:44px;margin:0;padding:0 14px;
+.rh .rh-ofc .rh-ofc-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:0;padding:0 14px;
   border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);font:700 var(--t-13)/1 var(--f-sistema);color:var(--c-papel);cursor:pointer}
 .rh .rh-ofc .rh-ofc-skip{background:color-mix(in srgb,var(--c-cartolina) 45%,var(--c-breu))}
 .rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,#3D8BFF 45%,var(--c-breu))}

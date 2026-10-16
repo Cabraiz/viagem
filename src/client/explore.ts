@@ -121,7 +121,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
       onForge:(recipe,target)=>net.forge(recipe,target),
       // Dona Cida (D-047): {t:'cida'}; the room answers {t:'bought'} (net.onBought below).
       onCida:item=>net.buyCida(item),

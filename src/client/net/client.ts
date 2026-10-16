@@ -342,6 +342,17 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'cida',round:this.run.round,req,item});return req;
   }
+  /** D-051: the room's answer to an inventory tap ({t:'inv'}): why nothing happened ('far', 'last-weapon', 'full', …). */
+  onInventory:(result:{cmd:string;ok:boolean;reason?:string})=>void=()=>{};
+  /**
+   * D-051 inventory (manual combat; the HUD's 6 slots): the slot to the hand, a consumable eaten, an item to the ground,
+   * or an item from the ground (its pickup id as the frames carry it). The room answers {t:'inv'} (onInventory); the
+   * frames bring the inventory. False when there is nothing to send it on.
+   */
+  inventory(command:{t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.out(this.socket,{...command,round:this.run.round});return true;
+  }
   /** PIX answers still awaited, by request id (carteira-e-pix): settled by {t:'pixed'} or after PIX_ANSWER_MS. */
   private pixWaits=new Map<number,(result:PixResult)=>void>();
   /**
@@ -557,6 +568,7 @@ export class CoopClient {
     else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='inv'&&typeof m.cmd==='string'&&typeof m.ok==='boolean')this.onInventory({cmd:m.cmd,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='pixed'){const answer=parsePixed(m);if(answer)this.pixWaits.get(answer.req)?.(answer.result);}
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);

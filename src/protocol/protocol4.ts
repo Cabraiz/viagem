@@ -152,6 +152,11 @@ export const DICT:readonly string[]=[
   'ninho','dormindo','ativo','destruido','P','M','G',
   // D-052 (free build): the wall segment and the barricade among the structures' kinds.
   'muro','barricada',
+  // D-051 (manual combat): the ground item pickup, the arsenal's weapons and legendaries, the consumables and the hand's
+  // passives (src/sim/weapons/arsenal.ts, src/rules/passives.ts).
+  'item','faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
+  'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
+  'coxinha','kit-torre','pente','silenciador',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -364,8 +369,10 @@ const SCHEMAS:Record<SectionKey,Schema>={
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
     // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
     fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
-    // carteira-e-pix: the wallet (R$), last: it changes on kills, purchases and PIX only.
+    // carteira-e-pix: the wallet (R$): it changes on kills, purchases and PIX only.
     grana:c(optional(count)),
+    // D-051 manual combat: the inventory's hand slot (`weapons` is the inventory); absent with the automatic weapons.
+    hand:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),

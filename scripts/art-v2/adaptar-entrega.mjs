@@ -22,7 +22,7 @@ export const ADAPTERS=['cenario','decor','personagens','inimigos','geral'];
 export async function adaptarEntrega(entrega,saida,{clean=false,log=()=>{}}={}){
   const src=fs.existsSync(path.join(entrega,'arte-entrada'))?path.join(entrega,'arte-entrada'):entrega;
   if(!fs.existsSync(src))throw new Error(`Entrega não encontrada: ${entrega}`);
-  if(path.resolve(saida).startsWith(path.resolve(src)))throw new Error('A saída não pode ficar dentro da entrega.');
+  if((path.resolve(saida)+path.sep).startsWith(path.resolve(src)+path.sep))throw new Error('A saída não pode ficar dentro da entrega.');
   if(clean)fs.rmSync(saida,{recursive:true,force:true});
   fs.mkdirSync(saida,{recursive:true});
   const records=[];

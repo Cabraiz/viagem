@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {moveStep,slipping,type Point} from '../../maps/index.ts';
+import {moveStep,slipping,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -49,9 +49,11 @@ export interface ManualCombat {attacking:Set<string>}
 /**
  * One input per player per tick, like the prototype, so client prediction and the server stay in step. `autopilot`:
  * an offline player the room plays meanwhile (3g-rede-sem-teleporte): it walks on the room's inputs, whose seq is not
- * the person's (their ack stays where their own inputs left it).
+ * the person's (their ack stays where their own inputs left it). `stepCap` (D-052, the chaveiro's car): the most a player
+ * may walk this tick (u), undefined for free; the step is cut along its own line (kept in place if that point is not walkable).
  */
-export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat):SimSystem{
+export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
+  stepCap?:(playerId:string)=>number|undefined):SimSystem{
   return {id:'players',step(ctx){
     manual?.attacking.clear();
     for(const player of ctx.players.values()){
@@ -69,7 +71,13 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(input&&!auto)p.ack=input.seq;
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
+        const x0=p.x,y0=p.y;
         movePlayer(p,input,ctx.terrain,ctx.tick);
+        const cap=stepCap?.(p.id),moved=Math.hypot(p.x-x0,p.y-y0);
+        if(cap!==undefined&&moved>cap){
+          const q={x:x0+(p.x-x0)*cap/moved,y:y0+(p.y-y0)*cap/moved};
+          if(walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}else{p.x=x0;p.y=y0;}
+        }
         if(input.target)p.target=input.target;else delete p.target;
         // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
         if(manual&&input.attack)manual.attacking.add(p.id);

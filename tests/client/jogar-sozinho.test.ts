@@ -140,5 +140,6 @@ test('?modo=chaveiro asks the room for the chaveiro objective (D-047); anything 
   assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro'});
   assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'),{objective:'chaveiro'});
   assert.deepEqual(objectiveFromSearch('?modo=muralha'),{objective:'muralha'},'the old wall mode, on request');
+  assert.deepEqual(objectiveFromSearch('?modo=ninhos'),{mode:'ninhos'},'D-051: the nests, with the default objective');
   for(const s of ['','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
 });

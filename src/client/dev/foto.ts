@@ -2,13 +2,13 @@
  * Modo foto (D-049, card NEW-20261014-ORQ-modo-foto-navegador-compartilhado): `?foto=<cena>` opens one named scene from
  * fake data, renders it and says so: `window.__fotoPronta === true` once the frame is final (fonts in, art loaded, the
  * city's chunks baked, the fade warmed), then the clock stops so nothing moves under the screenshot. No room, no sim.
- * A scene is a sandbox (sandbox-cidade, sandbox-hud, sandbox-obra, sandbox-config) with fixed parameters and, in the city, a fixed clock
+ * A scene is a sandbox (sandbox-cidade, sandbox-hud, sandbox-obra, sandbox-config, sandbox-elenco) with fixed parameters and, in the city, a fixed clock
  * (`t`, ms; the chaveiro's animations read it), so a scene prints the same every time.
  * tools/foto.mjs asks a shared browser for these pages (ESCALA.md "como pedir uma foto"); any extra query parameter
  * (view=1, zoom=0.79, t=4000, hero=…) passes through to the sandbox.
  */
 
-export type FotoSandbox='cidade'|'hud'|'obra'|'config';
+export type FotoSandbox='cidade'|'hud'|'obra'|'config'|'elenco';
 export interface FotoCena {
   sandbox:FotoSandbox;
   /** The sandbox's own parameters (without `sandbox=`). */
@@ -48,6 +48,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},
   'config-jogo':{sandbox:'config',query:'cena=jogo',descricao:'engrenagem do jogo: Música, Efeitos e vibração'},
   'config-menu':{sandbox:'config',query:'cena=menu',descricao:'engrenagem do menu: Música, Efeitos e vibração'},
+  'elenco-roster':{sandbox:'elenco',query:'pagina=1',descricao:'folha de contato do elenco com arte (herói + S, SE, E; ids=, novos=1, pagina=N)'},
 });
 
 /**
@@ -102,6 +103,7 @@ export async function abrirFoto(){
     if(scene.sandbox==='cidade')await import('../sandboxes/sandbox-cidade.ts');
     else if(scene.sandbox==='hud')await import('../sandboxes/sandbox-hud.ts');
     else if(scene.sandbox==='config')await import('../sandboxes/sandbox-config.ts');
+    else if(scene.sandbox==='elenco')await import('../sandboxes/sandbox-elenco.ts');
     else await import('../sandboxes/sandbox-obra.ts');
     // Drawn: the city sandbox publishes __cidade on its first placement; the HUD sandbox marks body[data-hud-ready]
     // (and body[data-cidade] for the city's HUD). The HUD and the obra also wait for the art index: the HUD draws its
@@ -110,8 +112,9 @@ export async function abrirFoto(){
     // The city also waits for its ground albedo (or its failure): the chunks bake again when it lands.
     const drawn=scene.sandbox==='cidade'?()=>!!w.__cidade&&w.__cidade.ground?.()!==false
       :scene.sandbox==='hud'?()=>body.hudReady==='1'&&(!scene.query.includes('mapa=cidade')||body.cidade==='1')
-      :scene.sandbox==='config'?()=>body.configReady==='1':()=>true;
+      :scene.sandbox==='config'?()=>body.configReady==='1':scene.sandbox==='elenco'?()=>body.elencoReady==='1':()=>true;
     if(!await until(drawn,30000)){w.__fotoErro='a cena não desenhou em 30 s';return;}
+    if(w.__fotoErro)return;
     if(scene.sandbox!=='cidade')await (await import('../ui/art-boot.ts')).artReady();
     await document.fonts?.ready;
     // The city: its chunks bake and the cover fade settles over a few frames; the HUD needs one layout pass.

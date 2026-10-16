@@ -4,8 +4,11 @@
  * step calls `defensesStep`, and its single structure damage path (`hit`, D-017) reaches `damageDefense`.
  *
  * - Where: only on the build sites of the room's terrain (sites.ts: the city and the endless map; none on the island).
+ *   D-052, the city's runs (StonewardsOptions.freeBuild): anywhere on the build grid (`buildFree`, free-build.ts: the
+ *   root, the muro and the barricada, at any phase of the run); a site id there builds the root on the site's cell
+ *   (the bots' brain, the HUD of today), the rail and the Gustavão are out, and a larger tier needs its square free.
  * - When: building, upgrading and repairing only in the intermission (round phase 'prepare'), by a standing player,
- *   while the wall stands.
+ *   while the wall stands (the free build: at any phase).
  * - Reach (torres-ajustes): only a player within BUILD_REACH of what the order names may give it: the site's largest
  *   footprint (build), the rail's rectangle (laying it, a Gustavão on it), the footprint of the defense's site
  *   (upgrade, repair); 'away' otherwise. A sim rule, so the offline run and the rooms obey it alike; the build menu

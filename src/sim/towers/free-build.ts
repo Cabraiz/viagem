@@ -55,8 +55,6 @@ export const FREE_CELL=CITY_BUILD_CELL;
 export const MURO_BLOCK_R=.85*FREE_CELL;
 
 export const pieceRect=(cell:{c:number;r:number},w:number,h:number):Rect=>({x:cell.c*FREE_CELL,y:cell.r*FREE_CELL,w:w*FREE_CELL,h:h*FREE_CELL});
-const rectCentre=(rect:Rect):Point=>({x:rect.x+rect.w/2,y:rect.y+rect.h/2});
-export const orderRect=(o:FreeOrder)=>{const [w,h]=pieceCells(o.piece,o.rot??0);return pieceRect(o,w,h);};
 /** The cells a piece covers. */
 export function pieceRectOf(p:PieceState):Rect{const [w,h]=pieceCells(p.kind,p.rot??0);return pieceRect(p.cell,w,h);}
 /** The cells a tower covers: its own cell and size, or (a defense from before the free build) the square of its disc. */
@@ -65,12 +63,11 @@ export function defenseRectOf(d:{kind:keyof typeof DEFENSES;x:number;y:number;r:
   return d.cell?pieceRect(d.cell,s,s):{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
 }
 export const rectsOverlap=(a:Rect,b:Rect)=>a.x<b.x+b.w-1e-9&&b.x<a.x+a.w-1e-9&&a.y<b.y+b.h-1e-9&&b.y<a.y+a.h-1e-9;
-/** Distance from a disc's centre to the rect, true when the disc overlaps it. */
-const discHits=(rect:Rect,x:number,y:number,radius:number)=>{
+/** True when a disc (a body) overlaps the rect. */
+export const discHits=(rect:Rect,x:number,y:number,radius:number)=>{
   const dx=Math.max(rect.x-x,0,x-(rect.x+rect.w)),dy=Math.max(rect.y-y,0,y-(rect.y+rect.h));
   return dx*dx+dy*dy<radius*radius;
 };
-export {discHits};
 
 /** The city a free build stands on, or undefined (the island, the endless world: their build sites stay). */
 export const freeCity=(terrain:TerrainField|undefined):CityTerrain|undefined=>blockingCity(terrain);
@@ -218,4 +215,3 @@ export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:nu
   if(connected(city,[...muros,extra],car,moto))return false;
   return connected(city,muros,car,moto);
 }
-export const footprintCentre=rectCentre;

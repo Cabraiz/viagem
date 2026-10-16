@@ -377,7 +377,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     shots:c(optional(u8)),
     // Protocol 15 (D-047): the car's fallen parts (bits of CAR_PARTS), only when they change.
     parts:c(optional(count)),
-    // D-052 (free build): a piece's top-left cell on the build grid and its rot; they never change once built.
+    // D-052 (free build): a piece's top-left cell on the build grid and its rot; only a tower evolving to a larger
+    // square moves its cell (the square stays centred, sim towers/system.ts).
     c:c(optional(count)),r:c(optional(count)),rot:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},

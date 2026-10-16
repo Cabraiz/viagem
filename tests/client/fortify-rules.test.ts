@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {CAR_RADIUS,CAR_ROPE} from '../../src/contract/index.ts';
 import {CITY_BUILD_CELL} from '../../src/maps/build-sites.ts';
 import {NEST_BUILD_KEEP_OUT,buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,isGridPiece,ropeLine,
-  structureRect} from '../../src/client/render/fortify-rules.ts';
+  needsFortify,structureRect} from '../../src/client/render/fortify-rules.ts';
+import {freeBarricadeSpan,isFreeBarricade} from '../../src/client/render/stonewards-rules.ts';
 
 const cell=CITY_BUILD_CELL;
 
@@ -74,4 +75,18 @@ test('rope: to the bumper on the hero\'s side, sagging by the slack, taut at CAR
   assert.equal(back.bx,10-half);
   assert.ok(ropeLine({x:10+half+1,y:10},car,half).sag>0);
   assert.equal(ropeLine({x:10+half+CAR_ROPE,y:10},car,half).sag,0);
+});
+
+test('a free barricade lies along its footprint (rot 0 along x, rot 1 along y), a plaza one across its mouth', ()=>{
+  const flat=freeBarricadeSpan({x:10,y:10},cell),turned=freeBarricadeSpan({x:10,y:10,rot:1},cell);
+  assert.deepEqual([flat.ax,flat.bx,flat.ay,flat.by,flat.turn],[10-cell,10+cell,10,10,0]);
+  assert.deepEqual([turned.ay,turned.by,turned.ax,turned.bx,turned.turn],[10-cell,10+cell,10,10,1]);
+  assert.equal(isFreeBarricade({c:3}),true);assert.equal(isFreeBarricade({}),false);
+});
+
+test('the fortify layer is needed for a wall or a hero on the rope, not for a plain run', ()=>{
+  assert.equal(needsFortify({structures:[{kind:'vigia-do-predio'}]}),false);
+  assert.equal(needsFortify({structures:[{kind:'muro'}]}),true);
+  assert.equal(needsFortify({structures:[],objective:{car:{x:0,y:0}}}),false);
+  assert.equal(needsFortify({structures:[],objective:{car:{x:0,y:0,rope:'p1'}}}),true);
 });

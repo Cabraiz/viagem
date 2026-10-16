@@ -27,6 +27,8 @@ import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
+import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
+import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
@@ -232,6 +234,11 @@ export class IslandScene extends Phaser.Scene {
    * view.structures through TowerFeed on every new snapshot and drawn every frame; released with the scene.
    */
   private towers?:TowerRenderer;
+  /**
+   * D-052 slice 4: wall segments, the build ghost and its hints, the car's rope (placeholder). Built on the first
+   * snapshot that needs it (needsFortify) or when the HUD first sets a ghost; released with the scene.
+   */
+  private fortify?:FortifyRenderer;
   private readonly towerFeed=new TowerFeed();
   /** The live enemies the weapons aim at (parallel arrays, grown as needed) and the world's build plan (cell, rail). */
   private towerAim={n:0,xs:new Float32Array(64),ys:new Float32Array(64),air:new Uint8Array(64)};
@@ -433,7 +440,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -834,6 +841,26 @@ export class IslandScene extends Phaser.Scene {
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
         project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});
   }
+  /** D-052 slice 4: the walls and the rope (the layer is made on the first snapshot that needs it). */
+  private pushFortify(view:RunView){
+    if(!this.fortify&&!needsFortify(view))return;
+    this.makeFortify()?.push(view);
+  }
+  private makeFortify(){
+    const net=this.hooks.net;
+    if(!this.fortify&&this.projector&&net)this.fortify=new FortifyRenderer(this,{projector:this.projector,reduced:this.reduced,
+      cell:(this.buildPlan??=buildPlanFor(this.field)).cell,
+      playerAt:id=>id===net.id?this.position:net.players.get(id)});
+    return this.fortify;
+  }
+  /**
+   * D-052 slice 4, for the build HUD (E4) and the sandbox: the ghost under the finger (null: not building) and the
+   * faint hints near the car (fortify-rules buildHints).
+   */
+  setBuildGhost(ghost:GhostInput|null,hints:readonly CellRect[]=[]){
+    if(!ghost&&!this.fortify)return;
+    const f=this.makeFortify();f?.setGhost(ghost);f?.setHints(ghost?hints:[]);
+  }
   /**
    * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
    * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.
@@ -980,14 +1007,14 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){

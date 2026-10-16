@@ -13,7 +13,7 @@
  * The fields are read by shape (c/r/rot on the structures, car.rope) so this works before and after the contract lands.
  */
 import {CAR_RADIUS,CAR_ROPE,type FreeBuildRefusal} from '../../contract/index.ts';
-import {DEFENSES,type DefenseId} from '../../rules/towers.ts';
+import {DEFENSES,type DefenseId} from '../../rules/index.ts';
 
 /** How close to a living nest nothing is built (proposal §2; the room refuses with 'ninho'). */
 export const NEST_BUILD_KEEP_OUT=6;
@@ -97,4 +97,11 @@ export function ropeLine(hero:{x:number;y:number},car:{x:number;y:number},half:n
   const hx=Math.cos(heading),hy=Math.sin(heading),side=(hero.x-car.x)*hx+(hero.y-car.y)*hy>=0?1:-1;
   const bx=car.x+hx*half*side,by=car.y+hy*half*side,len=Math.hypot(hero.x-bx,hero.y-by);
   return {ax:hero.x,ay:hero.y,bx,by,len,sag:Math.max(0,CAR_ROPE-len)*.35};
+}
+
+/** A snapshot that needs the fortify layer: a wall segment standing or fallen, or a hero on the car's rope. */
+export function needsFortify(view:{structures:readonly {kind:string}[];objective?:unknown}){
+  if(view.structures.some(s=>s.kind==='muro'))return true;
+  const car=(view.objective as {car?:{rope?:string}}|undefined)?.car;
+  return !!car?.rope;
 }

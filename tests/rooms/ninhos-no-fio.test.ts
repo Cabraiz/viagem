@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {FrameDecoder,FrameEncoder,WireIds} from '../../src/protocol/protocol4.ts';
+import {DICT,FrameDecoder,FrameEncoder,WireIds} from '../../src/protocol/protocol4.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {ASLEEP_PER_VIEWER,INTEREST_RADIUS} from '../../src/contract/offscreen.ts';
 
@@ -85,4 +85,11 @@ test('a rounds room sends no nest and no sleeper',()=>{
   assert.equal(frame.structures.filter(s=>s.kind==='ninho').length,0);
   assert.equal(frame.enemies.filter(e=>e.asleep).length,0);
   assert.deepEqual(sim.sleeperIds,[]);
+});
+
+test('the nest strings are dictionary bytes, appended once',()=>{
+  const added=['ninho','dormindo','ativo','destruido','P','M','G'],at=DICT.indexOf('ninho');
+  assert.deepEqual(DICT.slice(at,at+added.length),added);
+  for(const x of added)assert.equal(DICT.indexOf(x),DICT.lastIndexOf(x),`${x} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
 });

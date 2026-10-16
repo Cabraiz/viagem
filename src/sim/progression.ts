@@ -8,8 +8,9 @@
  * - a round offer is due at the end of its intermission (grantRoundOffers);
  * - in combat every pending offer is held, whatever its source (an offline freeze may carry armed ones into a wave);
  * - when the intermission ends, every due offer gets its visible default once, oldest first (stale cards re-rolled).
- * The last round (the boss wave, D-023) has no intermission after it, and without a director (ctx.round.total 0)
- * there is none at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
+ * D-050 (replaced D-023's boss clock): in combat the room pauses the run for the picks (multiplayer/levelup-pause.ts)
+ * and gives the defaults through settle(); the boss wave holds like any wave. Without a director (ctx.round.total 0)
+ * there is no intermission at all: there the old rule applies, OFFER_SECONDS from the moment an offer becomes the head.
  */
 import {Rng} from '../contract/index.ts';
 import {SIM_HZ,ticks} from '../contract/index.ts';
@@ -79,10 +80,11 @@ const receivesOffers=(p:SimPlayer)=>!p.spectator&&!p.eliminated;
 const dist2=(a:Point,b:Point)=>(a.x-b.x)**2+(a.y-b.y)**2;
 /** A round director owns ctx.round (VGM-033): offers follow the intermission clock (D-021). */
 const directed=(ctx:SimContext)=>ctx.round.total>0;
-/** D-023: the boss wave (last round) has no intermission after it, so its offers keep the old head clock. */
-const finalWave=(ctx:SimContext)=>directed(ctx)&&ctx.round.phase==='wave'&&ctx.round.index>=ctx.round.total;
-/** OFFER_SECONDS head clock (VGM-034): no director, or the boss wave. */
-const clocked=(ctx:SimContext)=>!directed(ctx)||finalWave(ctx);
+/**
+ * OFFER_SECONDS head clock (VGM-034): only without a director. Under one, every wave holds its offers, the boss wave too
+ * (D-050 replaced D-023's boss clock): the room pauses the run for the team to pick (multiplayer/levelup-pause.ts).
+ */
+const clocked=(ctx:SimContext)=>!directed(ctx);
 const baseOf=(id:string)=>id.split('~')[0];
 /** End of the current intermission when it still leaves ARM_SECONDS to choose; undefined in combat or too late. */
 function intermissionDeadline(ctx:SimContext){
@@ -238,6 +240,20 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return choice;
   }
 
+  /**
+   * D-050: the pause's end (or a player it does not wait for: offline, a bot past its reaction): every offer of
+   * `playerId` gets its default now, oldest first, each re-rolled if the previous pick made its cards stale (the same
+   * as an intermission's end). Returns how many were settled.
+   */
+  function settle(ctx:SimContext,playerId:string){
+    const player=ctx.players.get(playerId),queue=ctx.offers.get(playerId);
+    if(!player||!queue)return 0;
+    if(!receivesOffers(player)){ctx.offers.delete(playerId);return 0;}
+    let n=0;
+    while(queue[0]){reroll(ctx,player,queue[0]);resolve(ctx,player,queue,queue[0].defaultIndex);n++;}
+    return n;
+  }
+
   /** Player command. Rejects forged, repeated, out-of-order and stale picks without side effects. */
   function choose(ctx:SimContext,playerId:string,offerId:string,index:number):ChooseResult{
     const player=ctx.players.get(playerId);
@@ -249,6 +265,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const choice=head.choices[index];
     if(!isEligible(catalog,player.build,choice))return {ok:false,reason:'ineligible'};
     resolve(ctx,player,queue,index);
+    // The next card is fresh at once (D-050: in a pause the sim does not step, and step() is where stale heads re-roll).
+    if(queue[0])reroll(ctx,player,queue[0]);
     return {ok:true,itemId:choice.itemId,level:choice.level};
   }
 
@@ -266,14 +284,12 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const armAt=directed(ctx)&&r.phase==='prepare'&&r.phaseEndsTick>ctx.tick?r.phaseEndsTick:undefined;
     const late=new Set(state.lateHeld??[]);
     if(directed(ctx)&&r.phase==='wave'&&state.lateHeld)delete state.lateHeld;
-    const holding=directed(ctx)&&r.phase==='wave'&&!finalWave(ctx);
+    const holding=directed(ctx)&&r.phase==='wave';
     for(const [playerId,queue] of ctx.offers){
       const player=ctx.players.get(playerId);
       if(!player||!receivesOffers(player)||!queue[0]){ctx.offers.delete(playerId);continue;}
       reroll(ctx,player,queue[0]);
       if(armAt!==undefined)for(const offer of queue)if(isHeldOffer(offer)&&!late.has(baseOf(offer.id)))offer.deadlineTick=armAt;
-      // Boss wave: nothing comes after it, so whatever was held gets the head clock (chained like VGM-034).
-      if(finalWave(ctx))queue.forEach((offer,i)=>{if(isHeldOffer(offer))offer.deadlineTick=(i?queue[i-1].deadlineTick:ctx.tick)+ticks(OFFER_SECONDS);});
       if(!player.online){for(const offer of queue)if(!isHeldOffer(offer))offer.deadlineTick++;continue;}
       // The intermission ends: every offer due now gets its default once, oldest first, each re-rolled if the
       // previous pick made its cards stale (two offers holding the same next level).
@@ -295,6 +311,6 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     ctx.emit({type:'offer',player:player.id,offer:head.id});
   }
 
-  return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose};
+  return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose,settle};
 }
 export type Progression=ReturnType<typeof createProgression>;

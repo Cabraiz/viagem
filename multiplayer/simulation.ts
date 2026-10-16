@@ -519,6 +519,10 @@ export class Simulation {
   casts:{id:string;seq:number;ok:boolean;readyTick:number}[]=[];
   /** Clock of the step being taken (ms): the Room's wall clock, or tick × STEP_MS (tests, replays). */
   private clock=0;
+  /** D-050: how many level/round offers each player has waiting (the room's level-up pause reads it). */
+  pendingOffers():Map<string,number>{const out=new Map<string,number>();for(const [id,queue] of this.world.offers)if(queue.length)out.set(id,queue.length);return out;}
+  /** D-050: every offer of `id` gets its default now (the pause ended, or the room does not wait for this player). */
+  settleOffers(id:string){return this.systems.progression.settle(this.world,id);}
   /** Upgrade pick from the offer panel; forged, repeated and out-of-order picks are refused by progression. */
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};

@@ -31,7 +31,7 @@ import type {SimContext,SimSystem} from './context.ts';
 import {modeForModifier,type AvenuePlanner,type AvenueState,type GroupRequest,type Mouth} from './city/avenues.ts';
 import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from './city/grid.ts';
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,ROUND_NAMES,drawRotation,drawTheme,isRotation,planRound,roundRoster,
-  type RoundPlan,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
+  type RoundPlan,type RoundRoster,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
 import {BAND_CADENCE,BAND_DAMAGE,SUMMON,enemyDef,hashUnit} from './enemies/catalog.ts';
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
@@ -129,6 +129,12 @@ export interface DirectorOptions {
    * regular count × EXTRA_WAVE_COUNT per extra wave. Absent: the round table as it is.
    */
   endlessWaves?:boolean;
+  /**
+   * D-051 (mode 'ninhos', sim/ninhos/ninhos.ts): false sends no round at all; the nests send the groups. The director
+   * still draws the rotation and samples the players, and holds ctx.round in one open 'wave' (towers fire, the boss
+   * is the chaveiro's). Default true.
+   */
+  waves?:boolean;
 }
 /** D-047: count multiplier per wave after the last round (compounded: wave 11 × 1.1, wave 12 × 1.21, …). */
 export const EXTRA_WAVE_COUNT=1.1;
@@ -208,6 +214,8 @@ export interface Director extends SimSystem {
    * after SUMMON.readyIn. Undefined outside a wave or at the enemy cap.
    */
   summon(ctx:SimContext,kind:string,at:Point):EnemyState|undefined;
+  /** D-051: what round `index` of the run's rotation draws from (the nests' groups); undefined without a rotation. */
+  roster(index:number):RoundRoster|undefined;
   /** Kinds an invocador calls this round: the rotation's corredores and enxames of the round; undefined without a rotation. */
   minionKinds():readonly string[]|undefined;
   /** The chefe's summons when the rotation is art only (short): its shooters, rats and brutamontes; undefined otherwise. */
@@ -378,7 +386,8 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   // A stored rotation that names entries the roster no longer has (an old checkpoint) is drawn again on the next step.
   if(state.rotation&&!isRotation(state.rotation))delete state.rotation;
   const siegeShare=Math.max(0,Math.min(1,options.siegeShare??0));
-  let rng:Rng|undefined=restore&&restore.stage!=='idle'?new Rng(restore.rng):undefined;
+  // Without waves (D-051) the stage stays 'idle' for good, but the stream was forked on the first step: keep it.
+  let rng:Rng|undefined=restore&&(restore.stage!=='idle'||options.waves===false)?new Rng(restore.rng):undefined;
   let restored=!!restore;
   const random=()=>rng!;
   const save=()=>{state.rng=rng!.state;};
@@ -1237,6 +1246,7 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       state.tracked.push(enemy.id);state.spawned++;
       return enemy;
     },
+    roster:index=>state.rotation?roundRoster(state.rotation,index):undefined,
     bossMinionKinds(){
       const r=state.rotation;if(!r||!roundRoster(r,ROUND_COUNT).short)return undefined;
       const kinds=[...r.roles.atirador??[],...r.roles.enxame??[],...r.roles.brutamontes??[]];
@@ -1261,6 +1271,10 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
         state.rotation=drawRotation(new Rng((state.rng^ROTATION_SALT^Math.floor(hashUnit(world)*2**32))>>>0));
       }
       sample(ctx);
+      if(options.waves===false){
+        Object.assign(ctx.round,{index:1,total:1,phase:'wave',phaseEndsTick:ctx.tick,remaining:ctx.enemies.size});
+        state.round={...ctx.round};return;
+      }
       if(state.stage==='idle')startPrepare(ctx,1,opening);
       else if(state.stage==='wave'||ctx.tick>=ctx.round.phaseEndsTick){
         if(state.stage==='prepare')startWave(ctx);

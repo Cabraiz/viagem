@@ -72,6 +72,19 @@ test('D-047: objective:false (?modo=muralha) still plays the wall mode, lobby an
   }
 });
 
+test('D-051: mode ninhos (?modo=ninhos) plays the nests with the chaveiro: the frames carry the nests; ignored with the wall mode',async()=>{
+  const {room,all}=await solo({mode:'ninhos'});
+  assert.equal(room.run.snapshot().phase,'combat');
+  assert.equal(room.sim.mode,'ninhos');assert.equal(room.sim.objective,'chaveiro');
+  assert.equal(room.sim.run.nests?.state.nests.length,8);
+  assert.ok(all.at(-1)!.kinds.includes('ninho'),'the phone holds the nests');
+  const wall=await solo({mode:'ninhos',objective:false});
+  assert.equal(wall.room.sim.mode,undefined,'no nests without the chaveiro');
+  assert.ok(!wall.all.some(f=>f.kinds.includes('ninho')));
+  const plain=await solo({});
+  assert.equal(plain.room.sim.mode,undefined,'the default stays the rounds');
+});
+
 /** A GameRoom with an in-memory storage and the bundled city (node cannot import the JSON as text). */
 const storage=()=>{
   const store=new Map<string,unknown>();

@@ -25,6 +25,10 @@ import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {CAR_BUILD_GAP,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
 import {FREE_CELL,MURO_BLOCK_R,gridSize,onGround,pieceDrag,type FreeBuildHooks} from '../../src/sim/towers/free-build.ts';
+import {SimWorld,stateHash} from '../../src/sim/core.ts';
+import {SpatialHash} from '../../src/sim/spatial.ts';
+import {RUN_ORDER} from '../../src/sim/systems/players.ts';
+import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),
@@ -303,4 +307,52 @@ test('a rematch reset drops the muros\' blockers; a system made from a checkpoin
   assert.deepEqual(g.terrain.blockers().map(b=>b.id),[saved.defenses!.pieces![0].id]);
   assert.equal(restored.state.defenses!.pieces!.length,1);
   assert.equal(JSON.stringify(restored.state),JSON.stringify(saved),'JSON-safe');
+});
+
+// ---------- An assembled city run (the chaveiro): the critters against the muros ----------
+test('assembled run: a ring of muros around the car (an opening kept by the tranca rule); no critter ever stands inside a muro; a checkpoint plays on identically', ()=>{
+  const SEED=21,players=new Map<string,SimPlayer>();
+  const make=(terrain:CityTerrain,ps:Map<string,SimPlayer>,checkpoint?:ReturnType<RunSystems['state']>)=>{
+    const world=new SimWorld({terrain,seed:SEED,players:ps,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    return {world,sys:createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',...(checkpoint?{checkpoint}:{})})};
+  };
+  const a=make(city.fork(),players);
+  const hero=(id:string,dx:number)=>{const p=player(id,CAR.x+dx,CAR.y,{hp:1e6,stats:{...BASE_STATS,maxHp:1e6},grana:1e4});a.world.players.set(id,p);return p;};
+  const ana=hero('ana',1.5);hero('bia',-1.5);
+  // The ring, 6 cells out; each muro ordered from beside it.
+  const answers:string[]=[];
+  for(const [i,o] of ring(6).entries()){
+    const at=centre(o.c,o.r);ana.x=at.x;ana.y=at.y;
+    const r=a.sys.stonewards.build(a.world,'ana',{piece:'muro',c:o.c,r:o.r},`r${i}`);
+    answers.push(r.ok?'ok':r.reason);
+  }
+  ana.x=CAR.x+1.5;ana.y=CAR.y;
+  const muros=a.sys.stonewards.state.defenses!.pieces!;
+  assert.ok(muros.length>=10,answers.join(' '));
+  assert.ok(answers.every(x=>x==='ok'||x==='tranca'||x==='ocupado'||x==='limite'),answers.join(' '));
+  // Into the first waves: no enemy centre inside a standing muro's disc (less the touch slack of the blocker).
+  let inside=0,seen=0,closest=Infinity;
+  for(let i=0;i<ticks(90);i++){
+    a.world.step();
+    for(const e of a.world.enemies.values()){
+      seen++;
+      for(const m of a.sys.stonewards.state.defenses?.pieces??[]){
+        const d=Math.hypot(e.x-m.x,e.y-m.y);closest=Math.min(closest,d);
+        if(m.kind==='muro'&&d<MURO_BLOCK_R-.05)inside++;
+      }
+    }
+  }
+  const hurt=muros.filter(m=>m.hp<m.maxHp).length,fallen=answers.filter(x=>x==='ok').length-a.sys.stonewards.state.defenses!.pieces!.length;
+  console.log(`[fortificacao] ${answers.filter(x=>x==='ok').length} muros (${answers.join(' ')}); 90 s: closest critter ${closest.toFixed(2)} u, ${hurt} hurt, ${fallen} fallen, car hits ${a.sys.chaveiro!.state.car.hits}`);
+  assert.ok(seen>0,'enemies walked');
+  assert.ok(closest<MURO_BLOCK_R+1,'the critters came up against the muros');
+  assert.equal(inside,0,'never inside a muro');
+  // Checkpoint with the muros: a fresh run on a fresh fork raises their blockers and plays on identically.
+  const world=a.world.checkpoint(),systems=structuredClone(a.sys.state());
+  const copies=new Map([...players].map(([id,p])=>[id,structuredClone(p)]));
+  const fork=city.fork(),b=make(fork,copies,systems);b.world.load(world);
+  assert.deepEqual(fork.blockers().map(x=>x.id).filter(id=>id.startsWith('peca')).sort(),
+    (a.sys.stonewards.state.defenses?.pieces??[]).filter(p=>p.kind==='muro').map(p=>p.id).sort());
+  for(let i=0;i<ticks(20);i++){a.world.step();b.world.step();}
+  assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}));
 });

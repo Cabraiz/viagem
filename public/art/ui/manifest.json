@@ -120,6 +120,56 @@
         "replaces": []
       }
     },
+    "arruda": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "arruda.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "arruda.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2d44b7aa7d97c14e782ab2ea09f2828d611f0a91091843b11ce72f5b71d0fd0a"
+            }
+          ],
+          "sha256": "2d44b7aa7d97c14e782ab2ea09f2828d611f0a91091843b11ce72f5b71d0fd0a"
+        }
+      },
+      "sha256": "a8c32d8ef63a8ca91d7537763699465b4392be5bc1235ae3a97601c91364e190"
+    },
+    "atacar": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "atacar.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "atacar.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d06f2cb508d8d5d1bbff438d8c6e59dc104fe70afb3faa6ff48ec1cc8cdc0c62"
+            }
+          ],
+          "sha256": "d06f2cb508d8d5d1bbff438d8c6e59dc104fe70afb3faa6ff48ec1cc8cdc0c62"
+        }
+      },
+      "sha256": "5c76b1bf25d3abc3024c5c6415f66aa9cb179be43b631d73a4df70064047a2d1"
+    },
     "audio": {
       "kind": "icon",
       "files": {
@@ -270,6 +320,31 @@
         ]
       }
     },
+    "banco": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "banco.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "banco.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bf54de360f10eef48949575026e71e4d91e1979591820c9fc0fdcd3ddbdce966"
+            }
+          ],
+          "sha256": "bf54de360f10eef48949575026e71e4d91e1979591820c9fc0fdcd3ddbdce966"
+        }
+      },
+      "sha256": "6edfe55a8d790c65ce6685b36ef28edc7afefb2096ae55dd743f9bc792a41068"
+    },
     "base": {
       "kind": "icon",
       "files": {
@@ -391,6 +466,56 @@
         "emote": true
       }
     },
+    "bola-de-cristal": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "bola-de-cristal.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "bola-de-cristal.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "e1af782261cf85d20a41d9dd4b2702ec42a732ba7fd70b5d90fbae01c192a5ea"
+            }
+          ],
+          "sha256": "e1af782261cf85d20a41d9dd4b2702ec42a732ba7fd70b5d90fbae01c192a5ea"
+        }
+      },
+      "sha256": "3ca8673cbfa172c6c5d99949e5480981dba64dc5b8d8eaa70394f36b7c434da8"
+    },
+    "bola-murcha": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "bola-murcha.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "bola-murcha.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3e805ee1c417619f862a55cd37f6b39f2bcf77b8bd9e99b184f2884ca7a11803"
+            }
+          ],
+          "sha256": "3e805ee1c417619f862a55cd37f6b39f2bcf77b8bd9e99b184f2884ca7a11803"
+        }
+      },
+      "sha256": "974b70e9e086d4f2f57621d7673d3b24b59af8bfbd8b97d43ef5c5063bad24ee"
+    },
     "boleto": {
       "kind": "icon",
       "files": {
@@ -510,6 +635,56 @@
           "a-borboleta"
         ]
       }
+    },
+    "brigadeiro": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "brigadeiro.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "brigadeiro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ba7bac370a8dc744a11587612ef32e6e7bcbc1916afaf7a081204bc0a1c5059e"
+            }
+          ],
+          "sha256": "ba7bac370a8dc744a11587612ef32e6e7bcbc1916afaf7a081204bc0a1c5059e"
+        }
+      },
+      "sha256": "9a8a259bc6ab88013f168a5a06f9eb8985ff4f0fe0e997c6f99f968dee7cf8c6"
+    },
+    "buscape": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "buscape.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "buscape.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9e00c0592ccf17a600a1ca91d25f05f7fad364057ba032a9ad08643adfd7ad0d"
+            }
+          ],
+          "sha256": "9e00c0592ccf17a600a1ca91d25f05f7fad364057ba032a9ad08643adfd7ad0d"
+        }
+      },
+      "sha256": "fb985c0077cafa1cef95711de216e4bbcd93215e16a77456f35782ebece44d96"
     },
     "bussola": {
       "kind": "icon",
@@ -661,6 +836,31 @@
         ]
       }
     },
+    "caixa": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "caixa.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "caixa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9d89fbb28c480546fcd4abfbe23a3f5b68670947460be5b4bbd5ba5110fa1691"
+            }
+          ],
+          "sha256": "9d89fbb28c480546fcd4abfbe23a3f5b68670947460be5b4bbd5ba5110fa1691"
+        }
+      },
+      "sha256": "5f01910947a33adc88cdda4d7938d18e7774fb45498b6c6f7a166c3377593c8b"
+    },
     "camera": {
       "kind": "icon",
       "files": {
@@ -690,6 +890,81 @@
           "a-camera"
         ]
       }
+    },
+    "canto-da-iara": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "canto-da-iara.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "canto-da-iara.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "8c649867891cc1f488086c7ad1cfa40b6f518067fd98e011df64bb37e26ec712"
+            }
+          ],
+          "sha256": "8c649867891cc1f488086c7ad1cfa40b6f518067fd98e011df64bb37e26ec712"
+        }
+      },
+      "sha256": "663ef64a7ae0ba1e0a29dfb458e5a11173509fdb5db0c6b2ac6bc1b29e6aaf2c"
+    },
+    "carregador-errado": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "carregador-errado.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carregador-errado.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0192df70603b0aedd9c22be8d0ef732091199bf5748298babbd2e6ff657a2b2f"
+            }
+          ],
+          "sha256": "0192df70603b0aedd9c22be8d0ef732091199bf5748298babbd2e6ff657a2b2f"
+        }
+      },
+      "sha256": "9eac31443da03fcf4f71a1f3d4949e48e8918de0b447fe62eeaf1658a61614dd"
+    },
+    "carro-de-som": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "carro-de-som.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carro-de-som.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d7421af3e084d34a8cadccaed651d173d798d1d033d424871e609d639223a79f"
+            }
+          ],
+          "sha256": "d7421af3e084d34a8cadccaed651d173d798d1d033d424871e609d639223a79f"
+        }
+      },
+      "sha256": "3d72bcc52389e47fd01575743b6d324f4050167baaaa374d4afa3979c53e1f32"
     },
     "cartao": {
       "kind": "icon",
@@ -721,6 +996,31 @@
         ]
       }
     },
+    "carteira": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "carteira.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carteira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b1f18c829c616490039039205afc648245cbcf1e4034af9f37a80cca9835eb8c"
+            }
+          ],
+          "sha256": "b1f18c829c616490039039205afc648245cbcf1e4034af9f37a80cca9835eb8c"
+        }
+      },
+      "sha256": "00fb0b3f79ec009e2a620654539b101fe856b58fdee66407c72bc92b6cf21057"
+    },
     "chamar": {
       "kind": "icon",
       "files": {
@@ -751,6 +1051,31 @@
         ],
         "emote": true
       }
+    },
+    "chaveiro": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "chaveiro.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "chaveiro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "96724b7f1481ff1b5136cb626dfd04a4f740acced581f49b798484f48a3815c0"
+            }
+          ],
+          "sha256": "96724b7f1481ff1b5136cb626dfd04a4f740acced581f49b798484f48a3815c0"
+        }
+      },
+      "sha256": "4a4adde4d6c48916b9d17ac1708cdc39503077cab3d2060cd70d83539cadbeed"
     },
     "chefe": {
       "kind": "icon",
@@ -843,6 +1168,56 @@
         ]
       }
     },
+    "cida": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "cida.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cida.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d55398833f4eb3bb6f1e0c68c98686ef276d9c7d284e8ed5a25686e4b952b524"
+            }
+          ],
+          "sha256": "d55398833f4eb3bb6f1e0c68c98686ef276d9c7d284e8ed5a25686e4b952b524"
+        }
+      },
+      "sha256": "fa653f43580f4c06e7f92dff3a110c49dffcad23fb15a9c08f80c5832831a8d8"
+    },
+    "cocada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "cocada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cocada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d3ee0271d0ed2111863cd55d4e52df6754faad1597a5fedf913d80caac948c6d"
+            }
+          ],
+          "sha256": "d3ee0271d0ed2111863cd55d4e52df6754faad1597a5fedf913d80caac948c6d"
+        }
+      },
+      "sha256": "90430d8307f6044bc96f2e0a8569065a44f0108e1b7ecd8cf59fbace59ba94c4"
+    },
     "coco": {
       "kind": "icon",
       "files": {
@@ -872,6 +1247,31 @@
           "i-coco"
         ]
       }
+    },
+    "colher-de-pau": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "colher-de-pau.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "colher-de-pau.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b90e312f9652b08d3f3ed853c003a44da2a9411507b2d2c124a610060f5c1ae3"
+            }
+          ],
+          "sha256": "b90e312f9652b08d3f3ed853c003a44da2a9411507b2d2c124a610060f5c1ae3"
+        }
+      },
+      "sha256": "c732b78f7ec47da149f8c66aece372af6136a1a003be44c7be96cd6a02c221ca"
     },
     "config": {
       "kind": "icon",
@@ -950,13 +1350,13 @@
               "rows": 1,
               "firstFrame": 0,
               "frameCount": 1,
-              "sha256": "ad4c3ffbbe78c0067ab1ba605e19cf84c563e89ccf660a0d322afbe80700dde9"
+              "sha256": "2dbd17574d94d83eb74bfd1a8565da75dbe82c24defbab3eb573f8ef2b680371"
             }
           ],
-          "sha256": "ad4c3ffbbe78c0067ab1ba605e19cf84c563e89ccf660a0d322afbe80700dde9"
+          "sha256": "2dbd17574d94d83eb74bfd1a8565da75dbe82c24defbab3eb573f8ef2b680371"
         }
       },
-      "sha256": "9351804b82081b24ea3b11417f3d62a4425b9a60831af40c9a67e920bfa73977",
+      "sha256": "f6105bf7aef063dbd78ccfab70e546e4397ef6e267d755dd9f6df0493224b957",
       "meta": {
         "replaces": [
           "i-corneta"
@@ -1053,6 +1453,31 @@
         ]
       }
     },
+    "cristal-quantico": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "cristal-quantico.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "cristal-quantico.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "711652abe3666bc5bb5df7855a0ad9bb7abd85d97ebfc7f67d68bbd20f3dddcc"
+            }
+          ],
+          "sha256": "711652abe3666bc5bb5df7855a0ad9bb7abd85d97ebfc7f67d68bbd20f3dddcc"
+        }
+      },
+      "sha256": "935efe67f31f5c04f9ae20b9bac943fb30aec413b30970fcfb441ce878385363"
+    },
     "dado": {
       "kind": "icon",
       "files": {
@@ -1113,6 +1538,181 @@
         ]
       }
     },
+    "defumador": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "defumador.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "defumador.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "58129f1639f2ef03717aa630aa7efb7ee99e59e94e679b11f74069782dfb8f1c"
+            }
+          ],
+          "sha256": "58129f1639f2ef03717aa630aa7efb7ee99e59e94e679b11f74069782dfb8f1c"
+        }
+      },
+      "sha256": "757c0d08e84997026492ec51e23ff892ffd85df005848dfd02a98d3783d64011"
+    },
+    "empurrar": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "empurrar.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "empurrar.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "84c49b223f344c06175bf725d8ab1af7c605bb6faa5e0d806774127b564a6a10"
+            }
+          ],
+          "sha256": "84c49b223f344c06175bf725d8ab1af7c605bb6faa5e0d806774127b564a6a10"
+        }
+      },
+      "sha256": "3706ebeae033d1bc5ebc1645282c75ff3309d19a75498245168f62e362bb0a50"
+    },
+    "escopeta": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "escopeta.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "escopeta.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0f1126f76de132357c1acedc1b2adfacc5618bc37d3cb7ee161b0faeadf0ef59"
+            }
+          ],
+          "sha256": "0f1126f76de132357c1acedc1b2adfacc5618bc37d3cb7ee161b0faeadf0ef59"
+        }
+      },
+      "sha256": "4f0717bff732cd220f529498511883fef802457277f9441d23bd14ac20491f6e"
+    },
+    "espeto": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "espeto.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "espeto.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "90b20dda456c95aacc22f2e3ccbb611b172bedf7abb961ed6d0e1f0bab02d882"
+            }
+          ],
+          "sha256": "90b20dda456c95aacc22f2e3ccbb611b172bedf7abb961ed6d0e1f0bab02d882"
+        }
+      },
+      "sha256": "3cfbf3f120e0ca298a39542ae02260d0ba812a3e04caed9785a9eb7336b6760a"
+    },
+    "estilingue": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "estilingue.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "estilingue.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ce216af1faec9a89d682a652cd8abfbae1e6181026981363691044fea7f64e64"
+            }
+          ],
+          "sha256": "ce216af1faec9a89d682a652cd8abfbae1e6181026981363691044fea7f64e64"
+        }
+      },
+      "sha256": "2b4890650e0f233403d1b1fdd6466a37b0a8a8170eab1014e153ee152d0196f6"
+    },
+    "faca": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "faca.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "faca.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5cf25152ae4ebe1dca9e9da71a20fc86dd136f350fd5e5e6010cdf91910991d7"
+            }
+          ],
+          "sha256": "5cf25152ae4ebe1dca9e9da71a20fc86dd136f350fd5e5e6010cdf91910991d7"
+        }
+      },
+      "sha256": "2f1a373e2ec8805681e9dd5282416da552d8f7b0204878f321046424ead0142f"
+    },
+    "facao": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "facao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "facao.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "43fafc045ae4da8f24f0c280c5ca6bcff923c974f3cb8eb62b6742b52c7d20a5"
+            }
+          ],
+          "sha256": "43fafc045ae4da8f24f0c280c5ca6bcff923c974f3cb8eb62b6742b52c7d20a5"
+        }
+      },
+      "sha256": "0ff28b70fe3ac02f556dc83a2484cdde4fb08bfa71cb1ae80cc9c93b16117c9c"
+    },
     "fechar": {
       "kind": "icon",
       "files": {
@@ -1143,6 +1743,31 @@
         ]
       }
     },
+    "figa": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "figa.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "figa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "e90df71ee2c9bdc12550a009c078a92a9b03929990c6cb3b3440522062d27948"
+            }
+          ],
+          "sha256": "e90df71ee2c9bdc12550a009c078a92a9b03929990c6cb3b3440522062d27948"
+        }
+      },
+      "sha256": "18194f123986060e13594942e29818ea068442c5a5f17eab95c5b5aa81e488a7"
+    },
     "fita": {
       "kind": "icon",
       "files": {
@@ -1172,6 +1797,31 @@
           "i-fita"
         ]
       }
+    },
+    "fogo-boitata": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "fogo-boitata.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "fogo-boitata.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f02e4127bcbe69ef8967da7d48188d092c25c47ad5c3a507230aefdbac7ba60f"
+            }
+          ],
+          "sha256": "f02e4127bcbe69ef8967da7d48188d092c25c47ad5c3a507230aefdbac7ba60f"
+        }
+      },
+      "sha256": "30ea8553e428603fbaff2c1a320caf481bcd611abe3fe5ea49f1f51552eabbc3"
     },
     "foto": {
       "kind": "icon",
@@ -1262,6 +1912,31 @@
           "i-girar"
         ]
       }
+    },
+    "gorro-do-saci": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "gorro-do-saci.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "gorro-do-saci.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "93f8f8192a7de782cfec83c7d8e634f2323494d280af639f3b9fc2cb106c2d19"
+            }
+          ],
+          "sha256": "93f8f8192a7de782cfec83c7d8e634f2323494d280af639f3b9fc2cb106c2d19"
+        }
+      },
+      "sha256": "4ddaedc1af5968697331fc5044513df51ddb6c51881fe2faa7842108db4f98f2"
     },
     "gota": {
       "kind": "icon",
@@ -1413,6 +2088,292 @@
         ]
       }
     },
+    "inimigo-agiota": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-agiota.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-agiota.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ad0f43309a732ebaa83c4325d66c29bd81ce0d5595f6bd832cbc1869a9c5f7ec"
+            }
+          ],
+          "sha256": "ad0f43309a732ebaa83c4325d66c29bd81ce0d5595f6bd832cbc1869a9c5f7ec"
+        }
+      },
+      "sha256": "2f7ede383ec375c06b2ba8a03656f0eb3e57c5a36a88a9a1ae29217c5ebc6217",
+      "meta": {
+        "replaces": [],
+        "enemy": "agiota"
+      }
+    },
+    "inimigo-anao-molotov": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-anao-molotov.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-anao-molotov.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "363d7c7c80ee59ef3efc0caaf2225ac20448e7e1c9357ff07e259af75ffe741e"
+            }
+          ],
+          "sha256": "363d7c7c80ee59ef3efc0caaf2225ac20448e7e1c9357ff07e259af75ffe741e"
+        }
+      },
+      "sha256": "cdf320538d44f6968b2835c4b624eaf96b0cfa0e05f29995930eb38ad5c85abd",
+      "meta": {
+        "replaces": [],
+        "enemy": "anao-molotov"
+      }
+    },
+    "inimigo-bebado": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-bebado.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-bebado.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c35adc7746349f0d4e0501c9e2b938aa52d7184fef22be42535653e7b090304f"
+            }
+          ],
+          "sha256": "c35adc7746349f0d4e0501c9e2b938aa52d7184fef22be42535653e7b090304f"
+        }
+      },
+      "sha256": "69be39441df07f3f0603a32808b196093872a288accb5ff9a09a51f05383873c",
+      "meta": {
+        "replaces": [],
+        "enemy": "bebado"
+      }
+    },
+    "inimigo-chefe": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-chefe.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-chefe.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1337aeb25abfd69585aa95df3138f70f0df6419301c9fba5c7e03fdad62ff051"
+            }
+          ],
+          "sha256": "1337aeb25abfd69585aa95df3138f70f0df6419301c9fba5c7e03fdad62ff051"
+        }
+      },
+      "sha256": "4967d819dc213040d92fbc7807e4b5ddde6aab8ed267f200783ed89a29507644",
+      "meta": {
+        "replaces": [],
+        "enemy": "chefe"
+      }
+    },
+    "inimigo-coach": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-coach.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-coach.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bb88d21660d1f9130b80d074d60b27c7ffed41ea68835f5e8220c6d07d48acf4"
+            }
+          ],
+          "sha256": "bb88d21660d1f9130b80d074d60b27c7ffed41ea68835f5e8220c6d07d48acf4"
+        }
+      },
+      "sha256": "0cef36812c9c7bed2ab44719afb3563f1974dbbe0910cf3702a4dceadbe391cb",
+      "meta": {
+        "replaces": [],
+        "enemy": "coach"
+      }
+    },
+    "inimigo-influencer": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-influencer.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-influencer.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6c851b6a79457f393ff5c39e38d7681482aa2bc37cb2696eee06402fc9f78966"
+            }
+          ],
+          "sha256": "6c851b6a79457f393ff5c39e38d7681482aa2bc37cb2696eee06402fc9f78966"
+        }
+      },
+      "sha256": "ee25cce76b4b6012b00c75292c40c16bfb0652463d8fbc29894e0e9458bc3cf5",
+      "meta": {
+        "replaces": [],
+        "enemy": "influencer"
+      }
+    },
+    "inimigo-motoboy": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-motoboy.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-motoboy.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b29f48d9b11a31bec86bc6a3cee70ed258bd2079b100890fe6084cdfa8ad804b"
+            }
+          ],
+          "sha256": "b29f48d9b11a31bec86bc6a3cee70ed258bd2079b100890fe6084cdfa8ad804b"
+        }
+      },
+      "sha256": "020c1742579e3de5b0ddff7871226da81c5935569e9d5d658f5de40f0b522722",
+      "meta": {
+        "replaces": [],
+        "enemy": "motoboy"
+      }
+    },
+    "inimigo-pombos": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-pombos.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-pombos.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c3085a814031fea9b5d0b86a1299eafe540d863dd33f25d2b70cdc0c33cf1194"
+            }
+          ],
+          "sha256": "c3085a814031fea9b5d0b86a1299eafe540d863dd33f25d2b70cdc0c33cf1194"
+        }
+      },
+      "sha256": "4c42b26afa115b942b1b5365d4824ce186c62712bdc8912873dd03e26de121f2",
+      "meta": {
+        "replaces": [],
+        "enemy": "pombos"
+      }
+    },
+    "inimigo-tio-pave": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-tio-pave.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-tio-pave.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3a35bc991f870cc9278233e3164f165848073ec18053566a9cbc4d3e3a839475"
+            }
+          ],
+          "sha256": "3a35bc991f870cc9278233e3164f165848073ec18053566a9cbc4d3e3a839475"
+        }
+      },
+      "sha256": "441d2d0229e117176d7cf5a67663a260c1684d9628d4d1e1a8e84aea937d5d23",
+      "meta": {
+        "replaces": [],
+        "enemy": "tio-pave"
+      }
+    },
+    "kit-torre": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "kit-torre.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "kit-torre.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d8e65007aca057023a943350c98ab2674d7114a9a6dfbc3222570189623b20e7"
+            }
+          ],
+          "sha256": "d8e65007aca057023a943350c98ab2674d7114a9a6dfbc3222570189623b20e7"
+        }
+      },
+      "sha256": "756b0835828d7a7bef3c4793c9372183d2d1c2cec1d278528f913498547df04a"
+    },
     "letra-n": {
       "kind": "icon",
       "files": {
@@ -1442,6 +2403,56 @@
           "i-letra-n"
         ]
       }
+    },
+    "macarico": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "macarico.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "macarico.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bf2fb3ef22bcd306e76191b42ca5af751fec0d078be1076f1538f2b6c539d7f8"
+            }
+          ],
+          "sha256": "bf2fb3ef22bcd306e76191b42ca5af751fec0d078be1076f1538f2b6c539d7f8"
+        }
+      },
+      "sha256": "75a1ba2c22fb01331bd080d88f0576837160d090770eb9e843f9ad26d4420238"
+    },
+    "mangueira": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "mangueira.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "mangueira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6049fa61bd7f4a007c3f9c4cb79f4241c5b387ef0ccf985abc72c3fc9e6a0333"
+            }
+          ],
+          "sha256": "6049fa61bd7f4a007c3f9c4cb79f4241c5b387ef0ccf985abc72c3fc9e6a0333"
+        }
+      },
+      "sha256": "6ba6a09ed7499a577919f99912338079f5a3f586181e81b180ff5576648ac436"
     },
     "marca-aliado": {
       "kind": "icon",
@@ -1703,6 +2714,31 @@
         ]
       }
     },
+    "moldura-lendaria": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "moldura-lendaria.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "moldura-lendaria.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ecbcef3816fd42e7d45501667c692e35ec19ff50620165e775ee892e02cacf9a"
+            }
+          ],
+          "sha256": "ecbcef3816fd42e7d45501667c692e35ec19ff50620165e775ee892e02cacf9a"
+        }
+      },
+      "sha256": "010d94ea030526c2df6acdd6f49522a7d5947905073c69fc2b8bfa431aa2439b"
+    },
     "mudo": {
       "kind": "icon",
       "files": {
@@ -1732,6 +2768,31 @@
           "i-mudo"
         ]
       }
+    },
+    "mula-sem-cabeca": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "mula-sem-cabeca.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "mula-sem-cabeca.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ff2c9187a139ca719f6fe3520ecb76162c49c447e9908b65de5ddbdf7a03fe79"
+            }
+          ],
+          "sha256": "ff2c9187a139ca719f6fe3520ecb76162c49c447e9908b65de5ddbdf7a03fe79"
+        }
+      },
+      "sha256": "a8f4cc2a8cabcaba6c595d8a56c42833c7b99e0484d91ed19cf4a8b3588e78a6"
     },
     "muralha": {
       "kind": "icon",
@@ -1763,6 +2824,31 @@
         ]
       }
     },
+    "ninho": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "ninho.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "ninho.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f89ce6d6320d10c3f868f1175ad7e0a829c97dd03bb3d0bad188257a97666461"
+            }
+          ],
+          "sha256": "f89ce6d6320d10c3f868f1175ad7e0a829c97dd03bb3d0bad188257a97666461"
+        }
+      },
+      "sha256": "651dcf89b192d909f2bfbe6345f3da6b114e39a09410674acbfa3015d0706de7"
+    },
     "oculos": {
       "kind": "icon",
       "files": {
@@ -1792,6 +2878,31 @@
           "a-oculos"
         ]
       }
+    },
+    "olho-grego": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "olho-grego.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "olho-grego.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "9a0963039d7b9e4552fae2789b1cb1093defac5d1579cd3a095a5e87c16f647b"
+            }
+          ],
+          "sha256": "9a0963039d7b9e4552fae2789b1cb1093defac5d1579cd3a095a5e87c16f647b"
+        }
+      },
+      "sha256": "2064e4d147e71b164eab0683c3f6d33bde12d4f91fdadfeec1d5e5f40d6b3174"
     },
     "onda": {
       "kind": "icon",
@@ -1823,6 +2934,106 @@
         ]
       }
     },
+    "pacoca": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pacoca.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pacoca.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fbf090ba2d0c91910939d7ced95b3897da697948efe8b4b492d7b80b3b938ec7"
+            }
+          ],
+          "sha256": "fbf090ba2d0c91910939d7ced95b3897da697948efe8b4b492d7b80b3b938ec7"
+        }
+      },
+      "sha256": "42bb966883bd015520aa18ef5e0488e1dd76ba99d2c8a6c07b60a04749597b1a"
+    },
+    "pandeiro": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pandeiro.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pandeiro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b5b98b66c90e97932c8174b2996c40e2eb897828e15a0063484b555a3381adf0"
+            }
+          ],
+          "sha256": "b5b98b66c90e97932c8174b2996c40e2eb897828e15a0063484b555a3381adf0"
+        }
+      },
+      "sha256": "bcfbd03f65560b99f006e2c587a638534501825aa90d7be777ac66904af5b79a"
+    },
+    "panela-de-pressao": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "panela-de-pressao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "panela-de-pressao.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d885396def7b9d3abf0ee0cae3a9f84207ad9838f4019fd88e2673efdb365435"
+            }
+          ],
+          "sha256": "d885396def7b9d3abf0ee0cae3a9f84207ad9838f4019fd88e2673efdb365435"
+        }
+      },
+      "sha256": "546b13aa0ac081c99099771363e1b2c15ba0f14711c4d61b8f21b1a1c401bf5e"
+    },
+    "papagaio": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "papagaio.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "papagaio.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0091815638b946ec9e023cdc6eae53cdeb9997ba7ab017dd09250e31b6e60ade"
+            }
+          ],
+          "sha256": "0091815638b946ec9e023cdc6eae53cdeb9997ba7ab017dd09250e31b6e60ade"
+        }
+      },
+      "sha256": "0a159afd539a7483e564c48926e111c750455742aea7a7198e55c7cd9a8b4567"
+    },
     "pedra": {
       "kind": "icon",
       "files": {
@@ -1853,6 +3064,81 @@
         ]
       }
     },
+    "peixeira": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "peixeira.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "peixeira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b327b9d8e1c64e44d07dc940444ebe4d130a387e7111e7d8f9e2a29e5ee58f57"
+            }
+          ],
+          "sha256": "b327b9d8e1c64e44d07dc940444ebe4d130a387e7111e7d8f9e2a29e5ee58f57"
+        }
+      },
+      "sha256": "ce406b8bf1023748bab96a2192439488eb757f266052d170f0c63e2607d7449b"
+    },
+    "pente": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pente.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pente.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c20b3dbfb07673302fe2c3f9753ff747443b6b0db44f16582a2439abcf28aab3"
+            }
+          ],
+          "sha256": "c20b3dbfb07673302fe2c3f9753ff747443b6b0db44f16582a2439abcf28aab3"
+        }
+      },
+      "sha256": "d0a2445eb7dd230ea15aef7e34268b1374f02b21945c7ef02a0476256cd94540"
+    },
+    "pes-do-curupira": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pes-do-curupira.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pes-do-curupira.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a7df523ab37425e9908f598d2cf999366305b0b76c86870583f93320efe8ac11"
+            }
+          ],
+          "sha256": "a7df523ab37425e9908f598d2cf999366305b0b76c86870583f93320efe8ac11"
+        }
+      },
+      "sha256": "9c2ab44bfd1597812c6bacc176d87e922a04a3250275acad048c9b80e3f57ae2"
+    },
     "pipoca": {
       "kind": "icon",
       "files": {
@@ -1882,6 +3168,56 @@
           "i-pipoca"
         ]
       }
+    },
+    "pistola": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pistola.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pistola.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f226669d286409e9437b930828c6b4c76a8625a2c2635c5a3b5529f88a384a4e"
+            }
+          ],
+          "sha256": "f226669d286409e9437b930828c6b4c76a8625a2c2635c5a3b5529f88a384a4e"
+        }
+      },
+      "sha256": "618b3c2b89988d302a790bd1d3e9e057eb7799ff710811bbd003662739a52167"
+    },
+    "pix-envio": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pix-envio.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pix-envio.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "07dac1e3b0eb3e86f74d9edf4f5f3680688647fa1bedf738120d1ea1f9febfb2"
+            }
+          ],
+          "sha256": "07dac1e3b0eb3e86f74d9edf4f5f3680688647fa1bedf738120d1ea1f9febfb2"
+        }
+      },
+      "sha256": "19e2c03f083c45768a1cbf03ecfe6a9e5288acf4dc3573815c352db3cdc8673c"
     },
     "podio-2": {
       "kind": "icon",
@@ -2003,6 +3339,31 @@
         ]
       }
     },
+    "quadradao": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "quadradao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "quadradao.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c6a25d070d2bf7dac3351bbeb1324b9166d7939398e0b25ad6f0cf128a6de636"
+            }
+          ],
+          "sha256": "c6a25d070d2bf7dac3351bbeb1324b9166d7939398e0b25ad6f0cf128a6de636"
+        }
+      },
+      "sha256": "da6f6b4e8cdc093c40e5273bdb2276a62e2f652270d8b6e69ec4fcdd4c9d0b75"
+    },
     "relogio": {
       "kind": "icon",
       "files": {
@@ -2032,6 +3393,31 @@
           "i-relogio"
         ]
       }
+    },
+    "rifle": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rifle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rifle.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "646da21440c106ef3b39b8dfd248b971fa2cfdb32c791bcec780625bf8da5afb"
+            }
+          ],
+          "sha256": "646da21440c106ef3b39b8dfd248b971fa2cfdb32c791bcec780625bf8da5afb"
+        }
+      },
+      "sha256": "8affc8a2a69381fef1b0ddb6451e0f65c1f67cd8489db844ee54a6896b9a5aaf"
     },
     "risada": {
       "kind": "icon",
@@ -2124,6 +3510,31 @@
         ]
       }
     },
+    "rojao": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rojao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rojao.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4b52c83ef5b6f0121cdb779fe81c44457b6fb4c7df6d8ce4a6a1b5415a2c79fc"
+            }
+          ],
+          "sha256": "4b52c83ef5b6f0121cdb779fe81c44457b6fb4c7df6d8ce4a6a1b5415a2c79fc"
+        }
+      },
+      "sha256": "2c15f27b119bc8295d1196a84b7e095672e8b00b86d14c06b72931bd854f7a1d"
+    },
     "sacola": {
       "kind": "icon",
       "files": {
@@ -2154,6 +3565,31 @@
         ]
       }
     },
+    "sacole": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "sacole.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "sacole.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "76b87558ca6a3e24e0f8e74ab412b31742f317c1ad39abfbbd7f13eed0726069"
+            }
+          ],
+          "sha256": "76b87558ca6a3e24e0f8e74ab412b31742f317c1ad39abfbbd7f13eed0726069"
+        }
+      },
+      "sha256": "3bb012c0f632a44569d3fca2ffba18e8b5418a312a71b7bc8da3ec187950d6cd"
+    },
     "saiu": {
       "kind": "icon",
       "files": {
@@ -2183,6 +3619,31 @@
           "i-saiu"
         ]
       }
+    },
+    "sal-grosso": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "sal-grosso.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "sal-grosso.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c15da481ee8f4e24ad0792a71673f0e3af2205278bac5e1dd4a1ebfbe9caeb8c"
+            }
+          ],
+          "sha256": "c15da481ee8f4e24ad0792a71673f0e3af2205278bac5e1dd4a1ebfbe9caeb8c"
+        }
+      },
+      "sha256": "cc5b258a7c60694b73be4e98d99ed272a8b7cce46d46322eaa4a33783818550c"
     },
     "sem-linha": {
       "kind": "icon",
@@ -2244,6 +3705,31 @@
         ]
       }
     },
+    "silenciador": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "silenciador.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "silenciador.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d9de5e3feb0a2d3c12d910988367267214c23e73fc898ddd307ad6933ca4d2c6"
+            }
+          ],
+          "sha256": "d9de5e3feb0a2d3c12d910988367267214c23e73fc898ddd307ad6933ca4d2c6"
+        }
+      },
+      "sha256": "e5f285ae7485d4166d9f9cde60550227b4e49405da1d9375cbf2dd8ee80c7004"
+    },
     "som": {
       "kind": "icon",
       "files": {
@@ -2273,6 +3759,31 @@
           "i-som"
         ]
       }
+    },
+    "submetralhadora": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "submetralhadora.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "submetralhadora.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "35fe413eaed3bbfd415ed7314e622c0a04faac350127a6b89ddad9e127e3db53"
+            }
+          ],
+          "sha256": "35fe413eaed3bbfd415ed7314e622c0a04faac350127a6b89ddad9e127e3db53"
+        }
+      },
+      "sha256": "1a6fff808ce91d135abf72e82b3a100828290d36d286d65710c4e8f1efebee11"
     },
     "suor": {
       "kind": "icon",
@@ -2305,6 +3816,56 @@
         "emote": true
       }
     },
+    "tampa-de-panela": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tampa-de-panela.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tampa-de-panela.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5127fc6371b3047a5ef73c3639199395fc85537b9650975d06e52e493be08f0c"
+            }
+          ],
+          "sha256": "5127fc6371b3047a5ef73c3639199395fc85537b9650975d06e52e493be08f0c"
+        }
+      },
+      "sha256": "344bd66a51d716bb6eebe1e6231165a1a198cc2a56fb9a9807f7d3c05e2e0b3c"
+    },
+    "taro-vencido": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "taro-vencido.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "taro-vencido.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a9fae8be1697dc400f9f599ffe9fe962a39a26950d2f264f16809d709354b19b"
+            }
+          ],
+          "sha256": "a9fae8be1697dc400f9f599ffe9fe962a39a26950d2f264f16809d709354b19b"
+        }
+      },
+      "sha256": "644adfd330802a9bbabac23cdd398c368aaf2c4c6ef4c866439a478274499809"
+    },
     "tenis": {
       "kind": "icon",
       "files": {
@@ -2334,6 +3895,456 @@
           "a-tenis"
         ]
       }
+    },
+    "tijolo-baiano": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tijolo-baiano.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tijolo-baiano.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "12f18d89a212613e3a3fad1d299dab41c2eca1ad3a6e8fba00e84ec470c66282"
+            }
+          ],
+          "sha256": "12f18d89a212613e3a3fad1d299dab41c2eca1ad3a6e8fba00e84ec470c66282"
+        }
+      },
+      "sha256": "181e3d4778788b2128b4d51f70ec21fb5958a939656f9355a698425e5fa6ff64"
+    },
+    "torre-antiaerea-quadrupla": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-antiaerea-quadrupla.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-antiaerea-quadrupla.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "d307b73493b9384ee639f6db3ab2d9c6c6fd4b79951379e9c188781664baa444"
+            }
+          ],
+          "sha256": "d307b73493b9384ee639f6db3ab2d9c6c6fd4b79951379e9c188781664baa444"
+        }
+      },
+      "sha256": "e5a21c331f9c25aff8c40ce5613fe719beda496947deaa275ee8bc9e2b161be4"
+    },
+    "torre-arame-e-sirene": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-arame-e-sirene.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-arame-e-sirene.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "55662e18ee17879e41b94ef24672828e799ba5f1ce5042f7955c8812eff5aa0f"
+            }
+          ],
+          "sha256": "55662e18ee17879e41b94ef24672828e799ba5f1ce5042f7955c8812eff5aa0f"
+        }
+      },
+      "sha256": "aeb813fa568259ef2ffcb0dec58dddc11a38509076e3dba79b1768b22f1ffe7f"
+    },
+    "torre-atiradores-do-telhado": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-atiradores-do-telhado.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-atiradores-do-telhado.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ebb4c7af9df6f1626931c0378ba4ab906663fd9af9313a6c9fae3babe08ffd6d"
+            }
+          ],
+          "sha256": "ebb4c7af9df6f1626931c0378ba4ab906663fd9af9313a6c9fae3babe08ffd6d"
+        }
+      },
+      "sha256": "cece267860a9148cfa348d551ff5af0a25fe8d2fa414ef750e010811d6499589"
+    },
+    "torre-equipe-antimaterial": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-equipe-antimaterial.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-equipe-antimaterial.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "232a1ff303c90cc7e0578a9b6ec786edbbc3b60ff39d1d1a09d7cea74add3bf3"
+            }
+          ],
+          "sha256": "232a1ff303c90cc7e0578a9b6ec786edbbc3b60ff39d1d1a09d7cea74add3bf3"
+        }
+      },
+      "sha256": "28f560ce1b065440afeb616174678801d5ff9d3822cf8359fbc769c3fb712698"
+    },
+    "torre-guarnicao-do-predio": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-guarnicao-do-predio.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-guarnicao-do-predio.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "65856581e267c0cdffd3273650582b5fab944c0667c4d67e3a3e3412caaed4b4"
+            }
+          ],
+          "sha256": "65856581e267c0cdffd3273650582b5fab944c0667c4d67e3a3e3412caaed4b4"
+        }
+      },
+      "sha256": "08fafe072bde307c945e335e40c47e6fce07823406126da8625a6fd4d2ad2f5d"
+    },
+    "torre-gustavao": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-gustavao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-gustavao.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b1f93fa46ab4ea108d819346d9edd79cfdf74a206f013c922abfa19e4f1ff218"
+            }
+          ],
+          "sha256": "b1f93fa46ab4ea108d819346d9edd79cfdf74a206f013c922abfa19e4f1ff218"
+        }
+      },
+      "sha256": "b7083076779525e9ecdeb63ca1b139eedc0a1c95ebbd241c7a2b654ba6f29a8e"
+    },
+    "torre-holofote": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-holofote.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-holofote.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "376c277b9e65b026ff752ad658000c1181ad85c1503917e6b2cd054adabb84e2"
+            }
+          ],
+          "sha256": "376c277b9e65b026ff752ad658000c1181ad85c1503917e6b2cd054adabb84e2"
+        }
+      },
+      "sha256": "62d04c9cab3fa977ee7bf7d8c235b27c93b978716ec550e36335025113621ebf"
+    },
+    "torre-lanca-foguetes": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-lanca-foguetes.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-lanca-foguetes.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "db989d2dfd23b6e6ffa3dd82c877e4380ee457a965774b0024547835fef5baf9"
+            }
+          ],
+          "sha256": "db989d2dfd23b6e6ffa3dd82c877e4380ee457a965774b0024547835fef5baf9"
+        }
+      },
+      "sha256": "536e8c9af055468c14837d275e7b6d395f52f4482dfb33ad22511f826fadab7e"
+    },
+    "torre-morteiro": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-morteiro.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-morteiro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ed26523154cc61943e0b002b17683c81608f937ade8038f1a2c89d5a88a0e7b1"
+            }
+          ],
+          "sha256": "ed26523154cc61943e0b002b17683c81608f937ade8038f1a2c89d5a88a0e7b1"
+        }
+      },
+      "sha256": "a9d2d7f859713ab1f82a6595dcd7b98123d2e6da15acc7d05d68fbbf12a03d06"
+    },
+    "torre-ninho-de-metralhadora": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-ninho-de-metralhadora.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-ninho-de-metralhadora.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3aa5b0404c5ec74d3999511159f164bbfc6e61770c0cf0e3a3c369e0af32fa9a"
+            }
+          ],
+          "sha256": "3aa5b0404c5ec74d3999511159f164bbfc6e61770c0cf0e3a3c369e0af32fa9a"
+        }
+      },
+      "sha256": "2a5362b857afb4146d4d5da92f0fe7fdc2dcaadf2268bde820e332ee1c20d8ca"
+    },
+    "torre-ninho-do-sniper": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-ninho-do-sniper.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-ninho-do-sniper.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a36210bfebfb5ad7a9dc13404d4b41b427a8b84996630f05a0d3734b7a9d265a"
+            }
+          ],
+          "sha256": "a36210bfebfb5ad7a9dc13404d4b41b427a8b84996630f05a0d3734b7a9d265a"
+        }
+      },
+      "sha256": "0082141cd0fe19e1e52c701e9e2bb6761a0e3028f5ebe081f994cd0999a2494f"
+    },
+    "torre-obuseiro": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-obuseiro.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-obuseiro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7f40e4f37b4255fedcc7d695988b5c7db05651247e522fd9e02c72db61617d98"
+            }
+          ],
+          "sha256": "7f40e4f37b4255fedcc7d695988b5c7db05651247e522fd9e02c72db61617d98"
+        }
+      },
+      "sha256": "b726738ff42f66b120ac45ada0bc1b93fb3cebc60f553eae59305e6a036a1026"
+    },
+    "torre-posto-de-radar": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-posto-de-radar.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-posto-de-radar.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "a4873f4a1cd3cf8f000c92ed016031e557c832048eb8aa7ec2a016def93cf142"
+            }
+          ],
+          "sha256": "a4873f4a1cd3cf8f000c92ed016031e557c832048eb8aa7ec2a016def93cf142"
+        }
+      },
+      "sha256": "3295f41b12cdefe0b91f714a7f7050e074b67d19a6035f74a1f7405d0f30fac5"
+    },
+    "torre-rojao-de-festa": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-rojao-de-festa.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-rojao-de-festa.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0526caffc69e494ce91d5565813ab121c4f1fc1a34e54d6c775d900c3e67f760"
+            }
+          ],
+          "sha256": "0526caffc69e494ce91d5565813ab121c4f1fc1a34e54d6c775d900c3e67f760"
+        }
+      },
+      "sha256": "0cde79acbad59437fca9fa4a4960ccc5ba7b272ae77b88332741238711a11945"
+    },
+    "torre-vigia-do-predio": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-vigia-do-predio.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-vigia-do-predio.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "dbe2a4b7ffb97be281cb2213f34ed8ea024628ac7ec3f0161ad18ee3d2afe9cd"
+            }
+          ],
+          "sha256": "dbe2a4b7ffb97be281cb2213f34ed8ea024628ac7ec3f0161ad18ee3d2afe9cd"
+        }
+      },
+      "sha256": "bebb63be3b8387ac050c4bf4f974617b51ed1afa7a4832f97b12a105f1b4cf6c"
+    },
+    "torre-vigias-armados": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "torre-vigias-armados.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "torre-vigias-armados.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b900cf949bd738988e9cc04c344bff02e71a8b59c7598d2bc3d503124b505ec9"
+            }
+          ],
+          "sha256": "b900cf949bd738988e9cc04c344bff02e71a8b59c7598d2bc3d503124b505ec9"
+        }
+      },
+      "sha256": "43c271a60bf5b77a78953606b2433831a06df9e7573cab2eb70bf6d85b9d9cb5"
+    },
+    "traque": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "traque.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "traque.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "97e878d945222d39c64a79a3b6b0cb7531bf99bce129f2537d31a334c6d1934d"
+            }
+          ],
+          "sha256": "97e878d945222d39c64a79a3b6b0cb7531bf99bce129f2537d31a334c6d1934d"
+        }
+      },
+      "sha256": "5c513c72bc7715f0f48e87291b8819ecddbc5dbeeb7e23f6ff379a707fdc22f5"
     },
     "trave": {
       "kind": "icon",
@@ -2365,6 +4376,106 @@
         ]
       }
     },
+    "uivo-do-lobisomem": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "uivo-do-lobisomem.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "uivo-do-lobisomem.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ef7e8f00fa5763093fb60d869d2b6176841493796d5ed09d835505e7056f0d23"
+            }
+          ],
+          "sha256": "ef7e8f00fa5763093fb60d869d2b6176841493796d5ed09d835505e7056f0d23"
+        }
+      },
+      "sha256": "4c4bf04d8cb1ad35a1144b6c9c861ce25e0e765b946a6d81edf482c843a358c1"
+    },
+    "vaquinha": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vaquinha.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vaquinha.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "68f002b89b71adbce5d5425ddbe0f42c1910702bd02bcb58a3d784a72a234093"
+            }
+          ],
+          "sha256": "68f002b89b71adbce5d5425ddbe0f42c1910702bd02bcb58a3d784a72a234093"
+        }
+      },
+      "sha256": "6f2960322340d0e124947b9400fc97c749ca97a5066e13450b4cf8a98a9c47f9"
+    },
+    "vela-esoterica": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vela-esoterica.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vela-esoterica.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "511dbb7dd99f0fb79ecf93278d4ecb0338215e4269fdf84b50158db397f16d0f"
+            }
+          ],
+          "sha256": "511dbb7dd99f0fb79ecf93278d4ecb0338215e4269fdf84b50158db397f16d0f"
+        }
+      },
+      "sha256": "cdb9b6aed584697f9440342e796edb71ccb6b69d0f09eb86f3a5b975acaab41a"
+    },
+    "ventilador": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "ventilador.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "ventilador.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "68dd211f62bb2dcd6ccabf1ae8ae7c908d852d58da3dcc84320afcae777badc0"
+            }
+          ],
+          "sha256": "68dd211f62bb2dcd6ccabf1ae8ae7c908d852d58da3dcc84320afcae777badc0"
+        }
+      },
+      "sha256": "1be4772ca960aaf505fdb16774e0aac29d0fdc46ce19a2837937b3509b229987"
+    },
     "vibrar": {
       "kind": "icon",
       "files": {
@@ -2394,6 +4505,31 @@
           "i-vibrar"
         ]
       }
+    },
+    "vira-lata": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vira-lata.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vira-lata.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "fbac3494fb7432b722328517c55a7df158ca86324e33afa8adc08535eb3f38bd"
+            }
+          ],
+          "sha256": "fbac3494fb7432b722328517c55a7df158ca86324e33afa8adc08535eb3f38bd"
+        }
+      },
+      "sha256": "5ac5239f673bb97d48c2b2ad6d0dd3f101286cdea453ea88f6dee84462f95d12"
     },
     "voltar": {
       "kind": "icon",

@@ -1,11 +1,12 @@
 /**
  * Stonewards HUD (VGM-046B), three pieces in the zones of UX-zonas-tela:
  * - the base ficha (status, top band), one line, always in a run: the wall's life (.rh-camp-barra, the bar, and
- *   .rh-camp-num, the number), the team's Grana ("R$ 120", .rh-camp-grana) and its fichas de torre (D-048: the tower
+ *   .rh-camp-num, the number), my wallet ("R$ 120", .rh-camp-grana; carteira-e-pix: CampView.grana is the viewer's
+ *   own, the team has no pot any more) and the team's fichas de torre (D-048: the tower
  *   sticker in a ring filling to the next ficha, and the count, .rh-camp-token);
  * - the forge window (an intermission window, like the round offer): opens by itself while the hero stands in the camp
  *   during the intermission and no offer is open; three price tags in Grana (price.ts forgePriceLabel, "R$ N"), one tap
- *   buys for the team. Tags the team cannot buy stay readable with a padlock and say why on tap ("Falta R$ 2.", no dead
+ *   buys for the team with my wallet. Tags my wallet cannot pay stay readable with a padlock and say why on tap ("Falta R$ 2.", no dead
  *   button);
  * - the horn notice (announcement slot): "Volta pra base" with the seconds left and an arrow to the base; inside the
  *   camp it says when the critters arrive. In a wave, the wall crossing 50% and 25% shows here for 3 s.
@@ -86,10 +87,13 @@ export function missing(camp:Pick<CampView,'grana'|'forge'>,recipe:RecipeId){
   const short=Math.ceil(forgePrice(recipe,camp.forge)-(Number.isFinite(camp.grana)?camp.grana:0)-1e-9);
   return short>0?`Falta ${granaText(short)}.`:'';
 }
-/** The top bar's Grana (D-048, pure, tested): "R$ 120" on screen, "R$ 120 do time" for the screen reader (never negative). */
+/**
+ * The top bar's Grana (D-048, pure, tested): my wallet (carteira-e-pix, CampView.grana), "R$ 120" on screen, "Você tem
+ * R$ 120" for the screen reader (never negative). A friend's balance shows only in the PIX balloon (hud/pix.ts).
+ */
 export function granaReadout(grana:number){
   const text=granaText(grana);
-  return {text,label:`${text} do time`};
+  return {text,label:`Você tem ${text}`};
 }
 /**
  * The top bar's fichas (D-048, pure, tested): the whole fichas in the pile, the ring's fill towards the next one and the
@@ -219,7 +223,7 @@ export function createCamp(options:CampOptions):CampPart{
     if(track.getAttribute('aria-label')!==bar.label)track.setAttribute('aria-label',bar.label);
     track.setAttribute('aria-valuenow',String(Math.round(bar.fraction*100)));
   };
-  // The team's Grana (D-048), "R$ 120", always shown, before the fichas; rewritten only when it changes.
+  // My wallet (D-048, carteira-e-pix), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
   const granaValue=el('b','rh-camp-grana-valor',grana);granaValue.setAttribute('aria-hidden','true');
   let lastGrana:string|undefined;
@@ -239,7 +243,7 @@ export function createCamp(options:CampOptions):CampPart{
   // ---------- Forge window ----------
   const forge=el('section','rh-forge');forge.hidden=true;forge.setAttribute('aria-label','Forja');
   const head=el('div','rh-forge-head',forge);
-  // The title's cell holds the team's Grana where it is spent (hud-mobile-minimo: the phone's top shows no R$): "R$ 120"
+  // The title's cell holds my wallet where it is spent (hud-mobile-minimo: the phone's top shows no R$): "R$ 120"
   // as a small second line under "Forja", so the head keeps its three cells (title, note, close) in a narrow window.
   const titleCell=el('div','rh-forge-titulo',head);
   const title=el('h2','rh-forge-title',titleCell);title.textContent='Forja';
@@ -287,7 +291,7 @@ export function createCamp(options:CampOptions):CampPart{
     note.textContent=text;delete note.dataset.padrao;note.hidden=false;fall.hidden=true;clearTimeout(noteTimer);
     if(!keep)noteTimer=setTimeout(()=>{note.textContent=DEFAULT_NOTE;note.dataset.padrao='';},2600);
   };
-  const DEFAULT_NOTE='A grana é da turma. Toca pra comprar.';
+  const DEFAULT_NOTE='Sai da sua grana. Toca pra comprar.';
   // data-padrao: the standing line, not an answer (the landscape window leaves it out, camp.css).
   note.textContent=DEFAULT_NOTE;note.dataset.padrao='';
   const refusal=(reason:string,recipe:RecipeId)=>reason==='balance'?(last?.camp&&missing(last.camp,recipe))||FORGE_REFUSALS.balance:FORGE_REFUSALS[reason]??'Agora não dá.';

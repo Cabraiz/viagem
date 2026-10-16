@@ -204,18 +204,19 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
   const forges:{recipe:RecipeId;after:number;reserve:number;keep:number;needed:boolean}[]=[];
   const st=()=>sim.run.stonewards;
   const keep=()=>granaReserve(sim.botView());
-  const log=<R extends {ok:boolean;kind?:string;reason?:string}>(what:string,run:()=>R)=>{
-    const before=st().state.balance.units,g=st().state.grana,k=keep(),r=run();
-    orders.push(`${sim.world.round.index}:${what} → ${r.ok?r.kind:r.reason}`);units.push(before);grana.push({before:g,spent:g-st().state.grana,keep:k});return r;
+  // carteira-e-pix: every order is paid from the wallet of the bot that gives it (the reserve: its part of the bill).
+  const log=<R extends {ok:boolean;kind?:string;reason?:string}>(what:string,id:string,run:()=>R)=>{
+    const before=st().state.balance.units,g=sim.granaOf(id),k=keep(),r=run();
+    orders.push(`${sim.world.round.index}:${what} → ${r.ok?r.kind:r.reason}`);units.push(before);grana.push({before:g,spent:g-sim.granaOf(id),keep:k});return r;
   };
   const build=sim.build.bind(sim),upgrade=sim.upgrade.bind(sim),repair=sim.repair.bind(sim),forge=sim.forge.bind(sim);
-  sim.build=(id,site,req)=>log(`build ${site}`,()=>build(id,site,req));
-  sim.upgrade=(id,d,branch,req)=>log(`up ${d} ${branch??''}`,()=>upgrade(id,d,branch,req));
-  sim.repair=(id,d,req)=>log(`repair ${d}`,()=>repair(id,d,req));
+  sim.build=(id,site,req)=>log(`build ${site}`,id,()=>build(id,site,req));
+  sim.upgrade=(id,d,branch,req)=>log(`up ${d} ${branch??''}`,id,()=>upgrade(id,d,branch,req));
+  sim.repair=(id,d,req)=>log(`repair ${d}`,id,()=>repair(id,d,req));
   sim.forge=(id,recipe,req)=>{
     const s=st(),wall=s.state.wall,reserve=towerReserve(towerBrainView(s.state,s.plan,sim.tick,sim.world.round.index)).grana,k=keep();
     const needed=recipe==='reparo'&&wall.hp<wall.maxHp*REPAIR_BELOW,r=forge(id,recipe,req);
-    if(r.ok)forges.push({recipe:recipe as RecipeId,after:s.state.grana,reserve,keep:k,needed});
+    if(r.ok)forges.push({recipe:recipe as RecipeId,after:sim.granaOf(id),reserve,keep:k,needed});
     return r;
   };
   // Each wave start: the bots still out pushing a dead moto (RoomBots.modes); the pushes that started it (D-047).
@@ -227,7 +228,7 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
       else if(e.type==='moto'&&e.mode==='tranco'&&!e.alone)pushes++;
     }
   }
-  return {sim,orders,units,grana,forges,state:sim.run.stonewards.state,waves,pushes};
+  return {sim,bots,orders,units,grana,forges,state:sim.run.stonewards.state,waves,pushes};
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
@@ -276,7 +277,7 @@ test('D-048: the bots never start a root without a whole ficha, and a 6-bot team
   // round 3, before the ficha rule has anything to show; the rule, not survival, is under test here (survival: the bench).
   const a=cityRun(3,6,7),roots=a.orders.map((o,i)=>[o,a.units[i]] as const).filter(([o])=>o.endsWith(`→ ${ROOT_DEFENSE}`));
   console.log(`[D-048] 6 bots, seed 3, to round ${a.sim.world.round.index}: ${roots.length} roots, units before each ${roots.map(([,u])=>Math.round(u)).join('/')}; `+
-    `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.state.grana}\n  orders: ${a.orders.join(' | ')}`);
+    `${a.forges.length} forge buys, largest Grana reserve ${Math.max(0,...a.forges.map(f=>f.reserve))}, Grana at the end ${a.sim.teamGrana()}\n  orders: ${a.orders.join(' | ')}`);
   assert.ok(roots.length>=2,`${roots.length} roots`);
   assert.ok(roots.every(([,u])=>tokensOf(u)>=1),'every root from a whole ficha');
   assert.ok(a.orders.every(o=>!o.endsWith('→ balance')&&!o.endsWith('→ grana')),'no order the material or the Grana could not pay');
@@ -334,7 +335,7 @@ test('D-048 Grana: never an evolution without its R$ price, never a root without
   const c=cityRun(4,3,6,'chaveiro');
   const spends=c.grana.filter(g=>g.spent>0);
   console.log(`[D-048 chaveiro] 3 bots, seed 4, to round ${c.sim.world.round.index}: ${spends.length} Grana orders (${spends.map(g=>`${g.before}-${g.spent} keep ${g.keep}`).join(', ')}), `+
-    `${c.forges.length} forge buys, Grana at the end ${c.state.grana}\n  orders: ${c.orders.join(' | ')}`);
+    `${c.forges.length} forge buys, Grana at the end ${c.sim.teamGrana()}, ${c.bots.pixes} PIX to the forger (R$ ${c.bots.pixed})\n  orders: ${c.orders.join(' | ')}`);
   assert.ok(spends.every(g=>g.before-g.spent>=g.keep),'no tower order under the bill\'s reserve');
   assert.ok(c.forges.every(f=>f.needed||f.after>=f.keep+f.reserve),'no forge buy under it');
   assert.ok(c.orders.every(o=>!o.endsWith('→ grana')&&!o.endsWith('→ balance')),'no order refused for money');

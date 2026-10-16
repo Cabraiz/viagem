@@ -45,8 +45,13 @@ export interface TowerState extends Point {
 
 export interface StonewardsState {
   balance:Balance;
-  /** The team's Grana, R$ (D-047; every world since D-048): kills pay it in, evolutions, the forge and repairs spend it. */
-  grana:number;
+  /**
+   * The Grana is each player's wallet now (SimPlayer.grana, sim/wallet.ts; NEW-20261014-ORQ-carteira-e-pix): this is
+   * where the next split's remainder starts (a boss, a kill nobody made, an inheritance), so splits rotate and resume.
+   */
+  splitCursor:number;
+  /** The PIX memos' own Rng state (sim/wallet.ts drawMemo); absent until the run's first PIX. */
+  pixRng?:number;
   /** Inflação: purchases of each inflating recipe this run (rules forgePrice); absent until the first. */
   forgeBought?:ForgeBought;
   /** Nodes touched this round, in the order they were first worked. */

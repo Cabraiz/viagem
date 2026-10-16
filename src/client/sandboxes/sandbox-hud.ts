@@ -157,6 +157,14 @@ const hud=new RunHud(document.body,{
   onForge(recipe){const req=++forgeReq;setTimeout(()=>hud.forged({req,recipe,ok:true}),150);return req;},
   // Dona Cida (D-047): the answer a room would give for the sandbox's numbers (the tray's own checks run first).
   onCida(item){const req=++cidaReq;setTimeout(()=>hud.bought({req,item,ok:true,grana:view.objective?.grana??0}),150);return req;},
+  // PIX (carteira-e-pix, hud/pix.ts): answers after 150 ms like a room (the sandbox's wallets do not move); an accepted
+  // one comes back as the room's 'pix' event (the sender's toast, the friend's portrait flashing).
+  onPix(to,amount){return new Promise(done=>setTimeout(()=>{
+    const mine=view.camp?.grana??0;
+    if(amount>mine){done({ok:false,reason:'grana'});return;}
+    view={...view,events:[{type:'pix',from:'p1',to,amount,memo:1,eventId:++eventId}]};hud.update(view);
+    done({ok:true,to,amount,grana:mine-amount});
+  },150));},
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
@@ -245,7 +253,7 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  if(scenario==='result')hud.showResult(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full'))))));
+  if(scenario==='result')hud.showResult(withShare(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full')))))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
   // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once
@@ -268,6 +276,27 @@ function load(next:HudScenario){
 load(scenario);
 // The art index may land after the first draw: draw the scene again once it is in (critter icons, imported faces).
 void artReady().then(ok=>{if(ok)load(scenario);});
+
+/**
+ * `pix=balao|recebido|enviado` (carteira-e-pix, hud/pix.ts; players ≥ 2): the PIX balloon open on Tia Cleide's portrait
+ * (with frozen=1 it stays: the views drive its 4 s), or the toast of a PIX of R$ 10 received from her / sent to her,
+ * her portrait (or yours) flashing. With `conta=`, the result's vaquinha comes with the bill (withShare).
+ */
+const pixScene=params.get('pix');
+function showPix(){
+  if(pixScene==='balao'){hud.el.querySelector('.rh-member[data-id="p2"]')?.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));return;}
+  if(pixScene!=='recebido'&&pixScene!=='enviado')return;
+  const who=pixScene==='enviado'?{from:'p1',to:'p2'}:{from:'p2',to:'p1'};
+  view={...view,events:[{type:'pix',...who,amount:10,memo:0,eventId:++eventId}]};hud.update(view);
+}
+if(pixScene)requestAnimationFrame(()=>requestAnimationFrame(showPix));
+/** The chaveiro bill's vaquinha (ObjectiveResult.share): equal parts, Zé do Pix (p3) with R$ 0, the rest on p1. */
+function withShare<T extends {objective?:{paid:number;share?:{id:string;had:number;paid:number}[]};players:{id:string}[]}>(result:T):T{
+  const o=result.objective;if(!o)return result;
+  const ids=result.players.map(p=>p.id),payers=ids.filter(id=>id!=='p3'),part=Math.floor(o.paid/Math.max(1,payers.length));
+  const share=ids.map(id=>({id,had:id==='p3'?0:part+8,paid:id==='p3'?0:part+(id===payers[0]?o.paid-part*payers.length:0)}));
+  return {...result,objective:{...o,share}};
+}
 /**
  * Zueira events (VGM-053B): `&zueira=boletos|promo|apagao` shows that event's banner, `&zueira=killcam` the kill-cam
  * window (as after a round's last kill). Re-sent every 1.5 s so a frozen page keeps it on screen for the audit.

@@ -1188,13 +1188,14 @@ export class Room {
   }
   /**
    * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
-   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune.
+   * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune. The
+   * same for the nests (D-051, a fallen one stays) and the sleeping bodies sent in the last frame (Simulation.sleeperIds).
    */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
-    this.ids.prune({enemies:ids(w.enemies),pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id)],nodes:this.sim.nodeIds});
+    this.ids.prune({enemies:[...ids(w.enemies),...this.sim.sleeperIds],pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id),...(this.sim.run.nests?.state.nests??[]).map(n=>n.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

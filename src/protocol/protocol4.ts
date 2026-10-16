@@ -26,12 +26,13 @@
  * the decoder drops ids it has seen. Entity references inside events are wire ids, not strings.
  * Area of interest: an encoder with a `viewer` sends every player (allies always, for the minimap), structures (the
  * base) and the boss, plus enemies, pickups, projectiles, telegraphs and nodes within INTEREST_RADIUS of the viewer (kept
- * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
+ * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see. Sleeping bodies (D-051,
+ * `asleep`) count at most ASLEEP_PER_VIEWER per client, the nearest ones.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {ASLEEP_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 
 /**
@@ -66,6 +67,9 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
  * 20 given by the integration queue (tools/fila.mjs, lote 20261016-191924) to: NEW-20261014-ORQ-ataque-manual-wild-rift-passo1.
+ * Next (the queue numbers it) since the nests on the wire (card NEW-20261014-ORQ-ninhos-sim, D-051): `asleep` on the
+ * enemies (the sleeping bodies near the client, ASLEEP_PER_VIEWER at most), `size` and `seen` on the structures (the
+ * nests, kind 'ninho', phase dormindo/ativo/destruido) and those strings in the DICT; an older decoder would refuse the masks.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=20;
@@ -137,6 +141,8 @@ export const DICT:readonly string[]=[
   // (morta/lombada/entrega are also the stop kinds), the car's parts and Dona Cida's sweets.
   'quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',
   'para-choque','retrovisor','porta','capo','brigadeiro','pacoca','cocada',
+  // D-051 (ninhos-sim): the nests as structures, their phases and sizes.
+  'ninho','dormindo','ativo','destruido','P','M','G',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -347,6 +353,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
     // Protocol 15 (D-047): Dona Cida sold it a sweet.
     sugar:c(optional(trueFlag)),
+    // D-051: a sleeping body (it wakes with the same id: the flag clears).
+    asleep:c(optional(trueFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
@@ -360,7 +368,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
     // torre-contador-de-tiros: the volleys mod 256, so a turret firing at a target that does not move shows every shot.
     shots:c(optional(u8)),
     // Protocol 15 (D-047): the car's fallen parts (bits of CAR_PARTS), only when they change.
-    parts:c(optional(count))}},
+    parts:c(optional(count)),
+    // D-051: a nest's size and whether the team has seen it (the minimap's fog).
+    size:c(optional(str)),seen:c(optional(trueFlag))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
@@ -650,7 +660,9 @@ export interface EncoderStats {frames:number;fullFrames:number;bytes:number;even
   culled:number;droppedEvents:number}
 /** firstSeq: earliest frame that carried the event since the last resync; an ack of it or later retires the event. */
 interface Pending {event:WireEvent;firstSeq?:number;sentTick?:number;unresolved?:[field:string,hint?:SectionKey][]}
-export interface InterestOptions {radius:number;hysteresis:number}
+export interface InterestOptions {radius:number;hysteresis:number;
+  /** D-051: the sleeping enemies (`asleep`) this client gets at most, the nearest ones (default ASLEEP_PER_VIEWER). */
+  asleep:number}
 export interface EncoderOptions {
   /**
    * The client's player id. With it the encoder sends only that client's area of interest (allies, structures and
@@ -727,13 +739,15 @@ export class FrameEncoder {
   readonly viewer?:string;
   readonly slot:number;
   private readonly interest?:InterestOptions;
+  /** select(): the sleeping enemies in the area this frame (reused). */
+  private readonly sleepScratch:{e:Entity;d2:number}[]=[];
   private readonly chain:boolean;
   private readonly farEvery:number;
   constructor(ids=new WireIds(),options:EncoderOptions={}){
     this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);this.chain=!!options.chain;
     this.farEvery=Math.max(1,Math.floor(options.farEvery??1));
     if(options.viewer!==undefined&&options.interest!==false)
-      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS};
+      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER};
   }
 
   /**
@@ -825,6 +839,9 @@ export class FrameEncoder {
     const before=this.members[section],keep=new Set<string>();
     this.previous[section]=before;
     const near=interest.radius,stay=interest.radius+interest.hysteresis,near2=near*near,stay2=stay*stay,tele=section==='telegraphs';
+    // D-051: the sleepers inside the area wait here and only the nearest `interest.asleep` go (ties by id).
+    const sleepers:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.sleepScratch:undefined;
+    if(sleepers)sleepers.length=0;
     for(const e of list){
       const dx=(e.x as number)-focus.x,dy=(e.y as number)-focus.y;
       let d2=dx*dx+dy*dy;
@@ -832,7 +849,16 @@ export class FrameEncoder {
       // The boss is always sent: the arrow to it and its hp bar matter from anywhere. NaN positions stay out.
       const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
       if(!inside){this.stats.culled++;continue;}
+      if(sleepers&&e.asleep===true){sleepers.push({e,d2});continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
+    }
+    if(sleepers?.length){
+      if(sleepers.length>interest.asleep){
+        sleepers.sort((a,b)=>a.d2-b.d2||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
+        this.stats.culled+=sleepers.length-interest.asleep;sleepers.length=Math.max(0,interest.asleep);
+      }
+      for(const {e} of sleepers){keep.add(e.id);current.set(this.ids.wire(section,e.id),e);}
+      sleepers.length=0;
     }
     this.members[section]=keep;
     return current;

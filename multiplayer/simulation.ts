@@ -14,7 +14,7 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
@@ -81,8 +81,9 @@ const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor
 /**
  * Seat fields a checkpoint never carries (E5-checkpoint-por-round): who sits there and its connection (the restored
  * seat's own), the tap target (an enemy id of the cut round) and what equip/refreshStats derive from class and build.
+ * D-051: neither who hit me last nor the auto aim's target (enemy ids of the cut round, manual combat only).
  */
-const SEAT_FIELDS:ReadonlySet<string>=new Set(['id','name','classId','online','ack','spectator','target','stats','classBonus']);
+const SEAT_FIELDS:ReadonlySet<string>=new Set(['id','name','classId','online','ack','spectator','target','stats','classBonus','lastHitBy','autoTarget']);
 /** A player's run in a checkpoint: the class it was played with (checked on resume) and every other own field. */
 export interface PlayerCheckpoint {id:string;classId:string;run:Record<string,unknown>}
 /**
@@ -222,6 +223,11 @@ export class Simulation {
    */
   readonly objective?:ObjectiveKind;
   /**
+   * D-051: how the heroes of every run fight (RunSystemsOptions.combat). 'manual': the attack button and the equipped
+   * weapon, no skill (tap() refuses). Absent: the automatic weapons, as before. The Room passes RoomOptions.combat.
+   */
+  readonly combat?:CombatMode;
+  /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
@@ -234,12 +240,14 @@ export class Simulation {
     /** D-040 rotation (RunSystemsOptions.rotation, default on); false plays the round table's nine kinds. */
     rotation?:boolean;
     /** D-047: the match objective (city only; default none). */
-    objective?:ObjectiveKind}={}){
+    objective?:ObjectiveKind;
+    /** D-051: the manual combat ('manual'); default the automatic weapons. */
+    combat?:CombatMode}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -283,6 +291,7 @@ export class Simulation {
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),
+      ...(this.combat?{combat:this.combat}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }
@@ -419,6 +428,8 @@ export class Simulation {
   private equip(p:ServerPlayer){
     p.classBonus=classBonusOf(p.classId);p.build=startingBuild(p.classId);p.weaponReady={};p.facing={...DEFAULT_FACING};
     delete p.target;delete p.downed;delete p.eliminated;delete p.invulnerableUntil;resetSkill(p);
+    // D-051 (manual combat): who hit me and the auto aim's pick belong to the run that ended.
+    delete p.lastHitBy;delete p.autoTarget;
     // The agiota's devendo mark holds an absolute tick (D-002 extra field); a rematch restarts the clock at 0.
     delete (p as {devendoUntil?:number}).devendoUntil;delete (p as {devendoSay?:number}).devendoSay;
     // D-036 slow and slip hold absolute ticks too.
@@ -490,11 +501,14 @@ export class Simulation {
   addBot(id:string,name:string,classId:string){
     const p=this.add(id,name,classId);this.bots.add(id);this.shameOptOut.add(id);return p;
   }
-  /** The bot's stick for the next steps (held until changed) and a one-shot skill tap. */
-  setBotInput(id:string,direction:Point,skill=false){
+  /**
+   * The bot's stick for the next steps (held until changed), a one-shot skill tap and (D-051, manual combat) the attack
+   * button, held until changed like the stick.
+   */
+  setBotInput(id:string,direction:Point,skill=false,attack=false){
     if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
-    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack:false,skill:skill||!!held?.skill});
+    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
@@ -513,8 +527,11 @@ export class Simulation {
     if(!p?.online||p.spectator||!t)return false;
     return t.accept(value,now);
   }
-  /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
-  tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
+  /**
+   * Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id, or
+   * D-051's manual combat, which has no skill).
+   */
+  tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return this.combat!=='manual'&&!!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
   /**
    * Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones.
    * D-036: the phone replays its pending steps on ticks frameTick+1+k (maps/prediction.ts). The confirmed position
@@ -744,7 +761,8 @@ export class Simulation {
   }
   /** Hash of everything that decides future ticks (world, run systems, pending inputs, the bots' sticks, counter and minds, outcome). */
   stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),
-    bots:{sticks:[...this.botInputs].map(([id,b])=>[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
+    // D-051: a bot's held attack (manual combat only) joins its stick; without it the stick hashes as before.
+    bots:{sticks:[...this.botInputs].map(([id,b])=>b.attack?[id,b.x,b.y,!!b.skill,true]:[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
   /** The room bots' minds (RoomBots.state: memories and forge requests), which decide their next sticks (set by the room). */
   botState?:()=>unknown;
   /**

@@ -17,7 +17,7 @@ import {createProgression,type Progression,type ProgressionState} from './progre
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
-import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
+import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
@@ -27,7 +27,7 @@ import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {payKill,seatedPlayers} from './wallet.ts';
-import {CAR_ID,MOTO_ID,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {CAR_ID,MOTO_ID,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -84,6 +84,12 @@ export interface RunSystemsOptions {
    * the chaveiro's ETA; victory when he opens the car, defeat when it is a total loss or the team falls. Default off.
    */
   objective?:ObjectiveKind;
+  /**
+   * D-051: how heroes fight (CombatMode). 'manual': only the equipped weapon fires, while the attack is held, at the
+   * auto aim (weapons/system.ts); no class skill; damagePlayer records SimPlayer.lastHitBy. Default 'auto' (every world):
+   * the automatic weapons and the skills, exactly as before, until the E6 weapons and the balance pass.
+   */
+  combat?:CombatMode;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -164,6 +170,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
+  const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
+  world.recordLastHit=!!manual;
   const objective=cityWorld&&options.objective==='chaveiro'?options.objective:undefined;
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
@@ -282,10 +291,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot)),
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot,manual)),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
-    createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
     progression.progression,revive,
@@ -312,6 +321,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     objectiveView:()=>chaveiro?.view(world.tick),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{})}),
-    dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
+    dispose(){offKill();offZero();if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

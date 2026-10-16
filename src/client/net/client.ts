@@ -1,3 +1,4 @@
+import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
@@ -390,7 +391,7 @@ export class CoopClient {
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         // Waiting for the city: frames wait too (they are of the new map); a failed wait drops them (resync later).
         if(this.mapWait?.ws===ws){if(!this.mapWait.failed)this.mapWait.queue.push(data);return;}
-        if(this.initialized&&ws===this.socket)this.frame(ws,data);
+        if(this.initialized&&ws===this.socket){const t0=perfNow();this.frame(ws,data);perfSpan('rede',t0);}
         return;
       }
       this.bytes+=event.data.length;
@@ -478,7 +479,7 @@ export class CoopClient {
         const next=this.mapWait as MapWait|undefined;
         if(next?.ws===ws&&!next.failed){next.queue.push(...rest.slice(i));return;}
         const item=rest[i];
-        if(item instanceof ArrayBuffer){if(this.initialized&&!next)this.frame(ws,item);}
+        if(item instanceof ArrayBuffer){if(this.initialized&&!next){const t0=perfNow();this.frame(ws,item);perfSpan('rede',t0);}}
         else this.message(ws,item);
       }
     });
@@ -722,12 +723,13 @@ export class CoopClient {
   /**
    * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
    * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
+   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target).
    */
-  input(direction:Point,skill:boolean,target?:string){
+  input(direction:Point,skill:boolean,target?:string,attack=false){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
-    if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;}
-    const {input,active}=this.batcher.step(direction,skill,target);
+    if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
+    const {input,active}=this.batcher.step(direction,skill,target,attack);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
     if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects);}

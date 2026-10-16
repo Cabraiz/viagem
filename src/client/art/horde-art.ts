@@ -13,7 +13,7 @@ import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupText
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
-import {roleOf,type EnemyRole} from '../../rules/index.ts';
+import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
@@ -38,6 +38,20 @@ const LEGACY=new Set<string>(ENEMY_KINDS);
 export const enemyArtId=(viewKind:string,kind:EnemyKind)=>LEGACY.has(viewKind)?ENEMY_ART_ID[kind]:viewKind;
 /** The importer's file key of an animation's elite layer (validate.mjs: `elite/<anim>`). */
 export const eliteFile=(anim:string)=>`elite/${anim}`;
+/**
+ * Zueira round costumes (pedido 11 §7, "Round variants"): while round modifier `id` is on, every enemy of art `art`
+ * wears the importer's file `elite/<variant>-<anim>` (delivered as `elite/<art>-<variant>-<anim>.png`) over its base;
+ * an elite wears it under its own elite layer. It never picks the animation: a missing costume sheet just hides it.
+ */
+export interface RoundCostume {art:string;variant:string}
+export const ROUND_COSTUMES:Readonly<Record<string,RoundCostume>>={
+  'uncle-popsicle':{art:'tio-pave',variant:'picole'},'beanie-mosquito':{art:'pombos',variant:'gorro'},
+};
+/** The importer's file key of an animation's round costume layer. */
+export const costumeFile=(variant:string,anim:string)=>`elite/${variant}-${anim}`;
+const COSTUME_BY_LABEL:ReadonlyMap<string,RoundCostume>=new Map(CIDADE_MODIFIERS.filter(m=>ROUND_COSTUMES[m.id]).map(m=>[cidadeModifierLabel(m),ROUND_COSTUMES[m.id]]));
+/** The costume of the round whose banner reads `modifier` (the round event's label), or undefined. */
+export const roundCostume=(modifier:string|undefined):RoundCostume|undefined=>modifier===undefined?undefined:COSTUME_BY_LABEL.get(modifier);
 /** Texture key of one page of an enemy sheet: `art:enemy:<id>:<file>` plus `:p<n>` (1-based) when the sheet is paged. */
 export const enemyArtKey=(id:string,file:string,page=0,pages=1)=>`art:enemy:${id}:${file}${pages>1?`:p${page+1}`:''}`;
 
@@ -494,10 +508,12 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 
 // ---------- Phaser side: per-enemy state, kept off the actor so layers.ts changes stay tiny ----------
 interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
+  /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
+  costume?:Phaser.GameObjects.Image;costumeOn:boolean;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
   ratio:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,at:0,end:0,ratio:1};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
 /**
@@ -510,10 +526,19 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
 }
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
-const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0};
+const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0},mid:FrameRef={key:'',frame:0};
+/**
+ * Frame of layer `layer(anim)` (elite or costume) over the base: the action's own layer when it has one (and it
+ * loaded), else the loop's layer on the action's column (so it never blinks off during an attack or a hit).
+ */
+function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,layer:(anim:string)=>string,anim:string,loop:string|undefined,action:string|undefined,row:number,t:number,out:FrameRef):FrameRef|undefined{
+  let f=enemyFrame(id,piece,layer(anim),row,t,out,!!action);
+  if(action&&loop&&(!f||!textures.exists(f.key)))f=enemyFrameAt(id,piece,layer(loop),row,enemyColumn(id,piece,action,t,true),out);
+  return f&&textures.exists(f.key)?f:undefined;
+}
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
-export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=false;s.action=s.hitAt=undefined;}}
+export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
 export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
 /** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
@@ -541,7 +566,7 @@ export function enemyArtRow(image:object){const s=states.get(image);return s&&s.
  * frame's sheet is shown instead (CityOutlines.show maps origin and scale); elsewhere, and always outside the city, the
  * imported sheet with its baked umber rim.
  */
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -564,21 +589,19 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
   const file=piece.files[anim],scale=pieceScale(textures,id,piece,actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
-  // The elite layer of the action when it has one (and it loaded); otherwise the loop's elite layer (the elite marker
-  // never blinks off during an attack or a hit), on the action's column when the loop has it, else its first frame.
-  let eliteFrame=actor.elite?enemyFrame(id,piece,eliteFile(anim),s.row,t,top,!!action):undefined;
-  if(actor.elite&&action&&loop&&(!eliteFrame||!textures.exists(eliteFrame.key)))
-    eliteFrame=enemyFrameAt(id,piece,eliteFile(loop),s.row,enemyColumn(id,piece,action,t,true),top);
-  s.eliteOn=!!eliteFrame&&textures.exists(eliteFrame.key);
+  // The elite layer and the round costume (layerFrame: the action's own, else the loop's on the action's column).
+  const variant=actor.costume;
+  const eliteFrame=actor.elite?layerFrame(textures,id,piece,eliteFile,anim,loop,action,s.row,t,top):undefined;
+  const costumeFrame=variant?layerFrame(textures,id,piece,a=>costumeFile(variant,a),anim,loop,action,s.row,t,mid):undefined;
+  s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
-  let copy:CityVariant|undefined,copyTop:CityVariant|undefined;
+  let copy:CityVariant|undefined,copyTop:CityVariant|undefined,copyMid:CityVariant|undefined;
   if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
     copy=city.variant(frame.key,scale);
-    if(copy&&eliteFrame&&s.eliteOn){
-      copyTop=city.variant(eliteFrame.key,scale);
-      if(!copyTop||copyTop.geom.slotW!==copy.geom.slotW||copyTop.geom.slotH!==copy.geom.slotH)copy=copyTop=undefined;
-    }
+    const same=(v:CityVariant|undefined)=>!!v&&!!copy&&v.geom.slotW===copy.geom.slotW&&v.geom.slotH===copy.geom.slotH;
+    if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}
+    if(copy&&costumeFrame){copyMid=city.variant(costumeFrame.key,scale);if(!same(copyMid))copy=copyTop=copyMid=undefined;}
   }
   if(copy&&city)city.show(image,copy,frame.key,frame.frame,ox,oy,scale,scale);
   else{
@@ -589,22 +612,25 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   s.on=true;
   const art=ENEMY_ART[actor.kind];
   s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
-  if(eliteFrame&&s.eliteOn){
-    const o=overlayOf(image,s),topKey=copyTop?copyTop.key:eliteFrame.key;
-    if(o.texture.key!==topKey)o.setTexture(topKey,eliteFrame.frame);else o.setFrame(eliteFrame.frame);
-    // Just above its own base (never over a nearer enemy), with the base's hit flash/tint.
-    o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(image.scaleX,image.scaleY).setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(image.alpha);
-    o.tintFill=image.tintFill;o.tintTopLeft=image.tintTopLeft;o.tintTopRight=image.tintTopRight;
-    o.tintBottomLeft=image.tintBottomLeft;o.tintBottomRight=image.tintBottomRight;
-  }
+  if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
+  if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;
+}
+/** A layer just above its own base (never over a nearer enemy), with the base's geometry and hit flash/tint. */
+function follow(image:Phaser.GameObjects.Image,o:Phaser.GameObjects.Image,key:string,frame:number,depth:number){
+  if(o.texture.key!==key)o.setTexture(key,frame);else o.setFrame(frame);
+  o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(image.scaleX,image.scaleY).setDepth(image.depth+depth).setAlpha(image.alpha);
+  o.tintFill=image.tintFill;o.tintTopLeft=image.tintTopLeft;o.tintTopRight=image.tintTopRight;
+  o.tintBottomLeft=image.tintBottomLeft;o.tintBottomRight=image.tintBottomRight;
 }
 /** Depth of the elite layer over its base image: far below the gap between two enemies' depths. */
 export const ELITE_LAYER_DEPTH=.001;
+/** Depth of the round costume over its base: under the elite layer (the badge and crown go over the costume). */
+export const COSTUME_LAYER_DEPTH=ELITE_LAYER_DEPTH/2;
 function off(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;tex?:string},s:ArtState):false{
   // The renderer's current procedural texture (its acting one while acting), else the kind's.
   if(s.on){s.on=false;image.setTexture(actor.tex??enemyTexture(actor.kind,actor.elite)).setOrigin(.5,ENEMY_ART[actor.kind].originY);}
-  s.eliteOn=false;
+  s.eliteOn=s.costumeOn=false;
   return false;
 }
 /**
@@ -613,13 +639,13 @@ function off(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;elite:boolean;
  * It is a scene display-list child like the base, so the killcam camera (render/zueira-fx.ts), which ignores every
  * scene child but its own copy, ignores it too.
  */
-function overlayOf(image:Phaser.GameObjects.Image,s:ArtState){
-  if(s.overlay)return s.overlay;
+function overlayOf(image:Phaser.GameObjects.Image,s:ArtState,which:'overlay'|'costume'){
+  const had=s[which];if(had)return had;
   const scene=image.scene,o=scene.add.image(0,0,'__DEFAULT').setVisible(false);
-  const sync=()=>{o.setVisible(image.visible&&s.eliteOn);};
+  const sync=()=>{o.setVisible(image.visible&&(which==='overlay'?s.eliteOn:s.costumeOn));};
   scene.events.on('postupdate',sync);
-  image.once('destroy',()=>{scene.events.off('postupdate',sync);o.destroy();s.overlay=undefined;});
-  s.overlay=o;return o;
+  image.once('destroy',()=>{scene.events.off('postupdate',sync);o.destroy();s[which]=undefined;});
+  s[which]=o;return o;
 }
 
 // ---------- death actor: the death animation on a pooled image of the renderer, at the enemy's last spot ----------
@@ -648,21 +674,24 @@ export function deathDuration(art:string){
  * and today's size; the elite layer `elite/death` over it for an elite (hidden when absent). False when it is over:
  * the renderer then releases the death actor.
  */
-export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string):boolean{
+export function drawDeathArt(image:Phaser.GameObjects.Image,overlay:Phaser.GameObjects.Image,kind:EnemyKind,elite:boolean,row:number,elapsedMs:number,body=1,art?:string,costume?:{image:Phaser.GameObjects.Image;variant?:string}):boolean{
   // `kind` sizes it (enemyDrawScale); `art` (the roster id) picks the sheet, the kind's own art without it.
   const id=art===undefined?ENEMY_ART_ID[kind]:artOf(art),piece=artPiece('inimigos',id),anim=deathAnim(piece),file=anim?piece?.files[anim]:undefined;
-  if(!piece||!anim||!file){overlay.setVisible(false);return false;}
+  if(!piece||!anim||!file){overlay.setVisible(false);costume?.image.setVisible(false);return false;}
   const info=fileInfo(id,anim,file),alpha=deathAlpha(elapsedMs,actionDuration(info.frames,info.fps));
   const frame=alpha>0?enemyFrame(id,piece,anim,row,elapsedMs,base,true):undefined;
   const textures=image.scene.textures;
-  if(!frame||!textures.exists(frame.key)){overlay.setVisible(false);return false;}
+  if(!frame||!textures.exists(frame.key)){overlay.setVisible(false);costume?.image.setVisible(false);return false;}
   if(image.texture.key!==frame.key)image.setTexture(frame.key,frame.frame);else image.setFrame(frame.frame);
   const scale=pieceScale(textures,id,piece,kind,file,elite)*body;
   image.setOrigin(file.anchor?.[0]??.5,file.anchor?.[1]??.88).setScale(scale).setFlipX(false).setRotation(0).setAlpha(alpha).setVisible(true);
-  const layer=elite?enemyFrame(id,piece,eliteFile(anim),row,elapsedMs,top,true):undefined;
-  if(layer&&textures.exists(layer.key)){
-    if(overlay.texture.key!==layer.key)overlay.setTexture(layer.key,layer.frame);else overlay.setFrame(layer.frame);
-    overlay.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(scale).setDepth(image.depth+ELITE_LAYER_DEPTH).setAlpha(alpha).setVisible(true);
-  }else overlay.setVisible(false);
+  deathLayer(image,overlay,elite?enemyFrame(id,piece,eliteFile(anim),row,elapsedMs,top,true):undefined,textures,ELITE_LAYER_DEPTH);
+  if(costume){const v=costume.variant;deathLayer(image,costume.image,v?enemyFrame(id,piece,costumeFile(v,anim),row,elapsedMs,mid,true):undefined,textures,COSTUME_LAYER_DEPTH);}
   return true;
+}
+/** A death layer (elite or costume) over the dying base, or hidden when it has no sheet for this frame. */
+function deathLayer(image:Phaser.GameObjects.Image,o:Phaser.GameObjects.Image,layer:FrameRef|undefined,textures:{exists(key:string):boolean},depth:number){
+  if(!layer||!textures.exists(layer.key)){o.setVisible(false);return;}
+  if(o.texture.key!==layer.key)o.setTexture(layer.key,layer.frame);else o.setFrame(layer.frame);
+  o.setPosition(image.x,image.y).setOrigin(image.originX,image.originY).setScale(image.scaleX,image.scaleY).setDepth(image.depth+depth).setAlpha(image.alpha).setVisible(true);
 }

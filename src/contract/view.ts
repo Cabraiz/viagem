@@ -33,7 +33,12 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
    * D-051, a nest (kind 'ninho', phase 'dormindo' | 'ativo' | 'destruido', a fallen one stays at hp 0): its size, and
    * `seen` once someone in the team came near it (the minimap's fog).
    */
-  size?:'P'|'M'|'G';seen?:true}
+  size?:'P'|'M'|'G';seen?:true;
+  /**
+   * D-052, free build: a built piece's top-left cell on the build grid (contract/build.ts) and its rot (absent = 0).
+   * Every defense, the root included, and the kinds 'muro' and 'barricada'; x,y stay the footprint's centre.
+   */
+  c?:number;r?:number;rot?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

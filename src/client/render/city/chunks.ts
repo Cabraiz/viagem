@@ -203,7 +203,8 @@ export class ChunkTracker {
   readonly maxShowPerUpdate:number;
   readonly pivot:Pt;
   private readonly byKey=new Map<string,CityChunk>();
-  private readonly cache=new Map<string,Rect>();
+  /** Screen bounds per view (0..3) by chunk: read for every chunk on every frame, so no key string is built. */
+  private readonly cache:Map<CityChunk,Rect>[]=[new Map(),new Map(),new Map(),new Map()];
   private readonly shown=new Set<string>();
   private view:number|undefined=undefined;
 
@@ -218,9 +219,9 @@ export class ChunkTracker {
 
   /** Cached screen bounds of a chunk in a view. */
   bounds(chunk:CityChunk,view:number):Rect{
-    const v=normalizeView(view),k=`${chunk.key}|${v}`;
-    let r=this.cache.get(k);
-    if(!r){r=chunkScreenBounds(chunk,this.asset,v,this.pivot);this.cache.set(k,r);}
+    const v=normalizeView(view),cache=this.cache[v];
+    let r=cache.get(chunk);
+    if(!r){r=chunkScreenBounds(chunk,this.asset,v,this.pivot);cache.set(chunk,r);}
     return r;
   }
 

@@ -2,14 +2,14 @@ import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,t
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {LevelupPause} from './levelup-pause.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
-import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
+import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -94,6 +94,11 @@ export interface RoomOptions {
    * has one.
    */
   objective?:ObjectiveKind|false;
+  /**
+   * D-051: how the heroes fight in every map of this room (Simulation combat). 'manual': the attack button and the
+   * equipped weapon, and {t:'cast'} is answered ok:false without a cast. Absent: the automatic weapons and the skill.
+   */
+  combat?:CombatMode;
 }
 /**
  * D-047: the city rooms' objective when RoomOptions.objective is absent: the chaveiro, since it is balanced
@@ -363,6 +368,8 @@ export class Room {
   private readonly cityPlayable:boolean;
   /** D-047: the city runs' objective (RoomOptions.objective), undefined for the wall mode. */
   private readonly cityObjective?:ObjectiveKind;
+  /** D-051: RoomOptions.combat, for every Simulation this room builds (undefined: the automatic weapons). */
+  private readonly combat?:CombatMode;
   /** Each person's build catalog from join.maps (undefined: a client that sent none), for playersMissingMap. */
   private readonly catalogs=new Map<string,MapCatalog|undefined>();
   /** A city switch waiting for the asset to decode (its first use in this isolate); see ready(). */
@@ -373,12 +380,15 @@ export class Room {
   private mapGen=0;
   /** A test/tool's explicit combat cap; otherwise the map decides (D-043). */
   private fixedDuration:number|undefined;
+  /** D-051: the Simulation option of RoomOptions.combat (nothing for the automatic weapons, so those rooms are as before). */
+  private combatOption():{combat?:CombatMode}{return this.combat?{combat:this.combat}:{};}
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.solo=options.solo===true;
     const objective=options.objective===undefined?CITY_OBJECTIVE_DEFAULT:options.objective;if(objective)this.cityObjective=objective;
+    if(options.combat==='manual')this.combat='manual';
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
-    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
@@ -630,13 +640,18 @@ export class Room {
     }
     else if(m.t==='ack'){c.encoder?.ack(m.seq);this.lateness(c,m.seq,now);}
     // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
-    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
+    // D-051: the manual combat has no skill: an older client's tap is answered at once, ok false, and nothing is cast.
+    else if(m.t==='cast'){
+      if(this.combat==='manual'){if(Number.isSafeInteger(m.id))this.sendJson(c,{t:'cast',seq:m.id,ok:false,readyTick:0});}
+      else{const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
+    }
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
+    else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -789,8 +804,8 @@ export class Room {
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{})})
-      :new Simulation(old.seed,{world:this.baseWorld});
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...this.combatOption()})
+      :new Simulation(old.seed,{world:this.baseWorld,...this.combatOption()});
     sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
@@ -818,7 +833,8 @@ export class Room {
    */
   private dropPerson(id:string){
     this.autopilots.remove(id);
-    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
+    // sim.remove splits their wallet among the seats that stay (the inheritance, carteira-e-pix).
+    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.pixAt.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
     if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
     if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
   }
@@ -969,6 +985,30 @@ export class Room {
     // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
     const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
+  }
+  /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
+  private pixAt=new Map<string,{at:number;req:number}>();
+  /**
+   * PIX to a friend (NEW-20261014-ORQ-carteira-e-pix, contract wallet.ts): {t:'pix',round,req,to,amount}. A tap of
+   * another shape (protocol room.ts parsePix) is dropped; everything else is answered {t:'pixed',req,ok,to?,amount?,grana?|reason?}
+   * (grana: the sender's wallet after it). The room refuses what only it knows: outside combat or for another round
+   * ('phase'), during the D-050 level-up pause ('pause'), sooner than PIX_GAP_MS after the sender's last PIX ('rate';
+   * the same req again goes on to the sim, which says 'duplicate'); the sim checks the rest (amount, wallet, self,
+   * target, a spectator sender) and moves the money, with a `pix` event in the next frame.
+   */
+  private pix(c:Connection,raw:unknown,now:number){
+    const m=parsePix(raw);if(!m)return;
+    const from=c.playerId!,answer=(result:PixResult)=>this.sendJson(c,{t:'pixed',req:m.req,ok:result.ok,
+      ...(result.ok?{to:result.to,amount:result.amount,grana:result.grana}:{reason:result.reason})});
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round){answer({ok:false,reason:'phase'});return;}
+    // D-050: no PIX while the team picks its level-up cards.
+    if(this.levelup.paused){answer({ok:false,reason:'pause'});return;}
+    const last=this.pixAt.get(from);
+    if(last&&last.req!==m.req&&now-last.at<PIX_GAP_MS){answer({ok:false,reason:'rate'});return;}
+    const result=this.sim.pix(from,m.to,m.amount,`p:${m.req}`);
+    if(result.ok)this.pixAt.set(from,{at:now,req:m.req});
+    answer(result);
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){

@@ -12,7 +12,11 @@ import type {SimContext,SimSystem} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
 
 export type {StampedEvent};
-export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld)=>void;
+/**
+ * `credit` (sim/wallet.ts): who the kill's Grana goes to when nobody killed it with their own weapon (`by` absent): a
+ * tower defense's owner. It never counts as that player's kill or damage.
+ */
+export type KillHandler=(enemy:EnemyState,by:string|undefined,ctx:SimWorld,credit?:string)=>void;
 export type PlayerZeroHandler=(player:SimPlayer,source:string|undefined,ctx:SimWorld)=>void;
 
 /** Reference index: linear scan; nearest breaks distance ties by smallest id (D-004). VGM-032 injects SpatialHash. */
@@ -91,7 +95,7 @@ export class SimWorld implements SimContext {
   private counters=new Map<string,number>();
   private systems=new Map<string,SimSystem>();
   private killHandlers:KillHandler[]=[];
-  private pendingKills:{enemy:EnemyState;by:string|undefined}[]=[];
+  private pendingKills:{enemy:EnemyState;by:string|undefined;credit?:string}[]=[];
   private dispatchingKills=false;
   private zeroHandlers:PlayerZeroHandler[]=[];
   /**
@@ -101,6 +105,12 @@ export class SimWorld implements SimContext {
    * endless, a neutral city) damagePlayer is exactly as before. A result that is not a finite number > 0, or 1, is ignored.
    */
   playerDamageScale?:(ctx:SimContext)=>number;
+  /**
+   * D-051, manual combat only (createRunSystems sets it for the run it wires): damagePlayer records the enemy behind
+   * each hit in SimPlayer.lastHitBy, for the auto aim. Off (the automatic weapons), players never get the field, so
+   * every state digest stays as before.
+   */
+  recordLastHit=false;
 
   constructor(options:SimWorldOptions){
     this.terrain=options.terrain;
@@ -199,7 +209,7 @@ export class SimWorld implements SimContext {
   /** Moves queued events (including ones emitted between ticks by commands) into lastEvents. */
   flush(){this.lastEvents=this.queue;this.queue=[];return this.lastEvents;}
 
-  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string){
+  damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string,credit?:string){
     const enemy=this.enemies.get(enemyId);
     if(!enemy||!(enemy.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
     const source=sourcePlayer?this.players.get(sourcePlayer):undefined;
@@ -215,12 +225,12 @@ export class SimWorld implements SimContext {
     if(enemy.hp>0)return false;
     this.enemies.delete(enemyId);
     this.emit({type:'kill',enemy:enemy.id,kind:enemy.kind,by:sourcePlayer,x:enemy.x,y:enemy.y});
-    this.pendingKills.push({enemy,by:sourcePlayer});
+    this.pendingKills.push({enemy,by:sourcePlayer,...(credit!==undefined?{credit}:{})});
     if(!this.dispatchingKills){
       this.dispatchingKills=true;
       try{
         for(let kill=this.pendingKills.shift();kill;kill=this.pendingKills.shift())
-          for(const handler of this.killHandlers)handler(kill.enemy,kill.by,this);
+          for(const handler of this.killHandlers)handler(kill.enemy,kill.by,this,kill.credit);
       }finally{this.dispatchingKills=false;this.pendingKills=[];}
     }
     return true;
@@ -230,6 +240,9 @@ export class SimWorld implements SimContext {
     const player=this.players.get(playerId);
     if(!player||player.spectator||player.eliminated||player.downed||!(player.hp>0))return;
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
+    // D-051: who is hitting me (an enemy; hazards that outlive their thrower are not anyone to shoot back at), even when
+    // the armor takes the whole hit.
+    if(this.recordLastHit&&source!==undefined&&this.enemies.has(source))player.lastHitBy={id:source,tick:this.tick};
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
     // D-047 Dona Cida's cocada (SimPlayer.guardUntil), before armor like the agiota's mark.

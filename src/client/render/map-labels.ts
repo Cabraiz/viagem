@@ -36,7 +36,7 @@ export class MapLabel {
    */
   constructor(private scene:Phaser.Scene,label:string,private readonly place=false){
     this.text=scene.add.text(0,0,label,{fontFamily:token('--f-sistema'),fontSize:`${LABEL_CSS*RASTER}px`,fontStyle:'700',color:token('--c-papel')}).setOrigin(.5,0);
-    this.plate=scene.add.graphics();
+    this.plate=scene.add.graphics().setName('etiqueta');
     whenFontsReady(()=>{this.text.updateText();this.drawnW=-1;});
   }
   setText(label:string){if(this.text.text!==label)this.text.setText(label);return this;}

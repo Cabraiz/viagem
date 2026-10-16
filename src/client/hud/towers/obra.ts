@@ -4,7 +4,7 @@
  *   with a tower that can grow right now wears the Amarelo evolve arrow.
  * - A tap on a site opens the tree as a Janela: the head card (the Vigia to build, or what stands there) and its
  *   branches as etiquetas (suit sticker, name, price, one line). The price (D-048): "1 🗼" for the Vigia and "3 🗼" for
- *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution "🗼⬆ R$ N" in Grana (price.ts
+ *   the Gustavão (fichas de torre, the tower sticker), the rail "Grátis", an evolution "🗼⬆ R$ N" from my wallet (price.ts
  *   evolvePriceLabel). A blocked branch is dashed with a lock and its reason in words ("Falta 1 ficha", "Falta R$ 3",
  *   "Sem trilho"). The thumb confirms in the 48 px button at the bottom; an evolution in Grana reads only its price there
  *   ("🗼⬆ R$ N", spoken "Evoluir por N reais").
@@ -25,7 +25,7 @@ import {tokensOf,unitsOf} from '../../../rules/index.ts';
 import {computeZones,type ZoneInput,type Rect} from '../zones.ts';
 import {layoutObra,obraArrows,planMarkers,type MarkerPlan,type ObraPoint} from './layout.ts';
 import {arrowHalf,beakTransform,distanceText,type EdgeArrow} from '../edges.ts';
-import {BRANCH_NAME,RAIL_SITE_ID,blockSpeech,blockText,canEvolve,cardsOf,defaultPick,selectable,treeFor,treeToOpen,type ObraAction,type ObraCard,type ObraTree,type ObraView} from './model.ts';
+import {BRANCH_NAME,RAIL_SITE_ID,blockSpeech,blockText,canEvolve,cardsOf,defaultPick,selectable,towerSticker,treeFor,treeToOpen,type ObraAction,type ObraCard,type ObraTree,type ObraView} from './model.ts';
 
 const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
   // Paus (people standing together), ouros (a blast), espadas (a beam); the root a plain guard post; the rail its sleepers.
@@ -36,7 +36,12 @@ const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
   rail:'<path d="M3 5h18v2.5H3zM3 16.5h18V19H3zM5 3h2.5v18H5zM10.75 3h2.5v18h-2.5zM16.5 3H19v18h-2.5z"/>',
 };
 const suitOf=(c:ObraCard)=>c.rail&&!c.label?'rail':c.branch??'root';
-const suit=(c:ObraCard)=>`<svg class="rh-obra-naipe" data-naipe="${suitOf(c)}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SUIT[suitOf(c)]}</svg>`;
+/** The card's face: the defense's imported sticker (ui/torre-<id>, ringed in its suit's colour), else the suit. */
+const face=(key:string|undefined,n:keyof typeof SUIT)=>{
+  const art=key?towerSticker(key):undefined;
+  return art?`<img class="rh-obra-naipe rh-obra-adesivo" data-naipe="${n}" data-torre="${key}" src="${art}" alt="" aria-hidden="true" draggable="false" decoding="async">`:naipe(n);
+};
+const suit=(c:ObraCard)=>face(c.rail?undefined:c.key,suitOf(c));
 const ARROW='<svg class="rh-obra-seta" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 21 12h-5.5v10h-7V12H3z"/></svg>';
 /** A card's price: fichas for a build (the Vigia, the Gustavão), R$ for an evolution, free for the rail. */
 const priceOf=(c:ObraCard):PriceLabel=>c.tokens!==undefined?tokenPriceLabel(c.tokens):c.grana!==undefined?evolvePriceLabel(c.grana):FREE_PRICE;
@@ -222,10 +227,11 @@ export class ObraHud {
     const panel=el('section','rh-obra-janela',this.el);place(panel,layout.panel);panel.style.zIndex=String(plan.shown.length+2);
     panel.setAttribute('role','dialog');panel.setAttribute('aria-label',`Obra: ${tree.head.name}`);panel.tabIndex=-1;
     panel.dataset.orientation=layout.orientation;panel.dataset.forma=layout.form;
-    // The team's wallet where it is spent (hud-mobile-minimo: the phone's top shows no R$ nor fichas): a small ficha
-    // riding the window's top edge, "R$ 120 · 2 [torre]" (obra.css .rh-obra-carteira). Not a target.
+    // What pays here, where it is spent (hud-mobile-minimo: the phone's top shows no R$ nor fichas): my wallet
+    // (carteira-e-pix) and the team's fichas, a small ficha riding the window's top edge, "R$ 120 · 2 [torre]"
+    // (obra.css .rh-obra-carteira). Not a target.
     {const tokens=tokensOf(unitsOf(v.balance)),grana=granaText(v.grana);
-      const wallet=el('span','rh-obra-carteira',panel);wallet.setAttribute('role','img');wallet.setAttribute('aria-label',`${grana} e ${fichasText(tokens)} da turma`);
+      const wallet=el('span','rh-obra-carteira',panel);wallet.setAttribute('role','img');wallet.setAttribute('aria-label',`Você tem ${grana}; a turma tem ${fichasText(tokens)}`);
       wallet.innerHTML=`<b>${grana}</b><span class="rh-obra-carteira-fichas">${tokenPriceLabel(tokens).html}</span>`;}
     const cards=cardsOf(tree),rects=[layout.head,...layout.branches];
     cards.forEach((c,i)=>this.card(panel,c,rects[i],i===0,layout.panel));
@@ -295,7 +301,8 @@ export class ObraHud {
     put(slot,'at',`translate(${Math.round(a.x-half.w)}px,${Math.round(a.y-half.h)}px)`,v=>{slot.b.style.transform=v;});
     put(slot,'tip',beakTransform(a,half,''),v=>{slot.tip.style.transform=v;});
     put(slot,'side',a.side,v=>{slot.b.dataset.side=v;});
-    put(slot,'face',m?.head?suitOf(m.head):m?.kind==='trilho'?'rail':'root',v=>{slot.face.innerHTML=naipe(v as keyof typeof SUIT);});
+    put(slot,'face',m?.head?`${suitOf(m.head)}|${m.head.rail?'':m.head.key}`:m?.kind==='trilho'?'rail|':'root|',v=>{
+      const [n,key]=v.split('|') as [keyof typeof SUIT,string];slot.face.innerHTML=face(key||undefined,n);});
     put(slot,'num',distance===undefined?'':distanceText(distance),v=>{slot.num.textContent=v;});
     put(slot,'pending',String(!!m?.pending),v=>{if(v==='true')slot.b.setAttribute('aria-disabled','true');else slot.b.removeAttribute('aria-disabled');});
     const where=distance===undefined?'fora da vista':`a ${Math.min(999,Math.max(0,Math.round(distance)))} metros`;

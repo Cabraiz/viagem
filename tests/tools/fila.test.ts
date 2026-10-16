@@ -210,6 +210,26 @@ test('review: a failure only two branches make together goes back to the second 
   }finally{w.cleanup();}
 });
 
+test('a failing test file only the culprit branch adds: the main and the earlier steps do not run it (NEW-20261014-ORQ-fila-teste-novo)',()=>{
+  const w=world();
+  try{
+    // The real local suite (node --test): the main has a green test; the branch adds a red one. node --test on a path
+    // that does not exist is an error, so without the filter the main looked red (lote 20261014-204519).
+    mkdirSync(join(w.repo,'tests'));
+    writeFileSync(join(w.repo,'tests/ok.test.ts'),"import test from 'node:test';test('ok',()=>{});\n");
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','ok');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/boa','src/boa.ts','export const boa=1;\n');
+    w.branch('vgm/teste-novo','tests/novo.test.ts',"import test from 'node:test';import assert from 'node:assert';test('novo',()=>assert.fail('vermelho'));\n");
+    main(['pronto','NEW-boa','--branch','vgm/boa',...w.opts]);main(['pronto','NEW-teste-novo','--branch','vgm/teste-novo',...w.opts]);
+    const state=main(['lote',...w.opts.map(o=>o==='node check.mjs'?'local':o)]);
+    assert.equal(state.abortado,undefined,'the main is not "red" for a file it does not have');
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-boa'],'boa alone does not have the file either');
+    assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-teste-novo']);
+    const back=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-teste-novo.json'),'utf8'));
+    assert.deepEqual(back.falhas,['tests/novo.test.ts']);
+  }finally{w.cleanup();}
+});
+
 test('review: a newer pronto while the lote waits for the Worker stays queued; pronto from a worktree finds the main checkout',async()=>{
   const w=world();
   try{

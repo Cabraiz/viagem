@@ -8,8 +8,8 @@
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
- *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$), uvar gambiarras bought, uvar chinelos
- *       bought (inflação); svar hornEndsTick-tick if horn)
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$: the viewer's own wallet since
+ *       carteira-e-pix), uvar gambiarras bought, uvar chinelos bought (inflação); svar hornEndsTick-tick if horn)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -27,6 +27,9 @@
  * Area of interest: an encoder with a `viewer` sends every player (allies always, for the minimap), structures (the
  * base) and the boss, plus enemies, pickups, projectiles, telegraphs and nodes within INTEREST_RADIUS of the viewer (kept
  * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
+ * Wallets (NEW-20261014-ORQ-carteira-e-pix): every player record carries its `grana` (uvar, when it changes), so
+ * everyone sees everyone's balance; the camp block's and the objective block's `grana` are the viewer's own wallet
+ * (0 for a spectator), written per encoder from the viewer's player record. The `pix` event goes to everyone.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
@@ -66,9 +69,10 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
  * 20 given by the integration queue (tools/fila.mjs, lote 20261016-191924) to: NEW-20261014-ORQ-ataque-manual-wild-rift-passo1.
+ * 21 given by the integration queue (tools/fila.mjs, lote 20261016-195357) to: NEW-20261014-ORQ-carteira-e-pix.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=20;
+export const PROTOCOL_VERSION=21;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -320,7 +324,14 @@ const contribution=optional<Contribution>({
  * can render and reconcile players from protocol 4 alone (view.ts stays unchanged). The three ticks drive the
  * sprite (attack swing, skill ring, skill cooldown); absent means 0 (never).
  */
-export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number};
+export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number;
+  /** The player's wallet in R$ (contract SimPlayer.grana; carteira-e-pix): absent = 0. */
+  grana?:number};
+/** What `viewer` sees as their own Grana: their wallet (0 when absent, a spectator, or not in the frame). */
+export function viewerGrana(players:readonly PlayerWireView[],viewer:string|undefined):number{
+  const p=viewer===undefined?undefined:players.find(q=>q.id===viewer);
+  return p&&!p.spectator?uint(p.grana??0):0;
+}
 type SectionKey='players'|'enemies'|'pickups'|'projectiles'|'telegraphs'|'structures'|'nodes';
 export const SECTIONS:readonly SectionKey[]=['players','enemies','pickups','projectiles','telegraphs','structures','nodes'];
 type AnyCodec=Codec<unknown>;
@@ -342,6 +353,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
     // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
     fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
+    // carteira-e-pix: the wallet (R$), last: it changes on kills, purchases and PIX only.
+    grana:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -458,6 +471,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['moto',[['mode','str'],['alone','count',true]]],
   ['sale',[['enemy','ref',false,'enemies']]],
   ['buy',[['player','ref'],['item','str']]],
+  // carteira-e-pix: a PIX between players (memo: an index into PIX_MEMOS, the toast's description).
+  ['pix',[['from','ref'],['to','ref'],['amount','count'],['memo','count']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -690,7 +705,9 @@ const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downe
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
-  'alarm','part','moto','buy']);
+  'alarm','part','moto','buy',
+  // carteira-e-pix: a PIX (the portraits blink for everyone; the toast is the two players').
+  'pix']);
 /** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
 const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
 /** Camp block bits. */
@@ -871,7 +888,9 @@ export class FrameEncoder {
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
     const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
     // Protocol 15: the objective block only when it differs from the baseline's (both parts on a full frame).
-    const objective=view.objective?normObjective(view.objective):undefined,had=base?.objective;
+    // carteira-e-pix: with a viewer, the camp's and the objective's Grana are the viewer's own wallet.
+    const own=this.viewer===undefined?undefined:viewerGrana(view.players,this.viewer);
+    const objective=view.objective?normObjective(own===undefined?view.objective:{...view.objective,grana:own}):undefined,had=base?.objective;
     const objBits=objective?(had&&sameDynamic(had,objective)?0:OBJ_DYN)|(had&&sameStatic(had,objective)?0:OBJ_STATIC):had?OBJ_CLEAR:0;
     w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0)|(objBits?16:0));
     if(view.round){
@@ -886,7 +905,7 @@ export class FrameEncoder {
     }
     if(view.camp){
       const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
-      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(camp.grana)));
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(own??camp.grana)));
         w.uvar(Math.max(0,Math.floor(camp.forge?.gambiarra??0)));w.uvar(Math.max(0,Math.floor(camp.forge?.['torre-chinelo']??0)));
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }

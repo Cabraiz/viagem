@@ -449,17 +449,17 @@ test('VGM-046B: forge taps through the room respect the balance, the camp and a 
   startRun(room,[a,b]);
   const sw=room.sim.run.stonewards.state,round=room.run.snapshot().round;
   assert.equal(room.sim.world.round.phase,'prepare','the opening countdown is an intermission too');
-  // D-048: the forge is paid in the team's Grana (R$); the pile of material stays.
-  const REPARO=RECIPES.reparo.cost;
-  sw.grana=2*REPARO-1;sw.balance={units:30};sw.wall.hp=100;
+  // D-048: the forge is paid in Grana (R$), since carteira-e-pix from the buyer's own wallet; the pile of material stays.
+  const REPARO=RECIPES.reparo.cost,pa=room.sim.players.get(idOf(a))!,pb=room.sim.players.get(idOf(b))!;
+  pa.grana=REPARO;pb.grana=REPARO-1;sw.balance={units:30};sw.wall.hp=100;
   const forged=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='forged');
-  // Two taps in the same tick, money for one repair: the first one wins, the second hears why.
+  // Two taps in the same tick, money in one wallet: that one repairs, the other hears why (nobody pays for them).
   command(room,a,{t:'forge',round,recipe:'reparo',req:1});command(room,b,{t:'forge',round,recipe:'reparo',req:1});
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:true});
   assert.deepEqual(forged(b).at(-1),{t:'forged',req:1,recipe:'reparo',ok:false,reason:'balance'});
-  assert.equal(sw.grana,REPARO-1);assert.deepEqual(sw.balance,{units:30});assert.equal(sw.wall.hp,100+150);
+  assert.equal(pa.grana,0);assert.equal(pb.grana,REPARO-1);assert.deepEqual(sw.balance,{units:30});assert.equal(sw.wall.hp,100+150);
   // The same request again (a resend after a reconnect) applies once.
-  sw.grana=18;sw.balance={units:41};
+  pa.grana=18;sw.balance={units:41};
   command(room,a,{t:'forge',round,recipe:'reparo',req:1});
   assert.deepEqual(forged(a).at(-1),{t:'forged',req:1,recipe:'reparo',ok:false,reason:'duplicate'});
   // Forged or stale commands never reach the forge.
@@ -467,13 +467,13 @@ test('VGM-046B: forge taps through the room respect the balance, the camp and a 
   for(const bad of [{recipe:'__proto__',req:2},{recipe:'reparo',req:-1},{recipe:'reparo',req:'x'},{recipe:'reparo',req:3,round:round+1}])command(room,a,{t:'forge',round,...bad});
   assert.equal(forged(a).length,before);
   // Out of the camp: refused with the reason.
-  const pa=room.sim.players.get(idOf(a))!;pa.x=sw.wall.x+20;
+  pa.x=sw.wall.x+20;
   command(room,a,{t:'forge',round,recipe:'reparo',req:4});
   assert.equal(forged(a).at(-1).reason,'away');
   // The next frames carry the camp block and the wall.
   const c=client(room,a);room.advance(5000);room.advance(5050);c.pump();
   const view=c.feed.peek();
-  assert.deepEqual(view.camp,{units:41,grana:18},'the one pile and the team Grana (D-048)');
+  assert.deepEqual(view.camp,{units:41,grana:18},'the one pile and this viewer\'s own wallet (D-048, carteira-e-pix)');
   assert.equal(view.structures.find(s=>s.kind==='muralha')!.hp,250);
 });
 test('lab move reach is measured from the lab base (base + LAB_OFFSET): 199 u accepted, 201 u refused',()=>{

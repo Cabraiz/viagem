@@ -42,6 +42,14 @@
 .rh-obra-naipe[data-naipe=C]{fill:var(--c-lilas)}
 .rh-obra-naipe[data-naipe=root]{fill:var(--c-cartolina)}
 .rh-obra-naipe[data-naipe=rail]{fill:var(--c-trilho)}
+/* icones-no-hud: the defense's imported sticker in place of the suit, ringed in the suit's colour (the branch stays legible). */
+.rh-obra-adesivo{box-sizing:border-box;object-fit:contain;border-radius:var(--r-circulo);background:var(--c-papel-claro);
+  box-shadow:0 0 0 2px var(--naipe,var(--c-cartolina))}
+.rh-obra-adesivo[data-naipe=A]{--naipe:var(--c-a-favor)}
+.rh-obra-adesivo[data-naipe=B]{--naipe:var(--c-cone)}
+.rh-obra-adesivo[data-naipe=C]{--naipe:var(--c-lilas)}
+.rh-obra-card .rh-obra-adesivo{width:28px;height:28px}
+.rh-obra-chao .rh-obra-adesivo{width:30px;height:30px}
 .rh-obra-nome{grid-column:2;min-width:0;font:400 var(--t-16)/1.15 var(--f-cartaz);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-efeito{grid-column:2/4;min-width:0;font:400 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh-obra-cost,.rh-obra-why{grid-column:3;grid-row:1;display:inline-flex;align-items:center;gap:2px;font:800 var(--t-13)/1.15 var(--f-sistema);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -108,3 +116,6 @@
   font:400 var(--t-16)/1.1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none}
 .rh-obra-carteira-fichas{display:inline-flex;align-items:center;gap:1px}
 .rh-obra-carteira .ic{width:18px;height:18px}
+/* icones-no-hud: a sticker reads at a few px more than the suit it replaces (compact cards, light markers). */
+.rh-obra-janela[data-forma=compacta] .rh-obra-card:not([data-head]) .rh-obra-adesivo{width:22px;height:22px}
+.rh-obra-site[data-light=true] .rh-obra-chao .rh-obra-adesivo{width:24px;height:24px}

@@ -3,12 +3,13 @@
  * - the round chip: "Onda N" and the chaveiro's clock (ObjectiveView.etaS, "9:48") in place of "Round N/10";
  * - why he stopped (ObjectiveView.moto.mode): one short line for REASON_MS when he stops ("Moto morta: empurra!");
  * - the car's bar in the base ficha: the hits it still takes (car.limit − car.hits) over car.limit;
- * - Dona Cida: whether the hero is near the moto, her three sweets with price and stock against the team's Grana, and
+ * - Dona Cida: whether the hero is near the moto, her three sweets with price and stock against my wallet, and
  *   the room's refusals ({t:'bought'} reasons) as one line;
- * - the result: why it ended (RunState.objective.cause), the bill and "vitória com dívida".
+ * - the result: why it ended (RunState.objective.cause), the bill and "vitória com dívida", and the vaquinha (who put
+ *   how much into the bill, carteira-e-pix: ObjectiveResult.share).
  * Every number comes from the room's view (protocol 15); nothing here decides the game.
  */
-import {CIDA_ITEMS,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView} from '../../contract/index.ts';
+import {CIDA_ITEMS,type CidaItem,type CidaItemId,type MotoMode,type ObjectiveCause,type ObjectiveResult,type ObjectiveView,type VaquinhaShare} from '../../contract/index.ts';
 
 /** Dona Cida sells within this many units of the moto (mirrors the sim's CIDA_REACH; tests/client/chaveiro-hud pins it). */
 export const CIDA_REACH_U=3;
@@ -97,7 +98,7 @@ export function cidaButtonShown(input:{live:boolean;standing:boolean;near:boolea
 export const CIDA_EFFECT:Readonly<Record<CidaItemId,string>>=Object.freeze({
   brigadeiro:'+25% de velocidade',pacoca:'+30% de dano',cocada:'Leva 30% menos dano',
 });
-/** One sweet as the panel shows it; `blocked`: why a tap cannot buy it now (stock first, then Grana). */
+/** One sweet as the panel shows it; `blocked`: why a tap cannot buy it now (stock first, then my wallet). */
 export interface CidaOffer {id:CidaItemId;name:string;effect:string;seconds:number;price:number;stock:number;priceText:string;stockText:string;
   blocked?:'stock'|'grana';short:number;label:string}
 export function cidaOffers(objective:Pick<ObjectiveView,'grana'|'stock'>):CidaOffer[]{
@@ -146,4 +147,23 @@ export function objectiveBill(result:ObjectiveResult):ObjectiveBill{
   const wave=`Onda ${Math.max(1,result.wave)}`;
   return {cause:result.cause,reason:debtVictory?DEBT_VICTORY_TEXT:OBJECTIVE_CAUSE_TEXT[result.cause],budget,grana,paid,...(debt?{debt}:{}),debtVictory,wave,
     aria:`Orçamento ${budget}, grana do time ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
+}
+
+/**
+ * The jokes for whoever put R$ 0 into the vaquinha (board plans/carteira-pix-proposta.md §2: "Tio: R$ 0, pediu
+ * recibo"), one per R$ 0 in the line's order, round the list.
+ */
+export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no PIX (mentira)'];
+/**
+ * The result's vaquinha line (carteira-e-pix, ObjectiveResult.share): each player's part of the bill, in the room's
+ * order, "Vaquinha: Ana R$ 12 · Bot R$ 8 · Zé R$ 0, pediu o recibo"; me as "Você". Undefined with no share.
+ */
+export function vaquinhaLine(share:readonly VaquinhaShare[]|undefined,nameOf:(id:string)=>string){
+  if(!share?.length)return undefined;
+  let zeros=0;
+  const parts=share.map(s=>{
+    const paid=Math.max(0,Math.round(Number.isFinite(s.paid)?s.paid:0));
+    return `${nameOf(s.id)} ${reais(paid)}${paid>0?'':`, ${VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]}`}`;
+  });
+  return {text:`Vaquinha: ${parts.join(' · ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`};
 }

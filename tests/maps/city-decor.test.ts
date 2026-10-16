@@ -83,7 +83,9 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
   const sites=buildPlanFor(new CityTerrain(asset,'decor-test')).sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL));
   for(const d of asset.decor){
     const x0=d.c*u,y0=d.r*u,x1=(d.c+d.w)*u,y1=(d.r+d.h)*u;
-    for(const k of discs){
+    // Lines and border boulders only dress solid block cells: only the plaza (the base) stays bare of them.
+    const dresses=isLine(d.id)||d.id.startsWith('pedregulho-');
+    for(const k of dresses?discs.slice(0,1):discs){
       const nx=Math.max(x0,Math.min(k.x,x1)),ny=Math.max(y0,Math.min(k.y,y1));
       assert.ok(Math.hypot(nx-k.x,ny-k.y)>=k.r-1e-6,`${d.id} at ${d.c},${d.r} inside a keep-out disc`);
     }

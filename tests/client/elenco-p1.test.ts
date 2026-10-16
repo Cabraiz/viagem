@@ -13,7 +13,7 @@ import {LOOK_BUFFED,LOOK_CHARGE,LOOK_LECTURE,LOOK_NONE,LOOK_POSE,PALESTRA_RADIUS
 import {DEATH_LINES,KIND_STYLES,deathLine,deathLines,kindStyle} from '../../src/client/render/jokes.ts';
 import {CAUSE_COPY,causeCopy,causeKind,emptyCauses,recordFall,resultCause} from '../../src/client/hud/cause.ts';
 import {CRITTER_NAMES,KILLCAM_KIND_LINES,killcamCaption} from '../../src/client/fun/zueira.ts';
-import {ENEMY_ART_ID,artLoads,projectileLook} from '../../src/client/art/horde-art.ts';
+import {ENEMY_ART_ID,enemyPieceLoads,projectileLook} from '../../src/client/art/horde-art.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {Projector} from '../../src/client/render/projector.ts';
 import {elevation} from '../../src/maps/index.ts';
@@ -63,13 +63,12 @@ test('imported art: the new kinds map to their own importer id and stay procedur
   // A manifest with only the old cast queues nothing for the new kinds.
   setArtIndex(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/inimigos',pieces:{
     bebado:{kind:'animations',files:{walk:{file:'bebado/walk.webp',cell:[128,128],frames:8,directions:8}}}}}}}));
-  const keys=artLoads().map(l=>l.key);
-  assert.ok(keys.some(k=>k.startsWith('art:enemy:bebado:')));
-  for(const kind of NEW)assert.ok(!keys.some(k=>k.startsWith(`art:enemy:${kind}:`)),kind);
+  assert.ok(enemyPieceLoads(ENEMY_ART_ID.bebado).some(l=>l.key.startsWith('art:enemy:bebado:')));
+  for(const kind of NEW)assert.deepEqual(enemyPieceLoads(ENEMY_ART_ID[kind]),[],kind);
   // Once a piece arrives under the kind's id, it is loaded like any other enemy's.
   setArtIndex(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/inimigos',pieces:{
     coach:{kind:'animations',files:{walk:{file:'coach/walk.webp',cell:[128,128],frames:8,directions:8}}}}}}}));
-  assert.ok(artLoads().some(l=>l.key==='art:enemy:coach:walk'));
+  assert.ok(enemyPieceLoads(ENEMY_ART_ID.coach).some(l=>l.key==='art:enemy:coach:walk'));
 });
 
 test('death pops: the reviewed lines, all uppercase, deterministic, with their own colors',()=>{

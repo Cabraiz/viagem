@@ -16,6 +16,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import {GROUPS as SPEC} from '../spec.mjs';
 
 export const GROUPS={chao:'cenario/chao',efeitos:'efeitos',itens:'itens',projeteis:'projeteis',ui:'ui'};
 /** Delivery map folder → game map id (src/client/hud/city/map-selector.ts). */
@@ -94,6 +95,12 @@ export function sidecarFor(group,stem,meta,img){
     if(img.alpha)sc.transparent=true;
     return {sidecar:sc,notes};
   }
+  // A 9-slice or seamless piece of the spec's table (health bars, speech balloon, telegraph textures) whose meta says
+  // nothing about it (no nineSlice, not a pattern): leave `kind` out, so the table's kind, cell, wrap and transparency
+  // apply (validate.mjs withExpected).
+  // Writing 'frames' here refused them under the frames' 2 px padding rule, which a 9-slice or a tile must not follow.
+  const tableKind=SPEC[group]?.expected?.[stem]?.kind;
+  if(tableKind==='nineslice'||tableKind==='seamless')return {sidecar:{cell},notes:[`${tableKind} da tabela do spec`]};
   sc.kind='frames';sc.cell=cell;
   if(h!==cell[1]){
     // A multi-row grid is not a 'frames' strip: say it, the importer will refuse it with the size message.

@@ -8,7 +8,7 @@
  * - one purchase at a time: a tap on a blocked sweet says why, a sent one waits for the room's 'bought' (or gives up
  *   after CIDA_TIMEOUT_MS), and the note line says what happened.
  */
-import type {CidaItemId,ObjectiveView} from '../../contract/index.ts';
+import type {CampView,CidaItemId,ObjectiveView} from '../../contract/index.ts';
 import {cidaBought,cidaButtonShown,cidaOffers,cidaRefusal,cidaSells,liveObjective,nearMoto,type CidaOffer} from './chaveiro.ts';
 
 /** Answers slower than this are given up (the tag comes back, the note says so); the forge's number. */
@@ -25,7 +25,8 @@ export const CIDA_TIMEOUT_NOTE='Sem resposta da sala. Tenta de novo.';
 export interface CidaAnswer {req:number;item:string;ok:boolean;grana?:number;reason?:string}
 /** What the HUD knows each view (and each predicted hero spot). */
 export interface CidaInput {
-  view?:{objective?:ObjectiveView};
+  /** `camp.grana` is my wallet (carteira-e-pix): what pays her sweets, over the objective's copy of it. */
+  view?:{objective?:ObjectiveView;camp?:Pick<CampView,'grana'>};
   /** The local hero stands (not caído, out or watching). */
   standing:boolean;
   hero?:{x:number;y:number};
@@ -57,7 +58,11 @@ export class CidaTray {
     const objective=liveObjective(input.view);
     this.near=nearMoto(input.hero,objective?.moto,this.near);
     this.shown=!this.obra&&cidaButtonShown({live:!!objective,standing:input.standing,near:this.near,offerOpen:input.offerOpen,ended:input.ended});
-    if(objective){this.offers=cidaOffers(objective);this.sells=cidaSells(this.offers);this.grana=objective.grana;}
+    if(objective){
+      // My wallet pays (carteira-e-pix): CampView.grana is the viewer's own; the objective's Grana only without a camp.
+      const mine=input.view?.camp?.grana,grana=typeof mine==='number'&&Number.isFinite(mine)?mine:objective.grana;
+      this.offers=cidaOffers({grana,stock:objective.stock});this.sells=cidaSells(this.offers);this.grana=grana;
+    }
     if(this.open&&!this.shown){this.shut();return true;}
     return false;
   }

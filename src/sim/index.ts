@@ -26,6 +26,7 @@ export {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 export * from './systems/players.ts';
 export * from './telegraphs.ts';
 export * from './zueira.ts';
+export * from './wallet.ts';
 // E5-checkpoint-por-round: the item catalog, so a room validates a checkpoint's builds.
 export {ITEMS} from './items.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';

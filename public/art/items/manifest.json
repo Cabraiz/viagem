@@ -1,0 +1,276 @@
+{
+  "version": 2,
+  "group": "itens",
+  "pieces": {
+    "bau": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "bau.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "bau.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "61c2a79f051284dc3a8aca2fe1699e643b905869aba172f82e7d3275d65b7600"
+            }
+          ],
+          "sha256": "61c2a79f051284dc3a8aca2fe1699e643b905869aba172f82e7d3275d65b7600"
+        }
+      },
+      "sha256": "56242d81c9d6992489bcbff9a5a8be5cc6240d85616eea37f160bbf4498cdc32"
+    },
+    "boleto-chuva": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "boleto-chuva.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "boleto-chuva.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "91b5ea04273547a06bee5bfe693a233103572b6b329cf55d46cd3c43f55eaaa0"
+            }
+          ],
+          "sha256": "91b5ea04273547a06bee5bfe693a233103572b6b329cf55d46cd3c43f55eaaa0"
+        }
+      },
+      "sha256": "c21e0858e08f7d9407e87c4753b41043f4e32a5a40b6a16b6e9263ad22e579e6"
+    },
+    "coxinha": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "coxinha.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "coxinha.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "520ff96bc5825f5d082471c66105cebd0a54c2151cd6777a6311082a4fe656c7"
+            }
+          ],
+          "sha256": "520ff96bc5825f5d082471c66105cebd0a54c2151cd6777a6311082a4fe656c7"
+        }
+      },
+      "sha256": "5cdafbba8faf121a365aa12b2f5b114fe3c78429d5e1c7cbe50708b57bc5f7f0"
+    },
+    "gema-grande": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "gema-grande.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "gema-grande.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "e1acfdfab05262f2f5689cfe868a7ea6a3c9b1d31612da20c27579e791e79b73"
+            }
+          ],
+          "sha256": "e1acfdfab05262f2f5689cfe868a7ea6a3c9b1d31612da20c27579e791e79b73"
+        }
+      },
+      "sha256": "f037e9e5d9a8d17fc00ac875ddb53e052d0990e978b1db7c9fd22dbb8a702d87"
+    },
+    "gema-media": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "gema-media.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "gema-media.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3e40e679e12ad66241d71e42393aee20d14a0fd1947138429df858e893f7d9f5"
+            }
+          ],
+          "sha256": "3e40e679e12ad66241d71e42393aee20d14a0fd1947138429df858e893f7d9f5"
+        }
+      },
+      "sha256": "817ab5e1fa776a0834d28065de8e4622bde0d3d99c653893088c656c205c66d9"
+    },
+    "gema-pequena": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "gema-pequena.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "gema-pequena.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "de5a96c08c0ae6ab999930fb270adca6e3983a447c2c76d839f0d452cfe57ef0"
+            }
+          ],
+          "sha256": "de5a96c08c0ae6ab999930fb270adca6e3983a447c2c76d839f0d452cfe57ef0"
+        }
+      },
+      "sha256": "bd3b886d9454d2bee6d960ba6b85b2391b1b14e3ca41a6b3bd59ab47fa3e1c91"
+    },
+    "ima": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "ima.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "ima.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "f3e24b7da9f5e83d27fd3bbefc2f7867e01d3c0817760923a3a6fed94cc69c03"
+            }
+          ],
+          "sha256": "f3e24b7da9f5e83d27fd3bbefc2f7867e01d3c0817760923a3a6fed94cc69c03"
+        }
+      },
+      "sha256": "1f2c09054a273d294376aa3a5ca60ea6d240e7194ad7ee34ef4b095774263af1"
+    },
+    "recurso-coco": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "recurso-coco.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "recurso-coco.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "4bc550d3f0e713d9c6bf79359a5cb340879e3b28870027c9ce6855fa45272b02"
+            }
+          ],
+          "sha256": "4bc550d3f0e713d9c6bf79359a5cb340879e3b28870027c9ce6855fa45272b02"
+        }
+      },
+      "sha256": "2b293e4db149a2b5054ea9eb5ea25a7d0e952601978ced10d6fc99460d7cc696"
+    },
+    "recurso-pedra": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "recurso-pedra.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.85
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "recurso-pedra.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "ccbb02b35f51123c4ee34f37bd1b1cbab7248bf63de971bca6700074e0c31fb8"
+            }
+          ],
+          "sha256": "ccbb02b35f51123c4ee34f37bd1b1cbab7248bf63de971bca6700074e0c31fb8"
+        }
+      },
+      "sha256": "4edf91250dada19890560faee72b1dd7073e12b50d9f9dbd6f504f66f1865091"
+    }
+  }
+}

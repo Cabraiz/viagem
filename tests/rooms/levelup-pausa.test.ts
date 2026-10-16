@@ -127,3 +127,24 @@ test('someone eliminated with a card never holds the pause; their offer is dropp
   assert.equal(room.levelup.paused,false,'only Ana could pick, and she did');
   assert.equal(room.sim.offers(idb).length,0,'the eliminated player holds nothing');
 });
+
+test('carteira-e-pix: no PIX in the pause (\'pause\'); after it the room checks the round, the gap and a resent req',()=>{
+  let {room,a,b,t,ida,idb}=paused();
+  room.sim.players.get(ida)!.grana=30;
+  const round=room.run.snapshot().round,pixed=(req:number)=>a.messages.findLast(m=>m.t==='pixed'&&m.req===req);
+  say(room,a,{t:'pix',round,req:1,to:idb,amount:10},t);
+  assert.deepEqual(pixed(1),{t:'pixed',req:1,ok:false,reason:'pause'});
+  assert.equal(room.sim.granaOf(ida),30,'nothing moved in the pause');
+  pick(room,a,ida,t);pick(room,b,idb,t);step(room,t+=50);
+  assert.equal(room.levelup.paused,false);
+  say(room,a,{t:'pix',round:round+1,req:2,to:idb,amount:10},t);
+  assert.equal(pixed(2).reason,'phase','another round');
+  say(room,a,{t:'pix',round,req:3,to:idb,amount:10},t);
+  assert.deepEqual(pixed(3),{t:'pixed',req:3,ok:true,to:idb,amount:10,grana:20});
+  assert.equal(room.sim.granaOf(idb),10);
+  say(room,a,{t:'pix',round,req:4,to:idb,amount:5},t+100);
+  assert.equal(pixed(4).reason,'rate','sooner than PIX_GAP_MS after the last one');
+  say(room,a,{t:'pix',round,req:3,to:idb,amount:10},t+100);
+  assert.equal(a.messages.filter(m=>m.t==='pixed'&&m.req===3).at(-1).reason,'duplicate','the same req again moves nothing');
+  assert.equal(room.sim.granaOf(ida),20);
+});

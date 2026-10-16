@@ -12,9 +12,10 @@ import type {ArtFile} from '../../../art/manifest.ts';
 import {ART_SCALE,frameUv} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
 import type {LiveSheet} from './art.ts';
+import {NEST_SCALE,nestArtId,type LiveNest} from './nests.ts';
 import {
   LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,lightScale,liveMeta,loopFps,loopFrame,loopVisible,
-  matchInsulators,NEST_SCALE,nestArtId,onCamera,polePairs,sagLine,viewIndex,
+  matchInsulators,onCamera,polePairs,sagLine,viewIndex,
   type ArtView,type CellFrame,type DecorEntry,type LightKind,type LiveMeta,type Pt,type Rect,
 } from './rules.ts';
 
@@ -28,8 +29,7 @@ export interface CityLiveOptions {
   /** prefers-reduced-motion (tests pass it; the default reads the browser). */
   reduced?:boolean;
 }
-/** A nest as the scene knows it (D-051 snapshot): world point, size letter, hp, asleep or not. */
-export interface LiveNest {id:string;x:number;y:number;size:'P'|'M'|'G';hp:number;awake?:boolean}
+export type {LiveNest};
 
 /** Queues the live sheets (art.ts liveSheets) not loaded yet; returns how many (the caller starts the loader). */
 export function queueLiveArt(scene:Phaser.Scene,sheets:readonly LiveSheet[]):number{
@@ -148,10 +148,10 @@ export class CityLive {
     const keep=new Set<string>();
     for(const n of list){
       // The base art is `files.sheet` (E8's `cenario` group, like props and buildings); `views` from older imports.
-      const art=nestArtId(n),piece=this.options.piece(art),name=piece?.files.sheet?'sheet':'views',file=piece?.files[name];
-      if(!piece||!file)continue;
-      const tex=piece.key(name);
-      if(!this.scene.textures.exists(tex))continue;
+      const art=nestArtId(n,id=>!!this.nestTexture(id));
+      const found=art?this.nestTexture(art):undefined;
+      if(!art||!found)continue;
+      const {piece,file,tex}=found;
       keep.add(n.id);
       const at=place(n.x,n.y),anchor=file.anchor??(piece.meta?.anchor as [number,number]|undefined)??[.5,.88];
       const frame=(file.views??4)>=4?((Math.round(view)%4)+4)%4:0,scale=NEST_SCALE[n.size]/ART_SCALE;
@@ -168,6 +168,14 @@ export class CityLive {
     this.wires.clear();
     for(const e of this.nests.values())e.img.destroy();
     this.nests.clear();
+  }
+
+  /** A nest piece's base sheet when it is in the index and loaded: `sheet` (E8's cenario group), or `views`. */
+  private nestTexture(id:string){
+    const piece=this.options.piece(id),name=piece?.files.sheet?'sheet':'views',file=piece?.files[name];
+    if(!piece||!file)return undefined;
+    const tex=piece.key(name);
+    return this.scene.textures.exists(tex)?{piece,file,tex}:undefined;
   }
 
   /** Counts for tests and the ?perf overlay. */

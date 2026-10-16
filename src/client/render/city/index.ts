@@ -11,5 +11,6 @@ export {VIEW_PIVOT,depth,project,unproject} from './projection.ts';
 export {makeSampleCity} from './sample.ts';
 export {CityLive,decalMeshes,queueLiveArt} from './live/layer.ts';
 export type {CityLiveOptions,LiveNest,LivePiece} from './live/layer.ts';
-export {artViewOf,decorKey,isDecal,nestArtId,type ArtView,type DecorEntry} from './live/rules.ts';
+export {artViewOf,decorKey,isDecal,type ArtView,type DecorEntry} from './live/rules.ts';
+export {nestArtId,nestsFromStructures} from './live/nests.ts';
 export {liveSheets,livePieces,liveTextureKey,type LiveSheet} from './live/art.ts';

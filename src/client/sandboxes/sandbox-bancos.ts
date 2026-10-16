@@ -11,8 +11,11 @@ import {BANCO} from '../../rules/index.ts';
 
 type Pt={x:number;y:number};
 const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacando',bicho:'bicho',vazio:'sem-cedulas'};
-/** Where the three stand around the hero (units): up left, down left and far left (the city sandbox's open snow at hero=156,74). */
-const AROUND:readonly Pt[]=[{x:-3.6,y:-1.2},{x:1.5,y:4.5},{x:-4.5,y:2.2}];
+/**
+ * Where the three stand around the hero (units): up left, down left and down, all on a phone held upright (390×844 at
+ * the default zoom; the city sandbox's open snow at hero=156,74).
+ */
+const AROUND:readonly Pt[]=[{x:-3.6,y:-1.2},{x:1.5,y:4.5},{x:3.4,y:4.2}];
 const DEFAULT:readonly BankState[]=['sacando','bicho','sem-cedulas'];
 
 export interface FakeBanks {

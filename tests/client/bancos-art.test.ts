@@ -9,7 +9,9 @@ import {BANK_FILES,BANK_NAMES,bankArt,bankSheets,bankTextureKey,sacandoFrame,she
 const TELA={'0':[49,135],'90':[58,139],'180':[55,131],'270':[53,129]};
 /** One bank's piece as E8's importer writes it (decor.mjs): the machine at the world's scale, its layers as anim-<suffix>. */
 function piece(name:string,skip?:string):ArtPiece{
-  const layer=(f:string,frames=1)=>({file:`${name}/${f}.webp`,cell:[108,108] as [number,number],frames,views:4});
+  // As decor.mjs writes them (vgm/cenario-novo cbec981): one page, fps on the file too.
+  const layer=(f:string,frames=1)=>({file:`${name}/${f}.webp`,cell:[108,108] as [number,number],frames,views:4,fps:10,
+    pages:[{file:`${name}/${f}.webp`,columns:frames,rows:4,firstFrame:0,frameCount:frames*4}]});
   const files:Record<string,ArtFile>={
     sheet:{file:`${name}/sheet.webp`,cell:[215,323],views:4,anchor:[.5,.85]},
     'anim-tela-apagada':layer('anim-tela-apagada'),'anim-tela-azul':layer('anim-tela-azul'),
@@ -33,7 +35,7 @@ test('art: the piece\'s 6 files in any group → sheets with that group\'s urls;
   assert.deepEqual(art.body.cell,[215,323]);
   assert.equal(art.tela.vermelho.url,'/art/city/decor/juros/anim-tela-vermelha.webp');
   assert.equal(art.tela.apagado.url,'/art/city/decor/juros/anim-tela-apagada.webp');
-  assert.deepEqual({frames:art.sacando.frames,fps:art.sacando.fps},{frames:6,fps:12},'fps from meta.fps.sacando');
+  assert.deepEqual({frames:art.sacando.frames,fps:art.sacando.fps},{frames:6,fps:10},'the fps of the file');
   assert.deepEqual(art.anchor,[.5,.85]);
   assert.deepEqual(art.telaAt,[[49,135],[58,139],[55,131],[53,129]]);
   assert.equal(bankSheets(full).length,18);

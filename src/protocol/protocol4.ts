@@ -37,6 +37,7 @@ import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,Proj
 import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
+import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
 /**
  * 5 since E7-skill-hud-wiring: every event carries its byte length (and the `skill` event exists), so a 4 decoder
@@ -148,6 +149,8 @@ export const DICT:readonly string[]=[
   'para-choque','retrovisor','porta','capo','brigadeiro','pacoca','cocada',
   // D-051 (ninhos-sim): the nests as structures, their phases and sizes.
   'ninho','dormindo','ativo','destruido','P','M','G',
+  // D-052 (free build): the wall segment and the barricade among the structures' kinds.
+  'muro','barricada',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -384,7 +387,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
     // Protocol 15 (D-047): the car's fallen parts (bits of CAR_PARTS), only when they change.
     parts:c(optional(count)),
     // D-051: a nest's size and whether the team has seen it (the minimap's fog).
-    size:c(optional(str)),seen:c(optional(trueFlag))}},
+    size:c(optional(str)),seen:c(optional(trueFlag)),
+    // D-052 (free build): a piece's top-left cell on the build grid and its rot; they never change once built.
+    c:c(optional(count)),r:c(optional(count)),rot:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
@@ -567,11 +572,12 @@ interface World {tick:number;tables:Record<SectionKey,Table>;objective?:Objectiv
  * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
  *   dynamic: str kind | svar motoX*16 | svar motoY*16 | str mode | u8 has (1 push, 2 delivery, 4 victory, 8 defeat) |
  *     uvar etaS | svar alarmUntil-tick | uvar grana | uvar budget | uvar n, uvar stock* | [u8 push 0..255] |
- *     [svar x*16, svar y*16, uvar etaS] | svar carX*16 | svar carY*16 | uvar hits | uvar limit | uvar parts
+ *     [svar x*16, svar y*16, uvar etaS] | svar carX*16 | svar carY*16 | uvar hits | uvar limit | uvar parts |
+ *     [uvar n, str id* movers] | [str id rope]   (has 16 movers, 32 rope: D-052, the car moves)
  *   static: uvar n, (svar x*16, svar y*16)* route | uvar m, (str kind, svar x*16, svar y*16, uvar s*16)* stops
  */
 const OBJ_DYN=1,OBJ_STATIC=2,OBJ_CLEAR=4;
-const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8;
+const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32;
 /** Objective positions travel at 1/16 unit. */
 export const OBJECTIVE_POS_SCALE=16;
 const MAX_ROUTE_POINTS=512,MAX_STOPS=64,MAX_STOCK=8;
@@ -588,7 +594,8 @@ function normObjective(v:ObjectiveView):ObjectiveView{
     stops:v.stops.slice(0,MAX_STOPS).map(o=>({kind:o.kind,...pt16(o),s:Math.max(0,n16(o.s))})),
     etaS:uint(v.etaS),alarmUntil:Math.round(finite(v.alarmUntil)),grana:uint(v.grana),budget:uint(v.budget),stock:v.stock.slice(0,MAX_STOCK).map(uint),
     ...(v.delivery?{delivery:{...pt16(v.delivery),etaS:uint(v.delivery.etaS)}}:{}),
-    car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts)},
+    car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts),
+      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{})},
     ...(v.ended?{ended:v.ended}:{}),
   };
 }
@@ -599,17 +606,21 @@ const sameDynamic=(a:ObjectiveView,b:ObjectiveView)=>a.kind===b.kind&&a.moto.x==
   a.moto.push===b.moto.push&&a.etaS===b.etaS&&a.alarmUntil===b.alarmUntil&&a.grana===b.grana&&a.budget===b.budget&&
   a.stock.length===b.stock.length&&a.stock.every((n,i)=>n===b.stock[i])&&a.ended===b.ended&&
   (a.delivery===undefined?b.delivery===undefined:b.delivery!==undefined&&a.delivery.x===b.delivery.x&&a.delivery.y===b.delivery.y&&a.delivery.etaS===b.delivery.etaS)&&
-  a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts;
+  a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts&&
+  a.car.rope===b.car.rope&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
 function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
   w.u8(bits);
   if(bits&OBJ_DYN){
     w.str(v.kind);w.svar(q16(v.moto.x));w.svar(q16(v.moto.y));w.str(v.moto.mode);
-    w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0));
+    w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0)|
+      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0));
     w.uvar(v.etaS);w.svar(v.alarmUntil-tick);w.uvar(v.grana);w.uvar(v.budget);
     w.uvar(v.stock.length);for(const n of v.stock)w.uvar(n);
     if(v.moto.push!==undefined)w.u8(unitByte(v.moto.push));
     if(v.delivery){w.svar(q16(v.delivery.x));w.svar(q16(v.delivery.y));w.uvar(v.delivery.etaS);}
     w.svar(q16(v.car.x));w.svar(q16(v.car.y));w.uvar(v.car.hits);w.uvar(v.car.limit);w.uvar(v.car.parts);
+    if(v.car.movers?.length){w.uvar(v.car.movers.length);for(const id of v.car.movers)w.str(id);}
+    if(v.car.rope!==undefined)w.str(v.car.rope);
   }
   if(bits&OBJ_STATIC){
     w.uvar(v.route.length);for(const p of v.route){w.svar(q16(p.x));w.svar(q16(p.y));}
@@ -626,12 +637,14 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const kind=r.str(),mx=pos(),my=pos(),mode=r.str();
     if(kind!=='chaveiro')throw new FrameError('unknown objective');
     if(!MOTO_MODES.has(mode))throw new FrameError('bad moto mode');
-    const has=r.u8();if(has>15||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
+    const has=r.u8();if(has>63||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
     const etaS=r.uvar(),alarmUntil=tick+r.svar(),grana=r.uvar(),budget=r.uvar();
     const stock=Array.from({length:r.count(MAX_STOCK)},()=>r.uvar());
     const push=has&OBJ_PUSH?r.u8()/255:undefined;
     const delivery=has&OBJ_DELIVERY?{x:pos(),y:pos(),etaS:r.uvar()}:undefined;
-    const car={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
+    const car:ObjectiveView['car']={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
+    if(has&OBJ_MOVERS)car.movers=Array.from({length:r.count(MAX_CAR_MOVERS)},()=>r.str());
+    if(has&OBJ_ROPE)car.rope=r.str();
     next={kind,moto:{x:mx,y:my,mode:mode as MotoMode,...(push!==undefined?{push}:{})},route:next?.route??[],stops:next?.stops??[],
       etaS,alarmUntil,grana,budget,stock,...(delivery?{delivery}:{}),car,
       ...(has&OBJ_VICTORY?{ended:'victory' as const}:has&OBJ_DEFEAT?{ended:'defeat' as const}:{})};

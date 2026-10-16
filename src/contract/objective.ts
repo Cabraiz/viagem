@@ -59,9 +59,30 @@ export interface ObjectiveView {
   stock:number[];
   /** The next delivery stop ahead (DELIVERY_MARK_SECONDS: when the HUD and the bots mark it), with the moto's ETA to it. */
   delivery?:{x:number;y:number;etaS:number};
-  car:{x:number;y:number;hits:number;limit:number;parts:number};
+  /**
+   * D-052 (the car moves): `movers` are the players pushing or pulling it now (absent: nobody; they do not attack while
+   * they do), `rope` the one pulling it by the rope (one at a time). The position follows the car as it moves.
+   */
+  car:{x:number;y:number;hits:number;limit:number;parts:number;movers?:string[];rope?:string};
   ended?:'victory'|'defeat';
 }
+/**
+ * D-052, the movable car (card NEW-20261016-ORQ-carro-e-fortificacao-livre, approved proposal): its speed (u/s) by the
+ * number of players moving it (index; 3 or more is the cap), how close a hero pushes it (to its body) or hooks the rope,
+ * the rope's length, the car's body radius and how close to a living nest it may never go.
+ */
+export const CAR_SPEED:readonly number[]=Object.freeze([0,.8,1.4,1.8]);
+export const carSpeed=(movers:number)=>CAR_SPEED[Math.max(0,Math.min(CAR_SPEED.length-1,Math.floor(movers)))];
+export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1.5,CAR_NEST_KEEP_OUT=6;
+/** Players on the wire's movers list at most (the encoder keeps the first ones). */
+export const MAX_CAR_MOVERS=8;
+/**
+ * {t:'puxar',round,req,on}: hook (on) or drop the rope. Refused when too far from the car ('longe'), someone else holds
+ * the rope ('ocupado'), the team is picking cards (D-050 'pausa'), the run is not in combat ('fase') or the req was
+ * already answered ('duplicate'). The answer is {t:'puxou',req,ok,reason?}.
+ */
+export type PullRefusal='longe'|'ocupado'|'pausa'|'fase'|'duplicate';
+export type PullResult={ok:true}|{ok:false;reason:PullRefusal};
 /** Seconds before the moto reaches a delivery stop when the HUD and the bots start marking it. */
 export const DELIVERY_MARK_SECONDS=30;
 /**

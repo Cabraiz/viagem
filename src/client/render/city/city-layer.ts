@@ -9,6 +9,7 @@
  * Materials (materials.ts) swap in painted art when its textures are loaded, and fall back to the procedural look.
  * All geometry and decisions live in the pure modules (chunks, faces, occlusion, materials); this file only draws.
  */
+import {perfNow,perfSpan} from '../../dev/perf-flag.ts';
 import Phaser from 'phaser';
 import {cellOf,groundAt,groundZ,heightAt,type CityAsset,type CityBlock,type CityProp,type GroundKind} from './asset.ts';
 import {ChunkTracker,RUIN_FLOOR,buildChunks,type BlockPiece,type ChunkIndex,type CityChunk,propDrawRadius,propExtentPx} from './chunks.ts';
@@ -117,6 +118,9 @@ export function queueCityArt(scene:Phaser.Scene,plan:CityArtPlan|undefined):numb
  * Unit columns of one block that share a depth key, drawn as one object pair: they never overlap each other on
  * screen (same qx+qy, side by side), so merging them keeps the exact order while cutting the object count.
  */
+/** The chunk tracker's margins (screen px): built from this far ahead, dropped only this far behind. */
+export const CHUNK_SHOW_PX=384,CHUNK_KEEP_PX=1024;
+
 interface Band {blockId:string;key:number;body:TriBand;outline:TriBand;
   /** Fade id of each unit column, in part order. */
   ids:string[]}
@@ -206,7 +210,10 @@ export class CityLayer {
     const drawn=relief?withoutCliffs(asset):asset;
     if(relief){this.cliffs=cliffCells(asset);this.pieceLook={stoneWalls:true};}
     this.index=buildChunks(drawn);
-    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot});
+    // One chunk built per frame, from a ring well ahead of the screen (CHUNK_SHOW_PX), and the ones walked away from kept
+    // much longer (CHUNK_KEEP_PX): four builds in one frame, and the rebuild of a street walked back over, were the
+    // walk's stalls on a phone (BUG-20261014-ORQ-engasgo-andando-celular).
+    this.tracker=new ChunkTracker(this.index,drawn,{pivot:this.pivot,showMarginPx:CHUNK_SHOW_PX,keepMarginPx:CHUNK_KEEP_PX,maxShowPerUpdate:1});
     for(const b of drawn.blocks)this.blocks.set(b.id,b);
     for(const c of this.index.chunks)this.chunksByKey.set(c.key,c);
     if(planHasArt(options.art)){
@@ -374,7 +381,7 @@ export class CityLayer {
     if(view!==this.view){this.view=view;this.fader.reset();this.faded.clear();this.cellColumns.clear();this.drawFog(view);}
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
-    for(const key of show)this.buildChunk(key,view);
+    for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
     this.applyOcclusion(frame,view);
     this.vivo?.update(frame.camera,performance.now());
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){

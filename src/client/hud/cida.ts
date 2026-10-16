@@ -1,8 +1,9 @@
 /**
  * Dona Cida's button and tray (D-047, card NEW-20261014-ORQ-chaveiro-hud). She rides on the chaveiro's moto and sells
- * the team three sweets for the team's Grana to whoever stands by the moto (≤ CIDA_REACH_U, the room checks it again):
+ * three sweets to whoever stands by the moto (≤ CIDA_REACH_U, the room checks it again), paid from their own wallet
+ * (carteira-e-pix: CampView.grana; the buff is theirs too):
  * - the button (a right-thumb control, 24 px above the skill button): shows while the hero is by the moto and the
- *   objective runs; dim when nothing on the tray can be bought now (no Grana, or the tray is empty); a tap (or C on a
+ *   objective runs; dim when nothing on the tray can be bought now (my wallet too short, or the tray is empty); a tap (or C on a
  *   desktop, D-044) opens the tray;
  * - the tray (an intermission-like window in the forge's place, never two open: an offer or the obra window closes it
  *   and the forge yields to it): the three sweets with what they do, the price and what is left. A tap buys
@@ -14,7 +15,8 @@
  */
 import './cida.css';
 import type {CidaItemId,RunView} from '../../contract/index.ts';
-import {icon} from '../ui/icon.ts';
+import {icon,uiArtUrl} from '../ui/icon.ts';
+import {sticker} from '../ui/sticker.ts';
 import type {HudContext,HudPart} from './model.ts';
 import {cidaOffers,reais} from './chaveiro.ts';
 import {cidaKeyOf,SHELL_DIALOG} from '../desktop-input.ts';
@@ -49,8 +51,8 @@ export function createCida(options:CidaOptions):CidaPart{
   // ---------- Button ----------
   const button=el('button','rh-cida-btn');button.type='button';button.hidden=true;
   button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-expanded','false');
-  // Popcorn, a snack (her tray of sweets): the skill button below already wears the shopping bag.
-  button.innerHTML=`${icon('pipoca',{size:32})}<span class="rh-cida-btn-text">Cida</span>`;
+  // Her own sticker (ui/cida, icones-no-hud); without that art, popcorn (her sweets: the skill button wears the bag).
+  button.innerHTML=`${uiArtUrl('cida')?sticker('cida',{size:32}):icon('pipoca',{size:32})}<span class="rh-cida-btn-text">Cida</span>`;
   // ---------- Tray ----------
   const panel=el('section','rh-cida');panel.hidden=true;panel.id='rh-cida';panel.setAttribute('aria-label','Doces da Dona Cida');
   button.setAttribute('aria-controls',panel.id);
@@ -109,10 +111,10 @@ export function createCida(options:CidaOptions):CidaPart{
     if(!tray.offers.length)return;
     if(button.classList.contains('rh-cida-apagado')===tray.sells)button.classList.toggle('rh-cida-apagado',!tray.sells);
     const g=reais(tray.grana);
-    const label=`Doces da Dona Cida: ${tray.sells?`a turma tem ${g}`:tray.offers.every(o=>o.blocked==='stock')?'acabaram':`${g} não paga nenhum`}`;
+    const label=`Doces da Dona Cida: ${tray.sells?`você tem ${g}`:tray.offers.every(o=>o.blocked==='stock')?'acabaram':`seus ${g} não pagam nenhum`}`;
     if(label!==buttonLabel){buttonLabel=label;button.setAttribute('aria-label',label);}
     if(!open)return;
-    if(grana.textContent!==g){grana.textContent=g;grana.setAttribute('aria-label',`${g} da turma`);}
+    if(grana.textContent!==g){grana.textContent=g;grana.setAttribute('aria-label',`Você tem ${g}`);}
     for(const offer of tray.offers){
       const t=tags.get(offer.id)!,blocked=offer.blocked??'';
       if(t.blocked!==blocked){

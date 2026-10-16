@@ -3,7 +3,7 @@
  * the server (VGM-034/035/036) owns the real numbers. Names mirror the server catalogs (a test keeps them in sync,
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
-import type {StickerName} from '../ui/sticker.ts';
+import {isStickerName,type StickerName} from '../ui/sticker.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -32,13 +32,13 @@ const items:ItemDisplay[]=[
   {id:'heal',kind:'snack',name:'Coxinha da Cantina',icon:'coxinha',blurb:'+30 de vida na hora.',joke:'Catupiry cura tudo.'},
   // D-051 arsenal (sim/weapons/arsenal.ts, manual combat): the new weapons wait for their stickers (the user's art), the
   // legendaries wear the old weapons' ones; the consumables and the hand's passives.
-  {id:'faca',kind:'weapon',name:'Faca de Pão',icon:'misterio',blurb:'Golpe em arco, bem de perto.',joke:'Corta pão e bicho.'},
-  {id:'pistola',kind:'weapon',name:'Trinta-e-Oitão do Vô',icon:'misterio',blurb:'Tiro certeiro no mais perto.',joke:'Guardada desde 87.'},
-  {id:'escopeta',kind:'weapon',name:'Espalha-Chumbo',icon:'misterio',blurb:'Leque de chumbo de perto.',joke:'Mira? Pra quê?'},
-  {id:'submetralhadora',kind:'weapon',name:'Metralhadora de Feira',icon:'misterio',blurb:'Rajada rápida e fraquinha.',joke:'Três por dez!'},
-  {id:'rifle',kind:'weapon',name:'Cano Longo',icon:'misterio',blurb:'De longe, atravessa a fila.',joke:'E o vizinho dele.'},
-  {id:'macarico',kind:'weapon',name:'Maçarico do Tio',icon:'misterio',blurb:'Fogo na frente: derrete enxame.',joke:'Era pro portão.'},
-  {id:'rojao',kind:'weapon',name:'Rojão de Réveillon',icon:'misterio',blurb:'Explode em área onde cair.',joke:'Feliz ano novo!'},
+  {id:'faca',kind:'weapon',name:'Faca de Pão',icon:'faca',blurb:'Golpe em arco, bem de perto.',joke:'Corta pão e bicho.'},
+  {id:'pistola',kind:'weapon',name:'Trinta-e-Oitão do Vô',icon:'pistola',blurb:'Tiro certeiro no mais perto.',joke:'Guardada desde 87.'},
+  {id:'escopeta',kind:'weapon',name:'Espalha-Chumbo',icon:'escopeta',blurb:'Leque de chumbo de perto.',joke:'Mira? Pra quê?'},
+  {id:'submetralhadora',kind:'weapon',name:'Metralhadora de Feira',icon:'submetralhadora',blurb:'Rajada rápida e fraquinha.',joke:'Três por dez!'},
+  {id:'rifle',kind:'weapon',name:'Cano Longo',icon:'rifle',blurb:'De longe, atravessa a fila.',joke:'E o vizinho dele.'},
+  {id:'macarico',kind:'weapon',name:'Maçarico do Tio',icon:'macarico',blurb:'Fogo na frente: derrete enxame.',joke:'Era pro portão.'},
+  {id:'rojao',kind:'weapon',name:'Rojão de Réveillon',icon:'rojao',blurb:'Explode em área onde cair.',joke:'Feliz ano novo!'},
   {id:'chinelo-lendario',kind:'weapon',name:'Chinelo da Mãe',icon:'chinelo-evo',blurb:'Lendária: chinelos voando longe.',joke:'Mãe em fúria.'},
   {id:'boleto-lendario',kind:'weapon',name:'Boleto Vencido',icon:'boleto-evo',blurb:'Lendária: carnês que voltam.',joke:'Parcela eterna.'},
   {id:'cafe-lendario',kind:'weapon',name:'Café Derramado',icon:'cafe-evo',blurb:'Lendária: poça gigante te segue.',joke:'Expresso na cara.'},
@@ -46,12 +46,12 @@ const items:ItemDisplay[]=[
   {id:'pombo-lendario',kind:'weapon',name:'Pombo da Praça',icon:'pombo',blurb:'Lendária: revoada que persegue.',joke:'O bando inteiro.'},
   {id:'audio-lendario',kind:'weapon',name:'Áudio de 5 Minutos',icon:'audio',blurb:'Lendária: áudio que ninguém aguenta.',joke:'Parte 3 de 7.'},
   {id:'coxinha',kind:'snack',name:'Coxinha',icon:'coxinha',blurb:'Cura 30 de vida.',joke:'Com catupiry.'},
-  {id:'brigadeiro',kind:'snack',name:'Brigadeiro',icon:'misterio',blurb:'Mais rápido por 30 s.',joke:'De panela.'},
-  {id:'pacoca',kind:'snack',name:'Paçoca',icon:'misterio',blurb:'Mais dano por 30 s.',joke:'Prensada.'},
-  {id:'cocada',kind:'snack',name:'Cocada',icon:'misterio',blurb:'Toma menos dano por 30 s.',joke:'Dura que dói.'},
-  {id:'kit-torre',kind:'snack',name:'Kit de Torre',icon:'misterio',blurb:'Vira 1 ficha de torre do time.',joke:'Monte você mesmo.'},
-  {id:'pente',kind:'passive',name:'Pente Estendido',icon:'misterio',blurb:'+1 projétil por disparo.',joke:'Sempre cabe mais um.'},
-  {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'misterio',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
+  {id:'brigadeiro',kind:'snack',name:'Brigadeiro',icon:'brigadeiro',blurb:'Mais rápido por 30 s.',joke:'De panela.'},
+  {id:'pacoca',kind:'snack',name:'Paçoca',icon:'pacoca',blurb:'Mais dano por 30 s.',joke:'Prensada.'},
+  {id:'cocada',kind:'snack',name:'Cocada',icon:'cocada',blurb:'Toma menos dano por 30 s.',joke:'Dura que dói.'},
+  {id:'kit-torre',kind:'snack',name:'Kit de Torre',icon:'kit-torre',blurb:'Vira 1 ficha de torre do time.',joke:'Monte você mesmo.'},
+  {id:'pente',kind:'passive',name:'Pente Estendido',icon:'pente',blurb:'+1 projétil por disparo.',joke:'Sempre cabe mais um.'},
+  {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'silenciador',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
 ];
 const byId=new Map(items.map(item=>[item.id,item]));
 
@@ -62,7 +62,8 @@ export function itemDisplay(id:string):ItemDisplay{
   const known=byId.get(id);
   if(known)return known;
   const name=id.replace(/[-_]+/g,' ').replace(/^\w/,letter=>letter.toUpperCase())||'Item misterioso';
-  return {id,kind:'weapon',name,icon:UNKNOWN_ITEM_STICKER,blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
+  // An id the catalog does not list yet but whose art came (arte v2): its own sticker, never the box.
+  return {id,kind:'weapon',name,icon:isStickerName(id)?id:UNKNOWN_ITEM_STICKER,blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
 }
 
 /** Price of an offer card (DSG-oferta-etiqueta): "Novo!" on the encarte star, the level as a price, or a word. */

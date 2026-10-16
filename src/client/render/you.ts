@@ -79,8 +79,8 @@ export class YouMarkers {
 
   constructor(scene:Phaser.Scene,reduced=false,copies?:MarkCopies){
     this.scene=scene;this.reduced=reduced;this.copies=copies;this.art=new FramesPool(scene);
-    this.g=scene.add.graphics().setDepth(MARK_DEPTH);
-    this.ring=scene.add.graphics();
+    this.g=scene.add.graphics().setDepth(MARK_DEPTH).setName('voce');
+    this.ring=scene.add.graphics().setName('voce-anel');
     this.label=scene.add.text(0,0,'Você',{fontFamily:token('--f-sistema'),fontSize:'32px',fontStyle:'800',color:token('--c-papel')}).setOrigin(.5,.5).setDepth(MARK_DEPTH+2).setVisible(false);
     whenFontsReady(()=>this.label.updateText());
   }

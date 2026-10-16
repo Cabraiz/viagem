@@ -6,6 +6,7 @@
  * Scratch targets are shared by every chunk: a bake is consumed by the RenderTexture draw that follows it, so one
  * framebuffer per (rounded) size is enough. The field and mask textures (field.ts) are uploaded once.
  */
+import {perf} from '../../../dev/perf-flag.ts';
 import Phaser from 'phaser';
 import {Baker} from '../../../terrain/renderer.ts';
 import type {CityAsset} from '../asset.ts';
@@ -159,6 +160,7 @@ export class CityRelief {
     if((globalThis as {__reliefTiming?:boolean}).__reliefTiming)(this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer).gl.finish();
     const ms=performance.now()-t0,st=this.stats;
     st.bakes++;st.texels+=tw*th;st.lastMs=ms;st.maxMs=Math.max(st.maxMs,ms);st.totalMs+=ms;
+    if(perf.on)perf.mark('bake',ms); // ?perf=1: the bake charged to this frame
     return target.key;
   }
 

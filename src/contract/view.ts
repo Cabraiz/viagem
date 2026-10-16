@@ -30,7 +30,8 @@ export interface NodeView {id:string;kind:string;x:number;y:number;remaining:num
 /** The team's Stonewards state (VGM-046B): balance, the return horn of this intermission, and the wall down (defeat). */
 /**
  * `units`: the team's one pile of material (D-048); the fichas de torre and the ring come from it (rules tokensOf/tokenProgress).
- * `grana`: the team's R$ (every world; evolutions, the forge, repairs, Dona Cida, the chaveiro's bill).
+ * `grana`: THIS viewer's wallet in R$ (contract wallet.ts; every world): what they pay evolutions, repairs, the forge and
+ *   Dona Cida with. The room fills it per viewer from their SimPlayer.grana; a spectator without a seat sees 0.
  */
 export interface CampView {units:number;grana:number;hornEndsTick?:number;wallDown?:boolean;
   /** Inflação: this run's purchases of the inflating recipes (rules forgePrice), absent when none. */

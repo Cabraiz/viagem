@@ -14,8 +14,9 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PlayerBuild,SimPlayer} from '../src/contract/index.ts';
-import type {InventoryResult} from '../src/sim/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,SimPlayer} from '../src/contract/index.ts';
+import {PIX_MAX} from '../src/contract/index.ts';
+import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -45,6 +46,8 @@ export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   const kind=terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
   return {kind,terrainVersion:TERRAIN_VERSION,generatorVersion:terrain.chunks?CHUNK_VERSION:0,seed:terrain.seed,signature:terrain.signature};
 }
+/** PIX request ids remembered (stonewards `handled`, shared with the forge and the towers under their own prefixes). */
+const PIX_HANDLED_LIMIT=256;
 /** Revive progress moves every tick while someone helps; two decimals are plenty for a ring and keep deltas small. */
 const progress=(n:number)=>Math.round(Math.max(0,Math.min(1,n))*100)/100;
 export const packPlayerExtra=(p:ServerPlayer,stats?:RunStats):PlayerExtraWire=>{
@@ -133,7 +136,7 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;legacy:string}>();
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;pot:string;legacy:string}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -161,6 +164,8 @@ function playerRunOk(run:unknown){
   if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
   for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
+  if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
 }
 /** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
@@ -316,30 +321,44 @@ export class Simulation {
       const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city,...objective}):new Simulation(DEFAULT_SEED,{world:kind,...objective});
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
-      // legacy: the same run written before the single pile of material (D-048), balance {coco, pedra}: migrateCheckpoint.
-      // (and the Grana in the chaveiro's state, when the run has one; none at all before D-047).
-      const before=structuredClone(capture),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
+      // pot: the same run written before the wallets (NEW-20261014-ORQ-carteira-e-pix): the team's Grana in the
+      // stonewards state, no split cursor. legacy: before the single pile of material (D-048), balance {coco, pedra},
+      // and the Grana in the chaveiro's state (when the run has one; none at all before D-047). migrateCheckpoint.
+      const pot=structuredClone(capture),potStw=pot.systems.stonewards as unknown as {grana?:number;splitCursor?:number};
+      potStw.grana=0;delete potStw.splitCursor;
+      const before=structuredClone(pot),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
       stw.balance={coco:0,pedra:0};delete stw.grana;
       if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),pot:shapeFingerprint(pot),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
     }
     return entry;
   }
   /**
-   * D-048 (ficha de torre): a checkpoint written by the build before the single pile (its fingerprint is this code's
-   * with balance {coco, pedra}, no team Grana, the chaveiro's Grana in its own state) keeps the team's material as two
-   * piles; it becomes {units: coco + pedra}, the Grana moves to the team's state, and this code's fingerprint, in place (idempotent), so a room restarted across that deploy resumes its run. Anything else is untouched.
+   * Old checkpoints, in place (idempotent), so a room restarted across those deploys resumes its run; anything else
+   * is untouched:
+   * - D-048 (ficha de torre): written before the single pile (this code's pot fingerprint with balance {coco, pedra},
+   *   no team Grana, the chaveiro's Grana in its own state): {units: coco + pedra}, the Grana to the team's state;
+   * - NEW-20261014-ORQ-carteira-e-pix: written with the team's pot (stonewards.grana, no splitCursor): the pot is split
+   *   equally among the checkpoint's players (in order, the remainder from the first), and this code's fingerprint.
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown};chaveiro?:{grana?:unknown}}}).systems;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown}}}).systems;
     const b=sys?.stonewards?.balance,fresh=this.freshShape();
-    if(cp.shape!==fresh.legacy||!sys?.stonewards||!b||typeof b.coco!=='number'||typeof b.pedra!=='number'||b.units!==undefined)return;
-    const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
-    // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
-    const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
-    if(sys.chaveiro)delete sys.chaveiro.grana;
-    sys.stonewards.grana=grana;cp.shape=fresh.fingerprint;
+    if(cp.shape===fresh.legacy&&sys?.stonewards&&b&&typeof b.coco==='number'&&typeof b.pedra==='number'&&b.units===undefined){
+      const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
+      // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
+      const grana=sys.chaveiro&&typeof sys.chaveiro.grana==='number'?sys.chaveiro.grana:0;
+      if(sys.chaveiro)delete sys.chaveiro.grana;
+      sys.stonewards.grana=grana;cp.shape=fresh.pot;
+    }
+    const stw=sys?.stonewards;
+    if(cp.shape!==fresh.pot||!stw||typeof stw.grana!=='number'||stw.splitCursor!==undefined)return;
+    const pot=Math.max(0,Math.floor(stw.grana)),cursor={splitCursor:0};
+    const runs=Array.isArray(cp.players)?cp.players.filter(isObject).map(p=>p.run).filter(isObject):[];
+    const got=runs.length?splitAmong(runs.map(()=>({grana:0}) as SimPlayer),pot,cursor):[];
+    runs.forEach((run,i)=>{const had=typeof run.grana==='number'?run.grana:0;if(got[i]||run.grana!==undefined)run.grana=had+got[i];});
+    delete stw.grana;stw.splitCursor=cursor.splitCursor;cp.shape=fresh.fingerprint;
   }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
@@ -422,6 +441,8 @@ export class Simulation {
     delete (p as {devendoUntil?:number}).devendoUntil;delete (p as {devendoSay?:number}).devendoSay;
     // D-036 slow and slip hold absolute ticks too.
     clearMoveEffects(p);
+    // A fresh run's wallet is empty (NEW-20261014-ORQ-carteira-e-pix); a resumed one gets its stored balance back.
+    delete p.grana;
     refreshStats(p);p.hp=p.stats.maxHp;
   }
   add(id:string,name:string,classId:string){
@@ -436,7 +457,50 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  /**
+   * The inheritance (NEW-20261014-ORQ-carteira-e-pix): the wallet of a player who leaves for good (remove) is split
+   * among the seated players who stay (sim/wallet.ts splitAmong: equal parts, the remainder from the run's cursor).
+   * With nobody seated left it is simply gone. Called by remove; the seat's wallet stays while the seat is held.
+   */
+  private inherit(id:string){
+    const p=this.players.get(id),grana=walletOf(p);
+    if(!p||!(grana>0))return;
+    const heirs=seatedPlayers(this.players).filter(q=>q.id!==id);
+    if(!heirs.length)return;
+    p.grana=0;
+    splitAmong(heirs,grana,this.systems.stonewards.state);
+  }
+  /**
+   * PIX (NEW-20261014-ORQ-carteira-e-pix, contract wallet.ts): `amount` R$ from `from`'s wallet to `to`'s. Refused
+   * with a reason: 'duplicate' (this `req` of this sender already went), 'phase' (the run is decided, or the sender
+   * has no seat), 'amount' (not a whole 1..PIX_MAX), 'self', 'target' (`to` is no seated player of this run), 'grana'
+   * (more than the sender has). The room checks what it alone knows before calling: its phase (only in combat: the
+   * lobby, the countdown and the result say 'phase'), the D-050 level-up pause ('pause') and PIX_GAP_MS per sender
+   * ('rate'). On success the money moves at once and a {type:'pix',from,to,amount,memo} event goes out with the next
+   * step's events (memo: an index into PIX_MEMOS from the run's own PIX stream). `grana` in the result: the sender's
+   * new balance.
+   */
+  pix(from:string,to:string,amount:number,req?:string|number):PixResult{
+    const st=this.systems.stonewards.state,key=req===undefined?undefined:`pix:${from}:${req}`;
+    if(key!==undefined&&st.handled.includes(key))return {ok:false,reason:'duplicate'};
+    const sender=this.players.get(from),target=this.players.get(to);
+    if(this.result||!sender||sender.spectator)return {ok:false,reason:'phase'};
+    if(!Number.isSafeInteger(amount)||amount<1||amount>PIX_MAX)return {ok:false,reason:'amount'};
+    if(to===from)return {ok:false,reason:'self'};
+    if(!target||target.spectator)return {ok:false,reason:'target'};
+    if(walletOf(sender)<amount)return {ok:false,reason:'grana'};
+    addGrana(sender,-amount);addGrana(target,amount);
+    if(key!==undefined){st.handled.push(key);if(st.handled.length>PIX_HANDLED_LIMIT)st.handled.splice(0,st.handled.length-PIX_HANDLED_LIMIT);}
+    this.world.emit({type:'pix',from,to,amount,memo:drawMemo(this.world,st)});
+    return {ok:true,to,amount,grana:walletOf(sender)};
+  }
+  /** A player's wallet in R$ (absent player: 0). */
+  granaOf(id:string){return walletOf(this.players.get(id));}
+  /** What `viewer` sees as their Grana (CampView/ObjectiveView.grana): their wallet; 0 for a spectator or a stranger. */
+  viewerGrana(viewer:string){const p=this.players.get(viewer);return p&&!p.spectator?walletOf(p):0;}
+  /** The seated players' wallets together (the shared views' placeholder; the bench's team total). */
+  teamGrana(){return seatedPlayers(this.players).reduce((n,p)=>n+walletOf(p),0);}
   /**
    * A room bot (D-025): a player like the others (counts toward the six, takes hits, falls, gets rescued), always
    * online, and out of the "momento mais vergonhoso" (a person's consent thing).
@@ -634,10 +698,14 @@ export class Simulation {
     if(record)this.nodeIds=[...out.keys()];
     return [...out.values()];
   }
-  private campView():CampView{
-    const st=this.systems.stonewards.state;
+  /**
+   * `viewer` (NEW-20261014-ORQ-carteira-e-pix): CampView.grana is that player's wallet (0 for a spectator); without
+   * one (the shared frame, the bots' view) it is the seated players' total, which each viewer's encoding replaces.
+   */
+  private campView(viewer?:string):CampView{
+    const st=this.systems.stonewards.state,grana=viewer===undefined?this.teamGrana():this.viewerGrana(viewer);
     const bought=st.forgeBought,forge=bought&&(bought.gambiarra||bought['torre-chinelo'])?{forge:{...(bought.gambiarra?{gambiarra:bought.gambiarra}:{}),...(bought['torre-chinelo']?{'torre-chinelo':bought['torre-chinelo']}:{})}}:{};
-    return {units:st.balance.units,grana:st.grana,...forge,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
+    return {units:st.balance.units,grana,...forge,...(st.hornEndsTick>=0&&this.world.round.phase==='prepare'?{hornEndsTick:st.hornEndsTick}:{}),...(st.wallDown?{wallDown:true}:{})};
   }
   /** One server tick; returns its events. */
   step(now=this.tick*STEP_MS){
@@ -725,7 +793,7 @@ export class Simulation {
       enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
-        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y})),
+        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p)})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
@@ -739,16 +807,16 @@ export class Simulation {
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
-      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
+      structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(playerId),
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),...handOf(p),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
-        ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
+        ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...(p.grana!==undefined?{grana:p.grana}:{}),
       })),
-      ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
     };
@@ -776,6 +844,8 @@ export class Simulation {
           weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
           ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
+          // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).
+          ...(p.grana!==undefined?{grana:p.grana}:{}),
         };
       }),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),

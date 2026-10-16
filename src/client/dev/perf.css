@@ -1,0 +1,9 @@
+/* ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): the frame meter's panel, dev only (dev/perf-overlay.ts).
+   Left edge, at mid height: clear of the minimap (top left), the joystick (bottom left) and the team fan (top). A tap
+   opens the last stalls; it swallows its own touches (never a walk). */
+.perf-hud{position:fixed;z-index:calc(var(--z-hud) + 5);left:max(8px,env(safe-area-inset-left));top:42%;max-width:min(78vw,320px);
+  padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-papel);background:var(--c-ficha);color:var(--c-papel);
+  font:400 var(--t-13)/1.25 var(--f-sistema);font-variant-numeric:tabular-nums;text-shadow:var(--s-texto);pointer-events:auto;touch-action:manipulation}
+.perf-hud p{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.perf-hud-mais{margin:4px 0 0;font:inherit;white-space:pre-wrap}
+.perf-hud-mais[hidden]{display:none}

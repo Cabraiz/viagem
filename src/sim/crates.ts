@@ -77,7 +77,7 @@ export const ELITE_ODDS:readonly (readonly [Rarity,number])[]=[[2,.6],[3,.4]];
 const DOCES:readonly ConsumableId[]=['brigadeiro','pacoca','cocada'];
 
 export interface CrateHooks {
-  /** Grana of a crate, to the opener's wallet (E5); before the wallet, the team's pot. Absent: the Grana is lost. */
+  /** Grana of a crate, to the opener's wallet (carteira-e-pix). Absent: the Grana is lost. */
   addGrana?(ctx:SimContext,player:SimPlayer,amount:number):void;
   /** Tower units (fichas × UNITS_PER_TOKEN) for the team's balance. */
   addTowerUnits?(ctx:SimContext,units:number):void;

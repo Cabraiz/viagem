@@ -147,7 +147,7 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
   for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
   assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');
-  const got=me.build.weapons.length>1||s.view('p0').pickups.some(k=>k.kind==='item')||(s as any).systems.stonewards.state.grana>0;
+  const got=me.build.weapons.length>1||s.view('p0').pickups.some(k=>k.kind==='item')||(me.grana??0)>0;
   assert.ok(got,'a prize came out');
   assert.equal(s.view('p0').players[0].hand,me.build.hand);
 });

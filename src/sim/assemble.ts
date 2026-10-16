@@ -29,6 +29,7 @@ import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {createChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {addGrana,payKill,seatedPlayers} from './wallet.ts';
 import {CAR_ID,MOTO_ID,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -243,11 +244,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   });
   if(cp)enemyAi.restore(cp.enemyAi);
   // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. Its
-  // Grana goes to the team pot until the E5 wallet; a ficha prize to the team's tower units; the noise to the nests (E1).
+  // Grana goes to the opener's wallet (carteira-e-pix); a ficha prize to the team's tower units; the noise to the nests (E1).
   const crates:Crates|undefined=manual?createCrates({seed:world.seed,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
     startPoints:cityLoot(world.terrain)?.aroundPlaza??[],
-    hooks:{addGrana:(_ctx,_p,amount)=>{stonewards.state.grana+=amount;},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
+    hooks:{addGrana:(_ctx,p,amount)=>{addGrana(p,amount);},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),
@@ -304,7 +305,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   world.playerDamageScale=damageScale;
   if(objective&&openPlanner&&cityTerrain){
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;
-    chaveiro=createChaveiro({wallet:{get:()=>stonewards.state.grana,spend:n=>{stonewards.state.grana-=n;}},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
+    chaveiro=createChaveiro({wallet:{seated:()=>seatedPlayers(world.players)},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
   }
@@ -333,13 +334,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
   ])world.register(system);
 
-  const offKill=world.onKill((enemy,by,ctx)=>{
+  const offKill=world.onKill((enemy,by,ctx,credit)=>{
     progression.dropLoot(ctx,enemy,by);
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
-    // D-047/D-048: every kill pays the team's Grana, in every world (the chaveiro only reads it for his bill).
-    stonewards.state.grana+=granaPerKill(enemy);
+    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world: the killer,
+    // a tower's owner (credit), else split among the standing seats; the boss always split among every seat.
+    payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}

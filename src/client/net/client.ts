@@ -1,10 +1,11 @@
+import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
 import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,clientCatalog,parseWelcomeMap,checkClientMap,readMapRef,
+import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {RunState} from '../../contract/index.ts';
+import type {PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
@@ -316,10 +317,10 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'repair',round:this.run.round,req,defense});return req;
   }
-  /** D-047: the room's answer to a Dona Cida purchase: the team's Grana left, or why not ('away' from the moto, 'stock', 'grana', 'phase'). */
+  /** D-047: the room's answer to a Dona Cida purchase: the buyer's wallet left (carteira-e-pix), or why not ('away' from the moto, 'stock', 'grana', 'phase'). */
   onBought:(result:{req:number;item:string;ok:boolean;grana?:number;reason?:string})=>void=()=>{};
   /**
-   * D-047 Dona Cida (the chaveiro objective): buys `item` ('brigadeiro' | 'pacoca' | 'cocada') for the team's Grana from
+   * D-047 Dona Cida (the chaveiro objective): buys `item` ('brigadeiro' | 'pacoca' | 'cocada') with this player's wallet from
    * next to the moto; the room answers {t:'bought'} (onBought). Same request ids as forge().
    */
   buyCida(item:string){
@@ -336,6 +337,24 @@ export class CoopClient {
   inventory(command:{t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
     this.out(this.socket,{...command,round:this.run.round});return true;
+  }
+  /** PIX answers still awaited, by request id (carteira-e-pix): settled by {t:'pixed'} or after PIX_ANSWER_MS. */
+  private pixWaits=new Map<number,(result:PixResult)=>void>();
+  /**
+   * PIX to a friend (NEW-20261014-ORQ-carteira-e-pix): {t:'pix',round,req,to,amount} with a fresh request id; the
+   * promise settles with the room's answer ({t:'pixed'}: ok with the sender's new wallet, or the refusal). It never
+   * rejects: offline, outside a run or as a spectator it says 'phase' at once, and an answer that never comes (a drop)
+   * says 'phase' after PIX_ANSWER_MS. The money and the `pix` event come with the next frames.
+   */
+  pix(to:string,amount:number):Promise<PixResult>{
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return Promise.resolve({ok:false,reason:'phase'});
+    const req=++this.forgeId;
+    return new Promise<PixResult>(resolve=>{
+      const timer=setTimeout(()=>settle({ok:false,reason:'phase'}),PIX_ANSWER_MS);
+      const settle=(result:PixResult)=>{clearTimeout(timer);if(this.pixWaits.delete(req))resolve(result);};
+      this.pixWaits.set(req,settle);
+      this.out(this.socket!,{t:'pix',round:this.run!.round,req,to,amount});
+    });
   }
   /** Non-fatal room notices (e.g. the room closing before another run fits); also shown by onStatus. */
   onNotice:(message:string)=>void=()=>{};
@@ -383,7 +402,7 @@ export class CoopClient {
         const data=event.data as ArrayBuffer;this.bytes+=data.byteLength;
         // Waiting for the city: frames wait too (they are of the new map); a failed wait drops them (resync later).
         if(this.mapWait?.ws===ws){if(!this.mapWait.failed)this.mapWait.queue.push(data);return;}
-        if(this.initialized&&ws===this.socket)this.frame(ws,data);
+        if(this.initialized&&ws===this.socket){const t0=perfNow();this.frame(ws,data);perfSpan('rede',t0);}
         return;
       }
       this.bytes+=event.data.length;
@@ -471,7 +490,7 @@ export class CoopClient {
         const next=this.mapWait as MapWait|undefined;
         if(next?.ws===ws&&!next.failed){next.queue.push(...rest.slice(i));return;}
         const item=rest[i];
-        if(item instanceof ArrayBuffer){if(this.initialized&&!next)this.frame(ws,item);}
+        if(item instanceof ArrayBuffer){if(this.initialized&&!next){const t0=perfNow();this.frame(ws,item);perfSpan('rede',t0);}}
         else this.message(ws,item);
       }
     });
@@ -534,6 +553,7 @@ export class CoopClient {
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='inv'&&typeof m.cmd==='string'&&typeof m.ok==='boolean')this.onInventory({cmd:m.cmd,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='pixed'){const answer=parsePixed(m);if(answer)this.pixWaits.get(answer.req)?.(answer.result);}
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
     // Kicked by the owner (D-025): the seat token stays on this device until the ban ends, so a knock gets the same answer.

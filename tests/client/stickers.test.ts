@@ -52,7 +52,7 @@ test('sticker() is a decorative <use> unless labelled, with the icon sizes',()=>
  * D-051 arsenal art the user is drawing (design/proximos/10-CENARIO-WC3-E-MENU.md §6): these show the mystery sticker
  * until it arrives. Take an id off the list when its sticker lands (the test fails while it is listed with real art).
  */
-const ART_PENDING=new Set(['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador']);
+const ART_PENDING=new Set<string>();
 /** Drawings shared on purpose: a legendary is the old weapon (or its evolution) at its best, with its art; the inventory's coxinha is the heal's. */
 const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal'};
 const sharesArt=(id:string)=>id.endsWith('-lendario')?id.slice(0,-'-lendario'.length):SAME_ART[id];

@@ -25,7 +25,7 @@ import {tokensOf,unitsOf} from '../../../rules/index.ts';
 import {computeZones,type ZoneInput,type Rect} from '../zones.ts';
 import {layoutObra,obraArrows,planMarkers,type MarkerPlan,type ObraPoint} from './layout.ts';
 import {arrowHalf,beakTransform,distanceText,type EdgeArrow} from '../edges.ts';
-import {BRANCH_NAME,RAIL_SITE_ID,blockSpeech,blockText,canEvolve,cardsOf,defaultPick,selectable,treeFor,treeToOpen,type ObraAction,type ObraCard,type ObraTree,type ObraView} from './model.ts';
+import {BRANCH_NAME,RAIL_SITE_ID,blockSpeech,blockText,canEvolve,cardsOf,defaultPick,selectable,towerSticker,treeFor,treeToOpen,type ObraAction,type ObraCard,type ObraTree,type ObraView} from './model.ts';
 
 const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
   // Paus (people standing together), ouros (a blast), espadas (a beam); the root a plain guard post; the rail its sleepers.
@@ -36,7 +36,12 @@ const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
   rail:'<path d="M3 5h18v2.5H3zM3 16.5h18V19H3zM5 3h2.5v18H5zM10.75 3h2.5v18h-2.5zM16.5 3H19v18h-2.5z"/>',
 };
 const suitOf=(c:ObraCard)=>c.rail&&!c.label?'rail':c.branch??'root';
-const suit=(c:ObraCard)=>`<svg class="rh-obra-naipe" data-naipe="${suitOf(c)}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${SUIT[suitOf(c)]}</svg>`;
+/** The card's face: the defense's imported sticker (ui/torre-<id>, ringed in its suit's colour), else the suit. */
+const face=(key:string|undefined,n:keyof typeof SUIT)=>{
+  const art=key?towerSticker(key):undefined;
+  return art?`<img class="rh-obra-naipe rh-obra-adesivo" data-naipe="${n}" data-torre="${key}" src="${art}" alt="" aria-hidden="true" draggable="false" decoding="async">`:naipe(n);
+};
+const suit=(c:ObraCard)=>face(c.rail?undefined:c.key,suitOf(c));
 const ARROW='<svg class="rh-obra-seta" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 21 12h-5.5v10h-7V12H3z"/></svg>';
 /** A card's price: fichas for a build (the Vigia, the Gustavão), R$ for an evolution, free for the rail. */
 const priceOf=(c:ObraCard):PriceLabel=>c.tokens!==undefined?tokenPriceLabel(c.tokens):c.grana!==undefined?evolvePriceLabel(c.grana):FREE_PRICE;
@@ -295,7 +300,8 @@ export class ObraHud {
     put(slot,'at',`translate(${Math.round(a.x-half.w)}px,${Math.round(a.y-half.h)}px)`,v=>{slot.b.style.transform=v;});
     put(slot,'tip',beakTransform(a,half,''),v=>{slot.tip.style.transform=v;});
     put(slot,'side',a.side,v=>{slot.b.dataset.side=v;});
-    put(slot,'face',m?.head?suitOf(m.head):m?.kind==='trilho'?'rail':'root',v=>{slot.face.innerHTML=naipe(v as keyof typeof SUIT);});
+    put(slot,'face',m?.head?`${suitOf(m.head)}|${m.head.rail?'':m.head.key}`:m?.kind==='trilho'?'rail|':'root|',v=>{
+      const [n,key]=v.split('|') as [keyof typeof SUIT,string];slot.face.innerHTML=face(key||undefined,n);});
     put(slot,'num',distance===undefined?'':distanceText(distance),v=>{slot.num.textContent=v;});
     put(slot,'pending',String(!!m?.pending),v=>{if(v==='true')slot.b.setAttribute('aria-disabled','true');else slot.b.removeAttribute('aria-disabled');});
     const where=distance===undefined?'fora da vista':`a ${Math.min(999,Math.max(0,Math.round(distance)))} metros`;

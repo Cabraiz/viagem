@@ -147,12 +147,13 @@ export class CityLive {
   setNests(list:readonly LiveNest[],view:number,place:(x:number,y:number)=>{x:number;y:number;depth:number}){
     const keep=new Set<string>();
     for(const n of list){
-      const art=nestArtId(n),piece=this.options.piece(art),file=piece?.files.views;
+      // The base art is `files.sheet` (E8's `cenario` group, like props and buildings); `views` from older imports.
+      const art=nestArtId(n),piece=this.options.piece(art),name=piece?.files.sheet?'sheet':'views',file=piece?.files[name];
       if(!piece||!file)continue;
-      const tex=piece.key('views');
+      const tex=piece.key(name);
       if(!this.scene.textures.exists(tex))continue;
       keep.add(n.id);
-      const at=place(n.x,n.y),anchor=(piece.meta?.anchor as [number,number]|undefined)??[.5,.88];
+      const at=place(n.x,n.y),anchor=file.anchor??(piece.meta?.anchor as [number,number]|undefined)??[.5,.88];
       const frame=(file.views??4)>=4?((Math.round(view)%4)+4)%4:0,scale=NEST_SCALE[n.size]/ART_SCALE;
       let e=this.nests.get(n.id);
       if(!e||e.art!==art){e?.img.destroy();e={img:this.scene.add.image(0,0,tex,frame).setOrigin(anchor[0],anchor[1]),art};this.nests.set(n.id,e);}

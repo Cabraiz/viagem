@@ -2,7 +2,7 @@
  * Cenário vivo: which imported sheets the live layer loads (pure, no Phaser). From the art index (art/manifest.ts) it
  * picks, in any group, the files of the new scenery that move or belong to the nests:
  * - `anim-<name>` overlays of the places and `anim` of the lit objects (4 rows = views 0/90/180/270, frames columns);
- * - the 4-view `views` sheet of every `ninho-<tema>-<estado>` (the nests are not decor: the scene places them);
+ * - the 4-view base sheet (`sheet`, or `views` from older imports) of every `ninho-<tema>-<estado>` (the nests are not decor: the scene places them);
  * - the ground decals (rules.isDecal: any file of theirs, 1 view, baked into the ground by decalMeshes).
  * Texture keys are `city:live:<id>:<file>`; the base images of the decor are the city layer's (E1), not loaded here.
  */
@@ -14,7 +14,7 @@ import {isDecal} from './rules.ts';
 export interface LiveSheet {key:string;url:string;frameWidth:number;frameHeight:number}
 export const liveTextureKey=(id:string,file:string)=>`city:live:${id}:${file}`;
 const NEST=/^ninho-[a-z]+-(ativo|dormindo|destruido)$/;
-const isLiveFile=(id:string,file:string)=>file==='anim'||file.startsWith('anim-')||(NEST.test(id)&&file==='views')||isDecal(id);
+const isLiveFile=(id:string,file:string)=>file==='anim'||file.startsWith('anim-')||(NEST.test(id)&&(file==='sheet'||file==='views'))||isDecal(id);
 
 /** Every live sheet of the index (first group wins on a repeated id), single-page files only. */
 export function liveSheets(index:ArtIndex):LiveSheet[]{

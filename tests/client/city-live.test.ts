@@ -101,11 +101,12 @@ test('live sheets: place overlays, lit objects and nests from any group; bases a
     cenario:{output:'public/art/cenario',pieces:{
       'boteco-apocaliptico-1':{kind:'views',files:{views:f('boteco.webp',[768,1024]),'anim-janela':f('boteco-janela.webp')},meta:{anims:{janela:{0:[1,2]}}}},
       'fogueira-tambor-1':{kind:'views',files:{views:f('fog.webp'),anim:f('fog-anim.webp')}},
-      'ninho-festa-ativo':{kind:'views',files:{views:f('nf.webp',[448,448])}},
+      'ninho-festa-ativo':{kind:'views',files:{sheet:f('nf.webp',[448,448])}},
+      'ninho-boteco-ativo':{kind:'views',files:{sheet:f('nb.webp',[448,448]),'quebra':f('nbq.webp')}},
     }},
   }};
   const sheets=liveSheets(index);
-  assert.deepEqual(sheets.map(s=>s.key).sort(),['city:live:boteco-apocaliptico-1:anim-janela','city:live:fogueira-tambor-1:anim','city:live:ninho-festa-ativo:views']);
+  assert.deepEqual(sheets.map(s=>s.key).sort(),['city:live:boteco-apocaliptico-1:anim-janela','city:live:fogueira-tambor-1:anim','city:live:ninho-boteco-ativo:sheet','city:live:ninho-festa-ativo:sheet']);
   assert.equal(sheets.find(s=>s.key.endsWith('anim-janela'))!.url,'/art/cenario/boteco-janela.webp');
   const piece=livePieces(index)('boteco-apocaliptico-1')!;
   assert.equal(piece.key('anim-janela'),'city:live:boteco-apocaliptico-1:anim-janela');

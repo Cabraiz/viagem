@@ -111,3 +111,14 @@ test('live sheets: place overlays, lit objects and nests from any group; bases a
   assert.equal(piece.key('anim-janela'),'city:live:boteco-apocaliptico-1:anim-janela');
   assert.equal(livePieces(index)('nada'),undefined);
 });
+
+test('decals: families, corners on the footprint, the texture turned by rot', async ()=>{
+  const {decalCorners,isDecal}=await import('../../src/client/render/city/live/rules.ts');
+  assert.ok(isDecal('bueiro')&&isDecal('rachadura-3')&&isDecal('faixa-pedestre')&&!isDecal('poste-concreto-1')&&!isDecal('rachadura'+'-x'));
+  const at0=decalCorners({c:2,r:3,w:1,h:2,rot:0});
+  assert.deepEqual(at0.map(p=>[p.cx,p.cy]),[[2,3],[3,3],[3,5],[2,5]]);
+  assert.deepEqual(at0.map(p=>[p.u,p.v]),[[0,0],[1,0],[1,1],[0,1]]);
+  // turned 90° clockwise: the image's top-left (0,0) now sits on the north-east corner
+  assert.deepEqual(decalCorners({c:0,r:0,w:1,h:1,rot:90}).map(p=>[p.u,p.v]),[[0,1],[0,0],[1,0],[1,1]]);
+  assert.deepEqual(decalCorners({c:0,r:0,w:1,h:1,rot:360}),decalCorners({c:0,r:0,w:1,h:1,rot:0}));
+});

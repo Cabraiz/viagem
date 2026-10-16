@@ -9,11 +9,11 @@
  */
 import Phaser from 'phaser';
 import type {ArtFile} from '../../../art/manifest.ts';
-import {ART_SCALE} from '../materials.ts';
+import {ART_SCALE,frameUv} from '../materials.ts';
 import {TriBand} from '../tri-band.ts';
 import type {LiveSheet} from './art.ts';
 import {
-  LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decorKey,isPole,lightHead,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
+  LIGHT_LOOK,WIRE_LOOK,cellFrame,cellPoint,decalCorners,decorKey,isDecal,isPole,lightHead,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
   matchInsulators,NEST_SCALE,nestArtId,onCamera,polePairs,sagLine,viewIndex,
   type ArtView,type CellFrame,type DecorEntry,type LightKind,type LiveMeta,type Pt,type Rect,
 } from './rules.ts';
@@ -36,6 +36,41 @@ export function queueLiveArt(scene:Phaser.Scene,sheets:readonly LiveSheet[]):num
   let n=0;
   for(const s of sheets)if(!scene.textures.exists(s.key)){scene.load.spritesheet(s.key,s.url,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});n++;}
   return n;
+}
+
+/**
+ * Ground decals of one chunk as Meshes (one per texture), for the city layer to draw into the chunk's baked ground
+ * (after the cells, before the shadows) and destroy: no object stays alive, no per-frame cost. `corner(cx, cy)` is
+ * the projected point (world px, on the ground) of a city-grid corner; decals without a loaded texture are skipped.
+ */
+export function decalMeshes(scene:Phaser.Scene,decals:readonly DecorEntry[],piece:(id:string)=>LivePiece|undefined,corner:(cx:number,cy:number)=>Pt):Phaser.GameObjects.Mesh[]{
+  const byKey=new Map<string,DecorEntry[]>();
+  for(const d of decals){
+    if(!isDecal(d.id))continue;
+    const p=piece(d.id),file=p&&Object.keys(p.files)[0],key=file&&p.key(file);
+    if(!key||!scene.textures.exists(key))continue;
+    const l=byKey.get(key);if(l)l.push(d);else byKey.set(key,[d]);
+  }
+  const out:Phaser.GameObjects.Mesh[]=[];
+  for(const [key,list] of byKey){
+    const frame=scene.textures.getFrame(key,0),verts:number[]=[],uvs:number[]=[],idx:number[]=[];
+    for(const d of list){
+      const n=verts.length/2;
+      for(const c of decalCorners(d)){
+        const p=corner(c.cx,c.cy);
+        // Mesh vertices are y-up (Phaser's mesh space): negate y to stay in screen px (as city-layer groundMesh).
+        verts.push(p.x,-p.y);uvs.push(...frameUv(c.u,c.v,frame));
+      }
+      idx.push(n,n+1,n+2,n,n+2,n+3);
+    }
+    const mesh=new Phaser.GameObjects.Mesh(scene,0,0,key,0);
+    mesh.hideCCW=false;
+    mesh.setOrtho(mesh.width,mesh.height);
+    mesh.addVertices(verts,uvs,idx);
+    (mesh as unknown as {preUpdate(time:number,delta:number):void}).preUpdate(0,0);
+    out.push(mesh);
+  }
+  return out;
 }
 
 const GLOW_KEY='city:live:glow';

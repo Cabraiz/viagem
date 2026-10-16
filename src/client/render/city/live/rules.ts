@@ -200,3 +200,20 @@ export interface Rect {x:number;y:number;w:number;h:number}
 /** Whether a screen rect touches the camera rect grown by `margin` px. */
 export const onCamera=(r:Rect,cam:Rect,margin=64)=>
   r.x<cam.x+cam.w+margin&&cam.x-margin<r.x+r.w&&r.y<cam.y+cam.h+margin&&cam.y-margin<r.y+r.h;
+
+// ---- decals ----
+/** Ground decals (pedido 10 §2, `decal/`): 1 view, 256², seen from above; baked into the chunk's ground texture. */
+export const DECAL_FAMILIES=['bueiro','faixa-pedestre','mancha-oleo','pegadas','poca-congelada','rachadura'] as const;
+export const isDecal=(id:string)=>DECAL_FAMILIES.some(f=>id===f||(id.startsWith(`${f}-`)&&/^\d+$/.test(id.slice(f.length+1))));
+/** A corner of a decal: cell-space point (the city grid) and its texture coordinate (0..1). */
+export interface DecalCorner {cx:number;cy:number;u:number;v:number}
+/**
+ * The decal's footprint corners (nw, ne, se, sw of its cells) with the texture turned by `rot` (clockwise, in steps
+ * of 90°: the image's top edge faces north at 0, east at 90…). The camera view needs nothing here: the corners are
+ * world points, the projection turns them.
+ */
+export function decalCorners(e:Pick<DecorEntry,'c'|'r'|'w'|'h'|'rot'>):DecalCorner[]{
+  const pts=[[e.c,e.r],[e.c+e.w,e.r],[e.c+e.w,e.r+e.h],[e.c,e.r+e.h]];
+  const uv=[[0,0],[1,0],[1,1],[0,1]],k=((Math.round(e.rot/90)%4)+4)%4;
+  return pts.map(([cx,cy],i)=>{const [u,v]=uv[(i-k+4)%4];return {cx,cy,u,v};});
+}

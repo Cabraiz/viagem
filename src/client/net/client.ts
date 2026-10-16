@@ -5,7 +5,7 @@ import {loadCity} from './city-asset-loader.ts';
 import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
@@ -307,6 +307,21 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,site});return req;
   }
+  /**
+   * D-052 free build (contract/build.ts): builds `piece` with the top-left cell of its footprint at (c,r) of the build
+   * grid, turned when rot is 1; the room answers {t:'built'} (onBuilt). Same request ids as forge().
+   */
+  buildAt(piece:string,c:number,r:number,rot?:BuildRot){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,piece,c,r,...(rot?{rot}:{})});return req;
+  }
+  /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
+  onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};
+  /** D-052, the car's rope: {t:'puxar',round,req,on} hooks (on) or drops it; the room answers {t:'puxou'} (onPulled). */
+  pull(on:boolean){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'puxar',round:this.run.round,req,on});return req;
+  }
   /** Upgrades a ready defense (its structure's wire id) to the next tier; `branch` A/B/C at tier 2, or 'A4b'/'A5b'. */
   upgrade(defense:string,branch?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
@@ -539,6 +554,7 @@ export class CoopClient {
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='pixed'){const answer=parsePixed(m);if(answer)this.pixWaits.get(answer.req)?.(answer.result);}

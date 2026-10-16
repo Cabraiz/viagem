@@ -31,6 +31,10 @@ import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
+import {FortifyHud} from './hud/fortify/fortify.ts';
+import {FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
+import {buildHints} from './render/fortify-rules.ts';
+import {objectiveOf} from './render/chaveiro/view.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
 import {loadZoom,saveZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
@@ -90,6 +94,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
    */
   let obra:ObraHud|undefined,obraView:ObraView|undefined,obraSay:(text:string)=>void=()=>undefined;
   const obraRequests=new ObraRequests();
+  /** D-052 slice 3: the car's rope (Puxar) and the free build (Construir, the ghost, the wall counter). */
+  let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -146,7 +152,22 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onWindow:open=>{host.yieldForge(open);host.layoutChanged();},
         // Off-screen sites' edge arrows (E4-obras-visiveis-da-base): clear of the hero and of the HUD's arrows (the base).
         heroRect:()=>controller?.scene.heroScreenRect(),edgeArrows:()=>host.edges?.shown});
-      net.onBuilt=answer=>{const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);};
+      net.onBuilt=answer=>{
+        // The free build's answers share {t:'built'} with the obra menu's: each takes its own requests.
+        if(fortBuild.owns(answer.req)){const text=fortBuild.answer(answer);if(text)obraSay(text);return;}
+        const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);
+      };
+      net.onPulled=answer=>{if(!answer.ok)obraSay(pullRefusalText(answer.reason));};
+      const cell=()=>buildPlanFor(net.terrain).cell;
+      const send=(r:string)=>{if(r==='offline')obraSay('Agora não dá');};
+      fort=new FortifyHud(host.el,{
+        onPull:on=>{if(net.pull(on)===undefined)obraSay('Agora não dá');},
+        onOpen:open=>{fortBuild.toggle(open);if(!open)controller?.scene.setBuildGhost(null);},
+        onPick:piece=>fortBuild.pick(piece),onTurn:()=>fortBuild.turn(),
+        onConfirm:()=>send(fortBuild.piece==='muro'?fortBuild.drag(net):fortBuild.confirm(net)),
+        onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
+        onAimEnd:()=>fortBuild.endDrag(),
+        canvas:()=>controller?.game.canvas});
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
@@ -245,7 +266,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -494,6 +515,22 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   // so today the marker is the tower everyone sees.
                   drawnInWorld:towersInWorld(scene)});
                 obra.update(obraView);
+              }
+              // D-052 slice 3: Puxar near the car, Construir with the ghost, the wall counter. Not while picking cards (D-050)
+              // nor watching; the room is the judge of every request.
+              if(fort&&controller){
+                const view=hud.view,scene=controller.scene,car=view&&objectiveOf(view)?.car;
+                const available=run.phase==='combat'&&!!car&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown
+                  &&!member?.spectator&&!net.players.get(net.id)?.spectator;
+                if(run.phase!=='combat')fortBuild.reset();
+                else if(!available&&fortBuild.open)fortBuild.toggle(false);
+                const structures=view?.structures??[],plan=buildPlanFor(net.terrain);
+                fort.update({available,pull:pullState(car,net.id,net.predicted),open:fortBuild.open,piece:fortBuild.piece,rot:fortBuild.rot,
+                  walls:fortCounts(structures).walls});
+                if(fortBuild.open){
+                  const ctx={cell:plan.cell,...(car?{car}:{}),structures};
+                  scene.setBuildGhost(fortBuild.ghost(ctx),buildHints(fortBuild.piece,plan.sites,ctx));
+                }else scene.setBuildGhost(null);
               }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

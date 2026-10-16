@@ -36,12 +36,16 @@
  * trip that is back before the wave, PUSH_TRIP_SECONDS); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
+ * D-052, the car moves (objectiveTask 'carro'): while a person pushes or pulls it (view.objective.car.movers), the
+ * CAR_HELP_BOTS standing bots nearest to it (within CAR_HELP_RANGE, none on another task) lean on it and push the same
+ * way (carHeading: the people's pull). The bot never picks where the car goes; with nobody moving it, nobody helps
+ * (the sim also counts a bot only along with a person). The other bots fight around the car as before.
  * D-051 manual combat (BrainInput.combat 'manual'): the bot holds the attack (Decision.attack) whenever a critter is
  * within its equipped weapon's reach (attackReach) and never taps the skill; the room's auto aim picks the target. It
  * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {BASE_STATS,CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import {BASE_STATS,CAR_ID,CAR_PUSH_REACH,CAR_RADIUS,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
@@ -88,9 +92,16 @@ export const ROAM_IN=1;
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
 /** City, combat: a wanted move shorter than this (the pulls cancel out) is no move. */
 export const HOLD_BELOW=.15;
-type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal';
+type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal'|'carGoal';
 /** D-047: bots that push a dead moto, and how close (u) they stand to it (inside the sim's PUSH_RADIUS, 2.5). */
 export const PUSH_BOTS=2,PUSH_STAND=1.5;
+/**
+ * D-052 (the car moves, Orq's answer to slice 5): at most CAR_HELP_BOTS bots help a person move the car, from up to
+ * CAR_HELP_RANGE u away (a longer walk would mostly find the push over). A helper leans CAR_LEAN u off the body behind
+ * it (inside CAR_PUSH_REACH), CAR_SIDE u to one side of the person's line, and pushes once its line to the car is
+ * within CAR_LEAN_DOT (cos) of the heading (the sim takes CAR_PUSH_DOT, .5).
+ */
+export const CAR_HELP_BOTS=2,CAR_HELP_RANGE=20,CAR_LEAN=.5,CAR_SIDE=.6,CAR_LEAN_DOT=.8;
 /**
  * D-047, a dead moto in the intermission (NEW-20261014-E2-chaveiro-time-cai-onda-4): the pushers go only when the trip
  * (to the moto, PUSH_TRIP_SECONDS there, back to the car; along the streets in the city) ends before the wave. The
@@ -117,7 +128,7 @@ export interface BrainMemory {
   /** Recipes the forge refused, by round index (Bot fills it from {t:'forged'}): not asked again this intermission. */
   refused:Partial<Record<RecipeId,number>>;
   /** City only: the goal cells of the moving targets (fallen friend, person walked with, critter hunted) last routed to (bot-routes keep). */
-  rescueGoal?:number;escortGoal?:number;huntGoal?:number;motoGoal?:number;
+  rescueGoal?:number;escortGoal?:number;huntGoal?:number;motoGoal?:number;carGoal?:number;
   /** City only: walking back to the anchor until HOME_SLACK inside the leash. */
   homing?:boolean;
 }
@@ -161,7 +172,7 @@ export interface Decision {
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'carro';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -189,12 +200,15 @@ export function wallOf(view:RunView):StructureView|undefined{return view.structu
 export function homeOf(view:RunView,fallback:Point):Point{
   const w=view.structures.find(s=>s.kind==='muralha'||s.kind===CAR_ID);return w?{x:w.x,y:w.y}:fallback;
 }
+/** An objective task: 'carro' (D-052) also carries where the people take the car and the side this helper leans on. */
+export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;heading:Point;side:1|-1};
 /**
  * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
- * (nearest to the point among the standing bots that do not push and do not forge). `at`: where to go.
+ * (nearest to the point among the standing bots that do not push and do not forge); 'carro' (D-052): a person moves
+ * the car and this is one of the CAR_HELP_BOTS free bots nearest to it. `at`: where to go.
  */
-export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):{kind:'push'|'clear';at:Point}|undefined{
+export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):ObjectiveTask|undefined{
   const o=view.objective;
   if(!o||o.ended)return undefined;
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p));
@@ -219,11 +233,41 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   }
   if(pushers.includes(selfId))return {kind:'push',at:moto};
   const d=o.delivery;
+  let clearer:string|undefined;
   if(d&&d.etaS<=DELIVERY_MARK_SECONDS){
-    const free=byDistance(d,ready.filter(p=>!pushers.includes(p.id)&&p.id!==forger))[0];
-    if(free?.id===selfId)return {kind:'clear',at:{x:d.x,y:d.y}};
+    clearer=byDistance(d,ready.filter(p=>!pushers.includes(p.id)&&p.id!==forger))[0]?.id;
+    if(clearer===selfId)return {kind:'clear',at:{x:d.x,y:d.y}};
+  }
+  // D-052: a person moves the car: the nearest free bots push along (the sim counts them only with that person).
+  const heading=carHeading(view,bots);
+  if(heading){
+    const car={x:o.car.x,y:o.car.y};
+    const helpers=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE))
+      .slice(0,CAR_HELP_BOTS).map(p=>p.id);
+    const i=helpers.indexOf(selfId);
+    if(i>=0)return {kind:'carro',at:car,heading,side:i===0?1:-1};
   }
   return undefined;
+}
+
+/**
+ * D-052: where the people moving the car (view.objective.car.movers, the bots left out) take it, as a unit vector: a
+ * pusher leans from its side toward the body, the rope pulls toward its holder. Undefined when no person moves it.
+ */
+export function carHeading(view:Pick<RunView,'objective'|'players'>,bots:readonly string[]):Point|undefined{
+  const car=view.objective?.car;
+  if(!car?.movers?.length)return undefined;
+  let x=0,y=0;
+  for(const id of car.movers){
+    if(bots.includes(id))continue;
+    const p=view.players.find(q=>q.id===id),at=p&&positionOf(p);
+    if(!at)continue;
+    const d=dist(at,car);if(d<1e-6)continue;
+    const sign=id===car.rope?1:-1;
+    x+=sign*(at.x-car.x)/d;y+=sign*(at.y-car.y)/d;
+  }
+  const n=norm({x,y});
+  return n.x||n.y?n:undefined;
 }
 
 /** The standing bot that spends the balance: the first standing player by id (every bot computes the same one). */
@@ -355,6 +399,12 @@ export function decide(input:BrainInput):Decision{
     if(dist(at,task.at)>PUSH_STAND)want=go(task.at,1,'motoGoal');
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
+    return finish(decision,input);
+  }
+  // D-052: a person moves the car: lean on it from behind (one side of the person's line) and push the same way.
+  if(task?.kind==='carro'){
+    decision.mode='carro';
+    decision.direction=carHelp(at,task,go);
     return finish(decision,input);
   }
   // In the intermission the bot clearing a delivery walks to the point (nothing to gather there).
@@ -514,6 +564,38 @@ export function decide(input:BrainInput):Decision{
   return finish(decision,input);
 }
 
+/**
+ * D-052: the stick of a bot helping move the car. The sim counts a stick that points at the car from within
+ * CAR_PUSH_REACH of its body, so the bot only ever does that with the heading itself:
+ * - behind the car (its line to the car within CAR_LEAN_DOT of the heading), up to CAR_HELP_NEAR: the heading (it
+ *   catches up, then pushes);
+ * - farther: along the streets to its spot behind the car (CAR_LEAN off the body, CAR_SIDE to its side);
+ * - near, inside the ring (CAR_RING u from the body: reach and a margin): around the body, the stick tangent to it
+ *   (never at it) toward the back;
+ * - near, outside the ring: to the ring's flank on its side, a little behind the body.
+ */
+function carHelp(at:Point,task:{at:Point;heading:Point;side:1|-1},go:(to:Point,weight?:number,chase?:Chase)=>Point):Point{
+  const car=task.at,h=task.heading,d=dist(at,car);
+  const rx=at.x-car.x,ry=at.y-car.y,lean=d>1e-6?-(rx*h.x+ry*h.y)/d:0;
+  if(d<=CAR_HELP_NEAR&&lean>=CAR_LEAN_DOT)return h;
+  // Its side of the car's line (the task's side when on the line): left of the heading is (−h.y, h.x).
+  const cross=h.x*ry-h.y*rx,sign=Math.abs(cross)>.05?Math.sign(cross):task.side,side={x:-h.y*sign,y:h.x*sign};
+  if(d>CAR_HELP_NEAR){
+    const back=CAR_RADIUS+CAR_LEAN;
+    return norm(go({x:car.x-h.x*back+side.x*CAR_SIDE,y:car.y-h.y*back+side.y*CAR_SIDE},1,'carGoal'));
+  }
+  if(d-CAR_RADIUS<=CAR_RING&&d>1e-6){
+    // Tangent, turning toward the back: of the two, the one against the heading.
+    const t={x:-ry/d,y:rx/d};
+    return t.x*h.x+t.y*h.y<=0?t:{x:-t.x,y:-t.y};
+  }
+  return toward(at,{x:car.x+side.x*(CAR_RADIUS+CAR_RING+.2)-h.x*CAR_LEAN,y:car.y+side.y*(CAR_RADIUS+CAR_RING+.2)-h.y*CAR_LEAN});
+}
+/**
+ * D-052: from this close (u) to the car a helper walks straight (farther: along the streets in the city); inside
+ * CAR_RING u of the body it only circles (CAR_PUSH_REACH and a margin).
+ */
+const CAR_HELP_NEAR=4,CAR_RING=CAR_PUSH_REACH+.4;
 /** Players carry positions on the wire (PlayerWireView); the view type does not say so. */
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}

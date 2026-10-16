@@ -6,7 +6,7 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {COSTUME_LAYER_DEPTH,ELITE_LAYER_DEPTH,ENEMY_ART_ID,ROUND_COSTUMES,applyEnemyArt,artLoads,costumeFile,deathAnim,drawDeathArt,eliteFile,enemyArtKey,enemyFrame,loopAnim,pieceAction,playEnemyAction,roundCostume} from '../../src/client/art/horde-art.ts';
+import {COSTUME_LAYER_DEPTH,ELITE_LAYER_DEPTH,ENEMY_ART_ID,ROUND_COSTUMES,applyEnemyArt,costumeFile,enemyPieceLoads,deathAnim,drawDeathArt,eliteFile,enemyArtKey,enemyFrame,loopAnim,pieceAction,playEnemyAction,roundCostume,unusedEnemyFile} from '../../src/client/art/horde-art.ts';
 import {CIDADE_MODIFIERS,cidadeModifierLabel} from '../../src/rules/index.ts';
 import {ENEMY_ACTIONS} from '../../src/client/art/horde-actions.ts';
 import {PHASE_ACTING,actAnim} from '../../src/client/render/phase-look.ts';
@@ -40,10 +40,11 @@ test('the nine originals are the delivery\'s ids (the fixture covers every kind)
   for(const k of ENEMY_KINDS)assert.equal(ENEMY_ART_ID[k],k);
 });
 
-test('every original queues its sheets and every elite layer in the preload',()=>{
+test('every original queues its sheets and every elite layer in the loads of its enemy (enemyPieceLoads: they come with the enemy)',()=>{
   loadAll();
-  const keys=new Set(artLoads().map(l=>l.key));
-  for(const k of ENEMY_KINDS)for(const a of DELIVERY[k].anims){
+  const keys=new Set(ENEMY_KINDS.flatMap(k=>enemyPieceLoads(ENEMY_ART_ID[k]).map(l=>l.key)));
+  // The rest rows (sleep, wake) are the nests' card's: no match downloads them yet (unusedEnemyFile).
+  for(const k of ENEMY_KINDS)for(const a of DELIVERY[k].anims.filter(a=>!unusedEnemyFile(a))){
     assert.ok(keys.has(enemyArtKey(k,a)),`${k} ${a}`);
     assert.ok(keys.has(enemyArtKey(k,eliteFile(a))),`${k} elite/${a}`);
   }

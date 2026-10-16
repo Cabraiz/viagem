@@ -12,6 +12,7 @@ import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
 import type {CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
+import {stickerOrIcon} from '../ui/sticker.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -105,9 +106,9 @@ export class SkillButton {
     this.combat=combat;this.taps.clear();this.answered=undefined;this.note='';this.noteUntil=0;
     this.el.dataset.action=combat==='manual'?'attack':'skill';
     this.el.setAttribute('aria-label',combat==='manual'?ATTACK_LABEL:skillLabel(this.classId));
-    // The chinelo stands for "hit it" until the E6 inventory shows the equipped weapon's sticker.
-    const old=this.el.querySelector('.skillbtn-icon');
-    if(old)old.outerHTML=icon(combat==='manual'?'chinelo':'sacola',{size:40,className:'skillbtn-icon'});
+    // Manual: the attack sticker (ui/atacar; the chinelo without that art) until the inventory shows the equipped weapon.
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(old)old.outerHTML=combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
     this.state={mode:'ready',seconds:0,progress:1};this.el.dataset.note='';this.paint();
   }
   get attackMode(){return this.combat==='manual';}

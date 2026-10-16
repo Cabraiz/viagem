@@ -1,8 +1,8 @@
 /**
  * D-051 crates (NEW-20261014-ORQ-armas-caixas-inventario, plans/armas-caixas-inventario-proposta.md §2), manual combat
  * only (assemble wires it then). A crate IS a 'chest' pickup whose `value` is its rarity (1 verde .. 5 lendária):
- *  - placed: at the first step up to MAX_CRATES crates on distinct random map points (the city's `loot` points),
- *    NEAR_START of them on the near third (the user, 16/10: "more crates early and near"). The rarity grows with the
+ *  - placed: at the first step up to crateCap(players) crates on distinct random map points (the city's `loot` points),
+ *    the cap kept for the run; NEAR_START of them on the near third (the user, 16/10: "more crates early and near"). The rarity grows with the
  *    walk time from the plaza: the points are split in thirds by `seconds` (near / mid / far) and each third rolls its
  *    pair (TIER_ODDS), the crate's base. It also grows along the match: a placed crate shows its base shifted by the
  *    round's stage (stageShift: -1 in the first rounds .. +2 in the last, clamped verde..lendária), so an unopened
@@ -30,9 +30,15 @@ import {NEW_WEAPONS,isRarity,legendaryId,type ConsumableId,type Rarity} from './
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
 /** Placed crates alive at once (proposal: "para o mapa não virar supermercado"). Dropped crates do not count. */
-export const MAX_CRATES=12;
-/** Of the initial MAX_CRATES, this many sit on the near third (the rest anywhere), so the first rounds have crates close. */
-export const NEAR_START=8;
+export const MAX_CRATES=16;
+/**
+ * Placed crates of a run with this many players (the 16/10 CI bench with 12 for all: a solo, who has them all to
+ * itself, won 16/16; six players, who split them, 3/16): CRATES_BASE + CRATES_PER_PLAYER a player, up to MAX_CRATES.
+ */
+export const CRATES_BASE=4,CRATES_PER_PLAYER=2;
+export const crateCap=(players:number)=>Math.min(MAX_CRATES,CRATES_BASE+CRATES_PER_PLAYER*Math.max(1,players));
+/** Of the initial crates, up to half sit on the near third (the rest anywhere), so the first rounds have crates close. */
+export const NEAR_SHARE=.5;
 /** Start crates: one a player, up to START_CRATES_MAX (the 16/10 bench: a solo with three of them is too easy). */
 export const START_CRATES_MIN=1,START_CRATES_MAX=6;
 /** The match is split in this many stages by round (10 rounds: 1-3, 4-5, 6-8, 9-10); stage s shifts a placed crate by s-1. */
@@ -92,6 +98,8 @@ export interface CrateRecord {
 export interface CratesState {
   /** The first step placed the initial crates. */
   placed:boolean;
+  /** Placed crates alive at once for this run (crateCap of the players at the first step). */
+  cap?:number;
   /** Live crates this module knows, by pickup id. */
   crates:Record<string,CrateRecord>;
   /** Ticks when an opened placed crate comes back (ascending). */
@@ -185,15 +193,16 @@ export function createCrates(options:CratesOptions):Crates{
     addCrate(ctx,points[point],{rarity:shifted(base,stageShift(ctx.round)),base,origin:'placed',point});
   }
 
-  /** Initial placement: a seeded shuffle of the points, NEAR_START of the near third first, then the first of the rest. */
+  /** Initial placement: a seeded shuffle of the points, NEAR_SHARE of the cap from the near third first, then the rest. */
   function placeInitial(ctx:SimContext,rng:Rng){
     state.placed=true;
+    let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
+    const cap=state.cap=crateCap(players);
     const order=points.map((_,i)=>i);
     for(let i=order.length-1;i>0;i--){const j=rng.int(0,i);[order[i],order[j]]=[order[j],order[i]];}
-    const near=order.filter(i=>tierOf[i]===0).slice(0,NEAR_START),rest=order.filter(i=>!near.includes(i));
-    for(const point of [...near,...rest].slice(0,MAX_CRATES))place(ctx,rng,point);
+    const near=order.filter(i=>tierOf[i]===0).slice(0,Math.ceil(cap*NEAR_SHARE)),rest=order.filter(i=>!near.includes(i));
+    for(const point of [...near,...rest].slice(0,cap))place(ctx,rng,point);
     // Start crates: a random first spot, then each next the candidate farthest from those taken (ties: list order).
-    let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
     const want=Math.min(startPoints.length,Math.max(START_CRATES_MIN,Math.min(START_CRATES_MAX,players)));
     const taken:Point[]=[];
     if(want)taken.push(rng.pick(startPoints));
@@ -220,7 +229,7 @@ export function createCrates(options:CratesOptions):Crates{
   /** Due respawns, oldest first: a random free point far enough from every player, else wait for a later tick. */
   function respawn(ctx:SimContext,rng:Rng){
     while(state.respawns.length&&state.respawns[0]<=ctx.tick){
-      if(placedCount()>=MAX_CRATES){state.respawns.shift();continue;}
+      if(placedCount()>=(state.cap??MAX_CRATES)){state.respawns.shift();continue;}
       const used=usedPoints(),players=[...ctx.players.values()].filter(onMap);
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;

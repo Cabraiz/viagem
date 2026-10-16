@@ -132,7 +132,7 @@ test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries 
 
 test('city, manual combat: the crates stand on the loot points; standing by one fills the inventory; the view carries the hand',async()=>{
   const {readFileSync}=await import('node:fs');const {fileURLToPath}=await import('node:url');const {cityTerrainFrom}=await import('../../src/maps/city/terrain.ts');
-  const {cityLoot}=await import('../../src/sim/stonewards/loot.ts');const {START_CRATES_MIN}=await import('../../src/sim/crates.ts');
+  const {cityLoot}=await import('../../src/sim/stonewards/loot.ts');const {START_CRATES_MIN,crateCap}=await import('../../src/sim/crates.ts');
   const root=(p:string)=>fileURLToPath(new URL(`../../${p}`,import.meta.url));
   const loaded=await cityTerrainFrom(readFileSync(root('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(root('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
   if(!loaded.ok)throw new Error(loaded.error);
@@ -140,7 +140,7 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   s.add('p0','Ana','cidadao-comum');s.resetRun();
   let now=1000;s.step(now+=50);
   const crates=s.view('p0').pickups.filter(k=>k.kind==='chest');
-  assert.equal(crates.length,12+START_CRATES_MIN,'MAX_CRATES on the loot points and the start crates of the solo by the plaza');
+  assert.equal(crates.length,crateCap(1)+START_CRATES_MIN,'the solo’s crates on the loot points and its start crate by the plaza');
   assert.ok(crates.every(k=>k.value>=1&&k.value<=3),'round 1: verde..roxa (the stage shift takes one off)');
   const loot=cityLoot(loaded.terrain)!;
   assert.equal(crates.filter(k=>loot.aroundPlaza.some(a=>a.x===k.x&&a.y===k.y)&&k.value===1).length,START_CRATES_MIN,'the start crates are verde, just outside the plaza');

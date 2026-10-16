@@ -6,7 +6,7 @@ import type {EnemyState,OwnedItem,PickupState,PlayerBuild,SimEvent,SimPlayer,Spa
 import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
-  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_START,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
+  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
   createCrates,rollPrize,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
@@ -45,16 +45,19 @@ function run(ctx:FakeCtx,crates:{step(ctx:SimContext):void},n:number,each?:(ctx:
 /** Points along a line, 10 apart, walk time = index (so thirds are by index). */
 const line=(n:number)=>Array.from({length:n},(_,i)=>({x:i*10,y:0,seconds:i}));
 
-test('initial placement: MAX_CRATES on distinct points, NEAR_START near, base rarity by distance third, shifted by stage',()=>{
+/** The cap of the runs below (no player at the first step: the cap of one). */
+const CAP=crateCap(0);
+
+test('initial placement: CAP on distinct points, Math.ceil(CAP*NEAR_SHARE) near, base rarity by distance third, shifted by stage',()=>{
   const seen=new Set<string>();
   for(let seed=1;seed<=40;seed++){
     const points=line(30),ctx=makeCtx(seed),crates=createCrates({seed,points});
     ctx.round.index=4;// stage 1: no shift, the base shows
     crates.step(ctx);
     const placed=chests(ctx);
-    assert.equal(placed.length,MAX_CRATES);
-    assert.equal(new Set(placed.map(c=>`${c.x},${c.y}`)).size,MAX_CRATES,'distinct points');
-    assert.ok(placed.filter(c=>c.x<100).length>=NEAR_START,'the near third first');
+    assert.equal(placed.length,CAP);
+    assert.equal(new Set(placed.map(c=>`${c.x},${c.y}`)).size,CAP,'distinct points');
+    assert.ok(placed.filter(c=>c.x<100).length>=Math.ceil(CAP*NEAR_SHARE),'the near third first');
     for(const c of placed){
       const tier=Math.floor(c.x/10/10),allowed=[[1,2],[2,3],[3,4]][tier];
       assert.ok(allowed.includes(c.value),`tier ${tier} rolled ${c.value}`);
@@ -164,6 +167,15 @@ test('start crates: verde, one a player (1..6), spread out over the start points
   addPlayer(none,'p',0,0);noStart.step(none);assert.equal(chests(none).length,0,'no start points: none');
 });
 
+test('the placed crates scale with the players: 4 + 2 a player, up to MAX_CRATES; the cap is kept for the run',()=>{
+  assert.deepEqual([0,1,2,3,6,8].map(crateCap),[6,6,8,10,16,16]);
+  assert.equal(MAX_CRATES,16);
+  const ctx=makeCtx(4),crates=createCrates({seed:4,points:line(40)});
+  for(let i=0;i<6;i++)addPlayer(ctx,`p${i}`,-50,0);
+  crates.step(ctx);
+  assert.equal(chests(ctx).length,16);assert.equal(crates.state.cap,16);
+});
+
 test('the rarity grows along the match: rounds 1-3 shift -1, the last rounds +2, an unopened crate follows',()=>{
   assert.deepEqual([0,1,2,3,4,5,6,7,8,9,10].map(index=>stageShift({index,total:10})),[-1,-1,-1,-1,0,0,1,1,1,2,2]);
   const ctx=makeCtx(2),crates=createCrates({seed:2,points:line(30)});
@@ -243,7 +255,7 @@ test('prizes land in the inventory, the overflow on the ground; Grana and fichas
 });
 
 test('an opened placed crate respawns 180 s later on a free point away from every player',()=>{
-  const points=line(MAX_CRATES+1),ctx=makeCtx(),crates=createCrates({seed:5,points});
+  const points=line(CAP+1),ctx=makeCtx(),crates=createCrates({seed:5,points});
   crates.step(ctx);ctx.tick++;
   const used=new Set(Object.values(crates.state.crates).map(r=>r.point));
   const free=points.findIndex((_,i)=>!used.has(i));
@@ -253,18 +265,18 @@ test('an opened placed crate respawns 180 s later on a free point away from ever
   run(ctx,crates,1+ticks(OPEN_SECONDS[target.value-1]));
   assert.equal(opened(ctx).length,1);
   const openTick=ctx.tick-1;
-  assert.equal(chests(ctx).length,MAX_CRATES-1);
+  assert.equal(chests(ctx).length,CAP-1);
   assert.deepEqual(crates.state.respawns,[openTick+ticks(RESPAWN_SECONDS)]);
   // Due, but the only free points are next to a player (a stands on the opened point, b near the other): it waits.
   while(ctx.tick<openTick+ticks(RESPAWN_SECONDS)+50)run(ctx,crates,1);
-  assert.equal(chests(ctx).length,MAX_CRATES-1,'no point qualifies');
+  assert.equal(chests(ctx).length,CAP-1,'no point qualifies');
   blocker.x=-1000;
   run(ctx,crates,1);
   const back=chests(ctx).find(c=>c.x===points[free].x);
   assert.ok(back,'came back on the free point away from both players');
   assert.equal(crates.state.crates[back.id].origin,'placed');
   assert.ok([1,2,3,4].includes(back.value));
-  assert.equal(chests(ctx).length,MAX_CRATES);
+  assert.equal(chests(ctx).length,CAP);
   assert.equal(crates.state.respawns.length,0);
   assert.ok(Math.hypot(a.x-back.x,a.y-back.y)>=RESPAWN_MIN_DIST);
   // Exact timing: not a tick early (fresh run, nobody around).
@@ -275,15 +287,15 @@ test('an opened placed crate respawns 180 s later on a free point away from ever
   p2.x=-1000;
   const due=cr2.state.respawns[0];
   while(c2.tick<due)run(c2,cr2,1);
-  assert.equal(chests(c2).length,MAX_CRATES-1);
+  assert.equal(chests(c2).length,CAP-1);
   run(c2,cr2,1);
-  assert.equal(chests(c2).length,MAX_CRATES);
+  assert.equal(chests(c2).length,CAP);
 });
 
 test('elite and boss chests become dropped crates; dropped crates skip the cap and never respawn',()=>{
   const rarities=new Set<number>();
   for(let seed=1;seed<=40;seed++){
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(MAX_CRATES)});
+    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(CAP)});
     crates.step(ctx);ctx.tick++;
     // progression.ts dropLoot: ctx.nextId('chest'); boss.ts finish: ctx.nextId('pickup'). Both value 1.
     const elite:PickupState={id:ctx.nextId('chest'),kind:'chest',value:1,x:500,y:500,spawnTick:ctx.tick};
@@ -296,7 +308,7 @@ test('elite and boss chests become dropped crates; dropped crates skip the cap a
     assert.equal(boss.value,5);
     assert.equal(nest.value,4,'a chest that already has a rarity keeps it');
     for(const c of [elite,boss,nest])assert.equal(crates.state.crates[c.id].origin,'dropped');
-    assert.equal(chests(ctx).length,MAX_CRATES+3,'dropped crates do not count to the cap');
+    assert.equal(chests(ctx).length,CAP+3,'dropped crates do not count to the cap');
     if(seed===1){
       const p=addPlayer(ctx,'a',boss.x,boss.y);
       run(ctx,crates,1+ticks(3));
@@ -332,7 +344,7 @@ test('deterministic, and a JSON checkpoint resumes exactly like an uninterrupted
   assert.equal(digest(again.ctx,again.crates.state,again.log),digest(a.ctx,a.crates.state,a.log),'same seed, same run');
   assert.ok(opened(a.ctx).length>=10,`${opened(a.ctx).length} crates opened`);
   assert.ok(a.log.some(l=>l.startsWith('n')),'some noise');
-  assert.ok(opened(a.ctx).some(e=>e.pickup.startsWith(`${CRATE_ID_PREFIX}-`)&&Number(e.pickup.split('-')[1])>MAX_CRATES),'respawned crates came back and were opened');
+  assert.ok(opened(a.ctx).some(e=>e.pickup.startsWith(`${CRATE_ID_PREFIX}-`)&&Number(e.pickup.split('-')[1])>CAP),'respawned crates came back and were opened');
   const b=fresh();run(b.ctx,b.crates,half,script(b.crates));
   const resumed=createCrates({seed:42,points,hooks:hooks(b.log),state:JSON.parse(JSON.stringify(b.crates.state)) as CratesState});
   run(b.ctx,resumed,total-half,script(resumed));

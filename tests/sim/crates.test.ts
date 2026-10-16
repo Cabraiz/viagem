@@ -48,7 +48,7 @@ const line=(n:number)=>Array.from({length:n},(_,i)=>({x:i*10,y:0,seconds:i}));
 /** The cap of the runs below (no player at the first step: the cap of one). */
 const CAP=crateCap(0);
 
-test('initial placement: CAP on distinct points, Math.ceil(CAP*NEAR_SHARE) near, base rarity by distance third, shifted by stage',()=>{
+test('initial placement: crateCap on distinct points, half near first, base rarity by distance third, shifted by stage',()=>{
   const seen=new Set<string>();
   for(let seed=1;seed<=40;seed++){
     const points=line(30),ctx=makeCtx(seed),crates=createCrates({seed,points});
@@ -68,8 +68,8 @@ test('initial placement: CAP on distinct points, Math.ceil(CAP*NEAR_SHARE) near,
   }
   assert.deepEqual([...seen].sort(),['0:1','0:2','1:2','1:3','2:3','2:4'],'every tier rolls both of its rarities');
   // Fewer points than the cap: all of them; none: nothing, and a later step places nothing either.
-  const few=makeCtx(),fewCrates=createCrates({seed:3,points:line(5)});
-  fewCrates.step(few);assert.equal(chests(few).length,5);
+  const few=makeCtx(),fewCrates=createCrates({seed:3,points:line(CAP-1)});
+  fewCrates.step(few);assert.equal(chests(few).length,CAP-1);
   const none=makeCtx(),noCrates=createCrates({seed:3,points:[]});
   run(none,noCrates,5);assert.equal(chests(none).length,0);
   const dropped=noCrates.dropCrate(none,{x:1,y:2},4);
@@ -167,8 +167,8 @@ test('start crates: verde, one a player (1..6), spread out over the start points
   addPlayer(none,'p',0,0);noStart.step(none);assert.equal(chests(none).length,0,'no start points: none');
 });
 
-test('the placed crates scale with the players: 4 + 2 a player, up to MAX_CRATES; the cap is kept for the run',()=>{
-  assert.deepEqual([0,1,2,3,6,8].map(crateCap),[6,6,8,10,16,16]);
+test('the placed crates scale with the players: 1 + 3 a player, up to MAX_CRATES; the cap is kept for the run',()=>{
+  assert.deepEqual([0,1,2,3,6,8].map(crateCap),[4,4,7,10,16,16]);
   assert.equal(MAX_CRATES,16);
   const ctx=makeCtx(4),crates=createCrates({seed:4,points:line(40)});
   for(let i=0;i<6;i++)addPlayer(ctx,`p${i}`,-50,0);

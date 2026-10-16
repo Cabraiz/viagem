@@ -33,9 +33,10 @@ import {WEAPON_IDS} from './weapons/catalog.ts';
 export const MAX_CRATES=16;
 /**
  * Placed crates of a run with this many players (the 16/10 CI bench with 12 for all: a solo, who has them all to
- * itself, won 16/16; six players, who split them, 3/16): CRATES_BASE + CRATES_PER_PLAYER a player, up to MAX_CRATES.
+ * itself, won 16/16, and 8/16 with 6; six players, who split them, 3/16): CRATES_BASE + CRATES_PER_PLAYER a player, up to
+ * MAX_CRATES.
  */
-export const CRATES_BASE=4,CRATES_PER_PLAYER=2;
+export const CRATES_BASE=1,CRATES_PER_PLAYER=3;
 export const crateCap=(players:number)=>Math.min(MAX_CRATES,CRATES_BASE+CRATES_PER_PLAYER*Math.max(1,players));
 /** Of the initial crates, up to half sit on the near third (the rest anywhere), so the first rounds have crates close. */
 export const NEAR_SHARE=.5;

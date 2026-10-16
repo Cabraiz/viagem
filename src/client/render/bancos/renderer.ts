@@ -1,7 +1,8 @@
 /**
- * The run's banks in the world (card NEW-20261014-ORQ-bancos-e-veiculos, provisional art: figures.ts):
- * - the "Caixa 24 h" kiosk with its bank's sign, the screen by state (blue at rest, green paying, red blinking while a
- *   critter robs it, dark when empty);
+ * The run's banks in the world (card NEW-20261014-ORQ-bancos-e-veiculos):
+ * - the kiosk: the imported art when the manifest has the bank's 7 ids (art.ts, card bancos-arte-render), its screen
+ *   overlay by state (blue at rest, green paying, red blinking while a critter robs it, dark when empty) and the note
+ *   leaving the slot (`-sacando`) while money leaves (hero or critter); else the provisional figure (figures.ts);
  * - on the ground, the area where a hero holds it (BANCO.holdR) and a ring with the saldo left;
  * - over it, a tag: the bank's short name and its saldo, "bicho sacando!" (Cone) or "SEM CÉDULAS m:ss";
  * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, dark away for a critter) and the
@@ -17,6 +18,9 @@ import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts'
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
 import {BANCO,BANK_SHORT} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
+import {artIndex} from '../../art/manifest.ts';
+import {ART_SCALE} from '../city/materials.ts';
+import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
 import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 
 const LIGHT=lightEnabled();
@@ -25,12 +29,18 @@ const FX_DEPTH=94880;
 /** The kiosks face +x (the sim gives no heading). */
 const HEADING=0;
 const COVER_ALPHA=.45;
+/** The machine's art is at the world's scale (the importer sized it 2.6 u tall), drawn like the city's sheets; its layers share its px. */
+const ART_PX=1/ART_SCALE;
+/** Empty rows over the art's tallest part (sign, pig, snail), a share of the cell: the tag sits on what is drawn. */
+const ART_TOP_PAD=.17;
 
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
-  figKey:string}
+  figKey:string;
+  /** The imported art (kiosk, screen, slot), made when its textures are in. */
+  art?:{body:Phaser.GameObjects.Image;tela:Phaser.GameObjects.Image;saque:Phaser.GameObjects.Image}}
 
 export class BankRenderer {
   private scene:Phaser.Scene;
@@ -47,6 +57,9 @@ export class BankRenderer {
   /** The ATM's faces per name, screen look and view (boxFaces is pure). */
   private faces=new Map<string,readonly Face[]>();
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0};
+  /** Each bank's imported art (undefined: the provisional figure) and whether its textures are in. */
+  private arts=new Map<string,BankArt|undefined>();
+  private artIn=new Set<string>();
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
@@ -57,6 +70,26 @@ export class BankRenderer {
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.dim=mix(c.papel,c.breu,.55);
     // The fonts came: the tag and the balloon take their style again on the next frame (the balloon by its text).
     whenFontsReady(()=>{for(const d of this.draws.values()){d.tagLook='';d.balloon.setText('');}});
+    this.queueArt();
+  }
+
+  /** The banks' sheets from the manifest, loaded now (only the city has banks); a failed one keeps the figure. */
+  private queueArt(){
+    const index=artIndex();
+    for(const name of BANK_NAMES)this.arts.set(name,bankArt(index,name));
+    let queued=false;
+    for(const s of bankSheets(index))if(!this.scene.textures.exists(s.key)){
+      this.scene.load.spritesheet(s.key,s.url,{frameWidth:s.cell[0],frameHeight:s.cell[1]});queued=true;
+    }
+    if(queued&&!this.scene.load.isLoading())this.scene.load.start();
+  }
+  /** The bank's art once all its textures are in. */
+  private artOf(name:string):BankArt|undefined{
+    const art=this.arts.get(name);if(!art)return undefined;
+    if(this.artIn.has(name))return art;
+    const t=this.scene.textures;
+    if(!t.exists(art.body.key)||!t.exists(art.sacando.key)||!Object.values(art.tela).every(s=>t.exists(s.key)))return undefined;
+    this.artIn.add(name);return art;
   }
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
@@ -78,22 +111,67 @@ export class BankRenderer {
       const screen=screenOf(b,st.tick,time,reduced);
       this.drawArea(b,k);
       this.drawShadow(b.x,b.y);
-      const depth=proj.depth(b.x,b.y);
-      d.figure.setDepth(depth);
-      const faces=this.facesOf(b.name,screen.look,proj.view),p=proj.project(b.x,b.y,this.q);
-      const key=`${screen.look}|${proj.view}|${k}|${p.x}|${p.y}`;
-      if(d.figKey!==key){d.figKey=key;d.figure.clear();this.drawFaces(d.figure,b.x,b.y,faces,k);}
-      d.figure.setAlpha(this.covers(b.x,b.y,faces,depth)?COVER_ALPHA:1);
+      const depth=proj.depth(b.x,b.y),art=this.artOf(b.name);
+      if(art)this.drawArt(b,d,art,screen.look,depth);
+      else{
+        d.figure.setDepth(depth);
+        const faces=this.facesOf(b.name,screen.look,proj.view),p=proj.project(b.x,b.y,this.q);
+        const key=`${screen.look}|${proj.view}|${k}|${p.x}|${p.y}`;
+        if(d.figKey!==key){d.figKey=key;d.figure.clear();this.drawFaces(d.figure,b.x,b.y,faces,k);}
+        d.figure.setAlpha(this.covers(b.x,b.y,faces,depth)?COVER_ALPHA:1);
+      }
       this.drawTag(b,d,k);
       this.drawBalloon(b,d,k);
     }
     for(const n of st.notes)this.drawNote(n,k);
-    for(const [id,d] of this.draws)if(!live.has(id)){d.figure.destroy();d.tag.destroy();d.balloon.destroy();this.draws.delete(id);}
+    for(const [id,d] of this.draws)if(!live.has(id)){this.destroyDraw(d);this.draws.delete(id);}
+  }
+
+  /** The imported kiosk at its foot, the screen overlay in `look` on it and, while money leaves, the slot's note. */
+  private drawArt(b:BankView,d:BankDraw,art:BankArt,look:keyof BankArt['tela'],depth:number){
+    const proj=this.options.projector,view=proj.view,p=proj.project(b.x,b.y,this.q),s=ART_PX;
+    if(!d.art){
+      const sc=this.scene;
+      d.art={body:sc.add.image(0,0,art.body.key,0),tela:sc.add.image(0,0,art.tela.azul.key,0).setOrigin(0,0),saque:sc.add.image(0,0,art.sacando.key,0).setOrigin(0,0)};
+      d.figure.clear();d.figKey='';
+    }
+    const a=d.art,o=telaOffset(art,view),tela=art.tela[look];
+    a.body.setTexture(art.body.key,sheetFrame(art.body,view)).setOrigin(art.anchor[0],art.anchor[1]).setScale(s).setPosition(p.x,p.y).setDepth(depth);
+    a.tela.setTexture(tela.key,sheetFrame(tela,view)).setScale(s).setPosition(p.x+o.x*s,p.y+o.y*s).setDepth(depth+.01);
+    const paying=b.state==='sacando'||b.state==='bicho';
+    a.saque.setVisible(paying);
+    if(paying)a.saque.setFrame(sheetFrame(art.sacando,view,sacandoFrame(art.sacando,this.now,this.options.reduced))).setScale(s).setPosition(p.x+o.x*s,p.y+o.y*s).setDepth(depth+.02);
+    const alpha=this.artCovers(a.body,depth)?COVER_ALPHA:1;
+    a.body.setAlpha(alpha);a.tela.setAlpha(alpha);a.saque.setAlpha(alpha);
+  }
+  private artCovers(body:Phaser.GameObjects.Image,depth:number){
+    const hero=this.options.hero?.();if(!hero)return false;
+    if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
+    const h=this.options.projector.project(hero.x,hero.y,{x:0,y:0}),r=body.getBounds();
+    return h.x>r.left&&h.x<r.right&&h.y-30>r.top&&h.y-10<r.bottom;
+  }
+  /** The top of what stands at the bank, screen px (the art's drawn top, else the figure's sign). */
+  private topAt(b:BankView,fwd:number,left:number):Pt{
+    const art=this.artOf(b.name);
+    if(!art)return this.at(b.x,b.y,fwd,left,ATM_TOP+.15*M);
+    const p=this.options.projector.project(b.x,b.y,this.q),s=ART_PX;
+    return {x:p.x,y:p.y-(art.anchor[1]-ART_TOP_PAD)*art.body.cell[1]*s};
+  }
+  /** Where the notes leave from: the screen overlay's middle with the art, else the figure's screen. */
+  private screenAt(b:BankView):Pt{
+    const art=this.artOf(b.name);
+    if(!art)return this.at(b.x,b.y,SCREEN_AT.fwd,SCREEN_AT.left,SCREEN_AT.z);
+    const proj=this.options.projector,p=proj.project(b.x,b.y,this.q),s=ART_PX,o=telaOffset(art,proj.view);
+    return {x:p.x+(o.x+art.tela.azul.cell[0]/2)*s,y:p.y+(o.y+art.tela.azul.cell[1]/2)*s};
+  }
+  private destroyDraw(d:BankDraw){
+    d.figure.destroy();d.tag.destroy();d.balloon.destroy();
+    if(d.art){d.art.body.destroy();d.art.tela.destroy();d.art.saque.destroy();}
   }
 
   destroy(){
     this.ground.destroy();this.fx.destroy();
-    for(const d of this.draws.values()){d.figure.destroy();d.tag.destroy();d.balloon.destroy();}
+    for(const d of this.draws.values())this.destroyDraw(d);
     this.draws.clear();
   }
 
@@ -179,7 +257,7 @@ export class BankRenderer {
     const text=b.state==='bicho'?`${short} · bicho sacando!`:b.state==='sem-cedulas'?`${short} · SEM CÉDULAS${s?` ${clock(s)}`:''}`:`${short} · R$ ${b.saldo}`;
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
-    const p=this.at(b.x,b.y,-.2*M,.5*M,ATM_TOP+.15*M);
+    const p=this.topAt(b,-.2*M,.5*M);
     d.tag.setPosition(p.x,p.y).setScale(k);
   }
   /** The beep or the screen's line over the tag, while it lasts. */
@@ -188,14 +266,14 @@ export class BankRenderer {
     if(!balloon){d.balloon.setVisible(false);return;}
     const t=(this.now-balloon.born)/(balloon.beep?BEEP_MS:LINE_MS);
     if(d.balloon.text!==balloon.text){d.balloon.setText(balloon.text);d.balloon.setStyle(this.balloonStyle(balloon.beep));}
-    const p=this.at(b.x,b.y,0,0,ATM_TOP+.15*M),lift=(this.options.reduced?0:6*Math.min(1,t*4))*k;
+    const p=this.topAt(b,0,0),lift=(this.options.reduced?0:6*Math.min(1,t*4))*k;
     d.balloon.setPosition(p.x,p.y-(d.tag.displayHeight+6*k)-lift).setScale(k).setAlpha(t>.8?Math.max(0,(1-t)*5):1).setVisible(true);
   }
   /** A R$ 2 note out of the screen: up and fading for a hero, away and down, darker, for a critter. */
   private drawNote(n:FlyingNote,k:number){
     const b=this.state.banks.find(x=>x.id===n.bank);if(!b)return;
     const t=(this.now-n.born)/NOTE_MS;if(t<0||t>=1)return;
-    const start=this.at(b.x,b.y,SCREEN_AT.fwd,SCREEN_AT.left,SCREEN_AT.z),hero=n.by==='hero',reduced=this.options.reduced;
+    const start=this.screenAt(b),hero=n.by==='hero',reduced=this.options.reduced;
     const dx=(hero?(n.slot-1)*14:28+n.slot*10)*k*t,dy=(hero?-70*t:-24*t+50*t*t)*k;
     const x=start.x+dx,y=start.y+dy,w=20*k,h=11*k,a=t>.7?(1-t)/.3:1,tilt=reduced?0:Math.sin(this.now*.02+n.slot)*.25;
     const g=this.fx,cos=Math.cos(tilt),sin=Math.sin(tilt);

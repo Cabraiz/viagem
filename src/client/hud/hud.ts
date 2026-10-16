@@ -11,6 +11,8 @@ import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunR
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
+import {createPix,PIX_TOAST_MS} from './pix.ts';
+import './pix.css';
 import {createResultScreen,type ResultRoster} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
@@ -32,7 +34,7 @@ import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {icon} from '../ui/icon.ts';
 import {stickerOrIcon} from '../ui/sticker.ts';
-import type {CidaItemId} from '../../contract/index.ts';
+import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
 import {createPausePart} from './pausa.ts';
@@ -65,6 +67,8 @@ export interface RunHudOptions {
   onForge?(recipe:RecipeId,target?:string):number|undefined;
   /** Dona Cida tap (D-047, hud/cida.ts): sends {t:'cida'}, returns its request id (undefined: cannot reach the room now). */
   onCida?(item:CidaItemId):number|undefined;
+  /** PIX to a friend (carteira-e-pix, hud/pix.ts): sends {t:'pix'}, resolves with the room's answer; undefined: cannot reach the room now. */
+  onPix?(to:string,amount:number):Promise<PixResult>|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
@@ -191,6 +195,10 @@ export class RunHud {
     this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida,pausa];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
+    // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
+    const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
+      live:()=>!this.el.hidden&&!this.el.classList.contains('rh-ended')});
+    this.el.insertBefore(pix.el,this.result.el);this.parts.push(pix);
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the

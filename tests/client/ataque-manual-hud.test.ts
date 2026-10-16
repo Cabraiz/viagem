@@ -95,7 +95,8 @@ test('?combate=manual asks the room for the manual combat; any other value is dr
   assert.deepEqual(objectiveFromSearch('?modo=chaveiro&combate=manual'),{objective:'chaveiro',combat:'manual'});
   for(const s of ['?combate=auto','?combate=MANUAL',''])assert.deepEqual(objectiveFromSearch(s),{});
   // The room create sends a body whenever something was asked.
-  assert.match(read('src/client/lobby.ts'),/asked\.objective\|\|asked\.combat\?\{body:JSON\.stringify\(asked\)\}/);
+  assert.deepEqual(objectiveFromSearch('?modo=ninhos&combate=manual'),{mode:'ninhos',combat:'manual'});
+  assert.match(read('src/client/lobby.ts'),/asked\.objective\|\|asked\.combat\|\|asked\.mode\?\{body:JSON\.stringify\(asked\)\}/);
 });
 
 function peer(){

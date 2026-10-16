@@ -6,10 +6,10 @@ import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomC
 const CREATE_BODY_MAX=256;
 /** sala-solo-privada: what a create asks, from an optional small JSON body (or a stored row); anything else is dropped. */
 export function createOptions(v:unknown):RoomCreateOptions{
-  const o=v as {map?:unknown;solo?:unknown;objective?:unknown;combat?:unknown}|null;
+  const o=v as {map?:unknown;solo?:unknown;objective?:unknown;combat?:unknown;mode?:unknown}|null;
   if(!o||typeof o!=='object')return {};
   return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{}),...(o.objective==='chaveiro'||o.objective==='muralha'?{objective:o.objective}:{}),
-    ...(o.combat==='manual'?{combat:'manual' as const}:{})};
+    ...(o.combat==='manual'?{combat:'manual' as const}:{}),...(o.mode==='ninhos'?{mode:o.mode}:{})};
 }
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -167,8 +167,10 @@ export class GameRoom extends DurableObject<Env>{
     // sala-solo-privada: the map it was opened on and a solo room, as created (the defaults otherwise); D-047: the
     // objective the creator asked for: ?modo=chaveiro (the city's default anyway) or ?modo=muralha (the old wall mode).
     const objective=this.asked.objective==='muralha'?false as const:this.asked.objective;
-    // D-051: ?combate=manual, the attack button (RoomOptions.combat); absent: the automatic weapons.
-    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{}),...(this.asked.combat?{combat:this.asked.combat}:{})};
+    // D-051: ?combate=manual, the attack button (RoomOptions.combat); absent: the automatic weapons. ?modo=ninhos, the
+    // nests instead of the waves (the room plays them only with the chaveiro in the city).
+    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{}),...(this.asked.combat?{combat:this.asked.combat}:{}),
+      ...(this.asked.mode?{mode:this.asked.mode}:{})};
     if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
     return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});

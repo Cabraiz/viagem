@@ -32,13 +32,14 @@ export interface SoloPlan {map:typeof SOLO_MAP;bots:number}
 export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bots)});
 /**
  * D-047: ?modo= in the page address asks the room for an objective: 'chaveiro' (the city's default anyway) or
- * 'muralha' (the old wall mode); anything else asks for nothing. A room Worker from before ignores the field.
+ * 'muralha' (the old wall mode); D-051: 'ninhos' asks for the nests (with the default objective, the chaveiro). Anything
+ * else asks for nothing. A room Worker from before ignores the fields.
  */
-export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';combat?:'manual'}{
+export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';mode?:'ninhos';combat?:'manual'}{
   try{
     const q=new URLSearchParams(search??''),m=q.get('modo');
     // D-051 (behind the flag until the E6 weapons and the balance pass): ?combate=manual opens the room with the attack button.
-    return {...(m==='chaveiro'||m==='muralha'?{objective:m}:{}),...(q.get('combate')==='manual'?{combat:'manual' as const}:{})};
+    return {...(m==='chaveiro'||m==='muralha'?{objective:m}:m==='ninhos'?{mode:m}:{}),...(q.get('combate')==='manual'?{combat:'manual' as const}:{})};
   }catch{return {};}
 }
 

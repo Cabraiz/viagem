@@ -6,7 +6,7 @@ import type {EnemyState,OwnedItem,PickupState,PlayerBuild,SimEvent,SimPlayer,Spa
 import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
-  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,OPEN_NOISE_RADIUS,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
+  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_START,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
   createCrates,rollPrize,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
@@ -45,18 +45,21 @@ function run(ctx:FakeCtx,crates:{step(ctx:SimContext):void},n:number,each?:(ctx:
 /** Points along a line, 10 apart, walk time = index (so thirds are by index). */
 const line=(n:number)=>Array.from({length:n},(_,i)=>({x:i*10,y:0,seconds:i}));
 
-test('initial placement: MAX_CRATES on distinct points, rarity by distance third',()=>{
+test('initial placement: MAX_CRATES on distinct points, NEAR_START near, base rarity by distance third, shifted by stage',()=>{
   const seen=new Set<string>();
   for(let seed=1;seed<=40;seed++){
     const points=line(30),ctx=makeCtx(seed),crates=createCrates({seed,points});
+    ctx.round.index=4;// stage 1: no shift, the base shows
     crates.step(ctx);
     const placed=chests(ctx);
     assert.equal(placed.length,MAX_CRATES);
     assert.equal(new Set(placed.map(c=>`${c.x},${c.y}`)).size,MAX_CRATES,'distinct points');
+    assert.ok(placed.filter(c=>c.x<100).length>=NEAR_START,'the near third first');
     for(const c of placed){
       const tier=Math.floor(c.x/10/10),allowed=[[1,2],[2,3],[3,4]][tier];
       assert.ok(allowed.includes(c.value),`tier ${tier} rolled ${c.value}`);
       assert.equal(crates.state.crates[c.id].rarity,c.value);
+      assert.equal(crates.state.crates[c.id].base,c.value);
       seen.add(`${tier}:${c.value}`);
     }
   }
@@ -144,6 +147,38 @@ test('a downed, eliminated, spectator or inventory-less player cannot open',()=>
   }
 });
 
+test('start crates: verde, one a player (1..6), spread out over the start points, never respawn',()=>{
+  const ring=Array.from({length:40},(_,i)=>({x:Math.cos(i/40*2*Math.PI)*10,y:Math.sin(i/40*2*Math.PI)*10}));
+  const onRing=(ctx:FakeCtx)=>chests(ctx).filter(c=>Math.abs(Math.hypot(c.x,c.y)-10)<1e-9);
+  for(const [players,want] of [[1,START_CRATES_MIN],[4,4],[8,START_CRATES_MAX]] as const){
+    const ctx=makeCtx(3),crates=createCrates({seed:3,points:line(30).map(p=>({...p,x:p.x+100})),startPoints:ring});
+    for(let i=0;i<players;i++)addPlayer(ctx,`p${i}`,0,0);
+    crates.step(ctx);
+    const start=onRing(ctx);
+    assert.equal(start.length,want,`${players} players`);
+    assert.ok(start.every(c=>c.value===1&&crates.state.crates[c.id].origin==='dropped'));
+    const gap=Math.min(...start.flatMap((a,i)=>start.slice(i+1).map(b=>Math.hypot(a.x-b.x,a.y-b.y))));
+    assert.ok(gap>=2*10*Math.sin(Math.PI/want)*.5,`spread out: greedy farthest point, within half the best (${gap.toFixed(2)})`);
+  }
+  const none=makeCtx(),noStart=createCrates({seed:3,points:[]});
+  addPlayer(none,'p',0,0);noStart.step(none);assert.equal(chests(none).length,0,'no start points: none');
+});
+
+test('the rarity grows along the match: rounds 1-3 shift -1, the last rounds +2, an unopened crate follows',()=>{
+  assert.deepEqual([0,1,2,3,4,5,6,7,8,9,10].map(index=>stageShift({index,total:10})),[-1,-1,-1,-1,0,0,1,1,1,2,2]);
+  const ctx=makeCtx(2),crates=createCrates({seed:2,points:line(30)});
+  ctx.round.index=1;crates.step(ctx);
+  const near=chests(ctx).filter(c=>c.x<100),far=chests(ctx).filter(c=>c.x>=200);
+  assert.ok(near.length&&near.every(c=>c.value===1),'rounds 1-3: the near crates are verde');
+  assert.ok(far.every(c=>c.value===2||c.value===3),'rounds 1-3: the far ones azul/roxa');
+  ctx.round.index=10;crates.step(ctx);
+  for(const c of chests(ctx)){const r=crates.state.crates[c.id];assert.equal(c.value,Math.min(5,r.base!+2));assert.equal(r.rarity,c.value);}
+  assert.ok(chests(ctx).some(c=>c.value===5)||!far.length,'the last rounds: a far crate can be lendária');
+  // Dropped crates keep their rarity.
+  const dropped=crates.dropCrate(ctx,{x:1,y:1},2);ctx.round.index=1;crates.step(ctx);
+  assert.equal(dropped.value,2);
+});
+
 test('prize table: every item exists, weapons at the rarity (never below their minimum), side prizes',()=>{
   const ids=new Map<Rarity,Set<string>>(),grana=new Set<number>(),units=new Set<number>();
   for(const r of [1,2,3,4,5] as Rarity[]){
@@ -171,9 +206,9 @@ test('prize table: every item exists, weapons at the rarity (never below their m
   assert.deepEqual([...ids.get(5)!].sort(),WEAPON_IDS.map(id=>`${legendaryId(id)}:5`).sort());
   assert.deepEqual([...grana].sort((a,b)=>a-b),[GRANA_VERDE,GRANA_DOURADA]);
   assert.deepEqual([...units].sort((a,b)=>a-b),[UNITS_PER_TOKEN/2,UNITS_PER_TOKEN]);
-  // Rough odds of the verde row (50/40/10).
+  // Rough odds of the verde row (75/20/5): a firearm early on.
   let pistol=0;for(let s=0;s<4000;s++)if(rollPrize(new Rng(s).fork('o'),1).items[0]?.id==='pistola')pistol++;
-  assert.ok(pistol>1800&&pistol<2200,`${pistol}`);
+  assert.ok(pistol>2800&&pistol<3200,`${pistol}`);
 });
 
 test('prizes land in the inventory, the overflow on the ground; Grana and fichas go through the hooks',()=>{

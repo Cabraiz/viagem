@@ -4,7 +4,9 @@
  *  - eat a coxinha under EAT_BELOW of max hp;
  *  - hold the inventory's best weapon (weaponScore: damage per second, more for the patterns that hit a crowd);
  *  - with no critter within LOOT_SAFE and nobody down in sight: go to the nearest crate (stand by it until it opens)
- *    or the nearest better weapon on the ground within LOOT_RADIUS (walk over it; with the six full, "Trocar" it).
+ *    or the nearest better weapon on the ground within LOOT_RADIUS (walk over it; with the six full, "Trocar" it). A
+ *    bot that holds a firearm leaves the verde crates (mostly a pistol) to the ones still with the faca (the 16/10
+ *    bench: one bot opened them all while four fought with the knife).
  */
 import type {OwnedItem,PickupState,PlayerRunView,RunView} from '../contract/index.ts';
 import {BASE_STATS} from '../contract/index.ts';
@@ -15,6 +17,7 @@ import type {Point} from '../maps/index.ts';
 
 /** LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather). */
 export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=40;
+const VERDE_PISTOL={id:'pistola',level:1};
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;
 
@@ -55,13 +58,13 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   // 3. Loot only in a lull.
   if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return plan;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return plan;
-  const handScore=Math.max(...inv.map(i=>weaponScore(i)),0);
+  const handScore=Math.max(...inv.map(i=>weaponScore(i)),0),armed=handScore>=weaponScore(VERDE_PISTOL);
   const pickups=view.pickups as readonly (PickupState|RunView['pickups'][number])[];
   let goal:LootPlan['goal'],goalDist=radius;
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&k.value<=1)continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

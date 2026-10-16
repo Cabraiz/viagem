@@ -246,6 +246,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Grana goes to the team pot until the E5 wallet; a ficha prize to the team's tower units; the noise to the nests (E1).
   const crates:Crates|undefined=manual?createCrates({seed:world.seed,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
+    startPoints:cityLoot(world.terrain)?.aroundPlaza??[],
     hooks:{addGrana:(_ctx,_p,amount)=>{stonewards.state.grana+=amount;},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({

@@ -5,6 +5,7 @@
  */
 import {cameraQuad,cityFrame,windowFrame,type MiniFrame,type Pt} from './geometry.ts';
 import {cityTerrainImage,endlessTerrainImage,islandTerrainImage,type TerrainImage} from './terrain.ts';
+import {isAsleep} from '../../render/wake-rules.ts';
 import {teamColor,type MmAlly,type MmEnemy,type MmExtra,type MmStructure,type WcMinimap} from './minimap.ts';
 import type {CityAsset as MapsCityAsset,TerrainField} from '../../../maps/index.ts';
 
@@ -70,7 +71,8 @@ export class WcMinimapDriver {
     }
     this.allies.length=n;
     let m=0;
-    for(const e of input.enemies){if((e.hp??1)<=0)continue;const q=this.enemies[m]??={x:0,y:0};m++;q.x=e.x;q.y=e.y;q.boss=e.boss||undefined;}
+    // D-051: a nest's sleepers stay off the dots (the nest mark stands for them) until they wake.
+    for(const e of input.enemies){if((e.hp??1)<=0||isAsleep(e))continue;const q=this.enemies[m]??={x:0,y:0};m++;q.x=e.x;q.y=e.y;q.boss=e.boss||undefined;}
     this.enemies.length=m;
     let s=0;
     const hit=input.nowMs-input.wallHitAt<BASE_HIT_BLINK_MS;

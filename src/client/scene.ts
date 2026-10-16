@@ -3,6 +3,7 @@ import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import {Vignette} from './render/vignette.ts';
+import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
@@ -853,7 +854,7 @@ export class IslandScene extends Phaser.Scene {
     if(a.xs.length<enemies.length){const n=Math.max(enemies.length,a.xs.length*2);a=this.towerAim={n:0,xs:new Float32Array(n),ys:new Float32Array(n),air:new Uint8Array(n)};}
     let n=0;
     for(const e of enemies){
-      if(e.hp<=0)continue;
+      if(e.hp<=0||isAsleep(e))continue; // the sim's towers only see ctx.enemies, never a nest's sleepers (D-051)
       a.xs[n]=e.x;a.ys[n]=e.y;a.air[n]=ENEMY_ART[enemyKind(e.kind)].hover>0?1:0;n++;
     }
     a.n=n;towers.setEnemies(n,a.xs,a.ys,a.air);

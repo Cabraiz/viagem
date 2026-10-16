@@ -7,6 +7,7 @@ import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {OfferView,PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
+import {isAsleep} from '../render/wake-rules.ts';
 import {causeCopy,emptyCauses,recordFall,rememberEnemies,rememberKill,resetCauses,resolveCause,type CauseLog} from './cause.ts';
 import {chaveiroClock,liveObjective,type ChaveiroClock} from './chaveiro.ts';
 import type {ObjectiveResult} from '../../contract/index.ts';
@@ -97,11 +98,14 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
   }
   if(view.wave){
     const phase=view.wave.phase??'wave';
-    const remaining=view.enemies.length;
+    const remaining=awakeCount(view.enemies);
     return {index:view.wave.index,total:TOTAL_ROUNDS,label:`Round ${view.wave.index}/${TOTAL_ROUNDS}`,phase,remaining,detail:phase==='prepare'?'Intervalo':`${remaining} bichos`};
   }
   return undefined;
 }
+
+/** Enemies the round still has to beat: a nest's sleepers (D-051, asleep) are not in the count until they wake. */
+export function awakeCount(enemies:readonly object[]){let n=0;for(const e of enemies)if(!isAsleep(e))n++;return n;}
 
 export interface BossInfo {id:string;name:string;fraction:number;phase:number;enraged:boolean}
 export const BOSS_NAME='Síndico Supremo';

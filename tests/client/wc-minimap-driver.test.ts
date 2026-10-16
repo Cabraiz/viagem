@@ -48,7 +48,7 @@ const fake=()=>{const got:MmInput[]=[];return {got,minimap:{render:(i:MmInput)=>
 
 test('the driver: the city frame, ally colours as the team strip shows them, the base blinking after a hit', () => {
   const d=new WcMinimapDriver(IMAGES),{got,minimap}=fake(),terrain=new TerrainField(1);
-  const base={minimap,terrain,city:asset,view:1,selfId:'a',self:{x:80,y:90},states:new Map(),enemies:[{x:10,y:10},{x:5,y:5,hp:0},{x:60,y:60,boss:true}],
+  const base={minimap,terrain,city:asset,view:1,selfId:'a',self:{x:80,y:90},states:new Map(),enemies:[{x:10,y:10},{x:5,y:5,hp:0},{x:60,y:60,boss:true},{x:20,y:20,asleep:true}],
     structures:[{kind:'muralha',x:84,y:90},{kind:'torre-chinelo',x:70,y:70},{kind:'barricada-N',x:84,y:70}],corners:[],extras:undefined};
   d.draw({...base,nowMs:1000,wallHitAt:500,players:[{id:'a',x:80,y:90,online:true},{id:'b',x:1,y:2,online:true},{id:'c',x:3,y:4,online:false},{id:'d',x:5,y:6,online:true}]});
   d.draw({...base,nowMs:9000,wallHitAt:500,players:[{id:'d',x:5,y:6,online:true},{id:'b',x:1,y:2,online:true}],self:{x:81,y:90}});
@@ -57,7 +57,7 @@ test('the driver: the city frame, ally colours as the team strip shows them, the
   // The colour is the player's place in the run's list (join order), as the team strip paints the portrait's ring.
   assert.deepEqual(first.allies.map(a=>a.color),[ALLY_COLORS[1],ALLY_COLORS[3]],'self skipped, offline skipped, colours by place');
   assert.deepEqual(second.allies.map(a=>a.color),[teamColor([{id:'d'},{id:'b'}],'d'),teamColor([{id:'d'},{id:'b'}],'b')],'the strip rule');
-  assert.equal(first.enemies.length,2,'dead critters skipped');assert.equal(first.enemies.filter(e=>e.boss).length,1);
+  assert.equal(first.enemies.length,2,'dead critters and sleepers (D-051) skipped');assert.equal(first.enemies.filter(e=>e.boss).length,1);
   assert.deepEqual(first.structures.map(s=>s.kind),['base','tower','barricade']);
   assert.equal(first.structures[0].hit,true,'hit 500 ms ago: blinking');assert.equal(second.structures[0].hit,undefined,'8.5 s later: steady');
   assert.ok(second.self!.dx>0.99,'the heading follows the last step (east)');

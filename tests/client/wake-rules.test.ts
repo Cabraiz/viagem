@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {awakeCount} from '../../src/client/hud/model.ts';
 import {WAKE_RADIUS,isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from '../../src/client/render/wake-rules.ts';
 
 test('a sleeper loops sleep over any acting pose; awake keeps the pose', ()=>{
@@ -26,4 +27,9 @@ test('the horde renderer wires sleep and wake (layers.ts)', ()=>{
   assert.match(src,/if\(!used\.fresh&&a\.asleep&&!asleep\)this\.woken\.push/);
   assert.match(src,/wakeTargets\(/);
   assert.match(src,/playEnemyAction\(a\.image,a\.art,'wake',this\.now\)/);
+});
+
+test('the round count leaves the nest sleepers out until they wake', ()=>{
+  assert.equal(awakeCount([{id:'a'},{id:'z-1',asleep:true},{id:'z-2',asleep:true},{id:'b'}]),2);
+  assert.equal(awakeCount([]),0);
 });

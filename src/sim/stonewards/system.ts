@@ -104,7 +104,10 @@ export interface StonewardsOptions {
    * Not called when the system is created: the blockers are raised before the run builds its grid.
    */
   onTerrainChanged?(rect:CellRect):void;
-  /** D-052 free build (the city): the car, the moto and the nests the build rules keep clear (towers/free-build.ts). */
+  /**
+   * D-052 free build: on (the city's runs, assemble.ts) with the car, the moto and the nests the build rules keep clear
+   * (towers/free-build.ts; each hook optional). Absent: the build sites as before (tests, tools, the endless map).
+   */
   freeBuild?:FreeBuildHooks;
 }
 
@@ -115,7 +118,10 @@ export interface StonewardsSystem extends SimSystem {
   buy(ctx:SimContext,playerId:string,recipeId:string,requestId?:string,targetId?:string):BuyResult;
   /** The one damage path of structures (D-017): the enemy-ai's hitStructure, routed by id to the wall, a barricade or a defense. */
   hit(ctx:SimContext,structureId:string,amount:number):void;
-  /** The terrain's build sites and rail (towers/sites.ts; empty on the island). */
+  /**
+   * The terrain's build sites and rail (towers/sites.ts; empty on the island). D-052 free build: the sites are hints and
+   * the rail is gone (null), so the bots' brain never saves for nor lays it.
+   */
   readonly plan:BuildPlan;
   /**
    * Tower defense (torres-sim): the root on a free site, or the Gustavão's rail on the plan's rail id (torres-fio: the
@@ -175,6 +181,14 @@ export function say(ctx:SimContext,state:StonewardsState,source:string,key:strin
   return true;
 }
 
+const railless=new WeakMap<BuildPlan,BuildPlan>();
+/** D-052: the plan with its sites as hints and no rail (the Gustavão is out of the free build). */
+function withoutRail(plan:BuildPlan):BuildPlan{
+  let out=railless.get(plan);
+  if(!out){out=Object.freeze({...plan,rail:null});railless.set(plan,out);}
+  return out;
+}
+
 /** A given `state` (a checkpoint) rebuilds the terrain's barricade blockers from it. */
 export function createStonewardsSystem(options:StonewardsOptions,state=createStonewardsState(options)):StonewardsSystem{
   const contact=options.siegeContact??true;
@@ -197,7 +211,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   }
   syncBarricades(options.terrain,state);
   syncPieces(options.terrain,state);
-  const free:FreeBuildContext={...options.freeBuild,...(options.onTerrainChanged?{onTerrainChanged:options.onTerrainChanged}:{})};
+  const free:FreeBuildContext|undefined=options.freeBuild&&{...options.freeBuild,...(options.onTerrainChanged?{onTerrainChanged:options.onTerrainChanged}:{})};
   /** City: drops from cityHornIdle who walked or worked (`worked`) this tick; true when someone woke. */
   function wake(worked:ReadonlySet<string>){
     const idle=state.cityHornIdle;
@@ -249,10 +263,11 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   return {
     id:'structures',
     state,
-    get plan(){return buildPlanFor(options.terrain);},
+    get plan(){const plan=buildPlanFor(options.terrain);return free&&plan.rail?withoutRail(plan):plan;},
     build(ctx,playerId,order,requestId){
       const plan=buildPlanFor(ctx.terrain);
-      return typeof order==='string'?buildDefense(ctx,state,plan,playerId,order,requestId,free):buildFree(ctx,state,plan,playerId,order,requestId,free);
+      if(typeof order==='string')return buildDefense(ctx,state,plan,playerId,order,requestId,free);
+      return free?buildFree(ctx,state,plan,playerId,order,requestId,free):{ok:false,reason:'fora'};
     },
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId);},
     repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId);},

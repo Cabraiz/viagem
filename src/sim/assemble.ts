@@ -195,12 +195,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
     // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
-    // D-052 free build: the car's body and the moto the pieces keep clear of (the chaveiro, created below; the wall mode
-    // has neither). The nests (D-051) join when the ninhos-sim is on main.
-    ...(objective?{freeBuild:{
+    // D-052 free build in every city run: the car's body and the moto the pieces keep clear of (the chaveiro, created
+    // below; the wall mode has neither). The nests (D-051) join when the ninhos-sim is on main.
+    ...(cityWorld?{freeBuild:objective?{
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
-    }}:{}),
+    }:{}}:{}),
   },cp?.stonewards);
   structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.

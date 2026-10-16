@@ -149,7 +149,8 @@ test('malformed or out-of-order batches are refused whole',()=>{
   refuse({seq:0,steps:[]});refuse({seq:1.5,steps:[]});refuse({seq:2**31,steps:[]});
   refuse({seq:5,steps:[[6,1,0,0]]});
   refuse({seq:5,steps:[[2,1,0,0],[2,0,1,0]]});
-  refuse({seq:5,steps:[[1,2,0,0]]});refuse({seq:5,steps:[[1,1,0,2]]});refuse({seq:5,steps:[[1,1,0,0,{id:'x'}]]});refuse({seq:5,steps:[[1,1,0,0,'bad id!']]});
+  // Flags 0–3 since D-051 (bit 1: attack held); anything else is malformed.
+  refuse({seq:5,steps:[[1,2,0,0]]});refuse({seq:5,steps:[[1,1,0,4]]});refuse({seq:5,steps:[[1,1,0,-1]]});refuse({seq:5,steps:[[1,1,0,0,{id:'x'}]]});refuse({seq:5,steps:[[1,1,0,0,'bad id!']]});
   refuse({seq:9,steps:Array.from({length:MAX_SEGMENTS+1},(_,i)=>[i+1,1,0,0])});
   refuse({seq:5,steps:[[1,Infinity,0,0]]});refuse({seq:5,steps:'1,1,0,0'});
   assert.equal(s.input('p',{seq:5,steps:[[3,1,0,0]]}),true);

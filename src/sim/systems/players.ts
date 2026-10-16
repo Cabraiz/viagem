@@ -1,6 +1,7 @@
 /**
  * Player step of the horde run (VGM-042): movement and facing from the input queue, tap target, class skill and regen.
- * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive.
+ * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
+ * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
 import {moveStep,slipping,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
@@ -39,12 +40,20 @@ export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,ti
 }
 
 /**
+ * D-051 manual combat: the players who hold the attack on this tick (PlayerInput.attack of the step taken), read by
+ * the weapons system later in the same tick. Transient: rebuilt every tick from the inputs (which are in the replay
+ * hash), never part of the state.
+ */
+export interface ManualCombat {attacking:Set<string>}
+
+/**
  * One input per player per tick, like the prototype, so client prediction and the server stay in step. `autopilot`:
  * an offline player the room plays meanwhile (3g-rede-sem-teleporte): it walks on the room's inputs, whose seq is not
  * the person's (their ack stays where their own inputs left it).
  */
-export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean):SimSystem{
+export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat):SimSystem{
   return {id:'players',step(ctx){
+    manual?.attacking.clear();
     for(const player of ctx.players.values()){
       const p=player as RunPlayer;
       // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
@@ -62,9 +71,12 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(input){
         movePlayer(p,input,ctx.terrain,ctx.tick);
         if(input.target)p.target=input.target;else delete p.target;
+        // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
+        if(manual&&input.attack)manual.attacking.add(p.id);
       }
       if(!auto&&p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
-      if(input?.skill){
+      // D-051: no class skill in the manual combat (the classes stay as looks and stats).
+      if(input?.skill&&!manual){
         const cast=castSkill(ctx,p);
         if(cast){
           p.skillTick=ctx.tick;p.skillReadyTick=cast.readyTick;

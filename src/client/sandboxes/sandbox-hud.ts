@@ -167,6 +167,18 @@ const hud=new RunHud(document.body,{
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
     hud.update(view);
   },
+  // D-052: "Pular" closes the offer (no prize), "Rolar de novo" deals the cards again, each spending one of the local
+  // player's charges (fakeCharges), like the room.
+  onSkip(offerId){
+    if(!(fakeCharges.skips.p1>0))return;
+    fakeCharges.skips.p1--;view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};hud.update(view);sendPause();
+  },
+  onReroll(offerId){
+    if(!(fakeCharges.rerolls.p1>0))return;
+    fakeCharges.rerolls.p1--;
+    view={...view,offers:view.offers.map(offer=>offer.id===offerId?{...offer,id:`${offerId.split('~')[0]}~${fakeCharges.rerolls.p1}`,choices:[...offer.choices.slice(1),offer.choices[0]!]}:offer)};
+    hud.update(view);sendPause();
+  },
   onRematch(){document.body.dataset.rematch='1';},
   // The game passes onExit, so the result has its three buttons here too (Revanche, Arrumar a sala, Sair).
   onExit(){document.body.dataset.exit='1';},
@@ -204,6 +216,8 @@ function withBill<T extends {victory:boolean}>(result:T):T{
 /** The fake pause of `pausa=` (ids of fakePlayers: p1 you, p2 Tia Cleide, p3 Zé do Pix, p4 Bruninha). */
 const PAUSA_FAKE={escolhendo:{leftMs:9900,waiting:['p1','p2','p4']},esperando:{leftMs:6900,waiting:['p2','p4']},ultimo:{leftMs:2900,waiting:['p1']}} as const;
 const PAUSA_TOTAL=12000;let pausaFrom=performance.now();
+/** D-052: the fake run's "Pular" / "Rolar de novo" left per player (`pular=N`, `rolar=N` set yours; default 2 and 1). */
+const fakeCharges={skips:{p1:Number(params.get('pular')??2),p2:2,p3:1,p4:2} as Record<string,number>,rerolls:{p1:Number(params.get('rolar')??1),p2:2,p3:2,p4:0} as Record<string,number>};
 /**
  * Like the room (multiplayer/levelup-pause.ts): the pause at each whole second of leftMs (rounded up), the same values in
  * between (Hud.setPause ignores them; the HUD counts down locally). Frozen: the scene's exact leftMs, always.
@@ -213,7 +227,7 @@ function sendPause(){
   const fake=PAUSA_FAKE[pausa];
   let left=fake.leftMs-(performance.now()-pausaFrom);
   if(left<=0){pausaFrom=performance.now();left=fake.leftMs;}
-  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting]});
+  hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting],skips:{...fakeCharges.skips},rerolls:{...fakeCharges.rerolls}});
 }
 if(pausa)setInterval(sendPause,200);
 let eventId=0;

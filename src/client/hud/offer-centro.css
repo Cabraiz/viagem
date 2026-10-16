@@ -1,0 +1,75 @@
+/* D-052 (card NEW-20261016-ORQ-oferta-melhoria-centro): the upgrade offer as one centred window, the same on the phone
+   (portrait and landscape) and on the desktop, after the board's design/ref-ofertas-de-melhoria.png: a dark window with
+   the title bar "Ofertas de melhoria", one wide card per choice (rarity in the corner, sticker, name, "Niv N", the value
+   line "atual > novo" with the new value in green), the line "Esperando os outros jogadores…" and the Pular / Rolar de
+   novo buttons with their counters. The old corner panel's rules (hud.css .rh-offer) lose to these (.rh .rh-ofc).
+   Nothing in it scrolls: four cards fit 390×844, 844×390 (two columns) and the desktop. */
+.rh .rh-offer.rh-ofc{
+  --ofc-w:min(440px,calc(100vw - var(--rh-l,16px) - var(--rh-r,16px)));
+  position:fixed;z-index:30;left:50%;top:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);
+  box-sizing:border-box;width:var(--ofc-w);max-width:none;max-height:calc(100dvh - 16px);margin:0;padding:0 10px 10px;
+  display:flex;flex-direction:column;align-items:stretch;gap:8px;
+  border:2px solid var(--c-papel);border-radius:var(--r-janela);background:color-mix(in srgb,var(--c-breu) 94%,transparent);
+  color:var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);text-align:left;overflow:hidden;
+}
+.rh .rh-ofc .rh-offer-deadline{top:auto;bottom:0;left:0;right:0;height:3px;border-radius:0}
+/* The title bar across the top. */
+.rh .rh-ofc .rh-offer-head{margin:0 -10px;padding:5px 10px;min-height:0;justify-content:center;gap:6px;
+  background:color-mix(in srgb,var(--c-lilas) 55%,var(--c-breu));border-bottom:2px solid var(--c-papel)}
+.rh .rh-ofc .rh-offer-title{flex:0 1 auto;text-align:center;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel)}
+.rh .rh-ofc .rh-offer-later{min-height:24px;padding:0 8px}
+.rh .rh-ofc>.rh-window-fall{margin:0}
+/* The cards: one column, each a wide row; two columns on a short screen. */
+.rh .rh-ofc .rh-offer-cards{display:grid;grid-auto-flow:row;grid-template-columns:1fr;grid-auto-columns:auto;gap:8px;padding:0;min-height:0}
+.rh .rh-ofc .rh-card{
+  --rar:var(--c-cartolina);
+  position:relative;box-sizing:border-box;width:100%;min-height:64px;margin:0;padding:16px 10px 8px 8px;transform:none;
+  display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-areas:'icon body';align-items:center;column-gap:10px;
+  border:2px solid var(--rar);border-radius:var(--r-etiqueta);
+  background:color-mix(in srgb,var(--rar) 26%,var(--c-breu));color:var(--c-papel);box-shadow:inset 0 0 0 1px var(--c-breu);text-align:left;
+}
+.rh .rh-ofc .rh-card::before,.rh .rh-ofc .rh-card::after{display:none}
+.rh .rh-ofc .rh-card:active{transform:translateY(2px)}
+.rh .rh-ofc .rh-card[data-rarity=nova]{--rar:var(--c-cartolina)}
+.rh .rh-ofc .rh-card[data-rarity=comum]{--rar:var(--c-pedra)}
+.rh .rh-ofc .rh-card[data-rarity=rara]{--rar:var(--arte-azul)}
+.rh .rh-ofc .rh-card[data-rarity=epica]{--rar:var(--arte-roxo)}
+.rh .rh-ofc .rh-card[data-rarity=lendaria]{--rar:var(--c-amarelo)}
+.rh .rh-ofc .rh-card-icon{grid-area:icon;width:44px;height:44px;border:2px solid var(--rar);border-radius:var(--r-etiqueta);background:var(--c-breu)}
+.rh .rh-ofc .rh-card-icon>.ic{width:36px;height:36px}
+.rh .rh-ofc .rh-card-body{grid-area:body;justify-self:stretch;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
+.rh .rh-ofc .rh-card-name{display:block;margin:0;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh .rh-ofc .rh-card-value{display:block;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rh .rh-ofc .rh-card-value-new{color:var(--c-cartolina)}
+.rh .rh-ofc .rh-card-rarity{position:absolute;left:8px;top:2px;font:700 11px/1.2 var(--f-sistema);color:var(--rar)}
+.rh .rh-ofc .rh-card-level{position:absolute;right:8px;top:2px;font:400 var(--t-13)/1.2 var(--f-cartaz);color:var(--c-amarelo)}
+/* The old tag's pieces stay in the DOM (labels, tests) but the wide card says it all. */
+.rh .rh-ofc :is(.rh-card-blurb,.rh-card-joke,.rh-card-price,.rh-card-star,.rh-card-tag,.rh-offer-joke){display:none}
+.rh .rh-ofc .rh-card-stamp{width:60%}
+.rh .rh-ofc .rh-card-chosen{background:color-mix(in srgb,var(--c-amarelo) 40%,var(--c-breu))}
+.rh .rh-ofc.rh-offer-stamping .rh-card:not(.rh-card-chosen){transform:translateY(3px) scale(.98)}
+.rh .rh-ofc .rh-card-default{box-shadow:inset 0 0 0 1px var(--c-breu),0 0 0 2px var(--c-papel)}
+/* The foot: "levar os indicados" (two or more queued), the waiting line, Pular and Rolar de novo. */
+.rh .rh-ofc .rh-offer-foot{width:auto;margin:0}
+.rh .rh-ofc .rh-ofc-wait{margin:2px 0 0;text-align:center;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel)}
+.rh .rh-ofc .rh-ofc-wait[hidden]{display:none}
+.rh .rh-ofc .rh-ofc-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px}
+.rh .rh-ofc .rh-offer-all{flex:1 0 100%;min-height:40px;margin:0;font:700 var(--t-13)/1 var(--f-sistema)}
+@media (min-width:600px){.rh .rh-ofc .rh-offer-all{flex:0 1 auto;padding:0 14px}}
+.rh .rh-ofc .rh-ofc-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:0;padding:0 14px;
+  border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);font:700 var(--t-13)/1 var(--f-sistema);color:var(--c-papel);cursor:pointer}
+.rh .rh-ofc .rh-ofc-skip{background:color-mix(in srgb,var(--c-cartolina) 45%,var(--c-breu))}
+.rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,var(--arte-azul) 45%,var(--c-breu))}
+.rh .rh-ofc .rh-ofc-btn:disabled{opacity:.55;cursor:default}
+.rh .rh-ofc .rh-ofc-btn-count{font:700 11px/1 var(--f-sistema);opacity:.8}
+.rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
+/* Short screens (phone landscape): two columns of cards, tighter rows. */
+@media (max-height:500px){
+  /* Bottom-anchored: the pause's clock ("Escolham! N s", pausa.ts) keeps its place above the window. */
+  .rh .rh-offer.rh-ofc{--ofc-w:min(600px,calc(100vw - 270px));top:auto;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);gap:6px;padding:0 8px 8px}
+  .rh .rh-ofc .rh-offer-cards{grid-template-columns:1fr 1fr;gap:6px}
+  .rh .rh-ofc .rh-card{min-height:56px;padding:14px 8px 6px 6px;grid-template-columns:36px minmax(0,1fr);column-gap:8px}
+  .rh .rh-ofc .rh-card-icon{width:36px;height:36px}
+  .rh .rh-ofc .rh-card-icon>.ic{width:30px;height:30px}
+  .rh .rh-ofc .rh-ofc-btn{min-height:40px}
+}

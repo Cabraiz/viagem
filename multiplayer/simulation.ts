@@ -12,9 +12,9 @@ import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/s
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
-import type {ChooseResult} from '../src/sim/index.ts';
+import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
@@ -289,6 +289,7 @@ export class Simulation {
         return step;
       },
       autopilot:id=>this.autopilot.has(id),
+      bot:id=>this.bots.has(id),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
@@ -601,6 +602,22 @@ export class Simulation {
     if(this.result)return {ok:false,reason:'no-offer'};
     return this.systems.progression.choose(this.world,id,offerId,index);
   }
+  /** D-052 "Pular": closes `id`'s head offer with no prize (one of OFFER_SKIPS per run); counts as picked in a pause. */
+  skipOffer(id:string,offerId:string):OfferActionResult{
+    if(this.result)return {ok:false,reason:'no-offer'};
+    return this.systems.progression.skip(this.world,id,offerId);
+  }
+  /** D-052 "Rolar de novo": new cards for `id`'s head offer only (one of OFFER_REROLLS per run). */
+  rerollOffer(id:string,offerId:string):OfferActionResult{
+    if(this.result)return {ok:false,reason:'no-offer'};
+    return this.systems.progression.rerollOffer(this.world,id,offerId);
+  }
+  /** D-052: skips and rerolls each player in the run has left (RunPause.skips / RunPause.rerolls). */
+  offerCharges(){
+    const skips:Record<string,number>={},rerolls:Record<string,number>={};
+    for(const id of [...this.players.keys()].sort()){const [s,r]=this.systems.progression.charges(id);skips[id]=s;rerolls[id]=r;}
+    return {skips,rerolls};
+  }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
   /**
    * Forge purchase (VGM-046B): the recipe for the team balance, validated on the server (phase, standing, in the camp,
@@ -621,6 +638,16 @@ export class Simulation {
     const p=this.players.get(id),chaveiro=this.systems.chaveiro;
     if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'phase'};
     return chaveiro.buy(this.world,id,item,requestId);
+  }
+  /**
+   * D-052 the car's rope ({t:'puxar'}): hook (`on`) or drop it for `id`, validated by the sim (standing, near the car,
+   * nobody else on it). `requestId` makes a resent tap apply once. Refused once the run is decided, without the
+   * objective, or for an offline or spectating player ('fase').
+   */
+  pullCar(id:string,on:boolean,requestId?:string):PullResult{
+    const p=this.players.get(id),chaveiro=this.systems.chaveiro;
+    if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'fase'};
+    return chaveiro.pull(this.world,id,on,requestId);
   }
   /** D-047: the objective as the HUD sees it (undefined without one). */
   objectiveView():ObjectiveView|undefined{return this.systems.objectiveView();}

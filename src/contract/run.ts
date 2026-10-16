@@ -32,7 +32,9 @@ export interface RunState {
    * D-050, combat only: the run is paused for the team to pick its level-up cards (the room does not step the sim).
    * leftMs/totalMs: what is left of the pause's deadline and the whole of it (12 s, +4 s per extra level, at most 20 s);
    * level: the team level that opened it; waiting: the players the room still waits for (humans online with a card).
+   * D-052: skips / rerolls, per player id, the "Pular" and "Rolar de novo" each one has left this run (absent from an
+   * older room: the buttons stay off).
    */
   pause?:RunPause;
 }
-export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[]}
+export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[];skips?:Record<string,number>;rerolls?:Record<string,number>}

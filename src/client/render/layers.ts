@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -79,6 +79,8 @@ interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
+  /** The round costume variant this enemy wears (horde-art.ts ROUND_COSTUMES), or undefined. */
+  costume?:string;
   /** The roster accent of the reserve (keys.ts fallbackTint); `tint` is it while the reserve shows, undefined over art. */
   accent:number|undefined;
   /** Imported figure size over the reserve's (horde-art.ts enemyArtRatio; 1 without art): shadow, bar, ring and cues follow it. */
@@ -126,7 +128,9 @@ interface BubbleFx{text:Text;born:number;enemy:string;player:string;x:number;y:n
   tag:boolean}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 /** Imported death animation (art v2) at the enemy's last spot and facing; `top` is its elite layer. Only with death art. */
-interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number}
+interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number;
+  /** The round costume layer of the death (`costume.variant` undefined: none). */
+  costume:{image:Image;variant?:string}}
 
 export const CAPS={damage:FX_BUDGET.full.numbers,pops:7,poofs:24,stars:120,bubbles:3,warnings:16,deaths:24} as const;
 const TAU=Math.PI*2;
@@ -340,8 +344,8 @@ export class HordeRenderer{
     this.bubbles=new Ring<BubbleFx>(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,enemy:'',player:'',x:0,y:0,lift:0,tag:false}),showText,CAPS.bubbles);
     this.warnings=new Ring(()=>({image:image(FX.warning)(),born:0,x:0,y:0,atTick:0,size:1}),showImage,CAPS.warnings);
     // Made on the first kill with imported death art only (empty manifest: never), then reused.
-    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),born:0,kind:'bebado',art:'bebado',elite:false,row:0,x:0,y:0,lift:0}),
-      (o,active)=>{showImage(o,active);if(!active)o.top.setVisible(false).setAlpha(1);},CAPS.deaths);
+    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),born:0,kind:'bebado',art:'bebado',elite:false,row:0,x:0,y:0,lift:0,costume:{image:image(FX.puff)()}}),
+      (o,active)=>{showImage(o,active);if(!active){o.top.setVisible(false).setAlpha(1);o.costume.image.setVisible(false).setAlpha(1);}},CAPS.deaths);
   }
 
   /** Feed a new authoritative view (≈20 Hz). Processes view.events once each by eventId. */
@@ -468,6 +472,7 @@ export class HordeRenderer{
     // queueEnemyArt); a fresh actor starts with no art id, so even the default 'bebado' asks.
     const art=enemyArtId(view.kind,kind);
     if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}
+    a.costume=this.costume&&this.costume.art===art?this.costume.variant:undefined;
     if(used.fresh){
       a.id=view.id;a.phase=hashPhase(view.id);a.flashAt=-1e9;a.hitAt=-1e9;a.flashing=false;a.screenX=NaN;a.flip=a.phase<.5;resetEnemyArt(a.image);
       a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;
@@ -528,6 +533,8 @@ export class HordeRenderer{
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     switch(event.type){
+      // The zueira round's costume (Picolé de Tio, Pombos de Gorro) from its banner label; the next round clears it.
+      case 'round':if(event.phase!=='end')this.costume=roundCostume(event.modifier);break;
       case 'damage':{
         const enemy=this.enemies.get(event.target);
         if(enemy){
@@ -559,6 +566,8 @@ export class HordeRenderer{
   }
   // ---------- art v2 actions (art/horde-actions.ts): what the event mapping sees of this renderer ----------
   private viewTelegraphs:readonly TelegraphView[]=[];
+  /** The current round's costume (horde-art.ts roundCostume), set by its 'round' event. */
+  private costume?:RoundCostume;
   private actionCue:ActionCue={enemy:'',action:'hit'};
   private nearKind:EnemyKind='bebado';private nearX=0;private nearY=0;private nearBest=0;private nearFound:EnemyActor|undefined;
   private nearVisit=(a:EnemyActor)=>{
@@ -619,7 +628,7 @@ export class HordeRenderer{
     const art=enemyArtId(kind,k);
     if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
-      d.born=this.now;d.kind=k;d.art=art;d.elite=elite;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
+      d.born=this.now;d.kind=k;d.art=art;d.elite=elite;d.costume.variant=dying?.costume;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
       d.lift=ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
       d.image.clearTint();
     }else{
@@ -1077,7 +1086,7 @@ export class HordeRenderer{
   private drawDeath=(d:DeathFx)=>{
     this.place(d.image,d.x,d.y,d.lift);
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
-    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art);
+    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art,d.costume);
   };
   private drawStar=(s:StarFx)=>{
     const age=this.now-s.born;if(age>=STAR_MS)return false;

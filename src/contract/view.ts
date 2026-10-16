@@ -21,7 +21,12 @@ export interface StructureView {id:string;kind:string;x:number;y:number;hp:numbe
   /** A defense's volleys, mod 256 (torre-contador-de-tiros): a change is a shot. */
   shots?:number;
   /** D-047, the car ('quadradao'): its fallen parts (bit i = CAR_PARTS[i]); hp = limit − hits, maxHp = limit. */
-  parts?:number}
+  parts?:number;
+  /**
+   * D-052, free build: a built piece's top-left cell on the build grid (contract/build.ts) and its rot (absent = 0).
+   * Every defense, the root included, and the kinds 'muro' and 'barricada'; x,y stay the footprint's centre.
+   */
+  c?:number;r?:number;rot?:number}
 /**
  * A gather node near this client during the intermission (VGM-046B): coco or pedra, units of work left this round,
  * what one unit is worth (farther from the base, more) and the progress (0..1) of the unit being gathered now.

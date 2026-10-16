@@ -2,7 +2,7 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {BuildRot,PixResult,RunState} from '../../contract/index.ts';
@@ -187,6 +187,10 @@ export class CoopClient {
    * k-th pending input on tick this.tick+1+k with them (maps/prediction.ts), exactly like the room, so no snap-back.
    */
   effects:MoveEffects={};
+  /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
+  stepCap:number|undefined;
+  /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
+  handsBusy=false;
   /** Change segments and the 10 Hz send slot (input-10hz). */
   private readonly batcher=new InputBatcher();
   private flushTimer?:ReturnType<typeof setTimeout>;
@@ -717,9 +721,13 @@ export class CoopClient {
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
     this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil}:{};
+    // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
+    // movers the hands are busy (no attack).
+    const car=view.objective?.car;
+    this.stepCap=carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -757,10 +765,12 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
     if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
+    // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
+    if(this.handsBusy)attack=false;
     const {input,active}=this.batcher.step(direction,skill,target,attack);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap);}
     this.flushInput();
   }
   /**

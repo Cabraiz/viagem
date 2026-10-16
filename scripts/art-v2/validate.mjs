@@ -11,7 +11,7 @@ import sharp from 'sharp';
 import {
   GROUPS,DIRECTIONS,DIRECTION_NAMES,VIEW_NAMES,DIR4_FROM_DIR8,CARDINALS,LEFT,ANCHOR,ALPHA_THRESHOLD,PADDING,
   FOOT_Y_TOLERANCE,FOOT_X_TOLERANCE,AIRBORNE_ANIMS,LUNGE_ANIMS,SEAM_FACTOR,SEAM_SEGMENTS,SEAM_PERCENTILE,MAX_TEXTURE,
-  KIND_NAMES,TOWER_ROWS,TOWER_WALL_ROWS,TOWER_ANIMS,TOWER_IDLE_FRAMES,
+  KIND_NAMES,TOWER_ROWS,TOWER_WALL_ROWS,TOWER_ANIMS,TOWER_IDLE_FRAMES,REST_ANIMS,ELITE_VARIANTS,
 } from './spec.mjs';
 import {
   cellStats,raw,approvedPivotX,CELL,COLUMNS,ROWS,ROW_NAMES,PIVOT_Y,ROW_BASELINE_TOLERANCE,CELL_BASELINE_TOLERANCE,
@@ -250,27 +250,40 @@ async function sheetSource(ctx,folder,anim,file,perDir,problems){
 async function validateAnimations(spec,id,files,ctx,r){
   const {problems,notes,sheets}=r;
   const piece=spec.pieces[id],anims=Object.keys(piece.anims),groupDir=path.join(ctx.input,spec.input);
+  const rest=Object.keys(REST_ANIMS),all=[...anims,...rest],variants=ELITE_VARIANTS[id]??[];
   const pieceLabel=`${spec.input}/${id}`,eliteLabel=`${spec.input}/elite/${id}`;
-  const base={},elite={},perDir={};let meta;
+  // `layers`: the elite layer ('elite') and its round variants ('elite/<variant>'), each {anim → file}.
+  const base={},layers={elite:{}},perDir={};let meta;
+  for(const v of variants)layers[`elite/${v}`]={};
+  const layerName=(layer,anim)=>`${spec.input}/elite/${id}-${layer==='elite'?'':`${layer.slice(6)}-`}${anim}`;
   for(const f of files){
     const parts=path.relative(groupDir,f).split(path.sep),name=parts.at(-1),label=relName(ctx,f);
     if(parts.length===2&&parts[0]===id){
       if(name==='meta.json')meta=f;
-      else if(isPng(name)&&anims.includes(name.slice(0,-4)))base[name.slice(0,-4)]=f;
+      else if(rest.some(a=>name===`${a}.meta.json`))continue; // one-row sidecar: the cell and fps come from meta.json
+      else if(isPng(name)&&all.includes(name.slice(0,-4)))base[name.slice(0,-4)]=f;
       else if(directionFile(name,anims))addDirection(perDir,directionFile(name,anims),f);
-      else problems.push(`${label}: arquivo não esperado. Nesta pasta vão só meta.json e ${list(anims.map(a=>`${a}.png`))} (ou uma imagem por direção, <animação>-S.png … -SE.png).`);
-    }else if(parts.length===2&&parts[0]==='elite'&&isPng(name)&&name.startsWith(`${id}-`)&&anims.includes(name.slice(id.length+1,-4)))elite[name.slice(id.length+1,-4)]=f;
+      else problems.push(`${label}: arquivo não esperado. Nesta pasta vão só meta.json e ${list(anims.map(a=>`${a}.png`))} (ou uma imagem por direção, <animação>-S.png … -SE.png), mais ${list(rest.map(a=>`${a}.png`))} (opcionais, só de frente).`);
+    }else if(parts.length===2&&parts[0]==='elite'&&name.startsWith(`${id}-`)){
+      const tail=name.slice(id.length+1);
+      if(/\.meta\.json$/i.test(tail))continue; // per-layer sidecar: the layer has the base animation's grid
+      const v=variants.find(x=>tail.startsWith(`${x}-`)),anim=isPng(tail)?tail.slice(v?v.length+1:0,-4):undefined;
+      if(anim&&all.includes(anim))layers[v?`elite/${v}`:'elite'][anim]=f;
+      else problems.push(`${label}: arquivo não esperado para ${id}. Use ${pieceLabel}/<animação>.png e ${spec.input}/elite/${id}-<animação>.png${variants.length?` (ou a variante ${list(variants.map(x=>`${id}-${x}-<animação>.png`))})`:''}.`);
+    }
     else problems.push(`${label}: arquivo não esperado para ${id}. Use ${pieceLabel}/<animação>.png e ${spec.input}/elite/${id}-<animação>.png.`);
   }
   const sent=a=>base[a]||perDir[a];
-  const present=anims.filter(sent),missing=anims.filter(a=>!sent(a)),eliteSent=anims.filter(a=>elite[a]);
+  const present=anims.filter(sent),missing=anims.filter(a=>!sent(a)),restSent=rest.filter(sent);
+  const elite=layers.elite,eliteSent=all.filter(a=>elite[a]);
+  const layerSent=Object.values(layers).some(l=>Object.keys(l).length);
   const approvedBefore=ctx.manifest?.pieces?.[id];
-  const eliteOnly=!meta&&!present.length&&eliteSent.length>0;
+  const eliteOnly=!meta&&!present.length&&!restSent.length&&layerSent;
   if(eliteOnly&&!approvedBefore){
     problems.push(`${eliteLabel}-*.png: camada elite sem a peça base (${pieceLabel}/). Entregue a pasta do inimigo junto com a camada.`);
     return;
   }
-  const cell=[piece.cell,piece.cell],anchor=spec.anchor??ANCHOR,dirs=DIRECTIONS.length;
+  const cell=[piece.cell,piece.cell],anchor=spec.anchor??ANCHOR;
   let fps;
   if(!eliteOnly){
     if(!meta)problems.push(`${pieceLabel}/meta.json: faltando. Crie com {"cell":${json(cell)},"anchor":${json(ANCHOR)},"fps":{"idle":6,…}}.`);
@@ -280,38 +293,43 @@ async function validateAnimations(spec,id,files,ctx,r){
         if(!samePair(m.cell,cell))problems.push(`${label}: cell ${json(m.cell)}, esperado ${json(cell)} para ${id}. Desenhe em células de ${piece.cell}×${piece.cell} px.`);
         if(m.anchor===undefined)problems.push(`${label}: falta "anchor": ${json(ANCHOR)}.`);
         else checkAnchor(m.anchor,label,problems,{exact:anchor});
-        fps=checkFps(m.fps,label,problems,anims);
+        fps=checkFps(m.fps,label,problems,all);
       }
     }
     if(!present.length)problems.push(`${pieceLabel}/: nenhuma animação entregue. Envie pelo menos uma de ${list(anims.map(a=>`${a}.png`))} (${piece.cell} px por célula, 8 direções).`);
   }
-  const check=async(file,anim,isElite,label=relName(ctx,file))=>{
-    const frames=piece.anims[anim],c=piece.cell;
+  // `layer`: undefined for the base sheet, else the manifest key prefix ('elite' or 'elite/<variant>').
+  const check=async(file,anim,layer,label=relName(ctx,file))=>{
+    const isRest=Object.hasOwn(REST_ANIMS,anim),frames=piece.anims[anim]??REST_ANIMS[anim],c=piece.cell,dirs=isRest?1:DIRECTIONS.length;
     const img=await load(file,label,problems);if(!img)return;
     if(img.width!==frames*c||img.height!==dirs*c){
       const got=img.height===dirs*c&&img.width%c===0?` A folha tem ${img.width/c} quadros.`:'';
-      problems.push(sizeProblem(label,img,frames*c,dirs*c,`${frames} quadros × ${dirs} direções de ${c} px`,`Exporte a folha inteira nesse tamanho, uma linha por direção (${DIRECTIONS.join(', ')}).${got}`));return;
+      const rows=isRest?'Exporte a folha inteira nesse tamanho, uma linha só, de frente (S).':`Exporte a folha inteira nesse tamanho, uma linha por direção (${DIRECTIONS.join(', ')}).`;
+      problems.push(sizeProblem(label,img,frames*c,dirs*c,`${frames} quadros × ${dirs} ${dirs>1?'direções':'direção'} de ${c} px`,`${rows}${got}`));return;
     }
     if(!checkTransparent(img,label,problems))return;
-    // AIRBORNE: no foot rule; LUNGE: the foot line stays, the centre does not (spec.mjs).
+    // AIRBORNE and the rest rows: no foot rule; LUNGE: the foot line stays, the centre does not (spec.mjs).
+    const grounded=!isRest&&!AIRBORNE_ANIMS.has(anim);
     checkGrid(problems,label,img,{cw:c,ch:c,cols:frames,rows:dirs,rowName:r=>`${DIRECTION_NAMES[DIRECTIONS[r]]} (linha ${r+1})`,
-      anchor:isElite?undefined:anchor,footY:()=>!AIRBORNE_ANIMS.has(anim),footX:()=>!AIRBORNE_ANIMS.has(anim)&&!LUNGE_ANIMS.has(anim),
-      allowEmpty:isElite,character:true});
-    sheets.push({key:isElite?`elite/${anim}`:anim,source:file,...(Buffer.isBuffer(file)?{label}:{}),output:isElite?`elite/${id}-${anim}.webp`:`${id}/${anim}.webp`,
+      anchor:layer?undefined:anchor,footY:()=>grounded,footX:()=>grounded&&!LUNGE_ANIMS.has(anim),
+      allowEmpty:!!layer,character:true});
+    const output=layer?`${layerName(layer,anim).slice(spec.input.length+1)}.webp`:`${id}/${anim}.webp`;
+    sheets.push({key:layer?`${layer}/${anim}`:anim,source:file,...(Buffer.isBuffer(file)?{label}:{}),output,
       cell:[c,c],frames:img.width/c,directions:dirs,anchor:[...anchor],...(fps?.[anim]?{fps:fps[anim]}:{})});
   };
   for(const anim of present){
     const s=await sheetSource(ctx,pieceLabel,anim,base[anim],perDir[anim],problems);
-    if(s)await check(s.source,anim,false,s.label);
+    if(s)await check(s.source,anim,undefined,s.label);
   }
+  for(const anim of restSent)await check(base[anim],anim,undefined);
   if(present.length&&missing.length)
     notes.push(`${pieceLabel}: ${missing.length>1?'faltam as animações':'falta a animação'} ${list(missing)} — ${keeps(missing.length)}.`);
   // The elite layer goes over the base of the same animation: over an animation that did not come now it is only
   // accepted when that base was approved in an earlier run (already v2 in the manifest); otherwise it waits for it.
   const eliteBase=a=>sent(a)||approvedBefore?.files?.[a];
-  for(const anim of eliteSent){
-    if(eliteBase(anim))await check(elite[anim],anim,true);
-    else notes.push(`${eliteLabel}-${anim}.png: ignorada por enquanto, porque ${pieceLabel}/${anim}.png não veio nem foi aprovada antes; envie as duas juntas.`);
+  for(const [layer,byAnim] of Object.entries(layers))for(const anim of all.filter(a=>byAnim[a])){
+    if(eliteBase(anim))await check(byAnim[anim],anim,layer);
+    else notes.push(`${layerName(layer,anim)}.png: ignorada por enquanto, porque ${pieceLabel}/${anim}.png não veio nem foi aprovada antes; envie as duas juntas.`);
   }
   if(!eliteOnly&&present.length){
     const noElite=present.filter(a=>!elite[a]);

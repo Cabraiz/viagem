@@ -1413,6 +1413,267 @@
         ]
       }
     },
+    "inimigo-agiota": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-agiota.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-agiota.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ad0f43309a732ebaa83c4325d66c29bd81ce0d5595f6bd832cbc1869a9c5f7ec"
+            }
+          ],
+          "sha256": "ad0f43309a732ebaa83c4325d66c29bd81ce0d5595f6bd832cbc1869a9c5f7ec"
+        }
+      },
+      "sha256": "2f7ede383ec375c06b2ba8a03656f0eb3e57c5a36a88a9a1ae29217c5ebc6217",
+      "meta": {
+        "replaces": [],
+        "enemy": "agiota"
+      }
+    },
+    "inimigo-anao-molotov": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-anao-molotov.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-anao-molotov.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "363d7c7c80ee59ef3efc0caaf2225ac20448e7e1c9357ff07e259af75ffe741e"
+            }
+          ],
+          "sha256": "363d7c7c80ee59ef3efc0caaf2225ac20448e7e1c9357ff07e259af75ffe741e"
+        }
+      },
+      "sha256": "cdf320538d44f6968b2835c4b624eaf96b0cfa0e05f29995930eb38ad5c85abd",
+      "meta": {
+        "replaces": [],
+        "enemy": "anao-molotov"
+      }
+    },
+    "inimigo-bebado": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-bebado.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-bebado.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c35adc7746349f0d4e0501c9e2b938aa52d7184fef22be42535653e7b090304f"
+            }
+          ],
+          "sha256": "c35adc7746349f0d4e0501c9e2b938aa52d7184fef22be42535653e7b090304f"
+        }
+      },
+      "sha256": "69be39441df07f3f0603a32808b196093872a288accb5ff9a09a51f05383873c",
+      "meta": {
+        "replaces": [],
+        "enemy": "bebado"
+      }
+    },
+    "inimigo-chefe": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-chefe.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-chefe.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1337aeb25abfd69585aa95df3138f70f0df6419301c9fba5c7e03fdad62ff051"
+            }
+          ],
+          "sha256": "1337aeb25abfd69585aa95df3138f70f0df6419301c9fba5c7e03fdad62ff051"
+        }
+      },
+      "sha256": "4967d819dc213040d92fbc7807e4b5ddde6aab8ed267f200783ed89a29507644",
+      "meta": {
+        "replaces": [],
+        "enemy": "chefe"
+      }
+    },
+    "inimigo-coach": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-coach.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-coach.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "bb88d21660d1f9130b80d074d60b27c7ffed41ea68835f5e8220c6d07d48acf4"
+            }
+          ],
+          "sha256": "bb88d21660d1f9130b80d074d60b27c7ffed41ea68835f5e8220c6d07d48acf4"
+        }
+      },
+      "sha256": "0cef36812c9c7bed2ab44719afb3563f1974dbbe0910cf3702a4dceadbe391cb",
+      "meta": {
+        "replaces": [],
+        "enemy": "coach"
+      }
+    },
+    "inimigo-influencer": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-influencer.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-influencer.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "6c851b6a79457f393ff5c39e38d7681482aa2bc37cb2696eee06402fc9f78966"
+            }
+          ],
+          "sha256": "6c851b6a79457f393ff5c39e38d7681482aa2bc37cb2696eee06402fc9f78966"
+        }
+      },
+      "sha256": "ee25cce76b4b6012b00c75292c40c16bfb0652463d8fbc29894e0e9458bc3cf5",
+      "meta": {
+        "replaces": [],
+        "enemy": "influencer"
+      }
+    },
+    "inimigo-motoboy": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-motoboy.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-motoboy.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b29f48d9b11a31bec86bc6a3cee70ed258bd2079b100890fe6084cdfa8ad804b"
+            }
+          ],
+          "sha256": "b29f48d9b11a31bec86bc6a3cee70ed258bd2079b100890fe6084cdfa8ad804b"
+        }
+      },
+      "sha256": "020c1742579e3de5b0ddff7871226da81c5935569e9d5d658f5de40f0b522722",
+      "meta": {
+        "replaces": [],
+        "enemy": "motoboy"
+      }
+    },
+    "inimigo-pombos": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-pombos.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-pombos.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c3085a814031fea9b5d0b86a1299eafe540d863dd33f25d2b70cdc0c33cf1194"
+            }
+          ],
+          "sha256": "c3085a814031fea9b5d0b86a1299eafe540d863dd33f25d2b70cdc0c33cf1194"
+        }
+      },
+      "sha256": "4c42b26afa115b942b1b5365d4824ce186c62712bdc8912873dd03e26de121f2",
+      "meta": {
+        "replaces": [],
+        "enemy": "pombos"
+      }
+    },
+    "inimigo-tio-pave": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "inimigo-tio-pave.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "inimigo-tio-pave.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "3a35bc991f870cc9278233e3164f165848073ec18053566a9cbc4d3e3a839475"
+            }
+          ],
+          "sha256": "3a35bc991f870cc9278233e3164f165848073ec18053566a9cbc4d3e3a839475"
+        }
+      },
+      "sha256": "441d2d0229e117176d7cf5a67663a260c1684d9628d4d1e1a8e84aea937d5d23",
+      "meta": {
+        "replaces": [],
+        "enemy": "tio-pave"
+      }
+    },
     "letra-n": {
       "kind": "icon",
       "files": {

@@ -2,11 +2,24 @@
  * Auto-firing weapons (VGM-035), system id 'weapons'. Runs before 'projectiles' in SYSTEM_ORDER:
  * it only spawns projectiles (moved and collided by the projectile system) except the audio cone, which hits instantly.
  * Damage passed to ctx.damageEnemy is base weapon damage; the core applies might.
+ *
+ * D-051 manual combat (WeaponOptions.manual, RunSystemsOptions.combat 'manual'): only the EQUIPPED weapon fires
+ * (equippedWeapon: the first weapon of the build, the class starting weapon until the E6 inventory; an evolution takes
+ * its slot), and only on a tick its owner holds the attack (or the press the input track kept); every other weapon of
+ * the build stays idle, its timer untouched. Targets come from rules/attack-target.ts (chosen -> who hit me in the last
+ * 2 s -> nearest with the boss 30 % closer -> posing last, with hysteresis), and nothing fires without a live enemy in
+ * the weapon's reach (manualReach): the weapon keeps its cooldown. The candidates are gathered here (enemyIndex plus
+ * the optional ctx.sleepers of the D-051 nests) and handed to the pure picker, which never queries. Per pattern:
+ *  - pierce, homing, zone (thrown puddles): shot at the aimed targets in range, as before but in the new order;
+ *  - cone: the wave turns to the aimed target instead of the facing;
+ *  - orbit, shield, zone that follows its owner (Cafeteira): no longer passive; a hold with an enemy within their
+ *    ring/radius starts one cycle (the effect of the equipped weapon), then the usual duration + cooldown.
+ * The hero never walks to a target (the stick moves him).
  */
-import type {EnemyState,SimPlayer} from '../../contract/index.ts';
+import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
-import {PROJECTILE_SPEED_MULT} from '../../rules/index.ts';
+import {PROJECTILE_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,spawnProjectile} from '../projectiles.ts';
@@ -25,18 +38,50 @@ const HOMING_SPREAD=.35,HOMING_TURN=.25*PROJECTILE_SPEED_MULT;
 interface WeaponOptions {
   cap?:number;
   catalog?:{get(id:string):WeaponDef|undefined};
+  /** D-051 manual combat: whether the player holds the attack on this tick (players system ManualCombat). Absent: automatic weapons. */
+  manual?:{attacking(playerId:string):boolean};
 }
 
 type Dir={x:number;y:number};
 
 /** How far a straight shot gets before it expires, plus its own radius: an enemy farther than this cannot be hit. */
 export const pierceReach=(w:{speed:number;durationTicks:number;area:number})=>w.speed*w.durationTicks/SIM_HZ+w.area;
+/** Unit vector from the player to `to`, or the facing when they overlap. */
+function towardOr(player:SimPlayer,to:{x:number;y:number}):Dir{
+  const dx=to.x-player.x,dy=to.y-player.y,len=Math.hypot(dx,dy);
+  return len>1e-9?{x:dx/len,y:dy/len}:facingOf(player);
+}
 function facingOf(player:SimPlayer):Dir{
   const len=Math.hypot(player.facing.x,player.facing.y);
   return len>1e-9?{x:player.facing.x/len,y:player.facing.y/len}:{x:1,y:0};
 }
 
 const rotate=(d:Dir,a:number):Dir=>({x:d.x*Math.cos(a)-d.y*Math.sin(a),y:d.x*Math.sin(a)+d.y*Math.cos(a)});
+/** Radius of one orbiter (fireOrbit). */
+const orbiterRadius=(w:{area:number})=>Math.max(.25,.22*w.area);
+
+/**
+ * D-051: the equipped weapon of the manual combat: the build's first weapon (the class kit's starting weapon; an
+ * evolution replaces it in its slot) until the E6 inventory brings the equipped slot. Undefined: nothing to fire.
+ */
+export function equippedWeapon(build:PlayerBuild,catalog:{get(id:string):WeaponDef|undefined}=weaponCatalog){
+  return build.weapons.find(o=>!!catalog.get(o.id)?.pattern);
+}
+/**
+ * D-051: how far (u, from the hero's centre) the manual combat looks for a target with this weapon, and whether the
+ * enemy's own radius is added (`pad`: patterns that touch, not aim). The bots hold the attack within it.
+ */
+export function manualReach(w:ResolvedWeapon):{reach:number;pad:boolean}{
+  switch(w.def.pattern){
+    case 'pierce':return {reach:Math.min(w.range,pierceReach(w)),pad:false};
+    case 'homing':return {reach:w.range,pad:false};
+    case 'zone':return w.def.evolved?.followsOwner?{reach:w.area,pad:true}:{reach:w.range,pad:false};
+    case 'orbit':return {reach:w.area+orbiterRadius(w),pad:true};
+    case 'shield':case 'cone':return {reach:w.area,pad:true};
+  }
+}
+/** Slack of the spatial query for padded reaches (enemy radius); the exact test follows. */
+const PAD_QUERY=2;
 
 export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   const cap=opts.cap??PROJECTILE_CAP,catalog=opts.catalog??weaponCatalog;
@@ -49,6 +94,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
    * the player asked for it.
    */
   function targets(ctx:SimContext,player:SimPlayer,range:number,count:number):EnemyState[]{
+    if(opts.manual)return manualTargets(ctx,player,range,count);
     const out:EnemyState[]=[];
     const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range;
     const preferred=player.target?ctx.enemies.get(player.target):undefined;
@@ -63,6 +109,29 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     return out;
   }
 
+  /**
+   * D-051 manual combat: up to `count` live enemies within `range` (plus their radius with `pad`), in the order of
+   * rules/attack-target.ts; remembers the auto pick on the player (SimPlayer.autoTarget, the hysteresis' memory).
+   */
+  function manualTargets(ctx:SimContext,player:SimPlayer,range:number,count:number,pad=false):EnemyState[]{
+    const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range+(pad?e.radius:0);
+    const seen=new Set<EnemyState>(),candidates:{id:string;x:number;y:number;boss:boolean;reflecting:boolean;e:EnemyState}[]=[];
+    const add=(e:EnemyState|undefined)=>{
+      if(!e||seen.has(e)||!inRange(e))return;
+      seen.add(e);candidates.push({id:e.id,x:e.x,y:e.y,boss:!!e.boss,reflecting:isReflecting(e,ctx.tick),e});
+    };
+    scratch.length=0;
+    ctx.enemyIndex.query(player.x,player.y,range+(pad?PAD_QUERY:0),scratch);
+    for(const e of scratch)add(e);
+    // D-051 nests: the sleepers (out of enemyIndex) are targets too, ranked like anyone else (attacking one starts the fight).
+    if(ctx.sleepers){scratch.length=0;ctx.sleepers.query(player.x,player.y,range+(pad?PAD_QUERY:0),scratch);for(const e of scratch)add(e);}
+    // The chosen one and who hit me may lie past the query's slack (a big boss): looked up by id.
+    for(const id of [player.target,player.lastHitBy?.id])if(id!==undefined)add(ctx.enemies.get(id));
+    const {order,auto}=attackTargets(player,candidates,{tick:ctx.tick,chosen:player.target,lastHit:player.lastHitBy,current:player.autoTarget});
+    if(auto!==undefined)player.autoTarget=auto;else delete player.autoTarget;
+    return order.slice(0,count).map(c=>c.e);
+  }
+
   const group=(player:SimPlayer,w:ResolvedWeapon)=>`${player.id}:${w.def.id}`;
 
   function fireOrbit(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
@@ -73,7 +142,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       const p=spawnProjectile(ctx,{
         owner:player.id,source:w.def.id,motion:'orbit',anchor:player.id,angle,orbitRadius:w.area,spin,
         x:player.x+Math.cos(angle)*w.area,y:player.y+Math.sin(angle)*w.area,vx:0,vy:0,
-        radius:Math.max(.25,.22*w.area),damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
+        radius:orbiterRadius(w),damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
         rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,
       },cap);
       if(p)spawned++;
@@ -175,7 +244,10 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
 
   /** Instant wave: every live enemy inside any cone is hit once per volley. One fire event per direction. */
   function fireCone(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
-    const half=w.def.coneHalfAngle??.6,face=facingOf(player);
+    // D-051 manual combat: the wave goes where the aim points (nobody in reach: no wave).
+    const aimed=opts.manual?manualTargets(ctx,player,w.area,1,true)[0]:undefined;
+    if(opts.manual&&!aimed)return false;
+    const half=w.def.coneHalfAngle??.6,face=aimed?towardOr(player,aimed):facingOf(player);
     scratch.length=0;
     ctx.enemyIndex.query(player.x,player.y,w.area+1.5,scratch);
     const near=scratch.filter(e=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=w.area+e.radius)
@@ -206,6 +278,12 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   }
 
   function fire(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
+    // D-051 manual combat: the ring, the umbrella and the walking puddle are no longer passive: a hold starts a cycle
+    // only with an enemy they can touch (no swing at the air; the cooldown waits).
+    if(opts.manual&&(w.def.pattern==='orbit'||w.def.pattern==='shield'||w.def.pattern==='zone'&&w.def.evolved?.followsOwner)){
+      const {reach,pad}=manualReach(w);
+      if(!manualTargets(ctx,player,reach,1,pad).length)return false;
+    }
     switch(w.def.pattern){
       case 'orbit':return fireOrbit(ctx,player,w);
       case 'pierce':return firePierce(ctx,player,w);
@@ -219,9 +297,14 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   return {
     id:'weapons',
     step(ctx){
+      const manual=opts.manual;
       for(const player of ctx.players.values()){
         if(!canAct(player))continue;
+        // D-051 manual combat: only the equipped weapon, only while the attack is held.
+        if(manual&&!manual.attacking(player.id))continue;
+        const equipped=manual?equippedWeapon(player.build,catalog):undefined;
         for(const owned of player.build.weapons){
+          if(manual&&owned!==equipped)continue;
           const def=catalog.get(owned.id);
           // A unified item catalog may also hold passives; only weapon defs carry a pattern.
           if(!def?.pattern)continue;

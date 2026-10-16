@@ -12,6 +12,11 @@
  * client move several steps in one tick), so one tick moves a player at most one step, whatever the client sends.
  * A skill tap is a separate one-shot message {t:'cast',round,id} (no held state, outside the 10 Hz slot), answered
  * with {t:'cast',seq:id,ok,readyTick} after the step that carried it.
+ * D-051 (manual combat): the attack button rides the segments as flag bit 1 (held from that step on), like the stick,
+ * with the chosen target in the same segment. A hold that the room only hears after its steps were applied (a tap
+ * shorter than the 10 Hz slot) still gives one attack (InputTrack attackPress, like the skill's late press). Holding
+ * the attack keeps the room stepping the player while standing, like the held skill. Legacy single steps never hold
+ * the attack (their `attack` field always meant nothing).
  */
 import type {PlayerInput,Point,SimPlayer} from '../contract/index.ts';
 import {SIM_HZ} from '../contract/index.ts';
@@ -58,9 +63,14 @@ export function quantizeDirection(direction:Point,held=-1):number{
   return ((Math.round(angle/step)%DIRECTION_BUCKETS)+DIRECTION_BUCKETS)%DIRECTION_BUCKETS;
 }
 
-/** From client step `from` on: direction (a DIRECTIONS vector, or 0,0 to stop), skill held, tap target (server id in the room). */
-export interface InputSegment {from:number;x:number;y:number;skill:boolean;target?:string}
-/** Wire form of a segment: [from, x, y, flags (1 = skill held), target?]. */
+/**
+ * From client step `from` on: direction (a DIRECTIONS vector, or 0,0 to stop), skill held, tap target (server id in the
+ * room) and (D-051) the attack held, present only when true (so a track's state, in the replay hash, is unchanged without it).
+ */
+export interface InputSegment {from:number;x:number;y:number;skill:boolean;target?:string;attack?:true}
+/** Segment flags: bit 0 = skill held (kept for older clients; ignored in the manual combat), bit 1 = attack held (D-051). */
+export const SEGMENT_SKILL=1,SEGMENT_ATTACK=2;
+/** Wire form of a segment: [from, x, y, flags (SEGMENT_SKILL | SEGMENT_ATTACK, 0-3), target?]. */
 export type SegmentWire=[number,number,number,number,string?];
 /** `seq`: the client's latest step when it sent this (a keepalive has no steps). */
 export interface InputBatch {seq:number;steps:SegmentWire[]}
@@ -70,10 +80,11 @@ const unit=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n)&&Mat
 export function segmentOf(w:unknown):InputSegment|undefined{
   if(!Array.isArray(w)||w.length<4||w.length>5)return undefined;
   const [from,x,y,flags,target]=w;
-  if(!validSeq(from)||!unit(x)||!unit(y)||(flags!==0&&flags!==1)||(target!==undefined&&(typeof target!=='string'||!TARGET.test(target))))return undefined;
-  return {from,x,y,skill:flags===1,...(target!==undefined?{target}:{})};
+  if(!validSeq(from)||!unit(x)||!unit(y)||(flags!==0&&flags!==1&&flags!==2&&flags!==3)||(target!==undefined&&(typeof target!=='string'||!TARGET.test(target))))return undefined;
+  return {from,x,y,skill:(flags&SEGMENT_SKILL)!==0,...(target!==undefined?{target}:{}),...(flags&SEGMENT_ATTACK?{attack:true as const}:{})};
 }
-export const segmentWire=(s:InputSegment):SegmentWire=>s.target!==undefined?[s.from,s.x,s.y,s.skill?1:0,s.target]:[s.from,s.x,s.y,s.skill?1:0];
+const flagsOf=(skill:boolean,attack:boolean|undefined)=>(skill?SEGMENT_SKILL:0)|(attack?SEGMENT_ATTACK:0);
+export const segmentWire=(s:InputSegment):SegmentWire=>s.target!==undefined?[s.from,s.x,s.y,flagsOf(s.skill,s.attack),s.target]:[s.from,s.x,s.y,flagsOf(s.skill,s.attack)];
 const moving=(s:{x:number;y:number})=>Math.hypot(s.x,s.y)>=.01;
 
 /**
@@ -82,26 +93,29 @@ const moving=(s:{x:number;y:number})=>Math.hypot(s.x,s.y)>=.01;
  */
 export class InputBatcher {
   seq=0;
-  private bucket=-1;private skill=false;private target?:string;
+  private bucket=-1;private skill=false;private target?:string;private attack=false;
   private unsent:SegmentWire[]=[];
   private lastSend=-Infinity;
   /** Starts over at `seq` (welcome ack, new run), standing still like the room's fresh track. */
-  reset(seq=0){this.seq=seq;this.bucket=-1;this.skill=false;this.target=undefined;this.unsent=[];this.lastSend=-Infinity;}
+  reset(seq=0){this.seq=seq;this.bucket=-1;this.skill=false;this.target=undefined;this.attack=false;this.unsent=[];this.lastSend=-Infinity;}
 
   /** The room is already past our steps (it held our last state longer than we stepped): continue from its ack. */
   catchUp(ack:number){if(ack>this.seq)this.seq=ack;}
-  /** One fixed step: the input the prediction applies (quantized), and whether it moves or casts (pending until acked). */
-  step(direction:Point,skill:boolean,target?:string):{input:PlayerInput;active:boolean}{
+  /**
+   * One fixed step: the input the prediction applies (quantized), and whether it moves, casts or attacks (pending until
+   * acked). `attack` (D-051): the attack button held on this step; its target goes in the same segment.
+   */
+  step(direction:Point,skill:boolean,target?:string,attack=false):{input:PlayerInput;active:boolean}{
     const bucket=quantizeDirection(direction,this.bucket>=0?this.bucket:-1),seq=++this.seq;
     const d=bucket<0?{x:0,y:0}:DIRECTIONS[bucket];
-    if(bucket!==this.bucket||skill!==this.skill||target!==this.target){
-      this.bucket=bucket;this.skill=skill;this.target=target;
-      this.unsent.push(target!==undefined?[seq,d.x,d.y,skill?1:0,target]:[seq,d.x,d.y,skill?1:0]);
+    if(bucket!==this.bucket||skill!==this.skill||target!==this.target||attack!==this.attack){
+      this.bucket=bucket;this.skill=skill;this.target=target;this.attack=attack;
+      this.unsent.push(target!==undefined?[seq,d.x,d.y,flagsOf(skill,attack),target]:[seq,d.x,d.y,flagsOf(skill,attack)]);
     }
-    return {input:{seq,x:d.x,y:d.y,attack:false,skill,target},active:bucket>=0||skill};
+    return {input:{seq,x:d.x,y:d.y,attack,skill,target},active:bucket>=0||skill||attack};
   }
-  /** Whether the held state makes the room keep stepping us (walking or holding the skill). */
-  get active(){return this.bucket>=0||this.skill;}
+  /** Whether the held state makes the room keep stepping us (walking, holding the skill or the attack). */
+  get active(){return this.bucket>=0||this.skill||this.attack;}
   /** The message to send now, if any: pending changes at most every SEND_MIN_MS, or a keepalive while active. */
   take(now:number):InputBatch|undefined{
     const changes=this.unsent.length>0;
@@ -117,7 +131,9 @@ export class InputBatcher {
 /** One applied step: where the player stood before it (the owner's confirmed position is read from here). */
 interface Applied {seq:number;x:number;y:number}
 /** Serializable part of a track (stateHash; replay). */
-export interface InputTrackState {applied:number;lastFrom:number;known:number;held:InputSegment;queue:InputSegment[];skillPress:boolean;batched:boolean;knownAt:number;casts:number[];lastCast:number;appliedTarget?:string}
+export interface InputTrackState {applied:number;lastFrom:number;known:number;held:InputSegment;queue:InputSegment[];skillPress:boolean;batched:boolean;knownAt:number;casts:number[];lastCast:number;appliedTarget?:string;
+  /** D-051: present (true) only while an attack press waits, so a state without one hashes as before. */
+  attackPress?:true}
 const STOP:InputSegment=Object.freeze({from:0,x:0,y:0,skill:false});
 
 /**
@@ -135,6 +151,11 @@ export class InputTrack {
   private queue:InputSegment[]=[];
   /** A held-skill press that arrived after its steps were already applied: cast on the next step. */
   private skillPress=false;
+  /**
+   * D-051: an attack hold that arrived after its steps were already applied (a tap between two 10 Hz sends): the next
+   * step attacks once (the edge latch beside the held flag).
+   */
+  private attackPress=false;
   /** Target last handed to the simulation (a stop with a new target still needs one step to set it). */
   private appliedTarget?:string;
   private history:Applied[]=[];
@@ -148,7 +169,7 @@ export class InputTrack {
   /** Set by next() on the step that carries a tap: Simulation reads it after the step to answer the client. */
   tapped?:number;
   /** Starts over at `ack` (join, reconnect, new run): nothing held, nothing queued. */
-  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;}
+  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.attackPress=false;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;}
   /**
    * A batch from the client, or one legacy step `{seq,x,y,skill,target}` (protocol 4 before input-10hz, tests): the
    * whole message is refused when anything in it is malformed or out of order. A segment may only start after the
@@ -173,6 +194,7 @@ export class InputTrack {
       if(s.from>this.applied){this.queue.push(s);continue;}
       // Late: the room already guessed past `from` with the old state. From the next step on, the new state; no rewind.
       if(s.skill&&!this.held.skill)this.skillPress=true;
+      if(s.attack&&!this.held.attack)this.attackPress=true;
       this.queue=[];this.held={...s,from:this.applied};
     }
     return true;
@@ -190,7 +212,7 @@ export class InputTrack {
     this.tapped=undefined;
     let seq=this.applied+1;
     while(this.queue.length&&this.queue[0].from<=seq)this.held=this.queue.shift()!;
-    const press=this.skillPress||this.castQueue.length>0;
+    const skillPress=this.skillPress||this.castQueue.length>0,attackPress=this.attackPress,press=skillPress||attackPress;
     if(this.inert()&&!press){
       // Standing still costs no steps: jump straight to the next change (the idle stretch moves nobody).
       if(!this.queue.length)return undefined;
@@ -203,21 +225,21 @@ export class InputTrack {
       while(this.queue.length&&this.queue[0].from<=seq)this.held=this.queue.shift()!;
     }
     if(seq>this.known+HORIZON_STEPS||this.batched&&seq>this.known+Math.floor((now-this.knownAt)/STEP_MS)-LEAD_STEPS||this.inert()&&press){
-      // Waiting for the client's clock (or standing): a skill press still casts now, in place, without spending a step.
+      // Waiting for the client's clock (or standing): a skill (or attack) press still goes now, in place, without spending a step.
       if(!press)return undefined;
-      return this.press({seq:this.applied,x:0,y:0,attack:false,skill:true,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{})});
+      return this.press({seq:this.applied,x:0,y:0,attack:attackPress,skill:skillPress,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{})});
     }
     this.applied=seq;
     this.history.push({seq,x:p.x,y:p.y});
     if(this.history.length>HISTORY_STEPS)this.history.shift();
     this.appliedTarget=this.held.target;
-    const input:PlayerInput={seq,x:this.held.x,y:this.held.y,attack:false,skill:this.held.skill,...(this.held.target!==undefined?{target:this.held.target}:{})};
-    return press?this.press({...input,skill:true}):input;
+    const input:PlayerInput={seq,x:this.held.x,y:this.held.y,attack:!!this.held.attack,skill:this.held.skill,...(this.held.target!==undefined?{target:this.held.target}:{})};
+    return press?this.press({...input,skill:input.skill||skillPress,attack:input.attack||attackPress}):input;
   }
-  /** Consumes the pending press (tap or late hold) on this step. */
+  /** Consumes the pending presses (tap, late skill or attack hold) on this step. */
   private press(input:PlayerInput){
     this.tapped=this.castQueue.shift();
-    this.skillPress=false;
+    this.skillPress=false;this.attackPress=false;
     return input;
   }
   /**
@@ -233,14 +255,14 @@ export class InputTrack {
   /** Steps the client reported that still move or cast (an idle stretch is jumped over, so it is not owed). */
   private owed(){
     let owed=0,from=this.applied+1,state:InputSegment=this.held;
-    for(const q of this.queue){if(moving(state)||state.skill)owed+=Math.max(0,q.from-from);from=Math.max(from,q.from);state=q;}
-    if(moving(state)||state.skill)owed+=Math.max(0,this.known+1-from);
+    for(const q of this.queue){if(moving(state)||state.skill||state.attack)owed+=Math.max(0,q.from-from);from=Math.max(from,q.from);state=q;}
+    if(moving(state)||state.skill||state.attack)owed+=Math.max(0,this.known+1-from);
     return owed;
   }
-  private inert(){return !moving(this.held)&&!this.held.skill&&this.held.target===this.appliedTarget;}
+  private inert(){return !moving(this.held)&&!this.held.skill&&!this.held.attack&&this.held.target===this.appliedTarget;}
   state():InputTrackState{
     return {applied:this.applied,lastFrom:this.lastFrom,known:this.known,held:{...this.held},queue:this.queue.map(s=>({...s})),skillPress:this.skillPress,batched:this.batched,knownAt:this.knownAt,lastCast:this.lastCast,casts:[...this.castQueue],
-      ...(this.appliedTarget!==undefined?{appliedTarget:this.appliedTarget}:{})};
+      ...(this.appliedTarget!==undefined?{appliedTarget:this.appliedTarget}:{}),...(this.attackPress?{attackPress:true as const}:{})};
   }
 }
 const movable=(p:SimPlayer)=>!p.downed&&!p.eliminated&&p.hp>0&&!p.spectator;

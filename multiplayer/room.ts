@@ -9,7 +9,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '..
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -94,6 +94,11 @@ export interface RoomOptions {
    * has one.
    */
   objective?:ObjectiveKind|false;
+  /**
+   * D-051: how the heroes fight in every map of this room (Simulation combat). 'manual': the attack button and the
+   * equipped weapon, and {t:'cast'} is answered ok:false without a cast. Absent: the automatic weapons and the skill.
+   */
+  combat?:CombatMode;
 }
 /**
  * D-047: the city rooms' objective when RoomOptions.objective is absent: the chaveiro, since it is balanced
@@ -363,6 +368,8 @@ export class Room {
   private readonly cityPlayable:boolean;
   /** D-047: the city runs' objective (RoomOptions.objective), undefined for the wall mode. */
   private readonly cityObjective?:ObjectiveKind;
+  /** D-051: RoomOptions.combat, for every Simulation this room builds (undefined: the automatic weapons). */
+  private readonly combat?:CombatMode;
   /** Each person's build catalog from join.maps (undefined: a client that sent none), for playersMissingMap. */
   private readonly catalogs=new Map<string,MapCatalog|undefined>();
   /** A city switch waiting for the asset to decode (its first use in this isolate); see ready(). */
@@ -373,12 +380,15 @@ export class Room {
   private mapGen=0;
   /** A test/tool's explicit combat cap; otherwise the map decides (D-043). */
   private fixedDuration:number|undefined;
+  /** D-051: the Simulation option of RoomOptions.combat (nothing for the automatic weapons, so those rooms are as before). */
+  private combatOption():{combat?:CombatMode}{return this.combat?{combat:this.combat}:{};}
   private durationFor(ref:MapRef){return this.fixedDuration??(ref.id==='cidade-nevada'?CITY_RUN_DURATION_TICKS:RUN_DURATION_TICKS);}
   constructor(createdAt=Date.now(),seed=DEFAULT_SEED,options:RoomOptions={}){
     this.solo=options.solo===true;
     const objective=options.objective===undefined?CITY_OBJECTIVE_DEFAULT:options.objective;if(objective)this.cityObjective=objective;
+    if(options.combat==='manual')this.combat='manual';
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
-    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld});this.sim.botState=()=>this.minds();
+    this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
@@ -630,7 +640,11 @@ export class Room {
     }
     else if(m.t==='ack'){c.encoder?.ack(m.seq);this.lateness(c,m.seq,now);}
     // Skill tap (input-10hz/E7): one-shot, answered with {t:'cast'} after the step that carries it.
-    else if(m.t==='cast'){const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
+    // D-051: the manual combat has no skill: an older client's tap is answered at once, ok false, and nothing is cast.
+    else if(m.t==='cast'){
+      if(this.combat==='manual'){if(Number.isSafeInteger(m.id))this.sendJson(c,{t:'cast',seq:m.id,ok:false,readyTick:0});}
+      else{const state=this.run.snapshot();if(state.phase==='combat'&&m.round===state.round&&!this.levelup.paused)this.sim.tap(c.playerId,m.id);}
+    }
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
@@ -789,8 +803,8 @@ export class Room {
   private applyMap(ref:MapRef,city?:CityTerrain){
     const old=this.sim;
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
-    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{})})
-      :new Simulation(old.seed,{world:this.baseWorld});
+    const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...this.combatOption()})
+      :new Simulation(old.seed,{world:this.baseWorld,...this.combatOption()});
     sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);

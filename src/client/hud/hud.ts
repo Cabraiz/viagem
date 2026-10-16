@@ -3,6 +3,7 @@
  * The root ignores pointer events; only interactive panels opt back in and stop propagation,
  * so tapping the HUD never moves the character or reaches the joystick/canvas.
  */
+import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
@@ -239,6 +240,7 @@ export class RunHud {
   }
 
   update(view:RunView){
+    const t0=perfNow(); // ?perf=1: the HUD's work this frame
     this.last=view;
     applyEvents(this.tally,view);
     this.music.update(musicCue(view,this.el.classList.contains('rh-ended')));
@@ -263,6 +265,7 @@ export class RunHud {
     this.stepObjective();
     this.updateCoach(view);
     this.renderObjective();
+    perfSpan('hud',t0);
   }
 
   /**

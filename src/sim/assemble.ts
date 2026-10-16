@@ -170,13 +170,15 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  // D-052: the sticks of this tick (who pushes the chaveiro's car, read by its step later in the same tick). Transient too.
+  const sticks=new Map<string,{x:number;y:number}>();
   // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
   const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
   world.recordLastHit=!!manual;
   const objective=cityWorld&&options.objective==='chaveiro'?options.objective:undefined;
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
-    if(input&&Math.hypot(input.x,input.y)>=.01)steered.add(id);
+    if(input&&Math.hypot(input.x,input.y)>=.01){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
@@ -285,16 +287,20 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;
     chaveiro=createChaveiro({wallet:{seated:()=>seatedPlayers(world.players)},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
-      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);}},cp?.chaveiro);
+      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);},
+      // D-052: the car moves on the sticks of this tick, around the standing structures (the nests join with D-051).
+      input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false)},cp?.chaveiro);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot,manual)),
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
+      playersSystem(takeInput,options.autopilot,manual,chaveiro?id=>chaveiro!.moverCap(id):undefined)),
     {id:'director',step(ctx:SimContext){director!.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
-    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{}),
+      ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
     progression.progression,revive,

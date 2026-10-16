@@ -28,6 +28,13 @@ export interface SimContext {
   readonly offers:Map<string,LevelOffer[]>;
   readonly round:RoundState;
   readonly enemyIndex:SpatialIndex<EnemyState>;
+  /**
+   * D-051 (ninhos/sono.ts): the bodies asleep on the map, out of ctx.enemies and the enemyIndex. Absent outside the
+   * ninhos mode. Hits look here too (sim/spatial.ts queryHittable, projectiles isAlive): damageEnemy wakes the body
+   * and its band first. The manual attack's aim (weapons/system.ts) ranks them like any enemy, so a player can shoot a
+   * sleeper to start the fight; the AI never looks here.
+   */
+  readonly sleepers?:Sleepers;
   /** Deterministic, monotonic ids: prefix + counter. */
   nextId(prefix:string):string;
   emit(event:SimEvent):void;
@@ -38,6 +45,21 @@ export interface SimContext {
   damageEnemy(enemyId:string,amount:number,sourcePlayer?:string,weapon?:string):boolean;
   /** Only path to hurt players: armor, invulnerability; at 0 hp the integration's onPlayerZero hook downs the player (VGM-037). */
   damagePlayer(playerId:string,amount:number,source?:string):void;
+}
+
+/**
+ * The sleepers' index (D-051, ninhos/sono.ts): only bodies still asleep, by id or by place. wake() moves the body and
+ * its band into ctx.enemies (same ids and objects) and returns the body; undefined if it was not asleep.
+ */
+export interface Sleepers extends SpatialIndex<EnemyState> {
+  readonly size:number;
+  has(id:string):boolean;
+  get(id:string):EnemyState|undefined;
+  wake(ctx:SimContext,id:string,cause:'dano'):EnemyState|undefined;
+  /** A hit target (E1's nests, ninhos/sono.ts HitTarget), not a body: damageEnemy calls strike() instead of wake(). */
+  isTarget(id:string):boolean;
+  /** Lands `amount` (the might already applied) on target `id`; true when it fell. */
+  strike(ctx:SimContext,id:string,amount:number,source?:string,weapon?:string):boolean;
 }
 
 export interface SimSystem {

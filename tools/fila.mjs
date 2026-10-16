@@ -127,11 +127,17 @@ function removeWorktree(opt,dir,branch){
 }
 
 // ---------- the suite ----------
+/** The environment of a node --test of its own: without NODE_TEST_CONTEXT (set when the queue runs under a test runner, its
+ * tests), a nested node --test reports to that parent and exits 0 on a red file. */
+const ownTestRun=()=>{const env={...process.env};delete env.NODE_TEST_CONTEXT;return env;};
 /** {ok, failedFiles, url?} for the checkout; `files` limits the run (the culprit search). */
 function runSuite(opt,dir,branch,files){
   if(opt.suite==='local'){
-    const tap=join(dir,'.fila-tap.txt'),targets=files?.length?files:['tests/**/*.test.ts'];
-    const r=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-concurrency=4','--test-reporter=tap',`--test-reporter-destination=${tap}`,...targets],{cwd:dir,stdio:'ignore'});
+    // A failing file a branch adds does not exist on the base or on an earlier step: it cannot fail there.
+    const present=files?.length?files.filter(f=>existsSync(join(dir,f))):null;
+    if(present&&!present.length)return {ok:true,failedFiles:[]};
+    const tap=join(dir,'.fila-tap.txt'),targets=present??['tests/**/*.test.ts'];
+    const r=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-concurrency=4','--test-reporter=tap',`--test-reporter-destination=${tap}`,...targets],{cwd:dir,stdio:'ignore',env:ownTestRun()});
     const text=existsSync(tap)?readFileSync(tap,'utf8'):'';rmSync(tap,{force:true});
     return {ok:r.status===0,failedFiles:r.status===0?[]:failedFilesFromTap(text)};
   }

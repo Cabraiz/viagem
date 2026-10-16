@@ -14,10 +14,10 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,ObjectiveKind,ObjectiveResult,ObjectiveView,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,SimPlayer} from '../src/contract/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
-import type {CampView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
-import {INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
+import type {CampView,EnemyView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
+import {ASLEEP_PER_VIEWER,INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
 import {DEFENSES,RAIL,phaseOf,type DefenseState,type TowerResult} from '../src/sim/index.ts';
@@ -73,12 +73,15 @@ export function wireEvent(event:StampedEvent):StampedEvent{
 const STEP_TICKS_KEPT=64;
 /** Player attack animation is refreshed at most this often by automatic weapon fire. */
 const ATTACK_ANIMATION_TICKS=12;
+/** D-051: a nest counts as seen (StructureView.seen, the minimap's fog) once a player comes this near (u): well on screen either way the phone is held. */
+const NEST_SEEN_RADIUS=24;
 const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
 /**
  * Seat fields a checkpoint never carries (E5-checkpoint-por-round): who sits there and its connection (the restored
  * seat's own), the tap target (an enemy id of the cut round) and what equip/refreshStats derive from class and build.
+ * D-051: neither who hit me last nor the auto aim's target (enemy ids of the cut round, manual combat only).
  */
-const SEAT_FIELDS:ReadonlySet<string>=new Set(['id','name','classId','online','ack','spectator','target','stats','classBonus']);
+const SEAT_FIELDS:ReadonlySet<string>=new Set(['id','name','classId','online','ack','spectator','target','stats','classBonus','lastHitBy','autoTarget']);
 /** A player's run in a checkpoint: the class it was played with (checked on resume) and every other own field. */
 export interface PlayerCheckpoint {id:string;classId:string;run:Record<string,unknown>}
 /**
@@ -216,6 +219,13 @@ export class Simulation {
    */
   readonly objective?:ObjectiveKind;
   /**
+   * D-051: how the heroes of every run fight (RunSystemsOptions.combat). 'manual': the attack button and the equipped
+   * weapon, no skill (tap() refuses). Absent: the automatic weapons, as before. The Room passes RoomOptions.combat.
+   */
+  readonly combat?:CombatMode;
+  /** D-051: 'ninhos' (city + chaveiro only, RunSystemsOptions.mode): the nests instead of the waves; default the rounds. */
+  readonly mode?:'ninhos';
+  /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
    * interest in the frames (rede-mapa-grande), base at the origin.
@@ -228,12 +238,16 @@ export class Simulation {
     /** D-040 rotation (RunSystemsOptions.rotation, default on); false plays the round table's nine kinds. */
     rotation?:boolean;
     /** D-047: the match objective (city only; default none). */
-    objective?:ObjectiveKind}={}){
+    objective?:ObjectiveKind;
+    /** D-051: the manual combat ('manual'); default the automatic weapons. */
+    combat?:CombatMode;
+    /** D-051: the nests mode (RunSystemsOptions.mode); default the rounds. No room asks for it yet. */
+    mode?:'rounds'|'ninhos'}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';if(options.mode==='ninhos')this.mode='ninhos';
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -277,6 +291,8 @@ export class Simulation {
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),
+      ...(this.combat?{combat:this.combat}:{}),
+      ...(this.mode?{mode:this.mode}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }
@@ -399,6 +415,8 @@ export class Simulation {
   private equip(p:ServerPlayer){
     p.classBonus=classBonusOf(p.classId);p.build=startingBuild(p.classId);p.weaponReady={};p.facing={...DEFAULT_FACING};
     delete p.target;delete p.downed;delete p.eliminated;delete p.invulnerableUntil;resetSkill(p);
+    // D-051 (manual combat): who hit me and the auto aim's pick belong to the run that ended.
+    delete p.lastHitBy;delete p.autoTarget;
     // The agiota's devendo mark holds an absolute tick (D-002 extra field); a rematch restarts the clock at 0.
     delete (p as {devendoUntil?:number}).devendoUntil;delete (p as {devendoSay?:number}).devendoSay;
     // D-036 slow and slip hold absolute ticks too.
@@ -425,11 +443,14 @@ export class Simulation {
   addBot(id:string,name:string,classId:string){
     const p=this.add(id,name,classId);this.bots.add(id);this.shameOptOut.add(id);return p;
   }
-  /** The bot's stick for the next steps (held until changed) and a one-shot skill tap. */
-  setBotInput(id:string,direction:Point,skill=false){
+  /**
+   * The bot's stick for the next steps (held until changed), a one-shot skill tap and (D-051, manual combat) the attack
+   * button, held until changed like the stick.
+   */
+  setBotInput(id:string,direction:Point,skill=false,attack=false){
     if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
-    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack:false,skill:skill||!!held?.skill});
+    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
@@ -448,8 +469,11 @@ export class Simulation {
     if(!p?.online||p.spectator||!t)return false;
     return t.accept(value,now);
   }
-  /** Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id). */
-  tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return !!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
+  /**
+   * Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id, or
+   * D-051's manual combat, which has no skill).
+   */
+  tap(id:string,tapId:unknown){const p=this.players.get(id),t=this.tracks.get(id);return this.combat!=='manual'&&!!p?.online&&!p.spectator&&!!t&&t.tap(tapId);}
   /**
    * Owner's own position and ack for its frames (InputTrack.confirmed), or undefined for the live ones.
    * D-036: the phone replays its pending steps on ticks frameTick+1+k (maps/prediction.ts). The confirmed position
@@ -547,6 +571,45 @@ export class Simulation {
     for(const d of this.defenses())out.push(defenseView(d,this.world.tick));
     // trilho-no-snapshot: the Gustavão's rail once laid (kind 'linha-ferrea', on the plan's rail spot; its building phase).
     const rail=this.railView();if(rail)out.push(rail);
+    // D-051: the nests (a fallen one stays, hp 0, phase 'destruido'), `seen` once someone came near (nestsSeen).
+    for(const n of this.systems.nests?.state.nests??[]){
+      if(!this.nestsSeen.has(n.id)&&(n.hit||n.down||this.anyPlayerNear(n.x,n.y,NEST_SEEN_RADIUS)))this.nestsSeen.add(n.id);
+      out.push({id:n.id,kind:'ninho',x:n.x,y:n.y,hp:n.down?0:n.hp,maxHp:n.maxHp,size:n.size,phase:n.down?'destruido':n.hit?'ativo':'dormindo',
+        ...(this.nestsSeen.has(n.id)?{seen:true as const}:{})});
+    }
+    return out;
+  }
+  /**
+   * D-051: the nests someone in the team has come near (or that were hit): the minimap's fog. Kept here, out of the
+   * run state (no state hash moves); a restored room counts again from what the players see next (a hit nest stays seen).
+   */
+  private nestsSeen=new Set<string>();
+  private anyPlayerNear(x:number,y:number,r:number){
+    for(const p of this.players.values())if(!p.spectator&&!p.eliminated&&Math.hypot(p.x-x,p.y-y)<=r)return true;
+    return false;
+  }
+  /** Ids of the sleeping bodies in the last frame (the Room keeps their wire ids alive). */
+  sleeperIds:string[]=[];
+  /**
+   * D-051: the bodies asleep near the players (sim/ninhos/sono.ts), as enemies with `asleep`: the union of every
+   * client's area of interest (each encoder keeps its own nearest ASLEEP_PER_VIEWER), or, with `only`, that player's
+   * nearest ASLEEP_PER_VIEWER. The nests' hit targets in the same index are left out. Empty outside the ninhos mode.
+   */
+  private sleeperViews(only?:string,record=true):EnemyView[]{
+    const sleepers=this.world.sleepers;
+    if(!sleepers?.size){if(record)this.sleeperIds=[];return [];}
+    const near=new Map<string,EnemyState>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS,scratch:EnemyState[]=[];
+    for(const p of this.players.values()){
+      if(p.spectator||p.eliminated||only!==undefined&&p.id!==only)continue;
+      scratch.length=0;sleepers.query(p.x,p.y,reach,scratch);
+      let list=scratch.filter(e=>!sleepers.isTarget(e.id));
+      if(only!==undefined&&list.length>ASLEEP_PER_VIEWER)
+        list=list.map(e=>({e,d:Math.hypot(e.x-p.x,e.y-p.y)})).sort((a,b)=>a.d-b.d||(a.e.id<b.e.id?-1:1)).slice(0,ASLEEP_PER_VIEWER).map(x=>x.e);
+      for(const e of list)near.set(e.id,e);
+    }
+    const out=[...near.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)
+      .map((e):EnemyView=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,asleep:true}));
+    if(record)this.sleeperIds=out.map(e=>e.id);
     return out;
   }
   /** The laid rail as a structure (the plan's rail id), or undefined while there is none. */
@@ -675,7 +738,8 @@ export class Simulation {
   }
   /** Hash of everything that decides future ticks (world, run systems, pending inputs, the bots' sticks, counter and minds, outcome). */
   stateHash(){return stateHash({world:this.world.state(),systems:this.systems.state(),inputs:[...this.tracks].map(([id,t])=>[id,t.state()]),
-    bots:{sticks:[...this.botInputs].map(([id,b])=>[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
+    // D-051: a bot's held attack (manual combat only) joins its stick; without it the stick hashes as before.
+    bots:{sticks:[...this.botInputs].map(([id,b])=>b.attack?[id,b.x,b.y,!!b.skill,true]:[id,b.x,b.y,!!b.skill]),seq:this.botSeq,minds:this.botState?.()??null},outcome:this.result??null});}
   /** The room bots' minds (RoomBots.state: memories and forge requests), which decide their next sticks (set by the room). */
   botState?:()=>unknown;
   /**
@@ -699,7 +763,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),...this.sleeperViews(playerId,false)],
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -727,7 +791,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),...this.sleeperViews()],
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),

@@ -17,7 +17,7 @@ import {createProgression,type Progression,type ProgressionState} from './progre
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {refreshStats} from '../rules/index.ts';
 import {ITEMS} from './items.ts';
-import {playersSystem,type PlayerInput,type RunPlayer} from './systems/players.ts';
+import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
@@ -26,7 +26,7 @@ import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
-import {CAR_ID,MOTO_ID,Rng,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {CAR_ID,MOTO_ID,Rng,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
@@ -92,6 +92,12 @@ export interface RunSystemsOptions {
    * nest. Default 'rounds' (today's waves) until the D-051 bars pass.
    */
   mode?:'rounds'|'ninhos';
+  /**
+   * D-051: how heroes fight (CombatMode). 'manual': only the equipped weapon fires, while the attack is held, at the
+   * auto aim (weapons/system.ts); no class skill; damagePlayer records SimPlayer.lastHitBy. Default 'auto' (every world):
+   * the automatic weapons and the skills, exactly as before, until the E6 weapons and the balance pass.
+   */
+  combat?:CombatMode;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -203,6 +209,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
+  const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
+  world.recordLastHit=!!manual;
   const objective=cityWorld&&options.objective==='chaveiro'?options.objective:undefined;
   // D-051: the nests replace the waves only for the chaveiro in the city (A5: the wall, the island and the endless keep rounds).
   const nestMode=!!objective&&options.mode==='ninhos';
@@ -358,12 +367,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot)),
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot,manual)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
-    createWeaponSystem({cap:MAX_PROJECTILES}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
     progression.progression,revive,
@@ -389,6 +398,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     objectiveView:()=>chaveiro?.view(world.tick),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{})}),
-    dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;},
+    dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

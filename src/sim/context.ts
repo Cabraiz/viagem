@@ -31,7 +31,8 @@ export interface SimContext {
   /**
    * D-051 (ninhos/sono.ts): the bodies asleep on the map, out of ctx.enemies and the enemyIndex. Absent outside the
    * ninhos mode. Hits look here too (sim/spatial.ts queryHittable, projectiles isAlive): damageEnemy wakes the body
-   * and its band first. Auto-aim and the AI never look here.
+   * and its band first. The manual attack's aim (weapons/system.ts) ranks them like any enemy, so a player can shoot a
+   * sleeper to start the fight; the AI never looks here.
    */
   readonly sleepers?:Sleepers;
   /** Deterministic, monotonic ids: prefix + counter. */

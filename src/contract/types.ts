@@ -12,8 +12,18 @@ export type Point = { x: number; y: number };
 /** 'ilha': the ~24×24 island (default). 'infinito': endless chunked map (D-019), base at the origin. */
 /** 'cidade' = Cidade Nevada, the imported city (D-026/D-034). */
 export type WorldKind='ilha'|'infinito'|'cidade';
-/** Protocol 3 input. `attack` is accepted for compatibility but weapons fire automatically. */
+/**
+ * Protocol 3 input. `attack`: the attack button is held this step (D-051, segment flag bit 1). It only matters with the
+ * manual combat (CombatMode 'manual'): the equipped weapon fires while it is held. With the automatic weapons (the
+ * default) it is ignored, like before. `skill`: the class skill (ignored in manual combat).
+ */
 export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}
+/**
+ * D-051: how heroes fight. 'auto' (the default): every weapon of the build fires on its own and the skill casts.
+ * 'manual' (Wild Rift): only the equipped weapon fires, while PlayerInput.attack is held, at the server's auto aim
+ * (rules/attack-target.ts); no class skill. Off by default until the E6 weapons and the balance pass.
+ */
+export type CombatMode='auto'|'manual';
 
 export const SIM_HZ=20;
 export const ticks=(seconds:number)=>Math.round(seconds*SIM_HZ);
@@ -68,6 +78,14 @@ export interface SimPlayer extends Point {
    * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
    */
   fastUntil?:number; mightUntil?:number; guardUntil?:number;
+  /**
+   * D-051, manual combat only (server-side, never on the wire): the enemy whose hit last landed on this player and the
+   * tick (core damagePlayer), for the auto aim's "who is hitting me" rule. Absent with the automatic weapons, so no
+   * digest of the default game moves.
+   */
+  lastHitBy?:{id:string;tick:number};
+  /** D-051, manual combat only (server-side): the auto aim's current target, kept by its hysteresis (rules/attack-target.ts). */
+  autoTarget?:string;
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;

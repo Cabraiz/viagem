@@ -103,6 +103,12 @@ export class SimWorld implements SimContext {
   playerDamageScale?:(ctx:SimContext)=>number;
   /** D-051 (SimContext.sleepers): set by createRunSystems for a ninhos run, cleared by its dispose; absent otherwise. */
   sleepers?:Sleepers;
+  /**
+   * D-051, manual combat only (createRunSystems sets it for the run it wires): damagePlayer records the enemy behind
+   * each hit in SimPlayer.lastHitBy, for the auto aim. Off (the automatic weapons), players never get the field, so
+   * every state digest stays as before.
+   */
+  recordLastHit=false;
 
   constructor(options:SimWorldOptions){
     this.terrain=options.terrain;
@@ -241,6 +247,9 @@ export class SimWorld implements SimContext {
     const player=this.players.get(playerId);
     if(!player||player.spectator||player.eliminated||player.downed||!(player.hp>0))return;
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
+    // D-051: who is hitting me (an enemy; hazards that outlive their thrower are not anyone to shoot back at), even when
+    // the armor takes the whole hit.
+    if(this.recordLastHit&&source!==undefined&&this.enemies.has(source))player.lastHitBy={id:source,tick:this.tick};
     // D-033 agiota: a player marked "devendo" (SimPlayer extra devendoUntil, D-002) takes DEVENDO.mult × damage, before armor.
     if(isDevendo(player,this.tick))amount*=DEVENDO.mult;
     // D-047 Dona Cida's cocada (SimPlayer.guardUntil), before armor like the agiota's mark.

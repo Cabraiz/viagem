@@ -16,7 +16,7 @@
 /* The title bar across the top. */
 .rh .rh-ofc .rh-offer-head{margin:0 -10px;padding:5px 10px;min-height:0;justify-content:center;gap:6px;
   background:color-mix(in srgb,var(--c-lilas) 55%,var(--c-breu));border-bottom:2px solid var(--c-papel)}
-.rh .rh-ofc .rh-offer-title{flex:0 1 auto;text-align:center;font:400 var(--t-16)/1.1 var(--f-cartaz);letter-spacing:.06em;text-transform:uppercase;color:var(--c-papel)}
+.rh .rh-ofc .rh-offer-title{flex:0 1 auto;text-align:center;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel)}
 .rh .rh-ofc .rh-offer-later{min-height:24px;padding:0 8px}
 .rh .rh-ofc>.rh-window-fall{margin:0}
 /* The cards: one column, each a wide row; two columns on a short screen. */
@@ -32,8 +32,8 @@
 .rh .rh-ofc .rh-card:active{transform:translateY(2px)}
 .rh .rh-ofc .rh-card[data-rarity=nova]{--rar:var(--c-cartolina)}
 .rh .rh-ofc .rh-card[data-rarity=comum]{--rar:var(--c-pedra)}
-.rh .rh-ofc .rh-card[data-rarity=rara]{--rar:#3D8BFF}
-.rh .rh-ofc .rh-card[data-rarity=epica]{--rar:#A66BFF}
+.rh .rh-ofc .rh-card[data-rarity=rara]{--rar:var(--arte-azul)}
+.rh .rh-ofc .rh-card[data-rarity=epica]{--rar:var(--arte-roxo)}
 .rh .rh-ofc .rh-card[data-rarity=lendaria]{--rar:var(--c-amarelo)}
 .rh .rh-ofc .rh-card-icon{grid-area:icon;width:44px;height:44px;border:2px solid var(--rar);border-radius:var(--r-etiqueta);background:var(--c-breu)}
 .rh .rh-ofc .rh-card-icon>.ic{width:36px;height:36px}
@@ -59,7 +59,7 @@
 .rh .rh-ofc .rh-ofc-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;margin:0;padding:0 14px;
   border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);font:700 var(--t-13)/1 var(--f-sistema);color:var(--c-papel);cursor:pointer}
 .rh .rh-ofc .rh-ofc-skip{background:color-mix(in srgb,var(--c-cartolina) 45%,var(--c-breu))}
-.rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,#3D8BFF 45%,var(--c-breu))}
+.rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,var(--arte-azul) 45%,var(--c-breu))}
 .rh .rh-ofc .rh-ofc-btn:disabled{opacity:.55;cursor:default}
 .rh .rh-ofc .rh-ofc-btn-count{font:700 11px/1 var(--f-sistema);opacity:.8}
 .rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}

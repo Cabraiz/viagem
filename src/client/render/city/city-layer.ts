@@ -182,7 +182,7 @@ export class CityLayer {
   private readonly pieceLook:PieceLook={};
   /**
    * The new scenery (asset `decor`, cenario-no-mapa) with a sheet in the plan: by drawing chunk (decorChunk), and the
-   * standing pieces ('footprint' and 'wall') by cell, which hide the procedural piece of their cells once drawn.
+   * covering pieces (DecorSheet.covers) by cell, which hide the procedural piece of their cells and its shadow once drawn.
    */
   private readonly decorOf=new Map<string,DecorEntry[]>();
   private readonly decorAt=new Map<number,DecorEntry>();
@@ -265,7 +265,7 @@ export class CityLayer {
       push(this.decorOf,key,e);
       const c=this.chunksByKey.get(key);
       if(c)c.maxTop=Math.max(c.maxTop,c.minBase+sheet.height);
-      if(sheet.rule!=='prop')for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);
+      if(sheet.covers)for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);
     }
     if(!this.decorAt.size)return;
     for(const lot of new Set(this.lotAt.values())){
@@ -603,6 +603,7 @@ export class CityLayer {
     // A mound (moundOf) casts its own low shadow, not the building's.
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)for(const p of this.index.get(i,j)?.pieces??[]){
       if(this.art&&(p.kind==='building'||p.kind==='rubble')&&this.underFountain(p.x,p.y))continue;
+      if(this.underDecor(p.y*asset.width+p.x))continue;
       casters.push(this.moundOf(p)??p);
     }
     const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);

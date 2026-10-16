@@ -64,6 +64,10 @@ test('lines on their block cells with the links of their neighbours; lots on unw
       assert.equal(kindAt.get(d.r*W+d.c),k,`${d.id} at ${d.c},${d.r}`);
       const links=(same(d.c,d.r-1)?LINK.N:0)|(same(d.c+1,d.r)?LINK.E:0)|(same(d.c,d.r+1)?LINK.S:0)|(same(d.c-1,d.r)?LINK.W:0);
       assert.equal(d.links,links);assert.equal(d.rot,lineShape(links).rot);
+    }else if(d.id.startsWith('pedregulho-')){
+      // Boulders cover the border band, mixed edge cells too (the render boxed them all); never an open cell.
+      assert.equal(kindAt.get(d.r*W+d.c),'edge',`${d.id} at ${d.c},${d.r}`);
+      assert.ok(cellWalk(d.c,d.r)<S*S,`${d.id} at ${d.c},${d.r} not on an open cell`);
     }else if(isPole(d.id)||isObject(d.id)){
       for(const [c,r] of cells(d))assert.equal(cellWalk(c,r),S*S,`${d.id} at ${c},${r} on a walkable cell`);
     }else for(const [c,r] of cells(d))assert.equal(cellWalk(c,r),0,`${d.id} at ${c},${r} on an unwalkable cell`);

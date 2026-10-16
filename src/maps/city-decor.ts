@@ -3,7 +3,8 @@
  * Pure and deterministic (asset + seed + keep-outs); scripts/cenario-cidade.ts writes the result into the asset.
  * The map's quarters are compounds closed by 1-cell lines of wall and cliff, with open ground inside:
  *  - wall cells → a wall/fence piece each, its shape from the wall neighbours (`links`), one family per block, ~20 % broken;
- *  - cliff cells → `penhasco2` pieces the same way; the border band (edge block) → mountains (6×6, 4×4, morro 3×3) and boulders;
+ *  - cliff cells → `penhasco2` pieces the same way; the border band (edge block) → mountains (6×6, 4×4, morro 3×3) where
+ *    they fit whole and a boulder on every edge cell left (the render draws it over the cell instead of the box);
  *  - building blocks → packed lots: one place with life (lugar) per block while any is left, then houses and flats,
  *    fronts to the street when they can;
  *  - more places with life inside the compounds, backed onto a wall or cliff, front to the open ground, never closer than
@@ -44,7 +45,7 @@ export const OBJETOS_2:readonly string[]=['banca-jornal','barraca-feira','cacamb
 export const POSTES:readonly (readonly [string,number])[]=[['poste-concreto-1',3],['poste-concreto-2',3],['poste-concreto-3',3],
   ['poste-aceso-amarelo-1',1],['poste-aceso-amarelo-2',1],['poste-gato-1',1],['poste-gato-2',1],['luminaria-quebrada-pisca-1',.5],['luminaria-quebrada-pisca-2',.5]];
 
-export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2,BOULDER_SHARE=.08;
+export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2;
 /**
  * Pieces the art import refused (E8, importar-cenario-novo 16/10: problems in the art, asked back from the artist):
  * never placed, so no cell turns into an invisible wall waiting for art that will not come. A family whose variants are
@@ -171,7 +172,8 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const id=base==='morro-3x3'?base:variant(base);
     if(id&&rect(c,r,s,s,edge))put(id,c,r,s,s,pick([0,90,180,270] as const));
   }
-  for(let i=0;i<N;i++)if(edge(i)&&!used[i]&&!out[i]&&rnd()<BOULDER_SHARE)put(`pedregulho-${1+Math.floor(rnd()*3)}`,i%W,Math.floor(i/W),1,1,0);
+  // Every edge cell no mountain took (mixed cells too: the render boxes them all), so no bare box shows on the border.
+  for(let i=0;i<N;i++)if(kind[i]==='edge'&&!used[i]&&!out[i])put(`pedregulho-${1+Math.floor(rnd()*3)}`,i%W,Math.floor(i/W),1,1,pick([0,90,180,270] as const));
 
   // 3. Building blocks: lots, a place with life first while any is left.
   const lugares=LUGARES.map(([id,a,b])=>[variant(id),a,b] as const).filter((l):l is readonly [string,number,number]=>!!l[0]);

@@ -27,6 +27,7 @@ function cenarioIndex():ArtIndex{
     piece('poste-concreto-1',[160,560],1-8/560,{wires:{0:[[40,30],[80,28],[120,30]]}}),
     piece('ninho-festa-ativo',[400,360],.9,{footprint:[3,3]}),
     piece('bueiro',[256,256],.5),
+    piece('pedregulho-2',[160,120],1-8/120,{footprint:[1,1]}),
   ])}}});
 }
 const mini=(decor:unknown[]):CityAsset=>parseCityAsset({version:1,name:'t',cell:1.5,width:8,height:6,origin:{x:0,y:0},
@@ -80,6 +81,16 @@ test('the plan loads only the decor ids the map uses; nests and decals stay with
   const keys=plan.sheets.map(s=>s.key).filter(k=>k.startsWith('city:decor:'));
   assert.deepEqual(keys.sort(),Object.values(plan.decor).map(s=>s.key).sort());
   assert.ok(plan.decor['montanha-4x4-1'].height>f.height);
+});
+
+test('border boulders fill their cell and cover the box; walls and footprint pieces cover, other objects do not', ()=>{
+  const plan=buildCityArtPlan(cenarioIndex(),{cell:1.496,decor:['pedregulho-2','poste-concreto-1','muro-pichado-reto-intacto','farmacia-1']});
+  const b=plan.decor['pedregulho-2'];
+  assert.equal(b.rule,'prop');assert.equal(b.covers,true);
+  assert.ok(Math.abs(b.scale-plan.decor['farmacia-1'].scale)<1e-9,'the footprint scale');
+  assert.equal(plan.decor['poste-concreto-1'].covers,false);
+  assert.equal(plan.decor['muro-pichado-reto-intacto'].covers,true);
+  assert.equal(plan.decor['farmacia-1'].covers,true);
 });
 
 test('decorSprite: a footprint piece puts its front corner on the anchor, the frame is the art view', ()=>{

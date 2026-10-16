@@ -51,7 +51,7 @@ test('wiring: one place per factor (hero sheets, enemy body), the hero\'s marks 
   assert.match(layers,/this\.enemyBody=this\.body\*ENEMY_DRAW_SCALE;/);
   assert.match(layers,/size=a\.elite\?ELITE_SCALE:1,body=this\.enemyBody;/,'the enemy sprite, its art, Breu copy, shadow and target ring');
   assert.match(layers,/private barLift\(a:EnemyActor\)\{return [^}]*\*this\.enemyBody;\}/,'the bar rides on the bigger head');
-  assert.match(layers,/drawDeathArt\([^)]*this\.enemyBody,d\.art\)/,'the death plays at the enemy\'s size');
+  assert.match(layers,/drawDeathArt\([^)]*this\.enemyBody,d\.art[,)]/,'the death plays at the enemy\'s size');
   const scene=source('src/client/scene.ts');
   assert.match(scene,/private get heroScale\(\)\{return this\.actorScale\*HERO_DRAW_SCALE;\}/);
   assert.match(scene,/this\.shadow\?\.setScale\(hero\);this\.ring\?\.setScale\(hero\);/,'the hero\'s shadow follows the sprite');

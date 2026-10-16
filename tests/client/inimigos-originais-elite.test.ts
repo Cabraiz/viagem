@@ -6,7 +6,8 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_ART_ID,artLoads,deathAnim,eliteFile,enemyArtKey,enemyFrame,loopAnim,pieceAction} from '../../src/client/art/horde-art.ts';
+import {COSTUME_LAYER_DEPTH,ELITE_LAYER_DEPTH,ENEMY_ART_ID,ROUND_COSTUMES,applyEnemyArt,artLoads,costumeFile,deathAnim,drawDeathArt,eliteFile,enemyArtKey,enemyFrame,loopAnim,pieceAction,playEnemyAction,roundCostume} from '../../src/client/art/horde-art.ts';
+import {CIDADE_MODIFIERS,cidadeModifierLabel} from '../../src/rules/index.ts';
 import {ENEMY_ACTIONS} from '../../src/client/art/horde-actions.ts';
 import {PHASE_ACTING,actAnim} from '../../src/client/render/phase-look.ts';
 import {ENEMY_KINDS,type EnemyKind} from '../../src/client/render/keys.ts';
@@ -92,4 +93,80 @@ test('every action cue a kind can get resolves to a sheet with its elite layer (
     ['agiota','throw'],['chefe','slam'],['chefe','charge'],['chefe','summon']];
   for(const [k,a] of cued)assert.equal(pieceAction(piece(k),a),a,`${k} ${a}`);
   for(const k of ENEMY_KINDS)if(k!=='motoboy')assert.equal(pieceAction(piece(k),'hit'),'hit',`${k} hit`);
+});
+
+// ---------------------------------------------------------------- zueira round costumes (Picolé de Tio, Pombos de Gorro)
+/** The delivery's costume layers: `elite/<id>-<variant>-<anim>` → manifest key `elite/<variant>-<anim>`. */
+function dressed(kind:EnemyKind,variant:string):ArtPiece{
+  const p=piece(kind),{cell,anims}=DELIVERY[kind];
+  for(const a of anims)p.files[costumeFile(variant,a)]=file(ENEMY_ART_ID[kind],`elite-${variant}-${a}`,cell);
+  return p;
+}
+interface Mock {[k:string]:unknown;texture:{key:string};frame:number;visible:boolean;alpha:number;depth:number;scaleX:number}
+function mockScene(loaded:Set<string>){
+  const hooks:(()=>void)[]=[],made:Mock[]=[];
+  const scene={textures:{exists:(k:string)=>loaded.has(k)},add:{image:()=>{const o=mockImage(scene);made.push(o);return o;}},
+    events:{on:(_:string,f:()=>void)=>hooks.push(f),off(){}},hooks,made};
+  return scene;
+}
+function mockImage(scene:unknown):Mock{
+  const m:Mock={texture:{key:'horde:enemy:x'},frame:0,visible:true,alpha:1,x:0,y:0,depth:0,scaleX:1,originX:.5,originY:.92,scene,
+    tintFill:false,tintTopLeft:0,tintTopRight:0,tintBottomLeft:0,tintBottomRight:0};
+  const self=(f:(...a:never[])=>void)=>(...a:never[])=>{f(...a);return m;};
+  Object.assign(m,{
+    setTexture:self(((k:string,f?:number)=>{m.texture={key:k};m.frame=f??0;}) as never),setFrame:self(((f:number)=>{m.frame=f;}) as never),
+    setOrigin:self(()=>{}),setScale:self(((s:number)=>{m.scaleX=s;}) as never),setFlipX:self(()=>{}),setRotation:self(()=>{}),
+    setAlpha:self(((a:number)=>{m.alpha=a;}) as never),setVisible:self(((v:boolean)=>{m.visible=v;}) as never),
+    setPosition:self(()=>{}),setDepth:self(((d:number)=>{m.depth=d;}) as never),once:()=>m,
+  });
+  return m;
+}
+const keysOf=(p:ArtPiece,id:string)=>Object.keys(p.files).map(f=>`art:enemy:${id}:${f}`);
+
+test('the round banner names the costume: Picolé de Tio dresses the tio-pave, Pombos de Gorro the pombos; other rounds none',()=>{
+  const label=(id:string)=>cidadeModifierLabel(CIDADE_MODIFIERS.find(m=>m.id===id) as never);
+  assert.deepEqual(roundCostume(label('uncle-popsicle')),{art:'tio-pave',variant:'picole'});
+  assert.deepEqual(roundCostume(label('beanie-mosquito')),{art:'pombos',variant:'gorro'});
+  assert.equal(roundCostume(label('black-ice')),undefined);assert.equal(roundCostume(undefined),undefined);
+  for(const id of Object.keys(ROUND_COSTUMES))assert.ok(CIDADE_MODIFIERS.some(m=>m.id===id),`${id} is a cidade modifier`);
+  assert.equal(costumeFile('gorro','fly'),'elite/gorro-fly');
+  assert.ok(COSTUME_LAYER_DEPTH>0&&COSTUME_LAYER_DEPTH<ELITE_LAYER_DEPTH,'base < costume < elite badge');
+});
+
+test('a costume never picks the animation: the elite and plain loops stay the same with costume sheets in the piece',()=>{
+  for(const [kind,variant] of [['tio-pave','picole'],['pombos','gorro']] as [EnemyKind,string][]){
+    const plain=piece(kind),dress=dressed(kind,variant);
+    for(const elite of [false,true])for(const moving of [false,true])assert.equal(loopAnim(dress,moving,elite),loopAnim(plain,moving,elite));
+  }
+});
+
+test('applyEnemyArt: an elite tio-pave in Picolé de Tio wears the ice under the badge; outside the round, only the badge',()=>{
+  const p=dressed('tio-pave','picole');
+  setArtIndex(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{'tio-pave':p}}}}));
+  const scene=mockScene(new Set(keysOf(p,'tio-pave'))),image=mockImage(scene) as never as Parameters<typeof applyEnemyArt>[0],m=image as never as Mock;
+  const a:{kind:EnemyKind;elite:boolean;phase:number;costume?:string}={kind:'tio-pave',elite:true,phase:0,costume:'picole'};
+  assert.ok(applyEnemyArt(image,a,true,1,0,0));scene.hooks.forEach(h=>h());
+  const [elite,ice]=scene.made;
+  assert.equal(m.texture.key,'art:enemy:tio-pave:walk');
+  assert.equal(elite.texture.key,'art:enemy:tio-pave:elite/walk');assert.equal(ice.texture.key,'art:enemy:tio-pave:elite/picole-walk');
+  assert.ok(elite.visible&&ice.visible);assert.ok(m.depth<ice.depth&&ice.depth<elite.depth);
+  assert.equal(ice.frame,m.frame,'the costume follows the base frame');
+  // An action (joke) plays its own costume sheet.
+  assert.ok(playEnemyAction(image,'tio-pave','joke',100));applyEnemyArt(image,a,true,1,0,150);
+  assert.equal(ice.texture.key,'art:enemy:tio-pave:elite/picole-joke');
+  // The round is over: the costume hides, the badge stays.
+  a.costume=undefined;applyEnemyArt(image,a,true,1,0,5000);scene.hooks.forEach(h=>h());
+  assert.equal(ice.visible,false);assert.equal(elite.visible,true);
+});
+
+test('drawDeathArt: a gorro pigeon dies with its beanie',()=>{
+  const p=dressed('pombos','gorro');
+  setArtIndex(parseArtIndex({version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{pombos:p}}}}));
+  const scene=mockScene(new Set(keysOf(p,'pombos')));
+  const body=mockImage(scene) as never as Parameters<typeof drawDeathArt>[0],top=mockImage(scene) as never as Parameters<typeof drawDeathArt>[0],hat=mockImage(scene);
+  const costume={image:hat as never as Parameters<typeof drawDeathArt>[0],variant:'gorro'};
+  assert.ok(drawDeathArt(body,top,'pombos',false,0,50,1,'pombos',costume));
+  assert.equal(hat.texture.key,'art:enemy:pombos:elite/gorro-death');assert.equal(hat.visible,true);
+  assert.equal((top as never as Mock).visible,false,'not an elite: no badge');
+  costume.variant=undefined as never;drawDeathArt(body,top,'pombos',false,0,60,1,'pombos',costume);assert.equal(hat.visible,false);
 });

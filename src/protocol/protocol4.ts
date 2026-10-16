@@ -69,9 +69,10 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
  * 20 given by the integration queue (tools/fila.mjs, lote 20261016-191924) to: NEW-20261014-ORQ-ataque-manual-wild-rift-passo1.
+ * 21 given by the integration queue (tools/fila.mjs, lote 20261016-195357) to: NEW-20261014-ORQ-carteira-e-pix.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=20;
+export const PROTOCOL_VERSION=21;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

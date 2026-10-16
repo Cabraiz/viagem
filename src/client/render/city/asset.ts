@@ -5,6 +5,9 @@
  * Grid: `width × height` cells of `cell` world units, row-major from the north-west corner at `origin`.
  * World x grows east, world y grows south (same axes as the island).
  */
+import type {DecorEntry} from './live/rules.ts';
+/** A piece of the new scenery (maps CityDecor, cenario-no-mapa): top-left cell, footprint after rotation, rot. */
+export type CityDecorEntry=DecorEntry;
 
 /** One letter per cell. Unknown letters render as plain snow. */
 export const GROUND_KINDS={
@@ -51,11 +54,14 @@ export interface CityAsset {
   ground:string;
   blocks:CityBlock[];
   props:CityProp[];
+  /** Scenery pieces (cenario-no-mapa), drawn from the `cenario` art group; absent when the map has none. */
+  decor?:DecorEntry[];
   points:Partial<Record<CityPointName,{x:number;y:number}>>;
 }
 
 const BLOCK_KINDS:readonly BlockKind[]=['building','wall','cliff','rubble'];
 const PROP_KINDS:readonly PropKind[]=['rubble','car','lamp','pine','crate','barrel','debris','bench'];
+const DECOR_ROTS:readonly number[]=[0,90,180,270];
 const finite=(...n:unknown[])=>n.every(v=>typeof v==='number'&&Number.isFinite(v));
 
 /**
@@ -87,11 +93,19 @@ export function parseCityAsset(raw:unknown):CityAsset{
     if(p.x<a.origin.x||p.y<a.origin.y||p.x>=maxX||p.y>=maxY||!(p.r>0))continue;
     props.push({id:p.id,kind:p.kind,x:p.x,y:p.y,r:p.r});
   }
+  const decor:DecorEntry[]=[];
+  const cellInt=(v:unknown,min:number,max:number)=>Number.isInteger(v)&&(v as number)>=min&&(v as number)<=max;
+  for(const q of Array.isArray(a.decor)?a.decor:[]){
+    if(!q||typeof q.id!=='string'||!DECOR_ROTS.includes(q.rot)||!cellInt(q.c,0,a.width-1)||!cellInt(q.r,0,a.height-1))continue;
+    if(!cellInt(q.w,1,a.width-q.c)||!cellInt(q.h,1,a.height-q.r))continue;
+    decor.push({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(cellInt(q.links,0,15)?{links:q.links}:{})});
+  }
   const ids=new Set<string>();
   for(const item of [...blocks,...props]){if(ids.has(item.id))throw new Error(`city asset: duplicate id ${item.id}`);ids.add(item.id);}
   const corners=Array.isArray(a.corners)&&a.corners.length===(a.width+1)*(a.height+1)&&a.corners.every(h=>finite(h))?a.corners:undefined;
   return {version:1,name:String(a.name??'cidade'),cell:a.cell,width:a.width,height:a.height,origin:{x:a.origin.x,y:a.origin.y},
-    heights:a.heights,...(corners?{corners}:{}),ground:a.ground,blocks,props,points:{...(a.points??{})}};
+    heights:a.heights,...(corners?{corners}:{}),ground:a.ground,blocks,props,
+    ...(decor.length?{decor}:{}),points:{...(a.points??{})}};
 }
 
 /** Ground kind of a cell (snow outside the grid or for unknown letters). */

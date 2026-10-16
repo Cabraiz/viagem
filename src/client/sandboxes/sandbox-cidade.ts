@@ -68,7 +68,7 @@
 import Phaser from 'phaser';
 import {ZOOM_DEFAULT,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
-import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
+import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
@@ -211,6 +211,14 @@ class CitySandbox extends Phaser.Scene {
     if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
+    // The new scenery (cenario-no-mapa): its sheets are known once the asset is, then the chunks redraw with them.
+    if(this.asset.decor?.length){
+      this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),decor:this.asset.decor.map(d=>d.id)});
+      if(queueCityArt(this,this.art)+queueLiveArt(this,liveSheets(artIndex()))){
+        this.load.once(Phaser.Loader.Events.COMPLETE,()=>this.layer?.refresh());
+        this.load.start();
+      }
+    }
     this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.

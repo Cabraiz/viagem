@@ -14,6 +14,9 @@
  *   by prop id).
  * - `base`: `chafariz-congelado` (footprint 3×3) stands on the fountain's water by the praça. The other base pieces
  *   (camp wall, nodes, forge, towers, loot box) belong to the run's structures, not to the city asset.
+ * - `cenario` (E8, importar-cenario-novo): the new scenery's base sheets (`files.sheet`, 4 views), for the decor pieces the
+ *   city asset lists (CityArtOptions.decor; decorRule says how each one stands and scales). Nests and ground decals of
+ *   that group are the live layer's (live/art.ts), not loaded here.
  * - `chao`: kept OFF (GROUND_FROM_MANIFEST, D-038: the delivered ground is too smooth); when switched on the first
  *   `cidade-nevada/*` tile of each meta.ground kind loads as `city:ground:<kind>`, which the layer already paints.
  *
@@ -90,7 +93,36 @@ export interface CityArtPlan {
   fountain?:CitySheet;
   /** Ground texture per kind (only with GROUND_FROM_MANIFEST). */
   ground:Partial<Record<GroundKind,CitySheet>>;
+  /** Base sheet of each decor id the map uses (`cenario` group), by id. */
+  decor:Record<string,DecorSheet>;
 }
+
+/** The new scenery's art group (E8: public/art/city/decor). */
+export const DECOR_GROUP='cenario';
+/**
+ * How a decor piece stands (the adapter's rules, scripts/art-v2/adaptar/decor.mjs ruleOf):
+ * - 'footprint' (buildings with storeys, places, mountains, cliffs, ramps): the footprint's front corner on the anchor,
+ *   one art cell (ART_CELL) per city cell, like the building lots;
+ * - 'wall' (the 6 wall and fence families): centred on its cell, the lowest row on the anchor;
+ * - 'prop' (objects, poles): feet on the anchor at the footprint's centre.
+ */
+export type DecorRule='footprint'|'wall'|'prop';
+export interface DecorSheet extends CitySheet {rule:DecorRule}
+export const DECOR_WALL_FAMILIES=['alambrado','cerca-madeira','grade','muro-condominio','muro-pichado','tapume'] as const;
+const DECOR_FOOTPRINT=/^(ninho-|montanha-|morro-|penhasco|rampa$|ponte$|cachoeira-)/;
+export function decorRule(id:string,meta?:Record<string,unknown>):DecorRule{
+  if(DECOR_WALL_FAMILIES.some(f=>id.startsWith(`${f}-`)))return 'wall';
+  return Number.isInteger(meta?.storeys)||DECOR_FOOTPRINT.test(id)?'footprint':'prop';
+}
+/**
+ * Walls and objects are drawn at their delivered height (hero ≈ 2.3 u, like the props: scripts/art-v2/adaptar
+ * WORLD_HEIGHT and DECOR_HEIGHT) times the props' city factor (PROP_WORLD_SCALE: the city hero is ≈ 1.24 u).
+ * To check on the prints of the city with the delivery.
+ */
+export const DECOR_PROP_SCALE=.56;
+const NEST_ID=/^ninho-[a-z]+-(ativo|dormindo|destruido)$/;
+/** Ground decals (live/rules.ts isDecal; repeated here so the plan does not import the live layer). */
+const DECAL_ID=/^(bueiro|faixa-pedestre|mancha-oleo|pegadas-\d+|poca-congelada-\d+|rachadura-\d+)$/;
 
 export interface CityArtOptions {height?:CityArtHeight;ground?:boolean;
   /** false = no art at all (`?arte=0`). */
@@ -101,7 +133,9 @@ export interface CityArtOptions {height?:CityArtHeight;ground?:boolean;
    * city cell: on the 1.7× Cidade Nevada (1.496 u, NEW-20261013-ORQ-cidade-escala-1-7) the buildings grow 1.7×. Props
    * keep their absolute size (PROP_WORLD_SCALE), whatever the cell.
    */
-  cell?:number}
+  cell?:number;
+  /** Decor ids the map uses (the asset's `decor`): only their sheets load. None: no decor sheet. */
+  decor?:Iterable<string>}
 
 /** `?arte=0` (no art) and `?altura=a|b` from a query string. */
 export function cityArtOptions(search:string):CityArtOptions{
@@ -137,7 +171,7 @@ export function sheetHeight(frameHeight:number,originY:number,footprint:[number,
  */
 export const ART_CELL=0.88;
 
-const empty=(height:CityArtHeight):CityArtPlan=>({height,unit:LOT_UNIT[height],sheets:[],buildings:{intact:[],ruin:[],rubble:[]},props:{},ground:{}});
+const empty=(height:CityArtHeight):CityArtPlan=>({height,unit:LOT_UNIT[height],sheets:[],buildings:{intact:[],ruin:[],rubble:[]},props:{},ground:{},decor:{}});
 
 /** Builds the plan from an art index. Deterministic: pieces in id order. */
 export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityArtPlan{
@@ -186,6 +220,21 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
     if(!kind||!id.startsWith(GROUND_MAP)||plan.ground[kind]||!f?.file||p.meta?.mask)continue;
     const s:CitySheet={key:`city:ground:${kind}`,url:groupFileUrl(chao!,f.file),frameWidth:f.cell[0],frameHeight:f.cell[1],originY:0,height:0,scale:1};
     plan.ground[kind]=s;plan.sheets.push(s);
+  }
+  const cenario=index.groups[DECOR_GROUP];
+  if(cenario)for(const id of [...new Set(options.decor??[])].sort()){
+    const p=cenario.pieces[id],f=p&&viewSheet(p);
+    if(!p||!f||NEST_ID.test(id)||DECAL_ID.test(id))continue;
+    const rule=decorRule(id,p.meta),key=`city:decor:${id}`,url=groupFileUrl(cenario,f.file!);
+    let s:DecorSheet;
+    if(rule==='footprint'){
+      const fp=footprintOf(p)??[1,1];
+      s={...footprintSheet(cenario,key,p,f,fp),rule};
+    }else{
+      const originY=originYOf(f,rule==='wall'?16:8),scale=small*DECOR_PROP_SCALE;
+      s={key,url,frameWidth:f.cell[0],frameHeight:f.cell[1],originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale,rule};
+    }
+    plan.decor[id]=s;plan.sheets.push(s);
   }
   return plan;
 }

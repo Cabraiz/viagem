@@ -40,6 +40,8 @@ interface WeaponOptions {
   catalog?:{get(id:string):WeaponDef|undefined};
   /** D-051 manual combat: whether the player holds the attack on this tick (players system ManualCombat). Absent: automatic weapons. */
   manual?:{attacking(playerId:string):boolean};
+  /** D-052: hands busy (moving the chaveiro's car): the player does not fire this tick. */
+  busy?(playerId:string):boolean;
 }
 
 type Dir={x:number;y:number};
@@ -306,6 +308,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
         if(!canAct(player))continue;
         // D-051 manual combat: only the equipped weapon, only while the attack is held.
         if(manual&&!manual.attacking(player.id))continue;
+        if(opts.busy?.(player.id))continue;
         const equipped=manual?equippedWeapon(player.build,catalog):undefined;
         for(const owned of player.build.weapons){
           if(manual&&owned!==equipped)continue;

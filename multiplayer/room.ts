@@ -9,7 +9,7 @@ import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '..
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -659,6 +659,7 @@ export class Room {
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
+    else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
@@ -993,6 +994,18 @@ export class Room {
     // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
     const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
+  }
+  /**
+   * D-052 the car's rope: {t:'puxar',round,req,on}. Malformed taps are dropped here; outside combat or for another round
+   * it is 'fase', during the D-050 level-up pause 'pausa'; the sim says the rest ('longe', 'ocupado', 'fase', or
+   * 'duplicate' for a resent req). The puller hears {t:'puxou',req,ok,reason?}; everyone sees the rope in the next frame.
+   */
+  private puxar(c:Connection,m:any){
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.on!=='boolean')return;
+    const state=this.run.snapshot();
+    const result:PullResult=state.phase!=='combat'||m.round!==state.round?{ok:false,reason:'fase'}
+      :this.levelup.paused?{ok:false,reason:'pausa'}:this.sim.pullCar(c.playerId!,m.on,`r:${m.req}`);
+    this.sendJson(c,{t:'puxou',req:m.req,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
   private pixAt=new Map<string,{at:number;req:number}>();

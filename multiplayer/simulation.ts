@@ -14,7 +14,7 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
@@ -288,6 +288,7 @@ export class Simulation {
         return step;
       },
       autopilot:id=>this.autopilot.has(id),
+      bot:id=>this.bots.has(id),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
@@ -612,6 +613,16 @@ export class Simulation {
     const p=this.players.get(id),chaveiro=this.systems.chaveiro;
     if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'phase'};
     return chaveiro.buy(this.world,id,item,requestId);
+  }
+  /**
+   * D-052 the car's rope ({t:'puxar'}): hook (`on`) or drop it for `id`, validated by the sim (standing, near the car,
+   * nobody else on it). `requestId` makes a resent tap apply once. Refused once the run is decided, without the
+   * objective, or for an offline or spectating player ('fase').
+   */
+  pullCar(id:string,on:boolean,requestId?:string):PullResult{
+    const p=this.players.get(id),chaveiro=this.systems.chaveiro;
+    if(this.result||!p?.online||p.spectator||!chaveiro)return {ok:false,reason:'fase'};
+    return chaveiro.pull(this.world,id,on,requestId);
   }
   /** D-047: the objective as the HUD sees it (undefined without one). */
   objectiveView():ObjectiveView|undefined{return this.systems.objectiveView();}

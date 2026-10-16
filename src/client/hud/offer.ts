@@ -15,7 +15,8 @@ import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
-import {fallLine,offerDeadlineFraction,offerMode,offerTitle,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
+import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerRarity,offerValue} from './offer-card.ts';
+import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -140,10 +141,14 @@ export interface OfferPanelOptions {
   onChipTap?():void;
   /** This phone's player: the window's caído ficha never names you. */
   localId?:string;
+  /** D-052 "Pular" / "Rolar de novo" on the shown offer (absent: the buttons stay off). */
+  onSkip?(offerId:string):void;
+  onReroll?(offerId:string):void;
 }
 
 export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLButtonElement}{
-  const root=el('section','rh-offer');root.hidden=true;
+  // D-052: the centred window "Ofertas de melhoria" (offer-centro.css) on every screen; `.rh-offer` stays for the zones.
+  const root=el('section','rh-offer rh-ofc');root.hidden=true;
   root.setAttribute('role','region');root.setAttribute('aria-label','Escolha de melhoria');root.lang='pt-BR';
   // BUG-20261013-ORQ-oferta-e-dicas-menores: a compact window. The clock is a thin bar along its top edge (no row of
   // its own); the header is one row: title, "+N na fila", the "automático" clock icon, the seconds and a small "Depois".
@@ -166,6 +171,18 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   const cards=el('div','rh-offer-cards',root);
   const foot=el('footer','rh-offer-foot',root);
   const takeAll=el('button','rh-offer-all',foot);takeAll.type='button';takeAll.textContent=TAKE_ALL_LABEL;takeAll.hidden=true;
+  // D-052 foot: "Esperando os outros jogadores…" while the pause waits for someone else, then Pular and Rolar de novo
+  // with this player's counters (RunPause.skips / rerolls; off at 0 without them, e.g. an older room).
+  const wait=el('p','rh-ofc-wait',root);wait.textContent=WAIT_LINE;wait.hidden=true;wait.setAttribute('role','status');
+  const actions=el('div','rh-ofc-actions',root);
+  const action=(cls:string,label:string)=>{
+    const b=el('button',`rh-ofc-btn ${cls}`,actions);b.type='button';b.disabled=true;
+    el('span','rh-ofc-btn-label',b).textContent=label;el('small','rh-ofc-btn-count',b).textContent='0';
+    b.setAttribute('aria-label',`${label}: 0 restantes`);return b;
+  };
+  const skipBtn=action('rh-ofc-skip',SKIP_LABEL),rerollBtn=action('rh-ofc-reroll',REROLL_LABEL);
+  // "Levar os indicados" joins the buttons' row (its own line on a narrow phone): the window stays short.
+  actions.prepend(takeAll);
 
   const chip=el('button','rh-offer-chip');chip.type='button';chip.hidden=true;
   chip.setAttribute('aria-expanded','false');
@@ -180,12 +197,17 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   let stamp:{offer:OfferView;until:number}|undefined;
   let collapsed=false,takingAll=false,paused=false,lastPaused=false,lastMode:OfferMode|undefined,last:RunView|undefined;
   let lastSeconds=-1,lastPending=-1,lastQueue=-1,lastUrgent=false;
+  let waitingIds:readonly string[]=[];
+  let counts:{skips?:Record<string,number>;rerolls?:Record<string,number>}|undefined;
+  /** A skip or reroll sent and not answered yet: the buttons wait for the offer to change (or a retry window). */
+  let acting:{id:string;at:number}|undefined;
+  let renderedAt=Number.NEGATIVE_INFINITY;
 
   const render=(offer:OfferView)=>{
     root.dataset.source=offer.source;
     const allNew=isAllNew(offer);const titleNew=allNew&&offer.source==='level';
     root.classList.toggle('rh-offer-all-new',titleNew);
-    title.textContent=titleNew?'Tudo novo!':offerTitle(offer).title;
+    title.textContent=OFFER_WINDOW_TITLE;
     joke.textContent=offerJoke(offer.id,offer.source);
     root.dataset.count=cards.dataset.count=String(offer.choices.length);
     root.classList.remove('rh-offer-stamping');
@@ -194,8 +216,15 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
       card.classList.toggle('rh-card-default',flags.isDefault);
       el('span','rh-card-icon',card).innerHTML=sticker(item.icon);
+      // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
+      const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
+      el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];
+      el('b','rh-card-level',card).textContent=levelLabel(choice.level);
       const body=el('span','rh-card-body',card);
       el('strong','rh-card-name',body).textContent=item.name;
+      const value=offerValue(choice.itemId,choice.level),line=el('span','rh-card-value',body);
+      if(value&&choice.level>1){line.append(`${value.label}: ${value.from} > `);el('b','rh-card-value-new',line).textContent=value.to;}
+      else line.textContent=item.blurb;
       el('span','rh-card-blurb',body).textContent=item.blurb;
       el('em','rh-card-joke',body).textContent=item.joke;
       // "Novo!" lives in the price slot, like "Nv N" (the price of a launch); never floating over the icon.
@@ -209,7 +238,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       card.setAttribute('aria-label',`${item.name}, ${price.label}. ${item.blurb}${flags.isDefault?' Vai no automático se acabar o tempo.':''}`);
       return card;
     }));
-    guard.rendered(offer.id,now());
+    guard.rendered(offer.id,now());renderedAt=now();
     lastSeconds=-1;
   };
 
@@ -270,9 +299,31 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
   /** One stamp-like beat on the chip when it appears or its number goes up (no loop: D-020). */
   const beat=()=>{chip.classList.remove('rh-offer-chip-beat');void chip.offsetWidth;chip.classList.add('rh-offer-chip-beat');};
 
-  function update(view:RunView,ctx?:HudContext){
+  /** The buttons' counters and whether they can act now (an offer shown, nothing in flight, one left). */
+  const paintActions=()=>{
+    const local=options.localId??'',id=root.hidden||root.classList.contains('rh-ofc-only-wait')?undefined:shown?.id;
+    if(acting&&(acting.id!==id||now()-acting.at>OFFER_RETRY_TICKS*1000/SIM_HZ))acting=undefined;
+    const paint=(b:HTMLButtonElement,left:number|undefined,handler:unknown,label:string)=>{
+      const n=left??0,text=String(n),count=b.querySelector('.rh-ofc-btn-count')!;
+      if(count.textContent!==text){count.textContent=text;b.setAttribute('aria-label',`${label}: ${n} ${n===1?'restante':'restantes'}`);}
+      const off=!handler||!id||!!pending||!!acting||!!stamp||left===undefined||left<=0;
+      if(b.disabled!==off)b.disabled=off;
+    };
+    paint(skipBtn,counts?.skips?.[local],options.onSkip,SKIP_LABEL);
+    paint(rerollBtn,counts?.rerolls?.[local],options.onReroll,REROLL_LABEL);
+  };
+  const act=(b:HTMLButtonElement,send:((offerId:string)=>void)|undefined)=>b.addEventListener('click',()=>{
+    // The same guard as the cards: a finger that opened or re-rolled the window cannot fire blind.
+    if(b.disabled||!shown||!send||now()-renderedAt<OFFER_TAP_GUARD_MS)return;
+    acting={id:shown.id,at:now()};send(shown.id);paintActions();
+    setTimeout(()=>{if(last)update(last);},OFFER_RETRY_TICKS*1000/SIM_HZ+20);
+  });
+  act(skipBtn,options.onSkip);act(rerollBtn,options.onReroll);
+
+  function update(view:RunView,ctx?:HudContext){updateView(view,ctx);paintActions();}
+  function updateView(view:RunView,ctx?:HudContext){
     last=view;
-    if(ctx)paused=!!ctx.pause;
+    if(ctx){paused=!!ctx.pause;waitingIds=ctx.pause?.waiting??[];counts=ctx.pause;}
     const offers=view.offers;
     const ids=new Set(offers.map(offer=>offer.id));
     const startTick=trackShownAt(shownAt,offers,view.tick);
@@ -308,6 +359,13 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     const offer=stamp?.offer??offers[0];
     const visible=!!stamp||(!!offer&&offer.choices.length>0&&state.panel);
     chip.setAttribute('aria-expanded',String(visible));
+    // D-052: in a pause the window waits with the team: someone else still picks ("Esperando os outros jogadores…"),
+    // and once this phone picked it stays as just that line and the buttons until the room resumes.
+    const local=options.localId??'',othersWait=paused&&waitingIds.some(id=>id!==local);
+    wait.hidden=!othersWait;
+    const onlyWait=othersWait&&!waitingIds.includes(local)&&(!visible||!offer);
+    root.classList.toggle('rh-ofc-only-wait',onlyWait);
+    if(onlyWait){if(!offer)shown=undefined;cards.replaceChildren();title.textContent=OFFER_WINDOW_TITLE;root.dataset.count='0';root.hidden=false;return;}
     if(!visible||!offer){if(!offer)shown=undefined;root.hidden=true;return;}
     root.hidden=false;
     if(offer.id!==shown?.id){shown=offer;render(offer);markPending();}

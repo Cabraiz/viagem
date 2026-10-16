@@ -20,20 +20,25 @@
  *   debt; computed once and kept in ChaveiroState.vaquinha). The boss is called once when the ETA drops below BOSS_ETA_SECONDS.
  * - The ETA waits for the later of the alarm and a fall (they run out together), and counts a dead moto ahead as the
  *   push (PUSH_SECONDS) with PUSH_PLAYERS standing players, else as its by-itself time (MORTA_ALONE_SECONDS).
+ * - D-052 (sim-carro, car.ts): the car moves (pushed, pulled by the rope) and the moto follows it: when the car is more
+ *   than REPLAN_DRIFT u from where his route ends, at most once every REPLAN_GAP_SECONDS, the route is rebuilt from where
+ *   he is to the car, the stops ahead keep their share of what is left of it (the one he is at stays under him) and he
+ *   keeps his speed. Nobody moves the car while he opens it.
  * Map-relative (a scaled city keeps the timings): the route, the stops' places and gaps, the moto's speed, the bumps'
  * span and the boss's spawn are fractions of the route length; radii around bodies (push, Cida, lure, the delivery's
  * clean check, the car) stay in u.
  * Everything in ChaveiroState is JSON-safe (systems.state(), checkpoints, stateHash); the route is rebuilt.
  */
 import type {FlowGrid,Point} from '../../maps/index.ts';
-import {CAR_ID,CAR_PARTS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
-  type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
+import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
+  type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type PullResult,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {payFrom,vaquinha,walletOf} from '../wallet.ts';
 import {SUGAR} from '../enemies/catalog.ts';
-import {buildRoute,pointAt,type Route} from './route.ts';
+import {buildRoute,pointAt,routeCrosses,shutGrid,type Route} from './route.ts';
+import {carBusy,moverCap,pullCar,stepCar} from './car.ts';
 
 // ---------- Numbers (proposal §2; E6 calibrates) ----------
 /** Riding time of the whole route without stops: speed = route length / this (time-based, not heroSpeed). */
@@ -47,7 +52,9 @@ export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:2});
 export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
 /** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
 export const CAR_PART_AT:readonly number[]=Object.freeze([.25,.5,.75,.9]);
-export const CAR_RADIUS=1,MOTO_RADIUS=.5;
+/** The car's body (contract, D-052: also what it collides with as it moves). */
+export {CAR_RADIUS};
+export const MOTO_RADIUS=.5;
 /** The moto stops this far (u) before the car's centre. */
 export const CAR_STOP=CAR_RADIUS+MOTO_RADIUS+.3;
 export const MORTA_AT:readonly number[]=Object.freeze([.25,.55,.8]);
@@ -72,6 +79,8 @@ export const BOSS_ETA_SECONDS=60;
 export const BOSS_SPAWN_BACK=.3;
 /** Stops (and a bump's span) keep at least this fraction of the route from each other, when the route allows. */
 export const STOP_GAP=.06;
+/** D-052: the moto replans when the car is this far (u) from where his route ends, at most once every REPLAN_GAP_SECONDS. */
+export const REPLAN_DRIFT=3,REPLAN_GAP_SECONDS=2;
 /** Span (u) of a speed bump on a route of `length` u. */
 export const lombadaLength=(length:number)=>length*LOMBADA_PACE*LOMBADA_SECONDS/MOTO_RIDE_SECONDS;
 
@@ -81,7 +90,8 @@ type Task='anda'|'lombada'|'entrega'|'morta'|'abrindo';
 export interface ChaveiroStop {kind:ObjectiveStopKind;s:number}
 /** JSON-safe objective state (RunSystemsState.chaveiro). */
 export interface ChaveiroState {
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number};
+  /** movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step. */
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -89,7 +99,14 @@ export interface ChaveiroState {
    * the first tick another fall may happen.
    */
   moto:{s:number;mode:MotoMode;task:Task;left:number;stop:number;push:number;tomboUntil:number;tomboReady:number};
-  route:{from:Entrance};
+  /**
+   * from: the entrance drawn. D-052, once the car moved or a muro shut the way: via, the last replan (from where the moto
+   * was to where the car was, around the muros standing then; the route is rebuilt from it), at its tick, and `stops`
+   * then holds the stops left on it (else they come from the plan). checked: the standing muros' ids (joined) the route
+   * was last checked against, absent while there are none.
+   */
+  route:{from:Entrance;via?:{from:Point;to:Point;muros?:Point[]};at?:number;checked?:string};
+  stops?:ChaveiroStop[];
   /** The bill (R$), paid at the end from the seated players' wallets (the vaquinha, ChaveiroOptions.wallet). */
   budget:number;
   cida:{stock:number[];nextSaleTick:number};
@@ -123,6 +140,19 @@ export interface ChaveiroOptions {
   runEnded?():boolean;
   /** Calls the boss once, when the ETA drops below BOSS_ETA_SECONDS, at this point of the route. */
   spawnBoss?(ctx:SimContext,at:Point):void;
+  /** D-052: a player's stick on this tick (who pushes the car); absent, nobody pushes. */
+  input?(playerId:string):{x:number;y:number}|undefined;
+  /** D-052: standing structures the car may not cross. */
+  blocks?():readonly {x:number;y:number;radius:number}[];
+  /** D-052: living nests (D-051) the car keeps CAR_NEST_KEEP_OUT from. */
+  nests?():readonly Point[];
+  /** D-052: a room bot or an autopiloted player (moves the car only along with a person). */
+  helper?(playerId:string):boolean;
+  /**
+   * D-052 free build: the standing muros (id and blocker centre) and their blocker radius. A muro built across the moto's
+   * way makes him replan around it (the tranca rule keeps a way from him to the car). Absent: he rides through them.
+   */
+  muros?:{radius:number;standing():readonly {id:string;x:number;y:number}[]};
 }
 
 export interface ChaveiroSystem {
@@ -137,6 +167,12 @@ export interface ChaveiroSystem {
   hitCar(ctx:SimContext,enemy:EnemyState):void;
   /** A team purchase from Dona Cida (room command). */
   buy(ctx:SimContext,playerId:string,item:string,requestId?:string):CidaBuyResult;
+  /** D-052 {t:'puxar'} past the room's checks: hook (`on`) or drop the car's rope. A resent `requestId` is 'duplicate'. */
+  pull(ctx:SimContext,playerId:string,on:boolean,requestId?:string):PullResult;
+  /** D-052: whether `playerId` moves the car or holds its rope (no attack then). */
+  busy(playerId:string):boolean;
+  /** D-052: the step (u per tick) `playerId` may walk while moving the car; undefined when free. */
+  moverCap(playerId:string):number|undefined;
   /** Seconds until the car is open at the planned stops. */
   eta(tick:number):number;
   view(tick:number):ObjectiveView;
@@ -190,13 +226,21 @@ export function createChaveiroState(car:Point,from:Entrance):ChaveiroState{
 /** `restore`: a checkpointed ChaveiroState (deep-copied by the caller); the route comes back from the seed and its `from`. */
 export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):ChaveiroSystem{
   const plan=planChaveiro(options.seed,options.grid,options.entrances,options.car,restore?.route.from);
-  const {route,stops}=plan,L=route.length;
   const state=restore??createChaveiroState(options.car,plan.from);
-  const speed=L/(MOTO_RIDE_SECONDS*SIM_HZ);
-  const bumpSpeed=speed*LOMBADA_PACE,bump=lombadaLength(L);
+  // The moto's pace and a bump's span come from the planned route; a replan (D-052) changes the way, not the pace.
+  const speed=plan.route.length/(MOTO_RIDE_SECONDS*SIM_HZ);
+  const bumpSpeed=speed*LOMBADA_PACE,bump=lombadaLength(plan.route.length);
+  let route=plan.route,stops=plan.stops;
+  // The moto's body keeps off a muro's blocker disc: the cells within both radii are shut to him.
+  const muroReach=(options.muros?.radius??0)+MOTO_RADIUS;
+  const gridFor=(muros:readonly Point[]|undefined,ends:readonly Point[])=>muros?.length?shutGrid(options.grid,muros,muroReach,ends):options.grid;
+  const via=state.route.via;
+  if(via){route=buildRoute(gridFor(via.muros,[via.from,via.to]),via.from,via.to,CAR_STOP);stops=state.stops??stops;}
+  let L=route.length;
   const pos:Point={x:0,y:0},at=(s:number)=>pointAt(route,s,pos);
   const near:EnemyState[]=[];
   const moto=state.moto,car=state.car;
+  const carWorld={input:options.input??(()=>undefined),blocks:options.blocks,nests:options.nests,helper:options.helper};
 
   const alarmed=(tick:number)=>tick<car.alarmUntil&&moto.task!=='morta';
   const fallen=(tick:number)=>tick<moto.tomboUntil;
@@ -293,6 +337,37 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       case 'abrindo':if(--moto.left<=0)end(ctx,'victory');return;
     }
   }
+  /** D-052: the muros' ids the route was checked against (absent with none). */
+  function seen(key:string){if(key)state.route.checked=key;else delete state.route.checked;}
+  /**
+   * D-052: the car went more than REPLAN_DRIFT u from where the route ends, or a muro built since the last check stands
+   * across the way ahead: the moto replans from where he is, around the standing muros.
+   */
+  function replan(ctx:SimContext){
+    const to=state.route.via?.to??options.car;
+    if(moto.task==='abrindo')return;
+    const standing=options.muros?.standing()??[],key=standing.map(m=>m.id).join();
+    let shut=false;
+    if(key!==(state.route.checked??'')){
+      shut=routeCrosses(route,moto.s,standing,muroReach);
+      if(!shut)seen(key);
+    }
+    if(!shut&&Math.hypot(car.x-to.x,car.y-to.y)<=REPLAN_DRIFT)return;
+    if(state.route.at!==undefined&&ctx.tick-state.route.at<ticks(REPLAN_GAP_SECONDS))return;
+    const from={...at(moto.s)},goal={x:car.x,y:car.y},muros=standing.map(m=>({x:m.x,y:m.y}));
+    const next=buildRoute(gridFor(muros,[from,goal]),from,goal,CAR_STOP);
+    seen(key);
+    const scale=next.length/Math.max(1e-9,L-moto.s),kept:ChaveiroStop[]=[];
+    // The stop he is at stays under him (a bump being crawled keeps its span behind him); the ones ahead keep their share.
+    for(let i=moto.stop;i<stops.length;i++)kept.push({kind:stops[i].kind,s:i===moto.stop&&moto.task!=='anda'?stops[i].s-moto.s:(stops[i].s-moto.s)*scale});
+    route=next;L=next.length;stops=state.stops=kept;moto.stop=0;moto.s=0;
+    state.route.via={from,to:goal,...(muros.length?{muros}:{})};state.route.at=ctx.tick;
+  }
+  /** `playerId:requestId` of a command applied (a resent one is 'duplicate'), the last CIDA_HANDLED_LIMIT. */
+  function remember(key:string|undefined){
+    if(key===undefined)return;
+    state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);
+  }
   function tombo(ctx:SimContext){
     if(!riding()||ctx.tick<moto.tomboReady)return;
     const p=at(moto.s);
@@ -315,12 +390,16 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   }
 
   const system:ChaveiroSystem={
-    state,route,stops,eta,
+    state,eta,
+    get route(){return route;},
+    get stops(){return stops;},
     moto:()=>({...at(moto.s)}),
     step(ctx){
       if(state.ended)return;
       countCrew(ctx);
       state.startTick??=ctx.tick;
+      stepCar(ctx,car,carWorld,moto.task==='abrindo');
+      replan(ctx);
       const before=moto.mode;
       if(!alarmed(ctx.tick)){
         if(!fallen(ctx.tick))tombo(ctx);
@@ -369,13 +448,23 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.cida.stock[index]<=0)return {ok:false,reason:'stock'};
       if(!payFrom(player,item.price))return {ok:false,reason:'grana'};
       state.cida.stock[index]--;
-      if(key!==undefined){state.handled.push(key);if(state.handled.length>CIDA_HANDLED_LIMIT)state.handled.splice(0,state.handled.length-CIDA_HANDLED_LIMIT);}
+      remember(key);
       const field=item.effect==='speed'?'fastUntil':item.effect==='damage'?'mightUntil':'guardUntil';
       const p2=player as SimPlayer;
       p2[field]=Math.max(p2[field]??0,ctx.tick+ticks(item.seconds));
       ctx.emit({type:'buy',player:playerId,item:item.id as CidaItemId});
       return {ok:true,item:item.id,grana:walletOf(player)};
     },
+    pull(ctx,playerId,on,requestId){
+      const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
+      if(key!==undefined&&state.handled.includes(key))return {ok:false,reason:'duplicate'};
+      if(state.ended)return {ok:false,reason:'fase'};
+      const result=pullCar(car,ctx.players.get(playerId),on);
+      if(result.ok)remember(key);
+      return result;
+    },
+    busy:id=>!state.ended&&carBusy(car,id),
+    moverCap:id=>state.ended?undefined:moverCap(car,id),
     view(tick){
       const p=at(moto.s);
       let delivery:ObjectiveView['delivery'];
@@ -398,7 +487,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
         etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.seated().reduce((n,p)=>n+walletOf(p),0),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
-        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts},
+        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{})},
         ...(state.ended?{ended:state.ended}:{}),
       };
     },

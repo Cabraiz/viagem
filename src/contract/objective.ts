@@ -69,11 +69,13 @@ export interface ObjectiveView {
 /**
  * D-052, the movable car (card NEW-20261016-ORQ-carro-e-fortificacao-livre, approved proposal): its speed (u/s) by the
  * number of players moving it (index; 3 or more is the cap), how close a hero pushes it (to its body) or hooks the rope,
- * the rope's length, the car's body radius and how close to a living nest it may never go.
+ * the rope's length, the car's body radius and how close to a living nest it may never go. The body is 1 u (the siege
+ * radius it always had), not the proposal's 1.5: a 1.5 u disc does not fit the city's streets (from the wall's spot it
+ * reaches 16 u², against the whole city at 1-1.2 u). Pushing: an input pointing at the car within CAR_PUSH_DOT (cos).
  */
 export const CAR_SPEED:readonly number[]=Object.freeze([0,.8,1.4,1.8]);
 export const carSpeed=(movers:number)=>CAR_SPEED[Math.max(0,Math.min(CAR_SPEED.length-1,Math.floor(movers)))];
-export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1.5,CAR_NEST_KEEP_OUT=6;
+export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1,CAR_NEST_KEEP_OUT=6,CAR_PUSH_DOT=.5;
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;
 /**

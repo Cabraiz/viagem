@@ -322,6 +322,34 @@ test('elite layer alone: approved over a base in the previous manifest, refused 
   assert.ok(!existsSync(out(walk.outRoot,'inimigos','elite','blob-walk.webp')));
 }));
 
+test('rest rows sleep/wake (one row, S) and the elite round variants: approved with their sidecars; a rest row of 8 directions is refused',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida'),c=TEST_ENEMY.cell;
+  const enemy=path.join(input,'inimigos','pombos');
+  await writeEnemy(enemy);
+  // sleep: 6 frames, wake: 4, cut from the idle's S row (the figure stays on the anchor).
+  const cell=await sharp(path.join(enemy,'idle.png')).extract({left:0,top:0,width:c,height:c}).png().toBuffer();
+  const strip=async(file:string,frames:number,rows=1)=>sharp({create:{width:frames*c,height:rows*c,channels:4,background:{r:0,g:0,b:0,alpha:0}}})
+    .composite(Array.from({length:frames*rows},(_,i)=>({input:cell,left:(i%frames)*c,top:Math.floor(i/frames)*c}))).png().toFile(file);
+  await strip(path.join(enemy,'sleep.png'),6);
+  await strip(path.join(enemy,'wake.png'),4);
+  writeFileSync(path.join(enemy,'sleep.meta.json'),JSON.stringify({cell:[c,c],frames:6,fps:8,loop:true,anchor:ANCHOR}));
+  await writeEliteLayer(path.join(input,'inimigos','elite','pombos-idle.png'));
+  await writeEliteLayer(path.join(input,'inimigos','elite','pombos-gorro-idle.png'));
+  writeFileSync(path.join(input,'inimigos','elite','pombos-gorro-idle.meta.json'),'{}');
+  const groups=enemies({pombos:{...TEST_ENEMY.anims}});
+  const r:Result=await importArtV2({input,repoRoot,outRoot,groups,write:true});
+  approved(piece(r,'inimigos','pombos'));
+  const files=readManifestOf(outRoot,'inimigos').pieces.pombos.files;
+  assert.deepEqual(Object.keys(files).sort(),['elite/gorro-idle','elite/idle','idle','sleep','wake','walk']);
+  assert.equal(files.sleep.directions,1);assert.equal(files.sleep.frames,6);assert.equal(files.wake.frames,4);
+  assert.equal(files['elite/gorro-idle'].file,'elite/pombos-gorro-idle.webp');
+  // A rest row drawn in 8 directions: refused, naming the one-row rule.
+  const bad=path.join(dir,'bad');await writeEnemy(path.join(bad,'inimigos','pombos'));
+  await strip(path.join(bad,'inimigos','pombos','sleep.png'),6,8);
+  const r2:Result=await importArtV2({input:bad,repoRoot,outRoot:path.join(dir,'saida2'),groups,write:false});
+  refused(piece(r2,'inimigos','pombos'),/sleep\.png.*uma linha s[óo]/);
+}));
+
 test('seamless: transparent telegraph fill, x-only strip and a high-contrast cobble tile approved; one broken stretch refused naming the side',async()=>withTemp(async dir=>{
   const input=path.join(dir,'entrada'),outRoot=path.join(dir,'saida');
   await writeSeamless(path.join(input,'efeitos','preenchimento.png'),{transparent:true});

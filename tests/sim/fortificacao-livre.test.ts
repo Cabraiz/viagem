@@ -10,6 +10,8 @@
  *  6. Evolution: a free root grows centred; a larger tier needs free ground ('size'); the Gustavão is out ('max').
  *  7. The site bridge (bots, today's HUD): a site id builds the root on the site's cell; the rail is refused.
  *  8. A rematch reset drops the muros' blockers; a checkpoint's state raises them again.
+ *  9. The moto replans around a muro built across his way (the checkpoint rebuilds that route).
+ * 10. Mode ninhos: no piece within CAR_NEST_KEEP_OUT of a living nest.
  * D-031: results only (state, events), no wall-clock asserts.
  */
 import test from 'node:test';
@@ -29,6 +31,8 @@ import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
+import {pointAt,routeCrosses} from '../../src/sim/chaveiro/route.ts';
+import {CAR_NEST_KEEP_OUT} from '../../src/contract/objective.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),
@@ -355,4 +359,70 @@ test('assembled run: a ring of muros around the car (an opening kept by the tran
     (a.sys.stonewards.state.defenses?.pieces??[]).filter(p=>p.kind==='muro').map(p=>p.id).sort());
   for(let i=0;i<ticks(20);i++){a.world.step();b.world.step();}
   assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}));
+});
+
+test('assembled run: a muro built across the moto\'s way makes him replan around it; a checkpoint rebuilds that route and plays on identically', ()=>{
+  const SEED=21,players=new Map<string,SimPlayer>();
+  const make=(terrain:CityTerrain,ps:Map<string,SimPlayer>,checkpoint?:ReturnType<RunSystems['state']>)=>{
+    const world=new SimWorld({terrain,seed:SEED,players:ps,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+    return {world,sys:createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',...(checkpoint?{checkpoint}:{})})};
+  };
+  const a=make(city.fork(),players),chaveiro=a.sys.chaveiro!;
+  const ana=player('ana',CAR.x+1.5,CAR.y,{hp:1e6,stats:{...BASE_STATS,maxHp:1e6},grana:1e4});a.world.players.set('ana',ana);
+  const before=chaveiro.route,mid=pointAt(before,before.length*.5);
+  // A 3×3 block of muros on the middle of his way, each ordered from beside it.
+  const c0=Math.floor(mid.x/FREE_CELL),r0=Math.floor(mid.y/FREE_CELL),answers:string[]=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    const at=centre(c0+dc,r0+dr);ana.x=at.x+.4;ana.y=at.y+.4;
+    const r=a.sys.stonewards.build(a.world,'ana',{piece:'muro',c:c0+dc,r:r0+dr},`m${dc}${dr}`);
+    answers.push(r.ok?'ok':r.reason);
+  }
+  ana.x=CAR.x+1.5;ana.y=CAR.y;
+  const muros=()=>(a.sys.stonewards.state.defenses?.pieces??[]).filter(p=>p.kind==='muro');
+  assert.ok(muros().length>=1,answers.join(' '));
+  assert.ok(routeCrosses(before,0,muros(),MURO_BLOCK_R),'the block stands on his way');
+  a.world.step();
+  const via=chaveiro.state.route.via;
+  assert.ok(via?.muros?.length,'replanned around the muros');
+  assert.notEqual(chaveiro.route,before);
+  assert.ok(!routeCrosses(chaveiro.route,0,muros(),MURO_BLOCK_R-.05),'the new way keeps off every muro\'s blocker');
+  // Checkpoint: the route comes back from via (around the same muros) and the run plays on identically.
+  const world=a.world.checkpoint(),systems=structuredClone(a.sys.state());
+  const copies=new Map([...players].map(([id,p])=>[id,structuredClone(p)]));
+  const b=make(city.fork(),copies,systems);b.world.load(world);
+  assert.deepEqual(b.sys.chaveiro!.route.points,chaveiro.route.points);
+  let closest=Infinity;
+  for(let i=0;i<ticks(30);i++){
+    a.world.step();b.world.step();
+    const m=chaveiro.moto();
+    for(const w of muros())closest=Math.min(closest,Math.hypot(m.x-w.x,m.y-w.y));
+  }
+  assert.ok(closest>=MURO_BLOCK_R-.05,`the moto never rides into a muro (closest ${closest.toFixed(2)} u)`);
+  assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}));
+});
+
+test('assembled run in mode ninhos: no piece within CAR_NEST_KEEP_OUT of a living nest (ninho); farther out builds', ()=>{
+  const players=new Map<string,SimPlayer>();
+  const world=new SimWorld({terrain:city.fork(),seed:21,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+  const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,objective:'chaveiro',mode:'ninhos'});
+  const ana=player('ana',CAR.x+1.5,CAR.y,{hp:1e6,stats:{...BASE_STATS,maxHp:1e6},grana:1e4});players.set('ana',ana);
+  world.step();
+  const nests=sys.nests!.state.nests.filter(n=>!n.down);
+  assert.ok(nests.length,'living nests');
+  // A muro ordered from beside its cell on every free ground cell between `from` and `to` u of a nest's centre.
+  const order=(from:number,to:number)=>{
+    const out=new Set<string>();
+    for(const nest of nests)for(let c=Math.floor((nest.x-to)/FREE_CELL);c<=Math.ceil((nest.x+to)/FREE_CELL);c++)for(let r=Math.floor((nest.y-to)/FREE_CELL);r<=Math.ceil((nest.y+to)/FREE_CELL);r++){
+      const at=centre(c,r),d=Math.hypot(at.x-nest.x,at.y-nest.y);
+      if(d<from||d>to||!onGround(city,{c,r},1,1))continue;
+      ana.x=at.x+.4;ana.y=at.y+.4;
+      const res=sys.stonewards.build(world,'ana',{piece:'muro',c,r},`m${c}-${r}`);
+      out.add(res.ok?'ok':res.reason);
+      if(out.size>1||res.ok)return out;
+    }
+    return out;
+  };
+  const near=order(0,CAR_NEST_KEEP_OUT-1.5);
+  assert.ok(near.has('ninho')&&!near.has('ok'),[...near].join());
+  assert.ok(order(CAR_NEST_KEEP_OUT+1.5,CAR_NEST_KEEP_OUT+4).has('ok'));
 });

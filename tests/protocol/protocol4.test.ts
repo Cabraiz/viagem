@@ -1359,7 +1359,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161,161+added.length),added);
+  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1460,7 +1460,7 @@ import {FREE_PIECES,FREE_BUILD_REFUSALS,isBuildRot} from '../../src/contract/bui
 
 test('D-052: the wall and the barricade are dictionary bytes appended after the chaveiro\'s, every older index unchanged',()=>{
   const at=DICT.indexOf('cocada')+1;
-  assert.deepEqual(DICT.slice(at),[...FREE_PIECES]);
+  assert.deepEqual(DICT.slice(at),['ninho','dormindo','ativo','destruido','P','M','G',...FREE_PIECES],'after the nests (D-051): arrival order');
   assert.equal(DICT[161],'quadradao','protocol 15 indexes unchanged');
   assert.ok(DICT.length<255,'255 is the inline escape');
 });

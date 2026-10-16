@@ -144,6 +144,8 @@ export interface ChaveiroOptions {
   blocks?():readonly {x:number;y:number;radius:number}[];
   /** D-052: living nests (D-051) the car keeps CAR_NEST_KEEP_OUT from. */
   nests?():readonly Point[];
+  /** D-052: a room bot or an autopiloted player (moves the car only along with a person). */
+  helper?(playerId:string):boolean;
 }
 
 export interface ChaveiroSystem {
@@ -227,7 +229,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const pos:Point={x:0,y:0},at=(s:number)=>pointAt(route,s,pos);
   const near:EnemyState[]=[];
   const moto=state.moto,car=state.car;
-  const carWorld={input:options.input??(()=>undefined),blocks:options.blocks,nests:options.nests};
+  const carWorld={input:options.input??(()=>undefined),blocks:options.blocks,nests:options.nests,helper:options.helper};
 
   const alarmed=(tick:number)=>tick<car.alarmUntil&&moto.task!=='morta';
   const fallen=(tick:number)=>tick<moto.tomboUntil;

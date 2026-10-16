@@ -282,6 +282,7 @@ export class Simulation {
         return step;
       },
       autopilot:id=>this.autopilot.has(id),
+      bot:id=>this.bots.has(id),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The

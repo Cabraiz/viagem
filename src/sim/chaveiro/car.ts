@@ -3,7 +3,8 @@
  * src/contract/objective.ts): the chaveiro's car moves. Stepped by the ChaveiroSystem (system.ts) before the moto rides.
  *
  * - Push: a standing hero within CAR_PUSH_REACH of the body (CAR_RADIUS) whose stick points at the car (cos ≥
- *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk.
+ *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A helper (a room bot, a player on the
+ *   room's autopilot) only helps: it counts while a person moves the car (a bot walking home never drags it away).
  * - Pull: the rope ({t:'puxar'}, pull()) is hooked within CAR_PULL_REACH of the body, one hero at a time; it pulls
  *   while taut (the hero CAR_ROPE or more from the body) and drops when the hero takes a hit, falls, leaves, or gets
  *   ROPE_SLACK past its length.
@@ -36,6 +37,8 @@ export interface CarWorld {
   blocks?():readonly {x:number;y:number;radius:number}[];
   /** Living nests (D-051): the car never comes within CAR_NEST_KEEP_OUT of one. */
   nests?():readonly Point[];
+  /** A room bot or an autopiloted player: moves the car only along with a person. */
+  helper?(id:string):boolean;
 }
 
 const gapTo=(car:Point,p:Point)=>Math.hypot(p.x-car.x,p.y-car.y)-CAR_RADIUS;
@@ -82,21 +85,22 @@ export function stepCar(ctx:SimContext,car:CarBody,world:CarWorld,locked=false):
     if(!holder||!isStanding(holder)||holder.hp<(car.ropeHp??holder.hp)||gapTo(car,holder)>CAR_ROPE+ROPE_SLACK)dropRope(car);
     else car.ropeHp=holder.hp;
   }
-  const movers:string[]=[];let dx=0,dy=0;
+  const movers:string[]=[];let dx=0,dy=0,hx=0,hy=0,people=0;const helpers:string[]=[];
   if(!locked)for(const p of ctx.players.values()){
     if(!isStanding(p))continue;
     const d=Math.hypot(p.x-car.x,p.y-car.y);
     if(p.id===car.rope){
       // Taut: it pulls toward the holder.
-      if(d-CAR_RADIUS>=CAR_ROPE&&d>1e-6){movers.push(p.id);dx+=(p.x-car.x)/d;dy+=(p.y-car.y)/d;}
+      if(d-CAR_RADIUS>=CAR_ROPE&&d>1e-6){movers.push(p.id);people++;dx+=(p.x-car.x)/d;dy+=(p.y-car.y)/d;}
       continue;
     }
     const input=world.input(p.id),len=input?Math.hypot(input.x,input.y):0;
     if(!(len>=PUSH_MIN_INPUT)||d-CAR_RADIUS>CAR_PUSH_REACH||d<1e-6)continue;
     const ix=input!.x/len,iy=input!.y/len;
     if(ix*(car.x-p.x)/d+iy*(car.y-p.y)/d<CAR_PUSH_DOT)continue;
-    movers.push(p.id);dx+=ix;dy+=iy;
+    if(world.helper?.(p.id)){helpers.push(p.id);hx+=ix;hy+=iy;}else{movers.push(p.id);people++;dx+=ix;dy+=iy;}
   }
+  if(people){movers.push(...helpers);dx+=hx;dy+=hy;}
   const pull=Math.hypot(dx,dy);
   if(!movers.length||pull<1e-6){delete car.movers;return false;}
   car.movers=movers;

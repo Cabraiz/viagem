@@ -49,6 +49,8 @@ export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
   /** An offline player the room plays meanwhile (multiplayer autopilot, 3g-rede-sem-teleporte): still walks. */
   autopilot?:(playerId:string)=>boolean;
+  /** D-052: a room bot (with the autopiloted players: who moves the chaveiro's car only along with a person). */
+  bot?:(playerId:string)=>boolean;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
@@ -289,7 +291,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,at);},
       // D-052: the car moves on the sticks of this tick, around the standing structures (the nests join with D-051).
-      input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false)},cp?.chaveiro);
+      input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
+      helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id)},cp?.chaveiro);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 

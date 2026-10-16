@@ -216,3 +216,16 @@ test('players system: a step cap cuts the walk along its own line; without one t
   assert.ok(free>carSpeed(3)/SIM_HZ,`free ${free}`);
   assert.ok(Math.abs(capped-carSpeed(2)/SIM_HZ)<1e-9,`capped ${capped}`);
 });
+
+test('helpers (room bots, autopilot) push only along with a person: alone they leave the car where it is',()=>{
+  const bots=new Set(['p0','p1']);
+  const r=rig({helper:id=>bots.has(id)}),c=r.sys.state.car,x0=c.x;
+  const team=pushers(r,2,EAST);
+  team.run(SIM_HZ);
+  assert.equal(c.x,x0,'two bots alone');
+  assert.equal(r.sys.busy('p0'),false,'a bot that does not move it still fires');
+  bots.delete('p1');
+  team.run(SIM_HZ);
+  assert.ok(Math.abs(c.x-x0-carSpeed(2))<1e-9,`a person and a bot: ${c.x-x0}`);
+  assert.deepEqual(r.sys.view(r.world.tick).car.movers,['p1','p0'],'the people first, then the helpers');
+});

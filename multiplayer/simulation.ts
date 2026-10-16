@@ -12,7 +12,7 @@ import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/s
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
-import type {ChooseResult} from '../src/sim/index.ts';
+import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX} from '../src/contract/index.ts';
@@ -592,6 +592,22 @@ export class Simulation {
   choose(id:string,offerId:string,index:number):ChooseResult{
     if(this.result)return {ok:false,reason:'no-offer'};
     return this.systems.progression.choose(this.world,id,offerId,index);
+  }
+  /** D-052 "Pular": closes `id`'s head offer with no prize (one of OFFER_SKIPS per run); counts as picked in a pause. */
+  skipOffer(id:string,offerId:string):OfferActionResult{
+    if(this.result)return {ok:false,reason:'no-offer'};
+    return this.systems.progression.skip(this.world,id,offerId);
+  }
+  /** D-052 "Rolar de novo": new cards for `id`'s head offer only (one of OFFER_REROLLS per run). */
+  rerollOffer(id:string,offerId:string):OfferActionResult{
+    if(this.result)return {ok:false,reason:'no-offer'};
+    return this.systems.progression.rerollOffer(this.world,id,offerId);
+  }
+  /** D-052: skips and rerolls each player in the run has left (RunPause.skips / RunPause.rerolls). */
+  offerCharges(){
+    const skips:Record<string,number>={},rerolls:Record<string,number>={};
+    for(const id of [...this.players.keys()].sort()){const [s,r]=this.systems.progression.charges(id);skips[id]=s;rerolls[id]=r;}
+    return {skips,rerolls};
   }
   offers(id:string):LevelOffer[]{return this.world.offers.get(id)??[];}
   /**

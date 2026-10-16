@@ -656,6 +656,7 @@ export class Room {
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
+    else if(m.t==='skip'||m.t==='reroll')this.offerAction(c,m);
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
@@ -862,6 +863,19 @@ export class Room {
     this.sim.choose(c.playerId!,m.offer,m.index);
     this.pushOffers(c,true);
   }
+  /**
+   * D-052: {t:'skip'|'reroll',round,offer} from the offer window ("Pular", "Rolar de novo"): the head offer closes with
+   * no prize, or gets new cards; the sim refuses a stale id or a player with none left. Answered with the queue (the
+   * new cards, or the next offer) and the run (the counters in the pause).
+   */
+  private offerAction(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
+    if(m.t==='skip')this.sim.skipOffer(c.playerId!,m.offer);else this.sim.rerollOffer(c.playerId!,m.offer);
+    this.pushOffers(c,true);
+    this.pushRun();
+  }
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
@@ -1047,7 +1061,7 @@ export class Room {
   /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
   private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    return pause?{...snap,pause}:snap;
+    return pause?{...snap,pause:{...pause,...this.sim.offerCharges()}}:snap;
   }
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;

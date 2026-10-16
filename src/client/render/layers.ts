@@ -303,11 +303,11 @@ export class HordeRenderer{
     this.fx=FX_BUDGET[options.effects??'full'];this.recentHits=new RecentHits(this.fx.bars);
     ensureHordeTextures(scene);
     this.art=new FramesPool(scene);
-    this.ground=this.track(scene.add.graphics().setDepth(-9970));
-    this.overlay=this.track(scene.add.graphics().setDepth(95000));
-    this.balloons=this.track(scene.add.graphics().setDepth(BALLOON_BODY_DEPTH));
-    this.heroBalloons=this.track(scene.add.graphics().setDepth(HERO_BALLOON_DEPTH));
-    this.top=this.track(scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH));
+    this.ground=this.track(scene.add.graphics().setDepth(-9970).setName('horda-chao'));
+    this.overlay=this.track(scene.add.graphics().setDepth(95000).setName('horda-overlay'));
+    this.balloons=this.track(scene.add.graphics().setDepth(BALLOON_BODY_DEPTH).setName('horda-baloes'));
+    this.heroBalloons=this.track(scene.add.graphics().setDepth(HERO_BALLOON_DEPTH).setName('horda-baloes-heroi'));
+    this.top=this.track(scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH).setName('horda-topo'));
     const image=(key:string)=>()=>this.track(scene.add.image(0,0,key).setVisible(false).setActive(false));
     const text=(style:TextStyle,depth:number)=>()=>this.track(scene.add.text(0,0,'',style).setOrigin(.5,1).setDepth(depth).setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{
@@ -324,10 +324,10 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,tex:enemyTexture('bebado'),tint:undefined,art:'bebado',act:undefined,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
-    this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH));
-    this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH));
+    this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
+    this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
       born:0,frames:1,fps:8,frame:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0,kind:undefined,phase:0}),
@@ -463,7 +463,8 @@ export class HordeRenderer{
     a.look=look;a.act=actAnim(view.kind,kind,view.phase);
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
-    // The roster's art loads per match, the first time one of its enemies shows up (horde-art.ts queueEnemyArt).
+    // Every enemy's art (the nine kinds' too) loads per match, the first time one of them shows up (horde-art.ts
+    // queueEnemyArt); a fresh actor starts with no art id, so even the default 'bebado' asks.
     const art=enemyArtId(view.kind,kind);
     if(a.art!==art){a.art=art;queueEnemyArt(this.scene,art);}
     a.costume=this.costume&&this.costume.art===art?this.costume.variant:undefined;
@@ -995,7 +996,7 @@ export class HordeRenderer{
       .setDepth(layer===LAYER_AIR?TELEGRAPH_TOP_DEPTH+1.5:TELEGRAPH_TOP_DEPTH-.25).setVisible(true);
   }
   /** Layer above the imported border for the decoration in the air (made the first time it is needed). */
-  private airLayer(){return this.topAir??=this.track(this.scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH+1));}
+  private airLayer(){return this.topAir??=this.track(this.scene.add.graphics().setDepth(TELEGRAPH_TOP_DEPTH+1).setName('horda-ar'));}
   /** Replays one layer of the planned decoration on its Graphics (allocation-free: scratch points only). */
   private replayDecor(g:Phaser.GameObjects.Graphics,layer:number){
     const d=this.decor.data,pts=this.decorPts;

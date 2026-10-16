@@ -208,9 +208,12 @@ const EFEITOS=Object.freeze({
   'anel-alvo':strip(128,4),'anel-habilidade':strip(128,4),'marcador-destino':strip(128,4),
   'heroi-voce':strip(128,1),'caido-resgate':strip([128,256],6),'sombra-contato':strip([128,64],1),
   'olhos-escuro':strip([64,32],4,P1),'veu-apagao':{priority:P1},
-  'balao-fala':{priority:P0,kind:'nineslice',cell:[96,64]},'etiqueta-devendo':{priority:P0,kind:'nineslice',cell:[96,64]},
+  // Default `slice` (a sidecar may give its own), measured on the 16/10 delivery: the balloon's left/bottom corner
+  // keeps its tail whole; the bars keep their 3–4 px frame.
+  'balao-fala':{priority:P0,kind:'nineslice',cell:[96,64],slice:[28,25,20,24]},
+  'etiqueta-devendo':{priority:P0,kind:'nineslice',cell:[96,64],slice:[16,24,16,24]},
   ...Object.fromEntries(['moldura','preenchimento','moldura-elite','preenchimento-elite']
-    .map(p=>[`barra-vida-${p}`,{priority:P0,kind:'nineslice',cell:[64,12]}])),
+    .map(p=>[`barra-vida-${p}`,{priority:P0,kind:'nineslice',cell:[64,12],slice:[4,3,4,3]}])),
 });
 /** UI ids (icons.svg `i-*`, stickers.svg `a-*`, plus the minimap marks), each with the SVG symbols it replaces. */
 const UI_ICONS=['config','girar','bussola','agulha','letra-n','aviao','fechar','pronto','relogio','voltar','cadeado','dado',
@@ -278,6 +281,17 @@ export function faceIdProblem(id){
  */
 export const RIM=Object.freeze({color:'#2A2018',alpha:.85,width:1.5});
 
+/**
+ * Rest animations of every enemy (D-051 nests; board design/proximos/11-O-QUE-FALTAVA.md §3): one row facing S, in the
+ * enemy's own cell, `<anim>.png` + an optional `<anim>.meta.json`. Optional: absent ones are not even a note. No foot
+ * rule (sitting, curled up, jumping awake). The elite layer may cover them too.
+ */
+export const REST_ANIMS=Object.freeze({sleep:6,wake:4});
+/**
+ * Round variants of the elite layer (11-O-QUE-FALTAVA §7): `elite/<id>-<variant>-<anim>.png`, the same grid as the base
+ * animation, stored under the manifest key `elite/<variant>-<anim>` (the client's costumeFile, horde-art.ts).
+ */
+export const ELITE_VARIANTS=Object.freeze({'tio-pave':Object.freeze(['picole']),pombos:Object.freeze(['gorro'])});
 const enemy=(cell,anims,priority=P0)=>({cell,anims,priority});
 /** The 9 enemies briefed first (D-033 + elenco P1), declared by hand. */
 const LEGACY_ENEMIES=Object.freeze({

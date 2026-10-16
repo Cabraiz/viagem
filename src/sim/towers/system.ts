@@ -11,12 +11,13 @@
  *   (upgrade, repair); 'away' otherwise. A sim rule, so the offline run and the rooms obey it alike; the build menu
  *   (torres-hud) may still offer any site, the sim refuses from afar.
  * - Repair (torres-ajustes): `repair` mirrors the forge's barricade repair ('reparo' with a target): REPAIR_FRACTION of
- *   the defense's maxHp per order (rounded up, capped at maxHp), at once, for TOWER_REPAIR_COST R$ from the team's
- *   Grana (D-048). Any standing defense under its maxHp (under construction too); a ruin never (it already frees
+ *   the defense's maxHp per order (rounded up, capped at maxHp), at once, for TOWER_REPAIR_COST R$ from the wallet
+ *   of who orders it (sim/wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Any standing defense under its maxHp (under construction too); a ruin never (it already frees
  *   its site: build a new Vigia there).
  * - Limits: DEFENSE_LIMIT standing defenses (ruins do not count) and GUSTAVAO_LIMIT Gustavão per run.
- * - Fire: only in combat (phase 'wave'), instant hits through ctx.damageEnemy (the central path), no source player (the
- *   defenses belong to the team, so no hero's might scales them; the weapon id is the defense id). The radar's bonus,
+ * - Fire: only in combat (phase 'wave'), instant hits through ctx.damageEnemy (the central path), no source player (no
+ *   hero's might scales them, no kill counts as anyone's; the weapon id is the defense id). A kill's Grana goes to the
+ *   defense's owner (damageEnemy `credit`, sim/wallet.ts payKill). The radar's bonus,
  *   targets and order are deterministic (enemies sorted by distance then id); the holofote's dazzle roll draws from
  *   ctx.rng.fork('towers'), re-derived every tick (no stream kept across ticks).
  * - Enemies: a defense (also under construction) is a NON-blocking siege target, like the wall: the siege groups go
@@ -32,17 +33,19 @@ import {ticks} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {isFlying} from '../enemies/catalog.ts';
+import {queryHittable} from '../projectiles.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
 import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
+import {payFrom} from '../wallet.ts';
 
 export interface DefenseState extends Point {
   id:string;kind:DefenseId;
   /** Build site id ('obra-NN'), or the rail ('trilho') for the Gustavão. */
   site:string;
-  /** Who paid the last stage (the result screen may credit it later). */
+  /** Who paid the last stage: its kills' Grana goes to them (sim/wallet.ts payKill). */
   owner:string;
   hp:number;maxHp:number;
   /** Radius of its footprint (u), what the enemy-ai measures a siege hit against. */
@@ -184,10 +187,11 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
     }
     // The Gustavão is ordered from the Obuseiro's site (where the hero stands with it), not from the rail.
     if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
-    // D-048: the Gustavão takes 3 fichas de torre; every other evolution its tier's price in Grana.
+    // D-048: the Gustavão takes 3 fichas de torre; every other evolution its tier's price in Grana, from the wallet
+    // of who evolves it (NEW-20261014-ORQ-carteira-e-pix).
     const cost=next.id==='gustavao'?next.cost:EVOLVE_PRICE[next.tier as 2|3|4|5];
     if(next.id==='gustavao'){if(!payUnits(state.balance,cost))return {ok:false,reason:'balance'};}
-    else{if(!(state.grana>=cost))return {ok:false,reason:'grana'};state.grana-=cost;}
+    else if(!payFrom(ctx.players.get(playerId),cost))return {ok:false,reason:'grana'};
     if(next.rail){
       const rail=plan.rail!;
       d.site=rail.id;d.x=rail.x;d.y=rail.y;d.r=Math.min(rail.length,rail.width)*plan.cell/2;
@@ -200,7 +204,7 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
 
 /**
  * Repairs a standing defense below its maxHp (torres-ajustes): +REPAIR_FRACTION of maxHp (rounded up, capped), at once,
- * for TOWER_REPAIR_COST R$ from the Grana; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
+ * for TOWER_REPAIR_COST R$ from the wallet of who repairs it; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
  * too ('full'), and so is a player out of reach ('away').
  */
 export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,requestId?:string):TowerResult{
@@ -212,7 +216,7 @@ export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playe
     if(d.ruined)return {ok:false,reason:'ruined'};
     if(d.hp>=d.maxHp)return {ok:false,reason:'full'};
     if(!near(ctx,playerId,defenseRect(plan,d)))return {ok:false,reason:'away'};
-    if(!(state.grana>=TOWER_REPAIR_COST))return {ok:false,reason:'grana'};state.grana-=TOWER_REPAIR_COST;
+    if(!payFrom(ctx.players.get(playerId),TOWER_REPAIR_COST))return {ok:false,reason:'grana'};
     d.hp=Math.min(d.maxHp,d.hp+Math.ceil(d.maxHp*REPAIR_FRACTION));
     return {ok:true,defense:d.id,kind:d.kind,cost:TOWER_REPAIR_COST};
   });
@@ -262,7 +266,7 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
     const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
     if(!pool.length)continue;
     d.fireTick=ctx.tick+def.cooldown;d.shots=((d.shots??0)+1)&255;
-    if(def.target==='aura'){hitArea(ctx,def,d,range);continue;}
+    if(def.target==='aura'){hitArea(ctx,def,d,range,d.owner);continue;}
     let picks:EnemyState[];
     if(def.target==='strongest')picks=[...pool].sort((a,b)=>b.hp-a.hp).slice(0,def.shots); // stable: ties stay nearest-first
     else if(def.target==='cluster')picks=[densest(pool,def.area)];
@@ -270,8 +274,8 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
     if(picks[0])d.aim=Math.atan2(picks[0].y-d.y,picks[0].x-d.x);
     for(let i=0;i<picks.length;i++){
       const e=picks[i],at={x:e.x,y:e.y};
-      if(def.area>0)hitArea(ctx,def,at,def.area);
-      else hit(ctx,def,e);
+      if(def.area>0)hitArea(ctx,def,at,def.area,d.owner);
+      else hit(ctx,def,e,d.owner);
       if(i===0&&def.dazzle&&alive(e)&&!e.boss){
         rng??=ctx.rng.fork('towers');
         if(rng.chance(def.dazzle.chance))e.frozenUntil=Math.max(e.frozenUntil??-1,ctx.tick+def.dazzle.ticks);
@@ -289,14 +293,14 @@ function densest(pool:readonly EnemyState[],area:number):EnemyState{
   }
   return best;
 }
-function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number){
-  const victims:EnemyState[]=[];
-  ctx.enemyIndex.query(at.x,at.y,radius,victims);
-  const list=victims.filter(e=>e.hp>0&&ctx.enemies.has(e.id)&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
-  for(const e of list)hit(ctx,def,e);
+function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number,owner:string){
+  // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
+  const victims=queryHittable(ctx,at.x,at.y,radius,[]);
+  const list=victims.filter(e=>e.hp>0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  for(const e of list)hit(ctx,def,e,owner);
 }
-function hit(ctx:SimContext,def:DefenseDef,e:EnemyState){
-  if(def.damage>0&&ctx.damageEnemy(e.id,def.damage,undefined,def.id))return;
+function hit(ctx:SimContext,def:DefenseDef,e:EnemyState,owner:string){
+  if(def.damage>0&&ctx.damageEnemy(e.id,def.damage,undefined,def.id,owner))return;
   if(def.slow&&!e.boss&&ctx.enemies.has(e.id))e.slowUntil=Math.max(e.slowUntil??-1,ctx.tick+def.slow);
 }
 

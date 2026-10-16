@@ -846,7 +846,8 @@ test('an event code this client does not know is skipped, the frame and the othe
 function campWorld():FrameInput{
   return {
     tick:500,team:{xp:1,level:2,nextXp:9},round:{index:3,total:10,phase:'prepare',phaseEndsTick:900,remaining:0},
-    players:[player('me',0,{x:0,y:5}),player('far',1,{x:200,y:0})],
+    // carteira-e-pix: the camp's Grana is the viewer's own wallet (its player record's grana), whatever camp.grana says.
+    players:[{...player('me',0,{x:0,y:5}),grana:137},player('far',1,{x:200,y:0})],
     enemies:[],pickups:[],projectiles:[],telegraphs:[],
     structures:[{id:'muralha',kind:'muralha',x:.25,y:0,hp:430,maxHp:600},{id:'torre-1',kind:'torre-chinelo',x:1,y:4,hp:80,maxHp:80,untilTick:1400}],
     nodes:[
@@ -863,7 +864,7 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   const w=campWorld();
   const r=dec.decode(enc.encode(w));assert.ok(r.ok);
   assert.ok(PROTOCOL_VERSION>=6);
-  assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900},'D-048: the team Grana (R$) after the units');
+  assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900},'D-048: the Grana (R$) after the units: the viewer own wallet (carteira-e-pix)');
   const tower=r.view.structures.find(s=>s.kind==='torre-chinelo')!;
   assert.equal(tower.untilTick,1400);assert.equal(r.view.structures.find(s=>s.kind==='muralha')!.hp,430);
   // The far player's node (200 units away) stays out of this client's area.
@@ -871,13 +872,13 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
   assert.ok(r.view.nodes!.every(n=>/^n\d+$/.test(n.id)),'client ids for nodes');
   // A unit comes out: only that node changes, and the delta is small.
   enc.ack(r.seq);
-  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={units:20,grana:138,hornEndsTick:900};
+  w.tick++;w.nodes![0]={...w.nodes![0],remaining:3,progress:0};w.camp={units:20,grana:138,hornEndsTick:900};w.players[0]={...w.players[0],grana:138};
   const bytes=enc.encode(w),r2=dec.decode(bytes);assert.ok(r2.ok);
   assert.ok(bytes.length<64,`delta ${bytes.length} B`);
   assert.equal(r2.view.nodes!.find(n=>n.kind==='coco')!.remaining,3);assert.equal(r2.view.camp!.units,20);assert.equal(r2.view.camp!.grana,138);
   // The wave: no nodes, no horn; the wall falls.
   enc.ack(r2.seq);
-  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={units:20,grana:0,wallDown:true};w.structures=[{...w.structures[0],hp:0}];
+  w.tick++;w.round={...w.round!,phase:'wave'};w.nodes=[];w.camp={units:20,grana:0,wallDown:true};w.players[0]={...w.players[0],grana:0};w.structures=[{...w.structures[0],hp:0}];
   const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
   assert.deepEqual(r3.view.nodes,[]);assert.deepEqual(r3.view.camp,{units:20,grana:0,wallDown:true});
 });
@@ -885,18 +886,18 @@ test('protocol 6: camp block, towers with their end and nodes in the area of int
 test('inflação (D-048 balance): the camp block carries the gambiarras and chinelos bought, and leaves forge out when none',()=>{
   const ids=new WireIds(),enc=new FrameEncoder(ids,{viewer:'me'}),dec=new FrameDecoder();
   const w=campWorld();
-  w.camp={units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}};
+  w.camp={units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}};w.players[0]={...w.players[0],grana:137};
   const r=dec.decode(enc.encode(w));assert.ok(r.ok);
   assert.deepEqual(r.view.camp,{units:19,grana:137,hornEndsTick:900,forge:{gambiarra:2}},'only the bought recipe, the horn still read after');
   // Both counts, the wall down: every field after the two counts still decodes.
   enc.ack(r.seq);
-  w.tick++;w.camp={units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}};
+  w.tick++;w.camp={units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}};w.players[0]={...w.players[0],grana:3};
   const r2=dec.decode(enc.encode(w));assert.ok(r2.ok);
   assert.deepEqual(r2.view.camp,{units:20,grana:3,wallDown:true,forge:{gambiarra:1,'torre-chinelo':4}});
   // None bought (absent, or zeros): no forge key at all, as before the inflação.
   for(const forge of [undefined,{},{gambiarra:0,'torre-chinelo':0}]){
     enc.ack(r2.seq);
-    w.tick++;w.camp={units:21,grana:5,hornEndsTick:900,...(forge?{forge}:{})};
+    w.tick++;w.camp={units:21,grana:5,hornEndsTick:900,...(forge?{forge}:{})};w.players[0]={...w.players[0],grana:5};
     const r3=dec.decode(enc.encode(w));assert.ok(r3.ok);
     assert.deepEqual(r3.view.camp,{units:21,grana:5,hornEndsTick:900},JSON.stringify(forge));
     assert.equal('forge' in r3.view.camp!,false);
@@ -1358,7 +1359,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161),added);
+  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });

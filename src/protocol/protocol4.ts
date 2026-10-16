@@ -8,8 +8,8 @@
  *   team: uvar xp, uvar level, uvar nextXp
  *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
- *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$), uvar gambiarras bought, uvar chinelos
- *       bought (inflação); svar hornEndsTick-tick if horn)
+ *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$: the viewer's own wallet since
+ *       carteira-e-pix), uvar gambiarras bought, uvar chinelos bought (inflação); svar hornEndsTick-tick if horn)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -27,11 +27,15 @@
  * Area of interest: an encoder with a `viewer` sends every player (allies always, for the minimap), structures (the
  * base) and the boss, plus enemies, pickups, projectiles, telegraphs and nodes within INTEREST_RADIUS of the viewer (kept
  * until INTEREST_HYSTERESIS farther), and drops the events nobody near the viewer could see.
+ * Wallets (NEW-20261014-ORQ-carteira-e-pix): every player record carries its `grana` (uvar, when it changes), so
+ * everyone sees everyone's balance; the camp block's and the objective block's `grana` are the viewer's own wallet
+ * (0 for a spectator), written per encoder from the viewer's player record. The `pix` event goes to everyone.
+ * Sleeping bodies (D-051, `asleep`) count at most ASLEEP_PER_VIEWER per client, the nearest ones.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {ASLEEP_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 
 /**
@@ -65,9 +69,15 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * 17 given by the integration queue (tools/fila.mjs, lote 20261014-051017) to: NEW-20261013-ORQ-ficha-de-torre.
  * 18 given by the integration queue (tools/fila.mjs, lote 20261014-150642) to: NEW-20261014-ORQ-balanco-pos-1-7-parte-a.
  * 19 given by the integration queue (tools/fila.mjs, lote 20261014-194518) to: NEW-20261014-ORQ-levelup-pausa-time.
+ * 20 given by the integration queue (tools/fila.mjs, lote 20261016-191924) to: NEW-20261014-ORQ-ataque-manual-wild-rift-passo1.
+ * 21 given by the integration queue (tools/fila.mjs, lote 20261016-195357) to: NEW-20261014-ORQ-carteira-e-pix.
+ * Next (the queue numbers it) since the nests on the wire (card NEW-20261014-ORQ-ninhos-sim, D-051): `asleep` on the
+ * enemies (the sleeping bodies near the client, ASLEEP_PER_VIEWER at most), `size` and `seen` on the structures (the
+ * nests, kind 'ninho', phase dormindo/ativo/destruido) and those strings in the DICT; an older decoder would refuse the masks.
+ * 22 given by the integration queue (tools/fila.mjs, lote 20261016-202056) to: NEW-20261014-ORQ-ninhos-sim.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=19;
+export const PROTOCOL_VERSION=22;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -136,6 +146,8 @@ export const DICT:readonly string[]=[
   // (morta/lombada/entrega are also the stop kinds), the car's parts and Dona Cida's sweets.
   'quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',
   'para-choque','retrovisor','porta','capo','brigadeiro','pacoca','cocada',
+  // D-051 (ninhos-sim): the nests as structures, their phases and sizes.
+  'ninho','dormindo','ativo','destruido','P','M','G',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -319,7 +331,14 @@ const contribution=optional<Contribution>({
  * can render and reconcile players from protocol 4 alone (view.ts stays unchanged). The three ticks drive the
  * sprite (attack swing, skill ring, skill cooldown); absent means 0 (never).
  */
-export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number};
+export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number;
+  /** The player's wallet in R$ (contract SimPlayer.grana; carteira-e-pix): absent = 0. */
+  grana?:number};
+/** What `viewer` sees as their own Grana: their wallet (0 when absent, a spectator, or not in the frame). */
+export function viewerGrana(players:readonly PlayerWireView[],viewer:string|undefined):number{
+  const p=viewer===undefined?undefined:players.find(q=>q.id===viewer);
+  return p&&!p.spectator?uint(p.grana??0):0;
+}
 type SectionKey='players'|'enemies'|'pickups'|'projectiles'|'telegraphs'|'structures'|'nodes';
 export const SECTIONS:readonly SectionKey[]=['players','enemies','pickups','projectiles','telegraphs','structures','nodes'];
 type AnyCodec=Codec<unknown>;
@@ -341,11 +360,15 @@ const SCHEMAS:Record<SectionKey,Schema>={
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
     // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
     fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
+    // carteira-e-pix: the wallet (R$), last: it changes on kills, purchases and PIX only.
+    grana:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
     // Protocol 15 (D-047): Dona Cida sold it a sweet.
     sugar:c(optional(trueFlag)),
+    // D-051: a sleeping body (it wakes with the same id: the flag clears).
+    asleep:c(optional(trueFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
@@ -359,7 +382,9 @@ const SCHEMAS:Record<SectionKey,Schema>={
     // torre-contador-de-tiros: the volleys mod 256, so a turret firing at a target that does not move shows every shot.
     shots:c(optional(u8)),
     // Protocol 15 (D-047): the car's fallen parts (bits of CAR_PARTS), only when they change.
-    parts:c(optional(count))}},
+    parts:c(optional(count)),
+    // D-051: a nest's size and whether the team has seen it (the minimap's fog).
+    size:c(optional(str)),seen:c(optional(trueFlag))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},
 };
@@ -457,6 +482,10 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['moto',[['mode','str'],['alone','count',true]]],
   ['sale',[['enemy','ref',false,'enemies']]],
   ['buy',[['player','ref'],['item','str']]],
+  // carteira-e-pix: a PIX between players (memo: an index into PIX_MEMOS, the toast's description).
+  ['pix',[['from','ref'],['to','ref'],['amount','count'],['memo','count']]],
+  // D-051 (ninhos, card NEW-20261014-ORQ-ninhos-sim): sleepers woke around (x, y), n of them; heard near the spot only.
+  ['acordou',[['x','pos'],['y','pos'],['n','count']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -647,7 +676,9 @@ export interface EncoderStats {frames:number;fullFrames:number;bytes:number;even
   culled:number;droppedEvents:number}
 /** firstSeq: earliest frame that carried the event since the last resync; an ack of it or later retires the event. */
 interface Pending {event:WireEvent;firstSeq?:number;sentTick?:number;unresolved?:[field:string,hint?:SectionKey][]}
-export interface InterestOptions {radius:number;hysteresis:number}
+export interface InterestOptions {radius:number;hysteresis:number;
+  /** D-051: the sleeping enemies (`asleep`) this client gets at most, the nearest ones (default ASLEEP_PER_VIEWER). */
+  asleep:number}
 export interface EncoderOptions {
   /**
    * The client's player id. With it the encoder sends only that client's area of interest (allies, structures and
@@ -689,7 +720,9 @@ const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downe
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
-  'alarm','part','moto','buy']);
+  'alarm','part','moto','buy',
+  // carteira-e-pix: a PIX (the portraits blink for everyone; the toast is the two players').
+  'pix']);
 /** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
 const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
 /** Camp block bits. */
@@ -724,13 +757,15 @@ export class FrameEncoder {
   readonly viewer?:string;
   readonly slot:number;
   private readonly interest?:InterestOptions;
+  /** select(): the sleeping enemies in the area this frame (reused). */
+  private readonly sleepScratch:{e:Entity;d2:number}[]=[];
   private readonly chain:boolean;
   private readonly farEvery:number;
   constructor(ids=new WireIds(),options:EncoderOptions={}){
     this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);this.chain=!!options.chain;
     this.farEvery=Math.max(1,Math.floor(options.farEvery??1));
     if(options.viewer!==undefined&&options.interest!==false)
-      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS};
+      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER};
   }
 
   /**
@@ -822,6 +857,9 @@ export class FrameEncoder {
     const before=this.members[section],keep=new Set<string>();
     this.previous[section]=before;
     const near=interest.radius,stay=interest.radius+interest.hysteresis,near2=near*near,stay2=stay*stay,tele=section==='telegraphs';
+    // D-051: the sleepers inside the area wait here and only the nearest `interest.asleep` go (ties by id).
+    const sleepers:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.sleepScratch:undefined;
+    if(sleepers)sleepers.length=0;
     for(const e of list){
       const dx=(e.x as number)-focus.x,dy=(e.y as number)-focus.y;
       let d2=dx*dx+dy*dy;
@@ -829,7 +867,16 @@ export class FrameEncoder {
       // The boss is always sent: the arrow to it and its hp bar matter from anywhere. NaN positions stay out.
       const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
       if(!inside){this.stats.culled++;continue;}
+      if(sleepers&&e.asleep===true){sleepers.push({e,d2});continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
+    }
+    if(sleepers?.length){
+      if(sleepers.length>interest.asleep){
+        sleepers.sort((a,b)=>a.d2-b.d2||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
+        this.stats.culled+=sleepers.length-interest.asleep;sleepers.length=Math.max(0,interest.asleep);
+      }
+      for(const {e} of sleepers){keep.add(e.id);current.set(this.ids.wire(section,e.id),e);}
+      sleepers.length=0;
     }
     this.members[section]=keep;
     return current;
@@ -870,7 +917,9 @@ export class FrameEncoder {
     w.uvar(view.team.xp);w.uvar(view.team.level);w.uvar(view.team.nextXp);
     const sendWorld=!!view.world&&(!base||!sameWorld(view.world,this.sentWorld));
     // Protocol 15: the objective block only when it differs from the baseline's (both parts on a full frame).
-    const objective=view.objective?normObjective(view.objective):undefined,had=base?.objective;
+    // carteira-e-pix: with a viewer, the camp's and the objective's Grana are the viewer's own wallet.
+    const own=this.viewer===undefined?undefined:viewerGrana(view.players,this.viewer);
+    const objective=view.objective?normObjective(own===undefined?view.objective:{...view.objective,grana:own}):undefined,had=base?.objective;
     const objBits=objective?(had&&sameDynamic(had,objective)?0:OBJ_DYN)|(had&&sameStatic(had,objective)?0:OBJ_STATIC):had?OBJ_CLEAR:0;
     w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0)|(objBits?16:0));
     if(view.round){
@@ -885,7 +934,7 @@ export class FrameEncoder {
     }
     if(view.camp){
       const camp=view.camp,horn=camp.hornEndsTick!==undefined&&Number.isFinite(camp.hornEndsTick);
-      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(camp.grana)));
+      w.u8((horn?CAMP_HORN:0)|(camp.wallDown?CAMP_WALL_DOWN:0));w.uvar(Math.max(0,Math.floor(camp.units)));w.uvar(Math.max(0,Math.floor(own??camp.grana)));
         w.uvar(Math.max(0,Math.floor(camp.forge?.gambiarra??0)));w.uvar(Math.max(0,Math.floor(camp.forge?.['torre-chinelo']??0)));
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }

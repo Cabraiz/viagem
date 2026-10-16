@@ -18,6 +18,7 @@ import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from '.
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
 import {CAR_LOW,PART_FALL_MS,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,routeHeadingAt,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
+import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
 
 const LIGHT=lightEnabled();
@@ -38,6 +39,44 @@ export interface ChaveiroRendererOptions {projector:Projector;reduced:boolean;
 interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number;moto:boolean}
 /** Car faces cached by look (parts, hazard, trunk step, wrecked, view): the car is redrawn every frame, its boxes rarely change. */
 const CAR_CACHE_MAX=48;
+/** Frozen figures kept per role (car, moto, the chaveiro standing): a few looks each (hazard on/off, poses, headings). */
+const FROZEN_MAX=24;
+/** The moto's heading is frozen in this many steps per turn (5.6°: its route turns rarely). */
+const HEADING_STEPS=64;
+
+/**
+ * A figure frozen into triangles (city/tri-band.ts), one per look: Phaser 3.90 replays a Graphics' commands every frame
+ * and triangulates every fillPoints with earcut, which made the car and the moto (≈ 4 700 commands) the heaviest thing
+ * of a city frame on a phone (BUG-20261014-ORQ-engasgo-andando-celular). A look is drawn once; each frame only moves
+ * it (the engine's shake, the moto's bounce), sets its depth and alpha. Kept small: the oldest look goes first.
+ */
+class FrozenFigures {
+  private looks=new Map<string,{band:TriBand;faces:Face[]}>();
+  private shown?:TriBand;
+  constructor(private scene:Phaser.Scene,private breu:()=>number){}
+  /** The look `key` (made from `faces` the first time, its contour `k` CSS px wide) shown alone; returns its faces. */
+  show(key:string,faces:()=>Face[],k:number,x:number,y:number,depth:number,alpha:number):Face[]{
+    let look=this.looks.get(key);
+    if(look){this.looks.delete(key);this.looks.set(key,look);}
+    else{
+      const f=faces(),breu=this.breu();
+      const band=TriBand.make(this.scene,g=>{
+        for(const face of f){
+          g.fillStyle(face.color,face.alpha).fillPoints(face.pts,true);
+          if(face.line)g.lineStyle(1.2*k,breu,.9).strokePoints(face.pts,true);
+        }
+      });
+      look={band,faces:f};this.looks.set(key,look);
+      while(this.looks.size>FROZEN_MAX){const [old,o]=this.looks.entries().next().value!;if(o.band===this.shown)this.shown=undefined;o.band.destroy();this.looks.delete(old);}
+    }
+    if(this.shown&&this.shown!==look.band)this.shown.setVisible(false);
+    this.shown=look.band;
+    look.band.setPosition(x,y).setDepth(depth).setAlpha(alpha).setVisible(true);
+    return look.faces;
+  }
+  hide(){this.shown?.setVisible(false);this.shown=undefined;}
+  destroy(){for(const l of this.looks.values())l.band.destroy();this.looks.clear();this.shown=undefined;}
+}
 
 export class ChaveiroRenderer {
   private scene:Phaser.Scene;
@@ -58,12 +97,16 @@ export class ChaveiroRenderer {
   private lastPuff=0;
   private q:Pt={x:0,y:0};
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,claro:0};
+  /** The car, the moto and the standing chaveiro, frozen per look (FrozenFigures). */
+  private frozenCar:FrozenFigures;private frozenMoto:FrozenFigures;private frozenOpener:FrozenFigures;
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
     this.scene=scene;this.options=options;
-    this.ground=scene.add.graphics().setDepth(-9979);
-    this.car=scene.add.graphics();this.moto=scene.add.graphics();this.opener=scene.add.graphics();
-    this.fx=scene.add.graphics().setDepth(FX_DEPTH);
+    const breu=()=>this.c.breu;
+    this.frozenCar=new FrozenFigures(scene,breu);this.frozenMoto=new FrozenFigures(scene,breu);this.frozenOpener=new FrozenFigures(scene,breu);
+    this.ground=scene.add.graphics().setDepth(-9979).setName('chaveiro-chao');
+    this.car=scene.add.graphics().setName('chaveiro-carro');this.moto=scene.add.graphics().setName('chaveiro-moto');this.opener=scene.add.graphics().setName('chaveiro-abrindo');
+    this.fx=scene.add.graphics().setDepth(FX_DEPTH).setName('chaveiro-fx');
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.claro=mix(c.papel,0xffffff,.35);
@@ -84,7 +127,7 @@ export class ChaveiroRenderer {
     const g=this.ground;g.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
-    if(!view){this.puffs=[];return;}
+    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     const alarm=alarmOn(view,st.tick),wrecked=view.ended==='defeat';
     const fallingBits=st.settle(time);
@@ -100,36 +143,47 @@ export class ChaveiroRenderer {
     const ended=st.endedAt!==undefined?time-st.endedAt:0;
     const shake=engineShake(time,reduced,alarm),hazard=hazardLit(alarm,time)||(reduced&&alarm);
     const trunk=view.ended==='victory'?Math.round(trunkOpen(ended)*20)/20:0;
-    const carFaces=this.carLook(view.car.parts&~fallingBits,hazard,trunk,wrecked,fallingBits,time);
     // Sorted at its centre (not its front corner): critters hitting its sides and back stay in front of it, a figure
     // behind its centre line goes under it (the car is long; the sim's critters hit it from all around).
-    const carDepth=proj.depth(view.car.x,view.car.y);
-    this.car.setDepth(carDepth);
-    this.drawFaces(this.car,view.car.x,view.car.y,carFaces,k,shake);
-    this.car.setAlpha(this.covers(view.car.x,view.car.y,carFaces,carDepth)?COVER_ALPHA:1);
+    const carDepth=proj.depth(view.car.x,view.car.y),carAt=proj.project(view.car.x,view.car.y,this.q);
+    const carX=carAt.x+shake.x,carY=carAt.y+shake.y;
+    if(fallingBits){
+      // A part falling moves every frame: drawn live for its ~0.6 s.
+      this.frozenCar.hide();
+      const carFaces=this.carLook(view.car.parts&~fallingBits,hazard,trunk,wrecked,fallingBits,time);
+      this.car.setDepth(carDepth);
+      this.drawFaces(this.car,view.car.x,view.car.y,carFaces,k,shake);
+      this.car.setAlpha(this.covers(view.car.x,view.car.y,carFaces,carDepth)?COVER_ALPHA:1);
+    }else{
+      const parts=view.car.parts,key=`${parts}|${hazard?1:0}|${trunk}|${wrecked?1:0}|${proj.view}|${Math.round(k*10)}`;
+      const faces=this.frozenCar.show(key,()=>this.carLook(parts,hazard,trunk,wrecked,0,time),k,carX,carY,carDepth,1);
+      if(this.covers(view.car.x,view.car.y,faces,carDepth))this.frozenCar.show(key,()=>faces,k,carX,carY,carDepth,COVER_ALPHA);
+    }
 
     // The moto and its riders.
     const mode=view.moto.mode;
     let mx=view.moto.x,my=view.moto.y,heading=st.heading;
     if(mode==='volta'&&!reduced){const c=voltaCentre(view.moto,view.car),lap=voltaLap(time);mx=c.x+lap.dx;my=c.y+lap.dy;heading=lap.heading;}
     this.drawShadow(mx,my,.8*M,.3*M,heading);
-    const motoDepth=proj.depth(mx,my);
-    this.moto.setDepth(motoDepth);
-    const motoFaces=this.drawFigure(this.moto,mx,my,heading,motoBoxes(motoPose(mode),motoLift(mode,time,reduced)),k,1);
-    this.moto.setAlpha(this.covers(mx,my,motoFaces,motoDepth)?COVER_ALPHA:1);
+    const motoDepth=proj.depth(mx,my),pose=motoPose(mode),turn=Math.round(heading/(Math.PI*2)*HEADING_STEPS);
+    const motoAt=proj.project(mx,my,this.q),lift=isoOffset(0,0,motoLift(mode,time,reduced),proj.view).y;
+    const motoX=motoAt.x,motoY=motoAt.y+lift,motoKey=`${pose}|${((turn%HEADING_STEPS)+HEADING_STEPS)%HEADING_STEPS}|${proj.view}|${Math.round(k*10)}`;
+    const motoFace=()=>boxFaces(motoBoxes(pose,0),turn/HEADING_STEPS*Math.PI*2,proj.view);
+    const motoFaces=this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,1);
+    if(this.covers(mx,my,motoFaces,motoDepth))this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,COVER_ALPHA);
+    const standing=mode==='entrega'||mode==='abrindo'||view.ended==='victory';
+    if(!standing)this.frozenOpener.hide();
     if(mode==='entrega'){
       // He stands beside the moto with the bag.
-      const side=this.local(mx,my,heading,0,1.0*M),f=standingChaveiro(0,0,true);
-      this.opener.setDepth(proj.depth(side.x,side.y));
-      this.drawFigure(this.opener,side.x,side.y,heading,f,k,1);
+      const side=this.local(mx,my,heading,0,1.0*M),at=proj.project(side.x,side.y,this.q);
+      this.frozenOpener.show(`bag|${motoKey}`,()=>boxFaces(standingChaveiro(0,0,true),turn/HEADING_STEPS*Math.PI*2,proj.view),k,at.x,at.y,proj.depth(side.x,side.y),1);
     }else if(mode==='abrindo'||view.ended==='victory'){
       // At the car's door (its left side, toward +y), facing it, the tool jiggling at the lock: just in front of the
       // car when that side faces the screen, just behind it otherwise (one figure against a big one: no column split).
       const at=this.local(view.car.x,view.car.y,CAR_HEADING,.2*M,(CAR_HALF.w+.45*M));
       const side=viewTurn(-Math.sin(CAR_HEADING),Math.cos(CAR_HEADING),proj.view),front=side.x+side.y>0;
-      const f=standingChaveiro(0,0,false,reduced?0:Math.abs(Math.sin(time*.012)));
-      this.opener.setDepth(carDepth+(front?.5:-.5));
-      this.drawFigure(this.opener,at.x,at.y,CAR_HEADING-Math.PI/2,f,k,1);
+      const tool=reduced?0:Math.round(Math.abs(Math.sin(time*.012))*3)/3,door=this.options.projector.project(at.x,at.y,{x:0,y:0});
+      this.frozenOpener.show(`door|${tool}|${proj.view}|${Math.round(k*10)}`,()=>boxFaces(standingChaveiro(0,0,false,tool),CAR_HEADING-Math.PI/2,proj.view),k,door.x,door.y,carDepth+(front?.5:-.5),1);
       if(mode==='abrindo'&&!view.ended)this.drawOpening(at.x,at.y,openProgress(view.etaS),k);
     }
 
@@ -147,6 +201,7 @@ export class ChaveiroRenderer {
 
   destroy(){
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
+    this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 

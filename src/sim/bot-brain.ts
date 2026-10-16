@@ -16,9 +16,11 @@
  *   there and back into the base that ends TOWER_MARGIN before the round; then it heads home like everyone. Saving for
  *   the Gustavão's line holds only that reserve from the forge; without `towers` (the protocol bots) nothing changes;
  * - money (D-048): roots and the Gustavão are paid in material (fichas de torre: CampView.units), evolutions, tower
- *   repairs and the forge in the team's Grana (CampView.grana). With the chaveiro objective the Grana also pays his
- *   bill at the end, so no Grana is spent below granaReserve (always CHAVEIRO_KEEP_SHARE = 1.3 × the bill; the
- *   CHAVEIRO_SAVE_ETA "whole bill near the end" branch is off at −1);
+ *   repairs and the forge in Grana: since NEW-20261014-ORQ-carteira-e-pix the bot's OWN wallet (CampView.grana is the
+ *   viewer's; the room bots get theirs in the view). With the chaveiro objective the wallets also pay his bill at the
+ *   end (the vaquinha), so no Grana is spent below granaReserve (each bot's part: CHAVEIRO_KEEP_SHARE = 1.3 × the bill
+ *   ÷ the seated players; the CHAVEIRO_SAVE_ETA "whole bill near the end" branch is off at −1). The room bots that
+ *   do not buy send what is above their part to the forger by PIX (room-bots.ts; never to a person);
  * - offers: picks the default card after a human-ish reaction (longer in combat, where the offer is a chip);
  * - fallen: asks for help ("Me salva") every few seconds.
  * In the city (cidade-10, terrain.world === 'cidade') the long walks (home, the crate, a fallen friend, the person
@@ -34,9 +36,14 @@
  * trip that is back before the wave, PUSH_TRIP_SECONDS); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
+ * D-051 manual combat (BrainInput.combat 'manual'): the bot holds the attack (Decision.attack) whenever a critter is
+ * within its equipped weapon's reach (attackReach) and never taps the skill; the room's auto aim picks the target. It
+ * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
-import type {RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
+import {BASE_STATS,CAR_ID,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import {equippedWeapon,manualReach} from './weapons/system.ts';
+import {resolveWeapon,weaponCatalog} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
@@ -93,8 +100,9 @@ export const PUSH_BOTS=2,PUSH_STAND=1.5;
  */
 export const PUSH_TRIP_SECONDS=10;
 /**
- * D-048, the chaveiro's bill (paid = min(Grana, budget) when he opens the car; the rest is debt): the bots always keep
- * CHAVEIRO_KEEP_SHARE × the bill, from the start (1.3: the bill itself plus a margin for the hits still to come, 33 R$
+ * D-048, the chaveiro's bill (the vaquinha at the end since NEW-20261014-ORQ-carteira-e-pix: equal parts from every
+ * seat's wallet, the richest cover the rest, then debt): each bot always keeps its part of CHAVEIRO_KEEP_SHARE × the
+ * bill (÷ the seated players), from the start (1.3: the bill itself plus a margin for the hits still to come, 33 R$
  * of a fresh R$ 25 bill; balanco-pos-1-7 eco-v9, Executor-6). CHAVEIRO_SAVE_ETA is the ETA (s) from which the reserve
  * would be the whole bill instead; −1 turns that branch off (an ETA is never negative), since the share already holds
  * more than the bill.
@@ -143,9 +151,13 @@ export interface BrainInput {
    * or the one clearing the next delivery (objectiveTask). Unset (the protocol bots): no objective tasks.
    */
   teamBots?:readonly string[];
+  /** D-051: the room's combat. 'manual': hold the attack with a critter in reach, no skill. Unset: the automatic weapons. */
+  combat?:CombatMode;
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
+  /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
+  attack?:boolean;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
@@ -156,6 +168,18 @@ const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 const norm=(v:Point):Point=>{const l=Math.hypot(v.x,v.y);return l>1e-6?{x:v.x/l,y:v.y/l}:{x:0,y:0};};
 const toward=(from:Point,to:Point,weight=1):Point=>{const n=norm({x:to.x-from.x,y:to.y-from.y});return {x:n.x*weight,y:n.y*weight};};
 const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
+
+/**
+ * D-051: whether a critter is within reach of the equipped weapon (weapons/system.ts manualReach, at the weapon's level
+ * with base stats: the room's aim decides the real shot). The enemy's radius counts for the patterns that touch, when
+ * the view carries it (the room bots see the live enemies).
+ */
+export function attackReach(me:Pick<PlayerRunView,'weapons'>,at:Point,enemies:readonly EnemyView[]):boolean{
+  const owned=equippedWeapon({weapons:me.weapons,passives:[]}),def=owned?weaponCatalog.get(owned.id):undefined;
+  if(!owned||!def)return false;
+  const {reach,pad}=manualReach(resolveWeapon(def,owned.level,BASE_STATS));
+  return enemies.some(e=>e.hp>0&&dist(e,at)<=reach+(pad?(e as EnemyView&{radius?:number}).radius??0:0));
+}
 
 export function wallOf(view:RunView):StructureView|undefined{return view.structures.find(s=>s.kind==='muralha');}
 /**
@@ -208,21 +232,22 @@ export function forgerId(view:RunView):string|undefined{
 }
 
 /**
- * The Grana (R$) the bots never spend below (D-048): with the chaveiro objective running, CHAVEIRO_KEEP_SHARE × his
- * bill (rounded up; 1.3, more than the bill), or the whole bill once his ETA is CHAVEIRO_SAVE_ETA or less (off at −1); the bill grows with
- * the car's hits (budget), the reserve with it. 0 without the objective (no bill in the other worlds) or once it ended.
- * Deterministic: the view's objective only.
+ * The Grana (R$) a bot never spends its wallet below (D-048): with the chaveiro objective running, its part of
+ * CHAVEIRO_KEEP_SHARE × his bill (÷ the seated players of `view.players`, at least 1; rounded up), or of the whole bill
+ * once his ETA is CHAVEIRO_SAVE_ETA or less (off at −1); the bill grows with the car's hits (budget), the reserve
+ * with it. 0 without the objective (no bill in the other worlds) or once it ended. Deterministic: the view only.
  */
-export function granaReserve(view:Pick<RunView,'objective'>):number{
+export function granaReserve(view:Pick<RunView,'objective'>&{players?:readonly Pick<PlayerRunView,'spectator'>[]}):number{
   const o=view.objective;
   if(!o||o.ended)return 0;
-  return o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:Math.ceil(o.budget*CHAVEIRO_KEEP_SHARE);
+  const seats=Math.max(1,view.players?.filter(p=>!p.spectator).length??1);
+  return Math.ceil((o.etaS<=CHAVEIRO_SAVE_ETA?o.budget:o.budget*CHAVEIRO_KEEP_SHARE)/seats);
 }
 
 /** Wall share under which the forger repairs it even out of the chaveiro's reserve (review: the bill never beats a defeat). */
 export const WALL_CRITICAL=.5;
 /**
- * What the forger buys with the team's Grana (D-048: the forge is paid in R$, never material), or nothing: repair a
+ * What the forger buys with its wallet (view.camp.grana; D-048: the forge is paid in R$, never material), or nothing: repair a
  * hurt wall, then towers up to the forge's cap, then gambiarras. A recipe the forge refused this round (`refused`:
  * recipe -> round index) is skipped; `keep` (default granaReserve: the chaveiro's bill) is never spent.
  */
@@ -288,6 +313,8 @@ export function decide(input:BrainInput):Decision{
     if(tick-memory.lastSosTick>=SOS_GAP){decision.sos=true;memory.lastSosTick=tick;}
     return decision;
   }
+  // D-051 manual combat: hold the attack whenever a critter is in reach, whatever the bot is walking to.
+  if(input.combat==='manual')decision.attack=attackReach(me,at,view.enemies);
   const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
@@ -432,7 +459,8 @@ export function decide(input:BrainInput):Decision{
   if(b)memory.homing=homing;
   const close=view.enemies.filter(e=>dist(e,at)<DANGER);
   // Skill: something close and it is ready (the room answers whether it went off).
-  if(close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
+  // D-051: no skill in the manual combat.
+  if(input.combat!=='manual'&&close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
   const fallen=view.players.filter(p=>p.id!==selfId&&p.downed&&!p.eliminated&&p.online!==undefined)
     .map(p=>({p,at:positionOf(p)})).filter(f=>f.at&&dist(f.at,at)<RESCUE_REACH).sort((a,b)=>dist(a.at!,at)-dist(b.at!,at))[0];
   const hpShare=me.maxHp>0?me.hp/me.maxHp:1;
@@ -530,7 +558,7 @@ export interface TowerBrainView {
   round:number;
   /** The team's material (D-048: one pile; every UNITS_PER_TOKEN units are a ficha de torre): roots and the Gustavão. */
   units:number;
-  /** The team's Grana, R$ (D-048): every other evolution and the tower repairs. */
+  /** The builder's own wallet, R$ (D-048; NEW-20261014-ORQ-carteira-e-pix): every other evolution and the tower repairs. */
   grana:number;
   /** Grana the towers never spend (decide fills it with granaReserve: the chaveiro's bill); unset: 0. */
   granaKeep?:number;
@@ -558,10 +586,11 @@ export const TOWER_DETOUR=1.6;
 /**
  * The bot's view of the towers from the structures state and its build plan. `isPerson(owner)` (rooms): whether a
  * defense's owner is a person who is here, so the bot leaves it to them (bot-gasta-material). `orderFrom`: see the field.
+ * `grana`: the builder's own wallet (NEW-20261014-ORQ-carteira-e-pix; default 0).
  */
-export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,round:number,isPerson?:(owner:string)=>boolean,orderFrom?:number):TowerBrainView{
+export function towerBrainView(state:StonewardsState,plan:BuildPlan,tick:number,round:number,isPerson?:(owner:string)=>boolean,orderFrom?:number,grana=0):TowerBrainView{
   const t=state.defenses;
-  return {tick,round,units:unitsOf(state.balance),grana:state.grana,sites:plan.sites.map(s=>({id:s.id,maxSize:s.maxSize,x:s.x,y:s.y})),rail:plan.rail?.id??null,
+  return {tick,round,units:unitsOf(state.balance),grana,sites:plan.sites.map(s=>({id:s.id,maxSize:s.maxSize,x:s.x,y:s.y})),rail:plan.rail?.id??null,
     ...(plan.rail?{railAt:{x:plan.rail.x,y:plan.rail.y}}:{}),
     railLaid:!!t?.rail,railReady:!!t?.rail&&tick>=t.rail.readyTick,gustavoes:t?.gustavoes??0,
     defenses:(t?.list??[]).map(d=>({id:d.id,kind:d.kind,site:d.site,ready:tick>=d.readyTick,ruined:!!d.ruined,

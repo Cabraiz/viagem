@@ -36,12 +36,17 @@ import {loadZoom,saveZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 
+/** The shell's data attributes that change every frame (the hero's spot, the tick) are written at most this often (ms). */
+const SHELL_DATA_MS=250;
+/** Writes a data attribute only when its value changed (a write, even of the same value, invalidates the subtree's style). */
+const setData=(el:HTMLElement,key:string,value:string)=>{if(el.dataset[key]!==value)el.dataset[key]=value;};
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
 /** How long the "Gira no intervalo" answer to a tap on the locked camera stays (balloon or slot row). */
 const CAMERA_HINT_MS=1500;
 const economyStore=():KeyValue|null=>{try{return globalThis.localStorage??null;}catch{return null;}};
 import {inviteQuery,uxMetricsEnabled} from './dev/ux-flag.ts';
+import {perfEnabled} from './dev/perf-flag.ts';
 import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
@@ -120,6 +125,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       onForge:(recipe,target)=>net.forge(recipe,target),
       // Dona Cida (D-047): {t:'cida'}; the room answers {t:'bought'} (net.onBought below).
       onCida:item=>net.buyCida(item),
+      // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
+      onPix:(to,amount)=>net.pix(to,amount),
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
@@ -145,6 +152,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onEmote=note=>hud?.emote(note.player,note.id);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
+    // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): the frame meter on the phone; loaded only with the flag.
+    if(perfEnabled(location.search))void import('./dev/perf-overlay.ts').then(m=>m.startPerfOverlay());
     if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
       if(closed||!hud)return;
       // It chains net.onCommand and net.onSos (RescueBoard's) and puts them back on destroy.
@@ -205,6 +214,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const stage=$('.explore-stage'),notice=$('.explore-notice');
   let controller:ReturnType<typeof import('./scene.ts').createIsland>|undefined;
   let closed=false,paused=false;
+  /** When the per-frame shell attributes were last written (SHELL_DATA_MS). */
+  let shellDataAt=-Infinity;
   /** The economy toast's own clock (VGM-048), cleared on close. */
   let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
@@ -418,14 +429,20 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
-      position:p=>{shell.dataset.playerX=p.x.toFixed(3);shell.dataset.playerY=p.y.toFixed(3);if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
+      position:p=>{
+        // The shell's data attributes (tests, scripts, CSS) are written only when they change, and the ones that change
+        // every frame (the hero's spot, the tick) at most every SHELL_DATA_MS: each write invalidates the style of the
+        // whole shell, and the HUD reads layout right after (BUG-20261014-ORQ-engasgo-andando-celular).
+        const now=performance.now(),slow=now-shellDataAt>=SHELL_DATA_MS;
+        if(slow){shellDataAt=now;setData(shell,'playerX',p.x.toFixed(3));setData(shell,'playerY',p.y.toFixed(3));}
+        if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
           // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
           if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
-          const self=net.players.get(net.id);shell.dataset.playerId=net.id;shell.dataset.connected=String(net.connected);shell.dataset.tick=String(net.tick);shell.dataset.players=String(net.players.size);
-          $('#coop-health').textContent=`Sua vida: ${self?.hp??0}`;
+          const self=net.players.get(net.id);setData(shell,'playerId',net.id);setData(shell,'connected',String(net.connected));if(slow)setData(shell,'tick',String(net.tick));setData(shell,'players',String(net.players.size));
+          const health=$('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
-          shell.dataset.offline=String(!net.connected&&!net.fatal);
+          setData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
           if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
@@ -434,7 +451,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;
-            shell.dataset.runPhase=run.phase;shell.dataset.runRound=String(run.round);
+            setData(shell,'runPhase',run.phase);setData(shell,'runRound',String(run.round));
             // The version watch reads the phase from the shell (update-toast.ts inMatchOf): out of countdown/combat, an
             // update that waited reloads now; any other change moves the notice to where it shows (HUD slot or top).
             if(previous!==run.phase){if(leftMatch(previous,run.phase))matchEnded();else if(updateSlot)setMatchSlot(updateSlot);}
@@ -445,7 +462,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
-              shell.dataset.hudResult=String(resultShown!==undefined);
+              setData(shell,'hudResult',String(resultShown!==undefined));
               // After showResult: the coach's end-of-run rule already ran, the metrics read what it learned.
               ux?.tick();
               // Owner, bots and who is still here on the result screen (D-025): crown, robot, "Arrumar turma".

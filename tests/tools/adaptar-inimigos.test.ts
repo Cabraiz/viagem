@@ -88,6 +88,41 @@ test('a required shift that leaves the cell margin refuses the enemy and writes 
   assert.equal(reto.action,'copied',JSON.stringify(reto));
 });
 
+test('a wide pose takes only the shift that fits the margin when the foot then lands inside the tolerance', async t=>{
+  const {out,records}=await run(t,async src=>{
+    const dir=enemy(src,'chefe');
+    // Body reaching x 4 (a stamp at the side), feet at x 36..44 (centre 40.5): the full -8 shift leaves the margin,
+    // -2 keeps x 2 and the foot 6.5 px off, inside the 7.68 px tolerance.
+    await sheet(path.join(dir,'walk.png'),2,()=>[[4,10,40,40],[36,41,44,56]]);
+  });
+  const rec=records.find(r=>r.id==='chefe')!;
+  assert.equal(rec.action,'recentred',JSON.stringify(rec));assert.deepEqual(rec.shifts,{walk:2});
+  const img=await raw(path.join(out,'inimigos/chefe/walk.png')),b=cellBox(img.data,img.width,0,0,C,C);
+  assert.equal(b.minX,2);assert.ok(Math.abs(b.footX-32)<=7.68,String(b.footX));
+});
+
+test('a stray speck is cleared (noted); the rest rows and the per-layer sidecars are copied; an elite variant gets its base shifts', async t=>{
+  const {src:from,out,records}=await run(t,async src=>{
+    const dir=enemy(src,'pombos');
+    await sheet(path.join(dir,'walk.png'),2,(r,c)=>c===1?[[39,20,48,50],[10,30,10,30]]:[[39,20,48,50]]);
+    const one=Buffer.alloc(C*6*C*4);for(let y=30;y<56;y++)for(let x=20;x<44;x++)one[(y*C*6+x)*4+3]=255;
+    await sharp(one,{raw:{width:C*6,height:C,channels:4}}).png().toFile(path.join(dir,'sleep.png'));
+    writeFileSync(path.join(dir,'sleep.meta.json'),'{}');
+    mkdirSync(path.join(src,'inimigos/elite'),{recursive:true});
+    await sheet(path.join(src,'inimigos/elite/pombos-gorro-walk.png'),2,()=>[[40,14,47,22]]);
+    writeFileSync(path.join(src,'inimigos/elite/pombos-gorro-walk.meta.json'),'{}');
+  });
+  const rec=records.find(r=>r.id==='pombos')!;
+  assert.ok(rec.notes!.some(n=>/speck/.test(n)&&/col 2/.test(n)),JSON.stringify(rec.notes));
+  assert.deepEqual(readFileSync(path.join(out,'inimigos/pombos/sleep.png')),readFileSync(path.join(from,'inimigos/pombos/sleep.png')),'byte copy');
+  assert.ok(existsSync(path.join(out,'inimigos/pombos/sleep.meta.json')));
+  assert.ok(!records.some(r=>/meta\.json/.test(r.id)),'layer sidecars are not pieces');
+  const walk=await raw(path.join(out,'inimigos/pombos/walk.png')),elite=await raw(path.join(out,'inimigos/elite/pombos-gorro-walk.png'));
+  const w=cellBox(walk.data,walk.width,C,0,C,C),e=cellBox(elite.data,elite.width,C,0,C,C);
+  assert.equal(w.minX,28,'the speck at x 10 is gone; the body moved -11');
+  assert.equal(e.minX,29,'the layer moved with its base');
+});
+
 test('deterministic: two runs write the same bytes; untouched sheets are byte copies', async t=>{
   const {root,src,out}=await run(t,async src=>{
     const dir=enemy(src,'boneco');

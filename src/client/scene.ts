@@ -861,6 +861,16 @@ export class IslandScene extends Phaser.Scene {
     if(!ghost&&!this.fortify)return;
     const f=this.makeFortify();f?.setGhost(ghost);f?.setHints(ghost?hints:[]);
   }
+  /** D-052 slice 3 (the build HUD aims the ghost): the ground point (world u) under a client point (CSS px, viewport). */
+  worldAt(clientX:number,clientY:number):Point|undefined{
+    const canvas=this.game.canvas;
+    if(!canvas)return undefined;
+    const r=canvas.getBoundingClientRect();
+    if(!r.width||!r.height)return undefined;
+    const p=this.cameras.main.getWorldPoint((clientX-r.left)*this.scale.width/r.width,(clientY-r.top)*this.scale.height/r.height);
+    return unprojectView(p,this.view,this.field);
+  }
+
   /**
    * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
    * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.

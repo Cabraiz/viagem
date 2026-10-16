@@ -1,0 +1,58 @@
+/* D-052 slice 3 (hud/fortify/fortify.ts). Only tokens (src/client/ui/tokens.css) and stickers (src/client/ui/icons.svg).
+   - .rh-fort-puxar: a right-thumb circle left of the skill button, bottom-aligned with it (only near the car). Papel body,
+     Breu edge; Amarelo while this player holds the rope (rh-fort-on, "Soltar").
+   - .rh-fort-construir: a circle above Puxar's place with the wall counter as a Breu badge.
+   - .rh-fort-bandeja: the tray (system window: Lilás body, Breu edge, Papel inner line) low on the right, clear of the
+     map's middle where the ghost goes: title, wall counter, close, the three pieces as tags, Girar and Construir aqui. */
+.rh-fort{position:absolute;inset:0;pointer-events:none;z-index:1}
+.rh .rh-fort-puxar,.rh .rh-fort-construir{
+  --fort:60px;
+  position:absolute;box-sizing:border-box;width:var(--fort);height:var(--fort);
+  right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 16px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--fort)/2);
+  display:grid;place-content:center;justify-items:center;gap:0;margin:0;padding:0;
+  border:2px solid var(--c-breu);border-radius:var(--r-circulo);background:var(--c-papel);color:var(--c-breu);
+  box-shadow:0 0 0 2px var(--c-papel),var(--s-1);cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.rh .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 + var(--fort)/2 + 16px)}
+.rh .rh-fort-puxar[hidden],.rh .rh-fort-construir[hidden],.rh-fort-bandeja[hidden]{display:none}
+.rh-fort-btn-text{font:800 var(--t-13)/1 var(--f-sistema)}
+.rh .rh-fort-puxar:active,.rh .rh-fort-construir:active{transform:translateY(2px);box-shadow:0 0 0 2px var(--c-papel),0 1px 0 var(--c-breu)}
+.rh .rh-fort-puxar.rh-fort-on{background:var(--c-amarelo)}
+.rh-fort-badge{position:absolute;top:-8px;right:-10px;min-width:24px;padding:2px 4px;border-radius:var(--r-circulo);
+  background:var(--c-breu);color:var(--c-papel);font:800 var(--t-13)/1 var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rh-ended .rh-fort{display:none}
+
+.rh-fort-bandeja{position:absolute;box-sizing:border-box;right:var(--rh-r,12px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 16px);
+  width:min(340px,calc(100vw - 24px));padding:4px 8px 8px;display:grid;gap:6px;border-radius:var(--r-janela);
+  background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
+  pointer-events:auto;touch-action:manipulation;text-align:left}
+.rh-fort-head{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;align-items:center;column-gap:8px}
+.rh-fort-title{margin:0;padding-left:4px;font:400 var(--t-21)/1 var(--f-cartaz);white-space:nowrap}
+.rh-fort-count{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums;white-space:nowrap;justify-self:end}
+.rh .rh-fort-close{display:grid;place-items:center;width:44px;height:44px;margin:0 -4px 0 0;padding:0;border:0;background:transparent;color:var(--c-papel);cursor:pointer}
+.rh-fort-pecas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.rh .rh-fort-peca{display:grid;justify-items:center;gap:2px;min-height:76px;padding:6px 2px;border:2px solid var(--c-breu);border-radius:var(--r-ficha);
+  background:var(--c-papel);color:var(--c-breu);cursor:pointer;font:800 var(--t-13)/1.1 var(--f-sistema)}
+.rh-fort-peca small{font:700 var(--t-13)/1 var(--f-sistema);opacity:.8}
+.rh .rh-fort-peca.rh-fort-escolhida{background:var(--c-amarelo);box-shadow:0 0 0 2px var(--c-papel)}
+.rh-fort-acoes{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px}
+.rh .rh-fort-girar,.rh .rh-fort-ok{display:flex;align-items:center;justify-content:center;gap:4px;min-height:44px;padding:0 10px;
+  border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);cursor:pointer;font:800 var(--t-13)/1 var(--f-sistema)}
+.rh .rh-fort-ok{background:var(--c-cartolina)}
+.rh .rh-fort-girar:disabled{opacity:.45;cursor:default}
+.rh .rh-fort-girar.rh-fort-girado .ic{transform:rotate(90deg)}
+.rh-fort-dica{margin:0;font:700 var(--t-13)/1.15 var(--f-sistema)}
+/* The mouse aims and clicks on the map: no confirm button, a desktop hint. */
+@media (hover:hover) and (pointer:fine){
+  .rh .rh-fort-ok{display:none}
+  .rh-fort-acoes{grid-template-columns:auto}
+}
+@media (max-height:500px){
+  .rh .rh-fort-puxar,.rh .rh-fort-construir{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px)}
+  .rh .rh-fort-puxar{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--fort)/2)}
+  .rh .rh-fort-construir{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 + var(--fort)/2 + 12px)}
+  .rh-fort-bandeja{bottom:max(16px,env(safe-area-inset-bottom));right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 12px);width:min(320px,calc(100vw - 260px))}
+  .rh-fort-peca{min-height:60px}
+  .rh-fort-dica{display:none}
+}

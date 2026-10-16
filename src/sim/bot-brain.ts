@@ -176,6 +176,12 @@ const standing=(p:PlayerRunView)=>p.online&&!p.spectator&&!p.downed&&!p.eliminat
  */
 /** D-051 bots: a loot trip in the intermission counts the streets as this × the straight line, plus these seconds. */
 export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
+/**
+ * D-051 runner: with at least RUNNER_TEAM standing, the bot of index RUNNER_INDEX (a roamer) fetches crates within
+ * LOOT_RADIUS_RUN during the wave too, like a person whose friends hold the wall (the 16/10 bench: the far dourada and
+ * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs.
+ */
+export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=60;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -362,7 +368,8 @@ export function decide(input:BrainInput):Decision{
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
   if(input.combat==='manual'){
-    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:LOOT_RADIUS);
+    const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
+    const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).

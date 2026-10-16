@@ -30,7 +30,7 @@ export const EDGE_PRIORITY:Readonly<Record<EdgeKind,number>>={caido:0,chefe:1,gr
  * The ficha's sticker. grupo: the doc's new `bichos` sticker (a gosma silhouette, design/cidade-hud.md §3) has no art yet,
  * so it wears `onda` ("Bichos chegando") until the art lane draws it; its count in the body tells it from a mouth.
  */
-export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto',banco:'banco'};
+export const EDGE_ICON:Readonly<Record<EdgeKind,IconName|undefined>>={caido:'boia',chefe:'chefe',grupo:'onda',spawn:'onda',base:'base',aliado:undefined,bau:'bau',obra:undefined,moto:'moto',banco:'caixa-eletronico'};
 /** At most this many arrows on screen (UX card). */
 export const MAX_ARROWS=6;
 /** Arrows closer than this (CSS px) step aside along their side; when no spot is left they become one ("+N"). */

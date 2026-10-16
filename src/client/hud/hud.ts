@@ -388,7 +388,7 @@ export class RunHud {
     const called=this.bankRow.dataset.banco;
     if(called&&!banks?.some(b=>b.id===called&&b.state==='bicho')){delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);}
     if(!step.show)return;
-    const row=this.bankRow;row.innerHTML=icon('banco');row.append(step.show.text);row.dataset.banco=step.show.bank;
+    const row=this.bankRow;row.innerHTML=icon('caixa-eletronico');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);
   }
   /** The reason row on screen now (the sandbox and the acceptance scripts). */

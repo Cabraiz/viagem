@@ -30,6 +30,7 @@ import {CAR_ID,MOTO_ID,Rng,type CombatMode,type ObjectiveKind,type ObjectiveView
 import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
+import {payKill,seatedPlayers,splitAmong} from './wallet.ts';
 import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -326,7 +327,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   world.playerDamageScale=damageScale;
   if(objective&&openPlanner&&cityTerrain){
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;
-    chaveiro=createChaveiro({wallet:{get:()=>stonewards.state.grana,spend:n=>{stonewards.state.grana-=n;}},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
+    chaveiro=createChaveiro({wallet:{seated:()=>seatedPlayers(world.players)},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);}},cp?.chaveiro);
@@ -359,7 +360,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         maxEnemies:MAX_ENEMIES,
         createEnemy:(ctx,kind,point,scale)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,point,scale)):undefined,
         roster:round=>director!.roster(round),
-        pay:n=>{stonewards.state.grana+=n;},
+        // A fallen nest pays the team, split among the seated like the boss (carteira-e-pix).
+        pay:n=>{splitAmong(seatedPlayers(world.players),n,stonewards.state);},
       },cp?.ninhos);
     }
   }
@@ -380,13 +382,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
   ])world.register(system);
 
-  const offKill=world.onKill((enemy,by,ctx)=>{
+  const offKill=world.onKill((enemy,by,ctx,credit)=>{
     progression.dropLoot(ctx,enemy,by);
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
-    // D-047/D-048: every kill pays the team's Grana, in every world (the chaveiro only reads it for his bill).
-    stonewards.state.grana+=granaPerKill(enemy);
+    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world: the killer,
+    // a tower's owner (credit), else split among the standing seats; the boss always split among every seat.
+    payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}

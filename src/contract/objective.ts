@@ -3,6 +3,7 @@
  * client, the HUD and the room share about it. The simulation lives in src/sim/chaveiro/; the wire encoding of the
  * view is a later pass (only types and shared numbers here).
  */
+import type {VaquinhaShare} from './wallet.ts';
 
 /** Objectives a run may play; absent = the round-count run (survive 10 rounds, boss). */
 export type ObjectiveKind='chaveiro';
@@ -81,4 +82,6 @@ export interface ObjectiveResult {
   /** Seconds from the run's start to the end. */
   seconds:number;
   hits:number;limit:number;budget:number;grana:number;paid:number;debt:number;parts:number;
+  /** The vaquinha (contract wallet.ts): each player's wallet at the end and what they put into the bill. */
+  share?:VaquinhaShare[];
 }

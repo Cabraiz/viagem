@@ -4,7 +4,8 @@
  * Protocol 4 binary run frames are protocol4.ts.
  */
 import {PROTOCOL_VERSION} from './protocol4.ts';
-import type {EnemyState,PlayerInput,Point,RoundState,RunState,StampedEvent,TelegraphView,WorldKind} from '../contract/index.ts';
+import type {EnemyState,PixRefusal,PixResult,PlayerInput,Point,RoundState,RunState,StampedEvent,TelegraphView,WorldKind} from '../contract/index.ts';
+import {PIX_REFUSALS} from '../contract/index.ts';
 /**
  * Room protocol (join handshake). 7 since VGM-053B (zueira events and the kill-cam), 6 was VGM-046B (5 E7-skill-hud-wiring,
  * 4 VGM-042b): binary run frames (protocol4.ts: camp block, gather nodes, zueira events) plus JSON control messages
@@ -89,6 +90,39 @@ export function parseElenco(m:unknown):string[]|undefined{
   const out:string[]=[];
   for(const id of ids){if(out.length>=ELENCO_MAX)break;if(typeof id==='string'&&id.length>0&&id.length<=ELENCO_ID_MAX&&!out.includes(id))out.push(id);}
   return out;
+}
+/**
+ * PIX (NEW-20261014-ORQ-carteira-e-pix, contract wallet.ts). Phone → room {t:'pix',round,req,to,amount}; room → phone
+ * {t:'pixed',req,ok,to?,amount?,grana?|reason?} (grana: the sender's wallet after it). No protocol bump of its own: an
+ * older room never answers (the phone's promise gives up after PIX_ANSWER_MS) and an older phone never sends it.
+ */
+export interface PixCommand {t:'pix';round:number;req:number;to:string;amount:number}
+/** Longest player id a PIX may name (room ids are far shorter). */
+export const PIX_TO_MAX=64;
+/** How long the phone waits for {t:'pixed'} before it gives the PIX up as refused ('phase'). */
+export const PIX_ANSWER_MS=5000;
+/**
+ * The shape of a {t:'pix'} command (the room's first check), or undefined: a whole round, a whole positive req, a
+ * player id string, a number amount (the simulation judges the value: 'amount').
+ */
+export function parsePix(m:unknown):PixCommand|undefined{
+  if(!m||typeof m!=='object')return undefined;
+  const o=m as Record<string,unknown>;
+  if(o.t!=='pix'||!Number.isSafeInteger(o.round)||!Number.isSafeInteger(o.req)||(o.req as number)<1)return undefined;
+  if(typeof o.to!=='string'||!o.to.length||o.to.length>PIX_TO_MAX||typeof o.amount!=='number')return undefined;
+  return {t:'pix',round:o.round as number,req:o.req as number,to:o.to,amount:o.amount};
+}
+/** The room's answer to a PIX as the phone reads it, or undefined when malformed (an unknown reason included). */
+export function parsePixed(m:unknown):{req:number;result:PixResult}|undefined{
+  if(!m||typeof m!=='object')return undefined;
+  const o=m as Record<string,unknown>;
+  if(o.t!=='pixed'||!Number.isSafeInteger(o.req)||typeof o.ok!=='boolean')return undefined;
+  const req=o.req as number;
+  if(o.ok){
+    if(typeof o.to!=='string'||!Number.isSafeInteger(o.amount)||!Number.isSafeInteger(o.grana))return undefined;
+    return {req,result:{ok:true,to:o.to,amount:o.amount as number,grana:o.grana as number}};
+  }
+  return typeof o.reason==='string'&&Object.hasOwn(PIX_REFUSALS,o.reason)?{req,result:{ok:false,reason:o.reason as PixRefusal}}:undefined;
 }
 /**
  * A dropped player keeps the seat this long (VGM-047, definitive for phones, D-009/D-016): switching apps, answering a

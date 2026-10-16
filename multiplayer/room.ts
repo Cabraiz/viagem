@@ -2,14 +2,14 @@ import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,t
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {LevelupPause} from './levelup-pause.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
-import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS} from '../src/protocol/index.ts';
+import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -659,6 +659,7 @@ export class Room {
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
+    else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
       if(this.run.ready(c.playerId,m.round,m.ready)){this.syncSpectators();this.pushRun();}
@@ -840,7 +841,8 @@ export class Room {
    */
   private dropPerson(id:string){
     this.autopilots.remove(id);
-    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
+    // sim.remove splits their wallet among the seats that stay (the inheritance, carteira-e-pix).
+    this.rosterDirty=true;this.sim.remove(id);this.run.leave(id);this.sessions.delete(id);this.pixAt.delete(id);this.catalogs.delete(id);this.sosAt.delete(id);this.emoteAt.delete(id);this.lostRun.delete(id);this.resumedRun.delete(id);
     if(!this.sessions.size)for(const bot of this.bots.ids)this.removeBot(bot);
     if(this.owner===id||!this.sessions.has(this.owner??''))this.setOwner(this.oldestPerson());
   }
@@ -991,6 +993,30 @@ export class Room {
     // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
     const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
+  }
+  /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
+  private pixAt=new Map<string,{at:number;req:number}>();
+  /**
+   * PIX to a friend (NEW-20261014-ORQ-carteira-e-pix, contract wallet.ts): {t:'pix',round,req,to,amount}. A tap of
+   * another shape (protocol room.ts parsePix) is dropped; everything else is answered {t:'pixed',req,ok,to?,amount?,grana?|reason?}
+   * (grana: the sender's wallet after it). The room refuses what only it knows: outside combat or for another round
+   * ('phase'), during the D-050 level-up pause ('pause'), sooner than PIX_GAP_MS after the sender's last PIX ('rate';
+   * the same req again goes on to the sim, which says 'duplicate'); the sim checks the rest (amount, wallet, self,
+   * target, a spectator sender) and moves the money, with a `pix` event in the next frame.
+   */
+  private pix(c:Connection,raw:unknown,now:number){
+    const m=parsePix(raw);if(!m)return;
+    const from=c.playerId!,answer=(result:PixResult)=>this.sendJson(c,{t:'pixed',req:m.req,ok:result.ok,
+      ...(result.ok?{to:result.to,amount:result.amount,grana:result.grana}:{reason:result.reason})});
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round){answer({ok:false,reason:'phase'});return;}
+    // D-050: no PIX while the team picks its level-up cards.
+    if(this.levelup.paused){answer({ok:false,reason:'pause'});return;}
+    const last=this.pixAt.get(from);
+    if(last&&last.req!==m.req&&now-last.at<PIX_GAP_MS){answer({ok:false,reason:'rate'});return;}
+    const result=this.sim.pix(from,m.to,m.amount,`p:${m.req}`);
+    if(result.ok)this.pixAt.set(from,{at:now,req:m.req});
+    answer(result);
   }
   /** Sends {t:'offers'} when this peer's pending offers changed since its last push (always, when forced). */
   private pushOffers(c:Connection,force=false){

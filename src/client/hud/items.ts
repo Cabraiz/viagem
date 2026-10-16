@@ -3,7 +3,7 @@
  * the server (VGM-034/035/036) owns the real numbers. Names mirror the server catalogs (a test keeps them in sync,
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
-import type {StickerName} from '../ui/sticker.ts';
+import {isStickerName,type StickerName} from '../ui/sticker.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -40,7 +40,8 @@ export function itemDisplay(id:string):ItemDisplay{
   const known=byId.get(id);
   if(known)return known;
   const name=id.replace(/[-_]+/g,' ').replace(/^\w/,letter=>letter.toUpperCase())||'Item misterioso';
-  return {id,kind:'weapon',name,icon:UNKNOWN_ITEM_STICKER,blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
+  // An id the catalog does not list yet but whose art came (arte v2): its own sticker, never the box.
+  return {id,kind:'weapon',name,icon:isStickerName(id)?id:UNKNOWN_ITEM_STICKER,blurb:'Ninguém sabe o que faz. Bora testar.',joke:'Sem bula.'};
 }
 
 /** Price of an offer card (DSG-oferta-etiqueta): "Novo!" on the encarte star, the level as a price, or a word. */

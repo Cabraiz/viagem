@@ -74,9 +74,10 @@ import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.t
  * Next (the queue numbers it) since the nests on the wire (card NEW-20261014-ORQ-ninhos-sim, D-051): `asleep` on the
  * enemies (the sleeping bodies near the client, ASLEEP_PER_VIEWER at most), `size` and `seen` on the structures (the
  * nests, kind 'ninho', phase dormindo/ativo/destruido) and those strings in the DICT; an older decoder would refuse the masks.
+ * 22 given by the integration queue (tools/fila.mjs, lote 20261016-202056) to: NEW-20261014-ORQ-ninhos-sim.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=21;
+export const PROTOCOL_VERSION=22;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

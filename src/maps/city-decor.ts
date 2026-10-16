@@ -45,6 +45,13 @@ export const POSTES:readonly (readonly [string,number])[]=[['poste-concreto-1',3
   ['poste-aceso-amarelo-1',1],['poste-aceso-amarelo-2',1],['poste-gato-1',1],['poste-gato-2',1],['luminaria-quebrada-pisca-1',.5],['luminaria-quebrada-pisca-2',.5]];
 
 export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2,BOULDER_SHARE=.08;
+/**
+ * Pieces the art import refused (E8, importar-cenario-novo 16/10: problems in the art, asked back from the artist):
+ * never placed, so no cell turns into an invisible wall waiting for art that will not come. A family whose variants are
+ * all refused (lava-jato, posto-gasolina, predio-apto-8a) is left out; take an id off this list when its art is back.
+ */
+export const DECOR_REFUSED:ReadonlySet<string>=new Set(['lava-jato-1','lava-jato-2','posto-policial-1','posto-gasolina-1','posto-gasolina-2',
+  'quadra-1','predio-apto-8a-1','predio-apto-8a-2','arvore-natal-torta-2','caixa-papelao-2']);
 /** Line shapes at rot 0 (links), turned a quarter (rot +90) the way FACE_ROT goes: S → E → N → W. */
 const LINE_BASE={reto:LINK.N|LINK.S,quina:LINK.E|LINK.S,t:LINK.N|LINK.E|LINK.S,ponta:LINK.S} as const;
 
@@ -83,7 +90,14 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   const W=asset.cells.w,H=asset.cells.h,unit=asset.unitsPerCell,N=W*H;
   const rnd=mulberry(seed^0xdec0);
   const pick=<T>(list:readonly T[])=>list[Math.floor(rnd()*list.length)];
-  const variant=()=>rnd()<.5?1:2;
+  // One draw per call whatever the outcome (the rest of the map keeps its draws): the drawn variant, else the other one,
+  // else none (DECOR_REFUSED).
+  const variant=(base:string)=>{
+    const v=rnd()<.5?1:2;
+    for(const id of [`${base}-${v}`,`${base}-${3-v}`])if(!DECOR_REFUSED.has(id))return id;
+    return undefined;
+  };
+  const named=(id:string)=>/-\d$/.test(id)?(DECOR_REFUSED.has(id)?undefined:id):variant(id);
   const inMap=(c:number,r:number)=>c>=0&&r>=0&&c<W&&r<H;
   // Cell kinds: walk (every sample walkable), solid (none), mixed; the block kind and id of each cell.
   const walk=new Uint8Array(N),solid=new Uint8Array(N),kind:(CityBlockKind|undefined)[]=new Array(N),block:(string|undefined)[]=new Array(N);
@@ -154,12 +168,13 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   // 2. The border band: mountains where they fit whole, boulders here and there.
   const edge=(i:number)=>kind[i]==='edge'&&solid[i]===1;
   for(const [base,s] of MOUNTAINS)for(let r=0;r+s<=H;r++)for(let c=0;c+s<=W;c++){
-    if(rect(c,r,s,s,edge))put(base==='morro-3x3'?base:`${base}-${variant()}`,c,r,s,s,pick([0,90,180,270] as const));
+    const id=base==='morro-3x3'?base:variant(base);
+    if(id&&rect(c,r,s,s,edge))put(id,c,r,s,s,pick([0,90,180,270] as const));
   }
   for(let i=0;i<N;i++)if(edge(i)&&!used[i]&&!out[i]&&rnd()<BOULDER_SHARE)put(`pedregulho-${1+Math.floor(rnd()*3)}`,i%W,Math.floor(i/W),1,1,0);
 
   // 3. Building blocks: lots, a place with life first while any is left.
-  const lugares=LUGARES.map(([id,a,b])=>[`${id}-${variant()}`,a,b] as const);
+  const lugares=LUGARES.map(([id,a,b])=>[variant(id),a,b] as const).filter((l):l is readonly [string,number,number]=>!!l[0]);
   for(let i=lugares.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[lugares[i],lugares[j]]=[lugares[j],lugares[i]];}
   let nextLugar=0;
   const building=(i:number)=>kind[i]==='building'&&solid[i]===1;
@@ -184,7 +199,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
       }
       let done=false;
       for(const needFront of [true,false]){
-        for(const [mid,a,b] of MORADIAS){if(tryLot(`${mid}-${variant()}`,a,b,c,r,needFront,mine)){done=true;break;}}
+        for(const [mid,a,b] of MORADIAS){const id=variant(mid);if(id&&tryLot(id,a,b,c,r,needFront,mine)){done=true;break;}}
         if(done)break;
       }
     }
@@ -206,7 +221,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   let walkTotal=reach().n;
   const wallish=(x:number,y:number)=>inMap(x,y)&&(kind[y*W+x]==='wall'||kind[y*W+x]==='cliff'||kind[y*W+x]==='building');
   const back=(c:number,r:number,w:number,h:number,face:DecorFace)=>front(c,r,w,h,face==='S'?'N':face==='N'?'S':face==='E'?'W':'E');
-  const second=LUGARES.map(([id,a,b])=>[`${id}-${variant()}`,a,b] as const);
+  const second=LUGARES.map(([id,a,b])=>[variant(id),a,b] as const).filter((l):l is readonly [string,number,number]=>!!l[0]);
   const pool=[...lugares.slice(nextLugar),...second];
   for(const [id,a,b] of pool){
     const spots:{c:number;r:number;w:number;h:number;face:DecorFace}[]=[];
@@ -257,12 +272,12 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     if(!side[r*W+c]||!free(c,r)||rnd()>=OBJECT_DENSITY||near(objects,c,r,2)||near(poles,c,r,2))continue;
     // 2×1 along the sidewalk when the next cell is sidewalk too.
     if(rnd()<.3){
-      const id=pick(OBJETOS_2),full=/-\d$/.test(id)?id:`${id}-${variant()}`;
-      if(c+1<W&&side[r*W+c+1]&&free(c+1,r)){put(full,c,r,2,1,FACE_ROT.S);objects.push([c,r]);continue;}
-      if(r+1<H&&side[(r+1)*W+c]&&free(c,r+1)){put(full,c,r,1,2,FACE_ROT.E);objects.push([c,r]);continue;}
+      const full=named(pick(OBJETOS_2));
+      if(full&&c+1<W&&side[r*W+c+1]&&free(c+1,r)){put(full,c,r,2,1,FACE_ROT.S);objects.push([c,r]);continue;}
+      if(full&&r+1<H&&side[(r+1)*W+c]&&free(c,r+1)){put(full,c,r,1,2,FACE_ROT.E);objects.push([c,r]);continue;}
     }
-    const id=pick(OBJETOS_1);
-    put(/-\d$/.test(id)?id:`${id}-${variant()}`,c,r,1,1,pick([0,90,180,270] as const));objects.push([c,r]);
+    const full=named(pick(OBJETOS_1));
+    if(full){put(full,c,r,1,1,pick([0,90,180,270] as const));objects.push([c,r]);}
   }
   return {decor,blocked};
 }

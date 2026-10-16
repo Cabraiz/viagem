@@ -14,6 +14,7 @@ import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,buildingAnchor,frontCorner} from '../../src/client/render/city/materials.ts';
 import {VIEW_PIVOT,depth,project} from '../../src/client/render/city/projection.ts';
 import {decodeCityAsset} from '../../src/maps/index.ts';
+import {DECOR_REFUSED} from '../../src/maps/city-decor.ts';
 
 const sheet=(id:string,cell:[number,number],anchorY:number)=>({file:`${id}/sheet.webp`,cell,views:4,anchor:[.5,anchorY]});
 function cenarioIndex():ArtIndex{
@@ -112,11 +113,13 @@ test('decorChunk: the chunk holding the piece\'s centre cell', ()=>{
   assert.equal(decorChunk({c:17,r:26,w:1,h:1},9),'1,2');
 });
 
-test('every decor id of the real asset that is not a nest or a decal has a rule, and walls sit on 1×1 cells', ()=>{
+test('the real asset places no refused piece, and its walls sit on 1×1 cells', ()=>{
   const raw=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
   const decoded=decodeCityAsset(raw);
   assert.ok(decoded.ok);
   for(const e of decoded.asset.decor){
+    // The pieces E8's import refused are never placed (no invisible wall waiting for art).
+    assert.ok(!DECOR_REFUSED.has(e.id),e.id);
     const rule=decorRule(e.id);
     if(rule==='wall')assert.ok(e.w===1&&e.h===1,e.id);
   }

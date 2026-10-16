@@ -14,7 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodeCityAsset,encodeCityAsset,cityAssetToData,type CityAsset,type CityDecor} from '../../src/maps/city-asset.ts';
-import {LINK,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
+import {DECOR_REFUSED,LINK,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
 import {KEEP,undecorate} from '../../scripts/cenario-cidade.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint} from '../../src/maps/build-sites.ts';
 import {CityTerrain} from '../../src/maps/city/terrain.ts';
@@ -93,7 +93,11 @@ test('poles keep their spacing; every place with life at least once, apart on op
   for(let i=0;i<poles.length;i++)for(let j=i+1;j<poles.length;j++)
     assert.ok(Math.max(Math.abs(poles[i].c-poles[j].c),Math.abs(poles[i].r-poles[j].r))>=POLE_SPACING);
   const lugares=asset.decor.filter(d=>isLugar(d.id));
-  for(const [l] of LUGARES)assert.ok(lugares.some(d=>d.id.startsWith(`${l}-`)),`${l} placed`);
+  // Every place with a variant whose art was accepted (DECOR_REFUSED: lava-jato and posto-gasolina have none).
+  for(const [l] of LUGARES){
+    const art=[1,2].some(v=>!DECOR_REFUSED.has(`${l}-${v}`));
+    assert.equal(lugares.some(d=>d.id.startsWith(`${l}-`)),art,`${l} placed: ${art}`);
+  }
   const open=lugares.filter(d=>cells(d).some(([c,r])=>!kindAt.has(r*W+c)));
   assert.ok(open.length>=10,`${open.length} places on open ground`);
   for(let i=0;i<open.length;i++)for(let j=i+1;j<open.length;j++)

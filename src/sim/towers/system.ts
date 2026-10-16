@@ -191,15 +191,16 @@ export interface FreeBuildContext extends FreeBuildHooks {onTerrainChanged?(rect
 const FORGE_TOWER_R=.6,MOTO_BODY_R=.5;
 /**
  * Whether something standing already holds part of `rect`: a standing defense's square, a piece, a forge tower, a body
- * (a standing hero, a live enemy, the riding moto) or, without a car, the wall. `skip`: a defense evolving in place
- * (then only the defenses and the pieces count).
+ * (another standing hero, a live enemy, the moto) or, without a car, the wall. The builder never counts: the heroes walk
+ * through every piece (a muro is solid to the enemies only), so they cannot wall themselves in. `skip`: a defense
+ * evolving in place (then only the defenses and the pieces count).
  */
-function taken(ctx:SimContext,state:StonewardsState,rect:Rect,free:FreeBuildHooks,skip?:DefenseState):boolean{
+function taken(ctx:SimContext,state:StonewardsState,rect:Rect,free:FreeBuildHooks,skip?:DefenseState,builder?:string):boolean{
   for(const d of state.defenses?.list??[])if(d!==skip&&!d.ruined&&rectsOverlap(defenseRectOf(d),rect))return true;
   for(const p of piecesOf(state))if(rectsOverlap(pieceRectOf(p),rect))return true;
   if(skip)return false;
   for(const t of state.towers)if(discHits(rect,t.x,t.y,FORGE_TOWER_R))return true;
-  for(const p of ctx.players.values())if(isStanding(p)&&discHits(rect,p.x,p.y,RADIUS))return true;
+  for(const p of ctx.players.values())if(p.id!==builder&&isStanding(p)&&discHits(rect,p.x,p.y,RADIUS))return true;
   for(const e of ctx.enemies.values())if(e.hp>0&&discHits(rect,e.x,e.y,Math.max(e.radius,RADIUS)))return true;
   const moto=free.moto?.(ctx.tick);
   if(moto&&discHits(rect,moto.x,moto.y,MOTO_BODY_R))return true;
@@ -240,7 +241,7 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     for(const n of free.nests?.(ctx.tick)??[])if(rectDistance(rect,n)<CAR_NEST_KEEP_OUT)return {ok:false,reason:'ninho'};
     const car=free.car?.(ctx.tick);
     if(car&&rectDistance(rect,car)<car.radius+CAR_BUILD_GAP)return {ok:false,reason:'carro'};
-    if(taken(ctx,state,rect,free))return {ok:false,reason:'ocupado'};
+    if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
     if(!withinReach(rect,p))return {ok:false,reason:'away'};
     const root=DEFENSES[ROOT_DEFENSE],price=wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;

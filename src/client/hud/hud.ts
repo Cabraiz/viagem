@@ -5,6 +5,7 @@
  */
 import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
+import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';

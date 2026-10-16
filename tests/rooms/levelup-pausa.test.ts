@@ -43,7 +43,9 @@ test('a level-up in a wave pauses the run: the sim stands still, RunState.pause 
   assert.equal(room.sim.tick,tick,'2 s later the tick has not moved');
   assert.equal(JSON.stringify([...room.sim.world.enemies.values()].map(e=>[e.x,e.y,e.hp])),enemies,'nothing moved');
   const run=lastRun(a);
-  assert.deepEqual({...run.pause,leftMs:undefined},{leftMs:undefined,totalMs:pauseMs(1),level:room.sim.world.team.level,waiting:[ida,idb].sort()});
+  assert.deepEqual({...run.pause,leftMs:undefined},{leftMs:undefined,totalMs:pauseMs(1),level:room.sim.world.team.level,waiting:[ida,idb].sort(),
+    // D-052: each player's "Pular" and "Rolar de novo" left (2 each at the start of a run).
+    skips:{[ida]:2,[idb]:2},rerolls:{[ida]:2,[idb]:2}});
   assert.ok(run.pause.leftMs<=pauseMs(1)-1500&&run.pause.leftMs>pauseMs(1)-3500,`left ${run.pause.leftMs}`);
 });
 

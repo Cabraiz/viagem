@@ -457,6 +457,14 @@ const PICKUP_DRAW:Record<string,(g:G)=>void>={
     g.fillStyle(0xffffff,.55).fillRect(-12,-12,4,2);
     sparkle(g,15,-15,4.5,0xfff6c8);sparkle(g,-17,-16,2.5,0xffffff);
   },
+  // D-051 item on the ground without its sticker: a taped cardboard parcel with a Papel "?".
+  item:g=>{
+    sil(g,[['r',-13,-9,26,20,3]],0xc79a62,0x6e4a2a);
+    g.fillStyle(0xe0b77c).fillRect(-11,-7,22,5);
+    g.fillStyle(0xeeddb8,.9).fillRect(-2.5,-9,5,20);
+    g.fillStyle(0x1e1530).fillRect(-1,2,2,2.4);
+    g.lineStyle(2.2,0x1e1530).beginPath().arc(0,-2.5,3.2,Math.PI*1.05,Math.PI*.35,false).strokePath();
+  },
   resource:g=>{
     g.save().translateCanvas(0,2);
     sil(g,[['p',[-11,8,-12,-1,-5,-8,5,-7,11,0,10,8]]],0xa59a8a,0x6c6255);

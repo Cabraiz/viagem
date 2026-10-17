@@ -16,6 +16,7 @@ import {POOF_MS} from '../render/motion.ts';
 import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
+import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
@@ -118,7 +119,9 @@ export const poofSheetFrame=(ageMs:number,frames:number)=>frames<=1?0:Math.min(f
  * The sim fires no other hostile shot today (src/sim/enemies/ai.ts: only AGIOTA_SHOT); any other hostile source (a newer
  * server, the sandboxes) is today's star (FX.projHostile), whose look is HOSTILE_SHOT_ART under `art:proj:tiro-inimigo`.
  */
-export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov'] as const;
+// D-051 arsenal: the bullets and the rojão's rocket (render/arsenal-rules.ts ARSENAL_PROJECTILE_ALIAS names the weapons).
+export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+  'bala-revolver','bala-metralhadora','bala-fuzil','rojao'] as const;
 export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 /** The shared look of a hostile shot without its own art (the friendly one is 'tiro-aliado'). */
 export const HOSTILE_SHOT_ART='tiro-inimigo';
@@ -128,8 +131,8 @@ export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...H
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
 /** Built once: the per-frame path never concatenates a key. */
 const PROJECTILE_KEYS=new Map<string,string>();
-/** Sources whose art id differs from the source (a Map: a source string never reaches Object.prototype). */
-export const PROJECTILE_ALIAS:ReadonlyMap<string,string>=new Map([['molotov','garrafa-molotov'],['coco','coco-pombo'],['poop','coco-pombo']]);
+/** Sources whose art id differs from the source (a Map: a source string never reaches Object.prototype); the D-051 arsenal's too. */
+export const PROJECTILE_ALIAS:ReadonlyMap<string,string>=new Map([['molotov','garrafa-molotov'],['coco','coco-pombo'],['poop','coco-pombo'],...ARSENAL_PROJECTILE_ALIAS]);
 /** Texture key of a projectile's own art. */
 export const projectileArtKey=(id:string)=>`art:proj:${id}`;
 for(const id of PROJECTILE_ART_IDS)PROJECTILE_KEYS.set(id,projectileArtKey(id));
@@ -227,10 +230,17 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   for(const [name,file] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue;
     const pages=artPages(file);
-    pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url:liteEnemyUrl(url),cell:file.cell});});
+    pages.forEach((page,i)=>{
+      const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
+      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
+    });
   }
   return out;
 }
+/** Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. */
+const LITE_ONLY=new Set<string>();
+export const liteOnly=(url:string)=>LITE_ONLY.has(url);
 const validCell=(f:ArtFile)=>Array.isArray(f.cell)&&f.cell[0]>0&&f.cell[1]>0;
 
 /** Preload: queues every imported horde texture (nothing with an empty manifest). Failures keep the procedural art. */

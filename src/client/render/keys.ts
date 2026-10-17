@@ -12,7 +12,8 @@ import {fallbackAccent,fallbackKind} from '../../rules/index.ts';
  */
 export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer'] as const;
 export type EnemyKind=typeof ENEMY_KINDS[number];
-export const PICKUP_KINDS:readonly PickupKind[]=['xp','heal','magnet','chest','resource'];
+/** 'item' (D-051): an inventory item on the ground; its sticker when the arsenal art loaded (render/arsenal-fx.ts), else this. */
+export const PICKUP_KINDS:readonly PickupKind[]=['xp','heal','magnet','chest','resource','item'];
 
 export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readonly string[]).includes(kind);
 /**

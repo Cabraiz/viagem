@@ -88,8 +88,10 @@ import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
+import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './arsenal-view.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
+import {queueHordeArt} from '../art/horde-art.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
 import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerView,type WireStructure} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
@@ -136,6 +138,12 @@ const tele=real&&params.get('tele')==='1';
  */
 const outlinesOn=params.get('contorno')!=='0';
 const cast=tele&&params.get('elenco')==='1';
+/**
+ * `arsenal=1` (with tele=1; card armas-caixas-render, D-051): the manual combat's crates by rarity, one opening under the
+ * hero and one bursting open, items on the ground, the hero's hand and the arsenal's shots (sandboxes/arsenal-view.ts);
+ * `arma=pistola|escopeta|…` fixes the weapon (default: all seven in turn).
+ */
+const arsenal=tele&&params.get('arsenal')==='1';
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
@@ -179,6 +187,7 @@ class CitySandbox extends Phaser.Scene {
   private layer?:CityLayer;
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
+  private ally?:Phaser.GameObjects.Sprite;
   private shadow!:Phaser.GameObjects.Ellipse;
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
@@ -200,7 +209,7 @@ class CitySandbox extends Phaser.Scene {
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
-  private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics};
+  private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics;view:RunView;pushed:number};
   private decoded?:CityTerrain;
   /** torres=…: the stand-in defenses, the renderer and the enemies' parallel arrays it aims at. */
   private defenses:TowerView[]=[];
@@ -222,6 +231,8 @@ class CitySandbox extends Phaser.Scene {
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(towersParam)queueTowerArt(this);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
+    // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
+    if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
   }
   create(){
     if(real){
@@ -246,6 +257,8 @@ class CitySandbox extends Phaser.Scene {
     this.shadow=this.add.ellipse(0,0,42,17,CITY_PALETTE.breu,.38).setScale(CITY_VIEW_SCALE);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
+    if(arsenal)this.ally=this.add.sprite(0,0,'__DEFAULT');
     this.spawnHorde();
     if(acao)void this.mountAttack();
     if(centre)this.mountBase(centre);
@@ -273,6 +286,7 @@ class CitySandbox extends Phaser.Scene {
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
     this.tick(dt);
@@ -402,7 +416,8 @@ class CitySandbox extends Phaser.Scene {
     const projector=new Projector(this.view,this.decoded);
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
-      reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
+      reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
+      ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[
@@ -417,7 +432,7 @@ class CitySandbox extends Phaser.Scene {
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
     const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
     const destination=this.add.graphics().setDepth(100000);
-    this.lab={horde,projector,you,labels,destination};
+    this.lab={horde,projector,you,labels,destination,view,pushed:-1};
     this.markDestination();
   }
   /** torres=1|12: the defenses around the hero (see the header) and the renderer on the city's projection. */
@@ -500,6 +515,7 @@ class CitySandbox extends Phaser.Scene {
   private drawLab(time:number,dt:number){
     const lab=this.lab;if(!lab)return;
     lab.projector.view=this.view;
+    if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma')));}}
     lab.horde.update(time,dt);
     const feet={x:this.hero.x,y:this.hero.y},zoom=this.cameras.main.zoom;
     lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2}]);
@@ -597,6 +613,7 @@ class CitySandbox extends Phaser.Scene {
     const z=groundZ(this.asset,this.at.x,this.at.y);
     layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);this.shadow.setDepth(d-1);
+    if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
     for(const w of this.horde){
       const wz=groundZ(this.asset,w.x,w.y),p=project(w.x,w.y,wz,this.view);
       w.image.setPosition(p.x,p.y).setDepth(layer.actorDepth(w.x,w.y,wz));

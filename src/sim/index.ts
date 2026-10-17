@@ -25,7 +25,7 @@ export * from './stonewards/resources.ts';
 export {DEFENSES,DEFENSE_PHASES,RAIL,isDefenseId,phaseOf,type DefenseId,type DefensePhase,type Branch} from './towers/catalog.ts';
 export type {DefenseState,TowerResult,TowerRefusal} from './towers/system.ts';
 // torres-ajustes: the reach rule and the repair price (rooms and tools may read them).
-export {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
+export {BUILD_REACH,TOWER_REPAIR_COST,holdsObra} from './towers/system.ts';
 // D-052 free build: the order the rooms parse and the wall pieces they put on the wire.
 export {FREE_CELL,MURO_BLOCK_R,freeCity,type FreeOrder,type PieceState} from './towers/free-build.ts';
 export * from './towers/bot-spots.ts';

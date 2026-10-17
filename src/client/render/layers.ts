@@ -28,6 +28,7 @@ import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
+import {ArsenalFx} from './arsenal-fx.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -104,6 +105,8 @@ interface EnemyActor{
 }
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
+  /** D-051 (render/arsenal-fx.ts): the arsenal's texture is on (crate sheet, item sticker), drawn at `k` × its size; else 1. */
+  k:number;arsenal:boolean;id:string;resource?:string;
   /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number;
@@ -260,6 +263,8 @@ export class HordeRenderer{
   /** Imported 9-slice frames (balloons, tags, bars) and the target ring (art/frames-art.ts); nothing made without the art. */
   private art:FramesPool;
   private deaths:Ring<DeathFx>;
+  /** D-051 manual combat: crates, items on the ground, the hand's weapon and the arsenal's shots (render/arsenal-fx.ts). */
+  private arsenal:ArsenalFx;
   private now=0;
   private ui=1;
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
@@ -325,7 +330,9 @@ export class HordeRenderer{
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,fit:1,accent:undefined}),showEnemy);
-    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0}),showActor);
+    this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
+      k:1,arsenal:false,id:''}),showActor);
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
@@ -353,6 +360,7 @@ export class HordeRenderer{
     this.enemies.begin();
     for(let i=0;i<view.enemies.length;i++)if(view.enemies[i].hp>0)this.syncEnemy(view.enemies[i]);
     this.viewTelegraphs=view.telegraphs; // a 'telegraph' event's zone, for the action cue (art v2)
+    this.arsenal.push(view);
     for(let i=0;i<view.events.length;i++){
       const event=view.events[i];
       if(event.eventId<=this.lastEventId)continue;
@@ -383,6 +391,7 @@ export class HordeRenderer{
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
+    this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
@@ -394,6 +403,7 @@ export class HordeRenderer{
     this.numbers.retain(this.drawNumber);
     this.pops.retain(this.drawPop);
     this.bubbles.retain(this.drawBubble);
+    this.arsenal.update();
     this.snapNext=false;
   }
 
@@ -447,7 +457,7 @@ export class HordeRenderer{
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();
-    this.art.destroy();
+    this.art.destroy();this.arsenal.destroy();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -482,8 +492,9 @@ export class HordeRenderer{
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
   private syncPickup(view:PickupView){
-    const used=this.pickups.use(view.id),a=used.item,look=pickupLook(view.kind,view.resource);
-    if(used.fresh||a.look!==look){a.image.setTexture(look).setOrigin(.5,.92);a.kind=view.kind;a.look=look;}
+    const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view),look=own?own.key:pickupLook(view.kind,view.resource);
+    if(used.fresh||a.look!==look){a.image.setTexture(look,own?.frame).setOrigin(.5,own?.88:.92);a.kind=view.kind;a.look=look;}
+    a.arsenal=!!own;a.k=own?own.k:1;a.id=view.id;a.resource=view.resource;
     if(used.fresh){a.born=this.now;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;a.coverX=undefined;}
     else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
@@ -525,6 +536,9 @@ export class HordeRenderer{
 
   // ---------- events ----------
   private handle(event:SimEvent,eventId:number){
+    // D-051: the crate opened (its actor is still here this push), a damage on the local hero, an arsenal weapon's shot.
+    if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
+    else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     switch(event.type){
@@ -876,11 +890,16 @@ export class HordeRenderer{
       lifted=!!a.covered;
     }
     const body=this.body;
-    a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body).setRotation(rotation);
+    if(a.arsenal){
+      // D-051: the crate's frame follows the local opening (closed .. abrindo-6) and sits on its rarity ring; an item its ring.
+      if(a.kind==='chest'){const ref=this.arsenal.crate(a.id,a.x,a.y,a.value,q);if(ref&&a.image.texture.key===ref.key&&a.image.frame.name!==String(ref.frame))a.image.setFrame(ref.frame);}
+      else this.arsenal.item(a.resource,a.value,q);
+    }
+    a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body*a.k).setRotation(rotation);
     // City mode (contorno-breu): the pickup's Breu-ring copy at screen scale, made for the scale it is drawn at (a big
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
-    if(outlines)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
+    if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
     const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };

@@ -36,6 +36,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
   'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=95,100',descricao:'luta: todo o elenco ferido (barras de vida), gemas e itens no chão, telegraphs'},
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
+  'arsenal':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&hero=112,182',descricao:'D-051: caixas por raridade (uma abrindo, uma estourando), itens no chão, arma na mão e o tiro (arma=pistola|escopeta|…; padrão: as 7 em ciclo)'},
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},

@@ -56,7 +56,7 @@
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {BASE_STATS,CAR_ID,CAR_PUSH_REACH,CAR_RADIUS,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
-import {resolveWeapon,weaponCatalog} from './weapons/catalog.ts';
+import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
@@ -91,6 +91,20 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/**
+ * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
+ * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
+ * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP).
+ */
+export function siegeStand(weapons:readonly {id:string;level:number}[]):number{
+  let ring=0;
+  for(const w of weapons){
+    const def=weaponCatalog.get(w.id);if(!def)continue;
+    if(def.pattern!=='orbit')return DANGER+.2;
+    ring=Math.max(ring,weaponLevel(def,w.level).area);
+  }
+  return ring>0?Math.max(.8,ring-.2):DANGER+.2;
+}
 /** Bots with an even index guard the wall (shorter leash); the others roam. */
 export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
@@ -101,6 +115,12 @@ export const HOME_SLACK=2;
 export const ROAM_IN=1;
 /** City: a roamer hunts when the wave is down to this many critters and none is near the wall; it closes to HUNT_LEASH (u). */
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
+/**
+ * City: how far from the wall (u) a critter still lures a roamer on its LEASH (ROAM_IN inside it, plus the stand-off
+ * DANGER+.6). The hunt starts where this ends (bot-caca-ultimo-na-borda: between it and the old LEASH+3 a last critter
+ * neither lured nor was hunted, and two bots held at their leash's edge 6 u from it for ~7 s).
+ */
+export const LURE_REACH=LEASH-ROAM_IN+DANGER+.6;
 /** City, combat: a wanted move shorter than this (the pulls cancel out) is no move. */
 export const HOLD_BELOW=.15;
 type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal'|'carGoal';
@@ -175,6 +195,8 @@ export interface BrainInput {
   teamBots?:readonly string[];
   /** D-051: the room's combat. 'manual': hold the attack with a critter in reach, no skill. Unset: the automatic weapons. */
   combat?:CombatMode;
+  /** D-051 mode 'ninhos' (room bots): at the car a bot walks into its orbit ring to hit the siege (siegeStand). Unset: DANGER+.2. */
+  nests?:true;
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
@@ -623,14 +645,21 @@ export function decide(input:BrainInput):Decision{
   }
   // Combat.
   const boss=view.enemies.some(e=>e.boss),guard=index%2===0;
+  // City: past the wave's timer its survivors walk back up the avenues (director beginRetreat, harmless), faster than a
+  // bot, and vanish only out of everyone's sight: hunting one kept it in sight up to the 60 s cap, 120 u away (city-bots
+  // seed 1, rounds 1, 2 and 5). Nobody hunts a retreating wave.
+  const retreating=city&&view.round?.phase==='wave'&&view.tick>=view.round.phaseEndsTick;
+  // City: the wave's very last critter, not at the wall, takes the guards out to the roamers' leash too (bot-caca:
+  // both guards held at their short leash 6 u from it while the roamer walked with a person).
+  const last=city&&guard&&!boss&&!retreating&&view.enemies.length===1;
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
   const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH;
   // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
-  let prey=city&&!guard&&!escorting&&!boss&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LEASH+3)?nearest(view.enemies,at):undefined;
+  let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(view.enemies,at):undefined;
   if(prey&&!way(prey,'huntGoal'))prey=undefined;
   const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
-  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
+  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
   const b=city?way(anchor,chase)??toward(at,anchor):undefined;
   // How far out of the leash. City: once pulled back, all the way to HOME_SLACK inside the leash (no pacing on its edge
@@ -669,7 +698,7 @@ export function decide(input:BrainInput):Decision{
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a gem lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
-    if(target&&(siege||roam)&&dist(target,at)>DANGER+(siege?.2:.6))want=add(want,toward(at,target,siege?1.2:.7));
+    if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));

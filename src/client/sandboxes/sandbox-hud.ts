@@ -32,6 +32,8 @@
  * load. `grana=N` (default 40) and `estoque=a,b,c` (default 4,4,4) feed Dona Cida; `cida=1` puts the hero by the moto (her
  * button shows), `cida=aberta` also opens her tray. Purchases answer after 150 ms like a room (ok, or the refusal the
  * numbers give). `state=result&conta=aberto|carro|time|tempo[&divida=1]`: the result with the chaveiro's bill.
+ * `bancos=1` with `mapa=cidade` (card bancos-e-veiculos): three ATMs (RunView.banks), all off screen: Juros & Juros robbed
+ * by a critter (its Cone arrow and the row "Bicho sacando no Juros & Juros!"), Pão-Duro full, Caixa do Posto empty.
  * `mapa=cidade&ninhos=1|nevoa[&seed=N][&dormindo=1]` (D-051, mapa-vivo-ninhos): the seed's nests on the minimap (all, or
  * the fog's 3 nearest), optionally with every sleeper as an enemy mark.
  * `body[data-objetivo]` is '1' while the row shows, '0' when it is hidden; `window.__cityObjective` has its numbers.
@@ -55,8 +57,9 @@
  */
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
+import {bankExtras} from '../hud/bancos.ts';
 import {RunHud} from '../hud/hud.ts';
-import type {RunView} from '../../contract/index.ts';
+import {SIM_HZ,type BankView,type RunView} from '../../contract/index.ts';
 import {LESSON_ORDER,COACH_KEY,type Lesson} from '../hud/coach.ts';
 import {BOSS_ROUND_NAMES,CIDADE_TUTORIAL,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../rules/index.ts';
 import {uxMetricsEnabled} from '../dev/ux-flag.ts';
@@ -273,6 +276,8 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
+  // D-051 nests (?ninhos=…): five nests, two fallen, so the result's round line reads "Ninhos 2/5".
+  if(scenario==='result'&&params.has('ninhos'))hud.update({...view,structures:[...view.structures,...[0,1,2,3,4].map(i=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}))]});
   if(scenario==='result')hud.showResult(withShare(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full')))))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
@@ -538,10 +543,15 @@ if(cidade)void (async()=>{
   if(chaveiro&&cidaAt)people[0]={...people[0],...hero};
   // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
   const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
+  const banks:BankView[]|undefined=params.get('bancos')==='1'?[
+    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
+    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
+    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ},
+  ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
     grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;
   const run:RunView={...base,events:banner,structures:chaveiro?[{id:'quadradao',kind:'quadradao',x:map.plaza.x,y:map.plaza.y,hp:chaveiro.car.limit-chaveiro.car.hits,maxHp:chaveiro.car.limit}]:[{id:'s1',kind:'muralha',x:map.plaza.x,y:map.plaza.y,hp:380,maxHp:600}],
-    ...(objective?{objective}:{}),
+    ...(objective?{objective}:{}),...(banks?{banks}:{}),
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
@@ -568,7 +578,7 @@ if(cidade)void (async()=>{
     const plaza=locate(map.plaza);
     hud.setHero({x:hero.x,y:hero.y,bearing:Math.atan2(plaza.y-anchor.y,plaza.x-anchor.x)*180/Math.PI});
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
-      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{})});
+      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{})});
     previous=groupKeys;
     const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
@@ -578,7 +588,7 @@ if(cidade)void (async()=>{
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],
-      structures:[...run.structures,...nestMarks],corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:chaveiroExtras(chaveiro)});
+      structures:[...run.structures,...nestMarks],corners:city.screenCorners(locate,hero,viewport),wallHitAt:performance.now(),extras:[...chaveiroExtras(chaveiro),...bankExtras(banks)]});
     // Round 1's walk to the plaza (cidade-08), as rescue.ts hands it every frame: the city, the hero, the view.
     if(tutorial){
       hud.setCityRoute({terrain,hero,view:vista});

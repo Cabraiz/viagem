@@ -78,14 +78,27 @@ export function xpFraction(view:RunView){
 
 export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|'prepare';remaining:number;countdown?:number;detail:string;
   /** D-047, the chaveiro objective running: the label is "Onda N" and the chip adds his clock (hud/chaveiro.ts). */
-  chaveiro?:ChaveiroClock}
+  chaveiro?:ChaveiroClock;
+  /** D-051, a run in mode 'ninhos' (nestsMode): no waves, so the chip shows only the chaveiro's clock and no round marquee. */
+  nests?:true}
+
+/**
+ * D-051: the run is in mode 'ninhos'. The room sends its nests as structures (kind 'ninho'; a fallen one stays), and
+ * only that mode has them, so the HUD follows the room's mode without a field of its own.
+ */
+export const nestsMode=(view:Pick<RunView,'structures'>)=>view.structures.some(s=>s.kind==='ninho');
+/** D-051: the nests of a run in mode 'ninhos', how many fell and how many there were; undefined in any other mode. */
+export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:number;total:number}|undefined{
+  const nests=view?.structures.filter(s=>s.kind==='ninho')??[];
+  return nests.length?{down:nests.filter(s=>s.hp<=0||s.phase==='destruido').length,total:nests.length}:undefined;
+}
 
 /**
  * "Round N/10" plus the right-hand detail: remaining critters during a wave, countdown in the interval. With the chaveiro
  * objective running (D-047) the rounds have no end ("Onda N": waves go on past 10) and the chip carries his clock.
  */
 export function roundInfo(view:RunView):RoundInfo|undefined{
-  const round=view.round,objective=liveObjective(view),chaveiro=objective?{chaveiro:chaveiroClock(objective)}:{};
+  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective)}:{}),...(nestsMode(view)?{nests:true as const}:{})};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
     const label=objective?`Onda ${round.index}`:`Round ${round.index}/${total}`;

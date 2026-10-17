@@ -31,6 +31,7 @@ import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
+import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 
@@ -211,7 +212,7 @@ export class RescueBoard {
       selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
       corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
-      extras:chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last)))});
+      extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
@@ -273,7 +274,8 @@ export class RescueBoard {
     const phase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),
+    const banks=last.banks;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     this.cityTargets=targets;this.groupKeys=groupKeys;
   }

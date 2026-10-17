@@ -210,10 +210,12 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * cidade-escala-1-7 (the city asset v2 at CITY_MAP_SCALE 1.7: every map length × 1.7, the people unchanged), and for
  * balanco-pos-1-7 part A (the tutorial seeds only: welcomeArrival back to 40 / HERO_SPEED_MULT, since the run starts
  * down the road, cityRunStart; plain seed 21 has no tutorial and kept its digest), then plain seed 21 for its city retreat
- * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block).
+ * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block), and for cenario-no-mapa
+ * (the city asset v3: the places with life put on open ground stop those cells being walkable, so routes and spawn spots
+ * move; with main's asset v2 the old digests still come out).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'50b3a75c468338b9','tutorial seed 8 r4':'f18c263f4e216f95','plain seed 21 r10':'8d802f55cb1a2c9c',
+  'tutorial seed 3 r4':'1745d5982e3a9036','tutorial seed 8 r4':'2e2c613b32eeca13','plain seed 21 r10':'8f9d6f96824bd407',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{

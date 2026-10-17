@@ -8,7 +8,7 @@
 import {layoutEdges,pointedTargets,railName,arrowHalf,crosses,bottom,right,MUST_POINT,MAX_ARROWS,MERGE_PX,MIN_PLAY_SIDE,type EdgeTarget,type EdgeArrow,type EdgeKind,type EdgeOptions,type Rect} from './deps.ts';
 import {clusterEnemies,pickGroupArrows,groupCountText,type EnemyPoint} from './clusters.ts';
 import type {CityMapInfo,MouthId} from './map-info.ts';
-import {motoNeedsTeam,type MotoMode} from './deps.ts';
+import {motoNeedsTeam,BANK_SHORT,type MotoMode,type BankName,type BankState} from './deps.ts';
 
 export interface CityEdgeInput {
   /** The followed hero (world units). */
@@ -31,7 +31,11 @@ export interface CityEdgeInput {
   previousGroups?:ReadonlySet<string>;
   /** D-047: the chaveiro's moto while the objective runs (undefined once it ended or at the car). */
   moto?:{x:number;y:number;mode:MotoMode};
+  /** Bancos (card bancos-e-veiculos): the run's ATMs (ObjectiveView.banks). */
+  banks?:readonly CityBank[];
 }
+/** A bank as the city's arrows and minimap read it. */
+export interface CityBank {id:string;x:number;y:number;name:BankName;state:BankState;saldo:number}
 /** Someone of the team as the city's arrows and minimap read them (world units; a caído with its clock and ping). */
 export interface CityPerson {id:string;x:number;y:number;downed?:boolean;name?:string;portrait?:string;seconds?:number;ping?:boolean}
 /** Doc §3: the base's arrow shows in a wave only this long after the wall was hit. */
@@ -45,11 +49,20 @@ export const MOUTH_ARROWS=2;
 
 const isGroup=(t:EdgeTarget)=>t.kind==='grupo'||t.key.startsWith('grupo:'),isMouth=(t:EdgeTarget)=>t.key.startsWith('boca:');
 /**
- * Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > base 4; anything else never
- * gets an arrow in the city (9).
+ * Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > a robbed bank 3.8 (bancos) >
+ * base 4 > a bank with notes 4.2 (the way back in the intermission goes first); anything else never gets an arrow in the city (9).
  */
 export function cityEdgeRank(t:EdgeTarget):number{
-  return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='base'?4:9;
+  return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='banco'?(t.danger?3.8:4.2):t.kind==='base'?4:9;
+}
+/**
+ * The bank that gets an arrow (one at most, out of view): the one a critter robs (Cone: "corre lá"), else the nearest
+ * with notes in it; an empty one ("SEM CÉDULAS") never.
+ */
+export function bankForArrow(banks:readonly CityBank[]|undefined,hero:{x:number;y:number},isOnScreen:(p:{x:number;y:number})=>boolean):CityBank|undefined{
+  const out=(banks??[]).filter(b=>b.state!=='sem-cedulas'&&b.saldo>0&&!isOnScreen(b));
+  const d=(b:CityBank)=>Math.hypot(b.x-hero.x,b.y-hero.y);
+  return out.filter(b=>b.state==='bicho').sort((a,b)=>d(a)-d(b))[0]??out.sort((a,b)=>d(a)-d(b))[0];
 }
 export {motoNeedsTeam};
 
@@ -78,6 +91,10 @@ export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];g
   const moto=input.moto;
   if(moto&&moto.mode!=='abrindo'&&!isOnScreen(moto))targets.push({key:'moto',kind:'moto',screen:locate(moto),world:{x:moto.x,y:moto.y},distance:dist(moto),
     name:motoNeedsTeam(moto.mode)?'Chaveiro parado':'Chaveiro',...(motoNeedsTeam(moto.mode)?{danger:true}:{})});
+  // Bancos: one bank, the robbed one first (rules/bancos.ts BANK_SHORT names it for the screen reader).
+  const bank=bankForArrow(input.banks,hero,isOnScreen);
+  if(bank)targets.push({key:`banco:${bank.id}`,kind:'banco',screen:locate(bank),world:{x:bank.x,y:bank.y},distance:dist(bank),
+    name:bank.state==='bicho'?`Bicho sacando no ${BANK_SHORT[bank.name]}`:`Banco ${BANK_SHORT[bank.name]} · R$ ${bank.saldo}`,...(bank.state==='bicho'?{danger:true}:{})});
   // Base: in the intermission when the plaza is out of view (Cone with the seconds after the horn); in a wave only after a hit on the wall.
   const plaza={x:map.plaza.x,y:map.plaza.y};
   if((input.phase==='prepare'||input.wallHitRecently)&&!isOnScreen(plaza)){
@@ -128,7 +145,7 @@ export function mergeGroupTargets<T extends CityEdgeTarget>(targets:readonly T[]
 // layoutEdges folds a crowded arrow into one of the same kind ("+N"): during layout each city class rides the kind of
 // its rank (caído, chefe, grupo, boca as 'spawn', base), in edges.ts's priority order, so a group and a mouth never fold
 // into each other.
-const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',4:'base'};
+const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',3.8:'banco',4:'base',4.2:'banco'};
 
 /**
  * The part of `area` left beside the open windows (the offer, the forge, the minimap): for each window over it, the largest

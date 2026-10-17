@@ -150,7 +150,9 @@ test('torres-ajustes: every bot is inside the base when each wave of rounds 2–
     const count1=<R extends {ok:boolean}>(r:R)=>{if(r.ok)built++;return r;};
     sim.build=(a,b,c)=>count1(build(a,b,c));sim.upgrade=(a,b,c,d)=>count1(upgrade(a,b,c,d));sim.repair=(a,b,c)=>count1(repair(a,b,c));
     const outside:string[]=[];
-    for(let i=0;i<ticks(15*60);i++){
+    // 20 min: three bots on seed 1 reach the round 6 wave at ~890 s with the city asset v2 and ~1000 s with v3 (a fleeing
+    // quadrilheiro is chased ~90 u out of the plaza before rounds 3–5 end); the loop stops at that wave anyway.
+    for(let i=0;i<ticks(20*60);i++){
       // Nobody falls: the check is about where they stand when the wave starts, not about surviving it.
       for(const id of ids)sim.players.get(id)!.invulnerableUntil=Number.MAX_SAFE_INTEGER;
       let wave:number|undefined;

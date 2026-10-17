@@ -8,6 +8,7 @@ import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {decorate} from '../../scripts/cenario-cidade.ts';
 import {scaleCity} from '../../scripts/escalar-cidade.ts';
 
 const ASSET='public/maps/cidade-nevada.json';
@@ -54,7 +55,7 @@ const units=(px:number)=>px*STEP;
 // NEW-20261013-ORQ-cidade-escala-1-7: version 2 is the .w3x import (version 1: 0.88 u cells, 169 u) × CITY_MAP_SCALE 1.7
 // (scripts/escalar-cidade.ts): same 192 cells and 768 samples per side, each 1.7× wider.
 test('asset header uses the D-026 scale × CITY_MAP_SCALE: 1 cell = 1.496 u, whole 192-cell city ≈ 287 u',()=>{
-  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,2);assert.equal(asset.id,'cidade-nevada');
+  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,3);assert.equal(asset.id,'cidade-nevada');
   assert.equal(CITY_MAP_SCALE,1.7);
   assert.equal(asset.unitsPerCell,1.496);assert.equal(asset.cells.w,192);assert.equal(asset.cells.h,192);
   assert.ok(Math.abs(asset.size.w-287.232)<1e-6&&Math.abs(asset.size.h-287.232)<1e-6);
@@ -129,7 +130,7 @@ test('asset stays small and carries no names or texts from the source map (D-026
 test('manifest carries id, version and the sha256 of the exact asset bytes',async()=>{
   const manifest=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
   const bytes=readFileSync(ASSET);
-  assert.deepEqual(manifest,{id:'cidade-nevada',version:2,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
+  assert.deepEqual(manifest,{id:'cidade-nevada',version:3,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
 });
 
 test('heights keep the source orientation: the hill is east, the flooded pit centre-north',()=>{
@@ -154,16 +155,17 @@ test('closing the 4 mouths seals the plaza from every spawn (the base can be wal
 });
 
 // The importer writes version 1 (the .w3x proportions); the committed asset is that × CITY_MAP_SCALE (cidade-escala-1-7),
-// so each run goes through scripts/escalar-cidade.ts scaleCity before the byte comparison, and the two runs must agree.
+// so each run goes through scripts/escalar-cidade.ts scaleCity, then scripts/cenario-cidade.ts decorate (version 3, the
+// scenery), before the byte comparison, and the two runs must agree.
 test('two separate importer runs, scaled by CITY_MAP_SCALE, reproduce the committed asset and manifest byte for byte',{skip:!(MAP&&existsSync(MAP))&&'set W3X_MAP to the source .w3x to run'},()=>{
   const dir=mkdtempSync(join(tmpdir(),'cidade-'));
   try{
     for(const run of ['a','b'])execFileSync(process.execPath,['scripts/import-w3x.mjs',MAP!,join(dir,`${run}.json`)],{stdio:'pipe'});
     const committed=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
     for(const run of ['a','b']){
-      const v1=readFileSync(join(dir,`${run}.json`),'utf8'),scaled=JSON.stringify(scaleCity(JSON.parse(v1),CITY_MAP_SCALE));
+      const v1=readFileSync(join(dir,`${run}.json`),'utf8'),scaled=decorate(JSON.stringify(scaleCity(JSON.parse(v1),CITY_MAP_SCALE)));
       assert.equal(JSON.parse(v1).version,1,`run ${run} imports version 1`);
-      assert.equal(scaled,text,`run ${run} asset × CITY_MAP_SCALE`);
+      assert.equal(scaled,text,`run ${run} asset × CITY_MAP_SCALE, decorated`);
       assert.equal(readFileSync(join(dir,`${run}.json`),'utf8'),readFileSync(join(dir,'a.json'),'utf8'),`run ${run} = run a`);
       assert.deepEqual({id:committed.id,version:committed.version,hash:createHash('sha256').update(scaled).digest('hex'),bytes:Buffer.byteLength(scaled)},committed,`run ${run} manifest`);
     }

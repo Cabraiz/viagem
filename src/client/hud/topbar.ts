@@ -3,7 +3,7 @@
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
 import type {RunView} from '../../contract/index.ts';
-import {bossInfo,roundInfo,xpFraction,type HudPart} from './model.ts';
+import {bossInfo,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
@@ -31,7 +31,10 @@ export function createTopBar():HudPart{
   const put=(key:string,value:string,write:(value:string)=>void)=>{if(last.get(key)!==value){last.set(key,value);write(value);}};
   return {el:root,update(view:RunView){
     const round=roundInfo(view);
-    chip.hidden=!round;
+    // D-051 nests: no waves, so no "Onda N" and no critter count; the chip keeps only the chaveiro's clock.
+    const nests=!!round?.nests;
+    chip.hidden=!round||(nests&&!round.chaveiro);
+    put('nests',String(nests),()=>{label.hidden=detail.hidden=nests;if(nests)chip.dataset.modo='ninhos';else delete chip.dataset.modo;});
     if(round){
       put('label',round.label,v=>{label.textContent=v;});
       // One-row band (card hud-topo-uma-linha): the count as a sticker and a number ("onda" for the bichos left, the
@@ -122,6 +125,8 @@ export function createAnnouncer():HudPart{
       if(event.type==='happening'){seen=event.eventId;const copy=HAPPENING_COPY[event.kind];if(copy)show({...copy,tone:'evento'});continue;}
       if(event.type!=='round')continue;
       seen=event.eventId;
+      // D-051 nests: no waves to announce (the round state still counts underneath).
+      if(nestsMode(view))continue;
       // D-047: with the chaveiro the waves have no end and the boss comes by his clock, not by the round's number.
       const marquee=view.objective?marqueeFor(event,Infinity,'Onda'):marqueeFor(event,view.round?.total);
       if(marquee)show(marquee);

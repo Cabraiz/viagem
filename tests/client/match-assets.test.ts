@@ -16,6 +16,7 @@ import {baseLoads} from '../../src/client/art/base-art.ts';
 import {framesLoads} from '../../src/client/art/frames-art.ts';
 import {telegraphArtLoads} from '../../src/client/render/telegraph-art.ts';
 import {buildCityArtPlan,cityArtOptions} from '../../src/client/render/city/art-plan.ts';
+import {liveSheets} from '../../src/client/render/city/live/art.ts';
 import {classes} from '../../src/rules/index.ts';
 
 const ids=classes.map(c=>c.id).filter(id=>spriteCatalog[id]);
@@ -45,7 +46,8 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   assert.ok(plan.sheets.length>0,'the manifest has city art');
   const wanted=[heroSheetUrl(A),heroSheetUrl(B),heroSheetUrl(C),thumbUrl(A),thumbUrl(B),thumbUrl(C),treeUrl('arvore-nevada'),
     ...plan.sheets.map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
-    ALBEDO_URL]; // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
+    ALBEDO_URL, // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
+    ...liveSheets(artIndex()).map(s=>s.url)]; // cenário vivo (E8's `cenario` group): loops, lit objects, nests, decals
   assert.deepEqual(new Set(all),new Set(wanted));
   for(const url of all)assert.ok(existsSync('public'+url),`${url} is served`);
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
@@ -57,6 +59,7 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   // Roster pieces load per match (arte-do-roster-no-render: the room's elenco, or the first sighting), never here.
   assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
+  for(const s of liveSheets(artIndex()))assert.equal(at(s.url),'P2',s.key);
   assert.equal(at(ALBEDO_URL),'P0');
 });
 

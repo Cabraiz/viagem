@@ -10,7 +10,7 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} from '../src/sim/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime} from '../src/sim/index.ts';
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
@@ -144,7 +144,8 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;pot:string;legacy:string}>();
+/** pot/legacy: the older builds' fingerprints; preBanks/banks (city): this code's without the banks, and a fresh run's bank state (migrateCheckpoint). */
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;pot:string;legacy:string;preBanks?:string;banks?:unknown}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -343,7 +344,11 @@ export class Simulation {
       const before=structuredClone(pot),stw=before.systems.stonewards as unknown as {balance:unknown;grana?:number};
       stw.balance={coco:0,pedra:0};delete stw.grana;
       if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
-      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),pot:shapeFingerprint(pot),legacy:shapeFingerprint(before)};SHAPES.set(key,entry);
+      // Bancos: no build before them had the banks (city only): pot and legacy without them, preBanks this code's without them.
+      delete pot.systems.banks;delete before.systems.banks;
+      const noBanks=structuredClone(capture);delete noBanks.systems.banks;
+      entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),pot:shapeFingerprint(pot),legacy:shapeFingerprint(before),
+        ...(capture.systems.banks?{preBanks:shapeFingerprint(noBanks),banks:structuredClone(capture.systems.banks)}:{})};SHAPES.set(key,entry);
     }
     return entry;
   }
@@ -353,12 +358,14 @@ export class Simulation {
    * - D-048 (ficha de torre): written before the single pile (this code's pot fingerprint with balance {coco, pedra},
    *   no team Grana, the chaveiro's Grana in its own state): {units: coco + pedra}, the Grana to the team's state;
    * - NEW-20261014-ORQ-carteira-e-pix: written with the team's pot (stonewards.grana, no splitCursor): the pot is split
-   *   equally among the checkpoint's players (in order, the remainder from the first), and this code's fingerprint.
+   *   equally among the checkpoint's players (in order, the remainder from the first), and this code's fingerprint;
+   * - Bancos: a city checkpoint written before the banks (this code's fingerprint without them, or reached through the
+   *   steps above) gets a fresh run's bank state (every ATM full; the places come back from the seed).
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown}}}).systems;
-    const b=sys?.stonewards?.balance,fresh=this.freshShape();
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown};banks?:unknown}}).systems;
+    const b=sys?.stonewards?.balance,fresh=this.freshShape(),current=fresh.preBanks??fresh.fingerprint;
     if(cp.shape===fresh.legacy&&sys?.stonewards&&b&&typeof b.coco==='number'&&typeof b.pedra==='number'&&b.units===undefined){
       const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
       // The Grana moved from the chaveiro's state to the team's (D-048); a run without the objective had none.
@@ -367,12 +374,14 @@ export class Simulation {
       sys.stonewards.grana=grana;cp.shape=fresh.pot;
     }
     const stw=sys?.stonewards;
-    if(cp.shape!==fresh.pot||!stw||typeof stw.grana!=='number'||stw.splitCursor!==undefined)return;
-    const pot=Math.max(0,Math.floor(stw.grana)),cursor={splitCursor:0};
-    const runs=Array.isArray(cp.players)?cp.players.filter(isObject).map(p=>p.run).filter(isObject):[];
-    const got=runs.length?splitAmong(runs.map(()=>({grana:0}) as SimPlayer),pot,cursor):[];
-    runs.forEach((run,i)=>{const had=typeof run.grana==='number'?run.grana:0;if(got[i]||run.grana!==undefined)run.grana=had+got[i];});
-    delete stw.grana;stw.splitCursor=cursor.splitCursor;cp.shape=fresh.fingerprint;
+    if(cp.shape===fresh.pot&&stw&&typeof stw.grana==='number'&&stw.splitCursor===undefined){
+      const pot=Math.max(0,Math.floor(stw.grana)),cursor={splitCursor:0};
+      const runs=Array.isArray(cp.players)?cp.players.filter(isObject).map(p=>p.run).filter(isObject):[];
+      const got=runs.length?splitAmong(runs.map(()=>({grana:0}) as SimPlayer),pot,cursor):[];
+      runs.forEach((run,i)=>{const had=typeof run.grana==='number'?run.grana:0;if(got[i]||run.grana!==undefined)run.grana=had+got[i];});
+      delete stw.grana;stw.splitCursor=cursor.splitCursor;cp.shape=current;
+    }
+    if(fresh.preBanks&&cp.shape===fresh.preBanks&&isObject(sys)&&sys.banks===undefined){sys.banks=structuredClone(fresh.banks);cp.shape=fresh.fingerprint;}
   }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
@@ -769,7 +778,8 @@ export class Simulation {
     const out=new Map<string,NodeView>(),reach=INTEREST_RADIUS+INTEREST_HYSTERESIS;
     for(const p of this.players.values()){
       if(p.spectator||p.eliminated)continue;
-      for(const n of nodesNear(this.terrain,p,reach)){
+      // Bancos: the crates a bank replaced are not there.
+      for(const n of nodesNear(this.terrain,p,reach,undefined,this.systems.banks?.crates)){
         if(out.has(n.id))continue;
         const touched=touchedNode(st,n.id);
         out.set(n.id,{id:n.id,kind:n.kind,x:n.x,y:n.y,remaining:remainingOf(st,n),capacity:n.capacity,value:n.value,
@@ -876,6 +886,7 @@ export class Simulation {
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p)})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
   }
@@ -891,7 +902,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),...this.sleeperViews(playerId,false)],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews(playerId,false)],
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -905,6 +916,7 @@ export class Simulation {
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...(p.grana!==undefined?{grana:p.grana}:{}),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:this.offers(playerId).map(o=>({id:o.id,source:o.source,level:o.level,choices:o.choices.map(c=>({...c})),deadlineTick:o.deadlineTick,defaultIndex:o.defaultIndex})),
       events:[...w.lastEvents],
     };
@@ -919,7 +931,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{})})),...this.sleeperViews()],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews()],
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
@@ -937,6 +949,7 @@ export class Simulation {
         };
       }),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
+      ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
     };
   }
   /** sinceEventId: only events after it (the Room's broadcast cursor); omitted, the whole buffer. */

@@ -622,10 +622,10 @@
 }
 @media (max-height:500px){
   .rh-minimap{top:calc(var(--rh-t) + 52px);right:max(14px,env(safe-area-inset-right))}
-  /* The offer and the forge (VGM-046B) take the right column: the minimap moves to the left column, under the camera
+  /* The offer, the forge (VGM-046B) and the D-052 build tray (obra-hud-ajustes) take the right column: the minimap moves to the left column, under the camera
      buttons and above the joystick's zone (outside the useful area), so the way to a caído never leaves the screen while
      a window is open (NEW-20261011-UX-janela-esconde-caido). The arrows stay on the field left beside the window. */
-  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 48px + 24px)} /* 24 px under the view buttons (explore.css: 48 px at max(12px, safe top)) */
+  .rh:is(:has(.rh-offer:not([hidden])),:has(.rh-forge:not([hidden])),:has(.rh-fort-bandeja:not([hidden]))) .rh-minimap{right:auto;left:max(14px,env(safe-area-inset-left));top:calc(max(12px,env(safe-area-inset-top)) + 48px + 24px)} /* 24 px under the view buttons (explore.css: 48 px at max(12px, safe top)) */
 }
 
 /* ---------- Setas na borda (UX-bordas-fora-da-tela) ----------
@@ -655,6 +655,9 @@
 /* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
 .rh-member-bot{position:absolute;top:-6px;left:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato, como o adesivo de estado */
 .rh-member-bot[hidden]{display:none}
+/* D-051 combate manual: a arma na mão, adesivo de 24 px no canto de baixo oposto ao do KKKK (team.ts handWeapon). */
+.rh-member-arma{position:absolute;top:18px;left:calc(50% - 31px);display:flex;line-height:0}
+.rh-member-arma[hidden]{display:none}
 /* KKKK (rostos-kkkk): the laugh sticker at the portrait's lower corner while the ring says data-mood=rindo (2.2 s, set by
    the team strip). Out of the flow, so the ring and the column keep their size; one pop in, no loop. */
 .rh-member-mood{position:absolute;top:18px;right:calc(50% - 31px);display:none;line-height:0}

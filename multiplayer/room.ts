@@ -11,7 +11,7 @@ import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
+import {CAR_ID,CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -624,7 +624,9 @@ export class Room {
       c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
-        run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map)});
+        run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map),
+        // D-051: the manual combat turns the skill button into the attack button (absent: the automatic weapons).
+        ...(this.combat?{combat:this.combat}:{})});
       // The joiner sees the room at once (a full frame), not on its next broadcast slot.
       this.sendFrame(c,this.sim.frame(),now);
       // The run's drawn enemies, so this phone fetches their art now (arte-do-roster-no-render).
@@ -985,7 +987,8 @@ export class Room {
    * torres-fio: {t:'build',round,req,site} (a build site id 'obra-NN' or the rail 'trilho') or {t:'upgrade',round,req,
    * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative), and since torres-ajustes
    * {t:'repair',round,req,defense} (same label). Anything malformed is dropped here; the sim says no with a reason (e.g.
-   * 'away' when the hero is not next to the obra). The sender hears {t:'built',req,ok,reason?,kind?}.
+   * 'away' when the hero is not next to the obra). The sender hears {t:'built',req,ok,reason?,kind?,defense?}
+   * (defense: the structure's wire label, as in the frames, on an accepted order: the client's own obra).
    */
   private tower(c:Connection,m:any){
     const state=this.run.snapshot();
@@ -1011,7 +1014,7 @@ export class Room {
         result=this.sim.upgrade(c.playerId!,id,m.branch,`p:${m.req}`);
       }
     }
-    this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind}:{reason:result.reason})});
+    this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind,...(result.kind!=='linha-ferrea'?{defense:this.ids.label('structures',result.defense)}:{})}:{reason:result.reason})});
   }
   /**
    * D-047 Dona Cida: {t:'cida',round,req,item} (item one of CIDA_ITEM_IDS). Malformed taps are dropped here; the sim
@@ -1288,12 +1291,14 @@ export class Room {
    * Ids of entities gone for good leave the shared map (encoders keep their own baselines). The city barricades stay
    * live for the whole run (a fallen one is hp 0, not gone): left out, their wire ids were re-issued every prune. The
    * same for the nests (D-051, a fallen one stays) and the sleeping bodies sent in the last frame (Simulation.sleeperIds).
+   * D-052: the car (it stands where the wall's id did) and the free pieces too, or the id in {t:'built'} went stale.
    */
   private prune(){
     const w=this.sim.world,ids=(m:Map<string,unknown>)=>m.keys();
     const st=this.sim.run.stonewards.state;
     this.ids.prune({enemies:[...ids(w.enemies),...this.sim.sleeperIds],pickups:ids(w.pickups),projectiles:ids(w.projectiles),telegraphs:ids(w.telegraphs),
-      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id),...(this.sim.run.nests?.state.nests??[]).map(n=>n.id)],nodes:this.sim.nodeIds});
+      structures:[st.wall.id,...st.towers.map(t=>t.id),...(st.barricades??[]).map(b=>b.id),...this.sim.defenses().map(d=>d.id),...[this.sim.railView()?.id].filter((id):id is string=>!!id),...(this.sim.run.nests?.state.nests??[]).map(n=>n.id),
+        ...(this.sim.run.chaveiro?[CAR_ID]:[]),...(st.defenses?.pieces??[]).map(p=>p.id)],nodes:this.sim.nodeIds});
   }
   /** Runs once per run, right after RunLifecycle.finish accepted the outcome: the result state, then the result. */
   private announce(){

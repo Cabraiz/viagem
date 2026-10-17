@@ -8,8 +8,8 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {decide,granaReserve,newMemory,towerBrainView,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
-import {PIX_MAX} from '../src/contract/index.ts';
+import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
 import {railName} from '../src/rules/index.ts';
@@ -138,6 +138,9 @@ export class RoomBots {
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
       if(!p)continue;
+      // D-052 (obra-livre-ajustes): a bot on its own free obra holds still until it is done (towers/system.ts holdsObra,
+      // the sim's stepCap 0); steering then only reads as stuck (and fires unstick), so it stands and waits.
+      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){this.modes.set(mind.id,'build');sim.setBotInput(mind.id,{x:0,y:0});continue;}
       view??=sim.botView();
       people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
       if(forger===undefined)forger=this.forger(view,minds,people);
@@ -150,6 +153,13 @@ export class RoomBots {
         const st=sim.run.stonewards,round=view.round,person=(owner:string)=>!sim.bots.has(owner)&&!!sim.players.get(owner)?.online;
         towers=towerBrainView(st.state,st.plan,view.tick,round?.index??0,person,
           people?(round?.phaseEndsTick??view.tick)-BOT_FORGE_LEFT_WITH_PEOPLE:undefined,sim.granaOf(mind.id));
+        // D-052 (bots-obra): with the car on the map the free build's bots build around it, wherever it stands now
+        // (bot-spots.ts), not on the map's fixed obras (hints since the free build).
+        const city=freeCity(sim.terrain),car=view.objective&&!view.objective.ended?view.objective.car:undefined;
+        if(city&&car){
+          const nests=view.structures.filter(s=>s.kind==='ninho'&&s.phase!=='destruido').map(s=>({x:s.x,y:s.y}));
+          towers=withBotSites(towers,botSites(city,st.state,{car:{x:car.x,y:car.y,radius:CAR_RADIUS},nests}));
+        }
       }
       // City: who moved lately (ESCORT_IDLE_REACH), this bot's track of each person here; the ones gone are dropped.
       const tracks=sim.terrain.world==='cidade'?this.track(mind,view,sim,tick):undefined;
@@ -165,7 +175,8 @@ export class RoomBots {
       const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
       const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
-        ...(view.objective?{teamBots:minds.map(m=>m.id)}:{}),
+        // Bancos: so are the ATMs (bankTask), in both city modes.
+        ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
         // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
         ...(sim.combat?{combat:sim.combat}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
@@ -181,7 +192,7 @@ export class RoomBots {
       }
       if(d.build){
         const order=d.build,req=`bot-${mind.id}-${++mind.req}`;
-        const result='build' in order?sim.build(mind.id,order.build,req):'upgrade' in order?sim.upgrade(mind.id,order.upgrade,order.branch,req):sim.repair(mind.id,order.repair,req);
+        const result='build' in order?sim.build(mind.id,botSpotOrder(order.build)??order.build,req):'upgrade' in order?sim.upgrade(mind.id,order.upgrade,order.branch,req):sim.repair(mind.id,order.repair,req);
         if(result.ok){this.built++;towers=undefined;}
       }
       if(d.sos)sos.push(mind.id);

@@ -39,6 +39,19 @@ export const CIDA_FAST_MULT=1.25,CIDA_MIGHT_MULT=1.3,CIDA_GUARD_MULT=.7;
 export type CidaRefusal='away'|'stock'|'grana'|'phase'|'item'|'duplicate';
 export type CidaBuyResult={ok:true;item:CidaItemId;grana:number}|{ok:false;reason:CidaRefusal};
 
+/**
+ * A bank (rules/bancos.ts, card bancos-e-veiculos): an ATM at a fixed point of the run. state: 'aberto' (full or
+ * partly, nobody at it), 'sacando' (a hero holds it and it pays), 'bicho' (a critter is withdrawing), 'sem-cedulas'
+ * (empty until `until`, a tick). saldo: R$ left in it. drawer: the critter withdrawing (state 'bicho'). id, x, y, name
+ * are static per run (the protocol sends them on keyframes); saldo, state, until, drawer change. In the city, both
+ * modes (chaveiro and the wall): RunView.banks, not the objective.
+ */
+export type BankState='aberto'|'sacando'|'bicho'|'sem-cedulas';
+/** The banks' names (their text and numbers: rules/bancos.ts); never a real brand. */
+export const BANK_IDS=['pao-duro','juros','posto'] as const;
+export type BankName=typeof BANK_IDS[number];
+export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string}
+
 /** The objective as the HUD and the bots see it (ObjectiveView; seconds rounded up, ticks absolute). */
 export interface ObjectiveView {
   kind:ObjectiveKind;

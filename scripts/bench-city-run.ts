@@ -57,9 +57,14 @@
  * (CITY_OBJECTIVE_DEFAULT), but the bench keeps the wall mode unless asked, so older baselines replay: the run is the room's objective mode (the car, the moto, Dona Cida, waves past 10, the boss at ETA < 60 s);
  * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
  * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
- * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own
- * stick, like 'build'. Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
+ * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push', 'clear' and 'carro') their own
+ * stick, like 'build' (and the bots' walk to an ATM, mode 'bank'). Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
  * left a debt (the bill not paid in full: the bots keep bot-brain granaReserve for it) out of the victories.
+ *
+ * Banks (card NEW-20261014-ORQ-bancos-e-veiculos, rules/bancos.ts BANCO): per run `banks`, from the sim's bank-* events:
+ * the R$ the heroes withdrew into the team's Grana and its share of all the Grana earned (target BANK_SHARE_TARGET),
+ * the critters' withdrawals (count and R$), the Cliente Prime promotions and the times an ATM ran dry. The summary
+ * gives the per-run means and the pooled share (bank R$ / earned R$ over the team size's runs). Absent in older files.
  *
  * D-031: nothing here runs in npm test; tests/tools/city-run-summary.test.ts checks only the pure helpers below.
  *
@@ -116,6 +121,8 @@ export const RECIPE_MEAN_UNITS=Object.values(RECIPE_UNITS).reduce((a,b)=>a+b,0)/
 /** Card targets: wins out of 16 per team size, and round 1 (tutorial) without deaths. */
 export const WIN_TARGETS:Readonly<Record<number,readonly [number,number]>>=Object.freeze({6:[7,11],1:[2,6]});
 export const TARGET_SEEDS=16;
+/** Card bancos-e-veiculos: the banks give 25–35 % of a run's Grana (pooled over a team size's runs). */
+export const BANK_SHARE_TARGET=Object.freeze({min:.25,max:.35});
 
 export type Outcome='victory'|'defeat'|'timeout';
 /** 'opened': the chaveiro opened the car (objective victory); 'car': it was a total loss (objective defeat). */
@@ -196,6 +203,12 @@ export interface RunRecord {
   /** Enemies of the run (both modes): most alive at once, distinct bodies, alive at each minute mark, new ones per minute. */
   enemies?:{max:number;seen:number;alivePerMinute:number[];newPerMinute:number[]};
   /**
+   * Banks (bancos-e-veiculos), from the bank-* events: `grana` R$ the heroes withdrew (bank-cash by 'hero') in
+   * `withdraws` notes, `share` = grana / grana.earned (null when nothing was earned), the critters' `enemyWithdraws`
+   * and `enemyGrana`, `primes` (bank-prime) and `empties` (bank-empty). Absent in older JSON files.
+   */
+  banks?:BankRecord;
+  /**
    * D-050: the level-up pauses, emulated like the room does (LevelupPause on a 50 ms clock, no think nor step while
    * paused). Bots settle after BOT_PICK_MS, so `botSeconds` is what the bench paused; `humanShare` is the worst case for
    * people (every pause to PAUSE_FIRST_MS) over the wave seconds. Absent in older JSON files.
@@ -209,6 +222,16 @@ export function runDigest(r:RunRecord):string{
   const {perf:_perf,digest:_digest,...rest}=r;
   return createHash('sha256').update(JSON.stringify(rest)).digest('hex').slice(0,12);
 }
+export interface BankRecord {grana:number;withdraws:number;share:number|null;enemyWithdraws:number;enemyGrana:number;primes:number;empties:number}
+/** Folds one sim event into a run's bank counters (pure; the bench calls it for every event of every step). */
+export function countBankEvent(b:BankRecord,e:SimEvent):void{
+  if(e.type==='bank-cash'){
+    if(e.by==='hero'){b.grana+=e.amount;b.withdraws++;}
+    else{b.enemyGrana+=e.amount;b.enemyWithdraws++;}
+  }else if(e.type==='bank-prime')b.primes++;
+  else if(e.type==='bank-empty')b.empties++;
+}
+export const emptyBanks=():BankRecord=>({grana:0,withdraws:0,share:null,enemyWithdraws:0,enemyGrana:0,primes:0,empties:0});
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
 const r2=(v:number)=>Math.round(v*100)/100;
@@ -258,6 +281,13 @@ export interface TeamSummary {
   grana:{runs:number;earned:NumStats|null;spent:NumStats|null;evolutions:NumStats|null;repairs:NumStats|null;forge:NumStats|null;final:NumStats|null}|null;
   /** D-047 (--objective chaveiro): victories, and those that left a debt (the bill not paid in full); null without the objective. */
   chaveiro:{runs:number;wins:number;winsWithDebt:number;debt:NumStats|null}|null;
+  /**
+   * Banks (bancos-e-veiculos) per run: hero R$ (`grana`), its share of the earned Grana per run (`share`) and pooled
+   * over the runs (`pooledShare` = Σ bank R$ / Σ earned R$, the number BANK_SHARE_TARGET checks), the critters'
+   * withdrawals and R$, primes and dry ATMs. null when no run recorded banks (older files, island).
+   */
+  banks:{runs:number;grana:NumStats|null;share:NumStats|null;pooledShare:number|null;withdraws:NumStats|null;enemyWithdraws:NumStats|null;enemyGrana:NumStats|null;
+    primes:NumStats|null;empties:NumStats|null;verdict:'ok'|'low'|'high'|'no-grana'}|null;
   verdict:{wins:'ok'|'too-easy'|'too-hard'|'no-target';target:{min:number;max:number}|null;round1:'ok'|'deaths'};
 }
 export interface Summary {runs:number;byPlayers:Record<string,TeamSummary>;verdict:{ok:boolean;notes:string[]}}
@@ -285,6 +315,9 @@ export function summarize(runs:readonly RunRecord[]):Summary{
     const towered=list.map(r=>r.towers).filter((t):t is NonNullable<RunRecord['towers']>=>!!t);
     const granas=list.map(r=>r.grana).filter((g):g is NonNullable<RunRecord['grana']>=>!!g);
     const bills=list.filter(r=>r.objective),won=bills.filter(r=>r.objective!.outcome==='victory');
+    const banked=list.filter(r=>r.banks),bankSum=banked.reduce((s,r)=>s+r.banks!.grana,0),earnedSum=banked.reduce((s,r)=>s+(r.grana?.earned??0),0);
+    const pooledShare=earnedSum>0?Math.round(bankSum/earnedSum*1000)/1000:null;
+    const bankVerdict=pooledShare===null?'no-grana':pooledShare<BANK_SHARE_TARGET.min?'low':pooledShare>BANK_SHARE_TARGET.max?'high':'ok';
     const spentOf=(g:NonNullable<RunRecord['grana']>)=>g.spent.evolutions+g.spent.repairs+g.spent.forge+g.spent.other;
     byPlayers[n]={
       players:n,runs:list.length,wins,winRate:list.length?r2(wins/list.length):0,causes,deathRounds,
@@ -304,8 +337,12 @@ export function summarize(runs:readonly RunRecord[]):Summary{
         evolutions:numStats(granas.map(g=>g.spent.evolutions)),repairs:numStats(granas.map(g=>g.spent.repairs)),forge:numStats(granas.map(g=>g.spent.forge)),
         final:numStats(granas.map(g=>g.final))}:null,
       chaveiro:bills.length?{runs:bills.length,wins:won.length,winsWithDebt:won.filter(r=>r.objective!.debt>0).length,debt:numStats(won.map(r=>r.objective!.debt))}:null,
+      banks:banked.length?{runs:banked.length,grana:numStats(banked.map(r=>r.banks!.grana)),share:numStats(banked.map(r=>r.banks!.share??NaN)),pooledShare,
+        withdraws:numStats(banked.map(r=>r.banks!.withdraws)),enemyWithdraws:numStats(banked.map(r=>r.banks!.enemyWithdraws)),enemyGrana:numStats(banked.map(r=>r.banks!.enemyGrana)),
+        primes:numStats(banked.map(r=>r.banks!.primes)),empties:numStats(banked.map(r=>r.banks!.empties)),verdict:bankVerdict}:null,
       verdict:{wins:winsVerdict,target,round1:r1Deaths?'deaths':'ok'},
     };
+    if(banked.length&&bankVerdict!=='ok')notes.push(`${n}p: banks ${pooledShare===null?'-':`${r2(pooledShare*100)} %`} of the Grana, target ${BANK_SHARE_TARGET.min*100}–${BANK_SHARE_TARGET.max*100} % (${bankVerdict})`);
     if(target&&winsVerdict!=='ok')notes.push(`${n}p: ${wins}/${list.length} wins, target ${r2(target.min)}–${r2(target.max)} (${winsVerdict})`);
     if(r1Deaths)notes.push(`${n}p: ${r1Deaths} death(s) in round 1`);
   }
@@ -345,6 +382,7 @@ export function runLine(r:RunRecord):string{
     `loot/int ${loot.length?r2(loot.reduce((a,b)=>a+b,0)/loot.length):'-'}u | forge ${r.forge.count} | boss ${r.boss?`+${r.boss.spawnAfterWaveS}s kill ${r.boss.killAfterSpawnS??'-'}s`:'-'} | `+
     `${r.towers?`towers ${r.towers.orders} orders ${r.towers.units}u ${r.towers.roots??'-'} roots ${r.towers.tokens??'-'} fichas end ${Object.values(r.towers.final).reduce((a,b)=>a+b,0)}${r.towers.gustavao?' +Gustavão':''} ruined ${r.towers.ruined} | `:''}`+
     `${r.grana?`grana +${r.grana.earned} evo ${r.grana.spent.evolutions} rep ${r.grana.spent.repairs} forge ${r.grana.spent.forge}${r.grana.spent.other?` other ${r.grana.spent.other}`:''} end ${r.grana.final} | `:''}`+
+    `${r.banks?`banks R$ ${r.banks.grana} (${r.banks.share===null?'-':`${r2(r.banks.share*100)} %`}) bicho ${r.banks.enemyWithdraws}× R$ ${r.banks.enemyGrana} prime ${r.banks.primes} dry ${r.banks.empties} | `:''}`+
     `${r.perf.msPerTick} ms/tick ${r.perf.wallSeconds}s${r.digest?` | digest ${r.digest}`:''}`;
 }
 const mean=(list:readonly number[])=>list.length?r2(list.reduce((a,b)=>a+b,0)/list.length):null;
@@ -370,6 +408,11 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
   for(const n of sizes){
     const g=s.byPlayers[n]?.grana;
     if(g)out.push(`grana ${n}p: earned/run ${g.earned?.mean??'-'} spent/run ${g.spent?.mean??'-'} (evolutions ${g.evolutions?.mean??'-'} repairs ${g.repairs?.mean??'-'} forge ${g.forge?.mean??'-'}) final ${g.final?.mean??'-'}`);
+  }
+  for(const n of sizes){
+    const b=s.byPlayers[n]?.banks;
+    if(b)out.push(`banks ${n}p: R$/run ${b.grana?.mean??'-'} share of Grana ${b.pooledShare===null?'-':`${r2(b.pooledShare*100)} %`} pooled (per run ${JSON.stringify(b.share)}; target ${BANK_SHARE_TARGET.min*100}–${BANK_SHARE_TARGET.max*100} %: ${b.verdict})`+
+      ` | bicho withdraws/run ${b.enemyWithdraws?.mean??'-'} (R$ ${b.enemyGrana?.mean??'-'}) | primes/run ${b.primes?.mean??'-'} | dry ATMs/run ${b.empties?.mean??'-'}`);
   }
   for(const n of sizes){
     const rs=runs.filter(r=>r.players===n&&r.objective);
@@ -488,8 +531,9 @@ export class NavDriver {
         if(reading){mode='hold';dir={x:0,y:0};}
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
-      // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase.
-      else if(this.room.modes.get(mind.id)==='push'||this.room.modes.get(mind.id)==='clear'){mode='build';dir=b.brain;}
+      // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
+      // the walk to an ATM (bancos-e-veiculos, mode 'bank') and leaning on the car (D-052, mode 'carro').
+      else if(['push','clear','carro','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);
@@ -541,7 +585,9 @@ export class NavDriver {
   private crateFor(id:string,p:Point,inside:boolean,left:number){
     const round=this.sim.world.round.index,st=this.sim.run.stonewards.state;
     if(this.targetsRound!==round){this.targets.clear();this.targetsRound=round;}
-    const open=(c:Crate)=>remainingOf(st,c.node)>0;
+    // Bancos: the crates a bank took the place of are not in this run (BanksSystem.crates): never a target.
+    const gone=this.sim.run.banks?.crates;
+    const open=(c:Crate)=>!gone?.has(c.node.id)&&remainingOf(st,c.node)>0;
     const fits=(c:Crate)=>{
       const cost=this.nav.crateField(c.node.id,c.node).costAt(p.x,p.y);
       if(cost===UNREACHABLE)return false;
@@ -721,7 +767,7 @@ function playRun(o:RunOptions):RunRecord{
     return r;
   };
   let interGathered:Record<string,number>={},boss:BossRecord|undefined,bossId:string|undefined;
-  const moments:Record<string,number>={},deliveries={clean:0,dirty:0};
+  const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks();
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
   const r1Arrival:Record<string,number|null>=Object.fromEntries(ids.map(id=>[id,null]));
   const st=()=>sim.run.stonewards.state;
@@ -787,6 +833,7 @@ function playRun(o:RunOptions):RunRecord{
     const w=sim.world,tick=w.tick;
     trackNests(tick);
     for(const e of events as readonly SimEvent[]){
+      countBankEvent(banks,e);
       if(e.type==='moto'){
         const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
         if(e.mode==='entrega'){const left=sim.run.chaveiro?.state.moto.left??0;if(left>CLEAN_DELIVERY_TICKS)deliveries.dirty++;else deliveries.clean++;}
@@ -864,6 +911,7 @@ function playRun(o:RunOptions):RunRecord{
     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
     ...(sim.run.nests?{nests:nestSummary()}:{}),
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
+    banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
   };
   function nestSummary():NestRecord{
     const ns=sim.run.nests!.state,start=ns.startTick??0,sec=(t:number|null)=>t===null?null:r2((t-start)/HZ),sono=sim.run.sono();

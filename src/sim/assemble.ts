@@ -23,6 +23,7 @@ import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualS
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
+import {holdsObra} from './towers/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -35,6 +36,8 @@ import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} fr
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
 import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
+import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
+import type {BankView} from '../contract/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -116,6 +119,8 @@ export interface RunSystemsState {
   chaveiro?:ChaveiroState;
   /** D-051, manual combat only: the crates on the map (sim/crates.ts). */
   crates?:CratesState;
+  /** Bancos: only in the city (both modes; absent elsewhere, so the island's and the endless world's hashes stay). */
+  banks?:BanksState;
   /** D-051, only in mode 'ninhos' (absent otherwise): the nests and their sleepers (absent until the first step). */
   ninhos?:NestsState;
   sono?:SonoState;
@@ -143,6 +148,10 @@ export interface RunSystems {
     equip(playerId:string,slot:number):InventoryResult;use(playerId:string,slot:number):InventoryResult;
     drop(playerId:string,slot:number):InventoryResult;take(playerId:string,pickupId:string):InventoryResult;
   };
+  /** Bancos (sim/bancos/system.ts): the city's ATMs, in both city modes; absent elsewhere. */
+  banks?:BanksSystem;
+  /** The banks as the HUD and the bots see them (RunView.banks); undefined outside the city. */
+  bankViews():BankView[]|undefined;
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
   state():RunSystemsState;
   dispose():void;
@@ -217,6 +226,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let bossDown=false;
   // D-047: the chaveiro decides the run instead of the boss and the round count (created below, city only).
   let chaveiro:ChaveiroSystem|undefined;
+  // Bancos: the city's ATMs (created below, after the chaveiro); the crates they stand on are not gathered (hiddenNodes).
+  let banks:BanksSystem|undefined;
   // D-051: the nests of mode 'ninhos' (created with the chaveiro, below).
   let nests:NestsSystem|undefined,sono:Sono|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
@@ -241,7 +252,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
-    terrain:world.terrain,siegeContact:false,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
+    terrain:world.terrain,siegeContact:false,hiddenNodes:()=>banks?.crates,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
     // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
     barricadesLater:options.cityTutorial??true,
     onWallDestroyed:()=>{if(!runEnded())onOutcome('defeat');},
@@ -407,6 +418,15 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       },cp?.ninhos);
     }
   }
+  // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
+  if(cityTerrain){
+    const loot=cityLoot(world.terrain),wall=stonewards.state.wall;
+    // The streets around the car first (an intermission trip away), the loot points as a fallback.
+    const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
+    banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
+      ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
+      wallet:{add:(n,to)=>{addGrana(to,n);}}},cp?.banks);
+  }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
   // D-051 manual combat: the inventory (sim/inventory.ts); a kit de torre is one team ficha.
@@ -416,7 +436,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   world.clearSystems();
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
-      playersSystem(takeInput,options.autopilot,manual,chaveiro?id=>chaveiro!.moverCap(id):undefined)),
+      // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id))),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
@@ -433,7 +454,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     }},
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
-    chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
+    // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
+    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro?.step(ctx);banks?.step(ctx);}} satisfies SimSystem:stonewards,
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx,credit)=>{
@@ -451,8 +473,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),sono:()=>sono,
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),sono:()=>sono,...(banks?{banks}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
+    bankViews:()=>banks?.view(world.tick),
     ...(crates?{crates}:{}),
     ...(inventory?{inventory:{
       equip:(id,slot)=>{const p=world.players.get(id);return p?equipSlot(world,p,slot):{ok:false,reason:'player'};},
@@ -461,7 +484,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       take:(id,pickup)=>{const p=world.players.get(id);return p?takeItem(world,p,pickup):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

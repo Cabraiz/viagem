@@ -20,6 +20,11 @@ export interface ArtFile {
    * figure over every cell (alpha > 20, cell px), measured by the importer; unchecked here (sprite-sheets.ts checks).
    */
   height?:number;figure?:{left:number;top:number;right:number;bottom:number};
+  /**
+   * Enemies (scripts/art-lite.mjs, inimigos-peso-download): the cell of the smaller lite copy the game loads. The
+   * parsed index already has it as `cell` (parseArtIndex), and keeps it here: that copy has no approved file of its size to fall back to.
+   */
+  liteCell?:[number,number];
 }
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.
@@ -57,15 +62,22 @@ function parseFile(value:unknown):ArtFile|undefined{
   if(file.file===undefined&&file.pages===undefined)return undefined;
   return file;
 }
-function parsePiece(value:unknown):ArtPiece|undefined{
+/** An enemy file as the client draws it: its lite copy's cell when that copy is smaller (a malformed one is dropped). */
+function liteFile(file:ArtFile):ArtFile{
+  if(file.liteCell===undefined)return file;
+  const {liteCell,...rest}=file;
+  return isCell(liteCell)&&liteCell[0]<=file.cell[0]&&liteCell[1]<=file.cell[1]?{...rest,cell:[liteCell[0],liteCell[1]],liteCell}:rest;
+}
+function parsePiece(value:unknown,lite=false):ArtPiece|undefined{
   if(!isObject(value)||typeof value.kind!=='string'||!isObject(value.files))return undefined;
   const files:Record<string,ArtFile>=Object.create(null);
-  for(const [key,f] of safeEntries(value.files)){const file=parseFile(f);if(file)files[key]=file;}
+  for(const [key,f] of safeEntries(value.files)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file):file;}
   if(!Object.keys(files).length)return undefined;
   return {kind:value.kind,files,...(isObject(value.meta)?{meta:value.meta}:{})};
 }
 
 /**
+ * The enemies are drawn from their lite copies only (horde-art liteEnemyUrl), so their files take `liteCell` as the cell.
  * Validates the index defensively (it is a public file the client trusts for URLs): unknown or malformed groups,
  * pieces and files are dropped one by one, so a bad entry only keeps that piece procedural; never throws.
  */
@@ -75,7 +87,7 @@ export function parseArtIndex(value:unknown):ArtIndex{
   for(const [id,g] of safeEntries(value.groups)){
     if(!isObject(g)||typeof g.output!=='string'||!/^public\/art\/[a-z0-9/_-]+$/.test(g.output)||g.output.includes('..')||!isObject(g.pieces))continue;
     const pieces:Record<string,ArtPiece>=Object.create(null);
-    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p);if(piece)pieces[pid]=piece;}
+    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos');if(piece)pieces[pid]=piece;}
     groups[id]={output:g.output,pieces};
   }
   return {version:2,groups};

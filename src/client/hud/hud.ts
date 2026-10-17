@@ -5,6 +5,7 @@
  */
 import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import './hud.css';
+import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
 import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
@@ -45,6 +46,9 @@ import {teamColumnVar} from './fone-layout.ts';
 export interface RunHudOptions {
   localId:string;
   onChoose(offerId:string,index:number):void;
+  /** D-052: "Pular" and "Rolar de novo" on the shown offer (absent: the buttons stay off). */
+  onSkip?(offerId:string):void;
+  onReroll?(offerId:string):void;
   onRematch?():void;
   onExit?():void;
   /** Defaults to the approved portraits under /art/portraits. */
@@ -175,7 +179,7 @@ export class RunHud {
     this.music.attach(document);
     this.el.setAttribute('aria-label','Placar da partida');
     const stack=document.createElement('div');stack.className='rh-stack';
-    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
+    const hurt=createHurtFrame(),top=createTopBar(),announcer=createAnnouncer(),team=createTeamStrip(),alerts=createReviveAlerts(),offer=createOfferPanel({onChoose:options.onChoose,onSkip:options.onSkip,onReroll:options.onReroll,onStamp:options.onStamp??playStamp,localId:options.localId,onChipTap:()=>this.coach.did('chip')});
     this.coach=new Coach(options.coachStorage);this.heroRectOf=options.heroRect;this.coachRow=createCoachRow();this.chip=offer.chip;this.offerEl=offer.el;
     this.objectiveRow=createObjectiveRow(parent.ownerDocument);
     this.result=createResultScreen({onRematch:()=>options.onRematch?.(),onExit:options.onExit?()=>options.onExit?.():undefined,
@@ -239,7 +243,9 @@ export class RunHud {
   /** D-050: the room's level-up pause (net.run.pause), or undefined; the parts see it at once, on the last view. */
   setPause(pause?:RunPause){
     const was=this.ctx.pause;
-    if(was===pause||(!!was&&!!pause&&was.leftMs===pause.leftMs&&was.totalMs===pause.totalMs&&was.level===pause.level&&was.waiting.join()===pause.waiting.join()))return;
+    if(was===pause||(!!was&&!!pause&&was.leftMs===pause.leftMs&&was.totalMs===pause.totalMs&&was.level===pause.level&&was.waiting.join()===pause.waiting.join()
+      // D-052: a reroll changes only the counters.
+      &&JSON.stringify([was.skips,was.rerolls])===JSON.stringify([pause.skips,pause.rerolls])))return;
     if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
     if(this.last)this.update(this.last);
   }

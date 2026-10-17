@@ -15,10 +15,14 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
-import {refreshStats} from '../rules/index.ts';
-import {ITEMS} from './items.ts';
+import {UNITS_PER_TOKEN,refreshStats} from '../rules/index.ts';
+import {ITEMS,MANUAL_ITEMS} from './items.ts';
+import {createCrates,type Crates,type CratesState} from './crates.ts';
+import {cityLoot} from './stonewards/loot.ts';
+import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
+import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -30,8 +34,8 @@ import {CAR_ID,MOTO_ID,Rng,type CombatMode,type ObjectiveKind,type ObjectiveView
 import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
-import {payKill,seatedPlayers,splitAmong} from './wallet.ts';
-import {CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
+import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
+import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -52,6 +56,8 @@ export interface RunSystemsOptions {
   takeInput:(playerId:string)=>PlayerInput|undefined;
   /** An offline player the room plays meanwhile (multiplayer autopilot, 3g-rede-sem-teleporte): still walks. */
   autopilot?:(playerId:string)=>boolean;
+  /** D-052: a room bot (with the autopiloted players: who moves the chaveiro's car only along with a person). */
+  bot?:(playerId:string)=>boolean;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
@@ -108,6 +114,8 @@ export interface RunSystemsState {
   stonewards:StonewardsState;zueira:ZueiraState;
   /** D-047, only when the run plays the chaveiro objective (absent otherwise, so no other state hash moves). */
   chaveiro?:ChaveiroState;
+  /** D-051, manual combat only: the crates on the map (sim/crates.ts). */
+  crates?:CratesState;
   /** D-051, only in mode 'ninhos' (absent otherwise): the nests and their sleepers (absent until the first step). */
   ninhos?:NestsState;
   sono?:SonoState;
@@ -128,6 +136,13 @@ export interface RunSystems {
   sono():Sono|undefined;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
+  /** D-051 manual combat's crates (sim/crates.ts): dropCrate for the nests, opening() for the HUD; absent otherwise. */
+  crates?:Crates;
+  /** D-051 manual combat's inventory commands (sim/inventory.ts); absent with the automatic weapons. */
+  inventory?:{
+    equip(playerId:string,slot:number):InventoryResult;use(playerId:string,slot:number):InventoryResult;
+    drop(playerId:string,slot:number):InventoryResult;take(playerId:string,pickupId:string):InventoryResult;
+  };
   /** JSON-safe state of the stateful systems, for stateHash and checkpoints (live references: copy before keeping). */
   state():RunSystemsState;
   dispose():void;
@@ -187,7 +202,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const {onOutcome}=options;
   // A checkpoint is copied once: every system below mutates the state it is handed.
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
-  const progression=createProgression({catalog:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);}},cp?.progression);
+  // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
+  const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
+    ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
@@ -204,12 +221,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let nests:NestsSystem|undefined,sono:Sono|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
-  const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??CITY_BALANCE:undefined;
+  const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??(options.combat==='manual'?MANUAL_CITY_BALANCE:CITY_BALANCE):undefined;
   // D-017 (E8-wall-siege-single-path): the enemy-ai is the only path that hurts the wall. It walks siege enemies to it
   // and its contact hit goes to damageWall; the Stonewards contact siege (siegeStep) stays off.
   // City horn (BUG-20261013-E4): who walked (a non-zero stick) on this tick's players step, read by 'structures' later
   // in the same tick. Transient: rebuilt every tick from the inputs, never part of the state.
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
+  // D-052: the sticks of this tick (who pushes the chaveiro's car, read by its step later in the same tick). Transient too.
+  const sticks=new Map<string,{x:number;y:number}>();
   // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
   const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
   world.recordLastHit=!!manual;
@@ -218,7 +237,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const nestMode=!!objective&&options.mode==='ninhos';
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
-    if(input&&Math.hypot(input.x,input.y)>=.01)steered.add(id);
+    if(input&&Math.hypot(input.x,input.y)>=.01){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
@@ -236,6 +255,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     },
     // cidade-06: a barricade fell or was rebuilt; the flow grid re-reads those cells, then the planner's fields.
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
+    // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
+    // of (the chaveiro and the nests, created below; the wall mode has none of them).
+    ...(cityWorld?{freeBuild:objective?{
+      car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
+      moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
+      nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+    }:{}}:{}),
   },cp?.stonewards);
   structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
@@ -263,6 +289,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     capPush:!!steer,
     // The wall, plus the standing city barricades (blocking); hits go by id to the wall or the barricade (D-017).
     // D-047: the car (and the riding moto) instead of the wall; the car's hits go to the chaveiro, the moto takes none.
+    // D-052: an enemy on a free barricade walks slowed (towers/free-build.ts pieceDrag).
+    drag:e=>pieceDrag(stonewards.state,e),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
@@ -273,7 +301,15 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
   });
   if(cp)enemyAi.restore(cp.enemyAi);
+  // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. Its
+  // Grana goes to the opener's wallet (carteira-e-pix); a ficha prize to the team's tower units; the noise to the nests (E1).
+  const crates:Crates|undefined=manual?createCrates({seed:world.seed,
+    points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
+    startPoints:cityLoot(world.terrain)?.aroundPlaza??[],
+    hooks:{addGrana:(_ctx,p,amount)=>{addGrana(p,amount);},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
+    ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
+    ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),
     summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
     minionKinds:()=>director?.bossMinionKinds(),
     // City (cidade-05c v2): the boss collides by the hero rule (clearSegment), so it walks the streets on the
@@ -330,7 +366,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     chaveiro=createChaveiro({wallet:{seated:()=>seatedPlayers(world.players)},seed:world.seed,grid:openPlanner.grid,entrances:{N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car:{x:wall.x,y:wall.y},
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
-      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);}},cp?.chaveiro);
+      spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
+      // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
+      input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
+      nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
+      helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id),
+      // D-052: the moto rides around a muro built across his way.
+      muros:{radius:MURO_BLOCK_R,standing:()=>piecesOf(stonewards.state).filter(m=>m.kind==='muro')}},cp?.chaveiro);
     if(nestMode){
       const entrances={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car={x:wall.x,y:wall.y},city=cityTerrain;
       // The plan's keep-offs: the moto's four possible routes (one per entrance) and the run's start.
@@ -367,16 +409,28 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
+  // D-051 manual combat: the inventory (sim/inventory.ts); a kit de torre is one team ficha.
+  const inventory=manual?inventorySystem():undefined;
+  const inventoryHooks:InventoryHooks={addTowerToken:()=>{stonewards.state.balance.units+=UNITS_PER_TOKEN;return true;}};
+
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();players.step(ctx);}}))(playersSystem(takeInput,options.autopilot,manual)),
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
+      playersSystem(takeInput,options.autopilot,manual,chaveiro?id=>chaveiro!.moverCap(id):undefined)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
-    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{}),
+      ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     // XP gems merge above the pickup cap without losing XP (VGM-032).
-    {id:'pickups',step(ctx:SimContext){progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);}},
+    {id:'pickups',step(ctx:SimContext){
+      progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);
+      // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
+      // run (a join, a rematch); items walked over go to it.
+      if(inventory){for(const p of ctx.players.values())if(!hasInventory(p)&&!p.spectator){p.build=manualStartingBuild();refreshStats(p);}inventory.step(ctx);}
+      crates?.step(ctx);
+    }},
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     chaveiro?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro!.step(ctx);}} satisfies SimSystem:stonewards,
@@ -399,8 +453,15 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   return {
     director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),sono:()=>sono,
     objectiveView:()=>chaveiro?.view(world.tick),
+    ...(crates?{crates}:{}),
+    ...(inventory?{inventory:{
+      equip:(id,slot)=>{const p=world.players.get(id);return p?equipSlot(world,p,slot):{ok:false,reason:'player'};},
+      use:(id,slot)=>{const p=world.players.get(id);return p?useSlot(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
+      drop:(id,slot)=>{const p=world.players.get(id);return p?dropSlot(world,p,slot):{ok:false,reason:'player'};},
+      take:(id,pickup)=>{const p=world.players.get(id);return p?takeItem(world,p,pickup):{ok:false,reason:'player'};},
+    } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

@@ -114,3 +114,10 @@ test('the welcome says combat:"manual" only in a manual room (the client turns t
   // The client reads it on welcome.
   assert.match(read('src/client/net/client.ts'),/this\.combat=m\.combat==='manual'\?'manual':'auto';/);
 });
+
+test('D-052: with busy hands on the car the attack button dims and lets go of a held press',()=>{
+  const src=read('src/client/explore.ts');
+  assert.match(src,/const busy=manual&&net\.handsBusy/);
+  assert.match(src,/classList\.toggle\('explore-attack-ocupado',busy\);if\(busy\)attackBtn\?\.clear\(\)/);
+  assert.match(read('src/client/coop.css'),/#coop-attack\.explore-attack-ocupado\{/);
+});

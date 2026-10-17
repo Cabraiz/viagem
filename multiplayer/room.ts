@@ -7,9 +7,11 @@ import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes } from '../src/rules/index.ts';
+import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
+import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
-import {CIDA_ITEM_IDS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type TelegraphKind} from '../src/contract/index.ts';
+import {CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer} from '../src/sim/index.ts';
@@ -216,6 +218,10 @@ const AUTOPILOT_SLOT=7;
 const NO_SEATS:ReadonlySet<string>=new Set();
 /** torres-fio: what a {t:'build'} may name (a build site or the Gustavão's rail) and an upgrade's branch. */
 const BUILD_SITE=/^(obra-\d{2}|trilho)$/;
+/** D-052 free build: the pieces a {t:'build',piece,c,r,rot?} may name and the largest cell index it may carry. */
+const FREE_BUILD_PIECES:ReadonlySet<string>=new Set([ROOT_DEFENSE,...FREE_PIECES]);
+const MAX_BUILD_CELL=4095;
+const buildCellOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0&&(v as number)<=MAX_BUILD_CELL;
 /**
  * An upgrade's branch, in any form the sim's pickChild takes: A/B/C, a tree label (A2…A5, A4b, A5b, B2…B6, C2…C5: what
  * the HUD's tree sends, trilho-no-snapshot) or the child's DefenseId.
@@ -658,9 +664,12 @@ export class Room {
     // The client lost its baselines (a frame failed to decode): next frame is full, unacked events go again.
     else if(m.t==='resync')c.encoder?.resync();
     else if(m.t==='choose')this.choose(c,m);
+    else if(m.t==='skip'||m.t==='reroll')this.offerAction(c,m);
     else if(m.t==='forge')this.forge(c,m);
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
+    else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
+    else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
       if(m.ready&&!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
@@ -863,6 +872,19 @@ export class Room {
     this.sim.choose(c.playerId!,m.offer,m.index);
     this.pushOffers(c,true);
   }
+  /**
+   * D-052: {t:'skip'|'reroll',round,offer} from the offer window ("Pular", "Rolar de novo"): the head offer closes with
+   * no prize, or gets new cards; the sim refuses a stale id or a player with none left. Answered with the queue (the
+   * new cards, or the next offer) and the run (the counters in the pause).
+   */
+  private offerAction(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(typeof m.offer!=='string'||!OFFER_ID.test(m.offer))return;
+    if(m.t==='skip')this.sim.skipOffer(c.playerId!,m.offer);else this.sim.rerollOffer(c.playerId!,m.offer);
+    this.pushOffers(c,true);
+    this.pushRun();
+  }
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
@@ -958,6 +980,10 @@ export class Room {
     this.sendJson(c,{t:'forged',req:m.req,recipe:m.recipe,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /**
+   * D-052 free build: {t:'build',round,req,piece,c,r,rot?} (piece: the root tower, 'muro' or 'barricada'; c,r the
+   * footprint's top-left cell of the build grid; rot 0|1). The site form below stays for the bots' brain and the HUD of
+   * today: in the city the sim builds the root on the site's cell. During the D-050 level-up pause every obra is
+   * refused 'pausa'.
    * torres-fio: {t:'build',round,req,site} (a build site id 'obra-NN' or the rail 'trilho') or {t:'upgrade',round,req,
    * defense,branch?} (the defense's wire label; branch A/B/C, or A4b/A5b for the alternative), and since torres-ajustes
    * {t:'repair',round,req,defense} (same label). Anything malformed is dropped here; the sim says no with a reason (e.g.
@@ -968,9 +994,16 @@ export class Room {
     if(state.phase!=='combat'||m.round!==state.round)return;
     if(!Number.isSafeInteger(m.req)||m.req<1)return;
     let result;
-    if(m.t==='build'){
+    if(m.t==='build'&&m.piece!==undefined){
+      if(typeof m.piece!=='string'||!FREE_BUILD_PIECES.has(m.piece)||!buildCellOk(m.c)||!buildCellOk(m.r)||!isBuildRot(m.rot))return;
+      result=this.levelup.paused?{ok:false as const,reason:'pausa' as const}
+        :this.sim.build(c.playerId!,{piece:m.piece as BuildPiece,c:m.c,r:m.r,...(m.rot===1?{rot:1 as const}:{})},`p:${m.req}`);
+    }else if(m.t==='build'){
       if(typeof m.site!=='string'||!BUILD_SITE.test(m.site))return;
-      result=this.sim.build(c.playerId!,m.site,`p:${m.req}`);
+      result=this.levelup.paused?{ok:false as const,reason:'pausa' as const}:this.sim.build(c.playerId!,m.site,`p:${m.req}`);
+    }else if(this.levelup.paused){
+      if(typeof m.defense!=='string')return;
+      result={ok:false as const,reason:'pausa' as const};
     }else{
       const id=typeof m.defense==='string'&&m.defense.length<=12?this.ids.resolve(m.defense):undefined;
       if(!id)return;
@@ -988,6 +1021,25 @@ export class Room {
    * buyer hears {t:'bought',req,item,ok,grana?|reason?}; everyone sees the Grana and the stock in the next frame and the
    * purchase as a `buy` event.
    */
+  /**
+   * D-051 inventory (manual combat): {t:'equip'|'use'|'drop',round,slot} and {t:'take',round,pickup} (the pickup's wire
+   * id, like a tap target). The answer {t:'inv',cmd,ok,reason?} says why a tap did nothing ('far', 'last-weapon', …);
+   * the frames carry the result.
+   */
+  private inventory(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    let result;
+    if(m.t==='take'){
+      const pickup=typeof m.pickup==='string'&&m.pickup.length<=12?this.ids.resolve(m.pickup):undefined;
+      if(!pickup)return;
+      result=this.sim.inventory(c.playerId!,{t:'take',pickup});
+    }else{
+      if(!Number.isSafeInteger(m.slot)||m.slot<0||m.slot>=MAX_WEAPONS)return;
+      result=this.sim.inventory(c.playerId!,{t:m.t,slot:m.slot});
+    }
+    this.sendJson(c,{t:'inv',cmd:m.t,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
+  }
   private cida(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
@@ -995,6 +1047,18 @@ export class Room {
     // D-050: nobody shops while the team picks its cards (the forge and the obra are intermission-only anyway).
     const result=this.levelup.paused?{ok:false as const,reason:'phase' as const}:this.sim.buyCida(c.playerId!,m.item,`p:${m.req}`);
     this.sendJson(c,{t:'bought',req:m.req,item:m.item,ok:result.ok,...(result.ok?{grana:result.grana}:{reason:result.reason})});
+  }
+  /**
+   * D-052 the car's rope: {t:'puxar',round,req,on}. Malformed taps are dropped here; outside combat or for another round
+   * it is 'fase', during the D-050 level-up pause 'pausa'; the sim says the rest ('longe', 'ocupado', 'fase', or
+   * 'duplicate' for a resent req). The puller hears {t:'puxou',req,ok,reason?}; everyone sees the rope in the next frame.
+   */
+  private puxar(c:Connection,m:any){
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.on!=='boolean')return;
+    const state=this.run.snapshot();
+    const result:PullResult=state.phase!=='combat'||m.round!==state.round?{ok:false,reason:'fase'}
+      :this.levelup.paused?{ok:false,reason:'pausa'}:this.sim.pullCar(c.playerId!,m.on,`r:${m.req}`);
+    this.sendJson(c,{t:'puxou',req:m.req,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
   }
   /** Per sender: room time and req of their last PIX that went through (PIX_GAP_MS). Forgotten when they leave. */
   private pixAt=new Map<string,{at:number;req:number}>();
@@ -1036,7 +1100,7 @@ export class Room {
   /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
   private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    return pause?{...snap,pause}:snap;
+    return pause?{...snap,pause:{...pause,...this.sim.offerCharges()}}:snap;
   }
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;

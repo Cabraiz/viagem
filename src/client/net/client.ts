@@ -2,10 +2,10 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,reconcile,simulate,interpolate} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {CombatMode,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
@@ -187,6 +187,10 @@ export class CoopClient {
    * k-th pending input on tick this.tick+1+k with them (maps/prediction.ts), exactly like the room, so no snap-back.
    */
   effects:MoveEffects={};
+  /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
+  stepCap:number|undefined;
+  /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
+  handsBusy=false;
   /** Change segments and the 10 Hz send slot (input-10hz). */
   private readonly batcher=new InputBatcher();
   private flushTimer?:ReturnType<typeof setTimeout>;
@@ -307,6 +311,21 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,site});return req;
   }
+  /**
+   * D-052 free build (contract/build.ts): builds `piece` with the top-left cell of its footprint at (c,r) of the build
+   * grid, turned when rot is 1; the room answers {t:'built'} (onBuilt). Same request ids as forge().
+   */
+  buildAt(piece:string,c:number,r:number,rot?:BuildRot){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,piece,c,r,...(rot?{rot}:{})});return req;
+  }
+  /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
+  onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};
+  /** D-052, the car's rope: {t:'puxar',round,req,on} hooks (on) or drops it; the room answers {t:'puxou'} (onPulled). */
+  pull(on:boolean){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'puxar',round:this.run.round,req,on});return req;
+  }
   /** Upgrades a ready defense (its structure's wire id) to the next tier; `branch` A/B/C at tier 2, or 'A4b'/'A5b'. */
   upgrade(defense:string,branch?:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
@@ -326,6 +345,17 @@ export class CoopClient {
   buyCida(item:string){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'cida',round:this.run.round,req,item});return req;
+  }
+  /** D-051: the room's answer to an inventory tap ({t:'inv'}): why nothing happened ('far', 'last-weapon', 'full', …). */
+  onInventory:(result:{cmd:string;ok:boolean;reason?:string})=>void=()=>{};
+  /**
+   * D-051 inventory (manual combat; the HUD's 6 slots): the slot to the hand, a consumable eaten, an item to the ground,
+   * or an item from the ground (its pickup id as the frames carry it). The room answers {t:'inv'} (onInventory); the
+   * frames bring the inventory. False when there is nothing to send it on.
+   */
+  inventory(command:{t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return false;
+    this.out(this.socket,{...command,round:this.run.round});return true;
   }
   /** PIX answers still awaited, by request id (carteira-e-pix): settled by {t:'pixed'} or after PIX_ANSWER_MS. */
   private pixWaits=new Map<number,(result:PixResult)=>void>();
@@ -540,8 +570,10 @@ export class CoopClient {
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
     else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='inv'&&typeof m.cmd==='string'&&typeof m.ok==='boolean')this.onInventory({cmd:m.cmd,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='pixed'){const answer=parsePixed(m);if(answer)this.pixWaits.get(answer.req)?.(answer.result);}
     else if(m.t==='forged'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onForged({req:m.req,recipe:String(m.recipe??''),ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='offers'&&Array.isArray(m.offers))this.feed.setOffers(m.offers);
@@ -690,9 +722,13 @@ export class CoopClient {
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
     this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil}:{};
+    // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
+    // movers the hands are busy (no attack).
+    const car=view.objective?.car;
+    this.stepCap=carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects}):{x:self.x,y:self.y};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -730,10 +766,12 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
     if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
+    // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
+    if(this.handsBusy)attack=false;
     const {input,active}=this.batcher.step(direction,skill,target,attack);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap);}
     this.flushInput();
   }
   /**
@@ -807,6 +845,9 @@ export class CoopClient {
   }
   /** Upgrade pick from the HUD offer panel; the room answers with the refreshed {t:'offers'}. */
   choose(offer:string,index:number){this.runCommand({t:'choose',offer,index});}
+  /** D-052 "Pular" / "Rolar de novo" on the head offer; the room answers with {t:'offers'} and the run's counters. */
+  skipOffer(offer:string){this.runCommand({t:'skip',offer});}
+  rerollOffer(offer:string){this.runCommand({t:'reroll',offer});}
   /** Playtest metrics only (dev/ux-metrics.ts, ?dev=1): every run command the player taps, and whether it left. Unset otherwise. */
   onCommand?:(command:{t:string;offer?:string;index?:number},sent:boolean)=>void;
   private runCommand(command:{t:string;[key:string]:unknown}){

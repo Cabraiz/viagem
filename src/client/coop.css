@@ -38,6 +38,8 @@
    the edge and the seconds over the dimmed sticker. Ready = Verde Cartolina ring AND no number; cooling = Papel ring
    filling up AND the number (never color alone). "ainda não" / "sem alvo" take the word's place for 1.2 s. */
 #coop-attack{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+/* D-052: hands busy on the car (pushing, on the rope): the attack does nothing, the button says so. */
+#coop-attack.explore-attack-ocupado{opacity:.45;filter:grayscale(1)}
 #coop-attack .skillbtn-ring{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);transform:rotate(-90deg);overflow:visible;pointer-events:none}
 #coop-attack .skillbtn-ring circle{fill:none;stroke-width:6px}
 #coop-attack .skillbtn-track{stroke:transparent}

@@ -52,6 +52,8 @@ export interface EnemyAiOptions {
   rng?:Rng;
   structures?:(ctx:SimContext)=>readonly StructureTarget[];
   hitStructure?:(ctx:SimContext,structureId:string,amount:number,enemy:EnemyState)=>void;
+  /** D-052: the ground's speed multiplier under a body (a free barricade slows; 1 or absent: none). */
+  drag?:(e:EnemyState)=>number;
   /** Minimum ticks between two barks on screen (global). */
   barkGap?:number;
   /** Chance per tick of an ambient bark once its (longer) gap has passed. */
@@ -544,7 +546,7 @@ export class EnemyAi implements SimSystem {
       // off. (The Tio still takes that first push, as tuned; in a crowd it often cancels his charge.)
       if(planted||memory.state===STATE.joke&&enemyDef(e.kind).behavior==='kamikaze'){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
-      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace,ctx.tick)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
+      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace,ctx.tick)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)*(this.options.drag?.(e)??1)/SIM_HZ/dirLength:0;
       // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
       // shove a body past the hero; knockback, above, is the players' doing and is not capped).
       let moveX=dirX*stepLength+pushX,moveY=dirY*stepLength+pushY;

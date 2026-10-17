@@ -34,7 +34,7 @@ import {createDirector,type DirectorOptions} from '../../src/sim/director.ts';
 import {createEnemy as catalogEnemy,enemyDef,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {citySpeed} from '../../src/sim/city/speed.ts';
-import {CITY_BALANCE,CITY_TEAM_SIZES,NEUTRAL_CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,hasTeamBossHp,hasTeamDamage,hasTeamLoot,isNeutralRound,roundKnobs,teamBossHp,teamDamage,type CityBalance} from '../../src/sim/city/balance.ts';
+import {CITY_BALANCE,CITY_TEAM_SIZES,MANUAL_CITY_BALANCE,NEUTRAL_CITY_BALANCE,NEUTRAL_ROUND,applyCityBalance,cityBalanceFrom,cityCrateValue,hasTeamBossHp,hasTeamDamage,hasTeamLoot,isNeutralRound,roundKnobs,teamBossHp,teamDamage,type CityBalance} from '../../src/sim/city/balance.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -609,4 +609,13 @@ test('CITY_BALANCE: team entries for 1, 3 and 6 players on neutral globals; city
   assert.deepEqual(cityBalanceFrom(json,NEUTRAL_CITY_BALANCE),CITY_BALANCE,'over NEUTRAL_CITY_BALANCE');
   assert.deepEqual(cityBalanceFrom(json),CITY_BALANCE,'over the default');
   assert.equal(cityBalanceFrom(undefined),CITY_BALANCE,'no JSON: the default itself');
+});
+
+test('D-051 manual combat: its own team-size knobs (the solo eased less, six pushed less), the rest as the city\'s',()=>{
+  const {players:auto,...autoRest}=CITY_BALANCE,{players:manual,...manualRest}=MANUAL_CITY_BALANCE;
+  assert.deepEqual(manualRest,autoRest);
+  assert.ok(cityBalanceFrom(JSON.parse(JSON.stringify(MANUAL_CITY_BALANCE))),'a valid balance');
+  assert.ok(manual![1].damage!>auto![1].damage!&&manual![1].hp!>auto![1].hp!,'the solo takes more and faces tougher bodies');
+  assert.ok(manual![6].damage!<auto![6].damage!&&manual![6].hp!<auto![6].hp!,'six take less and face softer bodies');
+  assert.equal(manual![3],auto![3]);
 });

@@ -8,10 +8,10 @@ import type {ObjectiveResult,ObjectiveView} from '../../src/contract/objective.t
 import {CIDA_ITEMS} from '../../src/contract/objective.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
-import {nestsMode,roundInfo} from '../../src/client/hud/model.ts';
+import {nestTally,nestsMode,roundInfo} from '../../src/client/hud/model.ts';
 import {marqueeFor} from '../../src/client/hud/topbar.ts';
 import {baseBar} from '../../src/client/hud/camp.ts';
-import {resultHeadline} from '../../src/client/hud/result.ts';
+import {resultHeadline,resultRoundLine} from '../../src/client/hud/result.ts';
 import {computeZones} from '../../src/client/hud/zones.ts';
 import {COVERING,WINDOWS} from '../../src/client/hud/edges.ts';
 import {CAR_BAR_LOW,CIDA_LEAVE_U,CIDA_REACH_U,DEBT_VICTORY_TEXT,MOTO_REASONS,MotoReason,OBJECTIVE_CAUSE_TEXT,REASON_MS,carBar,chaveiroClock,cidaBought,cidaButtonShown,
@@ -71,6 +71,18 @@ test('D-051 nests: the nests of the room (kind "ninho", a fallen one too) mark t
   assert.equal(nestsMode({...rounds,structures:[nest('destruido',0)]} as RunView),true);
   // Other structures are not nests.
   assert.equal(nestsMode({...rounds,structures:[{id:'w',kind:'muro',x:0,y:0,hp:1,maxHp:1}]} as RunView),false);
+});
+
+test('D-051 nests: the result counts the nests that fell instead of "Onda N"',()=>{
+  const nest=(id:string,hp:number,phase:string)=>({id,kind:'ninho',x:0,y:0,hp,maxHp:40,phase});
+  const view={structures:[nest('a',0,'destruido'),nest('b',12,'ativo'),nest('c',40,'dormindo'),{id:'w',kind:'muro',x:0,y:0,hp:1,maxHp:1}]};
+  assert.deepEqual(nestTally(view),{down:1,total:3});
+  assert.equal(nestTally({structures:[]}),undefined);
+  assert.equal(nestTally(undefined),undefined);
+  const objective={outcome:'defeat',cause:'timeout',wave:4,budget:120,grana:30,paid:30,debt:0} as unknown as ObjectiveResult;
+  assert.equal(resultRoundLine({round:4,totalRounds:10,objective},{down:1,total:3}),'Ninhos 1/3');
+  assert.equal(resultRoundLine({round:4,totalRounds:10,objective}),'Onda 4');
+  assert.equal(resultRoundLine({round:4,totalRounds:10}),'Round 4/10');
 });
 
 test('the round banner with the chaveiro: "Onda N" and no boss line by the round number',()=>{

@@ -86,6 +86,17 @@ export function barricadeSpan(b:{x:number;y:number},wall?:{x:number;y:number},ha
   return {ax:b.x-px*half,ay:b.y-py*half,bx:b.x+px*half,by:b.y+py*half,turn};
 }
 
+/**
+ * A free-build barricade (D-052: it carries its grid cell c/r and rot): it lies along its footprint, 2 cells along x
+ * (rot 0, the art's column 0 like a barricade on the wall's +y side) or along y (rot 1, a quarter turn), centred on x,y.
+ */
+export function freeBarricadeSpan(b:{x:number;y:number;rot?:number},cell:number){
+  const half=cell,along=b.rot===1;
+  return along?{ax:b.x,ay:b.y-half,bx:b.x,by:b.y+half,turn:1}:{ax:b.x-half,ay:b.y,bx:b.x+half,by:b.y,turn:0};
+}
+/** A barricade of the free build (it has a grid cell) rather than one across a plaza mouth. */
+export const isFreeBarricade=(s:{c?:number})=>s.c!==undefined;
+
 /** Ids whose life dropped since the last view (`before`: hp by id), for the hit flash (pure, tested). */
 export function hpDropped(before:ReadonlyMap<string,number>,after:readonly StructureView[]){
   const out:string[]=[];

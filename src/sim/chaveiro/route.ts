@@ -35,6 +35,43 @@ export function buildRoute(grid:FlowGrid,from:Point,to:Point,stopShort=0):Route{
   return cut(measure(simplify(raw,ROUTE_EPSILON)),stopShort);
 }
 
+/**
+ * D-052: `grid` with the cells whose centre lies within `reach` u of a disc centre shut (the muros the moto rides around),
+ * except the cells of `keep` (the route's ends: a muro next to the moto never strands him). The same grid without discs.
+ * A pure function of its inputs, so a restored run rebuilds the same route from them.
+ */
+export function shutGrid(grid:FlowGrid,discs:readonly Point[],reach:number,keep:readonly Point[]=[]):FlowGrid{
+  if(!discs.length)return grid;
+  const size=grid.cellSize,ox=grid.originX??0,oy=grid.originY??0,shut=new Set<number>();
+  for(const d of discs){
+    const x0=Math.max(0,Math.floor((d.x-reach-ox)/size)),x1=Math.min(grid.width-1,Math.floor((d.x+reach-ox)/size));
+    const y0=Math.max(0,Math.floor((d.y-reach-oy)/size)),y1=Math.min(grid.height-1,Math.floor((d.y+reach-oy)/size));
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+      const dx=ox+(x+.5)*size-d.x,dy=oy+(y+.5)*size-d.y;
+      if(dx*dx+dy*dy<reach*reach)shut.add(x+y*grid.width);
+    }
+  }
+  for(const k of keep)shut.delete(Math.floor((k.x-ox)/size)+Math.floor((k.y-oy)/size)*grid.width);
+  return {width:grid.width,height:grid.height,cellSize:size,originX:ox,originY:oy,walkable:(cx,cy)=>!shut.has(cx+cy*grid.width)&&grid.walkable(cx,cy)};
+}
+/** D-052: whether the route from `s` on comes closer than `reach` u to a disc centre (a muro built across the way). */
+export function routeCrosses(route:Route,s:number,discs:readonly Point[],reach:number):boolean{
+  if(!discs.length)return false;
+  const P=route.points;
+  let i=0;
+  while(i<P.length-2&&route.cum[i+1]<=s)i++;
+  const start=pointAt(route,s);
+  for(;i<P.length-1;i++){
+    const a=route.cum[i]<s?start:P[i],b=P[i+1],dx=b.x-a.x,dy=b.y-a.y,l2=dx*dx+dy*dy;
+    for(const d of discs){
+      const t=l2>0?Math.max(0,Math.min(1,((d.x-a.x)*dx+(d.y-a.y)*dy)/l2)):0;
+      const ex=a.x+t*dx-d.x,ey=a.y+t*dy-d.y;
+      if(ex*ex+ey*ey<reach*reach)return true;
+    }
+  }
+  return false;
+}
+
 /** Ramer-Douglas-Peucker, iterative, endpoints kept. */
 export function simplify(points:readonly Point[],epsilon:number):Point[]{
   if(points.length<3)return points.map(p=>({x:p.x,y:p.y}));

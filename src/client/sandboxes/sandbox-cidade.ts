@@ -91,6 +91,10 @@ import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
 import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerView,type WireStructure} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
 import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
+import {FortifyRenderer} from '../render/fortify.ts';
+import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
+import {CAR_HALF} from '../render/chaveiro/figures.ts';
+import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
@@ -128,6 +132,12 @@ const cast=tele&&params.get('elenco')==='1';
 const objective=params.get('objetivo')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
 const bancos=real&&params.get('bancos')==='1';
+/**
+ * `obra=1` with `objetivo=1` (D-052 slice 4, placeholder): the fortify layer around the fake car: a wall row by damage
+ * stage, two free barricades (rot 0 and 1), the hero on the rope at the bumper and the build ghost with its hints.
+ * `fantasma=` muro|barricada|vigia-do-predio (default) picks the piece; `fantasma=carro` puts it on the car (red).
+ */
+const obra=objective&&params.get('obra')==='1';
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
@@ -176,6 +186,7 @@ class CitySandbox extends Phaser.Scene {
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
+  private fortify?:FortifyRenderer;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
@@ -230,6 +241,7 @@ class CitySandbox extends Phaser.Scene {
     if(tele)this.buildLab();
     if(towersParam)this.mountTowers();
     if(bancos)this.mountBanks();
+    if(obra&&this.chaveiro)this.mountObra();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -258,6 +270,7 @@ class CitySandbox extends Phaser.Scene {
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
     }
     this.stepBanks(_t);
+    this.fortify?.update(fotoT??_t);
     this.drawLab(_t,dt);
     this.stepTowers(_t,dt);
   }
@@ -312,6 +325,37 @@ class CitySandbox extends Phaser.Scene {
     if(placeHero)this.at={...fake.heroAt};
     const renderer=new ChaveiroRenderer(this,{projector:this.cityProjector(),reduced:reducedMotion,hero:()=>this.at});
     return {renderer,fake};
+  }
+  /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
+  private mountObra(){
+    const projector=this.cityProjector(),cell=CITY_BUILD_CELL,car=this.chaveiro!.fake.view(0).view.car;
+    // The hero on the rope, ahead of the front bumper.
+    this.at={x:car.x+CAR_HALF.l+2.2,y:car.y+.3};
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:id=>id==='voce'?this.at:undefined});
+    const c0=Math.round(car.x/cell)+1,r0=Math.round((car.y+2.6)/cell);
+    const walls:StructureView[]=[0,1,2,3,4,5].map(i=>{
+      const hp=[250,250,180,110,40,0][i];
+      return {id:`m${i}`,kind:'muro',x:(c0+i+.5)*cell,y:(r0+.5)*cell,hp,maxHp:250,c:c0+i,r:r0};
+    });
+    const bar=(id:string,c:number,r:number,rot:0|1,hp:number):StructureView=>{
+      const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
+      return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:400,c,r,...(rot?{rot}:{})};
+    };
+    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220)];
+    const tick=100,objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
+    const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
+      objective:objectiveView} as unknown as RunView;
+    this.fortify.push(view);
+    this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
+    this.stone.push(view);
+    // The ghost: a free spot to the car's left (green), or on the car itself (`fantasma=carro`, red).
+    const wanted=params.get('fantasma')??'vigia-do-predio',piece=wanted==='carro'?'vigia-do-predio':wanted;
+    const [w,h]=footprintCells(piece),spot=wanted==='carro'?{x:car.x+.4,y:car.y}:{x:car.x+CAR_HALF.l+3.6,y:car.y-2.4};
+    const at=cellUnder(spot.x,spot.y,w,h,cell),ctx={cell,car,structures};
+    const look=ghostLook(ghostRefusal(cellRect(at.c,at.r,w,h,cell),ctx));
+    const sites=[-6,-3,3,6].flatMap(dx=>[-4,4].map(dy=>({x:car.x+dx,y:car.y+dy})));
+    this.fortify.setGhost({piece,c:at.c,r:at.r,look});
+    this.fortify.setHints(buildHints(piece,sites,ctx));
   }
   /**
    * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the

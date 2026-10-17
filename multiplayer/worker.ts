@@ -2,14 +2,14 @@ import {randomSeed,DEFAULT_SEED} from '../src/maps/index.ts';
 import { DurableObject } from 'cloudflare:workers';
 import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOptions, type RoomRoster } from './room.ts';
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
-/** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro"} is 60. */
+/** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78. */
 const CREATE_BODY_MAX=256;
 /** sala-solo-privada: what a create asks, from an optional small JSON body (or a stored row); anything else is dropped. */
 export function createOptions(v:unknown):RoomCreateOptions{
-  const o=v as {map?:unknown;solo?:unknown;objective?:unknown;mode?:unknown}|null;
+  const o=v as {map?:unknown;solo?:unknown;objective?:unknown;combat?:unknown;mode?:unknown}|null;
   if(!o||typeof o!=='object')return {};
   return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{}),...(o.objective==='chaveiro'||o.objective==='muralha'?{objective:o.objective}:{}),
-    ...(o.mode==='ninhos'?{mode:o.mode}:{})};
+    ...(o.combat==='manual'?{combat:'manual' as const}:{}),...(o.mode==='ninhos'?{mode:o.mode}:{})};
 }
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -167,8 +167,10 @@ export class GameRoom extends DurableObject<Env>{
     // sala-solo-privada: the map it was opened on and a solo room, as created (the defaults otherwise); D-047: the
     // objective the creator asked for: ?modo=chaveiro (the city's default anyway) or ?modo=muralha (the old wall mode).
     const objective=this.asked.objective==='muralha'?false as const:this.asked.objective;
-    // D-051: ?modo=ninhos, the nests instead of the waves (the room plays them only with the chaveiro in the city).
-    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{}),...(this.asked.mode?{mode:this.asked.mode}:{})};
+    // D-051: ?combate=manual, the attack button (RoomOptions.combat); absent: the automatic weapons. ?modo=ninhos, the
+    // nests instead of the waves (the room plays them only with the chaveiro in the city).
+    const asked={...(this.asked.map?{map:this.asked.map}:{}),...(this.asked.solo?{solo:true}:{}),...(objective!==undefined?{objective}:{}),...(this.asked.combat?{combat:this.asked.combat}:{}),
+      ...(this.asked.mode?{mode:this.asked.mode}:{})};
     if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
     return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});

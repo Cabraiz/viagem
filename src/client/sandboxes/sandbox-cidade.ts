@@ -1,4 +1,7 @@
 /**
+ * `acao=1` (D-051 step 2): the game's own action button in the attack mode (hud/skill.ts + hud/attack-button.ts) over
+ *   the stand-in enemies (`n`, with `parado=1` for prints); `arrasto=dx,dy` holds a drag that far from the button's
+ *   centre (CSS px) so a print shows the yellow line and the reticle; `segura=1` holds it with no drag (the auto aim).
  * Cidade Nevada render sandbox (cards cidade-03a, cidade-04, cidade-03, barricadas-cliente):
  * `?sandbox=cidade[&mapa=real][&n=300][&view=0..3][&hero=cx,cy][&class=id][&cells=N][&base=1[&fase=prepare|wave]]`.
  *
@@ -99,6 +102,9 @@ import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {fotoClock} from '../dev/foto.ts';
+import {SkillButton} from '../hud/skill.ts';
+import {AttackButton} from '../hud/attack-button.ts';
+import {SKILL_HTML} from '../controls-phase.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -111,6 +117,8 @@ const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
 const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
+/** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
+const acao=params.get('acao')==='1';
 /** torres=1: the stand-in horde keeps this far (u) from the hero, outside the ring of defenses, so the shots read. */
 const HORDE_INNER=towersParam===1?4.5:0;
 const enemies=Math.max(0,Math.min(600,params.has('n')||!towersParam?Number(params.get('n'))|0:60));
@@ -183,6 +191,8 @@ class CitySandbox extends Phaser.Scene {
   private view=Math.max(0,Math.min(3,Number(params.get('view'))|0));
   private at={x:0,y:0};
   private horde:Wanderer[]=[];
+  /** acao=1: the game's attack button over the stand-ins. */
+  private attack?:AttackButton;
   private rng=mulberry(7);
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
@@ -241,6 +251,7 @@ class CitySandbox extends Phaser.Scene {
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     this.spawnHorde();
+    if(acao)void this.mountAttack();
     if(centre)this.mountBase(centre);
     if(tele)this.buildLab();
     if(towersParam)this.mountTowers();
@@ -266,6 +277,7 @@ class CitySandbox extends Phaser.Scene {
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     if(!stillHorde)this.moveHorde(dt);
+    this.attack?.frame();
     this.tick(dt);
     this.stone?.update(_t);
     if(this.chaveiro){
@@ -474,6 +486,30 @@ class CitySandbox extends Phaser.Scene {
     const zoom=cellsOverride?viewport.width/(cellsOverride*this.asset.cell*TILE_X*Math.SQRT2):cityZoom(viewport,zoomK);
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(zoom);
     this.place();
+  }
+  /** acao=1: the action slot in the attack mode, the stand-ins as its enemies, an optional held drag for prints. */
+  private async mountAttack(){
+    await Promise.all([import('../explore.css'),import('../coop.css')]);
+    const slot=document.createElement('div');slot.className='cidade-acao';slot.innerHTML=SKILL_HTML;
+    slot.style.cssText='position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));z-index:9';
+    host.append(slot);
+    const button=slot.querySelector<HTMLButtonElement>('#coop-attack')!,skill=new SkillButton(button,classId);skill.setCombat('manual');
+    let chosen:string|undefined;
+    const toScreen=(p:{x:number;y:number})=>{
+      const w=project(p.x,p.y,groundZ(this.asset,p.x,p.y),this.view),cam=this.cameras.main,r=this.game.canvas.getBoundingClientRect();
+      return {x:r.left+(w.x-cam.worldView.x)*cam.zoom,y:r.top+(w.y-cam.worldView.y)*cam.zoom};
+    };
+    this.attack=new AttackButton(button,host,{hero:()=>this.at,toScreen,
+      enemies:()=>this.horde.map((w,i)=>({id:`b${i}`,kind:'bebado',x:w.x,y:w.y,hp:1,maxHp:1})),tick:()=>0,
+      chosen:()=>chosen,choose:id=>{chosen=id;},wake:()=>undefined,setHeld:held=>skill.setHeld(held)});
+    this.attack.setOn(true);
+    const drag=params.get('arrasto')?.split(',').map(Number);
+    if(drag||params.get('segura')==='1'){
+      const r=button.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+      button.dispatchEvent(new PointerEvent('pointerdown',{pointerId:7,button:0,clientX:x,clientY:y,bubbles:true}));
+      if(drag)button.dispatchEvent(new PointerEvent('pointermove',{pointerId:7,clientX:x+(drag[0]||0),clientY:y+(drag[1]||0),bubbles:true}));
+    }
+    (window as unknown as {__acao?:unknown}).__acao={held:()=>this.attack?.press.held,chosen:()=>chosen};
   }
   /** Stand-in enemies: one shared Breu-ringed disc texture, scaled like the city figures, wandering around the hero. */
   private spawnHorde(){

@@ -51,11 +51,14 @@ async function cityWave(){
 test('a muro by cell: built in a wave, on the wire as kind muro with its c/r; malformed orders are dropped',async()=>{
   const s=await cityWave(),{room,a,cell}=s,round=room.run.snapshot().round;
   say(room,a,{t:'build',round,req:1,piece:'muro',c:cell.c,r:cell.r},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:true,kind:'muro'});
+  const built=a.messages.findLast(m=>m.t==='built')!;
+  assert.match(String(built.defense),/^s\d+$/,'the structure id as the frames carry it');
+  assert.deepEqual(built,{t:'built',req:1,ok:true,kind:'muro',defense:built.defense});
   assert.equal(s.ana.grana,96,'R$ 4 from her wallet');
   s.tick(30);
   const muro=lastStructures(a.frames).find(x=>x.kind==='muro');
   assert.ok(muro,'the phone sees the muro');
+  assert.equal(muro.id,built.defense,'the id in built is the one in the frames');
   assert.equal(muro.c,cell.c);assert.equal(muro.r,cell.r);assert.equal(muro.rot,undefined);
   assert.ok(Math.abs(muro.x-(cell.c+.5)*FREE_CELL)<.07&&Math.abs(muro.y-(cell.r+.5)*FREE_CELL)<.07);
   assert.equal(muro.hp,250);
@@ -72,10 +75,13 @@ test('a muro by cell: built in a wave, on the wire as kind muro with its c/r; ma
 test('the root by cell and by site (the bots, the HUD of today); the level-up pause refuses every obra (pausa)',async()=>{
   const s=await cityWave(),{room,a,cell}=s,round=room.run.snapshot().round;
   say(room,a,{t:'build',round,req:1,piece:'vigia-do-predio',c:cell.c,r:cell.r},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:true,kind:'vigia-do-predio'});
+  const first=a.messages.findLast(m=>m.t==='built')!;
+  assert.deepEqual(first,{t:'built',req:1,ok:true,kind:'vigia-do-predio',defense:first.defense});
   const site=buildPlanFor(room.sim.terrain).sites[1];s.ana.x=site.x;s.ana.y=site.y;
   say(room,a,{t:'build',round,req:2,site:site.id},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:2,ok:true,kind:'vigia-do-predio'});
+  const second=a.messages.findLast(m=>m.t==='built')!;
+  assert.deepEqual(second,{t:'built',req:2,ok:true,kind:'vigia-do-predio',defense:second.defense});
+  assert.notEqual(second.defense,first.defense);
   s.tick(30);
   const towers=lastStructures(a.frames).filter(x=>x.kind==='vigia-do-predio');
   assert.equal(towers.length,2);

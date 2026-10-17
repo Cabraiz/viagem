@@ -9,6 +9,7 @@
 import {crosses,HERO_MARGIN,type Rect} from './zones.ts';
 import {edgeOf} from '../framing.ts';
 import {icon,type IconName} from '../ui/icon.ts';
+import {stickerOrIcon} from '../ui/sticker.ts';
 import {faceHtml,portraitClass} from '../ui/face-crop.ts';
 import {secondsText} from './model.ts';
 
@@ -492,7 +493,8 @@ export class EdgeArrows {
         const sticker=EDGE_ICON[a.kind];
         // An ally is a face in a circle (rostos-hud): the class's crop of the portrait it was handed (ui/face-crop.ts).
         const id=portraitClass(a.portrait)??(a.portrait?'':undefined);
-        slot.face.innerHTML=a.kind==='aliado'?faceHtml(id,a.portrait?{src:a.portrait}:{}):sticker?icon(sticker):'';
+        // The moto's arrow wears the chaveiro riding it (ui/chaveiro), else the moto icon.
+        slot.face.innerHTML=a.kind==='aliado'?faceHtml(id,a.portrait?{src:a.portrait}:{}):a.kind==='moto'?stickerOrIcon('chaveiro','moto'):sticker?icon(sticker):'';
       });
       // A group's body holds its count ("99+" at the ceiling); its distance goes up to the tag (doc §3).
       put(slot,'num',a.kind==='grupo'?a.label??'':distanceText(a.distance),v=>{slot.num.textContent=v;});

@@ -57,7 +57,7 @@
  * (CITY_OBJECTIVE_DEFAULT), but the bench keeps the wall mode unless asked, so older baselines replay: the run is the room's objective mode (the car, the moto, Dona Cida, waves past 10, the boss at ETA < 60 s);
  * victory = he opened the car. Per run `objective`: the bill (ObjectiveResult: outcome, cause car/team/timeout, ETA at
  * the end, hits, parts, Grana/budget/paid/debt, wave and extra waves) plus the moto's moments (pushes, by itself,
- * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push' and 'clear') their own
+ * deliveries clean or dirty, falls). The wrapper leaves the bots' objective tasks (modes 'push', 'clear' and 'carro') their own
  * stick, like 'build' (and the bots' walk to an ATM, mode 'bank'). Use --cap-min 25 for the room's D-043 cap. The summary counts, per team size, the victories that
  * left a debt (the bill not paid in full: the bots keep bot-brain granaReserve for it) out of the victories.
  *
@@ -509,8 +509,8 @@ export class NavDriver {
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
       // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
-      // the walk to an ATM (bancos-e-veiculos, mode 'bank').
-      else if(['push','clear','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
+      // the walk to an ATM (bancos-e-veiculos, mode 'bank') and leaning on the car (D-052, mode 'carro').
+      else if(['push','clear','carro','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);

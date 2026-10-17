@@ -44,6 +44,14 @@ function atIntermission(bots=0){
   return {room,a,ana,goTo,get t(){return t;},tick:()=>{room.advance(t+=50);if(++n%20===0)say(room,a,{t:'ack',seq:0},t);}};
 }
 
+
+/** The last {t:'built'} answer; an accepted one carries the structure's wire id (D-052), checked and left out here. */
+function accepted(c:{messages:Record<string,unknown>[]}){
+  const m=c.messages.findLast(x=>x.t==='built')!;
+  if(m.ok!==true)return m;
+  assert.match(String(m.defense),/^s\d+$/,'the structure id as the frames carry it');
+  const {defense:_,...rest}=m;return rest;
+}
 test('a person builds a root on a site and evolves it to branch A; the phone sees kind, tier, branch, phase and hp',()=>{
   const s=atIntermission(),{room,a}=s,round=room.run.snapshot().round;
   // From afar (wherever the first wave left her): the sim says 'away'; next to the site it builds.
@@ -52,7 +60,7 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:20,ok:false,reason:'away'});
   s.goTo('obra-01');
   say(room,a,{t:'build',round,req:1,site:'obra-01'},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:1,ok:true,kind:'vigia-do-predio'});
+  assert.deepEqual(accepted(a),{t:'built',req:1,ok:true,kind:'vigia-do-predio'});
   // Malformed: dropped without an answer.
   for(const bad of [{site:'obra-1'},{site:'muralha'},{site:7},{req:0,site:'obra-02'}])say(room,a,{t:'build',round,req:2,...bad},s.t);
   assert.equal(a.messages.filter(m=>m.t==='built').length,2,'the far refusal and the build');
@@ -71,7 +79,7 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   for(let i=0;i<4;i++)s.tick();
   assert.equal(lastStructures(a.frames).find(x=>x.id===mine.id)?.phase,'pronta');
   say(room,a,{t:'upgrade',round,req:4,defense:mine.id,branch:'A'},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:4,ok:true,kind:'vigias-armados'});
+  assert.deepEqual(accepted(a),{t:'built',req:4,ok:true,kind:'vigias-armados'});
   for(let i=0;i<4;i++)s.tick();
   mine=lastStructures(a.frames).find(x=>x.id===mine.id);
   assert.equal(mine.kind,'vigias-armados');assert.equal(mine.tier,2);assert.equal(mine.branch,'A');
@@ -85,7 +93,7 @@ test('a person builds a root on a site and evolves it to branch A; the phone see
   st.hit(room.sim.world,d.id,200);
   const hp=d.hp,g0=grana(),u0=st.state.balance.units;
   say(room,a,{t:'repair',round,req:8,defense:mine.id},s.t);
-  assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:8,ok:true,kind:'vigias-armados'});
+  assert.deepEqual(accepted(a),{t:'built',req:8,ok:true,kind:'vigias-armados'});
   assert.equal(d.hp,hp+Math.ceil(d.maxHp*.25));assert.equal(g0-grana(),5,'R$ 5 of the wallet of who repairs (carteira-e-pix)');
   assert.equal(st.state.balance.units,u0,'not the material');
   say(room,a,{t:'repair',round,req:8,defense:mine.id},s.t);
@@ -154,7 +162,7 @@ test('an upgrade names its branch the way the HUD tree does (label A2, B2…, or
     for(let i=0;i<4;i++)s.tick();
     const mine=lastStructures(a.frames).find(x=>x.kind==='vigia-do-predio');
     say(room,a,{t:'upgrade',round,req:2,defense:mine.id,branch},s.t);
-    assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:2,ok:true,kind:'vigias-armados'},branch);
+    assert.deepEqual(accepted(a),{t:'built',req:2,ok:true,kind:'vigias-armados'},branch);
   }
   // Shapes no tree has are still dropped without an answer.
   const s=atIntermission(),{room,a}=s;

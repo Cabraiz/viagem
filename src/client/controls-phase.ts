@@ -28,9 +28,12 @@ export const CONTROLS_HINTS_MOUSE:Readonly<Record<ControlsHint,readonly string[]
   lobby:['WASD, setas ou clique pra andar.','A arma atira sozinha.'],
   countdown:['Aquece o mouse!'],
 };
-/** The etiqueta's lines for a phase and an input kind. */
-export function controlsHintLines(hint:ControlsHint,kind:InputKind='touch'):readonly string[]{
-  return (kind==='mouse'?CONTROLS_HINTS_MOUSE:CONTROLS_HINTS)[hint];
+/** D-051 manual combat: the lobby's second line speaks of the attack, not of the weapon firing on its own. */
+export const MANUAL_HINT:Readonly<Record<InputKind,string>>={touch:'Segura Atacar pra bater.',mouse:'Segura Espaço pra atacar.'};
+/** The etiqueta's lines for a phase and an input kind (`manual`: the room plays the D-051 manual combat). */
+export function controlsHintLines(hint:ControlsHint,kind:InputKind='touch',manual=false):readonly string[]{
+  const lines=(kind==='mouse'?CONTROLS_HINTS_MOUSE:CONTROLS_HINTS)[hint];
+  return manual&&hint==='lobby'?[lines[0],MANUAL_HINT[kind]]:lines;
 }
 
 export function controlsFor(input:ControlsInput):Controls{
@@ -58,10 +61,10 @@ export function applyControls(root:HTMLElement,controls:Controls):boolean{
   if(root.dataset.controls!==next)root.dataset.controls=next;
   const hint=root.querySelector<HTMLElement>('.explore-stick-hint');
   if(hint){
-    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',key=controls.hint?`${controls.hint}:${kind}`:'';
+    const kind:InputKind=root.dataset.input==='mouse'?'mouse':'touch',manual=root.dataset.combat==='manual',key=controls.hint?`${controls.hint}:${kind}:${manual?'manual':'auto'}`:'';
     if(hint.dataset.hint!==key){
       hint.dataset.hint=key;
-      hint.replaceChildren(...(controls.hint?controlsHintLines(controls.hint,kind):[]).map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
+      hint.replaceChildren(...(controls.hint?controlsHintLines(controls.hint,kind,manual):[]).map(line=>{const row=hint.ownerDocument.createElement('span');row.textContent=line;return row;}));
     }
     if(hint.hidden!==!controls.hint)hint.hidden=!controls.hint;
   }

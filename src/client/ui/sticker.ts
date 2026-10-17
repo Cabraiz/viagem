@@ -7,7 +7,7 @@
  * Arte v2: com a peça `ui/<id>` importada vira <img> do WebP (mesmas classes e data-sticker); a regra de colisão com os
  * ícones (mesmo id = mesma peça, hoje só `chinelo`) está em icon.ts.
  */
-import {artImg,uiArtUrl,type IconOptions} from './icon.ts';
+import {artImg,icon,uiArtUrl,type IconName,type IconOptions} from './icon.ts';
 
 export const STICKER_NAMES=[
   // Itens (src/client/hud/items.ts): armas, evoluções, passivas, o lanche e o item que o cliente não conhece.
@@ -51,3 +51,8 @@ export function sticker(name:StickerName,options:IconOptions={}):string{
   const a11y=options.label?`role="img" aria-label="${escape(options.label)}"`:'aria-hidden="true"';
   return `<svg class="${cls}" viewBox="0 0 24 24" ${a11y} focusable="false" data-sticker="${name}"><use href="#a-${SVG.has(name)?name:'misterio'}"/></svg>`;
 }
+/**
+ * The imported sticker `name` where its WebP is loaded, else the system icon `fallback` (icones-no-hud: a control that
+ * only wears its art-v2 sticker once the art is in, never the "mistério" box).
+ */
+export const stickerOrIcon=(name:StickerName,fallback:IconName,options:IconOptions={})=>uiArtUrl(name)?sticker(name,options):icon(fallback,options);

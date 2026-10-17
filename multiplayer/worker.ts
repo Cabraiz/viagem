@@ -47,11 +47,19 @@ const loadCity=()=>cityLoad??=Promise.all([import('../public/maps/cidade-nevada.
   if(typeof text!=='string'||ref?.id!=='cidade-nevada')throw new Error('invalid city asset');
   return {text,ref};
 }).catch((error:unknown)=>{console.log(JSON.stringify({ev:'map',asset:'cidade-nevada',error:String(error).slice(0,120)}));return undefined;});
+/**
+ * The maps this Worker serves, as /health tells them (fila-deploy-seguro): pages.yml's gate (scripts/health-gate.mjs)
+ * checks them against the site's public/maps/*.manifest.json, with the protocol, before it publishes the site. Only the
+ * manifest (a few bytes), never the asset; {} when it cannot load.
+ */
+let mapsLoad:Promise<Record<string,{version:number;hash:string}>>|undefined;
+const loadMaps=()=>mapsLoad??=import('../public/maps/cidade-nevada.manifest.json')
+  .then(m=>({[m.default.id]:{version:m.default.version,hash:m.default.hash}})).catch(()=>({}));
 function allowed(request:Request,env:Env){return isAllowedOrigin(request.headers.get('Origin')??'',env.ALLOW_LOCAL==='true');}
 export default {
   async fetch(request:Request,env:Env):Promise<Response>{
     const url=new URL(request.url);
-    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL,build:env.BUILD_SHA||'desconhecido'},{headers:{'Cache-Control':'no-store'}});
+    if(url.pathname==='/health'&&request.method==='GET')return Response.json({status:'ok',service:'viagem-salas',protocol:ROOM_PROTOCOL,maps:await loadMaps(),build:env.BUILD_SHA||'desconhecido'},{headers:{'Cache-Control':'no-store'}});
     // deploy-worker-sem-derrubar: rooms in a match now (a deploy restarts them all), for scripts/deploy-rooms.mjs.
     if(url.pathname==='/health/rooms'&&request.method==='GET'){
       if(!env.INDEX)return Response.json({error:'sem índice'},{status:503});

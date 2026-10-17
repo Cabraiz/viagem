@@ -98,6 +98,8 @@ export class RoomBots {
   private minds=new Map<string,BotMind>();
   /** Picks level-up offers (room bots); the autopilot of a person away leaves them for the person (3g-rede-sem-teleporte). */
   private readonly chooses:boolean;
+  /** D-051: the room plays mode 'ninhos' (set every think). */
+  private nests=false;
   constructor(options:{chooses?:boolean}={}){this.chooses=options.chooses??true;}
   /** Ticks spent thinking (ms), for the lab: the cost of the bots inside the room tick. */
   thinkMs=0;thinks=0;
@@ -131,6 +133,7 @@ export class RoomBots {
   think(sim:Simulation):string[]{
     if(!this.minds.size)return [];
     const started=performance.now(),tick=sim.tick,sos:string[]=[];
+    this.nests=sim.mode==='ninhos';
     const minds=[...this.minds.values()].sort((a,b)=>a.slot-b.slot);
     let view:ReturnType<Simulation['botView']>|undefined,forger:string|null|undefined,builder:string|null|undefined,towers:TowerBrainView|undefined;
     let people:boolean|undefined,bank:string|null|undefined;
@@ -228,7 +231,8 @@ export class RoomBots {
    */
   private forger(view:ReturnType<Simulation['botView']>,minds:readonly BotMind[],people=false,left=people?BOT_FORGE_LEFT_WITH_PEOPLE:BOT_FORGE_LEFT,anyPhase=false):string|null{
     const round=view.round;
-    if(!anyPhase&&(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>left))return null;
+    // D-051 mode 'ninhos': no intermission to wait for; each bot's own calm (bot-brain calmRound) decides when it buys.
+    if(!anyPhase&&!this.nests&&(round?.phase!=='prepare'||round.phaseEndsTick-view.tick>left))return null;
     for(const m of minds){
       const p=view.players.find(q=>q.id===m.id);
       if(p&&p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0)return m.id;

@@ -75,6 +75,8 @@ export interface StonewardsState {
   refilledRound:number; hornRound:number;
   /** Tick the current intermission started (caps how far the horn may stretch it). */
   prepareStart:number;
+  /** D-051 mode 'ninhos' (system.ts options.calm): the tick the nodes last refilled on the clock; absent before the first. */
+  refilledTick?:number;
   /** Ticks the horn already stretched intermissions this run (capped by MAX_STRETCH_PER_RUN). */
   stretched:number;
   /** End of the intermission the horn announced (the HUD's "back to base" countdown); -1 when none. */

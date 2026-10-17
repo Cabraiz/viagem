@@ -31,13 +31,15 @@ import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
 import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
-import {CAR_ID,MOTO_ID,Rng,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
+import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
 import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
 import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
 import type {BankView} from '../contract/index.ts';
+import {calmGate} from './ninhos/calma.ts';
+import {CALMA} from '../rules/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -217,7 +219,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
-  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures()});
+  // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
+  const zueiraClock=!!cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos';
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures(),
+    ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated}}:{})});
   // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
   if(cp)Object.assign(zueira.state,cp.zueira);
   let director:Director|undefined;
@@ -252,6 +257,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
+    // D-051 mode 'ninhos' (card ninhos-rounds-fora): no intermission; the forge and the towers' orders wait for calm.
+    ...(nestMode?{calm:{gate:calmGate(),refillTicks:ticks(CALMA.refillS)}}:{}),
     terrain:world.terrain,siegeContact:false,hiddenNodes:()=>banks?.crates,...(cityWorld?{steered:(id:string)=>steered.has(id)}:{}),barricades:options.barricades,...(cityBalance?{cityBalance}:{}),
     // cidade-08 x cidade-06: in the tutorial the plaza group walks into the open plaza; the barricades rise at the 1st intermission.
     barricadesLater:options.cityTutorial??true,
@@ -332,6 +339,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(cityBalance&&hasTeamBossHp(cityBalance)?{hpScale:(ctx:SimContext)=>teamBossHp(cityBalance,director?.state.plan?.players??director?.scalePlayers(ctx))}:{}),
     say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
     scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
+    // D-051 mode 'ninhos': no wave clock (the director holds one open wave), the boss's own enrage timer.
+    ...(nestMode?{enrageAfterTicks:ticks(CALMA.bossEnrageS)}:{}),
     onDefeated:()=>{if(!objective)onOutcome('victory');},
     // D-047: the boss besieges the car (10 hits a blow) when no player is nearer.
     ...(objective?{siege:()=>chaveiro?.targets().find(t=>t.id===CAR_ID),hitSiege:(ctx:SimContext,id:string,b:EnemyState)=>{if(id===CAR_ID)chaveiro?.hitCar(ctx,b);}}:{}),

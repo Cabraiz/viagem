@@ -15,9 +15,10 @@
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
-import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
+import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
@@ -291,7 +292,8 @@ export class StonewardsRenderer {
     if(!g){g=this.scene.add.graphics().setName('base-barricada');this.barricades.set(s.id,g);}
     g.clear();
     const down=s.hp<=0,ratio=s.maxHp>0?s.hp/s.maxHp:0,stage=damageStage(ratio,down),flash=this.flashing(s.id);
-    const span=barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
+    // D-052: a free-build barricade lies along its own footprint (rot), not across a plaza mouth.
+    const span=isFreeBarricade(s)?freeBarricadeSpan(s,CITY_BUILD_CELL):barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
     const p=this.project(s.x,s.y),x=p.x,y=p.y;
     g.setDepth(depth);
     const img=this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);

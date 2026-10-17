@@ -139,6 +139,45 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
 export const DEFENSE_IDS=Object.keys(DEFENSES) as DefenseId[];
 /** D-052, free build: what {t:'build'} may name (contract/build.ts): a tower (the root) or a wall piece. */
 export type BuildPiece=DefenseId|FreePiece;
+
+/**
+ * D-052, free build (sim-fortificação): the wall pieces beside the towers, on the build grid (CITY_BUILD_CELL cells).
+ * - muro: one cell, R$ 4, 250 hp, 40 standing per team, 1 s of obra. A wall to the enemies (a blocker on the terrain:
+ *   the flow field routes around it, a body pressed against it bashes it); the heroes walk through it like the plaza
+ *   barricades. A dragged wall is one {t:'build'} per cell: the sim queues each hero's obras one after the other.
+ * - barricada: 2×1 cells (rot 1: 1×2), R$ 10, 400 hp, 8 standing, 2 s of obra. It holds instead of blocking: an enemy
+ *   on it walks at `drag` × its speed (60 % slower) and the siege groups bash it like a tower.
+ * Paid in Grana from the builder's wallet (sim/wallet.ts). A fallen piece is gone and frees its cells.
+ */
+export interface FreePieceDef {
+  id:FreePiece;name:string;
+  /** Cells W×H at rot 0. */
+  footprint:readonly [number,number];
+  /** R$, from the builder's wallet. */
+  price:number;hp:number;
+  /** Standing per team. */
+  limit:number;
+  buildSeconds:number;
+  /** True: solid to the enemies (the muro); false: they walk over it, slowed by `drag`. */
+  blocks:boolean;
+  /** Speed multiplier of an enemy standing on it (1: none). */
+  drag:number;
+}
+export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.freeze({
+  muro:Object.freeze({id:'muro',name:'Muro',footprint:Object.freeze([1,1]) as readonly [number,number],price:4,hp:250,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:10,hp:400,limit:8,buildSeconds:2,blocks:false,drag:.4}),
+});
+export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
+/** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
+export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{
+  if(isFreePiece(piece)){const [w,h]=FREE_PIECE_DEFS[piece].footprint;return rot?[h,w]:[w,h];}
+  const s=DEFENSES[piece].size??1;return [s,s];
+}
+/**
+ * D-052: no piece within this of the car's body (u): room to push it and to defend it. Measured from the footprint's
+ * edge to the car's centre, less the car's radius (contract CAR_RADIUS).
+ */
+export const CAR_BUILD_GAP=1.5;
 export const ROOT_DEFENSE:DefenseId='vigia-do-predio';
 export const isDefenseId=(id:unknown):id is DefenseId=>typeof id==='string'&&Object.hasOwn(DEFENSES,id);
 

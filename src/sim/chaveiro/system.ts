@@ -37,7 +37,7 @@ import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {payFrom,vaquinha,walletOf} from '../wallet.ts';
 import {SUGAR} from '../enemies/catalog.ts';
-import {buildRoute,pointAt,type Route} from './route.ts';
+import {buildRoute,pointAt,routeCrosses,shutGrid,type Route} from './route.ts';
 import {carBusy,moverCap,pullCar,stepCar} from './car.ts';
 
 // ---------- Numbers (proposal §2; E6 calibrates) ----------
@@ -100,10 +100,12 @@ export interface ChaveiroState {
    */
   moto:{s:number;mode:MotoMode;task:Task;left:number;stop:number;push:number;tomboUntil:number;tomboReady:number};
   /**
-   * from: the entrance drawn. D-052, once the car moved: via, the last replan (from where the moto was to where the car
-   * was; the route is rebuilt from it), at its tick, and `stops` then holds the stops left on it (else they come from the plan).
+   * from: the entrance drawn. D-052, once the car moved or a muro shut the way: via, the last replan (from where the moto
+   * was to where the car was, around the muros standing then; the route is rebuilt from it), at its tick, and `stops`
+   * then holds the stops left on it (else they come from the plan). checked: the standing muros' ids (joined) the route
+   * was last checked against, absent while there are none.
    */
-  route:{from:Entrance;via?:{from:Point;to:Point};at?:number};
+  route:{from:Entrance;via?:{from:Point;to:Point;muros?:Point[]};at?:number;checked?:string};
   stops?:ChaveiroStop[];
   /** The bill (R$), paid at the end from the seated players' wallets (the vaquinha, ChaveiroOptions.wallet). */
   budget:number;
@@ -146,6 +148,11 @@ export interface ChaveiroOptions {
   nests?():readonly Point[];
   /** D-052: a room bot or an autopiloted player (moves the car only along with a person). */
   helper?(playerId:string):boolean;
+  /**
+   * D-052 free build: the standing muros (id and blocker centre) and their blocker radius. A muro built across the moto's
+   * way makes him replan around it (the tranca rule keeps a way from him to the car). Absent: he rides through them.
+   */
+  muros?:{radius:number;standing():readonly {id:string;x:number;y:number}[]};
 }
 
 export interface ChaveiroSystem {
@@ -224,7 +231,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const speed=plan.route.length/(MOTO_RIDE_SECONDS*SIM_HZ);
   const bumpSpeed=speed*LOMBADA_PACE,bump=lombadaLength(plan.route.length);
   let route=plan.route,stops=plan.stops;
-  if(state.route.via){route=buildRoute(options.grid,state.route.via.from,state.route.via.to,CAR_STOP);stops=state.stops??stops;}
+  // The moto's body keeps off a muro's blocker disc: the cells within both radii are shut to him.
+  const muroReach=(options.muros?.radius??0)+MOTO_RADIUS;
+  const gridFor=(muros:readonly Point[]|undefined,ends:readonly Point[])=>muros?.length?shutGrid(options.grid,muros,muroReach,ends):options.grid;
+  const via=state.route.via;
+  if(via){route=buildRoute(gridFor(via.muros,[via.from,via.to]),via.from,via.to,CAR_STOP);stops=state.stops??stops;}
   let L=route.length;
   const pos:Point={x:0,y:0},at=(s:number)=>pointAt(route,s,pos);
   const near:EnemyState[]=[];
@@ -326,17 +337,31 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       case 'abrindo':if(--moto.left<=0)end(ctx,'victory');return;
     }
   }
-  /** D-052: the car went more than REPLAN_DRIFT u from where the route ends: the moto replans from where he is. */
+  /** D-052: the muros' ids the route was checked against (absent with none). */
+  function seen(key:string){if(key)state.route.checked=key;else delete state.route.checked;}
+  /**
+   * D-052: the car went more than REPLAN_DRIFT u from where the route ends, or a muro built since the last check stands
+   * across the way ahead: the moto replans from where he is, around the standing muros.
+   */
   function replan(ctx:SimContext){
     const to=state.route.via?.to??options.car;
-    if(moto.task==='abrindo'||Math.hypot(car.x-to.x,car.y-to.y)<=REPLAN_DRIFT)return;
+    if(moto.task==='abrindo')return;
+    const standing=options.muros?.standing()??[],key=standing.map(m=>m.id).join();
+    let shut=false;
+    if(key!==(state.route.checked??'')){
+      shut=routeCrosses(route,moto.s,standing,muroReach);
+      if(!shut)seen(key);
+    }
+    if(!shut&&Math.hypot(car.x-to.x,car.y-to.y)<=REPLAN_DRIFT)return;
     if(state.route.at!==undefined&&ctx.tick-state.route.at<ticks(REPLAN_GAP_SECONDS))return;
-    const from={...at(moto.s)},next=buildRoute(options.grid,from,{x:car.x,y:car.y},CAR_STOP);
+    const from={...at(moto.s)},goal={x:car.x,y:car.y},muros=standing.map(m=>({x:m.x,y:m.y}));
+    const next=buildRoute(gridFor(muros,[from,goal]),from,goal,CAR_STOP);
+    seen(key);
     const scale=next.length/Math.max(1e-9,L-moto.s),kept:ChaveiroStop[]=[];
     // The stop he is at stays under him (a bump being crawled keeps its span behind him); the ones ahead keep their share.
     for(let i=moto.stop;i<stops.length;i++)kept.push({kind:stops[i].kind,s:i===moto.stop&&moto.task!=='anda'?stops[i].s-moto.s:(stops[i].s-moto.s)*scale});
     route=next;L=next.length;stops=state.stops=kept;moto.stop=0;moto.s=0;
-    state.route.via={from,to:{x:car.x,y:car.y}};state.route.at=ctx.tick;
+    state.route.via={from,to:goal,...(muros.length?{muros}:{})};state.route.at=ctx.tick;
   }
   /** `playerId:requestId` of a command applied (a resent one is 'duplicate'), the last CIDA_HANDLED_LIMIT. */
   function remember(key:string|undefined){

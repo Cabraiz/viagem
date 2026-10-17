@@ -77,9 +77,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * nests, kind 'ninho', phase dormindo/ativo/destruido) and those strings in the DICT; an older decoder would refuse the masks.
  * 22 given by the integration queue (tools/fila.mjs, lote 20261016-202056) to: NEW-20261014-ORQ-ninhos-sim.
  * 23 given by the integration queue (tools/fila.mjs, lote 20261016-205219) to: NEW-20261016-ORQ-carro-e-fortificacao-livre-contrato, NEW-20261016-ORQ-oferta-melhoria-centro-pular-rolar.
+ * 24 given by the integration queue (tools/fila.mjs, lote 20261016-211932) to: NEW-20261014-ORQ-armas-caixas-inventario.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=23;
+export const PROTOCOL_VERSION=24;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -152,6 +153,11 @@ export const DICT:readonly string[]=[
   'ninho','dormindo','ativo','destruido','P','M','G',
   // D-052 (free build): the wall segment and the barricade among the structures' kinds.
   'muro','barricada',
+  // D-051 (manual combat): the ground item pickup, the arsenal's weapons and legendaries, the consumables and the hand's
+  // passives (src/sim/weapons/arsenal.ts, src/rules/passives.ts).
+  'item','faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
+  'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
+  'coxinha','kit-torre','pente','silenciador',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -364,8 +370,10 @@ const SCHEMAS:Record<SectionKey,Schema>={
     slowUntil:c(optional(tickRel)),slipUntil:c(optional(tickRel)),slip:c(slipDir),
     // Protocol 15 (D-047): Dona Cida's sweets (fastUntil also drives the phone's prediction, like slowUntil).
     fastUntil:c(optional(tickRel)),mightUntil:c(optional(tickRel)),guardUntil:c(optional(tickRel)),
-    // carteira-e-pix: the wallet (R$), last: it changes on kills, purchases and PIX only.
+    // carteira-e-pix: the wallet (R$): it changes on kills, purchases and PIX only.
     grana:c(optional(count)),
+    // D-051 manual combat: the inventory's hand slot (`weapons` is the inventory); absent with the automatic weapons.
+    hand:c(optional(count)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -389,7 +397,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     parts:c(optional(count)),
     // D-051: a nest's size and whether the team has seen it (the minimap's fog).
     size:c(optional(str)),seen:c(optional(trueFlag)),
-    // D-052 (free build): a piece's top-left cell on the build grid and its rot; they never change once built.
+    // D-052 (free build): a piece's top-left cell on the build grid and its rot; only a tower evolving to a larger
+    // square moves its cell (the square stays centred, sim towers/system.ts).
     c:c(optional(count)),r:c(optional(count)),rot:c(optional(count))}},
   // Gather nodes (VGM-046B): progress moves while someone gathers, the rest only when a unit comes out.
   nodes:{prefix:'n',fields:{progress:c(unit),remaining:c(count),kind:c(str),x:c(posX),y:c(posY),capacity:c(count),value:c(count)}},

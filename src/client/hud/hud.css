@@ -655,6 +655,9 @@
 /* Bot da sala (D-025): adesivo de robô de 24 px no canto oposto ao de estado; forma, não cor. */
 .rh-member-bot{position:absolute;top:-6px;left:calc(50% - 31px);display:flex;line-height:0} /* preso ao retrato, como o adesivo de estado */
 .rh-member-bot[hidden]{display:none}
+/* D-051 combate manual: a arma na mão, adesivo de 24 px no canto de baixo oposto ao do KKKK (team.ts handWeapon). */
+.rh-member-arma{position:absolute;top:18px;left:calc(50% - 31px);display:flex;line-height:0}
+.rh-member-arma[hidden]{display:none}
 /* KKKK (rostos-kkkk): the laugh sticker at the portrait's lower corner while the ring says data-mood=rindo (2.2 s, set by
    the team strip). Out of the flow, so the ring and the column keep their size; one pop in, no loop. */
 .rh-member-mood{position:absolute;top:18px;right:calc(50% - 31px);display:none;line-height:0}

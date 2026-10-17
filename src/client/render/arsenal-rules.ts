@@ -33,8 +33,49 @@ export function crateRow(progress:number):string{
   if(!(progress>0))return 'fechada';
   return `abrindo-${Math.min(CRATE_OPEN_ROWS,Math.max(1,Math.ceil(progress*CRATE_OPEN_ROWS)))}`;
 }
-/** Opening progress (0..1) of the local hero standing still `stillMs` within reach of a crate of `rarity`. */
+/** Opening progress (0..1) of a hero standing still `stillMs` within reach of a crate of `rarity`. */
 export const crateProgress=(stillMs:number,rarity:number)=>Math.max(0,Math.min(1,stillMs/1000/crateOpenSeconds(rarity)));
+/** A hero moved this far (world units) between frames: not standing still (the sim's rule is "same position"). */
+export const STILL_EPS=.02;
+
+/**
+ * The crates' opening as every client sees it: the sim's per-player opening (sim/crates.ts) predicted for each hero who
+ * can open, the local one and the others alike, from the positions drawn (render/arsenal-fx.ts). Per hero: where it
+ * stood, since when it stands still, the crate in reach (and since when) and the frame it was last at it. Moving, a hit
+ * ('damage' on it) or leaving the crate starts over; a crate with several heroes shows the most advanced.
+ */
+export class CrateOpenings{
+  private heroes=new Map<string,{x:number;y:number;stillSince:number;crate?:string;since:number;at:number}>();
+  private now=0;private last=0;
+  /** Start of a frame: the heroes who can open now and where each is drawn. */
+  begin(now:number,ids:Iterable<string>,locate:(id:string)=>{x:number;y:number}|undefined){
+    this.last=this.now;this.now=now;
+    const live=new Set<string>();
+    for(const id of ids){
+      const p=locate(id);if(!p)continue;
+      live.add(id);
+      const o=this.heroes.get(id);
+      if(!o){this.heroes.set(id,{x:p.x,y:p.y,stillSince:now,since:now,at:now});continue;}
+      if(Math.hypot(p.x-o.x,p.y-o.y)>STILL_EPS){o.stillSince=now;o.x=p.x;o.y=p.y;}
+      // Not at its crate last frame (walked off, the crate went): the next one starts over.
+      if(o.at!==this.last)o.crate=undefined;
+    }
+    for(const id of this.heroes.keys())if(!live.has(id))this.heroes.delete(id);
+  }
+  /** A hit on a hero: its standing still starts over. */
+  hurt(id:string,now:number){const o=this.heroes.get(id);if(o)o.stillSince=now;}
+  /** Opening progress (0..1) of the crate `id` at world (x,y) of rarity `value` this frame (each hero opens one at a time). */
+  progress(id:string,x:number,y:number,value:number){
+    let best=0;
+    for(const o of this.heroes.values()){
+      if(Math.hypot(o.x-x,o.y-y)>CRATE_OPEN_REACH||o.crate!==undefined&&o.crate!==id&&o.at===this.now)continue;
+      if(o.crate!==id){o.crate=id;o.since=this.now;}
+      o.at=this.now;
+      best=Math.max(best,crateProgress(this.now-Math.max(o.stillSince,o.since),value));
+    }
+    return best;
+  }
+}
 
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',

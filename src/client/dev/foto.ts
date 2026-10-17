@@ -40,6 +40,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'ataque-mira':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&arrasto=-40,-50',descricao:'ataque manual (D-051): arrasto do botão Atacar, linha amarela e retícula'},
   'ataque-auto':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&segura=1',descricao:'ataque manual (D-051): Atacar segurado, retícula na mira automática'},
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
+  'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
   'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},

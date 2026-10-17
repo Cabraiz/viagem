@@ -11,6 +11,8 @@ import {faceExpression,faceImg,setFace} from '../ui/face-crop.ts';
 import {artIndexVersion} from '../art/manifest.ts';
 import {teamColor} from './wc-minimap/minimap.ts';
 import {pickMarks,validPause} from './pausa.ts';
+import {itemDisplay} from './items.ts';
+import {sticker} from '../ui/sticker.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -28,10 +30,12 @@ export function memberState(player:PlayerRunView):MemberState{
 }
 /** Status stickers (DSG-icones-sistema, §2.4): boia caído, porta (saiu) fora, fone cortado offline, pipoca assistindo. */
 export const BADGES:Record<MemberState,IconName|''>={ok:'',low:'',downed:'boia',eliminated:'saiu',offline:'sem-linha',spectator:'pipoca'};
+/** D-051: the weapon a hero holds in the manual combat (its hand slot), or undefined (automatic weapons, out, watching). */
+export const handWeapon=(player:PlayerRunView):string|undefined=>player.hand===undefined||player.eliminated||player.spectator?undefined:player.weapons[player.hand]?.id;
 // One short name everywhere: the map's caído ficha uses the same rule (render/map-label-rules.ts).
 const firstName=railName;
 
-interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;mood:HTMLElement;escolha:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>;art:number}
+interface MemberNodes {root:HTMLElement;face:HTMLElement;ring:HTMLElement;fill:HTMLElement;badge:HTMLElement;bot:HTMLElement;arma:HTMLElement;mood:HTMLElement;escolha:HTMLElement;name:HTMLElement;timer:HTMLElement;classId:string;last:Map<string,string>;art:number}
 
 /** Writes a DOM value only when it changed (update runs every view; most fields are stable). */
 const put=(nodes:MemberNodes,key:string,value:string,write:(value:string)=>void)=>{
@@ -63,13 +67,15 @@ export function createTeamStrip():HudPart{
     const badge=el('span','rh-member-badge',item),timer=el('span','rh-member-timer',item);
     // Room bot (D-025): the robot sticker on the portrait's other corner (the state sticker keeps its own).
     const bot=el('span','rh-member-bot',item);bot.hidden=true;
+    // D-051 manual combat: the weapon in the hand (PlayerRunView.hand), its sticker at the portrait's lower corner.
+    const arma=el('span','rh-member-arma',item);arma.hidden=true;arma.setAttribute('aria-hidden','true');
     // KKKK (rostos-kkkk): the laugh sticker at the portrait's foot while ring[data-mood=rindo] (2.2 s, CSS shows it).
     const mood=el('span','rh-member-mood',item);mood.innerHTML=icon('risada');mood.setAttribute('aria-hidden','true');
     // The level-up pause (D-050, pausa.ts/pausa.css): a "pronto" sticker on who picked, a thinking ficha on who has not.
     const escolha=el('span','rh-member-escolha',item);escolha.hidden=true;escolha.setAttribute('aria-hidden','true');
     const bar=el('div','rh-member-hp',item),fill=el('i','rh-member-hp-fill',bar);
     const name=el('span','rh-member-name',item);
-    return {root:item,face,ring,fill,badge,bot,mood,escolha,name,timer,classId:player.classId,last:new Map(),art:artIndexVersion};
+    return {root:item,face,ring,fill,badge,bot,arma,mood,escolha,name,timer,classId:player.classId,last:new Map(),art:artIndexVersion};
   };
   return {el:root,update(view:RunView,ctx:HudContext){
     const ordered=teamOrder(view.players,ctx.localId);
@@ -95,6 +101,8 @@ export function createTeamStrip():HudPart{
       // Today's crop is the same picture for every expression: the ring's data-mood is what makes the laugh read.
       put(n,'mood',expression==='rindo'?'rindo':'',v=>{if(v)n.ring.dataset.mood=v;else delete n.ring.dataset.mood;});
       put(n,'bot',String(!!player.bot),v=>{n.bot.innerHTML=v==='true'?icon('robo'):'';n.bot.hidden=v!=='true';});
+      const held=handWeapon(player);
+      put(n,'arma',held?`${held}:${artIndexVersion}`:'',v=>{n.arma.innerHTML=held?sticker(itemDisplay(held).icon):'';n.arma.hidden=!v;if(held)n.arma.dataset.arma=held;else delete n.arma.dataset.arma;});
       put(n,'name',player.id===ctx.localId?'Você':firstName(player.name),v=>{n.name.textContent=v;});
       put(n,'hp',`scaleX(${hpFraction(player)})`,v=>{n.fill.style.transform=v;});
       const progress=player.downed?clamp01(player.downed.progress):0;

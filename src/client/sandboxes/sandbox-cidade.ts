@@ -88,7 +88,7 @@ import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
-import {ARSENAL_PUSH_MS,SANDBOX_SELF,arsenalView} from './arsenal-view.ts';
+import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './arsenal-view.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 import {queueHordeArt} from '../art/horde-art.ts';
@@ -183,6 +183,7 @@ class CitySandbox extends Phaser.Scene {
   private layer?:CityLayer;
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
+  private ally?:Phaser.GameObjects.Sprite;
   private shadow!:Phaser.GameObjects.Ellipse;
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
@@ -250,6 +251,8 @@ class CitySandbox extends Phaser.Scene {
     this.shadow=this.add.ellipse(0,0,42,17,CITY_PALETTE.breu,.38).setScale(CITY_VIEW_SCALE);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
+    if(arsenal)this.ally=this.add.sprite(0,0,'__DEFAULT');
     this.spawnHorde();
     if(acao)void this.mountAttack();
     if(centre)this.mountBase(centre);
@@ -276,6 +279,7 @@ class CitySandbox extends Phaser.Scene {
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
     this.tick(dt);
@@ -373,7 +377,7 @@ class CitySandbox extends Phaser.Scene {
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
-      ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:undefined,selfId:()=>SANDBOX_SELF}:{})});
+      ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[
@@ -569,6 +573,7 @@ class CitySandbox extends Phaser.Scene {
     const z=groundZ(this.asset,this.at.x,this.at.y);
     layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);this.shadow.setDepth(d-1);
+    if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
     for(const w of this.horde){
       const wz=groundZ(this.asset,w.x,w.y),p=project(w.x,w.y,wz,this.view);
       w.image.setPosition(p.x,p.y).setDepth(layer.actorDepth(w.x,w.y,wz));

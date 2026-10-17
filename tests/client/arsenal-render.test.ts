@@ -7,15 +7,16 @@ import {readFileSync} from 'node:fs';
 import {setArtIndex,parseArtIndex,artPiece} from '../../src/client/art/manifest.ts';
 import {baseFrame} from '../../src/client/art/base-art.ts';
 import {projectileArtId,projectileLook} from '../../src/client/art/horde-art.ts';
-import {ARSENAL_ITEMS,CRATE_ART,CRATE_OPEN_REACH,CRATE_OPEN_SECONDS,FIRE_LOOK,arsenalLoads,crateProgress,crateRow,fxKey,iconKey,isWeaponItem,
+import {ARSENAL_ITEMS,CRATE_ART,CrateOpenings,CRATE_OPEN_REACH,CRATE_OPEN_SECONDS,FIRE_LOOK,arsenalLoads,crateProgress,crateRow,fxKey,iconKey,isWeaponItem,
   itemIcon,rarityOf,shotFrame} from '../../src/client/render/arsenal-rules.ts';
 import {PICKUP_KINDS,pickupTexture} from '../../src/client/render/keys.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
-import {ARSENAL_PUSH_MS,arsenalView} from '../../src/client/sandboxes/arsenal-view.ts';
+import {ARSENAL_PUSH_MS,SANDBOX_ALLY,allyAt,arsenalView} from '../../src/client/sandboxes/arsenal-view.ts';
+import {handWeapon} from '../../src/client/hud/team.ts';
 import {OPEN_REACH,OPEN_SECONDS} from '../../src/sim/crates.ts';
 import {CONSUMABLE_IDS,NEW_WEAPONS,legendaryId} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS} from '../../src/sim/weapons/catalog.ts';
-import type {RunView} from '../../src/contract/index.ts';
+import type {PlayerRunView,RunView} from '../../src/contract/index.ts';
 
 const index=parseArtIndex(JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8')));
 const withArt=(fn:()=>void)=>()=>{setArtIndex(index);try{fn();}finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}};
@@ -99,8 +100,45 @@ test('the sandbox view: manual combat, crates of every rarity, and event ids tha
     const v=arsenalView(base,10,10,t,'pistola');
     assert.equal(v.players[0].hand,1);
     assert.deepEqual([...new Set(v.pickups.filter(p=>p.kind==='chest').map(p=>p.value))].sort(),[1,2,3,4,5]);
-    for(const e of v.events){assert.ok(e.eventId>last,'ids grow');last=e.eventId;if(e.type==='pickup')bursts++;if(e.type==='fire')fires++;}
+    for(const e of v.events){assert.ok(e.eventId>last,'ids grow');last=e.eventId;if(e.type==='pickup'&&e.player!==SANDBOX_ALLY)bursts++;if(e.type==='fire')fires++;}
   }
   assert.equal(bursts,3);
   assert.ok(fires>=30);
+});
+
+test('every hero standing at a crate opens it on screen, not only the local one (armas-caixas-render-2)',()=>{
+  const o=new CrateOpenings(),at=new Map<string,{x:number;y:number}>([['voce',{x:0,y:0}],['parca',{x:10,y:10}]]);
+  const frame=(now:number)=>o.begin(now,at.keys(),id=>at.get(id));
+  // The ally stands still at its azul crate (1.5 s); nobody is at the verde one.
+  for(let t=0;t<=750;t+=50){frame(t);assert.equal(o.progress('verde',5,5,1),0);if(t===750)assert.ok(Math.abs(o.progress('azul',10.4,10,2)-.5)<1e-9);else o.progress('azul',10.4,10,2);}
+  // A hit on the ally starts its opening over; so does a step away.
+  o.hurt('parca',750);frame(800);assert.ok(Math.abs(o.progress('azul',10.4,10,2)-50/1500)<1e-9);
+  at.set('parca',{x:10.5,y:10});frame(850);assert.equal(o.progress('azul',10.4,10,2),0);
+  // Out of reach: nothing; two heroes at one crate: the most advanced one shows.
+  at.set('parca',{x:12,y:10});frame(900);assert.equal(o.progress('azul',10.4,10,2),0);
+  at.set('voce',{x:10.4,y:10.5});at.set('parca',{x:10,y:10});
+  for(let t=950;t<=1950;t+=50){frame(t);o.progress('azul',10.4,10,2);}
+  at.delete('voce');frame(2000);assert.ok(Math.abs(o.progress('azul',10.4,10,2)-1050/1500)<1e-9,'the ally alone, since 950');
+});
+
+test('the team portrait shows the weapon in the hand (manual combat only, not when out)',()=>{
+  const p=(extra:Partial<PlayerRunView>):PlayerRunView=>({id:'a',name:'A',classId:'concursado',hp:10,maxHp:10,online:true,spectator:false,
+    weapons:[{id:'faca',level:1},{id:'escopeta',level:2}],passives:[],...extra});
+  assert.equal(handWeapon(p({hand:1})),'escopeta');
+  assert.equal(handWeapon(p({})),undefined,'automatic weapons: no hand');
+  assert.equal(handWeapon(p({hand:1,eliminated:true})),undefined);
+  assert.equal(handWeapon(p({hand:1,spectator:true})),undefined);
+  assert.equal(handWeapon(p({hand:5})),undefined,'an empty slot');
+  const css=readFileSync(new URL('../../src/client/hud/hud.css',import.meta.url),'utf8');
+  assert.match(css,/.rh-member-arma{position:absolute/);
+});
+
+test('the sandbox ally holds a weapon and opens its own crate every cycle',()=>{
+  const base:RunView={tick:0,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[]};
+  const v=arsenalView(base,10,10,500,'pistola'),ally=v.players.find(p=>p.id===SANDBOX_ALLY)!,a=allyAt(10,10);
+  assert.equal(handWeapon(ally),'escopeta');
+  assert.ok(v.pickups.some(c=>c.kind==='chest'&&c.x===a.x&&c.y===a.y));
+  let bursts=0;
+  for(let t=0;t<9000;t+=ARSENAL_PUSH_MS)for(const e of arsenalView(base,10,10,t,'pistola').events)if(e.type==='pickup'&&e.player===SANDBOX_ALLY)bursts++;
+  assert.equal(bursts,3);
 });

@@ -198,6 +198,10 @@ export interface RunRecord {
     pix?:{count:number;amount:number}};
   /** D-047 (--objective chaveiro): the bill and the moto's moments. */
   objective?:ObjectiveResult&{bossCalled:boolean;moments:Record<string,number>;deliveries:{clean:number;dirty:number}};
+  /** D-051 (--mode ninhos): see NestRecord. Absent in round runs and older JSON files. */
+  nests?:NestRecord;
+  /** Enemies of the run (both modes): most alive at once, distinct bodies, alive at each minute mark, new ones per minute. */
+  enemies?:{max:number;seen:number;alivePerMinute:number[];newPerMinute:number[]};
   /**
    * Banks (bancos-e-veiculos), from the bank-* events: `grana` R$ the heroes withdrew (bank-cash by 'hero') in
    * `withdraws` notes, `share` = grana / grana.earned (null when nothing was earned), the critters' `enemyWithdraws`
@@ -343,6 +347,25 @@ export function summarize(runs:readonly RunRecord[]):Summary{
     if(r1Deaths)notes.push(`${n}p: ${r1Deaths} death(s) in round 1`);
   }
   return {runs:runs.length,byPlayers,verdict:{ok:!notes.length,notes}};
+}
+/**
+ * D-051 (--mode ninhos): per nest (size, groups it sent, first hit and fall in s since the start, emergency group),
+ * the sleepers (plan bodies; at the end: asleep, awake, dead), nests never hit with every sleeper still asleep
+ * (`neverWoke`), the most enemies alive at once, and `stuck`: non-boss enemies that moved < STUCK_ENEMY_MOVE u over
+ * STUCK_ENEMY_S s while awake in the world (a body held by a wall or a nest that never lets go), sampled every 5 s.
+ */
+export interface NestRecord {
+  list:{id:string;size:string;groups:number;hitS:number|null;downS:number|null;emergency:boolean}[];
+  destroyed:number;groups:number;
+  sleepers:{total:number;asleep:number;awake:number;dead:number};
+  neverWoke:number;maxEnemies:number;stuck:number;stuckAt:{id:string;kind:string;x:number;y:number}[];
+}
+export const STUCK_ENEMY_S=60,STUCK_ENEMY_MOVE=1;
+/** D-051: one line of a nest run (nests down, groups, sleepers, stuck bodies). */
+export function nestLine(r:RunRecord):string{
+  const n=r.nests;if(!n)return '';
+  return `nests ${n.destroyed}/${n.list.length} down (${n.list.filter(x=>x.downS!==null).map(x=>`${x.size}@${Math.round(x.downS!)}s`).join(' ')||'-'}) | groups ${n.groups} | `+
+    `sleepers ${n.sleepers.total}: ${n.sleepers.asleep} asleep, ${n.sleepers.awake} awake, ${n.sleepers.dead} dead | never woke ${n.neverWoke} | max enemies ${n.maxEnemies} | stuck ${n.stuck}`;
 }
 /** D-047: one line of a chaveiro run's bill (outcome/cause, ETA left, car, Grana and the waves). */
 export function objectiveLine(r:RunRecord):string{
@@ -669,7 +692,9 @@ const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
 interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
-  combat?:'manual'}
+  combat?:'manual';
+  /** D-051 (--mode ninhos, with --objective chaveiro): the nests instead of the waves (Simulation mode). */
+  mode?:'ninhos'}
 
 /**
  * Barricades (cidade-06) read generically from the stonewards state: id → down, or null when the state has no
@@ -696,7 +721,7 @@ export function barricadesFell(before:ReadonlyMap<string,boolean>|null,after:Rea
 function playRun(o:RunOptions):RunRecord{
   const knobsApplied=o.knobs!==undefined&&o.route!=='none';
   const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
-    ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{})} as ConstructorParameters<typeof Simulation>[1]);
+    ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{}),...(o.mode?{mode:o.mode}:{})} as ConstructorParameters<typeof Simulation>[1]);
   if(knobsApplied&&o.route==='assemble')injectAssemble(sim,o.knobs);
   const room=new RoomBots();
   const ids:string[]=[],cls:string[]=[];
@@ -763,6 +788,32 @@ function playRun(o:RunOptions):RunRecord{
     cur=undefined;
   };
 
+  // D-051: the nests and the stuck bodies (see NestRecord).
+  const nestSeen=new Map<string,{hit:number|null;down:number|null}>(),samples=new Map<string,{x:number;y:number;tick:number}>(),stuck=new Map<string,{id:string;kind:string;x:number;y:number}>();
+  let maxEnemies=0;
+  const seenEnemies=new Set<string>(),alivePerMinute:number[]=[],newPerMinute:number[]=[];
+  const trackNests=(tick:number)=>{
+    // Both modes: how many enemies are alive at each minute mark and how many new ones came in that minute.
+    const minute=Math.floor(tick/(60*HZ));
+    for(const id of sim.world.enemies.keys())if(!seenEnemies.has(id)){seenEnemies.add(id);newPerMinute[minute]=(newPerMinute[minute]??0)+1;}
+    if(tick%(60*HZ)===0)alivePerMinute[minute]=sim.world.enemies.size;
+    maxEnemies=Math.max(maxEnemies,sim.world.enemies.size);
+    const ns=sim.run.nests?.state;if(!ns)return;
+    for(const n of ns.nests){
+      const s=nestSeen.get(n.id)??{hit:null,down:null};
+      if(n.hit&&s.hit===null)s.hit=tick;if(n.down&&s.down===null)s.down=tick;
+      nestSeen.set(n.id,s);
+    }
+    const w=sim.world;
+    if(tick%(5*HZ))return;
+    for(const e of w.enemies.values()){
+      if(e.boss||stuck.has(e.id))continue;
+      const s=samples.get(e.id);
+      if(!s||Math.hypot(e.x-s.x,e.y-s.y)>=STUCK_ENEMY_MOVE)samples.set(e.id,{x:e.x,y:e.y,tick});
+      else if(tick-s.tick>=STUCK_ENEMY_S*HZ)stuck.set(e.id,{id:e.id,kind:e.kind,x:r2(e.x),y:r2(e.y)});
+    }
+    for(const id of samples.keys())if(!w.enemies.has(id))samples.delete(id);
+  };
   const started=performance.now();
   let navMs=0,ticks=0;
   const thinkBefore=room.thinkMs;
@@ -780,6 +831,7 @@ function playRun(o:RunOptions):RunRecord{
     const grana0=sim.teamGrana(),events=sim.step();ticks++;
     {const d=sim.teamGrana()-grana0;if(d>0)gr.earned+=d;else gr.other-=d;}
     const w=sim.world,tick=w.tick;
+    trackNests(tick);
     for(const e of events as readonly SimEvent[]){
       countBankEvent(banks,e);
       if(e.type==='moto'){
@@ -857,8 +909,18 @@ function playRun(o:RunOptions):RunRecord{
     pause:{count:pause.count,botSeconds:r2(pause.loops*STEP_MS/1000),waveSeconds:r2(pause.waveTicks/HZ),humanShare:pause.waveTicks?r2(pause.count*PAUSE_FIRST_MS/1000/(pause.waveTicks/HZ+pause.count*PAUSE_FIRST_MS/1000)):0},
     grana:{earned:r2(gr.earned),spent:{evolutions:r2(gr.evolutions),repairs:r2(gr.repairs),forge:r2(gr.forge),other:r2(gr.other)},final:r2(sim.teamGrana()),pix:{count:room.pixes-pix0.count,amount:room.pixed-pix0.amount}},
     ...(bill?{objective:{...bill,bossCalled:sim.run.chaveiro?.state.bossCalled??false,moments,deliveries}}:{}),
+    ...(sim.run.nests?{nests:nestSummary()}:{}),
+    enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
   };
+  function nestSummary():NestRecord{
+    const ns=sim.run.nests!.state,start=ns.startTick??0,sec=(t:number|null)=>t===null?null:r2((t-start)/HZ),sono=sim.run.sono();
+    const life=sono?.state.life??[],count=(k:number)=>life.filter(l=>l[0]===k).length;
+    const list=ns.nests.map(n=>({id:n.id,size:n.size,groups:n.groups,hitS:sec(nestSeen.get(n.id)?.hit??null),downS:sec(nestSeen.get(n.id)?.down??null),emergency:!!n.emergency}));
+    const neverWoke=ns.nests.filter(n=>!n.hit&&sono!==undefined&&sono.asleepIn(n.id)===sono.bodiesOf(n.id).length).length;
+    return {list,destroyed:list.filter(x=>x.downS!==null).length,groups:list.reduce((a,x)=>a+x.groups,0),
+      sleepers:{total:life.length,asleep:count(1),awake:count(2),dead:count(0)},neverWoke,maxEnemies,stuck:stuck.size,stuckAt:[...stuck.values()].slice(0,10)};
+  }
   function towerSummary(){
     const list=st().defenses?.list??[],final:Record<string,number>={};
     for(const d of list)if(!d.ruined)final[d.kind]=(final[d.kind]??0)+1;
@@ -872,7 +934,7 @@ function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -884,6 +946,7 @@ function args(argv:readonly string[]){
     towers:!argv.includes('--no-towers'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
+    mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -939,7 +1002,8 @@ async function main(){
   const loaded=await cityTerrainFrom(text,hash);
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){
@@ -951,13 +1015,14 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective,combat:a.combat});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective,combat:a.combat,mode:a.mode});
     run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);
     writeAtomic(a.out,file);
     console.log(runLine(run));
     if(run.objective)console.log(`   ${objectiveLine(run)}`);
+    if(run.nests)console.log(`   ${nestLine(run)}`);
   }
   console.log('');
   for(const line of summaryLines(file.runs))console.log(line);

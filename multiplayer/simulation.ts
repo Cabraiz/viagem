@@ -15,7 +15,7 @@ import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
-import {PIX_MAX} from '../src/contract/index.ts';
+import {PIX_MAX,ticks} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,EnemyView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
@@ -39,6 +39,12 @@ import type {ZueiraLab} from '../src/sim/index.ts';
  * around the camera (terreno-em-blocos). The island stays as an internal test world (Simulation default, LAB_WORLD=ilha).
  */
 export const DEFAULT_WORLD:WorldKind='infinito';
+/**
+ * D-051 (mode 'ninhos', proposal §7): there is no intermission, so the bots' "prepare" (gather, forge, build) is the
+ * calm: no enemy awake within NEST_CALM_RADIUS u of the car. While calm, botView shows the bots a prepare round ending
+ * NEST_CALM_SECONDS from now (their trips are planned to be back by then).
+ */
+export const NEST_CALM_RADIUS=15,NEST_CALM_SECONDS=30;
 /** D-051: the inventory's hand slot on the views (absent with the automatic weapons). */
 const handOf=(p:{build:PlayerBuild})=>p.build.hand!==undefined?{hand:p.build.hand}:{};
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
@@ -874,7 +880,7 @@ export class Simulation {
   botView():RunView{
     const w=this.world;
     return {
-      tick:w.tick,team:w.team,round:w.round,
+      tick:w.tick,team:w.team,round:this.botRound(),
       enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
@@ -883,6 +889,13 @@ export class Simulation {
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
+  }
+  /** The round the bots plan with: the world's, or in mode 'ninhos' a prepare while calm (NEST_CALM_RADIUS). */
+  private botRound():RoundState{
+    const w=this.world,car=this.mode==='ninhos'?this.systems.chaveiro?.state.car:undefined;
+    if(!car)return w.round;
+    for(const e of w.enemies.values())if(Math.hypot(e.x-car.x,e.y-car.y)<NEST_CALM_RADIUS)return w.round;
+    return {...w.round,phase:'prepare',phaseEndsTick:w.tick+ticks(NEST_CALM_SECONDS)};
   }
   /** Pure client view for one player (protocol 4 encodes this in VGM-042b). */
   view(playerId:string):RunView{

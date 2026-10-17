@@ -179,6 +179,7 @@ export class RoomBots {
         ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
         // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
         ...(sim.combat?{combat:sim.combat}:{}),
+        ...(sim.mode==='ninhos'?{nests:true as const}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
       sim.setBotInput(mind.id,d.direction,d.cast,d.attack);

@@ -5,7 +5,7 @@
 // stays "pendente" (P0; a P1/P2 one is "opcional") and the game keeps its current art. After the group manifests, the
 // client index public/art/manifest.json is rewritten (not in --dry-run). Never touches src/client/sprites/sprite-catalog.ts.
 //
-//   node scripts/import-art-v2.mjs [--input <pasta>] [--dry-run] [--report <arquivo.html>]
+//   node scripts/import-art-v2.mjs [--input <pasta>] [--groups personagens,menu] [--dry-run] [--report <arquivo.html>]
 import {readdir,writeFile,stat,mkdir} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -77,6 +77,15 @@ async function collect(group,spec,ctx){
       else reject(full,`arquivo não esperado. Use <classe>.dir8.png (e, opcional, <classe>.downed.png) com o nome de uma das ${classes.length} classes.`,e.isDirectory());
     }
     return {pieces,unknown,order:[...classes,SILHOUETTE]};
+  }
+  if(spec.kind==='dance'){
+    const ids=Object.keys(spec.expected??{});
+    for(const e of top){
+      const full=path.join(dir,e.name),m=e.isFile()&&/^(.+?)(?:\.meta)?\.(png|json)$/i.exec(e.name);
+      if(m&&ids.includes(m[1]))add(m[1],full);
+      else reject(full,`dança não reconhecida. Use menu/danca/<classe>.png e <classe>.meta.json para uma das ${ids.length} classes.`,e.isDirectory());
+    }
+    return {pieces,unknown,order:ids};
   }
   // pieces:'any': every `<id>.png` (with an optional `<id>.json`) is a piece; nested groups have a folder per map.
   const pair=async(folder,prefix)=>{
@@ -183,9 +192,10 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
     if(Object.keys(entries).length){written.push(await writeManifest(group,spec,entries,{outRoot}));wroteManifest=true;}
   }
   // The client reads one index (public/art/manifest.json): every group manifest on disk, rewritten after any change.
-  if(wroteManifest)written.push(await writeIndex({...GROUPS,...selected},{outRoot}));
+  // Refresh the selected groups in the client index; the other groups keep their existing entries (writeIndex merges).
+  if(wroteManifest)written.push(await writeIndex(selected,{outRoot}));
   // The roster ids with art, as rules data for the rotation (ROSTER_ONLY_WITH_ART): the sim never reads the index.
-  if(wroteManifest){const ids=await writeEnemyArtIds({outRoot});if(ids)written.push(ids);}
+  if(wroteManifest&&Object.hasOwn(selected,'inimigos')){const ids=await writeEnemyArtIds({outRoot});if(ids)written.push(ids);}
   // Thumbnails last, for the first THUMB_LIMIT refused pieces only (keeps the HTML report small).
   const refused=pieces.filter(p=>p.status==='reprovado');
   for(const p of refused.slice(0,THUMB_LIMIT)){const files=thumbFiles.get(p);if(files)p.thumb=await thumbOf(files,p.problems,ctx);}
@@ -239,10 +249,15 @@ export function parseArgs(argv){
   for(let i=0;i<argv.length;i++){
     const a=argv[i];
     if(a==='--dry-run')args.dryRun=true;
+    else if(a==='--groups'){
+      const v=argv[++i];if(!v||v.startsWith('--'))throw new Error('--groups precisa dos nomes separados por vírgula.');
+      args.groups=[...new Set(v.split(',').map(g=>g.trim()).filter(Boolean))];
+      if(!args.groups.length||args.groups.some(g=>!Object.hasOwn(GROUPS,g)))throw new Error(`--groups inválido: ${v}. Use nomes de grupos conhecidos, como personagens,menu.`);
+    }
     else if(a==='--input'||a==='--report'){
       const v=argv[++i];if(!v||v.startsWith('--'))throw new Error(`${a} precisa de um caminho.`);
       args[a.slice(2)]=v;
-    }else throw new Error(`opção desconhecida: ${a}. Uso: node scripts/import-art-v2.mjs [--input <pasta>] [--dry-run] [--report <arquivo.html>]`);
+    }else throw new Error(`opção desconhecida: ${a}. Uso: node scripts/import-art-v2.mjs [--input <pasta>] [--groups personagens,menu] [--dry-run] [--report <arquivo.html>]`);
   }
   return args;
 }
@@ -252,7 +267,7 @@ async function main(){
   try{args=parseArgs(process.argv.slice(2));}catch(e){console.error(e.message);process.exitCode=2;return;}
   const input=path.resolve(args.input??process.env.ARTE_ENTRADA??DEFAULT_INPUT);
   try{
-    const result=await importArtV2({input,write:!args.dryRun,reportFile:args.report??path.join(input,REPORT_NAME)});
+    const result=await importArtV2({input,groups:args.groups??GROUPS,write:!args.dryRun,reportFile:args.report??path.join(input,REPORT_NAME)});
     console.log(summaryText(result,{input,dryRun:args.dryRun}));
   }catch(e){
     if(e.code==='ARTE_ENTRADA_AUSENTE'){console.error(e.message);process.exitCode=2;return;}

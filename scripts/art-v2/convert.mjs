@@ -21,7 +21,7 @@ import {raw,CELL,ROWS,cellStats,figureBox} from '../sprite-atlas.mjs';
 export const WEBP=Object.freeze({lossless:true,effort:6});
 /** Largest texture side the game loads (px). */
 export const MAX_TEXTURE=4096;
-const MANIFEST_FIELDS=['cell','frames','views','rows','directions','anchor','fps','slice','mask','wrap','transparent'];
+const MANIFEST_FIELDS=['cell','frames','views','rows','directions','anchor','fps','loop','slice','mask','wrap','transparent'];
 const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
 const inside=(dir,file)=>{const r=path.relative(dir,file);return r!==''&&!r.startsWith('..')&&!path.isAbsolute(r);};
 

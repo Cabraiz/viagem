@@ -14,6 +14,8 @@ export interface ArtFile {
   cell:[number,number];
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
+  /** Menu dances (menu-dance.ts): false plays once; absent loops. */
+  loop?:boolean;
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
   /**
    * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn
@@ -37,7 +39,7 @@ export interface ArtGroup {output:string;pieces:Record<string,ArtPiece>}
 export interface ArtIndex {version:number;groups:Record<string,ArtGroup>}
 
 /** Group keys as the importer names them (scripts/art-v2/spec.mjs GROUPS). */
-export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos'|'torres';
+export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos'|'torres'|'menu';
 
 const EMPTY:ArtIndex={version:2,groups:{}};
 let index:ArtIndex=EMPTY;

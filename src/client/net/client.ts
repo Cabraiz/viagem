@@ -8,6 +8,7 @@ import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_T
 import type {BuildRot,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
+import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
@@ -191,6 +192,8 @@ export class CoopClient {
   stepCap:number|undefined;
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
+  /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
+  private readonly obraHold=new ObraHold();
   /** Change segments and the 10 Hz send slot (input-10hz). */
   private readonly batcher=new InputBatcher();
   private flushTimer?:ReturnType<typeof setTimeout>;
@@ -317,7 +320,8 @@ export class CoopClient {
    */
   buildAt(piece:string,c:number,r:number,rot?:BuildRot){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
-    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,piece,c,r,...(rot?{rot}:{})});return req;
+    const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,piece,c,r,...(rot?{rot}:{})});
+    this.obraHold.order(req,{piece,c,r,...(rot?{rot}:{})});return req;
   }
   /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
   onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};
@@ -568,7 +572,11 @@ export class CoopClient {
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
-    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean'){
+      // D-052: the hero's own accepted free obra holds them (obra-hold.ts); `defense` is its wire id when the room sends it.
+      this.obraHold.answer({req:m.req,ok:m.ok,...(typeof m.defense==='string'?{defense:m.defense}:{})});
+      this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    }
     else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
@@ -678,7 +686,7 @@ export class CoopClient {
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.tick=0;this.resumedNotice=undefined;}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};
@@ -724,7 +732,7 @@ export class CoopClient {
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).
     const car=view.objective?.car;
-    this.stepCap=carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
+    this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
       this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y};

@@ -62,3 +62,9 @@
   .rh-fort-peca{min-height:60px}
   .rh-fort-dica{display:none}
 }
+/* Manual combat (varredura-celular): the inventory's 3×2 slots (inventory.css, 34 px + 4 px, at the bottom left of
+   Atacar) took Puxar's place next to the car. With the slots on screen, Puxar and Construir stack above them. */
+.rh:has(.rh-inv:not([hidden])) .rh-fort-puxar{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px)}
+.rh:has(.rh-inv:not([hidden])) .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + var(--fort) + 12px)}
+/* The level-up offer's chip (hud.css .rh-offer-chip) shares that corner too: with the slots it goes on top of the column. */
+.rh:has(.rh-inv:not([hidden])) .rh-offer-chip{right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 22px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + 2 * (64px + 12px))}

@@ -55,6 +55,7 @@
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
+import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
 import {bankExtras} from '../hud/bancos.ts';
@@ -174,6 +175,17 @@ const hud=new RunHud(document.body,{
     view={...view,events:[{type:'pix',from:'p1',to,amount,memo:1,eventId:++eventId}]};hud.update(view);
     done({ok:true,to,amount,grana:mine-amount});
   },150));},
+  // D-051 inventory (`inv=meio|cheio[&recusa=<razão>]`): the room's answer after 150 ms, the slots change as the sim would.
+  onInventory(command){
+    const refusal=params.get('recusa');
+    setTimeout(()=>{
+      if(refusal){hud.inventoryAnswer({cmd:command.t,ok:false,reason:refusal});return;}
+      view={...view,players:view.players.map(p=>p.id==='p1'?inventoryStep(p,command):p),
+        pickups:command.t==='take'?view.pickups.filter(x=>x.id!==command.pickup):view.pickups};
+      hud.update(view);hud.inventoryAnswer({cmd:command.t,ok:true});
+    },150);
+    return true;
+  },
   onChoose(offerId,index){
     document.body.dataset.lastChoice=`${offerId}:${index}`;
     view={...view,offers:view.offers.filter(offer=>offer.id!==offerId)};
@@ -242,6 +254,22 @@ function sendPause(){
   hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting],skips:{...fakeCharges.skips},rerolls:{...fakeCharges.rerolls}});
 }
 if(pausa)setInterval(sendPause,200);
+/** `inv=meio|cheio` (D-051): the local player's inventory in manual combat (hud/inventory.ts). */
+const inv=(['meio','cheio'] as const).find(v=>v===params.get('inv'));
+const INV_HERO={x:12,y:15};
+const INV_FIXTURE={
+  meio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'coxinha',level:2}],
+  cheio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'escopeta',level:3},{id:'rifle',level:4},{id:'coxinha',level:3},{id:'kit-torre',level:1}],
+};
+/** What the sim would do to p1 for a command the sandbox accepts (no checks: `recusa=` shows the refusals). */
+function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:number}>(p:P,command:InventoryCommand):P{
+  const weapons=[...p.weapons];let hand=p.hand??0;
+  if(command.t==='equip')hand=command.slot;
+  else if(command.t==='use'){const it=weapons[command.slot];if(it&&it.level>1)weapons[command.slot]={...it,level:it.level-1};else{weapons.splice(command.slot,1);if(hand>command.slot)hand--;}}
+  else if(command.t==='drop'){weapons.splice(command.slot,1);if(hand>=command.slot)hand=Math.max(0,hand-1);}
+  else weapons[hand]={id:'chinelo-lendario',level:5};
+  return {...p,weapons,hand};
+}
 let eventId=0;
 function load(next:HudScenario){
   scenario=next;tick=1000;
@@ -273,7 +301,12 @@ function load(next:HudScenario){
     if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
     if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
   }
-  hud.hideResult();hud.setHero(FIXTURE_HERO[scenario]);hud.update(view);
+  // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").
+  if(inv){
+    view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1}:p)};
+    if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'chinelo-lendario'}];
+  }
+  hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   // D-051 nests (?ninhos=…): five nests, two fallen, so the result's round line reads "Ninhos 2/5".

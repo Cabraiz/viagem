@@ -1,0 +1,56 @@
+seed 1 1p: defeat/car round 1 | 3.69 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +53 evo 0 rep 0 forge 0 end 0 | banks R$ 34 (64.2 %) bicho 0× R$ 0 prime 0 dry 0 | 0.908 ms/tick 4.02s | digest 7645fb992a9b
+   seed 1 1p: defeat/car at 3.69 min | ETA left 545s | hits 120/120 parts 1111 | Grana 53 budget 385 paid 53 debt 332 | wave 1 (+0 extra) | boss - | moto lombada 1, entrega 1, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 1 dirty 0
+   nests 0/8 down (-) | groups 6 | sleepers 170: 158 asleep, 3 awake, 9 dead | never woke 8 | max enemies 26 | stuck 0
+seed 1 6p: victory/opened round 1 | 10.48 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +637 evo 0 rep 0 forge 0 end 612 | banks R$ 304 (47.7 %) bicho 0× R$ 0 prime 0 dry 7 | 3.294 ms/tick 41.44s | digest fe4a54e96b7b
+   seed 1 6p: victory/opened at 10.48 min | ETA left 0s | hits 0/120 parts 0000 | Grana 637 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto lombada 5, entrega 3, morta 3, tranco 3, tombo 6, chegou 1, abrindo 1 | deliveries clean 3 dirty 0
+   nests 0/8 down (-) | groups 18 | sleepers 300: 282 asleep, 0 awake, 18 dead | never woke 8 | max enemies 74 | stuck 0
+seed 2 1p: defeat/car round 1 | 4.07 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +60 evo 0 rep 0 forge 0 end 0 | banks R$ 34 (56.7 %) bicho 2× R$ 4 prime 0 dry 0 | 0.404 ms/tick 1.97s | digest ec6350069b8b
+   seed 2 1p: defeat/car at 4.06 min | ETA left 524s | hits 120/120 parts 1111 | Grana 60 budget 385 paid 60 debt 325 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 1 dirty 0
+   nests 0/8 down (-) | groups 7 | sleepers 170: 158 asleep, 0 awake, 12 dead | never woke 8 | max enemies 21 | stuck 0
+seed 2 6p: victory/opened round 1 | 11.53 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +622 evo 0 rep 0 forge 0 end 597 | banks R$ 322 (51.8 %) bicho 4× R$ 8 prime 0 dry 6 | 3.145 ms/tick 43.53s | digest ae303c661952
+   seed 2 6p: victory/opened at 11.53 min | ETA left 0s | hits 0/120 parts 0000 | Grana 622 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 3, lombada 4, tombo 15, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+   nests 0/8 down (-) | groups 18 | sleepers 300: 295 asleep, 0 awake, 5 dead | never woke 8 | max enemies 81 | stuck 0
+seed 3 1p: defeat/car round 1 | 3.8 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +20 evo 0 rep 0 forge 0 end 0 | banks R$ 2 (10 %) bicho 2× R$ 4 prime 0 dry 0 | 2.466 ms/tick 11.24s | digest bd497d43a3ab
+   seed 3 1p: defeat/car at 3.8 min | ETA left 552s | hits 120/120 parts 1111 | Grana 20 budget 385 paid 20 debt 365 | wave 1 (+0 extra) | boss - | moto entrega 1, tombo 1, morta 1, tranco-sozinho 1, volta 2 | deliveries clean 1 dirty 0
+   nests 0/8 down (-) | groups 5 | sleepers 170: 158 asleep, 2 awake, 10 dead | never woke 8 | max enemies 26 | stuck 0
+seed 3 6p: victory/opened round 1 | 11.28 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +689 evo 0 rep 0 forge 0 end 664 | banks R$ 350 (50.8 %) bicho 1× R$ 2 prime 0 dry 8 | 5.158 ms/tick 69.81s | digest 45244b025a6b
+   seed 3 6p: victory/opened at 11.28 min | ETA left 0s | hits 0/120 parts 0000 | Grana 689 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 2, tombo 15, lombada 5, tranco-sozinho 1, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+   nests 0/8 down (-) | groups 17 | sleepers 300: 290 asleep, 0 awake, 10 dead | never woke 8 | max enemies 81 | stuck 2
+seed 4 1p: defeat/car round 1 | 4.2 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +53 evo 0 rep 0 forge 0 end 0 | banks R$ 34 (64.2 %) bicho 0× R$ 0 prime 0 dry 0 | 3.733 ms/tick 18.83s | digest bab1906cf0a3
+   seed 4 1p: defeat/car at 4.2 min | ETA left 484s | hits 120/120 parts 1111 | Grana 53 budget 385 paid 53 debt 332 | wave 1 (+0 extra) | boss - | moto entrega 2, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 2 dirty 0
+   nests 0/8 down (-) | groups 7 | sleepers 170: 158 asleep, 9 awake, 3 dead | never woke 8 | max enemies 25 | stuck 0
+seed 4 6p: defeat/team round 1 | 11.15 min sim | arrival -s min | loot/int -u | forge 0 | boss - | towers 0 orders 0u 0 roots 0 fichas end 0 ruined 0 | grana +592 evo 0 rep 0 forge 0 end 564 | banks R$ 206 (34.8 %) bicho 0× R$ 0 prime 0 dry 5 | 3.53 ms/tick 47.24s | digest 4ff92467cf77
+   seed 4 6p: defeat/team at 11.15 min | ETA left 10s | hits 1/120 parts 0000 | Grana 592 budget 28 paid 28 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 3, tombo 13, lombada 3, volta 1, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+   nests 0/8 down (-) | groups 19 | sleepers 300: 290 asleep, 0 awake, 10 dead | never woke 8 | max enemies 81 | stuck 0
+
+== summary ==
+1p: 0/4 wins (too-hard 0.5–1.5) causes {"boss":0,"team":0,"wall":0,"timeout":0,"opened":0,"car":4} deaths by round {"1":4}
+   sim minutes mean 3.94 | ms/tick mean 1.88
+   D-050 pauses/run 1.25 | wave min/run 3.94 | worst-case human share 0.06 (max 0.09)
+   first arrival s null | loot/intermission null ≈ null recipes (mean 35 u) | forge/run 0
+   round 1: downed 0 eliminated 0 defeats 4 (deaths) tutorial arrival null | boss reached 0 killed 0
+6p: 3/4 wins (too-easy 1.75–2.75) causes {"boss":0,"team":1,"wall":0,"timeout":0,"opened":3,"car":0} deaths by round {"1":1}
+   sim minutes mean 11.11 | ms/tick mean 3.78
+   D-050 pauses/run 8.25 | wave min/run 11.11 | worst-case human share 0.13 (max 0.15)
+   first arrival s null | loot/intermission null ≈ null recipes (mean 35 u) | forge/run 0
+   round 1: downed 0 eliminated 0 defeats 1 (deaths) tutorial arrival null | boss reached 0 killed 0
+towers 1p: orders/run 0 units/run 0 standing at end 0 ruined 0 gustavão 0/4 | roots/run 0 fichas/run 0
+towers 6p: orders/run 0 units/run 0 standing at end 0 ruined 0 gustavão 0/4 | roots/run 0 fichas/run 0
+grana 1p: earned/run 46.5 spent/run 0 (evolutions 0 repairs 0 forge 0) final 0
+grana 6p: earned/run 635 spent/run 0 (evolutions 0 repairs 0 forge 0) final 609.25
+banks 1p: R$/run 26 share of Grana 55.9 % pooled (per run {"n":4,"mean":0.49,"min":0.1,"median":0.6,"max":0.64}; target 25–35 %: high) | bicho withdraws/run 1 (R$ 2) | primes/run 0 | dry ATMs/run 0
+banks 6p: R$/run 295.5 share of Grana 46.5 % pooled (per run {"n":4,"mean":0.46,"min":0.35,"median":0.49,"max":0.52}; target 25–35 %: high) | bicho withdraws/run 1.25 (R$ 2.5) | primes/run 0 | dry ATMs/run 6.5
+chaveiro 1p:
+   seed 1 1p: defeat/car at 3.69 min | ETA left 545s | hits 120/120 parts 1111 | Grana 53 budget 385 paid 53 debt 332 | wave 1 (+0 extra) | boss - | moto lombada 1, entrega 1, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 1 dirty 0
+   seed 2 1p: defeat/car at 4.06 min | ETA left 524s | hits 120/120 parts 1111 | Grana 60 budget 385 paid 60 debt 325 | wave 1 (+0 extra) | boss - | moto entrega 1, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 1 dirty 0
+   seed 3 1p: defeat/car at 3.8 min | ETA left 552s | hits 120/120 parts 1111 | Grana 20 budget 385 paid 20 debt 365 | wave 1 (+0 extra) | boss - | moto entrega 1, tombo 1, morta 1, tranco-sozinho 1, volta 2 | deliveries clean 1 dirty 0
+   seed 4 1p: defeat/car at 4.2 min | ETA left 484s | hits 120/120 parts 1111 | Grana 53 budget 385 paid 53 debt 332 | wave 1 (+0 extra) | boss - | moto entrega 2, morta 1, tranco-sozinho 1, volta 1 | deliveries clean 2 dirty 0
+   victories with debt 0/0 (of 4 runs; debt null)
+chaveiro 6p:
+   seed 1 6p: victory/opened at 10.48 min | ETA left 0s | hits 0/120 parts 0000 | Grana 637 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto lombada 5, entrega 3, morta 3, tranco 3, tombo 6, chegou 1, abrindo 1 | deliveries clean 3 dirty 0
+   seed 2 6p: victory/opened at 11.53 min | ETA left 0s | hits 0/120 parts 0000 | Grana 622 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 3, lombada 4, tombo 15, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+   seed 3 6p: victory/opened at 11.28 min | ETA left 0s | hits 0/120 parts 0000 | Grana 689 budget 25 paid 25 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 2, tombo 15, lombada 5, tranco-sozinho 1, chegou 1, abrindo 1 | deliveries clean 2 dirty 1
+   seed 4 6p: defeat/team at 11.15 min | ETA left 10s | hits 1/120 parts 0000 | Grana 592 budget 28 paid 28 debt 0 | wave 1 (+0 extra) | boss called | moto entrega 3, morta 3, tranco 3, tombo 13, lombada 3, volta 1, chegou 1, abrindo 1 | deliveries clean 1 dirty 2
+   victories with debt 0/3 (of 4 runs; debt {"n":3,"mean":0,"min":0,"median":0,"max":0})
+verdict: 1p: banks 55.9 % of the Grana, target 25–35 % (high); 1p: 0/4 wins, target 0.5–1.5 (too-hard); 1p: 4 death(s) in round 1; 6p: banks 46.5 % of the Grana, target 25–35 % (high); 6p: 3/4 wins, target 1.75–2.75 (too-easy); 6p: 1 death(s) in round 1
+written: D:\Gits\viagem-wt\balanco-ninhos\evidence\NEW-20261017-ORQ-balanco-ninhos\drv-a.json

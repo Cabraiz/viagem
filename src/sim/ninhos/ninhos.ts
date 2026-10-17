@@ -32,6 +32,17 @@ export const NEST_GRANA:Readonly<Record<NestSize,number>>=Object.freeze({P:30,M:
 export const NEST_CRATE:Readonly<Record<NestSize,'roxa'|'dourada'>>=Object.freeze({P:'roxa',M:'roxa',G:'dourada'});
 export const SIEGE_SHARE=.6;
 export const RETRY_SECONDS=1;
+/**
+ * balanco-ninhos: the whole map's pace, over the nests' own timers (8 nests on their own clocks let 14-64 bodies a minute
+ * out on 1 player, the waves 0-15). Values for 1 player → 6 players (linear in between):
+ *  - gap: at least this many seconds between two groups, from any nest (the "pause between groups");
+ *  - alive: no group while this many enemies are alive (the timer waits RETRY_SECONDS);
+ *  - warm: for the first `warm` seconds the groups are × warmScale (the light round 1: time to level and gather);
+ *  - ramp: the seconds f takes from 0 to 1 (period, group size, the round row of hp and kinds; NEST_RUN_SECONDS was 540).
+ * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
+ */
+export const NEST_PACE={gap:[24,8] as [number,number],alive:[14,40] as [number,number],warm:120,warmScale:.5,ramp:NEST_RUN_SECONDS};
+export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
 const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 /** How often a role shows up in a nest group (the rotation's roles; mini-chefes and the boss never come from a nest). */
 export const ROLE_WEIGHT:Readonly<Partial<Record<EnemyRole,number>>>=Object.freeze({
@@ -61,6 +72,8 @@ export interface NestsState {
   /** Groups sent so far (all nests): the siege pattern's index. */
   sent:number;
   spawned:number;
+  /** NEST_PACE.gap: no group before this tick (absent before the first group). */
+  quietUntil?:number;
 }
 export type NestCause='hit'|'fell';
 export interface NestsOptions {
@@ -110,7 +123,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   /** The stream as the state left it (a restore, or a hit before this tick's step). */
   const random=()=>rng??=Object.assign(new Rng(0),{state:state.rng??0});
   const save=()=>{if(rng)state.rng=rng.state;};
-  const elapsedF=(tick:number)=>state.startTick===null?0:(tick-state.startTick)/ticks(NEST_RUN_SECONDS);
+  const elapsedF=(tick:number)=>state.startTick===null?0:(tick-state.startTick)/ticks(NEST_PACE.ramp);
 
   function begin(ctx:SimContext){
     const counted=options.players?.(ctx)??[...ctx.players.values()].filter(p=>p.online&&!p.spectator).length;
@@ -162,10 +175,12 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
 
   function sendGroup(ctx:SimContext,nest:NestRun){
     const f=elapsedF(ctx.tick),[lo,hi]=groupRange(nest.size,f);
-    const count=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count));
+    if(ctx.tick<(state.quietUntil??0)||ctx.enemies.size>=pace(NEST_PACE.alive,state.players)){nest.next=ctx.tick+ticks(RETRY_SECONDS);return;}
+    const warm=ctx.tick-state.startTick!<ticks(NEST_PACE.warm)?NEST_PACE.warmScale:1;
+    const count=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count*warm));
     const siege=isSiegeGroup(state.sent);
     if(!release(ctx,nest,count,siege,f)){nest.next=ctx.tick+ticks(RETRY_SECONDS);return;}
-    state.sent++;nest.groups++;
+    state.sent++;nest.groups++;state.quietUntil=ctx.tick+ticks(pace(NEST_PACE.gap,state.players));
     nest.next=ctx.tick+ticks(nestPeriod(nest.size,f));
   }
 

@@ -48,7 +48,7 @@ export function createTopBar():HudPart{
         detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
-      // D-051 nests: the nests still standing ("🏚 6/8") after his clock.
+      // D-051 nests: the nests still standing ("[ninho] 6/8") after his clock.
       const clock=round.chaveiro,count=nests?nestCount(view):undefined;
       put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
         eta.hidden=!clock;

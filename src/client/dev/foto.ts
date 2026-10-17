@@ -56,7 +56,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
   // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").
-  'ninhos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'D-051 modo ninhos: moto m:ss e 🏚 vivos/8 no topo, sem Onda N'},
+  'ninhos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'D-051 modo ninhos: moto m:ss e ninhos vivos/8 no topo, sem Onda N'},
   'ninhos-hud-calmo':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=prepare&frozen=1',descricao:'D-051 modo ninhos na calmaria: sem Intervalo nem contagem'},
   'minimapa':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=prepare&frozen=1',descricao:'HUD da cidade: minimapa WC3, setas, chaveiro'},
   'bancos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&bancos=1&state=wave&frozen=1',descricao:'HUD da cidade com bancos: seta do roubado (Cone), "$" no minimapa, "Bicho sacando no …!"'},

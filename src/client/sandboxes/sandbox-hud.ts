@@ -276,7 +276,7 @@ const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:1
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
-  // D-051 (ninhos-rounds-fora): `ninhos=…` also puts 8 nests in the view, 2 fallen: the mode's chip and bar ("🏚 6/8"),
+  // D-051 (ninhos-rounds-fora): `ninhos=…` also puts 8 nests in the view, 2 fallen: the mode's chip and bar ("[ninho] 6/8"),
   // no "Onda N" nor intermission, and the result's "Ninhos 2/8".
   if(params.has('ninhos'))view={...view,structures:[...view.structures,...FAKE_NESTS]};
   // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)

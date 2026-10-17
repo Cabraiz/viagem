@@ -132,6 +132,13 @@ export class WcMinimap {
     }
     for(const x of input.extras??[])if(!x.points){
       toMini(x,f,p);if(!insideMini(p,f))continue;
+      if(x.kind==='banco'){
+        // Bancos (hud/bancos.ts): a "$" square in the bank's colour, a Breu edge.
+        const h=4*unit;
+        ctx.fillStyle=x.color??'#7ED957';ctx.fillRect(p.x-h,p.y-h,2*h,2*h);ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.strokeRect(p.x-h,p.y-h,2*h,2*h);
+        ctx.fillStyle='#1d1830';ctx.font=`bold ${Math.round(7*unit)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',p.x,p.y+.5*unit);
+        continue;
+      }
       ctx.beginPath();ctx.arc(p.x,p.y,3*unit,0,Math.PI*2);ctx.fillStyle=x.color??'#ff9f43';ctx.fill();ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.stroke();
     }
     for(const al of input.allies){

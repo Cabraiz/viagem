@@ -5,7 +5,8 @@
  *    nests, over nothing standing), between BOT_SPOT_GAP and BOT_SPOT_REACH of the car, BOT_SPOT_SPREAD apart, at most
  *    BOT_SPOTS; a defense of theirs is its own `d:<id>` site; the spot ids turn into the root's FreeOrder;
  *  - a city chaveiro run with three RoomBots: every root they build is a free build around the car (no fixed obra, no
- *    refusal for the place), and after the car is moved the next one goes up around its new spot.
+ *    refusal for the place), and after the car is moved the next one goes up around its new spot; a bot on its own obra
+ *    (holdsObra: the sim holds it still) stands in mode 'build' with the stick at rest, never steering into 'unstick'.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -20,8 +21,9 @@ import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {createStonewardsState} from '../../src/sim/stonewards/system.ts';
 import {FREE_CELL,freeCity,onGround,pieceRect,rectsOverlap,defenseRectOf} from '../../src/sim/towers/free-build.ts';
 import {BOT_SPOTS,BOT_SPOT_GAP,BOT_SPOT_REACH,BOT_SPOT_SPREAD,botSiteDefense,botSites,botSpotOrder,withBotSites} from '../../src/sim/towers/bot-spots.ts';
+import {holdsObra} from '../../src/sim/towers/system.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {RoomBots} from '../../multiplayer/room-bots.ts';
+import {RoomBots,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -88,10 +90,18 @@ test('room: three bots on a chaveiro run build their roots around the car, and a
     built.push({order:typeof order==='string'?order:`${order.piece}@${order.c},${order.r}`,ok:r.ok,...(r.ok?{}:{reason:r.reason}),car:{x:car.x,y:car.y},...(d?{at:{x:d.x,y:d.y}}:{})});
     return r;
   };
-  const run=(until:()=>boolean)=>{while(!sim.outcome&&!until()&&sim.tick<ticks(25*60)){bots.think(sim);sim.step();}};
+  let held=0;
+  const run=(until:()=>boolean)=>{while(!sim.outcome&&!until()&&sim.tick<ticks(25*60)){
+    bots.think(sim);
+    for(const id of ids)if(holdsObra(sim.run.stonewards.state,id,sim.tick)&&(sim.tick+ids.indexOf(id))%BOT_THINK_EVERY===0){
+      held++;assert.equal(bots.modes.get(id),'build',`${id} on its obra at tick ${sim.tick}`);
+    }
+    sim.step();
+  }};
   run(()=>built.some(b=>b.ok)&&sim.world.round.phase==='wave');
   const roots=built.filter(b=>b.ok);
   assert.ok(roots.length>=1,`the bots built: ${JSON.stringify(built)}`);
+  assert.ok(held>0,'a bot stood on its obra');
   for(const b of built){
     assert.ok(b.order.startsWith(`${ROOT_DEFENSE}@`),`a free build, not a fixed obra: ${b.order}`);
     assert.ok(b.ok||!['fora','carro','ninho','away'].includes(b.reason!),`never refused for the place: ${JSON.stringify(b)}`);

@@ -80,7 +80,15 @@ export interface SceneHooks {
   message:(text:string)=>void;
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
+  /**
+   * D-051 manual combat: one input step's attack (hud/attack-button.ts take(): held, or tapped since the last step),
+   * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
+   */
   attacking?:()=>boolean;
+  /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
+  enemyPicked?:(id:string)=>void;
+  /** D-051: the room plays the manual combat (the target words say "ataque", not "a arma atira sozinha"). */
+  manual?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
   runView?:(view:RunView)=>void;
   /** The HUD's kill-cam picture (CSS px, viewport coordinates) while it shows, VGM-053B. */
@@ -376,7 +384,7 @@ export class IslandScene extends Phaser.Scene {
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=this.enemyAt(p);
       this.hold.release();
-      if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.message('Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
+      if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.enemyPicked?.(hit);this.hooks.message(this.hooks.manual?.()?'Alvo escolhido. Segura o ataque pra bater nele.':'Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
       const target=unprojectView(p,this.view,this.field),mouse=!pointer.wasTouch;
       this.goTo(target,mouse?{markerMs:MARKER_MS}:undefined);
       // Held from a spot with no way there (water) too: dragging out of it starts the walk.
@@ -631,6 +639,10 @@ export class IslandScene extends Phaser.Scene {
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
+  /** D-051: the attack button's choice (a drag let go on an enemy), or undefined to go back to the auto aim. */
+  chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
+  /** The chosen target (PlayerInput.target), for the attack button's reticle. */
+  get chosenTarget(){return this.attackTarget;}
   setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.input.keyboard?.resetKeys();}
   /**
    * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
@@ -1006,7 +1018,7 @@ export class IslandScene extends Phaser.Scene {
     // No walk to follow while the hero cannot walk (no path search every 150 ms in the waiting room or while down).
     this.followHold(time,still||Math.hypot(sx,sy)>.05);
     if(still){this.attackTarget=undefined;this.route=[];}
-    if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message('Alvo derrotado. A arma segue atirando sozinha.');}
+    if(this.attackTarget&&!net.feed.enemies.has(this.attackTarget)){this.attackTarget=undefined;this.hooks.message(this.hooks.manual?.()?'Alvo derrotado. O ataque volta pra mira automática.':'Alvo derrotado. A arma segue atirando sozinha.');}
     this.horde?.setTarget(this.attackTarget);
     // Only a new tick moves the horde: an offers-only change (push from the room) refreshes the HUD alone,
     // or the renderer would restart its interpolation and stutter on every offer.
@@ -1036,7 +1048,8 @@ export class IslandScene extends Phaser.Scene {
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
-      net.input(direction,!frozen&&!!this.hooks.attacking?.(),this.attackTarget);this.accumulator-=STEP;
+      // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
+      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.());this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.

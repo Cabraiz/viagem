@@ -84,9 +84,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * their saldo, state, refill tick and drawer; id, place and name on full frames), `prime` on the enemies, the events
  * bank-cash/bank-prime/bank-empty/bank-refill and their strings in the DICT; an older decoder would refuse the flags.
  * 25 given by the integration queue (tools/fila.mjs, lote 20261017-120626) to: NEW-20261014-ORQ-bancos-e-veiculos.
+ * 26 given by the integration queue (tools/fila.mjs, lote 20261017-180420) to: NEW-20261017-ORQ-balanco-ninhos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=25;
+export const PROTOCOL_VERSION=26;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

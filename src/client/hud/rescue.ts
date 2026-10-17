@@ -13,6 +13,7 @@
  */
 import type {CoopClient} from '../net/client.ts';
 import type {RunHud} from './hud.ts';
+import {isAsleep} from '../render/wake-rules.ts';
 import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
@@ -264,7 +265,7 @@ export class RescueBoard {
     people.length=n;
     let m=0;
     for(const e of net.feed.enemies.values()){
-      if(e.hp<=0)continue;
+      if(e.hp<=0||isAsleep(e))continue; // D-051: no group arrow to a nest's sleepers
       const q=enemies[m]??={id:'',x:0,y:0};m++;
       q.id=e.id;q.x=e.x;q.y=e.y;
       q.boss=e.boss?true:undefined;

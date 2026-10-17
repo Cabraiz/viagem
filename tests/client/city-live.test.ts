@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LIGHT_HEADS,WIRE_MAX_CELLS,artViewOf,cellFrame,cellPoint,decorKey,isPole,lightKind,lightLevel,liveMeta,loopFps,loopFrame,
-  matchInsulators,nestArtId,nestState,nestTheme,onCamera,polePairs,sagLine,type DecorEntry,type Pt,
+  matchInsulators,onCamera,polePairs,sagLine,type DecorEntry,type Pt,
 } from '../../src/client/render/city/live/rules.ts';
 
 const pole=(c:number,r:number,id='poste-concreto-1'):DecorEntry=>({id,c,r,w:1,h:1,rot:0});
@@ -87,14 +87,6 @@ test('lights: kinds, heads measured for every delivered variant, steady with red
   assert.deepEqual(lightHead('poste-aceso-amarelo-1',0,[256,384]),[196,84]);
   assert.equal(lightLevel('pisca',0,'k',false,2)<.2,true);
   for(let t=0;t<5000;t+=37){const v=lightLevel('fogueira',t,'k',false);assert.ok(v>.65&&v<=1);}
-});
-
-test('nests: theme seeded by id, state from hp and sleep', ()=>{
-  assert.equal(nestTheme('n1'),nestTheme('n1'));
-  assert.equal(nestState({hp:0}),'destruido');
-  assert.equal(nestState({hp:5,awake:false}),'dormindo');
-  assert.equal(nestState({hp:5,awake:true}),'ativo');
-  assert.match(nestArtId({id:'x',hp:1}),/^ninho-(bichos|boteco|escritorio|festa)-ativo$/);
 });
 
 test('camera culling with a margin', ()=>{

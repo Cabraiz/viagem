@@ -12,7 +12,7 @@
  *   is wired to its nearest neighbour on the same sidewalk (same row or column ±1, ≤ WIRE_MAX_CELLS), sagging
  *   catenaries, dark grey 2 px with snow on top;
  * - lights: a warm glow on the lamp head (LIGHT_HEADS, measured from the delivery) and a pool on the ground below;
- * - nests (D-051): `ninho-<tema>-<ativo|dormindo|destruido>`, the theme seeded by the nest id.
+ * - nests (D-051): see nests.ts.
  * With reduced motion every loop stays on its first frame and every light is steady.
  */
 import {hashId} from '../chunks.ts';
@@ -238,17 +238,6 @@ export function lightLevel(kind:LightKind,nowMs:number,key:string,reduced:boolea
   const t=nowMs/1000+(hashId(key)%997)/97;
   return .85+.1*Math.sin(t*5.3)+.05*Math.sin(t*13.1);
 }
-
-// ---- nests ----
-export const NEST_THEMES=['bichos','boteco','escritorio','festa'] as const;
-export type NestTheme=typeof NEST_THEMES[number];
-export type NestState='ativo'|'dormindo'|'destruido';
-export const nestTheme=(nestId:string):NestTheme=>NEST_THEMES[hashId(nestId)%NEST_THEMES.length];
-/** State of a nest: fallen at hp 0, asleep while its sleepers are (`awake` false), active otherwise. */
-export const nestState=(n:{hp:number;awake?:boolean}):NestState=>n.hp<=0?'destruido':n.awake===false?'dormindo':'ativo';
-export const nestArtId=(n:{id:string;hp:number;awake?:boolean})=>`ninho-${nestTheme(n.id)}-${nestState(n)}`;
-/** Nest art drawn over its 3×3 cells; the size letter scales it (P 0.85, M 1, G 1.25) like the radius of D-051. */
-export const NEST_SCALE:Readonly<Record<'P'|'M'|'G',number>>=Object.freeze({P:.85,M:1,G:1.25});
 
 // ---- culling ----
 export interface Rect {x:number;y:number;w:number;h:number}

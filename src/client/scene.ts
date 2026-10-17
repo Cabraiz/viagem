@@ -4,12 +4,13 @@ import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import {Vignette} from './render/vignette.ts';
+import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,queueCityArt,queueLiveArt,type CityArtPlan} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,queueLiveArt,type CityArtPlan} from './render/city/index.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -898,6 +899,15 @@ export class IslandScene extends Phaser.Scene {
     if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
     this.chaveiro?.push(objective,view.tick);
   }
+  /**
+   * D-051 (ninhos-arte-render): the snapshot's nests (structures of kind 'ninho') drawn on the city ground with their
+   * art for the state (render/city/live/nests.ts); at the actors' point and depth, so heroes and enemies sort with them.
+   */
+  private pushNests(view:RunView){
+    const vivo=this.city?.vivo;
+    if(!vivo)return;
+    vivo.setNests(nestsFromStructures(view.structures),this.view,(x,y)=>{const p=this.project({x,y});return {x:p.x,y:p.y,depth:this.depth({x,y})};});
+  }
   /** Bancos (card bancos-e-veiculos): the run's ATMs (RunView.banks, the city in both modes); built on the first view that has them. */
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
@@ -913,7 +923,7 @@ export class IslandScene extends Phaser.Scene {
     if(a.xs.length<enemies.length){const n=Math.max(enemies.length,a.xs.length*2);a=this.towerAim={n:0,xs:new Float32Array(n),ys:new Float32Array(n),air:new Uint8Array(n)};}
     let n=0;
     for(const e of enemies){
-      if(e.hp<=0)continue;
+      if(e.hp<=0||isAsleep(e))continue; // the sim's towers only see ctx.enemies, never a nest's sleepers (D-051)
       a.xs[n]=e.x;a.ys[n]=e.y;a.air[n]=ENEMY_ART[enemyKind(e.kind)].hover>0?1:0;n++;
     }
     a.n=n;towers.setEnemies(n,a.xs,a.ys,a.air);
@@ -1040,7 +1050,7 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;

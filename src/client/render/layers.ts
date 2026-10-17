@@ -15,6 +15,7 @@ import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
+import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
@@ -80,6 +81,8 @@ interface EnemyActor{
   image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
+  /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
+  asleep:boolean;
   /** The round costume variant this enemy wears (horde-art.ts ROUND_COSTUMES), or undefined. */
   costume?:string;
   /** The roster accent of the reserve (keys.ts fallbackTint); `tint` is it while the reserve shows, undefined over art. */
@@ -333,7 +336,7 @@ export class HordeRenderer{
     const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
@@ -361,7 +364,7 @@ export class HordeRenderer{
     this.viewTick=view.tick;this.pushAt=this.now;this.numbersThisPush=0;
     this.arrivals.push(this.now);this.glide=Math.max(this.pushMs,this.arrivals.delay());
     // Sync first and retire after the events, so damage on a just-spawned or just-killed enemy still finds its actor.
-    this.enemies.begin();
+    this.enemies.begin();this.fresh.length=0;this.woken.length=0;
     for(let i=0;i<view.enemies.length;i++)if(view.enemies[i].hp>0)this.syncEnemy(view.enemies[i]);
     this.viewTelegraphs=view.telegraphs; // a 'telegraph' event's zone, for the action cue (art v2)
     this.arsenal.push(view);
@@ -369,7 +372,10 @@ export class HordeRenderer{
       const event=view.events[i];
       if(event.eventId<=this.lastEventId)continue;
       this.lastEventId=event.eventId;this.handle(event,event.eventId);
+      // D-051: the bodies an `acordou` woke are new actors around its centre (render/wake-rules.ts).
+      if(isWakeEvent(event as {type:string}))this.woken.push(...wakeTargets(event as unknown as Parameters<typeof wakeTargets>[0],this.fresh));
     }
+    if(this.woken.length&&enemyArtActive())for(const id of this.woken){const a=this.enemies.get(id);if(a)playEnemyAction(a.image,a.art,'wake',this.now);}
     this.enemies.end();
     this.pickups.begin();
     for(let i=0;i<view.pickups.length;i++)this.syncPickup(view.pickups[i]);
@@ -474,7 +480,12 @@ export class HordeRenderer{
       a.image.setTexture(tex).setOrigin(.5,ENEMY_ART[kind].originY);
       a.kind=kind;a.elite=elite;a.tex=tex;
     }
-    a.look=look;a.act=actAnim(view.kind,kind,view.phase);
+    a.look=look;
+    // D-051: a sleeper loops `sleep`; one that stops sleeping while on screen wakes (render/wake-rules.ts).
+    const asleep=isAsleep(view);
+    if(!used.fresh&&a.asleep&&!asleep)this.woken.push(view.id);
+    a.asleep=asleep;a.act=sleepOrAct(asleep,actAnim(view.kind,kind,view.phase));
+    if(used.fresh&&!asleep)this.fresh.push(view);
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
     a.prime=view.prime===true;
@@ -583,6 +594,9 @@ export class HordeRenderer{
   /** The current round's costume (horde-art.ts roundCostume), set by its 'round' event. */
   private costume?:RoundCostume;
   private actionCue:ActionCue={enemy:'',action:'hit'};
+  /** D-051, per push: actors new in this view (awake), and the ids that play `wake` (render/wake-rules.ts). */
+  private readonly fresh:{id:string;x:number;y:number}[]=[];
+  private readonly woken:string[]=[];
   private nearKind:EnemyKind='bebado';private nearX=0;private nearY=0;private nearBest=0;private nearFound:EnemyActor|undefined;
   private nearVisit=(a:EnemyActor)=>{
     if(a.kind!==this.nearKind)return;

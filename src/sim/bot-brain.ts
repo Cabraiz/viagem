@@ -101,6 +101,12 @@ export const HOME_SLACK=2;
 export const ROAM_IN=1;
 /** City: a roamer hunts when the wave is down to this many critters and none is near the wall; it closes to HUNT_LEASH (u). */
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
+/**
+ * City: how far from the wall (u) a critter still lures a roamer on its LEASH (ROAM_IN inside it, plus the stand-off
+ * DANGER+.6). The hunt starts where this ends (bot-caca-ultimo-na-borda: between it and the old LEASH+3 a last critter
+ * neither lured nor was hunted, and two bots held at their leash's edge 6 u from it for ~7 s).
+ */
+export const LURE_REACH=LEASH-ROAM_IN+DANGER+.6;
 /** City, combat: a wanted move shorter than this (the pulls cancel out) is no move. */
 export const HOLD_BELOW=.15;
 type Chase='rescueGoal'|'escortGoal'|'huntGoal'|'motoGoal'|'carGoal';
@@ -623,14 +629,21 @@ export function decide(input:BrainInput):Decision{
   }
   // Combat.
   const boss=view.enemies.some(e=>e.boss),guard=index%2===0;
+  // City: past the wave's timer its survivors walk back up the avenues (director beginRetreat, harmless), faster than a
+  // bot, and vanish only out of everyone's sight: hunting one kept it in sight up to the 60 s cap, 120 u away (city-bots
+  // seed 1, rounds 1, 2 and 5). Nobody hunts a retreating wave.
+  const retreating=city&&view.round?.phase==='wave'&&view.tick>=view.round.phaseEndsTick;
+  // City: the wave's very last critter, not at the wall, takes the guards out to the roamers' leash too (bot-caca:
+  // both guards held at their short leash 6 u from it while the roamer walked with a person).
+  const last=city&&guard&&!boss&&!retreating&&view.enemies.length===1;
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
   const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH;
   // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
-  let prey=city&&!guard&&!escorting&&!boss&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LEASH+3)?nearest(view.enemies,at):undefined;
+  let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(view.enemies,at):undefined;
   if(prey&&!way(prey,'huntGoal'))prey=undefined;
   const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
-  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard?GUARD_LEASH:LEASH;
+  const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
   const b=city?way(anchor,chase)??toward(at,anchor):undefined;
   // How far out of the leash. City: once pulled back, all the way to HOME_SLACK inside the leash (no pacing on its edge

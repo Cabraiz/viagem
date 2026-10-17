@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 import {setArtIndex,parseArtIndex,artPiece} from '../../src/client/art/manifest.ts';
 import {baseFrame} from '../../src/client/art/base-art.ts';
 import {projectileArtId,projectileLook} from '../../src/client/art/horde-art.ts';
-import {ARSENAL_ITEMS,CRATE_ART,CrateOpenings,CRATE_OPEN_REACH,CRATE_OPEN_SECONDS,FIRE_LOOK,arsenalLoads,crateProgress,crateRow,fxKey,iconKey,isWeaponItem,
+import {ARSENAL_ITEMS,CRATE_ART,CrateOpenings,CRATE_OPEN_REACH,CRATE_OPEN_SECONDS,FIRE_LOOK,arsenalLoads,crateProgress,crateRow,fxKey,handsOnCar,iconKey,isWeaponItem,
   itemIcon,rarityOf,shotFrame} from '../../src/client/render/arsenal-rules.ts';
 import {PICKUP_KINDS,pickupTexture} from '../../src/client/render/keys.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
@@ -141,4 +141,12 @@ test('the sandbox ally holds a weapon and opens its own crate every cycle',()=>{
   let bursts=0;
   for(let t=0;t<9000;t+=ARSENAL_PUSH_MS)for(const e of arsenalView(base,10,10,t,'pistola').events)if(e.type==='pickup'&&e.player===SANDBOX_ALLY)bursts++;
   assert.equal(bursts,3);
+});
+
+test('D-052: a hero moving the car or on its rope holds no weapon (the hand sticker hides)',()=>{
+  assert.equal(handsOnCar(undefined,'a'),false);
+  assert.equal(handsOnCar({},'a'),false);
+  assert.equal(handsOnCar({movers:['b','a']},'a'),true);
+  assert.equal(handsOnCar({movers:['b']},'a'),false);
+  assert.equal(handsOnCar({rope:'a'},'a'),true);
 });

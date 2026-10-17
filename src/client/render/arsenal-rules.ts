@@ -89,6 +89,11 @@ export const iconKey=(icon:string)=>`arsenal:ui:${icon}`;
 export const itemIcon=(id:string|undefined):string|undefined=>id?KNOWN.get(id)?.icon:undefined;
 /** Whether an item on the ground is a weapon (its `value` is then its rarity; a consumable's is its stack). */
 export const isWeaponItem=(id:string|undefined)=>{const kind=id?KNOWN.get(id)?.kind:undefined;return kind==='weapon'||kind==='evolution';};
+/**
+ * D-052: a hero moving the car (ObjectiveView.car.movers) or on its rope has the hands on it and does not attack: no
+ * weapon in the hand while so.
+ */
+export const handsOnCar=(car:{movers?:readonly string[];rope?:string}|undefined,id:string)=>!!car&&(car.rope===id||!!car.movers?.includes(id));
 
 /**
  * What each arsenal weapon shows when it fires (the SimEvent 'fire': x/y the hero, dx/dy the aim; for 'zone' the

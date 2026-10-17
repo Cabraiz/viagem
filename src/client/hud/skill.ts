@@ -4,11 +4,15 @@
  * The button shows the sticker and the word "Habilidade", the cooldown from the frames (skillTick/skillReadyTick) or
  * from the tap's own answer, "ainda não" for a tap during the cooldown (nothing is sent) and "sem alvo" when the room
  * answered ok:false. Mobile only (D-009). SkillTaps and skillState are pure (tests); SkillButton paints #coop-attack.
+ * D-051 manual combat (step 2): the same slot is the action button, the class skill or the attack after the room's
+ * CombatMode (setCombat): in 'manual' it says "Atacar", has no cooldown ring (the weapon's own cooldown is the server's)
+ * and shows `data-held` while pressed; hud/attack-button.ts handles its press, hold and drag. Same ids, same place.
  */
 import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
-import type {PlayerRunView} from '../../contract/index.ts';
+import type {CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
+import {stickerOrIcon} from '../ui/sticker.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -70,6 +74,8 @@ export function skillLabel(classId:string){
 }
 /** The word under the sticker, and the two notes that briefly take its place. */
 export const SKILL_WORD='Habilidade',NOTE_COOLING='ainda não',NOTE_NO_TARGET='sem alvo';
+/** D-051 manual combat: the word and the accessible name of the attack button. */
+export const ATTACK_WORD='Atacar',ATTACK_LABEL='Atacar: toque para um ataque, segure para atacar sem parar, arraste para mirar';
 
 /** Ring circumference in the ring's own units (pathLength). */
 const RING=100;
@@ -82,8 +88,10 @@ export class SkillButton {
   private answered?:{castTick:number;readyTick:number};
   private state:SkillState={mode:'ready',seconds:0,progress:1};
   private fill:SVGCircleElement;private time:HTMLElement;private word:HTMLElement;
+  private combat:CombatMode='auto';
+  private readonly classId:string;
   constructor(el:HTMLButtonElement,classId:string){
-    this.el=el;
+    this.el=el;this.classId=classId;
     el.setAttribute('aria-label',skillLabel(classId));
     el.dataset.state='ready';
     // The weapon icon of each class comes with the item stickers (DSG-adesivos-itens); the bread bag is the generic one (§2.4).
@@ -92,8 +100,23 @@ export class SkillButton {
     this.fill=el.querySelector('.skillbtn-fill')!;this.time=el.querySelector('.skillbtn-time')!;this.word=el.querySelector('.skillbtn-word')!;
     this.paint();
   }
+  /** The room's CombatMode (CoopClient.combat): 'manual' turns the slot into the attack button (no-op when unchanged). */
+  setCombat(combat:CombatMode){
+    if(combat===this.combat)return;
+    this.combat=combat;this.taps.clear();this.answered=undefined;this.note='';this.noteUntil=0;
+    this.el.dataset.action=combat==='manual'?'attack':'skill';
+    this.el.setAttribute('aria-label',combat==='manual'?ATTACK_LABEL:skillLabel(this.classId));
+    // Manual: the attack sticker (ui/atacar; the chinelo without that art) until the inventory shows the equipped weapon.
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(old)old.outerHTML=combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+    this.state={mode:'ready',seconds:0,progress:1};this.el.dataset.note='';this.paint();
+  }
+  get attackMode(){return this.combat==='manual';}
+  /** Attack button pressed or let go (manual combat): `data-held` for the CSS. */
+  setHeld(held:boolean){if(held)this.el.dataset.held='';else delete this.el.dataset.held;}
   /** A tap on the button: sends through `send` (CoopClient.cast) unless the skill is still cooling. */
   tap(send:()=>number|undefined,now:number):TapResult{
+    if(this.attackMode)return 'off';
     const result=this.taps.tap(this.state.mode==='cooling',send,now);
     if(result==='cooling')this.flash(NOTE_COOLING,now);
     return result;
@@ -112,12 +135,13 @@ export class SkillButton {
     this.refresh(now);
   }
   /** Run reset (rematch): ready, nothing pending. */
-  reset(){this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.paint();}
+  reset(){this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.setHeld(false);this.paint();}
   private flash(note:string,now:number){this.note=note;this.noteUntil=now+NOTE_MS;this.refresh(now,true);}
   /** The note on screen right now ('' none): CSS reads it to drop the green "ready" ring under "sem alvo". */
   get shownNote(){return this.el.dataset.note??'';}
   private refresh(now:number,force=false){
-    const next=skillState(this.player,this.tick,this.answered);
+    // The attack has no cooldown of its own on the button: always ready.
+    const next=this.attackMode?{mode:'ready' as const,seconds:0,progress:1}:skillState(this.player,this.tick,this.answered);
     const note=now<this.noteUntil?this.note:'';
     if(!force&&next.mode===this.state.mode&&next.seconds===this.state.seconds&&Math.abs(next.progress-this.state.progress)<.01&&note===(this.el.dataset.note??''))return;
     this.state=next;this.el.dataset.note=note;this.paint();
@@ -128,6 +152,6 @@ export class SkillButton {
     this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
-    this.word.textContent=note||SKILL_WORD;
+    this.word.textContent=note||(this.attackMode?ATTACK_WORD:SKILL_WORD);
   }
 }

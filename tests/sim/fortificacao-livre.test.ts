@@ -2,7 +2,7 @@
  * D-052, fortification anywhere (sim-fortificação, slice 2 of NEW-20261016-ORQ-carro-e-fortificacao-livre), on the REAL
  * Cidade Nevada: the free build of towers/system.ts buildFree and towers/free-build.ts.
  *  1. Rules: the pieces' numbers and footprints (rot turns the barricade).
- *  2. A root on a cell: any phase, its cell and centre, the ficha; the refusals in order (fora, carro, ocupado, limite,
+ *  2. A root on a cell: any phase, its cell and centre, the ficha; the refusals in order (fora, carro, ocupado (a crate too), limite,
  *     away, balance/grana, defense, duplicate).
  *  3. Muro: a blocker to the enemies, a blocking siege target, paid in Grana, queued per hero, gone at 0 hp.
  *  4. Tranca: a ring of muros around the car is never closed (one of them is refused 'tranca').
@@ -12,6 +12,8 @@
  *  8. A rematch reset drops the muros' blockers; a checkpoint's state raises them again.
  *  9. The moto replans around a muro built across his way (the checkpoint rebuilds that route).
  * 10. Mode ninhos: no piece within CAR_NEST_KEEP_OUT of a living nest.
+ * 11. The builder holds still while their new obra is under way (queued obras back to back), then walks again; an
+ *     evolution never holds.
  * D-031: results only (state, events), no wall-clock asserts.
  */
 import test from 'node:test';
@@ -133,6 +135,10 @@ test('a root on a free cell: at any phase, centred on its cell, one ficha; the o
   g.ctx.enemies.set('e1',enemy('e1',centre(other.c,other.r).x,centre(other.c,other.r).y));
   assert.deepEqual(order(g,'muro',other.c,other.r),{ok:false,reason:'ocupado'},'an enemy stands on it');
   g.ctx.enemies.clear();
+  // D-051: a weapon crate (a 'chest' pickup) on it.
+  g.ctx.pickups.set('bau-1',{id:'bau-1',kind:'chest',x:centre(other.c,other.r).x+.3,y:centre(other.c,other.r).y,value:2} as never);
+  assert.deepEqual(order(g,'muro',other.c,other.r),{ok:false,reason:'ocupado'},'a crate sits on it');
+  g.ctx.pickups.clear();
   // Only the root among the towers.
   assert.deepEqual(order(g,'vigias-armados',other.c,other.r),{ok:false,reason:'defense'});
   // From afar.
@@ -425,4 +431,46 @@ test('assembled run in mode ninhos: no piece within CAR_NEST_KEEP_OUT of a livin
   const near=order(0,CAR_NEST_KEEP_OUT-1.5);
   assert.ok(near.has('ninho')&&!near.has('ok'),[...near].join());
   assert.ok(order(CAR_NEST_KEEP_OUT+1.5,CAR_NEST_KEEP_OUT+4).has('ok'));
+});
+
+test('assembled run: the builder holds still while their obras are under way (two queued muros back to back), then walks', ()=>{
+  const players=new Map<string,SimPlayer>(),inputs=new Map<string,{x:number;y:number}>();let seq=0;
+  const world=new SimWorld({terrain:city.fork(),seed:21,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
+  const sys=createRunSystems(world,{takeInput:id=>{const i=inputs.get(id);return i?{seq:++seq,x:i.x,y:i.y,attack:false}:undefined;},
+    onOutcome:()=>{},cityTutorial:false,objective:'chaveiro'});
+  const ana=player('ana',CAR.x+1.5,CAR.y,{hp:1e6,stats:{...BASE_STATS,maxHp:1e6},grana:1e4}),bia=player('bia',CAR.x-1.5,CAR.y,{hp:1e6,stats:{...BASE_STATS,maxHp:1e6}});
+  players.set('ana',ana);players.set('bia',bia);
+  world.step();
+  const cells=ring(5),m1=cells[0],m2=cells.find(o=>o!==m1&&Math.abs(o.c-m1.c)+Math.abs(o.r-m1.r)<=2)!;
+  ana.x=centre(m1.c,m1.r).x;ana.y=centre(m1.c,m1.r).y;
+  assert.equal(sys.stonewards.build(world,'ana',{piece:'muro',c:m1.c,r:m1.r},'a').ok,true);
+  const second=sys.stonewards.build(world,'ana',{piece:'muro',c:m2.c,r:m2.r},'b');assert.equal(second.ok,true,JSON.stringify(second));
+  const last=Math.max(...sys.stonewards.state.defenses!.pieces!.map(p=>p.readyTick));
+  assert.equal(last-world.tick,2*ticks(FREE_PIECE_DEFS.muro.buildSeconds),'the second starts when the first ends');
+  // Both push the stick: Ana stays on her obras until the last is done, Bia walks.
+  const toCar=Math.hypot(CAR.x-ana.x,CAR.y-ana.y);
+  inputs.set('ana',{x:(CAR.x-ana.x)/toCar,y:(CAR.y-ana.y)/toCar});inputs.set('bia',{x:-1,y:0});
+  const at={x:ana.x,y:ana.y},biaAt={x:bia.x,y:bia.y};
+  while(world.tick<last-1){world.step();assert.deepEqual({x:ana.x,y:ana.y},at,`tick ${world.tick}: held on the obra`);}
+  assert.ok(Math.hypot(bia.x-biaAt.x,bia.y-biaAt.y)>1,'the other hero walked');
+  for(let i=0;i<ticks(1);i++)world.step();
+  assert.ok(Math.hypot(ana.x-at.x,ana.y-at.y)>.5,'free once the obras are done');
+  // An evolution never holds (Orq 17/10): Ana builds a root (held), then evolves it once ready and walks on at once.
+  inputs.delete('ana');
+  const cell=cells[Math.floor(cells.length/2)];ana.x=centre(cell.c,cell.r).x;ana.y=centre(cell.c,cell.r).y;
+  sys.stonewards.state.balance.units=DEFENSES[ROOT_DEFENSE].cost*2;
+  const root=sys.stonewards.build(world,'ana',{piece:ROOT_DEFENSE,c:cell.c,r:cell.r},'root');
+  assert.equal(root.ok,true,JSON.stringify(root));
+  const tower=sys.stonewards.state.defenses!.list.find(d=>d.id===(root as {defense:string}).defense)!;
+  while(world.tick<tower.readyTick)world.step();
+  // Evolutions are ordered in the prepare phase (the sites' rule): the order alone is made in one.
+  const phase=world.round.phase;world.round.phase='prepare';
+  const up=sys.stonewards.upgrade(world,'ana',tower.id,'A','up');
+  world.round.phase=phase;
+  assert.equal(up.ok,true,JSON.stringify(up));
+  assert.ok(world.tick<tower.readyTick,'the evolution is an obra');
+  const from={x:ana.x,y:ana.y};
+  inputs.set('ana',{x:(CAR.x-ana.x)/Math.hypot(CAR.x-ana.x,CAR.y-ana.y),y:(CAR.y-ana.y)/Math.hypot(CAR.x-ana.x,CAR.y-ana.y)});
+  for(let i=0;i<10;i++)world.step();
+  assert.ok(Math.hypot(ana.x-from.x,ana.y-from.y)>.3,'she walks during the evolution');
 });

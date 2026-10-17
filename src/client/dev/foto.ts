@@ -38,6 +38,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
   'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=156,74',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
   'bancos-aberto':{sandbox:'cidade',query:'mapa=real&bancos=1&banco=aberto&hero=156,74',descricao:'bancos: os três cheios, ninguém no caixa'},
+  'ataque-mira':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&arrasto=-40,-50',descricao:'ataque manual (D-051): arrasto do botão Atacar, linha amarela e retícula'},
+  'ataque-auto':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&segura=1',descricao:'ataque manual (D-051): Atacar segurado, retícula na mira automática'},
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},

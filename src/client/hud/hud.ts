@@ -35,6 +35,7 @@ import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
 import {icon} from '../ui/icon.ts';
+import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
@@ -381,7 +382,8 @@ export class RunHud {
   private stepReason(view:RunView){
     const step=this.reason.step(this.el.classList.contains('rh-ended')?undefined:liveObjective(view)?.moto.mode);
     if(step.show){
-      const row=this.reasonRow;row.innerHTML=icon('moto');row.append(step.show.text);
+      // Dead moto: the push sticker (ui/empurrar) asks for hands; any other stop keeps the moto.
+      const row=this.reasonRow;row.innerHTML=step.show.mode==='morta'?stickerOrIcon('empurrar','moto'):icon('moto');row.append(step.show.text);
       row.dataset.urgente=String(step.show.urgent);row.dataset.modo=step.show.mode;
       this.queueRow(row,REASON_MS);
     }else if(step.drop)this.dropRow(this.reasonRow);

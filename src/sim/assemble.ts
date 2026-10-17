@@ -23,6 +23,7 @@ import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualS
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
+import {holdsObra} from './towers/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
 import type {AvenuePlanner} from './city/avenues.ts';
@@ -435,7 +436,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   world.clearSystems();
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
-      playersSystem(takeInput,options.autopilot,manual,chaveiro?id=>chaveiro!.moverCap(id):undefined)),
+      // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id))),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,

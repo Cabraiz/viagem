@@ -53,6 +53,8 @@ export const CRATE_PREFIX='caixa-';
  * `baseHeroSpeed`, cidade-04: ~1.99 u/s in the city), not the 2× walk (HERO_SPEED_MULT) the heroes now have, so the
  * crate tiers and the intermission length stay as tuned. The horn (cityFarthestReturn) times the real walk back.
  */
+/** D-051: walk distance (u) from the plaza of CityLoot.aroundPlaza, [min, max]. */
+export const AROUND_PLAZA:readonly [number,number]=[8,14];
 export function lootHeroSpeed(terrain:TerrainField|undefined):number{return baseHeroSpeed(terrain);}
 
 export interface Crate {
@@ -69,6 +71,12 @@ export interface CityLoot {
   readonly farthestGood:Crate|undefined;
   /** Hero speed (u/s) the tiers were sized with. */
   readonly speed:number;
+  /**
+   * D-051: hero cell centres just outside the base (its mouths reach ~8 u), AROUND_PLAZA u of walk from the plaza
+   * (cell order), where the manual combat's start crates sit (the loot points are 18 s and more away, the intermission
+   * 20 s).
+   */
+  readonly aroundPlaza:readonly Point[];
   /** Walking distance (u) from p to the plaza (0 inside it); undefined when p is not on the hero field. */
   distanceToPlaza(p:Point):number|undefined;
   /** Plaza goal cell or a mouth line (the planner's "inside the base", static: barricades do not change it). */
@@ -130,10 +138,17 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
     if(planner.insideBase({x,y})){count[tier]--;return;}
     crates.push({node:Object.freeze({id:`${CRATE_PREFIX}${i}`,kind,x,y,radius:CRATE_RADIUS,value:LOOT_VALUE[tier],capacity:1}),tier,distance,seconds});
   });
+  const aroundPlaza:Point[]=[];
+  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
+    const cost=field.cellCost(cx,cy);
+    if(cost===UNREACHABLE)continue;
+    const d=cost/STRAIGHT_COST*cs,p={x:Math.round((cx+.5)*cs*100)/100,y:Math.round((cy+.5)*cs*100)/100};
+    if(d>=AROUND_PLAZA[0]&&d<=AROUND_PLAZA[1]&&walkable(p,city)&&!planner.insideBase(p))aroundPlaza.push(Object.freeze(p));
+  }
   let farthestGood:Crate|undefined;
   for(const c of crates)if(c.tier==='good'&&(!farthestGood||c.seconds>farthestGood.seconds))farthestGood=c;
   return Object.freeze({
-    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,
+    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,aroundPlaza:Object.freeze(aroundPlaza),
     distanceToPlaza(p:Point){
       if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return undefined;
       const r=reach(p);

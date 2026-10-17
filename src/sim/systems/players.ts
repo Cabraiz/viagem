@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {moveStep,slipping,walkable,type Point} from '../../maps/index.ts';
+import {capStep,moveStep,slipping,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -73,11 +73,8 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(input){
         const x0=p.x,y0=p.y;
         movePlayer(p,input,ctx.terrain,ctx.tick);
-        const cap=stepCap?.(p.id),moved=Math.hypot(p.x-x0,p.y-y0);
-        if(cap!==undefined&&moved>cap){
-          const q={x:x0+(p.x-x0)*cap/moved,y:y0+(p.y-y0)*cap/moved};
-          if(walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}else{p.x=x0;p.y=y0;}
-        }
+        // D-052: the same cut as the phone's replay (maps/prediction capStep).
+        const q=capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain);p.x=q.x;p.y=q.y;
         if(input.target)p.target=input.target;else delete p.target;
         // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
         if(manual&&input.attack)manual.attacking.add(p.id);

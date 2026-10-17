@@ -1359,7 +1359,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them');
+  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them (D-051 the nests, D-052, D-051 the arsenal)');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1477,12 +1477,15 @@ function sameBanks(got:readonly BankView[]|undefined,want:readonly BankView[],id
   });
 }
 
-test('bancos: the bank strings are dictionary bytes appended after protocol 23 (the nests, then the wall and the barricade), every older index unchanged',()=>{
+test('bancos: the bank strings are dictionary bytes appended after protocol 24 (the nests, the wall and the barricade, the arsenal), every older index unchanged',()=>{
   const added=['banco-1','banco-2','banco-3',...BANK_IDS,'aberto','sacando','bicho','sem-cedulas','hero','enemy'];
   assert.equal(DICT[179],'cocada','the chaveiro indexes unchanged');
   assert.deepEqual(DICT.slice(180,187),['ninho','dormindo','ativo','destruido','P','M','G'],'the nests (protocol 22) unchanged');
   assert.deepEqual(DICT.slice(187,189),['muro','barricada'],'D-052 (protocol 23) unchanged');
-  assert.deepEqual(DICT.slice(189),added);
+  assert.equal(DICT[189],'item','the arsenal (protocol 24) after them');
+  const from=DICT.indexOf('silenciador')+1;
+  assert.equal(DICT.indexOf('banco-1'),from,'the banks right after the arsenal');
+  assert.deepEqual(DICT.slice(from),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1597,13 +1600,38 @@ test('D-009 with the banks, the chaveiro objective and 12 defenses firing: 6 cli
   assert.ok(results['10Hz']<30_000,`10 Hz: ${results['10Hz']}`);
 });
 
+test('D-051: the manual combat inventory round-trips: the hand slot, arsenal ids, ground items and crates by rarity',()=>{
+  const w=busyWorld(new Rng(3),10);
+  const v=w.view;
+  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'rojao',level:4},{id:'coxinha',level:3},{id:'chinelo-lendario',level:5}],
+    passives:[{id:'pente',level:2},{id:'silenciador',level:1}],hand:1});
+  v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit-torre',value:2};
+  v.pickups[1]={...v.pickups[1],kind:'chest',value:4};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const res=dec.decode(enc.encode(v));
+  assert.ok(res.ok,!res.ok?res.error:'');
+  const p0=res.view.players.find(p=>p.id==='uuid-0')!;
+  assert.equal(p0.hand,1);
+  assert.deepEqual(p0.weapons,v.players[0].weapons);assert.deepEqual(p0.passives,v.players[0].passives);
+  assert.equal(res.view.players.find(p=>p.id==='uuid-1')!.hand,undefined,'the automatic game sends no hand');
+  const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit-torre',2]);
+  assert.equal(res.view.pickups.find(k=>k.kind==='chest')!.value,4);
+  // A hand change alone travels as a delta.
+  enc.ack(enc.lastSeq);
+  v.players[0]={...v.players[0],hand:3};
+  const delta=dec.decode(enc.encode(v));
+  assert.ok(delta.ok);assert.equal(delta.view.players.find(p=>p.id==='uuid-0')!.hand,3);
+});
+
 // ---------- D-052: the movable car and the free build (card NEW-20261016-ORQ-carro-e-fortificacao-livre) ----------
 import {CAR_SPEED,MAX_CAR_MOVERS,carSpeed} from '../../src/contract/objective.ts';
 import {FREE_PIECES,FREE_BUILD_REFUSALS,isBuildRot} from '../../src/contract/build.ts';
 
 test('D-052: the wall and the barricade are dictionary bytes appended after the chaveiro\'s, every older index unchanged',()=>{
   const at=DICT.indexOf('cocada')+1;
-  assert.deepEqual(DICT.slice(at,at+9),['ninho','dormindo','ativo','destruido','P','M','G',...FREE_PIECES],'after the nests (D-051): arrival order');
+  const nests=['ninho','dormindo','ativo','destruido','P','M','G'];
+  assert.deepEqual(DICT.slice(at,at+nests.length+FREE_PIECES.length),[...nests,...FREE_PIECES],'after the nests (D-051): arrival order');
+  assert.equal(DICT[at+nests.length+FREE_PIECES.length],'item','then the arsenal (D-051 armas-caixas)');
   assert.equal(DICT[161],'quadradao','protocol 15 indexes unchanged');
   assert.ok(DICT.length<255,'255 is the inline escape');
 });

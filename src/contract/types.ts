@@ -29,14 +29,20 @@ export const SIM_HZ=20;
 export const ticks=(seconds:number)=>Math.round(seconds*SIM_HZ);
 
 // ---------- Items and builds ----------
-export type ItemKind='weapon'|'passive'|'evolution';
+/** D-051: 'consumable' (coxinha, doces, kit de torre) only lives in the manual combat's inventory. */
+export type ItemKind='weapon'|'passive'|'evolution'|'consumable';
 export interface ItemDef {
   id:string; kind:ItemKind; name:string; icon:string; maxLevel:number;
   /** Short pt-BR text for the offer card at the given next level. */
   describe(level:number):string;
 }
 export interface OwnedItem {id:string;level:number}
-export interface PlayerBuild {weapons:OwnedItem[];passives:OwnedItem[]}
+/**
+ * D-051 manual combat: `weapons` is the 6-slot inventory (weapons and consumables, slot order; a weapon's level is its
+ * rarity, a consumable's its stack) and `hand` the slot in the hand. Absent `hand`: the automatic weapons (every
+ * weapon fires, levels are levels).
+ */
+export interface PlayerBuild {weapons:OwnedItem[];passives:OwnedItem[];hand?:number}
 export const MAX_WEAPONS=6,MAX_PASSIVES=6;
 
 /** Multipliers start at 1, flat values at 0. Computed from build + class kit, never sent by the client. */
@@ -105,12 +111,21 @@ export interface EnemyState extends Point {
   memory?:Record<string,number>;
 }
 
-export type PickupKind='xp'|'heal'|'magnet'|'chest'|'resource';
+/**
+ * D-051: 'item' is an inventory item on the ground (resource = item id, value = its level: rarity or stack); in the
+ * manual combat a 'chest' is a crate whose value is its rarity (1 verde .. 5 lendária), opened by standing next to it.
+ */
+export type PickupKind='xp'|'heal'|'magnet'|'chest'|'resource'|'item';
 export interface PickupState extends Point {
   id:string; kind:PickupKind; value:number; resource?:string;
   spawnTick:number; expiresTick?:number;
   /** Set when a magnet pulls it toward a player. */
   homing?:string;
+  /**
+   * D-051 'item' only (server-side): who dropped it, until they first walk clear of it; meanwhile walking over it does
+   * not pick it back up (take, the "Trocar" button, still does).
+   */
+  dropper?:string;
 }
 
 export interface ProjectileState extends Point {

@@ -7,6 +7,8 @@
  * Numbers from the approved proposal (claims/NEW-20261014-ORQ-mapa-vivo-ninhos/proposta.md): 8 nests (2 G, 3 M, 3 P,
  * at least one per quadrant around the car), sleepers P 8 · M 14 · G 22, 60 loose (4 training bands of 3 at 25–35 u
  * from the car, the rest in bands of 2–4 beyond 40 u), all ×(1 + 0.15(n − 1)) players.
+ * Card NEW-20261017-ORQ-ninhos-perto-ataca-20x (the user, 17/10): × POPULATION bodies in the nests and the loose bands
+ * (the four training bands stay as they are: the first contact is a choice), on rings and in bands grown to hold them.
  */
 import {walkable,worldBase} from './world.ts';
 import {FlowField,type FlowGrid} from './flowfield.ts';
@@ -35,6 +37,8 @@ export interface NestPlanOptions {
   routes?:readonly (readonly Point[])[];
   /** Where the team starts (sim/city/tutorial.ts cityRunStart): no nest within NEST_FROM_START, no band within LOOSE_FROM_START. */
   start?:Point;
+  /** × the nests' sleepers and the loose bodies (default POPULATION; 1 is the slice-1 city). */
+  population?:number;
 }
 
 export const NEST_COUNT=8;
@@ -53,6 +57,27 @@ export const LOOSE_FROM_CAR=40,LOOSE_FROM_NEST=12,LOOSE_SPACING=10,LOOSE_NEAR_RO
 /** The sleepers' own clearance (u): the widest body of the roster stands there. */
 export const SLEEPER_CLEAR=.5;
 const SLEEPER_GAP=1.2;
+/** Card ninhos-perto-ataca-20x: × this many sleepers in the nests and loose (not the training bands). */
+export const POPULATION=20;
+/** The ground a body takes in a random scatter at SLEEPER_GAP (u²): a ring or a band grows to hold its count. */
+export const BODY_AREA=2.5;
+/** The outer radius of a ring from `inner` that holds `count` bodies (never under `atLeast`). */
+export const ringOuter=(inner:number,count:number,atLeast:number)=>Math.max(atLeast,Math.sqrt(inner*inner+count*BODY_AREA/Math.PI));
+/** A ring short of room widens by RING_GROW, at most RING_GROWTHS times (pop 1 never needs it). */
+export const RING_GROW=1.25,RING_GROWTHS=4;
+/** Loose bands: 2–4 bodies × this share of the population (a bigger city crowd in the same spots). */
+export const looseBandScale=(population:number)=>Math.max(1,Math.round(population/4));
+/** The spots already taken, bucketed by SLEEPER_GAP (the gap test stays local with thousands of bodies). */
+class Taken {
+  private cells=new Map<number,Point[]>();
+  private key=(cx:number,cy:number)=>(cx+4096)*8192+(cy+4096);
+  near(p:Point){
+    const cx=Math.floor(p.x/SLEEPER_GAP),cy=Math.floor(p.y/SLEEPER_GAP);
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)for(const o of this.cells.get(this.key(cx+dx,cy+dy))??[])if(dist(o,p)<SLEEPER_GAP)return true;
+    return false;
+  }
+  add(p:Point){const k=this.key(Math.floor(p.x/SLEEPER_GAP),Math.floor(p.y/SLEEPER_GAP)),list=this.cells.get(k);if(list)list.push(p);else this.cells.set(k,[p]);}
+}
 
 /*
  * The pool (u), measured on the asset v2 with the four possible chaveiro routes (scan of 14/10): each centre ≥ 60 u from
@@ -127,14 +152,14 @@ export function drawNests(seed:number,car:Point,start?:Point,all:readonly NestSp
 }
 
 /** `count` spots for bodies around `centre` within [inner, outer] u, on ground that fits a body and reaches the car, spaced. */
-function scatter(city:CityTerrain,reach:FlowField,rng:Rng,centre:Point,inner:number,outer:number,count:number,taken:Point[]):Point[]{
+function scatter(city:CityTerrain,reach:FlowField,rng:Rng,centre:Point,inner:number,outer:number,count:number,taken:Taken):Point[]{
   const out:Point[]=[];
   for(let tries=0;out.length<count&&tries<count*80;tries++){
     const a=rng.range(0,Math.PI*2),r=rng.range(inner,outer);
     const p={x:Math.round((centre.x+r*Math.cos(a))*100)/100,y:Math.round((centre.y+r*Math.sin(a))*100)/100};
     if(!city.clearDisc(p.x,p.y,SLEEPER_CLEAR)||!walkable(p,city)||!reach.reachable(p.x,p.y))continue;
-    if(taken.some(o=>dist(o,p)<SLEEPER_GAP))continue;
-    out.push(p);taken.push(p);
+    if(taken.near(p))continue;
+    out.push(p);taken.add(p);
   }
   return out;
 }
@@ -146,12 +171,20 @@ const half=(r:{w:number;h:number})=>Math.hypot(r.w,r.h)/2;
  */
 export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOptions={}):NestPlan{
   const players=Math.max(1,Math.min(6,options.players??1)),car=worldBase(city),rng=new Rng(seed>>>0).fork('ninhos-corpos');
-  const grid=cityGrid(city),reach=new FlowField(grid,[car],{wallPenalty:0}),taken:Point[]=[];
+  const grid=cityGrid(city),reach=new FlowField(grid,[car],{wallPenalty:0}),taken=new Taken(),pop=Math.max(1,options.population??POPULATION);
   const nests:Nest[]=drawNests(seed,car,options.start).map(({spot,size})=>{
-    const box=bboxOf(city,spot.block),count=scaleSleepers(NEST_SLEEPERS[size],players);
+    const box=bboxOf(city,spot.block),count=scaleSleepers(NEST_SLEEPERS[size]*pop,players);
     const radius=box?half(box):NEST_YARD_RADIUS[size];
     // A building's sleepers lie around its walls (1.5–6 u out); a yard's inside its disc.
-    const sleepers=box?scatter(city,reach,rng,spot,radius+1.5,radius+6,count,taken):scatter(city,reach,rng,spot,1,radius-1,count,taken);
+    // ×POPULATION: the ring (or the yard's disc) grows to hold them (ringOuter).
+    const inner=box?radius+1.5:1;
+    let outer=box?ringOuter(inner,count,radius+6):ringOuter(inner,count,radius-1);
+    const sleepers=scatter(city,reach,rng,spot,inner,outer,count,taken);
+    // Walls and streets eat part of a ring: it widens (RING_GROW, up to RING_GROWTHS times) until they all lie down.
+    for(let g=0;g<RING_GROWTHS&&sleepers.length<count;g++){
+      const from=outer;outer*=RING_GROW;
+      sleepers.push(...scatter(city,reach,rng,spot,from,outer,count-sleepers.length,taken));
+    }
     return Object.freeze({id:spot.id,kind:spot.kind,x:spot.x,y:spot.y,size,...(spot.block?{block:spot.block}:{}),radius,sleepers:Object.freeze(sleepers)});
   });
   const loose:LooseBand[]=[];
@@ -166,7 +199,8 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
   }
   // The rest on the loot points first, then on open ground (every LOOSE_SCAN u): far from the car, the nests and each
   // other; at most one band near each route.
-  let left=scaleSleepers(LOOSE_TOTAL,players)-loose.reduce((n,b)=>n+b.members.length,0);
+  let left=scaleSleepers(LOOSE_TOTAL*pop,players)-loose.reduce((n,b)=>n+b.members.length,0);
+  const bandScale=looseBandScale(pop);
   const routes=options.routes??[],nearRoute=new Array(routes.length).fill(0);
   for(const p of [...shuffle(city.asset.loot,rng),...shuffle(openGround(city,reach),rng)]){
     if(left<=0)break;
@@ -176,8 +210,8 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
     const near=routes.map((r,i)=>routeDistance(p,r)<LOOSE_NEAR_ROUTE?i:-1).filter(i=>i>=0);
     if(near.some(i=>nearRoute[i]>=1))continue;
     // Bands of 2–4: never leave a last band of one behind.
-    let want=Math.min(left,rng.int(2,4));if(left-want===1)want+=want<4?1:-1;
-    const members=scatter(city,reach,rng,p,0,2.5,want,taken);
+    let want=Math.min(left,rng.int(2,4)*bandScale);if(left-want===1)want+=want<4*bandScale?1:-1;
+    const members=scatter(city,reach,rng,p,0,ringOuter(0,want,2.5),want,taken);
     if(!members.length)continue;
     near.forEach(i=>nearRoute[i]++);left-=members.length;
     loose.push(Object.freeze({x:p.x,y:p.y,training:false,members:Object.freeze(members)}));

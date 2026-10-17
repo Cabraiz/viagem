@@ -6,7 +6,8 @@
  *
  * A body wakes into ctx.enemies with the same id (so a client that drew it asleep keeps it), and only through here:
  * damage (core damageEnemy → Sleepers.wake 'dano', with its band within BAND_RADIUS), the nests (E1: wakeNest on a
- * nest's first hit), wakeAround (a call for help) and the noise. Every wake that moves bodies emits one `acordou`.
+ * nest's first hit), wakeAround (a call for help), the noise and a hero walking up to it (WAKE_SIGHT: card
+ * NEW-20261017-ORQ-ninhos-perto-ataca-20x, caçando with its band; the car does not, it never walks up to a nest). Every wake that moves bodies emits one `acordou`.
  *
  * Noise (proposal §3, A2): `noise()` keeps the loudest noise of each source (a player, a nest, the car…) in a window of
  * NOISE_EVERY s; at the end of the window each source's noise rolls once per sleeper within its radius r, with chance
@@ -35,6 +36,11 @@ import {MAX_ENEMIES} from '../../rules/index.ts';
 export const SLEEP_CELL=16;
 /** A woken body wakes its band: the sleepers within this distance (u). */
 export const BAND_RADIUS=4;
+/**
+ * A standing hero (a person or a bot) this close to a sleeper wakes it caçando, with its band (card
+ * ninhos-perto-ataca-20x): it saw you. Under SEE_RADIUS (the awake ones' sight) and the knife's noise (6).
+ */
+export const WAKE_SIGHT=5;
 /** The noise window (s): one roll per source per window, with its loudest noise. */
 export const NOISE_EVERY=.5;
 /** Awake bodies see a player within this distance (u). */
@@ -91,7 +97,7 @@ export const AUTO_WEAPON_NOISE:Readonly<Record<string,{r:number;p:number}>>=Obje
 export const DEFAULT_WEAPON_NOISE={r:12,p:.25} as const;
 
 /** Why a body woke: 'ruido' wakes it alerta, everything else caçando. */
-export type WakeCause='dano'|'bando'|'ruido'|'ninho'|'chamado';
+export type WakeCause='dano'|'bando'|'ruido'|'ninho'|'chamado'|'perto';
 export interface Noise {x:number;y:number;r:number;p:number}
 /** A noise that repeats while it lasts (the car alarm, the moto, a bank): rolled every `every` s. */
 export interface AmbientNoise extends Noise {key:string;every:number}
@@ -311,6 +317,18 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
     heard.clear();
   }
+  /**
+   * A standing hero within WAKE_SIGHT of sleepers wakes them caçando with their bands (players by id; one `acordou`
+   * per hero). Like a hit, the cap of awake bodies does not stop it: walking into a nest is a choice.
+   */
+  function sight(ctx:SimContext){
+    if(!asleep.size)return;
+    const near:EnemyState[]=[];
+    for(const p of [...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
+      const seen=queryAsleep(p.x,p.y,WAKE_SIGHT,near);
+      if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)),'perto');
+    }
+  }
   /** The awake bodies of the plan: dead ones noted, hp kept, alerta/caçando/perdeu moved on. */
   function awake(ctx:SimContext){
     const players=[...ctx.players.values()].filter(standing);
@@ -384,6 +402,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);
       }
+      sight(ctx);
       awake(ctx);
       reindex(true);
       if(heard.size||state.heard.length)state.heard=[...heard].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);

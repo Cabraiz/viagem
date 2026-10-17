@@ -8,7 +8,7 @@ import type {ObjectiveResult,ObjectiveView} from '../../src/contract/objective.t
 import {CIDA_ITEMS} from '../../src/contract/objective.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
-import {roundInfo} from '../../src/client/hud/model.ts';
+import {nestsMode,roundInfo} from '../../src/client/hud/model.ts';
 import {marqueeFor} from '../../src/client/hud/topbar.ts';
 import {baseBar} from '../../src/client/hud/camp.ts';
 import {resultHeadline} from '../../src/client/hud/result.ts';
@@ -55,6 +55,22 @@ test('the round chip: "Onda N" plus his clock while the objective runs, "Round N
   const prep=roundInfo({...withObjective(objective()),round:{...withObjective().round!,phase:'prepare',phaseEndsTick:withObjective().tick+60}});
   assert.equal(prep?.phase,'prepare');
   assert.equal(prep?.chaveiro?.clock,'9:48');
+});
+
+test('D-051 nests: the nests of the room (kind "ninho", a fallen one too) mark the mode; the chip keeps the clock and drops "Onda N"',()=>{
+  const nest=(phase:string,hp=40)=>({id:`n-${phase}`,kind:'ninho',x:5,y:5,hp,maxHp:40,phase});
+  const rounds=withObjective(objective());
+  assert.equal(nestsMode(rounds),false);
+  assert.equal(roundInfo(rounds)?.nests,undefined);
+  const nests={...rounds,structures:[...rounds.structures,nest('dormindo')]} as RunView;
+  assert.equal(nestsMode(nests),true);
+  const chip=roundInfo(nests);
+  assert.equal(chip?.nests,true);
+  assert.equal(chip?.chaveiro?.clock,'9:48');
+  // All nests down: still the nests mode (a fallen one stays in the view).
+  assert.equal(nestsMode({...rounds,structures:[nest('destruido',0)]} as RunView),true);
+  // Other structures are not nests.
+  assert.equal(nestsMode({...rounds,structures:[{id:'w',kind:'muro',x:0,y:0,hp:1,maxHp:1}]} as RunView),false);
 });
 
 test('the round banner with the chaveiro: "Onda N" and no boss line by the round number',()=>{

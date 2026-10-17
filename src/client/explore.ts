@@ -125,6 +125,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // never during the cooldown; the button shows the cooldown and the caster's line comes as a balloon (`skill` event).
     $('.explore-actions').innerHTML=`${SKILL_HTML}<button class="explore-pause" aria-pressed="false">Pausar controles</button>`;
     skill=new SkillButton($<HTMLButtonElement>('#coop-attack'),hero.id);
+    // D-051: the welcome already said the combat (net.join resolved), so a manual room never paints "Habilidade" first.
+    skill.setCombat(net.combat);
     // Quick emotes (emote-relay-sala): the bar above the skill button is OFF (user, 13/10: "remova esse botão"; when it
     // comes back it is a radial wheel around the hero, like a weapon wheel). The relay and the balloons stay.
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}

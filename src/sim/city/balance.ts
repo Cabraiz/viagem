@@ -120,7 +120,7 @@ export const MANUAL_CITY_BALANCE:CityBalance=Object.freeze({
   players:Object.freeze({
     1:Object.freeze({count:.65,hp:.9,damage:.6,bossHp:2.2,lootValue:2,siegeShare:.15}),
     3:CITY_BALANCE.players![3],
-    6:Object.freeze({count:1,hp:1.15,damage:1.35,bossHp:1.5}),
+    6:Object.freeze({count:1,hp:1.15,damage:1.25,bossHp:1.5}),
   }),
 });
 

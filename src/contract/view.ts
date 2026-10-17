@@ -2,7 +2,7 @@
  * Client-side view model of a horde run. Protocol 4 (VGM-041) decodes into these shapes;
  * renderers (VGM-039) and HUD (VGM-040) consume them and must not import server-only modules.
  */
-import type {ObjectiveView} from './objective.ts';
+import type {BankView,ObjectiveView} from './objective.ts';
 import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState,TelegraphKind} from './types.ts';
 
 export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number;
@@ -12,7 +12,9 @@ export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;ma
    * D-051: a body asleep on the map (sim/ninhos/sono.ts), sent near the players (the interest area, at most
    * ASLEEP_PER_VIEWER per client). It wakes with the same id (asleep leaves) or with the 'acordou' event.
    */
-  asleep?:true}
+  asleep?:true;
+  /** Bancos: it robbed an ATM and became a Cliente Prime (rules/bancos.ts BANCO.primeVida, the crown). */
+  prime?:true}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean}
 export interface TelegraphView {id:string;shape:'circle'|'line'|'cone';x:number;y:number;radius:number;dx?:number;dy?:number;width?:number;fireTick:number;kind?:TelegraphKind}
@@ -94,6 +96,8 @@ export interface RunView {
   players:PlayerRunView[];
   /** D-047: the chaveiro objective (moto, ETA, alarm, Grana, Dona Cida, the car); absent when the run has none. */
   objective?:ObjectiveView;
+  /** The city's banks (BankView, card bancos-e-veiculos), in both city modes; absent elsewhere. */
+  banks?:BankView[];
   /** Pending offers for the local player only, oldest first. */
   offers:OfferView[];
   /** Events since the previous view, each with a monotonic id for de-duplication. */

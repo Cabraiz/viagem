@@ -307,7 +307,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // balanco-pos-1-7 part A on top: cidade for the tutorial's welcomeArrival 34 → 20 s and the city retreat's
 // CITY_GONE_DISTANCE 25 u; all three for its enemy radius × ENEMY_RADIUS_SCALE 1.15 (enemies/catalog.ts and the boss: the
 // bodies follow their 15 % bigger drawing, every world; the only change of part A allowed to move ilha/infinito).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'08a34927d3672229',ilha:'5a56eadaae57b8e9',infinito:'f7bd28be2f6eec47'};
+// cidade again for the banks (card bancos-e-veiculos: the city's ATMs in the state, the crates around them gone, the
+// lure); ilha and infinito unchanged (they have no banks).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'3b432f9166b1b2a8',ilha:'5a56eadaae57b8e9',infinito:'f7bd28be2f6eec47'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

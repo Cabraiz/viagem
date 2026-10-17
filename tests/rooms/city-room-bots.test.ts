@@ -31,7 +31,12 @@ import {botRouteStats} from '../../src/sim/city/bot-routes.ts';
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
-const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
+/**
+ * FIGHT_NEAR 7 (was 6, bancos-sim on carteira-e-pix, 16/10): a critter that keeps its distance (the palhaço
+ * cunhado-sabe-tudo, the wave's last one) stood exactly 6.0 u from two bots holding at their leash's edge and orbiting
+ * it: fighting, not stuck. The hunt for that last one is card NEW-20261016-E2-bot-caca-ultimo-na-borda (P2).
+ */
+const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=7;
 /**
  * Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold
  * back, plus 15 s since torres-fio (13/10): the room bots now build tower defenses, so the forger spends material on

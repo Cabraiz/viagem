@@ -102,20 +102,14 @@ jobs:
         # Waits (up to 30 min: the city's 25 min combat cap plus the countdown) for no room to be in a match, since a
         # deploy restarts them all; still busy, it skips the deploy and the next step decides whether the site may go.
         run: node scripts/deploy-rooms.mjs --wait 30 --skip-if-busy
-      - name: Live Worker speaks the site's protocol (never publish the site in front of an older Worker)
-        env:
-          WANT: ${{ steps.proto.outputs.n }}
+      - name: Live Worker matches the site (protocol AND maps; never publish the site out of step with the Worker)
+        # scripts/health-gate.mjs: /health's protocol and maps (version + hash) against public/multiplayer.json and
+        # public/maps/*.manifest.json, asked a few times (a fresh deploy takes seconds to reach every edge).
         run: |
           code=$(curl -sS -o /dev/null -w '%{http_code}' https://viagem-salas.viagem.workers.dev/)
           echo "rooms Worker answered $code"
           test "$code" -lt 500
-          # A fresh deploy can take a few seconds to reach every edge, so it is asked a few times before failing.
-          for i in 1 2 3 4 5 6; do
-            if curl -fsS https://viagem-salas.viagem.workers.dev/health | tee /dev/stderr | grep -q "\"protocol\":$WANT[,}]"; then exit 0; fi
-            sleep 10
-          done
-          echo "::error::O Worker no ar não fala o protocolo $WANT. Sem token, publique as salas do PC (npm run deploy:rooms) e rode este workflow de novo."
-          exit 1
+          node scripts/health-gate.mjs https://viagem-salas.viagem.workers.dev/health --tries 6 --wait 10
   deploy:
     needs: [build, deploy-rooms]
     runs-on: ubuntu-latest

@@ -5,11 +5,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {register} from 'node:module';
+import {readFileSync} from 'node:fs';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 
 const hooks=`export async function resolve(spec,ctx,next){
   if(spec==='cloudflare:workers')return {url:'data:text/javascript,export class DurableObject{constructor(ctx,env){this.ctx=ctx;this.env=env}}',shortCircuit:true};
   return next(spec,ctx);
+}
+// The map manifest /health reads (wrangler bundles .json; node wants an import attribute): loaded as JSON here.
+export async function load(url,ctx,next){
+  if(url.endsWith('.manifest.json'))return {...await next(url,{...ctx,importAttributes:{type:'json'}}),shortCircuit:true};
+  return next(url,ctx);
 }`;
 register('data:text/javascript,'+encodeURIComponent(hooks));
 const {default:worker,GameRoom}=await import('../../multiplayer/worker.ts');
@@ -44,7 +50,10 @@ test('/health/rooms answers the index summary to anyone; /health stays the same 
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health/rooms'),env);
   assert.equal(r.status,200);assert.deepEqual(await r.json(),{rooms:4,running:2,players:7,endsBy:5});assert.deepEqual(asked,['index']);
   const h=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env);
-  assert.equal((await h.json()).protocol,ROOM_PROTOCOL);assert.equal(asked.length,1,'/health never asks the index');
+  const body=await h.json(),city=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
+  assert.equal(body.protocol,ROOM_PROTOCOL);assert.equal(asked.length,1,'/health never asks the index');
+  // fila-deploy-seguro: the maps it serves, for pages.yml's gate (scripts/health-gate.mjs).
+  assert.deepEqual(body.maps,{'cidade-nevada':{version:city.version,hash:city.hash}});
   const none=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health/rooms'),{ALLOW_LOCAL:'false'} as any);
   assert.equal(none.status,503);
 });

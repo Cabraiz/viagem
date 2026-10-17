@@ -589,7 +589,9 @@ test('the release workflow checks the protocol this client speaks',()=>{
   // that speaks another one; that file must match the protocol this client speaks.
   const yml=readFileSync(new URL('../../.github/workflows/pages.yml',import.meta.url),'utf8');
   assert.ok(yml.includes(`require('./public/multiplayer.json').protocol`));
-  assert.ok(yml.includes('grep -q "\\"protocol\\":$WANT[,}]"'));
+  // fila-deploy-seguro: the gate is scripts/health-gate.mjs (protocol AND maps, tests/tools/health-gate.test.ts).
+  assert.match(yml,/node scripts\/health-gate\.mjs https:\/\/viagem-salas\.viagem\.workers\.dev\/health/);
+  assert.ok(readFileSync(new URL('../../scripts/health-gate.mjs',import.meta.url),'utf8').includes(`'public/multiplayer.json'`));
   // The full-size protocol stress (6 clients) runs only in CI; dropping that step would hide the 4G budget margin.
   assert.match(yml,/^\s*- run: npm run test:protocol:stress\s*$/m,'CI runs the protocol stress (an active step, not a comment)');
   const config=JSON.parse(readFileSync(new URL('../../public/multiplayer.json',import.meta.url),'utf8'));

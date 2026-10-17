@@ -16,6 +16,7 @@ import {POOF_MS} from '../render/motion.ts';
 import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
+import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
@@ -118,7 +119,9 @@ export const poofSheetFrame=(ageMs:number,frames:number)=>frames<=1?0:Math.min(f
  * The sim fires no other hostile shot today (src/sim/enemies/ai.ts: only AGIOTA_SHOT); any other hostile source (a newer
  * server, the sandboxes) is today's star (FX.projHostile), whose look is HOSTILE_SHOT_ART under `art:proj:tiro-inimigo`.
  */
-export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov'] as const;
+// D-051 arsenal: the bullets and the rojão's rocket (render/arsenal-rules.ts ARSENAL_PROJECTILE_ALIAS names the weapons).
+export const WEAPON_PROJECTILE_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo','garrafa-molotov',
+  'bala-revolver','bala-metralhadora','bala-fuzil','rojao'] as const;
 export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 /** The shared look of a hostile shot without its own art (the friendly one is 'tiro-aliado'). */
 export const HOSTILE_SHOT_ART='tiro-inimigo';
@@ -128,8 +131,8 @@ export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...H
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
 /** Built once: the per-frame path never concatenates a key. */
 const PROJECTILE_KEYS=new Map<string,string>();
-/** Sources whose art id differs from the source (a Map: a source string never reaches Object.prototype). */
-export const PROJECTILE_ALIAS:ReadonlyMap<string,string>=new Map([['molotov','garrafa-molotov'],['coco','coco-pombo'],['poop','coco-pombo']]);
+/** Sources whose art id differs from the source (a Map: a source string never reaches Object.prototype); the D-051 arsenal's too. */
+export const PROJECTILE_ALIAS:ReadonlyMap<string,string>=new Map([['molotov','garrafa-molotov'],['coco','coco-pombo'],['poop','coco-pombo'],...ARSENAL_PROJECTILE_ALIAS]);
 /** Texture key of a projectile's own art. */
 export const projectileArtKey=(id:string)=>`art:proj:${id}`;
 for(const id of PROJECTILE_ART_IDS)PROJECTILE_KEYS.set(id,projectileArtKey(id));

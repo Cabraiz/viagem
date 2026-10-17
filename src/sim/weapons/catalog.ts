@@ -5,6 +5,7 @@
 import type {ItemDef,PlayerStats} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import {PROJECTILE_SPEED_MULT} from '../../rules/index.ts';
+import {NEW_WEAPONS,legendaryWeapons} from './arsenal.ts';
 
 export const WEAPON_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'] as const;
 export const EVOLUTION_IDS=['chinelo-evo','boleto-evo','cafe-evo'] as const;
@@ -224,11 +225,20 @@ const defs:WeaponDef[]=[
   },'Evolução! Uma poça gigante de café te segue e deixa os bichos grudados no chão melado.',['poça','poças']),
 ];
 
-export const WEAPON_CATALOG:ReadonlyMap<string,WeaponDef>=new Map(defs.map(d=>[d.id,d]));
+/** The automatic game's weapons and evolutions: what its level offers roll (weaponCatalog.all()). */
+const AUTO_CATALOG:ReadonlyMap<string,WeaponDef>=new Map(defs.map(d=>[d.id,d]));
+/**
+ * Every weapon a player can hold: the automatic game's, plus the D-051 arsenal (manual combat: the seven new weapons
+ * and the six legendaries). The lookup finds them all; the offers of the automatic game never see the arsenal.
+ */
+export const WEAPON_CATALOG:ReadonlyMap<string,WeaponDef>=new Map([
+  ...AUTO_CATALOG,
+  ...[...NEW_WEAPONS,...legendaryWeapons({get:id=>AUTO_CATALOG.get(id)},WEAPON_IDS)].map(d=>[d.id,d] as const),
+]);
 
 export function getWeapon(id:string):WeaponDef|undefined{return WEAPON_CATALOG.get(id);}
-/** Catalog shape expected by offers (VGM-034): `{get(id), all()}`. */
-export const weaponCatalog={get:getWeapon,all:():WeaponDef[]=>[...WEAPON_CATALOG.values()]};
+/** Catalog shape expected by offers (VGM-034): `{get(id), all()}`; all() is the automatic game's only. */
+export const weaponCatalog={get:getWeapon,all:():WeaponDef[]=>[...AUTO_CATALOG.values()]};
 
 /** Level row clamped to 1..maxLevel. */
 export function weaponLevel(def:WeaponDef,level:number):WeaponLevel{

@@ -161,3 +161,14 @@ test('ci api: 404 is a value, other errors are infra',async()=>{
   await assert.rejects(api.get('/boom'),ci.InfraError);
   fs.rmSync(dir,{recursive:true,force:true});
 });
+
+test('D-051 bench: --combat manual reaches the run script and its own hash; every automatic bench keeps the hash it had',async()=>{
+  const auto=ci.benchParams({world:'cidade',seeds:'1-4',players:'1,6'});
+  const manual=ci.benchParams({world:'cidade',seeds:'1-4',players:'1,6',combat:'manual'});
+  assert.equal(auto.combat,null);assert.equal(manual.combat,'manual');
+  // The automatic hash is the one before D-051 (no combat key in its JSON).
+  const before=(await import("node:crypto")).createHash('sha256').update(JSON.stringify({world:'cidade',seeds:[1,2,3,4],players:[1,6],objective:null,capMin:null,towers:true})).digest('hex').slice(0,12);
+  assert.equal(ci.paramsHash(auto),before);assert.notEqual(ci.paramsHash(manual),before);
+  assert.equal(ci.benchArgs(auto),"");assert.equal(ci.benchArgs(manual),'--combat manual');
+  assert.throws(()=>ci.benchParams({world:'cidade',combat:'auto'}),/only 'manual'/);
+});

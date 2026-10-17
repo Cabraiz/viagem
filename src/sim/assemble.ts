@@ -104,6 +104,8 @@ export interface RunSystemsOptions {
    * nest. Default 'rounds' (today's waves) until the D-051 bars pass.
    */
   mode?:'rounds'|'ninhos';
+  /** Mode 'ninhos': × the sleepers (maps/nests.ts NestPlanOptions.population; default POPULATION). Benches and tests. */
+  nestPopulation?:number;
   /**
    * D-051: how heroes fight (CombatMode). 'manual': only the equipped weapon fires, while the attack is held, at the
    * auto aim (weapons/system.ts); no class skill; damagePlayer records SimPlayer.lastHitBy. Default 'auto' (every world):
@@ -400,7 +402,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       nests=createNests({
         // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
         plan:players=>{
-          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)});
+          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city),...(options.nestPopulation!==undefined?{population:options.nestPopulation}:{})});
           const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed,
             // Shots and kills are heard from the previous step's events; the alarm and the riding moto while they last.
             events:()=>world.lastEvents,

@@ -28,7 +28,8 @@ export interface Nest {
 }
 /** A band of sleepers loose in the city; `training` = one of the four near the plaza (the first contact, a choice). */
 export interface LooseBand {readonly x:number;readonly y:number;readonly training:boolean;readonly members:readonly Point[]}
-export interface NestPlan {readonly seed:number;readonly players:number;readonly nests:readonly Nest[];readonly loose:readonly LooseBand[]}
+/** population: the plan's × of the nests' and loose bodies (NestPlanOptions.population); absent = 1. */
+export interface NestPlan {readonly seed:number;readonly players:number;readonly population?:number;readonly nests:readonly Nest[];readonly loose:readonly LooseBand[]}
 export interface NestProblem {readonly id:string;readonly reason:string}
 export interface NestPlanOptions {
   /** Room size (1..6): scales the sleepers. */
@@ -64,7 +65,11 @@ export const BODY_AREA=2.5;
 /** The outer radius of a ring from `inner` that holds `count` bodies (never under `atLeast`). */
 export const ringOuter=(inner:number,count:number,atLeast:number)=>Math.max(atLeast,Math.sqrt(inner*inner+count*BODY_AREA/Math.PI));
 /** A ring short of room widens by RING_GROW, at most RING_GROWTHS times (pop 1 never needs it). */
-export const RING_GROW=1.25,RING_GROWTHS=4;
+export const RING_GROW=1.25,RING_GROWTHS=6;
+/** ×POPULATION: a ring or the loose total may come up this short of room (the slice-1 city: exact). */
+export const FILL_MIN=.95;
+/** The loose top-up: bodies added to each band per round, at most TOP_UP_ROUNDS rounds. */
+export const TOP_UP=4,TOP_UP_ROUNDS=12;
 /** Loose bands: 2–4 bodies × this share of the population (a bigger city crowd in the same spots). */
 export const looseBandScale=(population:number)=>Math.max(1,Math.round(population/4));
 /** The spots already taken, bucketed by SLEEPER_GAP (the gap test stays local with thousands of bodies). */
@@ -211,12 +216,30 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
     if(near.some(i=>nearRoute[i]>=1))continue;
     // Bands of 2–4: never leave a last band of one behind.
     let want=Math.min(left,rng.int(2,4)*bandScale);if(left-want===1)want+=want<4*bandScale?1:-1;
-    const members=scatter(city,reach,rng,p,0,ringOuter(0,want,2.5),want,taken);
-    if(!members.length)continue;
+    let outer=ringOuter(0,want,2.5);
+    const members=scatter(city,reach,rng,p,0,outer,want,taken);
+    // ×POPULATION: a crowded spot widens like a nest's ring (never on the slice-1 city's bands of 2–4).
+    for(let g=0;g<RING_GROWTHS&&bandScale>1&&members.length<want;g++){
+      const from=outer;outer*=RING_GROW;
+      members.push(...scatter(city,reach,rng,p,from,outer,want-members.length,taken));
+    }
+    if(members.length<(want>1?2:1))continue;
     near.forEach(i=>nearRoute[i]++);left-=members.length;
-    loose.push(Object.freeze({x:p.x,y:p.y,training:false,members:Object.freeze(members)}));
+    loose.push({x:p.x,y:p.y,training:false,members});
   }
-  return Object.freeze({seed,players,nests:Object.freeze(nests),loose:Object.freeze(loose)});
+  // ×POPULATION: the city ran out of band spots before the total (six players): the bands grow where they stand, in
+  // turn, a TOP_UP each round, until the total or no band has room left.
+  for(let round=0;left>0&&bandScale>1&&round<TOP_UP_ROUNDS;round++){
+    let grew=0;
+    for(const b of loose){
+      if(b.training||left<=0)continue;
+      const m=b.members as Point[],from=ringOuter(0,m.length,2.5),add=scatter(city,reach,rng,b,from,from*RING_GROW,Math.min(left,TOP_UP),taken);
+      m.push(...add);left-=add.length;grew+=add.length;
+    }
+    if(!grew)break;
+  }
+  for(let i=0;i<loose.length;i++){const b=loose[i];if(!Object.isFrozen(b))loose[i]=Object.freeze({...b,members:Object.freeze(b.members)});}
+  return Object.freeze({seed,players,...(pop!==1?{population:pop}:{}),nests:Object.freeze(nests),loose:Object.freeze(loose)});
 }
 
 export const LOOSE_SCAN=6;
@@ -242,6 +265,7 @@ function cityGrid(city:CityTerrain):FlowGrid{
  * reaches the car; loose bands beyond 40 u (training excepted) and off the nests; nests and bands clear of the team's start.
  */
 export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start}:{routes?:readonly (readonly Point[])[];start?:Point}={}):NestProblem[]{
+  const pop=plan.population??1,filled=(got:number,want:number)=>pop===1?got===want:got<=want&&got>=FILL_MIN*want;
   const problems:NestProblem[]=[],bad=(id:string,reason:string)=>problems.push({id,reason});
   const car=worldBase(city),reach=new FlowField(cityGrid(city),[car],{wallPenalty:0});
   if(plan.nests.length!==NEST_COUNT)bad('plano',`${plan.nests.length} ninhos (quero ${NEST_COUNT})`);
@@ -259,8 +283,8 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     const box=n.kind==='predio'?bboxOf(city,n.block):undefined;
     if(n.kind==='predio'&&!box)bad(n.id,`prédio ${n.block} não existe`);
     if(box&&RANK[buildingNestSize(box.w,box.h)]<RANK[n.size])bad(n.id,`o prédio ${n.block} não cabe um ninho ${n.size}`);
-    const want=scaleSleepers(NEST_SLEEPERS[n.size],plan.players);
-    if(n.sleepers.length!==want)bad(n.id,`${n.sleepers.length} dormindo (quero ${want})`);
+    const want=scaleSleepers(NEST_SLEEPERS[n.size]*pop,plan.players);
+    if(!filled(n.sleepers.length,want))bad(n.id,`${n.sleepers.length} dormindo (quero ${want})`);
   });
   const bodies=[...plan.nests.flatMap(n=>n.sleepers.map(p=>({id:n.id,p}))),...plan.loose.flatMap((b,i)=>b.members.map(p=>({id:`bando-${i+1}`,p})))];
   for(const {id,p} of bodies){
@@ -273,8 +297,8 @@ export function validateNestPlan(plan:NestPlan,city:CityTerrain,{routes=[],start
     if(!b.training&&d<LOOSE_FROM_CAR)bad(id,`a ${d.toFixed(1)} u do carro`);
     if(plan.nests.some(n=>dist(b,n)<n.radius+LOOSE_FROM_NEST))bad(id,'em cima de um ninho');
   });
-  const loose=plan.loose.reduce((k,b)=>k+b.members.length,0),wantLoose=scaleSleepers(LOOSE_TOTAL,plan.players);
-  if(loose!==wantLoose)bad('plano',`${loose} soltos (quero ${wantLoose})`);
+  const loose=plan.loose.reduce((k,b)=>k+b.members.length,0),wantLoose=scaleSleepers(LOOSE_TOTAL*pop,plan.players);
+  if(!filled(loose,wantLoose))bad('plano',`${loose} soltos (quero ${wantLoose})`);
   const training=plan.loose.filter(b=>b.training),wantTraining=scaleSleepers(TRAINING_MEMBERS,plan.players);
   if(training.length!==TRAINING_BANDS)bad('plano',`${training.length} bandos de treino (quero ${TRAINING_BANDS})`);
   training.forEach(b=>{if(b.members.length!==wantTraining)bad('treino',`${b.members.length} no bando de treino (quero ${wantTraining})`);});

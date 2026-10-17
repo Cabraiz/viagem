@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {SimWorld} from '../../src/sim/core.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 import type {NestPlan} from '../../src/maps/nests.ts';
-import {createSono,noiseP,BAND_RADIUS,ALERT_PAUSE,LOST_AFTER,MODE,NOISE_EVERY,SEE_RADIUS,SLEEP_ANYWHERE,type Sono,type SonoOptions} from '../../src/sim/ninhos/sono.ts';
+import {createSono,noiseP,WAKE_SIGHT,BAND_RADIUS,ALERT_PAUSE,LOST_AFTER,MODE,NOISE_EVERY,SEE_RADIUS,SLEEP_ANYWHERE,type Sono,type SonoOptions} from '../../src/sim/ninhos/sono.ts';
 import {isAlive,queryHittable} from '../../src/sim/projectiles.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {BASE_STATS,ticks,type EnemyState,type SimEvent,type SimPlayer} from '../../src/contract/index.ts';
@@ -234,4 +234,29 @@ test('a hit target (a nest) takes the hits after the might, stands in the hit te
   sono.addTarget({id:'ninho:B',x:40,y:0,radius:3,hit:()=>false});
   assert.equal(sono.wakeAround(w,40,0,5,'chamado'),2);
   assert.equal(w.enemies.has('ninho:B'),false);
+});
+
+test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wakes the sleeper caçando with its band, one acordou; just past it, nobody; a downed hero or a spectator wakes nothing; the cap does not stop it', ()=>{
+  assert.ok(WAKE_SIGHT>=5&&WAKE_SIGHT<=7&&WAKE_SIGHT<SEE_RADIUS);
+  // Past the sight of every body of B (40,0 and 41,1): nobody wakes, ever.
+  const far=world();far.w.step();
+  addPlayer(far.w,'p1',40-WAKE_SIGHT-.05,0);
+  for(let i=0;i<40;i++)far.w.step();
+  assert.equal(far.w.enemies.size,0,'just past the sight');
+  // Walking in: the body seen and its band, caçando, at once (no hã? pause).
+  const p=far.w.players.get('p1')!;p.x=40-WAKE_SIGHT+.1;
+  far.w.step();
+  assert.deepEqual([...far.w.enemies.keys()].sort(),['z-3','z-4'],'B whole (its band)');
+  for(const e of far.w.enemies.values()){assert.equal(e.memory?.sono,MODE.cacando);assert.ok(e.readyTick<=far.w.tick);}
+  assert.equal(woke(far.w.lastEvents).length,1);
+  assert.equal(far.w.enemies.has('z-0'),false,'A sleeps on');
+  // Down or watching: nothing. The awake cap (maxAwake 0) does not stop the sight.
+  const down=world(undefined,{maxAwake:0});down.w.step();
+  const d=addPlayer(down.w,'d',0,0);d.downed={sinceTick:0,bleedOutTick:9999,progress:0} as SimPlayer['downed'];
+  const s=addPlayer(down.w,'s',40,0);s.spectator=true;
+  for(let i=0;i<10;i++)down.w.step();
+  assert.equal(down.w.enemies.size,0,'downed and spectator see nothing');
+  addPlayer(down.w,'b',0,40);
+  down.w.step();
+  assert.deepEqual([...down.w.enemies.keys()].sort(),['z-5','z-6'],'the loose band, past the cap');
 });

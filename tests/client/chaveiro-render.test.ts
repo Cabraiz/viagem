@@ -3,8 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boxFaces,faceBounds,isoOffset,mix,shade,viewTurn,M,type Box} from '../../src/client/render/chaveiro/iso.ts';
-import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,partBit,standingChaveiro} from '../../src/client/render/chaveiro/figures.ts';
-import {ALARM_WAVE_LIFE_MS,ALARM_WAVE_MS,OPEN_SECONDS,PART_FALL_MS,VOLTA_RADIUS,voltaCentre,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,headingOf,motoLift,motoPose,newlyFallen,openProgress,routeAhead,routeHeadingAt,trunkOpen,voltaLap} from '../../src/client/render/chaveiro/rules.ts';
+import {CAR_HALF,CAR_TOP,WHEEL_TURN_STEPS,carBoxes,fallenParts,fallingPart,motoBoxes,partBit,standingChaveiro} from '../../src/client/render/chaveiro/figures.ts';
+import {ALARM_WAVE_LIFE_MS,ALARM_WAVE_MS,OPEN_SECONDS,PART_FALL_MS,VOLTA_RADIUS,WHEEL_RADIUS,angleDiff,carAxisHeading,easeAngle,wheelStep,voltaCentre,alarmOn,alarmWaves,chargerLabel,engineShake,hazardLit,headingOf,motoLift,motoPose,newlyFallen,openProgress,routeAhead,routeHeadingAt,trunkOpen,voltaLap} from '../../src/client/render/chaveiro/rules.ts';
 import {CAR_PARTS,objectiveOf,type ChaveiroView} from '../../src/client/render/chaveiro/view.ts';
 import {ChaveiroTracker,RouteMemo} from '../../src/client/render/chaveiro/tracker.ts';
 import {HEIGHT_PX} from '../../src/client/render/city/projection.ts';
@@ -176,6 +176,34 @@ test('tracker: parts fall from the 2nd view on (at once with reduced effects), a
   t.push(view({car:{x:84.5,y:84.5,hits:0,limit:80,parts:0}}),34,800,true);
   t.push(view({car:{x:84.5,y:84.5,hits:40,limit:80,parts:15}}),35,900,true);
   assert.equal(t.falling.size,0,'reduced effects: no fall animation');
+});
+
+test('D-052 the car moves: heading on the move axis (pulled back it reverses), eased; the near wheels turn as it rolls',()=>{
+  assert.equal(carAxisHeading(0,1,0),0);assert.ok(near(carAxisHeading(0,0,1),Math.PI/2,1e-9));
+  assert.ok(near(carAxisHeading(0,-1,0),0,1e-9),'backwards: the nose stays');
+  assert.ok(near(carAxisHeading(Math.PI/2,0,-1),Math.PI/2,1e-9),'pulled back along its axis');
+  assert.equal(carAxisHeading(1.2,.001,0),1.2,'barely moved');
+  assert.ok(near(angleDiff(.1,Math.PI*2-.1),.2,1e-9),'the short way round');
+  const half=easeAngle(0,1,220);assert.ok(half>.6&&half<.66,'one time constant: ≈ 63 %');
+  assert.equal(easeAngle(0,1,0),0);assert.equal(easeAngle(.9995,1,16),1);
+  assert.equal(wheelStep(0),0);assert.equal(wheelStep(WHEEL_RADIUS*Math.PI*2),0,'a full turn');
+  assert.equal(wheelStep(WHEEL_RADIUS*Math.PI*2/WHEEL_TURN_STEPS),1);assert.equal(wheelStep(-WHEEL_RADIUS*Math.PI*2/WHEEL_TURN_STEPS),WHEEL_TURN_STEPS-1);
+  // The near side's wheels: tire, hub and mark over the body (layers between the body's 1 and the cabin's 2), on that side.
+  const base=carBoxes({parts:0,hazard:false,trunk:0,wrecked:false}).length;
+  for(const side of [1,-1] as const){
+    const wheels=carBoxes({parts:0,hazard:false,trunk:0,wrecked:false,near:side,wheel:3}).filter(b=>(b.layer??0)>1&&(b.layer??0)<2);
+    assert.equal(wheels.length,6);assert.equal(carBoxes({parts:0,hazard:false,trunk:0,wrecked:false,near:side,wheel:3}).length,base+6);assert.ok(wheels.every(b=>Math.sign(b.y)===side&&Math.abs(b.y)>CAR_HALF.w*.95),'outside the body, on the near side');
+  }
+  const mark=(step:number)=>carBoxes({parts:0,hazard:false,trunk:0,wrecked:false,near:1,wheel:step}).filter(b=>b.layer===1.7)[0];
+  assert.notDeepEqual([mark(0).x,mark(0).z],[mark(2).x,mark(2).z],'the mark turns');
+  // Tracker: the car's heading follows its moves, the roll adds up (backwards negative), reset when the objective goes.
+  const t=new ChaveiroTracker();
+  t.push(view({car:{x:84.5,y:84.5,hits:0,limit:80,parts:0}}),1,0,false);assert.equal(t.carHeading,0);
+  t.push(view({car:{x:84.5,y:85.5,hits:0,limit:80,parts:0}}),2,50,false);
+  assert.ok(near(t.carHeading,Math.PI/2,1e-9)&&near(t.carRoll,1,1e-9));
+  t.push(view({car:{x:84.5,y:85,hits:0,limit:80,parts:0}}),3,100,false);
+  assert.ok(near(t.carHeading,Math.PI/2,1e-9),'pulled back: same heading');assert.ok(near(t.carRoll,.5,1e-9));
+  t.push(undefined,4,150,false);assert.equal(t.carHeading,0);assert.equal(t.carRoll,0);
 });
 
 test('route memo: route and stops (sent on the keyframe and on change) stay between views; a new one replaces them',()=>{

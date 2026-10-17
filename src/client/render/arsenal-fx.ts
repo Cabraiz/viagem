@@ -3,7 +3,7 @@
  *  - Crates: base `caixa-saque` (closed, then abrindo-1..6 while a hero stands still at one) over a ring in its
  *    rarity colour, that ring filling while it opens and a burst with the rarity name when it opens ('pickup' chest event).
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
- *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side.
+ *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side; none while moving the car (D-052).
  *  - Each arsenal weapon's shot ('fire' event): muzzle flash, cone, blast or slash (arsenal-rules.ts FIRE_LOOK).
  * The art loads once, the first time a view shows the manual combat (no download for the automatic weapons); until then,
  * and for any piece the manifest lacks, the old looks stay (the chest, the parcel, no hand, no flash).
@@ -15,7 +15,7 @@ import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
-  isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
+  handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -85,11 +85,12 @@ export class ArsenalFx{
   push(view:RunView){
     let manual=false;
     this.handOf.clear();this.canOpen.clear();
+    const car=view.objective?.car;
     for(const p of view.players){
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
-      const icon=p.spectator||p.eliminated?undefined:itemIcon(p.weapons[p.hand]?.id);
+      const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id);
       if(icon)this.handOf.set(p.id,icon);
     }
     this.manual=manual;

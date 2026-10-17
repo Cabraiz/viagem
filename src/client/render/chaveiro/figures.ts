@@ -51,6 +51,26 @@ export interface CarPose {
   trunk:number;
   /** Perda total: darker paint. */
   wrecked:boolean;
+  /**
+   * D-052, the car moves: the side facing the screen (+1 its left, −1 its right) gets its two wheels drawn whole over
+   * the body (a tire, a hub and a mark at `wheel`, rules.wheelStep, that turns as it rolls). Absent: wheels as before.
+   */
+  near?:1|-1;
+  wheel?:number;
+}
+/** The wheels' centres along the car (metres) and their outer face (metres to the side). */
+const WHEEL_X=[1.2,-1.2],WHEEL_OUT=.83;
+/** Steps of the wheel's turn: its mark is frozen in these many places (rules.wheelStep). */
+export const WHEEL_TURN_STEPS=8;
+/** The near side's wheels: tire, hub and the turning mark, each a thin plate a layer over the last (over the body). */
+function nearWheels(side:1|-1,step:number,steps:number):Box[]{
+  // rolling forward the wheel's top goes forward: the mark turns from up toward the nose
+  const a=-step/steps*Math.PI*2,b:Box[]=[];
+  for(const x of WHEEL_X){
+    b.push(m(x,side*(WHEEL_OUT+.01),.01,.6,.02,.6,C.tire,{layer:1.5}),m(x,side*(WHEEL_OUT+.03),.21,.2,.02,.2,C.chrome,{layer:1.6}),
+      m(x+Math.cos(a)*.19,side*(WHEEL_OUT+.05),.26+Math.sin(a)*.19,.09,.02,.09,C.charger,{layer:1.7}));
+  }
+  return b;
 }
 
 /** The car's boxes, without the fallen parts (those are carParts' 'down' set). */
@@ -68,6 +88,7 @@ export function carBoxes(pose:CarPose):Box[]{
     // the square cabin: glass, then the roof
     m(-.3,0,.85,2.0,1.46,.55,C.glass,{layer:2}),m(-.3,0,1.4,2.06,1.5,.07,paint,{layer:3}),
   ];
+  if(pose.near)b.push(...nearWheels(pose.near,pose.wheel??0,WHEEL_TURN_STEPS));
   for(const part of CAR_PARTS)if(!(pose.parts&partBit(part)))b.push(...PART_ON[part]);
   if(pose.trunk>0){
     // The hatch swings up from the roof's back edge (closed: upright on the back; open: flat over the back); the

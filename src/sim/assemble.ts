@@ -219,7 +219,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
   let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
-  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures()});
+  // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
+  const zueiraClock=!!cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos';
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures(),
+    ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated}}:{})});
   // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
   if(cp)Object.assign(zueira.state,cp.zueira);
   let director:Director|undefined;

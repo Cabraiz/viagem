@@ -47,6 +47,7 @@ import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
 import {CAR_BUILD_GAP,FREE_PIECE_DEFS,isFreePiece,pieceCells} from '../../rules/index.ts';
 import {RADIUS} from '../../maps/index.ts';
+import type {CalmGate} from '../ninhos/calma.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
   type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
@@ -126,9 +127,10 @@ const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>d.cell?defenseRectOf(d):
 export function withinReach(rect:Rect,p:Point):boolean{return rectDistance(rect,p)<=BUILD_REACH;}
 const near=(ctx:SimContext,playerId:string,rect:Rect)=>{const p=ctx.players.get(playerId);return !!p&&withinReach(rect,p);};
 
-function common(ctx:SimContext,state:StonewardsState,playerId:string):TowerRefusal|undefined{
+/** `calm` (D-051 mode 'ninhos', ninhos/calma.ts): the gate instead of the intermission. */
+function common(ctx:SimContext,state:StonewardsState,playerId:string,calm?:CalmGate):TowerRefusal|undefined{
   if(state.wallDown)return 'wall-down';
-  if(ctx.round.phase!=='prepare')return 'phase';
+  if(calm?!calm(ctx,playerId):ctx.round.phase!=='prepare')return 'phase';
   const p=ctx.players.get(playerId);
   if(!p||!isStanding(p))return 'player';
   return undefined;
@@ -152,7 +154,7 @@ const radiusOn=(plan:BuildPlan,size:number)=>size*plan.cell/2;
  * D-052, the city: the sites are only hints now. A site id (the bots, an old client) becomes a free build of the root
  * on the cell under the site's centre (`buildFree`, the defense keeps the site id); the rail is gone ('rail').
  */
-export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,siteId:string,requestId?:string,free?:FreeBuildContext):TowerResult{
+export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,siteId:string,requestId?:string,free?:FreeBuildContext,calm?:CalmGate):TowerResult{
   if(free&&freeCity(ctx.terrain)){
     if(plan.rail&&siteId===plan.rail.id)return once(state,playerId,requestId,()=>({ok:false,reason:'rail'}));
     const site=plan.sites.find(s=>s.id===siteId);
@@ -160,7 +162,7 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
     return buildFree(ctx,state,plan,playerId,{piece:ROOT_DEFENSE,c:Math.floor(site.x/FREE_CELL),r:Math.floor(site.y/FREE_CELL)},requestId,free,site.id);
   }
   return once(state,playerId,requestId,()=>{
-    const no=common(ctx,state,playerId);
+    const no=common(ctx,state,playerId,calm);
     if(no)return {ok:false,reason:no};
     if(plan.rail&&siteId===plan.rail.id){
       if(state.defenses?.rail)return {ok:false,reason:'occupied'};
@@ -299,9 +301,9 @@ function grownCell(d:DefenseState,size:number):{c:number;r:number}{
  * a child's id or label such as 'A4b' at A3; omitted when there is only one). The new tier starts a new obra at its
  * full hp. The Gustavão (from the Obuseiro) needs the laid, finished rail and moves onto it, freeing its site.
  */
-export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult{
+export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,branch?:string,requestId?:string,calm?:CalmGate):TowerResult{
   return once(state,playerId,requestId,()=>{
-    const no=common(ctx,state,playerId);
+    const no=common(ctx,state,playerId,calm);
     if(no)return {ok:false,reason:no};
     const d=state.defenses?.list.find(x=>x.id===defenseId);
     if(!d)return {ok:false,reason:'defense'};
@@ -354,9 +356,9 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
  * for TOWER_REPAIR_COST R$ from the wallet of who repairs it; the forge's barricade repair, for the towers. A ruin is refused ('ruined'), a whole one
  * too ('full'), and so is a player out of reach ('away').
  */
-export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,requestId?:string):TowerResult{
+export function repair(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,defenseId:string,requestId?:string,calm?:CalmGate):TowerResult{
   return once(state,playerId,requestId,()=>{
-    const no=common(ctx,state,playerId);
+    const no=common(ctx,state,playerId,calm);
     if(no)return {ok:false,reason:no};
     const d=state.defenses?.list.find(x=>x.id===defenseId);
     if(!d)return {ok:false,reason:'defense'};

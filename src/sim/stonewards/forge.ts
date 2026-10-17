@@ -10,6 +10,7 @@ import type {StonewardsState} from './state.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {barricadeOccupied,findBarricade,setBlocking} from './barricades.ts';
 import {CAMP_RADIUS,INFLATING,RECIPES,TOWER_SECONDS,canPay,forgePrice,type RecipeId} from '../../rules/index.ts';
+import type {CalmGate} from '../ninhos/calma.ts';
 
 export const REPAIR_FRACTION=.25;
 export const TOWER_DURATION=ticks(TOWER_SECONDS);
@@ -44,10 +45,11 @@ export function draw<T>(ctx:SimContext,state:StonewardsState,items:readonly T[])
  * `targetId` (cidade-06) picks what 'reparo' repairs: the wall when omitted (or 'muralha'), else a city barricade by id
  * ('target' when there is none). `onTerrainChanged` gets the cells a rebuilt barricade closes again.
  */
-export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,requestId?:string,targetId?:string,onTerrainChanged?:(rect:CellRect)=>void):BuyResult{
+/** `calm` (D-051 mode 'ninhos', ninhos/calma.ts): the gate instead of the intermission ('phase' when it says no). */
+export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,requestId?:string,targetId?:string,onTerrainChanged?:(rect:CellRect)=>void,calm?:CalmGate):BuyResult{
   const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
   if(key!==undefined&&state.handled.includes(key))return {ok:false,reason:'duplicate'};
-  const result=apply(ctx,state,playerId,recipeId,targetId,onTerrainChanged);
+  const result=apply(ctx,state,playerId,recipeId,targetId,onTerrainChanged,calm);
   if(result.ok&&key!==undefined){
     state.handled.push(key);
     if(state.handled.length>HANDLED_LIMIT)state.handled.splice(0,state.handled.length-HANDLED_LIMIT);
@@ -55,9 +57,9 @@ export function buy(ctx:SimContext,state:StonewardsState,playerId:string,recipeI
   return result;
 }
 
-function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,targetId:string|undefined,onTerrainChanged:((rect:CellRect)=>void)|undefined):BuyResult{
+function apply(ctx:SimContext,state:StonewardsState,playerId:string,recipeId:string,targetId:string|undefined,onTerrainChanged:((rect:CellRect)=>void)|undefined,calm?:CalmGate):BuyResult{
   if(state.wallDown)return {ok:false,reason:'wall-down'};
-  if(ctx.round.phase!=='prepare')return {ok:false,reason:'phase'};
+  if(calm?!calm(ctx,playerId):ctx.round.phase!=='prepare')return {ok:false,reason:'phase'};
   const player=ctx.players.get(playerId);
   if(!player||!isStanding(player))return {ok:false,reason:'player'};
   if(!Object.hasOwn(RECIPES,recipeId))return {ok:false,reason:'recipe'};

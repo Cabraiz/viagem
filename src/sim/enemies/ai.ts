@@ -155,6 +155,22 @@ const countOwned=(ctx:SimContext,prefix:string,exact=false)=>{
   let n=0;for(const t of ctx.telegraphs.values())if(exact?t.owner===prefix:t.owner.startsWith(prefix))n++;return n;
 };
 
+/**
+ * Bancos (sim/bancos/system.ts): the ATM's beep lures a critter to (x, y) until `untilTick` (enemy memory baitX, baitY,
+ * baitUntil: JSON-safe). While it lasts the critter goes for the nearer of the bait and its nearest live player, and the
+ * structures (the wall, the car, the moto) wait; a taunt still wins. Nothing else reads these keys.
+ */
+export function baitEnemy(e:EnemyState,x:number,y:number,untilTick:number){
+  const memory=e.memory??={};
+  memory.baitX=x;memory.baitY=y;memory.baitUntil=Math.max(memory.baitUntil??-Infinity,untilTick);
+}
+/** The bait point of a lured critter while it lasts; an expired one is forgotten. */
+function baitOf(memory:Record<string,number>,tick:number):Point|undefined{
+  if(memory.baitUntil===undefined)return undefined;
+  if(tick<memory.baitUntil&&Number.isFinite(memory.baitX)&&Number.isFinite(memory.baitY))return {x:memory.baitX,y:memory.baitY};
+  delete memory.baitX;delete memory.baitY;delete memory.baitUntil;
+  return undefined;
+}
 /** Forgets the Tio's locked charge line (see STATE). */
 const dropChargeLine=(memory:Record<string,number>)=>{delete memory.cx;delete memory.cy;delete memory.ox;delete memory.oy;delete memory.reach;};
 
@@ -294,15 +310,18 @@ export class EnemyAi implements SimSystem {
       // Joking or charging as this tick starts (the charge's last step still runs after endCharge below).
       const planted=memory.state===STATE.joke||memory.state===STATE.charge;
       // Nearest live player, or a structure if its edge is closer; a valid taunt overrides both.
-      let player:SimPlayer|undefined,structure:StructureTarget|undefined,best=Infinity;
+      let player:SimPlayer|undefined,structure:StructureTarget|undefined,bait:Point|undefined,best=Infinity;
       const taunter=tauntTarget(ctx,e);
       const goal=taunter?undefined:this.options.goal?.(ctx,e);
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else if(!goal){
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
-        if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
+        bait=baitOf(memory,ctx.tick);
+        if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
+        else if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
       }
-      const target:Point|undefined=player??structure??goal;
+      const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
       // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
       if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
@@ -504,7 +523,8 @@ export class EnemyAi implements SimSystem {
         // Melee kinds stop at contact; the agiota, the anão and the coach keep backing off (from players). Tio and motoboy
         // do not hit mid wind-up; the coach never hits (no melee). A coached enemy hits for PALESTRA.damageMult × damage.
         if(touching&&(!keepsDistance(def)||structure)){dirX=0;dirY=0;}
-        if(touching&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&noMelee(def))&&ctx.tick>=memory.hitReady){
+        // At a bait point (Bancos) there is nobody to hit.
+        if(touching&&(player||structure)&&memory.state!==STATE.joke&&def.behavior!=='coach'&&!(player&&noMelee(def))&&ctx.tick>=memory.hitReady){
           memory.hitReady=ctx.tick+def.contactCooldown;
           const charging=memory.state===STATE.charge;
           const amount=(def.behavior==='kamikaze'&&charging?MOTOBOY.hitDamage:e.damage)*coachMult(e,ctx.tick);

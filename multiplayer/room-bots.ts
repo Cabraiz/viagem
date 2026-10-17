@@ -8,7 +8,7 @@
  * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
-import {botSites,botSpotOrder,decide,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
+import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
 import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
@@ -138,6 +138,9 @@ export class RoomBots {
       if((tick+mind.slot)%BOT_THINK_EVERY!==0)continue;
       const p=sim.players.get(mind.id);
       if(!p)continue;
+      // D-052 (obra-livre-ajustes): a bot on its own free obra holds still until it is done (towers/system.ts holdsObra,
+      // the sim's stepCap 0); steering then only reads as stuck (and fires unstick), so it stands and waits.
+      if(holdsObra(sim.run.stonewards.state,mind.id,tick)){this.modes.set(mind.id,'build');sim.setBotInput(mind.id,{x:0,y:0});continue;}
       view??=sim.botView();
       people??=view.players.some(q=>!sim.bots.has(q.id)&&q.online&&!q.spectator);
       if(forger===undefined)forger=this.forger(view,minds,people);
@@ -172,7 +175,8 @@ export class RoomBots {
       const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
       const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
-        ...(view.objective?{teamBots:minds.map(m=>m.id)}:{}),
+        // Bancos: so are the ATMs (bankTask), in both city modes.
+        ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
         // D-051: in the manual combat the bots hold the attack with a critter in reach (and cast nothing).
         ...(sim.combat?{combat:sim.combat}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});

@@ -36,6 +36,15 @@
  * trip that is back before the wave, PUSH_TRIP_SECONDS); with a
  * delivery DELIVERY_MARK_SECONDS ahead or less, the freest bot (nearest to it, not pushing, not the forger) fights
  * around the delivery point instead of the car. Without an objective (or without teamBots) nothing changes.
+ * Bancos (card bancos-e-veiculos, view.banks: the city, both modes; the room bots, BrainInput.teamBots): in the
+ * intermission, while the team's Grana is under bankTarget (the chaveiro's granaReserve, CHAVEIRO_KEEP_SHARE × his bill;
+ * BANK_GRANA_TARGET in the wall mode), the bots with no objective task go to the nearest open ATM when it is within
+ * BANK_REACH (straight) and the trip (there, BANK_MIN_NOTES notes, back home; along the streets in the city) ends
+ * before the wave, unless the crate it would work (nodeFor, by its index in teamBots) is nearer than the ATM: the crate
+ * first, the ATM on the way back; at most BANK_BOTS per ATM (the nearest ones, ties by id). With more than one bot standing,
+ * the first one (by teamBots order: the room's forger and tower builder) stays on the forge and the towers. In the wave
+ * (a full team): with BANK_WAVE_MIN_UP standing, one bot per BANK_WAVE_PER (one per ATM, within
+ * BANK_WAVE_REACH) holds an ATM while the Grana is short. Mode 'bank'. Without banks nothing changes.
  * D-052, the car moves (objectiveTask 'carro'): while a person pushes or pulls it (view.objective.car.movers), the
  * CAR_HELP_BOTS standing bots nearest to it (within CAR_HELP_RANGE, none on another task) lean on it and push the same
  * way (carHeading: the people's pull). The bot never picks where the car goes; with nobody moving it, nobody helps
@@ -59,6 +68,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
+import {BANCO} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,type LootCommand} from './bot-loot.ts';
 
@@ -175,7 +185,7 @@ export interface Decision {
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro'|'bank';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -259,6 +269,86 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
     if(i>=0)return {kind:'carro',at:car,heading,side:i===0?1:-1};
   }
   return undefined;
+}
+
+/** Bancos: a bot goes to an ATM at most this far (u, straight), and at most BANK_BOTS of them to one ATM. */
+export const BANK_REACH=40,BANK_BOTS=2;
+/** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
+export const BANK_GRANA_TARGET=30;
+/** A trip to an ATM is worth it for this many notes (BANCO.saqueS each); a bot already there stays while one more fits. */
+export const BANK_MIN_NOTES=2;
+/**
+ * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
+ * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
+ * the builder, never one with an objective task) goes to the nearest open ATM within BANK_WAVE_REACH
+ * (straight) and holds it, one bot per BANK_WAVE_PER standing (a full team of six: one bot). A smaller team keeps the car
+ * (CI: one bot in three left the car too thin, 6p 12/16 → 7/16).
+ */
+export const BANK_WAVE_MIN_UP=6,BANK_WAVE_PER=6,BANK_WAVE_REACH=80;
+/** How close (u) a bot stands to the ATM (inside BANCO.holdR), and the seconds it keeps for the walk back. */
+export const BANK_STAND=BANCO.holdR-1.5,BANK_MARGIN_SECONDS=2;
+
+/**
+ * The team's Grana goal for the ATMs: the chaveiro's whole reserve while he runs (granaReserve for one seat: the team's,
+ * not a bot's part; bankTask compares it with the team's Grana, the room bots' camp), else BANK_GRANA_TARGET.
+ */
+export function bankTarget(view:Pick<RunView,'objective'>):number{
+  if(view.objective)return view.objective.ended?0:granaReserve({objective:view.objective});
+  return BANK_GRANA_TARGET;
+}
+/**
+ * Bancos: whether this bot goes to an ATM now, and which (see the module doc). Deterministic: every bot computes the
+ * same assignment from the view. The bots busy with an objective task (objectiveTask) are left out.
+ */
+export function bankTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):{kind:'bank';at:Point;bank:string}|undefined{
+  const round=view.round,wave=round?.phase==='wave';
+  if(!view.banks?.length||!round||round.phase!=='prepare'&&!wave)return undefined;
+  const grana=view.camp?.grana??view.objective?.grana??0;
+  if(grana>=bankTarget(view))return undefined;
+  const open=view.banks.filter(b=>b.state!=='sem-cedulas'&&b.saldo>0);
+  if(!open.length)return undefined;
+  const city=cityTerrainOf(terrain),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+  const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
+  const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p))
+    .filter(p=>!objectiveTask(view,p.id,bots,forger,terrain));
+  // The team's builder (the first standing bot, RoomBots' forger) keeps the forge and the towers when it is not alone.
+  const up=bots.filter(id=>{const p=view.players.find(q=>q.id===id);return !!p&&standing(p);});
+  if(up.length>1)ready.splice(0,ready.length,...ready.filter(p=>p.id!==up[0]));
+  if(wave&&up.length<BANK_WAVE_MIN_UP)return undefined;
+  const picks:{id:string;bank:string;d:number}[]=[];
+  for(const p of ready){
+    const at=positionOf(p)!,home=homeOf(view,at);
+    let bank=open[0],d=Infinity;
+    for(const b of open){const x=dist(at,b);if(x<d||x===d&&b.id<bank.id){d=x;bank=b;}}
+    if(d>(wave?BANK_WAVE_REACH:BANK_REACH))continue;
+    if(wave){picks.push({id:p.id,bank:bank.id,d});continue;}
+    // A lone bot alternates: the crate in the even rounds' intermissions (the material for the towers), the ATM in the
+    // odd ones (the ATMs are near the car now, nearer than any crate). With a team, the crate it would work comes first
+    // when it is nearer (straight) than the ATM.
+    if(up.length===1){if(round.index%2===0)continue;}
+    else{
+      const crate=nodeFor(view.nodes??[],home,bots.indexOf(p.id),city&&(q=>botRouteDistance(city,q,home)));
+      if(crate&&dist(at,crate)<d)continue;
+    }
+    const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
+    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
+    if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
+    picks.push({id:p.id,bank:bank.id,d});
+  }
+  const order=(a:{id:string;d:number},b:{id:string;d:number})=>a.d-b.d||(a.id<b.id?-1:a.id>b.id?1:0);
+  // In the wave: one bot per ATM, and at most one bot in three of those standing (the nearest first).
+  if(wave){
+    const one=new Map<string,{id:string;bank:string;d:number}>();
+    for(const x of [...picks].sort(order))if(!one.has(x.bank))one.set(x.bank,x);
+    const chosen=[...one.values()].sort(order).slice(0,Math.floor(up.length/BANK_WAVE_PER));
+    picks.splice(0,picks.length,...chosen);
+  }
+  const mine=picks.find(x=>x.id===selfId);
+  if(!mine)return undefined;
+  const rivals=picks.filter(x=>x.bank===mine.bank).sort(order);
+  if(rivals.findIndex(x=>x.id===selfId)>=BANK_BOTS)return undefined;
+  const b=open.find(x=>x.id===mine.bank)!;
+  return {kind:'bank',at:{x:b.x,y:b.y},bank:b.id};
 }
 
 /**
@@ -441,6 +531,16 @@ export function decide(input:BrainInput):Decision{
   if(task?.kind==='clear'&&prepare){
     decision.mode='clear';
     if(dist(at,task.at)>2)want=go(task.at);
+    want=add(want,repel(view.enemies,at,.8));
+    decision.direction=norm(want);
+    return finish(decision,input);
+  }
+  // Bancos: a bot with no objective task may go and hold an ATM (bankTask: in the intermission when the trip fits; in
+  // the wave one bot per BANK_WAVE_PER, when the team is at least BANK_WAVE_MIN_UP).
+  const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
+  if(bank){
+    decision.mode='bank';
+    if(dist(at,bank.at)>BANK_STAND)want=go(bank.at);
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
     return finish(decision,input);

@@ -6,10 +6,11 @@
  * Frame layout (little endian, varints are LEB128, signed varints zigzag):
  *   u8 magic 0x56 'V' | u8 version (PROTOCOL_VERSION) | uvar seq | uvar baseSeq (0 = full frame) | uvar tick | svar originX | svar originY
  *   team: uvar xp, uvar level, uvar nextXp
- *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp) | round? | wave? | world? (u8 kind, uvar terrain version,
+ *   u8 flags (bit0 round, bit1 wave, bit2 world, bit3 camp, bit4 objective, bit5 banks) | round? | wave? | world? (u8 kind, uvar terrain version,
  *     uvar generator version, uvar seed, str signature; in every full frame and whenever it changes) |
  *     camp? (u8 bits: 1 horn, 2 wall down; uvar units (whole, D-048), uvar grana (R$: the viewer's own wallet since
  *       carteira-e-pix), uvar gambiarras bought, uvar chinelos bought (inflação); svar hornEndsTick-tick if horn)
+ *       | objective? (writeObjective) | banks? (writeBanks)
  *   7 entity sections (players, enemies, pickups, projectiles, telegraphs, structures, nodes):
  *     uvar removedCount, (uvar idGap*2 + left)* | uvar upsertCount, (uvar idGap, uvar mask, [label], [i8 dx, i8 dy], fields*)*
  *     `left` = 1: the entity still exists but left this client's area of interest (not a death: no poof).
@@ -37,6 +38,7 @@ import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,Proj
 import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
+import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
 import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
 /**
@@ -78,6 +80,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 22 given by the integration queue (tools/fila.mjs, lote 20261016-202056) to: NEW-20261014-ORQ-ninhos-sim.
  * 23 given by the integration queue (tools/fila.mjs, lote 20261016-205219) to: NEW-20261016-ORQ-carro-e-fortificacao-livre-contrato, NEW-20261016-ORQ-oferta-melhoria-centro-pular-rolar.
  * 24 given by the integration queue (tools/fila.mjs, lote 20261016-211932) to: NEW-20261014-ORQ-armas-caixas-inventario.
+ * Next (the queue numbers it) since the banks (card NEW-20261014-ORQ-bancos-e-veiculos): the banks block (flag bit 5:
+ * their saldo, state, refill tick and drawer; id, place and name on full frames), `prime` on the enemies, the events
+ * bank-cash/bank-prime/bank-empty/bank-refill and their strings in the DICT; an older decoder would refuse the flags.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=24;
@@ -158,6 +163,9 @@ export const DICT:readonly string[]=[
   'item','faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
   'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
   'coxinha','kit-torre','pente','silenciador',
+  // Bancos (card NEW-20261014-ORQ-bancos-e-veiculos): the bank ids the sim gives, their names (BANK_IDS), their states
+  // (BankState) and who withdrew (bank-cash 'by').
+  'banco-1','banco-2','banco-3','pao-duro','juros','posto','aberto','sacando','bicho','sem-cedulas','hero','enemy',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -381,6 +389,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     sugar:c(optional(trueFlag)),
     // D-051: a sleeping body (it wakes with the same id: the flag clears).
     asleep:c(optional(trueFlag)),
+    // Bancos: it robbed an ATM into a Cliente Prime (the crown).
+    prime:c(optional(trueFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
@@ -501,6 +511,12 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['pix',[['from','ref'],['to','ref'],['amount','count'],['memo','count']]],
   // D-051 (ninhos, card NEW-20261014-ORQ-ninhos-sim): sleepers woke around (x, y), n of them; heard near the spot only.
   ['acordou',[['x','pos'],['y','pos'],['n','count']]],
+  // Bancos: a note out of an ATM (by 'hero' or 'enemy', the critter then), a critter made Cliente Prime there, an ATM
+  // run dry until its refill tick, and its refill. bank is the bank's id (RunView.banks).
+  ['bank-cash',[['bank','str'],['amount','count'],['by','str'],['enemy','ref',true,'enemies']]],
+  ['bank-prime',[['bank','str'],['enemy','ref',false,'enemies']]],
+  ['bank-empty',[['bank','str'],['until','tick']]],
+  ['bank-refill',[['bank','str']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -565,6 +581,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   if(type==='moto'&&!MOTO_MOMENTS.has(e.mode as string))throw new FrameError('bad moto moment');
   if(type==='moto'&&e.alone===false)delete e.alone;
   if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
+  if(type==='bank-cash'&&e.by!=='hero'&&e.by!=='enemy')throw new FrameError('bad bank withdrawer');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
 }
@@ -574,7 +591,7 @@ type Entity={id:string}&Record<string,unknown>;
 /** One section as the client holds it: wire id -> record with client-facing id. */
 type Table=Map<number,Entity>;
 /** `objective`: the objective as the client holds it after this frame (normalized: what the wire carries). */
-interface World {tick:number;tables:Record<SectionKey,Table>;objective?:ObjectiveView}
+interface World {tick:number;tables:Record<SectionKey,Table>;objective?:ObjectiveView;banks?:BankView[]}
 
 // ---------- Objective block (protocol 15, D-047) ----------
 /**
@@ -670,6 +687,73 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
   if(!next)throw new FrameError('objective without its state');
   return next;
 }
+// ---------- Banks block (card bancos-e-veiculos) ----------
+/**
+ * Flag bit 5 of the frame: u8 bits (1 dynamic part, 2 static part, 4 cleared) | dynamic? | static?. Sent only when it
+ * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
+ *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer) | [svar until-tick] | [uvar drawer's enemy wire id])*
+ *   static:  uvar n, (str id | svar x*16 | svar y*16 | str name)*
+ * The two lists are in the same order (the sim's). The drawer is the critter's client id (`e<wire id>`), like a ref.
+ */
+const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2;
+const MAX_BANKS=16;
+const BANK_STATES=new Set<string>(['aberto','sacando','bicho','sem-cedulas']);
+const BANK_NAMES=new Set<string>(BANK_IDS);
+const ENEMY_LABEL=/^e(\d{1,9})$/;
+/** The banks as the client ends up with them (quantized, the drawer as its client id). */
+function normBanks(list:readonly BankView[],drawer:(serverId:string)=>string):BankView[]{
+  return list.slice(0,MAX_BANKS).map(b=>({id:clip(b.id),...pt16(b),name:b.name,saldo:uint(b.saldo),state:b.state,
+    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{})}));
+}
+const sameBankStatic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&a.every((x,i)=>x.id===b[i].id&&x.x===b[i].x&&x.y===b[i].y&&x.name===b[i].name);
+const sameBankDynamic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&
+  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer);
+function writeBanks(w:Writer,list:readonly BankView[],bits:number,tick:number){
+  w.u8(bits);
+  if(bits&BANK_DYN){
+    w.uvar(list.length);
+    for(const b of list){
+      const drawer=b.drawer!==undefined?ENEMY_LABEL.exec(b.drawer):null;
+      w.uvar(b.saldo);w.str(b.state);w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0));
+      if(b.until!==undefined)w.svar(b.until-tick);
+      if(drawer)w.uvar(Number(drawer[1]));
+    }
+  }
+  if(bits&BANK_STATIC){
+    w.uvar(list.length);
+    for(const b of list){w.str(b.id);w.svar(q16(b.x));w.svar(q16(b.y));w.str(b.name);}
+  }
+}
+function readBanks(r:Reader,tick:number,base:readonly BankView[]|undefined):BankView[]|undefined{
+  const bits=r.u8();
+  if(bits>7||(bits&BANK_CLEAR&&bits!==BANK_CLEAR))throw new FrameError('bad banks bits');
+  if(bits&BANK_CLEAR)return undefined;
+  let next:BankView[]|undefined=base?structuredClone(base as BankView[]):undefined;
+  if(bits&BANK_DYN){
+    const rows=Array.from({length:r.count(MAX_BANKS)},()=>{
+      const saldo=r.uvar(),state=r.str();
+      if(!BANK_STATES.has(state))throw new FrameError('bad bank state');
+      const has=r.u8();if(has>3)throw new FrameError('bad bank flags');
+      const until=has&BANK_UNTIL?tick+r.svar():undefined,drawer=has&BANK_DRAWER?`e${r.uvar()}`:undefined;
+      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{})};
+    });
+    const old=next;
+    next=rows.map((d,i)=>({id:old?.[i]?.id??'',x:old?.[i]?.x??0,y:old?.[i]?.y??0,name:old?.[i]?.name??BANK_IDS[0],...d}));
+  }
+  if(bits&BANK_STATIC){
+    if(!next)throw new FrameError('bank places without their state');
+    const n=r.count(MAX_BANKS);
+    if(n!==next.length)throw new FrameError('bank places do not match their state');
+    for(let i=0;i<n;i++){
+      const id=r.str(),x=r.svar()/OBJECTIVE_POS_SCALE,y=r.svar()/OBJECTIVE_POS_SCALE,name=r.str();
+      if(!BANK_NAMES.has(name))throw new FrameError('bad bank name');
+      next[i]={...next[i],id,x,y,name:name as BankName};
+    }
+  }
+  if(!next)throw new FrameError('banks without their state');
+  if(next.some(b=>b.id===''))throw new FrameError('bank state without its place');
+  return next;
+}
 const emptyTables=()=>Object.fromEntries(SECTIONS.map(s=>[s,new Map()])) as Record<SectionKey,Table>;
 
 /** Copy of a baseline section as the client sees it at `tick` (linear motion applied). */
@@ -745,7 +829,10 @@ const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downe
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
   'alarm','part','moto','buy',
   // carteira-e-pix: a PIX (the portraits blink for everyone; the toast is the two players').
-  'pix']);
+  'pix',
+  // Bancos: a Cliente Prime, an ATM run dry and its refill are the team's news (rare); a note (bank-cash) is heard
+  // around its bank or by whoever sees the critter that drew it.
+  'bank-prime','bank-empty','bank-refill']);
 /** A section the frame input left out (an older Simulation, a test): sent as empty. Shared, so the live-id cache holds. */
 const NONE:readonly Entity[]=Object.freeze([]) as readonly Entity[];
 /** Camp block bits. */
@@ -909,11 +996,13 @@ export class FrameEncoder {
    * happen within the area, involve the viewer or a player in the area, or name an entity this client has (or
    * had in the previous frame, e.g. the one that just died). Judged on server ids, before resolving labels.
    */
-  private relevant(p:Pending,focus:Point2|undefined,players:readonly PlayerWireView[]):boolean{
+  private relevant(p:Pending,focus:Point2|undefined,players:readonly PlayerWireView[],banks?:readonly BankView[]):boolean{
     const e=p.event;
     if(!this.interest||!focus||GLOBAL_EVENTS.has(e.type))return true;
     const rec=e as unknown as Record<string,unknown>,radius=this.interest.radius+this.interest.hysteresis;
     if(typeof rec.x==='number'&&typeof rec.y==='number'&&Math.hypot(rec.x-focus.x,rec.y-focus.y)<=radius)return true;
+    // Bancos: a note is heard around its bank (the event names the bank, not a place).
+    if(typeof rec.bank==='string'){const b=banks?.find(o=>o.id===rec.bank);if(b&&Math.hypot(b.x-focus.x,b.y-focus.y)<=radius)return true;}
     const [,fields]=EVENT_SPECS[EVENT_CODE.get(e.type)!];
     for(const [name,kind] of fields){
       const v=rec[name];
@@ -944,7 +1033,10 @@ export class FrameEncoder {
     const own=this.viewer===undefined?undefined:viewerGrana(view.players,this.viewer);
     const objective=view.objective?normObjective(own===undefined?view.objective:{...view.objective,grana:own}):undefined,had=base?.objective;
     const objBits=objective?(had&&sameDynamic(had,objective)?0:OBJ_DYN)|(had&&sameStatic(had,objective)?0:OBJ_STATIC):had?OBJ_CLEAR:0;
-    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0)|(objBits?16:0));
+    // Bancos: the banks block only when it differs from the baseline's (the places on a full frame).
+    const banks=view.banks?normBanks(view.banks,id=>this.ids.label('enemies',id)):undefined,hadBanks=base?.banks;
+    const bankBits=banks?(hadBanks&&sameBankDynamic(hadBanks,banks)?0:BANK_DYN)|(hadBanks&&sameBankStatic(hadBanks,banks)?0:BANK_STATIC):hadBanks?BANK_CLEAR:0;
+    w.u8((view.round?1:0)|(view.wave?2:0)|(sendWorld?4:0)|(view.camp?8:0)|(objBits?16:0)|(bankBits?32:0));
     if(view.round){
       const r=view.round;
       w.uvar(r.index);w.uvar(r.total);w.str(r.phase);w.svar(r.phaseEndsTick-view.tick);w.uvar(r.remaining);
@@ -962,7 +1054,8 @@ export class FrameEncoder {
       if(horn)w.svar(camp.hornEndsTick!-view.tick);
     }
     if(objBits)writeObjective(w,objective!,objBits,view.tick);
-    const world:World={tick:view.tick,tables:emptyTables(),...(objective?{objective}:{})};
+    if(bankBits)writeBanks(w,banks!,bankBits,view.tick);
+    const world:World={tick:view.tick,tables:emptyTables(),...(objective?{objective}:{}),...(banks?{banks}:{})};
     for(const section of SECTIONS){
       const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
@@ -979,7 +1072,7 @@ export class FrameEncoder {
     const start=w.len;
     // Events are judged once, on their first frame: those nobody near this client could see are dropped.
     if(this.interest&&focus)this.pending=this.pending.filter(p=>{
-      if(p.sentTick!==undefined||this.relevant(p,focus,view.players))return true;
+      if(p.sentTick!==undefined||this.relevant(p,focus,view.players,view.banks))return true;
       this.stats.droppedEvents++;return false;
     });
     // Chained frames on an ordered link: a frame sent was decoded, or the client asks for a resync (which clears
@@ -1142,7 +1235,7 @@ export class FrameDecoder {
       if(baseSeq&&!base)return {ok:false,error:'missing baseline',resync:true};
       const team={xp:r.uvar(),level:r.uvar(),nextXp:r.uvar()};
       const flags=r.u8();
-      if(flags>31)throw new FrameError('bad flags');
+      if(flags>63)throw new FrameError('bad flags');
       let round:RoundState|undefined,wave:RunView['wave'],world=this.world,camp:CampView|undefined;
       if(flags&1){
         const index=r.uvar(),total=r.uvar(),phase=r.str(),phaseEndsTick=tick+r.svar(),remaining=r.uvar();
@@ -1166,7 +1259,8 @@ export class FrameDecoder {
         if(bits&CAMP_WALL_DOWN)camp.wallDown=true;
       }
       const objective=flags&16?readObjective(r,tick,base?.objective):base?.objective;
-      const next:World={tick,tables:emptyTables(),...(objective?{objective}:{})},left:string[]=[];
+      const banks=flags&32?readBanks(r,tick,base?.banks):base?.banks;
+      const next:World={tick,tables:emptyTables(),...(objective?{objective}:{}),...(banks?{banks}:{})},left:string[]=[];
       for(const section of SECTIONS){
         const schema=SCHEMAS[section];
         next.tables[section]=readSection(r,schema,advance(schema,base?.tables[section],tick,base?.tick??tick),f,left);
@@ -1197,7 +1291,7 @@ export class FrameDecoder {
         players:list<PlayerWireView>('players').map(p=>({...p,weapons:p.weapons??[],passives:p.passives??[]})),
         enemies:list<EnemyView>('enemies'),pickups:list<PickupView>('pickups'),
         projectiles:list<ProjectileView>('projectiles'),telegraphs:list<TelegraphView>('telegraphs'),structures:list<StructureView>('structures'),
-        nodes:list<NodeView>('nodes'),...(camp?{camp}:{}),...(objective?{objective:structuredClone(objective)}:{}),
+        nodes:list<NodeView>('nodes'),...(camp?{camp}:{}),...(objective?{objective:structuredClone(objective)}:{}),...(banks?{banks:structuredClone(banks)}:{}),
         offers:this.offers.map(o=>({...o,choices:o.choices.map(c=>({...c}))})),
         events,
       };

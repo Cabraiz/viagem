@@ -76,7 +76,7 @@ export function xpFraction(view:RunView){
 }
 
 export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|'prepare';remaining:number;countdown?:number;detail:string;
-  /** D-047, the chaveiro objective running: the label is "Onda N" and the chip adds his clock (hud/chaveiro.ts). */
+  /** D-047, the chaveiro objective running: the label is "Onda N" ("Ninhos N/M" in a nests run) and the chip adds his clock. */
   chaveiro?:ChaveiroClock}
 
 /**
@@ -87,7 +87,9 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
   const round=view.round,objective=liveObjective(view),chaveiro=objective?{chaveiro:chaveiroClock(objective)}:{};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
-    const label=objective?`Onda ${round.index}`:`Round ${round.index}/${total}`;
+    // D-051 (balanco-ninhos): a nests run has no waves (one open round): "Ninhos N/M", the nests still standing.
+    const nests=(view.structures??[]).filter(s=>s.kind==='ninho'),standing=nests.filter(s=>s.phase!=='destruido').length;
+    const label=nests.length?`Ninhos ${standing}/${nests.length}`:objective?`Onda ${round.index}`:`Round ${round.index}/${total}`;
     if(round.phase==='prepare'){
       const countdown=secondsLeft(round.phaseEndsTick,view.tick);
       return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo ${countdown} s`,...chaveiro};
@@ -223,7 +225,9 @@ export interface RunResult {
 export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;magnets:number;chests:number;pickups:number;kills:number}
 export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number;
   /** What downed each player (UX-voce-e-dano f). */
-  causes:CauseLog}
+  causes:CauseLog;
+  /** D-051 (balanco-ninhos): a nests run's nests as the last view showed them (the result says these, not "Onda N"). */
+  nests?:{total:number;down:number}}
 
 export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1,causes:emptyCauses()});
 
@@ -234,7 +238,7 @@ export const emptyTally=():RunTally=>({players:new Map(),lastEventId:-1,causes:e
  */
 export function resetTally(tally:RunTally){
   tally.players.clear();
-  tally.startTick=undefined;
+  tally.startTick=undefined;delete tally.nests;
   resetCauses(tally.causes);
   return tally;
 }
@@ -250,6 +254,8 @@ export function tallyOf(tally:RunTally,playerId:string){
 export function applyEvents(tally:RunTally,view:RunView){
   tally.startTick??=view.tick;
   rememberEnemies(tally.causes,view.enemies);
+  const nests=(view.structures??[]).filter(s=>s.kind==='ninho');
+  if(nests.length)tally.nests={total:nests.length,down:nests.filter(s=>s.phase==='destruido').length};
   // Kills are remembered before the falls are named: the hitter may die on the tick it downed someone.
   const falls:{player:string;by?:string;source?:string}[]=[];
   for(const event of view.events){

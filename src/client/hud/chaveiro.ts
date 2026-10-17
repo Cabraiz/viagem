@@ -141,10 +141,11 @@ export const DEBT_VICTORY_TEXT='Vitória com dívida: abriu e levou o volante.';
 export interface ObjectiveBill {cause:ObjectiveCause;reason:string;budget:string;grana:string;paid:string;debt?:string;
   /** Victory with debt: he opened it anyway and took the steering wheel as a guarantee. */
   debtVictory:boolean;wave:string;aria:string}
-export function objectiveBill(result:ObjectiveResult):ObjectiveBill{
+/** `nests` (D-051, RunTally.nests): a nests run says how many fell instead of the wave. */
+export function objectiveBill(result:ObjectiveResult,nests?:{total:number;down:number}):ObjectiveBill{
   const debtVictory=result.outcome==='victory'&&result.debt>0;
   const budget=reais(result.budget),grana=reais(result.grana),paid=reais(result.paid),debt=result.debt>0?reais(result.debt):undefined;
-  const wave=`Onda ${Math.max(1,result.wave)}`;
+  const wave=nests?`Ninhos derrubados ${nests.down}/${nests.total}`:`Onda ${Math.max(1,result.wave)}`;
   return {cause:result.cause,reason:debtVictory?DEBT_VICTORY_TEXT:OBJECTIVE_CAUSE_TEXT[result.cause],budget,grana,paid,...(debt?{debt}:{}),debtVictory,wave,
     aria:`Orçamento ${budget}, grana do time ${grana}.${debtVictory?` Vitória com dívida: faltou ${debt}, ele levou o volante.`:''}`};
 }

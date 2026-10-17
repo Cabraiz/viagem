@@ -48,6 +48,11 @@ test('the round chip: "Onda N" plus his clock while the objective runs, "Round N
   // Past round 10 the waves go on: never "Onda 12/10".
   const late={...withObjective(objective()),round:{...withObjective().round!,index:12}};
   assert.equal(roundInfo(late)?.label,'Onda 12');
+  // D-051: a nests run has no "Onda": the chip counts the nests standing.
+  const nest=(id:string,phase:string)=>({id,kind:'ninho',x:0,y:0,hp:1,maxHp:1,phase});
+  const nests={...withObjective(objective()),structures:[nest('n1','dormindo'),nest('n2','ativo'),nest('n3','destruido')]};
+  assert.equal(roundInfo(nests)?.label,'Ninhos 2/3');
+  assert.doesNotMatch(roundInfo(nests)!.label,/Onda/);
   const ended=roundInfo(withObjective(objective({ended:'victory'})));
   assert.equal(ended?.label,'Round 3/10');
   assert.equal(liveObjective(withObjective(objective({ended:'defeat'}))),undefined);
@@ -155,6 +160,8 @@ test('the result\'s bill: why it ended, the budget, the Grana and "vitória com 
   assert.equal(paid.budget,'R$ 456');assert.equal(paid.grana,'R$ 500');
   assert.equal(paid.debtVictory,false);assert.equal(paid.debt,undefined);
   assert.equal(paid.wave,'Onda 12');
+  // D-051: a nests run says the nests that fell, never "Onda".
+  assert.equal(objectiveBill(result(),{total:8,down:3}).wave,'Ninhos derrubados 3/8');
   const owed=objectiveBill(result({grana:372,paid:372,debt:84}));
   assert.equal(owed.debtVictory,true);
   assert.equal(owed.debt,'R$ 84');

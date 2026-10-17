@@ -56,8 +56,8 @@ export const MODE={alerta:1,cacando:2,perdeu:3} as const;
  */
 export const NOISE={
   kill:{r:8,p:.2},
-  /** The car alarm (D-047), every second while it rings, around the car. */
-  alarm:{r:40,p:.3,every:1},
+  /** The car alarm (D-047), every second while it rings, around the car (balanco-ninhos: r 40 p .3 woke ~12 at once). */
+  alarm:{r:20,p:.1,every:1},
   /** The moto riding (every second; 2× p on a tranco). */
   moto:{r:10,p:.1,every:1},
   /** A bank being held (pays Grana), every 5 s. */

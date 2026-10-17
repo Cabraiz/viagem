@@ -1,0 +1,4705 @@
+{
+ "card": "NEW-20261012-ORQ-cidade-11-balanco-run",
+ "version": 1,
+ "startedAt": "2026-10-17T17:09:42.024Z",
+ "updatedAt": "2026-10-17T17:16:46.467Z",
+ "config": {
+  "objective": "chaveiro",
+  "combat": "manual",
+  "mode": "ninhos",
+  "nestPace": {
+   "gap": [
+    45,
+    5
+   ],
+   "alive": [
+    8,
+    60
+   ],
+   "warm": 180,
+   "warmScale": 0.4,
+   "warmRow": 1,
+   "ramp": 540,
+   "siege": [
+    0.6,
+    0.75
+   ],
+   "size": [
+    1,
+    1.5
+   ]
+  },
+  "alarm": {
+   "r": 20,
+   "p": 0.1,
+   "every": 1
+  },
+  "nestCalm": {
+   "radius": 40,
+   "seconds": 30
+  },
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "players": [
+   6
+  ],
+  "capMin": 30,
+  "knobs": null,
+  "knobsFile": null,
+  "knobRoute": "none",
+  "classes": [
+   "cidadao-comum",
+   "pedreiro",
+   "tecnico-ti",
+   "vendedor-praia",
+   "universitario",
+   "merendeira"
+  ],
+  "nav": {
+   "READ_SECONDS": 4,
+   "HOME_MARGIN": 4,
+   "CRATE_NEAR": 2.5,
+   "FAR": 12,
+   "STUCK_TICKS": 30,
+   "STUCK_MOVE": 0.3,
+   "UNSTICK_TICKS": 16
+  }
+ },
+ "runs": [
+  {
+   "key": "1:6",
+   "seed": 1,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 6354,
+   "simMinutes": 5.3,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2866,
+     "crate": 2827,
+     "build:bank": 7273,
+     "crate-near": 229,
+     "home-wall": 3634,
+     "unstick": 656,
+     "build:clear": 720,
+     "brain": 18175,
+     "build:push": 1744
+    },
+    "stuck": 41,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 8.58,
+    "msPerTick": 1.35,
+    "thinkMsPerTick": 0.247,
+    "navMsPerTick": 0.153
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 6,
+    "botSeconds": 6,
+    "waveSeconds": 317.65,
+    "humanShare": 0.18
+   },
+   "grana": {
+    "earned": 335,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 46,
+     "amount": 256
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "car",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 241,
+    "seconds": 317.65,
+    "hits": 120,
+    "limit": 120,
+    "budget": 385,
+    "grana": 335,
+    "paid": 335,
+    "debt": 50,
+    "parts": 15,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 256,
+      "paid": 256
+     },
+     {
+      "id": "bot2",
+      "had": 8,
+      "paid": 8
+     },
+     {
+      "id": "bot3",
+      "had": 18,
+      "paid": 18
+     },
+     {
+      "id": "bot4",
+      "had": 14,
+      "paid": 14
+     },
+     {
+      "id": "bot5",
+      "had": 16,
+      "paid": 16
+     },
+     {
+      "id": "bot6",
+      "had": 23,
+      "paid": 23
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "lombada": 1,
+     "entrega": 2,
+     "morta": 2,
+     "tranco": 2,
+     "volta": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 0,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-07",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 13,
+    "sleepers": {
+     "total": 300,
+     "asleep": 292,
+     "awake": 0,
+     "dead": 8
+    },
+    "neverWoke": 8,
+    "maxEnemies": 106,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 106,
+    "seen": 266,
+    "alivePerMinute": [
+     0,
+     29,
+     66,
+     61,
+     62,
+     91
+    ],
+    "newPerMinute": [
+     29,
+     40,
+     61,
+     26,
+     84,
+     26
+    ]
+   },
+   "banks": {
+    "grana": 152,
+    "withdraws": 76,
+    "share": 0.454,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 3
+   },
+   "digest": "b7d6e7422932"
+  },
+  {
+   "key": "2:6",
+   "seed": 2,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 11640,
+   "simMinutes": 9.7,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 3303,
+     "crate": 2685,
+     "build:bank": 12153,
+     "crate-near": 352,
+     "home-wall": 4483,
+     "build:clear": 720,
+     "brain": 42488,
+     "unstick": 1200,
+     "build:push": 2196,
+     "down": 260
+    },
+    "stuck": 75,
+    "crateTrips": 9
+   },
+   "perf": {
+    "wallSeconds": 9.84,
+    "msPerTick": 0.846,
+    "thinkMsPerTick": 0.144,
+    "navMsPerTick": 0.071
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 581.95,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 702,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 677,
+    "pix": {
+     "count": 107,
+     "amount": 818
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 581.95,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 702,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 665,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 6,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "lombada": 3,
+     "tombo": 9,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 19,
+    "sleepers": {
+     "total": 300,
+     "asleep": 295,
+     "awake": 0,
+     "dead": 5
+    },
+    "neverWoke": 8,
+    "maxEnemies": 127,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 127,
+    "seen": 497,
+    "alivePerMinute": [
+     0,
+     13,
+     75,
+     74,
+     91,
+     62,
+     63,
+     77,
+     120,
+     69
+    ],
+    "newPerMinute": [
+     13,
+     63,
+     51,
+     90,
+     26,
+     37,
+     47,
+     110,
+     7,
+     53
+    ]
+   },
+   "banks": {
+    "grana": 276,
+    "withdraws": 138,
+    "share": 0.393,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "31d37da4eeb1"
+  },
+  {
+   "key": "3:6",
+   "seed": 3,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 8757,
+   "simMinutes": 7.3,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 4372,
+     "crate": 4295,
+     "build:bank": 5962,
+     "build:clear": 508,
+     "crate-near": 145,
+     "unstick": 1024,
+     "home-wall": 1016,
+     "brain": 33028,
+     "build:push": 2136,
+     "down": 56
+    },
+    "stuck": 64,
+    "crateTrips": 8
+   },
+   "perf": {
+    "wallSeconds": 5.8,
+    "msPerTick": 0.662,
+    "thinkMsPerTick": 0.11,
+    "navMsPerTick": 0.053
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 6,
+    "botSeconds": 6,
+    "waveSeconds": 437.8,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 397,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 12,
+    "pix": {
+     "count": 48,
+     "amount": 255
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "car",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 183,
+    "seconds": 437.8,
+    "hits": 120,
+    "limit": 120,
+    "budget": 385,
+    "grana": 397,
+    "paid": 385,
+    "debt": 0,
+    "parts": 15,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 335,
+      "paid": 323
+     },
+     {
+      "id": "bot2",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot3",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot4",
+      "had": 14,
+      "paid": 14
+     },
+     {
+      "id": "bot5",
+      "had": 14,
+      "paid": 14
+     },
+     {
+      "id": "bot6",
+      "had": 16,
+      "paid": 16
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "entrega": 3,
+     "morta": 2,
+     "tranco": 2,
+     "lombada": 4,
+     "tombo": 12,
+     "volta": 2
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 16,
+    "sleepers": {
+     "total": 300,
+     "asleep": 295,
+     "awake": 0,
+     "dead": 5
+    },
+    "neverWoke": 8,
+    "maxEnemies": 127,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 127,
+    "seen": 394,
+    "alivePerMinute": [
+     0,
+     16,
+     60,
+     61,
+     98,
+     108,
+     65,
+     94
+    ],
+    "newPerMinute": [
+     16,
+     51,
+     54,
+     84,
+     58,
+     21,
+     68,
+     42
+    ]
+   },
+   "banks": {
+    "grana": 92,
+    "withdraws": 46,
+    "share": 0.232,
+    "enemyWithdraws": 3,
+    "enemyGrana": 6,
+    "primes": 0,
+    "empties": 2
+   },
+   "digest": "fb77deb348d4"
+  },
+  {
+   "key": "4:6",
+   "seed": 4,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 11957,
+   "simMinutes": 9.96,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 3429,
+     "crate": 2065,
+     "build:bank": 11171,
+     "crate-near": 1228,
+     "build:clear": 720,
+     "brain": 49403,
+     "build:push": 2504,
+     "down": 1222
+    },
+    "stuck": 0,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 14.42,
+    "msPerTick": 1.206,
+    "thinkMsPerTick": 0.146,
+    "navMsPerTick": 0.336
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 597.8,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 664,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 639,
+    "pix": {
+     "count": 95,
+     "amount": 537
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 597.8,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 664,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 622,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 9,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "tombo": 10,
+     "lombada": 3,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-07",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 20,
+    "sleepers": {
+     "total": 300,
+     "asleep": 295,
+     "awake": 0,
+     "dead": 5
+    },
+    "neverWoke": 8,
+    "maxEnemies": 127,
+    "stuck": 1,
+    "stuckAt": [
+     {
+      "id": "e-361",
+      "kind": "ambulante-guarda-chuva",
+      "x": 159.32,
+      "y": 145.12
+     }
+    ]
+   },
+   "enemies": {
+    "max": 127,
+    "seen": 510,
+    "alivePerMinute": [
+     0,
+     38,
+     61,
+     67,
+     88,
+     67,
+     77,
+     79,
+     68,
+     94
+    ],
+    "newPerMinute": [
+     38,
+     39,
+     66,
+     68,
+     32,
+     58,
+     53,
+     32,
+     69,
+     55
+    ]
+   },
+   "banks": {
+    "grana": 258,
+    "withdraws": 129,
+    "share": 0.389,
+    "enemyWithdraws": 2,
+    "enemyGrana": 4,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "376595df9477"
+  },
+  {
+   "key": "5:6",
+   "seed": 5,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 10582,
+   "simMinutes": 8.82,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 3067,
+     "crate": 3626,
+     "build:bank": 7783,
+     "crate-near": 1376,
+     "unstick": 284,
+     "home-wall": 1212,
+     "build:clear": 720,
+     "brain": 39988,
+     "build:push": 2212,
+     "down": 3224
+    },
+    "stuck": 18,
+    "crateTrips": 12
+   },
+   "perf": {
+    "wallSeconds": 9.99,
+    "msPerTick": 0.944,
+    "thinkMsPerTick": 0.13,
+    "navMsPerTick": 0.209
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 7,
+    "botSeconds": 7,
+    "waveSeconds": 529.05,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 603,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 578,
+    "pix": {
+     "count": 89,
+     "amount": 705
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 529.05,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 603,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 562,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 8,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "lombada": 3,
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "tombo": 1,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 18,
+    "sleepers": {
+     "total": 300,
+     "asleep": 290,
+     "awake": 0,
+     "dead": 10
+    },
+    "neverWoke": 8,
+    "maxEnemies": 138,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 138,
+    "seen": 498,
+    "alivePerMinute": [
+     0,
+     34,
+     70,
+     61,
+     72,
+     73,
+     95,
+     75,
+     67
+    ],
+    "newPerMinute": [
+     34,
+     36,
+     63,
+     69,
+     42,
+     53,
+     73,
+     46,
+     82
+    ]
+   },
+   "banks": {
+    "grana": 202,
+    "withdraws": 101,
+    "share": 0.335,
+    "enemyWithdraws": 6,
+    "enemyGrana": 12,
+    "primes": 0,
+    "empties": 5
+   },
+   "digest": "39e08898df8a"
+  },
+  {
+   "key": "6:6",
+   "seed": 6,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 11354,
+   "simMinutes": 9.46,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2353,
+     "crate": 2358,
+     "build:bank": 13232,
+     "crate-near": 193,
+     "home-wall": 5222,
+     "brain": 42188,
+     "build:push": 2176,
+     "down": 402
+    },
+    "stuck": 0,
+    "crateTrips": 8
+   },
+   "perf": {
+    "wallSeconds": 7.42,
+    "msPerTick": 0.653,
+    "thinkMsPerTick": 0.116,
+    "navMsPerTick": 0.052
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 6,
+    "botSeconds": 6,
+    "waveSeconds": 567.65,
+    "humanShare": 0.11
+   },
+   "grana": {
+    "earned": 588,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 563,
+    "pix": {
+     "count": 85,
+     "amount": 488
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 567.65,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 588,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 547,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 10,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "lombada": 3,
+     "morta": 3,
+     "tranco": 3,
+     "entrega": 3,
+     "tombo": 2,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "P",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 18,
+    "sleepers": {
+     "total": 300,
+     "asleep": 286,
+     "awake": 0,
+     "dead": 14
+    },
+    "neverWoke": 8,
+    "maxEnemies": 116,
+    "stuck": 1,
+    "stuckAt": [
+     {
+      "id": "e-197",
+      "kind": "bebado-do-karaoke",
+      "x": 159.32,
+      "y": 145.16
+     }
+    ]
+   },
+   "enemies": {
+    "max": 116,
+    "seen": 419,
+    "alivePerMinute": [
+     0,
+     25,
+     66,
+     70,
+     87,
+     79,
+     86,
+     90,
+     66,
+     83
+    ],
+    "newPerMinute": [
+     25,
+     41,
+     68,
+     58,
+     21,
+     63,
+     42,
+     36,
+     65
+    ]
+   },
+   "banks": {
+    "grana": 240,
+    "withdraws": 120,
+    "share": 0.408,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "52310dca1ec4"
+  },
+  {
+   "key": "7:6",
+   "seed": 7,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 11429,
+   "simMinutes": 9.52,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 3356,
+     "crate": 2437,
+     "build:bank": 10903,
+     "crate-near": 174,
+     "home-wall": 4368,
+     "build:clear": 560,
+     "brain": 41857,
+     "build:push": 3440,
+     "unstick": 544,
+     "down": 935
+    },
+    "stuck": 34,
+    "crateTrips": 8
+   },
+   "perf": {
+    "wallSeconds": 9.22,
+    "msPerTick": 0.807,
+    "thinkMsPerTick": 0.136,
+    "navMsPerTick": 0.049
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 9,
+    "botSeconds": 9,
+    "waveSeconds": 571.4,
+    "humanShare": 0.16
+   },
+   "grana": {
+    "earned": 631,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 606,
+    "pix": {
+     "count": 94,
+     "amount": 641
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 26,
+    "seconds": 571.4,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 631,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 493,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 107,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 8,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "lombada": 3,
+     "tombo": 7
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-08",
+      "size": "P",
+      "groups": 0,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 0,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 18,
+    "sleepers": {
+     "total": 300,
+     "asleep": 292,
+     "awake": 0,
+     "dead": 8
+    },
+    "neverWoke": 8,
+    "maxEnemies": 119,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 119,
+    "seen": 449,
+    "alivePerMinute": [
+     0,
+     11,
+     60,
+     71,
+     69,
+     107,
+     88,
+     63,
+     92,
+     74
+    ],
+    "newPerMinute": [
+     11,
+     51,
+     70,
+     26,
+     95,
+     32,
+     26,
+     63,
+     7,
+     68
+    ]
+   },
+   "banks": {
+    "grana": 276,
+    "withdraws": 138,
+    "share": 0.437,
+    "enemyWithdraws": 5,
+    "enemyGrana": 10,
+    "primes": 0,
+    "empties": 7
+   },
+   "digest": "7d276f061503"
+  },
+  {
+   "key": "8:6",
+   "seed": 8,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 12028,
+   "simMinutes": 10.02,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 1753,
+     "crate": 2216,
+     "build:bank": 11388,
+     "build:clear": 1240,
+     "crate-near": 203,
+     "home-wall": 2338,
+     "unstick": 128,
+     "brain": 46008,
+     "build:push": 2624,
+     "down": 4270
+    },
+    "stuck": 8,
+    "crateTrips": 8
+   },
+   "perf": {
+    "wallSeconds": 10.3,
+    "msPerTick": 0.857,
+    "thinkMsPerTick": 0.13,
+    "navMsPerTick": 0.057
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 7,
+    "botSeconds": 7,
+    "waveSeconds": 601.35,
+    "humanShare": 0.12
+   },
+   "grana": {
+    "earned": 655,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 630,
+    "pix": {
+     "count": 102,
+     "amount": 945
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 601.35,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 655,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 613,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 7,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "tombo": 14,
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "lombada": 4,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 0,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 17,
+    "sleepers": {
+     "total": 300,
+     "asleep": 293,
+     "awake": 0,
+     "dead": 7
+    },
+    "neverWoke": 8,
+    "maxEnemies": 117,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 117,
+    "seen": 487,
+    "alivePerMinute": [
+     0,
+     34,
+     66,
+     60,
+     79,
+     73,
+     112,
+     95,
+     68,
+     101,
+     96
+    ],
+    "newPerMinute": [
+     36,
+     43,
+     54,
+     58,
+     32,
+     100,
+     0,
+     68,
+     54,
+     42
+    ]
+   },
+   "banks": {
+    "grana": 264,
+    "withdraws": 132,
+    "share": 0.403,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "0108413941a8"
+  },
+  {
+   "key": "9:6",
+   "seed": 9,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 10707,
+   "simMinutes": 8.92,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 3929,
+     "crate": 3104,
+     "crate-near": 1773,
+     "build:bank": 10412,
+     "home-wall": 1822,
+     "unstick": 1084,
+     "brain": 39057,
+     "build:push": 2304,
+     "down": 757
+    },
+    "stuck": 68,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 11.29,
+    "msPerTick": 1.054,
+    "thinkMsPerTick": 0.144,
+    "navMsPerTick": 0.07
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 7,
+    "botSeconds": 7,
+    "waveSeconds": 535.3,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 563,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 538,
+    "pix": {
+     "count": 92,
+     "amount": 717
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 535.3,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 563,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 526,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 9,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "lombada": 3,
+     "morta": 3,
+     "tranco": 3,
+     "tombo": 2,
+     "entrega": 3,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 17,
+    "sleepers": {
+     "total": 300,
+     "asleep": 288,
+     "awake": 0,
+     "dead": 12
+    },
+    "neverWoke": 8,
+    "maxEnemies": 137,
+    "stuck": 5,
+    "stuckAt": [
+     {
+      "id": "e-152",
+      "kind": "gerente-vampiro",
+      "x": 159.38,
+      "y": 145.09
+     },
+     {
+      "id": "e-142",
+      "kind": "vizinho-da-furadeira",
+      "x": 158.98,
+      "y": 145.61
+     },
+     {
+      "id": "e-123",
+      "kind": "gerente-vampiro",
+      "x": 160.02,
+      "y": 145.16
+     },
+     {
+      "id": "e-141",
+      "kind": "vizinho-da-furadeira",
+      "x": 158.8,
+      "y": 145.12
+     },
+     {
+      "id": "e-125",
+      "kind": "fogueteiro",
+      "x": 159.58,
+      "y": 145.6
+     }
+    ]
+   },
+   "enemies": {
+    "max": 137,
+    "seen": 450,
+    "alivePerMinute": [
+     0,
+     32,
+     71,
+     64,
+     65,
+     66,
+     72,
+     62,
+     66
+    ],
+    "newPerMinute": [
+     32,
+     44,
+     51,
+     47,
+     42,
+     63,
+     32,
+     57,
+     82
+    ]
+   },
+   "banks": {
+    "grana": 206,
+    "withdraws": 103,
+    "share": 0.366,
+    "enemyWithdraws": 19,
+    "enemyGrana": 38,
+    "primes": 0,
+    "empties": 5
+   },
+   "digest": "9eb4cc1e82ff"
+  },
+  {
+   "key": "10:6",
+   "seed": 10,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 10552,
+   "simMinutes": 8.79,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 5381,
+     "crate": 3389,
+     "crate-near": 350,
+     "build:bank": 9916,
+     "home-wall": 2192,
+     "unstick": 640,
+     "brain": 38402,
+     "build:push": 2316,
+     "down": 726
+    },
+    "stuck": 40,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 86.57,
+    "msPerTick": 8.204,
+    "thinkMsPerTick": 1.469,
+    "navMsPerTick": 0.291
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 6,
+    "botSeconds": 6,
+    "waveSeconds": 527.55,
+    "humanShare": 0.12
+   },
+   "grana": {
+    "earned": 606,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 581,
+    "pix": {
+     "count": 89,
+     "amount": 591
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 527.55,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 606,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 463,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 111,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 10,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "lombada": 3,
+     "morta": 3,
+     "tranco": 3,
+     "entrega": 3,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-07",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 19,
+    "sleepers": {
+     "total": 300,
+     "asleep": 288,
+     "awake": 0,
+     "dead": 12
+    },
+    "neverWoke": 8,
+    "maxEnemies": 110,
+    "stuck": 4,
+    "stuckAt": [
+     {
+      "id": "e-93",
+      "kind": "chefe-pizza",
+      "x": 159.45,
+      "y": 149.6
+     },
+     {
+      "id": "e-222",
+      "kind": "pamonheiro",
+      "x": 126.1,
+      "y": 145.1
+     },
+     {
+      "id": "e-240",
+      "kind": "pamonheiro",
+      "x": 126.77,
+      "y": 145.14
+     },
+     {
+      "id": "e-233",
+      "kind": "chefe-pizza",
+      "x": 126.41,
+      "y": 145.88
+     }
+    ]
+   },
+   "enemies": {
+    "max": 110,
+    "seen": 488,
+    "alivePerMinute": [
+     0,
+     17,
+     72,
+     65,
+     67,
+     69,
+     100,
+     84,
+     98
+    ],
+    "newPerMinute": [
+     17,
+     55,
+     60,
+     65,
+     62,
+     90,
+     48,
+     49,
+     42
+    ]
+   },
+   "banks": {
+    "grana": 174,
+    "withdraws": 87,
+    "share": 0.287,
+    "enemyWithdraws": 1,
+    "enemyGrana": 2,
+    "primes": 0,
+    "empties": 4
+   },
+   "digest": "c1fee09ace43"
+  },
+  {
+   "key": "11:6",
+   "seed": 11,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 12851,
+   "simMinutes": 10.71,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2342,
+     "crate": 2339,
+     "build:bank": 9876,
+     "crate-near": 2568,
+     "home-wall": 2297,
+     "brain": 48784,
+     "build:push": 3141,
+     "unstick": 128,
+     "down": 5631
+    },
+    "stuck": 8,
+    "crateTrips": 10
+   },
+   "perf": {
+    "wallSeconds": 83.15,
+    "msPerTick": 6.47,
+    "thinkMsPerTick": 1.25,
+    "navMsPerTick": 1.053
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 642.5,
+    "humanShare": 0.13
+   },
+   "grana": {
+    "earned": 603,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 533,
+    "pix": {
+     "count": 102,
+     "amount": 1659
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 25,
+    "seconds": 642.5,
+    "hits": 15,
+    "limit": 120,
+    "budget": 70,
+    "grana": 603,
+    "paid": 70,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 16,
+      "paid": 11
+     },
+     {
+      "id": "bot2",
+      "had": 429,
+      "paid": 19
+     },
+     {
+      "id": "bot3",
+      "had": 17,
+      "paid": 11
+     },
+     {
+      "id": "bot4",
+      "had": 7,
+      "paid": 7
+     },
+     {
+      "id": "bot5",
+      "had": 117,
+      "paid": 11
+     },
+     {
+      "id": "bot6",
+      "had": 17,
+      "paid": 11
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "lombada": 3,
+     "tombo": 17,
+     "morta": 3,
+     "tranco": 3,
+     "entrega": 3,
+     "volta": 1
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 1
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "P",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 19,
+    "sleepers": {
+     "total": 300,
+     "asleep": 287,
+     "awake": 0,
+     "dead": 13
+    },
+    "neverWoke": 8,
+    "maxEnemies": 122,
+    "stuck": 4,
+    "stuckAt": [
+     {
+      "id": "e-217",
+      "kind": "bebado",
+      "x": 125.79,
+      "y": 145.35
+     },
+     {
+      "id": "e-291",
+      "kind": "paredao-ambulante",
+      "x": 159.63,
+      "y": 145.06
+     },
+     {
+      "id": "e-270",
+      "kind": "telemarketing",
+      "x": 158.97,
+      "y": 145.03
+     },
+     {
+      "id": "e-284",
+      "kind": "leao-da-receita",
+      "x": 159.2,
+      "y": 145.89
+     }
+    ]
+   },
+   "enemies": {
+    "max": 122,
+    "seen": 471,
+    "alivePerMinute": [
+     0,
+     31,
+     71,
+     63,
+     64,
+     64,
+     68,
+     88,
+     87,
+     63,
+     78
+    ],
+    "newPerMinute": [
+     35,
+     47,
+     40,
+     21,
+     63,
+     58,
+     58,
+     32,
+     57,
+     53,
+     7
+    ]
+   },
+   "banks": {
+    "grana": 198,
+    "withdraws": 99,
+    "share": 0.328,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 4
+   },
+   "digest": "5f32bfca73d0"
+  },
+  {
+   "key": "12:6",
+   "seed": 12,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 10519,
+   "simMinutes": 8.77,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2425,
+     "crate": 2551,
+     "build:clear": 720,
+     "build:bank": 9536,
+     "crate-near": 715,
+     "home-wall": 1187,
+     "brain": 41500,
+     "build:push": 2252,
+     "down": 2228
+    },
+    "stuck": 0,
+    "crateTrips": 10
+   },
+   "perf": {
+    "wallSeconds": 59.15,
+    "msPerTick": 5.623,
+    "thinkMsPerTick": 0.858,
+    "navMsPerTick": 0.278
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 525.9,
+    "humanShare": 0.15
+   },
+   "grana": {
+    "earned": 615,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 590,
+    "pix": {
+     "count": 92,
+     "amount": 1196
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 525.9,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 615,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 457,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 125,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 14,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 6,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "lombada": 3,
+     "morta": 3,
+     "tranco": 3,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 18,
+    "sleepers": {
+     "total": 300,
+     "asleep": 290,
+     "awake": 0,
+     "dead": 10
+    },
+    "neverWoke": 8,
+    "maxEnemies": 106,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 106,
+    "seen": 430,
+    "alivePerMinute": [
+     0,
+     30,
+     66,
+     75,
+     79,
+     71,
+     98,
+     82,
+     88
+    ],
+    "newPerMinute": [
+     30,
+     53,
+     51,
+     63,
+     26,
+     84,
+     32,
+     59,
+     32
+    ]
+   },
+   "banks": {
+    "grana": 248,
+    "withdraws": 124,
+    "share": 0.403,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "18bbc6e7e8ae"
+  },
+  {
+   "key": "13:6",
+   "seed": 13,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "car",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 5949,
+   "simMinutes": 4.96,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 1351,
+     "crate": 4294,
+     "build:bank": 6522,
+     "unstick": 416,
+     "crate-near": 1630,
+     "home-wall": 2181,
+     "brain": 17577,
+     "build:push": 1723
+    },
+    "stuck": 26,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 25.64,
+    "msPerTick": 4.311,
+    "thinkMsPerTick": 0.73,
+    "navMsPerTick": 0.644
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 4,
+    "botSeconds": 4,
+    "waveSeconds": 297.4,
+    "humanShare": 0.14
+   },
+   "grana": {
+    "earned": 280,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 0,
+    "pix": {
+     "count": 42,
+     "amount": 231
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "car",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 241,
+    "seconds": 297.4,
+    "hits": 120,
+    "limit": 120,
+    "budget": 385,
+    "grana": 280,
+    "paid": 280,
+    "debt": 105,
+    "parts": 15,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 234,
+      "paid": 234
+     },
+     {
+      "id": "bot2",
+      "had": 16,
+      "paid": 16
+     },
+     {
+      "id": "bot3",
+      "had": 6,
+      "paid": 6
+     },
+     {
+      "id": "bot4",
+      "had": 3,
+      "paid": 3
+     },
+     {
+      "id": "bot5",
+      "had": 2,
+      "paid": 2
+     },
+     {
+      "id": "bot6",
+      "had": 19,
+      "paid": 19
+     }
+    ],
+    "bossCalled": false,
+    "moments": {
+     "lombada": 2,
+     "morta": 2,
+     "tranco": 1,
+     "entrega": 2
+    },
+    "deliveries": {
+     "clean": 2,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-11",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 0,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 12,
+    "sleepers": {
+     "total": 300,
+     "asleep": 300,
+     "awake": 0,
+     "dead": 0
+    },
+    "neverWoke": 8,
+    "maxEnemies": 116,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 116,
+    "seen": 246,
+    "alivePerMinute": [
+     0,
+     0,
+     70,
+     59,
+     91
+    ],
+    "newPerMinute": [
+     0,
+     70,
+     44,
+     79,
+     53
+    ]
+   },
+   "banks": {
+    "grana": 126,
+    "withdraws": 63,
+    "share": 0.45,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 3
+   },
+   "digest": "fb0630dec9e9"
+  },
+  {
+   "key": "14:6",
+   "seed": 14,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "defeat",
+   "cause": "team",
+   "roundReached": 1,
+   "diedRound": 1,
+   "ticks": 12658,
+   "simMinutes": 10.55,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2184,
+     "crate": 3129,
+     "build:bank": 8468,
+     "build:clear": 628,
+     "crate-near": 3646,
+     "home-wall": 485,
+     "unstick": 16,
+     "brain": 39706,
+     "build:push": 4384,
+     "down": 13302
+    },
+    "stuck": 1,
+    "crateTrips": 13
+   },
+   "perf": {
+    "wallSeconds": 33.65,
+    "msPerTick": 2.658,
+    "thinkMsPerTick": 0.403,
+    "navMsPerTick": 0.184
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 10,
+    "botSeconds": 10,
+    "waveSeconds": 632.85,
+    "humanShare": 0.16
+   },
+   "grana": {
+    "earned": 645,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 350,
+    "pix": {
+     "count": 93,
+     "amount": 617
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "defeat",
+    "cause": "team",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 22,
+    "seconds": 632.85,
+    "hits": 90,
+    "limit": 120,
+    "budget": 295,
+    "grana": 645,
+    "paid": 295,
+    "debt": 0,
+    "parts": 7,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 433,
+      "paid": 154
+     },
+     {
+      "id": "bot2",
+      "had": 120,
+      "paid": 49
+     },
+     {
+      "id": "bot3",
+      "had": 6,
+      "paid": 6
+     },
+     {
+      "id": "bot4",
+      "had": 38,
+      "paid": 38
+     },
+     {
+      "id": "bot5",
+      "had": 9,
+      "paid": 9
+     },
+     {
+      "id": "bot6",
+      "had": 39,
+      "paid": 39
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "lombada": 3,
+     "tombo": 6,
+     "morta": 3,
+     "tranco": 2,
+     "tranco-sozinho": 1,
+     "volta": 2,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "P",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 5,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 21,
+    "sleepers": {
+     "total": 300,
+     "asleep": 290,
+     "awake": 0,
+     "dead": 10
+    },
+    "neverWoke": 8,
+    "maxEnemies": 112,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 112,
+    "seen": 558,
+    "alivePerMinute": [
+     0,
+     32,
+     68,
+     75,
+     104,
+     71,
+     78,
+     82,
+     79,
+     110,
+     71
+    ],
+    "newPerMinute": [
+     32,
+     42,
+     62,
+     53,
+     68,
+     73,
+     47,
+     32,
+     95,
+     7,
+     47
+    ]
+   },
+   "banks": {
+    "grana": 176,
+    "withdraws": 88,
+    "share": 0.273,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 4
+   },
+   "digest": "55ebf09506cb"
+  },
+  {
+   "key": "15:6",
+   "seed": 15,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 10664,
+   "simMinutes": 8.89,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2300,
+     "crate": 2249,
+     "build:bank": 11948,
+     "crate-near": 174,
+     "home-wall": 1718,
+     "build:clear": 820,
+     "brain": 42559,
+     "build:push": 2216
+    },
+    "stuck": 0,
+    "crateTrips": 9
+   },
+   "perf": {
+    "wallSeconds": 18.49,
+    "msPerTick": 1.734,
+    "thinkMsPerTick": 0.265,
+    "navMsPerTick": 0.141
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 533.15,
+    "humanShare": 0.15
+   },
+   "grana": {
+    "earned": 649,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 624,
+    "pix": {
+     "count": 105,
+     "amount": 604
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 533.15,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 649,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 613,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 4,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 9,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 6,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 8,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "lombada": 4,
+     "tombo": 2,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-05",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-15",
+      "size": "G",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 4,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-02",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-07",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-12",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 20,
+    "sleepers": {
+     "total": 300,
+     "asleep": 293,
+     "awake": 0,
+     "dead": 7
+    },
+    "neverWoke": 8,
+    "maxEnemies": 121,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 121,
+    "seen": 468,
+    "alivePerMinute": [
+     0,
+     38,
+     77,
+     72,
+     86,
+     79,
+     69,
+     74,
+     75
+    ],
+    "newPerMinute": [
+     38,
+     59,
+     57,
+     53,
+     39,
+     58,
+     47,
+     54,
+     63
+    ]
+   },
+   "banks": {
+    "grana": 264,
+    "withdraws": 132,
+    "share": 0.407,
+    "enemyWithdraws": 0,
+    "enemyGrana": 0,
+    "primes": 0,
+    "empties": 6
+   },
+   "digest": "02df23ee1147"
+  },
+  {
+   "key": "16:6",
+   "seed": 16,
+   "players": 6,
+   "classes": [
+    "cidadao-comum",
+    "pedreiro",
+    "tecnico-ti",
+    "vendedor-praia",
+    "universitario",
+    "merendeira"
+   ],
+   "outcome": "victory",
+   "cause": "opened",
+   "roundReached": 1,
+   "diedRound": null,
+   "ticks": 11010,
+   "simMinutes": 9.18,
+   "wallHpEnd": 600,
+   "wallMaxHp": 600,
+   "rounds": [],
+   "intermissions": [],
+   "forge": {
+    "count": 0,
+    "byRecipe": {},
+    "list": []
+   },
+   "boss": null,
+   "nav": {
+    "round1ArrivalS": {
+     "bot1": null,
+     "bot2": null,
+     "bot3": null,
+     "bot4": null,
+     "bot5": null,
+     "bot6": null
+    },
+    "tutorialArrivalS": null,
+    "modeTicks": {
+     "plaza": 2859,
+     "crate": 3920,
+     "build:bank": 11015,
+     "unstick": 144,
+     "crate-near": 428,
+     "home-wall": 535,
+     "build:clear": 536,
+     "brain": 43772,
+     "build:push": 2456,
+     "down": 395
+    },
+    "stuck": 9,
+    "crateTrips": 11
+   },
+   "perf": {
+    "wallSeconds": 12.4,
+    "msPerTick": 1.126,
+    "thinkMsPerTick": 0.158,
+    "navMsPerTick": 0.089
+   },
+   "knobsApplied": false,
+   "towers": {
+    "orders": 0,
+    "repairs": 0,
+    "units": 0,
+    "refused": {},
+    "final": {},
+    "ruined": 0,
+    "gustavao": false,
+    "rail": false,
+    "roots": 0,
+    "tokens": 0
+   },
+   "pause": {
+    "count": 8,
+    "botSeconds": 8,
+    "waveSeconds": 550.45,
+    "humanShare": 0.15
+   },
+   "grana": {
+    "earned": 612,
+    "spent": {
+     "evolutions": 0,
+     "repairs": 0,
+     "forge": 0,
+     "other": 0
+    },
+    "final": 587,
+    "pix": {
+     "count": 90,
+     "amount": 510
+    }
+   },
+   "objective": {
+    "kind": "chaveiro",
+    "outcome": "victory",
+    "cause": "opened",
+    "wave": 1,
+    "extraWaves": 0,
+    "eta": 0,
+    "seconds": 550.45,
+    "hits": 0,
+    "limit": 120,
+    "budget": 25,
+    "grana": 612,
+    "paid": 25,
+    "debt": 0,
+    "parts": 0,
+    "share": [
+     {
+      "id": "bot1",
+      "had": 572,
+      "paid": 5
+     },
+     {
+      "id": "bot2",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot3",
+      "had": 8,
+      "paid": 4
+     },
+     {
+      "id": "bot4",
+      "had": 10,
+      "paid": 4
+     },
+     {
+      "id": "bot5",
+      "had": 7,
+      "paid": 4
+     },
+     {
+      "id": "bot6",
+      "had": 8,
+      "paid": 4
+     }
+    ],
+    "bossCalled": true,
+    "moments": {
+     "entrega": 3,
+     "morta": 3,
+     "tranco": 3,
+     "lombada": 3,
+     "tombo": 4,
+     "chegou": 1,
+     "abrindo": 1
+    },
+    "deliveries": {
+     "clean": 3,
+     "dirty": 0
+    }
+   },
+   "nests": {
+    "list": [
+     {
+      "id": "ninho-01",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-06",
+      "size": "P",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-16",
+      "size": "G",
+      "groups": 1,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-13",
+      "size": "M",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-04",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-03",
+      "size": "P",
+      "groups": 2,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-14",
+      "size": "G",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     },
+     {
+      "id": "ninho-17",
+      "size": "M",
+      "groups": 3,
+      "hitS": null,
+      "downS": null,
+      "emergency": false
+     }
+    ],
+    "destroyed": 0,
+    "groups": 18,
+    "sleepers": {
+     "total": 300,
+     "asleep": 290,
+     "awake": 0,
+     "dead": 10
+    },
+    "neverWoke": 8,
+    "maxEnemies": 127,
+    "stuck": 0,
+    "stuckAt": []
+   },
+   "enemies": {
+    "max": 127,
+    "seen": 401,
+    "alivePerMinute": [
+     0,
+     34,
+     67,
+     65,
+     77,
+     79,
+     84,
+     61,
+     108,
+     84
+    ],
+    "newPerMinute": [
+     34,
+     45,
+     58,
+     42,
+     58,
+     31,
+     32,
+     94,
+     7
+    ]
+   },
+   "banks": {
+    "grana": 278,
+    "withdraws": 139,
+    "share": 0.454,
+    "enemyWithdraws": 1,
+    "enemyGrana": 2,
+    "primes": 0,
+    "empties": 7
+   },
+   "digest": "f3ac71a984fc"
+  }
+ ],
+ "summary": {
+  "runs": 16,
+  "byPlayers": {
+   "6": {
+    "players": 6,
+    "runs": 16,
+    "wins": 10,
+    "winRate": 0.63,
+    "causes": {
+     "boss": 0,
+     "team": 3,
+     "wall": 0,
+     "timeout": 0,
+     "opened": 10,
+     "car": 3
+    },
+    "deathRounds": {
+     "1": 6
+    },
+    "roundReached": {
+     "n": 16,
+     "mean": 1,
+     "min": 1,
+     "median": 1,
+     "max": 1
+    },
+    "firstArrivalS": {
+     "all": null,
+     "byRound": {}
+    },
+    "loot": {
+     "unitsPerIntermission": null,
+     "recipesPerIntermission": null,
+     "byRound": {},
+     "purchasesPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "round1": {
+     "downed": 0,
+     "eliminated": 0,
+     "defeats": 6,
+     "tutorialArrivalS": null
+    },
+    "barricadesFallen": {
+     "perRound": null,
+     "byRound": {}
+    },
+    "boss": {
+     "spawnAfterWaveS": null,
+     "firstInsideBaseS": null,
+     "firstPlayerHitS": null,
+     "killAfterSpawnS": null,
+     "kills": 0,
+     "reached": 0
+    },
+    "towers": {
+     "runs": 16,
+     "rootsPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "tokensPerRun": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "gustavoes": 0
+    },
+    "grana": {
+     "runs": 16,
+     "earned": {
+      "n": 16,
+      "mean": 571.75,
+      "min": 280,
+      "median": 609,
+      "max": 702
+     },
+     "spent": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "evolutions": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "repairs": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "forge": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "final": {
+      "n": 16,
+      "mean": 469.25,
+      "min": 0,
+      "median": 579.5,
+      "max": 677
+     }
+    },
+    "chaveiro": {
+     "runs": 16,
+     "wins": 10,
+     "winsWithDebt": 0,
+     "debt": {
+      "n": 10,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     }
+    },
+    "banks": {
+     "runs": 16,
+     "grana": {
+      "n": 16,
+      "mean": 214.38,
+      "min": 92,
+      "median": 223,
+      "max": 278
+     },
+     "share": {
+      "n": 16,
+      "mean": 0.38,
+      "min": 0.23,
+      "median": 0.4,
+      "max": 0.45
+     },
+     "pooledShare": 0.375,
+     "withdraws": {
+      "n": 16,
+      "mean": 107.19,
+      "min": 46,
+      "median": 111.5,
+      "max": 139
+     },
+     "enemyWithdraws": {
+      "n": 16,
+      "mean": 2.31,
+      "min": 0,
+      "median": 0,
+      "max": 19
+     },
+     "enemyGrana": {
+      "n": 16,
+      "mean": 4.63,
+      "min": 0,
+      "median": 0,
+      "max": 38
+     },
+     "primes": {
+      "n": 16,
+      "mean": 0,
+      "min": 0,
+      "median": 0,
+      "max": 0
+     },
+     "empties": {
+      "n": 16,
+      "mean": 5,
+      "min": 2,
+      "median": 5.5,
+      "max": 7
+     },
+     "verdict": "high"
+    },
+    "verdict": {
+     "wins": "ok",
+     "target": {
+      "min": 7,
+      "max": 11
+     },
+     "round1": "deaths"
+    }
+   }
+  },
+  "verdict": {
+   "ok": false,
+   "notes": [
+    "6p: banks 37.5 % of the Grana, target 25–35 % (high)",
+    "6p: 6 death(s) in round 1"
+   ]
+  }
+ }
+}

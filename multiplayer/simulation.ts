@@ -46,7 +46,7 @@ export const DEFAULT_WORLD:WorldKind='infinito';
  * (balanco-ninhos: a lone bot alternates the ATM and the crate by the round's parity; with one open round 1 it only
  * ever went to the ATM). Mutable only for the bench's grid (--nest-calm).
  */
-export const NEST_CALM={radius:15,seconds:30};
+export const NEST_CALM={radius:40,seconds:30};
 /** D-051: the inventory's hand slot on the views (absent with the automatic weapons). */
 const handOf=(p:{build:PlayerBuild})=>p.build.hand!==undefined?{hand:p.build.hand}:{};
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */

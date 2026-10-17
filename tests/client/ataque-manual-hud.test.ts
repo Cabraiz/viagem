@@ -90,10 +90,11 @@ test('texts: the manual combat speaks of the attack button and of Space, never o
   assert.match(coopNotice('mouse',true),/Espaço/);
 });
 
-test('?combate=manual asks the room for the manual combat; any other value is dropped',()=>{
-  assert.deepEqual(objectiveFromSearch('?combate=manual'),{combat:'manual'});
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro&combate=manual'),{objective:'chaveiro',combat:'manual'});
-  for(const s of ['?combate=auto','?combate=MANUAL',''])assert.deepEqual(objectiveFromSearch(s),{});
+test('the manual combat is the default (balanco-ninhos); ?combate=auto keeps the automatic weapons',()=>{
+  for(const s of ['?combate=manual','?combate=MANUAL','','?combate=x'])assert.equal(objectiveFromSearch(s).combat,'manual',s);
+  assert.deepEqual(objectiveFromSearch('?modo=chaveiro&combate=manual'),{objective:'chaveiro',mode:'ninhos',combat:'manual'});
+  assert.deepEqual(objectiveFromSearch('?combate=auto'),{mode:'ninhos'});
+  assert.deepEqual(objectiveFromSearch('?modo=ondas&combate=auto'),{});
   // The room create sends a body whenever something was asked.
   assert.deepEqual(objectiveFromSearch('?modo=ninhos&combate=manual'),{mode:'ninhos',combat:'manual'});
   assert.match(read('src/client/lobby.ts'),/asked\.objective\|\|asked\.combat\|\|asked\.mode\?\{body:JSON\.stringify\(asked\)\}/);

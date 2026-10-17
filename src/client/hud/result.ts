@@ -360,7 +360,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
-      const conta=result.objective&&objectiveBill(result.objective);
+      const conta=result.objective&&objectiveBill(result.objective,ctx.tally.nests);
       round.textContent=conta?conta.wave:`Round ${result.round}/${result.totalRounds}`;
       bill.hidden=!conta;root.dataset.objetivo=conta?conta.cause:'';
       if(conta){

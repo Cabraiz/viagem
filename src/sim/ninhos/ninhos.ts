@@ -44,7 +44,9 @@ export const RETRY_SECONDS=1;
  *  - ramp: the seconds f takes from 0 to 1 (period, group size, the round row of hp and kinds; NEST_RUN_SECONDS was 540).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
-export const NEST_PACE={gap:[24,8] as [number,number],alive:[14,40] as [number,number],warm:120,warmScale:.5,warmRow:2,ramp:NEST_RUN_SECONDS,siege:[SIEGE_SHARE,SIEGE_SHARE] as [number,number],size:[1,1] as [number,number]};
+// Bench (manual, seeds 1-16, evidence/NEW-20261017-ORQ-balanco-ninhos/full-final): see the card's status.md.
+export const NEST_PACE={gap:[45,5] as [number,number],alive:[8,60] as [number,number],warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,
+  siege:[SIEGE_SHARE,.75] as [number,number],size:[1,1.5] as [number,number]};
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
 const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 /** How often a role shows up in a nest group (the rotation's roles; mini-chefes and the boss never come from a nest). */

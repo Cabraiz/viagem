@@ -4,12 +4,24 @@ import { Room, ROOM_LIFETIME_MS, type Peer, type RoomCheckpoint, type RoomOption
 import {ROOM_DEFAULT_MAP,ROOM_PROTOCOL,isMapId,readMapRef,type MapRef,type RoomCreateOptions} from '../src/protocol/index.ts';
 /** The largest create body read (bytes): {"map":"cidade-nevada","solo":true,"objective":"chaveiro","combat":"manual"} is 78. */
 const CREATE_BODY_MAX=256;
-/** sala-solo-privada: what a create asks, from an optional small JSON body (or a stored row); anything else is dropped. */
-export function createOptions(v:unknown):RoomCreateOptions{
+/**
+ * A stored row's options as they were created (sala-solo-privada; anything else is dropped). Only for a room restored
+ * after a deploy: one created before rodada-legado keeps its waves, wall or automatic weapons to its end.
+ */
+export function storedOptions(v:unknown):RoomCreateOptions{
   const o=v as {map?:unknown;solo?:unknown;objective?:unknown;combat?:unknown;mode?:unknown}|null;
   if(!o||typeof o!=='object')return {};
   return {...(isMapId(o.map)?{map:o.map}:{}),...(o.solo===true?{solo:true as const}:{}),...(o.objective==='chaveiro'||o.objective==='muralha'?{objective:o.objective}:{}),
     ...(o.combat==='manual'?{combat:'manual' as const}:{}),...(o.mode==='ninhos'?{mode:o.mode}:{})};
+}
+/**
+ * What a new room is created with, from an optional small JSON body: its map and solo (sala-solo-privada), and always the
+ * nests with the manual combat (D-051, rodada-legado: the waves, the wall and the automatic weapons stay only in the code;
+ * a body asking for them, or none at all from a cached old site, plays the nests). Anything else is dropped.
+ */
+export function createOptions(v:unknown):RoomCreateOptions{
+  const o=storedOptions(v);
+  return {...(o.map?{map:o.map}:{}),...(o.solo?{solo:true as const}:{}),...(o.objective==='chaveiro'?{objective:'chaveiro' as const}:{}),mode:'ninhos',combat:'manual'};
 }
 import { isAllowedOrigin } from './origins.ts';
 import { TickLoop } from './tick-clock.ts';
@@ -74,7 +86,8 @@ export default {
       const code=crypto.randomUUID().replaceAll('-','').slice(0,10).toUpperCase();
       const stub=env.ROOMS.get(env.ROOMS.idFromName(code));
       // An optional JSON body (sent as plain text, so no CORS preflight): {map, solo} (sala-solo-privada).
-      let asked:RoomCreateOptions={};
+      // None or junk (an old cached site): createOptions' own default, the nests with the manual combat.
+      let asked:RoomCreateOptions=createOptions(null);
       // Read only a small declared body (review: a huge one is never buffered); none, chunked or junk: a plain room.
       const length=Number(request.headers.get('content-length')??'0');
       if(length>0&&length<=CREATE_BODY_MAX)try{asked=createOptions(JSON.parse(await request.text()));}catch{/* junk: a plain room */}
@@ -192,7 +205,7 @@ export class GameRoom extends DurableObject<Env>{
     return this.loading??=(async()=>{
       this.city??=await loadCity();
       this.code??=await this.ctx.storage.get<string>('code');this.created=created;
-      this.asked=createOptions(await this.ctx.storage.get('options'));
+      this.asked=storedOptions(await this.ctx.storage.get('options'));
       const room=this.create(created,(await this.ctx.storage.get<number>('terrainSeed'))??DEFAULT_SEED);
       const roster=await this.ctx.storage.get<RoomRoster>('roster');
       if(roster)room.restore(roster);

@@ -21,6 +21,7 @@ import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
 import {buildCityArtPlan,cityArtOptions} from '../render/city/art-plan.ts';
 import {ALBEDO_URL} from '../render/city/relevo/albedo-meta.ts';
+import {liveSheets} from '../render/city/live/art.ts';
 
 export type AssetPriority='P0'|'P1'|'P2';
 export type AssetKind='hero'|'icon'|'ground'|'building'|'decor'|'enemy'|'base'|'effect';
@@ -84,6 +85,7 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   if(city){
     add(treeUrl('arvore-nevada'),'P2','decor');
     for(const s of city.sheets)if(s.key.startsWith('city:prop:'))add(s.url,'P2','decor');
+    for(const s of liveSheets(index))add(s.url,'P2','decor'); // cenário vivo: place loops, lit objects, nests
   }
   for(const l of horde)add(l.url,'P2','effect');
   for(const l of framesLoads())add(l.url,'P2','effect');

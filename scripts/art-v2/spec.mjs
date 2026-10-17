@@ -32,6 +32,7 @@
  * problems: the piece is approved for what came and the game keeps its current art for the rest.
  */
 import {ENEMY_ROLES,ENEMY_TABLE} from './enemies-table.mjs';
+import {DECOR_IDS} from './decor-ids.mjs';
 
 export const DIRECTIONS=Object.freeze(['S','SW','W','NW','N','NE','E','SE']);
 /** pt-BR names for messages. */
@@ -75,7 +76,7 @@ export const MAX_TEXTURE=4096;
 /** pt-BR name of each format, for messages (the id stays the value written in the sidecar "kind"). */
 export const KIND_NAMES=Object.freeze({
   animations:'animação em 8 direções',dir8:'atlas de 8 direções',views:'vistas de câmera',frames:'quadros (1 vista)',
-  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',tower:'torre (base + arma)',
+  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',tower:'torre (base + arma)',decor:'cenário (vistas + camadas)',
 });
 
 // ---------------------------------------------------------------- P0/P1 tables (inventário de sprites, 12/10/2026)
@@ -388,6 +389,12 @@ export const GROUPS=Object.freeze({
     title:'11. Torres (defesas)',input:'torres',output:'public/art/towers',kind:'tower',kinds:['tower'],views:4,
     // One folder per tower (08-TORRES.md): base (4 views × construction/damage rows) + weapon (8 directions). Any id.
     pieces:'any',
+  },
+  cenario:{
+    title:'12. Cenário novo (lugares, muros, ninhos, banco, decalques)',input:'cenario/decor',output:'public/art/city/decor',kind:'decor',kinds:['decor'],views:4,
+    // One folder per piece (scripts/art-v2/adaptar/decor.mjs): sheet.png/.json (views) + optional layers anim[-<nome>]/quebra
+    // (.png/.json: 4 view rows × frames). Ids = the delivery's stems (DECOR_IDS); any other id is accepted as extra.
+    pieces:'any',expected:Object.fromEntries(DECOR_IDS.map(id=>[id,{priority:P1}])),
   },
 });
 

@@ -58,13 +58,14 @@ async function collect(group,spec,ctx){
     }
     return {pieces,unknown,extra,order:ids};
   }
-  if(spec.kind==='tower'){
+  if(spec.kind==='tower'||spec.kind==='decor'){
     for(const e of top){
       const full=path.join(dir,e.name);
       if(e.isDirectory())for(const f of await entries(full))add(e.name,path.join(full,f.name));
-      else reject(full,`fora de uma pasta de torre. Coloque em ${spec.input}/<torre>/ (ex.: ${spec.input}/vigia-do-predio/${e.name}).`);
+      else reject(full,spec.kind==='decor'?`fora de uma pasta de peça. Coloque em ${spec.input}/<id>/ (ex.: ${spec.input}/farmacia-1/sheet.png).`:`fora de uma pasta de torre. Coloque em ${spec.input}/<torre>/ (ex.: ${spec.input}/vigia-do-predio/${e.name}).`);
     }
-    return {pieces,unknown,order:[...pieces.keys()].sort()};
+    const listed=Object.keys(spec.expected??{});
+    return {pieces,unknown,order:[...listed,...[...pieces.keys()].filter(id=>!Object.hasOwn(spec.expected??{},id)).sort()]};
   }
   if(spec.kind==='dir8'){
     const classes=ctx.classes;
@@ -148,7 +149,7 @@ export async function importArtV2({input,repoRoot=REPO_ROOT,outRoot=repoRoot,gro
       if(!files){pieces.push({group,id,status:priority==='P0'?'pendente':'opcional',priority,problems:[],notes:[],files:[],outputs:[]});continue;}
       files.sort();
       const result={group,id,status:'aprovado',priority,problems:[],notes:[],files:files.map(f=>relName(ctx,f)),outputs:[]};
-      result.source=spec.kind==='animations'||spec.kind==='tower'?`${spec.input}/${id}`:relName(ctx,files.find(f=>/\.png$/i.test(f))??files[0]);
+      result.source=spec.kind==='animations'||spec.kind==='tower'||spec.kind==='decor'?`${spec.input}/${id}`:relName(ctx,files.find(f=>/\.png$/i.test(f))??files[0]);
       const {problems,notes,sheets,kind,meta}=await validatePiece(group,id,files,{...ctx,spec,manifest});
       result.problems=problems;result.notes=Array.isArray(notes)?notes:[];
       if(!problems.length){

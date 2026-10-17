@@ -125,6 +125,7 @@ const COVER_NONE=0,COVER_PLAIN=1,COVER_RUBBLE=2,COVER_EDGE=3;
  *    whose cell is under a render block are dropped; one per spot: a prop closer than PROP_STACK to one already kept,
  *    or closer than PROP_DEDUP to one of its kind, is dropped too.
  * 6. Points: inicio, praca, spawnN/S/L/O and bocas N/S/L/O as bocaN/bocaS/bocaL/bocaO.
+ * 7. Decor (the new scenery): copied as is, omitted when empty.
  * The result is already in parseCityAsset's normal form (parsing it returns an equal value).
  */
 export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):CityAsset{
@@ -251,5 +252,8 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
     bocaN:pt(p.bocas.N),bocaS:pt(p.bocas.S),bocaL:pt(p.bocas.L),bocaO:pt(p.bocas.O),
   };
 
-  return {version:1,name:asset.name,cell,width:W,height:H,origin:{x:0,y:0},heights,corners,ground,blocks,props,points};
+  // 7. Scenery (cenario-no-mapa): as placed by the maps sector, already on the cell grid.
+  const decor=asset.decor.map(q=>({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(q.links!==undefined?{links:q.links}:{})}));
+
+  return {version:1,name:asset.name,cell,width:W,height:H,origin:{x:0,y:0},heights,corners,ground,blocks,props,...(decor.length?{decor}:{}),points};
 }

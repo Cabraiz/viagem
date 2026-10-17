@@ -14,7 +14,9 @@ export const CITY_FORMAT_VERSION=1;
 export const MAX_JSON_CHARS=4_000_000;
 /** Largest sample grid side; the cell grid is at most MAX_DIM/SAMPLES_PER_CELL per side. */
 export const MAX_DIM=4096;
-export const MAX_BLOCKS=20_000,MAX_PROPS=50_000,MAX_LOOT=5000;
+export const MAX_BLOCKS=20_000,MAX_PROPS=50_000,MAX_LOOT=5000,MAX_DECOR=50_000;
+/** Turns a decor piece may take (degrees; see CityDecor.rot). */
+export const DECOR_ROTS=[0,90,180,270] as const;
 /** Total rectangles over all blocks (bounds an object handed to decode, where the text limit does not apply). */
 export const MAX_RECTS=200_000;
 export const SAMPLES_PER_CELL=4;
@@ -39,6 +41,15 @@ export interface CityPoint {readonly x:number; readonly y:number}
 export interface CityArea {readonly x:number; readonly y:number; readonly w:number; readonly h:number}
 export interface CityBlock {readonly id:string; readonly kind:CityBlockKind; readonly bbox:CityRect; readonly rects:readonly CityRect[]}
 export interface CityProp {readonly x:number; readonly y:number; readonly r:number; readonly kind:string; readonly solid:boolean}
+/**
+ * A piece of the delivered scenery placed on the city (NEW-20261016-ORQ-cenario-no-mapa): art id without the view
+ * (`posto-gasolina-1`, `muro-pichado-reto-intacto`…), its footprint in cells (c, r the top-left cell; w, h after the
+ * turn) and its turn: `rot` is the art view that shows it with the camera at view 0 (0: front to +y, 90: +x, 180: −y,
+ * 270: −x). Walls, fences and cliffs also carry `links`, the neighbours they join (N 1, E 2, S 4, W 8). Decor never
+ * changes the walkable grid: pieces on blocks stand on unwalkable cells, the ones on sidewalks are walked through.
+ */
+export interface CityDecor {readonly id:string; readonly c:number; readonly r:number; readonly w:number; readonly h:number;
+  readonly rot:typeof DECOR_ROTS[number]; readonly links?:number}
 /** L = east (leste), O = west (oeste). All of them must be walkable. */
 export interface CityPoints {
   readonly inicio:CityPoint; readonly praca:CityPoint;
@@ -55,6 +66,7 @@ export interface CityAssetData {
   playable:CityArea;
   walkable:Uint8Array; water?:Uint8Array; heights:Float32Array;
   points:CityPoints; blocks:readonly CityBlock[]; props:readonly CityProp[]; loot:readonly CityPoint[];
+  decor?:readonly CityDecor[];
   source?:CitySource;
 }
 
@@ -68,6 +80,8 @@ export interface CityAsset {
   readonly playable:CityArea;
   readonly points:CityPoints; readonly blocks:readonly CityBlock[]; readonly props:readonly CityProp[];
   readonly loot:readonly CityPoint[]; readonly source?:CitySource;
+  /** The placed scenery (empty when the asset has none). */
+  readonly decor:readonly CityDecor[];
   /** Walkable/water sample grid ((cells*4)^2, step = unitsPerCell/4). */
   readonly samples:CityGrid;
   /** Height corner grid ((cells+1)^2, step = unitsPerCell). */
@@ -219,6 +233,12 @@ export function encodeCityAsset(data:CityAssetData):string{
     return {x:f3(p.x,`props[${i}].x`),y:f3(p.y,`props[${i}].y`),r:f3(p.r,`props[${i}].r`),kind:text(p.kind,`props[${i}].kind`),solid:p.solid};
   });
   const loot=list(d.loot,'loot').map((v,i)=>point(v,`loot[${i}]`));
+  const int=(v:unknown,path:string)=>Number.isSafeInteger(v)?v as number:fail(`${path} must be an integer`);
+  const decor=d.decor===undefined?undefined:list(d.decor,'decor').map((v,i)=>{
+    const q=obj(v,`decor[${i}]`),at=`decor[${i}]`;
+    return {id:text(q.id,`${at}.id`),c:int(q.c,`${at}.c`),r:int(q.r,`${at}.r`),w:int(q.w,`${at}.w`),h:int(q.h,`${at}.h`),rot:int(q.rot,`${at}.rot`),
+      ...(q.links!==undefined?{links:int(q.links,`${at}.links`)}:{})};
+  });
   const lines=[
     `"format":${J(CITY_FORMAT)}`,
     `"formatVersion":${CITY_FORMAT_VERSION}`,
@@ -242,6 +262,8 @@ export function encodeCityAsset(data:CityAssetData):string{
     `"props":${J(props)}`,
     `"loot":${J(loot)}`,
   );
+  // One piece per line: the file stays diffable and the decor never shifts the bytes of the sections above.
+  if(decor?.length)lines.push(`"decor":[\n${decor.map(q=>J(q)).join(',\n')}\n]`);
   if(d.source!==undefined){
     const s=obj(d.source,'source');
     lines.push(`"source":${J({sha256:text(s.sha256,'source.sha256'),note:text(s.note,'source.note')})}`);
@@ -380,6 +402,18 @@ function decodeRoot(root:unknown):CityAsset{
     return Object.freeze({x:p.x,y:p.y,r,kind:str(q.kind,`props[${i}].kind`,MAX_ID),solid:q.solid as boolean});
   }));
   const loot=Object.freeze(each(arr(o.loot,'loot',MAX_LOOT),(v,i)=>pointIn(v,`loot[${i}]`,false)));
+  const cellInt=(v:unknown,path:string,max:number,min=0)=>{
+    if(!Number.isSafeInteger(v)||(v as number)<min||(v as number)>max)bad(`${path} must be an integer in ${min}..${max}`);
+    return v as number;
+  };
+  const decor=o.decor===undefined?Object.freeze([]) as readonly CityDecor[]:Object.freeze(each(arr(o.decor,'decor',MAX_DECOR),(v,i):CityDecor=>{
+    const q=rec(v,`decor[${i}]`),at=`decor[${i}]`;
+    const c=cellInt(q.c,`${at}.c`,cellsW-1),r=cellInt(q.r,`${at}.r`,cellsH-1);
+    const w=cellInt(q.w,`${at}.w`,cellsW-c,1),h=cellInt(q.h,`${at}.h`,cellsH-r,1);
+    if(!(DECOR_ROTS as readonly unknown[]).includes(q.rot))bad(`${at}.rot must be one of ${DECOR_ROTS.join(', ')}`);
+    const links=q.links===undefined?undefined:cellInt(q.links,`${at}.links`,15);
+    return Object.freeze({id:str(q.id,`${at}.id`,MAX_ID),c,r,w,h,rot:q.rot as CityDecor['rot'],...(links!==undefined?{links}:{})});
+  }));
   let source:CitySource|undefined;
   if(o.source!==undefined){
     const s=rec(o.source,'source'),sha=s.sha256;
@@ -388,7 +422,7 @@ function decodeRoot(root:unknown):CityAsset{
     source=Object.freeze({sha256:sha as string,note:s.note as string});
   }
   const meta={id,version,name,cells:Object.freeze({w:cellsW,h:cellsH}),unitsPerCell:unit,size:Object.freeze(size),
-    playable:Object.freeze(playable),points,blocks,props,loot};
+    playable:Object.freeze(playable),points,blocks,props,loot,decor};
   return Object.freeze(Object.assign(asset,meta,source?{source}:{})) as CityAsset;
 }
 
@@ -446,6 +480,7 @@ export function cityAssetToData(asset:CityAsset):CityAssetData{
       bocas:{N:pt(p.bocas.N),S:pt(p.bocas.S),L:pt(p.bocas.L),O:pt(p.bocas.O)}},
     blocks:asset.blocks.map(b=>({id:b.id,kind:b.kind,bbox:rc(b.bbox),rects:b.rects.map(rc)})),
     props:asset.props.map(q=>({...q})),loot:asset.loot.map(pt),
+    ...(asset.decor.length?{decor:asset.decor.map(q=>({...q}))}:{}),
   };
   if(asset.waterBits)data.water=unpackBits(asset.waterBits,count);
   if(asset.source)data.source={...asset.source};

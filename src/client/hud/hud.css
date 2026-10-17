@@ -793,6 +793,8 @@
 .rh-round-eta .ic{width:20px;height:20px}
 .rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh-round-sep{font-style:normal;margin-right:2px}
+/* D-051 nests: the chip is the clock alone (no "Onda N" before it), so no separator. */
+.rh-round[data-modo="ninhos"] .rh-round-sep{display:none}
 /* Portrait: the chip's slot is 166 px at 390 (beside the camera buttons): "Onda 15 · 10:00 · 123" still fits in one line. */
 @media (max-width:599px){
   .rh .rh-round[data-objetivo=chaveiro]{gap:3px;padding-inline:4px}

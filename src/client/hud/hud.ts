@@ -8,7 +8,7 @@ import './hud.css';
 import './offer-centro.css';
 import './you.css';
 import type {RunPause,RunView} from '../../contract/index.ts';
-import {applyEvents,emptyTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
+import {applyEvents,emptyTally,nestTally,resetTally,type HudContext,type HudPart,type RunResult,type RunTally} from './model.ts';
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
@@ -415,7 +415,8 @@ export class RunHud {
     // First run of the phone: what the coach showed in this run counts as learned (VGM-056).
     this.coach.endRun();this.coachShow=undefined;this.coachRow.render(undefined,0);delete this.el.dataset.coach;delete this.el.dataset.coachStick;
     this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);
-    this.result.show(result,this.ctx);
+    // D-051: in the nests mode the round line counts the nests that fell (the last view still has them).
+    this.result.show(result,this.ctx,nestTally(this.last));
   }
 
   /** Hides the result and starts a fresh tally: call on rematch so awards and kills do not carry over. */

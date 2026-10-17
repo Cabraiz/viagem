@@ -293,3 +293,68 @@ test('a failed smoke\'s reason: its verdict lines, not the traces before them',(
   assert.equal(smokeGist('o navegador não abriu'),'o navegador não abriu','no verdict line: the start of the output');
   assert.equal(smokeGist('x'.repeat(900)).length,600);
 });
+
+// NEW-20261017-ORQ-fila-manifest-auto: public/art/manifest.json (the importer's index of every group) conflicted in almost
+// every lote. A conflict only there is regenerated from the group manifests (the checkout's own writeIndex) and checked
+// with `node scripts/art-lite.mjs --check`; any other file in conflict still sends the branch back.
+const SPEC=`export const GROUPS={a:{output:'public/art/a'},b:{output:'public/art/b'}};\n`;
+const CONVERT=`import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+export async function writeIndex(specs,{outRoot}){
+  const groups={};
+  for(const [g,s] of Object.entries(specs)){const f=outRoot+'/'+s.output+'/manifest.json';if(existsSync(f))groups[g]={output:s.output,pieces:JSON.parse(readFileSync(f,'utf8')).pieces};}
+  writeFileSync(outRoot+'/public/art/manifest.json',JSON.stringify({version:2,groups})+'\\n');
+}\n`;
+// The lite check: red while a copy is missing (public/art/a/SEM-LITE stands for one).
+const LITE=`import {existsSync} from 'node:fs';
+if(existsSync('public/art/a/SEM-LITE')){console.error('art-lite: copies missing or older than their source: a/x');process.exit(1);}\n`;
+
+function artWorld(){
+  const w=world(),art=(dir:string,pieces:object)=>{mkdirSync(join(w.repo,dir),{recursive:true});writeFileSync(join(w.repo,dir,'manifest.json'),JSON.stringify({pieces},null,2)+'\n');};
+  const index=(a:object,b:object)=>writeFileSync(join(w.repo,'public/art/manifest.json'),JSON.stringify({version:2,groups:{a:{output:'public/art/a',pieces:a},b:{output:'public/art/b',pieces:b}}})+'\n');
+  mkdirSync(join(w.repo,'scripts/art-v2'),{recursive:true});
+  writeFileSync(join(w.repo,'scripts/art-v2/spec.mjs'),SPEC);writeFileSync(join(w.repo,'scripts/art-v2/convert.mjs'),CONVERT);
+  writeFileSync(join(w.repo,'scripts/art-lite.mjs'),LITE);
+  art('public/art/a',{um:1});art('public/art/b',{dois:2});index({um:1},{dois:2});
+  git(w.repo,'add','-A');git(w.repo,'commit','-qm','arte');git(w.repo,'push','-q','origin','main');
+  /**
+   * A branch that imports into group `g` (its manifest and the index, as the importer writes both; `indexOnly`: the
+   * index alone), plus extra files.
+   */
+  const importing=(name:string,g:'a'|'b',pieces:object,extra:Record<string,string>={},indexOnly=false)=>{
+    git(w.repo,'checkout','-q','-b',name,'main');
+    const a=g==='a'?pieces:{um:1},b=g==='b'?pieces:{dois:2};
+    if(!indexOnly)art(`public/art/${g}`,pieces);
+    index(a,b);
+    for(const [f,t] of Object.entries(extra))writeFileSync(join(w.repo,f),t);
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm',name);git(w.repo,'checkout','-q','main');
+  };
+  return {...w,importing};
+}
+
+test('a conflict only in public/art/manifest.json is regenerated from the group manifests, checked by art-lite and integrated; one with another file, or a red art-lite, goes back',()=>{
+  const w=artWorld();
+  try{
+    w.importing('vgm/arte-a','a',{um:1,tres:3});
+    w.importing('vgm/arte-b','b',{dois:2,quatro:4});           // the index conflicts with arte-a's, nothing else
+    w.importing('vgm/arte-b2','b',{dois:2,cinco:5});           // the index and, after arte-b, b's manifest
+    w.importing('vgm/sem-lite','a',{um:1,seis:6},{'public/art/a/SEM-LITE':'x'},true); // the index only, a copy missing
+    main(['pronto','NEW-arte-a','--branch','vgm/arte-a',...w.opts]);
+    main(['pronto','NEW-arte-b','--branch','vgm/arte-b',...w.opts]);
+    main(['pronto','NEW-arte-b2','--branch','vgm/arte-b2',...w.opts]);
+    main(['pronto','NEW-sem-lite','--branch','vgm/sem-lite',...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-arte-a','NEW-arte-b']);
+    const back=Object.fromEntries(state.devolvidos.map((d:{card:string})=>[d.card,d]));
+    assert.deepEqual(Object.keys(back).sort(),['NEW-arte-b2','NEW-sem-lite']);
+    assert.deepEqual([...back['NEW-arte-b2'].arquivos].sort(),['public/art/b/manifest.json','public/art/manifest.json'],'another file in conflict: back as before');
+    assert.equal(back['NEW-arte-b2'].nota,undefined,'no regeneration tried');
+    assert.deepEqual(back['NEW-sem-lite'].arquivos,['public/art/manifest.json']);
+    assert.match(back['NEW-sem-lite'].nota,/art-lite --check falhou .*copies missing/);
+    git(w.repo,'fetch','-q','origin');
+    const index=JSON.parse(git(w.repo,'show','origin/main:public/art/manifest.json'));
+    assert.deepEqual(index.groups.a.pieces,{um:1,tres:3});assert.deepEqual(index.groups.b.pieces,{dois:2,quatro:4},'both imports in the index');
+    assert.ok(!git(w.repo,'show','origin/main:public/art/manifest.json').includes('<<<<<<<'));
+    assert.match(git(w.repo,'log','-1','--format=%s',`${state.sha}^2`),/arte-b/,'the merge commit of arte-b is there');
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no batch worktree left');
+  }finally{w.cleanup();}
+});

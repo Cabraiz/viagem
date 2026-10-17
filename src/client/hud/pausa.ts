@@ -45,7 +45,7 @@ export interface PauseView {
   /** What is left of the deadline bar, 0..1. */
   fraction:number;
   urgent:boolean;
-  /** "Escolham! 9 s". */
+  /** "Escolham! 9 s"; "Voltando em 9 s" once nobody is missing (no "Escolham!" over "Todo mundo escolheu!"). */
   title:string;
   /** Who the team waits for ("Esperando: você, Tia e Zé", "Falta você!", "Você já escolheu. Esperando: Tia"). */
   line:string;
@@ -98,7 +98,7 @@ export function pauseView(pause:RunPause|undefined,roster:readonly PauseMember[]
   else if(localWaiting)line=`Esperando: ${namesList(['você',...names])}`;
   else if(picks(byId.get(localId)))line=`Você já escolheu. Esperando: ${namesList(names)}`;
   else line=`Esperando: ${namesList(names)}`;
-  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title:`Escolham! ${seconds} s`,line,localWaiting,onlyLocal,waiting,level:pause.level};
+  return {leftMs,seconds,fraction,urgent:leftMs<=PAUSE_URGENT_MS,title:waiting.length?`Escolham! ${seconds} s`:`Voltando em ${seconds} s`,line,localWaiting,onlyLocal,waiting,level:pause.level};
 }
 
 /** A teammate's mark on the strip while a pause lasts. */

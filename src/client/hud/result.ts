@@ -388,7 +388,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const moment=result.shame,who=moment&&result.players.find(p=>p.id===moment.player);
       shame.hidden=!moment||!who;shameChip=undefined;
       if(moment&&who){
-        const copy=shameText(moment,who.id===ctx.localId?'Você':who.name);
+        const copy=shameText(moment,who.id===ctx.localId?'Você':who.name,nests?'ninhos':result.objective?'onda':'round');
         // On the card the joke goes (design review D8): the sticker and the card already say who and what.
         shameChip={playerId:who.id,line:copy.joke,aria:`Momento mais vergonhoso: ${copy.text} ${copy.joke}`,key:moment.key,...(moment.source?{source:moment.source}:{})};
         shameLine.textContent=copy.text;shameJoke.textContent=copy.joke;

@@ -445,6 +445,9 @@
 .rh-result-grid{grid-area:grid;position:relative;z-index:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;align-content:safe center;gap:6px}
 .rh-result-grid[data-count="1"],.rh-result-grid[data-count="2"]{grid-template-columns:minmax(0,360px);justify-content:center}
+/* Portrait (varredura-celular): the cards start right under the head and the shame notice; centred, they left a hole of
+   ~120 px above them when there was no notice. The spare height goes below them, above the buttons. */
+@media (min-height:501px){.rh-result-grid{align-content:start}}
 
 /* Player card */
 .rh-rcard{display:flex;flex-direction:column;gap:5px;min-width:0;padding:7px;border-radius:var(--r-janela);

@@ -54,6 +54,8 @@ test('who is missing: names from the roster (short), "você" first, unknown ids 
   assert.equal(line(['p2','p4']),'Você já escolheu. Esperando: Tia e Bruninha');
   assert.equal(line(['p3']),'Você já escolheu. Esperando: Zé');
   assert.equal(line([]),'Todo mundo escolheu!');
+  // varredura-celular: nobody missing, so the title stops asking ('Escolham!' over 'Todo mundo escolheu!' read as a contradiction).
+  assert.equal(pauseView(pause(9500,[]),ROSTER,'p1',0)!.title,'Voltando em 10 s');
   // An id the roster does not know (left the room, not in the view yet) is dropped, never shown as an id.
   assert.equal(line(['p2','p9']),'Você já escolheu. Esperando: Tia');
   assert.deepEqual(pauseView(pause(8000,['p9','p1']),ROSTER,'p1',0)!.waiting,['p1']);

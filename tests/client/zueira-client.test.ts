@@ -83,6 +83,11 @@ test('copy: every event has a banner, the kill-cam names who closed the round, e
   }
   assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé').text,'Zé caiu no Round 1 pra um bêbado do boteco.');
   assert.equal(shameText({player:'a',key:'recaida',round:5,tick:1,seconds:3},'Tia').text,'Tia levantou e caiu de novo em 3 s.');
+  // varredura-celular: the chaveiro counts in Ondas, the nests mode (D-051) has no number at all.
+  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé','onda').text,'Zé caiu na Onda 1 pra um bêbado do boteco.');
+  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé','ninhos').text,'Zé caiu logo no começo pra um bêbado do boteco.');
+  assert.equal(shameText({player:'a',key:'caiu',round:3,tick:1,source:'bebado'},'Zé','ninhos').text,'Zé caiu pra um bêbado do boteco.');
+  assert.equal(shameText({player:'a',key:'apagao',round:3,tick:1},'Zé','onda').text,'Zé caiu no apagão na Onda 3.');
   assert.match(shameText({player:'a',key:'caiu',round:2,tick:1,source:'??'},'X').text,/um bicho/);
   // The room reads it: never "você", no gendered participles, no attack on the person (design review B1/D6).
   for(const key of Object.keys(SHAME_SCORE) as ShameKey[]){

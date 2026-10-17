@@ -278,7 +278,12 @@ function load(next:HudScenario){
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   // D-051 nests (?ninhos=…): five nests, two fallen, so the result's round line reads "Ninhos 2/5".
   if(scenario==='result'&&params.has('ninhos'))hud.update({...view,structures:[...view.structures,...[0,1,2,3,4].map(i=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}))]});
-  if(scenario==='result')hud.showResult(withShare(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full')))))));
+  // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).
+  const vergonha=params.get('vergonha'),shamed=<T extends {shame?:unknown;players:{id:string}[]}>(r:T):T=>{
+    if(vergonha==='nenhuma'){const {shame:_,...rest}=r;return rest as T;}
+    return vergonha==='cedo'&&r.players[0]?{...r,shame:{player:r.players[0].id,key:'cedo',round:1,tick:300,source:'bebado'}}:r;
+  };
+  if(scenario==='result')hud.showResult(shamed(withShare(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full'))))))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
   // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once

@@ -69,17 +69,22 @@ export function killcamCaption(byName:string|undefined,kind:string,seed:number,u
  * "Momento mais vergonhoso": the sentence with the name (the notice on top of the result), the same sentence without it
  * (the chip on that player's card, when the notice does not fit) and a one-line joke (second line, optional to read).
  */
-export function shameText(m:ShameMoment,name:string):{text:string;line:string;joke:string}{
-  const the=critter(m.source),r=`no Round ${m.round}`;
+/**
+ * `when`: how the run counts its time (varredura-celular): 'round' says "no Round N", 'onda' (the chaveiro, D-047) "na
+ * Onda N", 'ninhos' (D-051, no waves) says no number at all.
+ */
+export type ShameWhen='round'|'onda'|'ninhos';
+export function shameText(m:ShameMoment,name:string,when:ShameWhen='round'):{text:string;line:string;joke:string}{
+  const the=critter(m.source),at=when==='ninhos'?'':when==='onda'?`na Onda ${m.round}`:`no Round ${m.round}`,r=at?` ${at}`:'';
   const lines:Record<ShameKey,()=>{verb:string;joke:string}>={
     recaida:()=>({verb:`levantou e caiu de novo em ${m.seconds??1} s.`,joke:'O resgate pediu reembolso.'}),
-    apagao:()=>({verb:`caiu no apagão ${r}.`,joke:'Disse que tropeçou no fio.'}),
-    coxinha:()=>({verb:`caiu com uma coxinha do lado ${r}.`,joke:'Tava ali. Do ladinho.'}),
-    pombos:()=>({verb:`caiu pra um pombo ${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
-    cedo:()=>({verb:`caiu no Round 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
-    'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva ${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
-    'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia ${r}.`,joke:'Era só fome mesmo.'}),
-    caiu:()=>({verb:`caiu pra ${the.one} ${r}.`,joke:'Escorregou no chão molhado. Não tinha placa.'}),
+    apagao:()=>({verb:`caiu no apagão${r}.`,joke:'Disse que tropeçou no fio.'}),
+    coxinha:()=>({verb:`caiu com uma coxinha do lado${r}.`,joke:'Tava ali. Do ladinho.'}),
+    pombos:()=>({verb:`caiu pra um pombo${r}.`,joke:'Um pombo. Unzinho. Cruu.'}),
+    cedo:()=>({verb:when==='ninhos'?`caiu logo no começo pra ${the.one}.`:`caiu ${when==='onda'?'na Onda':'no Round'} 1 pra ${the.one}.`,joke:'Nem esquentou o banco.'}),
+    'sem-boleto':()=>({verb:`não pegou nenhum boleto da chuva${r}.`,joke:'Pela primeira vez, fugiu de boleto.'}),
+    'coxinha-cheia':()=>({verb:`comeu coxinha de vida cheia${r}.`,joke:'Era só fome mesmo.'}),
+    caiu:()=>({verb:`caiu pra ${the.one}${r}.`,joke:'Escorregou no chão molhado. Não tinha placa.'}),
   };
   const {verb,joke}=(lines[m.key]??lines.caiu)();
   return {text:`${name} ${verb}`,line:verb.charAt(0).toUpperCase()+verb.slice(1),joke};

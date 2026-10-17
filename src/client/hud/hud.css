@@ -564,6 +564,13 @@
   .rh-result-sub{margin-top:3px;font-size:var(--t-13)}
   .rh-result-in[data-outcome=defeat] .rh-result-title{transform-origin:0 100%}
   .rh-result-stats{justify-content:flex-start}
+  /* Titles and buttons share the top row; the chips get a full-width row under them (varredura-celular: beside the titles
+     they ran under "Revanche" once the objective's bill and vaquinha came in). Long chips wrap within the row. */
+  .rh-result{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:"titles actions" "stats stats" "shame shame" "grid grid"}
+  .rh-result-head{display:contents}
+  .rh-result-titles{grid-area:titles;position:relative;z-index:1;align-self:center}
+  .rh-result-stats{grid-area:stats;position:relative;z-index:1;min-width:0;align-self:center}
+  .rh-result-conta,.rh-result-vaquinha{white-space:normal;max-width:100%}
   .rh-result-actions{align-self:center}
   .rh-result .rh-result-btn{min-height:44px;font-size:var(--t-16);padding:6px 14px}
   .rh-result .rh-result-rematch{min-width:120px}

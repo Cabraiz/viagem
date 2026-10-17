@@ -191,9 +191,10 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   let stale=false,missing=true,made=false;
   const maxAwake=options.maxAwake??MAX_ENEMIES;
 
-  /** A body as an EnemyState, out of any world (no counter, no map): the same object every load of the same seed. */
-  function body(ctx:SimContext,b:SleepBody):EnemyState{
-    const shell={tick:ctx.tick,enemies:new Map<string,EnemyState>(),nextId:()=>b.id} as unknown as SimContext;
+  /** A body as an EnemyState, out of any world (no counter, no map, no clock: spawnTick and readyTick 0, the waking sets
+   * readyTick): the same object every load of the same seed, whatever the tick of the checkpoint. */
+  function body(b:SleepBody):EnemyState{
+    const shell={tick:0,enemies:new Map<string,EnemyState>(),nextId:()=>b.id} as unknown as SimContext;
     const e=createEnemy(shell,b.kind,b.home,options.hpScale??1);
     if(options.speedMap)e.speed=options.speedMap(e.speed);
     return e;
@@ -367,7 +368,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       bodies.forEach((b,i)=>{
         const [life,hp]=state.life[i];
         if(life===0)return;
-        const e=body(ctx,b);
+        const e=body(b);
         // A checkpoint keeps no live enemy: a body awake when it was taken sleeps again at its spot, with its hp.
         if(hp>0)e.hp=Math.min(e.maxHp,hp);
         state.life[i]=[1,e.hp];

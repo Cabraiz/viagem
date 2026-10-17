@@ -3,7 +3,8 @@
  * Pure and deterministic (asset + seed + keep-outs); scripts/cenario-cidade.ts writes the result into the asset.
  * The map's quarters are compounds closed by 1-cell lines of wall and cliff, with open ground inside:
  *  - wall cells → a wall/fence piece each, its shape from the wall neighbours (`links`), one family per block, ~20 % broken;
- *  - cliff cells → `penhasco2` pieces the same way; the border band (edge block) → mountains (6×6, 4×4, morro 3×3) and boulders;
+ *  - cliff cells → `penhasco2` pieces the same way; the border band (edge block) → mountains (6×6, 4×4, morro 3×3) where
+ *    they fit whole and a boulder on every edge cell left (the render draws it over the cell instead of the box);
  *  - building blocks → packed lots: one place with life (lugar) per block while any is left, then houses and flats,
  *    fronts to the street when they can;
  *  - more places with life inside the compounds, backed onto a wall or cliff, front to the open ground, never closer than
@@ -44,7 +45,7 @@ export const OBJETOS_2:readonly string[]=['banca-jornal','barraca-feira','cacamb
 export const POSTES:readonly (readonly [string,number])[]=[['poste-concreto-1',3],['poste-concreto-2',3],['poste-concreto-3',3],
   ['poste-aceso-amarelo-1',1],['poste-aceso-amarelo-2',1],['poste-gato-1',1],['poste-gato-2',1],['luminaria-quebrada-pisca-1',.5],['luminaria-quebrada-pisca-2',.5]];
 
-export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2,BOULDER_SHARE=.08;
+export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2;
 /**
  * Pieces the art import refused (E8, importar-cenario-novo 16/10: problems in the art, asked back from the artist):
  * never placed, so no cell turns into an invisible wall waiting for art that will not come. A family whose variants are
@@ -55,7 +56,9 @@ export const DECOR_REFUSED:ReadonlySet<string>=new Set(['lava-jato-1','lava-jato
 /** Line shapes at rot 0 (links), turned a quarter (rot +90) the way FACE_ROT goes: S → E → N → W. */
 const LINE_BASE={reto:LINK.N|LINK.S,quina:LINK.E|LINK.S,t:LINK.N|LINK.E|LINK.S,ponta:LINK.S} as const;
 
-export interface DecorKeepOut {readonly x:number;readonly y:number;readonly r:number}
+export interface DecorKeepOut {readonly x:number;readonly y:number;readonly r:number;
+  /** Kept bare of every piece, lines and border boulders too (the plaza: the base stands there). */
+  readonly all?:boolean}
 export interface DecorOptions {
   /** Discs (u) nothing is placed in. */
   keepOut?:readonly DecorKeepOut[];
@@ -110,19 +113,22 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const c0=Math.round(x/unit),r0=Math.round(y/unit),c1=Math.round((x+w)/unit),r1=Math.round((y+h)/unit);
     for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)if(inMap(c,r)){kind[r*W+c]=b.kind;block[r*W+c]=b.id;}
   }
-  // Keep-outs, by cell (any part of the cell inside).
-  const out=new Uint8Array(N);
+  // Keep-outs, by cell (any part of the cell inside): `out` all of them; `fixed` only the rects (build sites, nest blocks) and the `all` discs, what the
+  // pieces drawn over solid block cells (lines, border boulders) respect: they block nothing new, so the discs (kept
+  // clear for walking) do not apply to them, and the spawns and mouths stop showing bare boxes.
+  const out=new Uint8Array(N),fixed=new Uint8Array(N);
   for(const k of options.keepOut??[]){
     const rc=Math.ceil(k.r/unit)+1,cc=Math.floor(k.x/unit),cr=Math.floor(k.y/unit);
     for(let r=cr-rc;r<=cr+rc;r++)for(let c=cc-rc;c<=cc+rc;c++){
       if(!inMap(c,r))continue;
       const nx=Math.max(c*unit,Math.min(k.x,(c+1)*unit)),ny=Math.max(r*unit,Math.min(k.y,(r+1)*unit));
-      if(Math.hypot(nx-k.x,ny-k.y)<k.r)out[r*W+c]=1;
+      if(Math.hypot(nx-k.x,ny-k.y)<k.r){out[r*W+c]=1;if(k.all)fixed[r*W+c]=1;}
     }
   }
   for(const k of options.keepOutRects??[]){
-    for(let r=Math.floor(k.y/unit);r<Math.ceil((k.y+k.h)/unit);r++)for(let c=Math.floor(k.x/unit);c<Math.ceil((k.x+k.w)/unit);c++)if(inMap(c,r))out[r*W+c]=1;
+    for(let r=Math.floor(k.y/unit);r<Math.ceil((k.y+k.h)/unit);r++)for(let c=Math.floor(k.x/unit);c<Math.ceil((k.x+k.w)/unit);c++)if(inMap(c,r))out[r*W+c]=fixed[r*W+c]=1;
   }
+  // A prop on a block cell is not drawn (the render drops it under the block), so `fixed` leaves it out.
   for(const p of asset.props){const c=Math.floor(p.x/unit),r=Math.floor(p.y/unit);if(inMap(c,r))out[r*W+c]=1;}
 
   const used=new Uint8Array(N),decor:CityDecor[]=[],blocked:[number,number][]=[];
@@ -152,7 +158,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   // 1. Wall and cliff lines.
   for(let r=0;r<H;r++)for(let c=0;c<W;c++){
     const i=r*W+c,k=kind[i];
-    if((k!=='wall'&&k!=='cliff')||out[i])continue;
+    if((k!=='wall'&&k!=='cliff')||fixed[i])continue;
     const same=(x:number,y:number)=>isKind(x,y,k);
     const links=(same(c,r-1)?LINK.N:0)|(same(c+1,r)?LINK.E:0)|(same(c,r+1)?LINK.S:0)|(same(c-1,r)?LINK.W:0);
     const {shape,rot}=lineShape(links);
@@ -171,7 +177,8 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const id=base==='morro-3x3'?base:variant(base);
     if(id&&rect(c,r,s,s,edge))put(id,c,r,s,s,pick([0,90,180,270] as const));
   }
-  for(let i=0;i<N;i++)if(edge(i)&&!used[i]&&!out[i]&&rnd()<BOULDER_SHARE)put(`pedregulho-${1+Math.floor(rnd()*3)}`,i%W,Math.floor(i/W),1,1,0);
+  // Every edge cell no mountain took (mixed cells too: the render boxes them all), so no bare box shows on the border.
+  for(let i=0;i<N;i++)if(kind[i]==='edge'&&!used[i]&&!fixed[i])put(`pedregulho-${1+Math.floor(rnd()*3)}`,i%W,Math.floor(i/W),1,1,pick([0,90,180,270] as const));
 
   // 3. Building blocks: lots, a place with life first while any is left.
   const lugares=LUGARES.map(([id,a,b])=>[variant(id),a,b] as const).filter((l):l is readonly [string,number,number]=>!!l[0]);

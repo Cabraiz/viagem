@@ -107,7 +107,14 @@ export const DECOR_GROUP='cenario';
  * - 'prop' (objects, poles): feet on the anchor at the footprint's centre.
  */
 export type DecorRule='footprint'|'wall'|'prop';
-export interface DecorSheet extends CitySheet {rule:DecorRule}
+export interface DecorSheet extends CitySheet {rule:DecorRule;
+  /** Drawn over its cells instead of the procedural piece there ('footprint', 'wall' and the DECOR_FILL objects). */
+  covers:boolean}
+/**
+ * Objects that fill a whole block cell (the boulders on the border band, maps/city-decor.ts): an object anchored on its
+ * feet, at the footprint scale (one art cell per city cell) instead of the props' one, so the cell reads as rock.
+ */
+export const DECOR_FILL=/^pedregulho-\d+$/;
 export const DECOR_WALL_FAMILIES=['alambrado','cerca-madeira','grade','muro-condominio','muro-pichado','tapume'] as const;
 const DECOR_FOOTPRINT=/^(ninho-|montanha-|morro-|penhasco|rampa$|ponte$|cachoeira-)/;
 export function decorRule(id:string,meta?:Record<string,unknown>):DecorRule{
@@ -229,10 +236,10 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
     let s:DecorSheet;
     if(rule==='footprint'){
       const fp=footprintOf(p)??[1,1];
-      s={...footprintSheet(cenario,key,p,f,fp),rule};
+      s={...footprintSheet(cenario,key,p,f,fp),rule,covers:true};
     }else{
-      const originY=originYOf(f,rule==='wall'?16:8),scale=small*DECOR_PROP_SCALE;
-      s={key,url,frameWidth:f.cell[0],frameHeight:f.cell[1],originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale,rule};
+      const fill=rule==='prop'&&DECOR_FILL.test(id),originY=originYOf(f,rule==='wall'?16:8),scale=fill?big:small*DECOR_PROP_SCALE;
+      s={key,url,frameWidth:f.cell[0],frameHeight:f.cell[1],originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale,rule,covers:rule==='wall'||fill};
     }
     plan.decor[id]=s;plan.sheets.push(s);
   }

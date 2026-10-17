@@ -64,6 +64,10 @@ test('lines on their block cells with the links of their neighbours; lots on unw
       assert.equal(kindAt.get(d.r*W+d.c),k,`${d.id} at ${d.c},${d.r}`);
       const links=(same(d.c,d.r-1)?LINK.N:0)|(same(d.c+1,d.r)?LINK.E:0)|(same(d.c,d.r+1)?LINK.S:0)|(same(d.c-1,d.r)?LINK.W:0);
       assert.equal(d.links,links);assert.equal(d.rot,lineShape(links).rot);
+    }else if(d.id.startsWith('pedregulho-')){
+      // Boulders cover the border band, mixed edge cells too (the render boxed them all); never an open cell.
+      assert.equal(kindAt.get(d.r*W+d.c),'edge',`${d.id} at ${d.c},${d.r}`);
+      assert.ok(cellWalk(d.c,d.r)<S*S,`${d.id} at ${d.c},${d.r} not on an open cell`);
     }else if(isPole(d.id)||isObject(d.id)){
       for(const [c,r] of cells(d))assert.equal(cellWalk(c,r),S*S,`${d.id} at ${c},${r} on a walkable cell`);
     }else for(const [c,r] of cells(d))assert.equal(cellWalk(c,r),0,`${d.id} at ${c},${r} on an unwalkable cell`);
@@ -79,7 +83,9 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
   const sites=buildPlanFor(new CityTerrain(asset,'decor-test')).sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL));
   for(const d of asset.decor){
     const x0=d.c*u,y0=d.r*u,x1=(d.c+d.w)*u,y1=(d.r+d.h)*u;
-    for(const k of discs){
+    // Lines and border boulders only dress solid block cells: only the plaza (the base) stays bare of them.
+    const dresses=isLine(d.id)||d.id.startsWith('pedregulho-');
+    for(const k of dresses?discs.slice(0,1):discs){
       const nx=Math.max(x0,Math.min(k.x,x1)),ny=Math.max(y0,Math.min(k.y,y1));
       assert.ok(Math.hypot(nx-k.x,ny-k.y)>=k.r-1e-6,`${d.id} at ${d.c},${d.r} inside a keep-out disc`);
     }

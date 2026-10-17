@@ -28,7 +28,7 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
   if(asset.decor.length)throw new Error('the base asset already has decor');
   const city=new CityTerrain(asset,'decor-base'),plan=buildPlanFor(city),p=asset.points;
   const keepOut:DecorKeepOut[]=[
-    {...p.praca,r:KEEP.praca},{...p.inicio,r:KEEP.inicio},
+    {...p.praca,r:KEEP.praca,all:true},{...p.inicio,r:KEEP.inicio},
     ...[p.spawnN,p.spawnS,p.spawnL,p.spawnO].map(q=>({...q,r:KEEP.spawn})),
     ...Object.values(p.bocas).map(q=>({...q,r:KEEP.boca})),
     ...asset.loot.map(q=>({...q,r:KEEP.loot})),

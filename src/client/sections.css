@@ -62,12 +62,18 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .portrait img { position: absolute; left: 0; top: 0; z-index: 2; width: 100%; height: 80%; object-fit: contain; object-position: 50% 100%; }
 .criacao .portrait.dancing { overflow: hidden; }
 .criacao .portrait.dancing img { visibility: hidden; }
-/* The dance (menu-dance.ts) where the portrait stood: its 768×512 cell at 1.35 × --s tall puts the dancer at ~0.93 --s
-   (the portrait ~1 --s, its head still inside the frame on a landscape phone), the feet (0.78 of the cell) on --feet. */
+/* The dance (menu-dance.ts) where the portrait stood (danca-no-podio, the user's adjustments of 17/10):
+   - the soles (0.754 of the 768x512 cell, the median over the 35 heroes) on the centre of the podium's top, 0.478 of
+     its height (the widest row of its alpha: the top's ellipse axis), --ph x .058 under --feet (0.42 of it);
+   - 1.62 x --s tall (20% over the first 1.35), but never so tall that the highest head of any frame (0.039 of the
+     cell) leaves the frame: the landscape phone, where --s is the frame's height, gets what fits. */
 .criacao .portrait .menu-dance {
-  position: absolute; z-index: 3; left: 50%; top: calc(var(--feet) - var(--s) * 1.05);
-  width: calc(var(--s) * 2.025); height: calc(var(--s) * 1.35); transform: translateX(-50%); pointer-events: none;
+  --sole: calc(var(--feet) + var(--ph) * .058); --dh: min(calc(var(--s) * 1.62), calc(var(--sole) / .715));
+  position: absolute; z-index: 3; left: 50%; top: calc(var(--sole) - var(--dh) * .754);
+  width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%); pointer-events: none;
 }
+/* The contact shadow under the dancer's soles, not under the portrait's feet. */
+.criacao .portrait.dancing::after { top: calc(var(--feet) + var(--ph) * .058 - var(--s) * .045); }
 .criacao .portrait::before {
   content: ''; position: absolute; z-index: 0; left: 50%; top: calc(var(--feet) - var(--ph) * .42);
   width: var(--pw); height: var(--ph); transform: translateX(-50%);

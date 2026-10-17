@@ -32,11 +32,12 @@ const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
 const CITY:MapRef={id:'cidade-nevada',version:manifest.version,hash:manifest.hash};
 /**
- * FIGHT_NEAR 7 (was 6, bancos-sim on carteira-e-pix, 16/10): a critter that keeps its distance (the palhaço
- * cunhado-sabe-tudo, the wave's last one) stood exactly 6.0 u from two bots holding at their leash's edge and orbiting
- * it: fighting, not stuck. The hunt for that last one is card NEW-20261016-E2-bot-caca-ultimo-na-borda (P2).
+ * FIGHT_NEAR 6 again (bot-caca-ultimo-na-borda, 17/10; it was 7 for bancos-sim on 16/10, when the wave's last critter,
+ * the palhaço cunhado-sabe-tudo, stood 6.0 u from two bots holding at their leash's edge): the roamers now hunt a last
+ * critter just past the lure band and the very last one takes the guards out to the roamers' leash (bot-brain.ts
+ * LURE_REACH, tests/sim/city-bots-caca.test.ts).
  */
-const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=7;
+const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
 /**
  * Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold
  * back, plus 15 s since torres-fio (13/10): the room bots now build tower defenses, so the forger spends material on
@@ -98,7 +99,11 @@ test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
     }
     t+=50;
     if(i%SIM_HZ===0)say(room,a,{t:'ack',seq:0},t);
+    const before=sim.tick;
     room.advance(t);
+    // The level-up pause (D-050) holds the sim while the room waits for picks: no step, nothing to sample (a bot whose
+    // stick was set when it began counted 7.5 s "stuck" in one frozen tick, bot-caca-ultimo-na-borda).
+    const stepped=sim.tick!==before;
     for(const e of sim.events){
       if(e.type==='round'){
         if(e.phase==='wave')rounds.push({index:e.index,wave:sim.tick});
@@ -107,7 +112,7 @@ test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
       if(e.type==='downed')falls.push(`${sim.bots.has(e.player)?e.player:'Ana'} r${sim.world.round.index} ${secs(sim.tick)}`);
     }
     const r3=rounds.find(r=>r.index===3);
-    if(r3&&r3.end===undefined&&sim.tick%SIM_HZ===0){
+    if(stepped&&r3&&r3.end===undefined&&sim.tick%SIM_HZ===0){
       const standing=[...sim.players.values()].filter(q=>!q.downed&&q.hp>0),structures=structureTargets(sim.run.stonewards.state);
       const stalled:string[]=[];
       for(const e of sim.enemies){
@@ -120,7 +125,7 @@ test(`ACCEPTANCE (c): a city room with three bots plays rounds 1-3 without an ex
       }
       if(stalled.length>stalledWorst){stalledWorst=stalled.length;stalledAt=`${secs(sim.tick-r3.wave!)} into round 3: ${stalled.join(', ')}`;}
     }
-    for(const id of bots){
+    if(stepped)for(const id of bots){
       const b=sim.players.get(id)!,s=stick.get(id)??{x:0,y:0},h=trail.get(id)!;
       const fight=sim.enemies.some(e=>Math.hypot(e.x-b.x,e.y-b.y)<FIGHT_NEAR);
       h.push({x:b.x,y:b.y,moving:Math.hypot(s.x,s.y)>.15&&!b.downed,free:!fight});

@@ -68,3 +68,6 @@
 .rh:has(.rh-inv:not([hidden])) .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + var(--fort) + 12px)}
 /* The level-up offer's chip (hud.css .rh-offer-chip) shares that corner too: with the slots it goes on top of the column. */
 .rh:has(.rh-inv:not([hidden])) .rh-offer-chip{right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 22px);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 82px + 2 * (64px + 12px))}
+/* The forge window (camp.css .rh-forge, near the base's towers) opens over the same column: the car's buttons wait under
+   it (varredura-celular: Construir sat on its third row). Closing the forge brings them back. */
+.rh:has(.rh-forge:not([hidden])) :is(.rh-fort-puxar,.rh-fort-construir){display:none}

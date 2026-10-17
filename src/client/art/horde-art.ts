@@ -227,10 +227,17 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   for(const [name,file] of Object.entries(piece.files)){
     if(unusedEnemyFile(name))continue;
     const pages=artPages(file);
-    pages.forEach((page,i)=>{const url=artUrl('inimigos',page.file);if(url&&validCell(file))out.push({key:enemyArtKey(id,name,i,pages.length),url:liteEnemyUrl(url),cell:file.cell});});
+    pages.forEach((page,i)=>{
+      const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
+      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
+    });
   }
   return out;
 }
+/** Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. */
+const LITE_ONLY=new Set<string>();
+export const liteOnly=(url:string)=>LITE_ONLY.has(url);
 const validCell=(f:ArtFile)=>Array.isArray(f.cell)&&f.cell[0]>0&&f.cell[1]>0;
 
 /** Preload: queues every imported horde texture (nothing with an empty manifest). Failures keep the procedural art. */

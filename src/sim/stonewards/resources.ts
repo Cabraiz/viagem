@@ -44,13 +44,14 @@ function info(id:string,o:Obstacle|{x:number;y:number;radius:number;kind:Obstacl
 /**
  * Nodes whose centre is within `reach` of `p`, in a fixed order (island order; endless: chunk rows, then chunk
  * columns, then generation order; city: asset order of the crates). `source` replaces the island's obstacles (tests).
+ * `hidden` (city): crate ids this run does not have (Bancos: a bank stands on its loot point instead).
  */
-export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,source?:readonly Obstacle[]):NodeInfo[]{
+export function nodesNear(terrain:TerrainField|undefined,p:Point,reach:number,source?:readonly Obstacle[],hidden?:ReadonlySet<string>):NodeInfo[]{
   const out:NodeInfo[]=[];
   if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!(reach>=0))return out;
   const city=source?undefined:cityLoot(terrain);
   if(city){
-    for(const n of city.nodes){const dx=n.x-p.x,dy=n.y-p.y;if(dx*dx+dy*dy<=reach*reach)out.push(n);}
+    for(const n of city.nodes){if(hidden?.has(n.id))continue;const dx=n.x-p.x,dy=n.y-p.y;if(dx*dx+dy*dy<=reach*reach)out.push(n);}
     return out;
   }
   const base=worldBase(terrain),r2=reach*reach,chunks=terrain?.chunks;
@@ -121,16 +122,16 @@ export interface Gathered {player:string;node:ResourceNode;emptied:boolean}
 /**
  * One tick of gathering. Only call during 'prepare'. Each standing player works the nearest non-empty node in reach;
  * each finished unit adds the node's value to the team balance, credited to the gatherers in proportion to their work.
- * `worked(id)`: called for each player who put work into a node this tick.
+ * `worked(id)`: called for each player who put work into a node this tick. `hidden`: see nodesNear.
  */
-export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly Obstacle[],worked?:(playerId:string)=>void):Gathered[]{
+export function gatherStep(ctx:SimContext,state:StonewardsState,source?:readonly Obstacle[],worked?:(playerId:string)=>void,hidden?:ReadonlySet<string>):Gathered[]{
   const done:Gathered[]=[];
   const ids=[...ctx.players.keys()].sort();
   for(const id of ids){
     const p=ctx.players.get(id)!;
     if(!isStanding(p))continue;
     let best:NodeInfo|undefined,bestDist=Infinity;
-    for(const n of nodesNear(ctx.terrain,p,MAX_GATHER_DISTANCE,source)){
+    for(const n of nodesNear(ctx.terrain,p,MAX_GATHER_DISTANCE,source,hidden)){
       if(remainingOf(state,n)<=0)continue;
       const d=Math.hypot(p.x-n.x,p.y-n.y);
       if(d<=n.radius+GATHER_REACH&&d<bestDist){best=n;bestDist=d;}

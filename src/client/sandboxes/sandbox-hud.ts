@@ -140,9 +140,18 @@ function tied<T extends {players:{stats?:unknown;weapons:unknown;passives:unknow
   return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:builds[i%6][0],level:i===5?2:1}],passives:builds[i%6].slice(1).map(id=>({id,level:1})),
     stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,magnets:0,chests:0,evolves:0}}))};
 }
+/**
+ * `arsenal=1` (armas-caixas-render-2, D-051): the manual combat's hands, each player holding an arsenal weapon, so the
+ * team portraits show the weapon's sticker (team.ts handWeapon).
+ */
+const ARSENAL_HANDS=['pistola','escopeta','macarico','rojao','rifle','submetralhadora'];
+function armed<T extends {players:{name:string}[]}>(v:T):T{
+  if(params.get('arsenal')!=='1')return v;
+  return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:'faca',level:1},{id:ARSENAL_HANDS[i%ARSENAL_HANDS.length],level:2}],hand:1}))};
+}
 function named<T extends {players:{name:string}[]}>(v:T):T{
-  if(params.get('nomes')!=='longos')return v;
-  return {...v,players:v.players.map((p,i)=>({...p,name:LONG_NAMES[i%LONG_NAMES.length]}))};
+  if(params.get('nomes')!=='longos')return armed(v);
+  return armed({...v,players:v.players.map((p,i)=>({...p,name:LONG_NAMES[i%LONG_NAMES.length]}))});
 }
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));

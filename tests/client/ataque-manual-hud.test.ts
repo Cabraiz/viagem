@@ -90,14 +90,11 @@ test('texts: the manual combat speaks of the attack button and of Space, never o
   assert.match(coopNotice('mouse',true),/Espaço/);
 });
 
-test('the manual combat is the default (balanco-ninhos); ?combate=auto keeps the automatic weapons',()=>{
-  for(const s of ['?combate=manual','?combate=MANUAL','','?combate=x'])assert.equal(objectiveFromSearch(s).combat,'manual',s);
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro&combate=manual'),{objective:'chaveiro',mode:'ninhos',combat:'manual'});
-  assert.deepEqual(objectiveFromSearch('?combate=auto'),{mode:'ninhos'});
-  assert.deepEqual(objectiveFromSearch('?modo=ondas&combate=auto'),{});
-  // The room create sends a body whenever something was asked.
-  assert.deepEqual(objectiveFromSearch('?modo=ninhos&combate=manual'),{mode:'ninhos',combat:'manual'});
-  assert.match(read('src/client/lobby.ts'),/asked\.objective\|\|asked\.combat\|\|asked\.mode\?\{body:JSON\.stringify\(asked\)\}/);
+test('rodada-legado: the page always asks for the nests and the manual combat; ?combate=auto and ?modo=ondas|muralha are gone',()=>{
+  for(const s of ['?combate=manual','?combate=auto','?modo=ondas','?modo=muralha','?modo=ondas&combate=auto','?modo=muralha&combate=auto','?modo=chaveiro','','?x',undefined])
+    assert.deepEqual(objectiveFromSearch(s),{mode:'ninhos',combat:'manual'},String(s));
+  // The class room's create always sends that body.
+  assert.match(read('src/client/lobby.ts'),/method:'POST',body:JSON\.stringify\(asked\),/);
 });
 
 function peer(){

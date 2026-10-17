@@ -31,17 +31,13 @@ export const botsLabel=(n:number)=>n===0?'Sem bots':n===1?'1 bot':`${n} bots`;
 export interface SoloPlan {map:typeof SOLO_MAP;bots:number}
 export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bots)});
 /**
- * What the page asks the room for. D-051 (balanco-ninhos): the default is the nests ('ninhos', with the default
- * objective, the chaveiro) and the manual combat (the attack button, no skill). ?modo=ondas plays the director's waves,
- * ?modo=muralha the old wall mode (D-047; no nests), ?modo=chaveiro names the objective (nests still on);
- * ?combate=auto keeps the automatic weapons. A room Worker from before ignores the fields.
+ * What the page asks the room for: always the nests ('ninhos', with the city's objective, the chaveiro) and the manual
+ * combat (the attack button, no skill). D-051, rodada-legado: the waves (?modo=ondas), the wall (?modo=muralha) and the
+ * automatic weapons (?combate=auto) are legacy, only in the code; the address no longer reaches them. The room Worker
+ * plays the nests anyway (createOptions), so a cached old site gets them too.
  */
-export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';mode?:'ninhos';combat?:'manual'}{
-  let q:URLSearchParams;
-  try{q=new URLSearchParams(search??'');}catch{q=new URLSearchParams();}
-  const m=q.get('modo');
-  return {...(m==='chaveiro'||m==='muralha'?{objective:m}:{}),...(m==='ondas'||m==='muralha'?{}:{mode:'ninhos' as const}),
-    ...(q.get('combate')==='auto'?{}:{combat:'manual' as const})};
+export function objectiveFromSearch(_search?:string):{mode:'ninhos';combat:'manual'}{
+  return {mode:'ninhos',combat:'manual'};
 }
 
 /** Our owner commands go at least this far apart (the room drops one within its OWNER_GAP_MS, 300 ms, of the last). */

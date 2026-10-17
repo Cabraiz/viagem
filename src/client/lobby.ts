@@ -493,7 +493,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
       let code=codeInput.value.trim().toUpperCase();
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',...(asked.objective||asked.combat||asked.mode?{body:JSON.stringify(asked)}:{}),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=code;}
+      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=code;}
       if(closed)return;
       if(!/^[A-F0-9]{10}$/.test(code))throw new Error('O código deve ter 10 letras e números.');
       const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;

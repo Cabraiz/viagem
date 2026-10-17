@@ -211,7 +211,7 @@ test('portrait, window open: the follow camera keeps the hero at the viewport ce
   assert.ok(near.y+near.height-forge.y<=13+1e-6&&forge.y>near.y+near.height/2,`forge over ${near.y+near.height-forge.y} px`);
 });
 
-test('zones audit: the "Gira no intervalo" balloon never sits on the minimap (the XP bar is its old neighbour)',()=>{
+test('zones audit: the "Gira fora da briga" balloon never sits on the minimap (the XP bar is its old neighbour)',()=>{
   const zones=computeZones(LANDSCAPE),mm={x:14,y:84,width:76,height:76};
   const over=auditBoxes([{name:'minimapa',rect:mm,topReadout:true,edgeColumn:true},{name:'dica-girar',rect:{x:14,y:68,width:126,height:28},balloon:true}],zones);
   assert.deepEqual(over.topCrossed,['dica-girar×minimapa']);

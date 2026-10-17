@@ -21,8 +21,8 @@ import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
-import {sticker,type StickerName} from '../ui/sticker.ts';
-import {fallLine,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
+import {fallLine,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
@@ -119,10 +119,14 @@ export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.
  * the intermission's countdown before the next wave ("12 s", urgent at 5 s and under, like the round chip); none in a
  * wave. `aria`: the same in words, for the screen reader (the bar's picture is aria-hidden).
  */
-export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean}
+export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean;
+  /** D-051 nests mode: the nests still standing ("6/8") after the clock. */
+  nests?:string}
 export function barClock(view:RunView):BarClock|undefined{
-  const round=roundInfo(view);
-  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:round.chaveiro.aria,urgent:false};
+  const round=roundInfo(view),nests=nestCount(view);
+  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:nests?`${round.chaveiro.aria}. ${nests.aria}`:round.chaveiro.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  // The nests mode has no intermission: no countdown to show.
+  if(nests)return undefined;
   if(round?.phase==='prepare'&&round.countdown!==undefined)return {icon:'relogio',text:`${round.countdown} s`,aria:round.detail,urgent:round.countdown<=5};
   return undefined;
 }
@@ -208,10 +212,10 @@ export function createCamp(options:CampOptions):CampPart{
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
   let lastClock:string|undefined;
   const paintClock=(view:RunView)=>{
-    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}`:'';
+    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.nests??''}`:'';
     if(key===lastClock)return;
     lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
+    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>${bar.nests?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${bar.nests}</b></i>`:''}`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
     else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */

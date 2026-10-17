@@ -271,9 +271,14 @@ function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:numbe
   return {...p,weapons,hand};
 }
 let eventId=0;
+/** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
+const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
+  // D-051 (ninhos-rounds-fora): `ninhos=…` also puts 8 nests in the view, 2 fallen: the mode's chip and bar ("🏚 6/8"),
+  // no "Onda N" nor intermission, and the result's "Ninhos 2/8".
+  if(params.has('ninhos'))view={...view,structures:[...view.structures,...FAKE_NESTS]};
   // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)
   if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
@@ -309,8 +314,6 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  // D-051 nests (?ninhos=…): five nests, two fallen, so the result's round line reads "Ninhos 2/5".
-  if(scenario==='result'&&params.has('ninhos'))hud.update({...view,structures:[...view.structures,...[0,1,2,3,4].map(i=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}))]});
   // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).
   const vergonha=params.get('vergonha'),shamed=<T extends {shame?:unknown;players:{id:string}[]}>(r:T):T=>{
     if(vergonha==='nenhuma'){const {shame:_,...rest}=r;return rest as T;}
@@ -592,6 +595,8 @@ if(cidade)void (async()=>{
     ...(objective?{objective}:{}),...(banks?{banks}:{}),
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
+  // D-051 (ninhos-rounds-fora): the same 8 nests, 2 fallen, in the city's run (the chip and the phone bar read them).
+  if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
   view=run;hud.update(run);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';

@@ -33,14 +33,16 @@ export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bot
 /**
  * D-047: ?modo= in the page address asks the room for an objective: 'chaveiro' (the city's default anyway) or
  * 'muralha' (the old wall mode); D-051: 'ninhos' asks for the nests (with the default objective, the chaveiro). Anything
- * else asks for nothing. A room Worker from before ignores the fields.
+ * else asks for no objective. A room Worker from before ignores the fields.
+ * D-051 (NEW-20261017-ORQ-padrao-manual): the manual combat (the attack button) is the default of the rooms this page
+ * creates, solo and class; ?combate=auto asks for nothing, so the room plays the old automatic weapons (the room's own
+ * default: a client from before, which sends no combat, still gets those).
  */
 export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';mode?:'ninhos';combat?:'manual'}{
-  try{
-    const q=new URLSearchParams(search??''),m=q.get('modo');
-    // D-051 (behind the flag until the E6 weapons and the balance pass): ?combate=manual opens the room with the attack button.
-    return {...(m==='chaveiro'||m==='muralha'?{objective:m}:m==='ninhos'?{mode:m}:{}),...(q.get('combate')==='manual'?{combat:'manual' as const}:{})};
-  }catch{return {};}
+  let q:URLSearchParams;
+  try{q=new URLSearchParams(search??'');}catch{return {combat:'manual'};}
+  const m=q.get('modo');
+  return {...(m==='chaveiro'||m==='muralha'?{objective:m}:m==='ninhos'?{mode:m}:{}),...(q.get('combate')==='auto'?{}:{combat:'manual' as const})};
 }
 
 /** Our owner commands go at least this far apart (the room drops one within its OWNER_GAP_MS, 300 ms, of the last). */

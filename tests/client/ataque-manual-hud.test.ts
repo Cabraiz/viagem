@@ -90,13 +90,16 @@ test('texts: the manual combat speaks of the attack button and of Space, never o
   assert.match(coopNotice('mouse',true),/Espaço/);
 });
 
-test('?combate=manual asks the room for the manual combat; any other value is dropped',()=>{
-  assert.deepEqual(objectiveFromSearch('?combate=manual'),{combat:'manual'});
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro&combate=manual'),{objective:'chaveiro',combat:'manual'});
-  for(const s of ['?combate=auto','?combate=MANUAL',''])assert.deepEqual(objectiveFromSearch(s),{});
-  // The room create sends a body whenever something was asked.
-  assert.deepEqual(objectiveFromSearch('?modo=ninhos&combate=manual'),{mode:'ninhos',combat:'manual'});
+test('padrao-manual: the rooms the page creates ask for the manual combat by default; ?combate=auto asks for nothing',()=>{
+  for(const s of ['','?combate=manual','?combate=MANUAL','?combate=',undefined])assert.deepEqual(objectiveFromSearch(s),{combat:'manual'},String(s));
+  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro',combat:'manual'});
+  assert.deepEqual(objectiveFromSearch('?modo=ninhos'),{mode:'ninhos',combat:'manual'});
+  // The old automatic weapons, on request: nothing asked, the room's own default.
+  assert.deepEqual(objectiveFromSearch('?combate=auto'),{});
+  assert.deepEqual(objectiveFromSearch('?modo=muralha&combate=auto'),{objective:'muralha'});
+  // The room create sends a body whenever something was asked (so by default), and the solo room spreads the same.
   assert.match(read('src/client/lobby.ts'),/asked\.objective\|\|asked\.combat\|\|asked\.mode\?\{body:JSON\.stringify\(asked\)\}/);
+  assert.match(read('src/client/lobby.ts'),/const body:RoomCreateOptions=\{map:plan\.map,solo:true,\.\.\.objectiveFromSearch\(location\.search\)\};/);
 });
 
 function peer(){

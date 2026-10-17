@@ -137,9 +137,12 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
 });
 
 test('?modo=chaveiro asks the room for the chaveiro objective (D-047); anything else asks for nothing',()=>{
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro'});
-  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'),{objective:'chaveiro'});
-  assert.deepEqual(objectiveFromSearch('?modo=muralha'),{objective:'muralha'},'the old wall mode, on request');
-  assert.deepEqual(objectiveFromSearch('?modo=ninhos'),{mode:'ninhos'},'D-051: the nests, with the default objective');
-  for(const s of ['','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
+  // padrao-manual: the manual combat comes along by default (?combate=auto drops it; ataque-manual-hud.test.ts).
+  const auto='&combate=auto';
+  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'+auto),{objective:'chaveiro'});
+  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'+auto),{objective:'chaveiro'});
+  assert.deepEqual(objectiveFromSearch('?modo=muralha'+auto),{objective:'muralha'},'the old wall mode, on request');
+  assert.deepEqual(objectiveFromSearch('?modo=ninhos'+auto),{mode:'ninhos'},'D-051: the nests, with the default objective');
+  for(const s of ['?combate=auto','?modo=MURALHA'+auto,'?modo=CHAVEIRO'+auto,'?chaveiro=1'+auto])assert.deepEqual(objectiveFromSearch(s),{});
+  for(const s of ['','?modo=MURALHA',undefined])assert.deepEqual(objectiveFromSearch(s),{combat:'manual'});
 });

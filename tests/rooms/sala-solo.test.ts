@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import {register} from 'node:module';
 import {Room,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL,SOLO_ROOM_REFUSED} from '../../src/protocol/room.ts';
+import {objectiveFromSearch} from '../../src/client/ui/solo-plan.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import type {MapRef} from '../../src/protocol/map-select.ts';
 
@@ -85,4 +86,17 @@ test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and o
   assert.equal(room.solo,true,'still solo after a restart');assert.equal(room.map.id,'cidade-nevada');
   const bia=peer();join(room,bia,'Bia',Date.now());
   assert.deepEqual(bia.messages.map(m=>[m.t,m.message]),[['error',SOLO_ROOM_REFUSED]],'her seat came back from the roster: Bia is refused');
+});
+
+test('padrao-manual, end to end: the default page creates a manual room, solo and class; ?combate=auto an automatic one (create body → Worker → welcome)',async()=>{
+  const t0=Date.now();
+  for(const [search,want] of [['','manual'],['?modo=chaveiro','manual'],['?combate=auto',undefined],['?modo=chaveiro&combate=auto',undefined]] as const)
+    for(const solo of [true,false]){
+      // The body lobby.ts posts (solo: {map,solo,...objectiveFromSearch}; class: objectiveFromSearch), as the Worker reads it.
+      const body=JSON.parse(JSON.stringify({...(solo?{map:'cidade-nevada',solo:true}:{}),...objectiveFromSearch(search)}));
+      const room=new Room(t0,7,{cityText,cityRef:CITY,cityPlayable:true,...createOptions(body)}),a=peer();await room.ready();
+      join(room,a,'Ana',t0);
+      const w=a.messages.find(m=>m.t==='welcome');assert.ok(w,search);
+      assert.equal(w.combat,want,`${search||'(no search)'} ${solo?'solo':'class'}: welcome combat`);
+    }
 });

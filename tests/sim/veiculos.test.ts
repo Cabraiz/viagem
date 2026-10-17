@@ -240,3 +240,34 @@ for(const objective of ['chaveiro',undefined] as const){
     a.sys.dispose();b.sys.dispose();
   });
 }
+
+// ---------- Bots, lines and the self chip ----------
+test('bots: in a lull, not riding, the nearest parked vehicle within 8 u (ties by id); none with a critter near, a friend down, while riding, or past 8 u',async()=>{
+  const {vehicleGoal,VEHICLE_BOT_REACH}=await import('../../src/sim/bot-loot.ts');
+  const me={id:'b1',x:0,y:0,hp:10,maxHp:10} as Parameters<typeof vehicleGoal>[1];
+  const k=(id:string,x:number,resource='patinete')=>({id,kind:'vehicle' as const,x,y:0,value:0,resource});
+  const view=(over:Partial<Parameters<typeof vehicleGoal>[0]>={})=>({tick:100,players:[me],enemies:[],pickups:[k('v2',5),k('v1',-5),k('v3',VEHICLE_BOT_REACH+.5)],...over}) as Parameters<typeof vehicleGoal>[0];
+  assert.equal(vehicleGoal(view(),me,{x:0,y:0})?.id,'v1','the nearest, ties by id');
+  assert.equal(vehicleGoal(view({pickups:[k('v3',VEHICLE_BOT_REACH+.5)]}),me,{x:0,y:0}),undefined,'past the reach');
+  assert.equal(vehicleGoal(view({pickups:[k('vx',2,'patins')]}),me,{x:0,y:0}),undefined,'not the skates');
+  assert.equal(vehicleGoal(view({enemies:[{id:'e',x:2,y:0,hp:5} as never]}),me,{x:0,y:0}),undefined,'a critter near');
+  assert.equal(vehicleGoal(view({players:[me,{id:'b2',downed:{} } as never]}),me,{x:0,y:0}),undefined,'a friend down');
+  assert.equal(vehicleGoal(view(),{...me,ride:'carrinho',rideUntil:200},{x:0,y:0}),undefined,'already riding');
+  assert.equal(vehicleGoal(view(),{...me,ride:'carrinho',rideUntil:100},{x:0,y:0})?.id,'v1','a ride over is no ride');
+});
+
+test('lines and the self chip: pegou picks one of the vehicle\'s by the event id, acabou its ending, largou nothing; the chip\'s share left (none for the scooter)',async()=>{
+  const {vehicleLine,VEHICLE_LINES}=await import('../../src/rules/veiculos.ts');
+  const {rideChip}=await import('../../src/client/render/you-rules.ts');
+  for(const kind of VEHICLE_KINDS){
+    const seen=new Set([0,1,2,3,4,5].map(i=>vehicleLine(kind,'pegou',i)));
+    assert.deepEqual([...seen].sort(),[...VEHICLE_LINES[kind].pegou].sort());
+    assert.equal(vehicleLine(kind,'acabou',3),VEHICLE_LINES[kind].acabou);
+    assert.equal(vehicleLine(kind,'largou',3),undefined);
+  }
+  assert.deepEqual(rideChip('patinete',300,100),{kind:'patinete'});
+  const total=ticks(VEICULO.seconds.carrinho);
+  assert.deepEqual(rideChip('carrinho',100+total,100),{kind:'carrinho',left:1});
+  assert.deepEqual(rideChip('carrinho',100+total/2,100),{kind:'carrinho',left:.5});
+  assert.equal(rideChip('crossfiteiro',100+BURPEE_TICKS,100).left,BURPEE_TICKS/(ticks(VEICULO.seconds.crossfiteiro)+BURPEE_TICKS));
+});

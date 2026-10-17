@@ -1,9 +1,9 @@
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {spriteUrl} from './art-urls.ts';
-import {artPiece,artUrl} from '../art/manifest.ts';
+import {artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 
 /** A class's 4-direction atlas (docs/sprite-directions.md): where it is served and its measured standing height. */
-export interface DirectionalSheet {url:string;height:number;figure?:FigureBox}
+export interface DirectionalSheet {url:string;height:number;figure?:FigureBox;cardinals?:{url:string;figure?:FigureBox}}
 
 /**
  * The classes with a 4-direction batch: the imported ones (`dir4` in the generated catalog, the atlas next to the
@@ -32,20 +32,26 @@ const isFigure=(v:unknown):v is FigureBox=>{
  * today's `<id>.dir4.webp`), when the index lists it with the standing height the importer measured
  * (scripts/art-v2/convert.mjs: first idle cell of front-right, alpha > 20) — so the hero keeps its 96 world px figure
  * (D-030). An entry without a usable height, another grid or a paged sheet is ignored (today's art stays).
- * `dir4c` (cardinals) and `downed` have no slot in the renderer yet and are not used.
+ * A matching `dir4c` enables all eight directions. Downed remains a separate unused animation.
  */
 export function importedSheet(id:string):DirectionalSheet|undefined{
   const file=artPiece('personagens',id)?.files.dir4;
-  if(!file?.file||file.cell[0]!==CELL||file.cell[1]!==CELL)return undefined;
-  // One 1152×2304 page: 6 frames × (4 facings × idle/walk/attack rows).
-  const pages=file.pages;
-  if(pages?pages.length!==1||pages[0].columns!==6||pages[0].rows!==12:file.frames!==6||file.directions!==4)return undefined;
+  if(!file||!validPage(file))return undefined;
   const height=file.height;
   if(typeof height!=='number'||!Number.isFinite(height)||height<8||height>CELL)return undefined;
   // The game downloads the lossy copy (scripts/art-lite.mjs, ~460 KB instead of ~960 KB), as for today's sheets.
   const url=artUrl('personagens',file.file)?.replace('/art/sprites/','/art/lite/sprites/');
   if(!url)return undefined;
-  return {url,height,...(isFigure(file.figure)?{figure:file.figure}:{})};
+  const card=artPiece('personagens',id)?.files.dir4c;
+  const cardinalUrl=card&&validPage(card)?artUrl('personagens',card.file!):undefined;
+  return {url,height,...(isFigure(file.figure)?{figure:file.figure}:{}),
+    ...(cardinalUrl?{cardinals:{url:cardinalUrl.replace('/art/sprites/','/art/lite/sprites/'),
+      ...(isFigure(card?.figure)?{figure:card.figure}:{})}}:{})};
+}
+function validPage(file:ArtFile):file is ArtFile&{file:string}{
+  return !!file.file&&file.cell[0]===CELL&&file.cell[1]===CELL&&
+    (file.pages?file.pages.length===1&&file.pages[0].columns===6&&file.pages[0].rows===12&&file.pages[0].firstFrame===0&&file.pages[0].frameCount===72:
+      file.frames===6&&file.directions===4);
 }
 /** The 4-direction atlas a class draws with: the lab batch (dev flag), else the imported v2 one, else the catalog's. */
 export const directionalSheet=(id:string):DirectionalSheet|undefined=>(LAB?LAB_SHEETS[id]:undefined)??importedSheet(id)??directionalSheets.get(id);

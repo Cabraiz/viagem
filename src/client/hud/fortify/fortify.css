@@ -16,6 +16,9 @@
 .rh .rh-fort-construir{bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 + var(--fort)/2 + 16px)}
 .rh .rh-fort-puxar[hidden],.rh .rh-fort-construir[hidden],.rh-fort-bandeja[hidden]{display:none}
 .rh-fort-btn-text{font:800 var(--t-13)/1 var(--f-sistema)}
+/* "Construir" at 13 px is ~66 px, wider than the 60 px inside the circle (varredura-celular): two px less and tighter. */
+.rh-fort-construir .rh-fort-btn-text{font-size:calc(var(--t-13) - 2px);letter-spacing:-.2px}
+.rh-fort-construir>.ic{width:26px;height:26px;margin-bottom:1px}
 .rh .rh-fort-puxar:active,.rh .rh-fort-construir:active{transform:translateY(2px);box-shadow:0 0 0 2px var(--c-papel),0 1px 0 var(--c-breu)}
 .rh .rh-fort-puxar.rh-fort-on{background:var(--c-amarelo)}
 .rh-fort-badge{position:absolute;top:-8px;right:-10px;min-width:24px;padding:2px 4px;border-radius:var(--r-circulo);

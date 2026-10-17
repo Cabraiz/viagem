@@ -173,6 +173,13 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   .criacao .radar-wrap { display: grid; grid-template-columns: repeat(2,auto); gap: 4px 18px; align-content: center; justify-content: center; height: auto; min-height: 0; aspect-ratio: auto; }
   .criacao .radar-wrap svg { display: none; }
   .criacao .radar-wrap .stat-label { position: static; transform: none; writing-mode: horizontal-tb; font-size: 12px; }
+  /* varredura-celular (844x390): beside the 2x2 the skill had 136 px and its line cut at "Avança protegendo…". The four
+     numbers take one row and the skill gets the sheet's width under them. */
+  .criacao .stats-and-story { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 2px; align-items: start; }
+  .criacao .skill-box h3 { margin-bottom: 1px; }
+  .criacao .radar-wrap { grid-template-columns: repeat(4,auto); gap: 2px 14px; justify-content: start; margin: 0; }
+  .criacao .skill-box .skill-icon { display: none; }
+  .criacao .skill-box p { font-size: 12px; line-height: 1.35; }
 }
 
 /* Portrait: compact card on top (art left, quote and arrows right), sheet below. */

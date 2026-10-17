@@ -31,7 +31,9 @@ const HAND_Z=.62,BUMPER_Z=.38;
 
 export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number;
   /** Where a player is now (the scene's smoothed actor), or undefined when not drawn. */
-  playerAt:(id:string)=>Pt|undefined}
+  playerAt:(id:string)=>Pt|undefined;
+  /** The car's heading as drawn (chaveiro renderer): the rope hooks to the bumper the hero is behind. */
+  carHeading?:()=>number}
 export interface GhostInput {piece:string;c:number;r:number;rot?:number;look:GhostLook}
 
 export class FortifyRenderer {
@@ -143,7 +145,7 @@ export class FortifyRenderer {
     const g=this.ropeG;g.clear();
     const car=this.car,holder=car?.rope&&this.options.playerAt(car.rope);
     if(!car||!holder)return;
-    const line=ropeLine(holder,car,CAR_HALF.l),proj=this.options.projector,N=10;
+    const line=ropeLine(holder,car,CAR_HALF.l,this.options.carHeading?.()??0),proj=this.options.projector,N=10;
     const a=proj.project(line.ax,line.ay,{x:0,y:0}),b=proj.project(line.bx,line.by,{x:0,y:0});
     const za=HAND_Z*HEIGHT_PX,zb=BUMPER_Z*HEIGHT_PX,sag=line.sag*HEIGHT_PX;
     g.lineStyle(2.4*k,this.c.breu,1).beginPath();

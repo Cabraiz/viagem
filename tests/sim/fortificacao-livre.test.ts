@@ -12,7 +12,8 @@
  *  8. A rematch reset drops the muros' blockers; a checkpoint's state raises them again.
  *  9. The moto replans around a muro built across his way (the checkpoint rebuilds that route).
  * 10. Mode ninhos: no piece within CAR_NEST_KEEP_OUT of a living nest.
- * 11. The builder holds still while their obra is under way (queued obras back to back), then walks again.
+ * 11. The builder holds still while their new obra is under way (queued obras back to back), then walks again; an
+ *     evolution never holds.
  * D-031: results only (state, events), no wall-clock asserts.
  */
 import test from 'node:test';
@@ -454,4 +455,22 @@ test('assembled run: the builder holds still while their obras are under way (tw
   assert.ok(Math.hypot(bia.x-biaAt.x,bia.y-biaAt.y)>1,'the other hero walked');
   for(let i=0;i<ticks(1);i++)world.step();
   assert.ok(Math.hypot(ana.x-at.x,ana.y-at.y)>.5,'free once the obras are done');
+  // An evolution never holds (Orq 17/10): Ana builds a root (held), then evolves it once ready and walks on at once.
+  inputs.delete('ana');
+  const cell=cells[Math.floor(cells.length/2)];ana.x=centre(cell.c,cell.r).x;ana.y=centre(cell.c,cell.r).y;
+  sys.stonewards.state.balance.units=DEFENSES[ROOT_DEFENSE].cost*2;
+  const root=sys.stonewards.build(world,'ana',{piece:ROOT_DEFENSE,c:cell.c,r:cell.r},'root');
+  assert.equal(root.ok,true,JSON.stringify(root));
+  const tower=sys.stonewards.state.defenses!.list.find(d=>d.id===(root as {defense:string}).defense)!;
+  while(world.tick<tower.readyTick)world.step();
+  // Evolutions are ordered in the prepare phase (the sites' rule): the order alone is made in one.
+  const phase=world.round.phase;world.round.phase='prepare';
+  const up=sys.stonewards.upgrade(world,'ana',tower.id,'A','up');
+  world.round.phase=phase;
+  assert.equal(up.ok,true,JSON.stringify(up));
+  assert.ok(world.tick<tower.readyTick,'the evolution is an obra');
+  const from={x:ana.x,y:ana.y};
+  inputs.set('ana',{x:(CAR.x-ana.x)/Math.hypot(CAR.x-ana.x,CAR.y-ana.y),y:(CAR.y-ana.y)/Math.hypot(CAR.x-ana.x,CAR.y-ana.y)});
+  for(let i=0;i<10;i++)world.step();
+  assert.ok(Math.hypot(ana.x-from.x,ana.y-from.y)>.3,'she walks during the evolution');
 });

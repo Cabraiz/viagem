@@ -222,13 +222,14 @@ function queueEnd(state:StonewardsState,owner:string,tick:number):number{
 }
 const PIECE_PREFIX='peca';
 /**
- * D-052: whether `playerId` has a free obra under way at `tick` (a piece, a free-built root or an evolution they ordered,
- * from its startTick to its readyTick): the builder holds still on it until it is done (assemble.ts stepCap 0). Their
- * queued obras run back to back, so they stay put through the queue. The build sites (the wall mode, the island) never hold.
+ * D-052: whether `playerId` has a new free obra under way at `tick` (a piece or a free-built root they ordered, from its
+ * startTick to its readyTick): the builder holds still on it until it is done (assemble.ts stepCap 0). Their queued
+ * obras run back to back, so they stay put through the queue. An evolution never holds (6-15 s still in a fight weighs
+ * too much, Orq 17/10), nor do the build sites (the wall mode, the island).
  */
 export function holdsObra(state:StonewardsState,playerId:string,tick:number):boolean{
   for(const p of piecesOf(state))if(p.owner===playerId&&tick>=p.startTick&&tick<p.readyTick)return true;
-  for(const d of state.defenses?.list??[])if(d.cell&&!d.ruined&&d.owner===playerId&&tick>=d.startTick&&tick<d.readyTick)return true;
+  for(const d of state.defenses?.list??[])if(d.cell&&d.kind===ROOT_DEFENSE&&!d.ruined&&d.owner===playerId&&tick>=d.startTick&&tick<d.readyTick)return true;
   return false;
 }
 

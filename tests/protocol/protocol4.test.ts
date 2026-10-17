@@ -1359,7 +1359,7 @@ test('protocol 15: the chaveiro strings are dictionary bytes appended after prot
   assert.ok(PROTOCOL_VERSION>=15,'the chaveiro strings since 15 (17 since D-048: the camp carries units and grana)');
   assert.equal(DICT[160],'o-algoritmo','protocol 12 indexes unchanged');
   const added=['quadradao','moto','chaveiro','anda','lombada','entrega','morta','tombo','volta','abrindo','tranco','chegou',...CAR_PARTS,...CIDA_ITEM_IDS];
-  assert.deepEqual(DICT.slice(161),added);
+  assert.deepEqual(DICT.slice(161,161+added.length),added,'later protocols append after them (D-051 the nests, D-052, D-051 the arsenal)');
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1452,4 +1452,95 @@ test('D-009 with the chaveiro objective and 12 defenses firing: 6 clients x 300 
   t.diagnostic(`protocol 15 bytes/s per client, 12 defenses firing: chaveiro ${JSON.stringify(withObjective)}, wall mode ${JSON.stringify(wallMode)}`);
   assert.ok(withObjective['20Hz']<50_000,`20 Hz: ${withObjective['20Hz']}`);
   assert.ok(withObjective['10Hz']<30_000,`10 Hz: ${withObjective['10Hz']}`);
+});
+
+test('D-051: the manual combat inventory round-trips: the hand slot, arsenal ids, ground items and crates by rarity',()=>{
+  const w=busyWorld(new Rng(3),10);
+  const v=w.view;
+  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'rojao',level:4},{id:'coxinha',level:3},{id:'chinelo-lendario',level:5}],
+    passives:[{id:'pente',level:2},{id:'silenciador',level:1}],hand:1});
+  v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit-torre',value:2};
+  v.pickups[1]={...v.pickups[1],kind:'chest',value:4};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const res=dec.decode(enc.encode(v));
+  assert.ok(res.ok,!res.ok?res.error:'');
+  const p0=res.view.players.find(p=>p.id==='uuid-0')!;
+  assert.equal(p0.hand,1);
+  assert.deepEqual(p0.weapons,v.players[0].weapons);assert.deepEqual(p0.passives,v.players[0].passives);
+  assert.equal(res.view.players.find(p=>p.id==='uuid-1')!.hand,undefined,'the automatic game sends no hand');
+  const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit-torre',2]);
+  assert.equal(res.view.pickups.find(k=>k.kind==='chest')!.value,4);
+  // A hand change alone travels as a delta.
+  enc.ack(enc.lastSeq);
+  v.players[0]={...v.players[0],hand:3};
+  const delta=dec.decode(enc.encode(v));
+  assert.ok(delta.ok);assert.equal(delta.view.players.find(p=>p.id==='uuid-0')!.hand,3);
+});
+
+// ---------- D-052: the movable car and the free build (card NEW-20261016-ORQ-carro-e-fortificacao-livre) ----------
+import {CAR_SPEED,MAX_CAR_MOVERS,carSpeed} from '../../src/contract/objective.ts';
+import {FREE_PIECES,FREE_BUILD_REFUSALS,isBuildRot} from '../../src/contract/build.ts';
+
+test('D-052: the wall and the barricade are dictionary bytes appended after the chaveiro\'s, every older index unchanged',()=>{
+  const at=DICT.indexOf('cocada')+1;
+  const nests=['ninho','dormindo','ativo','destruido','P','M','G'];
+  assert.deepEqual(DICT.slice(at,at+nests.length+FREE_PIECES.length),[...nests,...FREE_PIECES],'after the nests (D-051): arrival order');
+  assert.equal(DICT[at+nests.length+FREE_PIECES.length],'item','then the arsenal (D-051 armas-caixas)');
+  assert.equal(DICT[161],'quadradao','protocol 15 indexes unchanged');
+  assert.ok(DICT.length<255,'255 is the inline escape');
+});
+
+test('D-052: who moves the car and who holds the rope round-trip; dropping them clears them on the phone',()=>{
+  const view=busyWorld(new Rng(7),4).view,enc=new FrameEncoder(),dec=new FrameDecoder();
+  view.objective=objectiveAt(view.tick);
+  let r=dec.decode(enc.encode(view));assert.ok(r.ok);enc.ack(r.seq,r.ack.event);
+  assert.equal(r.view.objective?.car.movers,undefined);assert.equal(r.view.objective?.car.rope,undefined);
+  // Two push, one pulls by the rope; the car moved.
+  view.tick+=2;const base=objectiveAt(view.tick);
+  view.objective={...base,car:{...base.car,x:85.1,y:91.7,movers:['uuid-0','uuid-1','uuid-2'],rope:'uuid-2'}};
+  r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+  assert.deepEqual(r.view.objective?.car.movers,['uuid-0','uuid-1','uuid-2']);assert.equal(r.view.objective?.car.rope,'uuid-2');
+  assert.ok(Math.abs((r.view.objective?.car.x??0)-85.1)<=.5/OBJECTIVE_POS_SCALE);
+  // Unchanged: nothing resent.
+  view.tick+=2;view.objective={...view.objective,etaS:base.etaS};
+  const same=enc.encode(view);r=dec.decode(same);assert.ok(r.ok);enc.ack(r.seq,r.ack.event);
+  assert.deepEqual(r.view.objective?.car.movers,['uuid-0','uuid-1','uuid-2'],'kept from the baseline');
+  // Everyone lets go.
+  view.tick+=2;const after=objectiveAt(view.tick);view.objective={...after,car:{...after.car,x:85.1,y:91.7}};
+  r=dec.decode(enc.encode(view));assert.ok(r.ok);
+  assert.equal(r.view.objective?.car.movers,undefined);assert.equal(r.view.objective?.car.rope,undefined);
+  // The wire keeps the first MAX_CAR_MOVERS.
+  view.tick+=2;const crowd=Array.from({length:MAX_CAR_MOVERS+3},(_,i)=>`uuid-${i}`);
+  view.objective={...after,car:{...after.car,movers:crowd}};
+  r=new FrameDecoder().decode(new FrameEncoder().encode(view));assert.ok(r.ok);
+  assert.deepEqual(r.view.objective?.car.movers,crowd.slice(0,MAX_CAR_MOVERS));
+});
+
+test('D-052: the car\'s speed by movers is the approved table (0.8 / 1.4 / 1.8 u/s, capped at 3)',()=>{
+  assert.deepEqual([...CAR_SPEED],[0,.8,1.4,1.8]);
+  assert.deepEqual([0,1,2,3,4,9].map(carSpeed),[0,.8,1.4,1.8,1.8,1.8]);
+});
+
+test('D-052: a built piece\'s cell and rot round-trip in the structures, the wall and the barricade by their dictionary byte',()=>{
+  const view=busyWorld(new Rng(9),4).view;
+  view.structures=[
+    {id:'d1',kind:'vigia-do-predio',x:10.56,y:11.44,hp:400,maxHp:400,tier:1,phase:'pronta',c:11,r:12},
+    {id:'d2',kind:'muro',x:20.68,y:5.72,hp:250,maxHp:250,c:23,r:6},
+    {id:'d3',kind:'barricada',x:30.36,y:8.36,hp:400,maxHp:400,c:34,r:8,rot:1},
+  ];
+  const enc=new FrameEncoder(),dec=new FrameDecoder(),bytes=enc.encode(view),r=dec.decode(bytes);assert.ok(r.ok,!r.ok?r.error:'');
+  const got=new Map(r.view.structures.map(s=>[s.kind,s]));
+  assert.deepEqual([got.get('vigia-do-predio')?.c,got.get('vigia-do-predio')?.r,got.get('vigia-do-predio')?.rot],[11,12,undefined]);
+  assert.deepEqual([got.get('muro')?.c,got.get('muro')?.r,got.get('muro')?.hp],[23,6,250]);
+  assert.deepEqual([got.get('barricada')?.c,got.get('barricada')?.r,got.get('barricada')?.rot],[34,8,1]);
+  assert.ok(!new TextDecoder().decode(bytes).includes('barricada'),'the kind travels as a dictionary byte, not inline');
+  // 12 towers + 40 walls + 8 barricades in one frame.
+  view.structures=Array.from({length:60},(_,i)=>({id:`w${i}`,kind:i<12?'vigia-do-predio':i<52?'muro':'barricada',x:i,y:i,hp:250,maxHp:250,c:i,r:i}));
+  const all=new FrameDecoder().decode(new FrameEncoder().encode(view));assert.ok(all.ok);assert.equal(all.view.structures.length,60);
+});
+
+test('D-052: the build command\'s rot and refusals are the agreed ones',()=>{
+  assert.ok(isBuildRot(undefined)&&isBuildRot(0)&&isBuildRot(1));
+  assert.ok(!isBuildRot(2)&&!isBuildRot('1')&&!isBuildRot(-1)&&!isBuildRot(.5));
+  assert.deepEqual([...FREE_BUILD_REFUSALS],['tranca','carro','ninho','ocupado','limite','fora','pausa']);
 });

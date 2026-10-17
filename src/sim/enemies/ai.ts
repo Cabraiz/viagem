@@ -52,6 +52,8 @@ export interface EnemyAiOptions {
   rng?:Rng;
   structures?:(ctx:SimContext)=>readonly StructureTarget[];
   hitStructure?:(ctx:SimContext,structureId:string,amount:number,enemy:EnemyState)=>void;
+  /** D-052: the ground's speed multiplier under a body (a free barricade slows; 1 or absent: none). */
+  drag?:(e:EnemyState)=>number;
   /** Minimum ticks between two barks on screen (global). */
   barkGap?:number;
   /** Chance per tick of an ambient bark once its (longer) gap has passed. */
@@ -87,6 +89,12 @@ export interface EnemyAiOptions {
    * balance and the boss digest change with it).
    */
   capPush?:boolean;
+  /**
+   * D-051 (ninhos/sono.ts Sono.goal): a body with a goal walks to that point at `pace` × its speed, along the steer,
+   * instead of hunting (the alerta walking to a noise, the perdeu going home); it hits nobody on the way. A taunt still
+   * wins. Absent, or undefined for a body: the hunt as always.
+   */
+  goal?:(ctx:SimContext,e:EnemyState)=>(Point&{pace:number})|undefined;
 }
 /** JSON-safe limiter and rng state, for checkpoints (VGM-047). */
 export interface EnemyAiState {rng:number|null;lastBarkTick:number|null;lastLine:Record<string,string>}
@@ -288,12 +296,13 @@ export class EnemyAi implements SimSystem {
       // Nearest live player, or a structure if its edge is closer; a valid taunt overrides both.
       let player:SimPlayer|undefined,structure:StructureTarget|undefined,best=Infinity;
       const taunter=tauntTarget(ctx,e);
+      const goal=taunter?undefined:this.options.goal?.(ctx,e);
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
-      else{
+      else if(!goal){
         for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
         if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
       }
-      const target:Point|undefined=player??structure;
+      const target:Point|undefined=player??structure??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
       // (an interrupted joke takes its charge line with it). A siege coach's lecture at a wall goes on.
       if(!player&&memory.state!==STATE.walk&&!(structure&&memory.state===STATE.lecture)){
@@ -317,7 +326,8 @@ export class EnemyAi implements SimSystem {
         const touching=best<=e.radius+PLAYER_RADIUS+CONTACT_MARGIN;
         const def=enemyDef(e.kind);
         // Against a structure every kind walks up and hits it; the coach (no melee) lectures the besiegers instead.
-        switch(structure&&def.behavior!=='coach'?'chase':def.behavior){
+        switch(goal?'goal':structure&&def.behavior!=='coach'?'chase':def.behavior){
+          case 'goal':{dirX=ux;dirY=uy;pace=goal!.pace;break;}
           case 'stagger':{
             // Burp wind-up: he stands still until the cone fires.
             if(memory.state===STATE.burp){
@@ -536,7 +546,7 @@ export class EnemyAi implements SimSystem {
       // off. (The Tio still takes that first push, as tuned; in a crowd it often cancels his charge.)
       if(planted||memory.state===STATE.joke&&enemyDef(e.kind).behavior==='kamikaze'){pushX=0;pushY=0;}
       const dirLength=Math.hypot(dirX,dirY);
-      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace,ctx.tick)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)/SIM_HZ/dirLength:0;
+      const stepLength=dirLength>1e-6?this.paceSpeed(e,pace,ctx.tick)*(ctx.tick<(e.slowUntil??-1)?SLOW_FACTOR:1)*(this.options.drag?.(e)??1)/SIM_HZ/dirLength:0;
       // capPush (city): the peak rule holds for the whole move, the walk plus the separation push (a crowd must not
       // shove a body past the hero; knockback, above, is the players' doing and is not capped).
       let moveX=dirX*stepLength+pushX,moveY=dirY*stepLength+pushY;

@@ -7,7 +7,7 @@
  *       waits for the CI run (.github/workflows/ci.yml) of the branch head sha; exit 0 green, 1 red, 2 infra.
  *       --json prints only {ok,failedFiles,url,sha,minutes}.
  *   node tools/ci.mjs bench <branch> [--seeds 1-16] [--players 1] [--world cidade] [--target 2/8]
- *       [--objective chaveiro] [--cap-min 25] [--no-towers] [--timeout 120]
+ *       [--objective chaveiro] [--combat manual] [--cap-min 25] [--no-towers] [--timeout 120]
  *       commits .bench.json on top of the branch head WITHOUT touching the working tree (plumbing, temporary index),
  *       pushes it to refs/heads/bench/<branch>-<stamp>, waits for .github/workflows/bench.yml, prints the aggregated
  *       table (annotation `bench-summary`) and deletes the temporary ref (always, best effort).
@@ -156,10 +156,13 @@ export function benchParams(raw){
   if(world!=='cidade')throw new Error(`world ${world}: only 'cidade' has a run bench (scripts/bench-city-run.ts)`);
   const objective=raw.objective||null;
   if(objective!==null&&objective!=='chaveiro')throw new Error(`objective ${objective}: only 'chaveiro'`);
+  // D-051: the manual combat (the attack button, the arsenal, crates, inventory); absent = the automatic weapons.
+  const combat=raw.combat||null;
+  if(combat!==null&&combat!=='manual')throw new Error(`combat ${combat}: only 'manual'`);
   const players=Array.isArray(raw.players)?raw.players.map(Number):parseRange(raw.players??'1');
   if(players.some(p=>p<1||p>6))throw new Error('players must be 1..6');
   const capMin=raw.capMin??raw.cap_min;
-  const p={world,seeds:Array.isArray(raw.seeds)?raw.seeds.map(Number):parseRange(raw.seeds??'1-16'),players,objective,
+  const p={world,seeds:Array.isArray(raw.seeds)?raw.seeds.map(Number):parseRange(raw.seeds??'1-16'),players,objective,combat,
     capMin:capMin===undefined||capMin===''||capMin===null?null:Number(capMin),towers:raw.towers!==false&&raw.towers!=='false',
     target:raw.target||null,branch:raw.branch||null,sha:raw.sha||null,base:raw.base||null};
   if(p.capMin!==null&&!(p.capMin>0))throw new Error('capMin must be > 0');
@@ -167,9 +170,11 @@ export function benchParams(raw){
   return p;
 }
 /** Hash of what changes the result (not branch/sha/base/target): the "before" artifact is keyed by base sha + this. */
-export const paramsHash=p=>createHash('sha256').update(JSON.stringify({world:p.world,seeds:p.seeds,players:p.players,objective:p.objective,capMin:p.capMin,towers:p.towers})).digest('hex').slice(0,12);
+// `combat` joins only when manual, so every automatic bench keeps the hash (and the "before" artifact) it had.
+export const paramsHash=p=>createHash('sha256').update(JSON.stringify({world:p.world,seeds:p.seeds,players:p.players,objective:p.objective,capMin:p.capMin,towers:p.towers,
+  ...(p.combat==='manual'?{combat:'manual'}:{})})).digest('hex').slice(0,12);
 export const benchMatrix=p=>({include:p.seeds.flatMap(seed=>p.players.map(players=>({seed,players})))});
-export const benchArgs=p=>[...(p.objective?['--objective',p.objective]:[]),...(p.capMin!==null?['--cap-min',String(p.capMin)]:[]),...(p.towers?[]:['--no-towers'])].join(' ');
+export const benchArgs=p=>[...(p.objective?['--objective',p.objective]:[]),...(p.combat?['--combat',p.combat]:[]),...(p.capMin!==null?['--cap-min',String(p.capMin)]:[]),...(p.towers?[]:['--no-towers'])].join(' ');
 /** Run-job name in bench.yml (`run <seed>-<players>p`) → {seed,players}; null for other jobs. */
 export function runJobKey(name){
   const m=/^run (\d+)-(\d+)p$/.exec(name??'');
@@ -322,7 +327,7 @@ async function cmdBench(o,api=createApi()){
   if(!branch)throw new Error('usage: bench <branch> --seeds 1-16 --players 1 [--world cidade] [--target 2/8]');
   const f=o.flags,sha=git('rev-parse','--verify',`${branch}^{commit}`);
   let base=null;try{base=git('merge-base',sha,'origin/main');}catch{}
-  const params=benchParams({world:f.world,seeds:f.seeds??'1-16',players:f.players??'1',objective:f.objective,capMin:f['cap-min'],
+  const params=benchParams({world:f.world,seeds:f.seeds??'1-16',players:f.players??'1',objective:f.objective,combat:f.combat,capMin:f['cap-min'],
     towers:!f['no-towers'],target:f.target,branch,sha,base});
   const stamp=new Date().toISOString().replace(/\D/g,'').slice(0,14);
   const ref=`bench/${branch.replace(/[^\w./-]/g,'-')}-${stamp}`;

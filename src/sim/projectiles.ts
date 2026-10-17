@@ -71,8 +71,19 @@ export function superseded(player:SimPlayer,source:string){
   return player.build.weapons.some(w=>getWeapon(w.id)?.base===source);
 }
 
+/** Alive and hittable: in ctx.enemies, or asleep (D-051 ctx.sleepers: the hit wakes it, core damageEnemy). */
 export function isAlive(ctx:SimContext,enemy:EnemyState){
-  return ctx.enemies.get(enemy.id)===enemy&&enemy.hp>0;
+  return (ctx.enemies.get(enemy.id)===enemy||ctx.sleepers?.get(enemy.id)===enemy)&&enemy.hp>0;
+}
+const sleepScratch:EnemyState[]=[];
+/**
+ * What a hit can land on within radius: the enemyIndex's, then the sleepers there (D-051). Only for hits (projectiles,
+ * areas, tower blasts); aiming and auto-fire read the enemyIndex alone, so nothing shoots at a sleeper by itself.
+ */
+export function queryHittable(ctx:SimContext,x:number,y:number,radius:number,out:EnemyState[]):EnemyState[]{
+  ctx.enemyIndex.query(x,y,radius,out);
+  if(ctx.sleepers?.size)for(const e of ctx.sleepers.query(x,y,radius,sleepScratch))out.push(e);
+  return out;
 }
 
 /** Adds a projectile unless the map already holds `cap` of them. */
@@ -161,7 +172,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
   }
 
   function steer(ctx:SimContext,p:WeaponProjectile){
-    let target=p.homing?ctx.enemies.get(p.homing):undefined;
+    let target=p.homing?ctx.enemies.get(p.homing)??ctx.sleepers?.get(p.homing):undefined;
     // Retarget when the current target died or was already hit (piercing pigeons move on). A posing influencer
     // (isReflecting) is skipped, so the shot does not seek its own reflection, unless the owner tapped him.
     if(!target||target.hp<=0||p.hit.includes(target.id)){
@@ -182,7 +193,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     const half=Math.hypot(p.x-from.x,p.y-from.y)/2;
     const mx=(p.x+from.x)/2,my=(p.y+from.y)/2;
     candidates.length=0;
-    ctx.enemyIndex.query(mx,my,half+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
+    queryHittable(ctx,mx,my,half+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
     const hits:{e:EnemyState;t:number}[]=[];
     for(const e of candidates){
       if(!isAlive(ctx,e))continue;
@@ -197,7 +208,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     const owner=p.motion==='orbit'&&p.anchor?ctx.players.get(p.anchor):undefined;
     if(owner){
       candidates.length=0;
-      ctx.enemyIndex.query(owner.x,owner.y,(p.orbitRadius??1)+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
+      queryHittable(ctx,owner.x,owner.y,(p.orbitRadius??1)+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
       const bearing=Math.atan2(p.y-owner.y,p.x-owner.x);
       for(const e of candidates){
         if(!isAlive(ctx,e)||hits.some(h=>h.e===e))continue;

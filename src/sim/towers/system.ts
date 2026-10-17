@@ -4,8 +4,11 @@
  * step calls `defensesStep`, and its single structure damage path (`hit`, D-017) reaches `damageDefense`.
  *
  * - Where: only on the build sites of the room's terrain (sites.ts: the city and the endless map; none on the island).
+ *   D-052, the city's runs (StonewardsOptions.freeBuild): anywhere on the build grid (`buildFree`, free-build.ts: the
+ *   root, the muro and the barricada, at any phase of the run); a site id there builds the root on the site's cell
+ *   (the bots' brain, the HUD of today), the rail and the Gustavão are out, and a larger tier needs its square free.
  * - When: building, upgrading and repairing only in the intermission (round phase 'prepare'), by a standing player,
- *   while the wall stands.
+ *   while the wall stands (the free build: at any phase).
  * - Reach (torres-ajustes): only a player within BUILD_REACH of what the order names may give it: the site's largest
  *   footprint (build), the rail's rectangle (laying it, a Gustavão on it), the footprint of the defense's site
  *   (upgrade, repair); 'away' otherwise. A sim rule, so the offline run and the rooms obey it alike; the build menu
@@ -33,17 +36,29 @@ import {ticks} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {isFlying} from '../enemies/catalog.ts';
+import {queryHittable} from '../projectiles.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
 import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
-import {payFrom} from '../wallet.ts';
+import {payFrom,walletOf} from '../wallet.ts';
+import type {CellRect} from '../../maps/index.ts';
+import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
+import {CAR_BUILD_GAP,FREE_PIECE_DEFS,isFreePiece,pieceCells} from '../../rules/index.ts';
+import {RADIUS} from '../../maps/index.ts';
+import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
+  type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
 export interface DefenseState extends Point {
   id:string;kind:DefenseId;
-  /** Build site id ('obra-NN'), or the rail ('trilho') for the Gustavão. */
+  /**
+   * Build site id ('obra-NN'), or the rail ('trilho') for the Gustavão. D-052 free build: the site a bot's or an old
+   * client's order named (it was turned into its cell), else ''.
+   */
   site:string;
+  /** D-052 free build (the city): its size square's top-left cell on the build grid (free-build.ts); rot as ordered. */
+  cell?:{c:number;r:number};rot?:1;
   /** Who paid the last stage: its kills' Grana goes to them (sim/wallet.ts payKill). */
   owner:string;
   hp:number;maxHp:number;
@@ -69,12 +84,17 @@ export interface TowersState {
   rail?:RailState;
   /** Gustavões built this run (ruined ones included). */
   gustavoes:number;
+  /** D-052: the standing wall pieces (muro, barricada; free-build.ts), created by the first one. */
+  pieces?:PieceState[];
 }
 
 /** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */
-export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'grana'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate'|'away'|'full';
-/** `cost`: what was charged, in what paid it: material units (a root, the Gustavão, the rail) or R$ (an evolution, a repair). */
-export type TowerResult={ok:true;defense:string;kind:DefenseId|typeof RAIL.id;cost:number}|{ok:false;reason:TowerRefusal};
+export type TowerRefusal='wall-down'|'phase'|'player'|'site'|'occupied'|'size'|'balance'|'grana'|'limit'|'rail'|'unique'|'defense'|'building'|'ruined'|'max'|'branch'|'duplicate'|'away'|'full'|FreeBuildRefusal;
+/**
+ * `cost`: what was charged, in what paid it: material units (a root, the Gustavão, the rail) or R$ (an evolution, a
+ * repair, a wall piece).
+ */
+export type TowerResult={ok:true;defense:string;kind:DefenseId|FreePiece|typeof RAIL.id;cost:number}|{ok:false;reason:TowerRefusal};
 
 /**
  * Reach (u): a player builds, evolves or repairs only within this distance of the footprint's edge (the site's largest
@@ -101,7 +121,7 @@ export function siteRect(plan:BuildPlan,siteId:string):Rect|undefined{
   const site=plan.sites.find(s=>s.id===siteId);
   return site?footprint(site,site.maxSize,plan.cell):undefined;
 }
-const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>siteRect(plan,d.site)??{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
+const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>d.cell?defenseRectOf(d):siteRect(plan,d.site)??{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
 /** True when the player stands within BUILD_REACH of `rect` (the reach rule). */
 export function withinReach(rect:Rect,p:Point):boolean{return rectDistance(rect,p)<=BUILD_REACH;}
 const near=(ctx:SimContext,playerId:string,rect:Rect)=>{const p=ctx.players.get(playerId);return !!p&&withinReach(rect,p);};
@@ -129,8 +149,16 @@ const radiusOn=(plan:BuildPlan,size:number)=>size*plan.cell/2;
 /**
  * Builds the root defense (Vigia do Prédio) on a free site, or lays the Gustavão's rail when `siteId` is the plan's
  * rail ('trilho'). A ruin on the site is cleared by the new obra.
+ * D-052, the city: the sites are only hints now. A site id (the bots, an old client) becomes a free build of the root
+ * on the cell under the site's centre (`buildFree`, the defense keeps the site id); the rail is gone ('rail').
  */
-export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,siteId:string,requestId?:string):TowerResult{
+export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,siteId:string,requestId?:string,free?:FreeBuildContext):TowerResult{
+  if(free&&freeCity(ctx.terrain)){
+    if(plan.rail&&siteId===plan.rail.id)return once(state,playerId,requestId,()=>({ok:false,reason:'rail'}));
+    const site=plan.sites.find(s=>s.id===siteId);
+    if(!site)return once(state,playerId,requestId,()=>({ok:false,reason:'site'}));
+    return buildFree(ctx,state,plan,playerId,{piece:ROOT_DEFENSE,c:Math.floor(site.x/FREE_CELL),r:Math.floor(site.y/FREE_CELL)},requestId,free,site.id);
+  }
   return once(state,playerId,requestId,()=>{
     const no=common(ctx,state,playerId);
     if(no)return {ok:false,reason:no};
@@ -160,6 +188,99 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
   });
 }
 
+/** What the free build needs beyond the state (stonewards/system.ts): the objective's hooks and the flow grid's refresh. */
+export interface FreeBuildContext extends FreeBuildHooks {onTerrainChanged?(rect:CellRect):void}
+
+/** A forge tower's body (u) and the moto's (chaveiro MOTO_RADIUS), for 'ocupado'. */
+const FORGE_TOWER_R=.6,MOTO_BODY_R=.5;
+/**
+ * Whether something standing already holds part of `rect`: a standing defense's square, a piece, a forge tower, a body
+ * (another standing hero, a live enemy, the moto) or, without a car, the wall. The builder never counts: the heroes walk
+ * through every piece (a muro is solid to the enemies only), so they cannot wall themselves in. `skip`: a defense
+ * evolving in place (then only the defenses and the pieces count).
+ */
+function taken(ctx:SimContext,state:StonewardsState,rect:Rect,free:FreeBuildHooks,skip?:DefenseState,builder?:string):boolean{
+  for(const d of state.defenses?.list??[])if(d!==skip&&!d.ruined&&rectsOverlap(defenseRectOf(d),rect))return true;
+  for(const p of piecesOf(state))if(rectsOverlap(pieceRectOf(p),rect))return true;
+  if(skip)return false;
+  for(const t of state.towers)if(discHits(rect,t.x,t.y,FORGE_TOWER_R))return true;
+  for(const p of ctx.players.values())if(p.id!==builder&&isStanding(p)&&discHits(rect,p.x,p.y,RADIUS))return true;
+  for(const e of ctx.enemies.values())if(e.hp>0&&discHits(rect,e.x,e.y,Math.max(e.radius,RADIUS)))return true;
+  const moto=free.moto?.(ctx.tick);
+  if(moto&&discHits(rect,moto.x,moto.y,MOTO_BODY_R))return true;
+  if(!free.car&&!state.wallDown&&discHits(rect,state.wall.x,state.wall.y,state.wall.radius))return true;
+  return false;
+}
+/** The tick `owner`'s queued free obras end (D-052: a hero's free builds run one after the other); `tick` when none. */
+function queueEnd(state:StonewardsState,owner:string,tick:number):number{
+  let end=tick;
+  for(const d of state.defenses?.list??[])if(d.cell&&d.owner===owner&&!d.ruined)end=Math.max(end,d.readyTick);
+  for(const p of piecesOf(state))if(p.owner===owner)end=Math.max(end,p.readyTick);
+  return end;
+}
+const PIECE_PREFIX='peca';
+
+/**
+ * D-052 free build (the city): `order.piece` (the root tower, a muro or a barricada) with its footprint's top-left cell
+ * at (c,r) of the build grid (free-build.ts), at any phase of the run. Refusals, in order: 'duplicate', 'wall-down',
+ * 'player' (not standing), 'defense' (a tower that is not the root: towers evolve), 'fora' (off the grid or a cell off
+ * walkable ground), 'ninho' (within CAR_NEST_KEEP_OUT of a living nest), 'carro' (within CAR_BUILD_GAP of the car's
+ * body), 'ocupado' (a standing thing or a body on it), 'limite' (DEFENSE_LIMIT / the piece's limit), 'away'
+ * (BUILD_REACH), 'balance' (the root's ficha) or 'grana' (a piece's R$, from the builder's wallet), 'tranca' (a muro that
+ * would cut the car off from the borda or the moto). A ruin under the footprint is cleared. The builder's obras queue:
+ * this one starts when their last one is done.
+ */
+export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,order:FreeOrder,requestId:string|undefined,free:FreeBuildContext,siteId=''):TowerResult{
+  return once(state,playerId,requestId,()=>{
+    if(state.wallDown)return {ok:false,reason:'wall-down'};
+    const p=ctx.players.get(playerId);
+    if(!p||!isStanding(p))return {ok:false,reason:'player'};
+    const city=freeCity(ctx.terrain);
+    if(!city)return {ok:false,reason:'fora'};
+    const piece=order.piece,rot=order.rot===1?1:0,wall=isFreePiece(piece);
+    if(!wall&&piece!==ROOT_DEFENSE)return {ok:false,reason:'defense'};
+    const [w,h]=pieceCells(piece,rot),cell={c:order.c,r:order.r};
+    if(!onGround(city,cell,w,h))return {ok:false,reason:'fora'};
+    const rect=pieceRect(cell,w,h);
+    for(const n of free.nests?.(ctx.tick)??[])if(rectDistance(rect,n)<CAR_NEST_KEEP_OUT)return {ok:false,reason:'ninho'};
+    const car=free.car?.(ctx.tick);
+    if(car&&rectDistance(rect,car)<car.radius+CAR_BUILD_GAP)return {ok:false,reason:'carro'};
+    if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
+    if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
+    if(!withinReach(rect,p))return {ok:false,reason:'away'};
+    const root=DEFENSES[ROOT_DEFENSE],price=wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
+    if(wall?walletOf(p)<price:state.balance.units<price)return {ok:false,reason:short};
+    if(piece==='muro'&&locks(city,state,cell,car??state.wall,free.moto?.(ctx.tick)))return {ok:false,reason:'tranca'};
+    if(wall?!payFrom(p,price):!payUnits(state.balance,price))return {ok:false,reason:short};
+    const towers=towersOf(state),start=queueEnd(state,playerId,ctx.tick);
+    // A ruin under the new footprint is rubble the obra clears.
+    towers.list=towers.list.filter(d=>!d.ruined||!rectsOverlap(defenseRectOf(d),rect));
+    const x=rect.x+rect.w/2,y=rect.y+rect.h/2;
+    if(wall){
+      const def=FREE_PIECE_DEFS[piece];
+      const q:PieceState={id:ctx.nextId(PIECE_PREFIX),kind:piece,cell,...(rot?{rot:1 as const}:{}),owner:playerId,x,y,hp:def.hp,maxHp:def.hp,
+        startTick:start,readyTick:start+ticks(def.buildSeconds)};
+      (towers.pieces??=[]).push(q);
+      setMuro(ctx.terrain,q,false,free.onTerrainChanged);
+      return {ok:true,defense:q.id,kind:piece,cost:price};
+    }
+    const d:DefenseState={id:ctx.nextId(ID_PREFIX),kind:root.id,site:siteId,cell,...(rot?{rot:1 as const}:{}),owner:playerId,x,y,
+      hp:root.hp,maxHp:root.hp,r:radiusOn(plan,root.size!),startTick:start,readyTick:start+ticks(root.buildSeconds),fireTick:0};
+    d.fireTick=d.readyTick;
+    towers.list.push(d);
+    return {ok:true,defense:d.id,kind:d.kind,cost:price};
+  });
+}
+
+/**
+ * D-052: the cell of the square a free-built defense takes at `size`, kept centred on the one it has (a 1×1 root
+ * growing to 2×2 also takes the cells up and left of it, to 3×3 the ring around it).
+ */
+function grownCell(d:DefenseState,size:number):{c:number;r:number}{
+  const s=DEFENSES[d.kind].size??1,shift=Math.floor((s-size)/2);
+  return {c:d.cell!.c+shift,r:d.cell!.r+shift};
+}
+
 /**
  * Evolves a ready defense in place into one of its children (catalog pickChild: `branch` = 'A'|'B'|'C' at the root,
  * a child's id or label such as 'A4b' at A3; omitted when there is only one). The new tier starts a new obra at its
@@ -177,7 +298,18 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
     const next=pickChild(d.kind,branch);
     if(!next)return {ok:false,reason:'branch'};
     const towers=towersOf(state);
-    if(next.rail){
+    let grown:{c:number;r:number}|undefined;
+    if(d.cell){
+      // D-052, free build: the Gustavão is out (no rail; the Obuseiro is the top); a larger tier needs its square,
+      // centred on the one it has, on free ground (else 'size').
+      if(next.rail)return {ok:false,reason:'max'};
+      const size=next.size!;
+      if(size>(DEFENSES[d.kind].size??1)){
+        grown=grownCell(d,size);
+        const city=freeCity(ctx.terrain);
+        if(!city||!onGround(city,grown,size,size)||taken(ctx,state,pieceRect(grown,size,size),{},d))return {ok:false,reason:'size'};
+      }
+    }else if(next.rail){
       if(!plan.rail||!railReady(state,ctx.tick))return {ok:false,reason:'rail'};
       if(towers.gustavoes>=GUSTAVAO_LIMIT)return {ok:false,reason:'unique'};
     }else{
@@ -195,7 +327,10 @@ export function upgrade(ctx:SimContext,state:StonewardsState,plan:BuildPlan,play
       const rail=plan.rail!;
       d.site=rail.id;d.x=rail.x;d.y=rail.y;d.r=Math.min(rail.length,rail.width)*plan.cell/2;
       towers.gustavoes++;
-    }else d.r=radiusOn(plan,next.size!);
+    }else{
+      d.r=radiusOn(plan,next.size!);
+      if(grown){const rect=pieceRect(grown,next.size!,next.size!);d.cell=grown;d.x=rect.x+rect.w/2;d.y=rect.y+rect.h/2;}
+    }
     d.kind=next.id;d.owner=playerId;d.hp=d.maxHp=next.hp;d.startTick=ctx.tick;d.readyTick=ctx.tick+ticks(next.buildSeconds);d.fireTick=d.readyTick;
     return {ok:true,defense:d.id,kind:d.kind,cost};
   });
@@ -293,9 +428,9 @@ function densest(pool:readonly EnemyState[],area:number):EnemyState{
   return best;
 }
 function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number,owner:string){
-  const victims:EnemyState[]=[];
-  ctx.enemyIndex.query(at.x,at.y,radius,victims);
-  const list=victims.filter(e=>e.hp>0&&ctx.enemies.has(e.id)&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
+  const victims=queryHittable(ctx,at.x,at.y,radius,[]);
+  const list=victims.filter(e=>e.hp>0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
   for(const e of list)hit(ctx,def,e,owner);
 }
 function hit(ctx:SimContext,def:DefenseDef,e:EnemyState,owner:string){

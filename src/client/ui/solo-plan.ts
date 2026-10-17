@@ -31,16 +31,17 @@ export const botsLabel=(n:number)=>n===0?'Sem bots':n===1?'1 bot':`${n} bots`;
 export interface SoloPlan {map:typeof SOLO_MAP;bots:number}
 export const soloPlan=(bots:unknown):SoloPlan=>({map:SOLO_MAP,bots:clampBots(bots)});
 /**
- * D-047: ?modo= in the page address asks the room for an objective: 'chaveiro' (the city's default anyway) or
- * 'muralha' (the old wall mode); D-051: 'ninhos' asks for the nests (with the default objective, the chaveiro). Anything
- * else asks for nothing. A room Worker from before ignores the fields.
+ * What the page asks the room for. D-051 (balanco-ninhos): the default is the nests ('ninhos', with the default
+ * objective, the chaveiro) and the manual combat (the attack button, no skill). ?modo=ondas plays the director's waves,
+ * ?modo=muralha the old wall mode (D-047; no nests), ?modo=chaveiro names the objective (nests still on);
+ * ?combate=auto keeps the automatic weapons. A room Worker from before ignores the fields.
  */
 export function objectiveFromSearch(search:string|undefined):{objective?:'chaveiro'|'muralha';mode?:'ninhos';combat?:'manual'}{
-  try{
-    const q=new URLSearchParams(search??''),m=q.get('modo');
-    // D-051 (behind the flag until the E6 weapons and the balance pass): ?combate=manual opens the room with the attack button.
-    return {...(m==='chaveiro'||m==='muralha'?{objective:m}:m==='ninhos'?{mode:m}:{}),...(q.get('combate')==='manual'?{combat:'manual' as const}:{})};
-  }catch{return {};}
+  let q:URLSearchParams;
+  try{q=new URLSearchParams(search??'');}catch{q=new URLSearchParams();}
+  const m=q.get('modo');
+  return {...(m==='chaveiro'||m==='muralha'?{objective:m}:{}),...(m==='ondas'||m==='muralha'?{}:{mode:'ninhos' as const}),
+    ...(q.get('combate')==='auto'?{}:{combat:'manual' as const})};
 }
 
 /** Our owner commands go at least this far apart (the room drops one within its OWNER_GAP_MS, 300 ms, of the last). */

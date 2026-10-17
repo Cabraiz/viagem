@@ -41,10 +41,12 @@ import type {ZueiraLab} from '../src/sim/index.ts';
 export const DEFAULT_WORLD:WorldKind='infinito';
 /**
  * D-051 (mode 'ninhos', proposal §7): there is no intermission, so the bots' "prepare" (gather, forge, build) is the
- * calm: no enemy awake within NEST_CALM_RADIUS u of the car. While calm, botView shows the bots a prepare round ending
- * NEST_CALM_SECONDS from now (their trips are planned to be back by then).
+ * calm: no enemy awake within NEST_CALM.radius u of the car. While calm, botView shows the bots a prepare round ending
+ * NEST_CALM.seconds from now (their trips are planned to be back by then), whose index turns every 2 × seconds
+ * (balanco-ninhos: a lone bot alternates the ATM and the crate by the round's parity; with one open round 1 it only
+ * ever went to the ATM). Mutable only for the bench's grid (--nest-calm).
  */
-export const NEST_CALM_RADIUS=15,NEST_CALM_SECONDS=30;
+export const NEST_CALM={radius:40,seconds:30};
 /** D-051: the inventory's hand slot on the views (absent with the automatic weapons). */
 const handOf=(p:{build:PlayerBuild})=>p.build.hand!==undefined?{hand:p.build.hand}:{};
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
@@ -890,12 +892,13 @@ export class Simulation {
       offers:[],events:[],
     } as unknown as RunView;
   }
-  /** The round the bots plan with: the world's, or in mode 'ninhos' a prepare while calm (NEST_CALM_RADIUS). */
+  /** The round the bots plan with: the world's, or in mode 'ninhos' a prepare while calm (NEST_CALM). */
   private botRound():RoundState{
     const w=this.world,car=this.mode==='ninhos'?this.systems.chaveiro?.state.car:undefined;
     if(!car)return w.round;
-    for(const e of w.enemies.values())if(Math.hypot(e.x-car.x,e.y-car.y)<NEST_CALM_RADIUS)return w.round;
-    return {...w.round,phase:'prepare',phaseEndsTick:w.tick+ticks(NEST_CALM_SECONDS)};
+    for(const e of w.enemies.values())if(Math.hypot(e.x-car.x,e.y-car.y)<NEST_CALM.radius)return w.round;
+    const index=w.round.index+Math.floor(w.tick/ticks(2*NEST_CALM.seconds));
+    return {...w.round,index,phase:'prepare',phaseEndsTick:w.tick+ticks(NEST_CALM.seconds)};
   }
   /** Pure client view for one player (protocol 4 encodes this in VGM-042b). */
   view(playerId:string):RunView{

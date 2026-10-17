@@ -136,10 +136,12 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
   assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('client=new CoopClient'))),'no JSON content type: a simple request');
 });
 
-test('?modo=chaveiro asks the room for the chaveiro objective (D-047); anything else asks for nothing',()=>{
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'),{objective:'chaveiro'});
-  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'),{objective:'chaveiro'});
-  assert.deepEqual(objectiveFromSearch('?modo=muralha'),{objective:'muralha'},'the old wall mode, on request');
-  assert.deepEqual(objectiveFromSearch('?modo=ninhos'),{mode:'ninhos'},'D-051: the nests, with the default objective');
-  for(const s of ['','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])assert.deepEqual(objectiveFromSearch(s),{});
+test('?modo= (D-047, D-051): the nests by default, ?modo=ondas the waves, ?modo=muralha the old wall mode',()=>{
+  const auto='&combate=auto';
+  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'+auto),{objective:'chaveiro',mode:'ninhos'});
+  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'+auto),{objective:'chaveiro',mode:'ninhos'});
+  assert.deepEqual(objectiveFromSearch('?modo=muralha'+auto),{objective:'muralha'},'the old wall mode, on request: no nests');
+  assert.deepEqual(objectiveFromSearch('?modo=ondas'+auto),{},'the waves, on request');
+  for(const s of ['','?modo=ninhos','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])
+    assert.deepEqual(objectiveFromSearch(s),{mode:'ninhos',combat:'manual'},String(s));
 });

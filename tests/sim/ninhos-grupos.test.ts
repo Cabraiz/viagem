@@ -20,7 +20,7 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,NEST_GRANA,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,createNests,groupRange,isSiegeGroup,nestHp,nestPeriod,nestRound,
+import {FIRST_EXIT,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,createNests,groupRange,isSiegeGroup,nestHp,nestPeriod,nestRound,
   type NestCause} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -47,6 +47,12 @@ test('the numbers: hp by size and room, period shrinking with f, group size by f
 });
 
 // ---------- Unit rig ----------
+/** The nests' own timers, without NEST_PACE (no gap, no alive cap, no warm start): restored after `fn`. */
+function rawPace(fn:()=>void){
+  const saved=structuredClone(NEST_PACE);
+  Object.assign(NEST_PACE,{gap:[0,0],alive:[1e9,1e9],warm:0,size:[1,1]});
+  try{fn();}finally{Object.assign(NEST_PACE,saved);}
+}
 const PLAN:NestPlan={seed:1,players:1,loose:[],nests:[
   {id:'p0',kind:'terreno',x:40,y:40,size:'P',radius:6,sleepers:[{x:40,y:41},{x:41,y:40}]},
   {id:'g0',kind:'terreno',x:80,y:80,size:'G',radius:12,sleepers:[{x:80,y:81},{x:81,y:80}]},
@@ -65,7 +71,7 @@ function rig(maxEnemies=300){
   return {world,nests,woke,crates,fell,grana:()=>grana};
 }
 
-test('timers: the first group of each nest between 45 and 90 s, the next one a period later, out of the nest\'s yard',()=>{
+test('timers: the first group of each nest between 45 and 90 s, the next one a period later, out of the nest\'s yard',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
   const start=r.nests.state.startTick!;
@@ -83,6 +89,29 @@ test('timers: the first group of each nest between 45 and 90 s, the next one a p
   assert.equal(g.next,first+ticks(nestPeriod('G',(first-r.nests.state.startTick!)/ticks(540))));
   // Siege pattern over the run's groups, in order: group 0 hunts (floor(.6)=0), group 1 besieges.
   assert.equal(isSiegeGroup(0),false);
+}));
+
+test('pace (balanco-ninhos): one group per NEST_PACE.gap from any nest, a smaller warm start, none while NEST_PACE.alive are up',()=>{
+  const r=rig();
+  r.world.step();
+  const start=r.nests.state.startTick!,due=start+ticks(50);
+  for(const n of r.nests.state.nests)n.next=due;
+  while(r.world.tick<=due)r.world.step();
+  const sent=r.nests.state.nests.filter(n=>n.groups>0);
+  assert.equal(sent.length,1,'one group, the other nests wait');
+  for(const n of r.nests.state.nests)if(!n.groups)assert.equal(n.next,due+ticks(RETRY_SECONDS));
+  assert.equal(r.nests.state.quietUntil,due+ticks(NEST_PACE.gap[0]),'1 player: the 1-player gap');
+  const [,hi]=groupRange(sent[0].size,0);
+  assert.ok(r.world.enemies.size<=Math.round(hi*NEST_PACE.warmScale),`warm group of ${r.world.enemies.size}`);
+  // The alive cap: with that many up, a due nest waits.
+  const saved=[...NEST_PACE.alive] as [number,number];
+  NEST_PACE.alive=[r.world.enemies.size,r.world.enemies.size];
+  try{
+    const quiet=r.nests.state.quietUntil!,n=r.nests.state.nests.find(x=>!x.groups)!;
+    n.next=quiet;
+    while(r.world.tick<=quiet)r.world.step();
+    assert.equal(n.groups,0);assert.equal(n.next,quiet+ticks(RETRY_SECONDS));
+  }finally{NEST_PACE.alive=saved;}
 });
 
 test('the enemy cap: no room, the timer waits a second and nobody comes out',()=>{

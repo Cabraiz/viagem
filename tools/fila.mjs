@@ -6,8 +6,8 @@
 //   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N]
 //   node tools/fila.mjs lista
 //   node tools/fila.mjs lote [--suite local|ci|"<command>"]      (the Orquestrador, or his cron)
-//   node tools/fila.mjs publicar <lote>                          (after `npm run deploy:rooms` when the lote needs it,
-//                                                                 unless it changes a map or the protocol: CONTRACT_PATHS)
+//   node tools/fila.mjs publicar <lote>                          (after `npm run deploy:rooms` when the lote needs it:
+//                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
 //   node tools/fila.mjs cancelar <lote>
 // Options for tests and the simulation: --repo <main checkout> --board <board dir> --wt <worktree root> --remote origin
 // --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules.
@@ -112,11 +112,15 @@ export function failedFilesFromTap(tap){
 /**
  * Paths whose change makes the live Worker refuse the live site (or the other way round): the maps' manifests
  * (version + hash, map-select readMapRef), the asset bytes behind them, the room protocol and its number in the site's
- * multiplayer.json. A lote that touches one goes out with Worker and site together (pages.yml: the Worker, then the
- * site), never with the Orquestrador's deploy:rooms first (the Worker ran ~20 min ahead of the site in lote 13).
+ * multiplayer.json. A lote that touches one needs the Worker even with no --worker entry, and the queue warns that the
+ * live site is out of step with the new Worker until pages.yml publishes it (~20 min; lote 13, map v2 → v3). The order
+ * stays deploy:rooms first, then publicar (fila-deploy-ordem): pages.yml has no Cloudflare token, so the Worker goes up
+ * only by hand, and pages.yml's gate (scripts/health-gate.mjs) holds the site until the live Worker matches it.
  */
 export const CONTRACT_PATHS=[/^public\/maps\/[^/]+\.json$/,/^src\/protocol\//,/^public\/multiplayer\.json$/];
 export const contractFiles=(changed)=>changed.filter(f=>CONTRACT_PATHS.some(re=>re.test(f)));
+const outOfStep=(contrato)=>`ATENÇÃO: o lote muda o que o Worker casa com o cliente (${contrato.slice(0,4).join(', ')}${contrato.length>4?', …':''}): `
+  +'depois do deploy:rooms, o site no ar fica fora de passo por ~20 min, até o pages.yml publicar (o health-gate dele segura o site até o Worker casar)';
 
 // ---------- the art index (NEW-20261017-ORQ-fila-manifest-auto) ----------
 /** The importer's index of every art group: derived from the group manifests, so a conflict in it alone is not real. */
@@ -377,8 +381,9 @@ function lote(opt){
       log(`lote ${id} abortado: o smoke de produção falhou (${smoke.motivo}); as entradas continuam na fila`);
       return {lote:id,abortado:'smoke',smoke,integrados:[],devolvidos,suites};
     }
-    const sha=git(result.dir,'rev-parse','HEAD'),needsWorker=result.ok.some(e=>e.worker);
+    const sha=git(result.dir,'rev-parse','HEAD');
     const contrato=contractFiles(git(result.dir,'diff','--name-only',base,sha).split('\n').filter(Boolean));
+    const needsWorker=result.ok.some(e=>e.worker)||contrato.length>0;
     const state={lote:id,branch:result.branch,dir:result.dir,base,sha,protocol:result.protocol??null,needsWorker,contrato,suites,
       integrados:result.ok,devolvidos,url:result.suite.url??null,smoke:smoke.skipped?'sem smoke':'ok',estado:needsWorker?'aguardando-worker':'pronto-para-push'};
     writeJson(join(opt.board,'fila','lotes',`${id}.json`),state);
@@ -386,14 +391,9 @@ function lote(opt){
     log(`lote ${id} verde em ${suites} suíte(s): ${sha.slice(0,7)}${state.protocol?`, protocolo ${state.protocol}`:''}`);
     if(!needsWorker)return publicar({...opt,_:['publicar',id]});
     // Executors never deploy the Worker (D-029): the queue stops before the push and calls the Orquestrador.
-    if(contrato.length){
-      // The Worker ahead of the site (17/10, lote 13: map v2 → v3): every phone on the old site is refused for ~20 min.
-      log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). NÃO rode deploy:rooms: o lote muda o que o Worker casa com o cliente (${contrato.slice(0,4).join(', ')}${contrato.length>4?', …':''}).`);
-      log(`com FILA_ORQ=1: node tools/fila.mjs publicar ${id} — deixe o pages.yml publicar Worker+site juntos; confira o site em ~25 min`);
-    }else{
-      log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). Orquestrador: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
-      log(`depois, com FILA_ORQ=1: node tools/fila.mjs publicar ${id}`);
-    }
+    log(`Worker pendente: SHA ${sha.slice(0,7)} (lote ${id}). Orquestrador: npm --prefix "${result.dir.replace(/\\/g,'/')}" run deploy:rooms`);
+    log(`depois, com FILA_ORQ=1: node tools/fila.mjs publicar ${id}`);
+    if(contrato.length)log(outOfStep(contrato));
     return state;
   }finally{
     // A crash or an early return: no worktree is left with live junctions, and the lock goes unless a lote state holds it.
@@ -410,13 +410,11 @@ function publicar(opt){
   const state=readJson(p);
   if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);
   // A lote that needs the Worker is pushed only by the Orquestrador, after his deploy (executors never run wrangler).
-  const together=!!state.contrato?.length;
-  if(state.needsWorker&&process.env.FILA_ORQ!=='1')throw new Error(`Worker pendente: SHA ${state.sha.slice(0,7)} (lote ${id}) — só o Orquestrador publica este lote, `
-    +(together?'sem deploy:rooms: o pages.yml publica Worker+site juntos (FILA_ORQ=1)':'depois do deploy:rooms (FILA_ORQ=1)'));
+  if(state.needsWorker&&process.env.FILA_ORQ!=='1')throw new Error(`Worker pendente: SHA ${state.sha.slice(0,7)} (lote ${id}) — só o Orquestrador publica este lote, depois do deploy:rooms (FILA_ORQ=1)`);
   git(opt.repo,'fetch','-q',opt.remote);
   const remoteBase=git(opt.repo,'rev-parse',`${opt.remote}/${opt.base}`);
   if(remoteBase!==state.base)throw new Error(`a ${opt.base} andou (${state.base.slice(0,7)} → ${remoteBase.slice(0,7)}) depois do lote: `
-    +(state.needsWorker&&!together?`o Worker publicado é o DESTE lote e o site ainda é o anterior — rode já "cancelar ${id}", depois "lote", e publique o Worker a partir do lote novo`
+    +(state.needsWorker?`o Worker publicado é o DESTE lote e o site ainda é o anterior — rode já "cancelar ${id}", depois "lote", e publique o Worker a partir do lote novo`
       :`rode "cancelar ${id}" e depois "lote" de novo`));
   git(opt.repo,'push',opt.remote,`${state.sha}:refs/heads/${opt.base}`);
   // The main checkout follows by fast-forward only, when it is on the base branch and clean.
@@ -431,7 +429,7 @@ function publicar(opt){
   writeJson(p,{...state,estado:'publicado',em:new Date().toISOString()});
   rmdirSyncSafe(join(opt.board,'fila','.lote'));
   log(`publicado ${state.sha.slice(0,7)}: ${state.integrados.map(e=>e.card).join(', ')}`);
-  if(together)log(`o pages.yml publica Worker+site juntos (${state.contrato.slice(0,4).join(', ')}${state.contrato.length>4?', …':''} mudou): confira o site em ~25 min`);
+  if(state.contrato?.length)log(`${outOfStep(state.contrato)}; confira o site em ~25 min`);
   for(const d of state.devolvidos)log(`avise ${d.card}: ${d.motivo}`);
   return {...state,estado:'publicado'};
 }

@@ -3,7 +3,7 @@
  * each state shows. No Phaser; the renderer (renderer.ts) calls these every frame. Times in ms of the renderer's clock.
  */
 import {M} from './iso.ts';
-import {CAR_HALF,type MotoPose} from './figures.ts';
+import {CAR_HALF,WHEEL_TURN_STEPS,type MotoPose} from './figures.ts';
 import type {ChaveiroView,MotoMode} from './view.ts';
 import {CAR_PARTS} from './view.ts';
 
@@ -64,6 +64,33 @@ export const CAR_LOW=.3;
 export function headingOf(a:{x:number;y:number},b:{x:number;y:number},old:number):number{
   const dx=b.x-a.x,dy=b.y-a.y;
   return Math.hypot(dx,dy)<.01?old:Math.atan2(dy,dx);
+}
+/**
+ * D-052, the car moves: its heading after a move (dx, dy), on the move's axis with the nose kept on the side nearer
+ * `old` (pulled backwards it reverses, it does not spin round); `old` when it barely moved.
+ */
+export function carAxisHeading(old:number,dx:number,dy:number):number{
+  if(Math.hypot(dx,dy)<.005)return old;
+  const a=Math.atan2(dy,dx),d=angleDiff(a,old);
+  return Math.abs(d)<=Math.PI/2?a:Math.atan2(-dy,-dx);
+}
+/** The signed smallest turn from `from` to `to` (radians, −π..π). */
+export function angleDiff(to:number,from:number):number{
+  return ((to-from)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
+}
+/** The car's heading turns toward the move's within this time constant (ms): a push sideways swings it, no snap. */
+export const CAR_TURN_MS=220;
+/** `from` eased toward `to` over `dt` ms (exponential, CAR_TURN_MS); the shortest way round. */
+export function easeAngle(from:number,to:number,dt:number):number{
+  const d=angleDiff(to,from);
+  return Math.abs(d)<1e-3?to:from+d*(1-Math.exp(-Math.max(0,dt)/CAR_TURN_MS));
+}
+/** The car's wheel radius (units). */
+export const WHEEL_RADIUS=.31*M;
+/** The wheel's turn (0..WHEEL_TURN_STEPS−1) after rolling `roll` units forward (negative: backwards). */
+export function wheelStep(roll:number):number{
+  const s=Math.round(roll/WHEEL_RADIUS/(Math.PI*2)*WHEEL_TURN_STEPS);
+  return ((s%WHEEL_TURN_STEPS)+WHEEL_TURN_STEPS)%WHEEL_TURN_STEPS;
 }
 /** The engine runs (it never stops: the key is inside with it on): the car trembles, a px offset on screen. */
 export function engineShake(now:number,reduced:boolean,alarm:boolean):{x:number;y:number}{

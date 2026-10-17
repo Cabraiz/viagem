@@ -22,7 +22,8 @@ export const MAX_LINE_CHARS=60;
 /**
  * The moments with lines: volta (the alarm: he rides around the block), morta, tranco (the team pushed it),
  * tranco-sozinha (it started by itself), lombada, entrega, tombo (a critter touched the moto), buy (Cida sold to the
- * team), sale (Cida sold to a critter), part (a part fell off the car), chefe (the boss was called), chegou, abrindo,
+ * team), sale (Cida sold to a critter), part (a part fell off the car), chefe (the boss was called), acordou (D-051:
+ * a nest's band woke up; the game is the nests now, no waves), chegou, abrindo,
  * and the end: conector (opened, paid), divida (opened, the wheel as a guarantee), perda-total (the car is gone).
  */
 export const CHAVEIRO_LINES={
@@ -98,6 +99,14 @@ export const CHAVEIRO_LINES={
     ['chaveiro','Esse grandão aí eu conheço. Também me deve.'],
     ['tio','Três dias de motor ligado e ninguém reclamou. Até agora.'],
     ['cida','Grandão! Cocada tamanho família pra ele.'],
+  ],
+  acordou:[
+    ['tio','Acordou o ninho. Não fui eu, foi o motor. Eu só deixei.'],
+    ['cida','Acordou freguês! Quem acorda com fome compra doce.'],
+    ['chaveiro','Bicho acordado cobra mais caro. Igual eu de madrugada.'],
+    ['tio','O ninho acordou. Eu ainda não achei a chave.'],
+    ['cida','Bom dia, flor do lixão. Brigadeiro pra abrir o dia?'],
+    ['chaveiro','Acordou a vizinhança. Visita noturna é taxa extra.'],
   ],
   chegou:[
     ['chaveiro','Cheguei! A visita técnica é cinquenta, viu?'],

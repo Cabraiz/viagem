@@ -5,6 +5,7 @@
  * - protocol 15's SimEvents (contract/types.ts on the objective's branch), read loosely by `type` until main has them:
  *   {type:'alarm'} → volta; {type:'part'} → part; {type:'moto';mode;alone?} → the moment (tranco + alone → tranco-sozinha);
  *   {type:'sale'} (Cida sold to a critter) → sale; {type:'buy'} → buy; and main's {type:'boss-phase'} of a new boss → chefe;
+ *   D-051's {type:'acordou'} (a nest's band woke) → acordou (it says nothing of the chaveiro's own events);
  * - the objective view's changes (view.ts), until the events arrive: the moto's mode (morta → anda = tranco), a part's
  *   bit, the end (victory: conector, or divida when the Grana did not cover the budget; defeat with the car at its limit:
  *   perda-total). Once a chaveiro event arrived in a run, the view stops speaking for those moments.
@@ -107,6 +108,7 @@ export class ChaveiroTalk {
         if(!this.bosses.has(id)){this.bosses.add(id);if((event.phase??1)===1)this.hear('chefe',now);}
         continue;
       }
+      if(event.type==='acordou'){this.hear('acordou',now);continue;}
       const moment=eventMoment(event);
       if(!moment)continue;
       this.eventsLive=true;

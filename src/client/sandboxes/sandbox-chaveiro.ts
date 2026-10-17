@@ -101,7 +101,7 @@ export const FALA_AT_MS=1200,FALA_EVERY_MS=5000;
 /** The protocol-15 event (or main's boss arrival) of each `fala=` moment. */
 const FALA_EVENTS:Readonly<Record<string,LooseEvent>>={
   alarme:{type:'alarm',untilTick:0},venda:{type:'sale',enemy:'e1'},compra:{type:'buy',player:'self',item:'cocada'},
-  peca:{type:'part',name:'porta'},chefe:{type:'boss-phase',enemy:'boss',phase:1},sozinha:{type:'moto',mode:'tranco',alone:true},
+  peca:{type:'part',name:'porta'},chefe:{type:'boss-phase',enemy:'boss',phase:1},acordou:{type:'acordou',x:0,y:0,n:4},sozinha:{type:'moto',mode:'tranco',alone:true},
   ...Object.fromEntries(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou'].map(m=>[m,{type:'moto',mode:m}])),
 };
 /** The `fala=` moments' events due in (from, to] ms (eventId: the moment's order), unknown names skipped. */

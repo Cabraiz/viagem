@@ -31,7 +31,7 @@ test('falas: every line is short (≤ 60 chars) and fits the balloon at 390 px (
 });
 
 test('falas: 4 to 8 variations per moment, each moment its own (tranco-sozinha does not borrow tranco\'s)',()=>{
-  assert.deepEqual([...LINE_EVENTS].sort(),['abrindo','buy','chefe','chegou','conector','divida','entrega','lombada','morta','part','perda-total','sale','tombo','tranco','tranco-sozinha','volta'].sort());
+  assert.deepEqual([...LINE_EVENTS].sort(),['abrindo','acordou','buy','chefe','chegou','conector','divida','entrega','lombada','morta','part','perda-total','sale','tombo','tranco','tranco-sozinha','volta'].sort());
   for(const e of LINE_EVENTS)assert.ok(CHAVEIRO_LINES[e].length>=4&&CHAVEIRO_LINES[e].length<=8,`${e}: ${CHAVEIRO_LINES[e].length}`);
   assert.deepEqual([...END_EVENTS].sort(),['conector','divida','perda-total']);
 });
@@ -103,6 +103,8 @@ test('falas: protocol 15 events → their moment (alarm volta, part, moto moment
   // The boss's arrival (main's boss-phase at phase 1, a boss not seen before) → chefe; its later phases say nothing.
   assert.deepEqual(run([{at:0,view:view('anda')},{at:500,events:[{type:'boss-phase',enemy:'b1',phase:1,eventId:1}]},{at:6000,events:[{type:'boss-phase',enemy:'b1',phase:2,eventId:2}]}]).map(s=>s.event),['chefe']);
   assert.deepEqual(run([{at:0,view:view('anda')},{at:500,events:[{type:'boss-phase',enemy:'b2',phase:3,eventId:1}]}]).map(s=>s.event),[]);
+  // D-051: a nest's band woke (acordou) → acordou, without muting the view's moments (it is not a chaveiro event).
+  assert.deepEqual(run([{at:0,view:view('anda')},{at:500,events:[{type:'acordou',x:1,y:2,n:5,eventId:1}]},{at:6000,view:view('morta')}]).map(s=>s.event),['acordou','morta']);
   // An event already seen (same eventId) is not heard again.
   assert.equal(run([{at:0,view:view('anda')},{at:500,events:[{type:'sale',enemy:'e',eventId:4}]},{at:6000,events:[{type:'sale',enemy:'e',eventId:4}]}]).length,1);
 });

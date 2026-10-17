@@ -191,11 +191,12 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
 /** What the free build needs beyond the state (stonewards/system.ts): the objective's hooks and the flow grid's refresh. */
 export interface FreeBuildContext extends FreeBuildHooks {onTerrainChanged?(rect:CellRect):void}
 
-/** A forge tower's body (u) and the moto's (chaveiro MOTO_RADIUS), for 'ocupado'. */
-const FORGE_TOWER_R=.6,MOTO_BODY_R=.5;
+/** A forge tower's body (u), the moto's (chaveiro MOTO_RADIUS) and a crate's (a 'chest' pickup), for 'ocupado'. */
+const FORGE_TOWER_R=.6,MOTO_BODY_R=.5,CRATE_BODY_R=.5;
 /**
  * Whether something standing already holds part of `rect`: a standing defense's square, a piece, a forge tower, a body
- * (another standing hero, a live enemy, the moto) or, without a car, the wall. The builder never counts: the heroes walk
+ * (another standing hero, a live enemy, the moto), a crate (D-051: a 'chest' pickup, so none ends up inside a muro) or,
+ * without a car, the wall. The builder never counts: the heroes walk
  * through every piece (a muro is solid to the enemies only), so they cannot wall themselves in. `skip`: a defense
  * evolving in place (then only the defenses and the pieces count).
  */
@@ -206,6 +207,7 @@ function taken(ctx:SimContext,state:StonewardsState,rect:Rect,free:FreeBuildHook
   for(const t of state.towers)if(discHits(rect,t.x,t.y,FORGE_TOWER_R))return true;
   for(const p of ctx.players.values())if(p.id!==builder&&isStanding(p)&&discHits(rect,p.x,p.y,RADIUS))return true;
   for(const e of ctx.enemies.values())if(e.hp>0&&discHits(rect,e.x,e.y,Math.max(e.radius,RADIUS)))return true;
+  for(const k of ctx.pickups.values())if(k.kind==='chest'&&discHits(rect,k.x,k.y,CRATE_BODY_R))return true;
   const moto=free.moto?.(ctx.tick);
   if(moto&&discHits(rect,moto.x,moto.y,MOTO_BODY_R))return true;
   if(!free.car&&!state.wallDown&&discHits(rect,state.wall.x,state.wall.y,state.wall.radius))return true;
@@ -219,6 +221,17 @@ function queueEnd(state:StonewardsState,owner:string,tick:number):number{
   return end;
 }
 const PIECE_PREFIX='peca';
+/**
+ * D-052: whether `playerId` has a new free obra under way at `tick` (a piece or a free-built root they ordered, from its
+ * startTick to its readyTick): the builder holds still on it until it is done (assemble.ts stepCap 0). Their queued
+ * obras run back to back, so they stay put through the queue. An evolution never holds (6-15 s still in a fight weighs
+ * too much, Orq 17/10), nor do the build sites (the wall mode, the island).
+ */
+export function holdsObra(state:StonewardsState,playerId:string,tick:number):boolean{
+  for(const p of piecesOf(state))if(p.owner===playerId&&tick>=p.startTick&&tick<p.readyTick)return true;
+  for(const d of state.defenses?.list??[])if(d.cell&&d.kind===ROOT_DEFENSE&&!d.ruined&&d.owner===playerId&&tick>=d.startTick&&tick<d.readyTick)return true;
+  return false;
+}
 
 /**
  * D-052 free build (the city): `order.piece` (the root tower, a muro or a barricada) with its footprint's top-left cell

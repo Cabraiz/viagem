@@ -5,7 +5,7 @@ import {loadCity} from './city-asset-loader.ts';
 import {STEP,carStepCap,reconcile,simulate,interpolate} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {BuildRot,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
@@ -288,7 +288,8 @@ export class CoopClient {
   /** The room's answer to a forge tap (VGM-046B): `reason` says why not (FORGE_REFUSALS in stonewards/rules.ts). */
   onForged:(result:{req:number;recipe:string;ok:boolean;reason?:string})=>void=()=>{};
   /** The room's answer to a build, upgrade or repair (torres-fio, torres-ajustes): the kind, or why not ('away': too far). */
-  onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string})=>void=()=>{};
+  /** defense (D-052): the structure's id as the frames carry it, on an accepted order (the hero's own obra). */
+  onBuilt:(result:{req:number;ok:boolean;kind?:string;reason?:string;defense?:string})=>void=()=>{};
   /**
    * Forge request ids only grow (the room applies a repeated one once), across reconnections too. They start at a random
    * point: a reloaded page keeps its seat (token) but not this counter, and a restarted count would read as a resend.
@@ -542,6 +543,7 @@ export class CoopClient {
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
+      this.combat=m.combat==='manual'?'manual':'auto';
       // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
       this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
@@ -568,7 +570,7 @@ export class CoopClient {
     else if(m.t==='sos'){const ping=parseSos(m);if(ping)this.onSos(ping);}
     else if(m.t==='emote'){const mark=parseMark(m);if(mark)this.onMark(mark);else{const note=parseEmote(m);if(note)this.onEmote(note);}}
     else if(m.t==='elenco'){const ids=parseElenco(m);if(ids)this.elenco=ids;}
-    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
+    else if(m.t==='built'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{}),...(typeof m.defense==='string'?{defense:m.defense}:{})});
     else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
       ...(Number.isSafeInteger(m.grana)?{grana:m.grana}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{})});
@@ -804,6 +806,8 @@ export class CoopClient {
    */
   /** Whether this player's embarrassing moment may show on the result (settings, saved on this device). */
   private shamePref=readShamePref();
+  /** D-051: how this room fights, from its welcome ('manual': the attack button; the automatic weapons otherwise). */
+  combat:CombatMode='auto';
   setShamePref(allow:boolean){
     this.shamePref=allow;writeShamePref(allow);
     if(this.socket?.readyState===WebSocket.OPEN&&this.connected)this.out(this.socket,{t:'pref',shame:allow});

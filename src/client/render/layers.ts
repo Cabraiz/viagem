@@ -332,7 +332,7 @@ export class HordeRenderer{
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId});
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
@@ -536,7 +536,7 @@ export class HordeRenderer{
 
   // ---------- events ----------
   private handle(event:SimEvent,eventId:number){
-    // D-051: the crate opened (its actor is still here this push), a damage on the local hero, an arsenal weapon's shot.
+    // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
     if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.

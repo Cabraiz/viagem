@@ -63,7 +63,8 @@
 .rh.rh[data-hud=fone] .rh-member-badge{top:-6px;right:-5px}
 .rh.rh[data-hud=fone] .rh-member-bot{top:-6px;left:-5px}
 .rh.rh[data-hud=fone] .rh-member-mood{top:12px;right:-5px}
-.rh.rh[data-hud=fone] .rh-member :is(.rh-member-badge,.rh-member-bot,.rh-member-mood) .ic{width:14px;height:14px}
+.rh.rh[data-hud=fone] .rh-member-arma{top:12px;left:-5px}
+.rh.rh[data-hud=fone] .rh-member :is(.rh-member-badge,.rh-member-bot,.rh-member-mood,.rh-member-arma) .ic{width:14px;height:14px}
 .rh.rh[data-hud=fone] .rh-member-timer{top:22px;z-index:1;padding:0 3px}
 
 /* ---------- Edge arrows: a lower ficha (76×30 instead of 76×36) centred in the box edges.ts lays out ---------- */

@@ -1,6 +1,6 @@
 /**
  * D-051 arsenal on screen (NEW-20261016-ORQ-armas-caixas-render): what render/layers.ts adds in the manual combat.
- *  - Crates: base `caixa-saque` (closed, then abrindo-1..6 while the local hero stands still at one) over a ring in its
+ *  - Crates: base `caixa-saque` (closed, then abrindo-1..6 while a hero stands still at one) over a ring in its
  *    rarity colour, that ring filling while it opens and a burst with the rarity name when it opens ('pickup' chest event).
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
  *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side.
@@ -14,7 +14,7 @@ import type {Projector} from './projector.ts';
 import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
-import {CRATE_ART,CRATE_OPEN_REACH,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateProgress,crateRow,fxKey,iconKey,shotFrame,
+import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
@@ -29,8 +29,6 @@ const HAND_DX=26,HAND_DY=-30;
  * under the hit numbers on a player (layers.ts PLAYER_HIT_DEPTH 96600).
  */
 const RING_DEPTH=-9965,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
-/** The local hero moved this far (world units) between frames: not standing still (the sim's rule is "same position"). */
-const STILL_EPS=.02;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 
@@ -40,7 +38,6 @@ interface BurstFx {image:Image;label:Phaser.GameObjects.Text;born:number;x:numbe
 export interface ArsenalOptions {
   projector:Projector;
   locate?:(id:string)=>Pt|undefined;
-  selfId?:()=>string|undefined;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -62,8 +59,9 @@ export class ArsenalFx{
   private q:Pt={x:0,y:0};private q2:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:PROGRESS_POINTS},()=>({x:0,y:0}));
   private frameRef:BaseFrameRef={key:'',frame:0};
-  /** Local opening prediction: since when the hero stands still, and the crate (and since when) in reach. */
-  private self?:Pt;private stillSince=0;private openCrate?:string;private openSince=0;
+  /** Opening prediction for every hero who can open (has a hand slot, is in the run): the local one and the others. */
+  private openings=new CrateOpenings();
+  private canOpen=new Set<string>();
   private now=0;private body=1;private reduced=false;
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
@@ -86,10 +84,11 @@ export class ArsenalFx{
   /** Per authoritative view: is this the manual combat, who holds what (and the art, the first time). */
   push(view:RunView){
     let manual=false;
-    this.handOf.clear();
+    this.handOf.clear();this.canOpen.clear();
     for(const p of view.players){
       if(p.hand===undefined)continue;
       manual=true;
+      if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
       const icon=p.spectator||p.eliminated?undefined:itemIcon(p.weapons[p.hand]?.id);
       if(icon)this.handOf.set(p.id,icon);
     }
@@ -97,10 +96,10 @@ export class ArsenalFx{
     if(manual&&!this.queued)this.queueArt();
   }
 
-  /** Per event: a damage on the local hero restarts the opening; a crate opened bursts; an arsenal weapon's shot shows. */
+  /** Per event: a damage on a hero restarts its opening; a crate opened bursts; an arsenal weapon's shot shows. */
   event(event:SimEvent,crateAt?:Pt){
     if(!this.manual)return;
-    if(event.type==='damage'&&event.target===this.options.selfId?.())this.stillSince=this.now;
+    if(event.type==='damage')this.openings.hurt(event.target,this.now);
     else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value));
     else if(event.type==='fire'){const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy);}
   }
@@ -123,17 +122,16 @@ export class ArsenalFx{
     return undefined;
   }
 
-  /** Start of a frame: the rings and arcs are redrawn, the local hero's stillness follows its position. */
+  /** Start of a frame: the rings and arcs are redrawn, each hero's stillness follows its position. */
   begin(now:number,body:number,reduced:boolean){
     this.now=now;this.body=body;this.reduced=reduced;
     this.rings.clear();this.arcs.clear();
-    const id=this.options.selfId?.(),p=id?this.options.locate?.(id):undefined;
-    if(!p){this.self=undefined;return;}
-    if(!this.self||Math.hypot(p.x-this.self.x,p.y-this.self.y)>STILL_EPS){this.stillSince=now;this.self={x:p.x,y:p.y};}
+    this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
   }
 
   /**
-   * A crate drawn this frame at world (x,y), screen `q`: its rarity ring, the opening arc when the local hero is at it,
+   * A crate drawn this frame at world (x,y), screen `q`: its rarity ring, the opening arc when a hero is at it (the most
+   * advanced one, when several are),
    * and the sheet frame to show (closed, or abrindo-n with the progress). Undefined when its sheet is not in use.
    */
   crate(id:string,x:number,y:number,value:number,q:Pt):BaseFrameRef|undefined{
@@ -141,12 +139,7 @@ export class ArsenalFx{
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.006);
     this.rings.fillStyle(color,.22).fillEllipse(q.x,q.y,58*b*pulse,24*b*pulse);
     this.rings.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(q.x,q.y,58*b*pulse,24*b*pulse);
-    let progress=0;
-    const self=this.self;
-    if(self&&Math.hypot(self.x-x,self.y-y)<=CRATE_OPEN_REACH){
-      if(this.openCrate!==id){this.openCrate=id;this.openSince=this.now;}
-      progress=crateProgress(this.now-Math.max(this.stillSince,this.openSince),value);
-    }else if(this.openCrate===id)this.openCrate=undefined;
+    const progress=this.openings.progress(id,x,y,value);
     if(progress>0){
       // The opening fills the crate's own ring (on the ground, under the hero): Breu under, the rarity colour over.
       const n=Math.max(2,Math.ceil(PROGRESS_POINTS*progress)),rx=36*b,ry=15*b,pts=this.pts;

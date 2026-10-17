@@ -29,6 +29,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  // The game shows 2 balloons at once at most (legibility.ts): the cast's lines take two scenes.
+  'chaveiro-falas':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=part,acordou'),descricao:'falas do chaveiro: o Tio ao lado do carro (peça caiu) e a Cida na moto (ninho acordou)'},
+  'chaveiro-falas-2':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=abrindo,volta&seed=7'),descricao:'falas do chaveiro: ele na porta (abrindo) e o alarme do Quadradão'},
   'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
   'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=120,140',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},

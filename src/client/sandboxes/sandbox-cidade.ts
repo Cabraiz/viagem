@@ -110,7 +110,7 @@ import {SKILL_HTML} from '../controls-phase.ts';
 import type {ChaveiroView} from '../render/chaveiro/view.ts';
 import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
-import {talkSeed} from '../render/chaveiro/lines.ts';
+import {LINE_EVENTS,hash32,pickLine,talkSeed,type LineEvent} from '../render/chaveiro/lines.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -166,6 +166,8 @@ const bancos=real&&params.get('bancos')==='1';
 const obra=objective&&params.get('obra')==='1';
 /** `anda=<graus>` with obra=1 (D-052): the car swings back and forth (sandbox-chaveiro.ts carSwing), pulled by the hero's rope. */
 const carMoves=obra&&params.has('anda');
+/** `fala=` in the modo foto: the lines are said this long before the photo's clock (speakFoto). */
+const FOTO_TALK_AGO_MS=700;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
@@ -395,6 +397,7 @@ class CitySandbox extends Phaser.Scene {
   /** `fala=`: the fake moments' events and the fake view into the game's line timing; the due line into a balloon. */
   private speak(time:number,dt:number,view:ChaveiroView,tick:number){
     const t=this.chaveiro?.talk;if(!t)return;
+    if(fotoT!==undefined){this.speakFoto(t,dt);return;}
     t.start??=time;
     t.talk.push(view,fakeTalkEvents(params,t.last,time-t.start),tick,time);t.last=time-t.start;
     const horde=t.horde??this.lab?.horde;
@@ -404,6 +407,29 @@ class CitySandbox extends Phaser.Scene {
     t.said.push({...said,at:time});
     const renderer=this.chaveiro!.renderer;
     horde.speak(`chaveiro:${said.speaker}`,said.text,()=>renderer.speechAnchor(said.speaker),said.priority);
+  }
+  /**
+   * `fala=` in the modo foto (a fixed clock: the game's gap would show one balloon at a time): one line of each moment
+   * named (`fala=volta,part,…`, the line moments' own names), each from a speaker not used yet (each has its own anchor), all at once; the
+   * balloons' clock is the photo's, so they stay up for the print.
+   */
+  private speakFoto(t:NonNullable<NonNullable<typeof this.chaveiro>['talk']>,dt:number){
+    const horde=t.horde??this.lab?.horde;if(!horde)return;
+    if(t.start!==undefined){horde.update(fotoT!,dt);return;}
+    // Said FOTO_TALK_AGO_MS before the photo's clock: the balloons have popped in by then (and live 2.2 s).
+    t.start=fotoT!;horde.update(fotoT!-FOTO_TALK_AGO_MS,dt);
+    const seed=params.has('seed')?Number(params.get('seed'))>>>0:talkSeed('sandbox',0),used=new Set<string>(),renderer=this.chaveiro!.renderer;
+    for(const name of (params.get('fala')??'').split(',')){
+      if(!(LINE_EVENTS as string[]).includes(name))continue;
+      for(let k=0;k<16;k++){
+        const line=pickLine(name as LineEvent,hash32(seed,k));
+        if(used.has(line.speaker))continue;
+        used.add(line.speaker);t.said.push({...line,priority:true,at:fotoT!});
+        horde.speak(`chaveiro:${line.speaker}`,line.text,()=>renderer.speechAnchor(line.speaker),true);
+        break;
+      }
+    }
+    horde.update(fotoT!,dt);
   }
   /** anda=: the hero pulls the car by the rope from ahead of its move (the rope's slack in the swing). */
   private pullCar(car:{x:number;y:number}){

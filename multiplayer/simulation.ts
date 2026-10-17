@@ -14,9 +14,9 @@ import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared} 
 import {refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
-import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PullResult,SimPlayer} from '../src/contract/index.ts';
+import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX} from '../src/contract/index.ts';
-import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf} from '../src/sim/index.ts';
+import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,EnemyView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {ASLEEP_PER_VIEWER,INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -39,6 +39,8 @@ import type {ZueiraLab} from '../src/sim/index.ts';
  * around the camera (terreno-em-blocos). The island stays as an internal test world (Simulation default, LAB_WORLD=ilha).
  */
 export const DEFAULT_WORLD:WorldKind='infinito';
+/** D-051: the inventory's hand slot on the views (absent with the automatic weapons). */
+const handOf=(p:{build:PlayerBuild})=>p.build.hand!==undefined?{hand:p.build.hand}:{};
 /** What protocol 4 frames say about the terrain (FrameInput.world); the client rebuilds the same TerrainField from it. */
 export function worldDescriptor(terrain:TerrainField):WorldDescriptor{
   const kind=terrain.world==='cidade'?'cidade':terrain.chunks?'infinito':'ilha';
@@ -142,12 +144,13 @@ const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
 const pointOk=(v:unknown)=>isObject(v)&&finite(v.x)&&finite(v.y);
 /** Owned items of one kind: known ids of that kind, levels 1..maxLevel, no duplicates, at most `max`. */
-function itemsOk(list:unknown,kind:'weapon'|'passive',max:number){
+/** `repeats`: the D-051 inventory may hold two of an item (two pistolas, two coxinha stacks). */
+function itemsOk(list:unknown,kind:'weapon'|'passive',max:number,repeats=false){
   if(!Array.isArray(list)||list.length>max)return false;
   const seen=new Set<string>();
   for(const item of list){
     const def=isObject(item)&&typeof item.id==='string'?ITEMS.get(item.id):undefined;
-    if(!def||(kind==='passive')!==(def.kind==='passive')||seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
+    if(!def||(kind==='passive')!==(def.kind==='passive')||!repeats&&seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
     seen.add(def.id);
   }
   return true;
@@ -156,7 +159,11 @@ function itemsOk(list:unknown,kind:'weapon'|'passive',max:number){
 function playerRunOk(run:unknown){
   if(!isObject(run)||!finite(run.x)||!finite(run.y)||!finite(run.hp)||run.hp<0||!pointOk(run.facing))return false;
   const build=run.build;
-  if(!isObject(build)||!itemsOk(build.weapons,'weapon',MAX_WEAPONS)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
+  // D-051: an inventory (a hand slot) may repeat items, and its hand is one of its slots.
+  if(!isObject(build))return false;
+  const hand=build.hand,slots=Array.isArray(build.weapons)?build.weapons.length:0;
+  if(hand!==undefined&&!(Number.isSafeInteger(hand)&&(hand as number)>=0&&(hand as number)<Math.max(1,slots)))return false;
+  if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
   for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
@@ -631,6 +638,16 @@ export class Simulation {
     return chaveiro.buy(this.world,id,item,requestId);
   }
   /**
+   * D-051 inventory commands (manual combat, sim/inventory.ts): the hand's slot, a consumable, an item to the ground, an
+   * item from the ground. Refused once the run is decided, with the automatic weapons, or for an offline or spectating
+   * player ('player').
+   */
+  inventory(id:string,command:{t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}):InventoryResult{
+    const p=this.players.get(id),inv=this.systems.inventory;
+    if(this.result||!p?.online||p.spectator||!inv)return {ok:false,reason:'player'};
+    return command.t==='take'?inv.take(id,command.pickup):inv[command.t](id,command.slot);
+  }
+  /**
    * D-052 the car's rope ({t:'puxar'}): hook (`on`) or drop it for `id`, validated by the sim (standing, near the car,
    * nobody else on it). `requestId` makes a resent tap apply once. Refused once the run is decided, without the
    * objective, or for an offline or spectating player ('fase').
@@ -851,7 +868,7 @@ export class Simulation {
       enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
-        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p)})),
+        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p)})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       offers:[],events:[],
     } as unknown as RunView;
@@ -869,7 +886,7 @@ export class Simulation {
       players:[...this.players.values()].map(p=>({
         id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
         downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated,
-        weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),
+        weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),...handOf(p),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...(p.grana!==undefined?{grana:p.grana}:{}),
@@ -899,7 +916,7 @@ export class Simulation {
         return {
           id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
-          weapons:p.build.weapons,passives:p.build.passives,stats:{...stats,damage:Math.round(stats.damage)},
+          weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
           ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
           // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).

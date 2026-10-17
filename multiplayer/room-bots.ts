@@ -179,6 +179,8 @@ export class RoomBots {
       this.modes.set(mind.id,d.mode);
       sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
+      // D-051 manual combat: the bot's inventory (an autopilot leaves the person's alone, like their offers).
+      if(d.inventory&&this.chooses)sim.inventory(mind.id,d.inventory);
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);
         if(result.ok)this.forged++;

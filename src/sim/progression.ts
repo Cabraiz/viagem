@@ -57,6 +57,11 @@ export interface ProgressionOptions {
   onBuildChange?(ctx:SimContext,player:SimPlayer):void;
   /** Whether a player can walk to a drop; unreachable drops home to the nearest collector. */
   reachable?(ctx:SimContext,point:Point):boolean;
+  /**
+   * D-051 manual combat: chests are crates opened by standing next to them (sim/crates.ts), never by walking over them.
+   * ('item' pickups, the inventory's, are never collected here: sim/inventory.ts takes them.)
+   */
+  crates?:boolean;
 }
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
@@ -164,7 +169,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const collectors=sortedCollectors(ctx),byId=new Map(collectors.map(p=>[p.id,p]));
     const stepLength=HOMING_SPEED/SIM_HZ;
     for(const pickup of [...ctx.pickups.values()]){
-      if(pickup.kind==='resource')continue;
+      if(pickup.kind==='resource'||pickup.kind==='item'||pickup.kind==='chest'&&options.crates)continue;
       if(pickup.homing){
         let target=pickup.homing===HOME_ANY?undefined:byId.get(pickup.homing);
         if(!target){target=nearest(collectors,pickup,()=>Infinity);if(target)pickup.homing=target.id;}

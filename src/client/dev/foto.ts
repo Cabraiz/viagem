@@ -29,6 +29,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
+  'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
@@ -37,6 +39,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
+  'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},
+  'carro-soltar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=corda',descricao:'D-052 HUD: Soltar (na corda)'},
+  'carro-obra':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=obra-muro',descricao:'D-052 HUD: a bandeja de Construir aberta (Muro escolhido)'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.
   'pausa-escolhendo':{sandbox:'hud',query:'pausa=escolhendo&frozen=1&heroi=1',descricao:'pausa do level-up: oferta aberta, 10 s, esperando você, Tia e Bruninha'},

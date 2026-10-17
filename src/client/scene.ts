@@ -21,7 +21,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
-import {queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
+import {liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -335,7 +335,8 @@ export class IslandScene extends Phaser.Scene {
   }
   private fellBack=new Set<string>();
   private artFallback(file:Phaser.Loader.File){
-    const url=typeof file.url==='string'?originalUrl(file.url):undefined;
+    // A smaller enemy copy (liteOnly) keeps its procedural reserve instead: the approved file has other cells.
+    const url=typeof file.url==='string'&&!liteOnly(file.url)?originalUrl(file.url):undefined;
     if(!url||this.fellBack.has(file.key))return;
     this.fellBack.add(file.key);
     if(file.type==='spritesheet')this.load.spritesheet(file.key,url,file.config as Phaser.Types.Loader.FileTypes.ImageFrameConfig);

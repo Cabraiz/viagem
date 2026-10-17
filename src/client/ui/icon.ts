@@ -23,7 +23,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // Objetivo do chaveiro (D-047): a moto 125 com a bag, na seta de borda (arte provisória até a arte do usuário).
   'moto',
   // Ficha de torre (D-048): the team's one material pile shows as fichas (torre) and a price in material (material, a crate).
-  'torre','material'] as const;
+  'torre','material',
+  // Bancos (card bancos-e-veiculos): o Caixa 24 h com a nota de 2, na seta de borda e no minimapa (provisório; 'caixa-eletronico', o adesivo de arte 'banco' é da UI).
+  'caixa-eletronico'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

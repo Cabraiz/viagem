@@ -56,7 +56,7 @@
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
 import {BASE_STATS,CAR_ID,CAR_PUSH_REACH,CAR_RADIUS,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
-import {resolveWeapon,weaponCatalog} from './weapons/catalog.ts';
+import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
@@ -91,6 +91,20 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/**
+ * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
+ * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
+ * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP).
+ */
+export function siegeStand(weapons:readonly {id:string;level:number}[]):number{
+  let ring=0;
+  for(const w of weapons){
+    const def=weaponCatalog.get(w.id);if(!def)continue;
+    if(def.pattern!=='orbit')return DANGER+.2;
+    ring=Math.max(ring,weaponLevel(def,w.level).area);
+  }
+  return ring>0?Math.max(.8,ring-.2):DANGER+.2;
+}
 /** Bots with an even index guard the wall (shorter leash); the others roam. */
 export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
@@ -181,6 +195,8 @@ export interface BrainInput {
   teamBots?:readonly string[];
   /** D-051: the room's combat. 'manual': hold the attack with a critter in reach, no skill. Unset: the automatic weapons. */
   combat?:CombatMode;
+  /** D-051 mode 'ninhos' (room bots): at the car a bot walks into its orbit ring to hit the siege (siegeStand). Unset: DANGER+.2. */
+  nests?:true;
 }
 export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
@@ -682,7 +698,7 @@ export function decide(input:BrainInput):Decision{
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a gem lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
-    if(target&&(siege||roam)&&dist(target,at)>DANGER+(siege?.2:.6))want=add(want,toward(at,target,siege?1.2:.7));
+    if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));

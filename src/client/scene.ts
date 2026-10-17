@@ -9,7 +9,7 @@ import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,queueCityArt,type CityArtPlan} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,queueCityArt,queueLiveArt,type CityArtPlan} from './render/city/index.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -30,6 +30,7 @@ import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
 import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
+import {BankRenderer} from './render/bancos/renderer.ts';
 import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
@@ -236,6 +237,8 @@ export class IslandScene extends Phaser.Scene {
   private stone?:StonewardsRenderer;
   /** D-047: the chaveiro objective in the world (the car, the moto, their effects); only while a run view has one. */
   private chaveiro?:ChaveiroRenderer;
+  /** Bancos (card bancos-e-veiculos): the run's ATMs in the world; only while a run view has banks. */
+  private banks?:BankRenderer;
   /**
    * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
    * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
@@ -305,6 +308,7 @@ export class IslandScene extends Phaser.Scene {
     if(this.field instanceof CityTerrain){
       this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
       queueCityArt(this,this.cityArt()); // imported city art v2 (render/city/art-plan.ts) when the manifest has it
+      queueLiveArt(this,liveSheets(artIndex())); // cenário vivo: place loops, lit objects, nests (render/city/live)
     }
     else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
@@ -449,7 +453,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -598,7 +602,7 @@ export class IslandScene extends Phaser.Scene {
     this.drawTreeShadows();
     for(const sign of this.signs){const p=this.project(sign.point),depth=this.depth(sign.point);sign.graphic.setPosition(p.x,p.y).setDepth(depth-5);sign.label.anchor(p.x,p.y+28,LABEL_DEPTH);}
     this.city?.setDepthOf(this.cityDepthOf);
-    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();this.chaveiro?.refresh();}
+    if(this.projector){this.projector.view=this.view;this.projector.origin=this.depthOrigin;this.horde?.refresh();this.stone?.refresh();this.chaveiro?.refresh();this.banks?.refresh();}
     this.towers?.refresh();
   }
   /**
@@ -894,6 +898,12 @@ export class IslandScene extends Phaser.Scene {
     if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
     this.chaveiro?.push(objective,view.tick);
   }
+  /** Bancos (card bancos-e-veiculos): the run's ATMs (RunView.banks, the city in both modes); built on the first view that has them. */
+  private pushBanks(view:RunView){
+    if(!view.banks?.length&&!this.banks)return;
+    if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
+    this.banks?.push(view.banks,view.tick,view.events);
+  }
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
     if(!this.towers&&!hasTowers(view.structures))return; // no defense yet: nothing built, nothing walked
@@ -1030,14 +1040,14 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
     while(this.accumulator>=STEP){
@@ -1189,7 +1199,7 @@ export class IslandScene extends Phaser.Scene {
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);
       // A map switch into the city: its sheets arrive after the first chunks, which are rebuilt with them.
-      if(queueCityArt(this,art)){
+      if(queueCityArt(this,art)+queueLiveArt(this,liveSheets(artIndex()))){
         this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});
         if(!this.load.isLoading())this.load.start();
       }
@@ -1225,8 +1235,10 @@ export class IslandScene extends Phaser.Scene {
   /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
   private cityArt():CityArtPlan{
     // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.
-    const cell=this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined;
-    return this.cityArtPlan??=buildCityArtPlan(artIndex(),{...cityArtOptions(typeof location==='undefined'?'':location.search),...(cell?{cell}:{})});
+    const asset=this.field instanceof CityTerrain?this.field.asset:undefined,cell=asset?.unitsPerCell;
+    // The new scenery's sheets (cenario-no-mapa): only the decor ids this map places.
+    const decor=asset?.decor.map(d=>d.id);
+    return this.cityArtPlan??=buildCityArtPlan(artIndex(),{...cityArtOptions(typeof location==='undefined'?'':location.search),...(cell?{cell}:{}),...(decor?{decor}:{})});
   }
   private loadTree(id:string){
     if(this.textures.exists(`tree:${id}`))return;

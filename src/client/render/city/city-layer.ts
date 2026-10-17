@@ -33,6 +33,12 @@ import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from 
 import {TriBand} from './tri-band.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 import {cliffCells,withoutCliffs} from './relevo/field.ts';
+import {artIndex} from '../../art/manifest.ts';
+import {decorCentre,decorChunk,decorFade,decorSprite} from './decor-art.ts';
+import {CityLive,decalMeshes,type LivePiece} from './live/layer.ts';
+import {livePieces} from './live/art.ts';
+import {decorKey,isDecal,type DecorEntry} from './live/rules.ts';
+export {decorSprite} from './decor-art.ts';
 
 /** Approved snowy tree sheet (4 views, 256×384, pivot (128,353)), loaded by the scene as `tree:<id>`. */
 export const PINE_TEXTURE='tree:arvore-nevada';
@@ -127,7 +133,9 @@ interface BandPart {band:Band;index:number}
 /** Drawn objects of one fade id: one unit column, one painted building or art lot, or one prop. */
 interface FadeObjects {parts:BandPart[];sprites:BlockSprite[];props:LiveProp[]}
 interface LiveChunk {chunk:CityChunk;ground:Phaser.GameObjects.RenderTexture;glints:Phaser.GameObjects.Graphics;
-  bands:Band[];sprites:BlockSprite[];props:LiveProp[];cells:number[]}
+  bands:Band[];sprites:BlockSprite[];props:LiveProp[];cells:number[];
+  /** Decor pieces drawn by this chunk (decorKey), attached to the live layer. */
+  decor:string[]}
 /** Columns looked at around an actor for its depth: the sprite reaches ~2.3 u up, tall blocks ~4 u. */
 const ACTOR_REACH_CELLS=5;
 
@@ -176,6 +184,18 @@ export class CityLayer {
   private readonly cliffs?:Uint8Array;
   /** Piece decor look: snowy stone walls with the relief ground (muros-texturizados); `?relevo=0` keeps the plain walls. */
   private readonly pieceLook:PieceLook={};
+  /**
+   * The new scenery (asset `decor`, cenario-no-mapa) with a sheet in the plan: by drawing chunk (decorChunk), and the
+   * covering pieces (DecorSheet.covers) by cell, which hide the procedural piece of their cells and its shadow once drawn.
+   */
+  private readonly decorOf=new Map<string,DecorEntry[]>();
+  private readonly decorAt=new Map<number,DecorEntry>();
+  /** Ground decals by chunk (every chunk whose baked ring they touch). */
+  private readonly decalsOf=new Map<string,DecorEntry[]>();
+  /** Cenário vivo (E3, live/layer.ts): overlays, wires, lights and nests over the decor; none without decor. */
+  readonly vivo?:CityLive;
+  private readonly livePiece:(id:string)=>LivePiece|undefined;
+  private readonly webgl:boolean;
 
   constructor(scene:Phaser.Scene,asset:CityAsset,options:CityLayerOptions={}){
     this.scene=scene;this.asset=asset;
@@ -213,9 +233,13 @@ export class CityLayer {
       const f=this.fountain,c=f&&this.chunkOfCell(...lotCentre(f));
       if(f&&c)c.maxTop=Math.max(c.maxTop,c.minBase+f.height);
     }
+    this.livePiece=livePieces(artIndex());
+    const decor=asset.decor??[];
+    this.placeDecor(decor);
+    if(decor.length)this.vivo=new CityLive(scene,decor,{piece:this.livePiece,groundDepth:CITY_GROUND_DEPTH+3});
     const textures=scene.textures;
     // Painted ground is drawn with a Mesh, which only renders in WebGL: under Canvas the ground stays flat.
-    const webgl=scene.sys.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
+    const webgl=this.webgl=scene.sys.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer;
     const lookup:TextureLookup={
       has:key=>(webgl||!key.startsWith('city:ground:'))&&textures.exists(key),
       frames:key=>Math.max(1,textures.get(key).frameTotal-1),
@@ -226,6 +250,41 @@ export class CityLayer {
       // The ground albedo arrived (relevo/baker.ts): the live chunks bake again with it.
       this.relief.onAlbedo=()=>this.refresh();
     }
+  }
+
+  /**
+   * Sorts the decor out (constructor): decals to the chunks whose baked ground they touch; the rest, when the plan has
+   * its sheet, to its drawing chunk, the standing ones by cell. A building lot touching a standing decor gives way (the
+   * decor replaces the procedural lots of its cells); chunk bounds reach the decor's drawn top.
+   */
+  private placeDecor(decor:readonly DecorEntry[]){
+    const {width}=this.asset,size=this.index.size,push=(m:Map<string,DecorEntry[]>,k:string,e:DecorEntry)=>{const l=m.get(k);if(l)l.push(e);else m.set(k,[e]);};
+    for(const e of decor){
+      if(isDecal(e.id)){
+        // The ring of one neighbour cell (bakeGround) reaches into the next chunk: a decal on the edge is baked by both.
+        const i0=Math.floor((e.c-1)/size),i1=Math.floor((e.c+e.w)/size),j0=Math.floor((e.r-1)/size),j1=Math.floor((e.r+e.h)/size);
+        for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(this.index.get(i,j))push(this.decalsOf,`${i},${j}`,e);
+        continue;
+      }
+      const sheet=this.art?.decor[e.id];
+      if(!sheet)continue;
+      const key=decorChunk(e,size);
+      push(this.decorOf,key,e);
+      const c=this.chunksByKey.get(key);
+      if(c)c.maxTop=Math.max(c.maxTop,c.minBase+sheet.height);
+      if(sheet.covers)for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);
+    }
+    if(!this.decorAt.size)return;
+    for(const lot of new Set(this.lotAt.values())){
+      const cells:number[]=[];
+      for(let j=lot.y;j<lot.y+lot.h;j++)for(let i=lot.x;i<lot.x+lot.w;i++)cells.push(j*width+i);
+      if(cells.some(i=>this.decorAt.has(i)))for(const i of cells)if(this.lotAt.get(i)===lot)this.lotAt.delete(i);
+    }
+  }
+  /** A cell under a standing decor whose sheet is loaded: the decor draws it, not the procedural piece. */
+  private underDecor(cellIndex:number){
+    const e=this.decorAt.get(cellIndex),s=e&&this.art?.decor[e.id];
+    return !!s&&this.scene.textures.exists(s.key);
   }
 
   private chunkOfCell(cx:number,cy:number):CityChunk|undefined{return this.index.chunks.find(c=>cx>=c.x0&&cx<c.x1&&cy>=c.y0&&cy<c.y1);}
@@ -324,6 +383,7 @@ export class CityLayer {
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
     this.applyOcclusion(frame,view);
+    this.vivo?.update(frame.camera,performance.now());
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
       this.clock=(this.clock+frame.dtMs)%GLINT_PERIOD_MS;
       const alpha=0.55+0.45*Math.sin(this.clock/GLINT_PERIOD_MS*Math.PI*2);
@@ -360,6 +420,7 @@ export class CityLayer {
   /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
   destroy(){
     for(const key of [...this.live.keys()])this.dropChunk(key);
+    this.vivo?.destroy();
     this.tracker.reset();this.fader.reset();this.faded.clear();this.fog?.destroy();this.fog=undefined;this.view=-1;
     // Its GPU side too (made again by the next bake if the layer is updated again).
     this.relief?.release();
@@ -385,6 +446,8 @@ export class CityLayer {
     const sprites:BlockSprite[]=[],painted=new Set<string>(),paintedCells=new Set<number>();
     const inChunk=([cx,cy]:[number,number])=>cx>=chunk.x0&&cx<chunk.x1&&cy>=chunk.y0&&cy<chunk.y1;
     for(const piece of chunk.pieces){
+      const at=piece.y*this.asset.width+piece.x;
+      if(this.underDecor(at)){paintedCells.add(at);continue;}
       if(this.art){
         // Imported art: the piece's lot (art-plan.ts planLots), drawn once by the chunk holding the lot's centre cell.
         const cellIndex=piece.y*this.asset.width+piece.x,lot=this.lotAt.get(cellIndex);
@@ -437,12 +500,13 @@ export class CityLayer {
       bands.push(band);
       band.ids.forEach((id,index)=>this.fadeEntry(id).parts.push({band,index}));
     }
-    for(const s of sprites)this.fadeEntry(s.fade).sprites.push(s);
     const props:LiveProp[]=chunk.props.map(p=>{
       const obj=this.drawProp(p,view),prop={key:depth(p.x,p.y,view,this.pivot),fade:`p:${p.id}`,x:p.x,y:p.y,rect:this.propRect(p,obj,view),obj};
       this.fadeEntry(prop.fade).props.push(prop);
       return prop;
     });
+    const decor=this.drawDecor(key,view,sprites,props,cells);
+    for(const s of sprites)this.fadeEntry(s.fade).sprites.push(s);
     // Column cache for actorDepth: each unit column's key and occluder in this view.
     for(const g of groups.values())for(const {piece,geo} of g.items){
       const cellIndex=piece.y*this.asset.width+piece.x;
@@ -452,7 +516,36 @@ export class CityLayer {
       this.columns.set(cellIndex,{key:geo.depthKey,occ:occluderFor(unit,this.asset,piece.base,view,this.pivot),fade:columnFade(piece.id)});
       cells.push(cellIndex);
     }
-    this.live.set(key,{chunk,ground,glints,bands,sprites,props,cells});
+    this.live.set(key,{chunk,ground,glints,bands,sprites,props,cells,decor});
+  }
+
+  /**
+   * The chunk's decor pieces with a loaded sheet (decor-art.ts decorSprite): standing ones ('footprint', 'wall') as
+   * painted sprites with one column over their cells (actorDepth and see-through, like a lot); objects as props. Each
+   * base image is handed to the live layer (attach), which adds its overlays, lights and wires.
+   */
+  private drawDecor(key:string,view:number,sprites:BlockSprite[],props:LiveProp[],cells:number[]):string[]{
+    const out:string[]=[],{width}=this.asset;
+    for(const e of this.decorOf.get(key)??[]){
+      const sheet=this.art!.decor[e.id];
+      if(!this.scene.textures.exists(sheet.key))continue;
+      const d=decorSprite(e,sheet,view,this.asset,this.pivot),fade=decorFade(e);
+      const img=this.scene.add.image(d.x,d.y,sheet.key,d.frame).setOrigin(d.originX,d.originY).setScale(d.scale).setDepth(this.depthOf(d.depth));
+      if(sheet.rule==='prop'){
+        const c=decorCentre(this.asset,e),b=img.getBounds();
+        const prop:LiveProp={key:d.depth,fade,x:c.x,y:c.y,rect:{x:b.x+b.width*0.15,y:b.y,w:b.width*0.7,h:b.height},obj:img};
+        this.fadeEntry(fade).props.push(prop);props.push(prop);
+      }else{
+        sunTint(img);
+        const box:CityBlock={id:fade,kind:sheet.rule==='wall'?'wall':'building',x:e.c,y:e.r,w:e.w,h:e.h,height:sheet.height};
+        const column:ColumnRef={key:d.depth,occ:occluderFor(box,this.asset,d.base,view,this.pivot),fade};
+        for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
+        sprites.push({blockId:fade,key:d.depth,fade,obj:img});
+      }
+      this.vivo?.attach(e,img,d.artView);
+      out.push(decorKey(e));
+    }
+    return out;
   }
 
   /**
@@ -517,6 +610,7 @@ export class CityLayer {
     // A mound (moundOf) casts its own low shadow, not the building's.
     for(let j=chunk.cy-1;j<=chunk.cy+1;j++)for(let i=chunk.cx-1;i<=chunk.cx+1;i++)for(const p of this.index.get(i,j)?.pieces??[]){
       if(this.art&&(p.kind==='building'||p.kind==='rubble')&&this.underFountain(p.x,p.y))continue;
+      if(this.underDecor(p.y*asset.width+p.x))continue;
       casters.push(this.moundOf(p)??p);
     }
     const shadows=shadowUnion(casters,asset,{x0:ring.x0,y0:ring.y0,x1:ring.x1,y1:ring.y1},view,pivot,CAST_SHADOW);
@@ -554,6 +648,15 @@ export class CityLayer {
     for(const prim of shadows)drawPrim(over,prim);
     rt.draw(flat);
     for(const m of meshes)rt.draw(m);
+    // Ground decals of the new scenery (live/layer.ts decalMeshes), under the decor and the cast shadows.
+    const decals=this.decalsOf.get(chunk.key);
+    if(decals&&this.webgl){
+      const {cell,origin}=asset,corner=(cx:number,cy:number)=>{
+        const wx=origin.x+cx*cell,wy=origin.y+cy*cell;
+        return project(wx,wy,groundZ(asset,wx,wy),view,pivot);
+      };
+      for(const m of decalMeshes(this.scene,decals,this.livePiece,corner)){rt.draw(place(m));m.destroy();}
+    }
     rt.draw(over);
     flat.destroy();over.destroy();for(const m of meshes)m.destroy();
     return {ground:rt,glints};
@@ -609,6 +712,7 @@ export class CityLayer {
   private dropChunk(key:string){
     const live=this.live.get(key);
     if(!live)return;
+    for(const k of live.decor)this.vivo?.detach(k);
     live.ground.destroy();live.glints.destroy();
     for(const b of live.bands){
       b.body.destroy();b.outline.destroy();

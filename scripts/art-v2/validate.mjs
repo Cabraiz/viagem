@@ -545,6 +545,49 @@ async function validateTower(spec,id,files,ctx,r){
   if(missing.length)notes.push(`${folder}: ${missing.length>1?'faltam as animações':'falta a animação'} ${list(missing)} da arma — ${keeps(missing.length)}.`);
 }
 
+// ---------------------------------------------------------------- scenery pieces (sheet + layers, spec.mjs 'cenario')
+/** Layer names of a decor piece besides `sheet`: a full-cell animation, a place's named overlay, the break sheet. */
+export const DECOR_LAYER=/^(anim(-[a-z0-9]+(-[a-z0-9]+)*)?|quebra)$/;
+/**
+ * `cenario/decor/<id>/` (scripts/art-v2/adaptar/decor.mjs): `sheet.png` + `sheet.json` (a views sheet, the same rules as
+ * any views piece) and optional layers `<layer>.png` + `<layer>.json` {"cell":[w,h],"frames":N,"views":4,"fps"?}: 4 rows
+ * (views 0°/90°/180°/270°) × N frames. Layers are drawn over the sheet at meta.anims (or, full-cell, at the sheet's
+ * anchor), so they have no foot rule.
+ */
+async function validateDecor(spec,id,files,ctx,r){
+  const {problems,sheets}=r,folder=`${spec.input}/${id}`,dir=path.join(ctx.input,spec.input,id);
+  if(!ID_PATTERN.test(id)){problems.push(`${folder}/: nome "${id}" inválido. Use só letras minúsculas sem acento, números e hífen.`);return;}
+  const sheetFiles=[],layers=new Map();
+  for(const f of files){
+    const rel=path.relative(dir,f).split(path.sep),name=rel.at(-1),label=relName(ctx,f),m=/^(.+)\.(png|json)$/i.exec(name);
+    if(rel.length!==1)problems.push(`${label}: fora do lugar. Coloque os arquivos direto em ${folder}/.`);
+    else if(m&&m[1]==='sheet')sheetFiles.push(f);
+    else if(m&&DECOR_LAYER.test(m[1])){if(!layers.has(m[1]))layers.set(m[1],{});layers.get(m[1])[m[2].toLowerCase()]=f;}
+    else problems.push(`${label}: arquivo não esperado. Na pasta da peça vão sheet.png + sheet.json e, opcionais, anim.png, anim-<nome>.png e quebra.png (cada um com o seu .json).`);
+  }
+  if(!sheetFiles.length){problems.push(`${folder}/sheet.png: faltando. Toda peça precisa da folha com as 4 vistas.`);return;}
+  await validateOneFile({...spec,kind:'views',kinds:['views'],expected:{}},`${id}/sheet`,sheetFiles,ctx,r);
+  const own=spec.expected?.[id]?.meta;if(own)r.meta={...own,...r.meta};
+  for(const [name,{png,json:side}] of layers){
+    const label=`${folder}/${name}`;
+    if(!png){problems.push(`${label}.png: faltando (só veio o ${name}.json).`);continue;}
+    if(!side){problems.push(`${label}.json: faltando. Crie com {"cell":[W,H],"frames":N,"views":4}.`);continue;}
+    const sc=await readSidecar(side,`${label}.json`,problems,['cell','frames','views','fps']);
+    if(sc.invalid)continue;
+    const before=problems.length;
+    if(!isPair(sc.cell))problems.push(`${label}.json: cell ${json(sc.cell)} inválido; use [largura,altura] de um quadro em px.`);
+    if(!(Number.isInteger(sc.frames)&&sc.frames>0))problems.push(`${label}.json: frames ${json(sc.frames)} inválido; use um inteiro maior que 0.`);
+    if(sc.views!==VIEW_NAMES.length)problems.push(`${label}.json: views ${json(sc.views)}, esperado ${VIEW_NAMES.length} (uma linha por vista: ${VIEW_NAMES.join(', ')}).`);
+    const fps=checkFps(sc.fps,`${label}.json`,problems);
+    if(problems.length>before)continue;
+    const img=await load(png,`${label}.png`,problems);if(!img)continue;
+    const [cw,ch]=sc.cell;
+    if(img.width!==sc.frames*cw||img.height!==sc.views*ch){problems.push(sizeProblem(`${label}.png`,img,sc.frames*cw,sc.views*ch,`${sc.frames} quadros × ${sc.views} vistas de ${cw}×${ch} px`,`Uma linha por vista (${VIEW_NAMES.join(', ')}), quadros lado a lado.`));continue;}
+    if(!checkTransparent(img,`${label}.png`,problems))continue;
+    sheets.push({key:name,source:png,output:`${id}/${name}.webp`,cell:[cw,ch],frames:sc.frames,views:sc.views,...(fps!==undefined?{fps}:{})});
+  }
+}
+
 // ---------------------------------------------------------------- one-file kinds (views, frames, seamless, nineslice, icon)
 /**
  * Seam rule (spec.mjs SEAM_*): for each wrapped pair of edges, the edge is split in SEAM_SEGMENTS stretches and the mean
@@ -760,6 +803,7 @@ export async function validatePiece(group,id,files,ctx){
   if(spec.kind==='animations')await validateAnimations(spec,id,files,ctx,r);
   else if(spec.kind==='dir8')await validateDir8(spec,id,files,ctx,r);
   else if(spec.kind==='tower')await validateTower(spec,id,files,ctx,r);
+  else if(spec.kind==='decor')await validateDecor(spec,id,files,ctx,r);
   else kind=(await validateOneFile(spec,id,files,ctx,r)).kind??kind;
   const {problems,notes,sheets}=r;
   if(!problems.length&&!sheets.length)problems.push(`${spec.input}/${id}: nenhum arquivo de imagem da peça.`);

@@ -33,6 +33,7 @@ import {createKillcam,type KillcamPart} from './killcam.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
+import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
 import {icon} from '../ui/icon.ts';
 import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
@@ -167,6 +168,8 @@ export class RunHud {
   private readonly cida:CidaPart;
   /** Why the chaveiro stopped (D-047): one quiet row of the announcement slot for REASON_MS (hud/chaveiro.ts MotoReason). */
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
+  /** Bancos: the row "Bicho sacando no …!" (hud/bancos.ts BankAlert). */
+  private readonly bankRow:HTMLElement;private readonly bankAlert=new BankAlert();
   /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
   private obraOpen=false;
   /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
@@ -188,6 +191,7 @@ export class RunHud {
     const killcam=this.killcam=createKillcam();
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
+    const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
@@ -271,6 +275,7 @@ export class RunHud {
     const wait=!notice&&this.killcam.age<OFFER_AFTER_KILLCAM_MS;
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.stepReason(view);
+    this.stepBanks(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);
@@ -383,6 +388,17 @@ export class RunHud {
       this.queueRow(row,REASON_MS);
     }else if(step.drop)this.dropRow(this.reasonRow);
   }
+  /** Bancos: a critter starts robbing a bank → one urgent row (it waits in line like the chaveiro's reason). */
+  private stepBanks(view:RunView){
+    const banks=this.el.classList.contains('rh-ended')?undefined:view.banks;
+    const step=this.bankAlert.step(banks,performance.now());
+    // The robbery ended (the critter left or the bank emptied) before or while its row shows: the row leaves the line.
+    const called=this.bankRow.dataset.banco;
+    if(called&&!banks?.some(b=>b.id===called&&b.state==='bicho')){delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);}
+    if(!step.show)return;
+    const row=this.bankRow;row.innerHTML=icon('caixa-eletronico');row.append(step.show.text);row.dataset.banco=step.show.bank;
+    this.queueRow(row,BANK_ALERT_MS);
+  }
   /** The reason row on screen now (the sandbox and the acceptance scripts). */
   get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
   /** The room's answer to a Dona Cida tap (D-047, {t:'bought'}). */
@@ -445,8 +461,8 @@ export class RunHud {
    */
   private turnRows(now=performance.now()){
     const head=this.rows.shown??this.rows.next,answer=!!head&&this.answers.has(head);
-    // The chaveiro's stop (D-047) also waits for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
-    const banner=head===this.reasonRow&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
+    // The chaveiro's stop (D-047) and a bank robbery also wait for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
+    const banner=(head===this.reasonRow||head===this.bankRow)&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
     const busy=banner||!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
     const walk=!answer&&!this.objectiveRow.el.hidden;
     const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
@@ -558,6 +574,7 @@ export class RunHud {
     resetTally(this.tally);
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
+    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);
   }
 
   get view(){return this.last;}

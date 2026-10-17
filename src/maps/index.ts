@@ -11,3 +11,4 @@ export * from './city/relief.ts';
 export * from './build-sites.ts';
 export * from './far-path.ts';
 export * from './nests.ts';
+export * from './city-decor.ts';

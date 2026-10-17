@@ -71,14 +71,14 @@
 import Phaser from 'phaser';
 import {ZOOM_DEFAULT,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
-import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,makeSampleCity,parseCityAsset,project,queueCityArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
+import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {SCALE_PROFILES,TOWER_SECONDS} from '../../rules/index.ts';
+import {BANCO,SCALE_PROFILES,TOWER_SECONDS} from '../../rules/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
@@ -101,6 +101,8 @@ import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} fro
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
+import {BankRenderer} from '../render/bancos/renderer.ts';
+import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
@@ -144,6 +146,8 @@ const cast=tele&&params.get('elenco')==='1';
 const arsenal=tele&&params.get('arsenal')==='1';
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
+const bancos=real&&params.get('bancos')==='1';
 /**
  * `obra=1` with `objetivo=1` (D-052 slice 4, placeholder): the fortify layer around the fake car: a wall row by damage
  * stage, two free barricades (rot 0 and 1), the hero on the rope at the bumper and the build ghost with its hints.
@@ -199,6 +203,8 @@ class CitySandbox extends Phaser.Scene {
   private stone?:StonewardsRenderer;
   private projector?:Projector;
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro};
+  /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
+  private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
@@ -234,7 +240,7 @@ class CitySandbox extends Phaser.Scene {
       if(!decoded.ok)throw new Error(`city asset: ${decoded.error}`);
       this.asset=cityRenderAsset(decoded.asset);
       if(params.get('relevo')==='morros')this.asset=previewHills(this.asset);
-      if(tele)this.decoded=new CityTerrain(decoded.asset,'sandbox');
+      if(tele||bancos)this.decoded=new CityTerrain(decoded.asset,'sandbox');
     }else this.asset=parseCityAsset(makeSampleCity());
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
@@ -243,6 +249,14 @@ class CitySandbox extends Phaser.Scene {
     if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
+    // The new scenery (cenario-no-mapa): its sheets are known once the asset is, then the chunks redraw with them.
+    if(this.asset.decor?.length){
+      this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),decor:this.asset.decor.map(d=>d.id)});
+      if(queueCityArt(this,this.art)+queueLiveArt(this,liveSheets(artIndex()))){
+        this.load.once(Phaser.Loader.Events.COMPLETE,()=>this.layer?.refresh());
+        this.load.start();
+      }
+    }
     this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
     // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
@@ -258,6 +272,7 @@ class CitySandbox extends Phaser.Scene {
     if(centre)this.mountBase(centre);
     if(tele)this.buildLab();
     if(towersParam)this.mountTowers();
+    if(bancos)this.mountBanks();
     if(obra&&this.chaveiro)this.mountObra();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
@@ -269,7 +284,7 @@ class CitySandbox extends Phaser.Scene {
     });
     const turn=document.createElement('button');
     turn.className='cidade-turn';turn.type='button';turn.textContent='↻';turn.setAttribute('aria-label','Girar a câmera');
-    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();this.chaveiro?.renderer.refresh();}this.towers?.refresh();});
+    turn.addEventListener('click',e=>{e.stopPropagation();this.view=(this.view+1)%4;this.place();if(this.projector){this.projector.view=this.view;this.stone?.refresh();this.chaveiro?.renderer.refresh();this.banks?.renderer.refresh();}this.towers?.refresh();});
     host.append(turn);// inside the sandbox root: everything else in body is hidden
     if(enemies){this.fpsLabel=document.createElement('div');this.fpsLabel.className='cidade-fps';host.append(this.fpsLabel);}
     // Warm the fade so a covering building is already translucent on the first screenshot.
@@ -288,6 +303,7 @@ class CitySandbox extends Phaser.Scene {
       const now=fotoT??_t,t0=performance.now(),{view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
     }
+    this.stepBanks(_t);
     this.fortify?.update(fotoT??_t);
     this.drawLab(_t,dt);
     this.stepTowers(_t,dt);
@@ -302,6 +318,38 @@ class CitySandbox extends Phaser.Scene {
     const projector=new Projector(this.view,ground);
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y,groundZ(asset,x,y)):0;
     return this.projector=projector;
+  }
+  /**
+   * `bancos=1`: the banks' renderer on the city's projection with three fake ATMs around the hero, and the robbers
+   * (Cliente Prime) on the game's horde renderer.
+   */
+  private mountBanks(){
+    const fake=fakeBanks(params,this.at),projector=this.cityProjector();
+    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at});
+    let horde:HordeRenderer|undefined;
+    if(this.decoded&&fake.enemies.length){
+      const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
+      horde=new HordeRenderer(this,{projector:hp,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
+        reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
+      horde.push({tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],pickups:[],enemies:fake.enemies});
+    }
+    this.banks={renderer,fake,horde,warmed:false};
+  }
+  /**
+   * bancos=1, every frame: the fake banks at the clock. In the modo foto (a fixed clock) the first frame starts from
+   * the view a moment before, so a note is in the air and the beep shows on the print.
+   */
+  private stepBanks(time:number){
+    const b=this.banks;if(!b)return;
+    const now=fotoT??time;
+    if(fotoT!==undefined&&!b.warmed){
+      const before=now-450,prev=b.fake.view(now-Math.max(1,BANCO.saqueS)*1000);
+      b.renderer.update(before);b.renderer.push(prev.banks,prev.tick);
+    }
+    b.warmed=true;
+    const {banks,tick}=b.fake.view(now);
+    b.renderer.push(banks,tick);b.renderer.update(now);
+    b.horde?.update(now,16);
   }
   /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
   private mountObjective(placeHero:boolean){
@@ -547,7 +595,7 @@ class CitySandbox extends Phaser.Scene {
     cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
-    (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>this.layer?.groundSettled()??true,outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
+    (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }

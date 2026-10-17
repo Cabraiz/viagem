@@ -5,7 +5,8 @@
  * {t:'build',round,req,piece,c,r,rot?} builds `piece` with the top-left cell of its footprint at (c,r) of the build grid
  * (maps/build-sites.ts CITY_BUILD_CELL, origin 0,0 of the city). Without `rot` the footprint lies as in the catalog
  * (W×H); rot 1 turns it to H×W. A dragged wall is one command per cell (the sim queues them on the hero). The answer
- * stays {t:'built',req,ok,kind?|reason?}. The piece type (a tower id or a FreePiece) is rules/towers.ts BuildPiece.
+ * stays {t:'built',req,ok,kind?|reason?}, plus `defense` on an accepted one: the structure's id as the frames carry it
+ * (the hero holds still on it while it is an obra, sim towers/system.ts holdsObra). The piece type (a tower id or a FreePiece) is rules/towers.ts BuildPiece.
  */
 /** The new pieces beside the tower root: a wall segment (1 cell) and a barricade (2×1, slows instead of blocking). */
 export type FreePiece='muro'|'barricada';

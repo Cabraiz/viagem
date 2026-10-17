@@ -44,7 +44,20 @@ export const classes: HeroClass[] = [
 ];
 export const roles: Role[] = ['Linha de frente','Dano','Suporte','Controle'];
 export function getClass(id: string): HeroClass | undefined { return classes.find(hero => hero.id === id); }
+/**
+ * D-053 (17/10/2026): for now only the heroes with the complete R06 movement art (8 directions, 128 poses, the 15 of
+ * personagens-movimento128) can be picked in the menu or drawn for a room bot. The other 20 stay in the code and data,
+ * hidden: a room or link asking for one of them plays one of these (playableClassId), never an error.
+ */
+export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['caca-promocao','clt-cansado','coach','concurseira','faxineira','feirante',
+  'maromba','mendigo','passageira','pedreiro','roqueira','streamer','universitario','viciado-em-bet','vizinha-fofoqueira']);
+/** The playable classes, in the roster's order. */
+export const playableClasses: HeroClass[] = classes.filter(hero => PLAYABLE_CLASS_IDS.includes(hero.id));
+export const isPlayableClass = (id: unknown): id is string => typeof id === 'string' && PLAYABLE_CLASS_IDS.includes(id);
+/** `id` when playable; otherwise (hidden, unknown, not a string) the first playable class. */
+export const playableClassId = (id: unknown): string => isPlayableClass(id) ? id : playableClasses[0].id;
+/** The menu's search: over the playable classes only (D-053). */
 export function filterClasses(query: string, role: string): HeroClass[] {
   const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
-  return classes.filter(hero => (role === 'Todas' || hero.role === role) && normalize(`${hero.name} ${hero.skill} ${hero.subtitle}`).includes(normalize(query)));
+  return playableClasses.filter(hero => (role === 'Todas' || hero.role === role) && normalize(`${hero.name} ${hero.skill} ${hero.subtitle}`).includes(normalize(query)));
 }

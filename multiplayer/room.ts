@@ -6,7 +6,7 @@ import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNo
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
-import { classes } from '../src/rules/index.ts';
+import { classes, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
 import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
@@ -181,16 +181,17 @@ const linkOf=(v:unknown)=>{
   return l&&typeof l==='object'&&Number.isSafeInteger(l.round)&&Number.isSafeInteger(l.tick)
     ?{round:l.round as number,tick:l.tick as number,...(Number.isSafeInteger(l.run)?{run:l.run as number}:{})}:undefined;
 };
+/** Every class of the build (a restored roster stays strict about junk); D-053 then seats a hidden one as playable. */
 const classIds=new Set(classes.map(c=>c.id));
 /** A class this build no longer has (Tia da Festa left, NEW-20261013-ORQ-classes-cartas-e-nomes): an old client that
  *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
  *  roster stays strict (junk is dropped; that player joins again and lands here). */
-const DEFAULT_CLASS=classes[0].id;
-const knownClass=(id:unknown)=>typeof id==='string'&&classIds.has(id)?id:DEFAULT_CLASS;
+// D-053: a hidden class (no R06 movement art yet) or one this build no longer has plays the first playable class.
+const knownClass=(id:unknown)=>playableClassId(id);
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
-/** Classes a room bot may get (any of the 36, D-025), in a fixed order for the seed pick. */
-const BOT_CLASSES=classes.map(c=>c.id);
+/** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick. */
+const BOT_CLASSES=[...PLAYABLE_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */
@@ -458,7 +459,7 @@ export class Room {
       if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
-      this.sim.add(r.id,r.name,r.classId);this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
+      this.sim.add(r.id,r.name,playableClassId(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);this.autopilots.add(r.id,this.autopilots.freeSlot(AUTOPILOT_SLOT,2));
       if(lost)this.lostRun.set(r.id,lost);
     }
@@ -468,7 +469,7 @@ export class Room {
     this.botsAdded=Number.isSafeInteger(roster.botsAdded)&&roster.botsAdded!>0?roster.botsAdded!:0;
     if(this.sessions.size)for(const b of Array.isArray(roster.bots)?roster.bots:[]){
       if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
-      this.seatBot(b.id,b.name.slice(0,20),b.classId,Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
+      this.seatBot(b.id,b.name.slice(0,20),playableClassId(b.classId),Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
     // D-035: the map the owner had picked (a row from before cidade-10 names none: the endless map, whatever the

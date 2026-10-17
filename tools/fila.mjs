@@ -1,6 +1,7 @@
 // D-049 item 3 (NEW-20261014-ORQ-fila-integracao-e-testes-afetados): the integration queue. Replaces the manual
 // locks/integracao: executors queue what is ready, one batch merges it all, gives the protocol one number, runs the suite
-// once, sends back what conflicts or breaks it, publishes the Worker once (the Orquestrador's step, D-029) and pushes once.
+// once, sends back what conflicts or breaks it (a conflict only in public/art/manifest.json is regenerated instead:
+// resolveIndexConflict), publishes the Worker once (the Orquestrador's step, D-029) and pushes once.
 //
 //   node tools/fila.mjs pronto <card> --branch vgm/x [--worker] [--protocol] [--prio P0|P1|P2] [--dono Executor-N]
 //   node tools/fila.mjs lista
@@ -104,6 +105,33 @@ export function failedFilesFromTap(tap){
     if(file)out.add(file);
   }
   return [...out];
+}
+
+// ---------- the art index (NEW-20261017-ORQ-fila-manifest-auto) ----------
+/** The importer's index of every art group: derived from the group manifests, so a conflict in it alone is not real. */
+export const INDEX_FILE='public/art/manifest.json';
+/** The batch checkout's own writeIndex over its own group manifests (scripts/art-v2), as a child: the tool loads none of it. */
+const REGEN_INDEX=`import {pathToFileURL} from 'node:url';
+const at=f=>pathToFileURL(process.cwd()+'/scripts/art-v2/'+f).href;
+const {writeIndex}=await import(at('convert.mjs')),{GROUPS}=await import(at('spec.mjs'));
+await writeIndex(GROUPS,{outRoot:process.cwd()});`;
+/**
+ * A merge stopped with a conflict only in INDEX_FILE: the index is written again from the group manifests on disk
+ * (the merge already joined them) with the importer's writeIndex, `node scripts/art-lite.mjs --check` must pass (every
+ * lite copy and liteCell matches), and the merge is committed. {ok:false, why} leaves the merge for the caller to abort.
+ */
+export function resolveIndexConflict(dir){
+  const node=(args)=>spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',maxBuffer:64<<20});
+  // The error's own line when there is one (a stack's last lines say nothing), else the end of the output.
+  const tail=(r)=>{const lines=`${r.stderr??''}${r.stdout??''}`.trim().split(/\r?\n/).filter(l=>l.trim());
+    return (lines.find(l=>/\b\w*Error\b/.test(l))??lines.slice(-2).join(' / ')).trim().slice(0,400);};
+  const regen=node(['--input-type=module','-e',REGEN_INDEX]);
+  if(regen.status!==0)return {ok:false,why:`${INDEX_FILE}: writeIndex falhou (${tail(regen)})`};
+  const check=node(['scripts/art-lite.mjs','--check']);
+  if(check.status!==0)return {ok:false,why:`${INDEX_FILE} regerado, mas art-lite --check falhou (${tail(check)})`};
+  const add=tryGit(dir,'add','--',INDEX_FILE);
+  const commit=add.ok?tryGit(dir,'commit','-q','--no-edit'):add;
+  return commit.ok?{ok:true}:{ok:false,why:`${INDEX_FILE}: commit do merge falhou (${commit.err.slice(0,200)})`};
 }
 
 // ---------- worktrees (the shared node_modules are junctions: always removed before the worktree, see ESCALA.md) ----------
@@ -268,7 +296,10 @@ function lote(opt){
         const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${id}: ${e.card}`,e.sha);
         if(!r.ok){
           const files=tryGit(dir,'diff','--name-only','--diff-filter=U').out.split('\n').filter(Boolean);
-          tryGit(dir,'merge','--abort');merged.push({e,conflict:files});continue;
+          // Only the art index in conflict (it did in almost every lote): regenerated from the group manifests, checked.
+          const index=files.length===1&&files[0]===INDEX_FILE?resolveIndexConflict(dir):undefined;
+          if(index?.ok){log(`${e.card}: conflito só em ${INDEX_FILE}, regerado (writeIndex + art-lite --check)`);merged.push({e,index:true});continue;}
+          tryGit(dir,'merge','--abort');merged.push({e,conflict:files,...(index?{nota:index.why}:{})});continue;
         }
         merged.push({e});
       }
@@ -289,7 +320,7 @@ function lote(opt){
     let suites=0,result;
     while(candidates.length){
       const batch=build(`fila-${id}`,`fila/${id}`,candidates,true);
-      for(const m of batch.merged)if(m.conflict)sendBack(m.e,{motivo:'conflito',arquivos:m.conflict,base:base.slice(0,7)});
+      for(const m of batch.merged)if(m.conflict)sendBack(m.e,{motivo:'conflito',arquivos:m.conflict,base:base.slice(0,7),...(m.nota?{nota:m.nota}:{})});
       if(!batch.ok.length){drop(batch.dir,`fila/${id}`);break;}
       suites++;log(`suíte do lote (${batch.ok.map(e=>e.card).join(', ')})…`);
       const s=runSuite(opt,batch.dir,`fila/${id}`);

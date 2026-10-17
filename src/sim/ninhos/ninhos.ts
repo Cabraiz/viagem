@@ -38,10 +38,13 @@ export const RETRY_SECONDS=1;
  *  - gap: at least this many seconds between two groups, from any nest (the "pause between groups");
  *  - alive: no group while this many enemies are alive (the timer waits RETRY_SECONDS);
  *  - warm: for the first `warm` seconds the groups are × warmScale (the light round 1: time to level and gather);
+ *  - warmRow: the round row (hp, kinds) of the groups during `warm` (nestRound: 2..9 by f after it);
+ *  - size: × the group size (over playerScale's count);
+ *  - siege: the share of the groups that besiege the car (was SIEGE_SHARE for every size);
  *  - ramp: the seconds f takes from 0 to 1 (period, group size, the round row of hp and kinds; NEST_RUN_SECONDS was 540).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
-export const NEST_PACE={gap:[24,8] as [number,number],alive:[14,40] as [number,number],warm:120,warmScale:.5,ramp:NEST_RUN_SECONDS};
+export const NEST_PACE={gap:[24,8] as [number,number],alive:[14,40] as [number,number],warm:120,warmScale:.5,warmRow:2,ramp:NEST_RUN_SECONDS,siege:[SIEGE_SHARE,SIEGE_SHARE] as [number,number],size:[1,1] as [number,number]};
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
 const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 /** How often a role shows up in a nest group (the rotation's roles; mini-chefes and the boss never come from a nest). */
@@ -113,7 +116,7 @@ export const groupRange=(size:NestSize,f:number)=>NEST_GROUP[size][f<.3?0:f<=.7?
 /** The round table row whose numbers (hp, kinds) a group at f plays: 2..9 (no tutorial, no boss round). */
 export const nestRound=(f:number)=>Math.max(2,Math.min(9,1+Math.floor(Math.max(0,Math.min(1,f))*9)));
 /** Group i besieges the car: exactly SIEGE_SHARE of the groups, spread evenly (like the director's siegeShare). */
-export const isSiegeGroup=(i:number)=>Math.floor((i+1)*SIEGE_SHARE)>Math.floor(i*SIEGE_SHARE);
+export const isSiegeGroup=(i:number,share:number=SIEGE_SHARE)=>Math.floor((i+1)*share)>Math.floor(i*share);
 const clampPlayers=(n:number)=>Math.max(1,Math.min(6,Math.round(n)||1));
 
 export function createNests(options:NestsOptions,restore?:NestsState):NestsSystem{
@@ -137,8 +140,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     save();
   }
 
-  function pickKinds(count:number,f:number):string[]{
-    const round=nestRound(f),roster=options.roster?.(round);
+  function pickKinds(count:number,round:number):string[]{
+    const roster=options.roster?.(round);
     const weighted:[string,number][]=[];
     if(roster){
       for(const [role,w] of Object.entries(ROLE_WEIGHT) as [EnemyRole,number][]){
@@ -160,9 +163,11 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const room=Math.max(0,options.maxEnemies-ctx.enemies.size),n=Math.min(count,room);
     if(n<=0)return 0;
     const spots=plan!.nests.find(p=>p.id===nest.id)?.sleepers??[],index=state.nests.indexOf(nest);
-    const hp=ROUNDS[nestRound(f)-1].hpScale*playerScale(state.players).hp;
+    // NEST_PACE.warmRow: during the warm start the groups play that round row (1: the tutorial's light bodies).
+    const row=ctx.tick-state.startTick!<ticks(NEST_PACE.warm)?NEST_PACE.warmRow:nestRound(f);
+    const hp=ROUNDS[row-1].hpScale*playerScale(state.players).hp;
     let out=0;
-    for(const kind of pickKinds(n,f)){
+    for(const kind of pickKinds(n,row)){
       // The yard's sleeper spots are clear ground by construction (maps/nests.ts); a building nest's centre is not.
       const at=spots.length?spots[(nest.groups*7+out)%spots.length]:{x:nest.x,y:nest.y};
       const e=options.createEnemy(ctx,kind,{x:at.x,y:at.y},hp);
@@ -177,8 +182,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const f=elapsedF(ctx.tick),[lo,hi]=groupRange(nest.size,f);
     if(ctx.tick<(state.quietUntil??0)||ctx.enemies.size>=pace(NEST_PACE.alive,state.players)){nest.next=ctx.tick+ticks(RETRY_SECONDS);return;}
     const warm=ctx.tick-state.startTick!<ticks(NEST_PACE.warm)?NEST_PACE.warmScale:1;
-    const count=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count*warm));
-    const siege=isSiegeGroup(state.sent);
+    const count=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count*warm*pace(NEST_PACE.size,state.players)));
+    const siege=isSiegeGroup(state.sent,pace(NEST_PACE.siege,state.players));
     if(!release(ctx,nest,count,siege,f)){nest.next=ctx.tick+ticks(RETRY_SECONDS);return;}
     state.sent++;nest.groups++;state.quietUntil=ctx.tick+ticks(pace(NEST_PACE.gap,state.players));
     nest.next=ctx.tick+ticks(nestPeriod(nest.size,f));

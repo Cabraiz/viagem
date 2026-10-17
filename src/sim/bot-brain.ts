@@ -91,6 +91,8 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
+export const NEST_THREAT_RADIUS=40;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
@@ -245,7 +247,7 @@ export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;
  * (nearest to the point among the standing bots that do not push and do not forge); 'carro' (D-052): a person moves
  * the car and this is one of the CAR_HELP_BOTS free bots nearest to it. `at`: where to go.
  */
-export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField):ObjectiveTask|undefined{
+export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField,nests?:boolean):ObjectiveTask|undefined{
   const o=view.objective;
   if(!o||o.ended)return undefined;
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p));
@@ -271,7 +273,9 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   if(pushers.includes(selfId))return {kind:'push',at:moto};
   const d=o.delivery;
   let clearer:string|undefined;
-  if(d&&d.etaS<=DELIVERY_MARK_SECONDS){
+  // Mode 'ninhos' (balanco-ninhos): no clearing trip while a critter is within NEST_THREAT_RADIUS of the car (a lone bot
+  // walked 60-80 u off to clear while a siege group came in, and the car took 64 hits in 10 s).
+  if(d&&d.etaS<=DELIVERY_MARK_SECONDS&&!(nests&&view.enemies.some(e=>dist(e,o.car)<NEST_THREAT_RADIUS))){
     clearer=byDistance(d,ready.filter(p=>!pushers.includes(p.id)&&p.id!==forger))[0]?.id;
     if(clearer===selfId)return {kind:'clear',at:{x:d.x,y:d.y}};
   }
@@ -476,7 +480,7 @@ export function decide(input:BrainInput):Decision{
   }
   // D-051 manual combat: hold the attack whenever a critter is in reach, whatever the bot is walking to.
   if(input.combat==='manual')decision.attack=attackReach(me,at,view.enemies);
-  const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
+  const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain,input.nests):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead

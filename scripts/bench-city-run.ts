@@ -98,10 +98,11 @@ import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,returnTicks,type RecipeId} fro
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
-import {Simulation} from '../multiplayer/simulation.ts';
+import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
 import type {ObjectiveResult} from '../src/contract/index.ts';
 import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
 import {NEST_PACE} from '../src/sim/ninhos/ninhos.ts';
+import {NOISE} from '../src/sim/ninhos/sono.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
 const CLEAN_DELIVERY_TICKS=ENTREGA_CLEAN_SECONDS*20;
 import {BOT_FORGE_LEFT,BOT_NAMES,RoomBots} from '../multiplayer/room-bots.ts';
@@ -574,7 +575,7 @@ export class NavDriver {
           mode='unstick';dir=b.unstickDir;
         }
       }else{b.anchor={x:p.x,y:p.y};b.anchorTick=tick;}
-      this.count(mode);
+      this.count(mode==='build'?`build:${this.room.modes.get(mind.id)??'?'}`:mode);
       this.setStick(mind.id,dir);
     }
   }
@@ -798,6 +799,13 @@ function playRun(o:RunOptions):RunRecord{
   const trackNests=(tick:number)=>{
     // Both modes: how many enemies are alive at each minute mark and how many new ones came in that minute.
     const minute=Math.floor(tick/(60*HZ));
+    // BENCH_TRACE=1 (balanco-ninhos, a probe): every 10 s the car, the enemies at it and each bot's place and mode.
+    if(process.env.BENCH_TRACE&&tick%(10*HZ)===0){
+      const car=sim.run.chaveiro?.state.car,at=(e:{x:number;y:number})=>car?Math.round(Math.hypot(e.x-car.x,e.y-car.y)):-1;
+      const es=[...sim.world.enemies.values()];
+      console.error(`t${tick/HZ}s car ${car?.hits}/${car?.limit} alive ${es.length} near5 ${es.filter(e=>at(e)<5).length} siege ${es.filter(e=>e.memory?.siege===1).length} lvl ${JSON.stringify((sim.world.team as {level?:number}).level)} `+
+        [...sim.players.values()].map(p=>`${p.id}@${at(p)}u hp${Math.round(p.hp)} ${driver.room.modes.get(p.id)??'-'} w${JSON.stringify((p as unknown as {build:{weapons:{id:string;level:number}[]}}).build.weapons.map(w=>w.id+w.level))}`).join(' '));
+    }
     for(const id of sim.world.enemies.keys())if(!seenEnemies.has(id)){seenEnemies.add(id);newPerMinute[minute]=(newPerMinute[minute]??0)+1;}
     if(tick%(60*HZ)===0)alivePerMinute[minute]=sim.world.enemies.size;
     maxEnemies=Math.max(maxEnemies,sim.world.enemies.size);
@@ -937,7 +945,7 @@ function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -950,7 +958,7 @@ function args(argv:readonly string[]){
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
-    nestPace:get('--nest-pace'),
+    nestPace:get('--nest-pace'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -988,6 +996,9 @@ async function main(){
   const a=args(process.argv.slice(2));
   // balanco-ninhos: --nest-pace '{"gap":[30,10]}' overrides NEST_PACE for this bench (the grid; the game never does).
   if(a.nestPace)Object.assign(NEST_PACE,JSON.parse(a.nestPace));
+  // --alarm '{"r":20,"p":0.1}': the car alarm's noise (sono NOISE.alarm), for the grid only.
+  if(a.nestCalm)Object.assign(NEST_CALM,JSON.parse(a.nestCalm));
+  if(a.alarm)Object.assign(NOISE.alarm as {r:number;p:number},JSON.parse(a.alarm));
   if(a.merge)return merge(a);
   if(a.priority!=='normal')try{os.setPriority(0,os.constants.priority.PRIORITY_LOW);}catch{console.warn('could not lower the process priority');}
   if(!(a.capMin>0))throw new Error('--cap-min must be > 0');
@@ -1009,7 +1020,7 @@ async function main(){
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
   if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){

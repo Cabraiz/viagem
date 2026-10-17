@@ -10,7 +10,7 @@ import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -357,4 +357,42 @@ test('a conflict only in public/art/manifest.json is regenerated from the group 
     assert.match(git(w.repo,'log','-1','--format=%s',`${state.sha}^2`),/arte-b/,'the merge commit of arte-b is there');
     assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no batch worktree left');
   }finally{w.cleanup();}
+});
+
+// NEW-20261017-ORQ-fila-deploy-seguro: lote 13 changed the city map (v2 → v3) and the queue told the Orquestrador to
+// run deploy:rooms before the push: the Worker asked for v3 ~20 min before pages.yml published the site, and every
+// phone on the old site saw "Atualize a página". A Worker lote that changes what the Worker matches with the client
+// (a map's manifest or bytes, the room protocol, multiplayer.json) is published Worker+site together by pages.yml.
+test('a Worker lote that changes a map or the protocol never suggests deploy:rooms (pages.yml publishes both); one that does not, does as before',(t)=>{
+  const said:string[]=[];
+  t.mock.method(console,'log',(...a:unknown[])=>{said.push(a.join(' '));});
+  for(const [file,together] of [['public/maps/cidade.manifest.json',true],['src/so-codigo.ts',false]] as const){
+    const w=world();
+    try{
+      said.length=0;mkdirSync(join(w.repo,'public/maps'),{recursive:true});
+      w.branch('vgm/w',file,'{"version":3}\n');
+      main(['pronto','NEW-w','--branch','vgm/w','--worker',...w.opts]);
+      const state=main(['lote',...w.opts]);
+      assert.equal(state.estado,'aguardando-worker');
+      assert.deepEqual(state.contrato,together?[file]:[]);
+      const log=said.join('\n');
+      if(together){
+        assert.match(log,/NÃO rode deploy:rooms/);assert.match(log,/pages\.yml publicar Worker\+site juntos; confira o site em ~25 min/);
+        assert.doesNotMatch(log,/run deploy:rooms/,'no deploy:rooms command to copy');
+        assert.throws(()=>main(['publicar',state.lote,...w.opts]),/sem deploy:rooms: o pages\.yml publica Worker\+site juntos/);
+      }else{
+        assert.match(log,/run deploy:rooms/);assert.doesNotMatch(log,/NÃO rode/);
+        assert.throws(()=>main(['publicar',state.lote,...w.opts]),/depois do deploy:rooms/);
+      }
+      said.length=0;
+      orq(()=>main(['publicar',state.lote,...w.opts]));
+      assert.equal(/confira o site em ~25 min/.test(said.join('\n')),together,'the reminder after the push');
+    }finally{w.cleanup();}
+  }
+});
+
+test('contractFiles: the maps\' manifests and bytes, the protocol and multiplayer.json; nothing else',()=>{
+  assert.deepEqual(contractFiles(['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts',
+    'src/protocol/room.ts','public/multiplayer.json','public/maps/thumbs/a.webp','src/sim/core.ts','public/art/manifest.json','tests/protocol/x.test.ts']),
+  ['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts','src/protocol/room.ts','public/multiplayer.json']);
 });

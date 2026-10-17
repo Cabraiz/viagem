@@ -141,13 +141,13 @@ export interface EdgeOptions {half?:{w:number;h:number};max?:number;merge?:numbe
  * the announcement slot with the kill-cam), viewport CSS px: a target under them is not in plain view and gets an
  * arrow. The game (rescue.ts) and the arrows sandbox read the same list (a test pins the windows in it).
  */
-export const COVERING='.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-member,.rh-stack>:not([hidden]),.explore-camera button,.explore-config,.explore-stick,#coop-attack,#coop-sos,.rh-minimap,.rh-offer-chip,.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-cida:not([hidden]),.rh-cida-btn:not([hidden])';
+export const COVERING='.rh-round,.rh-xp,.rh-boss,.rh-camp,.rh-member,.rh-stack>:not([hidden]),.explore-camera button,.explore-config,.explore-stick,#coop-attack,#coop-sos,.rh-minimap,.rh-offer-chip,.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-cida:not([hidden]),.rh-cida-btn:not([hidden]),.rh-fort-puxar:not([hidden]),.rh-fort-construir:not([hidden]),.rh-fort-bandeja:not([hidden])';
 /**
  * The panels over the field the arrows keep clear of (EdgeOptions.windows; a caído under one keeps an arrow beside it):
  * the open offer, forge and Dona Cida's tray (D-047), and the WC3 minimap, which floats over a corner of the field
  * (minimapa-wc3).
  */
-export const WINDOWS='.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-cida:not([hidden]),.rh-minimap';
+export const WINDOWS='.rh-offer:not([hidden]),.rh-forge:not([hidden]),.rh-cida:not([hidden]),.rh-minimap,.rh-fort-puxar:not([hidden]),.rh-fort-construir:not([hidden]),.rh-fort-bandeja:not([hidden])';
 /** Whether a target's screen point is in plain view (see EdgeOptions.seen). */
 export function inView(p:Point,seen:NonNullable<EdgeOptions['seen']>){
   const v=seen.viewport,i=seen.inset??12;

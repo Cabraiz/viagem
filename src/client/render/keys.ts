@@ -91,5 +91,5 @@ export const ENEMY_ART:Record<EnemyKind,EnemyArt>={
 /** Elite variants are the base art with crown and aura, drawn into a texture this much larger. */
 export const ELITE_SCALE=1.35;
 export const PICKUP_SIZE:Record<PickupKind,{width:number;height:number}>={
-  xp:{width:22,height:28},heal:{width:34,height:30},magnet:{width:32,height:32},chest:{width:46,height:40},resource:{width:30,height:28},
+  xp:{width:22,height:28},heal:{width:34,height:30},magnet:{width:32,height:32},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},
 };

@@ -13,7 +13,7 @@
  * - falling, getting up (revive) and a rematch clear every effect (clearMoveEffects).
  */
 import {PLAYER_SLIP_SECONDS,PLAYER_SLOW_SECONDS,ticks} from '../contract/index.ts';
-import type {Point,SimPlayer,Telegraph} from '../contract/index.ts';
+import type {Point,SimPlayer,Telegraph,VehicleKind} from '../contract/index.ts';
 
 export const SLOW_TICKS=ticks(PLAYER_SLOW_SECONDS);
 export const SLIP_TICKS=ticks(PLAYER_SLIP_SECONDS);
@@ -49,11 +49,15 @@ export function clearMoveEffects(p:SimPlayer){
   if(p.fastUntil!==undefined)delete p.fastUntil;
   if(p.mightUntil!==undefined)delete p.mightUntil;
   if(p.guardUntil!==undefined)delete p.guardUntil;
+  // Veículos: so does a ride.
+  if(p.ride!==undefined||p.rideUntil!==undefined){delete p.ride;delete p.rideUntil;}
 }
 
 /** The effect fields worth sending for `p` on `tick`: only the ones still active (a finished effect costs no bytes). */
-export function activeMoveEffects(p:SimPlayer,tick:number):{slowUntil?:number;slipUntil?:number;slip?:Point}{
-  const out:{slowUntil?:number;slipUntil?:number;slip?:Point}={};
+export function activeMoveEffects(p:SimPlayer,tick:number):{slowUntil?:number;slipUntil?:number;slip?:Point;ride?:VehicleKind;rideUntil?:number}{
+  const out:{slowUntil?:number;slipUntil?:number;slip?:Point;ride?:VehicleKind;rideUntil?:number}={};
+  // Veículos: the ride drives the prediction like the effects below.
+  if(p.ride!==undefined&&tick<(p.rideUntil??-Infinity)){out.ride=p.ride;out.rideUntil=p.rideUntil;}
   if(tick<(p.slowUntil??-Infinity))out.slowUntil=p.slowUntil;
   if(p.slip&&tick<(p.slipUntil??-Infinity)){out.slipUntil=p.slipUntil;out.slip={x:p.slip.x,y:p.slip.y};}
   return out;

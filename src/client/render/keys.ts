@@ -93,4 +93,6 @@ export const ENEMY_ART:Record<EnemyKind,EnemyArt>={
 export const ELITE_SCALE=1.35;
 export const PICKUP_SIZE:Record<PickupKind,{width:number;height:number}>={
   xp:{width:22,height:28},heal:{width:34,height:30},magnet:{width:32,height:32},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},
+  // Veículos: a parked vehicle (the provisional art is drawn per kind, render/veiculos).
+  vehicle:{width:56,height:48},
 };

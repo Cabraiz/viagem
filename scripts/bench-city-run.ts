@@ -446,7 +446,12 @@ export class CityNavigator {
   readonly grid:ReturnType<typeof cityFlowGrid>;
   readonly plaza:FlowField;
   readonly insideBase:(p:Point)=>boolean;
-  private crates=new Map<string,FlowField>();
+  /**
+   * By goal cell, never by crate id (NEW-20261017-ORQ-seed-vaza-estado): the arsenal crates (D-051) are pickups whose
+   * ids every match numbers again (ctx.nextId) at other spots, so one bench process playing seed 15 then seed 16 sent
+   * seed 16's bots to seed 15's crates (16 won alone and lost after 15). A field depends only on its goal cell.
+   */
+  private crates=new Map<number,FlowField>();
   constructor(city:CityTerrain){
     this.grid=cityFlowGrid(city);
     const planner=cityPlanner(city),goals:Point[]=[],cs=this.grid.cellSize;
@@ -454,11 +459,12 @@ export class CityNavigator {
     this.plaza=new FlowField(this.grid,goals);
     this.insideBase=p=>planner.insideBase(p);
   }
-  crateField(id:string,at:Point):FlowField{
-    let f=this.crates.get(id);
-    if(f){this.crates.delete(id);this.crates.set(id,f);return f;}
+  crateField(_id:string,at:Point):FlowField{
+    const cs=this.grid.cellSize,key=Math.floor(at.x/cs)+Math.floor(at.y/cs)*this.grid.width;
+    let f=this.crates.get(key);
+    if(f){this.crates.delete(key);this.crates.set(key,f);return f;}
     f=new FlowField(this.grid,[at]);
-    this.crates.set(id,f);
+    this.crates.set(key,f);
     if(this.crates.size>CRATE_CACHE)this.crates.delete(this.crates.keys().next().value!);
     return f;
   }
@@ -630,7 +636,7 @@ export class NavDriver {
 // ---------------------------------------------------------------------------------------------------------------
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-type KnobRoute='simulation'|'assemble'|'none';
+export type KnobRoute='simulation'|'assemble'|'none';
 /** Where `cityBalance` can be injected in this checkout (B adds the option; until then the knobs are ignored). */
 function knobRoute():KnobRoute{
   const read=(rel:string)=>{try{return fs.readFileSync(path.join(ROOT,rel),'utf8');}catch{return '';}};
@@ -667,7 +673,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
+export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
   combat?:'manual'}
 
@@ -693,7 +699,7 @@ export function barricadesFell(before:ReadonlyMap<string,boolean>|null,after:Rea
   return n;
 }
 
-function playRun(o:RunOptions):RunRecord{
+export function playRun(o:RunOptions):RunRecord{
   const knobsApplied=o.knobs!==undefined&&o.route!=='none';
   const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
     ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{})} as ConstructorParameters<typeof Simulation>[1]);

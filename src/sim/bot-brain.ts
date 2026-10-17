@@ -70,7 +70,7 @@ import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,REVIVE_TICKS} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
-import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,type LootCommand} from './bot-loot.ts';
+import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */
@@ -215,7 +215,7 @@ export interface Decision {
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro'|'bank';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro'|'bank'|'veiculo';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -538,6 +538,14 @@ export function decide(input:BrainInput):Decision{
   if(task?.kind==='carro'){
     decision.mode='carro';
     decision.direction=carHelp(at,task,go);
+    return finish(decision,input);
+  }
+  // Veículos (bot-loot.ts vehicleGoal): in a lull, a parked vehicle a few steps away is worth the detour (the sim takes
+  // it as the bot walks over it); with an objective task (the moto, the car) the task goes first.
+  const vehicle=!task?vehicleGoal(view,me,at):undefined;
+  if(vehicle){
+    decision.mode='veiculo';
+    decision.direction=norm(go(vehicle));
     return finish(decision,input);
   }
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)

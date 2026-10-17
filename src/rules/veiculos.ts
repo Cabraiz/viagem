@@ -41,3 +41,13 @@ export const VEICULO=Object.freeze({
   healEvery:3,healHp:5,
 });
 export const vehicleCap=(players:number)=>Math.min(VEICULO.capMax,VEICULO.capBase+Math.ceil(Math.max(1,players)/2));
+/**
+ * The line over the rider's head for a vehicle event (pegou: one of the vehicle's, picked by `seed`, the event id;
+ * acabou: the vehicle's ending), or undefined ('largou': the hero let go, nobody says anything).
+ */
+export function vehicleLine(kind:VehicleKind,what:'pegou'|'acabou'|'largou',seed:number):string|undefined{
+  const lines=VEHICLE_LINES[kind];
+  if(!lines||what==='largou')return undefined;
+  if(what==='acabou')return lines.acabou;
+  return lines.pegou[Math.abs(Math.trunc(seed))%lines.pegou.length];
+}

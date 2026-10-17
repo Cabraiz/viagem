@@ -14,6 +14,7 @@ import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
 import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from './draw-scale.ts';
+import type {VehicleKind} from '../../contract/index.ts';
 
 /**
  * What the markers ask of render/city-outline.ts CityOutlines: the city copy a sprite shows now, if any, and the city
@@ -45,6 +46,11 @@ export interface HeroMark {
   facing?:number;
   /** D-036: slowed by the bêbado's burp / slipping on pigeon poop now (the scene compares slowUntil/slipUntil to the tick). */
   slow?:boolean;slip?:boolean;
+  /**
+   * Veículos: the vehicle ridden now and the share of the ride left (0..1; absent for the scooter, whose battery dies
+   * when it wants: that is the joke), for its chip.
+   */
+  ride?:{kind:VehicleKind;left?:number};
 }
 
 export class YouMarkers {
@@ -63,7 +69,7 @@ export class YouMarkers {
   private fullSince:number|undefined;
   private readonly color={voce:tokenColor('--c-voce'),breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone'),cartolina:tokenColor('--c-cartolina')};
   /** Last frame, for the acceptance probe (dev) and tests of the scene wiring. */
-  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false};
+  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false,ride:undefined as VehicleKind|undefined};
   /** Scratch for the slip swirl (no allocation per frame). */
   private swirl=Array.from({length:14},()=>({x:0,y:0}));
   /** Imported "Você" ring (art/frames-art.ts heroi-voce); nothing is made without the art. */
@@ -94,7 +100,7 @@ export class YouMarkers {
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
     g.clear();this.ring.clear();this.art.begin();
-    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;
+    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;this.last.ride=undefined;
     const live=new Set<string>();
     let selfShown=false;
     for(const mark of marks){
@@ -156,7 +162,7 @@ export class YouMarkers {
         }
         this.last.bar=true;this.last.low=low;
       }
-      if(mark.slow||mark.slip)this.drawStatus(mark,now,s);
+      if(mark.slow||mark.slip||mark.ride)this.drawStatus(mark,now,s);
       // "Você" arrow over the head: a ficha (Breu body, Papel edge) with a tail pointing down.
       const arrow=arrowFrame(now-this.arrowAt,this.reduced);
       this.label.setVisible(arrow.visible);
@@ -204,7 +210,30 @@ export class YouMarkers {
       g.lineStyle(4.2*s,HAZARD.poopDark,1).strokePoints(this.swirl,false,false,n);
       g.lineStyle(2.4*s,HAZARD.poop,1).strokePoints(this.swirl,false,false,n);
       g.fillStyle(HAZARD.poopWhite,1).fillCircle(x,cy,1.8*s);
-      this.last.slip=true;
+      this.last.slip=true;y+=2*(R+e)+STATUS_CSS.gap*s;
+    }
+    // Veículos (provisional): the vehicle's glyph, and around it the share of the ride left in Cartolina.
+    if(mark.ride){
+      const cy=y+bob,{kind,left}=mark.ride,breu=this.color.breu;
+      g.fillStyle(breu,1).fillCircle(x,cy,R+e).fillStyle(this.color.papel,1).fillCircle(x,cy,R);
+      if(left!==undefined&&left>0){
+        g.lineStyle(2.4*s,this.color.cartolina,1).beginPath().arc(x,cy,R+e*.5,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,left),false).strokePath();
+      }
+      if(kind==='patinete'){
+        g.fillStyle(0x3fbf6a,1).fillRect(x-6*s,cy+2*s,11*s,2.4*s);
+        g.lineStyle(1.8*s,breu,1).lineBetween(x+4*s,cy+2*s,x+2.5*s,cy-6*s).lineBetween(x-.5*s,cy-6.5*s,x+5*s,cy-6*s);
+        g.fillStyle(breu,1).fillCircle(x-5*s,cy+5.5*s,2*s).fillCircle(x+4.5*s,cy+5.5*s,2*s);
+      }else if(kind==='carrinho'){
+        g.fillStyle(0xc8d0d8,1).fillTriangle(x-7*s,cy-4*s,x+7*s,cy-4*s,x+5*s,cy+3*s).fillTriangle(x-7*s,cy-4*s,x+5*s,cy+3*s,x-5*s,cy+3*s);
+        g.lineStyle(1.4*s,breu,1).strokeRect(x-6*s,cy-4*s,12*s,7*s);
+        g.fillStyle(0x9fd25a,1).fillCircle(x+1*s,cy-5*s,2.6*s);
+        g.fillStyle(breu,1).fillCircle(x-4*s,cy+5.5*s,1.6*s).fillEllipse(x+4*s,cy+5.5*s,4*s,2*s);
+      }else{
+        g.fillStyle(0xd9a07a,1).fillCircle(x-5*s,cy+1*s,3.4*s).fillCircle(x+5*s,cy+1*s,3.4*s).fillCircle(x,cy-4*s,3*s);
+        g.fillStyle(0xd2483c,1).fillRect(x-3*s,cy-1*s,6*s,6*s);
+        g.fillStyle(0xf2c84b,1).fillRect(x-3*s,cy-6*s,6*s,1.4*s);
+      }
+      this.last.ride=kind;
     }
   }
 

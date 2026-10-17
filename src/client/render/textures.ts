@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {tokenColor} from '../ui/tokens.ts';
-import {ENEMY_ART,ELITE_SCALE,ENEMY_KINDS,FX,PICKUP_KINDS,PICKUP_SIZE,enemyTexture,hasActingPose,pickupTexture,type EnemyKind} from './keys.ts';
+import {ENEMY_ART,ELITE_SCALE,ENEMY_KINDS,FX,PICKUP_KINDS,PICKUP_SIZE,enemyTexture,hasActingPose,pickupTexture,vehicleTexture,type EnemyKind} from './keys.ts';
+import {VEHICLE_KINDS,type VehicleKind} from '../../contract/index.ts';
 
 type G=Phaser.GameObjects.Graphics;
 type Shape=['c',number,number,number]|['e',number,number,number,number]|['r',number,number,number,number,number]|['p',number[]];
@@ -420,6 +421,41 @@ function badge(g:G,x:number,y:number){
   g.fillStyle(0xfffaf0).fillRect(x-3,y-.5,6,2.2);g.fillStyle(0x8a6418).fillRect(x-2.5,y+3,5,1);
 }
 
+/**
+ * Veículos, provisional art (56 × 48, centred): the "Vrum" scooter (green deck, the dead battery's red light), the
+ * shopping cart with the bent wheel and the 2019 lettuce, the crossfiteiro de folga (tank top, headband, biceps).
+ */
+const VEHICLE_DRAW:Record<VehicleKind,(g:G)=>void>={
+  patinete:g=>{
+    sil(g,[['c',-16,15,5],['c',16,15,5]],0x2b2b33,0x111118);
+    g.fillStyle(0x9aa0a8).fillCircle(-16,15,1.8).fillCircle(16,15,1.8);
+    sil(g,[['r',-20,7,36,6,3]],0x3fbf6a,0x1d6b38);
+    line(g,[13,9,9,-17],0x5a6068,4);line(g,[2,-18,16,-16],0x2b2b33,4);
+    g.fillStyle(0xe5394a).fillRoundedRect(-12,8.5,6,3,1);
+    g.fillStyle(0xffffff,.5).fillRect(-17,8,10,1.5);
+  },
+  carrinho:g=>{
+    sil(g,[['p',[-21,-13,21,-13,15,8,-15,8]]],0xc8d0d8,0x5d6670);
+    g.fillStyle(0x9fd25a).fillCircle(4,-14,6);g.fillStyle(0x6fae35).fillCircle(1,-15,3).fillCircle(7,-13,2.5);
+    for(let x=-15;x<=15;x+=6)line(g,[x,-12,x*.72,7],0x5d6670,1.2);
+    line(g,[-19,-5,19,-5],0x5d6670,1.2);line(g,[-17,2,17,2],0x5d6670,1.2);
+    line(g,[-21,-13,-26,-20],0x5d6670,3);line(g,[-28,-20,-23,-20],0xe5394a,4);
+    sil(g,[['c',-12,15,3.5],['c',12,15,3.5]],0x2b2b33,0x111118);
+    // The wheel bent since 1998.
+    g.fillStyle(0x111118).fillEllipse(0,16,9,4);g.fillStyle(0x2b2b33).fillEllipse(0,15.5,7,3);
+    line(g,[-14,8,-12,12],0x5d6670,2);line(g,[14,8,12,12],0x5d6670,2);line(g,[0,8,0,13],0x5d6670,2);
+  },
+  crossfiteiro:g=>{
+    sil(g,[['r',-9,8,7,14,2],['r',2,8,7,14,2]],0x2f3a8c,0x1a2050);
+    sil(g,[['p',[-14,-10,14,-10,10,10,-10,10]]],0xd2483c,0x7a221b);
+    sil(g,[['c',-17,-6,6],['c',17,-6,6],['c',-19,4,4.5],['c',19,4,4.5]],0xd9a07a,0x7e5130);
+    sil(g,[['c',0,-17,7]],0xd9a07a,0x7e5130);
+    g.fillStyle(0xf2c84b).fillRect(-7,-21,14,3);
+    g.fillStyle(0x1e1530).fillCircle(-2.5,-16,1.1).fillCircle(2.5,-16,1.1);
+    line(g,[-3,-12.5,3,-12.5],0x1e1530,1.4);
+  },
+};
+
 const PICKUP_DRAW:Record<string,(g:G)=>void>={
   xp:g=>{
     sil(g,[['p',[0,-13,9,-4,0,13,-9,-4]]],0x6fe0dc,0x2a95a6);
@@ -533,6 +569,11 @@ export function ensureHordeTextures(scene:Phaser.Scene):void {
   for(const kind of PICKUP_KINDS){
     const {width,height}=PICKUP_SIZE[kind];
     make(pickupTexture(kind),width,height,g=>{g.save().translateCanvas(width/2,height/2);PICKUP_DRAW[kind](g);g.restore();});
+  }
+  // Veículos: the parked vehicles, one provisional texture per kind (the final art: design/proximos).
+  for(const kind of VEHICLE_KINDS){
+    const {width,height}=PICKUP_SIZE.vehicle;
+    make(vehicleTexture(kind),width,height,g=>{g.save().translateCanvas(width/2,height/2);VEHICLE_DRAW[kind](g);g.restore();});
   }
   drawFx(make);
   g.destroy();

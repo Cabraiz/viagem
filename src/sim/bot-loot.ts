@@ -8,7 +8,7 @@
  *    bot that holds a firearm leaves the verde crates (mostly a pistol) to the ones still with the faca (the 16/10
  *    bench: one bot opened them all while four fought with the knife).
  */
-import type {OwnedItem,PickupState,PlayerRunView,RunView} from '../contract/index.ts';
+import type {OwnedItem,PickupState,PickupView,PlayerRunView,RunView,VehicleKind} from '../contract/index.ts';
 import {BASE_STATS} from '../contract/index.ts';
 import {getWeapon,resolveWeapon} from './weapons/catalog.ts';
 import {OPEN_REACH} from './crates.ts';
@@ -75,3 +75,23 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
 }
 /** How close a bot stands to a crate it opens (inside OPEN_REACH, with room for the sim's float). */
 export const CRATE_STAND=OPEN_REACH*.7;
+
+/**
+ * Veículos (card bancos-e-veiculos, part 2): the parked vehicle a bot walks over, in a lull (no critter within
+ * LOOT_SAFE, nobody down), when it rides nothing: the nearest within VEHICLE_BOT_REACH (ties by id) of the kinds in
+ * BOT_VEHICLES (the Orq, 17/10: the bots take them all but the skates, whose missing brake ruins a bot's route).
+ */
+export const VEHICLE_BOT_REACH=8;
+export const BOT_VEHICLES:ReadonlySet<string>=new Set<VehicleKind>(['patinete','carrinho','crossfiteiro']);
+export function vehicleGoal(view:Pick<RunView,'tick'|'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point):PickupView|undefined{
+  if(me.ride!==undefined&&view.tick<(me.rideUntil??-Infinity))return undefined;
+  if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return undefined;
+  if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return undefined;
+  let best:PickupView|undefined,bestD=Infinity;
+  for(const k of view.pickups){
+    if(k.kind!=='vehicle'||!BOT_VEHICLES.has(k.resource??''))continue;
+    const d=dist(k,at);
+    if(d<=VEHICLE_BOT_REACH&&(d<bestD||d===bestD&&best!==undefined&&k.id<best.id)){best=k;bestD=d;}
+  }
+  return best;
+}

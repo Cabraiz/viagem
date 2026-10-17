@@ -41,7 +41,7 @@ import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/k
 import type {RunView} from '../contract/index.ts';
 import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
-import {arrowTrigger,canopyCovers,effectOn,facingFrom} from './render/you-rules.ts';
+import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
@@ -758,7 +758,8 @@ export class IslandScene extends Phaser.Scene {
     this.lastFeet=p;
     this.marks.unshift({id:'self',sprite:this.actor,self:true,feet:p,covered:this.selfCovered,facing:this.facing,
       hp:self?.hp??1,maxHp:state?.maxHp??(self?Math.max(self.hp,1):1),downed:!!state?.downed||(!!self&&self.hp<=0),
-      slow:effectOn(state?.slowUntil,this.horde?.tick??0),slip:effectOn(state?.slipUntil,this.horde?.tick??0)});
+      slow:effectOn(state?.slowUntil,this.horde?.tick??0),slip:effectOn(state?.slipUntil,this.horde?.tick??0),
+      ...(state?.ride&&effectOn(state.rideUntil,this.horde?.tick??0)?{ride:rideChip(state.ride,state.rideUntil!,this.horde?.tick??0)}:{})});
     this.you.setCity(this.cityMode);
     this.you.update(time,this.cameras.main.zoom,this.marks);
     this.marks.length=0;

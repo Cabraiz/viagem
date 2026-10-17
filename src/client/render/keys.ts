@@ -2,7 +2,8 @@
  * Texture keys and display metrics shared by the procedural texture factory and the horde layers.
  * Pure module (no Phaser import) so node tests can read it.
  */
-import type {PickupKind} from '../../contract/index.ts';
+import type {PickupKind,VehicleKind} from '../../contract/index.ts';
+import {isVehicleKind} from '../../contract/index.ts';
 import {fallbackAccent,fallbackKind} from '../../rules/index.ts';
 
 /**
@@ -54,7 +55,14 @@ export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as reado
 /** Hostile projectile look by source: the agiota's boleto com juros is a slip; every other hostile shot is the star. */
 export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.projFriendly:source==='boleto-juros'?FX.projBoleto:FX.projHostile;
 /** What a pickup looks like: its kind's texture, or a boleto for the XP of the boleto rain (resource 'boleto', VGM-053B). */
-export const pickupLook=(kind:string,resource?:string)=>kind==='xp'&&resource==='boleto'?FX.boleto:pickupTexture(kind);
+/** Veículos: a parked vehicle's provisional look, per kind (textures.ts VEHICLE_DRAW). */
+export const vehicleTexture=(kind:VehicleKind)=>`horde:pickup:vehicle:${kind}`;
+/**
+ * What a pickup looks like: its kind's texture, a boleto for the XP of the boleto rain (resource 'boleto', VGM-053B), or
+ * a parked vehicle's own (an unknown vehicle: the item parcel).
+ */
+export const pickupLook=(kind:string,resource?:string)=>kind==='xp'&&resource==='boleto'?FX.boleto:
+  kind==='vehicle'?isVehicleKind(resource)?vehicleTexture(resource):pickupTexture('item'):pickupTexture(kind);
 
 export const FX={
   shadow:'horde:fx:shadow',

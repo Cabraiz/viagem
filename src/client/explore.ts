@@ -33,7 +33,7 @@ import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {FortifyHud} from './hud/fortify/fortify.ts';
-import {FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
+import {FORT_AIM_FIRST,FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
@@ -172,7 +172,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onPull:on=>{if(net.pull(on)===undefined)obraSay('Agora não dá');},
         onOpen:open=>{fortBuild.toggle(open);if(!open)controller?.scene.setBuildGhost(null);},
         onPick:piece=>fortBuild.pick(piece),onTurn:()=>fortBuild.turn(),
-        onConfirm:()=>send(fortBuild.piece==='muro'?fortBuild.drag(net):fortBuild.confirm(net)),
+        // 'none': "Construir aqui" before any aim (varredura-celular: on the phone the tap did nothing and said nothing).
+        onConfirm:()=>{const r=fortBuild.piece==='muro'?fortBuild.drag(net):fortBuild.confirm(net);if(r==='none')obraSay(FORT_AIM_FIRST);else send(r);},
         onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
         onAimEnd:()=>fortBuild.endDrag(),
         canvas:()=>controller?.game.canvas});

@@ -25,6 +25,8 @@ export const PIECES:readonly PieceCard[]=Object.freeze([
   {piece:'muro',name:'Muro',price:'R$ 4',limit:WALL_LIMIT},
   {piece:'barricada',name:'Barricada',price:'R$ 10',limit:BARRICADE_LIMIT},
 ]);
+/** "Construir aqui" before the ghost has a place (FortBuild.confirm 'none'): what the phone says. */
+export const FORT_AIM_FIRST='Arraste no mapa primeiro';
 /** A request without an answer stops counting as pending after this. */
 export const FORT_PENDING_MS=3000;
 

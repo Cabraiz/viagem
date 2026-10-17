@@ -68,7 +68,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO} from '../rules/index.ts';
+import {BANCO,REVIVE_TICKS} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,type LootCommand} from './bot-loot.ts';
 
@@ -81,6 +81,12 @@ export const DANGER=2.6;
 export const ENGAGE=9;
 /** A fallen friend within this is worth the walk. */
 export const RESCUE_REACH=14;
+/**
+ * A fallen friend farther than RESCUE_REACH, up to RESCUE_FAR (u): the nearest standing bot goes, when its walk (along
+ * the streets in the city) leaves RESCUE_SPARE seconds of the bleed-out for the revive itself and the fight on the way
+ * (varredura-celular P1-2: a person who fell 15 u out bled out every time, in both combats, and watched the match).
+ */
+export const RESCUE_FAR=60,RESCUE_SPARE=REVIVE_TICKS/HZ+4;
 /** Ticks between two skill taps, two "Me salva", two forge taps, two picks of the same offer. */
 export const CAST_GAP=HZ,SOS_GAP=4*HZ,FORGE_GAP=HZ,CHOOSE_RETRY=2*HZ;
 /** Reaction before a pick (ticks): the offer chip in combat waits longer than the intermission panel. */
@@ -670,8 +676,7 @@ export function decide(input:BrainInput):Decision{
   // Skill: something close and it is ready (the room answers whether it went off).
   // D-051: no skill in the manual combat.
   if(input.combat!=='manual'&&close.length&&(me.skillReadyTick??0)<=tick&&tick-memory.lastCastTick>=CAST_GAP){decision.cast=true;memory.lastCastTick=tick;}
-  const fallen=view.players.filter(p=>p.id!==selfId&&p.downed&&!p.eliminated&&p.online!==undefined)
-    .map(p=>({p,at:positionOf(p)})).filter(f=>f.at&&dist(f.at,at)<RESCUE_REACH).sort((a,b)=>dist(a.at!,at)-dist(b.at!,at))[0];
+  const fallen=rescueOf(view,selfId,at,terrain);
   const hpShare=me.maxHp>0?me.hp/me.maxHp:1;
   want=add(want,repel(view.enemies,at,hpShare<.4?2.2:1.4));
   // Hostile shots heading our way: sidestep.
@@ -712,8 +717,8 @@ export function decide(input:BrainInput):Decision{
     }else if(r>.5){const t={x:-(at.y-anchor.y)/r*memory.orbit,y:(at.x-anchor.x)/r*memory.orbit};want=add(want,{x:t.x*.35,y:t.y*.35});}
     else want=add(want,{x:.3*memory.orbit,y:0});
   }
-  // Home pulls harder the farther out we are.
-  if(out>0||homing){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
+  // Home pulls harder the farther out we are (not on the way to a fallen friend: it held the rescuer back).
+  if(decision.mode!=='rescue'&&(out>0||homing)){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&dist(at,home)>leash+2)decision.mode='home';
@@ -756,6 +761,36 @@ function carHelp(at:Point,task:{at:Point;heading:Point;side:1|-1},go:(to:Point,w
  */
 const CAR_HELP_NEAR=4,CAR_RING=CAR_PUSH_REACH+.4;
 /** Players carry positions on the wire (PlayerWireView); the view type does not say so. */
+/**
+ * The fallen friend this bot goes to: the nearest within RESCUE_REACH; else, up to RESCUE_FAR, one this bot is the
+ * nearest standing bot to (ties: the lower id) and can reach in time (rescueFits).
+ */
+function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undefined):{p:PlayerRunView;at:Point}|undefined{
+  const downs:{p:PlayerRunView;at:Point;d:number}[]=[];
+  for(const p of view.players){
+    if(p.id===selfId||!p.downed||p.eliminated||p.online===undefined)continue;
+    const q=positionOf(p);if(q)downs.push({p,at:q,d:dist(q,at)});
+  }
+  if(!downs.length)return undefined;
+  downs.sort((a,b)=>a.d-b.d);
+  if(downs[0].d<RESCUE_REACH)return downs[0];
+  const bots:{id:string;at:Point}[]=[];
+  for(const p of view.players){
+    if(p.id===selfId||!p.bot||p.downed||p.eliminated||p.spectator)continue;
+    const q=positionOf(p);if(q)bots.push({id:p.id,at:q});
+  }
+  for(const f of downs){
+    if(f.d>RESCUE_FAR)break;
+    if(bots.some(b=>{const d=dist(b.at,f.at);return d<f.d||d===f.d&&b.id<selfId;}))continue;
+    if(rescueFits(at,f.at,f.p.downed!.bleedOutTick-view.tick,terrain))return f;
+  }
+  return undefined;
+}
+/** A walk from `at` to a fallen friend (along the streets in the city) that leaves RESCUE_SPARE s of its `ticksLeft`. */
+export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainField|undefined){
+  const city=cityTerrainOf(terrain),walk=city?botRouteDistance(city,at,to):dist(at,to);
+  return Number.isFinite(walk)&&walk/heroSpeed(terrain)+RESCUE_SPARE<=ticksLeft/HZ;
+}
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}
 function nearest<T extends Point>(list:readonly T[],at:Point):T|undefined{let best:T|undefined,d=Infinity;for(const e of list){const x=dist(e,at);if(x<d){d=x;best=e;}}return best;}

@@ -36,7 +36,7 @@ export function branchForWire(label:string):string|undefined{
 /** Why the room said no to a build, upgrade or repair (src/sim/towers/system.ts TowerRefusal), in a few pt-BR words. */
 export const OBRA_REFUSALS:Readonly<Record<string,string>>=Object.freeze({
   'wall-down':'Muralha caída',
-  phase:'Só no intervalo',
+  phase:'Só fora da briga',
   player:'Caído não constrói',
   site:'Esse ponto não existe',
   occupied:'Ponto já ocupado',

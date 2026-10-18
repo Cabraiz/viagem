@@ -88,6 +88,15 @@ export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|
  */
 export const nestsMode=(view:Pick<RunView,'structures'>)=>view.structures.some(s=>s.kind==='ninho');
 /** D-051: the nests of a run in mode 'ninhos', how many fell and how many there were; undefined in any other mode. */
+/**
+ * D-051 (ninhos-rounds-fora): the chip's nest count, the nests still standing over all of them ("6/8") and the same in
+ * words for the screen reader; undefined outside the nests mode.
+ */
+export function nestCount(view:Pick<RunView,'structures'>|undefined):{alive:number;total:number;text:string;aria:string}|undefined{
+  const t=nestTally(view);if(!t)return undefined;
+  const alive=t.total-t.down;
+  return {alive,total:t.total,text:`${alive}/${t.total}`,aria:`${alive} de ${t.total} ${t.total===1?'ninho':'ninhos'} de pé`};
+}
 export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:number;total:number}|undefined{
   const nests=view?.structures.filter(s=>s.kind==='ninho')??[];
   return nests.length?{down:nests.filter(s=>s.hp<=0||s.phase==='destruido').length,total:nests.length}:undefined;

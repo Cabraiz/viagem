@@ -35,7 +35,7 @@ const critter=(kind?:string)=>{
 /** Kill-cam captions (design review D5): varied, by critter when it has its own joke; never the round number (the chip
  * on top already shows the next round, M1). `{n}` is who closed the round. */
 export const KILLCAM_LINES:readonly string[]=[
-  '{n} passou o rodo no round.','{n} deu baixa no último boleto.','{n} bateu o ponto do round.','{n} varreu o último pra baixo do tapete.',
+  '{n} passou o rodo no bando.','{n} deu baixa no último boleto.','{n} bateu o ponto do bando.','{n} varreu o último pra baixo do tapete.',
 ];
 export const KILLCAM_KIND_LINES:Readonly<Record<string,readonly string[]>>={
   agiota:['{n} quitou o último agiota. Sem juros.'],'tio-pave':['O tio do pavê engasgou com a própria piada.'],

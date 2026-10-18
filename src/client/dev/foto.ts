@@ -36,6 +36,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
+  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=95,100',descricao:'sombras: o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
   'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=95,100',descricao:'luta: todo o elenco ferido (barras de vida), gemas e itens no chão, telegraphs'},
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
   'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=156,74',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},

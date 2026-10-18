@@ -51,6 +51,7 @@ import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
+import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
@@ -185,6 +186,8 @@ export class IslandScene extends Phaser.Scene {
     groundLuminance:(x,y)=>this.city?cityGroundLuminance(this.city.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
   private shadow!:Phaser.GameObjects.Ellipse;
+  /** BUG sombra-longe: the hero's frame laid on the ground (render/silhouette.ts); off in economy mode. */
+  private heroSil?:Phaser.GameObjects.Image;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
   /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
@@ -232,7 +235,9 @@ export class IslandScene extends Phaser.Scene {
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse;
     /** City only: the ally's contact shadow, Breu 38% like the hero's (created on demand, dropped off the city). */
-    shadow?:Phaser.GameObjects.Ellipse}>();
+    shadow?:Phaser.GameObjects.Ellipse;
+    /** The ally's cast silhouette (render/silhouette.ts), like the hero's; created on demand. */
+    sil?:Phaser.GameObjects.Image}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
   /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
@@ -737,6 +742,8 @@ export class IslandScene extends Phaser.Scene {
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
+    this.heroSil??=silhouetteImage(this,'hero',depth-2);
+    castSilhouette(this.heroSil,this.actor,p.x,p.y,!this.economy,depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
   }
   /** Whether a prop drawn in front of the point `p` (screen) at `depth` covers a sprite standing there. */
@@ -1098,7 +1105,7 @@ export class IslandScene extends Phaser.Scene {
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
@@ -1123,7 +1130,9 @@ export class IslandScene extends Phaser.Scene {
         const look=heroShadow(true);
         objects.shadow??=this.add.ellipse(0,0,HERO_SHADOW_SIZE.width,HERO_SHADOW_SIZE.height,look.color,look.alpha);
         objects.shadow.setScale(k).setPosition(q.x,q.y).setDepth(depth-2);
-      }else if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}
+        objects.sil??=silhouetteImage(this,'hero',depth-2);
+        castSilhouette(objects.sil,objects.image,q.x,q.y,!this.economy&&!down,depth-2);
+      }else{if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}if(objects.sil){objects.sil.destroy();objects.sil=undefined;}}
       // Imported ring (the "Você" ring tinted Breu) at today's outer width and depth: the ellipse hides while it draws.
       if(this.allyRings?.draw(player.id,q.x,q.y,ALLY_RING_WIDTH*k,depth-1,time,this.reduced))objects.ring.setVisible(false);
       else if(!objects.ring.visible)objects.ring.setVisible(true);

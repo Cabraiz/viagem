@@ -36,6 +36,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},
   'cidade-postes':{sandbox:'cidade',query:'mapa=real&regua=1&hero=112,182',descricao:'cidade com a régua ao lado do poste e das casas'},
+  'sombra':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=rato-de-boteco,furry-de-convencao,pombos,cachorro-de-madame,bebado,tio-pave&hero=95,100',descricao:'sombras: o rato e o cachorro (enxame que anda), o lobo (furry), um pombo e dois de chão em volta do herói'},
   'luta':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=1&ferido=1&hero=95,100',descricao:'luta: todo o elenco ferido (barras de vida), itens no chão, telegraphs'},
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
   'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=156,74',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
@@ -57,6 +58,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'pausa-ultimo':{sandbox:'hud',query:'pausa=ultimo&frozen=1&heroi=1',descricao:'pausa do level-up: os 3 s finais, "Falta você!"'},
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
+  // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").
+  'ninhos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'D-051 modo ninhos: moto m:ss e ninhos vivos/8 no topo, sem Onda N'},
+  'ninhos-hud-calmo':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=prepare&frozen=1',descricao:'D-051 modo ninhos na calmaria: sem Intervalo nem contagem'},
   'minimapa':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&state=prepare&frozen=1',descricao:'HUD da cidade: minimapa WC3, setas, chaveiro'},
   'bancos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&bancos=1&state=wave&frozen=1',descricao:'HUD da cidade com bancos: seta do roubado (Cone), "$" no minimapa, "Bicho sacando no …!"'},
   'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},

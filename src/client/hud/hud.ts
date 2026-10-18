@@ -457,7 +457,7 @@ export class RunHud {
   queueRow(el:HTMLElement,ms:number,options:{answer?:boolean}={}){
     if(el.parentElement!==this.stack)this.stack.insertBefore(el,this.coachRow.el);
     el.classList.add('rh-row');el.hidden=true;
-    // An answer to the player's own tap ("Gira no intervalo") does not wait for the coach's hint: it takes the slot
+    // An answer to the player's own tap ("Gira fora da briga") does not wait for the coach's hint: it takes the slot
     // from it (the coach steps back while a row shows). Notices and the kill-cam still go first.
     if(options.answer)this.answers.add(el);else this.answers.delete(el);
     this.rows.queue(el,ms);this.turnRows();

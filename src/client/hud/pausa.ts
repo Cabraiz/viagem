@@ -15,6 +15,7 @@ import type {PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../../rules/index.ts';
 import {crosses,type Rect} from './zones.ts';
+import {viewportSize} from './box-cache.ts';
 
 /**
  * The pause as the room sends it (D-050, src/contract/run.ts RunPause): leftMs of the deadline, the deadline's whole
@@ -229,14 +230,14 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
    * screen) and once a second (a window or a row resizing), never on every paint.
    */
   const place=(view:PauseView)=>{
-    const key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${innerWidth}x${innerHeight}`;
+    const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${screen.width}x${screen.height}`;
     const due=++paints%5===0;// once a second at PAUSE_TICK_MS
     if(key===placed&&!due)return;
     placed=key;
     const rect=(node:Element|null)=>{if(!node||(node as HTMLElement).hidden)return undefined;const r=node.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
     const top=rect(host.top),minimap=rect(host.root.querySelector('.rh-minimap'));
     const rows=[...host.root.querySelectorAll('.rh-stack>:not([hidden])')].map(rect).filter((r):r is Rect=>!!r&&r.height>0);
-    const at=pauseSpot({viewport:{width:innerWidth,height:innerHeight},box:{width:box.offsetWidth,height:box.offsetHeight},
+    const at=pauseSpot({viewport:{width:screen.width,height:screen.height},box:{width:box.offsetWidth,height:box.offsetHeight},
       top:top?top.y+top.height:0,offer:rect(host.offer),avoid:[...(minimap?[minimap]:[]),...rows]});
     const where=`${at.x},${at.y}`;if(where===spot)return;spot=where;
     box.style.left=`${at.x}px`;box.style.top=`${at.y}px`;

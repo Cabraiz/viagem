@@ -63,6 +63,10 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 /* The dance's canvas is wider than the frame: clip its sides only (the bigger podium may pass the frame's foot). */
 .criacao .portrait.dancing { overflow-x: clip; overflow-y: visible; }
 .criacao .portrait.dancing img { visibility: hidden; }
+/* danca-sem-fallback (the user, 18/10): no still portrait before the dance. While the selected hero's dance is coming
+   (menu-dance.ts `dance-pending`, also in the first HTML) the podium stands empty; only a dance that fails for good
+   lifts it and shows the portrait. */
+.criacao .portrait.dance-pending img { visibility: hidden; }
 /* The dance (menu-dance.ts) where the portrait stood (danca-no-podio, the user's adjustments of 17/10):
    - the soles (0.754 of the 768x512 cell, the median over the 35 heroes) on the centre of the podium's top: 0.419 of
      podio-lado's height (0.478 of the old podio-600, the widest row of its alpha), --ph x .0507 under --feet (0.368);
@@ -72,6 +76,11 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   --sole: calc(var(--feet) + var(--ph) * .0507); --dh: min(calc(var(--s) * 1.62), calc(var(--sole) / .715));
   position: absolute; z-index: 3; left: 50%; top: calc(var(--sole) - var(--dh) * .754);
   width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%); pointer-events: none;
+}
+/* danca-sem-fallback: on a PC (a mouse) the dancer is 30% smaller; --sole is unchanged, so the soles stay on the centre
+   of the podium's top. The phone keeps the size above. */
+@media (hover: hover) and (pointer: fine) {
+  .criacao .portrait .menu-dance { --dh: calc(min(calc(var(--s) * 1.62), calc(var(--sole) / .715)) * .7); }
 }
 /* The contact shadow under the dancer's soles, not under the portrait's feet. */
 .criacao .portrait.dancing::after { top: calc(var(--feet) + var(--ph) * .0507 - var(--s) * .045); }

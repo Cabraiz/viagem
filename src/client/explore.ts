@@ -40,11 +40,14 @@ import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,t
 import {loadZoom,saveZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
+import {LayoutCache,viewportSize} from './hud/box-cache.ts';
 
 /** The shell's data attributes that change every frame (the hero's spot, the tick) are written at most this often (ms). */
 const SHELL_DATA_MS=250;
 /** Writes a data attribute only when its value changed (a write, even of the same value, invalidates the subtree's style). */
 const setData=(el:HTMLElement,key:string,value:string)=>{if(el.dataset[key]!==value)el.dataset[key]=value;};
+/** The same for a text node: a textContent write replaces the children even when the text is the same. */
+const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
 /** How long the "Gira fora da briga" answer to a tap on the locked camera stays (balloon or slot row). */
@@ -56,6 +59,7 @@ import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
 import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} from './desktop-input.ts';
+import {HUD_SWITCH} from './hud/arrows.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -252,6 +256,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let closed=false,paused=false;
   /** When the per-frame shell attributes were last written (SHELL_DATA_MS). */
   let shellDataAt=-Infinity;
+  /** The party line's last text (coop): its tags are rebuilt only when it changes. */
+  let partyKey='';
+  /** The open forge or Dona Cida tray (the camera frames the hero beside it) and its box, read after the paint. */
+  let trayEl:HTMLElement|null=null;
+  const trayBox=new LayoutCache(()=>{const el=trayEl,r=el?.getBoundingClientRect();return {el,rect:r&&{x:r.left,y:r.top,width:r.width,height:r.height}};},250);
   /** The economy toast's own clock (VGM-048), cleared on close. */
   let economyTimer:ReturnType<typeof setTimeout>|undefined;
   const visited=new Set<number>();
@@ -475,7 +484,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
-      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');canvas.dataset.spriteAnimation=animation;canvas.dataset.spriteFrame=frame;canvas.dataset.spriteSheets=String(sheets);},
+      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');setData(canvas,'spriteAnimation',animation);setData(canvas,'spriteFrame',frame);setData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
         // The shell's data attributes (tests, scripts, CSS) are written only when they change, and the ones that change
         // every frame (the hero's spot, the tick) at most every SHELL_DATA_MS: each write invalidates the style of the
@@ -545,7 +554,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(run.phase!=='combat')obraRequests.resetRun();
                 else if(obraRequests.expire())obraSay(OBRA_NO_ANSWER);
                 // D-051 nests: calm around the hero opens it (scene.phase, calm-phase.ts); the rounds keep the intermission.
-                const prepare=run.phase==='combat'&&scene.phase==='prepare'&&!!view&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
+                // Off the player's game for now (hud/arrows.ts HUD_SWITCH.obra, user 18/10): no menu, no site markers.
+                const prepare=HUD_SWITCH.obra&&run.phase==='combat'&&scene.phase==='prepare'&&!!view&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
                 obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),hero:net.predicted,
                   pending:obraRequests.pendingSites(),done:obraRequests.doneSites(),
                   // Watching: the plan shows, the confirm says "Assistindo" (the room would refuse it anyway).
@@ -577,18 +587,20 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // Landscape: the map selector's small window sits in the side column (cidade-hud.md §7), the band keeps clear of it.
               const wait=run.phase!=='combat'?document.querySelector<HTMLElement>('.coop-wait:not([hidden])')?.getBoundingClientRect():undefined;
               const picker=wait?document.querySelector<HTMLElement>('.coop-wait-map.is-window:not([hidden])')?.getBoundingClientRect():undefined;
-              const z=hud.zones(),thumbs=Math.min(z.leftThumb?.y??innerHeight,z.rightThumb?.y??innerHeight);
+              const z=hud.zones(),screen=viewportSize(),thumbs=Math.min(z.leftThumb?.y??screen.height,z.rightThumb?.y??screen.height);
               if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0
-                ?besideSelector(freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
+                ?besideSelector(freeAround({width:screen.width,height:screen.height},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
                 :z.useful;
               // An open obra window (intermission), or in portrait the forge or Dona Cida's tray: the camera frames the hero
               // beside it, in the useful area that already leaves the window out, or on a short screen the band from the
               // status rows down to it (framing.ts framesBeside, zones.ts besideArea; BUG-20261013-ORQ-camera-centro-heroi,
               // BUG-20261014-ORQ-forja-cobre-heroi-retrato).
               if(controller){
-                const scene=controller.scene,el=document.querySelector<HTMLElement>('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
-                const r=el?.getBoundingClientRect(),rect=r&&{x:r.left,y:r.top,width:r.width,height:r.height},hero=scene.heroScreenRect();
-                scene.besideWindow=besideFrom({viewport:{width:innerWidth,height:innerHeight},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
+                const scene=controller.scene,el=trayEl=document.querySelector<HTMLElement>('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
+                // Its box is read after the paint (box-cache.ts), not here after the frame's writes (F3); for a frame
+                // after it opens there is none yet.
+                const box=el?trayBox.get(now,el):undefined,rect=box?.el===el?box.rect:undefined,hero=scene.heroScreenRect();
+                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
                   tray:el&&rect?{kind:el.classList.contains('rh-cida')?'cida':'forja',rect}:undefined,hero:hero&&{width:hero.width,height:hero.height}});
                 scene.frameArea=rect&&(scene.besideWindow==='forja'||scene.besideWindow==='cida')?besideArea(z,rect):undefined;
               }
@@ -604,13 +616,16 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             const out=controls.stick==='dimmed';
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
             if(applyControls(shell,controls))reset();
-            $<HTMLButtonElement>('#coop-attack').disabled=controls.skill!=='live';
+            {const attack=$<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
             if(controls.skill!=='live')attackBtn?.clear();
           }
-          $('#coop-objective').textContent=net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha';
-          $('.coop-party').replaceChildren(...[...net.players.values()].map(player=>{const tag=document.createElement('span');tag.textContent=`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`;return tag;}));
+          setText($('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
+          // The party's tags are rebuilt only when one of them reads differently (not 60 new spans a second).
+          const partyLines=[...net.players.values()].map(player=>`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`),party=partyLines.join('|');
+          if(party!==partyKey){partyKey=party;$('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
           syncTurn();
-          $('#coop-diagnostics').textContent=`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`;
+          // The tick moves every frame: the debug line follows at the shell attributes' pace.
+          if(slow)setText($('#coop-diagnostics'),`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
         }
       },
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},

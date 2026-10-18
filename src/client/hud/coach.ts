@@ -20,6 +20,7 @@
  */
 import type {RunView} from '../../contract/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
+import {HUD_SWITCH} from './arrows.ts';
 
 export type Lesson='walk'|'chip'|'rescue'|'gather';
 /** The lessons with a row in the announcement slot ("walk" only lights the joystick). */
@@ -129,7 +130,7 @@ export function wants(lesson:Lesson,input:CoachInput,walked:boolean):boolean{
     // In combat, or in the intermission with the window folded into the chip ("Depois"): the same tap opens it.
     case 'chip':return (wave||round.phase==='prepare')&&input.chip;
     case 'rescue':return view.players.some(p=>p.id!==localId&&!!p.downed&&!p.eliminated&&p.online);
-    case 'gather':return round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
+    case 'gather':return HUD_SWITCH.forge&&round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
   }
 }
 

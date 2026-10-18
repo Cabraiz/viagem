@@ -114,6 +114,12 @@ export const SEPARATION=.5,SEPARATION_MAX=.12;
  * standing players. The other worlds keep the tuned crowd as it was.
  */
 export const SPACING_GAP=.15;
+/**
+ * The push off the sleepers, a tick, at most (u): under the slowest walk (1.21 u/s ≈ .06 a tick), so a body walking
+ * always gets through a nest's ring of sleepers (card bichos-travados: at SEPARATION_MAX the ring held the nests' groups
+ * at its edge for good) and only one standing still slides off them.
+ */
+export const SLEEPER_PUSH_MAX=.03;
 /** Largest enemy radius a neighbor query must reach (the boss: 0.9 × ENEMY_RADIUS_SCALE, balanco-pos-1-7). */
 const NEIGHBOR_REACH=.9*ENEMY_RADIUS_SCALE;
 const MAX_STEP=.25;
@@ -567,13 +573,21 @@ export class EnemyAi implements SimSystem {
       if(spaced){
         // The sleepers (they never move: the awake one steps off them) and the standing heroes (no gap there: it still
         // hits at contact range, CONTACT_MARGIN; it only never stands inside one).
-        near.length=0;ctx.sleepers!.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
-        for(const o of near)if(!ctx.sleepers!.isTarget(o.id))apart(o,o.radius);
         for(const p of ctx.players.values())if(!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0&&Math.abs(p.x-e.x)<2&&Math.abs(p.y-e.y)<2)apart(p,PLAYER_RADIUS-gap);
       }
       pushX*=SEPARATION;pushY*=SEPARATION;
       const push=Math.hypot(pushX,pushY);
       if(push>SEPARATION_MAX){pushX*=SEPARATION_MAX/push;pushY*=SEPARATION_MAX/push;}
+      if(spaced){
+        // Off the sleepers, on a cap of its own under the walk (SLEEPER_PUSH_MAX).
+        const bx=pushX,by=pushY;pushX=0;pushY=0;
+        near.length=0;ctx.sleepers!.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
+        for(const o of near)if(!ctx.sleepers!.isTarget(o.id))apart(o,o.radius);
+        pushX*=SEPARATION;pushY*=SEPARATION;
+        const off=Math.hypot(pushX,pushY);
+        if(off>SLEEPER_PUSH_MAX){pushX*=SLEEPER_PUSH_MAX/off;pushY*=SLEEPER_PUSH_MAX/off;}
+        pushX+=bx;pushY+=by;
+      }
       // The Tio (and the motoboy) plants his feet for the wind-up and bulldozes through the crowd in the charge, so he
       // stays on the line he warned; the neighbors still step off him on their own turn. The motoboy is planted from the
       // tick his aim starts too: a push then would move him off the start of the line he just drew and call the charge

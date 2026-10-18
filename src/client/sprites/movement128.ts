@@ -1,5 +1,5 @@
 import {artIndexVersion,artPiece,artUrl} from '../art/manifest.ts';
-import {HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
 import type {FigureBox} from './sprite-catalog.ts';
 
 export type DetailedMotion='walk'|'attack';
@@ -61,9 +61,12 @@ export function movement128Figure(id:string):FigureBox|undefined{
   }
   figures.set(id,result);return result;
 }
-/** All source poses stay available; the display samples the natural cycle at the actual render cadence. */
+/**
+ * All source poses stay available; the display samples the cycle at the actual render cadence, played at
+ * HERO_ANIM_RATE of the drawn duration (the manifest keeps 600/1000 ms, the art's own timing).
+ */
 export function movement128Frame(plan:Pick<Movement128Plan,'durationMs'|'loop'>,elapsedMs:number):number{
   if(!(plan.durationMs>0))return 0;
-  const phase=Math.max(0,elapsedMs)/plan.durationMs,frame=Math.floor(phase*128);
+  const phase=Math.max(0,elapsedMs)*HERO_ANIM_RATE/plan.durationMs,frame=Math.floor(phase*128);
   return plan.loop?frame%128:Math.min(127,frame);
 }

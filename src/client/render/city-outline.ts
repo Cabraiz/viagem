@@ -128,6 +128,14 @@ export class CityOutlines {
     this.stickers.forEach(add);
     return {count,built:this.built,mb:+(bytes/1048576).toFixed(3),zoom:this.builtZoom,res:this.builtRes,retiring:this.retired.length,list};
   }
+  /** Drops derivatives of an unleased streamed atlas, including retired copies and the local hero's sticker. */
+  releaseBase(base:string){
+    const gone=new Set<string>();
+    for(const [key,v] of this.byKey)if(v.base===base){gone.add(key);this.drop(key);}
+    this.variants.delete(base);this.failed.delete(base);
+    for(const [key,v] of this.stickers)if(v.base===base){this.stickers.delete(key);this.failed.delete(key);}
+    this.retired=this.retired.filter(r=>!gone.has(r.key));
+  }
   /** Drops every copy now (scene shutdown). */
   destroy(){
     // A game teardown may have destroyed the texture and animation managers already: nothing left to free then.

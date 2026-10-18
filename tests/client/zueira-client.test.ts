@@ -104,9 +104,9 @@ test('kill-cam name: "Você" for the local player, the nickname for the others, 
   assert.equal(closerName(view,undefined,'a'),undefined);
 });
 
-test('a boleto of the rain looks like a boleto; any other XP stays a gem', ()=>{
+test('a boleto of the rain looks like a boleto, and so does any XP on the ground (D-054: no gems)', ()=>{
   assert.equal(pickupLook('xp','boleto'),FX.boleto);
-  assert.equal(pickupLook('xp'),pickupTexture('xp'));
+  assert.equal(pickupLook('xp'),FX.boleto);
   assert.equal(pickupLook('heal','promo'),pickupTexture('heal'));
 });
 

@@ -86,7 +86,7 @@ export function openAudioSandbox():void{
   const hint=lab.querySelector<HTMLElement>('.audio-lab-hint')!;
   const voiceCount=lab.querySelector<HTMLElement>('.audio-lab-voices strong')!;
   const chaosResult=lab.querySelector<HTMLElement>('.audio-lab-voices small')!;
-  let chaosLine='Caos solta 40 golpes e gemas de uma vez.';
+  let chaosLine='Caos solta 40 golpes e boletos de uma vez.';
   // Polled every 250 ms: only touch the DOM when text changed, so the live region (chaos line) announces real news only.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const renderVoices=()=>{

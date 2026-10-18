@@ -530,7 +530,6 @@ test('soundForEvent maps sim events to sounds for the local player',()=>{
     [{type:'damage',target:'e1',amount:3},undefined],
     [{type:'pickup',player:ME,pickup:'g1',kind:'xp',value:1},'gema'],
     [{type:'pickup',player:ME,pickup:'c1',kind:'chest',value:1},'buzina'],
-    [{type:'pickup',player:ME,pickup:'m1',kind:'magnet',value:1},'boing'],
     [{type:'pickup',player:OTHER,pickup:'g2',kind:'xp',value:1},undefined],
     [{type:'pickup',player:OTHER,pickup:'c2',kind:'chest',value:1},undefined],
     [{type:'levelup',level:2},'nivel'],

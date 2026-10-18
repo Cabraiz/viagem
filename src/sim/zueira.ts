@@ -179,8 +179,8 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
     return undefined;
   }
   function drop(ctx:SimContext,kind:'xp'|'heal',value:number,at:{x:number;y:number},lifetime:number,resource?:string){
-    // A boleto over the pickup cap still drops: the pickups step merges XP over the cap into gems (mergeXpGems keeps it).
-    if(kind!=='xp'&&!hasRoom(ctx.pickups,MAX_PICKUPS))return;
+    // D-054: no gems to merge into any more; a boleto over the pickup cap is caught at once (its XP never lost).
+    if(!hasRoom(ctx.pickups,MAX_PICKUPS)){if(kind==='xp')ctx.team.xp+=value;return;}
     const pickup:PickupState={id:ctx.nextId(kind),kind,value,x:at.x,y:at.y,spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(lifetime)};
     if(resource)pickup.resource=resource;
     ctx.pickups.set(pickup.id,pickup);

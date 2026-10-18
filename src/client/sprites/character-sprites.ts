@@ -1,11 +1,13 @@
 import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
-import {spriteUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
+import {spriteUrl,originalUrl} from './art-urls.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,HERO_DIRECTION_PAGE,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
+import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from './movement128.ts';
+import {movement128Textures,movement128Visible,type Movement128Textures} from './movement128-textures.ts';
 
 export type {FigureBox};
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
@@ -18,6 +20,7 @@ interface AnimSet {
 /** Everything about one class's sheet that does not change per frame: keys, scale, figure, animation names. */
 interface Sheet extends AnimSet {
   key:string;
+  cardinals?:Sheet;
   directional?:DirectionalSheet;
   /** The atlas comes from the art v2 index (sprite-sheets.ts importedSheet): a failed download falls back to today's. */
   imported?:boolean;
@@ -42,12 +45,20 @@ export class CharacterSprites {
   private measured=new Map<string,FigureBox|null>();
   /** Classes whose imported v2 atlas failed to download: they keep today's sheet for the session. */
   private failed=new Set<string>();
+  private cardinalOriginal=new Set<string>();
+  private cardinalFailed=new Set<string>();
   private watching=false;
   private sheet(id:string):Sheet{
     let sheet=this.sheets.get(id);
     if(!sheet){
       const today=directionalSheets.get(id),directional=this.failed.has(id)?today:directionalSheet(id),catalog=spriteCatalog[id];
       sheet={key:directional?`sprite:${id}:dir4`:`sprite:${id}`,directional,imported:!!directional&&directional!==today,scale:96/(directional?.height??catalog?.height??96),figure:directional?directional.figure:catalog?.figure};
+      const card=directional?.cardinals;
+      if(card&&!this.cardinalFailed.has(id)){
+        const url=this.cardinalOriginal.has(id)?originalUrl(card.url)??card.url:card.url;
+        sheet.cardinals={key:`sprite:${id}:dir4c`,directional:{url,height:directional.height,figure:card.figure},
+          imported:true,scale:sheet.scale,figure:card.figure};
+      }
       this.sheets.set(id,sheet);
     }
     return sheet;
@@ -57,13 +68,20 @@ export class CharacterSprites {
    * screen box is the character and not the frame's empty margin (UX-zonas-tela audit, follow camera). The importer
    * measures it into the catalog, so no pixels are read during a match.
    */
-  figure(id:string):FigureBox|undefined{return this.sheet(id).figure??this.measured.get(id)??undefined;}
+  private pageFigure(sheet:Sheet):FigureBox|undefined{return sheet.figure??this.measured.get(sheet.key)??undefined;}
+  figure(id:string):FigureBox|undefined{
+    const sheet=this.sheet(id),a=this.pageFigure(sheet),b=sheet.cardinals&&this.pageFigure(sheet.cardinals);
+    let result=a&&b?{left:Math.min(a.left,b.left),right:Math.max(a.right,b.right),top:Math.min(a.top,b.top),bottom:Math.max(a.bottom,b.bottom)}:a??b;
+    const detailed=movement128Figure(id);
+    if(detailed)result=result?{left:Math.min(result.left,detailed.left),right:Math.max(result.right,detailed.right),top:Math.min(result.top,detailed.top),bottom:Math.max(result.bottom,detailed.bottom)}:detailed;
+    return result;
+  }
   /**
    * figure(id) in the px of the frame `sprite` shows now: the same box, or mapped onto the padded, resampled cell when
    * the sprite shows its city copy (contorno-breu), so frame size × origin × scale still give the figure's world box.
    */
   figureIn(sprite:Phaser.GameObjects.Sprite,id:string):FigureBox|undefined{
-    const f=this.figure(id),copy=f&&this.city?.copyOf(sprite.texture.key);
+    const f=this.states.get(sprite)?.stream?.figure??this.figure(id),copy=f&&this.city?.copyOf(sprite.texture.key);
     if(!f||!copy)return f;
     const g=copy.geom;
     return {left:copyX(g,f.left),right:copyX(g,f.right),top:copyY(g,f.top),bottom:copyY(g,f.bottom)};
@@ -73,8 +91,11 @@ export class CharacterSprites {
    * frame loop). A 4-direction atlas is 1152×2304 (≈ 2.7 M pixels, tens of ms on a phone), hence the catalog.
    */
   private measure(id:string){
-    const sheet=this.sheet(id);
-    if(sheet.figure||this.measured.has(id)||!this.scene.textures.exists(sheet.key))return;
+    const root=this.sheet(id);
+    for(const sheet of [root,...(root.cardinals?[root.cardinals]:[])])this.measurePage(sheet);
+  }
+  private measurePage(sheet:Sheet){
+    if(sheet.figure||this.measured.has(sheet.key)||!this.scene.textures.exists(sheet.key))return;
     let box:FigureBox|null=null;
     try{
       const image=this.scene.textures.get(sheet.key).getSourceImage() as CanvasImageSource&{width:number;height:number};
@@ -89,9 +110,12 @@ export class CharacterSprites {
         if(right>=left)box={left,top,right:right+1,bottom:bottom+1};
       }
     }catch{box=null;}
-    this.measured.set(id,box);
+    this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;facing:FacingTracker;x:number;y:number;shown?:Motion;side?:Facing}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan}>();
+  private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
+  private idlePreloads=new Map<string,Movement128Plan>();
+  private idleCleanup=false;
   /**
    * `city`: the scene's screen-scale Breu outlines (card contorno-breu, render/city-outline.ts). In city mode every
    * sheet draws its Breu-ring copy with the same frames and animations; omitted or outside the city, the sheet itself.
@@ -100,14 +124,48 @@ export class CharacterSprites {
   private city?:CityOutlines;
   constructor(scene:Phaser.Scene,city?:CityOutlines){this.scene=scene;this.city=city;}
   queue(id:string){
-    if(!spriteCatalog[id]||this.requested.has(id))return;
-    this.requested.add(id);
-    const {key,directional}=this.sheet(id);
+    const idle=movementIdle8Plan(id);
+    if(idle){
+      const cache=this.detailed??=movement128Textures(this.scene,this.city);
+      if(this.scene.textures.exists(idle.key)||cache.status(idle.key)||this.requested.has(idle.key))return;
+      this.requested.add(idle.key);this.idlePreloads.set(idle.key,idle);
+      this.scene.load.spritesheet(idle.key,idle.url,{frameWidth:96,frameHeight:96,endFrame:7});
+      if(!this.idleCleanup){
+        this.idleCleanup=true;
+        const cleanup=()=>{
+          for(const key of this.idlePreloads.keys())if(!cache.status(key)&&this.scene.textures.exists(key)){
+            const image=this.scene.textures.get(key).getSourceImage() as HTMLImageElement;
+            this.scene.textures.remove(key);if('src' in image)image.src='';
+          }
+          for(const key of this.idlePreloads.keys())this.requested.delete(key);
+          this.idlePreloads.clear();this.detailed=undefined;this.idleCleanup=false;
+          this.scene.events.off('shutdown',cleanup);this.scene.events.off('destroy',cleanup);
+        };
+        this.scene.events.once('shutdown',cleanup);this.scene.events.once('destroy',cleanup);
+      }
+      return;
+    }
+    this.queueLegacy(id);
+  }
+  private queueLegacy(id:string){
+    if(!spriteCatalog[id])return;
+    const root=this.sheet(id);
+    for(const sheet of [root,...(root.cardinals?[root.cardinals]:[])])this.queuePage(id,sheet);
+  }
+  private queuePage(id:string,sheet:Sheet){
+    const {key,directional}=sheet;
+    if(this.requested.has(key))return;
+    this.requested.add(key);
     if(this.scene.textures.exists(key)){this.measure(id);return;}
     // The figure box is read when the sheet arrives (loading time), never in the middle of a frame (review onda 4).
     this.scene.load.once(`filecomplete-spritesheet-${key}`,()=>this.measure(id));
-    this.scene.load.once('complete',()=>this.measure(id));
-    if(this.sheet(id).imported)this.watchErrors();
+    this.scene.load.once('complete',()=>{
+      // Image decoding failures (for example an HTML 200 fallback) do not emit
+      // Phaser's loaderror. A completed request without a texture failed too.
+      if(sheet.imported&&this.requested.has(key)&&!this.scene.textures.exists(key))this.rejectPage(key);
+      this.measure(id);
+    });
+    if(sheet.imported)this.watchErrors();
     this.scene.load.spritesheet(key,directional?.url??spriteUrl(id),{frameWidth:192,frameHeight:192});
   }
   /** An imported atlas that fails (missing in a deploy, bad cache) is forgotten: the next animate() asks today's sheet. */
@@ -115,11 +173,23 @@ export class CharacterSprites {
     if(this.watching)return;
     this.watching=true;
     // Phaser.Loader.Events.FILE_LOAD_ERROR ('loaderror'; Phaser is imported as a type only here).
-    this.scene.load.on('loaderror',(file:Phaser.Loader.File)=>{
-      for(const [id,sheet] of this.sheets)if(sheet.imported&&file.key===sheet.key){
-        this.failed.add(id);this.sheets.delete(id);this.requested.delete(id);this.measured.delete(id);
+    this.scene.load.on('loaderror',(file:Phaser.Loader.File)=>this.rejectPage(file.key));
+  }
+  private rejectPage(key:string){
+    for(const [id,sheet] of this.sheets){
+      if(sheet.cardinals?.key===key){
+        // Old installs have the lossless cardinals but no lite copy yet. Retry
+        // that original once; a broken original keeps the working diagonals.
+        if(!this.cardinalOriginal.has(id)&&originalUrl(sheet.cardinals.directional!.url))this.cardinalOriginal.add(id);
+        else this.cardinalFailed.add(id);
+        this.sheets.delete(id);this.requested.delete(key);this.measured.delete(key);
+        break;
       }
-    });
+      if(sheet.imported&&key===sheet.key){
+        this.failed.add(id);this.sheets.delete(id);this.requested.delete(sheet.key);this.measured.delete(sheet.key);
+        break;
+      }
+    }
   }
   /**
    * Creates the class's animations once and keeps their keys (no string building or lookups per frame), on the sheet
@@ -146,16 +216,45 @@ export class CharacterSprites {
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number}){
-    const sheet=this.sheet(id);
-    if(!this.scene.textures.exists(sheet.key)){
-      this.queue(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();return;
+    const root=this.sheet(id);
+    let state=this.states.get(sprite);
+    if(!state){state={motion:new SpriteMotion(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y};this.states.set(sprite,state);}
+    const dx=x-state.x,dy=y-state.y,moving=Math.hypot(dx,dy)>.001;
+    const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
+    if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;}
+    state.x=x;state.y=y;
+    const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
+    const detailed=alive&&movement128Visible(sprite,this.scene)?motion==='idle'?movementIdle8Plan(id):movement128Plan(id,motion,direction):undefined;
+    if(detailed){
+      const cache=this.detailed??=movement128Textures(this.scene,this.city);
+      if(cache.request(sprite,detailed)){
+        const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE,frame=motion==='idle'?movementIdle8Frame(direction):movement128Frame(detailed,this.scene.time.now-state.phaseStarted);
+        const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
+        const key=copy?.key??detailed.key;
+        if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
+        if(sprite.texture.key!==key)sprite.setTexture(key,frame);else if(Number(sprite.frame.name)!==frame)sprite.setFrame(frame);
+        const origin=copy?variantOrigin(copy.geom,...detailed.anchor):{x:detailed.anchor[0],y:detailed.anchor[1]};
+        sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(false).setFlipY(false);
+        state.stream=detailed;state.shown=motion;state.side=direction;cache.bind(sprite,detailed.key);return;
+      }
+      // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
+      if(cache.status(detailed.key)!=='failed'){
+        sprite.anims.stop();state.shown=motion;state.side=direction;return;
+      }
     }
+    if(!this.scene.textures.exists(root.key)||(root.cardinals&&!this.scene.textures.exists(root.cardinals.key))){
+      this.queueLegacy(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();
+      if(!this.scene.textures.exists(root.key))return;
+    }
+    const eight=!!root.cardinals&&this.scene.textures.exists(root.cardinals.key),page=HERO_DIRECTION_PAGE[direction];
+    const sheet=eight&&page.page==='dir4c'?root.cardinals!:root;
+    const facing=eight?FACINGS[page.block]:legacyFacing,side=eight?direction:legacyFacing;
     if(!sheet.single&&!sheet.facing)this.animations(sheet);
     // × HERO_DRAW_SCALE: heroes draw 20% under the 96 px reference figure (the camera still frames the reference).
     const scale=sheet.scale*this.viewScale*HERO_DRAW_SCALE;
     // City mode (contorno-breu): the sheet's Breu-ring copy at screen scale, shown with the inverse scale and the
     // padded origin so the figure keeps its size and feet; its animations are made once per copy.
-    if(this.city&&sheet.crop===undefined)sheet.crop=cropOf(this.figure(id),192,192)??null;
+    if(this.city&&sheet.crop===undefined)sheet.crop=cropOf(this.pageFigure(sheet),192,192)??null;
     const copy=this.city?.variant(sheet.key,scale,sheet.crop??undefined);
     if(copy&&sheet.city?.key!==copy.key){const set:AnimSet&{key:string}={key:copy.key};this.animations(sheet,copy.key,set);sheet.city=set;}
     const key=copy?copy.key:sheet.key,sx=copy?scale*copy.geom.kx:scale,sy=copy?scale*copy.geom.ky:scale,anims:AnimSet=copy&&sheet.city?sheet.city:sheet;
@@ -166,24 +265,20 @@ export class CharacterSprites {
       // A 4-direction atlas draws its left side itself: no mirror (single sheets keep the flip they had).
       if(sheet.directional)sprite.setFlipX(false);
     }else if(sprite.scaleX!==sx||sprite.scaleY!==sy)sprite.setScale(sx,sy);
-    let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),facing:new FacingTracker(),x,y};this.states.set(sprite,state);}
-    const dx=x-state.x,dy=y-state.y,moving=Math.hypot(dx,dy)>.001;
-    const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
-    state.x=x;state.y=y;
     if(anims.facing){
       // Remote allies come here with their interpolated positions, so their facing follows the interpolated velocity.
-      const facing=state.facing.update(dx,dy,view,intent);
       // A turn in the middle of a clip keeps its progress: the walk cycle or the swing goes on in the new drawing.
-      const turning=state.shown===motion&&state.side!==facing;
+      const turning=state.shown===motion&&state.side!==side;
       const progress=turning?sprite.anims.getProgress():0;
       sprite.play(anims.facing[motion][facing],true);
       if(turning)sprite.anims.setProgress(progress);
-      state.shown=motion;state.side=facing;
+      state.shown=motion;state.side=side;
     }else{
       sprite.setFlipX(legacyFlip(sprite.flipX,dx,dy,view));
       sprite.play(anims.single![motion],true);
     }
     if(!alive)sprite.anims.pause();else sprite.anims.resume();
+    // Switch to the legacy sheet first, then release the detailed atlas and its derived city copies safely.
+    if(state.stream||this.detailed){state.stream=undefined;if(detailed)this.detailed?.unbind(sprite);else this.detailed?.release(sprite);}
   }
 }

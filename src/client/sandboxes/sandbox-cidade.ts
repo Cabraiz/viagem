@@ -682,7 +682,7 @@ function withCast(view:RunView,x:number,y:number):RunView{
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
     enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
-    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:kind==='xp'?5:1}))]};
+    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:1}))]};
 }
 
 /**

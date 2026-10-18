@@ -30,12 +30,12 @@ const clone=<T>(v:T):T=>JSON.parse(JSON.stringify(v)) as T;
 const allEligible=():PlayerBuild=>({weapons:[{id:'chinelo',level:8},{id:'boleto',level:8},{id:'cafe',level:8}],
   passives:[{id:'tenis',level:5},{id:'cartao',level:5},{id:'cafe-forte',level:5}]});
 const maxedBuild=():PlayerBuild=>({weapons:WEAPON_IDS.map(id=>({id,level:WEAPON_MAX_LEVEL})),
-  passives:['marmita','megafone','bone','ima','oculos'].map(id=>({id,level:PASSIVE_MAX_LEVEL}))});
+  passives:['marmita','megafone','bone','oculos'].map(id=>({id,level:PASSIVE_MAX_LEVEL}))});
 const inLimits=(s:PlayerStats)=>{for(const k of STAT_KEYS){const [min,max]=STAT_LIMITS[k];assert.ok(Number.isFinite(s[k])&&s[k]>=min&&s[k]<=max,`${k}=${s[k]}`);}};
 
 // ---------- 1. Passives ----------
-test('passives: the automatic game keeps exactly its 8 fixed ids with pt-BR metadata and 5 distinct descriptions',()=>{
-  assert.deepEqual([...AUTO_PASSIVE_IDS],['cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao']);
+test('passives: the automatic game keeps exactly its 7 fixed ids (D-054: no ímã) with pt-BR metadata and 5 distinct descriptions',()=>{
+  assert.deepEqual([...AUTO_PASSIVE_IDS],['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao']);
   assert.deepEqual([...PASSIVE_IDS],[...AUTO_PASSIVE_IDS,...MANUAL_PASSIVE_IDS],'D-051: the manual combat adds its two at the end');
   assert.deepEqual(Object.keys(PASSIVES).sort(),[...PASSIVE_IDS].sort());
   for(const id of AUTO_PASSIVE_IDS){
@@ -105,7 +105,7 @@ test('computeStats: amount integer, non-finite bonus ignored, deterministic, BAS
   assert.equal(computeStats({weapons:[],passives:[]},{amount:-0.5}).amount,0);
   assert.deepEqual(computeStats({weapons:[],passives:[]},{might:NaN,area:Infinity,cooldown:-Infinity}),{...BASE_STATS});
   const before={...BASE_STATS};
-  const build:PlayerBuild={weapons:[],passives:[{id:'ima',level:4},{id:'cartao',level:2}]};
+  const build:PlayerBuild={weapons:[],passives:[{id:'tenis',level:4},{id:'cartao',level:2}]};
   const a=computeStats(build,{luck:0.3}),b=computeStats(build,{luck:0.3});
   assert.deepEqual(a,b);assert.notEqual(a,b);
   a.might=99;
@@ -242,7 +242,7 @@ test('openChest: without evolution it upgrades items within max levels',()=>{
   for(let seed=1;seed<=200;seed++){
     const {fake,ctx,events}=makeCtx(seed,LATE);
     const build:PlayerBuild={weapons:[{id:'chinelo',level:7},{id:'pombo',level:8},{id:'cafe-evo',level:1},{id:'mystery',level:1}],
-      passives:[{id:'bone',level:4},{id:'tenis',level:5},{id:'ima',level:5}]};
+      passives:[{id:'bone',level:4},{id:'tenis',level:5},{id:'cartao',level:5}]};
     const p=makePlayer('p1',build,{stats:computeStats(build,{luck:2})});
     const before=clone(build);
     const res=openChest(ctx,p,addChest(fake),OPEN);

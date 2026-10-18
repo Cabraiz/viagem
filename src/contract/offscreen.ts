@@ -163,5 +163,11 @@ export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SL
 export const INTEREST_HYSTERESIS=4;
 /** D-051: at most this many sleeping bodies (EnemyView.asleep) per client, the nearest ones. */
 export const ASLEEP_PER_VIEWER=48;
+/**
+ * Card ninhos-perto-ataca-20x: at most this many awake enemies per client, the nearest ones (the boss always on top).
+ * The phone draws and animates every body it holds (~30 µs each a frame, E1's measure 18/10: 300 on screen → 41 fps
+ * at CPU 4×, 600 → 34, 1500 → 19), so this is the phone's budget, not the map's.
+ */
+export const AWAKE_PER_VIEWER=300;
 /** An enemy farther than this from every player is recycled next to one of them (VS-style), beyond any interest area. */
 export const RECYCLE_DISTANCE=INTEREST_RADIUS+INTEREST_HYSTERESIS+4;

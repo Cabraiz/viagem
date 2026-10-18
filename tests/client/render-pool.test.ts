@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Pool,KeyedPool,Ring} from '../../src/client/render/pool.ts';
-import {squash,gemBounce,hitFlash,flashStartOnHit,HIT_FLASH_MS,HIT_FLASH_REST_MS,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,smoothToward,POOF_MS,POP_TEXT_MS} from '../../src/client/render/motion.ts';
+import {squash,hitFlash,flashStartOnHit,HIT_FLASH_MS,HIT_FLASH_REST_MS,poof,popText,damageFloat,telegraphPulse,telegraphBlink,hashPhase,smoothToward,POOF_MS,POP_TEXT_MS} from '../../src/client/render/motion.ts';
 import {deathLine,deathLines,kindStyle,damageLabel,GENERIC_LINES} from '../../src/client/render/jokes.ts';
 import {ENEMY_KINDS,enemyTexture} from '../../src/client/render/keys.ts';
 
@@ -76,8 +76,6 @@ test('motion helpers: reduced motion is identity and effects end',()=>{
     const idle=squash(t,.5,false,false),move=squash(t,.5,true,false);
     assert.ok(Math.abs(idle.sy-1)<=.0601&&Math.abs(move.sy-1)<=.1401);
   }
-  assert.equal(gemBounce(200,true),0);assert.ok(gemBounce(190,false)<-10);
-  assert.ok(Math.abs(gemBounce(899.9,false))<.5&&Math.abs(gemBounce(900.1,false))<.5,'continuous hop→bob');
   assert.ok(hitFlash(0)&&hitFlash(89)&&!hitFlash(90)&&!hitFlash(-1));
   assert.ok(Math.max(...Array.from({length:60},(_,i)=>poof(i*10).scale))>=1.75);
   assert.equal(poof(POOF_MS).done,true);assert.equal(poof(POOF_MS).alpha,0);assert.equal(poof(100).done,false);

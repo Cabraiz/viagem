@@ -35,7 +35,8 @@ test('two clients, one reconnecting near the end, show exactly the same prizes',
   b.apply(s.snapshot(-1));applyEvents(tallyB,b.take());
   const stats=[...a.players.values()].map(p=>p.stats);
   assert.ok(stats.every(st=>st&&st.downs!==undefined),'server counters reach the client');
-  assert.ok(stats.some(st=>st!.pickups>0)&&stats.some(st=>st!.damage>0),JSON.stringify(stats));
+  // D-054: no gems, so a run without coxinhas or chests picks nothing up; the kills and the damage still count.
+  assert.ok(stats.some(st=>st!.kills>0)&&stats.some(st=>st!.damage>0),JSON.stringify(stats));
   assert.deepEqual([...b.players.values()].map(p=>p.stats),stats,'same counters after a reconnect');
   const awardsA=computeAwards(resultOf(a),tallyA),awardsB=computeAwards(resultOf(b),tallyB);
   assert.ok(awardsA.length>=3);

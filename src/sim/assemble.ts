@@ -5,7 +5,7 @@
 import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,mergeXpGems,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
+import {MAX_ENEMIES,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind,type EnemyKind} from './enemies/catalog.ts';
 import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
@@ -104,6 +104,8 @@ export interface RunSystemsOptions {
    * nest. Default 'rounds' (today's waves) until the D-051 bars pass.
    */
   mode?:'rounds'|'ninhos';
+  /** Mode 'ninhos': × the sleepers (maps/nests.ts NestPlanOptions.population; default POPULATION). Benches and tests. */
+  nestPopulation?:number;
   /**
    * D-051: how heroes fight (CombatMode). 'manual': only the equipped weapon fires, while the attack is held, at the
    * auto aim (weapons/system.ts); no class skill; damagePlayer records SimPlayer.lastHitBy. Default 'auto' (every world):
@@ -400,7 +402,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       nests=createNests({
         // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
         plan:players=>{
-          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city)});
+          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city),...(options.nestPopulation!==undefined?{population:options.nestPopulation}:{})});
           const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed,
             // Shots and kills are heard from the previous step's events; the alarm and the riding moto while they last.
             events:()=>world.lastEvents,
@@ -453,9 +455,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{}),
       ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
-    // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){
-      progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);
+      progression.pickups.step(ctx);
       // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
       // run (a join, a rematch); items walked over go to it.
       if(inventory){for(const p of ctx.players.values())if(!hasInventory(p)&&!p.spectator){p.build=manualStartingBuild();refreshStats(p);}inventory.step(ctx);}

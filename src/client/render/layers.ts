@@ -13,7 +13,7 @@ import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
-import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
+import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
@@ -921,7 +921,7 @@ export class HordeRenderer{
       const k=a.fall?Math.min(1,(now-a.born)/BOLETO_FALL_MS):1;
       y=-BOLETO_FALL_PX*(1-k)*(1-k);rotation=(a.phase-.5)*.5+(1-k)*Math.sin(now*.02+a.phase*TAU)*.6;
       if(k>=1)a.fall=false;
-    }else if(a.kind==='xp'){y=gemBounce(now-a.born,reduced);scale=1+Math.min(.7,Math.log2(Math.max(1,a.value))*.14);}
+    }
     if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
       if(a.kind==='chest'){scale=1+.07*Math.sin(now*.007+a.phase*TAU);rotation=Math.sin(now*.013+a.phase)*.04;}

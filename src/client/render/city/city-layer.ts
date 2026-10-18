@@ -170,6 +170,12 @@ export class CityLayer {
   private fog?:Phaser.GameObjects.Graphics;
   private readonly chunksByKey=new Map<string,CityChunk>();
   private view=-1;
+  /**
+   * Live chunks built before the city's art arrived (refresh): rebuilt one per frame, nearest the camera first, on the
+   * frames that build no new chunk. The old one stays until its rebuild, so nothing blinks out
+   * (NEW-20261018-ORQ-chunks-cidade-sem-pico: rebuilding them all in one frame was a stall of a second on a phone).
+   */
+  private readonly stale=new Set<string>();
   private clock=0;
   /** Imported art: the plan, each cell's lot, the fountain lot. */
   private readonly art?:CityArtPlan;
@@ -292,8 +298,8 @@ export class CityLayer {
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
-  /** The ground drawn is final (no albedo still on its way): the modo foto waits for it. */
-  groundSettled(){return !this.relief||this.relief.albedoSettled;}
+  /** The ground drawn is final (no albedo still on its way, no chunk waiting for its rebuild): the modo foto waits for it. */
+  groundSettled(){return this.stale.size===0&&(!this.relief||this.relief.albedoSettled);}
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
@@ -382,6 +388,8 @@ export class CityLayer {
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
+    const old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);
+    if(old!==undefined){const t0=perfNow();this.dropChunk(old);this.buildChunk(old,view);perfSpan('chunk',t0);}
     this.applyOcclusion(frame,view);
     this.vivo?.update(frame.camera,performance.now());
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
@@ -411,11 +419,17 @@ export class CityLayer {
     return moundPiece(piece,{n:s.n&&bare(piece.x,piece.y-1),s:s.s&&bare(piece.x,piece.y+1),w:s.w&&bare(piece.x-1,piece.y),e:s.e&&bare(piece.x+1,piece.y)});
   }
 
-  /** Rebuilds the live chunks now (e.g. art textures arrived after they were built with the procedural look). */
+  /**
+   * Marks the live chunks for a rebuild (e.g. art textures arrived after they were built with the procedural look): the
+   * next updates redo them one per frame, nearest the camera first (stale). Chunks shown later are built with the art.
+   */
   refresh(){
     if(this.view<0)return;
-    for(const key of [...this.live.keys()]){this.dropChunk(key);this.buildChunk(key,this.view);}
+    for(const key of this.live.keys())this.stale.add(key);
   }
+
+  /** Live chunks still waiting for their rebuild after a refresh, sorted. */
+  pendingRebuilds():string[]{return [...this.stale].sort();}
 
   /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
   destroy(){
@@ -722,7 +736,7 @@ export class CityLayer {
     for(const p of live.props){p.obj.destroy();this.fadeDrop(p.fade,'props',(e:LiveProp)=>e===p);}
     for(const c of live.cells)this.columns.delete(c);
     this.cellColumns.clear();this.columnsVersion++;
-    this.live.delete(key);
+    this.live.delete(key);this.stale.delete(key);
   }
 
   /**

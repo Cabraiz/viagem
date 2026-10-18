@@ -30,7 +30,7 @@ import type {SimContext,Sleepers} from '../context.ts';
 import {SpatialHash} from '../spatial.ts';
 import {createEnemy,type EnemyKind} from '../enemies/catalog.ts';
 import {cancelTelegraphs} from '../telegraphs.ts';
-import {MAX_ENEMIES} from '../../rules/index.ts';
+import {MAX_AWAKE} from '../../rules/index.ts';
 
 /** Bucket size of the sleepers' index (u): they never move, so big buckets keep a noise check to a few cells. */
 export const SLEEP_CELL=16;
@@ -138,7 +138,7 @@ export interface SonoOptions {
   weaponNoise?:(weapon:string,player:SimPlayer|undefined)=>{r:number;p:number};
   /** Noises that repeat while they last (alarm, moto, banks), asked every NOISE_EVERY s. */
   ambient?:(ctx:SimContext)=>readonly AmbientNoise[];
-  /** The noise wakes nobody once ctx.enemies holds this many (proposal §7). Default MAX_ENEMIES. */
+  /** The noise and the sight wake nobody once ctx.enemies holds this many (proposal §7). Default MAX_AWAKE. */
   maxAwake?:number;
 }
 
@@ -201,7 +201,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   // stale: bodies woke since the last rebuild (query filters them, so a rebuild can wait for the step);
   // missing: bodies fell asleep since (query must rebuild first).
   let stale=false,missing=true,made=false;
-  const maxAwake=options.maxAwake??MAX_ENEMIES;
+  const maxAwake=options.maxAwake??MAX_AWAKE;
   // Card ninhos-perto-ataca-20x: the plan indexes awake now (life 2), so a tick walks them, never the thousands asleep.
   const up=new Set<number>();
 
@@ -330,14 +330,16 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   }
   /**
    * A standing hero within WAKE_SIGHT of sleepers wakes them caçando with their bands (players by id; one `acordou`
-   * per hero). Like a hit, the cap of awake bodies does not stop it: walking into a nest is a choice.
+   * per hero), up to the cap of awake bodies (maxAwake, MAX_AWAKE: the tick's budget; a hit still wakes past it).
    */
   function sight(ctx:SimContext){
     if(!asleep.size)return;
     const near:EnemyState[]=[];
     for(const p of [...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
+      const room=maxAwake-ctx.enemies.size;
+      if(room<=0)return;
       const seen=queryAsleep(p.x,p.y,WAKE_SIGHT,near);
-      if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)),'perto');
+      if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)).sort((a,b)=>order.get(a)!-order.get(b)!).slice(0,room),'perto');
     }
   }
   /** The awake bodies of the plan: dead ones noted, hp kept, alerta/caçando/perdeu moved on. */

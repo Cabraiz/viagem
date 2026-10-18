@@ -7,6 +7,13 @@ import type {PickupState} from '../contract/index.ts';
 
 /** Live enemies (VS uses ~300 for periodic spawns). The director may receive a lower cap. */
 export const MAX_ENEMIES=300;
+/**
+ * Mode 'ninhos' (card ninhos-perto-ataca-20x): the sleepers that may be awake at once on the map. The noise and a hero
+ * walking up stop waking there (a hit never does). Measured 18/10 (scripts/bench-ninhos-20x.ts, 6 bots, 5950 bodies,
+ * i5-12400F): ~730 awake p95 4.9 ms a tick, ~1600 11.9 ms, ~3100 23 ms, ~5400 34 ms; 1500 keeps ~2× room for the
+ * Worker's slower CPU under the 50 ms of a 20 Hz tick. Each client gets the nearest AWAKE_PER_VIEWER of them.
+ */
+export const MAX_AWAKE=1500;
 /** Player and hostile projectiles together. */
 export const MAX_PROJECTILES=400;
 /**

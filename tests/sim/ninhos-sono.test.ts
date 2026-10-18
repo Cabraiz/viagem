@@ -236,7 +236,7 @@ test('a hit target (a nest) takes the hits after the might, stands in the hit te
   assert.equal(w.enemies.has('ninho:B'),false);
 });
 
-test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wakes the sleeper caçando with its band, one acordou; just past it, nobody; a downed hero or a spectator wakes nothing; the cap does not stop it', ()=>{
+test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wakes the sleeper caçando with its band, one acordou; just past it, nobody; a downed hero or a spectator wakes nothing; the cap of awake bodies (maxAwake) stops it', ()=>{
   assert.ok(WAKE_SIGHT>=5&&WAKE_SIGHT<=7&&WAKE_SIGHT<SEE_RADIUS);
   // Past the sight of every body of B (40,0 and 41,1): nobody wakes, ever.
   const far=world();far.w.step();
@@ -250,13 +250,18 @@ test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wake
   for(const e of far.w.enemies.values()){assert.equal(e.memory?.sono,MODE.cacando);assert.ok(e.readyTick<=far.w.tick);}
   assert.equal(woke(far.w.lastEvents).length,1);
   assert.equal(far.w.enemies.has('z-0'),false,'A sleeps on');
-  // Down or watching: nothing. The awake cap (maxAwake 0) does not stop the sight.
-  const down=world(undefined,{maxAwake:0});down.w.step();
+  // Down or watching: nothing.
+  const down=world();down.w.step();
   const d=addPlayer(down.w,'d',0,0);d.downed={sinceTick:0,bleedOutTick:9999,progress:0} as SimPlayer['downed'];
   const s=addPlayer(down.w,'s',40,0);s.spectator=true;
   for(let i=0;i<10;i++)down.w.step();
   assert.equal(down.w.enemies.size,0,'downed and spectator see nothing');
   addPlayer(down.w,'b',0,40);
   down.w.step();
-  assert.deepEqual([...down.w.enemies.keys()].sort(),['z-5','z-6'],'the loose band, past the cap');
+  assert.deepEqual([...down.w.enemies.keys()].sort(),['z-5','z-6'],'a standing hero: the loose band');
+  // At the cap: the sight wakes nobody (a hit still would).
+  const capped=world(undefined,{maxAwake:0});capped.w.step();
+  addPlayer(capped.w,'c',0,40);
+  for(let i=0;i<5;i++)capped.w.step();
+  assert.equal(capped.w.enemies.size,0,'the cap holds the sight');
 });

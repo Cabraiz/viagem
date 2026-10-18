@@ -179,6 +179,8 @@ const WIDE_GOAL_RING=2,WIDE_SEGMENT_STEP=.2;
 const skip=(reach:number,gap:number)=>reach>1e-6&&gap>0?Math.floor((reach-1e-6)/gap):0;
 /** Look-ahead (u) of the corner check of a players-field direction (see `follow` in citySteer). */
 const NUDGE=.15;
+/** Goal fields kept (card bichos-travados): a band's noise is one goal, so a handful covers the bands waking at once. */
+const GOAL_FIELDS=8;
 /** The AI's chase targets (enemies/ai.ts `live`): only these are goals of the players fields. */
 const chased=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 /**
@@ -393,6 +395,34 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     }
     return follow(s.field,e,out,ctx,terrain);
   };
+  /**
+   * D-051 (card bichos-travados): a sleeper's goal (ninhos/sono.ts Sono.goal, a point with a `pace`: the alerta walking
+   * to a noise, the perdeu home) on a field of its own, on the hero-size grid, one per goal cell, the GOAL_FIELDS last
+   * used kept. The planner's flow leads to the plaza, not to the goal: at the plaza's edge (its flow zero inside) the
+   * alerta turned to the goal's way out and back in for good. The fields are a pure function of the goal and the grid
+   * (the cache only saves the rebuild), so the run stays the same whatever was cached.
+   */
+  const goalFields=new Map<number,{field:FlowField;gridVersion:number}>();
+  const isGoal=(target:Point)=>typeof (target as {pace?:unknown}).pace==='number';
+  const towardGoal=(ctx:SimContext,e:EnemyState,target:Point,out:Point,terrain:CityTerrain|undefined)=>{
+    const g=grid!,cs=g.cellSize,ox=g.originX??0,oy=g.originY??0,cx=Math.floor((target.x-ox)/cs),cy=Math.floor((target.y-oy)/cs);
+    if(cx<0||cy<0||cx>=g.width||cy>=g.height)return false;
+    const key=cy*g.width+cx,v=cityGrid?.version??0;
+    let s=goalFields.get(key);
+    if(s)goalFields.delete(key);
+    else{
+      if(goalFields.size>=GOAL_FIELDS)goalFields.delete(goalFields.keys().next().value!);
+      s={field:new FlowField(g,[]),gridVersion:v};s.field.setTargets([{x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs}]);
+    }
+    goalFields.set(key,s);
+    if(v!==s.gridVersion){
+      const r=cityGrid?.changedSince?.(s.gridVersion);
+      s.gridVersion=v;
+      s.field.invalidate(r??{x0:0,y0:0,x1:s.field.width-1,y1:s.field.height-1});
+    }
+    if(s.field.atGoal(e.x,e.y))return false;
+    return follow(s.field,e,out,ctx,terrain);
+  };
   const run=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut,hero:boolean)=>{
     out.fit=0;
     if(e.memory?.retreat===1)return false;
@@ -402,6 +432,12 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     }
     const field=view(ctx), dx=target.x-e.x, dy=target.y-e.y, terrain=!hero&&e.radius>WIDE_FROM?cityTerrainOf(field):undefined;
     if(dx*dx+dy*dy<=range2&&clear(e,target,field)&&(!terrain||clearWide(e,target,terrain,e.radius)))return false;
+    if(grid&&isGoal(target)){
+      const body=!hero&&e.radius>RADIUS?cityTerrainOf(field):undefined;
+      if(!towardGoal(ctx,e,target,out,body))return false;
+      if(body)out.fit=RADIUS;
+      return true;
+    }
     if(narrow&&e.memory?.[SIEGE_FLAG]!==1&&isPlayer(ctx,target)){
       // cidade-05c: one fixed order, wherever the player stands (base or not): the body's own size-class field, then
       // the hero-size players field, then the planner's flow (plaza, or the barricade that cut it off). A field is

@@ -60,6 +60,13 @@ export const ALERT_PACE=.8;
 /** Close enough to the noise (alerta) or home (perdeu), u. */
 export const GOAL_REACH=1.5,HOME_REACH=1;
 export const MODE={alerta:1,cacando:2,perdeu:3} as const;
+/**
+ * The safety net (card bichos-travados): an awake enemy (not the boss) that moved less than STUCK_MOVE u over STUCK_S s
+ * with no standing hero within STUCK_FAR u leaves the world and frees its place under the nests' cap: a body of the
+ * plan sleeps again where it stands; any other (a nest's group) is gone, quietly. Checked every STUCK_EVERY s, its
+ * mark in the body's memory (sx, sy, st: JSON-safe).
+ */
+export const STUCK_S=20,STUCK_MOVE=1,STUCK_FAR=20,STUCK_EVERY=1;
 
 /**
  * The noise table (proposal §3, with the radii of the decision in claims/NEW-20261014-ORQ-ninhos-sim: pistol 12,
@@ -138,6 +145,8 @@ export interface SonoOptions {
   weaponNoise?:(weapon:string,player:SimPlayer|undefined)=>{r:number;p:number};
   /** Noises that repeat while they last (alarm, moto, banks), asked every NOISE_EVERY s. */
   ambient?:(ctx:SimContext)=>readonly AmbientNoise[];
+  /** Points the safety net never empties around (STUCK_FAR): the car a siege presses on (a coach lecturing it stands still). */
+  keep?:(ctx:SimContext)=>readonly Point[];
   /** The noise and the sight wake nobody once ctx.enemies holds this many (proposal §7). Default MAX_AWAKE. */
   maxAwake?:number;
 }
@@ -367,6 +376,26 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
   }
 
+  /** The safety net (STUCK_S): awake enemies stuck far from every hero leave the world (see the constant). */
+  function unstick(ctx:SimContext){
+    const near=[...ctx.players.values()].filter(standing),far2=STUCK_FAR*STUCK_FAR,gone:EnemyState[]=[];
+    const players:readonly Point[]=[...near,...options.keep?.(ctx)??[]];
+    for(const e of ctx.enemies.values()){
+      if(e.boss||!(e.hp>0))continue;
+      const m=e.memory??={};
+      if(m.st===undefined||Math.hypot(e.x-(m.sx??e.x),e.y-(m.sy??e.y))>=STUCK_MOVE){m.sx=e.x;m.sy=e.y;m.st=ctx.tick;continue;}
+      if(ctx.tick-m.st<ticks(STUCK_S))continue;
+      if(players.some(p=>(p.x-e.x)**2+(p.y-e.y)**2<=far2)){m.st=ctx.tick;m.sx=e.x;m.sy=e.y;continue;}
+      gone.push(e);
+    }
+    for(const e of gone){
+      const m=e.memory!;delete m.sx;delete m.sy;delete m.st;
+      const i=order.get(e.id);
+      if(i!==undefined)sleepAgain(ctx,i,e);
+      else{ctx.enemies.delete(e.id);cancelTelegraphs(ctx,e.id);}
+    }
+  }
+
   const api:Sono={
     state,bodies,sleepers,
     wakeNest(ctx,nestId,cause){return wakeAll(ctx,(byNest.get(nestId)??[]).filter(id=>asleep.has(id)),cause);},
@@ -417,6 +446,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       }
       sight(ctx);
       awake(ctx);
+      if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx);
       reindex(true);
       if(heard.size||state.heard.length)state.heard=[...heard].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
     },

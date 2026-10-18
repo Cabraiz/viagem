@@ -247,6 +247,7 @@ export class Simulation {
   readonly combat?:CombatMode;
   /** D-051: 'ninhos' (city + chaveiro only, RunSystemsOptions.mode): the nests instead of the waves; default the rounds. */
   readonly mode?:'ninhos';
+  private readonly nestPopulation?:number;
   /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
@@ -264,12 +265,14 @@ export class Simulation {
     /** D-051: the manual combat ('manual'); default the automatic weapons. */
     combat?:CombatMode;
     /** D-051: the nests mode (RunSystemsOptions.mode); default the rounds. No room asks for it yet. */
-    mode?:'rounds'|'ninhos'}={}){
+    mode?:'rounds'|'ninhos';
+    /** Mode 'ninhos': × the sleepers (RunSystemsOptions.nestPopulation); benches and tests only. */
+    nestPopulation?:number}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';if(options.mode==='ninhos')this.mode='ninhos';
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';if(options.mode==='ninhos')this.mode='ninhos';this.nestPopulation=options.nestPopulation;
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -335,7 +338,7 @@ export class Simulation {
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),
       ...(this.combat?{combat:this.combat}:{}),
-      ...(this.mode?{mode:this.mode}:{}),
+      ...(this.mode?{mode:this.mode}:{}),...(this.nestPopulation!==undefined?{nestPopulation:this.nestPopulation}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }

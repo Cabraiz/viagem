@@ -9,7 +9,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,decodeCityAsset,worldBase,CITY_NEST_POOL,cityNestPlan,drawNests,validateNestPlan,routeDistance,quadrantOf,
-  buildingNestSize,scaleSleepers,NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_SLEEPERS,NEST_YARD_RADIUS,LOOSE_TOTAL,LOOSE_NEAR_ROUTE,TRAINING_FROM_CAR,
+  buildingNestSize,scaleSleepers,NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_SLEEPERS,NEST_YARD_RADIUS,LOOSE_TOTAL,POPULATION,FILL_MIN,LOOSE_NEAR_ROUTE,TRAINING_FROM_CAR,
   type NestPlan,
 } from '../../src/maps/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
@@ -54,9 +54,9 @@ test('every seed draws a valid plan for 1 and 6 players (mix, quadrants, spacing
   }
 });
 
-test('the population: 110 asleep in the nests and 60 loose for one player, ≤ 320 asleep for six', () => {
-  for(const seed of SEEDS){
-    const one=cityNestPlan(city,seed,{routes:ROUTES,start}),six=cityNestPlan(city,seed,{players:6,routes:ROUTES,start});
+test('the slice-1 population (population 1): 110 asleep in the nests and 60 loose for one player, ≤ 320 for six', () => {
+  for(const seed of SEEDS.slice(0,8)){
+    const one=cityNestPlan(city,seed,{routes:ROUTES,start,population:1}),six=cityNestPlan(city,seed,{players:6,routes:ROUTES,start,population:1});
     assert.equal(sleepersOf(one),2*NEST_SLEEPERS.G+3*NEST_SLEEPERS.M+3*NEST_SLEEPERS.P,`seed ${seed}: dormindo nos ninhos`);
     assert.equal(looseOf(one),LOOSE_TOTAL,`seed ${seed}: soltos`);
     assert.ok(sleepersOf(six)+looseOf(six)<=320,`seed ${seed}: 6 jogadores ≤ 320 (${sleepersOf(six)+looseOf(six)})`);
@@ -64,11 +64,25 @@ test('the population: 110 asleep in the nests and 60 loose for one player, ≤ 3
   }
 });
 
-test('2 to 5 players: the exact scaled totals, still a valid plan', () => {
-  for(const seed of SEEDS.slice(0,6))for(const players of [2,3,4,5]){
+test('×POPULATION (card ninhos-perto-ataca-20x): 20× the sleepers of the nests and the loose bodies (the training bands as they were); for one player every body lies down, for six at least FILL_MIN (95 %)', () => {
+  assert.equal(POPULATION,20);
+  const want=(players:number)=>({nests:scaleSleepers((2*NEST_SLEEPERS.G+3*NEST_SLEEPERS.M+3*NEST_SLEEPERS.P)*POPULATION,players),loose:scaleSleepers(LOOSE_TOTAL*POPULATION,players)});
+  for(const seed of SEEDS.slice(0,6)){
+    const one=cityNestPlan(city,seed,{routes:ROUTES,start}),six=cityNestPlan(city,seed,{players:6,routes:ROUTES,start});
+    assert.equal(sleepersOf(one),want(1).nests,`seed ${seed}: nests, 1 player`);
+    assert.equal(looseOf(one),want(1).loose,`seed ${seed}: loose, 1 player`);
+    const got=sleepersOf(six)+looseOf(six),all=want(6).nests+want(6).loose;
+    assert.ok(got>=FILL_MIN*all&&got<=all,`seed ${seed}: 6 players ${got} of ${all}`);
+    assert.equal(one.loose.filter(b=>b.training).reduce((n,b)=>n+b.members.length,0),4*3,'the training bands as in slice 1');
+  }
+});
+
+test('2 to 5 players: the scaled totals (at least FILL_MIN), still a valid plan', () => {
+  for(const seed of SEEDS.slice(0,3))for(const players of [2,3,4,5]){
     const plan=cityNestPlan(city,seed,{players,routes:ROUTES,start});
     assert.deepEqual(validateNestPlan(plan,city,{routes:ROUTES,start}),[],`seed ${seed}, ${players} jogadores`);
-    assert.equal(looseOf(plan),scaleSleepers(LOOSE_TOTAL,players),`seed ${seed}, ${players}: soltos`);
+    const loose=scaleSleepers(LOOSE_TOTAL*POPULATION,players);
+    assert.ok(looseOf(plan)<=loose&&looseOf(plan)>=FILL_MIN*loose,`seed ${seed}, ${players}: soltos ${looseOf(plan)} de ${loose}`);
   }
 });
 
@@ -104,7 +118,7 @@ test('the draw is the seed\'s: the same seed gives the same plan, different seed
 });
 
 test('the validator catches a nest on the moto\'s route, one by the car and a band in the plaza', () => {
-  const plan=cityNestPlan(city,9,{routes:ROUTES,start});
+  const plan=cityNestPlan(city,9,{routes:ROUTES,start,population:1});
   const onRoute=ROUTES[0][Math.floor(ROUTES[0].length/2)];
   const broken:NestPlan={...plan,nests:[{...plan.nests[0],x:onRoute.x,y:onRoute.y},{...plan.nests[1],x:car.x+10,y:car.y},...plan.nests.slice(2)],
     loose:[...plan.loose,{x:car.x+2,y:car.y+2,training:false,members:[{x:car.x+2,y:car.y+2}]}]};

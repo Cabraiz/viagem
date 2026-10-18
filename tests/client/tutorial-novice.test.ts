@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {DEFAULT_WORLD,Simulation} from '../../multiplayer/simulation.ts';
 import {ticks} from '../../src/contract/types.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
-import {ROUNDS,WELCOME_XP} from '../../src/rules/waves.ts';
+import {ROUND1_XP} from '../../src/sim/progression.ts';
 import {Coach,WALK_LIGHT_MS,resetSessionMemory,type CoachShow,type Lesson} from '../../src/client/hud/coach.ts';
 import {MARQUEE_MS} from '../../src/client/hud/zones.ts';
 import {KILLCAM_MS} from '../../src/client/fun/zueira.ts';
@@ -49,6 +49,8 @@ interface Playtest {
   /** The joystick's "andar" light: first and last lit ms, and how many times it came on (once, at most). */
   litFrom?:number;litUntil?:number;litOns:number;
   downs:string[];minHp:number;round1EndMs?:number;
+  /** D-054: kills in round 1's wave (the first one brings the first level), and the team level when the run ends. */
+  killsR1?:number;level?:number;
   /** Two hints at once never happen by construction; this counts hints over a held slot (must stay 0). */
   overHeld:number;
 }
@@ -92,6 +94,7 @@ function playtest(seed:number,team:readonly string[],coach:Coach,{downAlly=false
       if(e.type==='round'&&(e.phase==='wave'||e.phase==='prepare')||e.type==='happening')bannerUntil=now+MARQUEE_MS;
       if(e.type==='round'&&e.phase==='wave'&&e.index===1)waveAt??=now;
       if(e.type==='round'&&e.phase==='end'&&e.index===1)r.round1EndMs??=now;
+      if(e.type==='kill'&&sim.world.round.index===1&&sim.world.round.phase==='wave')r.killsR1=(r.killsR1??0)+1;
       if(e.type==='last-bicho')killcamUntil=now+KILLCAM_MS;
       if(e.type==='downed'||e.type==='eliminated')r.downs.push(`${e.player}@R${sim.world.round.index}`);
     }
@@ -122,6 +125,7 @@ function playtest(seed:number,team:readonly string[],coach:Coach,{downAlly=false
     }
     if(sim.world.round.index>untilRound)break;
   }
+  r.level=sim.world.team.level;
   return r;
 }
 
@@ -129,7 +133,7 @@ const SEEDS=[0x056,0x0de1,0x7a2b,0x51d1];
 const SOLO=['cidadao-comum','roqueira','universitario','mendigo'];
 const SIX=['universitario','roqueira','mendigo','viciado-em-bet','pedreiro','cidadao-comum'];
 
-test('novato (stands 15 s, then follows the hints) survives round 1 and learns to walk and tap the chip in round 1 (solo, 4 classes x 4 seeds; D-054: no XP to pick)',t=>{
+test('novato (stands 15 s, then follows the hints) survives round 1 and learns to walk and tap the chip by the end of round 1 (solo, 4 classes x 4 seeds; D-054: no XP to pick)',t=>{
   const rows:string[]=[];
   for(const cls of SOLO)for(const seed of SEEDS){
     resetSessionMemory();
@@ -148,7 +152,10 @@ test('novato (stands 15 s, then follows the hints) survives round 1 and learns t
     const step=r.firstStepMs!;
     assert.ok(r.learned.get('walk')!-step<=1500,`${at}: "andar" goes within 1.5 s of the first step`);
     assert.ok(!r.shown.has('xp' as Lesson),`${at}: no XP hint (D-054)`);
-    assert.ok(r.learned.has('chip')&&r.learned.get('chip')!<=r.round1EndMs!,`${at}: the chip comes and is learned in round 1`);
+    // D-054: with a kill in round 1 the chip comes in its wave. A team that killed nothing there gets the first level as
+    // the wave ends, in the intermission's window (no chip to learn then).
+    if(r.killsR1)assert.ok(r.learned.has('chip')&&r.learned.get('chip')!<=r.round1EndMs!,`${at}: the chip comes and is learned in round 1`);
+    else assert.ok(r.level!>=2,`${at}: no kill in round 1, the first level still came with its end`);
   }
   for(const row of rows)t.diagnostic(row);
 });
@@ -189,18 +196,22 @@ test('first run of the phone only: the second run with the same storage shows no
   assert.deepEqual([...second.shown].filter(l=>l!=='rescue'&&l!=='gather'),[],'nothing but lessons whose moment never came');
 });
 
-test('D-054: round 1 gives the welcome XP at the wave start (the old crumbs), endless world only; the island gets none',()=>{
+test('D-054: round 1 pays the XP of the old crumbs with its first kill (or at its end), endless world only; the island gets none',()=>{
   for(const seed of SEEDS)for(const players of [1,6]){
     const sim=new Simulation(seed,{world:DEFAULT_WORLD});
     for(let i=0;i<players;i++)sim.add(`p${i}`,`P${i}`,SIX[i]);
     sim.resetRun();
     while(sim.world.round.phase!=='wave')sim.step();
-    assert.equal(sim.world.team.level*1000+sim.world.team.xp,ROUNDS[0].welcomeXp===WELCOME_XP?2001:-1,`seed ${seed}, ${players}p: level 2 and 1 XP at the start`);
+    assert.deepEqual([sim.world.team.level,sim.world.team.xp],[1,0],`seed ${seed}, ${players}p: nothing at the wave start (no pause before a step)`);
+    let first:number|undefined;
+    for(let t=0;t<ticks(60)&&first===undefined&&sim.world.round.index===1;t++)for(const e of sim.step())if(e.type==='kill'&&first===undefined)first=sim.tick;
+    if(first!==undefined)assert.ok(sim.world.team.level>=2,`seed ${seed}, ${players}p: the first kill brings level 2`);
+    while(sim.world.round.index<2)sim.step();
+    assert.ok(sim.world.team.level>=2,`seed ${seed}, ${players}p: level 2 by the end of round 1`);
   }
   const island=new Simulation(SEEDS[0]);island.add('p0','P0','cidadao-comum');island.resetRun();
   while(island.world.round.phase!=='wave')island.step();
-  assert.deepEqual([island.world.team.level,island.world.team.xp],[1,0]);
-  assert.ok(ROUNDS.slice(1).every(r=>!r.welcomeXp),'only round 1');
+  assert.equal(ROUND1_XP,6);
 });
 
 test('D-054: round 1 lays no XP on the ground (no crumbs, no gems): the kills fill the bar',()=>{

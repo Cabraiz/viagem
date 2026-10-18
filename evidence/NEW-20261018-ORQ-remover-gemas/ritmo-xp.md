@@ -54,3 +54,8 @@ nível | antes (mediana s) | depois (mediana s) | diferença
 16 | - | 709 | -
 nível final: antes 13,9,12,12,14,12,12,13,12,14,11,13,14,13,13,13,12,14,14,7,13,11,15,13 · depois 11,16,16,14,13,13,6,15,12,12,14,13,11,13,13,15,15,14,16,11,14,12,14,14
 ```
+
+Depois do bench: o código final mantém um sorteio descartado no lugar do antigo sorteio do ímã (progression.ts dropLoot), para o fluxo
+do RNG ficar como antes. Os testes com seed fixa (torres-bots: 3 e 6 bots, seed 3) só passam assim, porque dependem desse fluxo.
+O round 1 do mundo infinito: os 6 XP das migalhas vêm no 1º abate do round 1, ou no intervalo seguinte se ninguém matou nada.
+Não vêm no início da onda: ali abriria a pausa de nível (D-050) antes de qualquer passo.

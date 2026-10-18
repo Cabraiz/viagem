@@ -876,6 +876,7 @@ export class Simulation {
         case 'pickup':{
           const s=mine(e.player);if(!s)break;
           s.pickups++;
+          // D-054: no ímã any more, so RunStats.magnets stays 0 (kept on the wire: StatsWire and stored checkpoints keep their layout).
           if(e.kind==='heal')s.heals++;else if(e.kind==='chest')s.chests++;
           break;
         }

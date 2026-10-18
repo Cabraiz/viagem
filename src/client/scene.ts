@@ -3,6 +3,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
+import {installUploadQueue} from './preload/upload-queue.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -1423,6 +1424,7 @@ export class IslandScene extends Phaser.Scene {
 }
 
 export function createIsland(parent:HTMLElement,hooks:SceneHooks){
+  installUploadQueue(Phaser); // decode off the main thread, at most one big sheet per frame (preload/upload-queue.ts)
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},

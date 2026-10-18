@@ -411,7 +411,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
               if(ctx.tick<c.car.alarmUntil)out.push({key:'alarme',x:c.car.x,y:c.car.y,...NOISE.alarm});
               if(c.startTick!==null&&c.ended===undefined&&c.moto.task==='anda')out.push({key:'moto',...chaveiro!.moto(),...NOISE.moto});
               return out;
-            }},cp?.sono);
+            },
+            // Card bichos-travados: the safety net never empties the car's surroundings (a siege on it stands still).
+            keep:()=>{const c=chaveiro!.state.car;return [{x:c.x,y:c.y}];}},cp?.sono);
           world.sleepers=sleep.sleepers;
           // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
           // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).

@@ -53,6 +53,7 @@ import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
+import {effectivePhase} from './calm-phase.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -619,6 +620,8 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Whether the view may turn now (UX-camera-segue 4: never during a wave; the buttons go grey). */
   rotationLocked(){const net=this.hooks.net;return !!net&&rotationLocked(net.run?.phase,this.roundPhase);}
+  /** The round phase the client acts on (calm-phase.ts): the room's, or calm in the nests mode. */
+  get phase(){return this.roundPhase;}
   /** Turns the view by 90° steps around the hero: the world turns, the camera snaps back onto the hero. Refused during a wave. */
   rotateCamera(turn:number){
     if(!this.actor||this.rotationLocked())return this.view;
@@ -1045,7 +1048,8 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
-      this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
+      // D-051 nests: calm around this hero stands for the intermission (calm-phase.ts).
+      this.roundPhase=effectivePhase(runView,net.predicted);this.viewTick=runView.tick;
       // The match is on (a round in the room's run view, drawn by this scene): the production smoke (scripts/smoke-prod.mjs)
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
@@ -1054,7 +1058,7 @@ export class IslandScene extends Phaser.Scene {
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
-      const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
+      const runView=net.feed.peek();this.roundPhase=effectivePhase(runView,net.predicted);
       this.hooks.runView?.(runView);
     }
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);

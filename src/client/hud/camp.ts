@@ -28,6 +28,7 @@ import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 import {carBar} from './chaveiro.ts';
+import {effectivePhase,nestsRun} from '../calm-phase.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -342,7 +343,8 @@ export function createCamp(options:CampOptions):CampPart{
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.
-    const round=view.round,prepare=round?.phase==='prepare'&&(round.index??0)>=2;
+    // D-051 nests: no intermission, the forge opens when the hero is calm (calm-phase.ts).
+    const round=view.round,prepare=nestsRun(view)?effectivePhase(view,hero)==='prepare':round?.phase==='prepare'&&(round.index??0)>=2;
     // The wall crossing 50% and 25% in a wave: one notice each time (danger, 3 s).
     // (Only with a wall: with the chaveiro's car in its place, D-047, there is no wall to warn about.)
     if(lastFraction!==undefined&&round?.phase==='wave'&&!camp.wallDown&&wall)for(const mark of WALL_WARNINGS)if(lastFraction>=mark&&fraction<mark){

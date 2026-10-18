@@ -544,7 +544,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 const view=hud.view,scene=controller.scene;
                 if(run.phase!=='combat')obraRequests.resetRun();
                 else if(obraRequests.expire())obraSay(OBRA_NO_ANSWER);
-                const prepare=run.phase==='combat'&&view?.round?.phase==='prepare'&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
+                // D-051 nests: calm around the hero opens it (scene.phase, calm-phase.ts); the rounds keep the intermission.
+                const prepare=run.phase==='combat'&&scene.phase==='prepare'&&!!view&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
                 obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),hero:net.predicted,
                   pending:obraRequests.pendingSites(),done:obraRequests.doneSites(),
                   // Watching: the plan shows, the confirm says "Assistindo" (the room would refuse it anyway).

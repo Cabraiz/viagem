@@ -7,6 +7,7 @@
  *   node scripts/art-lite.mjs            make or refresh the copies whose source changed (the manifest keeps hashes)
  *   node scripts/art-lite.mjs --check    exit 1 when a source has no copy or changed since its copy was made
  *   node scripts/art-lite.mjs --all      remake every copy
+ *   node scripts/art-lite.mjs --kinds sprites        refresh only these families, keeping other entries and files
  *
  * Enemies (NEW-20261016-ORQ-inimigos-peso-download): the copy is also smaller, cell by cell, down to what a phone
  * shows. The game canvas has the page's CSS size, so an enemy's figure is drawn at artTargetHeight × the hero's 56 CSS
@@ -38,7 +39,8 @@ import {HERO_MIN_SCREEN_PX} from '../src/contract/offscreen.ts';
 
 const require=createRequire(import.meta.url);
 const sharp=require('sharp');
-const ROOT=fileURLToPath(new URL('..',import.meta.url));
+/** The repository it works on: this one, or ART_LITE_ROOT (tests: a scratch tree with its own public/ and art-lite.json). */
+const ROOT=process.env.ART_LITE_ROOT??fileURLToPath(new URL('..',import.meta.url));
 const MANIFEST=join(ROOT,'scripts/art-lite.json');
 const ENEMIES=join(ROOT,'public/art/enemies/manifest.json');
 /** libwebp settings: lossy colour at 90, exact alpha (cut-outs keep their edge); effort 6 saves ~2% for 3× the time. */
@@ -52,8 +54,8 @@ const SHOWN_SCALE=.35;
  */
 export const LITE_TEXELS=.9;
 const KINDS=['trees','sprites','enemies'];
-/** Imported v2 files the game has no slot for yet (character-sprites.ts): cardinals, downed, silhouette. No copy. */
-const UNUSED=/\.(dir4c|downed)\.webp$|^_silhueta\.webp$/;
+/** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
+const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -93,7 +95,9 @@ async function shrink({data,width,height},[cw,ch],[lw,lh]){
   return {data:out,width:W,height:rows*lh};
 }
 
-const args=new Set(process.argv.slice(2));
+const options=process.argv.slice(2),args=new Set(options),kindArg=options.indexOf('--kinds');
+const kinds=kindArg<0?KINDS:[...new Set((options[kindArg+1]??'').split(',').map(k=>k.trim()).filter(Boolean))];
+if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies.');
 const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{webp:WEBP,files:{}};
 manifest.enemyFigures??={};
 
@@ -124,8 +128,9 @@ for(const [id,piece] of Object.entries(enemies.pieces)){
 manifest.enemyFigures=Object.fromEntries(Object.entries(figures).sort(([a],[b])=>a.localeCompare(b)));
 
 const stale=[];
-for(const kind of KINDS){
+for(const kind of kinds){
   const dir=join(ROOT,'public/art',kind);
+  if(!existsSync(dir))continue;
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())).sort()){

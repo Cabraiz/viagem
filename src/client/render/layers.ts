@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -657,7 +657,8 @@ export class HordeRenderer{
     if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
       d.born=this.now;d.kind=k;d.art=art;d.elite=elite;d.costume.variant=dying?.costume;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
-      d.lift=ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
+      // A walker drawn as 'pombos' (enxame) dies on the ground, like it walked (enemyArtFlies).
+      d.lift=k==='pombos'&&enemyArtFlies(art)===false?0:ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
       d.image.clearTint();
     }else{
       const puff=this.poofs.spawn();
@@ -720,9 +721,11 @@ export class HordeRenderer{
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
     const q=this.project(this.at),depth=this.depth(this.at);
-    let lift=art.hover*size*body,dx=0;
+    // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
+    const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
+    let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;
     let sway=0;
-    if(a.kind==='pombos'&&!this.reduced){
+    if(flying&&!this.reduced){
       lift+=Math.sin(now*.011+a.phase*TAU)*6*body;
       dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10*body; // zig-zag flap
     }else if(a.kind==='bebado'&&!this.reduced)sway=Math.sin(now*.004+a.phase*TAU)*.09; // staggering (cambaleando)
@@ -747,7 +750,7 @@ export class HordeRenderer{
     }
     // The imported figure is sized by its drawn height (horde-art.ts): what hangs on the body follows it.
     const fit=a.fit=enemyArtRatio(a.image);
-    const shadow=art.width*size*fit*(a.kind==='pombos'?.45:.66)*body;
+    const shadow=art.width*size*fit*(flying?.45:.66)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);

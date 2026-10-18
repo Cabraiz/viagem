@@ -1,6 +1,6 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
- * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0,
+ * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0, cull=0 (no off-camera culling, for the A/B),
  * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
  * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
  * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
@@ -344,6 +344,7 @@ class HordeSandboxScene extends Phaser.Scene {
     this.projector=new Projector(this.view,this.field);
     // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
+      cull:new URLSearchParams(location.search).get('cull')!=='0', // `cull=0`: the A/B of the off-camera culling
       // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
       locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
     // `apagao=1` (art-d item 5): the critters show their blackout eyes (imported `olhos-escuro` when it is in); the dark
@@ -448,6 +449,7 @@ export async function openHordeSandbox(){
     game,scene,
     fps:()=>fps,worst:()=>worst,samples:()=>[...samples],
     stats:()=>scene.layers?.stats(),
+    culled:()=>scene.layers?.culled??0,
     rotate:(turn:number)=>scene.rotate(turn),
     setPaused:(value:boolean)=>{scene.paused=value;},
     resetWorst:()=>{worst=Infinity;samples.length=0;},

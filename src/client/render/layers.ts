@@ -40,6 +40,8 @@ type TextStyle=Phaser.Types.GameObjects.Text.TextStyle;
 export interface HordeRendererOptions{
   /** Allocation-free camera projection; the host updates projector.view on rotation, then calls refresh(). */
   projector:Projector;
+  /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
+  cull?:boolean;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
   /**
@@ -732,7 +734,7 @@ export class HordeRenderer{
     // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, bar or cues. The boss, the target and a coach's
     // lecture ring (wider than the body) are always drawn.
     const k=size*a.fit*body;
-    if(!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
+    if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
       if(!a.culled){a.culled=true;a.image.setVisible(false);a.shadow.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
       a.screenX=NaN;this.culledNow++;return;
     }

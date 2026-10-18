@@ -57,30 +57,31 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
    in front of the background, its top centered on the feet, with a soft contact shadow. If the WebP is missing the
    hero simply stands as before. --s is the drawn side of the square portrait. */
 .criacao .portrait > *, .criacao .portrait::before, .criacao .portrait::after {
-  --s: min(100cqw, 80cqh); --pw: calc(var(--s) * .92); --ph: calc(var(--pw) * .72); --feet: calc(80cqh - var(--s) * .03);
+  --s: min(100cqw, 80cqh); --pw: calc(var(--s) * .92); --ph: calc(var(--pw) * .5317); --feet: calc(80cqh - var(--s) * .03);
 }
 .criacao .portrait img { position: absolute; left: 0; top: 0; z-index: 2; width: 100%; height: 80%; object-fit: contain; object-position: 50% 100%; }
 /* The dance's canvas is wider than the frame: clip its sides only (the bigger podium may pass the frame's foot). */
 .criacao .portrait.dancing { overflow-x: clip; overflow-y: visible; }
 .criacao .portrait.dancing img { visibility: hidden; }
 /* The dance (menu-dance.ts) where the portrait stood (danca-no-podio, the user's adjustments of 17/10):
-   - the soles (0.754 of the 768x512 cell, the median over the 35 heroes) on the centre of the podium's top: 0.526 of
-     podio-cima's height (0.478 of the old podio-600, the widest row of its alpha), --ph x .064 under --feet (0.462);
+   - the soles (0.754 of the 768x512 cell, the median over the 35 heroes) on the centre of the podium's top: 0.419 of
+     podio-lado's height (0.478 of the old podio-600, the widest row of its alpha), --ph x .0507 under --feet (0.368);
    - 1.62 x --s tall (20% over the first 1.35), but never so tall that the highest head of any frame (0.039 of the
      cell) leaves the frame: the landscape phone, where --s is the frame's height, gets what fits. */
 .criacao .portrait .menu-dance {
-  --sole: calc(var(--feet) + var(--ph) * .064); --dh: min(calc(var(--s) * 1.62), calc(var(--sole) / .715));
+  --sole: calc(var(--feet) + var(--ph) * .0507); --dh: min(calc(var(--s) * 1.62), calc(var(--sole) / .715));
   position: absolute; z-index: 3; left: 50%; top: calc(var(--sole) - var(--dh) * .754);
   width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%); pointer-events: none;
 }
 /* The contact shadow under the dancer's soles, not under the portrait's feet. */
-.criacao .portrait.dancing::after { top: calc(var(--feet) + var(--ph) * .064 - var(--s) * .045); }
+.criacao .portrait.dancing::after { top: calc(var(--feet) + var(--ph) * .0507 - var(--s) * .045); }
 .criacao .portrait::before {
-  content: ''; position: absolute; z-index: 0; left: 50%; top: calc(var(--feet) - var(--ph) * .462);
+  content: ''; position: absolute; z-index: 0; left: 50%; top: calc(var(--feet) - var(--ph) * .368);
   width: var(--pw); height: var(--ph); transform: translateX(-50%);
-  /* podio-cima (danca-no-podio, 17/10): the podio-600 art seen from higher up (its top stretched 1.28x, its wall 0.93x,
-     column by column around the top's ellipse) and 15% bigger; --feet stands where it stood on the old one (0.42 → 0.462). */
-  background: url('/art/ui-extra/podio-cima-600.webp') center / contain no-repeat;
+  /* podio-lado (danca-no-podio, 17/10, approved by the user): the podio-600 art seen from lower, more from the side (its
+     top 0.75x, its wall 1.05x, column by column around the top's ellipse: scripts/podio-perspectiva.mjs) and 15% bigger;
+     --feet stands where it stood on the old one (0.42 → 0.368 of the new height). */
+  background: url('/art/ui-extra/podio-lado-600.webp') center / contain no-repeat;
 }
 .criacao .portrait::after {
   content: ''; position: absolute; z-index: 1; left: 50%; top: calc(var(--feet) - var(--s) * .045);

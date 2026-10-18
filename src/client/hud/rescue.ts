@@ -35,6 +35,7 @@ import {chaveiroExtras} from './chaveiro-extras.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
+import {shownTargets} from './arrows.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
 export const CITY_TARGETS_MS=100;
@@ -190,9 +191,10 @@ export class RescueBoard {
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,
       warnings:this.warnings,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
     const area=scene.usefulArea??zones.useful,seen=this.seen(now,zones);
-    hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen,windows:this.windows}));
+    // Only the kinds the game still points at (arrows.ts: the downed ally).
+    hud.edges?.render(layoutEdges(shownTargets(targets),area,scene.heroScreenRect(),{seen,windows:this.windows}));
     // What must keep an arrow (a caído or the boss off the field): the zones audit checks it against the arrows drawn.
-    hud.edges?.need(pointedTargets(targets,area,seen));
+    hud.edges?.need(pointedTargets(shownTargets(targets),area,seen));
     this.minimap(scene,view.players,focus,now);
   }
   /** The WC3 minimap at ≤ 10 Hz, on every map. */
@@ -281,7 +283,8 @@ export class RescueBoard {
     const banks=last.banks;
     const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
-    this.cityTargets=targets;this.groupKeys=groupKeys;
+    // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
+    this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
   destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

@@ -55,6 +55,8 @@
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
+import {shownTargets} from '../hud/arrows.ts';
+import type {EdgeKind} from '../hud/edges.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
@@ -273,6 +275,8 @@ function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:numbe
 let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
+/** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
+const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -491,7 +495,7 @@ if(bordas)void (async()=>{
     const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     const seen={viewport:{x:0,y:0,...viewport},covered};
-    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen,windows:all(WINDOWS)}));
+    hud.edges!.render(layoutEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS)}));
     // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));
@@ -622,11 +626,11 @@ if(cidade)void (async()=>{
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
       hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{})});
     previous=groupKeys;
-    const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
+    const arrows=city.layoutCityEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
-    hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
+    hud.edges!.need(pointedTargets(shownHere(targets),area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],

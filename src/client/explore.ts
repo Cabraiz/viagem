@@ -40,7 +40,7 @@ import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,t
 import {loadZoom,saveZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
-import {LayoutCache} from './hud/box-cache.ts';
+import {LayoutCache,viewportSize} from './hud/box-cache.ts';
 
 /** The shell's data attributes that change every frame (the hero's spot, the tick) are written at most this often (ms). */
 const SHELL_DATA_MS=250;
@@ -585,9 +585,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // Landscape: the map selector's small window sits in the side column (cidade-hud.md §7), the band keeps clear of it.
               const wait=run.phase!=='combat'?document.querySelector<HTMLElement>('.coop-wait:not([hidden])')?.getBoundingClientRect():undefined;
               const picker=wait?document.querySelector<HTMLElement>('.coop-wait-map.is-window:not([hidden])')?.getBoundingClientRect():undefined;
-              const z=hud.zones(),thumbs=Math.min(z.leftThumb?.y??innerHeight,z.rightThumb?.y??innerHeight);
+              const z=hud.zones(),screen=viewportSize(),thumbs=Math.min(z.leftThumb?.y??screen.height,z.rightThumb?.y??screen.height);
               if(controller)controller.scene.usefulArea=wait&&wait.width>0&&wait.height>0
-                ?besideSelector(freeAround({width:innerWidth,height:innerHeight},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
+                ?besideSelector(freeAround({width:screen.width,height:screen.height},{x:wait.left,y:wait.top,width:wait.width,height:wait.height},thumbs),picker&&{x:picker.left,y:picker.top,width:picker.width,height:picker.height})
                 :z.useful;
               // An open obra window (intermission), or in portrait the forge or Dona Cida's tray: the camera frames the hero
               // beside it, in the useful area that already leaves the window out, or on a short screen the band from the
@@ -598,7 +598,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 // Its box is read after the paint (box-cache.ts), not here after the frame's writes (F3); for a frame
                 // after it opens there is none yet.
                 const box=el?trayBox.get(now,el):undefined,rect=box?.el===el?box.rect:undefined,hero=scene.heroScreenRect();
-                scene.besideWindow=besideFrom({viewport:{width:innerWidth,height:innerHeight},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
+                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
                   tray:el&&rect?{kind:el.classList.contains('rh-cida')?'cida':'forja',rect}:undefined,hero:hero&&{width:hero.width,height:hero.height}});
                 scene.frameArea=rect&&(scene.besideWindow==='forja'||scene.besideWindow==='cida')?besideArea(z,rect):undefined;
               }

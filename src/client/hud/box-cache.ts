@@ -31,3 +31,21 @@ export class LayoutCache<T>{
     return this.value;
   }
 }
+
+/**
+ * The window's size, kept from the resize events. Reading innerWidth/innerHeight also brings the style up to date first
+ * (a forced recalculation when the frame already wrote to the DOM): in the F3 trace, the per-frame reads in seen(),
+ * position() and the pause card cost more than the boxes themselves.
+ */
+const viewport={width:0,height:0};
+let viewportOn=false;
+const readViewport=()=>{viewport.width=globalThis.innerWidth??0;viewport.height=globalThis.innerHeight??0;};
+export function viewportSize():Readonly<{width:number;height:number}>{
+  if(!viewportOn){
+    readViewport();
+    // Without a window (tests) every call reads again.
+    if(typeof addEventListener!=='function')return viewport;
+    viewportOn=true;addEventListener('resize',readViewport);
+  }
+  return viewport;
+}

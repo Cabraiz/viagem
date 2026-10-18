@@ -29,3 +29,11 @@ test('LayoutCache: a new key (zones changed, another window) asks for a read at 
   p.paint();assert.equal(cache.get(32,'zonesB'),'low');
   assert.equal(p.waiting,0,'same key and young: nothing scheduled');
 });
+
+test('viewportSize: the window size without reading innerWidth/innerHeight every frame (they force a style recalc)',async ()=>{
+  const {viewportSize}=await import('../../src/client/hud/box-cache.ts');
+  const g=globalThis as unknown as {innerWidth?:number;innerHeight?:number};
+  g.innerWidth=390;g.innerHeight=844;
+  assert.deepEqual({...viewportSize()},{width:390,height:844});
+  delete g.innerWidth;delete g.innerHeight;
+});

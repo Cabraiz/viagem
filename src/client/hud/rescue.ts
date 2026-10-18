@@ -18,7 +18,7 @@ import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
-import {LayoutCache} from './box-cache.ts';
+import {LayoutCache,viewportSize} from './box-cache.ts';
 import type {Rect,ScreenZones} from './zones.ts';
 import {WcMinimapDriver} from './wc-minimap/driver.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
@@ -217,14 +217,15 @@ export class RescueBoard {
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
     this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,
       selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
-      corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt,
+      corners:screenCorners(locate,focus,viewportSize()),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
       extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
     ({covered:this.covered,windows:this.windows}=this.boxCache.get(now,zones));
-    return {viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
+    const {width,height}=viewportSize();
+    return {viewport:{x:0,y:0,width,height},covered:this.covered};
   }
   private cityMap(asset:CityAssetLike){
     if(this.cityInfo?.asset!==asset)this.cityInfo={asset,map:cityMapInfo(asset)};

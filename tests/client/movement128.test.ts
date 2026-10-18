@@ -5,7 +5,9 @@ import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from '../../src/client/sprites/movement128.ts';
 import {Movement128Textures,movement128Textures} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
-import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+/** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
+const T=(ms:number)=>Math.ceil(ms/HERO_ANIM_RATE);
 import {screenDirection} from '../../src/client/projection.ts';
 import {heroSheetUrl,assetsParaPartida} from '../../src/client/preload/match-assets.ts';
 
@@ -39,13 +41,13 @@ test('manifest keeps exactly the16 uppercase movement keys; planner validates96p
   }
 });
 
-test('all128 source phases fit natural600/1000ms cycles;60Hz deliberately samples fewer poses',()=>{
+test('all128 source phases fit the 600/1000ms cycles, played at HERO_ANIM_RATE;60Hz deliberately samples fewer poses',()=>{
   for(const [durationMs,loop] of [[600,true],[1000,false]] as const){
     const plan={durationMs,loop};
-    assert.deepEqual(Array.from({length:128},(_,i)=>movement128Frame(plan,i*durationMs/128)),Array.from({length:128},(_,i)=>i));
-    assert.equal(movement128Frame(plan,durationMs),loop?0:127);
-    const frames=Array.from({length:Math.round(durationMs/1000*60)},(_,i)=>movement128Frame(plan,i*1000/60));
-    assert.ok(new Set(frames).size<=60&&new Set(frames).size<128,'128 available poses do not mean128 display refreshes');
+    assert.deepEqual(Array.from({length:128},(_,i)=>movement128Frame(plan,(i+.5)*durationMs/128/HERO_ANIM_RATE)),Array.from({length:128},(_,i)=>i));
+    assert.equal(movement128Frame(plan,T(durationMs)),loop?0:127);
+    const frames=Array.from({length:Math.round(T(durationMs)/1000*60)},(_,i)=>movement128Frame(plan,i*1000/60));
+    assert.ok(new Set(frames).size<=frames.length&&new Set(frames).size<128,'128 available poses do not mean128 display refreshes (60 Hz over the slowed cycle)');
   }
 });
 
@@ -116,7 +118,7 @@ test('both missing manifest IDs and a catalog-free hero start from preloaded nat
       renderer.animate(sprite as never,id,0,0,0,true,0,screenDirection(...vectors[direction],0));assert.equal(sprite.frame.name,String(i));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);
     }
     scene.time.now=10;renderer.animate(sprite as never,id,.1,0,0,true,0,screenDirection(0,1,0));await flush();assert.equal(requests.length,1);assert.equal(sprite.texture.key,`sprite128:${id}:idle8`,'native idle survives while walk loads');
-    scene.time.now=310;renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,'64');
+    scene.time.now=10+T(300);renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,'64');
     assert.equal(loads.length,1,'no legacy or other15 clips were queued');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().ready,2);assert.equal(cache.stats().leasedTextures,1);
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(images.size,0,'adopted preload and streamed clip are disposed together');
@@ -151,32 +153,32 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
   const render=(time:number,direction:'S'|'N'='S',attack=0,moving=true)=>{scene.time.now=time;if(moving)x+=.1;renderer.animate(sprite as never,'aposentado',x,0,attack,true,0,screenDirection(0,direction==='S'?1:-1,0));};
   try{
     render(0);render(10);await flush();assert.equal(requests.length,1);assert.match(sprite.texture.key,/dir4c$/,'legacy stays while the requested page loads');
-    decoders.get(requests[0])!();await flush();render(310);
+    decoders.get(requests[0])!();await flush();render(10+T(300));
     assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,'64');assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
     assert.deepEqual(renderer.figureIn(sprite as never,'aposentado'),clip().figure);
-    render(410,'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,'64');
+    render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,'64');
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');
-    decoders.get(requests[1])!();await flush();render(460,'N');assert.equal(sprite.frame.name,'96','turn/late arrival retains450ms walk phase');
-    render(1000,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,'96');
-    decoders.get(requests[2])!();await flush();render(1500,'N',1);assert.equal(sprite.frame.name,'64');
-    render(1600,'N',2);assert.equal(sprite.frame.name,'76','overlapping attack event cannot restart the1000ms swing');
+    decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,'96','turn/late arrival retains450ms walk phase');
+    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,'96');
+    decoders.get(requests[2])!();await flush();render(1424+T(500),'N',1);assert.equal(sprite.frame.name,'64');
+    render(1424+T(600),'N',2);assert.equal(sprite.frame.name,'76','overlapping attack event cannot restart the1000ms swing');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().leasedTextures,1);
     setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const attackKey=sprite.texture.key;
-    render(2001,'N',2,false);await flush();assert.equal(requests.length,4);assert.equal(sprite.texture.key,attackKey,'stopping holds the same oblique camera while rest decodes');
-    decoders.get(requests[3])!();await flush();render(2010,'N',2,false);
+    render(1424+T(1000)+1,'N',2,false);await flush();assert.equal(requests.length,4);assert.equal(sprite.texture.key,attackKey,'stopping holds the same oblique camera while rest decodes');
+    decoders.get(requests[3])!();await flush();render(2863,'N',2,false);
     assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');assert.equal(sprite.frame.name,'4','N is the fifth rest cell');
     for(const [i,direction] of HERO_DIRECTIONS.entries()){
-      scene.time.now=2020+i;const vectors={S:[0,1],SW:[-1,1],W:[-1,0],NW:[-1,-1],N:[0,-1],NE:[1,-1],E:[1,0],SE:[1,1]} as const;
+      scene.time.now=2873+i;const vectors={S:[0,1],SW:[-1,1],W:[-1,0],NW:[-1,-1],N:[0,-1],NE:[1,-1],E:[1,0],SE:[1,1]} as const;
       renderer.animate(sprite as never,'aposentado',x,0,2,true,0,screenDirection(...vectors[direction],0));assert.equal(sprite.frame.name,String(i));
     }
     assert.equal(requests.length,4,'turning in idle uses the same eight-pose texture');
-    sprite.visible=false;render(2100,'N',2,false);assert.match(sprite.texture.key,/dir4c$/);assert.equal(cache.stats().leasedTextures,0);
-    sprite.visible=true;render(2200,'N',2,false);assert.equal(cache.stats().leasedTextures,1);
-    render(2300,'S',3);await flush();assert.equal(requests.length,5);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8','leaving idle keeps the oblique rest until attack loads');
+    sprite.visible=false;render(2953,'N',2,false);assert.match(sprite.texture.key,/dir4c$/);assert.equal(cache.stats().leasedTextures,0);
+    sprite.visible=true;render(3053,'N',2,false);assert.equal(cache.stats().leasedTextures,1);
+    render(3153,'S',3);await flush();assert.equal(requests.length,5);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8','leaving idle keeps the oblique rest until attack loads');
     failures.get(requests[4])!();await flush();assert.equal(requests.length,6,'failed lite tries the original exactly once');
-    render(2310,'S',3);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');
-    failures.get(requests[5])!();await flush();render(2350,'S',3);assert.match(sprite.texture.key,/dir4c$/,'concrete failure restores a usable legacy attack');assert.equal(cache.stats().leasedTextures,0);
-    render(2370,'S',3);await flush();assert.equal(requests.length,6,'failed clip is not requested repeatedly');
+    render(3163,'S',3);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');
+    failures.get(requests[5])!();await flush();render(3203,'S',3);assert.match(sprite.texture.key,/dir4c$/,'concrete failure restores a usable legacy attack');assert.equal(cache.stats().leasedTextures,0);
+    render(3223,'S',3);await flush();assert.equal(requests.length,6,'failed clip is not requested repeatedly');
     sprite.emit('destroy');assert.equal(cache.stats().owners,0);
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(removed.length,4);
   }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}

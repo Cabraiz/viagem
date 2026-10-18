@@ -787,7 +787,8 @@ test('§7 world swap: the driver follows the world every frame, before the out-o
   assert.deepEqual(inCity.calls,['prewarm','cityRoute on','cityFrame']);
   // On the island: the radar's arrows, never the city frame.
   const onIsland=await fakeBoard({world:'ilha'},'combat');onIsland.board.tick();
-  assert.deepEqual(onIsland.calls,['cityRoute off','edges.render 1','edges.need'],'the island base (off screen) gets its arrow');
+  // setas-e-construir (arrows.ts): the island base (off screen) no longer gets an arrow; only a downed ally would.
+  assert.deepEqual(onIsland.calls,['cityRoute off','edges.render 0','edges.need'],'the radar still runs, its base arrow is off');
 });
 
 test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and only re-located in between; the horn base is audited',{skip:noCss},async()=>{
@@ -812,18 +813,19 @@ test('§7 city frame: the targets are rebuilt at ≤ 10 Hz (buffers reused) and 
   frame(1000);
   assert.equal(sweeps,1,'the first frame builds the targets');
   const enemy0=board.cityEnemies[0],person0=board.cityPeople[0];
-  const first=rendered.at(-1)!,group0=first.find(a=>a.kind==='grupo')!;
-  assert.ok(group0&&first.some(a=>a.kind==='base')&&first.some(a=>a.key==='p3'),first.map(a=>a.key).join());
+  // setas-e-construir (arrows.ts): of the group, the horn's base and the downed Zé, only Zé keeps an arrow.
+  const first=rendered.at(-1)!,group0=first.find(a=>a.key==='p3')!;
+  assert.deepEqual(first.map(a=>a.kind),['caido'],first.map(a=>a.key).join());
   // 5 more frames inside the window, the camera walking east: no sweep of the critters, the arrows follow the camera.
   for(let k=1;k<=5;k++){cam={x:me.x+k*.1,y:me.y};frame(1000+k*16);}
   assert.equal(sweeps,1,'no rebuild between two refreshes');
   const moved=rendered.at(-1)!.find(a=>a.key===group0.key)!;
-  assert.ok(moved.distance>group0.distance,'re-located: the hero walked away from the group');
+  assert.ok(moved.distance<group0.distance,'re-located: the hero walked toward Zé');
   frame(1000+CITY_TARGETS_MS);
   assert.equal(sweeps,2,'rebuilt at the next refresh');
   assert.equal(board.cityEnemies[0],enemy0,'the critter buffer is reused');assert.equal(board.cityPeople[0],person0,'the people buffer too');
-  // The horn is running (5 s): the base is a must-point arrow, so the audit's data-need lists it.
-  assert.deepEqual(needs.at(-1),['caido','base']);
+  // The horn is running (5 s), but the base's arrow is off (arrows.ts): the audit's data-need lists only the caído.
+  assert.deepEqual(needs.at(-1),['caido']);
 });
 
 test('§7 grupo edge kind: priority 2 (after chefe, before spawn and base), an existing sticker, its tag room kept in the area',()=>{

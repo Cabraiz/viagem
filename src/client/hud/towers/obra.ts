@@ -26,6 +26,7 @@ import {computeZones,type ZoneInput,type Rect} from '../zones.ts';
 import {layoutObra,obraArrows,planMarkers,type MarkerPlan,type ObraPoint} from './layout.ts';
 import {arrowHalf,beakTransform,distanceText,type EdgeArrow} from '../edges.ts';
 import {BRANCH_NAME,RAIL_SITE_ID,blockSpeech,blockText,canEvolve,cardsOf,defaultPick,selectable,towerSticker,treeFor,treeToOpen,type ObraAction,type ObraCard,type ObraTree,type ObraView} from './model.ts';
+import {EDGE_KINDS_SHOWN} from '../arrows.ts';
 
 const SUIT:Record<'A'|'B'|'C'|'root'|'rail',string>={
   // Paus (people standing together), ouros (a blast), espadas (a beam); the root a plain guard post; the rail its sleepers.
@@ -286,7 +287,8 @@ export class ObraHud {
       +`|${rectKey(hero)}|${placed.map(a=>`${a.key}@${Math.round(a.x)},${Math.round(a.y)}`).join(';')}|${rectKey(this.area)}|${scale}|${this.markerRects.map(rectKey).join(';')}`:'';
     if(key===this.arrowKey)return;
     this.arrowKey=key;
-    const laid=key?obraArrows(pts,this.hidden,this.area!,{hero,placed,viewport,scale,markers:this.markerRects}):[];
+    // The obra sites' arrows are off unless arrows.ts lists 'obra' (card setas-e-construir).
+    const laid=key&&EDGE_KINDS_SHOWN.has('obra')?obraArrows(pts,this.hidden,this.area!,{hero,placed,viewport,scale,markers:this.markerRects}):[];
     const half=arrowHalf(scale),dist=new Map(pts.map(p=>[p.id,p.distance]));
     // Each site keeps the slot it had (no button swaps under a finger).
     const free=this.arrowSlots.filter(s=>!laid.some(a=>a.key===s.id));

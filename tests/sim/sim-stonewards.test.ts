@@ -555,7 +555,7 @@ test('a stretched intermission moves the round offer due at its old end (assembl
   const p=s.players.get('p0')!;
   for(let a=0;a<360;a+=10){const q={x:Math.cos(a*Math.PI/180)*150,y:Math.sin(a*Math.PI/180)*150};if(walkable(q,s.terrain)){Object.assign(p,q);break;}}
   w.offers.set('p0',[{id:'rnd-2-p0',playerId:'p0',source:'round',level:2,choices:[{itemId:'tenis',level:1}],deadlineTick:old,defaultIndex:0},
-    {id:'lvl-5-p0',playerId:'p0',source:'level',level:5,choices:[{itemId:'ima',level:1}],deadlineTick:old+ticks(10),defaultIndex:0}]);
+    {id:'lvl-5-p0',playerId:'p0',source:'level',level:5,choices:[{itemId:'bone',level:1}],deadlineTick:old+ticks(10),defaultIndex:0}]);
   s.step();
   assert.ok(w.round.phaseEndsTick>old,'stretched');
   assert.equal(s.run.director.state.round.phaseEndsTick,w.round.phaseEndsTick,'the director knows the new end');

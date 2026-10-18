@@ -251,7 +251,7 @@ test('mendigo: heals 20 and shields 1 s standing allies within 3.5, never downed
   assert.deepEqual(res.helped,['p1','p2','p3']);
   assert.deepEqual(res.hits,[]);
 });
-test('mendigo: during a wave finds one heal(30)/magnet(1) pickup that expires, never xp; none at the cap',()=>{
+test('mendigo: during a wave finds one heal(30) pickup that expires, never xp nor a magnet (D-054); none at the cap',()=>{
   const kinds=new Set<string>();
   for(let seed=1;seed<=80;seed++){
     const {fake,ctx,events}=makeCtx(seed,100);
@@ -261,15 +261,15 @@ test('mendigo: during a wave finds one heal(30)/magnet(1) pickup that expires, n
     assert.equal(fake.pickups.size,1);
     const pick=fake.pickups.get(res.pickup)!;
     assert.ok(pick);assert.equal(pick.id,res.pickup);
-    assert.ok(pick.kind==='heal'||pick.kind==='magnet',pick.kind);
-    assert.equal(pick.value,pick.kind==='heal'?30:1);
+    assert.equal(pick.kind,'heal');
+    assert.equal(pick.value,30);
     kinds.add(pick.kind);
     assert.ok(dist(pick,p)<=1,`pickup near player: ${dist(pick,p)}`);
     assert.equal(pick.spawnTick,100);
     assert.equal(pick.expiresTick,100+ticks(FOUND_PICKUP_SECONDS));
     assert.equal(events.filter(e=>e.type==='fire').length,1);
   }
-  assert.deepEqual([...kinds].sort(),['heal','magnet']);
+  assert.deepEqual([...kinds],['heal']);
   const {fake,ctx}=makeCtx(4,100);
   for(let i=0;i<SKILL_PICKUP_CAP;i++)fake.pickups.set(`x${i}`,{id:`x${i}`,kind:'xp',value:1,x:0,y:0,spawnTick:0});
   const p=addPlayer(fake,'p1','mendigo');p.hp=10;

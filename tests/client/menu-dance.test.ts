@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {menuDancePlan,danceFrameAt,danceCell,MenuDance} from '../../src/client/ui/menu-dance.ts';
+import {readFileSync} from 'node:fs';
+import {menuDancePlan,danceFrameAt,danceCell,firstDancePage,playableFrame,MenuDance} from '../../src/client/ui/menu-dance.ts';
+import {playableClasses} from '../../src/rules/index.ts';
 
 const page={file:'aposentado-p1.webp',columns:5,rows:8,firstFrame:0,frameCount:40};
 const second={...page,file:'aposentado-p2.webp',firstFrame:40};
@@ -65,8 +67,9 @@ test('selected dance animates, retries lossless on failure, cancels on selection
   const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};
   try{
     index(dance());const consumer=new MenuDance(host as never,async()=>true);
-    consumer.show('aposentado');await flush();
-    assert.ok(classes.has('dancing'));assert.equal(canvas.dataset.frame,'0');assert.equal(draws.length,1);
+    consumer.show('aposentado');assert.ok(classes.has('dance-pending'),'the still portrait is hidden from the selection on');
+    await flush();
+    assert.ok(classes.has('dancing'));assert.ok(!classes.has('dance-pending'));assert.equal(canvas.dataset.frame,'0');assert.equal(draws.length,1);
     assert.deepEqual(requests,[...['p1','p2','p3','p4'].map(p=>`/art/lite/menu/danca/aposentado-${p}.webp`),...['p1','p2','p3','p4'].map(p=>`/art/menu/danca/aposentado-${p}.webp`)]);
     const tickAt=(elapsed:number)=>{const tick=[...frames.values()][0];frames.clear();tick(1000+elapsed);};
     for(const [frame,page] of [[39,1],[40,2],[79,2],[80,3],[119,3],[120,4],[127,4],[128,1]]){
@@ -74,8 +77,16 @@ test('selected dance animates, retries lossless on failure, cancels on selection
     }
     consumer.show('mendigo');await flush();
     assert.equal(classes.has('dancing'),false);assert.equal(canvas,undefined);assert.equal(frames.size,0);
+    assert.equal(classes.has('dance-pending'),false,'no dance for mendigo in this index: the portrait shows');
+    // A later page lost in both copies: the dance stays, looping over the first page (no switch back to the portrait).
     index(dance({pages:[page,{...second,file:'missing-p2.webp'},third,fourth]}));consumer.show('aposentado');await flush();
-    assert.equal(classes.has('dancing'),false,'both failures preserve the existing portrait');
+    assert.ok(classes.has('dancing'));assert.ok(!classes.has('dance-pending'));
+    tickAt(40*281.25);assert.equal(canvas.dataset.frame,'0','frame 40 is missing: back to the first page');
+    tickAt(20*281.25);assert.equal(canvas.dataset.frame,'20');
+    // The first page lost in both copies: the dance failed for good, the portrait shows.
+    index(dance({pages:[{...page,file:'missing-p1.webp'},second,third,fourth]}));consumer.show('pedreiro');consumer.show('aposentado');await flush();
+    assert.equal(classes.has('dancing'),false,'both failures of the first page preserve the existing portrait');
+    assert.equal(classes.has('dance-pending'),false);
     consumer.destroy();
   }finally{
     setArtIndex(parseArtIndex(undefined));
@@ -140,3 +151,21 @@ test('blocking in-flight decodes cancels stale pages and cannot recreate the men
   const current=e.decodes.splice(0);for(const complete of current)complete();await e.flush();
   assert.equal(e.canvas().dataset.danceOf,'pedreiro');assert.equal(e.images.length,8);assert.equal(e.frames.size,1);
 }));
+
+test('danca-sem-fallback: playableFrame loops over the pages that arrived; the preload names the first page of the default hero',()=>{
+  const plan={frames:128,fps:128/36,loop:true};
+  assert.equal(playableFrame(plan,39*281.25,40),39);assert.equal(playableFrame(plan,40*281.25,40),0);assert.equal(playableFrame(plan,41*281.25,40),1);
+  assert.equal(playableFrame(plan,100*281.25,128),100);assert.equal(playableFrame({...plan,loop:false},100*281.25,40),39);
+  assert.equal(firstDancePage('aposentado'),'/art/lite/menu/danca/aposentado-p1.webp');
+  index(dance());assert.equal(menuDancePlan('aposentado')!.pages[0].url,firstDancePage('aposentado'),'the preload and the dance ask for the same file');
+  setArtIndex(parseArtIndex(undefined));
+  const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
+  const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../../src/client/sections.css',import.meta.url),'utf8');
+  assert.match(html,new RegExp(`DEFAULT_HERO='${playableClasses[0].id}'`),'index.html preloads the first playable class');
+  assert.match(html,/<link rel="preload" href="\/art\/ui-extra\/podio-lado-600\.webp" as="image"/,'the podium is on screen from the first frame');
+  assert.match(css,/podio-lado-600\.webp/);
+  assert.match(html,/'\/art\/lite\/menu\/danca\/'\+id\+'-p1\.webp'/);
+  assert.match(main,/id="portrait" class="portrait dance-pending"/,'the first HTML already hides the still portrait');
+  assert.match(css,/\.criacao \.portrait\.dance-pending img \{ visibility: hidden; \}/);
+  assert.match(css,/@media \(hover: hover\) and \(pointer: fine\) \{\s*\.criacao \.portrait \.menu-dance \{ --dh: calc\(min\(calc\(var\(--s\) \* 1\.62\), calc\(var\(--sole\) \/ \.715\)\) \* \.7\); \}/,'PC: 30% smaller, same soles');
+});

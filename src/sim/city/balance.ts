@@ -46,7 +46,7 @@ export interface CityRoundKnobs {count:number;hp:number;cadence:number;siegeShar
  * damage × every hit the players take (contact, hostile projectiles, telegraphs: the core's damagePlayer, before armor)
  * and bossHp × the global bossHp.
  */
-export type CityTeamKnobs=Partial<CityRoundKnobs&{lootValue:number;damage:number;bossHp:number}>;
+export type CityTeamKnobs=Partial<CityRoundKnobs&{lootValue:number;damage:number;bossHp:number;nestDamage:number}>;
 /** Team sizes a `players` entry may name (the director's scaling clamps to 1..6). */
 export const CITY_TEAM_SIZES=[1,2,3,4,5,6] as const;
 export interface CityBalance {
@@ -155,8 +155,16 @@ export function teamDamage(balance:Pick<CityBalance,'players'>,plan:Pick<RoundPl
   if(!plan||!Number.isInteger(plan.index)||plan.index<2||plan.index>ROUND_COUNT)return 1;
   return teamKnobs(balance,plan.players).damage??1;
 }
+/**
+ * × every hit a player takes in mode 'ninhos' (D-051), for a team of `team` (the nests' room size, fixed on their first
+ * step): players[team].nestDamage. That mode has no rounds (the director holds round 1 open), so the round knobs and
+ * `damage` stay neutral there (balanco-1p-ninhos-pos-gemas: a solo took 0–30 damage before the boss in a whole run).
+ */
+export const teamNestDamage=(balance:Pick<CityBalance,'players'>,team?:number)=>teamKnobs(balance,team).nestDamage??1;
 /** Whether some team size has its own damage (assemble.ts only then hooks the core's damagePlayer). */
 export const hasTeamDamage=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.damage!==undefined&&k.damage!==1);
+/** Whether some team size has its own nestDamage (assemble.ts only then hooks damagePlayer in mode 'ninhos'). */
+export const hasTeamNestDamage=(balance:Pick<CityBalance,'players'>)=>!!balance.players&&Object.values(balance.players).some(k=>k.nestDamage!==undefined&&k.nestDamage!==1);
 /** × the city boss's base hp for a team of `team` (the plan count at the spawn), on top of the global bossHp. */
 export const teamBossHp=(balance:Pick<CityBalance,'players'>,team?:number)=>teamKnobs(balance,team).bossHp??1;
 /** Whether some team size has its own bossHp (assemble.ts only then hands the boss an hpScale). */

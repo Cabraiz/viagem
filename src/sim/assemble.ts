@@ -40,7 +40,7 @@ import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './ban
 import type {BankView} from '../contract/index.ts';
 import {calmGate} from './ninhos/calma.ts';
 import {CALMA} from '../rules/index.ts';
-import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
+import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,hasTeamNestDamage,teamBossHp,teamDamage,teamNestDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
 export const KILL_SCORE=10;
@@ -381,7 +381,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City team damage (cidade-11, CityBalance.players[n].damage): × every hit a player takes, through the core's single
   // damage path; n is the director's plan count (the current round, kept through its intermission), neutral before
   // round 2. Set (or cleared) on every run; absent unless some team size has a damage knob, so damagePlayer is unchanged.
-  const damageScale=cityBalance&&hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
+  // D-051 mode 'ninhos' (no rounds): CityBalance.players[n].nestDamage instead, n the nests' room size (1 before their
+  // first step).
+  const damageScale=!cityBalance?undefined:nestMode?(hasTeamNestDamage(cityBalance)?()=>nests&&nests.state.startTick!==null?teamNestDamage(cityBalance,nests.state.players):1:undefined)
+    :hasTeamDamage(cityBalance)?()=>teamDamage(cityBalance,director!.state.plan):undefined;
   world.playerDamageScale=damageScale;
   if(objective&&openPlanner&&cityTerrain){
     const p=cityTerrain.asset.points,wall=stonewards.state.wall;

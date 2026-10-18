@@ -162,7 +162,7 @@ export interface RunExtras {
 /** id, maxHp, flags (1 downed, 2 eliminated), revive progress 0..1, bleedOutTick, weapons [id,level][], passives [id,level][]. */
 /** [id, maxHp, flags, revive progress, bleedOutTick, weapons, passives, stats?]; stats is StatsWire (award-stats-server). */
 export type PlayerExtraWire=[string,number,number,number,number,[string,number][],[string,number][],StatsWire?];
-/** [damage, kills, revives, pickups, downs, heals, chests, magnets, evolves], integers. */
+/** [damage, kills, revives, pickups, downs, heals, chests, magnets, evolves], integers. D-054: magnets is always 0 (no ímã), kept so the wire and stored checkpoints keep their layout. */
 export type StatsWire=[number,number,number,number,number,number,number,number,number];
 export interface RunStats {damage:number;kills:number;revives:number;pickups:number;downs:number;heals:number;chests:number;magnets:number;evolves:number}
 export const emptyStats=():RunStats=>({damage:0,kills:0,revives:0,pickups:0,downs:0,heals:0,chests:0,magnets:0,evolves:0});

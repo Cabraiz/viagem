@@ -24,22 +24,6 @@ export function squash(timeMs:number,phase:number,moving:boolean,reduced:boolean
   out.sy=1+s;out.sx=1-s*.8;return out;
 }
 
-export const GEM_HOPS_MS=900;
-const HOPS:readonly (readonly [number,number])[]=[[380,22],[290,10],[230,4]];
-/** Upward (negative) y offset for a freshly dropped gem: three decaying hops, then a gentle bob. */
-export function gemBounce(ageMs:number,reduced:boolean){
-  if(reduced||ageMs<0)return 0;
-  if(ageMs<GEM_HOPS_MS){
-    let start=0;
-    for(let i=0;i<HOPS.length;i++){
-      const duration=HOPS[i][0];
-      if(ageMs<start+duration){const t=(ageMs-start)/duration;return -4*HOPS[i][1]*t*(1-t);}
-      start+=duration;
-    }
-  }
-  return -2.5*(1-Math.cos((ageMs-GEM_HOPS_MS)/1000*TAU*.8));
-}
-
 export const HIT_FLASH_MS=90;
 export const hitFlash=(ageMs:number)=>ageMs>=0&&ageMs<HIT_FLASH_MS;
 /**

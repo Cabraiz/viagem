@@ -29,7 +29,7 @@ export const levelLabel=(level:number)=>`Niv ${Math.max(1,Math.floor(level)||1)}
 /** pt-BR label and format of each stat a passive moves ("x": a multiplier, "n": a plain number). */
 const STAT_TEXT:Partial<Record<keyof PlayerStats,{label:string;format:'x'|'n'}>>={
   maxHp:{label:'Vida máxima',format:'n'},moveSpeed:{label:'Velocidade',format:'x'},might:{label:'Dano',format:'x'},
-  area:{label:'Área',format:'x'},cooldown:{label:'Recarga',format:'x'},magnet:{label:'Coleta',format:'n'},
+  area:{label:'Área',format:'x'},cooldown:{label:'Recarga',format:'x'},
   luck:{label:'Sorte',format:'x'},growth:{label:'XP',format:'x'},amount:{label:'Projéteis',format:'n'},
   regen:{label:'Regeneração',format:'n'},armor:{label:'Armadura',format:'n'},duration:{label:'Duração',format:'x'},
   speed:{label:'Velocidade dos tiros',format:'x'},revive:{label:'Resgate',format:'x'},

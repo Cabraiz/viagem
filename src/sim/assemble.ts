@@ -5,7 +5,7 @@
 import type {SimWorld} from './core.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {MAX_ENEMIES,MAX_PICKUPS,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,mergeXpGems,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
+import {MAX_ENEMIES,MAX_PROJECTILES,ROUNDS,granaPerKill,hasRoom,playerScale,type EnemyRole,type RoundRoster} from '../rules/index.ts';
 import {createDirector,type Director,type DirectorState} from './director.ts';
 import {ELITE,createEnemy,enemyDef,isEnemyKind,type EnemyKind} from './enemies/catalog.ts';
 import {MINION_KINDS,createEnemyAi,type EnemyAi,type EnemyAiState} from './enemies/ai.ts';
@@ -453,9 +453,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     zueira,enemyAi,boss,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{}),
       ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
-    // XP gems merge above the pickup cap without losing XP (VGM-032).
     {id:'pickups',step(ctx:SimContext){
-      progression.pickups.step(ctx);mergeXpGems(ctx.pickups,MAX_PICKUPS);
+      progression.pickups.step(ctx);
       // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
       // run (a join, a rematch); items walked over go to it.
       if(inventory){for(const p of ctx.players.values())if(!hasInventory(p)&&!p.spectator){p.build=manualStartingBuild();refreshStats(p);}inventory.step(ctx);}

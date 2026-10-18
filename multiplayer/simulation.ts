@@ -876,7 +876,7 @@ export class Simulation {
         case 'pickup':{
           const s=mine(e.player);if(!s)break;
           s.pickups++;
-          if(e.kind==='heal')s.heals++;else if(e.kind==='magnet')s.magnets++;else if(e.kind==='chest')s.chests++;
+          if(e.kind==='heal')s.heals++;else if(e.kind==='chest')s.chests++;
           break;
         }
       }

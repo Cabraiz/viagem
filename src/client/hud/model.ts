@@ -237,7 +237,7 @@ export interface RunResult {
 }
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */
-export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;magnets:number;chests:number;pickups:number;kills:number}
+export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;chests:number;pickups:number;kills:number}
 export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number;
   /** What downed each player (UX-voce-e-dano f). */
   causes:CauseLog}
@@ -255,7 +255,7 @@ export function resetTally(tally:RunTally){
   resetCauses(tally.causes);
   return tally;
 }
-const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0});
+const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,chests:0,pickups:0,kills:0});
 
 export function tallyOf(tally:RunTally,playerId:string){
   let entry=tally.players.get(playerId);
@@ -280,7 +280,7 @@ export function applyEvents(tally:RunTally,view:RunView){
       case 'kill':rememberKill(tally.causes,event.enemy,event.kind);if(event.by)tallyOf(tally,event.by).kills++;break;
       case 'pickup':{
         const entry=tallyOf(tally,event.player);entry.pickups++;
-        if(event.kind==='heal')entry.heals++;else if(event.kind==='magnet')entry.magnets++;else if(event.kind==='chest')entry.chests++;
+        if(event.kind==='heal')entry.heals++;else if(event.kind==='chest')entry.chests++;
         break;
       }
     }

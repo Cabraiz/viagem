@@ -102,15 +102,18 @@ export const NEST_THREAT_RADIUS=40;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
- * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP).
+ * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP). With other weapons,
+ * within the longest `range` of them (carro-cedo-1p: a solo with only the faca, range 1.3, stood at 2.8 u from the
+ * two critters at the car and never cut one; they took the car's 120 hits by minute 5 in ~1/5 of the 1p runs).
  */
 export function siegeStand(weapons:readonly {id:string;level:number}[]):number{
-  let ring=0;
+  let ring=0,reach=0;
   for(const w of weapons){
     const def=weaponCatalog.get(w.id);if(!def)continue;
-    if(def.pattern!=='orbit')return DANGER+.2;
-    ring=Math.max(ring,weaponLevel(def,w.level).area);
+    const row=weaponLevel(def,w.level);
+    if(def.pattern==='orbit')ring=Math.max(ring,row.area);else reach=Math.max(reach,row.range);
   }
+  if(reach>0)return Math.min(DANGER+.2,Math.max(.8,Math.max(reach,ring)-.2));
   return ring>0?Math.max(.8,ring-.2):DANGER+.2;
 }
 /** Bots with an even index guard the wall (shorter leash); the others roam. */

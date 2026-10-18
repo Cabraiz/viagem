@@ -95,13 +95,14 @@ const gameRoom=(s:ReturnType<typeof storage>)=>{
   g.city={text:cityText,ref:CITY};g.defaults={...g.defaults,cityPlayable:true};return g;
 };
 
-test('the Worker: ?modo=muralha builds the wall room, and a restart keeps it; a row from before (no objective) still restarts on the chaveiro',async()=>{
+test('the Worker (rodada-legado): a create asking for the wall gets the chaveiro with the nests; a wall row from before still restarts as the wall',async()=>{
   const s=storage(),g=gameRoom(s);
   await g.init('ABCDEF1234',{map:'cidade-nevada',solo:true,objective:'muralha'});
-  assert.equal(g.room.map.id,'cidade-nevada');assert.equal(g.room.sim.objective,undefined,'muralha: the wall mode');
-  assert.deepEqual(s.store.get('options'),{map:'cidade-nevada',solo:true,objective:'muralha'});
-  const restarted=await gameRoom(s).load(s.store.get('created'));
-  assert.equal(restarted.sim.objective,undefined,'still the wall after a restart');
+  assert.equal(g.room.map.id,'cidade-nevada');assert.equal(g.room.sim.objective,'chaveiro','the wall is legacy: the chaveiro');
+  assert.deepEqual(s.store.get('options'),{map:'cidade-nevada',solo:true,mode:'ninhos',combat:'manual'});
+  // A row stored before rodada-legado with the wall (storedOptions) restarts as it was created, to the end of its match.
+  const legacy=storage();legacy.store.set('created',Date.now());legacy.store.set('terrainSeed',7);legacy.store.set('options',{map:'cidade-nevada',solo:true,objective:'muralha'});
+  assert.equal((await gameRoom(legacy).load(legacy.store.get('created'))).sim.objective,undefined,'still the wall after a restart');
   // A row stored before ?modo=muralha existed: {map, solo} (or none) restarts as it was, on the city's default.
   for(const options of [{map:'cidade-nevada',solo:true},undefined]){
     const old=storage();old.store.set('created',Date.now());old.store.set('terrainSeed',7);if(options)old.store.set('options',options);
@@ -110,10 +111,9 @@ test('the Worker: ?modo=muralha builds the wall room, and a restart keeps it; a 
   }
 });
 
-test('a friends room created with ?modo=muralha keeps the wall when the owner switches to the city',async()=>{
-  const s=storage(),g=gameRoom(s);
-  await g.init('ABCDEF1235',{objective:'muralha'});
-  const room=g.room as Room,a=peer();let t=Date.now();
+test('a friends room stored with the wall (before rodada-legado) keeps it when the owner switches to the city',async()=>{
+  const s=storage();s.store.set('created',Date.now());s.store.set('terrainSeed',7);s.store.set('options',{objective:'muralha'});
+  const room=await gameRoom(s).load(s.store.get('created')) as Room,a=peer();let t=Date.now();
   room.connect(a,t);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t);
   say(room,a,{t:'setMap',map:'infinito'},t+=OWNER_GAP_MS);await room.ready();
   assert.equal(room.map.id,'infinito');

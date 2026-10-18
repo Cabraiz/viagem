@@ -36,9 +36,9 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   {
     classId:'mendigo',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{luck:0.2,magnet:0.5,regen:0.2},
+    classBonus:{luck:0.2,growth:0.08,regen:0.2},
     skill:{name:'Tesouro do Achados',cooldown:20,
-      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto e, no meio do round, ainda acha uma coxinha ou um ímã.'},
+      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto e, no meio do round, ainda acha uma coxinha.'},
     lines:['Isso aqui ainda dá jogo.','Papelão é tecnologia, confia.','Abrigo cinco estrelas, sem taxa de serviço.','Engenharia de reaproveitamento!'],
   },
   {
@@ -57,7 +57,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   {
     classId:'motogirl',role:'Suporte',weapon:'pombo',
-    classBonus:{moveSpeed:0.2,magnet:0.3},
+    classBonus:{moveSpeed:0.2,growth:0.05},
     skill:{name:'Entrega Expressa',cooldown:14,
       effect:'Voa até o aliado mais machucado, atropela os bichos no caminho e entrega uma cura. Sozinha, come o próprio pedido.'},
     lines:['Tô na porta. Qual é o portão?','Pedido saiu pra entrega!','Cinco estrelas, por favor.','Sem troco pra cem, hein.'],
@@ -163,7 +163,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   {
     classId:'feirante',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{luck:0.15,magnet:0.3},
+    classBonus:{luck:0.15,growth:0.05},
     skill:{name:'É Pra Acabar',cooldown:16,
       effect:'Distribui fruta: cura um pouco os aliados em volta e as armas de todos ali disparam de novo na hora.'},
     lines:['Olha a xepa, freguesia!','Pode provar, freguês, tá docinha!','Leva a caixa que eu faço um precinho.','Três por dez, só hoje, é pra acabar!'],
@@ -198,7 +198,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   {
     classId:'mae-pet',role:'Suporte',weapon:'pombo',
-    classBonus:{magnet:0.4,luck:0.1},
+    classBonus:{growth:0.06,luck:0.1},
     skill:{name:'Cadê o Neném',cooldown:18,
       effect:'O pet busca uma coxinha e larga ao lado do aliado mais machucado por perto. Só durante o round.'},
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
@@ -268,7 +268,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
   },
   {
     classId:'conspiracionista',role:'Controle',weapon:'guarda-chuva',
-    classBonus:{luck:0.15,magnet:0.2},
+    classBonus:{luck:0.15,growth:0.03},
     skill:{name:'Eu Já Sabia',cooldown:15,
       effect:'Sensor de longo alcance: os 6 bichos mais perto ficam lentos e levam um dano leve.'},
     lines:['Coincidência? Acho que não.','Eles não querem que você saiba.','O chefe é um robô. Repara.','Tá tudo conectado, olha o mapa!'],

@@ -73,9 +73,7 @@ export const enemyArtKey=(id:string,file:string,page=0,pages=1)=>`art:enemy:${id
 export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mode:'sheet'|'bake';size?:readonly [number,number];fit?:'contain'|'fill'}
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
 export const STATIC_ART:readonly StaticArt[]=[
-  pickup('xp',['gema-pequena','gema']),
   pickup('heal',['coxinha']),
-  pickup('magnet',['ima']),
   pickup('chest',['bau','bau-fechado']),
   pickup('resource',['recurso']),
   // Size of render/textures.ts BOLETO_SIZE (that module imports Phaser at runtime).
@@ -576,6 +574,15 @@ export function enemyArtRow(image:object){const s=states.get(image);return s&&s.
  * frame's sheet is shown instead (CityOutlines.show maps origin and scale); elsewhere, and always outside the city, the
  * imported sheet with its baked umber rim.
  */
+/**
+ * Whether an enemy's imported art flies (it has a `fly` animation): true or false, undefined without art for the id.
+ * BUG sombra-longe: the enxame role draws as 'pombos', so walkers (rato-de-boteco, cachorro-de-madame, dominó…) took
+ * the pigeons' hover and zig-zag and floated far above their shadows.
+ */
+export function enemyArtFlies(id:string|undefined):boolean|undefined{
+  const piece=id?artPiece('inimigos',id):undefined;
+  return piece?Object.hasOwn(piece.files,'fly'):undefined;
+}
 export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);

@@ -39,7 +39,8 @@ import {HERO_MIN_SCREEN_PX} from '../src/contract/offscreen.ts';
 
 const require=createRequire(import.meta.url);
 const sharp=require('sharp');
-const ROOT=fileURLToPath(new URL('..',import.meta.url));
+/** The repository it works on: this one, or ART_LITE_ROOT (tests: a scratch tree with its own public/ and art-lite.json). */
+const ROOT=process.env.ART_LITE_ROOT??fileURLToPath(new URL('..',import.meta.url));
 const MANIFEST=join(ROOT,'scripts/art-lite.json');
 const ENEMIES=join(ROOT,'public/art/enemies/manifest.json');
 /** libwebp settings: lossy colour at 90, exact alpha (cut-outs keep their edge); effort 6 saves ~2% for 3× the time. */
@@ -53,8 +54,8 @@ const SHOWN_SCALE=.35;
  */
 export const LITE_TEXELS=.9;
 const KINDS=['trees','sprites','enemies','menu'];
-/** Imported v2 files the game has no slot for yet (character-sprites.ts): cardinals, downed, silhouette. No copy. */
-const UNUSED=/\.(dir4c|downed)\.webp$|^_silhueta\.webp$/;
+/** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
+const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){

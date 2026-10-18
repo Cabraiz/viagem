@@ -38,10 +38,10 @@ const roster=[
 const builds=[
   {weapons:[{id:'chinelo',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},
   {weapons:[{id:'boleto',level:4},{id:'pombo',level:2}],passives:[{id:'cartao',level:3}]},
-  {weapons:[{id:'audio',level:2},{id:'guarda-chuva',level:1},{id:'pombo',level:1},{id:'cafe',level:1}],passives:[{id:'bone',level:4},{id:'ima',level:1},{id:'megafone',level:1}]},
+  {weapons:[{id:'audio',level:2},{id:'guarda-chuva',level:1},{id:'pombo',level:1},{id:'cafe',level:1}],passives:[{id:'bone',level:4},{id:'cartao',level:1},{id:'megafone',level:1}]},
   {weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:2}],passives:[{id:'tenis',level:5},{id:'oculos',level:2}]},
   {weapons:[{id:'guarda-chuva',level:6}],passives:[{id:'marmita',level:5},{id:'cafe-forte',level:2}]},
-  {weapons:[{id:'pombo',level:7},{id:'audio',level:3}],passives:[{id:'oculos',level:4},{id:'megafone',level:2},{id:'ima',level:3}]},
+  {weapons:[{id:'pombo',level:7},{id:'audio',level:3}],passives:[{id:'oculos',level:4},{id:'megafone',level:2},{id:'cartao',level:3}]},
 ];
 const stats=[
   {damage:18420,kills:212,revives:1,pickups:140},
@@ -109,7 +109,7 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
 /** Late-run worst case: 6 weapons + 6 passives each (the most a build can hold), for layout stress tests. */
 const FULL_BUILD={
   weapons:[{id:'chinelo-evo',level:1},{id:'boleto',level:8},{id:'cafe',level:7},{id:'guarda-chuva',level:6},{id:'pombo',level:5},{id:'audio',level:4}],
-  passives:[{id:'cafe-forte',level:5},{id:'marmita',level:5},{id:'tenis',level:4},{id:'megafone',level:3},{id:'bone',level:2},{id:'ima',level:1}],
+  passives:[{id:'cafe-forte',level:5},{id:'marmita',level:5},{id:'tenis',level:4},{id:'megafone',level:3},{id:'bone',level:2},{id:'cartao',level:1}],
 };
 
 export function fakeResult(playerCount:number,victory=true,full=false):RunResult{

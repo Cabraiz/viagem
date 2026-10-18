@@ -138,7 +138,9 @@ const tele=real&&params.get('tele')==='1';
  * an elite and every pickup in a ring around the hero, to see them on the ground under the hero (`hero=cx,cy`).
  */
 const outlinesOn=params.get('contorno')!=='0';
-const cast=tele&&params.get('elenco')==='1';
+// elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
+const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
+const cast=tele&&params.has('elenco');
 /**
  * `arsenal=1` (with tele=1; card armas-caixas-render, D-051): the manual combat's crates by rarity, one opening under the
  * hero and one bursting open, items on the ground, the hero's hand and the arsenal's shots (sandboxes/arsenal-view.ts);
@@ -157,7 +159,7 @@ const objective=params.get('objetivo')==='1';
 const bancos=real&&params.get('bancos')==='1';
 /**
  * `obra=1` with `objetivo=1` (D-052 slice 4, placeholder): the fortify layer around the fake car: a wall row by damage
- * stage, two free barricades (rot 0 and 1), the hero on the rope at the bumper and the build ghost with its hints.
+ * stage, three free barricades (rot 0 and 1, one down), the hero on the rope at the bumper and the build ghost with its hints.
  * `fantasma=` muro|barricada|vigia-do-predio (default) picks the piece; `fantasma=carro` puts it on the car (red).
  */
 const obra=objective&&params.get('obra')==='1';
@@ -405,7 +407,7 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:400,c,r,...(rot?{rot}:{})};
     };
-    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220)];
+    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220),bar('b2',c0+9,r0+3,0,0)];
     const tick=100,objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
@@ -675,12 +677,12 @@ if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start(
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{
-  const kinds=[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
+  const kinds:string[]=castIds.length?castIds:[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
   const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
-    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
-    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:kind==='xp'?5:1}))]};
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
+    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:1}))]};
 }
 
 /**

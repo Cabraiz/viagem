@@ -1,6 +1,6 @@
 import './client/style.css';
 import { setupSections } from './client/sections.ts';
-import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
+import { filterClasses, getClass, isPlayableClass, playableClasses as classes, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
@@ -38,7 +38,8 @@ let nickname = '';
 try {
   const saved = JSON.parse(localStorage.getItem('viagem:hero:v1') ?? 'null');
   if (saved && typeof saved.name === 'string' && typeof saved.classId === 'string') {
-    selected = getClass(saved.classId) ?? selected;
+    // D-053: a saved hidden class falls back to the first playable one.
+    if(isPlayableClass(saved.classId)) selected = getClass(saved.classId) ?? selected;
     nickname = saved.name.slice(0,20);
     color = colors.includes(saved.color) ? saved.color : color;
   }

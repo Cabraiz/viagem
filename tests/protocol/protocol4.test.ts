@@ -1690,3 +1690,23 @@ test('D-052: the build command\'s rot and refusals are the agreed ones',()=>{
   assert.ok(!isBuildRot(2)&&!isBuildRot('1')&&!isBuildRot(-1)&&!isBuildRot(.5));
   assert.deepEqual([...FREE_BUILD_REFUSALS],['tranca','carro','ninho','ocupado','limite','fora','pausa']);
 });
+
+import {AWAKE_PER_VIEWER} from '../../src/contract/offscreen.ts';
+test('20x: a client gets at most AWAKE_PER_VIEWER awake enemies, the nearest (ties by id), plus the boss from anywhere; under the cap all of them',()=>{
+  assert.equal(AWAKE_PER_VIEWER,300);
+  const view=busyWorld(new Rng(9),500).view;
+  const me=view.players.find(p=>p.id==='uuid-0')!;
+  view.enemies=view.enemies.map((e,i)=>({...e,x:me.x+(i%25)*.4,y:me.y+Math.floor(i/25)*.4}));
+  view.enemies.push({...view.enemies[0],id:'boss',boss:true,x:me.x+400,y:me.y});
+  const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0'}),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok);
+  assert.equal(r.view.enemies.length,AWAKE_PER_VIEWER+1,'the cap and the boss');
+  assert.equal(r.view.enemies.filter(e=>e.boss).length,1);
+  const d=(e:{x:number;y:number})=>Math.hypot(e.x-me.x,e.y-me.y);
+  const sent=r.view.enemies.filter(e=>!e.boss).map(d).sort((a,b)=>a-b),all=view.enemies.filter(e=>!e.boss).map(d).sort((a,b)=>a-b);
+  assert.ok(sent[sent.length-1]<=all[AWAKE_PER_VIEWER-1]+.05,'the nearest ones');
+  const small=busyWorld(new Rng(9),120).view;
+  const r2=new FrameDecoder().decode(new FrameEncoder(new WireIds(),{viewer:'uuid-0'}).encode(small));assert.ok(r2.ok);
+  const inArea=small.enemies.filter(e=>Math.hypot(e.x-small.players[0].x,e.y-small.players[0].y)<=INTEREST_RADIUS).length;
+  assert.equal(r2.view.enemies.length,inArea,'under the cap: every one in the area');
+});

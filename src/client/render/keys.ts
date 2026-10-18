@@ -12,8 +12,12 @@ import {fallbackAccent,fallbackKind} from '../../rules/index.ts';
  */
 export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer'] as const;
 export type EnemyKind=typeof ENEMY_KINDS[number];
-/** 'item' (D-051): an inventory item on the ground; its sticker when the arsenal art loaded (render/arsenal-fx.ts), else this. */
-export const PICKUP_KINDS:readonly PickupKind[]=['xp','heal','magnet','chest','resource','item'];
+/**
+ * The pickups drawn with a texture of their kind. 'item' (D-051): an inventory item on the ground; its sticker when the
+ * arsenal art loaded (render/arsenal-fx.ts), else this. No 'xp' (D-054: no gems; the boleto rain's XP is FX.boleto).
+ */
+export type DrawnPickup=Exclude<PickupKind,'xp'>;
+export const PICKUP_KINDS:readonly DrawnPickup[]=['heal','chest','resource','item'];
 
 export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readonly string[]).includes(kind);
 /**
@@ -50,11 +54,11 @@ export const enemyTexture=(kind:string,elite=false,acting=false)=>{
  */
 export const ENEMY_TEXTURES:Readonly<Record<EnemyKind,readonly [string,string,string,string]>>=Object.freeze(
   Object.fromEntries(ENEMY_KINDS.map(k=>[k,[enemyTexture(k),enemyTexture(k,true),enemyTexture(k,false,true),enemyTexture(k,true,true)]])) as Record<EnemyKind,[string,string,string,string]>);
-export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'xp'}`;
+export const pickupTexture=(kind:string)=>`horde:pickup:${(PICKUP_KINDS as readonly string[]).includes(kind)?kind:'item'}`;
 /** Hostile projectile look by source: the agiota's boleto com juros is a slip; every other hostile shot is the star. */
 export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.projFriendly:source==='boleto-juros'?FX.projBoleto:FX.projHostile;
-/** What a pickup looks like: its kind's texture, or a boleto for the XP of the boleto rain (resource 'boleto', VGM-053B). */
-export const pickupLook=(kind:string,resource?:string)=>kind==='xp'&&resource==='boleto'?FX.boleto:pickupTexture(kind);
+/** What a pickup looks like: its kind's texture; XP is always a boleto (D-054: no gems, only the boleto rain's XP, VGM-053B). */
+export const pickupLook=(kind:string,_resource?:string)=>kind==='xp'?FX.boleto:pickupTexture(kind);
 
 export const FX={
   shadow:'horde:fx:shadow',
@@ -91,6 +95,6 @@ export const ENEMY_ART:Record<EnemyKind,EnemyArt>={
 };
 /** Elite variants are the base art with crown and aura, drawn into a texture this much larger. */
 export const ELITE_SCALE=1.35;
-export const PICKUP_SIZE:Record<PickupKind,{width:number;height:number}>={
-  xp:{width:22,height:28},heal:{width:34,height:30},magnet:{width:32,height:32},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},
+export const PICKUP_SIZE:Record<DrawnPickup,{width:number;height:number}>={
+  heal:{width:34,height:30},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},
 };

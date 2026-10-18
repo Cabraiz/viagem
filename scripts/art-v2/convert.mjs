@@ -154,6 +154,7 @@ const fileList=entry=>[...new Set([...(entry?.file?[entry.file]:[]),...(Array.is
  */
 export async function convertPiece(spec,id,kind,sheets,{outRoot,previous,meta}={}){
   const dir=path.join(outRoot,spec.output),staged=[],files={};
+  let heroHeight;
   const rimOf=sheet=>spec.rim&&kind==='animations'&&!sheet.blocks&&!String(sheet.key).startsWith('elite/')?spec.rim:undefined;
   try{
     for(const sheet of sheets){
@@ -174,7 +175,13 @@ export async function convertPiece(spec,id,kind,sheets,{outRoot,previous,meta}={
       const entry=pages.length===1?{file:pages[0].file}:{};
       for(const k of MANIFEST_FIELDS)if(sheet[k]!==undefined)entry[k]=sheet[k];
       // The hero atlas carries its measures so the client scales it without reading pixels (sprite-sheets.ts).
-      if(kind==='dir8'&&sheet.key==='dir4'&&pixels)Object.assign(entry,heroMeasures(pixels));
+      if(kind==='dir8'&&(sheet.key==='dir4'||sheet.key==='dir4c')&&pixels){
+        const measured=heroMeasures(pixels);
+        if(measured){
+          if(sheet.key==='dir4')heroHeight=measured.height;
+          Object.assign(entry,measured,{height:heroHeight??measured.height});
+        }
+      }
       if(rim)entry.rim={...rim};
       entry.pages=entries;
       entry.sha256=entries.length===1?entries[0].sha256:sha256(entries.map(p=>`${p.file} ${p.sha256}`).join('\n'));

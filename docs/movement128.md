@@ -1,0 +1,50 @@
+# Movimento detalhado R06
+
+A revisão 06 acrescenta caminhada e ataque com 128 poses reais por movimento e direção, mais uma pose de repouso em cada uma das oito direções, para as 35 classes. São 2.056 poses por personagem, 71.960 no lote. Preserva os arquivos antigos de herói, o downed, as regras de combate e a dança R05 frontal de 128 quadros/36 segundos. Repouso, caminhada e ataque usam mãos vazias; a arma exclusiva permanece somente na dança.
+
+A referência dos movimentos/repouso é a opção intermediária 2, aproximadamente 45°, do estudo de 35°/45°/55°. Ela interpreta o pedido de câmera entre as referências; o usuário não especificou um número de graus. A imagem é `arte-entrada/estudos-visuais/camera-movimento-intermediaria/lote-01/referencia-45-graus.png`. A dança permanece frontal. A implementação do renderer é independente desse ângulo da arte.
+
+## Entrega Desktop
+
+Em `arte-entrada/personagens-movimento128/<id>/`, entregar `walk/<D>.png`, `attack/<D>.png`, `idle.png` e `meta.json`. Cada PNG de movimento é RGBA 3072×1536, células 192×192, grade 16×8 em ordem de leitura 0…127. `idle.png` é RGBA 1536×192, oito colunas e uma linha, com uma pose por direção na ordem S, SW, W, NW, N, NE, E, SE. São 18 arquivos canônicos por personagem. As 65 fontes nativas são quatro folhas de 32 poses para cada um dos 16 clipes, mais uma folha nativa de repouso, registradas nos receipts separados da R06. A fonte idle pode ter grade 8×4: gera 32 poses, das quais as oito da linha 0 são selecionadas para o canônico 8×1. Nesse caso são 2.080 poses originais, das quais 2.056 são usadas por personagem. O ajuste espacial das poses usadas deve manter escala e apoio dos pés ao parar.
+
+```json
+{"revision":6,"cell":[192,192],"columns":16,"rows":8,"frames":128,"directions":["S","SW","W","NW","N","NE","E","SE"],"anchor":[0.5,0.875],"motions":{"walk":{"durationMs":600,"loop":true},"attack":{"durationMs":1000,"loop":false}},"attackHands":"empty","movementHands":"empty","idle":{"file":"idle.png","cell":[192,192],"columns":8,"rows":1,"framesPerDirection":1}}
+```
+
+Cada célula precisa ter desenho, transparência e margem mínima de dois pixels. Os 128 quadros precisam ter conteúdo visual distinto; o importador calcula hashes RGBA premultiplicado para que bytes RGB invisíveis não contem como poses novas. Ele não cria ou interpola poses.
+
+## Importação separada
+
+Executar somente depois de conferir os 35 receipts R06 com 65 fontes e comprovar as 35 danças R05 em uma importação separada de `menu`. Folhas de herói da R05 não são pré-requisito: gameplay definitivo vem da R06. A referência intermediária acima está definida. O comando sem `--write` valida sem alterar o jogo:
+
+```powershell
+node scripts/import-movimento128.mjs --input 'C:\Users\Cabraiz\Desktop\Viagem\arte-entrada' --report 'C:\Users\Cabraiz\Documents\ChatGPT\Viagem Criação Jogo\.orquestracao\modelo07-r06-validation.json'
+node scripts/import-movimento128.mjs --input 'C:\Users\Cabraiz\Desktop\Viagem\arte-entrada' --write --report 'C:\Users\Cabraiz\Documents\ChatGPT\Viagem Criação Jogo\.orquestracao\modelo07-r06-import.json'
+node scripts/art-lite.mjs --kinds sprites
+node scripts/art-lite.mjs --kinds sprites --check
+```
+
+O importador valida todos os personagens selecionados antes de converter. Grava somente os WebP do jogo em 1536×768 para os movimentos e 768×96 para o repouso, todos com células 96×96. Mantém os 18 originais Desktop e os arquivos antigos de herói intactos. Acrescenta as chaves `walk128-S`…`attack128-SE` e `idle8` ao piece em `personagens`, sem criar grupo novo. Cria a entrada se ela ainda não existir, como para Tio do Churrasco e Conspiracionista; não fabrica dir4, quadros ou direções legadas. Os 33 legados direcionais existentes ficam intactos como fallback. Preserva metadata do piece e os outros grupos, incluindo menu. Os nomes físicos são minúsculos com hash, como `<id>.walk128-s.<sourceSHA12>.webp` e `<id>.idle8.<sourceSHA12>.webp`; uma conversão interrompida mantém as versões anteriores utilizáveis. O manifesto só é atualizado depois de converter todos os clipes. Arquivos novos sem referência podem sobrar se a operação de disco falhar antes da atualização do manifesto.
+
+Cada arquivo do manifesto registra `revision:6`, `movementHands:"empty"`, `cell:[96,96]`, `frames:128`, `durationMs:600|1000`, `fps:128000/durationMs`, `loop:true|false`, `anchor:[0.5,0.875]`, altura de referência proporcional ao idle e figura medida. A página única é 16×8, primeiro quadro 0, total 128. O parser permite as direções maiúsculas somente nessas chaves; URLs permanecem minúsculas. Os wrappers/provas de dança R05 aceitam esses arquivos adicionais sem exigir mudanças nos contratos antigos.
+
+A altura é medida na primeira pose S do `idle.png` R06, usando alfa > 20, e dividida por dois para a cópia 96 px. Todos os 17 arquivos compartilham essa referência nativa. Não depende de altura ou pivô do legado. O relatório de importação registra `bootstrap` e `scaleReference`, com caminho/SHA da fonte idle e alturas nativa/jogo.
+
+`idle8` registra `frames:1`, `directions:8`, `loop:false` e uma página de oito colunas × uma linha, total oito poses; não tem duração/fps animados. O renderer seleciona o índice da direção. As mesmas medidas de escala/âncora usadas nos clipes garantem que a câmera e o apoio não mudem ao parar.
+
+## Reprodução e memória
+
+O renderer usa a folha detalhada somente para o movimento e a direção atuais. Antes do spawn pré-carrega apenas o idle8 nativo, também escolhido como ativo P0; o cache adota a textura já decodificada, sem repetir o download. Nenhuma textura legada precisa estar pronta para mostrar R06. Enquanto a próxima folha de caminhada, ataque ou repouso decodifica, mantém a imagem atual e o lease da pose R06 existente; na primeira carga, pode manter o ícone inicial. Quando a carga termina, seleciona o quadro da fase temporal atual, sem reiniciar o ciclo. Usa a animação antiga quando a folha requerida não existe no manifesto ou quando as tentativas lite/original falharam concretamente. Isso evita trocar temporariamente para a câmera antiga ao virar, atacar ou parar. O downed continua antigo. Não há preload das 16 folhas de cada classe. Um idle pré-carregado que nunca chegou a ser usado também é liberado no shutdown/restart da cena.
+
+A fase é calculada pelo relógio da cena, preservada ao virar e ao trocar a rotação da câmera, inclusive se a textura chegar no meio do ciclo. Caminhada fecha em 600 ms; ataque dura 1.000 ms, sem estender/reiniciar por eventos sobrepostos. O ritmo é independente dos 36 segundos da dança. Uma tela a 60 Hz amostra cerca de 36 poses por volta de caminhada e até 60 no ataque: o atlas contém 128 poses, mas não é correto afirmar que todas aparecem num único ciclo em uma tela de 60 Hz.
+
+O cache é compartilhado pelo TextureManager do jogo, com alvo LRU de oito folhas e até duas decodificações simultâneas. Pedidos obsoletos ainda na fila são descartados; cargas já em andamento são liberadas se não forem mais pedidas. Cada folha decodificada ocupa 4,5 MiB de RGBA; oito somam 36 MiB, além de cópias GPU/contornos. Texturas com leases de sprites visíveis não são removidas; mais de oito clipes simultaneamente visíveis podem ultrapassar temporariamente o alvo. Ao trocar para legado, esconder/destruir o sprite ou encerrar a cena, os leases são liberados. A expulsão elimina também os contornos e stickers derivados. Ao terminar a última cena, o cache libera as folhas sem uso.
+
+A folha `idle8` ocupa 0,28125 MiB de RGBA e compartilha esse cache. A dança frontal do menu libera imagens, canvas e RAF durante a abertura/uso da partida. `MenuDance.hold()` cobre a importação assíncrona, com liberação em finally; um observador único de filhos do body e do atributo open do dialog mantém o bloqueio enquanto a partida está aberta. Ao fechar ou falhar a abertura, recria a dança da classe selecionada. O observador não acompanha as mudanças da HUD inteira e é desconectado na destruição.
+
+Os testes automatizados usam fontes sintéticas e diretórios temporários. A prova final com arte importada deve conferir os 128 quadros disponíveis em cada arquivo, fase/ordem/direções no Phaser e o descarte real. Vídeo MP4 ou sequência PNG/contact sheet deve mostrar a amostragem natural; um GIF com passo de 10 ms não prova a exibição de todas as poses numa volta de 600 ms.
+
+O script preparado no workspace é `.orquestracao/modelo07-r06-real-browser.mjs`. Somente depois dos 35 receipts e da importação/lite, executar `node '<workspace>/.orquestracao/modelo07-r06-real-browser.mjs' --run --start-server`. Ele exige o relatório real `modelo07-r06-import.json`, verifica os 595 WebPs originais e lite, usa Phaser/arquivos reais para Pedreiro, Conspiracionista e Tio do Churrasco nas oito direções e quatro vistas e grava MP4 de playback natural. Comprova primeiro idle8 sem pedir atlas legado. Também abre e fecha a ilha pela interface real em mobile/landscape para verificar a liberação de Image.src, canvas e RAF do menu e o descarte do cache/contornos. A contagem lógica de referências liberadas não é uma medição da memória nativa/GPU devolvida pelo navegador.
+
+O runner do plano atual é `.orquestracao/modelo07_finish_menu_r06_pipeline.py`. Possui state/report/lock próprios `modelo07-menu-r06-*`, preservando o runner histórico que falhou no antigo gate geométrico. Depois de rever a prova do menu já executada, `--run --adopt-completed-menu` confere receipts, fontes, páginas, lite, capturas e relatório por SHA, adota as seis etapas prontas e espera a R06. Não reimporta nem repete os 35 cenários do menu. Sem essa flag, a presença de receipt de importação anterior impede replay silencioso.

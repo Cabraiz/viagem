@@ -3,10 +3,11 @@
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
 import type {RunView} from '../../contract/index.ts';
-import {bossInfo,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
+import {bossInfo,nestCount,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
+import {stickerOrIcon} from '../ui/sticker.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -47,13 +48,14 @@ export function createTopBar():HudPart{
         detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
-      const clock=round.chaveiro;
-      put('eta',clock?`${clock.clock}|${clock.aria}`:'',()=>{
+      // D-051 nests: the nests still standing ("[ninho] 6/8") after his clock.
+      const clock=round.chaveiro,count=nests?nestCount(view):undefined;
+      put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
         eta.hidden=!clock;
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}</span><span aria-hidden="true"><i class="rh-round-sep">·</i>${icon('moto')}<b>${clock.clock}</b></span>`;}
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep">·</i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
-      chip.classList.toggle('rh-urgent',round.phase==='prepare'&&(round.countdown??99)<=5);
+      chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);
     }
     const fraction=xpFraction(view);
     put('xp',`scaleX(${fraction})`,v=>{fill.style.transform=v;});

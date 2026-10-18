@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {MOVEMENT128_META,importMovement128,inspectMovement128,parseMovement128Args} from '../../scripts/import-movimento128.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame} from '../../src/client/sprites/movement128.ts';
+import {HERO_ANIM_RATE} from '../../src/client/sprites/sprite-motion.ts';
 
 sharp.cache(false);sharp.concurrency(1);
 const hash=(data:Buffer|string)=>createHash('sha256').update(data).digest('hex');
@@ -68,7 +69,7 @@ test('R06 adds16 detailed clips+idle8, preserves2056 frame pixels/order, legacy 
     for(let frame=0;frame<128;frame++){
       const offset=((Math.floor(frame/16)*96+45)*info.width+frame%16*96+30)*4;
       assert.deepEqual([...data.subarray(offset,offset+3)],rgb(frame),`${motion}/${direction}/${frame}`);
-      assert.equal(movement128Frame(plan,frame*plan.durationMs/128),frame);
+      assert.equal(movement128Frame(plan,(frame+.5)*plan.durationMs/128/HERO_ANIM_RATE),frame);
     }
   }
   const idle8=entry.files.idle8,idleFile=path.join(outRoot,'public/art/sprites',idle8.file),idleMeta=await sharp(idleFile).metadata();

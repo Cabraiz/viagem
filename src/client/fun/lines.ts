@@ -14,7 +14,7 @@ export const LINE_MAX=34;
 export const FALLBACK_LINES:Readonly<Record<Situation,readonly string[]>>={
   levelUp:['Subi! Nem sei como.','Nível novo, mesma cara.'],
   down:['Alguém me levanta aí!','Deitei só um pouquinho...'],
-  revive:['De pé, guerreiro!','Levanta que o round não acabou!'],
+  revive:['De pé, guerreiro!','Levanta que ainda não acabou!'],
   upgrade:['Esse aqui parece bom.','Escolhi pela cor.'],
   win:['Ganhamos?! Ganhamos!','Síndico derrotado, festa!'],
   lose:['Foi o lag, certeza.','Revanche? Revanche.'],

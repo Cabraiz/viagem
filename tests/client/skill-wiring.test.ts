@@ -77,6 +77,8 @@ test('a dash lands where the server says: the event carries the landing and the 
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Moto','motogirl');join(room,b,'Bia','mendigo');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const moto=room.sim.players.get(idOf(a))!,ally=room.sim.players.get(idOf(b))!;
+  // D-053: the room seats the motogirl (hidden for now) as a playable class; the dash itself is hers, so set it back.
+  moto.classId='motogirl';
   ally.x=moto.x+5;ally.y=moto.y;
   // The ally may stand on water after the nudge; only a walkable spot counts for the landing check below.
   ally.hp=10;

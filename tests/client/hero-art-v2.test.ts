@@ -25,7 +25,8 @@ test('empty index: every class keeps exactly today\'s sheet and key', ()=>{
 test('an imported dir4 with its measured height is the class\'s atlas (URL, height and figure from the entry)',()=>{
   setArtIndex(index({dir4:dir4(),dir4c:{...dir4(),file:'aposentado.dir4c.webp',pages:undefined,height:undefined}}));
   const sheet=importedSheet('aposentado');
-  assert.deepEqual(sheet,{url:'/art/lite/sprites/aposentado.dir4.webp',height:103,figure:FIGURE});
+  assert.deepEqual(sheet,{url:'/art/lite/sprites/aposentado.dir4.webp',height:103,figure:FIGURE,
+    cardinals:{url:'/art/lite/sprites/aposentado.dir4c.webp',figure:FIGURE}});
   assert.deepEqual(directionalSheet('aposentado'),sheet);
   assert.equal(sheetKey('aposentado'),'sprite:aposentado:dir4');
   // 96 world px figure (D-030): the scale CharacterSprites applies is 96 / height.

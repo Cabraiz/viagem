@@ -6,7 +6,8 @@
  *
  * A body wakes into ctx.enemies with the same id (so a client that drew it asleep keeps it), and only through here:
  * damage (core damageEnemy → Sleepers.wake 'dano', with its band within BAND_RADIUS), the nests (E1: wakeNest on a
- * nest's first hit), wakeAround (a call for help) and the noise. Every wake that moves bodies emits one `acordou`.
+ * nest's first hit), wakeAround (a call for help), the noise and a hero walking up to it (WAKE_SIGHT: card
+ * NEW-20261017-ORQ-ninhos-perto-ataca-20x, caçando with its band; the car does not, it never walks up to a nest). Every wake that moves bodies emits one `acordou`.
  *
  * Noise (proposal §3, A2): `noise()` keeps the loudest noise of each source (a player, a nest, the car…) in a window of
  * NOISE_EVERY s; at the end of the window each source's noise rolls once per sleeper within its radius r, with chance
@@ -29,12 +30,22 @@ import type {SimContext,Sleepers} from '../context.ts';
 import {SpatialHash} from '../spatial.ts';
 import {createEnemy,type EnemyKind} from '../enemies/catalog.ts';
 import {cancelTelegraphs} from '../telegraphs.ts';
-import {MAX_ENEMIES} from '../../rules/index.ts';
+import {MAX_AWAKE} from '../../rules/index.ts';
 
 /** Bucket size of the sleepers' index (u): they never move, so big buckets keep a noise check to a few cells. */
 export const SLEEP_CELL=16;
+/**
+ * Card ninhos-perto-ataca-20x: a second index of FINE_CELL u buckets for the small queries (sight, bands, the awake
+ * ones' spacing, a shot) up to FINE_MAX u, so thousands of sleepers keep them to a few bodies each.
+ */
+export const FINE_CELL=2,FINE_MAX=8;
 /** A woken body wakes its band: the sleepers within this distance (u). */
 export const BAND_RADIUS=4;
+/**
+ * A standing hero (a person or a bot) this close to a sleeper wakes it caçando, with its band (card
+ * ninhos-perto-ataca-20x): it saw you. Under SEE_RADIUS (the awake ones' sight) and the knife's noise (6).
+ */
+export const WAKE_SIGHT=5;
 /** The noise window (s): one roll per source per window, with its loudest noise. */
 export const NOISE_EVERY=.5;
 /** Awake bodies see a player within this distance (u). */
@@ -91,7 +102,7 @@ export const AUTO_WEAPON_NOISE:Readonly<Record<string,{r:number;p:number}>>=Obje
 export const DEFAULT_WEAPON_NOISE={r:12,p:.25} as const;
 
 /** Why a body woke: 'ruido' wakes it alerta, everything else caçando. */
-export type WakeCause='dano'|'bando'|'ruido'|'ninho'|'chamado';
+export type WakeCause='dano'|'bando'|'ruido'|'ninho'|'chamado'|'perto';
 export interface Noise {x:number;y:number;r:number;p:number}
 /** A noise that repeats while it lasts (the car alarm, the moto, a bank): rolled every `every` s. */
 export interface AmbientNoise extends Noise {key:string;every:number}
@@ -127,7 +138,7 @@ export interface SonoOptions {
   weaponNoise?:(weapon:string,player:SimPlayer|undefined)=>{r:number;p:number};
   /** Noises that repeat while they last (alarm, moto, banks), asked every NOISE_EVERY s. */
   ambient?:(ctx:SimContext)=>readonly AmbientNoise[];
-  /** The noise wakes nobody once ctx.enemies holds this many (proposal §7). Default MAX_ENEMIES. */
+  /** The noise and the sight wake nobody once ctx.enemies holds this many (proposal §7). Default MAX_AWAKE. */
   maxAwake?:number;
 }
 
@@ -185,11 +196,14 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   const asleep=new Map<string,EnemyState>();
   /** Hit targets, each as a still EnemyState shell (what the hit tests read) and its hit(). */
   const targets=new Map<string,{shell:EnemyState;target:HitTarget}>();
-  const index=new SpatialHash<EnemyState>(SLEEP_CELL);
+  const index=new SpatialHash<EnemyState>(SLEEP_CELL),fine=new SpatialHash<EnemyState>(FINE_CELL);
+  const pick=(radius:number)=>radius<=FINE_MAX?fine:index;
   // stale: bodies woke since the last rebuild (query filters them, so a rebuild can wait for the step);
   // missing: bodies fell asleep since (query must rebuild first).
   let stale=false,missing=true,made=false;
-  const maxAwake=options.maxAwake??MAX_ENEMIES;
+  const maxAwake=options.maxAwake??MAX_AWAKE;
+  // Card ninhos-perto-ataca-20x: the plan indexes awake now (life 2), so a tick walks them, never the thousands asleep.
+  const up=new Set<number>();
 
   /** A body as an EnemyState, out of any world (no counter, no map, no clock: spawnTick and readyTick 0, the waking sets
    * readyTick): the same object every load of the same seed, whatever the tick of the checkpoint. */
@@ -200,7 +214,10 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     return e;
   }
   function reindex(force:boolean){
-    if(missing||(force&&stale)){index.rebuild(targets.size?[...asleep.values(),...[...targets.values()].map(t=>t.shell)]:asleep.values());missing=false;stale=false;}
+    if(missing||(force&&stale)){
+      const all=targets.size?[...asleep.values(),...[...targets.values()].map(t=>t.shell)]:[...asleep.values()];
+      index.rebuild(all);fine.rebuild(all);missing=false;stale=false;
+    }
   }
   const current=(e:EnemyState)=>asleep.get(e.id)===e||targets.get(e.id)?.shell===e;
   /** Bodies still asleep within radius (never a target): what the noise and the bands read. */
@@ -218,13 +235,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     rebuild(){/* the sono owns its index */},
     query(x,y,radius,out=[]){
       reindex(false);
-      index.query(x,y,radius,out);
+      pick(radius).query(x,y,radius,out);
       // The index does not know about wakes between rebuilds: keep only bodies still asleep (and live targets).
       let k=0;for(const e of out)if(current(e))out[k++]=e;
       out.length=k;
       return out;
     },
-    nearest(x,y,radius,filter){reindex(false);return index.nearest(x,y,radius,e=>current(e)&&(!filter||filter(e)));},
+    nearest(x,y,radius,filter){reindex(false);return pick(radius).nearest(x,y,radius,e=>current(e)&&(!filter||filter(e)));},
     isTarget:id=>targets.has(id),
     strike(ctx,id,amount,source,weapon){
       const t=targets.get(id);
@@ -258,7 +275,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     else{m.sono=MODE.cacando;e.readyTick=Math.max(e.readyTick,ctx.tick);}
     m.seen=ctx.tick;
     ctx.enemies.set(id,e);
-    state.life[order.get(id)!]=[2,e.hp];
+    const i=order.get(id)!;state.life[i]=[2,e.hp];up.add(i);
     return e;
   }
   /** Wakes a list in plan order (never the index's) and emits one `acordou` at their centre. */
@@ -278,7 +295,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     const m=e.memory;
     if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;}
     delete e.knock;
-    asleep.set(e.id,e);missing=true;
+    asleep.set(e.id,e);missing=true;up.delete(i);
     state.life[i]=[1,e.hp];
   }
 
@@ -311,14 +328,28 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
     heard.clear();
   }
+  /**
+   * A standing hero within WAKE_SIGHT of sleepers wakes them caçando with their bands (players by id; one `acordou`
+   * per hero), up to the cap of awake bodies (maxAwake, MAX_AWAKE: the tick's budget; a hit still wakes past it).
+   */
+  function sight(ctx:SimContext){
+    if(!asleep.size)return;
+    const near:EnemyState[]=[];
+    for(const p of [...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
+      const room=maxAwake-ctx.enemies.size;
+      if(room<=0)return;
+      const seen=queryAsleep(p.x,p.y,WAKE_SIGHT,near);
+      if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)).sort((a,b)=>order.get(a)!-order.get(b)!).slice(0,room),'perto');
+    }
+  }
   /** The awake bodies of the plan: dead ones noted, hp kept, alerta/caçando/perdeu moved on. */
   function awake(ctx:SimContext){
     const players=[...ctx.players.values()].filter(standing);
-    for(let i=0;i<bodies.length;i++){
+    for(const i of [...up].sort((a,b)=>a-b)){
       const life=state.life[i];
-      if(life[0]!==2)continue;
+      if(life[0]!==2){up.delete(i);continue;}
       const e=ctx.enemies.get(bodies[i].id);
-      if(!e||!(e.hp>0)){state.life[i]=[0,0];continue;}
+      if(!e||!(e.hp>0)){state.life[i]=[0,0];up.delete(i);continue;}
       life[1]=e.hp;
       const m=e.memory??={},mode=m.sono;
       if(mode===undefined)continue;
@@ -384,6 +415,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);
       }
+      sight(ctx);
       awake(ctx);
       reindex(true);
       if(heard.size||state.heard.length)state.heard=[...heard].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);

@@ -295,7 +295,7 @@ class FakeHorde {
     this.emit({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y});
     if(e.boss){e.hp=e.maxHp;return;}
     this.enemies.splice(this.enemies.indexOf(e),1);
-    const roll=this.rng.next(),kind:PickupKind=e.elite?'chest':roll<.04?'heal':roll<.06?'magnet':roll<.08?'resource':'xp';
+    const roll=this.rng.next(),kind:PickupKind=e.elite?'chest':roll<.04?'heal':roll<.08?'resource':'xp';
     this.pickups.push({id:`g${this.next++}`,kind,x:e.x,y:e.y,value:kind==='xp'?(this.rng.chance(.1)?25:5):1,until:this.tick+this.rng.int(80,160)});
   }
   view():RunView{

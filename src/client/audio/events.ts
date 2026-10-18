@@ -10,8 +10,8 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
     case 'damage':return localPlayer!==undefined&&(event.source===localPlayer||event.target===localPlayer)?'golpe':undefined;
     case 'pickup':
       if(event.player!==localPlayer)return undefined;
-      // Zueira: the chest honks like a clown car, the magnet goes boing.
-      return event.kind==='chest'?'buzina':event.kind==='magnet'?'boing':'gema';
+      // Zueira: the chest honks like a clown car; a boleto of the rain (the only XP on the ground, D-054) clinks.
+      return event.kind==='chest'?'buzina':'gema';
     case 'levelup':return 'nivel';
     case 'upgrade':case 'evolve':return event.player===localPlayer?'upgrade':undefined;
     case 'downed':return 'queda';

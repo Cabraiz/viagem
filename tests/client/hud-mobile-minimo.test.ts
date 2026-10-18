@@ -156,6 +156,12 @@ test("review 3–4: the bar's clock — the intermission countdown (urgent at 5 
   const moto=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12},{ended:false,etaS:532,moto:{mode:'anda'} as never}));
   assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:'moto',text:'8:52'},"the chaveiro's clock wins");
   assert.match(moto!.aria,/Chaveiro chega em 8:52/);
+  // D-051 nests (ninhos-rounds-fora): the clock plus the nests still standing, and no intermission countdown at all.
+  const nest=(hp:number)=>({id:`n${hp}`,kind:'ninho',x:0,y:0,hp,maxHp:40,phase:hp?'dormindo':'destruido'});
+  const withNests=(v:RunView)=>({...v,structures:[nest(40),nest(40),nest(0)]}) as RunView;
+  const ninhos=barClock(withNests(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12},{ended:false,etaS:532,moto:{mode:'anda'} as never})));
+  assert.equal(ninhos?.nests,'2/3');assert.match(ninhos!.aria,/2 de 3 ninhos de pé/);
+  assert.equal(barClock(withNests(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12}))),undefined,'no countdown in the nests mode');
   // On the phone the clock is shown (fone.css) and its words are an .rh-sr span (camp.ts), the picture aria-hidden.
   const camp=readFileSync(new URL('../../src/client/hud/camp.ts',import.meta.url),'utf8');
   assert.match(camp,/el\('span','rh-sr',clock\)/);assert.match(camp,/clockPicture\.setAttribute\('aria-hidden','true'\)/);

@@ -88,6 +88,15 @@ export interface RoundInfo {index:number;total:number;label:string;phase:'wave'|
  */
 export const nestsMode=(view:Pick<RunView,'structures'>)=>view.structures.some(s=>s.kind==='ninho');
 /** D-051: the nests of a run in mode 'ninhos', how many fell and how many there were; undefined in any other mode. */
+/**
+ * D-051 (ninhos-rounds-fora): the chip's nest count, the nests still standing over all of them ("6/8") and the same in
+ * words for the screen reader; undefined outside the nests mode.
+ */
+export function nestCount(view:Pick<RunView,'structures'>|undefined):{alive:number;total:number;text:string;aria:string}|undefined{
+  const t=nestTally(view);if(!t)return undefined;
+  const alive=t.total-t.down;
+  return {alive,total:t.total,text:`${alive}/${t.total}`,aria:`${alive} de ${t.total} ${t.total===1?'ninho':'ninhos'} de pé`};
+}
 export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:number;total:number}|undefined{
   const nests=view?.structures.filter(s=>s.kind==='ninho')??[];
   return nests.length?{down:nests.filter(s=>s.hp<=0||s.phase==='destruido').length,total:nests.length}:undefined;
@@ -237,7 +246,7 @@ export interface RunResult {
 }
 
 /** Per-player counters accumulated from view events, de-duplicated by eventId. */
-export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;magnets:number;chests:number;pickups:number;kills:number}
+export interface PlayerTally {downs:number;revives:number;upgrades:number;evolves:number;heals:number;chests:number;pickups:number;kills:number}
 export interface RunTally {players:Map<string,PlayerTally>;lastEventId:number;startTick?:number;
   /** What downed each player (UX-voce-e-dano f). */
   causes:CauseLog}
@@ -255,7 +264,7 @@ export function resetTally(tally:RunTally){
   resetCauses(tally.causes);
   return tally;
 }
-const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0});
+const blank=():PlayerTally=>({downs:0,revives:0,upgrades:0,evolves:0,heals:0,chests:0,pickups:0,kills:0});
 
 export function tallyOf(tally:RunTally,playerId:string){
   let entry=tally.players.get(playerId);
@@ -280,7 +289,7 @@ export function applyEvents(tally:RunTally,view:RunView){
       case 'kill':rememberKill(tally.causes,event.enemy,event.kind);if(event.by)tallyOf(tally,event.by).kills++;break;
       case 'pickup':{
         const entry=tallyOf(tally,event.player);entry.pickups++;
-        if(event.kind==='heal')entry.heals++;else if(event.kind==='magnet')entry.magnets++;else if(event.kind==='chest')entry.chests++;
+        if(event.kind==='heal')entry.heals++;else if(event.kind==='chest')entry.chests++;
         break;
       }
     }

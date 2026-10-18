@@ -130,9 +130,12 @@ test('correct set: every piece approved, WebP of the expected size, manifest wit
   const measured=heroMeasures(await raw(out(outRoot,'personagens',`${DIR8_OK}.dir4.webp`)));
   assert.ok(measured&&measured.height>0,'atlas measured');
   assert.deepEqual([heroEntry.files.dir4.height,heroEntry.files.dir4.figure],[measured!.height,measured!.figure]);
-  assert.equal(heroEntry.files.dir4c.height,undefined,'only the diagonal atlas is measured');
+  const cardinalMeasured=heroMeasures(await raw(out(outRoot,'personagens',`${DIR8_OK}.dir4c.webp`)));
+  assert.equal(heroEntry.files.dir4c.height,measured!.height,'cardinals share the diagonal scale');
+  assert.deepEqual(heroEntry.files.dir4c.figure,cardinalMeasured!.figure);
   setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:GROUPS.personagens.output,pieces:{[DIR8_OK]:heroEntry}}}}));
-  assert.deepEqual(importedSheet(DIR8_OK),{url:`/art/lite/sprites/${DIR8_OK}.dir4.webp`,height:measured!.height,figure:measured!.figure});
+  assert.deepEqual(importedSheet(DIR8_OK),{url:`/art/lite/sprites/${DIR8_OK}.dir4.webp`,height:measured!.height,figure:measured!.figure,
+    cardinals:{url:`/art/lite/sprites/${DIR8_OK}.dir4c.webp`,figure:cardinalMeasured!.figure}});
   setArtIndex(parseArtIndex(undefined));
 
   // Per-file manifest merge: a later delivery of only the downed sheet keeps the dir4/dir4c entries and files.

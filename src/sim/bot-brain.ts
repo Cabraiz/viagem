@@ -27,7 +27,7 @@
  * walked with) follow the streets (city/bot-routes.ts: a flow field per goal cell, small shared LRU) instead of a
  * straight line, the walk home is timed by the street distance and the crates are ranked by it. The plaza is a maze of
  * planters, so in combat the bot also: walks back all the way to HOME_SLACK inside its leash once pulled, is lured only
- * by critters and gems in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
+ * by critters and pickups in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
  * when its pulls cancel out (HOLD_BELOW), and a roamer hunts the wave's last few critters (HUNT_LEFT). Everywhere else
  * the bot is the same as before, byte for byte.
  * Chaveiro objective (D-047, the room bots: BrainInput.teamBots, view.objective): home is the car ('quadradao'); with
@@ -119,7 +119,7 @@ export const GUARD_LEASH=3.5;
 export const ESCORT_LEASH=3;
 /** City: a bot pulled back to its anchor walks until this far (u) inside the leash. */
 export const HOME_SLACK=2;
-/** City: critters and gems lure the bot only this far (u) inside its leash, and only those it can answer from there. */
+/** City: critters and pickups lure the bot only this far (u) inside its leash, and only those it can answer from there. */
 export const ROAM_IN=1;
 /** City: a roamer hunts when the wave is down to this many critters and none is near the wall; it closes to HUNT_LEASH (u). */
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
@@ -714,12 +714,12 @@ export function decide(input:BrainInput):Decision{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
     const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
-    // City: only what is in plain sight (a critter or a gem behind a planter would pin the bot against it).
+    // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
-    // stand-off point (DANGER+.6 short of it) or a gem that lies there. One past it (a gem 7 u from the wall) pulled the
+    // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the
     // bot out to the band's edge, where the lure stopped and the circle pulled it back in: pacing in place for seconds.
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
-    // City: a critter or a gem lures the bot only well inside the leash; at its edge it holds (weapons have range).
+    // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
     if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.

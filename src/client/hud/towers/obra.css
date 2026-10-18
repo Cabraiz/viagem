@@ -94,7 +94,7 @@
 .rh-obra-site[data-light=true] .rh-obra-chao{width:28px;height:28px;border:2px solid var(--c-breu);border-style:solid;background:var(--c-papel);box-shadow:none}
 .rh-obra-site[data-light=true] .rh-obra-chao .rh-obra-naipe{width:18px;height:18px}
 @media (prefers-reduced-motion:reduce){.rh-obra-site[data-pending=true]::after,.rh-obra-site[data-feito=true] .rh-obra-chao{animation:none}}
-/* The room's refusal, a row of the HUD's announcement slot (RunHud.queueRow): "Falta material", "Só no intervalo"… */
+/* The room's refusal, a row of the HUD's announcement slot (RunHud.queueRow): "Falta material", "Só fora da briga"… */
 /* BUG-20261013-ORQ-oferta-e-dicas-menores: one line (ellipsis), a thinner ficha. */
 .rh-obra-aviso{box-sizing:border-box;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:1px 10px;overflow:hidden;text-overflow:ellipsis;border:2px solid var(--c-breu);border-radius:var(--r-balao);
   background:var(--c-papel);color:var(--c-breu);box-shadow:var(--s-1);font:700 var(--t-13)/1.2 var(--f-sistema);white-space:nowrap;pointer-events:none}

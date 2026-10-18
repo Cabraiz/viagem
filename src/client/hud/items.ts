@@ -25,7 +25,6 @@ const items:ItemDisplay[]=[
   {id:'tenis',kind:'passive',name:'Tênis de Feira',icon:'tenis',blurb:'Anda mais rápido.',joke:'Nike? Naique.'},
   {id:'megafone',kind:'passive',name:'Megafone do Carro do Ovo',icon:'megafone',blurb:'Ataques em área maior.',joke:'Olha o ovo!'},
   {id:'bone',kind:'passive',name:'Boné do Pai',icon:'bone',blurb:'Mais sorte nos drops e ofertas.',joke:'Aba reta, sorte torta.'},
-  {id:'ima',kind:'passive',name:'Ímã de Geladeira',icon:'ima',blurb:'Puxa gemas de mais longe.',joke:'Brinde da pizzaria.'},
   {id:'oculos',kind:'passive',name:'Óculos Juliet',icon:'oculos',blurb:'Mais dano em tudo.',joke:'Estilo é dano.'},
   {id:'cartao',kind:'passive',name:'Cartão Fidelidade',icon:'cartao',blurb:'Ganha mais XP.',joke:'Faltam 9 carimbos.'},
   // HEAL_CHOICE (sim/offers.ts): offered when every slot is maxed; heals HEAL_AMOUNT on the spot.

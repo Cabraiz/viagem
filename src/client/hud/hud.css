@@ -823,3 +823,6 @@
 .rh-result-conta[hidden]{display:none}
 .rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
+/* D-051 nests (ninhos-rounds-fora): the nests still standing after the chaveiro's clock, "[ninho] 6/8" (chip and phone bar). */
+.rh-ninhos{display:inline-flex;align-items:center;gap:2px;margin-left:8px;font-style:normal}
+.rh-ninhos :is(img,.ic){width:20px;height:20px}

@@ -196,6 +196,8 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   // missing: bodies fell asleep since (query must rebuild first).
   let stale=false,missing=true,made=false;
   const maxAwake=options.maxAwake??MAX_ENEMIES;
+  // Card ninhos-perto-ataca-20x: the plan indexes awake now (life 2), so a tick walks them, never the thousands asleep.
+  const up=new Set<number>();
 
   /** A body as an EnemyState, out of any world (no counter, no map, no clock: spawnTick and readyTick 0, the waking sets
    * readyTick): the same object every load of the same seed, whatever the tick of the checkpoint. */
@@ -264,7 +266,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     else{m.sono=MODE.cacando;e.readyTick=Math.max(e.readyTick,ctx.tick);}
     m.seen=ctx.tick;
     ctx.enemies.set(id,e);
-    state.life[order.get(id)!]=[2,e.hp];
+    const i=order.get(id)!;state.life[i]=[2,e.hp];up.add(i);
     return e;
   }
   /** Wakes a list in plan order (never the index's) and emits one `acordou` at their centre. */
@@ -284,7 +286,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     const m=e.memory;
     if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;}
     delete e.knock;
-    asleep.set(e.id,e);missing=true;
+    asleep.set(e.id,e);missing=true;up.delete(i);
     state.life[i]=[1,e.hp];
   }
 
@@ -332,11 +334,11 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   /** The awake bodies of the plan: dead ones noted, hp kept, alerta/caçando/perdeu moved on. */
   function awake(ctx:SimContext){
     const players=[...ctx.players.values()].filter(standing);
-    for(let i=0;i<bodies.length;i++){
+    for(const i of [...up].sort((a,b)=>a-b)){
       const life=state.life[i];
-      if(life[0]!==2)continue;
+      if(life[0]!==2){up.delete(i);continue;}
       const e=ctx.enemies.get(bodies[i].id);
-      if(!e||!(e.hp>0)){state.life[i]=[0,0];continue;}
+      if(!e||!(e.hp>0)){state.life[i]=[0,0];up.delete(i);continue;}
       life[1]=e.hp;
       const m=e.memory??={},mode=m.sono;
       if(mode===undefined)continue;

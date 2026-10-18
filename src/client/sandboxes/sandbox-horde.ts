@@ -1,6 +1,6 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
- * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0, cull=0 (no off-camera culling, for the A/B),
+ * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0, cull=0 (no off-camera culling, for the A/B), parados=1 (critters stay where they spawned),
  * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
  * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
  * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
@@ -128,6 +128,8 @@ class FakeHorde {
   private events:(SimEvent&{eventId:number})[]=[];
   /** Elenco P1 line-up: the motoboy (his charge starts at his spawn) and the influencer (who bounces shots back). */
   private moto?:FakeEnemy;private motoHome?:Point;private posing?:FakeEnemy;
+  /** `parados=1`: the critters stay where they spawned, spread over the island (most off camera: the culling A/B). */
+  private still=new URLSearchParams(location.search).get('parados')==='1';
   constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false,private portrait=true){
     this.rng=new Rng(seed);
     for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:classes[(i*5)%classes.length].id,x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
@@ -243,7 +245,7 @@ class FakeHorde {
     }
     this.movePlayers();
     const dt=1/SIM_HZ;
-    for(const e of this.enemies){
+    for(const e of this.still?[]:this.enemies){
       let best=this.players[0],bd=Infinity;
       for(const p of this.players){const d=(p.x-e.x)**2+(p.y-e.y)**2;if(d<bd){bd=d;best=p;}}
       const d=Math.sqrt(bd);if(d<.6&&!e.boss)continue;

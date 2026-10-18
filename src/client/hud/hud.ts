@@ -318,17 +318,17 @@ export class RunHud {
     this.objectiveWant=this.objective.step({terrain:ended?undefined:input?.terrain,round:view?.round,standing,hero:input?.hero,view:input?.view??0});
   }
   /**
-   * One row at a time: the objective waits for a notice, the kill-cam, a shell row, an open window and the coach's rescue
-   * hint (the coach holds every other hint while the objective is wanted, coach.ts), and for the round banner (1.8 s),
-   * except in round 1 while "andar" is still to learn: then it takes the banner's slot (UX-1; city/route.ts
-   * objectiveSlot): the round name folds into the round chip. Its second line never says how to walk (one written walk
-   * hint only: the waiting room's label, BUG-dica-tutorial-duplicada).
+   * The car's arrow (the walk to the plaza): shown whenever it is wanted, beside whatever else the slot holds (a notice,
+   * a shell row, the kill-cam, the banner); only a hidden HUD or an open offer window takes it off (card seta-carro). The
+   * coach still holds every other hint while it is wanted (coach.ts). Its second line never says how to walk (one
+   * written walk hint only: the waiting room's label, BUG-dica-tutorial-duplicada).
    */
   private renderObjective(){
-    const want=this.objectiveWant,marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
-    const held=!!this.el.hidden||this.offerOpen()||!!this.coachShow||!!this.stack.querySelector('.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-row:not([hidden])');
-    const slot=objectiveSlot({wanted:!!want,round:this.last?.round?.index,walkLearned:this.coach.done.has('walk'),banner:!!marquee&&!marquee.hidden,held});
-    if(slot.foldBanner)marquee!.hidden=true;
+    const want=this.objectiveWant;
+    // The car's arrow never steps out for a notice, a row (the economy toast), the kill-cam, the coach or the banner
+    // (card seta-carro, ORQ 18/10): they stack beside it in the slot. Only a hidden HUD or an open offer window hides it.
+    const held=!!this.el.hidden||this.offerOpen();
+    const slot=objectiveSlot({wanted:!!want,round:this.last?.round?.index,walkLearned:this.coach.done.has('walk'),banner:false,held});
     if(this.objectiveRow.render(slot.show?want:undefined)){
       const r=this.objectiveRow.el.hidden?undefined:this.objectiveRow.el.getBoundingClientRect();
       this.objectiveRect=r&&{x:r.left,y:r.top,width:r.width,height:r.height};
@@ -474,13 +474,11 @@ export class RunHud {
     // The chaveiro's stop (D-047) and a bank robbery also wait for the round banner (≤ MARQUEE_MS): never two rows in the slot at once.
     const banner=(head===this.reasonRow||head===this.bankRow)&&!this.rows.shown&&!!this.stack.querySelector('.rh-marquee:not([hidden])');
     const busy=banner||!!this.el.hidden||this.el.classList.contains('rh-ended')||!!this.stack.querySelector(answer?'.rh-alert:not([hidden]),.rh-killcam:not([hidden])':'.rh-alert:not([hidden]),.rh-killcam:not([hidden]),.rh-coach:not([hidden])');
-    const walk=!answer&&!this.objectiveRow.el.hidden;
-    const {show,hide}=this.rows.turn(now,busy,{busy:walk,ms:ROW_WAITS_OBJECTIVE_MS});
+    // The car's arrow (the walk) no longer takes turns with the rows: a row shows beside it (card seta-carro).
+    const {show,hide}=this.rows.turn(now,busy,{busy:false,ms:ROW_WAITS_OBJECTIVE_MS});
     for(const el of hide)el.hidden=true;
     if(show)show.hidden=false;
     if(show||hide.length)this.relayout();
-    // The row took the slot from the walk: the walk's row leaves in the same task (never two rows on screen).
-    if(show&&!this.objectiveRow.el.hidden)this.renderObjective();
   }
   /** Connection banner (VGM-043): shown over everything in the center stack while the socket is down. */
   setNetwork(text?:string){

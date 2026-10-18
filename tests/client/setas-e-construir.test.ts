@@ -20,3 +20,11 @@ test('Construir is off the HUD (and with it the wall counter and the tray); the 
   assert.equal((rescue.match(/shownTargets\(/g)??[]).length,3);
   assert.match(readFileSync(new URL('../../src/client/hud/towers/obra.ts',import.meta.url),'utf8'),/EDGE_KINDS_SHOWN\.has\('obra'\)/);
 });
+
+test('the car\'s arrow never steps out for another row (card seta-carro): only a hidden HUD or an open offer hides it',()=>{
+  const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8');
+  assert.match(hud,/const held=!!this\.el\.hidden\|\|this\.offerOpen\(\);/);
+  // The rows no longer take turns with the walk.
+  assert.match(hud,/this\.rows\.turn\(now,busy,\{busy:false,/);
+  assert.doesNotMatch(hud,/if\(show&&!this\.objectiveRow\.el\.hidden\)this\.renderObjective\(\);/);
+});

@@ -15,3 +15,9 @@ export const shownTargets=<T extends Pick<EdgeTarget,'kind'>>(targets:readonly T
  * new job for that button. The room still takes free builds; true brings the button (and its tray) back.
  */
 export const FORT_BUILD_BUTTON=false;
+/**
+ * The forge window ("Forja · Sai da sua grana", camp.ts) and the obra menu with its site markers and arrows
+ * (towers/obra.ts) are off the player's game too (user, 18/10: they are part of the "construir" that went): no window,
+ * no marker, no "junta material" hint. The room still runs them; true brings each one back.
+ */
+export const HUD_SWITCH:{forge:boolean;obra:boolean}={forge:false,obra:false};

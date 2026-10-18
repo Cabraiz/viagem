@@ -6,6 +6,9 @@ import {readFileSync} from 'node:fs';
 import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,WALK_LIGHT_MS,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson,type RowLesson} from '../../src/client/hud/coach.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import type {RunView} from '../../src/contract/view.ts';
+import {HUD_SWITCH} from '../../src/client/hud/arrows.ts';
+// The forge window and its gathering hint are off in the game (arrows.ts, user 18/10); their code is tested switched on.
+HUD_SWITCH.forge=true;
 
 const memory=(seed:Record<string,string>={})=>{
   const store=new Map(Object.entries(seed));

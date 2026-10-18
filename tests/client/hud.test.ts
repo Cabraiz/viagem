@@ -22,7 +22,7 @@ import {BOSS_ROUND_NAMES,MODIFIERS,ROUND_NAMES,modifierLabel} from '../../src/ru
 
 const WEAPONS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'];
 const EVOLUTIONS=['chinelo-evo','boleto-evo','cafe-evo'];
-const PASSIVES=['cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao'];
+const PASSIVES=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao'];
 
 test('round chip shows Round N/10 with critters in a wave and a countdown in the interval',()=>{
   const wave=fakeView('wave',1);
@@ -199,7 +199,7 @@ test('result build row never wraps: evolutions and weapons first, overflow becom
   const five={weapons:full.weapons.slice(0,3),passives:full.passives.slice(0,2)};
   assert.deepEqual(buildIcons(five,5).hidden,[]);assert.equal(buildIcons(five,Infinity).items.length,5);
   // Passives sort by level after weapons; ties keep the build order.
-  assert.deepEqual(buildIcons({weapons:[],passives:[{id:'ima',level:1},{id:'bone',level:3},{id:'tenis',level:1}]},9).items.map(i=>i.id),['bone','ima','tenis']);
+  assert.deepEqual(buildIcons({weapons:[],passives:[{id:'cartao',level:1},{id:'bone',level:3},{id:'tenis',level:1}]},9).items.map(i=>i.id),['bone','cartao','tenis']);
 });
 
 test('full-build coxinha (HEAL_CHOICE) is a known, funny snack card, not "Item misterioso"',()=>{

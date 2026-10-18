@@ -1,0 +1,576 @@
+[
+ {
+  "t": 0,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "stick": {
+   "x": 80,
+   "y": 764
+  },
+  "attack": {
+   "x": 319,
+   "y": 773
+  }
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:57 m",
+    "banco:65 m"
+   ]
+  }
+ },
+ {
+  "t": 1,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:65 m",
+    "banco:48 m"
+   ]
+  }
+ },
+ {
+  "t": 6,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:70 m",
+    "banco:52 m"
+   ]
+  }
+ },
+ {
+  "t": 11,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:68 m",
+    "banco:50 m"
+   ]
+  }
+ },
+ {
+  "t": 16,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:71 m",
+    "banco:34 m"
+   ]
+  }
+ },
+ {
+  "t": 21,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:82 m",
+    "banco:38 m"
+   ]
+  }
+ },
+ {
+  "t": 26,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:79 m",
+    "banco:40 m"
+   ]
+  }
+ },
+ {
+  "t": 32,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:77 m",
+    "banco:26 m"
+   ]
+  }
+ },
+ {
+  "t": 37,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:87 m",
+    "banco:29 m"
+   ]
+  }
+ },
+ {
+  "t": 42,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:73 m",
+    "banco:36 m"
+   ]
+  }
+ },
+ {
+  "t": 47,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:65 m",
+    "banco:31 m"
+   ]
+  }
+ },
+ {
+  "t": 52,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:80 m",
+    "banco:30 m"
+   ]
+  }
+ },
+ {
+  "t": 57,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:74 m",
+    "banco:37 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 62,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:60 m",
+    "banco:33 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 68,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:73 m",
+    "banco:28 m",
+    "grupo:8"
+   ]
+  }
+ },
+ {
+  "t": 73,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:72 m",
+    "banco:36 m",
+    "grupo:8"
+   ]
+  }
+ },
+ {
+  "t": 78,
+  "level": "Nv 1",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:53 m",
+    "banco:36 m",
+    "grupo:8"
+   ]
+  }
+ },
+ {
+  "t": 83,
+  "level": "Nv 1",
+  "fill": "matrix(0.2, 0, 0, 1, 0, 0) scaleX(0.2)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:65 m",
+    "banco:27 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 88,
+  "level": "Nv 1",
+  "fill": "matrix(0.2, 0, 0, 1, 0, 0) scaleX(0.2)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:70 m",
+    "banco:35 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 93,
+  "level": "Nv 1",
+  "fill": "matrix(0.2, 0, 0, 1, 0, 0) scaleX(0.2)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:52 m",
+    "banco:36 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 98,
+  "level": "Nv 1",
+  "fill": "matrix(0.8, 0, 0, 1, 0, 0) scaleX(0.8)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:57 m",
+    "banco:27 m"
+   ]
+  }
+ },
+ {
+  "t": 104,
+  "level": "Nv 1",
+  "fill": "matrix(0.8, 0, 0, 1, 0, 0) scaleX(0.8)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:69 m",
+    "banco:34 m",
+    "grupo:6"
+   ]
+  }
+ },
+ {
+  "t": 109,
+  "level": "Nv 1",
+  "fill": "matrix(0.8, 0, 0, 1, 0, 0) scaleX(0.8)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:56 m",
+    "banco:34 m",
+    "grupo:5"
+   ]
+  }
+ },
+ {
+  "t": 114,
+  "level": "Nv 2",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:56 m",
+    "banco:27 m"
+   ]
+  }
+ },
+ {
+  "t": 119,
+  "level": "Nv 2",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:70 m",
+    "banco:38 m",
+    "grupo:5"
+   ]
+  }
+ },
+ {
+  "t": 124,
+  "level": "Nv 2",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:57 m",
+    "banco:50 m"
+   ]
+  }
+ },
+ {
+  "t": 130,
+  "level": "Nv 2",
+  "fill": "matrix(0.133333, 0, 0, 1, 0, 0) scaleX(0.133333)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:50 m",
+    "banco:46 m",
+    "grupo:8",
+    "grupo:12"
+   ]
+  }
+ },
+ {
+  "t": 135,
+  "level": "Nv 2",
+  "fill": "matrix(0.28724, 0, 0, 1, 0, 0) scaleX(0.333333)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:63 m",
+    "banco:42 m",
+    "grupo:12"
+   ]
+  }
+ },
+ {
+  "t": 140,
+  "level": "Nv 3",
+  "fill": "matrix(0, 0, 0, 1, 0, 0) scaleX(0)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:59 m",
+    "banco:53 m",
+    "grupo:8"
+   ]
+  }
+ },
+ {
+  "t": 145,
+  "level": "Nv 3",
+  "fill": "matrix(0.08, 0, 0, 1, 0, 0) scaleX(0.08)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:46 m",
+    "banco:49 m",
+    "grupo:12"
+   ]
+  }
+ },
+ {
+  "t": 150,
+  "level": "Nv 3",
+  "fill": "matrix(0.08, 0, 0, 1, 0, 0) scaleX(0.08)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:62 m",
+    "banco:43 m",
+    "grupo:12"
+   ]
+  }
+ },
+ {
+  "t": 155,
+  "level": "Nv 3",
+  "fill": "matrix(0.08, 0, 0, 1, 0, 0) scaleX(0.08)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:61 m",
+    "banco:50 m",
+    "grupo:12",
+    "grupo:5"
+   ]
+  }
+ },
+ {
+  "t": 160,
+  "level": "Nv 3",
+  "fill": "matrix(0.08, 0, 0, 1, 0, 0) scaleX(0.08)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:42 m",
+    "banco:52 m",
+    "grupo:12"
+   ]
+  }
+ },
+ {
+  "t": 166,
+  "level": "Nv 3",
+  "fill": "matrix(0.08, 0, 0, 1, 0, 0) scaleX(0.08)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:54 m",
+    "banco:42 m",
+    "grupo:12",
+    "grupo:5"
+   ]
+  }
+ },
+ {
+  "t": 171,
+  "level": "Nv 3",
+  "fill": "matrix(0.16, 0, 0, 1, 0, 0) scaleX(0.16)",
+  "offer": false
+ },
+ {
+  "aim": {
+   "best": null,
+   "kinds": [
+    "moto:59 m",
+    "banco:48 m",
+    "grupo:12",
+    "grupo:5"
+   ]
+  }
+ },
+ {
+  "t": 176,
+  "level": "Nv 3",
+  "fill": "matrix(0.16, 0, 0, 1, 0, 0) scaleX(0.16)",
+  "offer": false
+ },
+ {
+  "t": 180,
+  "level": "Nv 3",
+  "fill": "matrix(0.193752, 0, 0, 1, 0, 0) scaleX(0.2)",
+  "offer": false
+ },
+ {
+  "errors": []
+ }
+]

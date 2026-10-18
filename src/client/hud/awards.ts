@@ -116,7 +116,7 @@ const DEFS:readonly AwardDef[]=[
     line:v=>`${v} níveis de build. Só treina.`},
 ];
 
-const ZERO:Readonly<PlayerTally>={downs:0,revives:0,upgrades:0,evolves:0,heals:0,magnets:0,chests:0,pickups:0,kills:0};
+const ZERO:Readonly<PlayerTally>={downs:0,revives:0,upgrades:0,evolves:0,heals:0,chests:0,pickups:0,kills:0};
 const FALLBACK:Omit<Award,'playerId'>={id:'figurante',title:'Figurante de luxo',icon:'foto',line:'Apareceu na foto. Valeu!'};
 
 /** Runner-up sticker (rule C): the balanced scale (lost tiebreak), the crate podiums 2 and 3 (numbered and of different
@@ -136,7 +136,7 @@ export function computeAwards(result:RunResult,tally:RunTally):Award[]{
     // Server counters (award-stats-server: `downs` present) are the same on every client: use only them.
     if(stats&&stats.downs!==undefined){
       const n=(v:number|undefined)=>Math.max(0,Number.isFinite(v)?v!:0);
-      const server:PlayerTally={...entry,downs:n(stats.downs),revives:n(stats.revives),heals:n(stats.heals),magnets:n(stats.magnets),
+      const server:PlayerTally={...entry,downs:n(stats.downs),revives:n(stats.revives),heals:n(stats.heals),
         chests:n(stats.chests),pickups:n(stats.pickups),kills:n(stats.kills),evolves:n(stats.evolves)};
       return {player,tally:server,damage:n(stats.damage),kills:server.kills,revives:server.revives,pickups:server.pickups};
     }

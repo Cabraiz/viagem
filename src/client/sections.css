@@ -97,40 +97,35 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   width: calc(var(--s) * .42); height: calc(var(--s) * .09); transform: translateX(-50%); border-radius: 50%;
   background: radial-gradient(closest-side, color-mix(in srgb, var(--c-breu) 40%, transparent), transparent);
 }
-.criacao .portrait-caption { padding: 2px 12px 8px; }
-.criacao .portrait-caption > span { font-size: 11px; }
-.criacao .portrait-caption blockquote { margin: 6px 0 0; font-size: clamp(var(--t-13),2.4vh,var(--t-21)); line-height: 1.2; }
-.criacao .portrait-navigation { padding: 6px 10px; justify-content: space-between; }
 .criacao .round-button { width: 44px; height: 44px; }
 
-.criacao .character-sheet {
-  min-height: 0; padding: clamp(10px,2vh,20px) clamp(12px,2vw,22px);
-  display: grid; grid-template-rows: auto auto minmax(0,1fr) auto; gap: clamp(8px,1.6vh,16px); container-type: size;
+/* menu-personagem-enxuto (the user, 18/10): the card holds only the podium with the dancing hero, the class name, the
+   ‹ › arrows, the player's name and "Esse sou eu!" (no role seal, quote, colors, skill nor stats). One column: the name
+   on top, the podium takes every pixel left, the arrows ride on its sides, the name field and the button under it. A
+   PC window is narrower (a tall card, not a wide empty sheet); a landscape phone puts the podium beside the form. */
+@media (min-width: 621px) and (min-height: 521px) { .criacao #personagem { width: min(var(--janela-w), 100%, 560px); } }
+.criacao .window-content { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; }
+/* The podium reaches 0.8 x the frame + 0.28 --s down: on a wide, short frame (PC, small phones) up to ~10 px past it. */
+.criacao .portrait-panel { position: relative; grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); padding-bottom: 14px; }
+.criacao .portrait-panel h2 {
+  margin: 0; padding: clamp(8px,1.6vh,14px) 56px 0; text-align: center; overflow-wrap: anywhere;
+  font: 400 clamp(24px,4.4vh,36px)/1.05 var(--f-cartaz); color: var(--c-lilas);
 }
-.criacao .character-sheet h2 { margin: 0; font: 400 clamp(22px,4vh,32px)/1.05 var(--f-cartaz); color: var(--c-lilas); }
-.criacao .identity-fields { display: grid; gap: 8px; }
-.criacao .identity-fields input { min-height: 44px; font-size: var(--t-16); }
-.criacao .palette { margin: 0; }
-.criacao .palette > div { display: grid; grid-template-columns: repeat(6,minmax(0,44px)); gap: 6px; }
-.criacao .swatch { width: 100%; height: 44px; }
-.criacao .swatch[aria-pressed=true]:after { line-height: 40px; }
-.criacao .stats-and-story {
-  min-height: 0; margin: 0; gap: clamp(10px,2vw,20px); overflow: hidden;
-  display: grid; grid-template-columns: minmax(120px,.9fr) minmax(0,1.2fr); grid-template-rows: minmax(0,1fr); align-items: center;
+.criacao .portrait-panel .portrait { grid-row: 2; }
+.criacao .portrait-navigation {
+  position: absolute; z-index: 4; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  display: flex; justify-content: space-between; padding: 0 8px; background: none; border: 0; pointer-events: none;
 }
-/* The radar takes the height the row gives it (no blank band), never more than its box: labels stay inside. */
-.criacao .radar-wrap { grid-column: auto; grid-row: auto; margin: 0 auto; height: 100%; max-height: 230px; width: auto; max-width: 100%; aspect-ratio: 220/180; }
-.criacao .radar-wrap svg { padding: 14px 18px; }
-.criacao .stat-label { font-size: 11px; white-space: nowrap; }
-/* Side labels are centered on the axis, so a short radar never pushes them out of its box. */
-.criacao .stat-label.agility, .criacao .stat-label.charm { top: 50%; transform: translateY(-50%); }
-.criacao .radar-wrap { min-height: 112px; }
-.criacao .stat-label b { font-size: 15px; }
-.criacao .skill-box { border: 0; padding: 0; align-items: flex-start; }
-.criacao .skill-box h3 { margin: 0 0 4px; font-size: var(--t-16); }
-.criacao .skill-box p { font-size: var(--t-13); line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.criacao .selection-footer { margin: 0; padding-top: clamp(6px,1.2vh,12px); justify-content: flex-end; }
-.criacao .primary-button { min-height: 48px; font-size: var(--t-16); padding: 10px 26px; }
+.criacao .portrait-navigation .round-button { pointer-events: auto; }
+.criacao .character-sheet { min-height: 0; padding: 12px; display: grid; gap: 10px; align-content: center; }
+.criacao .character-sheet input { width: 100%; min-height: 48px; font-size: var(--t-16); }
+.criacao .selection-footer { margin: 0; padding: 0; }
+.criacao .primary-button { width: 100%; min-height: 52px; font-size: var(--t-18,18px); padding: 10px 26px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .criacao .window-content { grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+  .criacao .portrait-panel h2 { font-size: 22px; padding-top: 6px; }
+  .criacao .character-sheet { padding: 10px; }
+}
 
 /* Classes */
 .criacao .roster { display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; padding: 10px 12px 8px; }
@@ -174,8 +169,6 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
 .criacao .filter .suit-espadas, .criacao .filter .suit-paus { fill: currentColor; }
 .criacao .filter[aria-pressed=true] .suit-espadas { fill: var(--c-breu); }
 .criacao .filter[aria-pressed=true] .suit-paus { fill: var(--arte-azul-sombra); }
-.criacao .portrait-caption > span { display: inline-flex; align-items: center; gap: 5px; }
-.criacao .portrait-caption > span .suit { width: 14px; height: 14px; }
 .criacao .roster-pagination #page-count { font-size: 13px; font-weight: 800; color: var(--c-papel); min-width: 54px; text-align: center; }
 
 /* Low height (landscape phone, short desktop windows): the window title goes, everything tightens. */
@@ -184,70 +177,22 @@ html:has(.criacao), html:has(.criacao) body { height: 100%; overflow: hidden; }
   .criacao .section-tabs [role=tab] { padding: 6px 14px; }
   .criacao .window-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0; }
   .criacao .window-content { padding: 6px; gap: 8px; }
-  .criacao .portrait-caption blockquote { display: none; }
-  .criacao .palette > div { grid-template-columns: repeat(6,40px); gap: 4px; }
-  .criacao .swatch { height: 44px; }
   .criacao .primary-button { min-height: 44px; }
 }
 
-/* Name and colors share a row only when the sheet itself is wide and short (it is a size container). */
-@container (min-width: 480px) and (max-height: 340px) {
-  .criacao .identity-fields { grid-template-columns: minmax(0,1fr) auto; align-items: center; }
-}
-/* A short sheet cannot fit a readable radar: the same four numbers as a 2x2 grid. */
-@container (max-height: 340px) {
-  .criacao .stats-and-story { grid-template-columns: auto minmax(0,1fr); }
-  .criacao .radar-wrap { display: grid; grid-template-columns: repeat(2,auto); gap: 4px 18px; align-content: center; justify-content: center; height: auto; min-height: 0; aspect-ratio: auto; }
-  .criacao .radar-wrap svg { display: none; }
-  .criacao .radar-wrap .stat-label { position: static; transform: none; writing-mode: horizontal-tb; font-size: 12px; }
-  /* varredura-celular (844x390): beside the 2x2 the skill had 136 px and its line cut at "Avança protegendo…". The four
-     numbers take one row and the skill gets the sheet's width under them. */
-  .criacao .stats-and-story { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 2px; align-items: start; }
-  .criacao .skill-box h3 { margin-bottom: 1px; }
-  .criacao .radar-wrap { grid-template-columns: repeat(4,auto); gap: 2px 14px; justify-content: start; margin: 0; }
-  .criacao .skill-box .skill-icon { display: none; }
-  .criacao .skill-box p { font-size: 12px; line-height: 1.35; }
-}
 
-/* Portrait: compact card on top (art left, quote and arrows right), sheet below. */
+/* Portrait: the window and the catalog tighten (the card's layout is above, the same in every orientation). */
 @media (orientation: portrait), (max-width: 620px) {
+  .criacao .window-content { padding: 8px; gap: 8px; }
   .criacao .window-title { padding: 6px 14px; font-size: var(--t-16); }
-  .criacao .window-content { grid-template-columns: 1fr; grid-template-rows: minmax(0,.8fr) minmax(0,1.7fr); padding: 8px; gap: 8px; }
-  .criacao .portrait-panel { grid-template-columns: minmax(0,1fr) minmax(0,1.1fr); grid-template-rows: minmax(0,1fr) auto; }
-  .criacao .portrait { grid-row: 1 / span 2; padding: 0; }
-  .criacao .portrait-caption { align-self: center; padding: 8px 10px 0 0; text-align: left; }
-  .criacao .portrait-caption blockquote { display: block; font-size: clamp(14px,2.2vh,18px); }
-  .criacao .portrait-navigation { grid-column: 2; border-radius: 0 0 var(--r-ficha) 0; }
-  .criacao .character-sheet { padding: 10px 12px; gap: 8px; }
-  /* One column: skill (name + two lines) on top, the radar takes the rest of the height, centered. */
-  .criacao .stats-and-story { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 6px; align-items: stretch; }
-  .criacao .skill-box { order: -1; }
-  .criacao .skill-box p { font-size: 12px; }
-  .criacao .radar-wrap { justify-self: center; min-height: 96px; max-height: 200px; }
-  .criacao .radar-wrap svg { padding: 14px 18px; }
-  .criacao .stat-label b { font-size: 13px; }
-  .criacao .selection-footer { justify-content: stretch; }
-  .criacao .primary-button { width: 100%; }
   .criacao .search { flex: 1 1 100%; max-width: none; }
   .criacao .role-filters { flex: 1 1 auto; }
   .criacao .filter { padding: 6px 9px; }
   .criacao #results-count { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .criacao .section-nav .wordmark { display: none; }
 }
-@media (orientation: portrait) and (max-height: 600px) {
-  .criacao .window-content { grid-template-rows: minmax(0,.75fr) minmax(0,1.7fr); }
-  .criacao .swatch { height: 40px; }
-  .criacao .character-sheet h2 { font-size: 20px; }
-}
 @media (orientation: portrait) and (max-height: 700px) {
-  /* Too short for a readable radar: the same four numbers as a 2x2 grid. */
-  .criacao .stats-and-story { grid-template-rows: auto auto; align-content: center; }
-  .criacao .radar-wrap { display: grid; grid-template-columns: repeat(2,auto); gap: 4px 20px; justify-content: center; height: auto; min-height: 0; aspect-ratio: auto; }
-  .criacao .radar-wrap svg { display: none; }
-  .criacao .radar-wrap .stat-label { position: static; transform: none; writing-mode: horizontal-tb; font-size: 12px; }
   .criacao .window-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); padding: 0; }
-  .criacao .skill-box p { font-size: 12px; }
-  .criacao .character-sheet h2 { font-size: 22px; }
 }
 
 #enter-island { display:block; width:100%; margin:12px auto; }

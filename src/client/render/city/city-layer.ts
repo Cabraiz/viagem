@@ -31,6 +31,7 @@ import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
+import {circlePolygon,fanTriangles,isConvex} from './fan.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 import {cliffCells,withoutCliffs} from './relevo/field.ts';
 import {artIndex} from '../../art/manifest.ts';
@@ -57,12 +58,22 @@ const GLINT_PERIOD_MS=4000;
 export const GROUND_RESOLUTION=0.75;
 export const GROUND_RT_MAX_PX=2048;
 
+/** Fills a polygon with the current fill style: a convex one as a triangle fan (fan.ts, no earcut), any other through Phaser. */
+function fillShape(g:Phaser.GameObjects.Graphics,points:readonly Pt[]){
+  if(!isConvex(points)){g.fillPoints(points as Pt[],true);return;}
+  for(const t of fanTriangles(points))g.fillTriangle(t[0],t[1],t[2],t[3],t[4],t[5]);
+}
 /** Draws one decor primitive into a Graphics. */
 function drawPrim(g:Phaser.GameObjects.Graphics,p:DecorPrim){
-  if(p.shape==='circle'&&p.cx!==undefined&&p.cy!==undefined&&p.r!==undefined){g.fillStyle(p.color,p.alpha).fillCircle(p.cx,p.cy,p.r);return;}
+  if(p.shape==='circle'&&p.cx!==undefined&&p.cy!==undefined&&p.r!==undefined){
+    g.fillStyle(p.color,p.alpha);
+    const ring=circlePolygon(p.cx,p.cy,p.r);
+    if(ring.length)fillShape(g,ring);else g.fillCircle(p.cx,p.cy,p.r);
+    return;
+  }
   if(!p.points||p.points.length<2)return;
   if(p.shape==='line')g.lineStyle(p.width??1,p.color,p.alpha).strokePoints(p.points,false);
-  else g.fillStyle(p.color,p.alpha).fillPoints(p.points,true);
+  else fillShape(g.fillStyle(p.color,p.alpha),p.points);
 }
 /** prefers-reduced-motion, read once (false outside a browser). */
 function reducedMotion(){
@@ -500,7 +511,7 @@ export class CityLayer {
     for(const g of groups.values()){
       const body=TriBand.make(this.scene,g.items.map(({piece,geo})=>(gr:Phaser.GameObjects.Graphics)=>{
         const colors=BLOCK_COLORS[piece.kind];
-        for(const face of geo.faces)gr.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
+        for(const face of geo.faces)fillShape(gr.fillStyle(colors[face.kind],1),face.points);
         // Icing, windows, plaster and icicles (with the relief: the walls' snowy stones) fade with the column (same part).
         for(const prim of pieceDecor(piece,this.asset,view,this.pivot,this.pieceLook))drawPrim(gr,prim);
       }));
@@ -646,7 +657,7 @@ export class CityLayer {
     }
     // Pass 1: flat cells.
     const flat=place(this.scene.make.graphics({},false));
-    if(!relief)for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
+    if(!relief)for(const q of quads)if(!painted.has(q.kind))fillShape(flat.fillStyle(groundColor(q.kind,q.shade),1),q.points);
     // Pass 2: painted cells, one Mesh per texture.
     const meshes:Phaser.GameObjects.Mesh[]=[];
     if(!relief)for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
@@ -655,7 +666,7 @@ export class CityLayer {
     for(const q of quads){
       if(relief||!painted.has(q.kind))continue;
       const o=groundShadeOverlay(q.kind,q.shade);
-      if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
+      if(o)fillShape(over.fillStyle(o.color,o.alpha),q.points);
     }
     for(const prim of decor)if(!prim.shimmer)drawPrim(over,prim);
     const glints=TriBand.make(this.scene,gr=>{for(const prim of decor)if(prim.shimmer)drawPrim(gr,prim);}).setDepth(GLINT_DEPTH);

@@ -5,7 +5,7 @@
  * - the moto with the chaveiro and Dona Cida: riding, over the speed bump, around the block (alarm), dead (the "2 to
  *   push" icon with the push's progress), delivering (he stands with the bag), fallen (a critter touched it), and the
  *   chaveiro at the car's door while opening it (a 15 s bar);
- * - on the ground: the speed bumps of the route, the next delivery spot (marked ahead), the shadows;
+ * - on the ground: the next delivery spot (marked ahead), the shadows (the speed bumps have no drawing);
  * - the end: the trunk opens and the charger comes out ("conector errado"); perda total: the car darker, still running.
  * Each figure draws at its own actor depth (the city's column occlusion through the projector) and fades while it
  * covers the hero. Pure drawing: the scene pushes each view's objective and calls update every frame.
@@ -16,7 +16,7 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
-import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,routeHeadingAt,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
+import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
@@ -143,8 +143,8 @@ export class ChaveiroRenderer {
     const alarm=alarmOn(view,st.tick),wrecked=view.ended==='defeat';
     const fallingBits=st.settle(time);
 
-    // Ground: speed bumps, the delivery spot, the shadows, the fallen parts.
-    for(const s of view.stops??[])if(s.kind==='lombada')this.drawBump(s.x,s.y,routeHeadingAt(view.route,s));
+    // Ground: the delivery spot, the shadows, the fallen parts. The speed bumps are not drawn (the old Papel/Breu
+    // stripes, card remover-desenhos-antigos): the moto's slowing down and its line say it until there is art.
     if(view.delivery)this.drawDelivery(view.delivery,k);
     this.drawShadow(view.car.x,view.car.y,CAR_HALF.l,CAR_HALF.w,carH);
     const parts=fallenParts(view.car.parts,fallingBits);
@@ -270,15 +270,6 @@ export class ChaveiroRenderer {
     });
     const color=LIGHT?LIT_SHADOW.color:this.c.breu,alpha=LIGHT?LIT_SHADOW.alpha:.25;
     this.ground.fillStyle(color,alpha).fillPoints(corners,true);
-  }
-  /** A speed bump across the road: Papel and Breu stripes. */
-  private drawBump(x:number,y:number,heading:number){
-    const g=this.ground,v=this.options.projector.view,p=this.options.projector.project(x,y,this.q);
-    const ca=Math.cos(heading),sa=Math.sin(heading),o=(u:number,w:number)=>{const q=isoOffset(u*ca-w*sa,u*sa+w*ca,0,v);return {x:p.x+q.x,y:p.y+q.y};};
-    for(let i=-4;i<4;i++){
-      const w=.45*M;
-      g.fillStyle(i&1?this.c.breu:this.c.papel,.85).fillPoints([o(.4*M,i*w),o(-.4*M,i*w),o(-.4*M,(i+1)*w),o(.4*M,(i+1)*w)],true);
-    }
   }
   /** The next delivery: a ring on the ground and a tag with the seconds until he gets there. */
   private drawDelivery(d:{x:number;y:number;etaS:number},k:number){

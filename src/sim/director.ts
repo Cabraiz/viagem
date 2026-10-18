@@ -1095,6 +1095,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
     Object.assign(ctx.round,{phase:'wave',phaseEndsTick:ctx.tick+plan.durationTicks,remaining:plan.total});
     if(city(ctx))planCity(ctx);
     ctx.emit({type:'round',index,phase:'wave',name:theme.name,modifier:theme.modifierLabel});
+    // Only where the first bichos come from the off-screen ring (~25 s away): on the island they come from the coast in
+    // a few seconds, and the first level comes from them.
+    if(plan.welcomeXp&&endless(ctx))ctx.team.xp+=plan.welcomeXp;
   }
 
   /** Cancels what has not spawned and walks the survivors back into the sea (endless: off screen, away from the nearest player). */

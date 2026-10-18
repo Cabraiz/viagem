@@ -9,6 +9,14 @@
     <!-- DSG-fontes: só os 2 pesos mais usados vão no preload; o resto chega com font-display:swap. -->
     <link rel="preload" href="/fonts/londrina-solid-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/m-plus-rounded-1c-700.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- danca-sem-fallback: the first page of the selected hero's dance (menu-dance.ts firstDancePage) starts downloading
+         with the HTML, before the bundle and the art index, so the menu's empty podium turns into the dance sooner.
+         DEFAULT_HERO = playableClasses[0] (tests/client/menu-dance.test.ts checks it). -->
+    <script>
+      (function(){var DEFAULT_HERO='mendigo',id=DEFAULT_HERO;
+        try{if(/[?&]sandbox=/.test(location.search))return;var s=JSON.parse(localStorage.getItem('viagem:hero:v1')||'null');if(s&&typeof s.classId==='string'&&/^[a-z0-9-]{1,40}$/.test(s.classId))id=s.classId;}catch(e){}
+        var l=document.createElement('link');l.rel='preload';l.as='image';l.href='/art/lite/menu/danca/'+id+'-p1.webp';l.setAttribute('fetchpriority','high');document.head.appendChild(l);})();
+    </script>
     <title>viagem · Crie seu personagem</title>
   </head>
   <body>

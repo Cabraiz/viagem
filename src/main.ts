@@ -57,7 +57,7 @@ app.innerHTML = `
     <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
     <div class="window-content">
       <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
-        <div id="portrait" class="portrait" role="img"></div>
+        <div id="portrait" class="portrait dance-pending" role="img"></div>
         <div class="portrait-caption"><span id="portrait-role"></span><blockquote id="quote"></blockquote></div>
         <nav class="portrait-navigation" aria-label="Trocar personagem"><button id="previous" class="round-button" aria-label="Classe anterior">‹</button><button id="next" class="round-button" aria-label="Próxima classe">›</button></nav>
       </section>

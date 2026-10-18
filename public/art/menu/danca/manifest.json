@@ -1,0 +1,1896 @@
+{
+  "version": 2,
+  "group": "menu",
+  "pieces": {
+    "aposentado": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "aposentado-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "ea4ae60262b9d615e6e5e1530bbbb3f4eea9048ec02b31d706b11b47f38cec0a"
+            },
+            {
+              "file": "aposentado-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "a87902c26cdc74f425a197d3c1b373dd3f5cc241c9ab1ea01ba1ffca072fa2c1"
+            },
+            {
+              "file": "aposentado-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "c80f0355d04942b99bfcb77e333becab0e21ed365499b2d3fa8d110da1d6bcf3"
+            },
+            {
+              "file": "aposentado-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "d17f0b82f731510692fc995767a47ddbbf2e3a99b0d8573c03d25fb3778040ef"
+            }
+          ],
+          "sha256": "b8319ded235ecfda012597e9558d6a3cc53779219e4e7ff1b78c4935df5146a3"
+        }
+      },
+      "sha256": "5255eb7e5b472e5e4224b79ec611c2f03d09e5758d4a57bc8a8679f237d6c246"
+    },
+    "astrologa": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "astrologa-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "c447342bd3ae3b7890a1b1e33f9a886b5413fc3b47765f9d9485de74469b55e2"
+            },
+            {
+              "file": "astrologa-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "be86e0b46049fea52fbb4b0c438bbc1632e4314cd2e867e0f67bcbcd187d5a8e"
+            },
+            {
+              "file": "astrologa-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "92f054dda1ea5cefe2bf957316f8fb634b4115fdfb2818b82ca8451ffb296710"
+            },
+            {
+              "file": "astrologa-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "a44392d07d9d3df1e988a805b6d7e5892194e7e807ad9530af3875fb0eee217d"
+            }
+          ],
+          "sha256": "9bbbe35d1c74b53687d34f010df7357ff02f289812d3e263ca24af31fb77fb98"
+        }
+      },
+      "sha256": "d74969932f693c35b1a7bc2dd3435926b607e40ef453762f0b0a88eb481e3433"
+    },
+    "caca-promocao": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "caca-promocao-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "d73ff0d7cb49281f82d58aadd9ed8a9ef33c537c14f9c711a5b75e19aafff473"
+            },
+            {
+              "file": "caca-promocao-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "cc52c97d33a55cb98351ee0cdc8b4c730568ac8ef4d9995c89c548f141811602"
+            },
+            {
+              "file": "caca-promocao-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "a977bd3f2babab062efdc854f8886d70e9a1063df4d6f6b39a3a9a6574d48e90"
+            },
+            {
+              "file": "caca-promocao-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "ab3efea5ed484636c5d612ddd3484eb20c5779bfd9c43feaad5c233e84bb700f"
+            }
+          ],
+          "sha256": "65585a7f2e50dedfca467b271556582b6701fe97a5ef553a338ea1a1da193129"
+        }
+      },
+      "sha256": "19ab477746358ee62b6c802956a488f80fb4add19a5f70b9c2828abe62922ced"
+    },
+    "cidadao-comum": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "cidadao-comum-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "70b5858b196704e0e54538f3154a6d350f973ffe522f19d0f62f58a9083ee0ff"
+            },
+            {
+              "file": "cidadao-comum-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "912e36319ed29b2fcb2e49277f3c97152c2e520fc446d3aaeec7f1f630fa134d"
+            },
+            {
+              "file": "cidadao-comum-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "237f9bc7283c7e6d842d59c84291acaca59a025a4c54d1c911a889b2d3ebc0ef"
+            },
+            {
+              "file": "cidadao-comum-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "cc921f9d2bc9acb4be83adf035678406eeac53329fd556ffacf515dd64fb6548"
+            }
+          ],
+          "sha256": "a749b05a1bd4f8ca58578e28fb014d736723f275772d42df146e422644d706ea"
+        }
+      },
+      "sha256": "f00309b2fc557d25585f8ad9817887417af218aba51d5a7820edd3bf9e883c6e"
+    },
+    "clt-cansado": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "clt-cansado-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "e9ce65161cc699ebeda8f64e54703e968f3eb46a36f9838c65c04526aa1f9b6a"
+            },
+            {
+              "file": "clt-cansado-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "2b6ad7b391807020e045c650872cdc07acac1b00d8cec35bcac97824ce44a007"
+            },
+            {
+              "file": "clt-cansado-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "63abb744c023e448ef011bccb0ced8a3368bcb45cbee3f796f69fb411a83b943"
+            },
+            {
+              "file": "clt-cansado-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "b92630e2b12871707afef3b93d25cb97444c0093efc8f44d6c9e4d65c1ffd735"
+            }
+          ],
+          "sha256": "e370e93b30871df97116bca9b71da3d5b6f685bacd50b8d6c1dcb73f6010397b"
+        }
+      },
+      "sha256": "1b1453160d5cb856ca2041c4afdd6fbac3f5be0eaa8f6a102bc4d9896675c470"
+    },
+    "coach": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "coach-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "21261fc80ebea3227c62a51965035152b42f63876edaed61f9f483b5744ff39a"
+            },
+            {
+              "file": "coach-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "9f04d5c676ce5cc866d55484b4e075e5e162ccceef1c31dbfa1a7ebd76f87318"
+            },
+            {
+              "file": "coach-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "9d5483bfd441e8b8f1c99d5c6a59961ad56ce392b96e7771094851ce9a9549fc"
+            },
+            {
+              "file": "coach-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "edf310fa96d6d41769fab59835a40f696a82c7d04369ce45f838fef42242b720"
+            }
+          ],
+          "sha256": "b4aeaf9674a0a92145e8af5050b05e638026bfae5f99d04306aa47d95edf1863"
+        }
+      },
+      "sha256": "b347a16a87cda41c580b945fdf38ccc42cea2a146b756d9ea6c51433eadc7221"
+    },
+    "concurseira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "concurseira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "79ee4c1af84d2c63ff29430410ef4992eec50fe70ae068917826de9301ae9052"
+            },
+            {
+              "file": "concurseira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "326d638ec8619693b9af608ecb1081acdc9efd1b17bdccbe79abac2f88fd2f82"
+            },
+            {
+              "file": "concurseira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "c515cbcd16e30aee24b439f0c4c8dc2e6c45227c38c49d9697071955a2a12403"
+            },
+            {
+              "file": "concurseira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "1437f25a99581cb5e3bc7c62c9f8004a4b749a79c726880001ac555ddfc2b5db"
+            }
+          ],
+          "sha256": "7075061020a81503f721e7735a14d338491e8b3f97676e046614abe594a0f1a6"
+        }
+      },
+      "sha256": "78b149bd66ba30cafca3f559a9726d8782388b3464891ddf9427e28ece0e19e1"
+    },
+    "conspiracionista": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "conspiracionista-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "c7017d3dca490d04aa522d6394127131a6924e8b6e8f3bf10bcd38bbe3efb0dd"
+            },
+            {
+              "file": "conspiracionista-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "c5586ae4041ef05f4c37861637c834ff76eefba2da49a0acb1d64530976adfee"
+            },
+            {
+              "file": "conspiracionista-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "bc61e7e0184c2b864372b21e46691d49f4740160a4c01d59e929222264ffa1c7"
+            },
+            {
+              "file": "conspiracionista-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "257953ddf6b2a9dcdb38876e85951902ef4e387cc15d5b325acc67fdcfd6e992"
+            }
+          ],
+          "sha256": "0e74ac5d3af4859c67efab7477364330f5bbd89b32fd2f91beb42ba3a45731be"
+        }
+      },
+      "sha256": "65ea38527a3bbf28f9a3fdd4c56ada6c1239782d7fae50a2c4d9e6a82493a27d"
+    },
+    "faxineira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "faxineira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "f7865ce9972d8615653daf5433ffbeda85f6c7ed0d7634c8671724e64ec43796"
+            },
+            {
+              "file": "faxineira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "d4c9baa15dd4270f45377da246b77bd8323daf615215ecf40162c4e85f7a6da9"
+            },
+            {
+              "file": "faxineira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "c1a45b00d55642eae7984d74e9c31a0fc5de32706ec2cea06d914535b4e6e5e5"
+            },
+            {
+              "file": "faxineira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "74d1d400b6e133c6e015a4ce97c3da0e86a74b8b50e6c1eea8602ebf8114ccec"
+            }
+          ],
+          "sha256": "11fd1975cfcacfd985993b1e1270e5cab0f8c7ad5a815b43defcfbb9d6dbde01"
+        }
+      },
+      "sha256": "be94d7875d4392c16b04385b51aa27507fd30b22356b8dafee4b43089b4a1bed"
+    },
+    "feirante": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "feirante-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "69a8fdd052ac2dbcc79d38573b71abfbdf5788e1be2e1906bcef40f25ad49767"
+            },
+            {
+              "file": "feirante-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "56b5e8824dbcd7b193a42d02f2242e9c93065910ded9712393838d5123ac2a13"
+            },
+            {
+              "file": "feirante-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "e2f26a937ed39803a34892ebfd05673f9fa8943179778a0e9f888e7fe0cd0dc8"
+            },
+            {
+              "file": "feirante-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "3135ea715cad1262fd79a6b14d0a1fdd902a8c579ece4a68d25e658eff0cb8c4"
+            }
+          ],
+          "sha256": "0543784405c0a7f5c5ca1c527fe5c667ea6134fda17d7a9a06202b309eadf4e8"
+        }
+      },
+      "sha256": "437c8a30263f9cab814aee0f73b2b466f9d8255e19481fd2abf964bb8de44a52"
+    },
+    "gambiarreiro": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "gambiarreiro-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "9e4c233f2f0d54c562eee830348f5ce98a1351c7c8c7ac99131bd42e67191da9"
+            },
+            {
+              "file": "gambiarreiro-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "dde25d40b5dc29b4dc3f5da78e5bff5fee2848e1c862caa51eb9a269212a387d"
+            },
+            {
+              "file": "gambiarreiro-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "4fade367c631a59a731415a1931807bc18e971e64a039f1f35b6ec39427132f0"
+            },
+            {
+              "file": "gambiarreiro-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "20b7fe52a6a673033718153e5c05706a15cee5e606f64adbf7765500fb577364"
+            }
+          ],
+          "sha256": "36e7e041d8be5457a5843c639f1a858d959eba26ac18b47a852ea3f0f0797b4d"
+        }
+      },
+      "sha256": "c681581cb786ed96e918683d799b2e99f2b237dc5ba796bb2157919daed366e8"
+    },
+    "gamer-mobile": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "gamer-mobile-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "77d761c54fe52dbdee79880e94d9bbf49e1b1e6e80bf2046489a69c60d3db507"
+            },
+            {
+              "file": "gamer-mobile-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "4b4d760d54c40dec63fd0347501bf74c7ba875b6d8eb1f16eacb3a25e61277c3"
+            },
+            {
+              "file": "gamer-mobile-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "7b06fd05652e9e84b24e0f78953dbb42e9e8ff3b33bdc8b84363e560b1b52aa7"
+            },
+            {
+              "file": "gamer-mobile-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "c2dd143e76671744762b1a94e0303d172d9496504dd45a47b6745e145798e675"
+            }
+          ],
+          "sha256": "163cd6dba4e807a55ed76d33c217df16b6d4030c521918076610d64abca982a1"
+        }
+      },
+      "sha256": "50b23f46c10f7c511eccb6f0ede006532c53e98d0d7c59677e20233b2aae4d52"
+    },
+    "goleira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "goleira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "90856e7b9fd5e7f08e636653df7f1e11c88d31fb58fc24a34353dc26d9078c06"
+            },
+            {
+              "file": "goleira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "2512d205a20889473fd84af989de128263a31c0c2363d4e397d5e85f04769d96"
+            },
+            {
+              "file": "goleira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "7303453bc7766cd4f85b72d8681bd5501624da6b6b41a209116cc23be8d7de4b"
+            },
+            {
+              "file": "goleira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "6b34f1a72f2e0a34663fc0b79f0c5851d8b49b97ce37bad560951f6662d0e9cc"
+            }
+          ],
+          "sha256": "9eb1e290dbacb0b45e7e4622ca7a6e017dd5c0bb36db49ec7a57f9bad3ae3354"
+        }
+      },
+      "sha256": "4b530262a4a5a06f5e90ea5178d195b2e4f523cadff2c2520594745ffac99542"
+    },
+    "mae-pet": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "mae-pet-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "2a98fd0ba80c70c993d49336b005c5d69b150c0e043f1c5b6e5f0316d6f9d8ea"
+            },
+            {
+              "file": "mae-pet-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "c56408bbf08430b50bf453303709bf6cdd3db92506c9e854ac22d525ad9d8d21"
+            },
+            {
+              "file": "mae-pet-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "ca26cc88d7e8c1726c0f4dc3d4154a1b2dce33a43ea9d1e86d62261617d223de"
+            },
+            {
+              "file": "mae-pet-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "f8208d7d4f21ac04135ca6db42b6053e2883cdee732c8e5dc33d2ef4f8c97891"
+            }
+          ],
+          "sha256": "00b95cf19fb76117283a38fe6af8e51cfa88c8997140161048198ce3ee679ab6"
+        }
+      },
+      "sha256": "eeaae8e441b0d5a978a331bf51f665c3201dd4aa5959c105d3827f281ea355c6"
+    },
+    "maromba": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "maromba-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "8f0adcfc364262dafe6b380756b6d73127da2d86c66e370502d92da300d8857c"
+            },
+            {
+              "file": "maromba-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "fe8c90d4c1d563c8b3f77f326f9daeaa18c14bcb7e85f1e8df3f582939bb864f"
+            },
+            {
+              "file": "maromba-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "cc30d6607e8d7427a4fa5adabd4d6218c97d19e376fdff612fdf816edb77d06d"
+            },
+            {
+              "file": "maromba-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "6804eaa750dab6aeb684dc519e063c90b67636f8d33652c1e487d242e0bb9384"
+            }
+          ],
+          "sha256": "d124cdd0a555be0bcca89bb242ecddb2a4b19884fa4053c3ae94ee33e52149d2"
+        }
+      },
+      "sha256": "56e5d35883213b1d2fd2fdf80a7f18228efe27211dadf1af165073e18ec2c71d"
+    },
+    "mendigo": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "mendigo-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "c8894ce426604723827ae91480b5b3a9d0ef86f2e349eb4104d13f6730e66cf0"
+            },
+            {
+              "file": "mendigo-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "0344bad7268f6a079a2dd2b5bef6324ff495ef67f0f19d409c07510eac223db7"
+            },
+            {
+              "file": "mendigo-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "a706a0207a9da7997e88f177970eaee3cc5c94da99efdc64fc9c4d2ae4c41c59"
+            },
+            {
+              "file": "mendigo-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "998972b7c102df0c1ba504fd3c389149940c1d54fd9c8d1ffef8563e53dd8f8f"
+            }
+          ],
+          "sha256": "333b515564bc150e62bb1f5fc70870193585e9b5e5a5adfc2bcdb1d42d975220"
+        }
+      },
+      "sha256": "46932e48ec0225a44407c9ae27c6aa60f49345e4cce355859c0d4d6711aad325"
+    },
+    "merendeira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "merendeira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "405b83a4ea8179f2055c54f493d7983376d34c1b859a3457731b5e33fdcf3e95"
+            },
+            {
+              "file": "merendeira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "d5538e67ea2b57ca9d4295e7f2c8c5227492daac12fb6808ddf3443ed02e9709"
+            },
+            {
+              "file": "merendeira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "a5526108fd2318a4593729102e49313ce0890eb792c5e3cff3884c186691e99b"
+            },
+            {
+              "file": "merendeira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "13e568472f2c22e841a0b515b65090e16b565c72d6a6a1c771a376f12648c953"
+            }
+          ],
+          "sha256": "6faee2956b2ff27e2968a12948ec62b17e077d2504b0f03476592afa70f713ad"
+        }
+      },
+      "sha256": "947db799d799b727bf44c262075c2ae48c27b29c482700896b34c52751aebb7f"
+    },
+    "motogirl": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "motogirl-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "c794ae0ba10b792a21aeebab2dc550426023d477df333b5fcb94f2863f3df44c"
+            },
+            {
+              "file": "motogirl-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "d994e1a19832fe95dfd56fc1ad09c498dfbca46e579e76b1123ce255ff80e713"
+            },
+            {
+              "file": "motogirl-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "2a14298215ed9b941a3aa4a8c95dd020df74ab5b68b7c77924f979684fdba6b8"
+            },
+            {
+              "file": "motogirl-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "d8d829e353658f15ea423f02737af2bbc50ecb719e5de137d7d541ad97da833d"
+            }
+          ],
+          "sha256": "584b2ca6ad851b0628ea942409e6583cdc4c6efbc977c717a1bcc7c5450c010d"
+        }
+      },
+      "sha256": "4ddb0b2b77da697ecbd7e836f52d5c3f81be89bf32a47591a2356392d3ecc0af"
+    },
+    "pagodeiro": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "pagodeiro-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "94dbd14bc817715f35d7725e0073cd896b1870e39a5da2c9b29fa2bd2f80aef9"
+            },
+            {
+              "file": "pagodeiro-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "35173e2a5fb2c301be380fbf4d06c86a7d3e116063926749af78eb84282e27c4"
+            },
+            {
+              "file": "pagodeiro-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "311b2f1a871867be4f916bf04cb55b83754e36cfe69e8ad43d42093c97363177"
+            },
+            {
+              "file": "pagodeiro-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "878175b36257c84e78c3ca123fbe5b73ca6250d5e43219f0cc3ad271b4be1c08"
+            }
+          ],
+          "sha256": "91cc1656dca57442d71736849e6df21fd460fdda57a98621720c051de899781c"
+        }
+      },
+      "sha256": "a30dab40390f56119623520d166c03ee084f630b07faf395970eddc7daa1518e"
+    },
+    "passageira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "passageira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "76ab32ced5762ffe105ae4586b9fd4cddcfb0c0e40c5f4b8d036a8333eea4e28"
+            },
+            {
+              "file": "passageira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "e8916e634380e64bebbf88e3d272c395fabb1c0e463b091cb6714ba31f0f6799"
+            },
+            {
+              "file": "passageira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "39a368aa688390bd04389ccebac8650311a950045444ac4a8b84d889b8a1369a"
+            },
+            {
+              "file": "passageira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "f973f563300f78aa8ae88751265799d60cb89ad730ee04a71ae1b2575ae464fb"
+            }
+          ],
+          "sha256": "6ee43184e817dc5d71072e912e3bece2a4362e95d898d7f2e821a37095feaa9e"
+        }
+      },
+      "sha256": "78490b876a76dac8b1926088ea76c1cffbc5d2e868e696d3a1d26c6bdc673fb3"
+    },
+    "pedreiro": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "pedreiro-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "155e6d6fd2dd48ab1961bab7ad1ac0797e55a3f1e1d869b5bfb1b6862ed6c6e0"
+            },
+            {
+              "file": "pedreiro-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "d8e5fafc9ee2a01926596bcc7deeeb27f5423d52ca95edcb3a1f077a8e3fb934"
+            },
+            {
+              "file": "pedreiro-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "a3743b7d09a1e851e8d6903c44662c225c391a0089d46789ee63fd5c3871f21d"
+            },
+            {
+              "file": "pedreiro-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "227223e125eb99361240e99cafde76b7a455b5010d5b66210f9742e85de511b6"
+            }
+          ],
+          "sha256": "ba5619fd2675eec837834aead92bd7b97489666a46d99b8f20c6d0feff30c074"
+        }
+      },
+      "sha256": "bd8b5eff8c3433c5e29c6f87726bbe23b5f35abacb0d78bf38436c4fbe56ce70"
+    },
+    "porteiro": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "porteiro-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "ac1586a9754d81d62bf646d3660895b29c69c859f5b27437d41030dfce8b330b"
+            },
+            {
+              "file": "porteiro-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "33d4879b9700145779c0ec4f71316dc083bf45828e05a4bc2bfd3773d6a3b2b4"
+            },
+            {
+              "file": "porteiro-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "86fe6421866cd52e02d012f59347bf18472cdb920fa6b2c5d39b5abe70512896"
+            },
+            {
+              "file": "porteiro-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "d6fdde6cfdd9ed465d8d1b67dad0b1c810e0e2deff94f2803d5e81e822764187"
+            }
+          ],
+          "sha256": "a29636e7154e600e5382f0297972469211aba3ebabee8cafa9ce27d9be2d4433"
+        }
+      },
+      "sha256": "aa03f926926a08f16ce3fbe725a07a718a9e442a51d969bf1ddc8316c8665bdc"
+    },
+    "rainha-bateria": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "rainha-bateria-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "962df14d79ee38b7db3cb84ce25f4ff4780801d75a42eec202d707e873f9dd19"
+            },
+            {
+              "file": "rainha-bateria-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "91fc30844dd94bc7ed7d7d6d35a29978356ed4da537d75a730d3c67f2e7b3c6d"
+            },
+            {
+              "file": "rainha-bateria-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "131bf13ed6bd145d6226921ad1636895e2a58079d9fa648c0c7415a1750e628b"
+            },
+            {
+              "file": "rainha-bateria-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "83ecde399e6145d88fe47806d3a33400423d7bd998a5152d4f43261c5ad9b02a"
+            }
+          ],
+          "sha256": "8e53a113d972c9f84280d228c2ac7c9f253323802f1cf5b297db5f55b7788c1e"
+        }
+      },
+      "sha256": "47086af0a879e8bf577129aac3577cb771d04130222c36a10a0d4014e9e9f400"
+    },
+    "rei-arraia": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "rei-arraia-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "3f0831d428a0022c953af1e2b76bc1422a29529ca1219e97d80fe95f370f034d"
+            },
+            {
+              "file": "rei-arraia-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "ab79c2c0af737342a2e2a0c81171c1b2a5ab3497705a33a393045ac217297334"
+            },
+            {
+              "file": "rei-arraia-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "66a3408ced3e6de127078ec59543e1bd75da9ea83727be928dbbd315e6d36477"
+            },
+            {
+              "file": "rei-arraia-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "91d98ecfec7735aa8efe748b885e74dcf40c952b4c89c29a22ed90e79c7918d3"
+            }
+          ],
+          "sha256": "089eb2da6c0492be198c4010f12e53bb0a0b49f7b3997bad9223d677cc8be9b2"
+        }
+      },
+      "sha256": "ccb929a976a7d79711abed73ef6b9bab4b96837bf5f251b317062bd293d3c2e0"
+    },
+    "rei-pastel": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "rei-pastel-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "f511fe95a92a8e0cfa9d3ba90b9aaa350b850be0dff2e0bf8f14720f6377ede7"
+            },
+            {
+              "file": "rei-pastel-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "e2ca07052770f9b4659daf463e1934b14e9531663aabb89c26b266b8dd2125d6"
+            },
+            {
+              "file": "rei-pastel-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "d048550d1e0f67afac844eb522f442e6f7e47e6d3a80a640a7190741f69482c4"
+            },
+            {
+              "file": "rei-pastel-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "948d21bce2ac228abb605c7310b7492988a39aea296df5da9eee9e8e0bafffcc"
+            }
+          ],
+          "sha256": "61c20142844fbffa69c5fb4473d8096ab55254958082c803240d8d5081903c4c"
+        }
+      },
+      "sha256": "08035ebb0e3541fa629e4acd4f50f63de92810ef2732ba912f1c361b10175309"
+    },
+    "roqueira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "roqueira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "99ab93e7c244c1419e5b0bb732efb8b8651f0749eb48248fcbdcc475fd80d98f"
+            },
+            {
+              "file": "roqueira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "285051c173856ac922800b5cceffc0296ea2eb9fb93186e895fb46dd3cebd614"
+            },
+            {
+              "file": "roqueira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "dc9efd0454550eb1974454a539c234f100ae212c19f2010ad6efedf98cd0ba86"
+            },
+            {
+              "file": "roqueira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "2ef0a8f43d25d1c7cfa82b093c73f12c6dd5a962377111710ecc01454f91e9c4"
+            }
+          ],
+          "sha256": "2968b013e2262301ad29b0ebb29ef7bf1c2958f260551c80bfb641f21515fd72"
+        }
+      },
+      "sha256": "d39f4a7a7fbb9157e3d3c0959e4707071af8101854581444e025d4953899d738"
+    },
+    "salva-vidas": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "salva-vidas-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "3818bf092730395c83b20398602aa133138197be568e8b2612848bfd10853887"
+            },
+            {
+              "file": "salva-vidas-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "fe72125b8f44ce614064ccdd774de4118108f24d0e70fd4c6859f0935c2909fb"
+            },
+            {
+              "file": "salva-vidas-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "ab7b684016d6f8fb86b670ccf8ce18339606b4ea2832662dd65401397d95316a"
+            },
+            {
+              "file": "salva-vidas-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "3a977e9b1e51d8dbd56cb01354760f4f3c1e3a0de48989c1455ace0921f49e84"
+            }
+          ],
+          "sha256": "1f103eba899c55b97dbcb50cba6bc8e2a56048a032c55bc8b59344407992c0f9"
+        }
+      },
+      "sha256": "b99f9027c6c36f4c695de6e8f974dda3964edba5b63c3ecced5fe7bc0eb1a11e"
+    },
+    "sensei": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "sensei-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "8ac35e7e259d09157b8df14d7d0b66e0a991fe75a25020ef09c38ad24bd2dbf4"
+            },
+            {
+              "file": "sensei-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "fe229c9783ff3f6477051ea38c4180161a7d428722bf6373391deb13eda80e96"
+            },
+            {
+              "file": "sensei-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "fdeb32a55dfb6e1a00c0db970447909f2ffde89a26ca48506870ecdb5975e34a"
+            },
+            {
+              "file": "sensei-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "84d16ac660555bc855ee1367a2240e28e2abb244271c9b4b7b98ebbf09cf40c8"
+            }
+          ],
+          "sha256": "4d58f873dbf723ed54f3a7a482a2cec03907e701a576dea7acc5c7f4154dc65b"
+        }
+      },
+      "sha256": "a417b4e457d386438dbf769162b5442b1ae5d3e31d280caf5be9a3256e8b6a47"
+    },
+    "streamer": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "streamer-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "1b3cce038eb0f4505c8c6f2adf6f7aa6d6ec8e04c3e318ae9278d3fe0b88363a"
+            },
+            {
+              "file": "streamer-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "c5ca97eb33ebdd16a91de614e5b6b7e551e1c68083fdecb8754dc0767bec9940"
+            },
+            {
+              "file": "streamer-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "6b3f32952f0d5bf32c35f47c79de0142906e899d8b14c223fd59e02b1cd9b4ef"
+            },
+            {
+              "file": "streamer-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "213b21065e2e81a3ced3074441b22ea704b94b095a6cabcaf7607eb091438bb5"
+            }
+          ],
+          "sha256": "a309d8b50031be9e712324c4553da8cbabd7deab5366fb27e8648cb1c1854cd7"
+        }
+      },
+      "sha256": "b44c204c143f4314421c8b1b31c7616b8dccb09c31a77de5dbfa9db5a4816395"
+    },
+    "tecnico-ti": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "tecnico-ti-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "0b5a324195fbefe3051fcf2543eb16d2068f109091ee31178a579efef9711dbb"
+            },
+            {
+              "file": "tecnico-ti-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "d1af9d1a5692836f6abee45fe6337d382ae7347e2b6be79d4303234b96dcf66c"
+            },
+            {
+              "file": "tecnico-ti-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "5e5264712731605e15cb6438fb1204b5e338d7a84fae802f8b5aa3bc2ebe4181"
+            },
+            {
+              "file": "tecnico-ti-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "a69bf62b77e9225f38bff41bc9704084af54ecce9c236f5d902803e8ca65153a"
+            }
+          ],
+          "sha256": "7fa3974ca9f485028790f06ee7124902237e3dddae827d9211a6e856bea9b7ff"
+        }
+      },
+      "sha256": "356ea7dd8b03e0010655ee2d4cf04a20b376ae1ff087a2f2db7a38c882bfa1de"
+    },
+    "tio-do-churrasco": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "tio-do-churrasco-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "c69034583c0d27c8288dc22437cabaa25bd0b6346ace3c742ef83b8039b5f5e1"
+            },
+            {
+              "file": "tio-do-churrasco-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "ecc936b322717efff685f1fa2f12457b5237413dcc5d857f23d06458532d97d9"
+            },
+            {
+              "file": "tio-do-churrasco-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "da75bd75910a0e83c505c16e1ca2f54d8bd9ef809593d457a65d485aae159940"
+            },
+            {
+              "file": "tio-do-churrasco-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "32588c655db4585d2fc4c9ab9ca668f900e5b5f14e123222b4568aa656c09774"
+            }
+          ],
+          "sha256": "da3c45c7da985ff04f48409005e105206e338ca52dbea61faa3f461038ad0b6c"
+        }
+      },
+      "sha256": "d665c8da0327038ec62e1cff5be0a1f1fbc24edddf188fed11145c452f88e88f"
+    },
+    "universitario": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "universitario-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "f02711e4d9ec5ccd1062406f880a7f0cd67c32d6bf679fa596aee1e75708740d"
+            },
+            {
+              "file": "universitario-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "7947e2bd67b274f7f189039a46947a34df6e1d8cd48dc5e0ed560e002659737a"
+            },
+            {
+              "file": "universitario-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "940816fc1cd0cf38a8468c08816e3343a72d14b1d24db4932006ac8f9ad44bbb"
+            },
+            {
+              "file": "universitario-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "4e79495f10ebbe127a720322f574ead9014d9c7ad740cd13a9cf7da304ee4868"
+            }
+          ],
+          "sha256": "494dbaf144e5067740a861e1d0af4ecc923990cd84b41613e71cfef07829e55f"
+        }
+      },
+      "sha256": "fe5e4e62e74b2fccd5fbe522eacecbe4671d2246ff7f4e11441dc42afd9be550"
+    },
+    "vendedor-praia": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "vendedor-praia-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "12039d80151c023fab7f08088a3a1df0343f8bfbd3974fa43979574c2630a54a"
+            },
+            {
+              "file": "vendedor-praia-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "fa670fd20e5b5d21353072b0456b9ebac4517ccab8fa3b9c1c96867c1c71f29f"
+            },
+            {
+              "file": "vendedor-praia-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "87dfd5f5e5c2a300b0499d7ed5a55f0f9dd72b7d94fafd9d1a2db21c060abf30"
+            },
+            {
+              "file": "vendedor-praia-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "750c951cf901cc6438608656bb79c908cbbcb513c329d65b6096f5aed4b12269"
+            }
+          ],
+          "sha256": "e5c2696954e60be728de7153a8e3e0f8d62b4dffa1c8499ddf2daa8ab7dfb174"
+        }
+      },
+      "sha256": "0ccb4f082369530a41d83a3bbabe0babbbee9d3b983653b1ccf133dbd299b552"
+    },
+    "viciado-em-bet": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "viciado-em-bet-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "3c91470697556ca60c1d93742dccb61e633f75e8514ca08bfe01c412e52298aa"
+            },
+            {
+              "file": "viciado-em-bet-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "24beb206a5e30bd5196db7dd66f3a68d83a1e358376cfc414c138c3962ad4d80"
+            },
+            {
+              "file": "viciado-em-bet-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "da2bca62911efc1055bf775a86915e7a6d98cbc7c1fd40433db420d9985070c9"
+            },
+            {
+              "file": "viciado-em-bet-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "96fe02916694c9b07f8b007e58485f3cabd1b9ac744b536a5967646ff247a88c"
+            }
+          ],
+          "sha256": "7a20d8eac1f627324f79778dd3170e56876d09c94cca37d5069c7cf3b5b2d809"
+        }
+      },
+      "sha256": "b984dfa99ef2f8410a07b11b596776b408de5bb67317b4eaa07c4d388f557986"
+    },
+    "vizinha-fofoqueira": {
+      "kind": "dance",
+      "files": {
+        "dance": {
+          "cell": [
+            768,
+            512
+          ],
+          "frames": 128,
+          "anchor": [
+            0.5,
+            0.9
+          ],
+          "fps": 3.5555555555555554,
+          "loop": true,
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira-p1.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 40,
+              "sha256": "f836a61a05cc9771532e91bf4782c22fc5c458a487f797155d49d257f6eefc53"
+            },
+            {
+              "file": "vizinha-fofoqueira-p2.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 40,
+              "frameCount": 40,
+              "sha256": "1bb4e9091e8e623339cbd7c39291a09218413ea020b8d773ac2574ad69c8d5c4"
+            },
+            {
+              "file": "vizinha-fofoqueira-p3.webp",
+              "columns": 5,
+              "rows": 8,
+              "firstFrame": 80,
+              "frameCount": 40,
+              "sha256": "b341afc550b2b072e79c792ea011e44161fe3d6b535a1897061a35b08acf2955"
+            },
+            {
+              "file": "vizinha-fofoqueira-p4.webp",
+              "columns": 5,
+              "rows": 2,
+              "firstFrame": 120,
+              "frameCount": 8,
+              "sha256": "5ecce4e25b85b8cf54407ff0e5399ad1a47b242b6f6133c7a5aca01fe963a8d9"
+            }
+          ],
+          "sha256": "c45f08267844c333d541a36dde47e8726a769e44cf511feb08ddcf7216517b5f"
+        }
+      },
+      "sha256": "7855b35de8a3f8aad7d8446e8751a6b83b0e938e85d6264438db1d13adcb4eb5"
+    }
+  }
+}

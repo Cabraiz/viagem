@@ -449,6 +449,41 @@ async function validateDir8(spec,id,files,ctx,r){
   }
 }
 
+/** Menu dances: the 8×16 grid, plus previous 64/32-frame grids and 16-frame horizontal deliveries. */
+async function validateDance(spec,id,files,ctx,{problems,sheets}){
+  const png=files.find(f=>path.basename(f)===`${id}.png`);
+  const metas=files.filter(f=>[`${id}.meta.json`,`${id}.json`].includes(path.basename(f)));
+  for(const file of files)if(file!==png&&!metas.includes(file))problems.push(`${relName(ctx,file)}: arquivo não esperado para a dança.`);
+  if(!png)problems.push(`${spec.input}/${id}: falta ${id}.png.`);
+  if(metas.length!==1)problems.push(`${spec.input}/${id}: entregue um único ${id}.meta.json.`);
+  if(!png||metas.length!==1)return;
+  const label=relName(ctx,png),metaLabel=relName(ctx,metas[0]);
+  let meta;
+  try{meta=JSON.parse((await readFile(metas[0],'utf8')).replace(/^\uFEFF/,''));}
+  catch{problems.push(`${metaLabel}: JSON inválido.`);return;}
+  if(!isObject(meta)){problems.push(`${metaLabel}: use um objeto JSON.`);return;}
+  const allowed=['cell','columns','rows','frames','anchor','fps','loop'];
+  const extra=Object.keys(meta).filter(k=>!allowed.includes(k));
+  if(extra.length)problems.push(`${metaLabel}: chaves não aceitas: ${extra.join(', ')}.`);
+  if(!samePair(meta.cell,[768,512]))problems.push(`${metaLabel}: cell deve ser [768,512].`);
+  if(!samePair(meta.anchor,[.5,.9]))problems.push(`${metaLabel}: anchor deve ser [0.5,0.9].`);
+  if(typeof meta.fps!=='number'||!Number.isFinite(meta.fps)||meta.fps<=0||meta.fps>60)problems.push(`${metaLabel}: fps deve ser um número entre 0 e 60.`);
+  if(meta.loop!==undefined&&meta.loop!==true)problems.push(`${metaLabel}: a dança precisa de loop:true.`);
+  const img=await load(png,label,problems);
+  if(!img)return;
+  const grid=img.width===6144&&[8192,4096,2048].includes(img.height),legacy=img.width===12288&&img.height===512;
+  if(!grid&&!legacy){problems.push(`${label}: tamanho ${img.width}×${img.height}; use 6144×8192 (8×16, 128 quadros), ou os legados 6144×4096 (8×8, 64 quadros), 6144×2048 (8×4, 32 quadros) e 12288×512 (16×1).`);return;}
+  const columns=grid?8:16,rows=img.height/512,frames=columns*rows;
+  for(const [key,value] of Object.entries({columns,rows,frames})){
+    if((grid||meta[key]!==undefined)&&meta[key]!==value)problems.push(`${metaLabel}: ${key} deve ser ${value}.`);
+  }
+  const expectedFps=frames===128?128/36:frames===64?64/12:10;
+  if(grid&&(meta.fps!==expectedFps||meta.loop!==true))problems.push(`${metaLabel}: a grade de ${frames} quadros usa fps:${expectedFps} e loop:true.`);
+  if(checkTransparent(img,label,problems))checkGrid(problems,label,img,{cw:768,ch:512,cols:columns,rows});
+  sheets.push({key:'dance',source:png,output:`${id}.webp`,cell:[768,512],frames,grid:[columns,rows],
+    anchor:[.5,.9],fps:meta.fps,loop:true});
+}
+
 // ---------------------------------------------------------------- towers (base in 4 views + weapon in 8 directions)
 /** Keys of a tower's base.json and of its `meta` (08-TORRES.md: no other key). */
 export const TOWER_BASE_KEYS=Object.freeze(['kind','cell','views','rows','anchor','meta']);
@@ -782,7 +817,8 @@ async function validateOneFile(spec,id,files,ctx,r){
 }
 
 /** Output size of a sheet once packed (dir8 blocks are split by the converter into 1152×2304 atlases). */
-const packedSize=s=>s.blocks?undefined:[s.cell[0]*(s.frames??s.views??1),s.cell[1]*(s.directions??s.rows?.length??1)];
+const packedSize=s=>s.blocks?undefined:s.grid?[s.cell[0]*s.grid[0],s.cell[1]*s.grid[1]]:
+  [s.cell[0]*(s.frames??s.views??1),s.cell[1]*(s.directions??s.rows?.length??1)];
 
 /**
  * Validates one piece of a group. `files`: absolute paths of every input file of the piece (PNG and sidecar; for
@@ -802,6 +838,7 @@ export async function validatePiece(group,id,files,ctx){
   let kind=spec.kind;
   if(spec.kind==='animations')await validateAnimations(spec,id,files,ctx,r);
   else if(spec.kind==='dir8')await validateDir8(spec,id,files,ctx,r);
+  else if(spec.kind==='dance')await validateDance(spec,id,files,ctx,r);
   else if(spec.kind==='tower')await validateTower(spec,id,files,ctx,r);
   else if(spec.kind==='decor')await validateDecor(spec,id,files,ctx,r);
   else kind=(await validateOneFile(spec,id,files,ctx,r)).kind??kind;

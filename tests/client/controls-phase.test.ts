@@ -105,7 +105,8 @@ test('explore.ts: the stick and the skill come from the shared markup; the phase
   assert.match(explore,/\$\{SKILL_HTML\}<button class="explore-pause"/);
   assert.match(explore,/shell\.dataset\.out==='true'\|\|shell\.dataset\.controls==='off'\|\|!direction\.start/);
   assert.match(explore,/if\(applyControls\(shell,controls\)\)reset\(\);/);
-  assert.match(explore,/#coop-attack'\)\.disabled=controls\.skill!=='live'/);
+  // Written only when it changes (F3: no write of the same value every frame).
+  assert.match(explore,/#coop-attack'\),off=controls\.skill!=='live';if\(attack\.disabled!==off\)attack\.disabled=off;/);
   assert.match(STICK_HTML,/class="explore-stick"/);assert.match(SKILL_HTML,/id="coop-attack"/);
   assert.match(CONTROLS_HINT_HTML,/role="note"/);assert.match(CONTROLS_HINT_HTML,/ hidden>/);
   assert.doesNotMatch(CONTROLS_HINT_HTML,/<button|tabindex/);

@@ -45,6 +45,7 @@ import {createPausePart} from './pausa.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
+import {viewportSize} from './box-cache.ts';
 
 export interface RunHudOptions {
   localId:string;
@@ -514,7 +515,7 @@ export class RunHud {
       else if(this.topSlot)this.topSlot={...this.topSlot,height:this.rowsBox.height,width:Math.max(this.topSlot.width,this.rowsBox.width)};
     }
     if(!this.topSlot)return;
-    const lowSlot=low?this.rowsBox:{...this.topSlot,y:innerHeight};
+    const lowSlot=low?this.rowsBox:{...this.topSlot,y:viewportSize().height};
     const slot=chooseSlot([this.topSlot,lowSlot],hero,margin);
     if(this.stack.classList.contains('rh-stack-low')!==(slot===1))this.stack.classList.toggle('rh-stack-low',slot===1);
     this.coachYield(hero,margin);this.objectiveYield(hero,margin);

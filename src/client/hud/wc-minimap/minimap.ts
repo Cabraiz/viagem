@@ -44,6 +44,11 @@ export class WcMinimap {
   private readonly ctx:CanvasRenderingContext2D;
   private frame?:MiniFrame;
   private readonly pt:Pt={x:0,y:0};
+  /**
+   * The element's CSS width, kept by a ResizeObserver (its callback runs with the layout fresh): reading clientWidth in
+   * render() forced a layout 10 times a second in the middle of the frame's DOM writes (estudo-desempenho §3.2, F3).
+   */
+  private cssWidth?:number;
   /** Mouse click (not Alt): walk there, as a click on the ground. */
   onMove?:(world:Pt)=>void;
   /** Touch or Alt+click: a ping at that world point. */
@@ -53,6 +58,7 @@ export class WcMinimap {
     this.el.setAttribute('role','img');this.el.setAttribute('aria-label','Mapa: clique para ir, toque para marcar');
     this.canvas=doc.createElement('canvas');this.canvas.className='rh-mm-canvas';this.el.append(this.canvas);
     this.ctx=this.canvas.getContext('2d')!;
+    if(typeof ResizeObserver==='function')new ResizeObserver(()=>{this.cssWidth=this.el.clientWidth;}).observe(this.el);
     for(const type of ['pointerup','touchstart','mousedown','click'] as const)this.el.addEventListener(type,e=>e.stopPropagation());
     this.el.addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();this.press(e);});
     this.el.addEventListener('contextmenu',e=>e.preventDefault());
@@ -82,7 +88,7 @@ export class WcMinimap {
   /** Draws a frame (call at ≤ 10 Hz). The canvas follows the element's size × device pixels. */
   render(input:MmInput){
     const f=this.frame=input.frame,dpr=Math.min(2,globalThis.devicePixelRatio||1);
-    const css=this.el.clientWidth||f.side,px=Math.round(css*dpr);
+    const css=(this.cssWidth??this.el.clientWidth)||f.side,px=Math.round(css*dpr);
     if(this.canvas.width!==px){this.canvas.width=px;this.canvas.height=px;}
     const ctx=this.ctx,k=px/f.side,blink=Math.floor(input.nowMs/350)%2===0;
     ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle=MM_COLORS.outside;ctx.fillRect(0,0,px,px);

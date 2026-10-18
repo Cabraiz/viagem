@@ -30,6 +30,7 @@ import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
+import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -95,6 +96,8 @@ interface EnemyActor{
   lit:boolean;
   /** The flip the sun tint was set for (a flipped sprite needs its corners swapped). */
   litFlip:boolean;screenX:number;flip:boolean;moving:boolean;
+  /** Off camera (render/cull.ts): hidden, and nothing but its position runs until it comes back. */
+  culled:boolean;
   /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
   bossPhase:number;
   /** What EnemyView.phase shows on a regular critter (phase-look.ts: acting pose, lecture ring, buff, reflect, headlight). */
@@ -333,10 +336,10 @@ export class HordeRenderer{
       showImage(o,active);o.shadow.setVisible(active).setActive(active);
       if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
     };
-    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
+    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;}};
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
@@ -403,6 +406,7 @@ export class HordeRenderer{
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
+    this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
@@ -432,6 +436,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
+  get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
   get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
@@ -715,11 +721,23 @@ export class HordeRenderer{
   }
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
+  private view:ViewRect={x:0,y:0,right:0,bottom:0};
+  private cullMargin=0;
+  private culledNow=0;
   private drawEnemy=(a:EnemyActor)=>{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
-    const q=this.project(this.at),depth=this.depth(this.at);
+    const q=this.project(this.at);
+    // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, bar or cues. The boss, the target and a coach's
+    // lecture ring (wider than the body) are always drawn.
+    const k=size*a.fit*body;
+    if(!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
+      if(!a.culled){a.culled=true;a.image.setVisible(false);a.shadow.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
+      a.screenX=NaN;this.culledNow++;return;
+    }
+    if(a.culled){a.culled=false;a.image.setVisible(true);a.shadow.setVisible(true);a.lit=false;}
+    const depth=this.depth(this.at);
     let lift=art.hover*size*body,dx=0;
     let sway=0;
     if(a.kind==='pombos'&&!this.reduced){

@@ -6,6 +6,7 @@ import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
+import { MenuDance } from './client/ui/menu-dance.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -129,8 +130,10 @@ function lazySrc(img: HTMLImageElement, url: string) {
 // After the first screen is up, the page of thumbs already rendered comes in idle time, so "Classes" opens filled.
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
+const menuDance=new MenuDance(document.getElementById('portrait')!);
 const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
+  menuDance.show(hero.id);
   const frame=document.getElementById('portrait')!;
   const current=frame.querySelector('img'), img=portraitImage(hero,!current), token=++portraitToken;
   // Flicking past a class drops its half-downloaded art, so on 4G the bandwidth goes to the one that stays on screen.
@@ -138,7 +141,8 @@ function showPortrait(hero: HeroClass, interactive: boolean) {
   pending=img;
   if(current===img) { frame.removeAttribute('aria-busy'); return; }
   let placed=false;
-  const place=()=>{ if(token!==portraitToken) return; placed=true; frame.replaceChildren(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
+  const replaceImage=(image:HTMLImageElement)=>{for(const old of frame.querySelectorAll('img'))old.remove();frame.prepend(image);};
+  const place=()=>{ if(token!==portraitToken) return; placed=true; replaceImage(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
   // Failed download: forget it (the next tap fetches again) and keep what is on screen, never a blank frame.
   const failed=()=>{ forget(img); if(token===portraitToken) frame.removeAttribute('aria-busy'); };
   if(!current) { img.addEventListener('error',()=>{ forget(img); placed=false; showThumb(); },{once:true}); place(); return; }
@@ -148,7 +152,7 @@ function showPortrait(hero: HeroClass, interactive: boolean) {
   if(!(img.complete&&img.naturalWidth)) showThumb();
   function showThumb() {
     const thumb=new Image(); thumb.alt=''; thumb.decoding='async'; thumb.className='portrait-art'; thumb.src=thumbUrl(hero);
-    thumb.decode().then(()=>{ if(token!==portraitToken||placed) return; frame.replaceChildren(thumb); frame.setAttribute('aria-busy','true'); },()=>{});
+    thumb.decode().then(()=>{ if(token!==portraitToken||placed) return; replaceImage(thumb); frame.setAttribute('aria-busy','true'); },()=>{});
   }
 }
 function setArt(id: string,hero: HeroClass) {
@@ -301,10 +305,11 @@ const coopButton=document.createElement('button');coopButton.id='enter-coop';coo
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;
+  const releaseDance=menuDance.hold();
   const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
   try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
   catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
-  finally{coopButton.disabled=false;}
+  finally{releaseDance();coopButton.disabled=false;}
 }
 coopButton.addEventListener('click',()=>void openCoop());
 document.getElementById('back-to-classes')!.addEventListener('click',()=>{dialog.close();sections.show('classes');});
@@ -324,19 +329,21 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   button.disabled=true;text('explore-error','');
   if(island){
+    const releaseDance=menuDance.hold();
     try {
       const {openExploration}=await import('./client/explore.ts');
       dialog.close();await openExploration(selected,nickname.trim());
     } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
-    finally {button.disabled=false;}
+    finally {releaseDance();button.disabled=false;}
     return;
   }
   const label=button.textContent;button.textContent='Preparando…';
+  const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
     await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{button.textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {button.disabled=false;button.textContent=label;}
+  finally {releaseDance();button.disabled=false;button.textContent=label;}
 });
 // Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
 const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});

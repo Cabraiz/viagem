@@ -7,7 +7,7 @@
  *   node scripts/art-lite.mjs            make or refresh the copies whose source changed (the manifest keeps hashes)
  *   node scripts/art-lite.mjs --check    exit 1 when a source has no copy or changed since its copy was made
  *   node scripts/art-lite.mjs --all      remake every copy
- *   node scripts/art-lite.mjs --kinds sprites        refresh only these families, keeping other entries and files
+ *   node scripts/art-lite.mjs --kinds sprites,menu   refresh only these families, keeping other entries and files
  *
  * Enemies (NEW-20261016-ORQ-inimigos-peso-download): the copy is also smaller, cell by cell, down to what a phone
  * shows. The game canvas has the page's CSS size, so an enemy's figure is drawn at artTargetHeight × the hero's 56 CSS
@@ -53,7 +53,7 @@ const SHOWN_SCALE=.35;
  * ≤ 18 MB (1 gave 18.2 MB median, 20.8 MB p90 over 300 rotations).
  */
 export const LITE_TEXELS=.9;
-const KINDS=['trees','sprites','enemies'];
+const KINDS=['trees','sprites','enemies','menu'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 
@@ -97,7 +97,7 @@ async function shrink({data,width,height},[cw,ch],[lw,lh]){
 
 const options=process.argv.slice(2),args=new Set(options),kindArg=options.indexOf('--kinds');
 const kinds=kindArg<0?KINDS:[...new Set((options[kindArg+1]??'').split(',').map(k=>k.trim()).filter(Boolean))];
-if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies.');
+if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,menu.');
 const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{webp:WEBP,files:{}};
 manifest.enemyFigures??={};
 

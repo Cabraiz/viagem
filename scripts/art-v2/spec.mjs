@@ -76,7 +76,7 @@ export const MAX_TEXTURE=4096;
 /** pt-BR name of each format, for messages (the id stays the value written in the sidecar "kind"). */
 export const KIND_NAMES=Object.freeze({
   animations:'animação em 8 direções',dir8:'atlas de 8 direções',views:'vistas de câmera',frames:'quadros (1 vista)',
-  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',tower:'torre (base + arma)',decor:'cenário (vistas + camadas)',
+  seamless:'textura contínua',nineslice:'moldura em 9 partes',icon:'ícone',tower:'torre (base + arma)',decor:'cenário (vistas + camadas)',dance:'dança do menu',
 });
 
 // ---------------------------------------------------------------- P0/P1 tables (inventário de sprites, 12/10/2026)
@@ -395,6 +395,10 @@ export const GROUPS=Object.freeze({
     // One folder per piece (scripts/art-v2/adaptar/decor.mjs): sheet.png/.json (views) + optional layers anim[-<nome>]/quebra
     // (.png/.json: 4 view rows × frames). Ids = the delivery's stems (DECOR_IDS); any other id is accepted as extra.
     pieces:'any',expected:Object.fromEntries(DECOR_IDS.map(id=>[id,{priority:P1}])),
+  },
+  menu:{
+    title:'13. Danças do menu',input:'menu/danca',output:'public/art/menu/danca',kind:'dance',kinds:['dance'],
+    pieces:'any',expected:Object.fromEntries(FACE_CLASSES.map(id=>[id,{priority:P0}])),
   },
 });
 

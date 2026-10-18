@@ -13,6 +13,7 @@
 import './fortify.css';
 import {icon} from '../../ui/icon.ts';
 import {PIECES,WALL_LIMIT,type FortPiece,type PullState} from './model.ts';
+import {FORT_BUILD_BUTTON} from '../arrows.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -123,7 +124,8 @@ export class FortifyHud {
     this.pullBtn.classList.toggle('rh-fort-on',pull.on);
     this.pullBtn.setAttribute('aria-pressed',String(pull.on));
     this.pullBtn.innerHTML=`${icon('fita',{size:32})}<span class="rh-fort-btn-text">${pull.label}</span>`;
-    this.buildBtn.hidden=!available||open;
+    // Off the HUD for now (arrows.ts FORT_BUILD_BUTTON, card setas-e-construir): no button, no counter, no tray.
+    this.buildBtn.hidden=!FORT_BUILD_BUTTON||!available||open;
     this.buildCount.textContent=`${walls}/${WALL_LIMIT}`;
     this.tray.hidden=!available||!open;
     this.count.textContent=`Muros ${walls}/${WALL_LIMIT}`;

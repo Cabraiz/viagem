@@ -18,6 +18,7 @@ import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
+import {LayoutCache} from './box-cache.ts';
 import type {Rect,ScreenZones} from './zones.ts';
 import {WcMinimapDriver} from './wc-minimap/driver.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
@@ -71,8 +72,12 @@ export class RescueBoard {
   /** The WC3 minimap's driver (wc-minimap/driver.ts): frame, terrain cache, ally colours, heading. */
   private readonly wcDriver=new WcMinimapDriver();
   private farWarm?:unknown;private timers=new Set<ReturnType<typeof setTimeout>>();
-  /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
-  private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
+  /**
+   * HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not
+   * in view. Read after the paint (box-cache.ts), never in the middle of the frame's DOM writes (F3).
+   */
+  private covered:Rect[]=[];private windows:Rect[]=[];
+  private readonly boxCache=new LayoutCache(()=>{const hud=this.hud;return {covered:boxes(hud.el.ownerDocument,COVERING),windows:boxes(hud.el.ownerDocument,WINDOWS)};},500);
   // ---------- City (design/cidade-hud.md §7) ----------
   /** The city's map info, built once per decoded asset. */
   /** D-047: the chaveiro's last route and stops (the minimap draws the route still ahead). */
@@ -216,8 +221,7 @@ export class RescueBoard {
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
-    const hud=this.hud;
-    if(now-this.coveredAt>500||zones!==this.coveredZones){this.coveredAt=now;this.coveredZones=zones;this.covered=boxes(hud.el.ownerDocument,COVERING);this.windows=boxes(hud.el.ownerDocument,WINDOWS);}
+    ({covered:this.covered,windows:this.windows}=this.boxCache.get(now,zones));
     return {viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
   }
   private cityMap(asset:CityAssetLike){

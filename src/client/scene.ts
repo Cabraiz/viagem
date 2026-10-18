@@ -70,6 +70,8 @@ const PUSH_MS=2*STEP*1000;
 const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
+/** The visual hook (data-sprite-* on the canvas, for tests and scripts) runs at most this often (ms): F3. */
+const VISUAL_HOOK_MS=250;
 /** The water bake covers the view plus this share of it on each side, and is redone only when the view leaves it. */
 const WATER_MARGIN=.2;
 /** Place fichas: above canopies and the horde's numbers and balloons, below allies (96400) and telegraphs. */
@@ -83,6 +85,7 @@ export interface SceneHooks {
   ready:()=>void;
   terrain?:(seed:number,signature:string)=>void;
   message:(text:string)=>void;
+  /** The hero's animation for tests and scripts, at most every VISUAL_HOOK_MS (it lists every texture to count the sheets). */
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
   /**
@@ -264,6 +267,8 @@ export class IslandScene extends Phaser.Scene {
   private buildPlan?:ReturnType<typeof buildPlanFor>;
   private readonly towerFigures:{x:number;y:number;z:number}[]=[];
   private readonly shakeAt={x:0,y:0};
+  /** When the visual hook last ran (VISUAL_HOOK_MS). */
+  private visualAt=-Infinity;
   private projector?:Projector;
   private stateVersion=-1;
   private offersVersion=-1;
@@ -832,7 +837,10 @@ export class IslandScene extends Phaser.Scene {
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
-    this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
+    if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
+      this.visualAt=_time;
+      this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
+    }
     // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){

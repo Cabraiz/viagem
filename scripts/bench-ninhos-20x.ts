@@ -10,7 +10,9 @@
  * D-031: nothing here runs in npm test; local node timing only.
  *
  *   node --experimental-strip-types scripts/bench-ninhos-20x.ts [--pop 20] [--bots 6] [--seed 4242] [--ticks 3600]
- *     [--warmup 200] [--out <file.json>]
+ *     [--warmup 200] [--awake N] [--out <file.json>]
+ * --awake N (stress, untimed before each step): while fewer than N bodies are awake, wake the nest nearest bot-1
+ * whole (then the loose bands nearest it): the cost of N critters hunting at once, the awake cap's question.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -25,7 +27,7 @@ import {RoomBots} from '../multiplayer/room-bots.ts';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
 const POP=Number(arg('pop','20')),BOTS=Number(arg('bots','6')),SEED=Number(arg('seed','4242'));
-const MEASURE=Number(arg('ticks','3600')),WARMUP=Number(arg('warmup','200')),OUT=arg('out','');
+const MEASURE=Number(arg('ticks','3600')),WARMUP=Number(arg('warmup','200')),OUT=arg('out',''),AWAKE=Number(arg('awake','0'));
 const CLASSES=['cidadao-comum','clt-cansado','feirante'];
 
 const text=fs.readFileSync(path.join(ROOT,'public/maps/cidade-nevada.json'),'utf8');
@@ -45,8 +47,17 @@ const bodies=sim.run.sono()?.bodies.length??0;
 const enc=new FrameEncoder(undefined,{viewer:'bot-1'}),dec=new FrameDecoder();
 const steps:number[]=[],thinks:number[]=[],awake:number[]=[],asleep:number[]=[],bytes:number[]=[],sent:number[]=[];
 let cpuUs=0,woke=0;
+const sono=sim.run.sono(),plan=sim.run.nests?.plan();
+/** --awake: wake the nearest nest (then the nearest loose band) to bot-1 until AWAKE are up (untimed). */
+function stress(){
+  if(!AWAKE||!sono||!plan)return;
+  const me=sim.players.get('bot-1')!,d=(p:{x:number;y:number})=>Math.hypot(p.x-me.x,p.y-me.y);
+  for(const n of [...plan.nests].sort((a,b)=>d(a)-d(b))){if(sim.world.enemies.size>=AWAKE)return;if(sono.asleepIn(n.id))sono.wakeNest(sim.world,n.id,'chamado');}
+  for(const b of [...plan.loose].sort((a,b2)=>d(a)-d(b2))){if(sim.world.enemies.size>=AWAKE)return;sono.wakeAround(sim.world,b.x,b.y,8,'chamado');}
+}
 for(let i=0;i<WARMUP+MEASURE&&sim.outcome===undefined;i++){
   for(const p of sim.players.values())if(!p.downed&&p.hp>0)p.hp=p.stats.maxHp;
+  stress();
   const a=performance.now();bots.think(sim);const b=performance.now();
   const c0=process.cpuUsage();
   sim.step(sim.tick*50);
@@ -66,7 +77,7 @@ const pct=(list:number[],q:number)=>{const s=[...list].sort((x,y)=>x-y);return s
 const mean=(list:number[])=>list.reduce((x,y)=>x+y,0)/Math.max(1,list.length);
 const r3=(v:number)=>+v.toFixed(3);
 const result={
-  pop:POP,bots:BOTS,seed:SEED,bodies,ticks:steps.length,startMs:Math.round(startMs),outcome:sim.outcome??null,
+  pop:POP,bots:BOTS,seed:SEED,awakeTarget:AWAKE,bodies,ticks:steps.length,startMs:Math.round(startMs),outcome:sim.outcome??null,
   stepMs:{mean:r3(mean(steps)),p50:r3(pct(steps,.5)),p95:r3(pct(steps,.95)),p99:r3(pct(steps,.99)),max:r3(Math.max(...steps))},
   stepCpuMs:r3(cpuUs/1000/Math.max(1,steps.length)),thinkMs:{mean:r3(mean(thinks)),p95:r3(pct(thinks,.95))},
   awake:{mean:Math.round(mean(awake)),max:Math.max(...awake)},asleepEnd:asleep[asleep.length-1]??0,

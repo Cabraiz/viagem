@@ -38,7 +38,7 @@ const RING_SEGMENTS=56;
 const CRATE_PREFIX='caixa-';
 /** Imported art sits this much under its spot's Graphics, so the life bar drawn there stays on top of the sheet. */
 const BAR_OVER_ART=.001;
-/** Sandbag rows of the procedural barricade, bottom first, by damage stage (3: down, scattered on the ground). */
+/** Sandbag rows of the procedural barricade, bottom first, by damage stage (3: down, not drawn). */
 const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,4,2],2:[5,2],3:[]};
 /** Share of Papel in the sandbags' colour by damage stage (the rest Pedra): darker as the life drops. */
 const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
@@ -284,7 +284,7 @@ export class StonewardsRenderer {
   /**
    * City barricade across a plaza mouth, at its own depth (the city's actor depth through the projector, like the
    * wall). Imported art: the damage state's row, column = (camera view + the mouth's turn) mod 4. Otherwise a sandbag
-   * pile 2 u long across the mouth (barricadeSpan) whose rows thin out and darken by damage stage, and scattered bags
+   * pile 2 u long across the mouth (barricadeSpan) whose rows thin out and darken by damage stage, and nothing
    * once down. A small bar while damaged (never when whole or down); a short flash when hit.
    */
   private drawBarricade(s:StructureView,wall:StructureView|undefined,k:number,u:number){
@@ -323,7 +323,7 @@ export class StonewardsRenderer {
    * The procedural pile from screen point A to B (the mouth's ends): Breu shadow, Casca posts at the ends with a plank
    * across their tops, Papel sandbags with a Breu contour (D-022) in rows that thin out by stage (PILE_ROWS). Damaged:
    * one post broken short, the plank hanging from the other, a torn bag. About to fall: two rows, one leaning post, no
-   * plank. Down: four flat bags and the fallen plank on the ground, no posts. Stage reads by shape, not only colour.
+   * plank. Down: nothing (a fallen barricade is gone). Stage reads by shape, not only colour.
    * `u`: actor scale (sizes at the endless map's size); `k`: world px per CSS px (the contour never under 1.5 CSS px).
    */
   private drawPile(g:Phaser.GameObjects.Graphics,ax:number,ay:number,bx:number,by:number,stage:DamageStage,flash:boolean,u:number,k:number){
@@ -339,14 +339,9 @@ export class StonewardsRenderer {
       g.fillStyle(fill,alpha).fillRoundedRect(cx-bagW/2,cy-bagH/2,bagW,bagH,radius);
       g.lineStyle(line,c.breu,alpha).strokeRoundedRect(cx-bagW/2,cy-bagH/2,bagW,bagH,radius);
     };
+    // Down: nothing (the old flat bags and fallen plank, card remover-desenhos-antigos): a fallen barricade is gone.
+    if(stage===3)return;
     g.lineStyle(bagH*1.5,c.breu,.22).lineBetween(ax,ay+4*u,bx,by+4*u);
-    if(stage===3){
-      // Down: the bags lie flat and apart, a plank across them.
-      for(const [t,dy] of [[.08,3],[.36,-2],[.64,4],[.93,-1]] as const){const q=at(t);bag(q.x,q.y+dy*u,.8);}
-      const s0=at(.2),s1=at(.75);
-      board(s0.x,s0.y-2*u,s1.x,s1.y+6*u,6,.85);
-      return;
-    }
     // Posts at both ends, behind the bags: whole stands both with the plank on top; damaged has one broken short and
     // the plank hanging; about to fall keeps one leaning post.
     const POST=48,e0=at(.04),e1=at(.96);

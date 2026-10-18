@@ -159,7 +159,7 @@ const objective=params.get('objetivo')==='1';
 const bancos=real&&params.get('bancos')==='1';
 /**
  * `obra=1` with `objetivo=1` (D-052 slice 4, placeholder): the fortify layer around the fake car: a wall row by damage
- * stage, two free barricades (rot 0 and 1), the hero on the rope at the bumper and the build ghost with its hints.
+ * stage, three free barricades (rot 0 and 1, one down), the hero on the rope at the bumper and the build ghost with its hints.
  * `fantasma=` muro|barricada|vigia-do-predio (default) picks the piece; `fantasma=carro` puts it on the car (red).
  */
 const obra=objective&&params.get('obra')==='1';
@@ -407,7 +407,7 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:400,c,r,...(rot?{rot}:{})};
     };
-    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220)];
+    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220),bar('b2',c0+9,r0+3,0,0)];
     const tick=100,objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;

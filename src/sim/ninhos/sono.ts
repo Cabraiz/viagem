@@ -34,6 +34,11 @@ import {MAX_ENEMIES} from '../../rules/index.ts';
 
 /** Bucket size of the sleepers' index (u): they never move, so big buckets keep a noise check to a few cells. */
 export const SLEEP_CELL=16;
+/**
+ * Card ninhos-perto-ataca-20x: a second index of FINE_CELL u buckets for the small queries (sight, bands, the awake
+ * ones' spacing, a shot) up to FINE_MAX u, so thousands of sleepers keep them to a few bodies each.
+ */
+export const FINE_CELL=2,FINE_MAX=8;
 /** A woken body wakes its band: the sleepers within this distance (u). */
 export const BAND_RADIUS=4;
 /**
@@ -191,7 +196,8 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   const asleep=new Map<string,EnemyState>();
   /** Hit targets, each as a still EnemyState shell (what the hit tests read) and its hit(). */
   const targets=new Map<string,{shell:EnemyState;target:HitTarget}>();
-  const index=new SpatialHash<EnemyState>(SLEEP_CELL);
+  const index=new SpatialHash<EnemyState>(SLEEP_CELL),fine=new SpatialHash<EnemyState>(FINE_CELL);
+  const pick=(radius:number)=>radius<=FINE_MAX?fine:index;
   // stale: bodies woke since the last rebuild (query filters them, so a rebuild can wait for the step);
   // missing: bodies fell asleep since (query must rebuild first).
   let stale=false,missing=true,made=false;
@@ -208,7 +214,10 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     return e;
   }
   function reindex(force:boolean){
-    if(missing||(force&&stale)){index.rebuild(targets.size?[...asleep.values(),...[...targets.values()].map(t=>t.shell)]:asleep.values());missing=false;stale=false;}
+    if(missing||(force&&stale)){
+      const all=targets.size?[...asleep.values(),...[...targets.values()].map(t=>t.shell)]:[...asleep.values()];
+      index.rebuild(all);fine.rebuild(all);missing=false;stale=false;
+    }
   }
   const current=(e:EnemyState)=>asleep.get(e.id)===e||targets.get(e.id)?.shell===e;
   /** Bodies still asleep within radius (never a target): what the noise and the bands read. */
@@ -226,13 +235,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     rebuild(){/* the sono owns its index */},
     query(x,y,radius,out=[]){
       reindex(false);
-      index.query(x,y,radius,out);
+      pick(radius).query(x,y,radius,out);
       // The index does not know about wakes between rebuilds: keep only bodies still asleep (and live targets).
       let k=0;for(const e of out)if(current(e))out[k++]=e;
       out.length=k;
       return out;
     },
-    nearest(x,y,radius,filter){reindex(false);return index.nearest(x,y,radius,e=>current(e)&&(!filter||filter(e)));},
+    nearest(x,y,radius,filter){reindex(false);return pick(radius).nearest(x,y,radius,e=>current(e)&&(!filter||filter(e)));},
     isTarget:id=>targets.has(id),
     strike(ctx,id,amount,source,weapon){
       const t=targets.get(id);

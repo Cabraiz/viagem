@@ -11,11 +11,16 @@
  * busy machine). The final `sim.stateHash()` is printed: the same number before and after a
  * change means the change did not alter the run.
  *
+ * --mode ninhos (D-051, card ninhos-benches): the chaveiro objective in the nests mode; the plan's sleepers (6 players'
+ * plan, ~320 bodies) stay asleep in their index beside the ENEMIES awake ones, so the tick pays both. No round to wait
+ * for: the run plays SETTLE untimed ticks (the sleepers are made on the first step), then the same top-up and measure.
+ * Reported apart: the sleepers asleep at the start and the end of the measure. Barra (card): ≤ +10 % of the rounds' tick.
+ *
  * --profile wraps FlowField's recompute (Dial pass + directions): count and ms per caller (the first stack frame
  * outside flowfield.ts) and per field size. D-031: nothing here runs in npm test; local node timing only.
  *
  *   node --experimental-strip-types scripts/bench-city-tick.ts [--seed 4242] [--ticks 1200] [--warmup 200]
- *     [--enemies 300] [--profile] [--out <file.json>]
+ *     [--enemies 300] [--mode ninhos] [--profile] [--out <file.json>]
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -35,7 +40,9 @@ import {RoomBots} from '../multiplayer/room-bots.ts';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arg=(name:string,def:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0&&process.argv[i+1]?process.argv[i+1]:def;};
 const SEED=Number(arg('seed','4242')),MEASURE=Number(arg('ticks','1200')),WARMUP=Number(arg('warmup','200')),ENEMIES=Number(arg('enemies','300'));
-const PROFILE=process.argv.includes('--profile'),OUT=arg('out','');
+const PROFILE=process.argv.includes('--profile'),OUT=arg('out',''),NESTS=arg('mode','rounds')==='ninhos';
+/** --mode ninhos: untimed ticks before the measure (the sleepers come on the first step; 30 s of the bots' start). */
+const SETTLE=600;
 const CLASSES=['cidadao-comum','clt-cansado','feirante','cidadao-comum','clt-cansado','feirante'];
 const KINDS:EnemyKind[]=['bebado','bebado','pombos','tio-pave','agiota','bebado'];
 const RING_MIN=12,RING_MAX=45,LATTICE=1.5;
@@ -71,12 +78,16 @@ for(let x=0;x<city.asset.cells.w*city.asset.unitsPerCell;x+=LATTICE)for(let y=0;
   if(d>=RING_MIN&&d<=RING_MAX&&walkable(p,city)&&planner.plazaField.costAt(x,y)!==UNREACHABLE)spots.push(p);
 }
 
-const sim=new Simulation(SEED,{world:'cidade',terrain:city,cityStructures:true}),bots=new RoomBots();
+const sim=new Simulation(SEED,{world:'cidade',terrain:city,cityStructures:true,...(NESTS?{objective:'chaveiro' as const,mode:'ninhos' as const}:{})}),bots=new RoomBots();
 CLASSES.forEach((c,i)=>{sim.addBot(`bot-${i+1}`,`bot-${i+1}`,c);bots.add(`bot-${i+1}`,i);});
 sim.botState=()=>bots.state();
 sim.resetRun();
 let guard=0;
-for(;guard<20*60*10&&!(sim.world.round.index>=2&&sim.world.round.phase==='wave')&&sim.outcome===undefined;guard++){bots.think(sim);sim.step(sim.tick*50);}
+const settled=()=>NESTS?guard>=SETTLE:sim.world.round.index>=2&&sim.world.round.phase==='wave';
+for(;guard<20*60*10&&!settled()&&sim.outcome===undefined;guard++){bots.think(sim);sim.step(sim.tick*50);}
+/** D-051: the bodies asleep now (the nests' hit targets are not bodies). */
+const asleepNow=()=>{const z=sim.world.sleepers;if(!z)return 0;const all:{id:string}[]=[];z.query(0,0,1e6,all);return all.filter(e=>!z.isTarget(e.id)).length;};
+const asleepStart=asleepNow();
 const startRound=sim.world.round.index,startTick=sim.tick;
 const rng=new Rng(SEED^0x5eed);
 let kindAt=0;
@@ -108,7 +119,7 @@ const pct=(list:number[],q:number)=>{const s=[...list].sort((a,b)=>a-b);return s
 const mean=(list:number[])=>list.reduce((a,b)=>a+b,0)/Math.max(1,list.length);
 const r3=(v:number)=>+v.toFixed(3);
 const result={
-  seed:SEED,ticks:steps.length,warmup:WARMUP,enemiesTarget:ENEMIES,enemiesMean:+mean(counts).toFixed(1),
+  seed:SEED,mode:NESTS?'ninhos':'rounds',ticks:steps.length,...(NESTS?{asleepStart,asleepEnd:asleepNow()}:{}),warmup:WARMUP,enemiesTarget:ENEMIES,enemiesMean:+mean(counts).toFixed(1),
   startRound,startTick,endRound:sim.world.round.index,endPhase:sim.world.round.phase,outcome:sim.outcome??null,
   stepMs:{mean:r3(mean(steps)),p50:r3(pct(steps,.5)),p95:r3(pct(steps,.95)),p99:r3(pct(steps,.99)),max:r3(Math.max(...steps))},
   stepCpuMs:r3(cpuUs/1000/Math.max(1,steps.length)),

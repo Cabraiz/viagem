@@ -77,17 +77,17 @@ const topUp=()=>{
   }
 };
 
-interface Client {enc:FrameEncoder;dec:FrameDecoder;bytes:number[];at:number[];asleep:number[]}
+interface Client {enc:FrameEncoder;dec:FrameDecoder;bytes:number[];at:number[];asleep:number[];full:boolean[]}
 const clients=()=>{
   const ids=new WireIds();
-  return [...sim.players.keys()].map((id,i):Client=>({enc:new FrameEncoder(ids,{viewer:id,slot:i%SEND_EVERY,chain:true,farEvery:FAR_EVERY}),dec:new FrameDecoder(),bytes:[],at:[],asleep:[]}));
+  return [...sim.players.keys()].map((id,i):Client=>({enc:new FrameEncoder(ids,{viewer:id,slot:i%SEND_EVERY,chain:true,farEvery:FAR_EVERY}),dec:new FrameDecoder(),bytes:[],at:[],asleep:[],full:[]}));
 };
 const at10=clients(),at20=clients();
 let decodeErrors=0;
 const send=(c:Client,frame:ReturnType<typeof sim.frame>,second:number)=>{
-  const data=c.enc.encode(frame),r=c.dec.decode(data);
+  const fulls=c.enc.stats.fullFrames,data=c.enc.encode(frame),r=c.dec.decode(data);
   if(!r.ok){decodeErrors++;c.enc.resync();return;}
-  c.enc.ack(r.seq);c.bytes.push(data.length);c.at.push(second);
+  c.enc.ack(r.seq);c.bytes.push(data.length);c.at.push(second);c.full.push(c.enc.stats.fullFrames>fulls);
   c.asleep.push(r.view.enemies.filter(e=>e.asleep).length);
 };
 
@@ -96,7 +96,8 @@ for(let i=0;i<HZ*5;i++){topUp();sim.step(sim.tick*50);}
 const startTick=sim.tick;
 for(let t=0;t<SECONDS*HZ;t++){
   const second=t/HZ;
-  if(t===ARRIVE_S*HZ){place(goal);spots=ring(goal);}
+  // The team and its 300 awake bodies arrive together: the nest's sleepers enter on top of a full horde.
+  if(t===ARRIVE_S*HZ){place(goal);spots=ring(goal);for(const e of sim.world.enemies.values()){const q=spots[rng.int(0,spots.length-1)];e.x=q.x;e.y=q.y;}}
   topUp();
   for(const p of sim.players.values())if(!p.downed&&p.hp>0)p.hp=p.stats.maxHp;
   const events=sim.step(sim.tick*50);
@@ -113,11 +114,14 @@ const report=(set:Client[])=>{
     const sum=(from:number,to:number)=>c.bytes.reduce((a,b,i)=>c.at[i]>=from&&c.at[i]<to?a+b:a,0);
     let worst=0;for(let s=0;s+1<=SECONDS;s+=.5)worst=Math.max(worst,sum(s,s+1));
     return {before:kb(sum(0,ARRIVE_S),ARRIVE_S),arrival:kb(sum(ARRIVE_S,ARRIVE_S+ARRIVAL_S),ARRIVAL_S),after:kb(sum(ARRIVE_S,SECONDS),SECONDS-ARRIVE_S),
-      worst1s:kb(worst,1),maxFrame:Math.max(...c.bytes),asleepMax:Math.max(...c.asleep)};
+      worst1s:kb(worst,1),maxFrame:Math.max(...c.bytes),asleepMax:Math.max(...c.asleep),
+      // The biggest delta frame (a full one is the join's keyframe or a resync) and when it went (s into the measure).
+      maxDelta:Math.max(0,...c.bytes.filter((_,i)=>!c.full[i])),maxDeltaAt:c.at[c.bytes.findIndex((b,i)=>!c.full[i]&&b===Math.max(0,...c.bytes.filter((_,j)=>!c.full[j])))]??null};
   });
   const all=set.flatMap(c=>c.bytes);
   return {KBps:{before:Math.max(...per.map(p=>p.before)),arrival:Math.max(...per.map(p=>p.arrival)),after:Math.max(...per.map(p=>p.after)),worst1s:Math.max(...per.map(p=>p.worst1s))},
-    frameBytes:{p50:pct(all,.5),p95:pct(all,.95),max:Math.max(...all)},asleepOnWire:Math.max(...per.map(p=>p.asleepMax)),perClient:per};
+    frameBytes:{p50:pct(all,.5),p95:pct(all,.95),max:Math.max(...all),maxDelta:Math.max(...per.map(p=>p.maxDelta)),
+      maxDeltaAt:per.reduce((a,p)=>p.maxDelta>a.d?{d:p.maxDelta,at:p.maxDeltaAt}:a,{d:-1,at:null as number|null}).at},asleepOnWire:Math.max(...per.map(p=>p.asleepMax)),perClient:per};
 };
 const asleep=()=>{const z=sim.world.sleepers;if(!z)return 0;const all:{id:string}[]=[];z.query(0,0,1e6,all);return all.filter(e=>!z.isTarget(e.id)).length;};
 const result={mode:NESTS?'ninhos':'rounds',seed:SEED,enemies:ENEMIES,seconds:SECONDS,arriveAt:ARRIVE_S,startTick,

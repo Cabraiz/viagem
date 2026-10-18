@@ -12,6 +12,9 @@ import {RECIPES,RECIPE_IDS,forgePrice,type RecipeId} from '../../src/rules/index
 import type {CampView,RunView} from '../../src/contract/view.ts';
 import {CAR_ID} from '../../src/contract/index.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
+import {HUD_SWITCH} from '../../src/client/hud/arrows.ts';
+// The forge window and its gathering hint are off in the game (arrows.ts, user 18/10); their code is tested switched on.
+HUD_SWITCH.forge=true;
 
 const G=RECIPES.gambiarra.cost,C=RECIPES['torre-chinelo'].cost,R=RECIPES.reparo.cost;
 

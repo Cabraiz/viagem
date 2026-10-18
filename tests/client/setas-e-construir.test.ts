@@ -28,3 +28,12 @@ test('the car\'s arrow never steps out for another row (card seta-carro): only a
   assert.match(hud,/this\.rows\.turn\(now,busy,\{busy:false,/);
   assert.doesNotMatch(hud,/if\(show&&!this\.objectiveRow\.el\.hidden\)this\.renderObjective\(\);/);
 });
+
+test('the forge window, the obra menu and the gathering hint are off the player\'s game (user 18/10), one switch each',async()=>{
+  const {HUD_SWITCH}=await import('../../src/client/hud/arrows.ts');
+  assert.deepEqual(HUD_SWITCH,{forge:false,obra:false});
+  const read=(f:string)=>readFileSync(new URL(`../../src/client/${f}`,import.meta.url),'utf8');
+  assert.match(read('hud/camp.ts'),/const show=HUD_SWITCH\.forge&&prepare&&/);
+  assert.match(read('explore.ts'),/const prepare=HUD_SWITCH\.obra&&run\.phase==='combat'&&/);
+  assert.match(read('hud/coach.ts'),/case 'gather':return HUD_SWITCH\.forge&&/);
+});

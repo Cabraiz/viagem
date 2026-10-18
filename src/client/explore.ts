@@ -56,6 +56,7 @@ import type {UxMetrics} from './dev/ux-metrics.ts';
 import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
 import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} from './desktop-input.ts';
+import {HUD_SWITCH} from './hud/arrows.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -545,7 +546,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(run.phase!=='combat')obraRequests.resetRun();
                 else if(obraRequests.expire())obraSay(OBRA_NO_ANSWER);
                 // D-051 nests: calm around the hero opens it (scene.phase, calm-phase.ts); the rounds keep the intermission.
-                const prepare=run.phase==='combat'&&scene.phase==='prepare'&&!!view&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
+                // Off the player's game for now (hud/arrows.ts HUD_SWITCH.obra, user 18/10): no menu, no site markers.
+                const prepare=HUD_SWITCH.obra&&run.phase==='combat'&&scene.phase==='prepare'&&!!view&&!view.camp?.wallDown&&!net.fatal&&!hud.el.hidden&&!hud.offerShown;
                 obraView=obraViewFrom({prepare,view,plan:buildPlanFor(net.terrain),project:p=>scene.locate(p).screen,rail:obraRequests.rail(view?.tick??0),hero:net.predicted,
                   pending:obraRequests.pendingSites(),done:obraRequests.doneSites(),
                   // Watching: the plan shows, the confirm says "Assistindo" (the room would refuse it anyway).

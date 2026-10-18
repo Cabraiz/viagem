@@ -29,6 +29,7 @@ import {fichasText,forgePriceLabel,granaText} from './price.ts';
 import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 import {carBar} from './chaveiro.ts';
 import {effectivePhase,nestsRun} from '../calm-phase.ts';
+import {HUD_SWITCH} from './arrows.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -377,7 +378,8 @@ export function createCamp(options:CampOptions):CampPart{
     if(place.open&&place.key!==lastPlace)dismissed=false;
     lastPlace=place.open?place.key:'';
     const offerOpen=!!forge.parentElement?.querySelector('.rh-offer:not([hidden])');
-    const show=prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed&&!yielded;
+    // Off the player's game for now (arrows.ts HUD_SWITCH.forge, user 18/10).
+    const show=HUD_SWITCH.forge&&prepare&&place.open&&standing&&!camp.wallDown&&!offerOpen&&!dismissed&&!yielded;
     if(forge.hidden===show)forge.hidden=!show;
     if(!show){if(pending&&!prepare)clearPending();return;}
     if(money.text!==lastWallet){lastWallet=money.text;wallet.textContent=money.text;wallet.setAttribute('aria-label',money.label);}

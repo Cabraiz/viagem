@@ -140,9 +140,9 @@ const bots=Math.max(0,Math.min(5,Number(params.get('bots'))||0));
 const ties=params.get('premios')==='empates';
 function tied<T extends {players:{stats?:unknown;weapons:unknown;passives:unknown}[]}>(v:T):T{
   if(!ties)return v;
-  const builds=[['guarda-chuva','ima'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
+  const builds=[['guarda-chuva','cartao'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
   return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:builds[i%6][0],level:i===5?2:1}],passives:builds[i%6].slice(1).map(id=>({id,level:1})),
-    stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,magnets:0,chests:0,evolves:0}}))};
+    stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,chests:0,evolves:0}}))};
 }
 /**
  * `arsenal=1` (armas-caixas-render-2, D-051): the manual combat's hands, each player holding an arsenal weapon, so the
@@ -303,7 +303,6 @@ function load(next:HudScenario){
     if(!tutorial)view.events=[];
     // "Andar" lives in round 1 only (it never lights in a later round): its scene is round 1, lit for 6 s.
     if(dica==='walk'&&view.round)view.round={...view.round,index:1};
-    if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
     if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
   }
   // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").

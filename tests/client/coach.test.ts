@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,WALK_LIGHT_MS,XP_NEAR,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson,type RowLesson} from '../../src/client/hud/coach.ts';
+import {Coach,COACH_KEY,DONE_MS,LEARNED_BY_SIGHT_MS,GAP_MS,LEGACY_KEYS,LESSONS,LESSON_ORDER,SNAP_DISTANCE,WALK_DISTANCE,WALK_LIGHT_MS,loadDone,resetSessionMemory,saveDone,wants,type CoachInput,type Lesson,type RowLesson} from '../../src/client/hud/coach.ts';
 import {fakeView} from '../../src/client/hud/fixtures.ts';
 import type {RunView} from '../../src/contract/view.ts';
 
@@ -19,7 +19,6 @@ function round1(over:Partial<RunView>={}):RunView{
   return {...view,round:{...view.round!,index:1},offers:[],pickups:[],events:[],...over};
 }
 const input=(view:RunView,extra:Partial<CoachInput>={}):CoachInput=>({view,localId:'p1',hero:{x:0,y:0},chip:false,blocked:false,...extra});
-const xpDrop={id:'x1',kind:'xp' as const,x:3,y:0,value:1};
 
 test('copy: house voice, short, sentence case, no "A · B", no emoji, one sticker each',()=>{
   for(const lesson of Object.keys(LESSONS) as RowLesson[]){
@@ -34,7 +33,7 @@ test('copy: house voice, short, sentence case, no "A · B", no emoji, one sticke
   }
   assert.ok(!('walk' in LESSONS),'"andar" has no row in combat');
   assert.match(LESSONS.rescue.text,/caiu/);assert.match(LESSONS.rescue.sub!,/resgatar/);
-  assert.match(LESSONS.chip.text,/\+\{n\}/,'the chip hint names the chip as it looks (+1, +2)');assert.match(LESSONS.xp.sub!,/turma/,'XP is the team\'s');
+  assert.match(LESSONS.chip.text,/\+\{n\}/,'the chip hint names the chip as it looks (+1, +2)');
 });
 
 test('walk emits no toast: round 1 only lights the joystick, and the light goes at the first steps',()=>{
@@ -105,22 +104,15 @@ test('the walk light holds no row and no row holds it: rescue and the chip show 
   assert.equal(chip.stick,true,'a notice in the slot does not put the light out');
 });
 
-test('then XP while drops lie on the map, gone at the first pickup; then the chip, gone at the tap',()=>{
+test('D-054: no XP lesson (the XP comes with the kill, no gems); then the chip, gone at the tap',()=>{
   resetSessionMemory();
+  assert.ok(!(LESSON_ORDER as readonly string[]).includes('xp')&&!('xp' in LESSONS),'no "Passa nas gotinhas"');
+  assert.ok(!loadDone(memory({[COACH_KEY]:JSON.stringify(['xp','chip'])})).has('xp' as Lesson),'a stored "xp" of an old phone is ignored');
   const coach=new Coach(memory());let now=0;
   coach.step(input(round1()),now);coach.step(input(round1(),{hero:{x:2,y:0}}),now+=100);
-  now+=DONE_MS+GAP_MS+10;coach.step(input(round1()),now);
-  const drops=round1({pickups:[xpDrop]});
-  assert.equal(coach.step(input(drops),now+=100)?.lesson,'xp');
-  const picked=round1({pickups:[],events:[{type:'pickup',player:'p1',pickup:'x1',kind:'xp',value:1,eventId:9}]});
-  assert.deepEqual(coach.step(input(picked),now+=100),{lesson:'xp',done:true});
-  // Someone else's pickup does not count for this phone.
-  resetSessionMemory();
-  const other=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
-  other.step(input(drops),0);
-  assert.equal(other.step(input(round1({pickups:[xpDrop],events:[{type:'pickup',player:'p2',pickup:'x1',kind:'xp',value:1,eventId:3}]})),100)?.lesson,'xp');
-  // The chip outranks XP; the tap (RunHud → did) ends it.
   now+=DONE_MS+GAP_MS+10;
+  assert.equal(coach.step(input(round1({pickups:[{id:'b1',kind:'xp',x:3,y:0,value:1,resource:'boleto'}]})),now),undefined,'a boleto on the ground calls no hint');
+  now+=100;
   assert.equal(coach.step(input(round1(),{chip:true}),now)?.lesson,'chip');
   coach.did('chip');
   assert.deepEqual(coach.step(input(round1(),{chip:true}),now+=50),{lesson:'chip',done:true});
@@ -129,19 +121,19 @@ test('then XP while drops lie on the map, gone at the first pickup; then the chi
 test('one row at a time: any other row of the slot (round banner, notice) holds the hint back, and danger wins',()=>{
   resetSessionMemory();
   const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
-  const drops=round1({pickups:[xpDrop]});
-  assert.equal(coach.step(input(drops,{blocked:true}),0),undefined,'round banner up: wait');
-  assert.equal(coach.step(input(drops),100)?.lesson,'xp');
-  assert.equal(coach.step(input(drops,{blocked:true}),200),undefined,'a notice comes: the hint gives way at once');
-  assert.equal(coach.step(input(drops),300),undefined,'and waits a beat before coming back');
-  assert.equal(coach.step(input(drops),300+GAP_MS+10)?.lesson,'xp');
+  const v=round1(),chip={chip:true};
+  assert.equal(coach.step(input(v,{...chip,blocked:true}),0),undefined,'round banner up: wait');
+  assert.equal(coach.step(input(v,chip),100)?.lesson,'chip');
+  assert.equal(coach.step(input(v,{...chip,blocked:true}),200),undefined,'a notice comes: the hint gives way at once');
+  assert.equal(coach.step(input(v,chip),300),undefined,'and waits a beat before coming back');
+  assert.equal(coach.step(input(v,chip),300+GAP_MS+10)?.lesson,'chip');
 });
 
 test('rescue: a caído ally outranks the rest, ends when this phone rescues; downed or out, no lessons',()=>{
   resetSessionMemory();
   const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
   const base=fakeView('wave',3);
-  const view:RunView={...base,offers:[],pickups:[xpDrop],events:[],players:base.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:0,bleedOutTick:base.tick+200}}:p)};
+  const view:RunView={...base,offers:[],pickups:[],events:[],players:base.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:0,bleedOutTick:base.tick+200}}:p)};
   assert.equal(coach.step(input(view,{chip:true}),0)?.lesson,'rescue');
   const rescued={...view,events:[{type:'revived' as const,player:'p3',by:'p1',eventId:4}]};
   assert.deepEqual(coach.step(input(rescued),100),{lesson:'rescue',done:true});
@@ -151,7 +143,7 @@ test('rescue: a caído ally outranks the rest, ends when this phone rescues; dow
 
 test('gathering (first intermission): the old tip, now in the coach; gone once the hero works a node',()=>{
   resetSessionMemory();
-  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk','xp','chip','rescue'])}));
+  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk','chip','rescue'])}));
   const prep=fakeView('prepare',1);
   const view:RunView={...prep,round:{...prep.round!,index:2},offers:[],nodes:[{id:'n1',kind:'coco',x:4,y:4,remaining:4,capacity:4,value:1,progress:0}]};
   assert.equal(coach.step(input(view),0)?.lesson,'gather');
@@ -164,17 +156,17 @@ test('timed hints stop after their time in a run; the result marks what was show
   resetSessionMemory();
   const store=memory({[COACH_KEY]:JSON.stringify(['walk'])});
   const coach=new Coach(store);
-  const drops=round1({pickups:[xpDrop]});
+  const v=round1(),chip={chip:true};
   let now=0;let last;
-  for(;now<=LESSONS.xp.maxMs!+1000;now+=100)last=coach.step(input(drops),now);
-  assert.equal(last,undefined,'xp hint gone after its time');
-  assert.equal(coach.done.has('xp'),false,'not learned yet: only shown');
+  for(;now<=LESSONS.chip.maxMs!+1000;now+=100)last=coach.step(input(v,chip),now);
+  assert.equal(last,undefined,'chip hint gone after its time');
+  assert.equal(coach.done.has('chip'),false,'not learned yet: only shown');
   coach.endRun();
-  assert.ok(coach.done.has('xp'),`the first run is over: seen ${LESSONS.xp.maxMs} ms (≥ ${LEARNED_BY_SIGHT_MS}) counts as learned`);
-  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['walk','xp']);
+  assert.ok(coach.done.has('chip'),`the first run is over: seen ${LESSONS.chip.maxMs} ms (≥ ${LEARNED_BY_SIGHT_MS}) counts as learned`);
+  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['walk','chip']);
   assert.equal(coach.done.has('rescue'),false,'never shown (solo): waits for a group run');
   const next=new Coach(store);
-  assert.equal(next.step(input(drops),0),undefined,'second run of the phone: nothing to say');
+  assert.equal(next.step(input(v,chip),0),undefined,'second run of the phone: nothing to say');
 });
 
 test('storage: once per phone, legacy hints count, and a storage that throws only keeps it in memory',()=>{
@@ -202,13 +194,11 @@ test('"andar" lights from the first second (round 1 prepare too), banner or not;
   const start:RunView={...prep,round:{...prep.round!,index:1},offers:[],pickups:[],events:[]};
   assert.equal(coach.step(input(start,{banner:true}),0),undefined,'no row over the banner');
   assert.equal(coach.stick,true,'the joystick is lit under the "Intervalo!" banner');
-  // XP waits for the banner to go, and asks only for drops near the hero.
+  // A row (the chip) waits for the banner to go.
   resetSessionMemory();
   const walked=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk'])}));
-  const drops=round1({pickups:[xpDrop]});
-  assert.equal(walked.step(input(drops,{banner:true}),0),undefined,'the round name first');
-  assert.equal(walked.step(input(drops),100)?.lesson,'xp');
-  assert.equal(wants('xp',input(round1({pickups:[{...xpDrop,x:XP_NEAR+5}]})),true),false,'a drop off screen does not call the hint');
+  assert.equal(walked.step(input(round1(),{banner:true,chip:true}),0),undefined,'the round name first');
+  assert.equal(walked.step(input(round1(),{chip:true}),100)?.lesson,'chip');
 });
 
 test('a snap of the predicted hero (spawn, reconnection) is not a step: the walk is measured from where it landed',()=>{
@@ -253,13 +243,13 @@ test('two tabs of the same phone: saving joins what the other tab stored meanwhi
   const a=new Coach(store),b=new Coach(store);
   a.did('chip');a.step(input(round1()),0);
   resetSessionMemory();
-  b.did('xp');b.step(input(round1()),0);
-  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['chip','xp'],'tab b did not erase tab a\'s chip');
+  b.did('rescue');b.step(input(round1()),0);
+  assert.deepEqual(JSON.parse(store.store.get(COACH_KEY)!),['rescue','chip'],'tab b did not erase tab a\'s chip');
 });
 
 test('the intermission window folded with "Depois" leaves the chip: its hint comes before gathering, and the tap teaches it',()=>{
   resetSessionMemory();
-  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk','xp','rescue'])}));
+  const coach=new Coach(memory({[COACH_KEY]:JSON.stringify(['walk','rescue'])}));
   const prep=fakeView('prepare',1);
   const view:RunView={...prep,round:{...prep.round!,index:2},offers:[],nodes:[{id:'n1',kind:'coco',x:4,y:4,remaining:4,capacity:4,value:1,progress:0}]};
   assert.equal(coach.step(input(view,{blocked:true}),0),undefined,'window open: nothing');

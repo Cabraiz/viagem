@@ -165,6 +165,8 @@ interface Run {world:SimWorld;sys:RunSystems;events:StampedEvent[]}
 function assembled(seed:number,players:Map<string,SimPlayer>,options:{objective?:boolean;checkpoint?:ReturnType<RunSystems['state']>}={}):Run{
   const world=new SimWorld({terrain:city.fork(),seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,mode:'ninhos',
+    // The slice-1 population: the groups' timing is the subject here (at ×20 the moto riding by wakes bands on its way).
+    nestPopulation:1,
     ...(options.objective===false?{}:{objective:'chaveiro' as const}),...(options.checkpoint?{checkpoint:options.checkpoint}:{})});
   return {world,sys,events:[]};
 }

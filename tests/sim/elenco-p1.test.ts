@@ -27,6 +27,7 @@ import {createWeaponSystem} from '../../src/sim/weapons/system.ts';
 import {MIN_TELEGRAPH_TICKS,createTelegraphSystem,telegraphHits} from '../../src/sim/telegraphs.ts';
 import {MAX_PROJECTILES,PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
+import {xpToNext} from '../../src/sim/progression.ts';
 import {RADIUS,SPEED,obstaclesNear,walkable,type Point} from '../../src/maps/world.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 
@@ -300,14 +301,16 @@ test('motoboy: in a full run his crash drops his XP once (kill hook, no credit)'
   const other=w.enemies.get(ids[1])!;other.x=p.x+15;other.frozenUntil=1e9;   // keeps the wave going
   w.damageEnemy(ids[0],1e6,'a');
   p.invulnerableUntil=1e9;p.build.weapons=[];
-  const xpBefore=[...w.pickups.values()].filter(k=>k.kind==='xp').reduce((n,k)=>n+k.value,0);
+  // D-054: the XP goes straight to the team (levels included), no gem on the ground.
+  const earned=()=>{let n=w.team.xp;for(let l=1;l<w.team.level;l++)n+=xpToNext(l);return n;};
+  const xpBefore=earned();
   const events:SimEvent[]=[];
   for(let i=0;i<MOTOBOY.aim+MOTOBOY.charge+10&&w.enemies.has(moto.id);i++){events.push(...sim.step());p.x=moto.x-5;p.y=moto.y+3;}
   assert.ok(!w.enemies.has(moto.id),'crashed');
   const kills=events.filter(e=>e.type==='kill'&&e.enemy===moto.id);
   assert.equal(kills.length,1);
-  const xpAfter=[...w.pickups.values()].filter(k=>k.kind==='xp').reduce((n,k)=>n+k.value,0);
-  assert.equal(xpAfter-xpBefore,ENEMIES.motoboy.xp,'his XP dropped once');
+  assert.ok(![...w.pickups.values()].some(k=>k.kind==='xp'),'no gem');
+  assert.equal(earned()-xpBefore,ENEMIES.motoboy.xp,'his XP counted once');
 });
 
 // ---------- Influencer ----------

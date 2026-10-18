@@ -13,6 +13,7 @@ import {classes} from '../../rules/index.ts';
 import type {MapId} from '../../protocol/index.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {directionalSheet} from '../sprites/sprite-sheets.ts';
+import {movementIdle8Plan} from '../sprites/movement128.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../sprites/art-urls.ts';
 import {artIndex} from '../art/manifest.ts';
 import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
@@ -38,7 +39,7 @@ export interface MatchRoom {
 }
 
 /** The URL the scene's CharacterSprites.queue fetches for a class's sheet; undefined for a class with no sheet. */
-export const heroSheetUrl=(classId:string)=>spriteCatalog[classId]?directionalSheet(classId)?.url??spriteUrl(classId):undefined;
+export const heroSheetUrl=(classId:string)=>movementIdle8Plan(classId)?.url??(spriteCatalog[classId]?directionalSheet(classId)?.url??spriteUrl(classId):undefined);
 /** The island/endless ground the scene loads outside the city (scene.ts preload). */
 export const ENDLESS_GROUND=['/art/terrain/soil-grass.webp','/art/terrain/riverbed.webp'] as const;
 const RANK:Record<AssetPriority,number>={P0:0,P1:1,P2:2};

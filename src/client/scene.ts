@@ -3,6 +3,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
+import {installUploadQueue} from './preload/upload-queue.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -548,7 +549,7 @@ export class IslandScene extends Phaser.Scene {
     const hero=this.heroScale;
     this.shadow?.setScale(hero);this.ring?.setScale(hero);
     const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
-      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
+      if(s.texture.key.startsWith('sprite:')||s.texture.key.startsWith('sprite128:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
     };
     if(this.actor)resize(this.actor,112);
     for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(hero);}
@@ -831,7 +832,7 @@ export class IslandScene extends Phaser.Scene {
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
-    this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
+    this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
     // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
@@ -1024,7 +1025,7 @@ export class IslandScene extends Phaser.Scene {
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
   private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
   private figureWorldBox(a:Phaser.GameObjects.Sprite,classId:string){
-    const f=a.texture.key.startsWith('sprite:')?this.sprites.figureIn(a,classId):undefined;
+    const f=a.texture.key.startsWith('sprite:')||a.texture.key.startsWith('sprite128:')?this.sprites.figureIn(a,classId):undefined;
     if(!f)return a.getBounds();
     const sx=Math.abs(a.scaleX),sy=Math.abs(a.scaleY),w=a.frame.width,h=a.frame.height,ox=a.originX*w,oy=a.originY*h;
     const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;
@@ -1423,6 +1424,7 @@ export class IslandScene extends Phaser.Scene {
 }
 
 export function createIsland(parent:HTMLElement,hooks:SceneHooks){
+  installUploadQueue(Phaser); // decode off the main thread, at most one big sheet per frame (preload/upload-queue.ts)
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},

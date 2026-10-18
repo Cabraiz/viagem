@@ -1,6 +1,6 @@
 /**
  * ?sandbox=horda — fake horde over the real terrain to exercise the render layers (VGM-039).
- * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0,
+ * Query: n (enemies, default 300), view (0..3), seed, reduced=1, fx=reduced (effects profile), hud=0, cull=0 (no off-camera culling, for the A/B), parados=1 (critters stay where they spawned),
  * camera=ilha (whole-island overview instead of the follow camera on the first player, D-019),
  * elenco=1 (D-033 cast line-up: one of each kind plus an elite, standing still around the first player, with their
  * telegraphs, the agiota's boletos and the "DEVENDO" tag; use with n=0 for a clean screenshot). D-036: the line-up
@@ -128,6 +128,8 @@ class FakeHorde {
   private events:(SimEvent&{eventId:number})[]=[];
   /** Elenco P1 line-up: the motoboy (his charge starts at his spawn) and the influencer (who bounces shots back). */
   private moto?:FakeEnemy;private motoHome?:Point;private posing?:FakeEnemy;
+  /** `parados=1`: the critters stay where they spawned, spread over the island (most off camera: the culling A/B). */
+  private still=new URLSearchParams(location.search).get('parados')==='1';
   constructor(private field:TerrainField,private target:number,seed:number,readonly lineup=false,private portrait=true){
     this.rng=new Rng(seed);
     for(let i=0;i<PLAYER_COUNT;i++)this.players.push({id:`p${i}`,classId:classes[(i*5)%classes.length].id,x:12,y:12,attackTick:0,angle:i/PLAYER_COUNT*Math.PI*2});
@@ -243,7 +245,7 @@ class FakeHorde {
     }
     this.movePlayers();
     const dt=1/SIM_HZ;
-    for(const e of this.enemies){
+    for(const e of this.still?[]:this.enemies){
       let best=this.players[0],bd=Infinity;
       for(const p of this.players){const d=(p.x-e.x)**2+(p.y-e.y)**2;if(d<bd){bd=d;best=p;}}
       const d=Math.sqrt(bd);if(d<.6&&!e.boss)continue;
@@ -293,7 +295,7 @@ class FakeHorde {
     this.emit({type:'kill',enemy:e.id,kind:e.kind,x:e.x,y:e.y});
     if(e.boss){e.hp=e.maxHp;return;}
     this.enemies.splice(this.enemies.indexOf(e),1);
-    const roll=this.rng.next(),kind:PickupKind=e.elite?'chest':roll<.04?'heal':roll<.06?'magnet':roll<.08?'resource':'xp';
+    const roll=this.rng.next(),kind:PickupKind=e.elite?'chest':roll<.04?'heal':roll<.08?'resource':'xp';
     this.pickups.push({id:`g${this.next++}`,kind,x:e.x,y:e.y,value:kind==='xp'?(this.rng.chance(.1)?25:5):1,until:this.tick+this.rng.int(80,160)});
   }
   view():RunView{
@@ -344,6 +346,7 @@ class HordeSandboxScene extends Phaser.Scene {
     this.projector=new Projector(this.view,this.field);
     // The whole-island overview zooms out to ~0.26 on a phone: scale text and bars back to a readable screen size.
     this.layers=new HordeRenderer(this,{projector:this.projector,uiScale:()=>Math.max(1,Math.min(2.5,.55/this.cameras.main.zoom)),reduced:this.reduced,effects:new URLSearchParams(location.search).get('fx')==='reduced'?'reduced':'full',tickMs:1000/SIM_HZ,
+      cull:new URLSearchParams(location.search).get('cull')!=='0', // `cull=0`: the A/B of the off-camera culling
       // The line-up shows the "DEVENDO" tag over the first player: balloons need to find players (the horde run leaves it off).
       locate:lineup?(id:string)=>this.horde.players.find(p=>p.id===id):undefined});
     // `apagao=1` (art-d item 5): the critters show their blackout eyes (imported `olhos-escuro` when it is in); the dark
@@ -448,6 +451,7 @@ export async function openHordeSandbox(){
     game,scene,
     fps:()=>fps,worst:()=>worst,samples:()=>[...samples],
     stats:()=>scene.layers?.stats(),
+    culled:()=>scene.layers?.culled??0,
     rotate:(turn:number)=>scene.rotate(turn),
     setPaused:(value:boolean)=>{scene.paused=value;},
     resetWorst:()=>{worst=Infinity;samples.length=0;},

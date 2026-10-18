@@ -210,6 +210,8 @@ export interface RunRecord {
    * and `enemyGrana`, `primes` (bank-prime) and `empties` (bank-empty). Absent in older JSON files.
    */
   banks?:BankRecord;
+  /** remover-gemas (D-054): the sim second each team level was reached (levels[i] = level i+2). Absent in older JSON files. */
+  levels?:number[];
   /**
    * D-050: the level-up pauses, emulated like the room does (LevelupPause on a 50 ms clock, no think nor step while
    * paused). Bots settle after BOT_PICK_MS, so `botSeconds` is what the bench paused; `humanShare` is the worst case for
@@ -837,6 +839,8 @@ export function playRun(o:RunOptions):RunRecord{
   const pix0={count:room.pixes,amount:room.pixed};
   // D-050: the room's level-up pause (multiplayer/room.ts advance), on a clock of one STEP_MS per loop.
   const levelup=new LevelupPause(),pause={count:0,loops:0,waveTicks:0};let clock=0;
+  // remover-gemas (D-054): the sim second each team level was reached (levels[i] = level i+2).
+  const levelS:number[]=[];
   while(!sim.outcome&&sim.tick<o.capTicks){
     clock+=STEP_MS;
     const was=levelup.paused,paused=levelup.update(sim,clock);
@@ -851,6 +855,7 @@ export function playRun(o:RunOptions):RunRecord{
     trackNests(tick);
     for(const e of events as readonly SimEvent[]){
       countBankEvent(banks,e);
+      if(e.type==='levelup')levelS.push(r2(tick/HZ));
       if(e.type==='moto'){
         const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
         if(e.mode==='entrega'){const left=sim.run.chaveiro?.state.moto.left??0;if(left>CLEAN_DELIVERY_TICKS)deliveries.dirty++;else deliveries.clean++;}
@@ -929,6 +934,7 @@ export function playRun(o:RunOptions):RunRecord{
     ...(sim.run.nests?{nests:nestSummary()}:{}),
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
+    levels:levelS,
   };
   function nestSummary():NestRecord{
     const ns=sim.run.nests!.state,start=ns.startTick??0,sec=(t:number|null)=>t===null?null:r2((t-start)/HZ),sono=sim.run.sono();

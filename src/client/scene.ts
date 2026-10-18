@@ -868,7 +868,7 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net;
     if(!this.fortify&&this.projector&&net)this.fortify=new FortifyRenderer(this,{projector:this.projector,reduced:this.reduced,
       cell:(this.buildPlan??=buildPlanFor(this.field)).cell,
-      playerAt:id=>id===net.id?this.position:net.players.get(id)});
+      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0});
     return this.fortify;
   }
   /**

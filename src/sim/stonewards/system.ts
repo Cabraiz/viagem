@@ -25,6 +25,7 @@ import type {SimContext,SimSystem} from '../context.ts';
 import {ticks} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
+import type {CalmGate} from '../ninhos/calma.ts';
 import {gatherStep,refillNodes,WORK_PER_UNIT,type Gathered} from './resources.ts';
 import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts';
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
@@ -111,6 +112,12 @@ export interface StonewardsOptions {
    * (towers/free-build.ts; each hook optional). Absent: the build sites as before (tests, tools, the endless map).
    */
   freeBuild?:FreeBuildHooks;
+  /**
+   * D-051 mode 'ninhos' (assemble.ts; card ninhos-rounds-fora): no intermission. The forge and the towers' orders open
+   * through `gate` (ninhos/calma.ts: no critter awake near the player), the crates are gathered at any time and the
+   * nodes refill every `refillTicks` (rules/calma.ts CALMA.refillS). Absent: the rounds mode as before.
+   */
+  calm?:{gate:CalmGate;refillTicks:number};
 }
 
 export interface StonewardsSystem extends SimSystem {
@@ -268,13 +275,13 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     get plan(){const plan=buildPlanFor(options.terrain);return free&&plan.rail?withoutRail(plan):plan;},
     build(ctx,playerId,order,requestId){
       const plan=buildPlanFor(ctx.terrain);
-      if(typeof order==='string')return buildDefense(ctx,state,plan,playerId,order,requestId,free);
+      if(typeof order==='string')return buildDefense(ctx,state,plan,playerId,order,requestId,free,options.calm?.gate);
       return free?buildFree(ctx,state,plan,playerId,order,requestId,free):{ok:false,reason:'fora'};
     },
-    upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId);},
-    repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId);},
+    upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId,options.calm?.gate);},
+    repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId,options.calm?.gate);},
     buy(ctx,playerId,recipeId,requestId,targetId){
-      const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged);
+      const result=forgeBuy(ctx,state,playerId,recipeId,requestId,targetId,options.onTerrainChanged,options.calm?.gate);
       if(result.ok)say(ctx,state,playerId,result.recipe,result.line);
       return result;
     },
@@ -299,7 +306,16 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       if(state.raiseBarricades&&round.phase==='prepare'&&round.index>=2&&raiseDue(ctx,state,options.onTerrainChanged))delete state.raiseBarricades;
       // City (cidade-07): the crates are the nodes (loot.ts); `options.obstacles` (tests) keeps the island path.
       const loot=options.obstacles?undefined:cityLoot(ctx.terrain);
-      if(!state.wallDown&&round.phase==='prepare'){
+      if(options.calm){
+        // D-051 mode 'ninhos': the crates are gathered at any time, and the nodes refill on the clock.
+        if(!state.wallDown){
+          if(state.refilledTick===undefined||ctx.tick-state.refilledTick>=options.calm.refillTicks){state.refilledTick=ctx.tick;refillNodes(state);}
+          const lootValue=loot?lootValueNow():1,before=lootValue!==1?{...state.gathered}:undefined;
+          const got=gatherStep(ctx,state,options.obstacles,undefined,options.hiddenNodes?.());
+          if(before)scaleLoot(got,before,lootValue);
+          for(const g of got)if(g.emptied)say(ctx,state,g.player,`no-${g.node.kind}`,draw(ctx,state,loot?CIDADE_CRATE_LINES:DEPLETED_LINES[g.node.kind]));
+        }
+      }else if(!state.wallDown&&round.phase==='prepare'){
         if(state.refilledRound!==round.index){
           state.refilledRound=round.index;state.prepareStart=ctx.tick;state.hornEndsTick=-1;refillNodes(state);
           // City team-size loot knob (cidade-11): the heroes standing as the intermission starts, kept for all of it.

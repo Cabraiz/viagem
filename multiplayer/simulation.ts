@@ -10,8 +10,8 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime} from '../src/sim/index.ts';
-import {refreshStats} from '../src/rules/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt} from '../src/sim/index.ts';
+import {CALMA,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -280,6 +280,26 @@ export class Simulation {
   get enemies():EnemyState[]{return [...this.world.enemies.values()];}
   /** Decided once per run; a victory beats a defeat decided in the same tick. */
   get outcome():SimOutcome|undefined{return this.result;}
+  /** D-051 calm checkpoints (calmCheckpointDue): the run they belong to, the last one's tick, the nests seen down. */
+  private calm={run:-1,last:0,down:0};
+  /**
+   * D-051 mode 'ninhos' (card ninhos-rounds-fora: no intermission to checkpoint at): whether the room should checkpoint
+   * now. Right after a nest falls; else every CALMA.checkpointEveryS while no standing hero has a critter awake within
+   * CALMA.checkpointR and there is no boss. Always false in the rounds mode (the intermission does it) or once the run
+   * is decided. Call it once per tick: it counts the falls it has answered and when it said yes.
+   */
+  calmCheckpointDue():boolean{
+    if(this.mode!=='ninhos'||this.result)return false;
+    const w=this.world,c=this.calm,down=this.systems.nests?.state.nests.filter(n=>n.down).length??0;
+    // A new run (or one resumed from a checkpoint): the clock starts now, the nests already down are answered.
+    if(c.run!==this.runs){this.calm={run:this.runs,last:w.tick,down};return false;}
+    if(down>c.down){c.down=down;c.last=w.tick;return true;}
+    if(w.tick-c.last<ticks(CALMA.checkpointEveryS))return false;
+    const boss=this.systems.boss.state;
+    if(boss.bossId&&!boss.defeated)return false;
+    for(const p of this.players.values())if(isStanding(p)&&!calmAt(w,p.x,p.y,CALMA.checkpointR))return false;
+    c.last=w.tick;return true;
+  }
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}

@@ -1243,6 +1243,8 @@ export class Room {
       if(round<0){this.checkpointRef=undefined;this.resumedRun.clear();}
       else if(round>=CHECKPOINT_FROM_ROUND&&this.sim.world.round.phase==='prepare'&&!this.sim.outcome)this.saveCheckpoint();
     }
+    // D-051 mode 'ninhos' (no intermission): the run is checkpointed in the calm and after each fallen nest.
+    if(round>=0&&this.sim.calmCheckpointDue())this.saveCheckpoint();
     this.flushRoster(now);
     this.measure(performance.now()-started);
   }

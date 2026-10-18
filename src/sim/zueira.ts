@@ -14,7 +14,7 @@
  * wave starts; a round that ends before that passes it on to the next eligible round.
  * State is JSON-safe (stateHash, checkpoints) with its own Rng, so a replay draws the same plan and the same drops.
  */
-import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';
+import {CALMA,MAX_PICKUPS,hasRoom} from '../rules/index.ts';
 import {HEAL_AMOUNT} from '../rules/index.ts';
 import {Rng} from '../contract/index.ts';
 import {clearSegment,walkable} from '../maps/index.ts';
@@ -147,7 +147,13 @@ export function parseZueiraLab(value?:string):ZueiraLab|undefined{
   return kinds.length?{plan:kinds.slice(0,8).map((kind,i)=>({round:FIRST_EVENT_ROUND+i,kind})),minGap:1}:undefined;
 }
 
-export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:SimContext)=>readonly PrizeBlock[]}={}):ZueiraSystem{
+/**
+ * `clock` (D-051 mode 'ninhos', card ninhos-rounds-fora: no rounds): the same plan's kinds on the clock instead
+ * (rules/calma.ts CALMA): the first CALMA.zueiraFirstS..zueiraEveryS[0] seconds into the run, then one every
+ * zueiraEveryS[0]..[1] seconds, at most zueiraMax, never while `bossUp` (it waits); the blackout still waits for
+ * critters around, and past EVENT_DELAY[1] goes behind the next kind.
+ */
+export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:SimContext)=>readonly PrizeBlock[];clock?:{bossUp:(ctx:SimContext)=>boolean}}={}):ZueiraSystem{
   const minGap=options.lab?.minGap??EVENT_GAP[0];
   const state=createZueiraState(seed);
   if(options.lab)state.plan=options.lab.plan.map(p=>({...p}));
@@ -181,6 +187,17 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
   }
   const heroes=(ctx:SimContext)=>[...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
 
+  /** Mode 'ninhos': the next event on the clock (state.triggerTick; waveTick: when it fell due, for the blackout). */
+  function clockStep(ctx:SimContext,bossUp:(ctx:SimContext)=>boolean){
+    if(state.fired.length>=CALMA.zueiraMax||!state.plan.length){state.triggerTick=undefined;return;}
+    if(state.triggerTick===undefined){state.triggerTick=ctx.tick+ticks(rngOf().range(CALMA.zueiraFirstS,CALMA.zueiraEveryS[0]));return;}
+    if(ctx.tick<state.triggerTick||state.active||bossUp(ctx)||!heroes(ctx).length)return;
+    state.waveTick??=ctx.tick;
+    if(state.plan[0].kind!=='apagao'||crowded(ctx)){
+      fire(ctx,1);delete state.waveTick;
+      state.triggerTick=ctx.tick+ticks(rngOf().range(CALMA.zueiraEveryS[0],CALMA.zueiraEveryS[1]));
+    }else if(ctx.tick>state.waveTick+ticks(EVENT_DELAY[1])){delete state.waveTick;if(state.plan.length>1)state.plan.push(state.plan.shift()!);}
+  }
   function fire(ctx:SimContext,index:number){
     const next=state.plan.shift()!;
     const endsTick=ctx.tick+ticks(HAPPENING_SECONDS[next.kind]);
@@ -236,6 +253,7 @@ export function createZueira(seed:number,options:{lab?:ZueiraLab;blocked?:(ctx:S
         if(ctx.tick>=active.endsTick||round.phase!=='wave'){state.active=undefined;}
         else if(active.kind==='boletos'&&(ctx.tick-active.startTick)%RAIN_EVERY===0)rain(ctx,active,heroes(ctx));
       }
+      if(options.clock){clockStep(ctx,options.clock.bossUp);save();return;}
       if(round.phase!=='wave'){state.wave=undefined;state.triggerTick=undefined;save();return;}
       // A new wave: does the next planned event belong here (its round, or carried over), and when?
       if(state.wave!==round.index){

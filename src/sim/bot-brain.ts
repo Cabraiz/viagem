@@ -68,7 +68,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,REVIVE_TICKS} from '../rules/index.ts';
+import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,type LootCommand} from './bot-loot.ts';
 
@@ -469,7 +469,21 @@ export function clearPath(at:Point,want:Point,terrain?:TerrainField):Point{
   return want;
 }
 
+/**
+ * D-051 mode 'ninhos' (card ninhos-rounds-fora): no intermission, the director holds one open wave. Each bot reads its
+ * own round instead: "calmo" (no critter awake within CALMA.botR of it, rules/calma.ts) is a 'prepare' of
+ * CALM_WINDOW_S (its old intermission: gather, forge, towers, trips there and back within that), else a 'wave' whose
+ * clock never runs out (nobody retreats: the nests' groups do not). Pure over the view.
+ */
+export const CALM_WINDOW_S=60;
+export function calmRound(view:RunView,at:Point):RunView{
+  const round=view.round;
+  if(!round)return view;
+  const calm=calmAround(view.enemies,at,CALMA.botR);
+  return {...view,round:{...round,phase:calm?'prepare':'wave',phaseEndsTick:view.tick+(calm?CALM_WINDOW_S*HZ:HZ*3600)}};
+}
 export function decide(input:BrainInput):Decision{
+  if(input.nests&&input.view.round)input={...input,view:calmRound(input.view,input.at)};
   const {view,selfId,at,index,terrain,memory}=input,tick=view.tick;
   const me=view.players.find(p=>p.id===selfId);
   const decision:Decision={direction:{x:0,y:0},cast:false,sos:false,mode:'idle'};

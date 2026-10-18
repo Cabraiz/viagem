@@ -15,7 +15,7 @@ const hooks=`export async function resolve(spec,ctx,next){
   return next(spec,ctx);
 }`;
 register('data:text/javascript,'+encodeURIComponent(hooks));
-const {default:worker,GameRoom,createOptions}=await import('../../multiplayer/worker.ts');
+const {default:worker,GameRoom,createOptions,storedOptions}=await import('../../multiplayer/worker.ts');
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
@@ -51,23 +51,24 @@ test('an ordinary room still takes a second person',async()=>{
 });
 
 test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and old clients get a plain room); the object keeps it for a restart',async()=>{
-  assert.deepEqual(createOptions({map:'cidade-nevada',solo:true}),{map:'cidade-nevada',solo:true});
-  assert.deepEqual(createOptions({mode:'ninhos'}),{mode:'ninhos'},'D-051: ?modo=ninhos');
-  assert.deepEqual(createOptions({mode:'NINHOS'}),{});
-  assert.deepEqual(createOptions({map:'lua',solo:'yes',extra:1}),{});assert.deepEqual(createOptions(null),{});
-  // D-047: ?modo=chaveiro or ?modo=muralha asks for that objective; any other value is dropped.
-  assert.deepEqual(createOptions({map:'cidade-nevada',solo:true,objective:'chaveiro'}),{map:'cidade-nevada',solo:true,objective:'chaveiro'});
-  // ?modo=muralha asks for the old wall mode (the city plays the chaveiro by default).
-  assert.deepEqual(createOptions({objective:'muralha'}),{objective:'muralha'});
-  assert.deepEqual(createOptions({objective:'torre'}),{});assert.deepEqual(createOptions({objective:true}),{});
-  // D-051: ?combate=manual asks for the attack button; any other value is dropped.
-  assert.deepEqual(createOptions({combat:'manual'}),{combat:'manual'});assert.deepEqual(createOptions({combat:'auto'}),{});
+  // rodada-legado (D-051): a new room is always the nests with the manual combat; map and solo as asked.
+  const NM={mode:'ninhos',combat:'manual'};
+  assert.deepEqual(createOptions({map:'cidade-nevada',solo:true}),{map:'cidade-nevada',solo:true,...NM});
+  assert.deepEqual(createOptions({mode:'ninhos'}),NM);assert.deepEqual(createOptions({mode:'NINHOS'}),NM);
+  assert.deepEqual(createOptions({map:'lua',solo:'yes',extra:1}),NM);assert.deepEqual(createOptions(null),NM);assert.deepEqual(createOptions(undefined),NM);
+  assert.deepEqual(createOptions({map:'cidade-nevada',solo:true,objective:'chaveiro'}),{map:'cidade-nevada',solo:true,objective:'chaveiro',...NM});
+  // The wall, the waves and the automatic weapons are legacy: a body asking for them gets the nests and the attack button.
+  assert.deepEqual(createOptions({objective:'muralha'}),NM);assert.deepEqual(createOptions({objective:'torre'}),NM);
+  assert.deepEqual(createOptions({mode:'rounds',combat:'auto'}),NM);assert.deepEqual(createOptions({combat:'manual'}),NM);
+  // A room stored before rodada-legado is restored as it was created (storedOptions), to the end of its match.
+  assert.deepEqual(storedOptions({objective:'muralha'}),{objective:'muralha'});assert.deepEqual(storedOptions({map:'cidade-nevada'}),{map:'cidade-nevada'});
   const inits:unknown[]=[];
   const env={ALLOW_LOCAL:'false',CREATE_LIMIT:{limit:async()=>({success:true})},ROOMS:{idFromName:(n:string)=>n,get:()=>({init:async(_c:string,o:unknown)=>{inits.push(o);}})}} as any;
   // A browser's string body comes with its Content-Length (the Worker reads only a small declared one).
   const post=(body?:string)=>worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/rooms',{method:'POST',headers:{Origin:'https://viagem.cyou',...(body===undefined?{}:{'content-length':String(Buffer.byteLength(body))})},...(body===undefined?{}:{body})}),env);
   for(const body of [JSON.stringify({map:'cidade-nevada',solo:true}),undefined,'{nope','x'.repeat(500)])assert.equal((await post(body)).status,201);
-  assert.deepEqual(inits,[{map:'cidade-nevada',solo:true},{},{},{}]);
+  // An old cached site (no body), junk or a too-big body: the nests with the manual combat too.
+  assert.deepEqual(inits,[{map:'cidade-nevada',solo:true,mode:'ninhos',combat:'manual'},{mode:'ninhos',combat:'manual'},{mode:'ninhos',combat:'manual'},{mode:'ninhos',combat:'manual'}]);
   // The object stores what it was created with and a restart (load) builds the same solo city room.
   const store=new Map<string,unknown>();
   const storage={get:async(k:string)=>store.get(k),put:async(k:string|Record<string,unknown>,v?:unknown)=>{if(typeof k==='string')store.set(k,v);else for(const [a,b] of Object.entries(k))store.set(a,b);},setAlarm:async()=>{},delete:async()=>true};
@@ -78,7 +79,7 @@ test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and o
   assert.equal(g.room.map.id,'cidade-nevada','born on the city through the Worker');
   // Ana sits (the roster row goes to storage), then the object restarts.
   const ana=peer();join(g.room,ana,'Ana',Date.now());
-  assert.deepEqual(store.get('options'),{map:'cidade-nevada',solo:true});
+  assert.deepEqual(store.get('options'),{map:'cidade-nevada',solo:true,mode:'ninhos',combat:'manual'});
   assert.equal(g.room.solo,true);
   const restarted=new GameRoom({storage,id:{toString:()=>'obj'},waitUntil:()=>{}} as any,{ALLOW_LOCAL:'false'} as any) as any;
   restarted.city=CITY_ASSET;restarted.defaults={...restarted.defaults,cityPlayable:true};
@@ -88,19 +89,20 @@ test('the Worker: POST /rooms reads {map,solo} from an optional body (junk and o
   assert.deepEqual(bia.messages.map(m=>[m.t,m.message]),[['error',SOLO_ROOM_REFUSED]],'her seat came back from the roster: Bia is refused');
 });
 
-// From E5's padrao-manual (5e60457), absorbed here with the nests (balanco-ninhos): one default switch, not two.
-test('the default page creates a manual nests room, solo and class; ?combate=auto an automatic one, ?modo=ondas the waves (create body → Worker → welcome)',async()=>{
+// From E5's padrao-manual (5e60457) and balanco-ninhos; rodada-legado: every address and every old body plays the nests.
+test('rodada-legado, end to end: any page address or old body creates a manual nests room, solo and class (create body → Worker → welcome)',async()=>{
   const t0=Date.now();
-  for(const [search,want,mode] of [['','manual','ninhos'],['?modo=chaveiro','manual','ninhos'],['?combate=auto',undefined,'ninhos'],
-    ['?modo=chaveiro&combate=auto',undefined,'ninhos'],['?modo=ondas','manual',undefined],['?modo=ondas&combate=auto',undefined,undefined]] as const)
+  const bodies:object[]=[...['','?modo=chaveiro','?combate=auto','?modo=ondas','?modo=muralha&combate=auto'].map(q=>objectiveFromSearch(q)),
+    {},{objective:'muralha'},{combat:'auto'}];
+  for(const asked of bodies)
     for(const solo of [true,false]){
       // The body lobby.ts posts (solo: {map,solo,...objectiveFromSearch}; class: objectiveFromSearch), as the Worker reads it.
-      const body=JSON.parse(JSON.stringify({...(solo?{map:'cidade-nevada',solo:true}:{}),...objectiveFromSearch(search)}));
-      const options=createOptions(body);
-      assert.equal(options.mode,mode,`${search||'(no search)'} ${solo?'solo':'class'}: the room's mode`);
+      const body=JSON.parse(JSON.stringify({...(solo?{map:'cidade-nevada',solo:true}:{}),...asked}));
+      const options=createOptions(body),label=`${JSON.stringify(asked)} ${solo?'solo':'class'}`;
+      assert.equal(options.mode,'ninhos',label);
       const room=new Room(t0,7,{cityText,cityRef:CITY,cityPlayable:true,...options}),a=peer();await room.ready();
       join(room,a,'Ana',t0);
-      const w=a.messages.find(m=>m.t==='welcome');assert.ok(w,search);
-      assert.equal(w.combat,want,`${search||'(no search)'} ${solo?'solo':'class'}: welcome combat`);
+      const w=a.messages.find(m=>m.t==='welcome');assert.ok(w,label);
+      assert.equal(w.combat,'manual',`${label}: welcome combat`);
     }
 });

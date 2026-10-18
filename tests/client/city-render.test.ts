@@ -318,6 +318,42 @@ test('a rotation shows every wanted chunk at once (no holes), and reset starts o
   assert.equal(t.update(all1,1).show.length,1,'first update after reset keeps the per-update budget');
 });
 
+test('a rotation shows at once only the chunks the camera meets; the ring ahead follows at the budget',()=>{
+  const t=new ChunkTracker(index,asset,{maxShowPerUpdate:1,showMarginPx:1e6});
+  const b2=t.bounds(chunk('1,1'),2),cam:Rect={x:b2.x+b2.w/2-10,y:b2.y+b2.h/2-10,w:20,h:20};
+  for(let i=0;i<4;i++)t.update(cam,0);
+  assert.equal(t.visible().length,4,'a huge show margin wants the whole city');
+  const on=index.chunks.filter(c=>rectsOverlap(t.bounds(c,2),cam)).map(c=>c.key).sort();
+  assert.ok(on.length>=1&&on.length<4,`${on}`);
+  const u=t.update(cam,2);
+  assert.deepEqual([...u.show].sort(),on,'after the turn: the chunks under the camera, all in one update');
+  for(let n=on.length;n<4;n++)assert.equal(t.update(cam,2).show.length,1,'then one per update');
+  assert.deepEqual(t.update(cam,2),{show:[],hide:[]});
+});
+
+test('ChunkTracker.nearest: of the keys given, the chunk nearest the camera centre in that view; unknown keys skipped',()=>{
+  const t=new ChunkTracker(index,asset),b=boundsAll(0);
+  const at=(i:number):Rect=>({x:b[i].x+b[i].w/2-5,y:b[i].y+b[i].h/2-5,w:10,h:10});
+  const keys=index.chunks.map(c=>c.key);
+  index.chunks.forEach((c,i)=>assert.equal(t.nearest(keys,at(i),0),c.key));
+  assert.equal(t.nearest([],at(0),0),undefined);
+  assert.equal(t.nearest(['nope'],at(0),0),undefined);
+  assert.equal(t.nearest(['nope','1,1'],at(0),0),'1,1');
+  const b1=t.bounds(chunk('1,0'),1);
+  assert.equal(t.nearest(keys,{x:b1.x+b1.w/2-5,y:b1.y+b1.h/2-5,w:10,h:10},1),'1,0','in the view asked for');
+});
+
+test('city-layer: a refresh marks the live chunks stale and rebuilds one per frame, nearest first, only on frames with no new chunk',()=>{
+  const src=readFileSync(new URL('../../src/client/render/city/city-layer.ts',import.meta.url),'utf8');
+  const refresh=src.slice(src.indexOf('  refresh(){'),src.indexOf('  pendingRebuilds()'));
+  assert.ok(refresh.includes('this.stale.add(key)')&&!refresh.includes('buildChunk'),'refresh builds nothing itself');
+  const update=src.slice(src.indexOf('  update(frame:CityFrame){'),src.indexOf('this.applyOcclusion(frame,view);'));
+  assert.match(update,/show\.length\?undefined:this\.tracker\.nearest\(this\.stale,frame\.camera,view\)/);
+  assert.match(update,/this\.dropChunk\(old\);this\.buildChunk\(old,view\)/,'the old chunk is swapped in the same frame (no hole)');
+  assert.match(src,/this\.live\.delete\(key\);this\.stale\.delete\(key\);/,'a dropped chunk leaves the queue');
+  assert.match(src,/groundSettled\(\)\{return this\.stale\.size===0&&/,'the modo foto waits for the rebuilds');
+});
+
 test('stepped ruin roofs close every camera-facing step with a wall as tall as the step (no holes)',()=>{
   const ruin={id:'ruin-steps',kind:'building' as const,x:4,y:4,w:4,h:4,height:3,ruined:true};
   const ps=buildChunks({...asset,blocks:[ruin],props:[]}).chunks.flatMap(c=>c.pieces);

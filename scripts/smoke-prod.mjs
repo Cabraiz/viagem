@@ -129,6 +129,8 @@ async function startPreview(port){
 async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined){
   const start=Date.now(),entry=++entries;nodeLag.reset();
   const trace=[];let roomCode='',lastSig='',lastChange=start,roomLast;
+  // Where the time goes (BUG-20261020-ORQ-smoke-60s-instavel): seconds since the start at each step, printed per entry.
+  const marks={},mark=(k)=>{marks[k]=+((Date.now()-start)/1000).toFixed(1);};
   // Outside evidence of a starved machine, for any failure below.
   const evidence=async()=>machineEvidence({nodeLagP90:nodeLag.percentile(90)/1e6,roomMs:roomLast?.ms,roomOk:roomLast?.ok??true,browsers:browsersOnPc()});
   try{
@@ -137,10 +139,13 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
     // The returning player's new visit: a reload revalidates the page itself (the new build's HTML and hashed chunks)
     // while the subresources still come from the HTTP cache when fresh — where a stale unversioned file bites.
     if(reload)await p.reload({waitUntil:'load',timeout:90000});
+    mark('load');
     await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
+    mark('personagem');
     await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Smoke';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
     await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
     await p.evaluate(()=>document.getElementById('enter-island').click());
+    mark('jogar');
     if(HANG.has(entry)){console.log(`  --travar: a entrada ${entry} trava a página de propósito`);await p.evaluate(()=>{setTimeout(()=>{for(;;){}},3000);});}
     let entered=false,said='',stalled='';
     while(!entered&&!said&&!stalled&&Date.now()-start<ENTER_CAP_MS){
@@ -169,6 +174,7 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
       if(st&&sig!==lastSig){lastSig=sig;lastChange=now;}
       else if(now-lastChange>STALL_MS)stalled=`nada mudou em ${STALL_MS/1000} s (${st?.stage??'sem resposta'}: "${st?.ready||st?.roundLabel||st?.loading||''}", sala ${room?.phase??'?'} tick ${room?.tick??'?'})`;
     }
+    mark(entered?'entrou':'saiu');
     let starved='',hung='';
     if(!entered&&!said){
       const now=Date.now();
@@ -182,16 +188,27 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
     // Every chunk the page loaded must import cleanly (a module that throws at load rejects every time): the reason this
     // smoke exists (e5b34e5). Never skipped: a slow page gets a longer try (not a hung one), and no answer at all is a
     // failure (the machine's only when the renderer hung or the page was starved with outside evidence).
-    const importAll=async()=>{
-      const out=[];
-      for(const u of new Set(performance.getEntriesByType('resource').map(e=>e.name).filter(n=>/\/assets\/.*\.js(\?|$)/.test(n)))){
-        try{await import(u);}catch(e){out.push(`${u.split('/').pop()}: ${e&&e.message}`);}
+    // All at once and only once (BUG-20261020-ORQ-smoke-60s-instavel): one by one, each import waited for a turn of a
+    // page busy drawing the match in software GL (CI, no GPU): 74 chunks took 20–60 s, and the longer try started over.
+    // In parallel they share those turns; the longer try awaits the same promise.
+    const importAll=()=>{
+      const w=window;
+      if(!w.__smokeImports){
+        const urls=[...new Set(performance.getEntriesByType('resource').map(e=>e.name).filter(n=>/\/assets\/.*\.js(\?|$)/.test(n)))];
+        // Progress the smoke reads when this does not answer in time (how many chunks, how far, how long).
+        const prog={n:urls.length,done:0,t0:performance.now(),ms:0};
+        prog.out=Promise.all(urls.map(u=>import(u).then(()=>'',e=>`${u.split('/').pop()}: ${e&&e.message}`).finally(()=>{prog.done++;prog.ms=Math.round(performance.now()-prog.t0);})))
+          .then(all=>all.filter(Boolean));
+        w.__smokeImports=prog;
       }
-      return out;
+      return w.__smokeImports.out;
     };
     let chunks=await poll(p,importAll);
+    mark('chunks1');
     // A hung renderer will not answer in a minute either: no longer try then.
-    if(!chunks.answered&&!hung)chunks=await poll(p,importAll,undefined,60000);
+    if(!chunks.answered&&!hung){chunks=await poll(p,importAll,undefined,60000);mark('chunks2');}
+    const {v:prog}=await poll(p,()=>{const i=window.__smokeImports;return i&&{n:i.n,done:i.done,ms:i.ms};},undefined,5000),last=trace.at(-1);
+    console.log(`  tempos ${mode}#${entry} (s): ${JSON.stringify(marks)} chunks ${chunks.answered?'ok':'sem resposta'} ${prog?`${prog.done}/${prog.n} em ${prog.ms} ms`:'?'} timer ${last?.dueFires?Math.round(last.fires/last.dueFires*100)+'%':'?'}`);
     const rejected=chunks.answered?chunks.v??[]:[CHUNKS_UNVERIFIED];
     if(shot)await p.screenshot({path:shot,timeout:30000}).catch(()=>{});
     const why=[!entered&&(said?`não entrou: "${said}"`:stalled?`não entrou: ${stalled}`:`não entrou em ${ENTER_CAP_MS/1000} s`),...errors.map(e=>`pageerror: ${e}`),...rejected.map(r=>`chunk: ${r}`)].filter(Boolean);

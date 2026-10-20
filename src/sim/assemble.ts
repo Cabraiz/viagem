@@ -19,7 +19,7 @@ import {UNITS_PER_TOKEN,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
-import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult} from './inventory.ts';
+import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
@@ -154,6 +154,9 @@ export interface RunSystems {
   inventory?:{
     equip(playerId:string,slot:number):InventoryResult;use(playerId:string,slot:number):InventoryResult;
     drop(playerId:string,slot:number):InventoryResult;take(playerId:string,pickupId:string):InventoryResult;
+    /** Kits de torre (torre-pela-caixa): the kit in `slot` built at `order` (free), or near the hero (the bots). */
+    place(playerId:string,slot:number,order:KitOrder,requestId?:string):PlaceResult;
+    placeNear(playerId:string,slot:number):PlaceResult;
   };
   /** Bancos (sim/bancos/system.ts): the city's ATMs, in both city modes; absent elsewhere. */
   banks?:BanksSystem;
@@ -451,9 +454,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
 
-  // D-051 manual combat: the inventory (sim/inventory.ts); a kit de torre is one team ficha.
+  // D-051 manual combat: the inventory (sim/inventory.ts); the old kit-torre is one team ficha, a kit de torre
+  // (torre-pela-caixa) its piece built for free on the grid.
   const inventory=manual?inventorySystem():undefined;
-  const inventoryHooks:InventoryHooks={addTowerToken:()=>{stonewards.state.balance.units+=UNITS_PER_TOKEN;return true;}};
+  const inventoryHooks:InventoryHooks={addTowerToken:()=>{stonewards.state.balance.units+=UNITS_PER_TOKEN;return true;},
+    buildKit:(ctx,p,piece,order,requestId)=>stonewards.buildKit(ctx,p.id,{piece,c:order.c,r:order.r,...(order.rot===1?{rot:1 as const}:{})},requestId)};
 
   world.clearSystems();
   for(const system of [
@@ -505,6 +510,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       use:(id,slot)=>{const p=world.players.get(id);return p?useSlot(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
       drop:(id,slot)=>{const p=world.players.get(id);return p?dropSlot(world,p,slot):{ok:false,reason:'player'};},
       take:(id,pickup)=>{const p=world.players.get(id);return p?takeItem(world,p,pickup):{ok:false,reason:'player'};},
+      place:(id,slot,order,requestId)=>{const p=world.players.get(id);return p?placeKit(world,p,slot,order,inventoryHooks,requestId):{ok:false,reason:'player'};},
+      placeNear:(id,slot)=>{const p=world.players.get(id);return p?placeKitNear(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
       ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),

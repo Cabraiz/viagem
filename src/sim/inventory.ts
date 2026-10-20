@@ -8,6 +8,9 @@
  *  - add(item): stacks a consumable, else takes a free slot; false when the six are full;
  *  - take(pickup): an item on the ground within TAKE_REACH: added, or with the six full, swapped with the hand's
  *    weapon (a weapon) or the last consumable slot (a consumable), which lands where the taken one was;
+ *  - place(slot, cell): a kit de torre (torre-pela-caixa, rules tower-kits.ts) builds its piece on the build grid
+ *    through the hooks (towers/system.ts buildFree with `kit`: free, every other rule of the free build); an accepted
+ *    one spends a charge (the slot empties at 0), a refused one keeps the kit;
  *  - the system picks up items walked over while a slot is free (a full inventory needs take, the "Trocar" button).
  * Every command answers a refusal reason or ok; nothing changes on a refusal.
  */
@@ -16,7 +19,9 @@ import {CIDA_ITEMS,MAX_WEAPONS,ticks} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {CONSUMABLE_STACK,isConsumableId,type ConsumableId} from './weapons/arsenal.ts';
 import {getWeapon} from './weapons/catalog.ts';
-import {HEAL_AMOUNT} from '../rules/index.ts';
+import {HEAL_AMOUNT,kitPiece,pieceCells,type KitPiece} from '../rules/index.ts';
+import {CITY_BUILD_CELL} from '../maps/index.ts';
+import type {TowerResult} from './towers/system.ts';
 
 export const INVENTORY_SLOTS=MAX_WEAPONS;
 /** Ticks without firing after a swap (0.3 s). */
@@ -59,8 +64,57 @@ export function equip(ctx:SimContext,p:SimPlayer,slot:number):InventoryResult{
   return OK;
 }
 
-/** Hooks a consumable may need (the team's tower fichas: kit de torre). */
-export interface InventoryHooks {addTowerToken?(ctx:SimContext):boolean}
+/** Where a kit goes: the top-left cell of its footprint on the build grid (contract/build.ts), rot 1 turns it. */
+export interface KitOrder {c:number;r:number;rot?:0|1}
+/**
+ * Hooks a consumable may need (the team's tower fichas: the old kit-torre) and the kits' obra (stonewards buildKit;
+ * absent: every place is refused 'fora').
+ */
+export interface InventoryHooks {
+  addTowerToken?(ctx:SimContext):boolean;
+  buildKit?(ctx:SimContext,p:SimPlayer,piece:KitPiece,order:KitOrder,requestId?:string):TowerResult;
+}
+export type PlaceResult=TowerResult|{ok:false;reason:'slot'|'not-kit'};
+export const isKitItem=(item:OwnedItem|undefined)=>!!item&&kitPiece(item.id)!==undefined;
+
+/** A kit de torre in `slot` builds its piece at `order` (see the header). The tower's refusals come back as they are. */
+export function place(ctx:SimContext,p:SimPlayer,slot:number,order:KitOrder,hooks:InventoryHooks={},requestId?:string):PlaceResult{
+  if(!hasInventory(p)||!live(p))return {ok:false,reason:'player'};
+  const item=p.build.weapons[slot];
+  if(!item)return {ok:false,reason:'slot'};
+  const piece=kitPiece(item.id);
+  if(!piece)return {ok:false,reason:'not-kit'};
+  const result=hooks.buildKit?.(ctx,p,piece,order,requestId)??{ok:false,reason:'fora'};
+  if(result.ok&&--item.level<=0)removeSlot(p.build,slot);
+  return result;
+}
+
+/** How far (cells, Chebyshev) placeNear looks around the hero for the footprint's centre. */
+export const PLACE_NEAR_CELLS=4;
+const NEAR_OFFSETS:readonly (readonly [number,number])[]=(()=>{
+  const out:[number,number][]=[];
+  for(let dr=-PLACE_NEAR_CELLS;dr<=PLACE_NEAR_CELLS;dr++)for(let dc=-PLACE_NEAR_CELLS;dc<=PLACE_NEAR_CELLS;dc++)out.push([dc,dr]);
+  // Nearest first; ties in a fixed order (row, then column), so a bot's choice is deterministic.
+  return out.sort((a,b)=>Math.hypot(a[0],a[1])-Math.hypot(b[0],b[1])||a[1]-b[1]||a[0]-b[0]);
+})();
+/**
+ * A bot's kit (torre-pela-caixa): the kit in `slot` goes on the nearest cell around the hero where the free build takes
+ * it (the footprint centred on the candidate cell, never over the hero's own cell). The last refusal when none does
+ * (the kit stays); a refusal no other cell changes ('player', 'limite', 'wall-down') stops the search.
+ */
+export function placeNear(ctx:SimContext,p:SimPlayer,slot:number,hooks:InventoryHooks={}):PlaceResult{
+  const piece=kitPiece(p.build.weapons[slot]?.id);
+  if(!piece)return place(ctx,p,slot,{c:0,r:0},hooks);
+  const [w,h]=pieceCells(piece),c0=Math.floor(p.x/CITY_BUILD_CELL),r0=Math.floor(p.y/CITY_BUILD_CELL);
+  let last:PlaceResult={ok:false,reason:'fora'};
+  for(const [dc,dr] of NEAR_OFFSETS){
+    const c=c0+dc-Math.floor((w-1)/2),r=r0+dr-Math.floor((h-1)/2);
+    if(c<=c0&&c0<c+w&&r<=r0&&r0<r+h)continue;
+    last=place(ctx,p,slot,{c,r},hooks);
+    if(last.ok||last.reason==='player'||last.reason==='limite'||last.reason==='wall-down')return last;
+  }
+  return last;
+}
 
 export function use(ctx:SimContext,p:SimPlayer,slot:number,hooks:InventoryHooks={}):InventoryResult{
   if(!hasInventory(p)||!live(p))return no('player');

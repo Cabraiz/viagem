@@ -45,7 +45,7 @@ import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
-import {CAR_BUILD_GAP,FREE_PIECE_DEFS,isFreePiece,pieceCells} from '../../rules/index.ts';
+import {CAR_BUILD_GAP,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
 import {RADIUS} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
@@ -244,8 +244,11 @@ export function holdsObra(state:StonewardsState,playerId:string,tick:number):boo
  * (BUILD_REACH), 'balance' (the root's ficha) or 'grana' (a piece's R$, from the builder's wallet), 'tranca' (a muro that
  * would cut the car off from the borda or the moto). A ruin under the footprint is cleared. The builder's obras queue:
  * this one starts when their last one is done.
+ * `kit` (torre-pela-caixa: a kit de torre from the inventory, sim/inventory.ts place): any tower that stands on the grid
+ * (rules isTowerKit: a tier-N kit builds that tower straight away, with its own hp and TIER_BUILD_SECONDS) or a wall
+ * piece, for free (no ficha, no Grana: the kit was the price); every other rule stays.
  */
-export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,order:FreeOrder,requestId:string|undefined,free:FreeBuildContext,siteId=''):TowerResult{
+export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,playerId:string,order:FreeOrder,requestId:string|undefined,free:FreeBuildContext,siteId='',kit=false):TowerResult{
   return once(state,playerId,requestId,()=>{
     if(state.wallDown)return {ok:false,reason:'wall-down'};
     const p=ctx.players.get(playerId);
@@ -253,7 +256,7 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     const city=freeCity(ctx.terrain);
     if(!city)return {ok:false,reason:'fora'};
     const piece=order.piece,rot=order.rot===1?1:0,wall=isFreePiece(piece);
-    if(!wall&&piece!==ROOT_DEFENSE)return {ok:false,reason:'defense'};
+    if(!wall&&piece!==ROOT_DEFENSE&&!(kit&&isTowerKit(piece)))return {ok:false,reason:'defense'};
     const [w,h]=pieceCells(piece,rot),cell={c:order.c,r:order.r};
     if(!onGround(city,cell,w,h))return {ok:false,reason:'fora'};
     const rect=pieceRect(cell,w,h);
@@ -263,10 +266,10 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
     if(!withinReach(rect,p))return {ok:false,reason:'away'};
-    const root=DEFENSES[ROOT_DEFENSE],price=wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
+    const root=wall?DEFENSES[ROOT_DEFENSE]:DEFENSES[piece],price=kit?0:wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
     if(wall?walletOf(p)<price:state.balance.units<price)return {ok:false,reason:short};
     if(piece==='muro'&&locks(city,state,cell,car??state.wall,free.moto?.(ctx.tick)))return {ok:false,reason:'tranca'};
-    if(wall?!payFrom(p,price):!payUnits(state.balance,price))return {ok:false,reason:short};
+    if(price>0&&(wall?!payFrom(p,price):!payUnits(state.balance,price)))return {ok:false,reason:short};
     const towers=towersOf(state),start=queueEnd(state,playerId,ctx.tick);
     // A ruin under the new footprint is rubble the obra clears.
     towers.list=towers.list.filter(d=>!d.ruined||!rectsOverlap(defenseRectOf(d),rect));

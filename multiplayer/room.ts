@@ -670,6 +670,7 @@ export class Room {
     else if(m.t==='build'||m.t==='upgrade'||m.t==='repair')this.tower(c,m);
     else if(m.t==='cida')this.cida(c,m);
     else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
+    else if(m.t==='place')this.place(c,m);
     else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
@@ -1041,6 +1042,21 @@ export class Room {
       result=this.sim.inventory(c.playerId!,{t:m.t,slot:m.slot});
     }
     this.sendJson(c,{t:'inv',cmd:m.t,ok:result.ok,...(result.ok?{}:{reason:result.reason})});
+  }
+  /**
+   * Kits de torre (torre-pela-caixa): {t:'place',round,req,slot,c,r,rot?}: the kit in inventory `slot` builds its piece
+   * with its footprint's top-left cell at (c,r) of the build grid (rot 0|1), for free. Malformed taps are dropped here;
+   * the sim refuses with the free build's reasons (or 'slot' / 'not-kit'), and 'pausa' during the D-050 level-up pause.
+   * The answer is the obra's {t:'built',req,ok,kind?,defense?|reason?}, so the client's obra code takes it as it is.
+   */
+  private place(c:Connection,m:any){
+    const state=this.run.snapshot();
+    if(state.phase!=='combat'||m.round!==state.round)return;
+    if(!Number.isSafeInteger(m.req)||m.req<1||!Number.isSafeInteger(m.slot)||m.slot<0||m.slot>=MAX_WEAPONS)return;
+    if(!buildCellOk(m.c)||!buildCellOk(m.r)||!isBuildRot(m.rot))return;
+    const result=this.levelup.paused?{ok:false as const,reason:'pausa' as const}
+      :this.sim.place(c.playerId!,m.slot,{c:m.c,r:m.r,...(m.rot===1?{rot:1 as const}:{})},`k:${m.req}`);
+    this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind,defense:this.ids.label('structures',result.defense)}:{reason:result.reason})});
   }
   private cida(c:Connection,m:any){
     const state=this.run.snapshot();

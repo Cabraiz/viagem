@@ -33,6 +33,18 @@ export class UploadQueue{
   flush(){while(this.size)this.tick(Infinity);}
 }
 
+/** fetch and createImageBitmap exist: a sheet can be fetched and decoded off the main thread (fetchBitmap). */
+export const bitmapsAvailable=()=>typeof createImageBitmap==='function'&&typeof fetch==='function';
+/**
+ * A sheet fetched outside Phaser's loader (whose queue is first-in first-out) and decoded off the main thread,
+ * premultiplied as Phaser uploads (installUploadQueue); hand it to the texture manager through queueUpload.
+ */
+export async function fetchBitmap(url:string,priority:'high'|'low'|'auto'='auto'):Promise<ImageBitmap>{
+  const res=await fetch(url,{priority} as RequestInit);
+  if(!res.ok)throw new Error(`${url}: ${res.status}`);
+  return createImageBitmap(await res.blob(),{premultiplyAlpha:'premultiply'});
+}
+
 type ImageFileLike={state:number;data:unknown;xhrLoader?:{response?:unknown};loader?:unknown;onProcessComplete():void;onProcessError():void};
 interface PhaserLike{
   Loader:{FileTypes:{ImageFile:{prototype:{onProcess():void}}};FILE_PROCESSING:number};

@@ -5,9 +5,11 @@
  * preloader's download is what Phaser then finds in the cache.
  *
  * Priorities: P0 = the map's ground and this player's hero, its walk and attack clips included (the match opens with
- * them: preload-heroi-primeiro); P1 = teammates' heroes, enemies,
- * buildings and the base pieces; P2 = decoration, items, effects and HUD art.
- * Not listed: the endless map's trees (which ones depends on the terrain seed the room sends with the match; the scene
+ * them: preload-heroi-primeiro); P1 = teammates' heroes, enemies and the base pieces; P2 = the city's pine, items,
+ * effects and HUD art.
+ * Not listed: the city's buildings, props, decor and live sheets (the scene, open behind the waiting room, streams them
+ * itself nearest the camera first, render/city/art-stream.ts: fetched here in list order they took the bandwidth from
+ * the art around the hero, partida-abre-com-P0), the endless map's trees (which ones depends on the terrain seed the room sends with the match; the scene
  * fetches the ones by the spawn itself) and the city's map file (the room's mapLoad already gates on it).
  */
 import {classes} from '../../rules/index.ts';
@@ -24,7 +26,6 @@ import {framesLoads} from '../art/frames-art.ts';
 import {telegraphArtLoads} from '../render/telegraph-art.ts';
 import {buildCityArtPlan,cityArtOptions} from '../render/city/art-plan.ts';
 import {ALBEDO_URL} from '../render/city/relevo/albedo-meta.ts';
-import {liveSheets} from '../render/city/live/art.ts';
 
 export type AssetPriority='P0'|'P1'|'P2';
 export type AssetKind='hero'|'icon'|'ground'|'building'|'decor'|'enemy'|'base'|'effect';
@@ -81,7 +82,7 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   }
   else for(const url of ENDLESS_GROUND)add(url,'P0','ground');
   for(const url of heroMotionUrls(room.self))add(url,'P0','hero');
-  // P1: teammates (sheet and class icon), enemies, buildings, base pieces.
+  // P1: teammates (sheet and class icon), enemies, base pieces.
   for(const id of new Set(room.others)){
     if(!id||id===room.self)continue;
     add(heroSheetUrl(id),'P1','hero');
@@ -91,14 +92,9 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
   const enemyPrefix=index.groups.inimigos?liteEnemyUrl(`/${index.groups.inimigos.output.replace(/^public\//,'')}/`):undefined;
   const horde=artLoads();
   for(const l of horde)if(enemyPrefix&&l.url.startsWith(enemyPrefix))add(l.url,'P1','enemy');
-  if(city)for(const s of city.sheets)if(!s.key.startsWith('city:ground:')&&!s.key.startsWith('city:prop:'))add(s.url,'P1','building');
   for(const l of baseLoads())add(l.url,'P1','base');
-  // P2: decoration, items/projectiles, frames and telegraph art.
-  if(city){
-    add(treeUrl('arvore-nevada'),'P2','decor');
-    for(const s of city.sheets)if(s.key.startsWith('city:prop:'))add(s.url,'P2','decor');
-    for(const s of liveSheets(index))add(s.url,'P2','decor'); // cenário vivo: place loops, lit objects, nests
-  }
+  // P2: the city's pine (the scene's preload takes it), items/projectiles, frames and telegraph art.
+  if(city)add(treeUrl('arvore-nevada'),'P2','decor');
   for(const l of horde)add(l.url,'P2','effect');
   for(const l of framesLoads())add(l.url,'P2','effect');
   for(const l of telegraphArtLoads())add(l.url,'P2','effect');

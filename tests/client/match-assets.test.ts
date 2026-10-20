@@ -46,13 +46,14 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   assert.ok(plan.sheets.length>0,'the manifest has city art');
   const wanted=[heroSheetUrl(A),heroSheetUrl(B),heroSheetUrl(C),thumbUrl(A),thumbUrl(B),thumbUrl(C),treeUrl('arvore-nevada'),
     ...heroMotionUrls(A), // own walk and attack clips only (preload-heroi-primeiro): the teammates' come on demand
-    ...plan.sheets.map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
-    ALBEDO_URL, // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
-    ...liveSheets(artIndex()).map(s=>s.url)]; // cenário vivo (E8's `cenario` group): loops, lit objects, nests, decals
+    ...plan.sheets.filter(s=>s.key.startsWith('city:ground:')).map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
+    ALBEDO_URL]; // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
   assert.deepEqual(new Set(all),new Set(wanted));
   for(const url of all)assert.ok(existsSync('public'+url),`${url} is served`);
   const at=(url:string)=>list.find(a=>a.url===url)?.priority;
-  for(const s of plan.sheets)assert.equal(at(s.url),s.key.startsWith('city:ground:')?'P0':s.key.startsWith('city:prop:')?'P2':'P1',s.key);
+  // Buildings, props, decor and live sheets: the scene streams them nearest first (partida-abre-com-P0), not listed here.
+  for(const s of plan.sheets)assert.equal(at(s.url),s.key.startsWith('city:ground:')?'P0':undefined,s.key);
+  for(const s of liveSheets(artIndex()))assert.equal(at(s.url),undefined,s.key);
   assert.equal(at(heroSheetUrl(A)!),'P0');assert.equal(at(heroSheetUrl(B)!),'P1');
   // Enemies the render draws (horde-art artLoads) come in as P1; the index may hold roster enemies the render does not
   // know yet (pack 04 before the roster art is wired), and those are not preloaded.
@@ -60,7 +61,6 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   // Roster pieces load per match (arte-do-roster-no-render: the room's elenco, or the first sighting), never here.
   assert.ok(list.every(a=>a.kind!=='enemy'||artLoads().some(l=>l.url===a.url)),'no roster sheet in the waiting room');
   for(const url of ENDLESS_GROUND)assert.equal(at(url),undefined,'no island ground in the city');
-  for(const s of liveSheets(artIndex()))assert.equal(at(s.url),'P2',s.key);
   assert.equal(at(ALBEDO_URL),'P0');
 });
 

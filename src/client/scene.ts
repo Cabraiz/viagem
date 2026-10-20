@@ -3,7 +3,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
-import {installUploadQueue} from './preload/upload-queue.ts';
+import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -11,7 +11,8 @@ import { classes, infinitoPoiName } from '../rules/index.ts';
 import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,queueLiveArt,type CityArtPlan} from './render/city/index.ts';
+import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
+import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
@@ -322,8 +323,10 @@ export class IslandScene extends Phaser.Scene {
     // City: no island ground textures; its pines use the approved snowy tree sheet (city layer PINE_TEXTURE).
     if(this.field instanceof CityTerrain){
       this.load.spritesheet(PINE_TEXTURE,treeUrl('arvore-nevada'),{frameWidth:256,frameHeight:384});
-      queueCityArt(this,this.cityArt()); // imported city art v2 (render/city/art-plan.ts) when the manifest has it
-      queueLiveArt(this,liveSheets(artIndex())); // cenário vivo: place loops, lit objects, nests (render/city/live)
+      // Only the imported ground (render/city/art-plan.ts) before the first frame: buildings, decor and the cenário vivo
+      // stream in by distance once the city exists (streamCityArt), the match opening with the ones around the camera.
+      const plan=this.cityArt();
+      queueCityArt(this,{...plan,sheets:plan.sheets.filter(s=>s.key.startsWith('city:ground:'))});
     }
     else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
@@ -474,7 +477,9 @@ export class IslandScene extends Phaser.Scene {
     }
     this.rebaseDepth(true);this.fit();this.place();
     this.booted=true;this.setEconomy(this.economy);
-    this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);this.hooks.ready();
+    this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);
+    // The city's near art still on its way: the cover stays until it is in (updateCity calls ready then).
+    if(this.cityHeld)this.readyHeld=true;else this.hooks.ready();
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
   private viewport(){return {width:this.scale.width,height:this.scale.height};}
@@ -577,8 +582,14 @@ export class IslandScene extends Phaser.Scene {
   /** City mode: chunks around the camera, fades over the hero; after every camera move (worldView in world px). */
   private updateCity(delta:number){
     if(!this.city)return;
-    const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
-    const camera={x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
+    const camera=this.cityCamera();
+    // Held (streamCityArt): no chunk is built before the art around the camera is in, so none is built with mounds.
+    if(this.cityHeld){
+      // The relief's albedo too (groundSettled: no chunk is live yet), so the ground is final when the cover goes.
+      if(!(this.cityStream?.nearReady()&&this.city.groundSettled())&&performance.now()-this.heldSince<NEAR_ART_CAP_MS)return;
+      this.cityHeld=false;
+      if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
+    }
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
     const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
@@ -828,9 +839,11 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
-    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up.
+    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up; not
+    // while the city's near art is held (~15 MB of enemies in Phaser's first-in first-out loader held the relief
+    // albedo, and the bandwidth, behind them: partida-abre-com-P0). They come right after the cover goes, as before.
     const elenco=this.hooks.net?.elenco;
-    if(elenco&&elenco!==this.elenco){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
+    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;
@@ -1234,12 +1247,13 @@ export class IslandScene extends Phaser.Scene {
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);
-      // A map switch into the city: its sheets arrive after the first chunks, which are rebuilt with them.
-      if(queueCityArt(this,art)+queueLiveArt(this,liveSheets(artIndex()))){
+      // A map switch into the city: its ground arrives after the first chunks, which are rebuilt with it.
+      if(queueCityArt(this,{...art,sheets:art.sheets.filter(s=>s.key.startsWith('city:ground:'))})){
         this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});
         if(!this.load.isLoading())this.load.start();
       }
-      const drop=()=>{city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+      const stopStream=this.streamCityArt(city,art);
+      const drop=()=>{stopStream();city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
       this.events.once('shutdown',drop);this.events.once('destroy',drop);
       this.dropGround=drop;
       return;
@@ -1268,6 +1282,61 @@ export class IslandScene extends Phaser.Scene {
     return {point:o,object:g,art:tree?.id};
   }
   private cityArtPlan?:CityArtPlan;
+  /** The city's art download (streamCityArt) and its hold on the first chunks and on hooks.ready. */
+  private cityStream?:CityArtStream;
+  private cityHeld=false;
+  private readyHeld=false;
+  private heldSince=0;
+  /** The camera's world view (world px), as the city layer reads it. */
+  private cityCamera(){
+    const cam=this.cameras.main,w=cam.width/cam.zoom,h=cam.height/cam.zoom;
+    return {x:cam.midPoint.x-w/2,y:cam.midPoint.y-h/2,w,h};
+  }
+  /**
+   * The city's buildings, props, decor and live sheets (NEW-20261020-ORQ-partida-abre-com-P0): the ones of the chunks
+   * around the camera before the city draws (updateCity holds it, and hooks.ready, for at most NEAR_ART_CAP_MS), then
+   * the rest nearest first; a chunk built before its art is rebuilt with it once off screen (CityLayer.artArrived). The
+   * nests (placed by the room, no chunk) come right after the near art; live sheets of decor this map does not place
+   * are not loaded. Returns the stop (map switch, shutdown).
+   */
+  private streamCityArt(city:CityLayer,plan:CityArtPlan){
+    const sheets=new Map<string,{url:string;frameWidth:number;frameHeight:number}>();
+    for(const s of plan.sheets)if(!s.key.startsWith('city:ground:'))sheets.set(s.key,s);
+    const placed=new Set([...city.chunkArt().values()].flat()),nests:string[]=[];
+    for(const s of liveSheets(artIndex())){
+      if(placed.has(s.key))sheets.set(s.key,s);
+      else if(s.key.startsWith('city:live:ninho-')){sheets.set(s.key,s);nests.push(s.key);}
+    }
+    const stream=this.cityStream=new CityArtStream({
+      missing:()=>[...city.missingArt(this.cityCamera(),this.view),...nests.filter(k=>!this.textures.exists(k)).map(key=>({key,px:1}))]
+        .sort((a,b)=>a.px-b.px),
+      load:(key,px)=>{
+        const s=sheets.get(key);if(!s)return false;
+        // Its own fetches, not Phaser's loader: that queue is first-in first-out, and the enemies of the run (~18 MB)
+        // queued there when the countdown ends would hold the art around the hero behind them.
+        if(bitmapsAvailable()){
+          void fetchBitmap(s.url,px===0?'high':'low').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
+            if(this.city!==city||this.textures.exists(key)){bitmap.close();done(key,true);return;}
+            this.textures.addSpriteSheet(key,bitmap as unknown as HTMLImageElement,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});
+            done(key,this.textures.exists(key));
+          }),()=>done(key,false));
+          return true;
+        }
+        this.load.spritesheet(key,s.url,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});
+        if(!this.load.isLoading())this.load.start();
+        return true;
+      },
+    });
+    const done=(key:string,ok:boolean)=>{if(this.city!==city||!sheets.has(key))return;if(ok)city.artArrived(key);stream.settled(key,ok);};
+    const complete=(key:string)=>done(key,true),failed=(file:Phaser.Loader.File)=>done(file.key,false);
+    this.load.on(Phaser.Loader.Events.FILE_COMPLETE,complete);this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,failed);
+    this.cityHeld=true;this.heldSince=performance.now();
+    stream.pump();
+    return ()=>{
+      this.load.off(Phaser.Loader.Events.FILE_COMPLETE,complete);this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR,failed);
+      if(this.cityStream===stream){this.cityStream=undefined;this.cityHeld=false;}
+    };
+  }
   /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
   private cityArt():CityArtPlan{
     // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.

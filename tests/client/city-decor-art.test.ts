@@ -12,7 +12,7 @@ import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.
 import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,buildingAnchor,frontCorner} from '../../src/client/render/city/materials.ts';
-import {VIEW_PIVOT,depth,project} from '../../src/client/render/city/projection.ts';
+import {VIEW_PIVOT,depth,project,viewPoint} from '../../src/client/render/city/projection.ts';
 import {decodeCityAsset} from '../../src/maps/index.ts';
 import {DECOR_REFUSED} from '../../src/maps/city-decor.ts';
 
@@ -93,7 +93,7 @@ test('border boulders fill their cell and cover the box; walls and footprint pie
   assert.equal(plan.decor['farmacia-1'].covers,true);
 });
 
-test('decorSprite: a footprint piece puts its front corner on the anchor, the frame is the art view', ()=>{
+test('decorSprite: a footprint piece puts its front corner on the anchor, sorts by its centre, the frame is the art view', ()=>{
   const a=mini([]),plan=buildCityArtPlan(cenarioIndex(),{cell:1.5,decor:['farmacia-1','poste-concreto-1']});
   const s=plan.decor['farmacia-1'] as DecorSheet;
   for(const [rot,w,h] of [[0,2,1],[90,1,2],[180,2,1],[270,1,2]] as const)for(const view of [0,1,2,3]){
@@ -102,11 +102,35 @@ test('decorSprite: a footprint piece puts its front corner on the anchor, the fr
     assert.equal(d.artView,art);assert.equal(d.frame,art/90);
     const wx=(e.c+fc.i*w)*a.cell,wy=(e.r+fc.j*h)*a.cell,at=project(wx,wy,0,view,VIEW_PIVOT);
     assert.ok(Math.abs(d.x-at.x)<1e-9&&Math.abs(d.y-at.y)<1e-9);
-    assert.equal(d.depth,depth(wx,wy,view,VIEW_PIVOT));
+    assert.equal(d.depth,depth((e.c+w/2)*a.cell,(e.r+h/2)*a.cell,view,VIEW_PIVOT));
     // The art's 2×1 (front along a) whatever the rot.
     assert.deepEqual(decorFootprint(e),[2,1]);
     assert.equal(d.originX,buildingAnchor(2,1,art/90,512,480,ART_CELL).originX);
     assert.equal(d.scale,s.scale);assert.equal(d.originY,s.originY);
+  }
+});
+
+test('decorSprite: a pole beside a mountain sorts in front of it exactly when it stands in front (montanha-sobre-poste)', ()=>{
+  // A 6×6 mountain at cells 4..9 and a pole on every cell around it, in the four views. The pole stands in front when it
+  // is past the mountain's far edge on one view axis, behind when it is before its near edge on one (the only cells
+  // where they can overlap on screen are those whose screen column crosses the mountain's).
+  const a=mini([]),plan=buildCityArtPlan(cenarioIndex(),{cell:1.5,decor:['montanha-4x4-1','poste-concreto-1']});
+  const m={id:'montanha-4x4-1',c:4,r:4,w:6,h:6,rot:0};
+  for(const view of [0,1,2,3]){
+    const md=decorSprite(m,plan.decor['montanha-4x4-1'],view,a,VIEW_PIVOT);
+    const corners=[[4,4],[10,4],[4,10],[10,10]].map(([x,y])=>viewPoint(x*a.cell,y*a.cell,view,VIEW_PIVOT));
+    const lo={x:Math.min(...corners.map(q=>q.x)),y:Math.min(...corners.map(q=>q.y))},hi={x:Math.max(...corners.map(q=>q.x)),y:Math.max(...corners.map(q=>q.y))};
+    let checked=0;
+    for(let r=3;r<=10;r++)for(let c=3;c<=10;c++){
+      if(c>=4&&c<10&&r>=4&&r<10)continue;
+      const p={id:'poste-concreto-1',c,r,w:1,h:1,rot:0},pd=decorSprite(p,plan.decor['poste-concreto-1'],view,a,VIEW_PIVOT);
+      const q=viewPoint((c+.5)*a.cell,(r+.5)*a.cell,view,VIEW_PIVOT),sx=q.x-q.y;
+      if(sx<=lo.x-hi.y||sx>=hi.x-lo.y)continue;
+      const front=q.x>=hi.x||q.y>=hi.y;
+      assert.equal(pd.depth>md.depth,front,`view ${view}, pole at ${c},${r}: ${front?'in front of':'behind'} the mountain`);
+      checked++;
+    }
+    assert.ok(checked>=20,`view ${view}: ${checked} poles beside the mountain`);
   }
 });
 

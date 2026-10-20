@@ -5,7 +5,7 @@
  * closer, the city's baked relief would blur). The default shows ~1.4× today's area (hero ~47 px). Changed by the
  * mouse wheel or a two-finger pinch on the map, eased on screen, saved per browser. Pure: no Phaser, no DOM.
  */
-import {HERO_DEFAULT_SCREEN_PX,HERO_MIN_SCREEN_PX,HERO_WIDEST_SCREEN_PX} from '../contract/index.ts';
+import {HERO_DEFAULT_SCREEN_PX,HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,HERO_WIDEST_SCREEN_PX} from '../contract/index.ts';
 
 export const ZOOM_KEY='viagem:zoom:v1';
 /**
@@ -16,6 +16,11 @@ export const HERO_ZOOM_PX={widest:HERO_WIDEST_SCREEN_PX,default:HERO_DEFAULT_SCR
 export const ZOOM_MIN=HERO_ZOOM_PX.widest/HERO_ZOOM_PX.closest;
 export const ZOOM_MAX=1;
 export const ZOOM_DEFAULT=HERO_ZOOM_PX.default/HERO_ZOOM_PX.closest;
+/**
+ * The computer's zoom (NEW-20261020-ORQ-zoom-fixo-pc): ~0.81× the phone's default (hero 38 CSS px on the reference, the
+ * contract's HERO_DESKTOP_SCREEN_PX), under ZOOM_MIN, fixed: no wheel, no saved zoom, the page's zoom keys blocked.
+ */
+export const ZOOM_DESKTOP=HERO_DESKTOP_SCREEN_PX/HERO_ZOOM_PX.closest;
 /** One wheel notch (100 px of deltaY in pixel mode) zooms by this ratio. */
 export const WHEEL_NOTCH=1.1;
 /** On-screen easing toward the wanted zoom (ms time constant). */
@@ -33,6 +38,20 @@ export function loadZoom(storage?:KeyValue|null):number{
 }
 export function saveZoom(storage:KeyValue|null|undefined,k:number):boolean{
   try{if(!storage)return false;storage.setItem(ZOOM_KEY,JSON.stringify({k:clampZoom(k)}));return true;}catch{return false;}
+}
+
+/** The zoom a match starts at: the computer's fixed one (a fine pointer: the old saved zoom is ignored), else the saved one. */
+export function startZoom(desktop:boolean,storage?:KeyValue|null):number{return desktop?ZOOM_DESKTOP:loadZoom(storage);}
+
+/**
+ * A key or wheel event the browser would turn into a page zoom (Ctrl/⌘ with + − = 0, a Ctrl+wheel: also a trackpad
+ * pinch). On the computer the shell cancels it (zoom-fixo-pc), so the camera and the HUD keep their size.
+ */
+export function pageZoomEvent(e:{type:string;ctrlKey?:boolean;metaKey?:boolean;key?:string;code?:string}):boolean{
+  if(!(e.ctrlKey||e.metaKey))return false;
+  if(e.type==='wheel')return true;
+  if(e.type!=='keydown')return false;
+  return ['+','-','=','_','0'].includes(e.key??'')||['Equal','Minus','Digit0','NumpadAdd','NumpadSubtract','Numpad0'].includes(e.code??'');
 }
 
 /**

@@ -30,9 +30,9 @@
  * Projection (projection.ts): screen x = 42·(x − y), screen y = 21·(x + y) − height, after rotating the
  * offset by the view. One unit along the screen's x axis is 42·√2 = 59.4 px, along its y axis 29.7 px.
  *
- * Result (tests print it): with no camera hint the off-screen distance goes from 29.9 units (near the world
- * axes, bound by landscape) to 48.7 units (the screen axes of the views, bound by the long side of a 21:9
- * portrait phone), camera offset budget included (25.5..41.4 before D-046). MAX_OFFSCREEN_DISTANCE 48.9,
+ * Result (tests print it): with no camera hint the off-screen distance goes from 31.5 units (near the world
+ * axes, bound by the computer's landscape camera, HERO_DESKTOP_SCREEN_PX; 29.9 before zoom-fixo-pc) to 48.7 units
+ * (the screen axes of the views, bound by the long side of a 21:9 portrait phone), camera offset budget included (25.5..41.4 before D-046). MAX_OFFSCREEN_DISTANCE 48.9,
  * INTEREST_RADIUS 61, RECYCLE_DISTANCE 69 (were 41.5, 54, 62). With a camera hint (one orientation and view) a
  * portrait phone gets 11.7 units sideways.
  */
@@ -69,19 +69,42 @@ export const CAMERA_OFFSET_SHORT_PX=130,CAMERA_OFFSET_LONG_PX=150;
  * fast only by a player who zoomed out past the default (the thin 44..47 px band).
  */
 export const HERO_DEFAULT_SCREEN_PX=47;
+/**
+ * Hero size of the computer's camera (NEW-20261020-ORQ-zoom-fixo-pc): a fine-pointer screen shows the map ~20% farther
+ * than the phone's default (38 vs 47 px on the 390 px reference: 0.81× its zoom) and neither the wheel nor the browser
+ * zoom changes it. Only a LANDSCAPE screen goes that far (framing.ts followZoom caps a portrait window at the widest
+ * phone camera), up to DESKTOP_MAX_ASPECT. It is one more rectangle in the union of legal cameras, for the spawn rule and the
+ * pacing alike (the computer's zoom is fixed, so its default is its widest): the farthest off-screen point stays 48.7 u
+ * (the portrait phone's long side), the nearest goes from 29.9 to 31.5 u (28.8 to 31.5 at the default zoom).
+ */
+export const HERO_DESKTOP_SCREEN_PX=38;
+/** The computer's landscape camera, in world px (short side vertical, long side horizontal). */
+export const DESKTOP_VISIBLE_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_DESKTOP_SCREEN_PX;
+/**
+ * The computer's widest aspect at the full 38 px: 2.1 (1920×970 is 1.98, a 1343×618 window 2.17). A wider window keeps
+ * the long side at DESKTOP_VISIBLE_LONG_PX (1343×618: 0.84× the phone default's zoom instead of 0.81×). At 2.2 the
+ * city's mouths fall on screen often enough that a first group misses its 12 s (city-avenues ACCEPTANCE).
+ */
+export const DESKTOP_MAX_ASPECT=2.1;
+export const DESKTOP_VISIBLE_LONG_PX=DESKTOP_VISIBLE_SHORT_PX*DESKTOP_MAX_ASPECT;
 
 const LAG_X=TILE_X*Math.SQRT2*CAMERA_LAG_UNITS,LAG_Y=TILE_Y*Math.SQRT2*CAMERA_LAG_UNITS;
-type Rect=readonly [number,number,number];
+/** [half width, bottom bound, top bound, landscape] of one camera, margins included (screen y grows downwards). */
+type Rect=readonly [number,number,number,boolean];
+const rectOf=(w:number,h:number,landscape:boolean):Rect=>[w+SPRITE_SIDE_PX+LAG_X,h+SPRITE_UP_PX+ELEVATION_PX+LAG_Y,h+SPRITE_DOWN_PX+ELEVATION_PX+LAG_Y,landscape];
+/** The computer's landscape camera (HERO_DESKTOP_SCREEN_PX): fixed, so in every set of rectangles. */
+const DESKTOP_RECT=rectOf(DESKTOP_VISIBLE_LONG_PX/2+CAMERA_OFFSET_LONG_PX,DESKTOP_VISIBLE_SHORT_PX/2+CAMERA_OFFSET_SHORT_PX,true);
 /**
- * [half width, bottom bound, top bound] of each orientation (portrait, landscape), margins included (screen y grows
- * downwards), for a camera that draws the hero `heroPx` CSS px on the reference short side.
+ * The phone's portrait and landscape cameras that draw the hero `heroPx` CSS px on the reference short side, and the
+ * computer's landscape one (HERO_DESKTOP_SCREEN_PX, whatever `heroPx` says: its zoom never changes).
  */
 function cameraRects(heroPx:number):readonly Rect[]{
   const short=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/heroPx,long=short*MAX_ASPECT;
   return [
-    [short/2+CAMERA_OFFSET_SHORT_PX,long/2+CAMERA_OFFSET_LONG_PX],
-    [long/2+CAMERA_OFFSET_LONG_PX,short/2+CAMERA_OFFSET_SHORT_PX],
-  ].map(([w,h])=>[w+SPRITE_SIDE_PX+LAG_X,h+SPRITE_UP_PX+ELEVATION_PX+LAG_Y,h+SPRITE_DOWN_PX+ELEVATION_PX+LAG_Y] as const);
+    rectOf(short/2+CAMERA_OFFSET_SHORT_PX,long/2+CAMERA_OFFSET_LONG_PX,false),
+    rectOf(long/2+CAMERA_OFFSET_LONG_PX,short/2+CAMERA_OFFSET_SHORT_PX,true),
+    DESKTOP_RECT,
+  ];
 }
 const RECTS=cameraRects(HERO_WIDEST_SCREEN_PX),DEFAULT_RECTS=cameraRects(HERO_DEFAULT_SCREEN_PX);
 /** The widest camera's rectangles; the default zoom's ones (cached); any other hero size built on demand. */
@@ -93,7 +116,7 @@ const rectsAt=(heroPx:number)=>heroPx===HERO_WIDEST_SCREEN_PX?RECTS:heroPx===HER
  */
 export interface CameraHint {landscape:boolean;view:number}
 const views=(hint?:CameraHint)=>hint?[Number.isFinite(hint.view)?((Math.round(hint.view)%4)+4)%4:0]:[0,1,2,3];
-const rects=(hint:CameraHint|undefined,all:readonly Rect[])=>hint?[all[hint.landscape?1:0]]:all;
+const rects=(hint:CameraHint|undefined,all:readonly Rect[])=>hint?all.filter(r=>r[3]===hint.landscape):all;
 
 /** The 4 views of projection.ts rotateVector, inlined so this module has no client imports. */
 function rotated(dx:number,dy:number,view:number):[number,number]{

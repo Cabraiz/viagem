@@ -39,7 +39,7 @@ import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
-import {loadZoom,saveZoom} from './camera-zoom.ts';
+import {pageZoomEvent,saveZoom,startZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
 import {LayoutCache,viewportSize} from './hud/box-cache.ts';
@@ -375,6 +375,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): data-input="mouse" hides the joystick in every phase
   // (explore.css) and the walk words speak of keys and clicks; a finger on the screen brings the phone's controls back.
   const inputWatch=new InputKindWatch(finePointer());
+  // The computer's camera is fixed (zoom-fixo-pc): no wheel zoom, and the page's zoom (Ctrl+wheel, a trackpad pinch,
+  // Ctrl +/−/0) is cancelled while the game is open. The phone keeps its pinch.
+  const desktopZoom=finePointer();
+  if(desktopZoom){
+    const block=(e:Event)=>{if(pageZoomEvent(e as KeyboardEvent))e.preventDefault();};
+    globalThis.addEventListener?.('wheel',block,{signal,passive:false,capture:true});
+    globalThis.addEventListener?.('keydown',block,{signal,capture:true});
+  }
   const syncInput=()=>{
     const kind=inputWatch.kind,other=kind==='mouse'?'touch':'mouse';
     if(shell.dataset.input===kind)return;
@@ -679,7 +687,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       killcamRect:()=>hud?.killcamRect(),
       economy:economy.on,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
-      zoom:loadZoom(economyStore()),zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
+      zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
       ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},
       message:text=>{notice.textContent=text;},
     });

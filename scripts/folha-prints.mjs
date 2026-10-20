@@ -37,7 +37,22 @@ const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS
  * A standing hero (still for STAND_STILL_MS) is sampled for STAND_FRAMES drawn frames (at most STAND_MAX_MS: swiftshader
  * draws 1280×720 at ~5 fps): any idle↔walk texture flip in it fails.
  */
-const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500;
+const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500,STOP_FRAMES=15;
+/**
+ * A real network (init script of the match page): the room's messages arrive 80–200 ms late, in order. The local Worker
+ * answers at once, so the client's prediction never got a server correction and a standing hero was never nudged —
+ * b837b93's trembling (idle↔walk at every reconcile nudge) did not show without it.
+ */
+const LATENCY=()=>{
+  const W=window.WebSocket;if(!W)return;
+  let last=0;const late=fn=>{const at=Math.max(last,performance.now()+80+Math.random()*120);last=at;setTimeout(fn,at-performance.now());};
+  const add=W.prototype.addEventListener;
+  W.prototype.addEventListener=function(type,l,o){
+    if(type!=='message'||!l)return add.call(this,type,l,o);
+    return add.call(this,type,e=>late(()=>typeof l==='function'?l.call(this,e):l.handleEvent(e)),o);
+  };
+  Object.defineProperty(W.prototype,'onmessage',{configurable:true,get(){return this.__folhaOnMessage??null;},set(f){this.__folhaOnMessage=f;if(!this.__folhaHooked){this.__folhaHooked=true;add.call(this,'message',e=>late(()=>this.__folhaOnMessage?.call(this,e)));}}});
+};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 class Infra extends Error {}
 
@@ -113,7 +128,7 @@ async function standing(p,vp){
   const seen=await p.evaluate(SAMPLE,[STAND_FRAMES,STAND_MAX_MS]).catch(()=>[]);
   let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
   const walks=seen.filter(isWalk).length,keys=[...new Set(seen)];
-  tremor[`${vp.w}x${vp.h}`]={samples:seen.length,walkSamples:walks,flips,keys};
+  tremor[`${vp.w}x${vp.h}`]={...tremor[`${vp.w}x${vp.h}`],samples:seen.length,walkSamples:walks,flips,keys};
   if(!seen.length)fails.push(`${vp.w}×${vp.h}: herói não encontrado (window.__perfScene.actor)`);
   else if(flips)fails.push(`${vp.w}×${vp.h}: herói parado trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor; ${walks} de walk)`);
   else if(walks)fails.push(`${vp.w}×${vp.h}: herói parado com textura de walk (${walks}/${seen.length} quadros)`);
@@ -125,6 +140,11 @@ async function keyboardWalk(p,vp){
     await sleep(500);await shot(p,`tecla-${dir}-1`,`teclado ${dir} (1/2)`,vp);
     await sleep(250);await shot(p,`tecla-${dir}-2`,`teclado ${dir} (2/2)`,vp);
     for(const k of keys)await p.keyboard.up(k);
+    // Stopping: walk → rest is one flip; more is the hero going back and forth while the reconciles land (tremor).
+    const seen=await p.evaluate(SAMPLE,[STOP_FRAMES,STAND_MAX_MS]).catch(()=>[]);
+    let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
+    const t=tremor[`${vp.w}x${vp.h}`]??={};(t.stops??=[]).push(flips);
+    if(flips>1)fails.push(`${vp.w}×${vp.h}: ao parar (${dir}) o herói trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor)`);
   }
   await releaseAll(p);
 }
@@ -142,6 +162,7 @@ async function match(browser,base){
   p.on('pageerror',e=>consoleErrors.push(`pageerror: ${String(e).slice(0,300)}`));
   p.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text().slice(0,300));});
   try{
+    await p.addInitScript(LATENCY);
     await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
     await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
     await p.waitForSelector('.class-card',{state:'attached',timeout:60000});

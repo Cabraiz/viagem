@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type {CityOutlines} from '../render/city-outline.ts';
 import type {Movement128Plan} from './movement128.ts';
+import {queueUpload} from '../preload/upload-queue.ts';
 
 export const MOVEMENT128_TEXTURE_LIMIT=8;
 interface Owner {active?:boolean;visible?:boolean;scene?:unknown;once?(event:string,fn:()=>void):unknown}
@@ -79,6 +80,26 @@ export class Movement128Textures<T extends Owner=Owner> {
 }
 
 interface Shared {cache:Movement128Textures<Phaser.GameObjects.Sprite>;scenes:Map<Phaser.Scene,Set<CityOutlines>>}
+type Sheet=HTMLImageElement|ImageBitmap;
+
+/**
+ * createImageBitmap decodes off the main thread and its bitmap uploads in a few ms; an <img> uploads through a
+ * main-thread conversion of ~100 ms per 1536×768 clip on a 4× phone (card pior-quadro-2s). Without it, the <img> path.
+ */
+const bitmaps=()=>typeof createImageBitmap==='function'&&typeof fetch==='function';
+async function decodeSheet(url:string,w:number,h:number):Promise<Sheet>{
+  if(bitmaps()){
+    const res=await fetch(url);if(!res.ok)throw new Error(`movement128 ${res.status}`);
+    // premultiply: Phaser uploads with UNPACK_PREMULTIPLY_ALPHA, which WebGL ignores for an ImageBitmap (as the queue).
+    const bitmap=await createImageBitmap(await res.blob(),{premultiplyAlpha:'premultiply'});
+    if(bitmap.width!==w||bitmap.height!==h){bitmap.close();throw new Error('movement128 dimensions');}
+    return bitmap;
+  }
+  const image=new Image();image.decoding='async';image.src=url;
+  try{await image.decode();if(image.naturalWidth!==w||image.naturalHeight!==h)throw new Error('movement128 dimensions');return image;}
+  catch(error){image.src='';throw error;}
+}
+function free(image:Sheet){if('close' in image)image.close();else image.src='';}
 const shared=new WeakMap<object,Shared>();
 
 /** Uses real Image decoding plus Phaser textures; nothing is added to the preload list. */
@@ -86,34 +107,35 @@ export function movement128Textures(scene:Phaser.Scene,city?:CityOutlines):Movem
   let state=shared.get(scene.textures);
   if(!state){
     const scenes=new Map<Phaser.Scene,Set<CityOutlines>>(),textures=scene.textures;
-    const managed=(plan:Movement128Plan,image:HTMLImageElement):LoadedTexture=>({dispose(){
+    const managed=(plan:Movement128Plan,image:Sheet):LoadedTexture=>({dispose(){
       try{
         if(textures.exists(plan.key)&&(!textures.get||textures.get(plan.key).getSourceImage()===image)){
           for(const outlines of scenes.values())for(const outline of outlines)outline.releaseBase(plan.key);
           textures.remove(plan.key);
         }
       }catch{/* Texture managers may already be gone during game shutdown. */}
-      finally{image.src='';}
+      finally{free(image);}
     }});
     const available=(plan:Movement128Plan):LoadedTexture|undefined=>{
       if(!textures.exists(plan.key)||!textures.get)return;
-      const image=textures.get(plan.key).getSourceImage() as HTMLImageElement;
+      const image=textures.get(plan.key).getSourceImage() as Sheet;
       if(image.width!==plan.columns*96||image.height!==plan.rows*96)return;
       return managed(plan,image);
     };
     const cache=new Movement128Textures<Phaser.GameObjects.Sprite>(async plan=>{
       const preloaded=available(plan);if(preloaded)return preloaded;
-      let image:HTMLImageElement|undefined;
+      const w=plan.columns*96,h=plan.rows*96;
+      let image:Sheet|undefined;
       for(const url of [plan.url,plan.original]){
-        const candidate=new Image();candidate.decoding='async';candidate.src=url;
-        try{await candidate.decode();if(candidate.naturalWidth!==plan.columns*96||candidate.naturalHeight!==plan.rows*96)throw new Error('movement128 dimensions');image=candidate;break;}
-        catch{candidate.src='';}
+        try{image=await decodeSheet(url,w,h);break;}catch{/* next url */}
       }
       if(!image)throw new Error('movement128 unavailable');
-      const completedPreload=available(plan);if(completedPreload){image.src='';return completedPreload;}
-      try{textures.addSpriteSheet(plan.key,image,{frameWidth:96,frameHeight:96,endFrame:plan.frameCount-1});}
-      catch(error){image.src='';throw error;}
-      if(!textures.exists(plan.key)){image.src='';throw new Error('movement128 texture unavailable');}
+      // The GPU upload goes inside the upload queue's frame budget (a 1536×768 clip is one big sheet).
+      if(bitmaps())await new Promise<void>(resolve=>queueUpload(w*h,resolve));
+      const completedPreload=available(plan);if(completedPreload){free(image);return completedPreload;}
+      try{textures.addSpriteSheet(plan.key,image as HTMLImageElement,{frameWidth:96,frameHeight:96,endFrame:plan.frameCount-1});}
+      catch(error){free(image);throw error;}
+      if(!textures.exists(plan.key)){free(image);throw new Error('movement128 texture unavailable');}
       return managed(plan,image);
     },MOVEMENT128_TEXTURE_LIMIT,2,available);
     state={cache,scenes};shared.set(scene.textures,state);

@@ -12,6 +12,8 @@
  */
 import type Phaser from 'phaser';
 import {bandsRgba,outlineRgba} from './outline.ts';
+import type {OutlineJob,OutlineReply} from './outline-worker.ts';
+import {queueUpload} from '../preload/upload-queue.ts';
 import {CITY_RING,CITY_STICKER,CITY_STICKER_CSS,MAX_COPIES_PER_BASE,changedEnough,copyResolution,cityKey,isCityKey,rimForGround,slotOf,textureBytes,variantGeometry,variantOrigin,
   type CellCrop,type Rim,type VariantGeometry} from './city-outline-rules.ts';
 
@@ -32,6 +34,25 @@ const RETIRE_FRAMES=3;
 const BUILDS_PER_FRAME=1;
 
 type Img=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
+/** A copy being painted in the worker: registered on arrival unless a rebuild, releaseBase or destroy dropped it. */
+interface Job {base:string;drawScale:number;geom:VariantGeometry;width:number;height:number;slots:{name:string;x:number;y:number}[];sticker?:string}
+
+/**
+ * One worker for the page (outline-worker.ts); undefined without Worker/OffscreenCanvas/createImageBitmap (tests, old
+ * browsers) or after it failed: copies are then painted on the main thread as before.
+ */
+let worker:Worker|undefined,workerBroken=false;
+const listeners=new Set<(reply:OutlineReply)=>void>(),brokenListeners=new Set<()=>void>();
+function outlineWorker():Worker|undefined{
+  if(worker||workerBroken)return worker;
+  if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'||typeof createImageBitmap!=='function')return undefined;
+  try{
+    worker=new Worker(new URL('./outline-worker.ts',import.meta.url),{type:'module'});
+    worker.onmessage=(e:MessageEvent<OutlineReply>)=>{for(const l of listeners)l(e.data);};
+    worker.onerror=()=>{workerBroken=true;worker?.terminate();worker=undefined;for(const l of brokenListeners)l();};
+  }catch{workerBroken=true;worker=undefined;}
+  return worker;
+}
 
 export class CityOutlines {
   /** The current copies of each base key (one per draw-scale window, at most MAX_COPIES_PER_BASE). */
@@ -44,6 +65,12 @@ export class CityOutlines {
   private byKey=new Map<string,CityVariant>();
   private failed=new Set<string>();
   private retired:{key:string;at:number}[]=[];
+  /** Copies in the worker, by job id; the bases (and stickers' copy keys) that have one, so a job is never doubled. */
+  private jobs=new Map<number,Job>();
+  private painting=new Set<string>();
+  private jobSerial=0;
+  private onReply=(reply:OutlineReply)=>this.arrive(reply);
+  private onBroken=()=>{this.jobs.clear();this.painting.clear();};
   private serial=0;
   private frameStamp=-1;
   private builds=0;
@@ -54,6 +81,8 @@ export class CityOutlines {
   private scene:Phaser.Scene;
   private host:CityOutlineHost;
   constructor(scene:Phaser.Scene,host:CityOutlineHost){this.scene=scene;this.host=host;}
+  /** Copies painting in the worker now (dev probes, tests). */
+  get pending(){return this.jobs.size;}
 
   /** City mode now (read once per frame). */
   active():boolean{this.tick();return this.on;}
@@ -75,10 +104,11 @@ export class CityOutlines {
     let copies=this.variants.get(base);
     if(copies)for(let i=0;i<copies.length;i++)if(!changedEnough(copies[i].drawScale,drawScale))return copies[i];
     // Full, or the build waits for the budget: the closest copy meanwhile (no ringless frame on a chest's pulse).
-    if(copies&&(copies.length>=MAX_COPIES_PER_BASE||this.builds>=BUILDS_PER_FRAME))return nearest(copies,drawScale);
-    if(this.failed.has(base)||this.builds>=BUILDS_PER_FRAME||!this.scene.textures.exists(base))return undefined;
+    if(copies&&(copies.length>=MAX_COPIES_PER_BASE||this.builds>=BUILDS_PER_FRAME||this.painting.has(base)))return nearest(copies,drawScale);
+    if(this.failed.has(base)||this.builds>=BUILDS_PER_FRAME||this.painting.has(base)||!this.scene.textures.exists(base))return undefined;
     this.builds++;
     const next=this.build(base,drawScale,crop);
+    if(next==='painting')return copies?nearest(copies,drawScale):undefined;
     if(!next){this.failed.add(base);return undefined;}
     if(!copies){copies=[];this.variants.set(base,copies);}
     copies.push(next);this.byKey.set(next.key,next);
@@ -111,9 +141,10 @@ export class CityOutlines {
     if(!this.on)return undefined;
     const done=this.stickers.get(copyKey);if(done)return done;
     const copy=this.byKey.get(copyKey);
-    if(!copy||!this.variants.get(copy.base)?.includes(copy)||this.failed.has(copyKey)||this.builds>=BUILDS_PER_FRAME)return undefined;
+    if(!copy||!this.variants.get(copy.base)?.includes(copy)||this.failed.has(copyKey)||this.painting.has(copyKey)||this.builds>=BUILDS_PER_FRAME)return undefined;
     this.builds++;
-    const next=this.build(copy.base,copy.drawScale,copy.geom.crop,true);
+    const next=this.build(copy.base,copy.drawScale,copy.geom.crop,copyKey);
+    if(next==='painting')return undefined;
     if(!next){this.failed.add(copyKey);return undefined;}
     this.stickers.set(copyKey,next);this.byKey.set(next.key,next);
     return next;
@@ -134,6 +165,7 @@ export class CityOutlines {
     for(const [key,v] of this.byKey)if(v.base===base){gone.add(key);this.drop(key);}
     this.variants.delete(base);this.failed.delete(base);
     for(const [key,v] of this.stickers)if(v.base===base){this.stickers.delete(key);this.failed.delete(key);}
+    for(const [id,job] of this.jobs)if(job.base===base)this.cancel(id);
     this.retired=this.retired.filter(r=>!gone.has(r.key));
   }
   /** Drops every copy now (scene shutdown). */
@@ -145,6 +177,8 @@ export class CityOutlines {
       for(const r of this.retired)this.drop(r.key);
     }catch{/* managers gone with the game */}
     this.variants.clear();this.stickers.clear();this.byKey.clear();this.retired.length=0;this.failed.clear();
+    for(const id of [...this.jobs.keys()])this.cancel(id);
+    listeners.delete(this.onReply);brokenListeners.delete(this.onBroken);
   }
 
   /** Once per game frame: city on/off, zoom and canvas resolution checks, retired copies destroyed, build budget reset. */
@@ -160,6 +194,7 @@ export class CityOutlines {
       for(const copies of this.variants.values())for(const v of copies)this.retire(v.key);
       for(const v of this.stickers.values())this.retire(v.key);
       this.variants.clear();this.stickers.clear();this.failed.clear();
+      for(const id of [...this.jobs.keys()])this.cancel(id);
     }
     if(!this.variants.size){this.builtZoom=zoom;this.builtRes=res;}
   }
@@ -169,10 +204,47 @@ export class CityOutlines {
     const anims=this.scene.anims;
     if(anims)for(const name of anims.getAnimsFromTexture(key))anims.remove(name);
     this.byKey.delete(key);
-    if(this.scene.textures.exists(key))this.scene.textures.remove(key);
+    if(!this.scene.textures.exists(key))return;
+    // A worker copy's bitmap is freed with its texture (a canvas copy goes back to Phaser's pool on remove).
+    const source=typeof ImageBitmap!=='undefined'?this.scene.textures.get(key).getSourceImage():undefined;
+    this.scene.textures.remove(key);
+    if(source&&source instanceof ImageBitmap)source.close();
+  }
+  private cancel(id:number){const job=this.jobs.get(id);if(!job)return;this.jobs.delete(id);this.painting.delete(job.sticker??job.base);}
+  /** A worker copy is back: uploaded within the upload queue's budget, then registered like a sync build. */
+  private arrive(reply:OutlineReply){
+    const job=this.jobs.get(reply.id);
+    if(!job){if('bitmap' in reply)reply.bitmap.close();return;}
+    if('error' in reply){this.cancel(reply.id);this.failed.add(job.sticker??job.base);return;}
+    const bitmap=reply.bitmap;
+    queueUpload(job.width*job.height,()=>{
+      if(this.jobs.get(reply.id)!==job){bitmap.close();return;}
+      this.cancel(reply.id);
+      const textures=this.scene.textures,key=cityKey(job.base,++this.serial);
+      const tex=textures.addImage(key,bitmap as unknown as HTMLImageElement);
+      if(!tex){bitmap.close();this.failed.add(job.sticker??job.base);return;}
+      for(const s of job.slots)tex.add(s.name,0,s.x,s.y,job.geom.slotW,job.geom.slotH);
+      this.built++;
+      const next:CityVariant={key,base:job.base,drawScale:job.drawScale,geom:job.geom,width:job.width,height:job.height,bytes:textureBytes(job.width,job.height)};
+      this.byKey.set(key,next);
+      if(job.sticker){
+        const copy=this.byKey.get(job.sticker);
+        // The copy it was made for went away meanwhile: nothing will ask for this sticker.
+        if(!copy||!this.variants.get(copy.base)?.includes(copy)){this.drop(key);return;}
+        this.stickers.set(job.sticker,next);
+      }else{
+        let copies=this.variants.get(job.base);
+        if(!copies){copies=[];this.variants.set(job.base,copies);}
+        copies.push(next);
+      }
+    });
   }
   /** A copy of `base` at `drawScale`: the CITY_RING around each figure, or with `sticker`, CITY_STICKER's bands. */
-  private build(base:string,drawScale:number,crop?:CellCrop,sticker=false):CityVariant|undefined{
+  /**
+   * `sticker`: the copy key the "você" sticker is for. 'painting' when the worker took the job (the copy arrives in a
+   * later frame through arrive()); else the copy painted here, or undefined when it cannot be made.
+   */
+  private build(base:string,drawScale:number,crop?:CellCrop,sticker?:string):CityVariant|undefined|'painting'{
     const textures=this.scene.textures,tex=textures.get(base);
     const names=tex.getFrameNames(),single=!names.length;
     const first=tex.get(single?'__BASE':names[0]);
@@ -180,7 +252,23 @@ export class CityOutlines {
     if(!geom)return undefined;
     const frames=(single?['__BASE']:names).map(name=>{const f=tex.get(name);return {name,f,...slotOf(geom,f.cutX,f.cutY)};});
     let cols=1,rows=1;for(const s of frames){cols=Math.max(cols,s.col+1);rows=Math.max(rows,s.row+1);}
-    const width=cols*geom.slotW,height=rows*geom.slotH,key=cityKey(base,++this.serial);
+    const width=cols*geom.slotW,height=rows*geom.slotH;
+    const w=outlineWorker();
+    if(w){
+      const src=tex.getSourceImage() as ImageBitmapSource,k=geom.crop,id=++this.jobSerial;
+      const job:Job={base,drawScale,geom,width,height,slots:single?[]:frames.map(s=>({name:s.name,x:s.col*geom.slotW,y:s.row*geom.slotH})),sticker};
+      this.jobs.set(id,job);this.painting.add(sticker??base);
+      listeners.add(this.onReply);brokenListeners.add(this.onBroken);
+      const cells=frames.map(s=>({sx:s.f.cutX+k.x,sy:s.f.cutY+k.y,sw:k.w,sh:k.h,dx:s.col*geom.slotW+geom.pad,dy:s.row*geom.slotH+geom.pad,dw:geom.cw,dh:geom.ch}));
+      createImageBitmap(src).then(source=>{
+        if(this.jobs.get(id)!==job){source.close();return;}
+        const msg:OutlineJob={id,source,width,height,cells,slotW:geom.slotW,slotH:geom.slotH,
+          ...(sticker?{bands:CITY_STICKER.map(b=>({width:b.css*geom.perCss,color:b.color}))}:{ring:{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha}})};
+        w.postMessage(msg,[source]);
+      },()=>{if(this.jobs.get(id)===job){this.cancel(id);this.failed.add(sticker??base);}});
+      return 'painting';
+    }
+    const key=cityKey(base,++this.serial);
     const ct=textures.createCanvas(key,width,height);if(!ct)return undefined;
     try{
       const c=ct.getContext(),src=tex.getSourceImage() as CanvasImageSource;

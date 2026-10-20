@@ -214,7 +214,7 @@ function runSmoke(opt,dir,prev){
   if(opt.smoke==='off')return {ok:true,skipped:true};
   if(opt.smoke){
     const r=spawnSync(opt.smoke,{cwd:dir,shell:true,encoding:'utf8'});
-    return r.status===0?{ok:true}:{ok:false,motivo:`${opt.smoke} saiu com ${r.status}: ${(r.stdout+r.stderr).trim().slice(0,300)}`};
+    return r.status===0?{ok:true}:{ok:false,infra:r.status===2,linha:smokeGist(r.stdout+r.stderr),motivo:`${opt.smoke} saiu com ${r.status}: ${(r.stdout+r.stderr).trim().slice(0,300)}`};
   }
   const script=join(dir,'scripts','smoke-prod.mjs');
   if(!existsSync(script)){log('smoke de produção: scripts/smoke-prod.mjs ainda não existe na main; pulado');return {ok:true,skipped:true};}
@@ -234,10 +234,10 @@ function runSmoke(opt,dir,prev){
     // One command string (no argument array with shell:true: node's DEP0190).
     const build=(cwd)=>spawnSync('npm run build',{cwd,encoding:'utf8',shell:true});
     const b=build(dir);
-    if(b.status!==0)return {ok:false,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
+    if(b.status!==0)return {ok:false,linha:`npm run build saiu com ${b.status}`,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
     log('smoke de produção…');
     const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8'});
-    if(s.status!==0)return {ok:false,motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${smokeGist(s.stdout+s.stderr)}`,out};
+    if(s.status!==0)return {ok:false,infra:s.status!==1,linha:smokeGist(s.stdout+s.stderr),motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${smokeGist(s.stdout+s.stderr)}`,out};
     // The returning player (BUG-20261014-ORQ-mapa-cache-velho): the base built, then the batch on the same browser profile.
     if(prev){
       log('smoke de upgrade (a main de antes do lote → o lote)…');
@@ -361,28 +361,45 @@ function lote(opt){
         log(`lote ${id} abortado: a suíte não disse quais testes falharam (${s.error??'sem lista'}); as entradas continuam na fila`);
         return {lote:id,abortado:'sem lista de falhas',integrados:[],devolvidos,suites};
       }
-      // The main itself red in those files: not the branches' fault.
-      const bare=wt(`fila-${id}-base`,`fila/${id}-base`,base);
-      const baseRed=!runSuite(local,bare,`fila/${id}-base`,s.failedFiles).ok;
-      drop(bare,`fila/${id}-base`);
-      if(baseRed){
-        log(`lote ${id} abortado: a ${opt.base} já falha em ${s.failedFiles.join(', ')}; as entradas continuam na fila`);
-        return {lote:id,abortado:`a ${opt.base} falha`,falhas:s.failedFiles,integrados:[],devolvidos,suites};
+      const abort=(abortado,msg,more={})=>{
+        log(`lote ${id} abortado: ${msg}; as entradas continuam na fila`);
+        return {lote:id,abortado,falhas:s.failedFiles,...more,integrados:[],devolvidos,suites};
+      };
+      /** `check(dir)` on the base, then on the batch rebuilt one branch at a time (with the bump): {base} or {e, at}. */
+      const firstFailing=(check)=>{
+        const bare=wt(`fila-${id}-base`,`fila/${id}-base`,base),atBase=check(bare);
+        drop(bare,`fila/${id}-base`);
+        if(!atBase.ok)return {base:atBase};
+        for(let k=1;k<=batch.ok.length;k++){
+          const step=build(`fila-${id}-c`,`fila/${id}-c`,batch.ok.slice(0,k),false),at=check(step.dir);
+          drop(step.dir,`fila/${id}-c`);
+          if(!at.ok)return {e:batch.ok[k-1],at};
+        }
+        return {};
+      };
+      // A CI job's failure is not a file (tools/ci.mjs: `job:<name>`); with test files too, the files decide first.
+      const files=s.failedFiles.filter(f=>!f.startsWith('job:')),jobs=s.failedFiles.filter(f=>f.startsWith('job:'));
+      if(!files.length){
+        // job:build is the production smoke (BUG-20261020-ORQ-fila-job-build): the same smoke on the base, then on the
+        // batch one branch at a time. Another job has no rule: nobody is blamed, and the main is not said to fail.
+        const other=jobs.filter(j=>j!=='job:build');
+        if(other.length)return abort('falha de job sem arquivo',`falha de job sem arquivo (${other.join(', ')})`);
+        const f=firstFailing((dir)=>runSmoke(opt,dir));
+        if(f.base)return f.base.infra?abort('smoke sem resposta',`o smoke da ${opt.base} não rodou (${f.base.motivo})`,{smoke:f.base})
+          :abort(`a ${opt.base} falha`,`o smoke da ${opt.base} já falha (${f.base.linha??f.base.motivo})`,{smoke:f.base});
+        if(f.at?.infra)return abort('smoke sem resposta',`o smoke não rodou ao refazer o lote (${f.at.motivo})`,{smoke:f.at});
+        if(!f.e)return abort('falha não reproduzida','o smoke do CI falhou, mas não falha aqui ao refazer o lote passo a passo (instável?)');
+        sendBack(f.e,{motivo:'smoke',smoke:f.at.linha??f.at.motivo,falhas:s.failedFiles,url:s.url??null});
+        candidates=batch.ok.filter(e=>e!==f.e);
+        continue;
       }
-      // The culprit: the batch rebuilt one branch at a time (with the bump), running only the failing files; the first
-      // branch whose addition makes them fail goes back, the rest gets another suite.
-      let culprit;
-      for(let k=1;k<=batch.ok.length&&!culprit;k++){
-        const step=build(`fila-${id}-c`,`fila/${id}-c`,batch.ok.slice(0,k),false);
-        if(!runSuite(local,step.dir,`fila/${id}-c`,s.failedFiles).ok)culprit=batch.ok[k-1];
-        drop(step.dir,`fila/${id}-c`);
-      }
-      if(!culprit){
-        log(`lote ${id} abortado: a falha não se repete ao refazer o lote passo a passo (instável?); as entradas continuam na fila`);
-        return {lote:id,abortado:'falha não reproduzida',falhas:s.failedFiles,integrados:[],devolvidos,suites};
-      }
-      sendBack(culprit,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null});
-      candidates=batch.ok.filter(e=>e!==culprit);
+      // The main itself red in those files: not the branches' fault. Else the first branch whose addition makes them fail
+      // goes back, the rest gets another suite.
+      const f=firstFailing((dir)=>runSuite(local,dir,`fila/${id}-c`,files));
+      if(f.base)return abort(`a ${opt.base} falha`,`a ${opt.base} já falha em ${files.join(', ')}`);
+      if(!f.e)return abort('falha não reproduzida','a falha não se repete ao refazer o lote passo a passo (instável?)');
+      sendBack(f.e,{motivo:'a suíte falha com a branch (junto das anteriores do lote)',falhas:s.failedFiles,url:s.url??null});
+      candidates=batch.ok.filter(e=>e!==f.e);
     }
     if(!result){log(`lote ${id}: nada integrado (${suites} suíte(s))`);return {lote:id,integrados:[],devolvidos,suites};}
     // The production build, opened in a browser (the 14/10 outage: the source suite never loads the bundle).

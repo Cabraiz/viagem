@@ -82,6 +82,30 @@ test('R06 adds16 detailed clips+idle8, preserves2056 frame pixels/order, legacy 
   assert.deepEqual(result.characters[0].scaleReference,{motion:'idle',direction:'S',source:path.join(input,'personagens-movimento128/aposentado/idle.png'),sourceSha256:result.characters[0].idle.sourceSha256,sourceHeight:108,gameHeight:54});
 }));
 
+test('R06 root motion: poses that slide every8 frames and change ground per32-block come out pinned in place',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  // Same skate-and-snap as the real R06 sources: +6 px per frame inside each row of8, ground line 3 px higher per block.
+  const rects=Array.from({length:128},(_,i)=>`<rect x="${i%16*192+30+i%8*6}" y="${Math.floor(i/16)*192+60-Math.floor(i/32)*3}" width="100" height="108" fill="rgb(${rgb(i).join(',')})"/>`).join('');
+  const sliding=await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="3072" height="1536">${rects}</svg>`)).png().toBuffer();
+  for(const motion of ['walk','attack'])for(const direction of MOVEMENT128_META.directions)await writeFile(path.join(input,'personagens-movimento128/aposentado',motion,direction+'.png'),sliding);
+  await importMovement128({input,outRoot,ids:['aposentado'],write:true});
+  const entry=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado,shas=new Set<string>();
+  for(const motion of ['walk','attack'])for(const direction of MOVEMENT128_META.directions){
+    const file=entry.files[`${motion}128-${direction}`];shas.add(file.sha256);
+    assert.ok(file.file.includes(file.sha256.slice(0,12)),'aligned clips are named by their WebP bytes, never reusing a cached URL');
+    const {data,info}=await sharp(path.join(outRoot,'public/art/sprites',file.file)).ensureAlpha().raw().toBuffer({resolveWithObject:true}),lefts:number[]=[],bottoms:number[]=[];
+    for(let frame=0;frame<128;frame++){
+      const sx=frame%16*96,sy=Math.floor(frame/16)*96;let left=96,bottom=-1;
+      for(let y=0;y<96;y++)for(let x=0;x<96;x++)if(data[((sy+y)*info.width+sx+x)*4+3]>128){left=Math.min(left,x);bottom=Math.max(bottom,y);}
+      lefts.push(left);bottoms.push(bottom);
+      const at=((sy+bottom-20)*info.width+sx+left+25)*4;assert.deepEqual([...data.subarray(at,at+3)],rgb(frame),`${motion}/${direction}/${frame} keeps pose order`);
+    }
+    assert.ok(Math.max(...lefts)-Math.min(...lefts)<=1,`${motion}/${direction} x: ${Math.min(...lefts)}..${Math.max(...lefts)}`);
+    assert.ok(Math.max(...bottoms)-Math.min(...bottoms)<=1,`${motion}/${direction} ground: ${Math.min(...bottoms)}..${Math.max(...bottoms)}`);
+    assert.ok(file.figure.right-file.figure.left<=50+6,'figure box is measured after alignment, not over the slide');
+  }
+  assert.equal(shas.size,1,'same source bytes for all16 clips → same aligned WebP');
+}));
+
 test('R06 bootstraps both missing IDs from native idle+16 clips, with no fabricated legacy sheet',async()=>fixture(async({input,outRoot,manifestFile,indexFile,old})=>{
   const ids=['tio-do-churrasco','conspiracionista'],beforeIndex=JSON.parse(await readFile(indexFile,'utf8'));
   for(const id of ids)await cp(path.join(input,'personagens-movimento128/aposentado'),path.join(input,'personagens-movimento128',id),{recursive:true});

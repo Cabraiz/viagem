@@ -334,6 +334,12 @@ export function fileFps(file:ArtFile,anim:string):number{
   const f=typeof file.fps==='number'?file.fps:file.fps?.[anim.replace(/^elite\//,'')];
   return typeof f==='number'&&f>0?f:8;
 }
+/**
+ * Enemy animations play 30% slower than drawn (inimigos-sem-frases-anim-lenta, like the hero's HERO_ANIM_RATE): only the
+ * frames, never the walking speed or the sim's attack and damage timing. Projectiles keep the file's rate.
+ */
+export const ENEMY_ANIM_RATE=.7;
+const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}
 const fileCache=new WeakMap<ArtFile,FileInfo>();
@@ -342,7 +348,7 @@ export function fileInfo(id:string,anim:string,file:ArtFile):FileInfo{
   let f=fileCache.get(file);
   if(!f||f.id!==id||f.anim!==anim){
     const pages=artPages(file);
-    f={id,anim,pages,keys:pages.map((_,i)=>enemyArtKey(id,anim,i,pages.length)),fps:fileFps(file,anim),
+    f={id,anim,pages,keys:pages.map((_,i)=>enemyArtKey(id,anim,i,pages.length)),fps:enemyFps(file,anim),
       frames:Math.max(1,file.frames??1),dirs:Math.max(1,file.directions??1)};
     fileCache.set(file,f);
   }
@@ -503,7 +509,7 @@ export function startAction(s:ActionState,piece:ArtPiece,action:string,now:numbe
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
   // A hit never starts while another action plays, and the same action already playing is not restarted.
   if(s.action!==undefined&&now<s.end&&(action==='hit'||action===s.action))return false;
-  const duration=actionDuration(Math.max(1,file.frames??1),fileFps(file,action));
+  const duration=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
   if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(duration))return false;s.hitAt=now;}
   s.action=action;s.at=now;s.end=now+duration;
   return true;

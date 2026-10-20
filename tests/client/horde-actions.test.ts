@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
 import {eventAction,projectileAction,actionDuration,onceColumn,deathAlpha,DEATH_FADE_MS,TELEGRAPH_ACTIONS,
   type ActionActor,type ActionCue,type ActionWorld} from '../../src/client/art/horde-actions.ts';
-import {applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
+import {ENEMY_ANIM_RATE,applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
   playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
 import {FX,projectileTexture,type EnemyKind} from '../../src/client/render/keys.ts';
 import {Ring} from '../../src/client/render/pool.ts';
@@ -97,27 +97,30 @@ test('hostile projectile spawn → the nearest agiota throws; friendly shots and
 });
 
 // ---------------------------------------------------------------- 2. timing
+/** On-screen time of `ms` of drawn animation: enemies play at ENEMY_ANIM_RATE (+1 ms clears float rounding at a frame edge). */
+const slow=(ms:number)=>ms/ENEMY_ANIM_RATE+1;
+
 test('an action plays once at its fps, then the loop comes back; hit never interrupts, the same action never restarts',()=>{
   const s:ActionState={at:0,end:0};
   assert.equal(startAction(s,bebado,'throw',0),false,'missing animation: keeps walking');
   assert.equal(s.action,undefined);
   assert.ok(startAction(s,bebado,'attack',1000));
-  assert.equal(s.end-s.at,actionDuration(6,12));assert.equal(actionDuration(6,12),500);
+  assert.equal(s.end-s.at,actionDuration(6,12*ENEMY_ANIM_RATE),'30% slower than drawn');assert.equal(actionDuration(6,12),500);
   assert.equal(startAction(s,bebado,'hit',1100),false,'a hit does not cut the attack');
   assert.equal(startAction(s,bebado,'attack',1200),false,'not restarted');assert.equal(s.at,1000);
-  assert.equal(currentAction(s,1499),'attack');assert.equal(currentAction(s,1500),undefined,'over: back to the loop');
-  assert.ok(startAction(s,bebado,'hit',1600));assert.equal(startAction(s,bebado,'hit',1650),false,'hit not restarted');
-  assert.ok(startAction(s,bebado,'attack',1700),'an action replaces a hit');assert.equal(s.action,'attack');
+  assert.equal(currentAction(s,s.end-1),'attack');assert.equal(currentAction(s,s.end),undefined,'over: back to the loop');
+  assert.ok(startAction(s,bebado,'hit',1800));assert.equal(startAction(s,bebado,'hit',1850),false,'hit not restarted');
+  assert.ok(startAction(s,bebado,'attack',1900),'an action replaces a hit');assert.equal(s.action,'attack');
   // An enemy in an aura is hit every tick: at most one hit per hitGap (≥ 3 hit animations, ≥ 1500 ms), so it walks in between.
-  const gap=hitGap(actionDuration(3,12));assert.equal(gap,HIT_GAP_MIN_MS);assert.equal(hitGap(800),2400);
-  assert.equal(startAction(s,bebado,'hit',2250),false);assert.equal(currentAction(s,2250),undefined,'walking');
-  assert.equal(startAction(s,bebado,'hit',1600+gap-1),false);
-  assert.ok(startAction(s,bebado,'hit',1600+gap));
+  const gap=hitGap(actionDuration(3,12*ENEMY_ANIM_RATE));assert.equal(gap,HIT_GAP_MIN_MS);assert.equal(hitGap(800),2400);
+  assert.equal(startAction(s,bebado,'hit',2700),false);assert.equal(currentAction(s,2700),undefined,'walking');
+  assert.equal(startAction(s,bebado,'hit',1800+gap-1),false);
+  assert.ok(startAction(s,bebado,'hit',1800+gap));
   // Frames: one pass, the last frame holds (never wraps to 0 while the action lasts).
   assert.equal(onceColumn(0,6,12),0);assert.equal(onceColumn(250,6,12),3);assert.equal(onceColumn(499,6,12),5);assert.equal(onceColumn(9999,6,12),5);
-  assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,250,{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+3});
-  assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,5000,{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+5});
-  assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,1000),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
+  assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(250),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+3});
+  assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(5000),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+5});
+  assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,slow(1000)),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
 });
 
 test('phase 2: the still chefe idles with phase2-idle; walking, phase 1 or no such sheet keep today\'s choice',()=>{
@@ -163,7 +166,7 @@ test('applyEnemyArt: the attack plays its 6 frames once over the walk, then the 
   assert.equal(playEnemyAction(image,'bebado','throw',1000),false,'no throw sheet: the walk goes on');
   const seen:number[]=[],marker:number[]=[];
   for(let f=0;f<6;f++){
-    const t=1000+f*1000/12+1;
+    const t=1000+slow(f*1000/12);
     applyEnemyArt(image,a,true,1,0,t);assert.equal(m.texture.key,'art:enemy:bebado:attack');seen.push(m.frame);
     // No elite/attack: the elite marker never blinks off, it shows the elite walk on the attack's column (walk has 8).
     scene.hooks.forEach(h=>h());assert.equal(overlay.visible,true,'no elite/attack: the elite walk layer stays');
@@ -172,7 +175,7 @@ test('applyEnemyArt: the attack plays its 6 frames once over the walk, then the 
   const row=enemyArtRow(image);
   assert.deepEqual(seen,[0,1,2,3,4,5].map(f=>row*6+f),'each frame once, in order, on the facing row');
   assert.deepEqual(marker,[0,1,2,3,4,5].map(f=>row*8+f),'the elite layer follows the base frame index');
-  applyEnemyArt(image,a,true,1,0,1500);assert.equal(m.texture.key,'art:enemy:bebado:walk','back to the loop');
+  applyEnemyArt(image,a,true,1,0,1000+slow(500));assert.equal(m.texture.key,'art:enemy:bebado:walk','back to the loop');
   scene.hooks.forEach(h=>h());assert.equal(overlay.visible,true);
   playEnemyAction(image,'bebado','hit',2000);applyEnemyArt(image,a,true,1,0,2000);
   assert.equal(m.texture.key,'art:enemy:bebado:hit');scene.hooks.forEach(h=>h());assert.equal(overlay.visible,true);
@@ -187,7 +190,7 @@ test('applyEnemyArt: an action longer than the loop shows the first elite loop f
   const a={kind:'bebado' as EnemyKind,elite:true,phase:0};
   applyEnemyArt(image,a,true,1,0,0);assert.ok(playEnemyAction(image,'bebado','attack',0));
   const row=enemyArtRow(image),overlay=scene.made[0],frames:number[]=[];
-  for(let f=0;f<6;f++){applyEnemyArt(image,a,true,1,0,f*1000/12+1);scene.hooks.forEach(h=>h());assert.equal(overlay.visible,true);frames.push(overlay.frame);}
+  for(let f=0;f<6;f++){applyEnemyArt(image,a,true,1,0,slow(f*1000/12));scene.hooks.forEach(h=>h());assert.equal(overlay.visible,true);frames.push(overlay.frame);}
   assert.deepEqual(frames,[0,1,2,3,0,0].map(f=>row*4+f));
 });
 
@@ -227,12 +230,12 @@ test('death: plays once on the pooled death actor, holds, fades and is released;
   const d=ring.spawn();d.born=0;
   const row=enemyArtRow(drawn),frames:number[]=[];
   let now=0;const step=(t:number)=>{now=t;ring.retain(o=>drawDeathArt(o.image as never,o.top as never,'bebado',false,row,now-o.born));};
-  for(let t=0;t<1000;t+=100){step(t);frames.push((d.image as Mock).frame);}
+  for(let f=0;f<10;f++){step(slow(f*100));frames.push((d.image as Mock).frame);}
   assert.deepEqual(frames,[0,1,2,3,4,5,6,7,8,9].map(f=>row*10+f),'every death frame once');
   assert.equal((d.image as Mock).texture.key,'art:enemy:bebado:death');
-  step(1100);assert.equal(ring.active,1);assert.equal((d.image as Mock).frame,row*10+9,'holds the last frame');assert.ok((d.image as Mock).alpha<1);
+  step(slow(1100));assert.equal(ring.active,1);assert.equal((d.image as Mock).frame,row*10+9,'holds the last frame');assert.ok((d.image as Mock).alpha<1);
   assert.equal((d.top as Mock).visible,false,'no elite/death: the overlay stays hidden');
-  step(1000+DEATH_FADE_MS+1);assert.equal(ring.active,0,'released');assert.equal(ring.created,1);
+  step(slow(1000)+DEATH_FADE_MS);assert.equal(ring.active,0,'released');assert.equal(ring.created,1);
   const again=ring.spawn();assert.equal(again,d,'the next death reuses the pooled actor');assert.equal(ring.created,1);
 });
 

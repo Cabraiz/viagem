@@ -1,7 +1,7 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_ART_ID,STATIC_ART,artLoads,enemyPieceLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
+import {ENEMY_ANIM_RATE,ENEMY_ART_ID,STATIC_ART,artLoads,enemyPieceLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
   groundFacingRow,screenFacingRow,eliteFile,cachedAnim,fileInfo,ELITE_ART_SCALE,ELITE_LAYER_DEPTH,
   WEAPON_PROJECTILE_IDS,WEAPON_PROJECTILE_KEY} from '../../src/client/art/horde-art.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,pickupTexture} from '../../src/client/render/keys.ts';
@@ -69,13 +69,16 @@ test('animation choice: walk when moving, idle when still, fly for the pombos, e
   assert.equal(chooseAnim(pombos,true,true),undefined,'no elite layer: the procedural elite stays');
 });
 
+/** On-screen time of `ms` of drawn animation: enemies play at ENEMY_ANIM_RATE (+1 ms clears float rounding at a frame edge). */
+const slow=(ms:number)=>ms/ENEMY_ANIM_RATE+1;
+
 test('enemyFrame: row-major frames at the file fps, default 8',()=>{
   assert.equal(fileFps(bebado.files.walk,'walk'),10);assert.equal(fileFps(pombos.files.fly,'fly'),8);
   assert.equal(fileFps({cell:[1,1],fps:{walk:12}},'elite/walk'),12,'elite layer uses its animation fps');
-  const f=enemyFrame('bebado',bebado,'walk',ROWS.indexOf('W'),250);
-  assert.deepEqual(f,{key:'art:enemy:bebado:walk',frame:2*8+2}); // 250 ms × 10 fps = frame 2 of row W
-  assert.deepEqual(enemyFrame('bebado',bebado,'walk',7,1000),{key:'art:enemy:bebado:walk',frame:7*8+(10%8)},'loops');
-  assert.deepEqual(enemyFrame('pombos',pombos,'fly',0,500),{key:'art:enemy:pombos:fly',frame:4});
+  const f=enemyFrame('bebado',bebado,'walk',ROWS.indexOf('W'),slow(250));
+  assert.deepEqual(f,{key:'art:enemy:bebado:walk',frame:2*8+2}); // 250 drawn ms × 10 fps = frame 2 of row W
+  assert.deepEqual(enemyFrame('bebado',bebado,'walk',7,slow(1000)),{key:'art:enemy:bebado:walk',frame:7*8+(10%8)},'loops');
+  assert.deepEqual(enemyFrame('pombos',pombos,'fly',0,slow(500)),{key:'art:enemy:pombos:fly',frame:4});
   assert.deepEqual(enemyFrame('bebado',bebado,eliteFile('walk'),1,0),{key:'art:enemy:bebado:elite/walk',frame:8});
   assert.equal(enemyFrame('bebado',bebado,'death',0,0),undefined);
   assert.equal(enemyFrame('bebado',bebado,'idle',99,0)?.frame,7*6,'row clamped to the sheet');
@@ -87,10 +90,10 @@ test('enemyFrame: paged sheets (the chefe at 384 px) find the frame in its page'
     pages:[{file:'chefe/death-p1.webp',columns:10,rows:10,firstFrame:0,frameCount:100},{file:'chefe/death-p2.webp',columns:10,rows:3,firstFrame:100,frameCount:28}]};
   const chefe:ArtPiece={kind:'animations',files:{death}};
   assert.deepEqual(enemyFrame('chefe',chefe,'death',0,0),{key:'art:enemy:chefe:death:p1',frame:0});
-  assert.deepEqual(enemyFrame('chefe',chefe,'death',5,250),{key:'art:enemy:chefe:death:p1',frame:5*16+4});
-  assert.deepEqual(enemyFrame('chefe',chefe,'death',6,250),{key:'art:enemy:chefe:death:p2',frame:0},'first frame of page 2');
-  assert.deepEqual(enemyFrame('chefe',chefe,'death',6,500),{key:'art:enemy:chefe:death:p2',frame:6*16+8-100});
-  assert.deepEqual(enemyFrame('chefe',chefe,'death',7,15*1000/16),{key:'art:enemy:chefe:death:p2',frame:127-100});
+  assert.deepEqual(enemyFrame('chefe',chefe,'death',5,slow(250)),{key:'art:enemy:chefe:death:p1',frame:5*16+4});
+  assert.deepEqual(enemyFrame('chefe',chefe,'death',6,slow(250)),{key:'art:enemy:chefe:death:p2',frame:0},'first frame of page 2');
+  assert.deepEqual(enemyFrame('chefe',chefe,'death',6,slow(500)),{key:'art:enemy:chefe:death:p2',frame:6*16+8-100});
+  assert.deepEqual(enemyFrame('chefe',chefe,'death',7,slow(15*1000/16)),{key:'art:enemy:chefe:death:p2',frame:127-100});
   assert.equal(enemyArtKey('chefe','death',1,2),'art:enemy:chefe:death:p2');assert.equal(enemyArtKey('chefe','death'),'art:enemy:chefe:death');
 });
 
@@ -168,12 +171,12 @@ test('per-frame cache: the same pages, keys and fps objects on every call; choos
     pages:[{file:'chefe/death-p1.webp',columns:10,rows:10,firstFrame:0,frameCount:100},{file:'chefe/death-p2.webp',columns:10,rows:3,firstFrame:100,frameCount:28}]};
   const a=fileInfo('chefe','death',death),b=fileInfo('chefe','death',death);
   assert.equal(a,b);assert.equal(a.pages,b.pages);assert.equal(a.keys,b.keys);
-  assert.deepEqual(a.keys,['art:enemy:chefe:death:p1','art:enemy:chefe:death:p2']);assert.equal(a.fps,16);
+  assert.deepEqual(a.keys,['art:enemy:chefe:death:p1','art:enemy:chefe:death:p2']);assert.equal(a.fps,16*ENEMY_ANIM_RATE,'played 30% slower than drawn');
   const walk=fileInfo('bebado','walk',bebado.files.walk);
-  assert.equal(fileInfo('bebado','walk',bebado.files.walk),walk);assert.deepEqual(walk.keys,['art:enemy:bebado:walk']);assert.equal(walk.fps,10);
+  assert.equal(fileInfo('bebado','walk',bebado.files.walk),walk);assert.deepEqual(walk.keys,['art:enemy:bebado:walk']);assert.equal(walk.fps,10*ENEMY_ANIM_RATE);
   // The frame's key is the cached string itself (nothing built per frame).
   const out={key:'',frame:0};
-  assert.equal(enemyFrame('chefe',{kind:'animations',files:{death}},'death',6,250,out)?.key,a.keys[1]);
+  assert.equal(enemyFrame('chefe',{kind:'animations',files:{death}},'death',6,slow(250),out)?.key,a.keys[1]);
   assert.equal(cachedAnim(bebado,true,false),'walk');assert.equal(cachedAnim(bebado,false,false),'idle');
   assert.equal(cachedAnim(bebado,false,true),'walk');assert.equal(cachedAnim(pombos,true,true),undefined);
   assert.equal(cachedAnim(pombos,true,true),undefined,'a cached miss stays a miss');

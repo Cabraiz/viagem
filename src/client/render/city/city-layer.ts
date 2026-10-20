@@ -471,13 +471,13 @@ export class CityLayer {
   }
   /**
    * The chunks' art not loaded yet, nearest first: each key once with the screen distance (px, this view) from the camera
-   * grown by CHUNK_SHOW_PX to the nearest chunk that draws it; 0 = such a chunk is (about to be) built.
+   * to the nearest chunk that draws it; 0 = such a chunk is on screen (the ring the tracker builds ahead,
+   * CHUNK_SHOW_PX, comes right after: holding the match for it took 80 of the map's 215 sheets).
    */
   missingArt(camera:Rect,view:number):{key:string;px:number}[]{
     const v=normalizeView(view),chunks:{bounds:Rect;keys:readonly string[]}[]=[];
     for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
-    return missingByDistance(chunks,{x:camera.x-CHUNK_SHOW_PX,y:camera.y-CHUNK_SHOW_PX,w:camera.w+2*CHUNK_SHOW_PX,h:camera.h+2*CHUNK_SHOW_PX},
-      key=>this.scene.textures.exists(key));
+    return missingByDistance(chunks,camera,key=>this.scene.textures.exists(key));
   }
   /** A texture of the chunks' art arrived: the live chunks drawing it are rebuilt with it once they are off screen. */
   artArrived(key:string){

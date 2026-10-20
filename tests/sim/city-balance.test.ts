@@ -310,8 +310,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // cidade again for the banks (card bancos-e-veiculos: the city's ATMs in the state, the crates around them gone, the
 // lure); ilha and infinito unchanged (they have no banks). cidade again for D-054 (no XP gems: the kills' XP goes straight
 // to the team, no gem pickups in the state), and ilha/infinito with it (their kills dropped gems too; infinito also loses the
-// round-1 crumbs).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'98057cee1a5679a3',ilha:'4ce386103fb9a83c',infinito:'c6625679e36445fa'};
+// round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
+// from firstS, the rides); ilha and infinito unchanged (no vehicles).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'9b61b65ea70a1462',ilha:'4ce386103fb9a83c',infinito:'c6625679e36445fa'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

@@ -1485,7 +1485,7 @@ test('bancos: the bank strings are dictionary bytes appended after protocol 24 (
   assert.equal(DICT[189],'item','the arsenal (protocol 24) after them');
   const from=DICT.indexOf('silenciador')+1;
   assert.equal(DICT.indexOf('banco-1'),from,'the banks right after the arsenal');
-  assert.deepEqual(DICT.slice(from),added);
+  assert.deepEqual(DICT.slice(from,from+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1710,6 +1710,12 @@ test('veículos: a parked vehicle (pickup kind vehicle, its kind in resource), a
   const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
   const me2=r2.view.players.find(p=>p.id==='uuid-0')!;
   assert.deepEqual([me2.ride,me2.rideUntil],[undefined,undefined]);
+  // Their strings: dictionary bytes appended after the banks' (every older index unchanged), once each.
+  const added=['vehicle','patinete','carrinho','crossfiteiro','pegou','acabou','largou'],from=DICT.indexOf('enemy')+1;
+  assert.equal(DICT[from-2],'hero','right after the banks');
+  assert.deepEqual(DICT.slice(from),added);
+  for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
   for(const bad of [{type:'vehicle',player:'uuid-0',kind:'jatinho',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'patinete',what:'voou'}]){
     const forged=new FrameEncoder();forged.pushEvents([bad as SimEvent]);
     assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false,JSON.stringify(bad));

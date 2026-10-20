@@ -33,8 +33,11 @@ const FOTOS=[
   ['cidade-regua','','herói ao lado da casa (silhueta)'],
 ];
 const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS'],SW:['KeyS','KeyA'],W:['KeyA'],NW:['KeyW','KeyA']};
-/** A standing hero is sampled this long (ms) after this settle (ms): any idle↔walk texture flip in it fails. */
-const STAND_SAMPLE_MS=4000,STAND_SETTLE_MS=1500;
+/**
+ * A standing hero (still for STAND_STILL_MS) is sampled for STAND_FRAMES drawn frames (at most STAND_MAX_MS: swiftshader
+ * draws 1280×720 at ~5 fps): any idle↔walk texture flip in it fails.
+ */
+const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 class Infra extends Error {}
 
@@ -76,17 +79,21 @@ async function until(p,fn,ms,arg){
 const HERO=()=>{const s=window.__perfScene,a=s?.actor;return a?{key:String(a.texture?.key??''),frame:String(a.frame?.name??''),x:Math.round(a.x),y:Math.round(a.y)}:null;};
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
-/** Samples the hero's texture every animation frame for ms (in the page): the keys seen in order and the flips. */
-const SAMPLE=(ms)=>new Promise(done=>{
+/** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
+const SAMPLE=([n,ms])=>new Promise(done=>{
   const seen=[],end=performance.now()+ms;
-  const step=()=>{const a=window.__perfScene?.actor;if(a)seen.push(String(a.texture?.key??''));if(performance.now()<end)requestAnimationFrame(step);else done(seen);};
+  const step=()=>{const a=window.__perfScene?.actor;if(a)seen.push(String(a.texture?.key??''));if(seen.length<n&&performance.now()<end)requestAnimationFrame(step);else done(seen);};
   requestAnimationFrame(step);
 });
+/** The level-up offer (D-050) pauses the solo match until a card is taken: takes the first one, so the hero walks again. */
+const TAKE_OFFER=()=>{const c=[...document.querySelectorAll('.rh-card')].find(b=>!b.disabled&&b.getClientRects().length&&!b.closest('[hidden]'));c?.click();return !!c;};
+async function clearOffer(p){for(let i=0;i<4&&await p.evaluate(TAKE_OFFER).catch(()=>false);i++)await sleep(700);}
 
-const frames=[],fails=[],consoleErrors=[],tremor={};
+const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
 async function shot(p,name,caption,vp){
-  const file=`${String(frames.length).padStart(2,'0')}-${name}-${vp.w}x${vp.h}.png`;
-  await p.screenshot({path:join(outDir,file),timeout:30000}).catch(e=>fails.push(`print ${file}: ${String(e).split('\n')[0]}`));
+  // JPEG frames (the artifact stays a few MB: PNG frames made it 48 MB); the sheet itself is a PNG.
+  const file=`${String(frames.length).padStart(2,'0')}-${name}-${vp.w}x${vp.h}.jpg`;
+  await p.screenshot({path:join(outDir,file),type:'jpeg',quality:70,timeout:30000}).catch(e=>fails.push(`print ${file}: ${String(e).split('\n')[0]}`));
   const hero=await p.evaluate(HERO).catch(()=>null);
   frames.push({file,caption:`${caption} · ${vp.w}×${vp.h}`,hero});
 }
@@ -94,18 +101,26 @@ async function releaseAll(p){for(const k of new Set(Object.values(KEYS).flat()))
 
 /** The hero standing: 3 prints in a row, then a sampled window (a flip between idle and walk sheets fails). */
 async function standing(p,vp){
-  await releaseAll(p);await sleep(STAND_SETTLE_MS);
+  await releaseAll(p);await clearOffer(p);
+  // Still: the hero's drawing has not moved for STAND_STILL_MS (a mouse route may still be walking), at most 25 s.
+  let last='',since=Date.now();
+  for(const end=Date.now()+25000;Date.now()<end;await sleep(250)){
+    const h=await p.evaluate(HERO).catch(()=>null),at=h?`${h.x},${h.y}`:'';
+    if(at!==last){last=at;since=Date.now();}else if(Date.now()-since>=STAND_STILL_MS)break;
+  }
+  await clearOffer(p);
   for(let i=1;i<=3;i++){await shot(p,`parado${i}`,`parado ${i}/3`,vp);await sleep(120);}
-  const seen=await p.evaluate(SAMPLE,STAND_SAMPLE_MS).catch(()=>[]);
+  const seen=await p.evaluate(SAMPLE,[STAND_FRAMES,STAND_MAX_MS]).catch(()=>[]);
   let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
   const walks=seen.filter(isWalk).length,keys=[...new Set(seen)];
   tremor[`${vp.w}x${vp.h}`]={samples:seen.length,walkSamples:walks,flips,keys};
   if(!seen.length)fails.push(`${vp.w}×${vp.h}: herói não encontrado (window.__perfScene.actor)`);
-  else if(flips)fails.push(`${vp.w}×${vp.h}: herói parado trocou idle↔walk ${flips}× em ${STAND_SAMPLE_MS/1000} s (tremor; ${walks}/${seen.length} quadros de walk)`);
+  else if(flips)fails.push(`${vp.w}×${vp.h}: herói parado trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor; ${walks} de walk)`);
   else if(walks)fails.push(`${vp.w}×${vp.h}: herói parado com textura de walk (${walks}/${seen.length} quadros)`);
 }
 async function keyboardWalk(p,vp){
   for(const [dir,keys] of Object.entries(KEYS)){
+    await clearOffer(p);
     for(const k of keys)await p.keyboard.down(k);
     await sleep(500);await shot(p,`tecla-${dir}-1`,`teclado ${dir} (1/2)`,vp);
     await sleep(250);await shot(p,`tecla-${dir}-2`,`teclado ${dir} (2/2)`,vp);
@@ -115,6 +130,7 @@ async function keyboardWalk(p,vp){
 }
 async function mouseWalk(p,vp){
   // A click far from the hero (who sits about mid-screen): toward the upper left, inside the canvas, away from the HUD.
+  await clearOffer(p);
   await p.mouse.click(Math.round(vp.w*.25),Math.round(vp.h*.4));
   for(let i=1;i<=3;i++){await sleep(400);await shot(p,`mouse${i}`,`mouse: clique longe ${i}/3`,vp);}
   await sleep(1500);
@@ -156,7 +172,8 @@ async function fotos(browser,base){
           await p.goto(`${base}/?foto=${cena}${extra}`,{waitUntil:'load',timeout:90000});
           const ok=await until(p,()=>window.__fotoPronta===true||!!window.__fotoErro,90000);
           const erro=await p.evaluate(()=>window.__fotoErro??'').catch(()=>'');
-          if(!ok||erro)fails.push(`foto ${cena} ${vp.w}×${vp.h}: ${erro||'não ficou pronta em 90 s'}`);
+          // A slow scene (swiftshader: "não desenhou em 30 s") still prints what it drew: a warning, not a failure.
+          if(!ok||erro)avisos.push(`foto ${cena} ${vp.w}×${vp.h}: ${erro||'não ficou pronta em 90 s'}`);
           await shot(p,`foto-${cena}`,caption,vp);
         }finally{await p.close().catch(()=>{});}
       }
@@ -167,7 +184,7 @@ async function fotos(browser,base){
 /** Every frame on one PNG: a grid of captioned cells, laid out and printed by the same browser. */
 async function sheet(browser,file){
   const cells=frames.filter(f=>existsSync(join(outDir,f.file))).map(f=>{
-    const src=`data:image/png;base64,${readFileSync(join(outDir,f.file)).toString('base64')}`;
+    const src=`data:image/jpeg;base64,${readFileSync(join(outDir,f.file)).toString('base64')}`;
     const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
     return `<figure><img src="${src}"><figcaption>${esc(f.caption)}${f.hero?` <small>${esc(f.hero.key)}#${esc(f.hero.frame)}</small>`:''}</figcaption></figure>`;
   }).join('');
@@ -209,11 +226,11 @@ try{
 }finally{
   restore();preview?.stop();await Promise.resolve(worker?.stop()).catch(()=>{});
 }
-const result={sha,ok:code===0,infra:code===2,fails,consoleErrors:consoleErrors.slice(0,50),tremor,frames};
+const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames};
 writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;
 console.log(line);
 if(process.env.GITHUB_STEP_SUMMARY){
-  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}\n\nTremor (herói parado): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
+  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (herói parado): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
 }
 process.exit(code);

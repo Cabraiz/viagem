@@ -4,8 +4,7 @@
  * frames and telegraph art from the art v2 index), so every URL here is exactly one the game asks for later and the
  * preloader's download is what Phaser then finds in the cache.
  *
- * Priorities: P0 = the map's ground and this player's hero, its walk and attack clips included (the match opens with
- * them: preload-heroi-primeiro); P1 = teammates' heroes, enemies,
+ * Priorities: P0 = this player's hero and the map's ground (the first frame); P1 = teammates' heroes, enemies,
  * buildings and the base pieces; P2 = decoration, items, effects and HUD art.
  * Not listed: the endless map's trees (which ones depends on the terrain seed the room sends with the match; the scene
  * fetches the ones by the spawn itself) and the city's map file (the room's mapLoad already gates on it).
@@ -14,8 +13,7 @@ import {classes} from '../../rules/index.ts';
 import type {MapId} from '../../protocol/index.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {directionalSheet} from '../sprites/sprite-sheets.ts';
-import {movement128Plan,movementIdle8Plan} from '../sprites/movement128.ts';
-import {HERO_DIRECTIONS} from '../sprites/sprite-motion.ts';
+import {movementIdle8Plan} from '../sprites/movement128.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../sprites/art-urls.ts';
 import {artIndex} from '../art/manifest.ts';
 import {artLoads,liteEnemyUrl} from '../art/horde-art.ts';
@@ -45,14 +43,6 @@ export const heroSheetUrl=(classId:string)=>movementIdle8Plan(classId)?.url??(sp
 /** The island/endless ground the scene loads outside the city (scene.ts preload). */
 export const ENDLESS_GROUND=['/art/terrain/soil-grass.webp','/art/terrain/riverbed.webp'] as const;
 const RANK:Record<AssetPriority,number>={P0:0,P1:1,P2:2};
-/**
- * A class's detailed clips (movement128: walk then attack, the 8 directions each), the URLs the scene's
- * Movement128Textures fetches; empty for a class without them. The waiting room downloads the own hero's in P0, so no
- * sheet of the player's own hero is fetched after the match opens (card preload-heroi-primeiro).
- */
-export const heroMotionUrls=(classId:string)=>(['walk','attack'] as const).flatMap(motion=>HERO_DIRECTIONS.flatMap(direction=>{
-  const url=movement128Plan(classId,motion,direction)?.url;return url?[url]:[];
-}));
 
 /**
  * Ordered list (P0, then P1, then P2; plan order inside each) of every file the match needs, each URL once at its
@@ -68,7 +58,7 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     out.set(url,{url,priority,kind,...(bytes!==undefined?{bytes}:{})});
   };
   const known=(id:string)=>classes.some(c=>c.id===id);
-  // P0: own sheet and own portrait ('hero' texture), the ground, then the own walk and attack clips.
+  // P0: own sheet and own portrait ('hero' texture), then the ground.
   add(heroSheetUrl(room.self),'P0','hero');
   if(known(room.self))add(thumbUrl(room.self),'P0','icon');
   const index=artIndex();
@@ -80,7 +70,6 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     if(new URLSearchParams(room.search??'').get('chao')!=='0')add(ALBEDO_URL,'P0','ground');
   }
   else for(const url of ENDLESS_GROUND)add(url,'P0','ground');
-  for(const url of heroMotionUrls(room.self))add(url,'P0','hero');
   // P1: teammates (sheet and class icon), enemies, buildings, base pieces.
   for(const id of new Set(room.others)){
     if(!id||id===room.self)continue;

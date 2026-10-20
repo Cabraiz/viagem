@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {ALBEDO_URL} from '../../src/client/render/city/relevo/albedo-meta.ts';
 import {existsSync,readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex,artIndex} from '../../src/client/art/manifest.ts';
-import {assetsParaPartida,matchAssets,matchKey,heroSheetUrl,heroMotionUrls,ENDLESS_GROUND} from '../../src/client/preload/match-assets.ts';
+import {assetsParaPartida,matchAssets,matchKey,heroSheetUrl,ENDLESS_GROUND} from '../../src/client/preload/match-assets.ts';
 import {directionalSheet} from '../../src/client/sprites/sprite-sheets.ts';
 import {spriteUrl,thumbUrl,treeUrl} from '../../src/client/sprites/art-urls.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
@@ -45,7 +45,6 @@ test('real manifest, city: every texture of the scene\'s planners is listed once
   const plan=buildCityArtPlan(artIndex(),cityArtOptions(''));
   assert.ok(plan.sheets.length>0,'the manifest has city art');
   const wanted=[heroSheetUrl(A),heroSheetUrl(B),heroSheetUrl(C),thumbUrl(A),thumbUrl(B),thumbUrl(C),treeUrl('arvore-nevada'),
-    ...heroMotionUrls(A), // own walk and attack clips only (preload-heroi-primeiro): the teammates' come on demand
     ...plan.sheets.map(s=>s.url),...artLoads().map(l=>l.url),...baseLoads().map(l=>l.url),...framesLoads().map(l=>l.url),...telegraphArtLoads().map(l=>l.url),
     ALBEDO_URL, // the relief's ground albedo (chao-albedo-cidade): P0 with the ground
     ...liveSheets(artIndex()).map(s=>s.url)]; // cenário vivo (E8's `cenario` group): loops, lit objects, nests, decals
@@ -72,23 +71,6 @@ test('real manifest, endless map: no city art; a class with no sheet adds nothin
   assert.equal(list.some(a=>a.url.startsWith('/art/city/')&&a.kind!=='enemy'&&a.kind!=='base'&&a.kind!=='effect'),false);
   assert.equal(list.some(a=>a.url.includes('nao-existe')),false);
   assert.deepEqual(urls(list.filter(a=>a.kind==='ground')),[...ENDLESS_GROUND]);
-});
-
-test("real manifest: the own hero's walk and attack clips (8 directions) are P0, after the ground; teammates' are not listed",()=>{
-  real();
-  const self=ids.find(id=>heroMotionUrls(id).length)!,mate=ids.find(id=>id!==self&&heroMotionUrls(id).length)!;
-  assert.ok(self&&mate,'the manifest has heroes with detailed clips');
-  const motion=heroMotionUrls(self);
-  assert.equal(motion.length,16,'walk and attack, 8 directions each');
-  assert.ok(motion.every(u=>u.startsWith('/art/lite/sprites/')&&existsSync('public'+u)),'the lite copies the scene fetches');
-  assert.ok(motion.slice(0,8).every(u=>u.includes('.walk128-'))&&motion.slice(8).every(u=>u.includes('.attack128-')),'walk first');
-  for(const map of ['cidade-nevada','infinito'] as const){
-    const list=assetsParaPartida({self,others:[mate],map}),p0=list.filter(a=>a.priority==='P0').map(a=>a.url);
-    assert.deepEqual(p0.slice(-16),motion,`${map}: the clips close P0`);
-    assert.ok(p0.indexOf(motion[0])>Math.max(...list.filter(a=>a.kind==='ground').map(a=>p0.indexOf(a.url))),`${map}: ground first`);
-    assert.equal(p0[0],heroSheetUrl(self),`${map}: the resting sheet (first frame) still opens the list`);
-    for(const u of heroMotionUrls(mate))assert.equal(list.some(a=>a.url===u),false,`${map}: no teammate clip`);
-  }
 });
 
 test('the key changes with the members and the map, not with their order or repeats',()=>{

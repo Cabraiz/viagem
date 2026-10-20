@@ -30,8 +30,8 @@ export function missingByDistance(chunks:readonly {bounds:Box;keys:readonly stri
 export interface ArtStreamHost {
   /** Art not loaded yet, nearest first; px 0 = needed by the first frame. */
   missing():readonly {key:string;px:number}[];
-  /** Starts the download of a key; false when the key is unknown (nothing queued). */
-  load(key:string):boolean;
+  /** Starts the download of a key (px: its distance, 0 = the first frame needs it); false when the key is unknown. */
+  load(key:string,px:number):boolean;
 }
 
 export class CityArtStream {
@@ -44,10 +44,10 @@ export class CityArtStream {
   /** Fills the free slots with the nearest missing art. */
   pump(){
     if(this.flight.size>=this.files)return;
-    for(const {key} of this.host.missing()){
+    for(const {key,px} of this.host.missing()){
       if(this.flight.size>=this.files)break;
       if(this.flight.has(key)||this.answered.has(key))continue;
-      if(this.host.load(key))this.flight.add(key);else this.answered.add(key);
+      if(this.host.load(key,px))this.flight.add(key);else this.answered.add(key);
     }
   }
   /** A file answered: loaded, or failed (its chunks keep their mounds); either way it is not asked again. */

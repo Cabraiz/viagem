@@ -3,7 +3,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
-import {installUploadQueue} from './preload/upload-queue.ts';
+import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -1306,8 +1306,18 @@ export class IslandScene extends Phaser.Scene {
     const stream=this.cityStream=new CityArtStream({
       missing:()=>[...city.missingArt(this.cityCamera(),this.view),...nests.filter(k=>!this.textures.exists(k)).map(key=>({key,px:1}))]
         .sort((a,b)=>a.px-b.px),
-      load:key=>{
+      load:(key,px)=>{
         const s=sheets.get(key);if(!s)return false;
+        // Its own fetches, not Phaser's loader: that queue is first-in first-out, and the enemies of the run (~18 MB)
+        // queued there when the countdown ends would hold the art around the hero behind them.
+        if(bitmapsAvailable()){
+          void fetchBitmap(s.url,px===0?'high':'low').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
+            if(this.city!==city||this.textures.exists(key)){bitmap.close();done(key,true);return;}
+            this.textures.addSpriteSheet(key,bitmap as unknown as HTMLImageElement,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});
+            done(key,this.textures.exists(key));
+          }),()=>done(key,false));
+          return true;
+        }
         this.load.spritesheet(key,s.url,{frameWidth:s.frameWidth,frameHeight:s.frameHeight});
         if(!this.load.isLoading())this.load.start();
         return true;

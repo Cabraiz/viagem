@@ -72,6 +72,9 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
   const stream=src.slice(src.indexOf('  private streamCityArt('),src.indexOf('  private cityArt():'));
   assert.match(stream,/if\(ok\)city\.artArrived\(key\);stream\.settled\(key,ok\);/);
   assert.match(stream,/Events\.FILE_LOAD_ERROR,failed/);
+  // Outside Phaser's first-in first-out loader (the run's enemies would hold the near art), the near art asked first.
+  assert.match(stream,/fetchBitmap\(s\.url,px===0\?'high':'low'\)\.then\(bitmap=>queueUpload\(bitmap\.width\*bitmap\.height,/);
+  assert.match(stream,/this\.textures\.addSpriteSheet\(key,bitmap as unknown as HTMLImageElement,\{frameWidth:s\.frameWidth,frameHeight:s\.frameHeight\}\)/);
   assert.match(stream,/this\.load\.off\(Phaser\.Loader\.Events\.FILE_COMPLETE,complete\)/,'the stop forgets the listeners');
 });
 

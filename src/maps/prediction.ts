@@ -9,6 +9,8 @@
  * - else tick < slowUntil: walking at heroSpeed(terrain) × PLAYER_SLOW_MULT;
  * - else plain walking;
  * - D-047: while tick < fastUntil (Dona Cida's brigadeiro) the walk above goes × CIDA_FAST_MULT.
+ * - Veículos: while tick < rideUntil the walk goes × RIDE_MULT[ride] instead (the larger of it and the brigadeiro);
+ *   the cart turns the stick by CART_TURN; the crossfiteiro's last BURPEE_TICKS stand still (contract vehicles.ts).
  * Tick mapping of the replay: a frame of tick T carries the position after the player's step `ack` (applied on tick
  * T while walking: the room applies one step per tick), so the k-th unacknowledged input (k = 0, 1, …) is applied on
  * tick T+1+k (while an effect touches the steps behind a confirmed position, the room sends the live one instead:
@@ -16,14 +18,16 @@
  */
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
 import {heroSpeed,moveDirection,SPEED,walkable} from './world.ts';
-import {CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,SIM_HZ,carSpeed} from '../contract/index.ts';
-import type {PlayerInput,Point} from '../contract/index.ts';
+import {BURPEE_TICKS,CART_TURN,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,RIDE_MULT,SIM_HZ,carSpeed} from '../contract/index.ts';
+import type {PlayerInput,Point,VehicleKind} from '../contract/index.ts';
 type Input=PlayerInput;
 export const STEP = 1 / 20;
 /** D-036 effect state of a player (SimPlayer and PlayerRunView carry the same fields). */
 export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
   /** D-047 Dona Cida's brigadeiro: walking × CIDA_FAST_MULT while tick < fastUntil (on top of a slow; not the slide). */
-  fastUntil?:number}
+  fastUntil?:number;
+  /** Veículos: the vehicle ridden while tick < rideUntil (contract vehicles.ts). */
+  ride?:VehicleKind;rideUntil?:number}
 /**
  * Where the replay stands: the frame's tick and the player's effects in it. Absent: no effects (plain walking).
  * `cap` (D-052, the car): the most this player may walk per tick while moving the car (carSpeed(movers)/SIM_HZ).
@@ -37,6 +41,17 @@ export function slipping(effects:MoveEffects|undefined,tick:number):Point|undefi
 }
 export const slowed=(effects:MoveEffects|undefined,tick:number)=>tick<(effects?.slowUntil??-Infinity);
 export const hasted=(effects:MoveEffects|undefined,tick:number)=>tick<(effects?.fastUntil??-Infinity);
+/** The vehicle ridden on `tick`, or undefined. */
+export const riding=(effects:MoveEffects|undefined,tick:number):VehicleKind|undefined=>
+  effects?.ride!==undefined&&tick<(effects.rideUntil??-Infinity)&&Object.hasOwn(RIDE_MULT,effects.ride)?effects.ride:undefined;
+/** The walk's multiplier on `tick` (brigadeiro, vehicle; the crossfiteiro's burpee is 0). */
+export function walkMult(effects:MoveEffects|undefined,tick:number):number{
+  const fast=hasted(effects,tick)?CIDA_FAST_MULT:1,ride=riding(effects,tick);
+  if(!ride)return fast;
+  if(ride==='crossfiteiro'&&tick>=effects!.rideUntil!-BURPEE_TICKS)return 0;
+  return Math.max(fast,RIDE_MULT[ride]);
+}
+const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
 /**
  * One movement tick of a player at server tick `tick` (the room's players system and the phone's replay): a slide
  * while slipping (direction ignored), else a walk, slowed while slowed. Collision-safe like moveDirection.
@@ -46,8 +61,9 @@ export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects
   // The world's hero speed (city 1.99 u/s, D-026); slip keeps its ratio to walking so the city stays in proportion.
   const walk=heroSpeed(terrain);
   if(slide)return moveDirection(p,slide,STEP,terrain,PLAYER_SLIP_SPEED*walk/SPEED);
-  const speed=slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk;
-  return moveDirection(p,direction,STEP,terrain,hasted(effects,tick)?speed*CIDA_FAST_MULT:speed);
+  const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick);
+  const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
+  return moveDirection(p,turned,STEP,terrain,speed);
 }
 /**
  * D-052, a hero moving the car walks at most `cap` u this tick (the room's players system and the phone's replay): the

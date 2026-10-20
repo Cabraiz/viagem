@@ -7,3 +7,4 @@ export * from './run.ts';
 export * from './objective.ts';
 export * from './build.ts';
 export * from './wallet.ts';
+export * from './vehicles.ts';

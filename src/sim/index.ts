@@ -6,6 +6,8 @@ export * from './chaveiro/system.ts';
 export {buildRoute,pointAt,type Route} from './chaveiro/route.ts';
 // Bancos (card bancos-e-veiculos): the city's ATMs (placement, state, system) and the Cliente Prime flag.
 export * from './bancos/system.ts';
+// Veículos (card bancos-e-veiculos, part 2): the city's parked vehicles and the rides.
+export * from './veiculos/system.ts';
 export {baitEnemy} from './enemies/ai.ts';
 export * from './context.ts';
 export * from './core.ts';

@@ -70,7 +70,7 @@
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
  *     [--out evidence/NEW-20261012-ORQ-cidade-11-balanco-run/balanco.json] [--resume] [--cap-min 30]
- *     [--knobs <city-balance.json>] [--priority low|normal]
+ *     [--knobs <city-balance.json>] [--priority low|normal] [--no-vehicles]
  *
  * Merge mode (CI, NEW-20261014-ORQ-ci-github-shards-e-bench): plays nothing; reads every run JSON (an --out file) under
  * <dir>, prints the per-run lines and the same summary as above (+ a before/after table with --before <file>) and
@@ -210,6 +210,11 @@ export interface RunRecord {
    * and `enemyGrana`, `primes` (bank-prime) and `empties` (bank-empty). Absent in older JSON files.
    */
   banks?:BankRecord;
+  /**
+   * Veículos (bancos-e-veiculos, part 2), from the vehicle events: `rides` taken (pegou) per kind, how they ended
+   * (`acabou` ran out, `largou` a fall or the car) and the distinct `riders`. Absent in older JSON files.
+   */
+  vehicles?:VehicleRecord;
   /** remover-gemas (D-054): the sim second each team level was reached (levels[i] = level i+2). Absent in older JSON files. */
   levels?:number[];
   /**
@@ -235,6 +240,14 @@ export function countBankEvent(b:BankRecord,e:SimEvent):void{
   }else if(e.type==='bank-prime')b.primes++;
   else if(e.type==='bank-empty')b.empties++;
 }
+export interface VehicleRecord {rides:number;byKind:Record<string,number>;acabou:number;largou:number;riders:number}
+/** Folds one sim event into a run's vehicle counters (`seen` keeps the riders; pure besides its arguments). */
+export function countVehicleEvent(v:VehicleRecord,seen:Set<string>,e:SimEvent):void{
+  if(e.type!=='vehicle')return;
+  if(e.what==='pegou'){v.rides++;v.byKind[e.kind]=(v.byKind[e.kind]??0)+1;seen.add(e.player);v.riders=seen.size;}
+  else v[e.what]++;
+}
+export const emptyVehicles=():VehicleRecord=>({rides:0,byKind:{},acabou:0,largou:0,riders:0});
 export const emptyBanks=():BankRecord=>({grana:0,withdraws:0,share:null,enemyWithdraws:0,enemyGrana:0,primes:0,empties:0});
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -419,6 +432,15 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
       ` | bicho withdraws/run ${b.enemyWithdraws?.mean??'-'} (R$ ${b.enemyGrana?.mean??'-'}) | primes/run ${b.primes?.mean??'-'} | dry ATMs/run ${b.empties?.mean??'-'}`);
   }
   for(const n of sizes){
+    const rs=runs.filter(r=>r.players===n&&r.vehicles);
+    if(!rs.length)continue;
+    const kinds:Record<string,number>={};
+    for(const r of rs)for(const [k,c] of Object.entries(r.vehicles!.byKind))kinds[k]=(kinds[k]??0)+c;
+    // Card target: every bot rides at least one per run (the bench's heroes are all bots).
+    out.push(`vehicles ${n}p: rides/run ${mean(rs.map(r=>r.vehicles!.rides))} per bot ${mean(rs.map(r=>r.vehicles!.rides/n))} (target ≥ 1) | runs where every bot rode ${rs.filter(r=>r.vehicles!.riders>=n).length}/${rs.length}`+
+      ` | by kind ${JSON.stringify(kinds)} | ended: ran out ${mean(rs.map(r=>r.vehicles!.acabou))} dropped ${mean(rs.map(r=>r.vehicles!.largou))}`);
+  }
+  for(const n of sizes){
     const rs=runs.filter(r=>r.players===n&&r.objective);
     if(!rs.length)continue;
     out.push(`chaveiro ${n}p:`);
@@ -544,8 +566,9 @@ export class NavDriver {
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
       // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
-      // the walk to an ATM (bancos-e-veiculos, mode 'bank') and leaning on the car (D-052, mode 'carro').
-      else if(['push','clear','carro','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
+      // the walk to an ATM (bancos-e-veiculos, mode 'bank'), to a parked vehicle (part 2, mode 'veiculo') and leaning on
+      // the car (D-052, mode 'carro').
+      else if(['push','clear','carro','bank','veiculo'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);
@@ -702,7 +725,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
+export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
   combat?:'manual';
   /** D-051 (--mode ninhos, with --objective chaveiro): the nests instead of the waves (Simulation mode). */
@@ -735,6 +758,8 @@ export function playRun(o:RunOptions):RunRecord{
   const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
     ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{}),...(o.mode?{mode:o.mode}:{})} as ConstructorParameters<typeof Simulation>[1]);
   if(knobsApplied&&o.route==='assemble')injectAssemble(sim,o.knobs);
+  // --no-vehicles (the A/B of bancos-e-veiculos): the city never spawns one (the vehicles draw on their own streams).
+  if(o.vehicles===false&&sim.run.vehicles)sim.run.vehicles.state.next=Number.MAX_SAFE_INTEGER;
   const room=new RoomBots();
   const ids:string[]=[],cls:string[]=[];
   for(let i=0;i<o.players;i++){
@@ -779,7 +804,7 @@ export function playRun(o:RunOptions):RunRecord{
     return r;
   };
   let interGathered:Record<string,number>={},boss:BossRecord|undefined,bossId:string|undefined;
-  const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks();
+  const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks(),vehicles=emptyVehicles(),riders=new Set<string>();
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
   const r1Arrival:Record<string,number|null>=Object.fromEntries(ids.map(id=>[id,null]));
   const st=()=>sim.run.stonewards.state;
@@ -855,6 +880,7 @@ export function playRun(o:RunOptions):RunRecord{
     trackNests(tick);
     for(const e of events as readonly SimEvent[]){
       countBankEvent(banks,e);
+      countVehicleEvent(vehicles,riders,e);
       if(e.type==='levelup')levelS.push(r2(tick/HZ));
       if(e.type==='moto'){
         const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
@@ -934,6 +960,7 @@ export function playRun(o:RunOptions):RunRecord{
     ...(sim.run.nests?{nests:nestSummary()}:{}),
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
+    vehicles,
     levels:levelS,
   };
   function nestSummary():NestRecord{
@@ -966,7 +993,7 @@ function args(argv:readonly string[]){
     seeds:parseSeeds(get('--seeds')??'1-16'),players:parsePlayers(get('--players')??'1,3,6'),
     out:path.resolve(get('--out')??path.join(ROOT,'evidence',CARD,'balanco.json')),
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
-    towers:!argv.includes('--no-towers'),
+    towers:!argv.includes('--no-towers'),vehicles:!argv.includes('--no-vehicles'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
@@ -1044,7 +1071,7 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective,combat:a.combat,mode:a.mode});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,vehicles:a.vehicles,objective:a.objective,combat:a.combat,mode:a.mode});
     run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);

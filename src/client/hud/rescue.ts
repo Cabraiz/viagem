@@ -32,6 +32,7 @@ import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
+import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
@@ -142,6 +143,8 @@ export class RescueBoard {
       this.wallHp=wall?.hp;
     }
     for(const e of view.events){
+      // Veículos: the vehicle's line over the rider (rules/veiculos.ts), at the take and at the end of the ride.
+      if(e.type==='vehicle'){const line=vehicleLine(e.kind,e.what,(e as {eventId?:number}).eventId??0);if(line)this.scene()?.say(e.player,line);continue;}
       if(e.type==='downed'){
         // What got you (UX-voce-e-dano f) left the banner: it is the caído's first line over the body.
         const kind=this.hud.tally.causes.last.get(e.player),line=kind?causeCopy(kind).line:undefined;

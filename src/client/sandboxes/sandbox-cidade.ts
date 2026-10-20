@@ -77,7 +77,7 @@ import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
-import {HERO_WORLD_PX,SIM_HZ,TILE_X,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
+import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {BANCO,SCALE_PROFILES,TOWER_SECONDS} from '../../rules/index.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -141,6 +141,8 @@ const outlinesOn=params.get('contorno')!=='0';
 // elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
 const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
 const cast=tele&&params.has('elenco');
+/** veiculos=1 (bancos-e-veiculos, part 2): the three parked vehicles by the hero, and the hero riding the cart (its chip). */
+const veiculos=tele&&params.get('veiculos')==='1';
 /**
  * `arsenal=1` (with tele=1; card armas-caixas-render, D-051): the manual combat's crates by rarity, one opening under the
  * hero and one bursting open, items on the ground, the hero's hand and the arsenal's shots (sandboxes/arsenal-view.ts);
@@ -470,6 +472,7 @@ class CitySandbox extends Phaser.Scene {
       enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     const nests=ninhos?nestLab(view,x,y):undefined;
+    if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
     const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
@@ -567,7 +570,7 @@ class CitySandbox extends Phaser.Scene {
     }
     lab.horde.update(time,dt);
     const feet={x:this.hero.x,y:this.hero.y},zoom=this.cameras.main.zoom;
-    lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2}]);
+    lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
     // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
     lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);

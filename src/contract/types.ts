@@ -6,6 +6,7 @@
  */
 import type {Rng} from './rng.ts';
 import type {CidaItemId,MotoMoment} from './objective.ts';
+import type {VehicleKind} from './vehicles.ts';
 
 /** A position or direction in world units (maps/world.ts re-exports it). */
 export type Point = { x: number; y: number };
@@ -84,6 +85,11 @@ export interface SimPlayer extends Point {
    * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
    */
   fastUntil?:number; mightUntil?:number; guardUntil?:number;
+  /**
+   * Veículos (contract vehicles.ts): the vehicle this player rides while tick < rideUntil (absolute tick; the
+   * crossfiteiro's burpee included). Shared with the client's prediction, like fastUntil. Absent outside the city.
+   */
+  ride?:VehicleKind; rideUntil?:number;
   /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
   grana?:number;
   /**
@@ -116,7 +122,8 @@ export interface EnemyState extends Point {
  * D-051: 'item' is an inventory item on the ground (resource = item id, value = its level: rarity or stack); in the
  * manual combat a 'chest' is a crate whose value is its rarity (1 verde .. 5 lendária), opened by standing next to it.
  */
-export type PickupKind='xp'|'heal'|'chest'|'resource'|'item';
+/** 'vehicle' (Veículos): a parked vehicle, its VehicleKind in `resource`; the vehicles system takes it, never the pickups one. */
+export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle';
 export interface PickupState extends Point {
   id:string; kind:PickupKind; value:number; resource?:string;
   spawnTick:number; expiresTick?:number;
@@ -215,7 +222,12 @@ export type SimEvent=
   | {type:'bank-prime';bank:string;enemy:string}
   /** A bank ran dry ('SEM CÉDULAS' until its refill) and when it is back with cash. */
   | {type:'bank-empty';bank:string;until:number}
-  | {type:'bank-refill';bank:string};
+  | {type:'bank-refill';bank:string}
+  /**
+   * Veículos (rules/veiculos.ts): `player` took a parked vehicle (pickup id `pickup`), the ride ran out ('acabou': the
+   * time, the scooter's battery, the burpee done) or it ended early ('largou': moving the car, a fall).
+   */
+  | {type:'vehicle';player:string;kind:VehicleKind;what:'pegou'|'acabou'|'largou';pickup?:string};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

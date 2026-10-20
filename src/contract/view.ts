@@ -4,6 +4,7 @@
  */
 import type {BankView,ObjectiveView} from './objective.ts';
 import type {PickupKind,SimEvent,OfferChoice,OfferSource,RoundState,TelegraphKind} from './types.ts';
+import type {VehicleKind} from './vehicles.ts';
 
 export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;maxHp:number;elite?:boolean;boss?:boolean;phase?:number;
   /** D-047: Dona Cida sold it a sweet ("açucarado": more damage and speed) and it still lasts. */
@@ -72,6 +73,8 @@ export interface PlayerRunView {
   slowUntil?:number;slipUntil?:number;slip?:{x:number;y:number};
   /** D-047 Dona Cida's sweets while they last (fastUntil also drives the prediction, maps/prediction.ts). */
   fastUntil?:number;mightUntil?:number;guardUntil?:number;
+  /** Veículos: the vehicle ridden while tick < rideUntil (also drives the prediction, maps/prediction.ts). */
+  ride?:VehicleKind;rideUntil?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

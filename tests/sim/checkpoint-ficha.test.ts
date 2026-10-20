@@ -67,8 +67,8 @@ test('a pre-ficha checkpoint of a city run with the chaveiro: its Grana moves fr
   // The older build: two piles, no team Grana, R$ 73 in the chaveiro's state, its own fingerprint.
   const legacy=unwallet(JSON.parse(JSON.stringify(cp)) as Legacy);
   legacy.systems.stonewards.balance={coco:25,pedra:32};delete legacy.systems.stonewards.grana;legacy.systems.chaveiro!.grana=73;
-  // Nor the banks (they came after): the migration gives it a fresh run's.
-  delete (legacy.systems as {banks?:unknown}).banks;
+  // Nor the banks nor the vehicles (they came after): the migration gives it a fresh run's.
+  delete (legacy.systems as {banks?:unknown}).banks;delete (legacy.systems as {veiculos?:unknown}).veiculos;
   legacy.shape=sim.freshShape().legacy;
   const fresh=make();
   assert.equal(fresh.checkpointShapeOk(legacy),true,'migrated before the shape check');
@@ -120,7 +120,8 @@ test('bancos: a city checkpoint from the build before the banks resumes with fre
     for(let i=0;i<40;i++)sim.step(sim.tick*50);
     const cp=JSON.parse(JSON.stringify(sim.checkpoint())) as SimCheckpoint&{shape:string;systems:{banks?:unknown}};
     assert.ok(cp.systems.banks,'the city checkpoint carries the banks');
-    const old=JSON.parse(JSON.stringify(cp)) as typeof cp;delete old.systems.banks;old.shape=sim.freshShape().preBanks!;
+    // The build before the banks had no vehicles either (they came after).
+    const old=JSON.parse(JSON.stringify(cp)) as typeof cp&{systems:{veiculos?:unknown}};delete old.systems.banks;delete old.systems.veiculos;old.shape=sim.freshShape().preBanks!;
     assert.ok(old.shape&&old.shape!==sim.freshShape().fingerprint,'the banks are in the fingerprint');
     const fresh=make();
     assert.equal(fresh.resume(old),true,`${objective??'muralha'}: the pre-banks checkpoint resumes`);

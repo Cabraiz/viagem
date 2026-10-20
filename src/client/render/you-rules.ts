@@ -2,6 +2,8 @@
  * "You in the world" rules (UX-voce-e-dano): when the local hero's marker, health bar and "Você" arrow show,
  * and when a tree canopy hides a hero. Pure module (no Phaser) so node tests pin the rules down.
  */
+import {BURPEE_TICKS,ticks,type VehicleKind} from '../../contract/index.ts';
+import {VEICULO} from '../../rules/index.ts';
 
 /** The "Você" arrow shows this long at the start of each round and when the hero gets back up. */
 export const ARROW_MS=2000;
@@ -126,4 +128,13 @@ export const effectOn=(until:number|undefined,tick:number)=>typeof until==='numb
 export function spiralPoints(cx:number,cy:number,r:number,turns:number,rot:number,out:{x:number;y:number}[],n=out.length){
   for(let k=0;k<n;k++){const f=n>1?k/(n-1):0,a=rot+f*turns*Math.PI*2,p=out[k];p.x=cx+Math.cos(a)*r*f;p.y=cy+Math.sin(a)*r*f;}
   return n;
+}
+/**
+ * Veículos: the self chip of a ride on `tick` (the vehicle and the share left, 0..1, of its whole ride; none for the
+ * scooter, whose battery dies when it wants).
+ */
+export function rideChip(kind:VehicleKind,until:number,tick:number):{kind:VehicleKind;left?:number}{
+  if(kind==='patinete')return {kind};
+  const total=ticks(VEICULO.seconds[kind])+(kind==='crossfiteiro'?BURPEE_TICKS:0);
+  return {kind,left:Math.max(0,Math.min(1,(until-tick)/total))};
 }

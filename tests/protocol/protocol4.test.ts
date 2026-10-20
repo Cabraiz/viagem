@@ -1485,7 +1485,7 @@ test('bancos: the bank strings are dictionary bytes appended after protocol 24 (
   assert.equal(DICT[189],'item','the arsenal (protocol 24) after them');
   const from=DICT.indexOf('silenciador')+1;
   assert.equal(DICT.indexOf('banco-1'),from,'the banks right after the arsenal');
-  assert.deepEqual(DICT.slice(from),added);
+  assert.deepEqual(DICT.slice(from,from+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
@@ -1691,6 +1691,36 @@ test('D-052: the build command\'s rot and refusals are the agreed ones',()=>{
   assert.deepEqual([...FREE_BUILD_REFUSALS],['tranca','carro','ninho','ocupado','limite','fora','pausa']);
 });
 
+test('veículos: a parked vehicle (pickup kind vehicle, its kind in resource), a ride on the players and the vehicle event round-trip; a forged event is refused',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.pickups=[...view.pickups,{id:'veiculo-1',kind:'vehicle',x:view.players[0].x+3,y:view.players[0].y,value:2,resource:'carrinho'}];
+  view.players[0]={...view.players[0],ride:'patinete',rideUntil:1650};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  enc.pushEvents([{type:'vehicle',player:'uuid-0',kind:'patinete',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'crossfiteiro',what:'largou'}]);
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  const k=r.view.pickups.find(p=>p.kind==='vehicle')!;
+  assert.deepEqual([k.resource,k.value],['carrinho',2]);
+  const me=r.view.players.find(p=>p.id==='uuid-0')!;
+  assert.deepEqual([me.ride,me.rideUntil],['patinete',1650]);
+  const ev=r.view.events.map(e=>{const {eventId:_,...rest}=e as typeof e&{eventId:number};return rest as Record<string,unknown>;});
+  assert.deepEqual(ev,[{type:'vehicle',player:'uuid-0',kind:'patinete',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'crossfiteiro',what:'largou'}]);
+  // The ride ends: gone on the phone too.
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.players[0]={...view.players[0],ride:undefined,rideUntil:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  const me2=r2.view.players.find(p=>p.id==='uuid-0')!;
+  assert.deepEqual([me2.ride,me2.rideUntil],[undefined,undefined]);
+  // Their strings: dictionary bytes appended after the banks' (every older index unchanged), once each.
+  const added=['vehicle','patinete','carrinho','crossfiteiro','pegou','acabou','largou'],from=DICT.indexOf('enemy')+1;
+  assert.equal(DICT[from-2],'hero','right after the banks');
+  assert.deepEqual(DICT.slice(from),added);
+  for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  for(const bad of [{type:'vehicle',player:'uuid-0',kind:'jatinho',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'patinete',what:'voou'}]){
+    const forged=new FrameEncoder();forged.pushEvents([bad as SimEvent]);
+    assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false,JSON.stringify(bad));
+  }
+});
 import {AWAKE_PER_VIEWER} from '../../src/contract/offscreen.ts';
 test('20x: a client gets at most AWAKE_PER_VIEWER awake enemies, the nearest (ties by id), plus the boss from anywhere; under the cap all of them',()=>{
   assert.equal(AWAKE_PER_VIEWER,300);

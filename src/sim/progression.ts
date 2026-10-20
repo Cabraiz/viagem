@@ -199,7 +199,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const collectors=sortedCollectors(ctx),byId=new Map(collectors.map(p=>[p.id,p]));
     const stepLength=HOMING_SPEED/SIM_HZ;
     for(const pickup of [...ctx.pickups.values()]){
-      if(pickup.kind==='resource'||pickup.kind==='item'||pickup.kind==='chest'&&options.crates)continue;
+      // Veículos: a parked vehicle is taken by the vehicles system (sim/veiculos), never walked over here.
+      if(pickup.kind==='resource'||pickup.kind==='item'||pickup.kind==='vehicle'||pickup.kind==='chest'&&options.crates)continue;
       if(pickup.homing){
         let target=pickup.homing===HOME_ANY?undefined:byId.get(pickup.homing);
         if(!target){target=nearest(collectors,pickup,()=>Infinity);if(target)pickup.homing=target.id;}

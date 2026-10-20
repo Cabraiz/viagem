@@ -78,7 +78,9 @@ test('botSites: a free-built defense is its own d: site (room to grow), and no n
 });
 
 test('room: three bots on a chaveiro run build their roots around the car, and around its new spot once it is moved',()=>{
-  const sim=new Simulation(4,{world:'cidade',terrain,objective:'chaveiro'}),bots=new RoomBots();
+  // Seed 9 (4 until the vehicles: their rides end its wave 2 earlier, the bots go to the bank first and the run is won
+  // before a second ficha).
+  const sim=new Simulation(9,{world:'cidade',terrain,objective:'chaveiro'}),bots=new RoomBots();
   const ids=['bot-1','bot-2','bot-3'];
   ids.forEach((id,i)=>{sim.addBot(id,id,['cidadao-comum','clt-cansado','feirante'][i]);bots.add(id,i);});
   sim.resetRun();

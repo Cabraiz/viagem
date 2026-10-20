@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BANK_SHARE_TARGET,RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,countBankEvent,emptyBanks,parsePlayers,parseSeeds,runLine,summarize,summaryLines,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
+import {BANK_SHARE_TARGET,RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,countBankEvent,countVehicleEvent,emptyBanks,emptyVehicles,parsePlayers,parseSeeds,runLine,summarize,summaryLines,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
 import type {SimEvent} from '../../src/contract/index.ts';
 
 function run(seed:number,players:number,outcome:RunRecord['outcome'],roundReached:number,extra:Partial<RunRecord>={}):RunRecord{
@@ -126,4 +126,18 @@ test('city run summary: banks (bancos-e-veiculos): the events fold into a run, t
   // Older files (no banks): null, and no note.
   const old=summarize([run(1,6,'victory',10)]);
   assert.equal(old.byPlayers[6].banks,null);
+});
+
+test('city run summary: vehicles (bancos-e-veiculos, part 2): pegou counts a ride per kind and rider, acabou/largou how it ended; the summary checks ≥ 1 per bot',()=>{
+  const v=emptyVehicles(),seen=new Set<string>();
+  const events:SimEvent[]=[
+    {type:'vehicle',player:'bot-1',kind:'patinete',what:'pegou'},{type:'vehicle',player:'bot-1',kind:'patinete',what:'acabou'},
+    {type:'vehicle',player:'bot-2',kind:'carrinho',what:'pegou'},{type:'vehicle',player:'bot-2',kind:'carrinho',what:'largou'},
+    {type:'vehicle',player:'bot-1',kind:'carrinho',what:'pegou'},{type:'bank-prime',bank:'banco-2',enemy:'e-1'},
+  ];
+  for(const e of events)countVehicleEvent(v,seen,e);
+  assert.deepEqual(v,{rides:3,byKind:{patinete:1,carrinho:2},acabou:1,largou:1,riders:2});
+  const lines=summaryLines([run(1,2,'victory',10,{vehicles:v}),run(2,2,'defeat',4,{vehicles:{...emptyVehicles(),rides:1,byKind:{crossfiteiro:1},riders:1}})]);
+  assert.ok(lines.some(l=>l.startsWith('vehicles 2p: rides/run 2 per bot 1 (target ≥ 1) | runs where every bot rode 1/2 | by kind {"patinete":1,"carrinho":2,"crossfiteiro":1}')),lines.join('\n'));
+  assert.ok(!summaryLines([run(1,2,'victory',10)]).some(l=>l.startsWith('vehicles')),'older files: no line');
 });

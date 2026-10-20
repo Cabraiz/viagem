@@ -15,7 +15,7 @@ import {CALMA,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
-import {PIX_MAX,ticks} from '../src/contract/index.ts';
+import {PIX_MAX,isVehicleKind,ticks} from '../src/contract/index.ts';
 import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,EnemyView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
@@ -146,8 +146,12 @@ function conforms(fresh:CheckpointShape,stored:unknown,path=''):boolean{
 /** The class of the throwaway seat whose fresh run gives the code's shape (any class: equip writes the same fields). */
 const SHAPE_CLASS='cidadao-comum';
 /** Per world kind (and city signature), the current code's fresh-run shape and its fingerprint; built once per process. */
-/** pot/legacy: the older builds' fingerprints; preBanks/banks (city): this code's without the banks, and a fresh run's bank state (migrateCheckpoint). */
-const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;pot:string;legacy:string;preBanks?:string;banks?:unknown}>();
+/**
+ * pot/legacy: the older builds' fingerprints; preBanks/banks (city): this code's without the banks (nor the vehicles), and
+ * a fresh run's bank state; preVeiculos/veiculos (city): this code's without the vehicles, and a fresh run's vehicles
+ * state (migrateCheckpoint).
+ */
+const SHAPES=new Map<string,{shape:CheckpointShape;fingerprint:string;pot:string;legacy:string;preBanks?:string;banks?:unknown;preVeiculos?:string;veiculos?:unknown}>();
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const finite=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v);
 const tickOk=(v:unknown):v is number=>Number.isSafeInteger(v)&&(v as number)>=0;
@@ -174,7 +178,9 @@ function playerRunOk(run:unknown){
   if(hand!==undefined&&!(Number.isSafeInteger(hand)&&(hand as number)>=0&&(hand as number)<Math.max(1,slots)))return false;
   if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
-  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil','rideUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  // Veículos: a ride is a known vehicle.
+  if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
   if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
@@ -370,10 +376,13 @@ export class Simulation {
       stw.balance={coco:0,pedra:0};delete stw.grana;
       if(before.systems.chaveiro)(before.systems.chaveiro as unknown as {grana:number}).grana=0;
       // Bancos: no build before them had the banks (city only): pot and legacy without them, preBanks this code's without them.
-      delete pot.systems.banks;delete before.systems.banks;
-      const noBanks=structuredClone(capture);delete noBanks.systems.banks;
+      // Veículos: nor the vehicles (they came after the banks): preVeiculos this code's without them.
+      delete pot.systems.banks;delete before.systems.banks;delete pot.systems.veiculos;delete before.systems.veiculos;
+      const noVehicles=structuredClone(capture);delete noVehicles.systems.veiculos;
+      const noBanks=structuredClone(noVehicles);delete noBanks.systems.banks;
       entry={shape:shapeOf(capture)!,fingerprint:shapeFingerprint(capture),pot:shapeFingerprint(pot),legacy:shapeFingerprint(before),
-        ...(capture.systems.banks?{preBanks:shapeFingerprint(noBanks),banks:structuredClone(capture.systems.banks)}:{})};SHAPES.set(key,entry);
+        ...(capture.systems.banks?{preBanks:shapeFingerprint(noBanks),banks:structuredClone(capture.systems.banks)}:{}),
+        ...(capture.systems.veiculos?{preVeiculos:shapeFingerprint(noVehicles),veiculos:structuredClone(capture.systems.veiculos)}:{})};SHAPES.set(key,entry);
     }
     return entry;
   }
@@ -385,11 +394,13 @@ export class Simulation {
    * - NEW-20261014-ORQ-carteira-e-pix: written with the team's pot (stonewards.grana, no splitCursor): the pot is split
    *   equally among the checkpoint's players (in order, the remainder from the first), and this code's fingerprint;
    * - Bancos: a city checkpoint written before the banks (this code's fingerprint without them, or reached through the
-   *   steps above) gets a fresh run's bank state (every ATM full; the places come back from the seed).
+   *   steps above) gets a fresh run's bank state (every ATM full; the places come back from the seed);
+   * - Veículos: a city checkpoint written before the vehicles (this code's fingerprint without them, or reached through
+   *   the steps above) gets a fresh run's vehicles state (the first vehicle firstS after the resume).
    */
   migrateCheckpoint(cp:unknown){
     if(!isObject(cp))return;
-    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown};banks?:unknown}}).systems;
+    const sys=(cp as {systems?:{stonewards?:{balance?:Record<string,unknown>;grana?:unknown;splitCursor?:unknown};chaveiro?:{grana?:unknown};banks?:unknown;veiculos?:unknown}}).systems;
     const b=sys?.stonewards?.balance,fresh=this.freshShape(),current=fresh.preBanks??fresh.fingerprint;
     if(cp.shape===fresh.legacy&&sys?.stonewards&&b&&typeof b.coco==='number'&&typeof b.pedra==='number'&&b.units===undefined){
       const units=b.coco+b.pedra;delete b.coco;delete b.pedra;b.units=units;
@@ -406,7 +417,8 @@ export class Simulation {
       runs.forEach((run,i)=>{const had=typeof run.grana==='number'?run.grana:0;if(got[i]||run.grana!==undefined)run.grana=had+got[i];});
       delete stw.grana;stw.splitCursor=cursor.splitCursor;cp.shape=current;
     }
-    if(fresh.preBanks&&cp.shape===fresh.preBanks&&isObject(sys)&&sys.banks===undefined){sys.banks=structuredClone(fresh.banks);cp.shape=fresh.fingerprint;}
+    if(fresh.preBanks&&cp.shape===fresh.preBanks&&isObject(sys)&&sys.banks===undefined){sys.banks=structuredClone(fresh.banks);cp.shape=fresh.preVeiculos??fresh.fingerprint;}
+    if(fresh.preVeiculos&&cp.shape===fresh.preVeiculos&&isObject(sys)&&sys.veiculos===undefined){sys.veiculos=structuredClone(fresh.veiculos);cp.shape=fresh.fingerprint;}
   }
   /** A stored checkpoint was written by code with this code's fresh shape, and its data has every field of it. */
   checkpointShapeOk(cp:unknown){
@@ -603,7 +615,7 @@ export class Simulation {
     const p=this.players.get(id);
     if(!p)return own;
     const from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
-    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity);
+    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
     const touched=end>-Infinity&&(from===undefined||end>from);
     const liveAck=this.liveAck.get(id);
     if(touched||liveAck!==undefined&&own.ack<liveAck){this.liveAck.set(id,Math.max(liveAck??0,p.ack));return undefined;}
@@ -833,7 +845,7 @@ export class Simulation {
     const events=this.world.step();
     // D-036: remember how far each slow or slip ran (the players system drops it once it is over; confirmed needs it).
     for(const p of this.players.values()){
-      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity);
+      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
       if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
     }
     // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.

@@ -39,6 +39,7 @@ import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
+import {isVehicleKind} from '../contract/index.ts';
 import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
 /**
@@ -85,6 +86,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * bank-cash/bank-prime/bank-empty/bank-refill and their strings in the DICT; an older decoder would refuse the flags.
  * 25 given by the integration queue (tools/fila.mjs, lote 20261017-120626) to: NEW-20261014-ORQ-bancos-e-veiculos.
  * 26 given by the integration queue (tools/fila.mjs, lote 20261017-180420) to: NEW-20261017-ORQ-balanco-ninhos.
+ * Next (the queue numbers it) since the vehicles (card NEW-20261014-ORQ-bancos-e-veiculos, part 2): `ride`/`rideUntil`
+ * on the players (they drive the prediction), the 'vehicle' pickup kind (resource = its kind), the `vehicle` event and
+ * their strings in the DICT; an older decoder would refuse the player mask and the event.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=26;
@@ -168,6 +172,8 @@ export const DICT:readonly string[]=[
   // Bancos (card NEW-20261014-ORQ-bancos-e-veiculos): the bank ids the sim gives, their names (BANK_IDS), their states
   // (BankState) and who withdrew (bank-cash 'by').
   'banco-1','banco-2','banco-3','pao-duro','juros','posto','aberto','sacando','bicho','sem-cedulas','hero','enemy',
+  // Veículos (card bancos-e-veiculos, part 2): the pickup kind, the vehicles (VEHICLE_KINDS) and the event's `what`.
+  'vehicle','patinete','carrinho','crossfiteiro','pegou','acabou','largou',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -384,6 +390,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     grana:c(optional(count)),
     // D-051 manual combat: the inventory's hand slot (`weapons` is the inventory); absent with the automatic weapons.
     hand:c(optional(count)),
+    // Veículos: the vehicle ridden and until when (they drive the phone's prediction, like fastUntil).
+    ride:c(optional(str)),rideUntil:c(optional(tickRel)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -519,6 +527,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bank-prime',[['bank','str'],['enemy','ref',false,'enemies']]],
   ['bank-empty',[['bank','str'],['until','tick']]],
   ['bank-refill',[['bank','str']]],
+  // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
+  ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -584,6 +594,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   if(type==='moto'&&e.alone===false)delete e.alone;
   if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
   if(type==='bank-cash'&&e.by!=='hero'&&e.by!=='enemy')throw new FrameError('bad bank withdrawer');
+  if(type==='vehicle'&&(!isVehicleKind(e.kind)||e.what!=='pegou'&&e.what!=='acabou'&&e.what!=='largou'))throw new FrameError('bad vehicle event');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
 }

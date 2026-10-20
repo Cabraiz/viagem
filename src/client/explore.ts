@@ -35,6 +35,8 @@ import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWo
 import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
+import {KitPlace} from './hud/kit-place/model.ts';
+import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
 import {loadZoom,saveZoom} from './camera-zoom.ts';
@@ -103,6 +105,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const obraRequests=new ObraRequests();
   /** D-052 slice 3: the car's rope (Puxar) and the free build (Construir, the ghost, the wall counter). */
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
+  /** Kits de torre (torre-pela-caixa): a tap on the kit's slot puts its tower on the ground (ghost, ✓/✕). */
+  let kitHud:KitPlaceHud|undefined;const kitPlace=new KitPlace();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -143,7 +147,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
       onPix:(to,amount)=>net.pix(to,amount),
       // D-051 inventory (manual combat): equip/use/drop/take; the room answers {t:'inv'} (net.onInventory below).
-      onInventory:command=>net.inventory(command),
+      // A kit de torre's tap ({t:'kit'}) stays here: it opens the "pôr torre" mode (hud/kit-place).
+      onInventory:command=>{
+        if(command.t!=='kit')return net.inventory(command);
+        const id=hud?.view?.players.find(p=>p.id===net.id)?.weapons[command.slot]?.id;
+        return !!id&&kitPlace.start(command.slot,id,net.predicted,buildPlanFor(net.terrain).cell);
+      },
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
@@ -167,6 +176,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       net.onBuilt=answer=>{
         // The free build's answers share {t:'built'} with the obra menu's: each takes its own requests.
         if(fortBuild.owns(answer.req)){const text=fortBuild.answer(answer);if(text)obraSay(text);return;}
+        if(kitPlace.owns(answer.req)){const text=kitPlace.answer(answer);if(text)obraSay(text);return;}
         const text=obraRequests.answer(answer,host.view?.tick??0);if(text)obraSay(text);
       };
       net.onPulled=answer=>{if(!answer.ok)obraSay(pullRefusalText(answer.reason));};
@@ -180,6 +190,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onConfirm:()=>{const r=fortBuild.piece==='muro'?fortBuild.drag(net):fortBuild.confirm(net);if(r==='none')obraSay(FORT_AIM_FIRST);else send(r);},
         onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
         onAimEnd:()=>fortBuild.endDrag(),
+        canvas:()=>controller?.game.canvas});
+      kitHud=new KitPlaceHud(host.el,{
+        onConfirm:()=>{const r=kitPlace.confirm(net);if(r==='none')obraSay('Toque no chão primeiro');else send(r);},
+        onCancel:()=>{kitPlace.cancel();controller?.scene.setBuildGhost(null);},
+        onTurn:()=>kitPlace.turn(),
+        onAim:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p)kitPlace.point(p,cell());},
         canvas:()=>controller?.game.canvas});
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
@@ -290,7 +306,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -579,7 +595,23 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(fortBuild.open){
                   const ctx={cell:plan.cell,...(car?{car}:{}),structures};
                   scene.setBuildGhost(fortBuild.ghost(ctx),buildHints(fortBuild.piece,plan.sites,ctx));
-                }else scene.setBuildGhost(null);
+                }else if(!kitPlace.active)scene.setBuildGhost(null);
+              }
+              // Kits de torre: the mode lives while the hero may build (not watching, not paused, standing) and the kit is there.
+              if(kitHud&&controller){
+                const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id);
+                const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
+                  &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
+                kitPlace.hero(net.predicted);
+                if(run.phase!=='combat')kitPlace.reset();
+                else if(!available)kitPlace.cancel();
+                kitPlace.sync(me?.weapons);
+                const kit=kitPlace.kit,charges=kit?me?.weapons[kit.slot]?.level:undefined;
+                kitHud.update({open:kitPlace.active,...(kit?{id:kit.id}:{}),canTurn:kitPlace.canTurn(),rot:kitPlace.rot,...(charges!==undefined?{charges}:{})});
+                if(kitPlace.active){
+                  const car=view&&objectiveOf(view)?.car;
+                  scene.setBuildGhost(kitPlace.ghost({cell:buildPlanFor(net.terrain).cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
+                }else if(!fortBuild.open)scene.setBuildGhost(null);
               }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

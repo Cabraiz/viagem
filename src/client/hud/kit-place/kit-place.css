@@ -1,0 +1,31 @@
+/* Kits de torre (hud/kit-place/kit-place.ts). Only tokens (src/client/ui/tokens.css) and stickers.
+   .rh-kit: the "pôr torre" bar, a system window (Lilás body, Breu edge, Papel inner line) low on the right above the
+   inventory's slots and Atacar, clear of the map's middle where the ghost goes. */
+.rh-kit{position:absolute;box-sizing:border-box;right:max(12px,env(safe-area-inset-right));
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 88px);
+  width:min(260px,calc(100vw - 24px));padding:4px 8px 8px;display:grid;gap:6px;border-radius:var(--r-janela);z-index:2;
+  background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);box-shadow:inset 0 0 0 2px var(--c-papel),var(--s-2);
+  pointer-events:auto;touch-action:manipulation;text-align:left}
+.rh-kit[hidden]{display:none}
+.rh-kit-head{display:grid;grid-template-columns:36px minmax(0,1fr) 44px;align-items:center;column-gap:6px}
+.rh-kit-face{display:grid;place-items:center;width:36px;height:36px;border-radius:var(--r-ficha);background:var(--c-papel)}
+.rh-kit-name{font:400 var(--t-16)/1.05 var(--f-cartaz);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rh .rh-kit-cancel{display:grid;place-items:center;width:44px;height:44px;margin:0 -4px 0 0;padding:0;border:0;background:transparent;color:var(--c-papel);cursor:pointer}
+.rh-kit-acoes{display:flex;gap:6px}
+.rh .rh-kit-girar,.rh .rh-kit-ok{display:flex;flex:1;align-items:center;justify-content:center;gap:4px;min-height:44px;padding:0 10px;
+  border:2px solid var(--c-breu);border-radius:var(--r-ficha);background:var(--c-papel);color:var(--c-breu);cursor:pointer;font:800 var(--t-13)/1 var(--f-sistema)}
+.rh .rh-kit-girar{flex:0 0 auto}
+.rh .rh-kit-girar[hidden]{display:none}
+.rh .rh-kit-ok{background:var(--c-cartolina)}
+.rh .rh-kit-girar.rh-kit-girado .ic{transform:rotate(90deg)}
+.rh-kit-dica{margin:0;font:700 var(--t-13)/1.15 var(--f-sistema)}
+/* The mouse clicks on the map: no ✓ button. */
+@media (hover:hover) and (pointer:fine){
+  .rh .rh-kit-ok{display:none}
+  .rh-kit-acoes:not(:has(.rh-kit-girar:not([hidden]))){display:none}
+}
+@media (max-height:500px){
+  .rh-kit{bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 12px);right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 140px);width:min(240px,36vw);gap:4px;padding:2px 6px 6px}
+  .rh-kit-dica{display:none}
+}
+.rh-ended .rh-kit{display:none}

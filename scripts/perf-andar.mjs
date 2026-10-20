@@ -6,6 +6,7 @@
 // Per pass: frame p50/p95/p99, frames > 50 and > 100 ms, travadas/min; the stalls with their causes (dev/perf-meter.ts:
 // bake, chunk, upload, rede, hud, logica, render, gc?, ?) summed; and the relief baker's counters.
 //   node scripts/perf-andar.mjs [--dist dist] [--dpr 3] [--cpu 4] [--perna 6] [--perfil 8] [--saida <dir>] [--print <png>]
+//        [--query modo=ninhos]   (more of the page's query after perf=1: the nests mode, the manual combat…)
 // Needs `npm run build` first and a free browser slot (board locks/browser-1|2, taken here). dist/multiplayer.json is
 // restored on every way out. Prints a JSON summary; with --saida also writes it there.
 import {spawn} from 'node:child_process';
@@ -21,6 +22,8 @@ const DPR=Number(arg('dpr','3')),CPU=Number(arg('cpu','4')),LEG_S=Number(arg('pe
 const PROFILE_S=Number(arg('perfil','0'));
 /** --print <file.png>: the screen at the end of the walk, with the ?perf=1 panel open (its last stalls). */
 const PRINT=arg('print');
+/** --query <q>: appended to `?perf=1&` (e.g. modo=ninhos). */
+const QUERY=arg('query');
 const PREVIEW_PORT=Number(process.env.PERF_PORT??4208),WORKER_PORT=Number(process.env.PERF_WORKER_PORT??8788);
 const BOARD=process.env.VIAGEM_BOARD??'D:/Gits/viagem-board';
 /** --dist <dir>: another build (e.g. the main of before, for the before/after); default dist/. */
@@ -66,7 +69,7 @@ try{
   const p=await ctx.newPage();
   const errors=[];p.on('pageerror',e=>errors.push(String(e).slice(0,200)));
   const cdp=await ctx.newCDPSession(p);
-  await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
+  await p.goto(`${base}/?perf=1${QUERY?`&${QUERY}`:''}`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Perf';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});

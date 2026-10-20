@@ -1,0 +1,39 @@
+// Card NEW-20261018-ORQ-setas-e-construir: only the downed ally keeps an edge arrow (the car's arrow is the objective's,
+// not an edge arrow), and the fortify "Construir" button is off the HUD with a one-line switch back.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {EDGE_KINDS_SHOWN,FORT_BUILD_BUTTON,shownTargets} from '../../src/client/hud/arrows.ts';
+
+test('only the caído is pointed at: nests\' obra sites, banks, the moto, the boss, groups, mouths and the base are off',()=>{
+  assert.deepEqual([...EDGE_KINDS_SHOWN],['caido']);
+  const kinds=['caido','chefe','grupo','spawn','base','aliado','bau','obra','moto','banco'] as const;
+  assert.deepEqual(shownTargets(kinds.map(kind=>({kind}))).map(t=>t.kind),['caido']);
+});
+
+test('Construir is off the HUD (and with it the wall counter and the tray); the room code stays',()=>{
+  assert.equal(FORT_BUILD_BUTTON,false);
+  const src=readFileSync(new URL('../../src/client/hud/fortify/fortify.ts',import.meta.url),'utf8');
+  assert.match(src,/this\.buildBtn\.hidden=!FORT_BUILD_BUTTON\|\|/);
+  // The city and island arrows and the obra sites' arrows all go through the switch.
+  const rescue=readFileSync(new URL('../../src/client/hud/rescue.ts',import.meta.url),'utf8');
+  assert.equal((rescue.match(/shownTargets\(/g)??[]).length,3);
+  assert.match(readFileSync(new URL('../../src/client/hud/towers/obra.ts',import.meta.url),'utf8'),/EDGE_KINDS_SHOWN\.has\('obra'\)/);
+});
+
+test('the car\'s arrow never steps out for another row (card seta-carro): only a hidden HUD or an open offer hides it',()=>{
+  const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8');
+  assert.match(hud,/const held=!!this\.el\.hidden\|\|this\.offerOpen\(\);/);
+  // The rows no longer take turns with the walk.
+  assert.match(hud,/this\.rows\.turn\(now,busy,\{busy:false,/);
+  assert.doesNotMatch(hud,/if\(show&&!this\.objectiveRow\.el\.hidden\)this\.renderObjective\(\);/);
+});
+
+test('the forge window, the obra menu and the gathering hint are off the player\'s game (user 18/10), one switch each',async()=>{
+  const {HUD_SWITCH}=await import('../../src/client/hud/arrows.ts');
+  assert.deepEqual(HUD_SWITCH,{forge:false,obra:false});
+  const read=(f:string)=>readFileSync(new URL(`../../src/client/${f}`,import.meta.url),'utf8');
+  assert.match(read('hud/camp.ts'),/const show=HUD_SWITCH\.forge&&prepare&&/);
+  assert.match(read('explore.ts'),/const prepare=HUD_SWITCH\.obra&&run\.phase==='combat'&&/);
+  assert.match(read('hud/coach.ts'),/case 'gather':return HUD_SWITCH\.forge&&/);
+});

@@ -50,11 +50,11 @@ export const MAX_WEAPONS=6,MAX_PASSIVES=6;
 export interface PlayerStats {
   maxHp:number; regen:number; armor:number; moveSpeed:number;
   might:number; area:number; cooldown:number; amount:number; duration:number;
-  speed:number; magnet:number; luck:number; growth:number; revive:number;
+  speed:number; luck:number; growth:number; revive:number;
 }
 export const BASE_STATS:Readonly<PlayerStats>=Object.freeze({
   maxHp:100,regen:0,armor:0,moveSpeed:1,might:1,area:1,cooldown:1,amount:0,duration:1,
-  speed:1,magnet:1.2,luck:1,growth:1,revive:1,
+  speed:1,luck:1,growth:1,revive:1,
 });
 
 // ---------- Entities (world units; island ~ 2..22, 20 Hz ticks) ----------
@@ -118,15 +118,16 @@ export interface EnemyState extends Point {
 }
 
 /**
+ * D-054: 'xp' is only the zueira's boleto rain (resource 'boleto'): a kill's XP goes straight to the team, no gems.
  * D-051: 'item' is an inventory item on the ground (resource = item id, value = its level: rarity or stack); in the
  * manual combat a 'chest' is a crate whose value is its rarity (1 verde .. 5 lendária), opened by standing next to it.
  */
 /** 'vehicle' (Veículos): a parked vehicle, its VehicleKind in `resource`; the vehicles system takes it, never the pickups one. */
-export type PickupKind='xp'|'heal'|'magnet'|'chest'|'resource'|'item'|'vehicle';
+export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle';
 export interface PickupState extends Point {
   id:string; kind:PickupKind; value:number; resource?:string;
   spawnTick:number; expiresTick?:number;
-  /** Set when a magnet pulls it toward a player. */
+  /** Set when it is pulled toward a player (progression.ts PULL_RADIUS). */
   homing?:string;
   /**
    * D-051 'item' only (server-side): who dropped it, until they first walk clear of it; meanwhile walking over it does

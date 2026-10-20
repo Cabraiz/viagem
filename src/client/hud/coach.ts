@@ -1,7 +1,7 @@
 /**
  * First-run coach (VGM-056): the one place for "first time" hints, so they never stack. It teaches the first round in
- * about 20 s without long text: walk (the weapons fire by themselves), pick up XP, the "+N" chip (D-021) and rescue a
- * caído; later, in the first intermission, gathering (VGM-046B). It replaces the chip's balloon and the gathering tip.
+ * about 20 s without long text: walk (the weapons fire by themselves), the "+N" chip (D-021) and rescue a caído (D-054:
+ * no XP lesson, the XP comes with the kill); later, in the first intermission, gathering (VGM-046B). It replaces the chip's balloon and the gathering tip.
  *
  * Rules:
  * - "Andar" has no written row (BUG-dica-tutorial-duplicada): the waiting room's paper label under the joystick slot is
@@ -20,12 +20,13 @@
  */
 import type {RunView} from '../../contract/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
+import {HUD_SWITCH} from './arrows.ts';
 
-export type Lesson='walk'|'xp'|'chip'|'rescue'|'gather';
+export type Lesson='walk'|'chip'|'rescue'|'gather';
 /** The lessons with a row in the announcement slot ("walk" only lights the joystick). */
 export type RowLesson=Exclude<Lesson,'walk'>;
-/** Priority when two lessons could show: a caído first, then walking, the chip, XP, gathering. */
-export const LESSON_ORDER:readonly Lesson[]=['rescue','walk','chip','xp','gather'];
+/** Priority when two lessons could show: a caído first, then walking, the chip, gathering. */
+export const LESSON_ORDER:readonly Lesson[]=['rescue','walk','chip','gather'];
 const ROW_ORDER=LESSON_ORDER.filter((l):l is RowLesson=>l!=='walk');
 
 export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
@@ -35,8 +36,6 @@ export interface LessonCopy {text:string;sub?:string;icon:IconName|'chip';
 export const LESSONS:Readonly<Record<RowLesson,LessonCopy>>={
   // Each line fits one row of the slot at 125% in portrait (the top line is 16 px, 20 px at 125%): a taller hint
   // would reach into the useful area. No walk row: the lobby label says it, the lit joystick says "which thumb".
-  // XP is the team's (one bar for everyone): the drops raise the turma's level, not "yours".
-  xp:{text:'Passa nas gotinhas',sub:'Sobem o nível da turma',icon:'gota',maxMs:9000},
   // "{n}" is the chip's own count ("+1", "+2"): the line names the control, as it looks right now.
   chip:{text:'Toca no +{n} pra escolher',icon:'chip',maxMs:9000},
   // Two short lines: one line plus "Leva 3 s" wrapped to three rows in portrait at 125%.
@@ -53,8 +52,6 @@ export const WALK_DISTANCE=1.2;
 export const WALK_LIGHT_MS=6000;
 /** A gather node near the hero (world units) with work in progress means the hero is gathering. */
 export const GATHER_NEAR=2.5;
-/** XP drops farther than this from the hero (world units, about half a portrait screen) do not call the XP hint. */
-export const XP_NEAR=8;
 /** The hero jumping this far between two views is a snap (spawn, reconnection), not a step: the walk is measured anew. */
 export const SNAP_DISTANCE=2.5;
 /** At the end of a run (result or leaving), a hint on screen at least this long counts as learned even if never done. */
@@ -126,16 +123,14 @@ export function wants(lesson:Lesson,input:CoachInput,walked:boolean):boolean{
   const {view,localId}=input,round=view.round;
   if(!onField(input)||!round)return false;
   const wave=round.phase==='wave';
-  const near=(p:{x:number;y:number})=>!input.hero||Math.hypot(p.x-input.hero.x,p.y-input.hero.y)<=XP_NEAR;
   switch(lesson){
     // From the first second of the run (round 1's short prepare included): the 1st step should come in ≤ 3 s (UX-1).
     // Round 1 only: a later round (or a reconnection into one) never lights the joystick again.
     case 'walk':return round.index===1&&(wave||round.phase==='prepare');
-    case 'xp':return wave&&walked&&view.pickups.some(p=>p.kind==='xp'&&near(p));
     // In combat, or in the intermission with the window folded into the chip ("Depois"): the same tap opens it.
     case 'chip':return (wave||round.phase==='prepare')&&input.chip;
     case 'rescue':return view.players.some(p=>p.id!==localId&&!!p.downed&&!p.eliminated&&p.online);
-    case 'gather':return round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
+    case 'gather':return HUD_SWITCH.forge&&round.phase==='prepare'&&round.index>=2&&!!view.camp&&view.camp.hornEndsTick===undefined&&!view.camp.wallDown;
   }
 }
 
@@ -144,7 +139,6 @@ export function didAction(lesson:Lesson,input:CoachInput,origin:{x:number;y:numb
   const {view,localId,hero}=input;
   switch(lesson){
     case 'walk':return !!hero&&!!origin&&Math.hypot(hero.x-origin.x,hero.y-origin.y)>=WALK_DISTANCE;
-    case 'xp':return view.events.some(e=>e.type==='pickup'&&e.kind==='xp'&&e.player===localId);
     case 'rescue':return view.events.some(e=>e.type==='revived'&&e.by===localId);
     case 'gather':return !!hero&&(view.nodes??[]).some(n=>n.progress>0&&Math.hypot(n.x-hero.x,n.y-hero.y)<=GATHER_NEAR);
     case 'chip':return false;

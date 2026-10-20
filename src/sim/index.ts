@@ -39,3 +39,5 @@ export * from './wallet.ts';
 export {ITEMS} from './items.ts';
 export type {InventoryResult,InventoryRefusal} from './inventory.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';
+// D-051 mode 'ninhos' without rounds: the calm (rules/calma.ts) as the sim reads it.
+export * from './ninhos/calma.ts';

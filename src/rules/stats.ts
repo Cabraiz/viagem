@@ -14,7 +14,6 @@
  * | amount    | 0    | -                            | 0 .. 6, int |
  * | duration  | 1    | -                            | 0.5 .. 3    |
  * | speed     | 1    | -                            | 0.5 .. 3    |
- * | magnet    | 1.2  | ima +0.5 (+2.5)              | 0.5 .. 6    |
  * | luck      | 1    | bone +0.1 (+0.5)             | 0.5 .. 3    |
  * | growth    | 1    | cartao +0.08 (+0.4)          | 0.5 .. 3    |
  * | revive    | 1    | -                            | 0.5 .. 3    |
@@ -38,7 +37,6 @@ export const STAT_LIMITS:Readonly<Record<StatKey,readonly [number,number]>>=Obje
   amount:[0,6],
   duration:[0.5,3],
   speed:[0.5,3],
-  magnet:[0.5,6],
   luck:[0.5,3],
   growth:[0.5,3],
   revive:[0.5,3],

@@ -183,6 +183,14 @@ test('copies: same frame names in a padded grid, one build per frame, inactive =
   assert.equal(out.variant('sheet',HERO_SCALE),undefined,'outside the city: no copy');
 });
 
+test('evicting one streamed atlas frees its city ring/sticker and keeps other bases intact',()=>{
+  const f=fakeScene({movement:{cell:96,cols:16,rows:8},other:{single:[32,32]}}),out=new CityOutlines(f.scene,host());
+  const move=out.variant('movement',HERO_SCALE*2)!;assert.ok(move);f.next();
+  const sticker=out.sticker(move.key)!;assert.ok(sticker);f.next();const other=out.variant('other',1)!;assert.ok(other);
+  out.releaseBase('movement');assert.equal(out.copyOf(move.key),undefined);assert.equal(out.copyOf(sticker.key),undefined);
+  assert.ok(f.removed.includes(move.key)&&f.removed.includes(sticker.key));assert.equal(out.copyOf(other.key),other);assert.equal(out.stats().count,1);
+});
+
 test('zoom change > 10%: copies rebuilt under new keys, the old ones destroyed a few frames later',()=>{
   const f=fakeScene({sheet:{cell:192,cols:2,rows:2}}),h=host(),out=new CityOutlines(f.scene,h);
   const a=out.variant('sheet',HERO_SCALE)!;

@@ -55,6 +55,8 @@
  * seconds count down and start over.
  * The minimap's slot is mounted (empty), as in the game, so the title is laid out clear of it.
  */
+import {shownTargets} from '../hud/arrows.ts';
+import type {EdgeKind} from '../hud/edges.ts';
 import type {InventoryCommand} from '../hud/inventory.ts';
 import {FIXTURE_HERO,HUD_SCENARIOS,fakeResult,fakeResultEvents,fakeView,type HudScenario} from '../hud/fixtures.ts';
 import {chaveiroExtras} from '../hud/chaveiro-extras.ts';
@@ -140,9 +142,9 @@ const bots=Math.max(0,Math.min(5,Number(params.get('bots'))||0));
 const ties=params.get('premios')==='empates';
 function tied<T extends {players:{stats?:unknown;weapons:unknown;passives:unknown}[]}>(v:T):T{
   if(!ties)return v;
-  const builds=[['guarda-chuva','ima'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
+  const builds=[['guarda-chuva','cartao'],['chinelo','tenis'],['chinelo','megafone'],['chinelo','audio'],['chinelo','cartao'],['chinelo']];
   return {...v,players:v.players.map((p,i)=>({...p,weapons:[{id:builds[i%6][0],level:i===5?2:1}],passives:builds[i%6].slice(1).map(id=>({id,level:1})),
-    stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,magnets:0,chests:0,evolves:0}}))};
+    stats:{damage:i===3?900:0,kills:i===3?60:0,revives:0,pickups:i===0?1:0,downs:0,heals:0,chests:0,evolves:0}}))};
 }
 /**
  * `arsenal=1` (armas-caixas-render-2, D-051): the manual combat's hands, each player holding an arsenal weapon, so the
@@ -271,9 +273,16 @@ function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:numbe
   return {...p,weapons,hand};
 }
 let eventId=0;
+/** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
+const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
+/** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
+const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
+  // D-051 (ninhos-rounds-fora): `ninhos=…` also puts 8 nests in the view, 2 fallen: the mode's chip and bar ("[ninho] 6/8"),
+  // no "Onda N" nor intermission, and the result's "Ninhos 2/8".
+  if(params.has('ninhos'))view={...view,structures:[...view.structures,...FAKE_NESTS]};
   // (With the kill-cam the wave is at its end: its 1.8 s banner is long gone, as in the game.)
   if((scenario==='wave'||scenario==='boss')&&params.get('zueira')!=='killcam')view.events=[{type:'round',index:view.round!.index,phase:'wave',name:scenario==='boss'?BOSS_NAME:ROUND_NAME,modifier:scenario==='boss'?undefined:MODIFIER,eventId:++eventId}];
   if(scenario==='prepare')view.events=[{type:'round',index:view.round!.index,phase:'prepare',eventId:++eventId}];
@@ -298,7 +307,6 @@ function load(next:HudScenario){
     if(!tutorial)view.events=[];
     // "Andar" lives in round 1 only (it never lights in a later round): its scene is round 1, lit for 6 s.
     if(dica==='walk'&&view.round)view.round={...view.round,index:1};
-    if(dica==='xp')view.pickups=[{id:'xp-1',kind:'xp',x:14,y:17,value:1},{id:'xp-2',kind:'xp',x:15,y:16,value:2}];
     if(dica==='rescue')view.players=view.players.map(p=>p.id==='p3'?{...p,hp:0,online:true,downed:{progress:.2,bleedOutTick:tick+400}}:p);
   }
   // D-051 inventory (`inv=meio|cheio`): p1 in manual combat; full, with a weapon on the ground at the hero's feet ("Trocar").
@@ -309,8 +317,6 @@ function load(next:HudScenario){
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
-  // D-051 nests (?ninhos=…): five nests, two fallen, so the result's round line reads "Ninhos 2/5".
-  if(scenario==='result'&&params.has('ninhos'))hud.update({...view,structures:[...view.structures,...[0,1,2,3,4].map(i=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}))]});
   // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).
   const vergonha=params.get('vergonha'),shamed=<T extends {shame?:unknown;players:{id:string}[]}>(r:T):T=>{
     if(vergonha==='nenhuma'){const {shame:_,...rest}=r;return rest as T;}
@@ -489,7 +495,7 @@ if(bordas)void (async()=>{
     const covered=all(`${COVERING},.hs-cam,.hs-gear,.hs-stick,.hs-attack`).filter((r):r is NonNullable<typeof r>=>!!r);
     const heroBox={x:anchor.x-28,y:anchor.y-56,width:56,height:56};
     const seen={viewport:{x:0,y:0,...viewport},covered};
-    hud.edges!.render(layoutEdges(targets,area,heroBox,{seen,windows:all(WINDOWS)}));
+    hud.edges!.render(layoutEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS)}));
     // What must keep an arrow (a caído or the boss off the field), as the game writes it: the audits check it against
     // the arrows drawn, whatever window is open (NEW-20261011-UX-janela-esconde-caido).
     hud.edges!.need(pointedTargets(targets,area,seen));
@@ -592,6 +598,8 @@ if(cidade)void (async()=>{
     ...(objective?{objective}:{}),...(banks?{banks}:{}),
     ...(tutorial&&base.round?{round:{...base.round,index:1,remaining:9}}:{}),
     players:base.players.map((p,i)=>({...p,name:people[i].name,online:true,...(people[i].downed?{hp:0,downed:{progress:0,bleedOutTick:tick+20*14}}:{})}))};
+  // D-051 (ninhos-rounds-fora): the same 8 nests, 2 fallen, in the city's run (the chip and the phone bar read them).
+  if(params.has('ninhos'))run.structures=[...run.structures,...FAKE_NESTS];
   // The sandbox's ticker (unless frozen=1) keeps updating this run.
   view=run;hud.update(run);
   const phase:'wave'|'prepare'=run.round?.phase==='prepare'?'prepare':'wave';
@@ -618,11 +626,11 @@ if(cidade)void (async()=>{
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
       hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{})});
     previous=groupKeys;
-    const arrows=city.layoutCityEdges(targets,area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
+    const arrows=city.layoutCityEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);
     // What the arrows were laid out from, for the visual audits (card cidade-04).
     (window as unknown as {__cityEdges:unknown}).__cityEdges={targets,arrows,area,hero:heroBox};
-    hud.edges!.need(pointedTargets(targets,area,seen),city.cityMustPoint);
+    hud.edges!.need(pointedTargets(shownHere(targets),area,seen),city.cityMustPoint);
     // The WC3 minimap (wc-minimap/*), as rescue.ts draws it: the whole city, the marks, the camera's view.
     wcDriver.draw({minimap:hud.wc!,terrain:field,city:terrain.asset,view:vista,nowMs:performance.now(),selfId:'p1',self:hero,
       players:people.map(p=>({...p,online:true})),states:new Map(people.map(p=>[p.id,{downed:p.downed}])),enemies:[...enemies,{x:map.plaza.x+30*S,y:map.plaza.y-26*S,boss:true},...sleepers],

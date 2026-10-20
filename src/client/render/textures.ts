@@ -457,12 +457,6 @@ const VEHICLE_DRAW:Record<VehicleKind,(g:G)=>void>={
 };
 
 const PICKUP_DRAW:Record<string,(g:G)=>void>={
-  xp:g=>{
-    sil(g,[['p',[0,-13,9,-4,0,13,-9,-4]]],0x6fe0dc,0x2a95a6);
-    poly(g,[0,-13,-9,-4,-2,-4],0xbaf6f2);poly(g,[0,-13,9,-4,2,-4],0x9aeee8);
-    poly(g,[2,-4,9,-4,0,13],0x3fbcc4);poly(g,[-2,-4,2,-4,0,13],0x58cfd2);
-    sparkle(g,-3.5,-6,4);g.fillStyle(0xffffff,.8).fillCircle(4,4,1);
-  },
   heal:g=>{
     g.save().translateCanvas(0,-.5).scaleCanvas(.85,.85);
     const crust:Shape[]=[['c',-1,4,10.5],['p',[-10.2,0,-2.5,-12.5,.5,-12.5,8.2,0]],['c',-1,-12,2.3]];
@@ -474,15 +468,6 @@ const PICKUP_DRAW:Record<string,(g:G)=>void>={
     g.fillStyle(0xf26d8f).fillCircle(10.5,-9,2.4).fillCircle(14.5,-9,2.4).fillTriangle(8.3,-8.2,16.7,-8.2,12.5,-3.6);
     g.fillStyle(0xffffff).fillCircle(10,-9.6,.8);
     g.restore();
-  },
-  magnet:g=>{
-    const u=[-7,-9,-7,2,...arcPts(0,2,7,Math.PI,0,14).slice(2),7,-9];
-    g.lineStyle(12,0x4a3c5a).strokePoints(pts([-7,-11,...u.slice(2,-2),7,-11]),false);
-    g.lineStyle(8,0xe5576a).strokePoints(pts([-7,-8,-7,2,...arcPts(0,2,7,Math.PI,Math.PI/2,7).slice(2)]),false);
-    g.lineStyle(8,0x5b8fe2).strokePoints(pts([...arcPts(0,2,7,Math.PI/2,0,7),7,-8]),false);
-    g.fillStyle(0xe9eef4).fillRect(-11,-13,8,6).fillRect(3,-13,8,6);
-    g.fillStyle(0xffffff,.6).fillRect(-10,-7,2,7);
-    line(g,[-13,-14,-15,-16],0xfff2a8,1.6);line(g,[13,-14,15,-16],0xfff2a8,1.6);line(g,[0,-14,0,-16],0xfff2a8,1.6);
   },
   chest:g=>{
     sil(g,[['r',-18,-4,36,18,3],['r',-18,-15,36,13,6]],0xc28a55,0x7e5130);

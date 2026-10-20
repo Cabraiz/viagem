@@ -3,6 +3,7 @@ import {createTerrain,type TerrainLayer} from './terrain/renderer.ts';
 import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
+import {installUploadQueue} from './preload/upload-queue.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -51,8 +52,10 @@ import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
+import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
+import {effectivePhase} from './calm-phase.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -67,6 +70,8 @@ const PUSH_MS=2*STEP*1000;
 const ENEMY_TAP_RADIUS_PX=26;
 /** Endless world: the depth origin follows the hero in steps of this many units (projection.ts viewDepth). */
 const DEPTH_REBASE_UNITS=24;
+/** The visual hook (data-sprite-* on the canvas, for tests and scripts) runs at most this often (ms): F3. */
+const VISUAL_HOOK_MS=250;
 /** The water bake covers the view plus this share of it on each side, and is redone only when the view leaves it. */
 const WATER_MARGIN=.2;
 /** Place fichas: above canopies and the horde's numbers and balloons, below allies (96400) and telegraphs. */
@@ -80,6 +85,7 @@ export interface SceneHooks {
   ready:()=>void;
   terrain?:(seed:number,signature:string)=>void;
   message:(text:string)=>void;
+  /** The hero's animation for tests and scripts, at most every VISUAL_HOOK_MS (it lists every texture to count the sheets). */
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
   /**
@@ -184,6 +190,8 @@ export class IslandScene extends Phaser.Scene {
     groundLuminance:(x,y)=>this.city?cityGroundLuminance(this.city.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
   private shadow!:Phaser.GameObjects.Ellipse;
+  /** BUG sombra-longe: the hero's frame laid on the ground (render/silhouette.ts); off in economy mode. */
+  private heroSil?:Phaser.GameObjects.Image;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
   /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
@@ -231,7 +239,9 @@ export class IslandScene extends Phaser.Scene {
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse;
     /** City only: the ally's contact shadow, Breu 38% like the hero's (created on demand, dropped off the city). */
-    shadow?:Phaser.GameObjects.Ellipse}>();
+    shadow?:Phaser.GameObjects.Ellipse;
+    /** The ally's cast silhouette (render/silhouette.ts), like the hero's; created on demand. */
+    sil?:Phaser.GameObjects.Image}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
   /** Wall, camp ring, towers and gather nodes (VGM-046B), fed by the same RunView. */
@@ -257,6 +267,8 @@ export class IslandScene extends Phaser.Scene {
   private buildPlan?:ReturnType<typeof buildPlanFor>;
   private readonly towerFigures:{x:number;y:number;z:number}[]=[];
   private readonly shakeAt={x:0,y:0};
+  /** When the visual hook last ran (VISUAL_HOOK_MS). */
+  private visualAt=-Infinity;
   private projector?:Projector;
   private stateVersion=-1;
   private offersVersion=-1;
@@ -542,7 +554,7 @@ export class IslandScene extends Phaser.Scene {
     const hero=this.heroScale;
     this.shadow?.setScale(hero);this.ring?.setScale(hero);
     const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
-      if(s.texture.key.startsWith('sprite:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
+      if(s.texture.key.startsWith('sprite:')||s.texture.key.startsWith('sprite128:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
     };
     if(this.actor)resize(this.actor,112);
     for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(hero);}
@@ -619,6 +631,8 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Whether the view may turn now (UX-camera-segue 4: never during a wave; the buttons go grey). */
   rotationLocked(){const net=this.hooks.net;return !!net&&rotationLocked(net.run?.phase,this.roundPhase);}
+  /** The round phase the client acts on (calm-phase.ts): the room's, or calm in the nests mode. */
+  get phase(){return this.roundPhase;}
   /** Turns the view by 90° steps around the hero: the world turns, the camera snaps back onto the hero. Refused during a wave. */
   rotateCamera(turn:number){
     if(!this.actor||this.rotationLocked())return this.view;
@@ -734,6 +748,8 @@ export class IslandScene extends Phaser.Scene {
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
     this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
+    this.heroSil??=silhouetteImage(this,'hero',depth-2);
+    castSilhouette(this.heroSil,this.actor,p.x,p.y,!this.economy,depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
   }
   /** Whether a prop drawn in front of the point `p` (screen) at `depth` covers a sprite standing there. */
@@ -822,7 +838,10 @@ export class IslandScene extends Phaser.Scene {
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
-    this.hooks.visual?.(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')).length);
+    if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
+      this.visualAt=_time;
+      this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
+    }
     // City: re-base only before actors are placed (the origin may trail the hero by a frame, harmless), so nobody is
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
@@ -869,7 +888,7 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net;
     if(!this.fortify&&this.projector&&net)this.fortify=new FortifyRenderer(this,{projector:this.projector,reduced:this.reduced,
       cell:(this.buildPlan??=buildPlanFor(this.field)).cell,
-      playerAt:id=>id===net.id?this.position:net.players.get(id)});
+      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0});
     return this.fortify;
   }
   /**
@@ -1015,7 +1034,7 @@ export class IslandScene extends Phaser.Scene {
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
   private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
   private figureWorldBox(a:Phaser.GameObjects.Sprite,classId:string){
-    const f=a.texture.key.startsWith('sprite:')?this.sprites.figureIn(a,classId):undefined;
+    const f=a.texture.key.startsWith('sprite:')||a.texture.key.startsWith('sprite128:')?this.sprites.figureIn(a,classId):undefined;
     if(!f)return a.getBounds();
     const sx=Math.abs(a.scaleX),sy=Math.abs(a.scaleY),w=a.frame.width,h=a.frame.height,ox=a.originX*w,oy=a.originY*h;
     const left=a.flipX?w-f.right:f.left,right=a.flipX?w-f.left:f.right;
@@ -1046,7 +1065,8 @@ export class IslandScene extends Phaser.Scene {
     if(net.feed.stateVersion!==this.stateVersion){
       this.stateVersion=net.feed.stateVersion;this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.take();
-      this.roundPhase=runView.round?.phase;this.viewTick=runView.tick;
+      // D-051 nests: calm around this hero stands for the intermission (calm-phase.ts).
+      this.roundPhase=effectivePhase(runView,net.predicted);this.viewTick=runView.tick;
       // The match is on (a round in the room's run view, drawn by this scene): the production smoke (scripts/smoke-prod.mjs)
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
@@ -1055,7 +1075,7 @@ export class IslandScene extends Phaser.Scene {
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
-      const runView=net.feed.peek();this.roundPhase=runView.round?.phase;
+      const runView=net.feed.peek();this.roundPhase=effectivePhase(runView,net.predicted);
       this.hooks.runView?.(runView);
     }
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
@@ -1095,7 +1115,7 @@ export class IslandScene extends Phaser.Scene {
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
@@ -1120,7 +1140,9 @@ export class IslandScene extends Phaser.Scene {
         const look=heroShadow(true);
         objects.shadow??=this.add.ellipse(0,0,HERO_SHADOW_SIZE.width,HERO_SHADOW_SIZE.height,look.color,look.alpha);
         objects.shadow.setScale(k).setPosition(q.x,q.y).setDepth(depth-2);
-      }else if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}
+        objects.sil??=silhouetteImage(this,'hero',depth-2);
+        castSilhouette(objects.sil,objects.image,q.x,q.y,!this.economy&&!down,depth-2);
+      }else{if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}if(objects.sil){objects.sil.destroy();objects.sil=undefined;}}
       // Imported ring (the "Você" ring tinted Breu) at today's outer width and depth: the ellipse hides while it draws.
       if(this.allyRings?.draw(player.id,q.x,q.y,ALLY_RING_WIDTH*k,depth-1,time,this.reduced))objects.ring.setVisible(false);
       else if(!objects.ring.visible)objects.ring.setVisible(true);
@@ -1411,6 +1433,7 @@ export class IslandScene extends Phaser.Scene {
 }
 
 export function createIsland(parent:HTMLElement,hooks:SceneHooks){
+  installUploadQueue(Phaser); // decode off the main thread, at most one big sheet per frame (preload/upload-queue.ts)
   const scene=new IslandScene(hooks);
   const game=new Phaser.Game({type:Phaser.WEBGL,parent,backgroundColor:'#8dcecc',
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},

@@ -1,11 +1,12 @@
 import './client/style.css';
 import { setupSections } from './client/sections.ts';
-import { classes, filterClasses, getClass, roles, type HeroClass } from './rules/index.ts';
+import { filterClasses, getClass, isPlayableClass, playableClasses as classes, roles, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
+import { MenuDance } from './client/ui/menu-dance.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -37,7 +38,8 @@ let nickname = '';
 try {
   const saved = JSON.parse(localStorage.getItem('viagem:hero:v1') ?? 'null');
   if (saved && typeof saved.name === 'string' && typeof saved.classId === 'string') {
-    selected = getClass(saved.classId) ?? selected;
+    // D-053: a saved hidden class falls back to the first playable one.
+    if(isPlayableClass(saved.classId)) selected = getClass(saved.classId) ?? selected;
     nickname = saved.name.slice(0,20);
     color = colors.includes(saved.color) ? saved.color : color;
   }
@@ -54,15 +56,13 @@ app.innerHTML = `
   <section id="personagem" class="journey-screen creation-window" role="tabpanel" aria-labelledby="tab-personagem">
     <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
     <div class="window-content">
-      <section class="portrait-panel" aria-label="Retrato do personagem selecionado">
-        <div id="portrait" class="portrait" role="img"></div>
-        <div class="portrait-caption"><span id="portrait-role"></span><blockquote id="quote"></blockquote></div>
+      <section class="portrait-panel" aria-label="Personagem selecionado">
+        <h2 id="class-name"></h2>
+        <div id="portrait" class="portrait dance-pending" role="img"></div>
         <nav class="portrait-navigation" aria-label="Trocar personagem"><button id="previous" class="round-button" aria-label="Classe anterior">‹</button><button id="next" class="round-button" aria-label="Próxima classe">›</button></nav>
       </section>
       <div class="character-sheet">
-        <h2 id="class-name"></h2>
-        <div class="identity-fields"><label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" /><fieldset class="palette"><legend class="sr-only">Cor do emblema</legend><div>${colors.map((value,index)=>`<button type="button" class="swatch" data-color="${value}" style="--swatch:${value}" aria-label="Cor ${['menta','coral','lilás','dourado','azul','rosa'][index]}" aria-pressed="false"></button>`).join('')}</div></fieldset></div>
-        <div class="stats-and-story"><div class="radar-wrap" role="img" aria-labelledby="stats-text"><svg viewBox="0 0 220 180" aria-hidden="true"><path d="M110 20 187 90 110 160 33 90Z" class="radar-grid"/><path d="M110 40 165 90 110 140 55 90Z M110 63 140 90 110 117 80 90Z" class="radar-grid"/><path d="M110 20V160 M33 90H187" class="radar-axis"/><polygon id="radar-shape"/><circle cx="110" cy="90" r="4" fill="#6d609e"/></svg><span class="stat-label power">Força <b id="stat-0"></b></span><span class="stat-label agility">Agilidade <b id="stat-1"></b></span><span class="stat-label wits">Malícia <b id="stat-2"></b></span><span class="stat-label charm">Carisma <b id="stat-3"></b></span><span class="sr-only" id="stats-text"></span></div><div class="skill-box"><span class="skill-icon" aria-hidden="true">✹</span><div><h3 id="skill-name"></h3><p id="skill-description"></p></div></div></div>
+        <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
         <div class="selection-footer"><button id="confirm" class="primary-button">Esse sou eu!</button></div>
       </div>
     </div>
@@ -128,8 +128,10 @@ function lazySrc(img: HTMLImageElement, url: string) {
 // After the first screen is up, the page of thumbs already rendered comes in idle time, so "Classes" opens filled.
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
+const menuDance=new MenuDance(document.getElementById('portrait')!);
 const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
+  menuDance.show(hero.id);
   const frame=document.getElementById('portrait')!;
   const current=frame.querySelector('img'), img=portraitImage(hero,!current), token=++portraitToken;
   // Flicking past a class drops its half-downloaded art, so on 4G the bandwidth goes to the one that stays on screen.
@@ -137,7 +139,8 @@ function showPortrait(hero: HeroClass, interactive: boolean) {
   pending=img;
   if(current===img) { frame.removeAttribute('aria-busy'); return; }
   let placed=false;
-  const place=()=>{ if(token!==portraitToken) return; placed=true; frame.replaceChildren(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
+  const replaceImage=(image:HTMLImageElement)=>{for(const old of frame.querySelectorAll('img'))old.remove();frame.prepend(image);};
+  const place=()=>{ if(token!==portraitToken) return; placed=true; replaceImage(img); frame.removeAttribute('aria-busy'); if(interactive) warmNeighbours(hero); };
   // Failed download: forget it (the next tap fetches again) and keep what is on screen, never a blank frame.
   const failed=()=>{ forget(img); if(token===portraitToken) frame.removeAttribute('aria-busy'); };
   if(!current) { img.addEventListener('error',()=>{ forget(img); placed=false; showThumb(); },{once:true}); place(); return; }
@@ -147,7 +150,7 @@ function showPortrait(hero: HeroClass, interactive: boolean) {
   if(!(img.complete&&img.naturalWidth)) showThumb();
   function showThumb() {
     const thumb=new Image(); thumb.alt=''; thumb.decoding='async'; thumb.className='portrait-art'; thumb.src=thumbUrl(hero);
-    thumb.decode().then(()=>{ if(token!==portraitToken||placed) return; frame.replaceChildren(thumb); frame.setAttribute('aria-busy','true'); },()=>{});
+    thumb.decode().then(()=>{ if(token!==portraitToken||placed) return; replaceImage(thumb); frame.setAttribute('aria-busy','true'); },()=>{});
   }
 }
 function setArt(id: string,hero: HeroClass) {
@@ -162,20 +165,11 @@ function setArt(id: string,hero: HeroClass) {
 }
 function renderSelected(announce=false) {
   const index=classes.indexOf(selected);
-  document.getElementById('portrait-role')!.innerHTML=`${suit(selected.role)}${selected.role}`;
-  text('quote',`“${selected.quote}”`);
   text('class-name',selected.name);
-  text('skill-name',selected.skill);
-  text('skill-description',selected.skillDescription);
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
-  selected.stats.forEach((value,index)=>text(`stat-${index}`,String(value)));
-  text('stats-text',`Força ${selected.stats[0]}, agilidade ${selected.stats[1]}, malícia ${selected.stats[2]}, carisma ${selected.stats[3]}.`);
-  const [power,agility,wits,charm]=selected.stats;
-  document.getElementById('radar-shape')!.setAttribute('points',`110,${90-power*14} ${110+agility*15.4},90 110,${90+wits*14} ${110-charm*15.4},90`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
-  document.querySelectorAll<HTMLButtonElement>('.swatch').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.color===color)));
   document.querySelectorAll<HTMLButtonElement>('[data-hero]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.hero===selected.id)));
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}`);
 }
@@ -261,7 +255,6 @@ document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>butt
   document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
   renderRoster();
 }));
-document.querySelectorAll<HTMLButtonElement>('.swatch').forEach(button=>button.addEventListener('click',()=>{color=button.dataset.color!;renderSelected();}));
 document.getElementById('page-prev')!.addEventListener('click',()=>{page--;renderRoster();});
 document.getElementById('page-next')!.addEventListener('click',()=>{page++;renderRoster();});
 // Swipe on the catalog turns the page; a real swipe swallows the click so it never also picks a class.
@@ -300,10 +293,11 @@ const coopButton=document.createElement('button');coopButton.id='enter-coop';coo
 // A chunk of an older deploy is not "could not open": the watch reloads and the resume reopens the lobby (and the room).
 async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   coopButton.disabled=true;
+  const releaseDance=menuDance.hold();
   const intent:ResumeIntent=options.room?{view:'lobby',room:options.room}:{view:'lobby'};
   try{await opening(intent,async()=>{const {openLobby}=await import('./client/lobby.ts');dialog.close();await openLobby(selected,nickname.trim(),options);});}
   catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
-  finally{coopButton.disabled=false;}
+  finally{releaseDance();coopButton.disabled=false;}
 }
 coopButton.addEventListener('click',()=>void openCoop());
 document.getElementById('back-to-classes')!.addEventListener('click',()=>{dialog.close();sections.show('classes');});
@@ -323,19 +317,21 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
   button.disabled=true;text('explore-error','');
   if(island){
+    const releaseDance=menuDance.hold();
     try {
       const {openExploration}=await import('./client/explore.ts');
       dialog.close();await openExploration(selected,nickname.trim());
     } catch(e) {if(!chunkFailed(e))text('explore-error','Não foi possível carregar a ilha. Tente novamente.');}
-    finally {button.disabled=false;}
+    finally {releaseDance();button.disabled=false;}
     return;
   }
   const label=button.textContent;button.textContent='Preparando…';
+  const releaseDance=menuDance.hold();
   try {
     const {openSolo}=await import('./client/lobby.ts');
     await openSolo(selected,nickname.trim(),{bots,onJoined:()=>{button.textContent=label;dialog.close();}});
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
-  finally {button.disabled=false;button.textContent=label;}
+  finally {releaseDance();button.disabled=false;button.textContent=label;}
 });
 // Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
 const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});

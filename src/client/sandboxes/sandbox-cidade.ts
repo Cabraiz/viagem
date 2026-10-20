@@ -92,6 +92,7 @@ import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './ar
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
 import {queueHordeArt} from '../art/horde-art.ts';
+import type {LiveNest} from '../render/city/live/nests.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
 import {TOWER_LOOK,TowerFeed,aimIndex,towerFootprint,type TowerKind,type TowerView,type WireStructure} from '../render/towers/tower-rules.ts';
 import {CITY_GROUND_DEPTH} from '../render/city/city-layer.ts';
@@ -137,23 +138,33 @@ const tele=real&&params.get('tele')==='1';
  * an elite and every pickup in a ring around the hero, to see them on the ground under the hero (`hero=cx,cy`).
  */
 const outlinesOn=params.get('contorno')!=='0';
-const cast=tele&&params.get('elenco')==='1';
+// elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
+const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
+const cast=tele&&params.has('elenco');
 /**
  * `arsenal=1` (with tele=1; card armas-caixas-render, D-051): the manual combat's crates by rarity, one opening under the
  * hero and one bursting open, items on the ground, the hero's hand and the arsenal's shots (sandboxes/arsenal-view.ts);
  * `arma=pistola|escopeta|…` fixes the weapon (default: all seven in turn).
  */
 const arsenal=tele&&params.get('arsenal')==='1';
+/**
+ * `ninhos=1` (with tele=1; card carro-ninhos-acabamento, D-051): three nests around the hero on the live layer as
+ * scene.pushNests draws them (asleep with its band sleeping, active with its band waking up, destroyed). The band wakes
+ * every NEST_WAKE_MS; in the modo foto once, NEST_WAKE_AGO_MS before the fixed clock, so the print catches it waking.
+ */
+const ninhos=tele&&params.get('ninhos')==='1',NEST_WAKE_MS=3000,NEST_WAKE_AGO_MS=150;
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
 const bancos=real&&params.get('bancos')==='1';
 /**
  * `obra=1` with `objetivo=1` (D-052 slice 4, placeholder): the fortify layer around the fake car: a wall row by damage
- * stage, two free barricades (rot 0 and 1), the hero on the rope at the bumper and the build ghost with its hints.
+ * stage, three free barricades (rot 0 and 1, one down), the hero on the rope at the bumper and the build ghost with its hints.
  * `fantasma=` muro|barricada|vigia-do-predio (default) picks the piece; `fantasma=carro` puts it on the car (red).
  */
 const obra=objective&&params.get('obra')==='1';
+/** `anda=<graus>` with obra=1 (D-052): the car swings back and forth (sandbox-chaveiro.ts carSwing), pulled by the hero's rope. */
+const carMoves=obra&&params.has('anda');
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
@@ -202,14 +213,18 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
-  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro};
+  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
+  /** obra=1: the fortify view pushed (anda= moves its car). */
+  private obraView?:RunView;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
-  private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics;view:RunView;pushed:number};
+  private lab?:{horde:HordeRenderer;projector:Projector;you:YouMarkers;labels:MapLabel[];destination:Phaser.GameObjects.Graphics;view:RunView;pushed:number;
+    /** ninhos=1: the nests and the two views of the waking band (asleep, then awake). */
+    nests?:{list:LiveNest[];asleep:RunView;awake:RunView}};
   private decoded?:CityTerrain;
   /** torres=…: the stand-in defenses, the renderer and the enemies' parallel arrays it aims at. */
   private defenses:TowerView[]=[];
@@ -233,6 +248,8 @@ class CitySandbox extends Phaser.Scene {
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
+    // ninhos=1: the critters' art (sleep and wake are art actions).
+    if(ninhos&&!arsenal)queueHordeArt(this);
   }
   create(){
     if(real){
@@ -300,7 +317,12 @@ class CitySandbox extends Phaser.Scene {
     this.tick(dt);
     this.stone?.update(_t);
     if(this.chaveiro){
-      const now=fotoT??_t,t0=performance.now(),{view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
+      const now=fotoT??_t,t0=performance.now();
+      // anda= in the modo foto (a fixed clock): the second before, so the car has turned to its move.
+      if(carMoves&&fotoT!==undefined&&!this.chaveiro.warmed){for(let i=10;i>0;i--){const w=this.chaveiro.fake.view(now-i*100);this.chaveiro.renderer.push(w.view,w.tick);this.chaveiro.renderer.update(now-i*100);}}
+      this.chaveiro.warmed=true;
+      const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
+      if(carMoves&&this.fortify)this.pullCar(view.car);
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
     }
     this.stepBanks(_t);
@@ -360,12 +382,22 @@ class CitySandbox extends Phaser.Scene {
     const renderer=new ChaveiroRenderer(this,{projector:this.cityProjector(),reduced:reducedMotion,hero:()=>this.at});
     return {renderer,fake};
   }
+  /** anda=: the hero pulls the car by the rope from ahead of its move (the rope's slack in the swing). */
+  private pullCar(car:{x:number;y:number}){
+    const view=this.obraView;if(!view||!this.fortify)return;
+    const h=Number(params.get('anda'))*Math.PI/180||0,ahead=CAR_HALF.l+2.4;
+    this.at={x:car.x+Math.cos(h)*ahead,y:car.y+Math.sin(h)*ahead};
+    this.fortify.push({...view,objective:{...view.objective!,car:{...view.objective!.car,x:car.x,y:car.y}}});
+    // Only the hero moves: the camera stays on the car (fit placed it there).
+    const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view);
+    this.hero.setPosition(feet.x,feet.y);this.shadow.setPosition(feet.x,feet.y);
+  }
   /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
   private mountObra(){
     const projector=this.cityProjector(),cell=CITY_BUILD_CELL,car=this.chaveiro!.fake.view(0).view.car;
-    // The hero on the rope, ahead of the front bumper.
-    this.at={x:car.x+CAR_HALF.l+2.2,y:car.y+.3};
-    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:id=>id==='voce'?this.at:undefined});
+    // The hero on the rope, ahead of the front bumper (anda=: the camera on the car, pullCar moves him).
+    this.at=carMoves?{x:car.x+1,y:car.y-1}:{x:car.x+CAR_HALF.l+2.2,y:car.y+.3};
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:id=>id==='voce'?this.at:undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
     const c0=Math.round(car.x/cell)+1,r0=Math.round((car.y+2.6)/cell);
     const walls:StructureView[]=[0,1,2,3,4,5].map(i=>{
       const hp=[250,250,180,110,40,0][i];
@@ -375,13 +407,14 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:400,c,r,...(rot?{rot}:{})};
     };
-    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220)];
+    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220),bar('b2',c0+9,r0+3,0,0)];
     const tick=100,objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
-    this.fortify.push(view);
+    this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
     this.stone.push(view);
+    if(carMoves)return; // anda=: the car and its rope, no ghost over the hero
     // The ghost: a free spot to the car's left (green), or on the car itself (`fantasma=carro`, red).
     const wanted=params.get('fantasma')??'vigia-do-predio',piece=wanted==='carro'?'vigia-do-predio':wanted;
     const [w,h]=footprintCells(piece),spot=wanted==='carro'?{x:car.x+.4,y:car.y}:{x:car.x+CAR_HALF.l+3.6,y:car.y-2.4};
@@ -436,11 +469,12 @@ class CitySandbox extends Phaser.Scene {
       // acucar=1 (D-047): both critters bought a sweet from Dona Cida (EnemyView.sugar, protocol 15).
       enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
-    horde.push(cast?withCast(view,x,y):view);
+    const nests=ninhos?nestLab(view,x,y):undefined;
+    horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
     const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
     const destination=this.add.graphics().setDepth(100000);
-    this.lab={horde,projector,you,labels,destination,view,pushed:-1};
+    this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
   }
   /** torres=1|12: the defenses around the hero (see the header) and the renderer on the city's projection. */
@@ -524,6 +558,13 @@ class CitySandbox extends Phaser.Scene {
     const lab=this.lab;if(!lab)return;
     lab.projector.view=this.view;
     if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma')));}}
+    if(lab.nests){
+      // The band wakes (asleep → awake: layers.ts plays `wake`), again every NEST_WAKE_MS; the modo foto's clock is fixed.
+      const now=fotoT??time,step=fotoT!==undefined?0:Math.floor(time/NEST_WAKE_MS);
+      if(step!==lab.pushed){lab.pushed=step;lab.horde.push(lab.nests.asleep);lab.horde.update(now-NEST_WAKE_AGO_MS,dt);lab.horde.push(lab.nests.awake);}
+      this.layer?.vivo?.setNests(lab.nests.list,this.view,(nx,ny)=>{const p=lab.projector.project(nx,ny,{x:0,y:0});return {x:p.x,y:p.y,depth:lab.projector.depth(nx,ny)};});
+      time=now;
+    }
     lab.horde.update(time,dt);
     const feet={x:this.hero.x,y:this.hero.y},zoom=this.cameras.main.zoom;
     lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2}]);
@@ -636,10 +677,27 @@ if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start(
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{
-  const kinds=[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
+  const kinds:string[]=castIds.length?castIds:[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
   const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
-    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
-    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:kind==='xp'?5:1}))]};
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
+    pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:1}))]};
+}
+
+/**
+ * ninhos=1: the nests in a column through (x, y) — asleep up the screen, active by the hero, destroyed down it — and the views of
+ * its critters: four sleeping by the asleep nest, four by the active one that wake (asleep in the first view only).
+ */
+function nestLab(base:RunView,x:number,y:number):{list:LiveNest[];asleep:RunView;awake:RunView}{
+  const asleepAt={x:x-5,y:y-5},activeAt={x:x+1.5,y:y+1.5},list:LiveNest[]=[
+    {id:'ninho-a',...asleepAt,size:'G',hp:60,awake:false},{id:'ninho-b',...activeAt,size:'M',hp:40,awake:true},
+    {id:'ninho-c',x:x+6.5,y:y+6.5,size:'M',hp:0,awake:true}];
+  const kinds=ENEMY_KINDS.filter(k=>k!=='chefe').slice(0,4);
+  const band=(at:{x:number;y:number},tag:string,asleep:boolean)=>kinds.map((kind,i)=>{
+    const a=i/kinds.length*Math.PI*2+.4;
+    return {id:`${tag}${i}`,kind,x:at.x+Math.cos(a)*1.9,y:at.y+Math.sin(a)*1.9,hp:5,maxHp:5,...(asleep?{asleep:true as const}:{})};
+  });
+  const view=(waking:boolean):RunView=>({...base,telegraphs:[],pickups:[],enemies:[...band(asleepAt,'z',true),...band(activeAt,'w',waking)]});
+  return {list,asleep:view(true),awake:view(false)};
 }

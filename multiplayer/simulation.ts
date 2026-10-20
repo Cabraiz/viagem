@@ -10,8 +10,8 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime} from '../src/sim/index.ts';
-import {refreshStats} from '../src/rules/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt} from '../src/sim/index.ts';
+import {CALMA,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -253,6 +253,7 @@ export class Simulation {
   readonly combat?:CombatMode;
   /** D-051: 'ninhos' (city + chaveiro only, RunSystemsOptions.mode): the nests instead of the waves; default the rounds. */
   readonly mode?:'ninhos';
+  private readonly nestPopulation?:number;
   /**
    * `world` defaults to the island here (the deterministic lab most sim tests were written on); rooms pass
    * DEFAULT_WORLD, the endless world (D-019): spawn around the players (spawn-em-volta), wide positions and areas of
@@ -270,12 +271,14 @@ export class Simulation {
     /** D-051: the manual combat ('manual'); default the automatic weapons. */
     combat?:CombatMode;
     /** D-051: the nests mode (RunSystemsOptions.mode); default the rounds. No room asks for it yet. */
-    mode?:'rounds'|'ninhos'}={}){
+    mode?:'rounds'|'ninhos';
+    /** Mode 'ninhos': × the sleepers (RunSystemsOptions.nestPopulation); benches and tests only. */
+    nestPopulation?:number}={}){
     if(options.world==='cidade'&&options.terrain?.world!=='cidade')throw new Error("world 'cidade' needs the decoded city terrain");
     const generated=options.world==='cidade'?undefined:options.world;
     this.city=options.terrain instanceof CityTerrain?options.terrain.fork():undefined;
     this.cityStructures=options.cityStructures??false;
-    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';if(options.mode==='ninhos')this.mode='ninhos';
+    this.cityBalance=options.cityBalance;this.rotation=options.rotation;this.objective=options.objective;if(options.combat==='manual')this.combat='manual';if(options.mode==='ninhos')this.mode='ninhos';this.nestPopulation=options.nestPopulation;
     this.seed=seed;this.terrain=this.city??options.terrain??new TerrainField(seed,{world:generated});
     this.world=new SimWorld({terrain:this.terrain,seed:runSeed(seed,0),players:this.players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
     this.systems=this.assemble();
@@ -286,6 +289,26 @@ export class Simulation {
   get enemies():EnemyState[]{return [...this.world.enemies.values()];}
   /** Decided once per run; a victory beats a defeat decided in the same tick. */
   get outcome():SimOutcome|undefined{return this.result;}
+  /** D-051 calm checkpoints (calmCheckpointDue): the run they belong to, the last one's tick, the nests seen down. */
+  private calm={run:-1,last:0,down:0};
+  /**
+   * D-051 mode 'ninhos' (card ninhos-rounds-fora: no intermission to checkpoint at): whether the room should checkpoint
+   * now. Right after a nest falls; else every CALMA.checkpointEveryS while no standing hero has a critter awake within
+   * CALMA.checkpointR and there is no boss. Always false in the rounds mode (the intermission does it) or once the run
+   * is decided. Call it once per tick: it counts the falls it has answered and when it said yes.
+   */
+  calmCheckpointDue():boolean{
+    if(this.mode!=='ninhos'||this.result)return false;
+    const w=this.world,c=this.calm,down=this.systems.nests?.state.nests.filter(n=>n.down).length??0;
+    // A new run (or one resumed from a checkpoint): the clock starts now, the nests already down are answered.
+    if(c.run!==this.runs){this.calm={run:this.runs,last:w.tick,down};return false;}
+    if(down>c.down){c.down=down;c.last=w.tick;return true;}
+    if(w.tick-c.last<ticks(CALMA.checkpointEveryS))return false;
+    const boss=this.systems.boss.state;
+    if(boss.bossId&&!boss.defeated)return false;
+    for(const p of this.players.values())if(isStanding(p)&&!calmAt(w,p.x,p.y,CALMA.checkpointR))return false;
+    c.last=w.tick;return true;
+  }
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}
@@ -321,7 +344,7 @@ export class Simulation {
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),
       ...(this.combat?{combat:this.combat}:{}),
-      ...(this.mode?{mode:this.mode}:{}),
+      ...(this.mode?{mode:this.mode}:{}),...(this.nestPopulation!==undefined?{nestPopulation:this.nestPopulation}:{}),
       ...(checkpoint?{checkpoint}:{}),
     });
   }
@@ -868,7 +891,8 @@ export class Simulation {
         case 'pickup':{
           const s=mine(e.player);if(!s)break;
           s.pickups++;
-          if(e.kind==='heal')s.heals++;else if(e.kind==='magnet')s.magnets++;else if(e.kind==='chest')s.chests++;
+          // D-054: no ímã any more, so RunStats.magnets stays 0 (kept on the wire: StatsWire and stored checkpoints keep their layout).
+          if(e.kind==='heal')s.heals++;else if(e.kind==='chest')s.chests++;
           break;
         }
       }

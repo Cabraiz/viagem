@@ -27,7 +27,7 @@
  * walked with) follow the streets (city/bot-routes.ts: a flow field per goal cell, small shared LRU) instead of a
  * straight line, the walk home is timed by the street distance and the crates are ranked by it. The plaza is a maze of
  * planters, so in combat the bot also: walks back all the way to HOME_SLACK inside its leash once pulled, is lured only
- * by critters and gems in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
+ * by critters and pickups in plain sight that it can answer from well inside the leash (ROAM_IN), circles only where that side is open, holds still
  * when its pulls cancel out (HOLD_BELOW), and a roamer hunts the wave's last few critters (HUNT_LEFT). Everywhere else
  * the bot is the same as before, byte for byte.
  * Chaveiro objective (D-047, the room bots: BrainInput.teamBots, view.objective): home is the car ('quadradao'); with
@@ -68,7 +68,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,REVIVE_TICKS} from '../rules/index.ts';
+import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
@@ -102,15 +102,18 @@ export const NEST_THREAT_RADIUS=40;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
- * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP).
+ * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP). With other weapons,
+ * within the longest `range` of them (carro-cedo-1p: a solo with only the faca, range 1.3, stood at 2.8 u from the
+ * two critters at the car and never cut one; they took the car's 120 hits by minute 5 in ~1/5 of the 1p runs).
  */
 export function siegeStand(weapons:readonly {id:string;level:number}[]):number{
-  let ring=0;
+  let ring=0,reach=0;
   for(const w of weapons){
     const def=weaponCatalog.get(w.id);if(!def)continue;
-    if(def.pattern!=='orbit')return DANGER+.2;
-    ring=Math.max(ring,weaponLevel(def,w.level).area);
+    const row=weaponLevel(def,w.level);
+    if(def.pattern==='orbit')ring=Math.max(ring,row.area);else reach=Math.max(reach,row.range);
   }
+  if(reach>0)return Math.min(DANGER+.2,Math.max(.8,Math.max(reach,ring)-.2));
   return ring>0?Math.max(.8,ring-.2):DANGER+.2;
 }
 /** Bots with an even index guard the wall (shorter leash); the others roam. */
@@ -119,7 +122,7 @@ export const GUARD_LEASH=3.5;
 export const ESCORT_LEASH=3;
 /** City: a bot pulled back to its anchor walks until this far (u) inside the leash. */
 export const HOME_SLACK=2;
-/** City: critters and gems lure the bot only this far (u) inside its leash, and only those it can answer from there. */
+/** City: critters and pickups lure the bot only this far (u) inside its leash, and only those it can answer from there. */
 export const ROAM_IN=1;
 /** City: a roamer hunts when the wave is down to this many critters and none is near the wall; it closes to HUNT_LEASH (u). */
 export const HUNT_LEFT=4,HUNT_LEASH=DANGER+.5;
@@ -469,7 +472,21 @@ export function clearPath(at:Point,want:Point,terrain?:TerrainField):Point{
   return want;
 }
 
+/**
+ * D-051 mode 'ninhos' (card ninhos-rounds-fora): no intermission, the director holds one open wave. Each bot reads its
+ * own round instead: "calmo" (no critter awake within CALMA.botR of it, rules/calma.ts) is a 'prepare' of
+ * CALM_WINDOW_S (its old intermission: gather, forge, towers, trips there and back within that), else a 'wave' whose
+ * clock never runs out (nobody retreats: the nests' groups do not). Pure over the view.
+ */
+export const CALM_WINDOW_S=60;
+export function calmRound(view:RunView,at:Point):RunView{
+  const round=view.round;
+  if(!round)return view;
+  const calm=calmAround(view.enemies,at,CALMA.botR);
+  return {...view,round:{...round,phase:calm?'prepare':'wave',phaseEndsTick:view.tick+(calm?CALM_WINDOW_S*HZ:HZ*3600)}};
+}
 export function decide(input:BrainInput):Decision{
+  if(input.nests&&input.view.round)input={...input,view:calmRound(input.view,input.at)};
   const {view,selfId,at,index,terrain,memory}=input,tick=view.tick;
   const me=view.players.find(p=>p.id===selfId);
   const decision:Decision={direction:{x:0,y:0},cast:false,sos:false,mode:'idle'};
@@ -708,12 +725,12 @@ export function decide(input:BrainInput):Decision{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
     const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
-    // City: only what is in plain sight (a critter or a gem behind a planter would pin the bot against it).
+    // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
-    // stand-off point (DANGER+.6 short of it) or a gem that lies there. One past it (a gem 7 u from the wall) pulled the
+    // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the
     // bot out to the band's edge, where the lure stopped and the circle pulled it back in: pacing in place for seconds.
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
-    // City: a critter or a gem lures the bot only well inside the leash; at its edge it holds (weapons have range).
+    // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
     if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
     // Pickups: hearts when hurt, everything else when nothing is close.

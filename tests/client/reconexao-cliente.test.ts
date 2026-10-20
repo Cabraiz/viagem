@@ -56,7 +56,8 @@ function ticking(room:Room){const timer=setInterval(()=>room.advance(Date.now())
 const sockets=(c:InstanceType<typeof CoopClient>)=>(c as any).socket as FakeSocket;
 /** Clients of the running test, left in `finally` (a failed assert must not leave timers keeping node alive). */
 const clients:InstanceType<typeof CoopClient>[]=[];
-const client=(name='Ana')=>{const c=new CoopClient('http://sala','ABCDEF1234',name,'cidadao-comum');clients.push(c);return c;};
+// D-053: playable classes only (a hidden one would be seated as the first playable anyway).
+const client=(name='Ana',classId='mendigo')=>{const c=new CoopClient('http://sala','ABCDEF1234',name,classId);clients.push(c);return c;};
 const cleanup=()=>{for(const c of clients.splice(0))c.leave();};
 
 test('client: the old socket still open on the room, the phone reconnects with its token and keeps the character',async()=>{
@@ -306,7 +307,8 @@ test('3g-rede-sem-teleporte: a 3-minute drop mid-match (past the grace) with a f
   store.clear();net.room=new Room(Date.now());net.down=false;const stop=ticking(net.room);
   try{
     // Two phones: each its own sessionStorage (the shared fake one is cleared so Bia does not take Ana's token).
-    const ana=client('Ana'),bia=client('Bia');await ana.join();store.clear();await bia.join();
+    // Ana plays on her own for 3 minutes: a frontline class (maromba) outlasts it, as the old default did.
+    const ana=client('Ana','maromba'),bia=client('Bia');await ana.join();store.clear();await bia.join();
     ana.ready(true);bia.ready(true);
     for(let i=0;i<160&&ana.run?.phase!=='combat';i++)await sleep(50);
     assert.equal(ana.run?.phase,'combat');

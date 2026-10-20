@@ -199,7 +199,7 @@ export interface AuditBox {name:string;rect:Rect;
   unpointed?:boolean;
   /** Landscape: must sit in an EDGE_COLUMN (the minimap); anywhere else fails. */
   edgeColumn?:boolean;
-  /** A short balloon (the "Gira no intervalo" answer): crossing a top ficha other than the XP bar fails. */
+  /** A short balloon (the "Gira fora da briga" answer): crossing a top ficha other than the XP bar fails. */
   balloon?:boolean}
 export interface AuditResult {
   heroCrossed:string[];thumbGaps:{a:string;b:string;gap:number}[];inPlay:string[];fallbackInPlay:string[];
@@ -329,7 +329,7 @@ export function auditBoxesFromDom(doc:Document=document):AuditBox[]{
   // "Me salva" takes the skill button's place while caído: the same right-thumb control (UX-resgate-e-ping).
   add('#coop-sos','me-salva',{thumb:true,target:true});
   add('.rh-minimap','minimapa',{target:true,topReadout:true,edgeColumn:true});
-  // The "Gira no intervalo" balloon (explore.css) never opens over the minimap or a top ficha (UX review janela-caido).
+  // The "Gira fora da briga" balloon (explore.css) never opens over the minimap or a top ficha (UX review janela-caido).
   add('.explore-camera-hint','dica-girar',{balloon:true});
   // Edge arrows ride the useful area's inner rim by contract, never over the hero.
   const arrow={allowedInPlay:true,overHeroFails:true,withinUseful:true};

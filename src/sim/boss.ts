@@ -98,6 +98,11 @@ export interface BossOptions {
   scalePlayers?:(ctx:SimContext)=>number;
   tuning?:Partial<BossTuning>;
   /**
+   * D-051 mode 'ninhos' (no round clock): the boss enrages this many ticks after it spawned (rules/calma.ts
+   * CALMA.bossEnrageS). Absent: at the end of the wave's clock (round.phaseEndsTick), as in the rounds.
+   */
+  enrageAfterTicks?:number;
+  /**
    * × tuning.baseHp for this spawn, read once when the boss spawns (the city's team-size bossHp knob, cidade-11:
    * assemble.ts). Absent, 1 or not a finite number > 0: the tuning as it is.
    */
@@ -295,7 +300,8 @@ export function createBoss(options:BossOptions={}):BossController {
     const boss=alive(ctx);
     if(!boss){finish(ctx);return;}
     delete boss.knock;delete boss.frozenUntil; // too heavy to push or freeze
-    if(ctx.round.phase==='wave'&&ctx.tick>=ctx.round.phaseEndsTick)setPhase(ctx,boss,PHASE_ENRAGED);
+    const late=options.enrageAfterTicks!==undefined?ctx.tick>=boss.spawnTick+options.enrageAfterTicks:ctx.round.phase==='wave'&&ctx.tick>=ctx.round.phaseEndsTick;
+    if(late)setPhase(ctx,boss,PHASE_ENRAGED);
     if(boss.hp<=boss.maxHp*tuning.phase2At)setPhase(ctx,boss,PHASE_ASSEMBLY);
     arrive(ctx);
     if(ctx.tick>=boss.readyTick){

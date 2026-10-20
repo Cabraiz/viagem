@@ -1,14 +1,21 @@
 import {HERO_SPEED_MULT} from '../../maps/index.ts';
 
 export type Motion='idle'|'walk'|'attack';
+/**
+ * Hero animation speed (NEW-20261018-ORQ-animacao-heroi-70, the user's ask): every hero clip plays at 0.7 of its
+ * drawn rate (the R06 walk's 600 ms cycle takes ~857 ms, the 1000 ms attack ~1429 ms, the legacy clips' frameRate × 0.7).
+ * The hero's walking speed in the world does not change.
+ */
+export const HERO_ANIM_RATE=.7;
 // Idle drawings vary in pose in the candidate atlases. Hold a single pose so
 // standing characters cannot appear to walk even when world coordinates stop.
 export const SPRITE_CLIPS={
-  idle:{frames:[0],frameRate:3,repeat:-1},
+  idle:{frames:[0],frameRate:3*HERO_ANIM_RATE,repeat:-1},
   // 5 fps at the base walk, × HERO_SPEED_MULT (velocidade-heroi-e-projetil): the steps keep up with the 2× walk (no foot slide).
-  walk:{frames:[6,7,8,9,10,11],frameRate:5*HERO_SPEED_MULT,repeat:-1},
-  attack:{frames:[12,13,14,15,16,17],frameRate:6,repeat:0},
+  walk:{frames:[6,7,8,9,10,11],frameRate:5*HERO_SPEED_MULT*HERO_ANIM_RATE,repeat:-1},
+  attack:{frames:[12,13,14,15,16,17],frameRate:6*HERO_ANIM_RATE,repeat:0},
 } as const;
+/** How long a swing shows (legacy clip and the R06 attack alike: 1000 ms drawn, /HERO_ANIM_RATE on screen). */
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;
 export class SpriteMotion {
   private lastAttack=0;
@@ -98,4 +105,48 @@ export class FacingTracker {
 export function legacyFlip(flipped:boolean,dx:number,dy:number,view:number){
   const q=rotate(dx,dy,view);
   return Math.abs(q.x-q.y)>.001?q.x-q.y<0:flipped;
+}
+
+/** Source compass order. The two 4096-safe atlases retain their existing block order. */
+export const HERO_DIRECTIONS=['S','SW','W','NW','N','NE','E','SE'] as const;
+export type HeroDirection=typeof HERO_DIRECTIONS[number];
+export const HERO_DIRECTION_PAGE:Record<HeroDirection,{page:'dir4'|'dir4c';block:number}>={
+  S:{page:'dir4c',block:0},SW:{page:'dir4',block:1},W:{page:'dir4c',block:1},NW:{page:'dir4',block:3},
+  N:{page:'dir4c',block:2},NE:{page:'dir4',block:2},E:{page:'dir4c',block:3},SE:{page:'dir4',block:0},
+};
+const DEG=Math.PI/180;
+const angleDistance=(a:number,b:number)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
+const compass=(angle:number):HeroDirection=>HERO_DIRECTIONS[((Math.round((angle-Math.PI/2)/(Math.PI/4))%8)+8)%8];
+const compassAngle=(direction:HeroDirection)=>Math.PI/2+HERO_DIRECTIONS.indexOf(direction)*Math.PI/4;
+
+/** Eight screen headings after isometric projection; world heading survives camera turns and idle. */
+export class Facing8Tracker {
+  private heading={x:1,y:0};
+  private facing:HeroDirection='SE';
+  private view=0;
+  private ax=0;
+  private ay=0;
+  update(dx:number,dy:number,view:number,intent?:{x:number;y:number}):HeroDirection{
+    const changedView=view!==this.view;
+    this.view=view;
+    let next:{x:number;y:number}|undefined;
+    if(intent){
+      this.ax=this.ay=0;
+      if(Math.hypot(intent.x,intent.y)>1e-6)next=intent;
+    }else{
+      const step=Math.hypot(dx,dy);
+      if(step<.001||step>FACING_TELEPORT)this.ax=this.ay=0;
+      else{
+        this.ax+=dx;this.ay+=dy;
+        if(Math.hypot(this.ax,this.ay)>=FACING_STEP){next={x:this.ax,y:this.ay};this.ax=this.ay=0;}
+      }
+    }
+    if(next)this.heading={x:next.x,y:next.y};
+    if(next||changedView){
+      const s=screenMotion(this.heading.x,this.heading.y,view),angle=Math.atan2(s.y,s.x);
+      // A 7.5° band beyond a sector's 22.5° edge prevents joystick/interpolation flicker.
+      if(changedView||angleDistance(angle,compassAngle(this.facing))>(22.5+7.5)*DEG)this.facing=compass(angle);
+    }
+    return this.facing;
+  }
 }

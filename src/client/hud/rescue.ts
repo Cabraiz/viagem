@@ -18,6 +18,7 @@ import type {RunView,PlayerRunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
+import {LayoutCache,viewportSize} from './box-cache.ts';
 import type {Rect,ScreenZones} from './zones.ts';
 import {WcMinimapDriver} from './wc-minimap/driver.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
@@ -35,6 +36,7 @@ import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
+import {shownTargets} from './arrows.ts';
 
 /** The city's targets (clusters, mouths, base) are rebuilt at most this often (ms); in between only re-located on screen. */
 export const CITY_TARGETS_MS=100;
@@ -72,8 +74,12 @@ export class RescueBoard {
   /** The WC3 minimap's driver (wc-minimap/driver.ts): frame, terrain cache, ally colours, heading. */
   private readonly wcDriver=new WcMinimapDriver();
   private farWarm?:unknown;private timers=new Set<ReturnType<typeof setTimeout>>();
-  /** HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not in view. */
-  private covered:Rect[]=[];private windows:Rect[]=[];private coveredAt=-Infinity;private coveredZones?:object;
+  /**
+   * HUD boxes over the map, read twice a second and on every layout change (a window opening): a target under them is not
+   * in view. Read after the paint (box-cache.ts), never in the middle of the frame's DOM writes (F3).
+   */
+  private covered:Rect[]=[];private windows:Rect[]=[];
+  private readonly boxCache=new LayoutCache(()=>{const hud=this.hud;return {covered:boxes(hud.el.ownerDocument,COVERING),windows:boxes(hud.el.ownerDocument,WINDOWS)};},500);
   // ---------- City (design/cidade-hud.md §7) ----------
   /** The city's map info, built once per decoded asset. */
   /** D-047: the chaveiro's last route and stops (the minimap draws the route still ahead). */
@@ -188,9 +194,10 @@ export class RescueBoard {
       base:worldBase(net.terrain),enemies:net.feed.enemies.values(),telegraphs:this.last.telegraphs,
       warnings:this.warnings,pinged:id=>!!this.pings.get(id,now),locate:p=>scene.locate(p).screen,portrait:c=>defaultPortrait(c)});
     const area=scene.usefulArea??zones.useful,seen=this.seen(now,zones);
-    hud.edges?.render(layoutEdges(targets,area,scene.heroScreenRect(),{seen,windows:this.windows}));
+    // Only the kinds the game still points at (arrows.ts: the downed ally).
+    hud.edges?.render(layoutEdges(shownTargets(targets),area,scene.heroScreenRect(),{seen,windows:this.windows}));
     // What must keep an arrow (a caído or the boss off the field): the zones audit checks it against the arrows drawn.
-    hud.edges?.need(pointedTargets(targets,area,seen));
+    hud.edges?.need(pointedTargets(shownTargets(targets),area,seen));
     this.minimap(scene,view.players,focus,now);
   }
   /** The WC3 minimap at ≤ 10 Hz, on every map. */
@@ -213,15 +220,15 @@ export class RescueBoard {
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
     this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,
       selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
-      corners:screenCorners(locate,focus,{width:innerWidth,height:innerHeight}),wallHitAt:this.wallHitAt,
+      corners:screenCorners(locate,focus,viewportSize()),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
       extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){
-    const hud=this.hud;
-    if(now-this.coveredAt>500||zones!==this.coveredZones){this.coveredAt=now;this.coveredZones=zones;this.covered=boxes(hud.el.ownerDocument,COVERING);this.windows=boxes(hud.el.ownerDocument,WINDOWS);}
-    return {viewport:{x:0,y:0,width:innerWidth,height:innerHeight},covered:this.covered};
+    ({covered:this.covered,windows:this.windows}=this.boxCache.get(now,zones));
+    const {width,height}=viewportSize();
+    return {viewport:{x:0,y:0,width,height},covered:this.covered};
   }
   private cityMap(asset:CityAssetLike){
     if(this.cityInfo?.asset!==asset)this.cityInfo={asset,map:cityMapInfo(asset)};
@@ -280,7 +287,8 @@ export class RescueBoard {
     const banks=last.banks;
     const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
-    this.cityTargets=targets;this.groupKeys=groupKeys;
+    // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
+    this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
   destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

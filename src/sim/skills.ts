@@ -5,7 +5,7 @@
  * Mobile only (D-009): one tap on the skill button casts; there is no aim input. Targets come from
  * player.target (tapped enemy) or the nearest enemy/ally, and direction from player.facing (joystick).
  */
-import {ticks,type EnemyState,type PickupKind,type SimPlayer} from '../contract/index.ts';
+import {ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
 import {baseHeroSpeed,clearSegment,moveDirection,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
@@ -64,7 +64,7 @@ const shield=(ctx:SimContext,p:SimPlayer,seconds:number)=>{
 /** Skill radii scale with stats.area and debuff durations with stats.duration (D-001). */
 const area=(p:SimPlayer,radius:number)=>radius*p.stats.area;
 const lasting=(p:SimPlayer,seconds:number)=>seconds*p.stats.duration;
-/** Seconds a found coxinha/magnet stays on the ground. */
+/** Seconds a found coxinha stays on the ground. */
 export const FOUND_PICKUP_SECONDS=10;
 
 interface Effect {hits:string[];helped:string[];outcome?:DiceOutcome;pickup?:string;movedTo?:Point;pulled?:{player:string;x:number;y:number};blocked?:number}
@@ -126,16 +126,15 @@ const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
   return {hits,helped:allies.map(a=>a.id),movedTo:moved?{...at}:undefined};
 };
 interface ShelterSpec {radius:number;heal:number;shield:number;findsPickup:boolean}
-/** Heals (and briefly shields) nearby allies; optionally finds a coxinha or a magnet during a wave (never XP, never between rounds). */
+/** Heals (and briefly shields) nearby allies; optionally finds a coxinha during a wave (never XP, never between rounds). */
 const shelter=(spec:ShelterSpec):SkillFn=>(ctx,player,_source,rng)=>{
   const allies=alliesNear(ctx,player,area(player,spec.radius));
   for(const ally of allies){heal(ally,spec.heal);if(spec.shield>0)shield(ctx,ally,spec.shield);}
   let pickup:string|undefined;
   if(spec.findsPickup&&ctx.round.phase==='wave'&&ctx.pickups.size<SKILL_PICKUP_CAP){
-    const kind:PickupKind=rng.chance(0.7)?'heal':'magnet';
     pickup=ctx.nextId('pickup');
     const angle=rng.range(0,Math.PI*2);
-    ctx.pickups.set(pickup,{id:pickup,kind,value:kind==='heal'?30:1,
+    ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:30,
       x:player.x+Math.cos(angle)*0.6,y:player.y+Math.sin(angle)*0.6,
       spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(FOUND_PICKUP_SECONDS)});
   }

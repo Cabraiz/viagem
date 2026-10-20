@@ -14,6 +14,10 @@ export interface ArtFile {
   cell:[number,number];
   frames?:number;directions?:number;views?:number;rows?:string[]|number;
   anchor?:[number,number];fps?:Record<string,number>|number;slice?:[number,number,number,number];
+  /** Menu dances (menu-dance.ts): false plays once; absent loops. */
+  loop?:boolean;
+  /** R06 movement sheets: the cycle length of the clip (walk 600 ms, attack 1000 ms). */
+  durationMs?:number;revision?:number;movementHands?:string;
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
   /**
    * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn
@@ -37,17 +41,18 @@ export interface ArtGroup {output:string;pieces:Record<string,ArtPiece>}
 export interface ArtIndex {version:number;groups:Record<string,ArtGroup>}
 
 /** Group keys as the importer names them (scripts/art-v2/spec.mjs GROUPS). */
-export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos'|'torres';
+export type ArtGroupId='inimigos'|'personagens'|'chao'|'predios'|'base'|'props'|'itens'|'projeteis'|'efeitos'|'ui'|'rostos'|'torres'|'menu';
 
 const EMPTY:ArtIndex={version:2,groups:{}};
 let index:ArtIndex=EMPTY;
 
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
+const MOVEMENT_KEY=/^(walk|attack)128-(S|SW|W|NW|N|NE|E|SE)$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
-const safeEntries=(v:Record<string,unknown>)=>Object.keys(v).filter(k=>SAFE_KEY.test(k)&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype').map(k=>[k,v[k]] as const);
+const safeEntries=(v:Record<string,unknown>,movement=false)=>Object.keys(v).filter(k=>(SAFE_KEY.test(k)||(movement&&MOVEMENT_KEY.test(k)))&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype').map(k=>[k,v[k]] as const);
 const isCell=(v:unknown)=>Array.isArray(v)&&v.length===2&&v.every(n=>Number.isInteger(n)&&n>0&&n<=4096);
 
 function parseFile(value:unknown):ArtFile|undefined{
@@ -71,7 +76,7 @@ function liteFile(file:ArtFile):ArtFile{
 function parsePiece(value:unknown,lite=false):ArtPiece|undefined{
   if(!isObject(value)||typeof value.kind!=='string'||!isObject(value.files))return undefined;
   const files:Record<string,ArtFile>=Object.create(null);
-  for(const [key,f] of safeEntries(value.files)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file):file;}
+  for(const [key,f] of safeEntries(value.files,true)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file):file;}
   if(!Object.keys(files).length)return undefined;
   return {kind:value.kind,files,...(isObject(value.meta)?{meta:value.meta}:{})};
 }

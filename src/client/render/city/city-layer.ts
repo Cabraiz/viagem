@@ -31,6 +31,7 @@ import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
 import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
+import {circlePolygon,fanTriangles,isConvex} from './fan.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 import {cliffCells,withoutCliffs} from './relevo/field.ts';
 import {artIndex} from '../../art/manifest.ts';
@@ -57,12 +58,22 @@ const GLINT_PERIOD_MS=4000;
 export const GROUND_RESOLUTION=0.75;
 export const GROUND_RT_MAX_PX=2048;
 
+/** Fills a polygon with the current fill style: a convex one as a triangle fan (fan.ts, no earcut), any other through Phaser. */
+function fillShape(g:Phaser.GameObjects.Graphics,points:readonly Pt[]){
+  if(!isConvex(points)){g.fillPoints(points as Pt[],true);return;}
+  for(const t of fanTriangles(points))g.fillTriangle(t[0],t[1],t[2],t[3],t[4],t[5]);
+}
 /** Draws one decor primitive into a Graphics. */
 function drawPrim(g:Phaser.GameObjects.Graphics,p:DecorPrim){
-  if(p.shape==='circle'&&p.cx!==undefined&&p.cy!==undefined&&p.r!==undefined){g.fillStyle(p.color,p.alpha).fillCircle(p.cx,p.cy,p.r);return;}
+  if(p.shape==='circle'&&p.cx!==undefined&&p.cy!==undefined&&p.r!==undefined){
+    g.fillStyle(p.color,p.alpha);
+    const ring=circlePolygon(p.cx,p.cy,p.r);
+    if(ring.length)fillShape(g,ring);else g.fillCircle(p.cx,p.cy,p.r);
+    return;
+  }
   if(!p.points||p.points.length<2)return;
   if(p.shape==='line')g.lineStyle(p.width??1,p.color,p.alpha).strokePoints(p.points,false);
-  else g.fillStyle(p.color,p.alpha).fillPoints(p.points,true);
+  else fillShape(g.fillStyle(p.color,p.alpha),p.points);
 }
 /** prefers-reduced-motion, read once (false outside a browser). */
 function reducedMotion(){
@@ -170,6 +181,12 @@ export class CityLayer {
   private fog?:Phaser.GameObjects.Graphics;
   private readonly chunksByKey=new Map<string,CityChunk>();
   private view=-1;
+  /**
+   * Live chunks built before the city's art arrived (refresh): rebuilt one per frame, nearest the camera first, on the
+   * frames that build no new chunk. The old one stays until its rebuild, so nothing blinks out
+   * (NEW-20261018-ORQ-chunks-cidade-sem-pico: rebuilding them all in one frame was a stall of a second on a phone).
+   */
+  private readonly stale=new Set<string>();
   private clock=0;
   /** Imported art: the plan, each cell's lot, the fountain lot. */
   private readonly art?:CityArtPlan;
@@ -292,8 +309,8 @@ export class CityLayer {
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
-  /** The ground drawn is final (no albedo still on its way): the modo foto waits for it. */
-  groundSettled(){return !this.relief||this.relief.albedoSettled;}
+  /** The ground drawn is final (no albedo still on its way, no chunk waiting for its rebuild): the modo foto waits for it. */
+  groundSettled(){return this.stale.size===0&&(!this.relief||this.relief.albedoSettled);}
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
@@ -382,6 +399,8 @@ export class CityLayer {
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
+    const old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);
+    if(old!==undefined){const t0=perfNow();this.dropChunk(old);this.buildChunk(old,view);perfSpan('chunk',t0);}
     this.applyOcclusion(frame,view);
     this.vivo?.update(frame.camera,performance.now());
     if(!this.still&&Number.isFinite(frame.dtMs)&&frame.dtMs>0){
@@ -411,11 +430,17 @@ export class CityLayer {
     return moundPiece(piece,{n:s.n&&bare(piece.x,piece.y-1),s:s.s&&bare(piece.x,piece.y+1),w:s.w&&bare(piece.x-1,piece.y),e:s.e&&bare(piece.x+1,piece.y)});
   }
 
-  /** Rebuilds the live chunks now (e.g. art textures arrived after they were built with the procedural look). */
+  /**
+   * Marks the live chunks for a rebuild (e.g. art textures arrived after they were built with the procedural look): the
+   * next updates redo them one per frame, nearest the camera first (stale). Chunks shown later are built with the art.
+   */
   refresh(){
     if(this.view<0)return;
-    for(const key of [...this.live.keys()]){this.dropChunk(key);this.buildChunk(key,this.view);}
+    for(const key of this.live.keys())this.stale.add(key);
   }
+
+  /** Live chunks still waiting for their rebuild after a refresh, sorted. */
+  pendingRebuilds():string[]{return [...this.stale].sort();}
 
   /** Drops every chunk; the layer can be updated again afterwards (it starts from an empty screen). */
   destroy(){
@@ -486,7 +511,7 @@ export class CityLayer {
     for(const g of groups.values()){
       const body=TriBand.make(this.scene,g.items.map(({piece,geo})=>(gr:Phaser.GameObjects.Graphics)=>{
         const colors=BLOCK_COLORS[piece.kind];
-        for(const face of geo.faces)gr.fillStyle(colors[face.kind],1).fillPoints(face.points,true);
+        for(const face of geo.faces)fillShape(gr.fillStyle(colors[face.kind],1),face.points);
         // Icing, windows, plaster and icicles (with the relief: the walls' snowy stones) fade with the column (same part).
         for(const prim of pieceDecor(piece,this.asset,view,this.pivot,this.pieceLook))drawPrim(gr,prim);
       }));
@@ -632,7 +657,7 @@ export class CityLayer {
     }
     // Pass 1: flat cells.
     const flat=place(this.scene.make.graphics({},false));
-    if(!relief)for(const q of quads)if(!painted.has(q.kind))flat.fillStyle(groundColor(q.kind,q.shade),1).fillPoints(q.points,true);
+    if(!relief)for(const q of quads)if(!painted.has(q.kind))fillShape(flat.fillStyle(groundColor(q.kind,q.shade),1),q.points);
     // Pass 2: painted cells, one Mesh per texture.
     const meshes:Phaser.GameObjects.Mesh[]=[];
     if(!relief)for(const [kind,key] of painted)meshes.push(place(this.groundMesh(quads.filter(q=>q.kind===kind),key)));
@@ -641,7 +666,7 @@ export class CityLayer {
     for(const q of quads){
       if(relief||!painted.has(q.kind))continue;
       const o=groundShadeOverlay(q.kind,q.shade);
-      if(o)over.fillStyle(o.color,o.alpha).fillPoints(q.points,true);
+      if(o)fillShape(over.fillStyle(o.color,o.alpha),q.points);
     }
     for(const prim of decor)if(!prim.shimmer)drawPrim(over,prim);
     const glints=TriBand.make(this.scene,gr=>{for(const prim of decor)if(prim.shimmer)drawPrim(gr,prim);}).setDepth(GLINT_DEPTH);
@@ -722,7 +747,7 @@ export class CityLayer {
     for(const p of live.props){p.obj.destroy();this.fadeDrop(p.fade,'props',(e:LiveProp)=>e===p);}
     for(const c of live.cells)this.columns.delete(c);
     this.cellColumns.clear();this.columnsVersion++;
-    this.live.delete(key);
+    this.live.delete(key);this.stale.delete(key);
   }
 
   /**

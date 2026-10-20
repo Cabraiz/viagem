@@ -232,28 +232,6 @@ test('heal caps at stats.maxHp',()=>{
   assert.deepEqual(eventsOf(ctx,'pickup').map(e=>e.kind),['heal','heal']);
 });
 
-test('magnet makes every xp gem home to the collector until collected; resource untouched',()=>{
-  const {ctx,pickupsOnly}=setup();
-  addPlayer(ctx,'a',{x:5,y:5});
-  addPlayer(ctx,'z',{x:20,y:2,online:false});
-  const mag=addPickup(ctx,'magnet',5,5,1);
-  const far=[addPickup(ctx,'xp',18,18,2),addPickup(ctx,'xp',2,20,3),addPickup(ctx,'xp',20,3,5)];
-  const heal=addPickup(ctx,'heal',19,19,10);
-  const res=addPickup(ctx,'resource',5,5,1,{resource:'madeira'});
-  pickupsOnly(1);
-  assert.equal(ctx.pickups.has(mag.id),false);
-  for(const g of far)assert.equal(ctx.pickups.get(g.id)?.homing,'a',`${g.id} homing to collector`);
-  assert.equal(ctx.pickups.get(heal.id)?.homing,undefined,'magnet only pulls xp');
-  pickupsOnly(120);
-  for(const g of far)assert.equal(ctx.pickups.has(g.id),false,`${g.id} eventually collected`);
-  assert.equal(ctx.team.xp,10);
-  assert.ok(ctx.pickups.has(heal.id));
-  const r=ctx.pickups.get(res.id);
-  assert.ok(r,'resource kept');
-  assert.deepEqual(r,{...res},'resource not moved nor marked');
-  assert.ok(!eventsOf(ctx,'pickup').some(e=>e.pickup===res.id));
-});
-
 test('chest goes to the VGM-036 opener while still in ctx.pickups, once, and only if it opened (D-006)',()=>{
   {
     // Default opener (real openChest): consumes the chest and upgrades the build.
@@ -947,57 +925,65 @@ test('same seed and same actions give identical offers, builds and events',()=>{
 });
 
 // ---------- 10. Loot ----------
-test('dropLoot: xp gem at enemy position, chest only for non-boss elites',()=>{
+test('dropLoot (D-054): the kill XP goes straight to the team, no gem; a chest only for non-boss elites',()=>{
   const {ctx,sim}=setup();
   addPlayer(ctx,'a',{x:2,y:2});
   ctx.tick=42;
   const plain=sim.dropLoot(ctx,makeEnemy('e1',7,8,{xp:3}),'a');
-  const gems=plain.filter(p=>p.kind==='xp');
-  assert.equal(gems.length,1);
-  assert.equal(gems[0].value,3);
-  assert.equal(gems[0].x,7);assert.equal(gems[0].y,8);
-  assert.equal(gems[0].spawnTick,42);
+  assert.equal(ctx.team.xp,3,'XP at the kill');
+  assert.ok(!plain.some(p=>p.kind==='xp')&&![...ctx.pickups.values()].some(p=>p.kind==='xp'),'no gem on the ground');
   assert.ok(!plain.some(p=>p.kind==='chest'));
   for(const p of plain)assert.equal(ctx.pickups.get(p.id),p,'returned pickups are in ctx');
-
   const elite=sim.dropLoot(ctx,makeEnemy('e2',10,10,{xp:9,elite:true}),'a');
   assert.equal(elite.filter(p=>p.kind==='chest').length,1);
-  assert.equal(elite.filter(p=>p.kind==='xp').length,1);
   const boss=sim.dropLoot(ctx,makeEnemy('e3',12,12,{xp:50,elite:true,boss:true}),'a');
   assert.equal(boss.filter(p=>p.kind==='chest').length,0,'boss chest comes from VGM-036, not dropLoot');
-  assert.equal(boss.filter(p=>p.kind==='xp').reduce((n,p)=>n+p.value,0),50);
+  assert.equal(ctx.team.xp,62);
   const ids=[...plain,...elite,...boss].map(p=>p.id);
   assert.equal(new Set(ids).size,ids.length,'unique pickup ids');
 });
 
-test('dropLoot: huge killer luck makes heal and magnet drops appear; luck 1 rarely',()=>{
+test('dropLoot (D-054): the killer growth multiplies the XP; with no hero behind the kill, the best growth standing',()=>{
+  const {ctx,sim}=setup();
+  addPlayer(ctx,'a',{x:2,y:2,stats:{growth:1.5}});
+  addPlayer(ctx,'b',{x:3,y:3,stats:{growth:2}});
+  addPlayer(ctx,'d',{x:4,y:4,stats:{growth:3},downed:true});
+  sim.dropLoot(ctx,makeEnemy('e1',7,8,{xp:4}),'a');
+  assert.equal(ctx.team.xp,6,'a: 4 × 1.5');
+  sim.dropLoot(ctx,makeEnemy('e2',7,8,{xp:4}),'torre-1');
+  assert.equal(ctx.team.xp,14,'a tower kill: 4 × 2 (b, the best standing; d is down)');
+  sim.dropLoot(ctx,makeEnemy('e3',7,8,{xp:0}),'a');
+  assert.equal(ctx.team.xp,14,'no XP, nothing');
+});
+
+test('dropLoot: huge killer luck makes heal drops appear, never a magnet; luck 1 rarely',()=>{
   const {ctx,sim}=setup();
   addPlayer(ctx,'lucky',{x:2,y:2,stats:{luck:1e9}});
   const kinds=new Set<string>();
   for(let i=0;i<60;i++)for(const p of sim.dropLoot(ctx,makeEnemy(`l${i}`,10,10,{xp:1}),'lucky'))kinds.add(p.kind);
-  assert.ok(kinds.has('heal'),'heal drop');
-  assert.ok(kinds.has('magnet'),'magnet drop');
+  assert.deepEqual([...kinds],['heal']);
   const plain=setup(7);
   addPlayer(plain.ctx,'a',{x:2,y:2});
   let extras=0;
-  for(let i=0;i<60;i++)extras+=plain.sim.dropLoot(plain.ctx,makeEnemy(`n${i}`,10,10,{xp:1}),'a').filter(p=>p.kind==='heal'||p.kind==='magnet').length;
+  for(let i=0;i<60;i++)extras+=plain.sim.dropLoot(plain.ctx,makeEnemy(`n${i}`,10,10,{xp:1}),'a').filter(p=>p.kind==='heal').length;
   assert.ok(extras<30,`luck 1 drops should be uncommon, got ${extras}/60`);
 });
 
-test('unreachable drop becomes a gem homing to the nearest collector and is collected',()=>{
-  const {ctx,sim,pickupsOnly}=setup(1,{reachable:()=>false});
+test('unreachable drop (the chest of an elite) homes to the nearest collector and is collected',()=>{
+  const opened:string[]=[];
+  const {ctx,sim,pickupsOnly}=setup(1,{reachable:()=>false,openChest:(c,player,id)=>{opened.push(player.id);c.pickups.delete(id);return {};}});
   addPlayer(ctx,'a',{x:5,y:5});
   addPlayer(ctx,'b',{x:15,y:15});
   addPlayer(ctx,'s',{x:20,y:20,spectator:true});
   addPlayer(ctx,'o',{x:14,y:14,online:false});
-  const drops=sim.dropLoot(ctx,makeEnemy('e1',20.5,20.5,{xp:6}));
-  const gem=drops.find(p=>p.kind==='xp');
-  assert.ok(gem);
-  assert.equal(gem.homing,'b');
+  const drops=sim.dropLoot(ctx,makeEnemy('e1',20.5,20.5,{xp:6,elite:true}));
+  assert.equal(ctx.team.xp,6,'the XP did not wait for the walk');
+  const chest=drops.find(p=>p.kind==='chest');
+  assert.ok(chest);
+  assert.equal(chest.homing,'b');
   pickupsOnly(80);
-  assert.equal(ctx.pickups.has(gem.id),false);
-  assert.ok(ctx.team.xp>=6);
-  assert.equal(eventsOf(ctx,'pickup').find(e=>e.pickup===gem.id)?.player,'b');
+  assert.equal(ctx.pickups.has(chest.id),false);
+  assert.deepEqual(opened,['b']);
 });
 
 void COLLECT_RADIUS;
@@ -1035,15 +1021,15 @@ test('seeded stream ignores draws by other systems and resumes from rngState',()
 test('unreachable drop while nobody can collect waits and then homes to the first collector',()=>{
   const {ctx,sim,tick}=setup(1,{reachable:()=>false,openChest:()=>{}});
   const a=addPlayer(ctx,'a',{x:15,y:15,downed:true});
-  const [gem,chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:7,elite:true}));
-  assert.equal(gem.homing,HOME_ANY);assert.equal(chest.homing,HOME_ANY);
+  const [chest]=sim.dropLoot(ctx,makeEnemy('e1',3,3,{xp:7,elite:true}));
+  assert.equal(chest.kind,'chest');assert.equal(chest.homing,HOME_ANY);
+  const x0=chest.x;
   tick(40);
-  assert.equal(gem.x,3,'does not move while nobody can collect');
-  assert.equal(ctx.team.xp,0);
+  assert.equal(chest.x,x0,'does not move while nobody can collect');
   delete a.downed;
   tick(60);
-  assert.ok(!ctx.pickups.has(gem.id)&&!ctx.pickups.has(chest.id),'both delivered');
-  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,2],'7 xp delivered once (5 for level 2, 2 left)');
+  assert.ok(!ctx.pickups.has(chest.id),'delivered');
+  assert.deepEqual([ctx.team.level,ctx.team.xp],[2,2],'7 xp at the kill, once (5 for level 2, 2 left)');
 });
 
 test('round offers are skipped after the last round and queued offers show a chained deadline',()=>{

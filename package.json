@@ -30,7 +30,8 @@
     "bots": "node --experimental-strip-types scripts/bots/run.ts",
     "bench:maps": "node --experimental-strip-types scripts/bench-city.ts",
     "bench:city-run": "node --experimental-strip-types scripts/bench-city-run.ts",
-    "bench:city-tick": "node --experimental-strip-types scripts/bench-city-tick.ts"
+    "bench:city-tick": "node --experimental-strip-types scripts/bench-city-tick.ts",
+    "bench:ninhos-bytes": "node --experimental-strip-types scripts/bench-ninhos-bytes.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261005.1",

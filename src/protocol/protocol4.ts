@@ -36,7 +36,7 @@
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {ASLEEP_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
@@ -798,7 +798,9 @@ export interface EncoderStats {frames:number;fullFrames:number;bytes:number;even
 interface Pending {event:WireEvent;firstSeq?:number;sentTick?:number;unresolved?:[field:string,hint?:SectionKey][]}
 export interface InterestOptions {radius:number;hysteresis:number;
   /** D-051: the sleeping enemies (`asleep`) this client gets at most, the nearest ones (default ASLEEP_PER_VIEWER). */
-  asleep:number}
+  asleep:number;
+  /** The awake enemies this client gets at most, the nearest ones (default AWAKE_PER_VIEWER); the boss never counts out. */
+  awake?:number}
 export interface EncoderOptions {
   /**
    * The client's player id. With it the encoder sends only that client's area of interest (allies, structures and
@@ -882,6 +884,7 @@ export class FrameEncoder {
   private readonly interest?:InterestOptions;
   /** select(): the sleeping enemies in the area this frame (reused). */
   private readonly sleepScratch:{e:Entity;d2:number}[]=[];
+  private readonly awakeScratch:{e:Entity;d2:number}[]=[];
   private readonly chain:boolean;
   private readonly farEvery:number;
   constructor(ids=new WireIds(),options:EncoderOptions={}){
@@ -983,6 +986,8 @@ export class FrameEncoder {
     // D-051: the sleepers inside the area wait here and only the nearest `interest.asleep` go (ties by id).
     const sleepers:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.sleepScratch:undefined;
     if(sleepers)sleepers.length=0;
+    const awake:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.awakeScratch:undefined;
+    if(awake)awake.length=0;
     for(const e of list){
       const dx=(e.x as number)-focus.x,dy=(e.y as number)-focus.y;
       let d2=dx*dx+dy*dy;
@@ -991,7 +996,21 @@ export class FrameEncoder {
       const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
       if(!inside){this.stats.culled++;continue;}
       if(sleepers&&e.asleep===true){sleepers.push({e,d2});continue;}
+      if(awake){awake.push({e,d2});continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
+    }
+    // The awake inside the area: only the nearest `interest.awake` (ties by id), the phone's drawing budget.
+    // Under the cap they go in the list's order, as before; over it the boss and the nearest, still in that order.
+    if(awake?.length){
+      const cap=interest.awake??AWAKE_PER_VIEWER;
+      let chosen:Set<Entity>|undefined;
+      if(awake.length>cap){
+        const others=awake.filter(a=>a.e.boss!==true).sort((a,b)=>a.d2-b.d2||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0)).slice(0,Math.max(0,cap));
+        chosen=new Set([...awake.filter(a=>a.e.boss===true),...others].map(a=>a.e));
+        this.stats.culled+=awake.length-chosen.size;
+      }
+      for(const {e} of awake)if(!chosen||chosen.has(e)){keep.add(e.id);current.set(this.ids.wire(section,e.id),e);}
+      awake.length=0;
     }
     if(sleepers?.length){
       if(sleepers.length>interest.asleep){

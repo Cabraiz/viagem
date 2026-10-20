@@ -21,7 +21,9 @@ test('every enemy kind maps to an importer id (identity after the D-033/D-036 re
 
 test('static art replaces today\'s keys: pickups, the boleto, projectiles and FX',()=>{
   const keys=STATIC_ART.map(s=>s.key);
-  for(const k of ['xp','heal','magnet','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
+  for(const k of ['heal','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
+  // D-054: no gem nor ímã art (the only XP on the ground is the boleto rain, FX.boleto).
+  assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima')),'no gem, no ímã');
   for(const k of [FX.boleto,FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
   // The agiota's boleto has its own key now (art:proj:boleto-juros, horde-actions.test.ts), not today's FX.projBoleto.
   assert.ok(!keys.includes(FX.projBoleto));
@@ -107,7 +109,7 @@ test('a manifest with enemies and items queues every page under the art keys and
   setArtIndex(parseArtIndex({version:2,groups:{
     inimigos:{output:'public/art/enemies',pieces:{bebado,chefe:{kind:'animations',files:{idle:{cell:[384,384],frames:6,directions:8,
       pages:[{file:'chefe/idle-p1.webp',columns:10,rows:4,firstFrame:0,frameCount:40},{file:'chefe/idle-p2.webp',columns:8,rows:1,firstFrame:40,frameCount:8}]}}}}},
-    itens:{output:'public/art/items',pieces:{'gema-pequena':{kind:'frames',files:{sheet:{file:'gema-pequena.webp',cell:[64,64],frames:4}}}}},
+    itens:{output:'public/art/items',pieces:{'coxinha':{kind:'frames',files:{sheet:{file:'coxinha.webp',cell:[64,64],frames:4}}}}},
     projeteis:{output:'public/art/projectiles',pieces:{'tiro-aliado':{kind:'frames',files:{sheet:{file:'tiro-aliado.webp',cell:[32,32],frames:4}}}}},
   }}));
   const loads=artLoads(),by=new Map([...loads,...enemyPieceLoads('bebado'),...enemyPieceLoads('chefe')].map(l=>[l.key,l]));
@@ -116,8 +118,8 @@ test('a manifest with enemies and items queues every page under the art keys and
   assert.deepEqual(by.get('art:enemy:bebado:walk')?.cell,[128,128]);
   assert.ok(by.has('art:enemy:bebado:idle')&&by.has('art:enemy:bebado:elite/walk'));
   assert.equal(by.get('art:enemy:chefe:idle:p2')?.url,'/art/lite/enemies/chefe/idle-p2.webp');assert.ok(by.has('art:enemy:chefe:idle:p1'));
-  const gem=by.get('art:itens:gema-pequena');
-  assert.equal(gem?.url,'/art/items/gema-pequena.webp');assert.equal(gem?.bake?.key,pickupTexture('xp'));
+  const coxinha=by.get('art:itens:coxinha');
+  assert.equal(coxinha?.url,'/art/items/coxinha.webp');assert.equal(coxinha?.bake?.key,pickupTexture('heal'));
   assert.equal(by.get(FX.projFriendly)?.url,'/art/projectiles/tiro-aliado.webp','projectiles load under today\'s key');
   assert.equal(by.get(FX.projFriendly)?.bake,undefined);
   assert.equal(loads.length,2);

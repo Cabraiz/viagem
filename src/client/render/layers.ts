@@ -9,11 +9,11 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
-import {squash,gemBounce,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
+import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
   POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
@@ -29,7 +29,11 @@ import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
+import {contactWidth} from './shadow-rules.ts';
+import {castSilhouette,silhouetteImage} from './silhouette.ts';
+import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx} from './arsenal-fx.ts';
+import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -39,6 +43,8 @@ type TextStyle=Phaser.Types.GameObjects.Text.TextStyle;
 export interface HordeRendererOptions{
   /** Allocation-free camera projection; the host updates projector.view on rotation, then calls refresh(). */
   projector:Projector;
+  /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
+  cull?:boolean;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
   /**
@@ -78,7 +84,10 @@ export interface HordeRendererOptions{
 }
 
 interface EnemyActor{
-  image:Image;shadow:Image;barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
+  image:Image;shadow:Image;
+  /** BUG sombra-longe: the body's frame laid on the ground as its cast shadow (shadow-rules.ts); hidden in economy. */
+  sil:Image;
+  barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
   /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
@@ -95,6 +104,8 @@ interface EnemyActor{
   lit:boolean;
   /** The flip the sun tint was set for (a flipped sprite needs its corners swapped). */
   litFlip:boolean;screenX:number;flip:boolean;moving:boolean;
+  /** Off camera (render/cull.ts): hidden, and nothing but its position runs until it comes back. */
+  culled:boolean;
   /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
   bossPhase:number;
   /** What EnemyView.phase shows on a regular critter (phase-look.ts: acting pose, lecture ring, buff, reflect, headlight). */
@@ -333,10 +344,12 @@ export class HordeRenderer{
       showImage(o,active);o.shadow.setVisible(active).setActive(active);
       if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
     };
-    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;}};
+    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);}};
+    // The silhouette: just over the contact shadows (-9980), under every body; one flat dark tint, set once.
+    const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),sil:silhouette(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
@@ -403,6 +416,7 @@ export class HordeRenderer{
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
+    this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
@@ -432,6 +446,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
+  get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
   get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
@@ -657,7 +673,8 @@ export class HordeRenderer{
     if(hasDeathArt(this.scene.textures,art,dying?.image)){
       const d=this.deaths.spawn(),elite=!!dying?.elite;
       d.born=this.now;d.kind=k;d.art=art;d.elite=elite;d.costume.variant=dying?.costume;d.row=dying?enemyArtRow(dying.image):0;d.x=dying?.x??x;d.y=dying?.y??y;
-      d.lift=ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
+      // A walker drawn as 'pombos' (enxame) dies on the ground, like it walked (enemyArtFlies).
+      d.lift=k==='pombos'&&enemyArtFlies(art)===false?0:ENEMY_ART[k].hover*(elite?ELITE_SCALE:1)*body;
       d.image.clearTint();
     }else{
       const puff=this.poofs.spawn();
@@ -715,14 +732,28 @@ export class HordeRenderer{
   }
 
   // ---------- per-frame drawing (pre-bound, allocation-light) ----------
+  private view:ViewRect={x:0,y:0,right:0,bottom:0};
+  private cullMargin=0;
+  private culledNow=0;
   private drawEnemy=(a:EnemyActor)=>{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
-    const q=this.project(this.at),depth=this.depth(this.at);
-    let lift=art.hover*size*body,dx=0;
+    const q=this.project(this.at);
+    // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, silhouette, bar or cues. The boss, the target and
+    // a coach's lecture ring (wider than the body) are always drawn.
+    const k=size*a.fit*body;
+    if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
+      if(!a.culled){a.culled=true;a.image.setVisible(false);a.shadow.setVisible(false);a.sil.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
+      a.screenX=NaN;this.culledNow++;return;
+    }
+    if(a.culled){a.culled=false;a.image.setVisible(true);a.shadow.setVisible(true);a.lit=false;}
+    const depth=this.depth(this.at);
+    // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
+    const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
+    let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;
     let sway=0;
-    if(a.kind==='pombos'&&!this.reduced){
+    if(flying&&!this.reduced){
       lift+=Math.sin(now*.011+a.phase*TAU)*6*body;
       dx=(Math.abs(((now*.004+a.phase*4)%2+2)%2-1)-.5)*10*body; // zig-zag flap
     }else if(a.kind==='bebado'&&!this.reduced)sway=Math.sin(now*.004+a.phase*TAU)*.09; // staggering (cambaleando)
@@ -747,8 +778,12 @@ export class HordeRenderer{
     }
     // The imported figure is sized by its drawn height (horde-art.ts): what hangs on the body follows it.
     const fit=a.fit=enemyArtRatio(a.image);
-    const shadow=art.width*size*fit*(a.kind==='pombos'?.45:.66)*body;
+    // BUG sombra-longe: the contact shadow is as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one),
+    // capped by the kind's old width; the silhouette (full effects only) is the frame on screen, laid on the ground.
+    const old=art.width*size*fit*(flying?.45:.66)*body,feet=ENEMY_FEET[a.art];
+    const cellW=feet?Math.abs(a.image.frame.width*a.image.scaleX):0,shadow=flying?old:contactWidth(feet,a.asleep,cellW,old);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
+    this.drawSilhouette(a,q.x,q.y,flying);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
@@ -862,6 +897,8 @@ export class HordeRenderer{
   private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
+  /** The silhouette: the body's frame as drawn (texture, frame, origin, flip, scale), flipped at the feet onto the ground. */
+  private drawSilhouette(a:EnemyActor,x:number,y:number,flying:boolean){castSilhouette(a.sil,a.image,x,y,this.fx.silhouettes&&!flying);}
   private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.enemyBody;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
@@ -904,7 +941,7 @@ export class HordeRenderer{
       const k=a.fall?Math.min(1,(now-a.born)/BOLETO_FALL_MS):1;
       y=-BOLETO_FALL_PX*(1-k)*(1-k);rotation=(a.phase-.5)*.5+(1-k)*Math.sin(now*.02+a.phase*TAU)*.6;
       if(k>=1)a.fall=false;
-    }else if(a.kind==='xp'){y=gemBounce(now-a.born,reduced);scale=1+Math.min(.7,Math.log2(Math.max(1,a.value))*.14);}
+    }
     if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
       if(a.kind==='chest'){scale=1+.07*Math.sin(now*.007+a.phase*TAU);rotation=Math.sin(now*.013+a.phase)*.04;}

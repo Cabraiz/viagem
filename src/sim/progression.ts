@@ -1,5 +1,7 @@
 /**
  * XP, pickups, team levels and the upgrade offer queue (VGM-034).
+ * D-054: no XP gems. A kill's XP goes straight into the team bar (killXp); the only XP on the ground is the boleto rain
+ * of the zueira (sim/zueira.ts). No magnet either: heal and boletos are pulled from PULL_RADIUS.
  * Offers come from two sources: team level (`lvl-…`) and end of round (`rnd-…`, called by the director).
  * Only the oldest offer of each player can be chosen. Clocks never run while the player is offline.
  * Deadlines (D-021, replaces the 10 s head clock of VGM-034 when a round director runs):
@@ -39,13 +41,22 @@ export function xpToNext(level:number){
 export const createTeamProgress=():TeamProgress=>({xp:0,level:1,nextXp:xpToNext(1)});
 
 export const COLLECT_RADIUS=.6;
-/** Units per second a magnetized pickup travels toward its collector. */
+/** D-054: heal and boletos start homing to a hero this close (the old base magnet, without the ímã). */
+export const PULL_RADIUS=1.2;
+/** Units per second a pulled pickup travels toward its collector. */
 export const HOMING_SPEED=12;
-export const HEAL_DROP_CHANCE=.02,MAGNET_DROP_CHANCE=.005;
+export const HEAL_DROP_CHANCE=.02;
+/**
+ * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, one more than the first level) in the endless
+ * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
+ * one, so the first level (and its chip) still lands in round 1. Not at the wave start: there it would open the
+ * level-up pause (D-050) before anyone moved.
+ */
+export const ROUND1_XP=6;
 export const ROUND_OFFER_FALLBACK_SECONDS=20;
 const DROP_LIFETIME_SECONDS=30,DROP_SPREAD=.3,MAX_LEVELS_PER_TICK=100;
 const REROLL='~';
-const ATTRACTED:ReadonlySet<PickupKind>=new Set(['xp','heal','magnet']);
+const ATTRACTED:ReadonlySet<PickupKind>=new Set(['xp','heal']);
 
 export interface ProgressionOptions {
   catalog:ItemCatalog;
@@ -70,7 +81,9 @@ export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:numb
   /** D-021: level offers granted too late in the current intermission (base ids); they wait for the next one. */
   lateHeld?:string[];
   /** D-052: each player's [skips, rerolls] left this run (absent: the full OFFER_SKIPS / OFFER_REROLLS). */
-  charges?:Record<string,[number,number]>}
+  charges?:Record<string,[number,number]>;
+  /** D-054: ROUND1_XP was paid this run. */
+  round1Paid?:boolean}
 /** D-052: every player starts a run with this many "Pular" (close the offer, no prize) and "Rolar de novo" (new cards). */
 export const OFFER_SKIPS=2,OFFER_REROLLS=2;
 export type OfferActionFailure='no-player'|'no-offer'|'unknown-offer'|'not-oldest'|'no-charge';
@@ -120,7 +133,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -131,18 +144,36 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return pickup;
   }
 
-  /** Drops for a killed enemy: XP gem, chest for elites, and a small luck-scaled chance of coxinha/ímã. */
+  /**
+   * D-054: the XP of a kill, straight into the team bar: the enemy's xp × the killer's growth (Cartão Fidelidade); a
+   * kill with no hero behind it (a tower, an explosion) uses the highest growth of the standing heroes, like the gem
+   * the best of them would have picked up.
+   */
+  function killXp(ctx:SimContext,enemy:EnemyState,by?:string){
+    if(!(enemy.xp>0))return 0;
+    const killer=by?ctx.players.get(by):undefined;
+    let growth=killer&&!killer.spectator?killer.stats.growth:0;
+    if(!growth)for(const p of ctx.players.values())if(canCollect(p))growth=Math.max(growth,p.stats.growth);
+    const xp=(enemy.xp+(round1Due(ctx)&&ctx.round.index===1&&ctx.round.phase==='wave'?payRound1():0))*(growth||1);
+    ctx.team.xp+=xp;
+    return xp;
+  }
+  /** ROUND1_XP still owed: an endless world's directed run in round 1 (on the island the bichos come in a few seconds). */
+  const round1Due=(ctx:SimContext)=>!state.round1Paid&&directed(ctx)&&!!ctx.terrain.chunks&&ctx.round.index<=2;
+  function payRound1(){state.round1Paid=true;return ROUND1_XP;}
+
+  /** A killed enemy: its XP to the team (killXp), a chest for elites and a small luck-scaled chance of coxinha. */
   function dropLoot(ctx:SimContext,enemy:EnemyState,by?:string):PickupState[]{
+    killXp(ctx,enemy,by);
     const r=rngOf(ctx),collectors=sortedCollectors(ctx);
     const luck=Math.max(0,(by?ctx.players.get(by)?.stats.luck:undefined)??1);
     const near=()=>({x:enemy.x+r.range(-DROP_SPREAD,DROP_SPREAD),y:enemy.y+r.range(-DROP_SPREAD,DROP_SPREAD)});
     const out:PickupState[]=[];
-    if(enemy.xp>0)out.push(addPickup(ctx,'xp',enemy.xp,enemy,collectors));
     if(enemy.elite&&!enemy.boss)out.push(addPickup(ctx,'chest',1,near(),collectors));
-    const heal=r.chance(HEAL_DROP_CHANCE*luck),magnet=r.chance(MAGNET_DROP_CHANCE*luck);
-    const expires=ctx.tick+ticks(DROP_LIFETIME_SECONDS);
-    if(heal)out.push(addPickup(ctx,'heal',HEAL_AMOUNT,near(),collectors,expires));
-    if(magnet)out.push(addPickup(ctx,'magnet',0,near(),collectors,expires));
+    const heal=r.chance(HEAL_DROP_CHANCE*luck);
+    // The old ímã roll, drawn and dropped: the run's random stream stays as before D-054 (seeded runs and tests keep their story).
+    r.next();
+    if(heal)out.push(addPickup(ctx,'heal',HEAL_AMOUNT,near(),collectors,ctx.tick+ticks(DROP_LIFETIME_SECONDS)));
     saveRng();
     return out;
   }
@@ -159,7 +190,6 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     ctx.pickups.delete(pickup.id);
     if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth;
     else if(pickup.kind==='heal')player.hp=Math.min(player.stats.maxHp,player.hp+pickup.value);
-    else if(pickup.kind==='magnet'){for(const other of ctx.pickups.values())if(other.kind==='xp')other.homing=player.id;}
     ctx.emit({type:'pickup',player:player.id,pickup:pickup.id,kind:pickup.kind,value:pickup.value});
     return true;
   }
@@ -183,7 +213,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
       const taker=nearest(collectors,pickup,()=>COLLECT_RADIUS);
       if(taker&&collect(ctx,pickup,taker))continue;
       if(!pickup.homing&&ATTRACTED.has(pickup.kind)){
-        const puller=nearest(collectors,pickup,p=>p.stats.magnet);
+        const puller=nearest(collectors,pickup,()=>PULL_RADIUS);
         if(puller)pickup.homing=puller.id;
       }
     }
@@ -324,6 +354,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
 
   const progression:SimSystem={id:'progression',step(ctx){
     const team=ctx.team;
+    // Round 1's wave ended with no kill: its XP comes with the intermission (no pause there, D-050).
+    if(round1Due(ctx)&&ctx.round.index===2&&ctx.round.phase==='prepare')team.xp+=payRound1();
     for(let n=0;n<MAX_LEVELS_PER_TICK&&team.xp>=team.nextXp;n++){
       team.xp-=team.nextXp;
       team.level++;

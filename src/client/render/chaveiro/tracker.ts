@@ -3,7 +3,7 @@
  * since when the alarm sounds and the run ended (renderer clock), the moto's heading, and the route and stops, which
  * protocol 15 sends on the keyframe and when they change only (RouteMemo). Pure, so the state machine is tested.
  */
-import {headingOf,newlyFallen,PART_FALL_MS,alarmOn} from './rules.ts';
+import {carAxisHeading,headingOf,newlyFallen,PART_FALL_MS,alarmOn} from './rules.ts';
 import type {ChaveiroView} from './view.ts';
 
 /** Keeps the last route and stops seen, and fills a view that came without them. */
@@ -29,6 +29,11 @@ export class ChaveiroTracker {
   endedAt?:number;
   /** The moto's heading (radians), from its last move, or the route's first leg before it moved. */
   heading=0;
+  /** D-052, the car moves: the heading of its last move (the move's axis, rules.carAxisHeading); 0 before it moved. */
+  carHeading=0;
+  /** How far the car rolled along its heading (units, negative backwards): its wheels turn by it. */
+  carRoll=0;
+  private carAt?:{x:number;y:number};
   private parts=0;
   private motoAt?:{x:number;y:number};
   private memo=new RouteMemo();
@@ -37,7 +42,7 @@ export class ChaveiroTracker {
   push(next:ChaveiroView|undefined,tick:number,now:number,reduced:boolean){
     this.tick=tick;
     const view=this.memo.fill(next);
-    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=undefined;this.heading=0;return;}
+    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=this.carAt=undefined;this.heading=this.carHeading=this.carRoll=0;return;}
     // Parts that fell since the last view fall now (the first view shows the fallen ones already down).
     if(this.view&&!reduced)for(const i of newlyFallen(this.parts,view.car.parts))this.falling.set(1<<i,now);
     this.parts=view.car.parts;
@@ -47,6 +52,12 @@ export class ChaveiroTracker {
     if(this.motoAt)this.heading=headingOf(this.motoAt,view.moto,this.heading);
     else if(view.route&&view.route.length>1)this.heading=headingOf(view.route[0],view.route[1],this.heading);
     this.motoAt={x:view.moto.x,y:view.moto.y};
+    if(this.carAt){
+      const dx=view.car.x-this.carAt.x,dy=view.car.y-this.carAt.y;
+      this.carHeading=carAxisHeading(this.carHeading,dx,dy);
+      this.carRoll+=dx*Math.cos(this.carHeading)+dy*Math.sin(this.carHeading);
+    }
+    this.carAt={x:view.car.x,y:view.car.y};
     this.view=view;
   }
   /** Drops the parts that finished falling by `now`; the bits still falling. */

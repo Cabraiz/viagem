@@ -108,6 +108,18 @@ export const SLOW_FACTOR=.5;
 export const KNOCK_DECAY=.6,KNOCK_STUN=.05;
 /** Fraction of the overlap with a neighbor resolved per tick, and the cap of that push. */
 export const SEPARATION=.5,SEPARATION_MAX=.12;
+/**
+ * Mode 'ninhos' (ctx.sleepers; card ninhos-perto-ataca-20x, the user: no critter inside another, always a gap): the
+ * spacing kept between two bodies on top of their radii, and the awake ones also step off the sleepers and the
+ * standing players. The other worlds keep the tuned crowd as it was.
+ */
+export const SPACING_GAP=.15;
+/**
+ * The push off the sleepers, a tick, at most (u): under the slowest walk (1.21 u/s ≈ .06 a tick), so a body walking
+ * always gets through a nest's ring of sleepers (card bichos-travados: at SEPARATION_MAX the ring held the nests' groups
+ * at its edge for good) and only one standing still slides off them.
+ */
+export const SLEEPER_PUSH_MAX=.03;
 /** Largest enemy radius a neighbor query must reach (the boss: 0.9 × ENEMY_RADIUS_SCALE, balanco-pos-1-7). */
 const NEIGHBOR_REACH=.9*ENEMY_RADIUS_SCALE;
 const MAX_STEP=.25;
@@ -549,17 +561,33 @@ export class EnemyAi implements SimSystem {
       // Separation from overlapping neighbors (order-stable: same index, same iteration).
       let pushX=0,pushY=0;
       const near=this.neighbors;near.length=0;
-      ctx.enemyIndex.query(e.x,e.y,e.radius+NEIGHBOR_REACH,near);
-      for(const o of near){
-        if(o===e||o.hp<=0)continue;
-        const ox=e.x-o.x,oy=e.y-o.y,d=Math.hypot(ox,oy),overlap=e.radius+o.radius-d;
-        if(overlap<=0)continue;
+      const spaced=!!ctx.sleepers,gap=spaced?SPACING_GAP:0;
+      const apart=(o:Point,radius:number)=>{
+        const ox=e.x-o.x,oy=e.y-o.y,d=Math.hypot(ox,oy),overlap=e.radius+radius+gap-d;
+        if(overlap<=0)return;
         if(d<1e-6){const a=memory.seed*TAU;pushX+=Math.cos(a)*overlap;pushY+=Math.sin(a)*overlap;}
         else{pushX+=ox/d*overlap;pushY+=oy/d*overlap;}
+      };
+      ctx.enemyIndex.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
+      for(const o of near){if(o!==e&&o.hp>0)apart(o,o.radius);}
+      if(spaced){
+        // The sleepers (they never move: the awake one steps off them) and the standing heroes (no gap there: it still
+        // hits at contact range, CONTACT_MARGIN; it only never stands inside one).
+        for(const p of ctx.players.values())if(!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0&&Math.abs(p.x-e.x)<2&&Math.abs(p.y-e.y)<2)apart(p,PLAYER_RADIUS-gap);
       }
       pushX*=SEPARATION;pushY*=SEPARATION;
       const push=Math.hypot(pushX,pushY);
       if(push>SEPARATION_MAX){pushX*=SEPARATION_MAX/push;pushY*=SEPARATION_MAX/push;}
+      if(spaced){
+        // Off the sleepers, on a cap of its own under the walk (SLEEPER_PUSH_MAX).
+        const bx=pushX,by=pushY;pushX=0;pushY=0;
+        near.length=0;ctx.sleepers!.query(e.x,e.y,e.radius+NEIGHBOR_REACH+gap,near);
+        for(const o of near)if(!ctx.sleepers!.isTarget(o.id))apart(o,o.radius);
+        pushX*=SEPARATION;pushY*=SEPARATION;
+        const off=Math.hypot(pushX,pushY);
+        if(off>SLEEPER_PUSH_MAX){pushX*=SLEEPER_PUSH_MAX/off;pushY*=SLEEPER_PUSH_MAX/off;}
+        pushX+=bx;pushY+=by;
+      }
       // The Tio (and the motoboy) plants his feet for the wind-up and bulldozes through the crowd in the charge, so he
       // stays on the line he warned; the neighbors still step off him on their own turn. The motoboy is planted from the
       // tick his aim starts too: a push then would move him off the start of the line he just drew and call the charge

@@ -6,7 +6,7 @@ import type {ItemDef,PlayerStats} from '../contract/index.ts';
 
 export const PASSIVE_MAX_LEVEL=5;
 
-export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','ima','oculos','cartao','pente','silenciador'] as const;
+export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao','pente','silenciador'] as const;
 /**
  * D-051 manual combat only (proposal §5): reinforcements of the weapon in the hand. The automatic game's offers never
  * roll them (sim/items.ts AUTO_PASSIVE_IDS); the stats still read them like any passive.
@@ -52,14 +52,11 @@ export const PASSIVES:Readonly<Record<PassiveId,PassiveDef>>=Object.freeze({
   bone:make('bone','Boné do Pai','bone',{luck:0.1},
     level=>`${percent(0.1*level)} de sorte`,
     ['Aba reta, sorte torta.','Achou dois reais no bolso.','Pegou o último pão de queijo.','Ganhou no bingo da igreja.','O pai disse "tá vendo?".']),
-  ima:make('ima','Ímã de Geladeira','ima',{magnet:0.5},
-    level=>`+${(0.5*level).toFixed(1).replace('.',',')} de alcance de coleta`,
-    ['Brinde da pizzaria.','Segura o cardápio e o XP.','Puxou o boleto junto. Ops.','Até a geladeira veio atrás.','Você virou o polo norte.']),
   oculos:make('oculos','Óculos Juliet','oculos',{might:0.1},
     level=>`${percent(0.1*level)} de dano`,
     ['Lente espelhada, dano refletido.','Ninguém vê seus olhos. Nem o medo.','Comprado no farol, funciona igual.','Dá +10 de respeito na quebrada.','Chave de cadeia. E de horda.']),
   cartao:make('cartao','Cartão Fidelidade','cartao',{growth:0.08},
-    level=>`${percent(0.08*level)} de XP coletado`,
+    level=>`${percent(0.08*level)} de XP ganho`,
     ['Mais um carimbo e ganha um pastel.','Pontos que nunca expiram (expiram).','Cliente VIP da padaria.','O caixa já sabe seu nome.','Cartão preto da padoca.']),
   pente:make('pente','Pente Estendido','pente',{amount:1},
     level=>`+${level} ${level===1?'projétil':'projéteis'} por disparo`,

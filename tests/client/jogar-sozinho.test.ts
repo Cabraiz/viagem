@@ -115,7 +115,8 @@ test('wiring: #enter-island starts openSolo with the stepper\'s bots; the island
   assert.match(main,/aria-label="Menos um bot"/);assert.match(main,/aria-label="Mais um bot"/);
   assert.match(main,/class="solo-bots-value" aria-live="polite"/);
   assert.match(main,/const island=islandFlag\(location\.search\);/);
-  assert.match(main,/if\(island\)\{\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
+  // danca-no-podio: the menu dance lets go of its pages before the island loads (menu-dance.ts hold).
+  assert.match(main,/if\(island\)\{\s*const releaseDance=menuDance\.hold\(\);\s*try \{\s*const \{openExploration\}=await import\('\.\/client\/explore\.ts'\);/);
   assert.match(main,/await openSolo\(selected,nickname\.trim\(\),\{bots,onJoined:/);
   assert.equal(main.match(/openExploration\(/g)?.length,1,'the island opens from one place only');
   const lobby=read('src/client/lobby.ts');
@@ -136,12 +137,7 @@ test('sala-solo-privada: openSolo asks the room for the solo map and a private r
   assert.ok(!/headers:\{[^}]*Content-Type/.test(solo.slice(0,solo.indexOf('client=new CoopClient'))),'no JSON content type: a simple request');
 });
 
-test('?modo= (D-047, D-051): the nests by default, ?modo=ondas the waves, ?modo=muralha the old wall mode',()=>{
-  const auto='&combate=auto';
-  assert.deepEqual(objectiveFromSearch('?modo=chaveiro'+auto),{objective:'chaveiro',mode:'ninhos'});
-  assert.deepEqual(objectiveFromSearch('?ilha=1&modo=chaveiro'+auto),{objective:'chaveiro',mode:'ninhos'});
-  assert.deepEqual(objectiveFromSearch('?modo=muralha'+auto),{objective:'muralha'},'the old wall mode, on request: no nests');
-  assert.deepEqual(objectiveFromSearch('?modo=ondas'+auto),{},'the waves, on request');
-  for(const s of ['','?modo=ninhos','?modo=MURALHA','?modo=CHAVEIRO','?chaveiro=1',undefined])
+test('?modo= (D-051, rodada-legado): the solo room is always the nests with the manual combat, whatever the address',()=>{
+  for(const s of ['','?modo=ninhos','?modo=ondas','?modo=muralha','?modo=chaveiro','?ilha=1&modo=chaveiro','?modo=ondas&combate=auto',undefined])
     assert.deepEqual(objectiveFromSearch(s),{mode:'ninhos',combat:'manual'},String(s));
 });

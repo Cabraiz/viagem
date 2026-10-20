@@ -359,34 +359,32 @@ test('a conflict only in public/art/manifest.json is regenerated from the group 
   }finally{w.cleanup();}
 });
 
-// NEW-20261017-ORQ-fila-deploy-seguro: lote 13 changed the city map (v2 → v3) and the queue told the Orquestrador to
-// run deploy:rooms before the push: the Worker asked for v3 ~20 min before pages.yml published the site, and every
-// phone on the old site saw "Atualize a página". A Worker lote that changes what the Worker matches with the client
-// (a map's manifest or bytes, the room protocol, multiplayer.json) is published Worker+site together by pages.yml.
-test('a Worker lote that changes a map or the protocol never suggests deploy:rooms (pages.yml publishes both); one that does not, does as before',(t)=>{
+// NEW-20261017-ORQ-fila-deploy-seguro + fila-deploy-ordem: lote 13 changed the city map (v2 → v3); the Worker went up
+// by hand ~20 min before pages.yml published the site, and every phone on the old site saw "Atualize a página". pages.yml
+// has no Cloudflare token, so the Worker can only go up by the Orquestrador's deploy:rooms: the order is always
+// deploy:rooms first, then publicar (its health-gate holds the site until the Worker matches). A lote that changes what
+// the Worker matches with the client (a map's manifest or bytes, the protocol, multiplayer.json) needs the Worker even
+// without a --worker entry, and the queue warns that the old site is out of step for ~20 min.
+test('deploy:rooms first, then publicar, always; a map or protocol change also warns the site is out of step for ~20 min, and needs the Worker without --worker',(t)=>{
   const said:string[]=[];
   t.mock.method(console,'log',(...a:unknown[])=>{said.push(a.join(' '));});
-  for(const [file,together] of [['public/maps/cidade.manifest.json',true],['src/so-codigo.ts',false]] as const){
+  for(const [file,flag,contract] of [['public/maps/cidade.manifest.json',[],true],['src/so-codigo.ts',['--worker'],false]] as const){
     const w=world();
     try{
       said.length=0;mkdirSync(join(w.repo,'public/maps'),{recursive:true});
       w.branch('vgm/w',file,'{"version":3}\n');
-      main(['pronto','NEW-w','--branch','vgm/w','--worker',...w.opts]);
+      main(['pronto','NEW-w','--branch','vgm/w',...flag,...w.opts]);
       const state=main(['lote',...w.opts]);
-      assert.equal(state.estado,'aguardando-worker');
-      assert.deepEqual(state.contrato,together?[file]:[]);
+      assert.equal(state.estado,'aguardando-worker',contract?'a map change waits for the Worker even without --worker':'--worker');
+      assert.deepEqual(state.contrato,contract?[file]:[]);
       const log=said.join('\n');
-      if(together){
-        assert.match(log,/NÃO rode deploy:rooms/);assert.match(log,/pages\.yml publicar Worker\+site juntos; confira o site em ~25 min/);
-        assert.doesNotMatch(log,/run deploy:rooms/,'no deploy:rooms command to copy');
-        assert.throws(()=>main(['publicar',state.lote,...w.opts]),/sem deploy:rooms: o pages\.yml publica Worker\+site juntos/);
-      }else{
-        assert.match(log,/run deploy:rooms/);assert.doesNotMatch(log,/NÃO rode/);
-        assert.throws(()=>main(['publicar',state.lote,...w.opts]),/depois do deploy:rooms/);
-      }
+      assert.match(log,/run deploy:rooms/,'the deploy:rooms command, every time');
+      assert.match(log,/depois, com FILA_ORQ=1: node tools\/fila\.mjs publicar/);
+      assert.equal(/fora de passo por ~20 min/.test(log),contract);
+      assert.throws(()=>main(['publicar',state.lote,...w.opts]),/depois do deploy:rooms/);
       said.length=0;
       orq(()=>main(['publicar',state.lote,...w.opts]));
-      assert.equal(/confira o site em ~25 min/.test(said.join('\n')),together,'the reminder after the push');
+      assert.equal(/fora de passo por ~20 min.*confira o site em ~25 min/.test(said.join('\n')),contract,'the reminder after the push');
     }finally{w.cleanup();}
   }
 });

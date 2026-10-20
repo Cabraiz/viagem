@@ -790,7 +790,8 @@ test('DirectorState with avenues survives a JSON round-trip mid-round; the copy 
  * changes island seed 1 only; the same tree with that ban reverted gives the previous hashes exactly. Re-recorded for velocidade-heroi-e-projetil (the 2× walk widens
  * the director's warning lead to heroSpeed × 1.5 s and moves the endless spawn ring to 9.4..10.4 + 1): the endless
  * hashes change, the island ones do not; the same tree with HERO_SPEED_MULT = 1, PROJECTILE_SPEED_MULT = 1 and the
- * ring 5..8 + 3 gives the previous hashes exactly.
+ * ring 5..8 + 3 gives the previous hashes exactly. The endless ones again for D-054 (no round-1 crumbs: no 'migalha' drops
+ * nor their id counter); the island ones do not change.
  */
 function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:AvenuePlanner){
   const terrain=world==='ilha'?new TerrainField(3):new TerrainField(3,{world:'infinito'});
@@ -812,8 +813,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'2adbb80f3277b37f','infinito kill=40 seed 1':'f9f21cc82502992f',
-  'infinito kill=Infinity seed 0':'b2a164e3ecd1080b', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
+  'infinito kill=40 seed 0':'da183e211f6425c9','infinito kill=40 seed 1':'40f35557858e601d',
+  'infinito kill=Infinity seed 0':'5ac3ff9b368eb913', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

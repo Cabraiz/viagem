@@ -24,6 +24,9 @@ import {FollowCamera,besideFrom,followZoom,framesBeside,toScreen} from '../../sr
 import {HERO_SIDE} from '../../src/client/hud/city/layout.ts';
 import type {RunView} from '../../src/contract/view.ts';
 import type {HudContext} from '../../src/client/hud/model.ts';
+import {HUD_SWITCH} from '../../src/client/hud/arrows.ts';
+// The forge window and its gathering hint are off in the game (arrows.ts, user 18/10); their code is tested switched on.
+HUD_SWITCH.forge=true;
 
 type Decl={selector:string;prop:string;value:string;line:number};
 const css=(file:string)=>readFileSync(new URL(`../../${file}`,import.meta.url),'utf8');

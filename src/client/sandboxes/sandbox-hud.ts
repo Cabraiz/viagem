@@ -256,12 +256,16 @@ function sendPause(){
   hud.setPause({leftMs:frozen?fake.leftMs:Math.ceil(left/1000)*1000,totalMs:PAUSA_TOTAL,level:view.team.level,waiting:[...fake.waiting],skips:{...fakeCharges.skips},rerolls:{...fakeCharges.rerolls}});
 }
 if(pausa)setInterval(sendPause,200);
-/** `inv=meio|cheio` (D-051): the local player's inventory in manual combat (hud/inventory.ts). */
-const inv=(['meio','cheio'] as const).find(v=>v===params.get('inv'));
+/**
+ * `inv=meio|cheio|kit` (D-051): the local player's inventory in manual combat (hud/inventory.ts); `kit` (torre-pela-caixa)
+ * holds a Morteiro kit and a muro kit, and `kit=1` opens the "pôr torre" bar on the Morteiro (hud/kit-place).
+ */
+const inv=(['meio','cheio','kit'] as const).find(v=>v===params.get('inv'));
 const INV_HERO={x:12,y:15};
 const INV_FIXTURE={
   meio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'coxinha',level:2}],
   cheio:[{id:'faca',level:1},{id:'pistola',level:2},{id:'escopeta',level:3},{id:'rifle',level:4},{id:'coxinha',level:3},{id:'kit-torre',level:1}],
+  kit:[{id:'faca',level:1},{id:'pistola',level:2},{id:'kit:morteiro',level:1},{id:'coxinha',level:2},{id:'kit:muro',level:6}],
 };
 /** What the sim would do to p1 for a command the sandbox accepts (no checks: `recusa=` shows the refusals). */
 function inventoryStep<P extends {weapons:{id:string;level:number}[];hand?:number}>(p:P,command:InventoryCommand):P{
@@ -656,6 +660,11 @@ if(cidade)void (async()=>{
  * D-052 slice 3: ?carro=perto (Puxar near the car), corda (Soltar, on the rope) or obra[-muro|-barricada] (the build
  * tray open with that piece). The buttons and the tray only; the ghost is the scene's (sandbox-cidade obra=1).
  */
+if(inv==='kit'&&params.get('kit')==='1')void (async()=>{
+  const {KitPlaceHud}=await import('../hud/kit-place/kit-place.ts');
+  const bar=new KitPlaceHud(hud.el,{onConfirm:()=>{},onCancel:()=>{},onTurn:()=>{},onAim:()=>{},canvas:()=>undefined});
+  bar.update({open:true,id:'kit:morteiro',canTurn:false,rot:0});
+})();
 const carro=params.get('carro');
 if(carro)void (async()=>{
   const {FortifyHud}=await import('../hud/fortify/fortify.ts');

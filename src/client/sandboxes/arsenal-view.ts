@@ -37,6 +37,8 @@ export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:st
     {id:'it-coxinha',kind:'item',resource:'coxinha',value:2,x:x+1.8,y:y+1.7},
     {id:'it-cafe',kind:'item',resource:'cafe-lendario',value:5,x:x+2.9,y:y+1},
   ];
+  // Torre-pela-caixa: the dourada that burst open gave a kit de torre (tier 4), on the ground where it stood.
+  if(timeMs>=burstAt)items.push({id:`it-kit-${cycle}`,kind:'item',resource:'kit:ninho-de-metralhadora',value:1,x:x-1.9,y:y+.9});
   const fired=Math.floor(timeMs/FIRE_EVERY_MS);
   if(timeMs-fired*FIRE_EVERY_MS<ARSENAL_PUSH_MS){
     const look=FIRE_LOOK[weapon],dx=target.x-x,dy=target.y-y,len=Math.hypot(dx,dy);

@@ -58,6 +58,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'pausa-esperando':{sandbox:'hud',query:'pausa=esperando&frozen=1&heroi=1',descricao:'pausa do level-up: você já escolheu, esperando 2'},
   'pausa-ultimo':{sandbox:'hud',query:'pausa=ultimo&frozen=1&heroi=1',descricao:'pausa do level-up: os 3 s finais, "Falta você!"'},
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
+  'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Morteiro (roxa) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
+  'kit-obra':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro',descricao:'torre-pela-caixa: o Morteiro do kit em obra e o fantasma verde do próximo'},
+  'kit-recusa':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro&fantasma=ocupado',descricao:'torre-pela-caixa: o fantasma vermelho em cima da obra'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
   // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").
   'ninhos-hud':{sandbox:'hud',query:'mapa=cidade&chaveiro=1&ninhos=1&state=wave&frozen=1',descricao:'D-051 modo ninhos: moto m:ss e ninhos vivos/8 no topo, sem Onda N'},

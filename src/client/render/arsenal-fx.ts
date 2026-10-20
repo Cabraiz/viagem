@@ -16,6 +16,7 @@ import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
+import {kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
@@ -155,10 +156,11 @@ export class ArsenalFx{
     return baseFrame(CRATE_ART,crateRow(progress),0,0,this.frameRef);
   }
 
-  /** An item drawn this frame at screen `q`: a weapon gets the ring of its rarity (a consumable none). */
+  /** An item drawn this frame at screen `q`: a weapon gets the ring of its rarity, a kit de torre its tier's (a consumable none). */
   item(resource:string|undefined,value:number,q:Pt){
-    if(!isWeaponItem(resource))return;
-    const color=this.colors[rarityOf(value)],b=this.body;
+    const kit=kitPiece(resource);
+    if(!kit&&!isWeaponItem(resource))return;
+    const color=this.colors[kit?kitRarity(kit):rarityOf(value)],b=this.body;
     this.rings.lineStyle(Math.max(2,2.5*b),color,.95).strokeEllipse(q.x,q.y,40*b,17*b);
   }
 

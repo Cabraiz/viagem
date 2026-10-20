@@ -102,10 +102,9 @@ export class CityRelief {
       load.on('loaderror',failed);
       load.start();
     };
-    // Its own batch, after whatever the loader does now or in this frame (on a map switch the scene queues the city's
-    // building sheets right after making the layer: joining that batch would hold its COMPLETE, the sheets' refresh,
-    // for the atlas's ~0.4 MB). So: decided on the next update, then started at once or after that batch.
-    this.scene.events.once(Phaser.Scenes.Events.UPDATE,()=>{if(load.isLoading())load.once(Phaser.Loader.Events.COMPLETE,start);else start();});
+    // Joins whatever the loader is doing on the next update: the city's art streams for the whole first minute
+    // (render/city/art-stream.ts), so waiting for the loader's COMPLETE would swap the ground under the players then.
+    this.scene.events.once(Phaser.Scenes.Events.UPDATE,start);
   }
   private get renderer(){return this.scene.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer;}
   /** Uploads the textures and listens for a lost WebGL context (its scratch targets are made again on the next bake). */

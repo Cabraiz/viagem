@@ -29,15 +29,16 @@ import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuil
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
-import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,type Pt,type Rect} from './projection.ts';
+import {VIEW_PIVOT,boundsOf,depth,normalizeView,project,rectsOverlap,type Pt,type Rect} from './projection.ts';
 import {TriBand} from './tri-band.ts';
+import {missingByDistance} from './art-stream.ts';
 import {circlePolygon,fanTriangles,isConvex} from './fan.ts';
 import {CityRelief,reliefEnabled} from './relevo/baker.ts';
 import {cliffCells,withoutCliffs} from './relevo/field.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {decorCentre,decorChunk,decorFade,decorSprite} from './decor-art.ts';
 import {CityLive,decalMeshes,type LivePiece} from './live/layer.ts';
-import {livePieces} from './live/art.ts';
+import {liveSheets,livePieces} from './live/art.ts';
 import {decorKey,isDecal,type DecorEntry} from './live/rules.ts';
 export {decorSprite} from './decor-art.ts';
 
@@ -187,6 +188,10 @@ export class CityLayer {
    * (NEW-20261018-ORQ-chunks-cidade-sem-pico: rebuilding them all in one frame was a stall of a second on a phone).
    */
   private readonly stale=new Set<string>();
+  /** Live chunks built before some of their art arrived (artArrived): rebuilt one per update, only off screen. */
+  private readonly lateArt=new Set<string>();
+  /** Imported-art texture keys each chunk draws with (chunkArt), built once. */
+  private artOf?:Map<string,readonly string[]>;
   private clock=0;
   /** Imported art: the plan, each cell's lot, the fountain lot. */
   private readonly art?:CityArtPlan;
@@ -310,7 +315,7 @@ export class CityLayer {
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
 
   /** The ground drawn is final (no albedo still on its way, no chunk waiting for its rebuild): the modo foto waits for it. */
-  groundSettled(){return this.stale.size===0&&(!this.relief||this.relief.albedoSettled);}
+  groundSettled(){return this.stale.size===0&&this.lateArt.size===0&&(!this.relief||this.relief.albedoSettled);}
   /** Relief bake numbers (relevo/baker.ts), undefined on the flat ground. */
   reliefStats(){return this.relief?{...this.relief.stats}:undefined;}
 
@@ -399,7 +404,9 @@ export class CityLayer {
     const {show,hide}=this.tracker.update(frame.camera,view);
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
-    const old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);
+    let old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);
+    // Late art (partida-abre-com-P0): never swapped in on screen (a mound turning into a building mid-view).
+    if(old===undefined&&!show.length)for(const key of this.lateArt){const c=this.chunksByKey.get(key);if(c&&!rectsOverlap(this.tracker.bounds(c,view),frame.camera)){old=key;break;}}
     if(old!==undefined){const t0=perfNow();this.dropChunk(old);this.buildChunk(old,view);perfSpan('chunk',t0);}
     this.applyOcclusion(frame,view);
     this.vivo?.update(frame.camera,performance.now());
@@ -437,6 +444,44 @@ export class CityLayer {
   refresh(){
     if(this.view<0)return;
     for(const key of this.live.keys())this.stale.add(key);
+  }
+
+  /**
+   * The imported art each chunk draws with, by chunk key: its cells' lots (a lot spanning chunks counts in each, as each
+   * draws a mound without it), the fountain, the props' sheets, the decor sheets and their live sheets (overlays, lights,
+   * ground decals). The ground sheets are not listed (the scene loads them before the first frame).
+   */
+  chunkArt():ReadonlyMap<string,readonly string[]>{
+    if(this.artOf)return this.artOf;
+    const sets=new Map<string,Set<string>>(),add=(chunk:string,key:string|undefined)=>{
+      if(!key)return;let set=sets.get(chunk);if(!set)sets.set(chunk,set=new Set());set.add(key);
+    };
+    const live=new Map<string,string[]>();
+    for(const s of liveSheets(artIndex())){const id=s.key.split(':')[2];const l=live.get(id);if(l)l.push(s.key);else live.set(id,[s.key]);}
+    const {width}=this.asset;
+    for(const c of this.index.chunks){
+      for(const p of c.pieces)add(c.key,this.lotAt.get(p.y*width+p.x)?.sheet.key);
+      if(this.art)for(const p of c.props)add(c.key,propSheet(p,this.art)?.key);
+    }
+    const f=this.fountain,fc=f&&this.chunkOfCell(...lotCentre(f));
+    if(f&&fc)add(fc.key,f.sheet.key);
+    for(const [key,list] of this.decorOf)for(const e of list){add(key,this.art?.decor[e.id]?.key);for(const k of live.get(e.id)??[])add(key,k);}
+    for(const [key,list] of this.decalsOf)for(const e of list)for(const k of live.get(e.id)??[])add(key,k);
+    return this.artOf=new Map([...sets].map(([k,v])=>[k,[...v].sort()]));
+  }
+  /**
+   * The chunks' art not loaded yet, nearest first: each key once with the screen distance (px, this view) from the camera
+   * grown by CHUNK_SHOW_PX to the nearest chunk that draws it; 0 = such a chunk is (about to be) built.
+   */
+  missingArt(camera:Rect,view:number):{key:string;px:number}[]{
+    const v=normalizeView(view),chunks:{bounds:Rect;keys:readonly string[]}[]=[];
+    for(const [key,keys] of this.chunkArt()){const c=this.chunksByKey.get(key);if(c)chunks.push({bounds:this.tracker.bounds(c,v),keys});}
+    return missingByDistance(chunks,{x:camera.x-CHUNK_SHOW_PX,y:camera.y-CHUNK_SHOW_PX,w:camera.w+2*CHUNK_SHOW_PX,h:camera.h+2*CHUNK_SHOW_PX},
+      key=>this.scene.textures.exists(key));
+  }
+  /** A texture of the chunks' art arrived: the live chunks drawing it are rebuilt with it once they are off screen. */
+  artArrived(key:string){
+    for(const [chunkKey,keys] of this.chunkArt())if(this.live.has(chunkKey)&&keys.includes(key))this.lateArt.add(chunkKey);
   }
 
   /** Live chunks still waiting for their rebuild after a refresh, sorted. */
@@ -747,7 +792,7 @@ export class CityLayer {
     for(const p of live.props){p.obj.destroy();this.fadeDrop(p.fade,'props',(e:LiveProp)=>e===p);}
     for(const c of live.cells)this.columns.delete(c);
     this.cellColumns.clear();this.columnsVersion++;
-    this.live.delete(key);this.stale.delete(key);
+    this.live.delete(key);this.stale.delete(key);this.lateArt.delete(key);
   }
 
   /**

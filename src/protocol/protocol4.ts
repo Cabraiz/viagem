@@ -93,9 +93,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the kits de torre (card NEW-20261020-ORQ-torre-pela-caixa): the kit items
  * (`kit:<piece>`) in the inventories and on the ground, their strings at the end of the DICT, and the client's
  * {t:'place'}; an older decoder would read the new indexes as unknown strings.
+ * 28 given by the integration queue (tools/fila.mjs, lote 20261020-230138) to: NEW-20261020-ORQ-torre-pela-caixa.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=27;
+export const PROTOCOL_VERSION=28;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

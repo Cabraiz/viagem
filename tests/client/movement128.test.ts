@@ -125,6 +125,81 @@ test('both missing manifest IDs and a catalog-free hero start from preloaded nat
   }}finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}
 });
 
+test('the own walk preloaded with the scene: the first step walks at once, nothing is fetched, unwalked sheets are freed',async()=>{
+  const previous=Object.getOwnPropertyDescriptor(globalThis,'Image'),requests:string[]=[];
+  class FakeImage {src='';decoding='';naturalWidth=1536;naturalHeight=768;get width(){return this.naturalWidth;}get height(){return this.naturalHeight;}async decode(){requests.push(this.src);}}
+  Object.defineProperty(globalThis,'Image',{value:FakeImage,configurable:true});
+  try{
+    const id='tio-do-churrasco',files:Record<string,unknown>={idle8:idle8()};
+    for(const motion of ['walk','attack'])for(const direction of HERO_DIRECTIONS)files[`${motion}128-${direction}`]=clip(motion,direction);
+    setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[id]:{kind:'dir8',files}}}}}));
+    // Bitmaps from the upload queue (createImageBitmap): closed, not src-cleared, when freed.
+    type Sheet={width:number;height:number;closed?:boolean;close():void};
+    const images=new Map<string,Sheet>(),events=new EventEmitter(),loads:{key:string;url:string;config:unknown}[]=[],sheets:Sheet[]=[];
+    const sheet=(width:number,height:number)=>{const s:Sheet={width,height,close(){s.closed=true;}};sheets.push(s);return s;};
+    const scene={events,time:{now:0},textures:{exists:(key:string)=>images.has(key),get:(key:string)=>({getSourceImage:()=>images.get(key)}),
+      addSpriteSheet:(key:string,image:Sheet)=>images.set(key,image),remove:(key:string)=>images.delete(key)},
+      load:{spritesheet:(key:string,url:string,config:{endFrame:number})=>{loads.push({key,url,config});images.set(key,config.endFrame===7?sheet(768,96):sheet(1536,768));},isLoading:()=>false,list:{size:0}},
+      anims:{exists:()=>false,generateFrameNumbers:()=>[],create:()=>{throw new Error('no legacy animations');}}};
+    const sprite=new class extends EventEmitter {
+      scene=scene;active=true;visible=true;texture={key:'portrait'};frame={name:'0'};flipX=false;flipY=false;
+      anims={isPlaying:false,stop(){}};
+      setTexture(key:string,frame=0){this.texture={key};this.frame={name:String(frame)};return this;}setFrame(frame:number){this.frame={name:String(frame)};return this;}
+      setOrigin(){return this;}setScale(){return this;}setFlipX(value:boolean){this.flipX=value;return this;}setFlipY(value:boolean){this.flipY=value;return this;}
+    }();
+    const renderer=new CharacterSprites(scene as never);renderer.queue(id);renderer.queueOwnWalk(id);renderer.queueOwnWalk(id);
+    assert.deepEqual(loads.map(l=>l.key),[`sprite128:${id}:idle8`,...HERO_DIRECTIONS.map(d=>`sprite128:${id}:walk:${d}`)],'idle8 and the 8 walks, once each');
+    assert.deepEqual(loads.slice(1).map(l=>l.url),HERO_DIRECTIONS.map(d=>movement128Plan(id,'walk',d)!.url),'the lite URLs the waiting room downloads');
+    assert.ok(loads.slice(1).every(l=>(l.config as {endFrame:number}).endFrame===127));
+    renderer.animate(sprite as never,id,0,0);
+    scene.time.now=10;renderer.animate(sprite as never,id,.1,0,0,true,0,screenDirection(0,1,0));
+    assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`,'the first step already walks');
+    await flush();assert.equal(requests.length,0,'no clip downloaded or decoded after the match opened');
+    events.emit('shutdown');
+    assert.equal(images.size,0,'adopted and unwalked preloads are all released');
+    assert.ok(sheets.every(s=>s.closed),'every bitmap closed');
+  }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}
+});
+
+test('no idle/walk flicker: the local hero walks by its input, not by reconcile nudges; others hold the walk across a still frame',async()=>{
+  const previous=Object.getOwnPropertyDescriptor(globalThis,'Image');
+  class FakeImage {src='';decoding='';naturalWidth=1536;naturalHeight=768;get width(){return this.naturalWidth;}get height(){return this.naturalHeight;}async decode(){}}
+  Object.defineProperty(globalThis,'Image',{value:FakeImage,configurable:true});
+  try{
+    const id='tio-do-churrasco',files:Record<string,unknown>={idle8:idle8()};
+    for(const motion of ['walk','attack'])for(const direction of HERO_DIRECTIONS)files[`${motion}128-${direction}`]=clip(motion,direction);
+    setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[id]:{kind:'dir8',files}}}}}));
+    const images=new Map<string,{width:number;height:number}>(),events=new EventEmitter();
+    const scene={events,time:{now:0},textures:{exists:(key:string)=>images.has(key),get:(key:string)=>({getSourceImage:()=>images.get(key)}),
+      addSpriteSheet:(key:string,image:FakeImage)=>images.set(key,image),remove:(key:string)=>images.delete(key)},
+      load:{spritesheet:(key:string,_url:string,config:{endFrame:number})=>images.set(key,config.endFrame===7?{width:768,height:96}:{width:1536,height:768}),isLoading:()=>false,list:{size:0}},
+      anims:{exists:()=>false,generateFrameNumbers:()=>[],create:()=>{throw new Error('no legacy animations');}}};
+    const actor=()=>new class extends EventEmitter {
+      scene=scene;active=true;visible=true;texture={key:'portrait'};frame={name:'0'};flipX=false;flipY=false;
+      anims={isPlaying:false,stop(){}};
+      setTexture(key:string,frame=0){this.texture={key};this.frame={name:String(frame)};return this;}setFrame(frame:number){this.frame={name:String(frame)};return this;}
+      setOrigin(){return this;}setScale(){return this;}setFlipX(value:boolean){this.flipX=value;return this;}setFlipY(value:boolean){this.flipY=value;return this;}
+    }();
+    const renderer=new CharacterSprites(scene as never);renderer.queue(id);renderer.queueOwnWalk(id);
+    // Local hero standing (no input): the reconcile correction fades over a few frames, nudging the drawing.
+    const self=actor(),still={x:0,y:0},keys:string[]=[];
+    let x=0;renderer.animate(self as never,id,x,0,0,true,0,still);
+    for(let f=1;f<=12;f++){scene.time.now=f*16;x+=f%2?.02:0;renderer.animate(self as never,id,x,0,0,true,0,still);keys.push(self.texture.key);}
+    assert.deepEqual(new Set(keys),new Set([`sprite128:${id}:idle8`]),'standing still stays at rest through the nudges');
+    // Walking (input held): every frame walks, even a frame whose drawing did not move.
+    const walking=screenDirection(1,0,0);keys.length=0;
+    for(let f=13;f<=24;f++){scene.time.now=f*16;x+=f%3?.05:0;renderer.animate(self as never,id,x,0,0,true,0,walking);keys.push(self.texture.key);}
+    assert.equal(new Set(keys).size,1,'one walk clip, no rest frame in between');assert.match(keys[0],/:walk:/);
+    // A teammate (no intent): a still frame between two moves keeps the walk.
+    const mate=actor();keys.length=0;let mx=0;
+    renderer.animate(mate as never,id,mx,0);
+    for(let f=1;f<=12;f++){scene.time.now=1000+f*16;mx+=f%2?.05:0;renderer.animate(mate as never,id,mx,0);if(f>1)keys.push(mate.texture.key);}
+    assert.equal(new Set(keys).size,1,'the teammate walks without flicker');assert.match(keys[0],/:walk:/);
+    scene.time.now=2000;renderer.animate(mate as never,id,mx,0);assert.equal(mate.texture.key,`sprite128:${id}:idle8`,'and rests once it stopped');
+    events.emit('shutdown');
+  }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}
+});
+
 test('an idle preload that never spawns an actor is released at scene shutdown',()=>{
   setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const images=new Map<string,{width:number;height:number;src:string}>(),events=new EventEmitter();let source:{src:string}|undefined;
   const scene={events,textures:{exists:(key:string)=>images.has(key),get:(key:string)=>({getSourceImage:()=>images.get(key)}),remove:(key:string)=>images.delete(key)},

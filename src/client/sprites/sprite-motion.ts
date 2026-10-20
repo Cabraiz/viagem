@@ -17,6 +17,24 @@ export const SPRITE_CLIPS={
 } as const;
 /** How long a swing shows (legacy clip and the R06 attack alike: 1000 ms drawn, /HERO_ANIM_RATE on screen). */
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;
+/** A figure without an input (teammates, enemies' riders) keeps walking this long after its drawing last moved. */
+export const WALK_HOLD_MS=120;
+/**
+ * Walking or resting, steady frame to frame (heroi-tremendo, 20/10): a figure walks while its drawing moved in the
+ * last WALK_HOLD_MS (a still frame or two in between keeps the walk); the local hero also needs its input to ask for a
+ * walk (`intent`: keys, stick or route), so a server reconcile nudging a standing hero's drawing never walks it (that
+ * flipped the drawing between the walk clip and the rest pose at every reconcile once the clip was loaded), and a
+ * hero pushing into a wall rests facing it.
+ */
+export class WalkGate {
+  private until=-Infinity;
+  update(now:number,moved:boolean,intent?:{x:number;y:number}):boolean{
+    if(moved)this.until=now+WALK_HOLD_MS;
+    const recent=now<this.until;
+    return intent?recent&&Math.hypot(intent.x,intent.y)>1e-6:recent;
+  }
+}
+
 export class SpriteMotion {
   private lastAttack=0;
   private attackUntil=0;

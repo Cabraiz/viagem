@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,HERO_DIRECTION_PAGE,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,HERO_DIRECTIONS,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
@@ -125,10 +125,10 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
-  private idlePreloads=new Map<string,Movement128Plan>();
-  private idleCleanup=false;
+  private detailedPreloads=new Map<string,Movement128Plan>();
+  private preloadCleanup=false;
   /**
    * `city`: the scene's screen-scale Breu outlines (card contorno-breu, render/city-outline.ts). In city mode every
    * sheet draws its Breu-ring copy with the same frames and animations; omitted or outside the city, the sheet itself.
@@ -144,27 +144,36 @@ export class CharacterSprites {
   }
   queue(id:string){
     const idle=movementIdle8Plan(id);
-    if(idle){
-      const cache=this.detailed??=movement128Textures(this.scene,this.city);
-      if(this.scene.textures.exists(idle.key)||cache.status(idle.key)||this.requested.has(idle.key))return;
-      this.requested.add(idle.key);this.idlePreloads.set(idle.key,idle);
-      this.scene.load.spritesheet(idle.key,idle.url,{frameWidth:96,frameHeight:96,endFrame:7});
-      if(!this.idleCleanup){
-        this.idleCleanup=true;
-        const cleanup=()=>{
-          for(const key of this.idlePreloads.keys())if(!cache.status(key)&&this.scene.textures.exists(key)){
-            const image=this.scene.textures.get(key).getSourceImage() as HTMLImageElement;
-            this.scene.textures.remove(key);if('src' in image)image.src='';
-          }
-          for(const key of this.idlePreloads.keys())this.requested.delete(key);
-          this.idlePreloads.clear();this.detailed=undefined;this.idleCleanup=false;
-          this.scene.events.off('shutdown',cleanup);this.scene.events.off('destroy',cleanup);
-        };
-        this.scene.events.once('shutdown',cleanup);this.scene.events.once('destroy',cleanup);
-      }
-      return;
-    }
+    if(idle){this.queueDetailed(idle);return;}
     this.queueLegacy(id);
+  }
+  /**
+   * This player's own walk in the 8 directions (card preload-heroi-primeiro), loaded with the scene's preload so the
+   * match opens with them as Phaser textures and the first step adopts one (Movement128Textures `available`) instead of
+   * sliding in the resting pose while a 1536×768 clip downloads and decodes. Own hero only: 8 sheets (~38 MB of GPU),
+   * outside the shared LRU until a step adopts them; the ones never walked are freed with the scene.
+   */
+  queueOwnWalk(id:string){
+    for(const direction of HERO_DIRECTIONS){const plan=movement128Plan(id,'walk',direction);if(plan)this.queueDetailed(plan);}
+  }
+  private queueDetailed(plan:Movement128Plan){
+    const cache=this.detailed??=movement128Textures(this.scene,this.city);
+    if(this.scene.textures.exists(plan.key)||cache.status(plan.key)||this.requested.has(plan.key))return;
+    this.requested.add(plan.key);this.detailedPreloads.set(plan.key,plan);
+    this.scene.load.spritesheet(plan.key,plan.url,{frameWidth:96,frameHeight:96,endFrame:plan.frameCount-1});
+    if(!this.preloadCleanup){
+      this.preloadCleanup=true;
+      const cleanup=()=>{
+        for(const key of this.detailedPreloads.keys())if(!cache.status(key)&&this.scene.textures.exists(key)){
+          const image=this.scene.textures.get(key).getSourceImage() as HTMLImageElement|ImageBitmap;
+          this.scene.textures.remove(key);if('close' in image)image.close();else image.src='';
+        }
+        for(const key of this.detailedPreloads.keys())this.requested.delete(key);
+        this.detailedPreloads.clear();this.detailed=undefined;this.preloadCleanup=false;
+        this.scene.events.off('shutdown',cleanup);this.scene.events.off('destroy',cleanup);
+      };
+      this.scene.events.once('shutdown',cleanup);this.scene.events.once('destroy',cleanup);
+    }
   }
   private queueLegacy(id:string){
     if(!spriteCatalog[id])return;
@@ -237,8 +246,8 @@ export class CharacterSprites {
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number}){
     const root=this.sheet(id);
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y};this.states.set(sprite,state);}
-    const dx=x-state.x,dy=y-state.y,moving=Math.hypot(dx,dy)>.001;
+    if(!state){state={motion:new SpriteMotion(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y};this.states.set(sprite,state);}
+    const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;}
     state.x=x;state.y=y;

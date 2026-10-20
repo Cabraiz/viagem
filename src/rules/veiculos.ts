@@ -14,7 +14,7 @@ export const VEHICLE_NAMES:Readonly<Record<VehicleKind,string>>=Object.freeze({
 });
 /** What the vehicle says when taken (one at random) and when the ride runs out. */
 export const VEHICLE_LINES:Readonly<Record<VehicleKind,{pegou:readonly string[];acabou:string}>>=Object.freeze({
-  patinete:Object.freeze({pegou:Object.freeze(['Avalie sua viagem: ⭐','Corrida iniciada. Bateria: 3 quadras.']),
+  patinete:Object.freeze({pegou:Object.freeze(['Avalie sua viagem: uma estrela.','Corrida iniciada. Bateria: 3 quadras.']),
     acabou:'Saldo insuficiente. Sua corrida custou R$ 0,00 e sua honra.'}),
   carrinho:Object.freeze({pegou:Object.freeze(['Ele não anda reto. Ninguém anda reto.','Tem uma alface aqui de 2019.']),
     acabou:'A roda caiu. A alface ficou.'}),

@@ -45,6 +45,7 @@
  *   obra-2, a ruined A4, the Gustavão on its 12 × 4 rail to the east (in a landscape print with the rest), whose shells shake the screen and leave a
  *   crater, and an A3 hidden behind the tallest building within 9 u when there is one (not at the plaza: try
  *   `hero=100,124`, in front of a 3.6 u block), whose shots that building covers),
+ *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -119,7 +120,9 @@ const cellsOverride=Number(params.get('cells'))||undefined;
 const zoomK=params.get('zoom')==='pc'?ZOOM_DESKTOP:clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
 const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
-const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;
+const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:params.get('torres')==='lista'?2:0;
+/** torres=lista: the kinds to stand next to the hero (`tipos=a,b`), pronta, on a ring of 2.4 u from the north. */
+const towerList=(params.get('tipos')??'').split(',').filter(k=>k in TOWER_LOOK) as TowerKind[];
 /**
  * `kit=<peça>` with torres=1 (card torre-pela-caixa): instead of the showcase, that kit's tower in obra by the hero (built
  * straight at its tier) and the "pôr torre" ghost of the next one beside it, with the room's footprint (hud/kit-place): green on free
@@ -510,7 +513,9 @@ class CitySandbox extends Phaser.Scene {
       made++;
       return {id:`defesa-${made}`,kind,x:x+dx*c,y:y+dy*c,r:foot.r,...(foot.half?{half:foot.half}:{}),hp,maxHp:hp,startTick:tick-1,readyTick:tick,fireTick:tick+((made*7)%20),...extra};
     };
-    if(kitParam){
+    if(towersParam===2){
+      towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,{fireTick:1e9}));});
+    }else if(kitParam){
       // kit=: only the kit's tower, in obra (the showcase would hide it).
       if(isTowerKit(kitParam))this.defenses.push(make(kitParam,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
     }else if(towersParam===12){
@@ -539,6 +544,7 @@ class CitySandbox extends Phaser.Scene {
     if(!towersDrawn)return;
     const view=()=>this.view;
     this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+      ...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),
       depthVersion:()=>this.layer?.columnsVersion??0,
       world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},
         depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,

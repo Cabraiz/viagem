@@ -53,7 +53,22 @@ const SHOWN_SCALE=.35;
  * ≤ 18 MB (1 gave 18.2 MB median, 20.8 MB p90 over 300 rotations).
  */
 export const LITE_TEXELS=.9;
-const KINDS=['trees','sprites','enemies','menu'];
+/**
+ * Towers: every cell × this. At the city scenery's scale (tower-rules towerArtScale: 0.85 world px per art px on the
+ * real Cidade Nevada's 1.496 u cells) a phone draws a tower at ~0.57 CSS px per art px at the closest zoom
+ * (ZOOM_MAX; measured in the sandbox cidade, 390×844): LITE_TEXELS of that, as for the enemies.
+ */
+export const TOWER_LITE_SCALE=.5;
+const KINDS=['trees','sprites','enemies','menu','towers'];
+const TOWERS=join(ROOT,'public/art/towers/manifest.json');
+/**
+ * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base and the
+ * weapon's idle), each as ONE lite sheet at public/art/lite/towers/<id>/<name>.webp, its pages joined (frames in
+ * order, `views` or `frames` columns), every cell scaled by TOWER_LITE_SCALE; `liteCell` goes to the file in
+ * public/art/towers/manifest.json and the index. The delivered art is drawn at the city scenery's scale
+ * (tower-rules towerArtScale), ~0.57 CSS px per art px on a phone at the closest zoom (see TOWER_LITE_SCALE).
+ */
+const TOWER_LITE_FILES=['base','idle'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 
@@ -97,7 +112,7 @@ async function shrink({data,width,height},[cw,ch],[lw,lh]){
 
 const options=process.argv.slice(2),args=new Set(options),kindArg=options.indexOf('--kinds');
 const kinds=kindArg<0?KINDS:[...new Set((options[kindArg+1]??'').split(',').map(k=>k.trim()).filter(Boolean))];
-if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,menu.');
+if(!kinds.length||kinds.some(kind=>!KINDS.includes(kind)))throw new Error('--kinds precisa de famílias válidas separadas por vírgula: trees,sprites,enemies,menu,towers.');
 const manifest=existsSync(MANIFEST)?JSON.parse(readFileSync(MANIFEST,'utf8')):{webp:WEBP,files:{}};
 manifest.enemyFigures??={};
 
@@ -133,6 +148,7 @@ for(const kind of kinds){
   if(!existsSync(dir))continue;
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
+  if(kind==='towers')continue; // joined per file below
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;
@@ -152,6 +168,50 @@ for(const kind of kinds){
     console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,liteCell?`cell ${liteCell.join('×')}`:'',`psnr ${e.psnr} dB, shown ${e.shownPsnr} dB`);
     save();
   }
+}
+
+// ---------- towers: one lite sheet per loaded file, pages joined ----------
+let towersMoved=0;
+const towers=kinds.includes('towers')&&existsSync(TOWERS)?JSON.parse(readFileSync(TOWERS,'utf8')):undefined;
+for(const [id,piece] of Object.entries(towers?.pieces??{}))for(const name of TOWER_LITE_FILES){
+  const f=piece.files[name];if(!f)continue;
+  const total=(f.views??f.frames??1)*(Array.isArray(f.rows)?f.rows.length:f.directions??1);
+  const pages=f.pages?.length?f.pages:[{file:f.file,columns:f.views??f.frames??1,rows:Array.isArray(f.rows)?f.rows.length:f.directions??1,firstFrame:0,frameCount:total}];
+  const bufs=pages.map(p=>readFileSync(join(ROOT,'public/art/towers',p.file)));
+  const key=`towers/${id}/${name}.webp`,out=join(ROOT,'public/art/lite',key),entry=manifest.files[key];
+  const source=sha(Buffer.concat(bufs)),liteCell=[Math.ceil(f.cell[0]*TOWER_LITE_SCALE),Math.ceil(f.cell[1]*TOWER_LITE_SCALE)];
+  if(String(f.liteCell)!==String(liteCell)){towersMoved++;f.liteCell=liteCell;}
+  if(!args.has('--all')&&entry?.source===source&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+  stale.push(key);
+  if(args.has('--check'))continue;
+  // `views` or `frames` columns, more when that is over 4096 px tall (frames are read in order, any grid will do)
+  const [lw,lh]=liteCell,count=pages.reduce((n,p)=>Math.max(n,p.firstFrame+p.frameCount),0);
+  let cols=f.views??f.frames??pages[0].columns;while(Math.ceil(count/cols)*lh>4096&&(cols+1)*lw<=4096)cols++;
+  const rows=Math.ceil(count/cols),W=cols*lw,H=rows*lh,raw=Buffer.alloc(W*H*4);
+  if(H>4096||W>4096)throw new Error(`art-lite: ${key} ${W}×${H} passa de 4096 px`);
+  for(let k=0;k<pages.length;k++){
+    const p=pages[k],src=sharp(bufs[k]).ensureAlpha();
+    for(let i=0;i<p.frameCount;i++){
+      const cell=await src.clone().extract({left:(i%p.columns)*f.cell[0],top:Math.floor(i/p.columns)*f.cell[1],width:f.cell[0],height:f.cell[1]})
+        .resize(lw,lh,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer();
+      const g=p.firstFrame+i,x0=(g%cols)*lw,y0=Math.floor(g/cols)*lh;
+      for(let y=0;y<lh;y++)cell.copy(raw,((y0+y)*W+x0)*4,y*lw*4,(y+1)*lw*4);
+    }
+  }
+  const lite=await sharp(raw,{raw:{width:W,height:H,channels:4}}).webp(WEBP).toBuffer();
+  mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
+  const shown=psnr(raw,await rgba(lite)); // the copy is already at the size a phone draws it
+  manifest.files[key]={source,lite:sha(lite),bytes:bufs.reduce((n,b)=>n+b.length,0),liteBytes:lite.length,liteCell,psnr:shown,shownPsnr:shown};
+  const e=manifest.files[key];
+  console.error(key,`${Math.round(e.bytes/1024)} → ${Math.round(e.liteBytes/1024)} KB`,`cell ${liteCell.join('×')}`,`psnr ${e.psnr} dB`);
+  save();
+}
+if(towersMoved&&args.has('--check')){console.error(`art-lite: ${towersMoved} tower files with a stale liteCell in public/art/towers/manifest.json (node scripts/art-lite.mjs --kinds towers)`);process.exit(1);}
+if(towersMoved){
+  writeFileSync(TOWERS,`${JSON.stringify(towers,null,2)}
+`);
+  await writeIndex({torres:GROUPS.torres},{outRoot:ROOT});
+  console.error('art-lite:',towersMoved,'tower files got a new liteCell (manifest and index)');
 }
 
 // ---------- `liteCell` on the enemy files (manifest and index): what the client takes as the cell ----------

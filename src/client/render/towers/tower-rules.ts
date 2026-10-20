@@ -19,6 +19,9 @@
  *   12 × 4 rail along the plan's axis), which the snapshot does not carry either.
  */
 import {artPiece,type ArtFile} from '../../art/manifest.ts';
+import {ART_CELL} from '../city/art-plan.ts';
+import {ART_SCALE} from '../city/materials.ts';
+import {TILE_X} from '../city/projection.ts';
 import {CITY_MAP_SCALE,DEFENSES} from '../../../rules/index.ts';
 
 export type TowerKind=
@@ -98,8 +101,14 @@ export const PHASE_HEIGHT:Readonly<Record<TowerPhase,number>>=Object.freeze({'ob
 
 /** Base column for the camera view (quarter turns, the sheet's 0°, 90°, 180°, 270°). */
 export const baseColumn=(view:number)=>(((Math.round(view)%4)+4)%4);
-/** Frame index in a base sheet of `views` columns × 6 rows (row-major). */
-export const baseFrame=(phase:TowerPhase,view:number,views=4)=>phaseRow(phase)*views+Math.min(views-1,baseColumn(view));
+/**
+ * Frame index in a base sheet of `views` columns × its `rows` (row-major; the 6 phases when absent). A sheet without
+ * the obra rows (the obstacles: pronta, danificada, ruina) shows its ready row while it is being built.
+ */
+export function baseFrame(phase:TowerPhase,view:number,views=4,rows?:readonly string[]){
+  const row=rows?.length?Math.max(0,rows.indexOf(phase)>=0?rows.indexOf(phase):rows.indexOf('pronta')):phaseRow(phase);
+  return row*views+Math.min(views-1,baseColumn(view));
+}
 
 /** Weapon rows: S, SW, W, NW, N, NE, E, SE (08-TORRES.md §1). */
 export const DIRS8=Object.freeze(['S','SW','W','NW','N','NE','E','SE'] as const);
@@ -323,6 +332,18 @@ export function shakeOffset(amplitude:number,ms:number,out:{x:number;y:number}={
   out.x=amplitude*Math.sin(ms*.09);out.y=amplitude*.6*Math.sin(ms*.13+1.3);
   return out;
 }
+
+/**
+ * Scale of the delivered tower art: the city scenery's (materials.ts ART_SCALE, art-plan.ts footprint sheets), so a
+ * tower stands as tall as the buildings next to it — ART_SCALE art px per projected px on a map of ART_CELL_U cells,
+ * growing with the map's cell as the lots do (1.496 u on the 1.7× Cidade Nevada, cidade-escala-1-7). One constant for
+ * every defense: a tower is as big as it was drawn, not stretched to its site (its feet on the anchor). World px per
+ * art px for a projection whose 1 u square is `diamondPx` across (2·TILE_X in the city's).
+ */
+export const ART_CELL_U=ART_CELL;
+export const towerArtScale=(diamondPx:number,cell:number=ART_CELL)=>diamondPx/(2*TILE_X)/ART_SCALE*cell/ART_CELL;
+/** Texture px per art px of a sheet: its lite copy's cell (scripts/art-lite.mjs) over the delivered cell. */
+export const textureRatio=(file:Pick<ArtFile,'cell'|'liteCell'>)=>file.liteCell?file.liteCell[0]/file.cell[0]:1;
 
 /** Imported art of a defense (manifest group `torres`): the base sheet, the weapon idle sheet and the mount (px, view 0°). */
 export interface TowerArt {base?:ArtFile;idle?:ArtFile;mount?:readonly [number,number]}

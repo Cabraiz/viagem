@@ -27,6 +27,54 @@
       },
       "sha256": "1a885e5c39af934dbef11137497e0bb666370bfd0b0955016614278fe7173a4a"
     },
+    "barricada": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "barricada.webp",
+          "cell": [
+            384,
+            256
+          ],
+          "views": 4,
+          "rows": [
+            "inteira",
+            "avariada",
+            "quase-caindo",
+            "quebrada"
+          ],
+          "anchor": [
+            0.5,
+            0.87890625
+          ],
+          "pages": [
+            {
+              "file": "barricada.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b"
+            }
+          ],
+          "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b"
+        }
+      },
+      "sha256": "bbbf448d54e11f344dff5cde950bae6dbf1be4431eae6e41e96737533b2fd32e",
+      "meta": {
+        "states": [
+          "inteira",
+          "avariada",
+          "quase-caindo",
+          "quebrada"
+        ],
+        "footprint": [
+          2,
+          1
+        ],
+        "origem": "torres/muro-sacos-de-areia (pronta, danificada, danificada, ruina), NEW-20261020-ORQ-torres-entregues"
+      }
+    },
     "caixa-saque": {
       "kind": "views",
       "files": {

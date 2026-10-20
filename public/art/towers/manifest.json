@@ -1,0 +1,2203 @@
+{
+  "version": 2,
+  "group": "torres",
+  "pieces": {
+    "antiaerea-quadrupla": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "antiaerea-quadrupla/base.webp",
+          "cell": [
+            448,
+            448
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "antiaerea-quadrupla/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "8d657d0f8bc475029117bc58852645a6962a1ca9bc64fe79d0e38182aa4f6924"
+            }
+          ],
+          "sha256": "8d657d0f8bc475029117bc58852645a6962a1ca9bc64fe79d0e38182aa4f6924",
+          "liteCell": [
+            224,
+            224
+          ]
+        },
+        "fire": {
+          "file": "antiaerea-quadrupla/fire.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "antiaerea-quadrupla/fire.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272"
+            }
+          ],
+          "sha256": "90448807f13052720f2bde0b1d78abdd3ad08e23da3fab7cbc9d5eb045e79272"
+        },
+        "idle": {
+          "file": "antiaerea-quadrupla/idle.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "antiaerea-quadrupla/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123"
+            }
+          ],
+          "sha256": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123",
+          "liteCell": [
+            128,
+            128
+          ]
+        },
+        "reload": {
+          "file": "antiaerea-quadrupla/reload.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "antiaerea-quadrupla/reload.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "40e25c2f404f0ebfe540f790eca85fffff6c81462eac0625e0d593a3e165fb9d"
+            }
+          ],
+          "sha256": "40e25c2f404f0ebfe540f790eca85fffff6c81462eac0625e0d593a3e165fb9d"
+        }
+      },
+      "sha256": "0fddc3963f533e7b31100073055f5706ca593a41fa7dd2119a0112d74b01398d",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          224,
+          280
+        ]
+      }
+    },
+    "arame-e-sirene": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "arame-e-sirene/base.webp",
+          "cell": [
+            320,
+            320
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "arame-e-sirene/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "568fa91c7e918ae925dc65d22bd32ac322879b982e46b345ed44443bf7f6ce45"
+            }
+          ],
+          "sha256": "568fa91c7e918ae925dc65d22bd32ac322879b982e46b345ed44443bf7f6ce45",
+          "liteCell": [
+            160,
+            160
+          ]
+        },
+        "fire": {
+          "file": "arame-e-sirene/fire.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "arame-e-sirene/fire.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609"
+            }
+          ],
+          "sha256": "1ae6f33dbcf49fd6d1fa771a99228a53b62337e7f2e4f3d25b7334bf9d94d609"
+        },
+        "idle": {
+          "file": "arame-e-sirene/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "arame-e-sirene/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e"
+            }
+          ],
+          "sha256": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e",
+          "liteCell": [
+            64,
+            64
+          ]
+        }
+      },
+      "sha256": "163c250155e82ab4a3f039b5ba2e49f2e836a09e58aeb95c2f031c93f6530d27",
+      "meta": {
+        "footprint": [
+          1,
+          2
+        ],
+        "mount": [
+          157,
+          231
+        ]
+      }
+    },
+    "atiradores-do-telhado": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "atiradores-do-telhado/base-p1.webp",
+          "cell": [
+            448,
+            1024
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.95
+          ],
+          "pages": [
+            {
+              "file": "atiradores-do-telhado/base-p1.webp",
+              "columns": 9,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "d9bae5a744c8341f24dd0b30363551660b5bc277dd186754d705a0ab6e7a42d8"
+            }
+          ],
+          "sha256": "d9bae5a744c8341f24dd0b30363551660b5bc277dd186754d705a0ab6e7a42d8",
+          "liteCell": [
+            224,
+            512
+          ]
+        },
+        "fire": {
+          "file": "atiradores-do-telhado/fire.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.799
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "atiradores-do-telhado/fire.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807"
+            }
+          ],
+          "sha256": "101c54d68142491981dfc5655b3e40e9966776ab6f7d8cab9f1aabd4d4be3807"
+        },
+        "idle": {
+          "file": "atiradores-do-telhado/idle.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.799
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "atiradores-do-telhado/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9"
+            }
+          ],
+          "sha256": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9",
+          "liteCell": [
+            96,
+            96
+          ]
+        },
+        "reload": {
+          "file": "atiradores-do-telhado/reload.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.799
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "atiradores-do-telhado/reload.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "9c2fada20afcaff79feb6e7100ef9d78b82d5e24a124d619efe25473ea44472b"
+            }
+          ],
+          "sha256": "9c2fada20afcaff79feb6e7100ef9d78b82d5e24a124d619efe25473ea44472b"
+        }
+      },
+      "sha256": "97e877143f1140fdb5a0ed0f360899fe268b936714160cc8cbcb9ff20ceb01e0",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          224,
+          390
+        ]
+      }
+    },
+    "equipe-antimaterial": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "equipe-antimaterial/base-p1.webp",
+          "cell": [
+            448,
+            1216
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.94
+          ],
+          "pages": [
+            {
+              "file": "equipe-antimaterial/base-p1.webp",
+              "columns": 9,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "2d9c91ff211c55a7314cac09a7d0a87b4cd2539a0e31f65c2593f62bcabe550e"
+            }
+          ],
+          "sha256": "2d9c91ff211c55a7314cac09a7d0a87b4cd2539a0e31f65c2593f62bcabe550e",
+          "liteCell": [
+            224,
+            608
+          ]
+        },
+        "fire": {
+          "file": "equipe-antimaterial/fire.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "equipe-antimaterial/fire.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e"
+            }
+          ],
+          "sha256": "828661ebf23df10030c94ed0727604c3f53a20e1f5747ed3ac09da158bdaf26e"
+        },
+        "idle": {
+          "file": "equipe-antimaterial/idle.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "equipe-antimaterial/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813"
+            }
+          ],
+          "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813",
+          "liteCell": [
+            96,
+            96
+          ]
+        },
+        "reload": {
+          "file": "equipe-antimaterial/reload.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "equipe-antimaterial/reload.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "2de9a867f1e6f01227d0535fda0d253a99f6aefb6ee4c3848e22e9d57cdbe854"
+            }
+          ],
+          "sha256": "2de9a867f1e6f01227d0535fda0d253a99f6aefb6ee4c3848e22e9d57cdbe854"
+        }
+      },
+      "sha256": "5110c4b7c1bbe82924b1f97d2c857ad968741abd94c43d665bc67cf4bcf8f3dc",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          224,
+          707
+        ]
+      }
+    },
+    "guarnicao-do-predio": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "cell": [
+            640,
+            1408
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.95
+          ],
+          "pages": [
+            {
+              "file": "guarnicao-do-predio/base-p1.webp",
+              "columns": 6,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "af7b566c51d706fb8d58d721ae075d8ace8ffb86294bb341569834c96cb99f5a"
+            },
+            {
+              "file": "guarnicao-do-predio/base-p2.webp",
+              "columns": 6,
+              "rows": 2,
+              "firstFrame": 12,
+              "frameCount": 12,
+              "sha256": "d26e3668cbad93808cb29a9d43f0f9f8a414cc38918edfa12aabdfc14244cfeb"
+            }
+          ],
+          "sha256": "f67ee52a3e5d04c24569e998cb29736cafe1beb3af127fd2d627b71594c7bd34",
+          "liteCell": [
+            320,
+            704
+          ]
+        },
+        "fire": {
+          "file": "guarnicao-do-predio/fire.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.803
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "guarnicao-do-predio/fire.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe"
+            }
+          ],
+          "sha256": "5f328b39d0b924bb8b4e3f9523011df463646f7a63bf96d02c61cbe7ffd7a2fe"
+        },
+        "idle": {
+          "file": "guarnicao-do-predio/idle.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.803
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "guarnicao-do-predio/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c"
+            }
+          ],
+          "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c",
+          "liteCell": [
+            128,
+            128
+          ]
+        },
+        "reload": {
+          "file": "guarnicao-do-predio/reload.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.803
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "guarnicao-do-predio/reload.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "8e19d56fa31537c1fcdbf12a1b3906558446635bfaa5566a550a9105c848ab45"
+            }
+          ],
+          "sha256": "8e19d56fa31537c1fcdbf12a1b3906558446635bfaa5566a550a9105c848ab45"
+        }
+      },
+      "sha256": "f45ef29bed569a8209c785ec466f8f7a72240fa3d4f56aaab4f35787765979df",
+      "meta": {
+        "footprint": [
+          3,
+          3
+        ],
+        "mount": [
+          320,
+          214
+        ]
+      }
+    },
+    "guindaste-de-municao": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "guindaste-de-municao/base.webp",
+          "cell": [
+            512,
+            768
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "guindaste-de-municao/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a"
+            }
+          ],
+          "sha256": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a",
+          "liteCell": [
+            256,
+            384
+          ]
+        }
+      },
+      "sha256": "642fe64b1234c5a70c8567e288c7b61eb2047032b404b7c30496df1516c2b26c",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ]
+      }
+    },
+    "holofote": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "holofote/base.webp",
+          "cell": [
+            256,
+            512
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.95
+          ],
+          "pages": [
+            {
+              "file": "holofote/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "fa08d221571c3f7798e1fff0cf9e649d599675af656f7f6da646aa37527bab11"
+            }
+          ],
+          "sha256": "fa08d221571c3f7798e1fff0cf9e649d599675af656f7f6da646aa37527bab11",
+          "liteCell": [
+            128,
+            256
+          ]
+        },
+        "fire": {
+          "file": "holofote/fire.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "holofote/fire.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e"
+            }
+          ],
+          "sha256": "5675e30523551bc05062d604b5114eb3f5870d08150f04fb580acd7509d5756e"
+        },
+        "idle": {
+          "file": "holofote/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "holofote/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be"
+            }
+          ],
+          "sha256": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be",
+          "liteCell": [
+            80,
+            80
+          ]
+        },
+        "reload": {
+          "file": "holofote/reload.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "holofote/reload.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "01b5fae219bcd19bcdfb8a4720d65ae2f28ea158690f806400c493b8b1d0cee7"
+            }
+          ],
+          "sha256": "01b5fae219bcd19bcdfb8a4720d65ae2f28ea158690f806400c493b8b1d0cee7"
+        }
+      },
+      "sha256": "259a40e32625c6bdc217aa803c898663a5a56871c64246f8528ddd247f5af133",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "mount": [
+          143,
+          346
+        ]
+      }
+    },
+    "lanca-foguetes": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "lanca-foguetes/base.webp",
+          "cell": [
+            576,
+            512
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "lanca-foguetes/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "ab345c9c11c36d838e55a4ac56862c70971d476e78c2a1bdc2f3b9e948b64d1e"
+            }
+          ],
+          "sha256": "ab345c9c11c36d838e55a4ac56862c70971d476e78c2a1bdc2f3b9e948b64d1e",
+          "liteCell": [
+            288,
+            256
+          ]
+        },
+        "fire": {
+          "file": "lanca-foguetes/fire.webp",
+          "cell": [
+            320,
+            320
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "lanca-foguetes/fire.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40"
+            }
+          ],
+          "sha256": "78e7c24c3d677694b8ff954e58a69a83491bfb59ab6c9f6dcf6fee378a86fb40"
+        },
+        "idle": {
+          "file": "lanca-foguetes/idle.webp",
+          "cell": [
+            320,
+            320
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "lanca-foguetes/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df"
+            }
+          ],
+          "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
+          "liteCell": [
+            160,
+            160
+          ]
+        },
+        "reload": {
+          "file": "lanca-foguetes/reload-p1.webp",
+          "cell": [
+            320,
+            320
+          ],
+          "frames": 16,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "lanca-foguetes/reload-p1.webp",
+              "columns": 12,
+              "rows": 11,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "e8087c092226c77c79f588655ae71ad5df8e8767372b1d74db2b3e3d6b828129"
+            }
+          ],
+          "sha256": "e8087c092226c77c79f588655ae71ad5df8e8767372b1d74db2b3e3d6b828129"
+        }
+      },
+      "sha256": "7eed06cda9573a77aa22a12a8d37878f1ff02741e2b3bfde541a95d1c0ed6ee6",
+      "meta": {
+        "footprint": [
+          3,
+          2
+        ],
+        "mount": [
+          333,
+          223
+        ]
+      }
+    },
+    "linha-ferrea": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "linha-ferrea/base.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "linha-ferrea/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "180a2deaadb3b8edb414a0bb3b9d29fa6b02a23eb11d5db112ea2bc94afaa62b"
+            }
+          ],
+          "sha256": "180a2deaadb3b8edb414a0bb3b9d29fa6b02a23eb11d5db112ea2bc94afaa62b",
+          "liteCell": [
+            256,
+            256
+          ]
+        }
+      },
+      "sha256": "e5767ae5ff1cfa8b9c7b366f216ac92f1189f2b4e33081efe7d770f6f5d73399",
+      "meta": {
+        "footprint": [
+          1,
+          4
+        ]
+      }
+    },
+    "linha-ferrea-curva": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "linha-ferrea-curva/base.webp",
+          "cell": [
+            512,
+            512
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "linha-ferrea-curva/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f"
+            }
+          ],
+          "sha256": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f",
+          "liteCell": [
+            256,
+            256
+          ]
+        }
+      },
+      "sha256": "83a7c326aa45e976e5d8deeaaa7c247936e9cc667190e79f249a3a6ea5a701f0",
+      "meta": {
+        "footprint": [
+          1,
+          4
+        ]
+      }
+    },
+    "morteiro": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "morteiro/base.webp",
+          "cell": [
+            448,
+            448
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "morteiro/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "3ac02ed55763e0eff38e43a9141676b55809f706a6455c2303d4219c8c9b22d7"
+            }
+          ],
+          "sha256": "3ac02ed55763e0eff38e43a9141676b55809f706a6455c2303d4219c8c9b22d7",
+          "liteCell": [
+            224,
+            224
+          ]
+        },
+        "fire": {
+          "file": "morteiro/fire.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.809
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "morteiro/fire.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d"
+            }
+          ],
+          "sha256": "a02e7d0ec1c00732df1a9e4dcd0b343103956e8b72f0bbd6a9bdfc22df27ba7d"
+        },
+        "idle": {
+          "file": "morteiro/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.809
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "morteiro/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc"
+            }
+          ],
+          "sha256": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc",
+          "liteCell": [
+            80,
+            80
+          ]
+        },
+        "reload": {
+          "file": "morteiro/reload.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.809
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "morteiro/reload.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "c67191ce00e42b39f491a94520f09af308eb7917b1695d89562e4231a4c0e102"
+            }
+          ],
+          "sha256": "c67191ce00e42b39f491a94520f09af308eb7917b1695d89562e4231a4c0e102"
+        }
+      },
+      "sha256": "b55235f8bc8fe5a77acf833307683cfda4ace07af4c7889849efd34017040d7f",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          224,
+          348
+        ]
+      }
+    },
+    "muro-de-concreto": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "muro-de-concreto/base.webp",
+          "cell": [
+            384,
+            320
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88125
+          ],
+          "pages": [
+            {
+              "file": "muro-de-concreto/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "893601765b1636e68253fbb735ab8b1dfd5b57f9d877b3c61fb633e883bb8929"
+            }
+          ],
+          "sha256": "893601765b1636e68253fbb735ab8b1dfd5b57f9d877b3c61fb633e883bb8929",
+          "liteCell": [
+            192,
+            160
+          ]
+        }
+      },
+      "sha256": "4c82700e4f68c94d3d621be53fbe28eb81ea0e63a2d0d7b836b7c5df7a412148",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "mount": [
+          155,
+          259
+        ]
+      }
+    },
+    "muro-sacos-de-areia": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "muro-sacos-de-areia/base.webp",
+          "cell": [
+            384,
+            256
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.87890625
+          ],
+          "pages": [
+            {
+              "file": "muro-sacos-de-areia/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "6fb7c5cc181bf266a880bf81533d308295080b6f945e9ae8bef3f4045a22f02b"
+            }
+          ],
+          "sha256": "6fb7c5cc181bf266a880bf81533d308295080b6f945e9ae8bef3f4045a22f02b",
+          "liteCell": [
+            192,
+            128
+          ]
+        }
+      },
+      "sha256": "abf095503db9ec42f1ae551d6fde2908a395e4fc5c4621b708a38174028c4101",
+      "meta": {
+        "footprint": [
+          2,
+          1
+        ],
+        "mount": [
+          192,
+          196
+        ]
+      }
+    },
+    "ninho-de-metralhadora": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "cell": [
+            640,
+            1152
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.866
+          ],
+          "pages": [
+            {
+              "file": "ninho-de-metralhadora/base-p1.webp",
+              "columns": 6,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 18,
+              "sha256": "f02ac0cfd2692fc1e25778697e9db5c7f7b39e0171fefd8a755edaaeac4835a4"
+            },
+            {
+              "file": "ninho-de-metralhadora/base-p2.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 18,
+              "frameCount": 6,
+              "sha256": "36ad72c828f537584ddccb78718bb237e6f6c77e69932362dee211dd9b0a4139"
+            }
+          ],
+          "sha256": "f0b3b5e8b5e5a2e646519fd2ed5e1fd0b1064904ec34612c8af07a1be4f53365",
+          "liteCell": [
+            320,
+            576
+          ]
+        },
+        "fire": {
+          "file": "ninho-de-metralhadora/fire.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "ninho-de-metralhadora/fire.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b"
+            }
+          ],
+          "sha256": "6b7a3834d8819825341f7433bc70a9e1aee1343f90ab63efcf6e0eb16c70390b"
+        },
+        "idle": {
+          "file": "ninho-de-metralhadora/idle.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "ninho-de-metralhadora/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7"
+            }
+          ],
+          "sha256": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7",
+          "liteCell": [
+            128,
+            128
+          ]
+        },
+        "reload": {
+          "file": "ninho-de-metralhadora/reload.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "ninho-de-metralhadora/reload.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "8cc7b394b1a1dc9fd6b2aa44c88582784d49d4d04dc571fc54ca3df3fb9eed4d"
+            }
+          ],
+          "sha256": "8cc7b394b1a1dc9fd6b2aa44c88582784d49d4d04dc571fc54ca3df3fb9eed4d"
+        }
+      },
+      "sha256": "c3eb827cb5fe9355419f4490a1d04ddbd4e8510a2ee690b4c451d1cbc46fbc20",
+      "meta": {
+        "footprint": [
+          3,
+          3
+        ],
+        "mount": [
+          320,
+          782
+        ]
+      }
+    },
+    "ninho-do-sniper": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "ninho-do-sniper/base-p1.webp",
+          "cell": [
+            448,
+            1152
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.9305555555555556
+          ],
+          "pages": [
+            {
+              "file": "ninho-do-sniper/base-p1.webp",
+              "columns": 9,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "52e4ae2a24a89044aad0b527615808eaf7d196a021cb27453462e77f2dc7c974"
+            }
+          ],
+          "sha256": "52e4ae2a24a89044aad0b527615808eaf7d196a021cb27453462e77f2dc7c974",
+          "liteCell": [
+            224,
+            576
+          ]
+        },
+        "fire": {
+          "file": "ninho-do-sniper/fire.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "ninho-do-sniper/fire.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727"
+            }
+          ],
+          "sha256": "473b1ac4a8a419b682a0aaf2aac2932e47f5d59a6666f435d44284f498d1d727"
+        },
+        "idle": {
+          "file": "ninho-do-sniper/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "ninho-do-sniper/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995"
+            }
+          ],
+          "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995",
+          "liteCell": [
+            80,
+            80
+          ]
+        },
+        "reload": {
+          "file": "ninho-do-sniper/reload.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "ninho-do-sniper/reload.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "b3f3b2b707e7f8bc8853982d392107079a5da1e1059158004c8d1ca38fb30bd7"
+            }
+          ],
+          "sha256": "b3f3b2b707e7f8bc8853982d392107079a5da1e1059158004c8d1ca38fb30bd7"
+        }
+      },
+      "sha256": "47678f3931acb586d6e63d64ba7efc13bc859adeb6c0b362dc6f3c022fb77870",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          230,
+          341
+        ]
+      }
+    },
+    "obuseiro": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "obuseiro/base.webp",
+          "cell": [
+            640,
+            576
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.806
+          ],
+          "pages": [
+            {
+              "file": "obuseiro/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958"
+            }
+          ],
+          "sha256": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958",
+          "liteCell": [
+            320,
+            288
+          ]
+        },
+        "fire": {
+          "file": "obuseiro/fire.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 10,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.7865
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "obuseiro/fire.webp",
+              "columns": 10,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 80,
+              "sha256": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7"
+            }
+          ],
+          "sha256": "ec66e78d2319a58340b63f0899e7d6ae5dd0f124af8295a6b94b861b376e88e7"
+        },
+        "idle": {
+          "file": "obuseiro/idle.webp",
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.7865
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "obuseiro/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd"
+            }
+          ],
+          "sha256": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd",
+          "liteCell": [
+            192,
+            192
+          ]
+        },
+        "reload": {
+          "cell": [
+            384,
+            384
+          ],
+          "frames": 14,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.7865
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "obuseiro/reload-p1.webp",
+              "columns": 10,
+              "rows": 10,
+              "firstFrame": 0,
+              "frameCount": 100,
+              "sha256": "f5c79e9d8ef4ca343ff1646d7905c01d7c6f1dea128792507ab1d83bc2cfcce6"
+            },
+            {
+              "file": "obuseiro/reload-p2.webp",
+              "columns": 10,
+              "rows": 2,
+              "firstFrame": 100,
+              "frameCount": 12,
+              "sha256": "e50688a2c6a14ac8918807c9c01ed8b6eec57b7ab9e71afa1f4cb0c540471429"
+            }
+          ],
+          "sha256": "5e18417eb41f25867e8be0e01c32542bb4ac1f1d5589d4fe81891ef3f594e913"
+        }
+      },
+      "sha256": "2a3d45a9287dbf7fe6b0ce270060ee975a1412c9d58d7f1fb37ba5b3118a03f2",
+      "meta": {
+        "footprint": [
+          3,
+          3
+        ],
+        "mount": [
+          338,
+          352
+        ]
+      }
+    },
+    "ourico-tcheco": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "ourico-tcheco/base.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "views": 4,
+          "rows": [
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.859375
+          ],
+          "pages": [
+            {
+              "file": "ourico-tcheco/base.webp",
+              "columns": 4,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 12,
+              "sha256": "e15e8f27bef34acc8421baf358b956a5b20e8b6490e2113547b784ab69270dd7"
+            }
+          ],
+          "sha256": "e15e8f27bef34acc8421baf358b956a5b20e8b6490e2113547b784ab69270dd7",
+          "liteCell": [
+            128,
+            128
+          ]
+        }
+      },
+      "sha256": "c5aeb56fd69a783c8b3623aa229bac29cfd72f995bdb5b5a6432f0d9533674db",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "mount": [
+          128,
+          199
+        ]
+      }
+    },
+    "posto-de-radar": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "posto-de-radar/base.webp",
+          "cell": [
+            448,
+            640
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.54,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "posto-de-radar/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "602097b548321a500a98841dd1c260653364443a38cba57acebe1c1e393ccac7"
+            }
+          ],
+          "sha256": "602097b548321a500a98841dd1c260653364443a38cba57acebe1c1e393ccac7",
+          "liteCell": [
+            224,
+            320
+          ]
+        },
+        "fire": {
+          "file": "posto-de-radar/fire.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 12,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.852
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "posto-de-radar/fire.webp",
+              "columns": 12,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 96,
+              "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab"
+            }
+          ],
+          "sha256": "7da5309737bd499ecd7301973606e1a89eb28f5d9e53d74f9600dc66d2f271ab"
+        },
+        "idle": {
+          "file": "posto-de-radar/idle.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.852
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "posto-de-radar/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1"
+            }
+          ],
+          "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
+          "liteCell": [
+            96,
+            96
+          ]
+        }
+      },
+      "sha256": "3cba3a734bdf8e5793d57691f8d76d4f612238d198d7b82ea732530e61aa4a25",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          228,
+          428
+        ]
+      }
+    },
+    "rojao-de-festa": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "rojao-de-festa/base.webp",
+          "cell": [
+            256,
+            320
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "rojao-de-festa/base.webp",
+              "columns": 4,
+              "rows": 6,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff"
+            }
+          ],
+          "sha256": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff",
+          "liteCell": [
+            128,
+            160
+          ]
+        },
+        "fire": {
+          "file": "rojao-de-festa/fire.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "rojao-de-festa/fire.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6"
+            }
+          ],
+          "sha256": "88824313c3b5914d5e351be595a5af7558fdc6afb742f07922d9a2b43337a7a6"
+        },
+        "idle": {
+          "file": "rojao-de-festa/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "rojao-de-festa/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405"
+            }
+          ],
+          "sha256": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405",
+          "liteCell": [
+            64,
+            64
+          ]
+        },
+        "reload": {
+          "file": "rojao-de-festa/reload.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "rojao-de-festa/reload.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "289684d6ea07baeb954e871f3ac12709d9c44c1992ab7b35f55a5ffa22f1942c"
+            }
+          ],
+          "sha256": "289684d6ea07baeb954e871f3ac12709d9c44c1992ab7b35f55a5ffa22f1942c"
+        }
+      },
+      "sha256": "3ea7029c52743272e1ea4db2ebc375879b933f70bce77799c5e2f56b333ca8de",
+      "meta": {
+        "footprint": [
+          1,
+          1
+        ],
+        "mount": [
+          123,
+          246
+        ]
+      }
+    },
+    "vigia-do-predio": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "vigia-do-predio/base-p1.webp",
+          "cell": [
+            448,
+            832
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "pages": [
+            {
+              "file": "vigia-do-predio/base-p1.webp",
+              "columns": 9,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc"
+            }
+          ],
+          "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc",
+          "liteCell": [
+            224,
+            416
+          ]
+        },
+        "fire": {
+          "file": "vigia-do-predio/fire.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "vigia-do-predio/fire.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d"
+            }
+          ],
+          "sha256": "b3d35f6f9cd3519e7ffc371e0602763c5e4ad21f1ccdeaf91978ce5d9de10c7d"
+        },
+        "idle": {
+          "file": "vigia-do-predio/idle.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "vigia-do-predio/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883"
+            }
+          ],
+          "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883",
+          "liteCell": [
+            64,
+            64
+          ]
+        },
+        "reload": {
+          "file": "vigia-do-predio/reload.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "vigia-do-predio/reload.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "7265b0fe7b1982c784b4d7bd7c85ad01aa9850b4545cd521c1b1b0cd2c760bb3"
+            }
+          ],
+          "sha256": "7265b0fe7b1982c784b4d7bd7c85ad01aa9850b4545cd521c1b1b0cd2c760bb3"
+        }
+      },
+      "sha256": "c8fe4154c96b366b942641c28c070d0bd18a05ffd6036fd683b2827a8ac0bad8",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          178,
+          398
+        ]
+      }
+    },
+    "vigias-armados": {
+      "kind": "tower",
+      "files": {
+        "base": {
+          "file": "vigias-armados/base-p1.webp",
+          "cell": [
+            448,
+            832
+          ],
+          "views": 4,
+          "rows": [
+            "obra-1",
+            "obra-2",
+            "obra-3",
+            "pronta",
+            "danificada",
+            "ruina"
+          ],
+          "anchor": [
+            0.5,
+            0.95
+          ],
+          "pages": [
+            {
+              "file": "vigias-armados/base-p1.webp",
+              "columns": 9,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 24,
+              "sha256": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c"
+            }
+          ],
+          "sha256": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c",
+          "liteCell": [
+            224,
+            416
+          ]
+        },
+        "fire": {
+          "file": "vigias-armados/fire.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "vigias-armados/fire.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef"
+            }
+          ],
+          "sha256": "e8f5a732c14a4013cb51e3370c7bdbbea47281401d5a57ad03e72a49ce7f27ef"
+        },
+        "idle": {
+          "file": "vigias-armados/idle.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 4,
+          "pages": [
+            {
+              "file": "vigias-armados/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64"
+            }
+          ],
+          "sha256": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64",
+          "liteCell": [
+            80,
+            80
+          ]
+        },
+        "reload": {
+          "file": "vigias-armados/reload.webp",
+          "cell": [
+            160,
+            160
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 8,
+          "pages": [
+            {
+              "file": "vigias-armados/reload.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "01b8c081bbd5564eef43406a9535b1f2769a828cc8ab72554da334f9305b04bf"
+            }
+          ],
+          "sha256": "01b8c081bbd5564eef43406a9535b1f2769a828cc8ab72554da334f9305b04bf"
+        }
+      },
+      "sha256": "eb3c1796ee8a445fc57bb87a5379eed0317d45438ec91144d3eef317add6a31b",
+      "meta": {
+        "footprint": [
+          2,
+          2
+        ],
+        "mount": [
+          185,
+          475
+        ]
+      }
+    }
+  }
+}

@@ -103,12 +103,12 @@ function sizeProblem(label,img,w,h,layout,fix='Exporte a folha inteira nesse tam
 
 /**
  * Cell checks over a grid: drawn, transparent background, PADDING margin and, with `anchor`, the foot rules (foot line
- * = lowest drawn row at anchor[1]×h ± FOOT_Y_TOLERANCE×h; foot centre at anchor[0]×w ± FOOT_X_TOLERANCE×w), each per
+ * = lowest drawn row at anchor[1]×h ± `footYTolerance`×h, FOOT_Y_TOLERANCE by default; foot centre at anchor[0]×w ± FOOT_X_TOLERANCE×w), each per
  * row (`footY(r)`, `footX(r)`). `character`: wording for enemies/player characters (feet, "boneco"); otherwise the
  * drawing and its base, pointing at the sidecar anchor (`anchorFile`).
  * Messages are grouped per row so a shifted row is one sentence listing its columns.
  */
-function checkGrid(problems,label,img,{cw,ch,cols,rows,rowName=()=>'',colName=c=>`coluna ${c+1}`,anchor,footX=()=>true,footY=()=>true,allowEmpty=false,padding=true,hint='',character=false,anchorFile='o .json'}){
+function checkGrid(problems,label,img,{cw,ch,cols,rows,rowName=()=>'',colName=c=>`coluna ${c+1}`,anchor,footX=()=>true,footY=()=>true,allowEmpty=false,padding=true,hint='',character=false,anchorFile='o .json',footYTolerance=FOOT_Y_TOLERANCE}){
   const at=items=>{
     if(cols>1&&items.length===cols&&items.every(i=>i.v===items[0].v))return `todas as ${cols} colunas${items[0].v?`, ${items[0].v}`:''}`;
     return list(items.map(i=>typeof i==='number'?colName(i):`${colName(i.c)} (${i.v})`));
@@ -126,7 +126,7 @@ function checkGrid(problems,label,img,{cw,ch,cols,rows,rowName=()=>'',colName=c=
       if(!s.transparent)opaque.push(c);
       else if(padding&&s.nearEdge)edge.push(c);
       if(anchor){
-        if(footY(r)&&Math.abs(s.maxY-anchor[1]*ch)>FOOT_Y_TOLERANCE*ch)fy.push({c,v:`y = ${s.maxY}`});
+        if(footY(r)&&Math.abs(s.maxY-anchor[1]*ch)>footYTolerance*ch)fy.push({c,v:`y = ${s.maxY}`});
         if(footX(r)&&!(Math.abs(s.footX-anchor[0]*cw)<=FOOT_X_TOLERANCE*cw))fx.push({c,v:`x = ${Math.round(s.footX)}`});
       }
     }
@@ -134,7 +134,7 @@ function checkGrid(problems,label,img,{cw,ch,cols,rows,rowName=()=>'',colName=c=
     if(opaque.length)problems.push(`${where}: célula sem fundo transparente (${at(opaque)}). Apague o fundo da célula.`);
     if(edge.length)problems.push(`${where}: desenho a menos de ${PADDING} px da borda da célula (${at(edge)}). Afaste o desenho${character?' (arma, cabelo, efeito)':''} da borda.${hint}`);
     if(!fy.length&&!fx.length)continue;
-    const wantY=`esperado y = ${round(anchor[1]*ch)} ± ${round(FOOT_Y_TOLERANCE*ch)} (${anchor[1]} da altura da célula)`;
+    const wantY=`esperado y = ${round(anchor[1]*ch)} ± ${round(footYTolerance*ch)} (${anchor[1]} da altura da célula)`;
     const wantX=`esperado x = ${round(anchor[0]*cw)} ± ${round(FOOT_X_TOLERANCE*cw)} (${anchor[0]} da largura da célula)`;
     if(fy.length)problems.push(character
       ?`${where}: pés fora do chão (${at(fy)}), ${wantY}. Alinhe o ponto mais baixo do desenho com o chão; nada abaixo do pé (sombra, bolsa, capa).`
@@ -488,6 +488,12 @@ async function validateDance(spec,id,files,ctx,{problems,sheets}){
 /** Keys of a tower's base.json and of its `meta` (08-TORRES.md: no other key). */
 export const TOWER_BASE_KEYS=Object.freeze(['kind','cell','views','rows','anchor','meta']);
 export const TOWER_META_KEYS=Object.freeze(['footprint','mount']);
+/**
+ * Foot line tolerance of a tower's sheets (fraction of the cell height), wider than a character's: a building seen from
+ * 4 views, its ruin and the crew moving around a gun reach the ground at different rows. The base has no foot-centre
+ * check (its lowest rows are one corner of the footprint, not a centre). NEW-20261020-ORQ-torres-entregues.
+ */
+export const TOWER_FOOT_Y_TOLERANCE=.12;
 const sameList=(a,b)=>Array.isArray(a)&&a.length===b.length&&a.every((v,i)=>v===b[i]);
 /**
  * `torres/<id>/` (spec.mjs TOWER_*): `base.png` + `base.json` (4 views × TOWER_ROWS, or TOWER_WALL_ROWS for a wall,
@@ -542,7 +548,7 @@ async function validateTower(spec,id,files,ctx,r){
           problems.push(sizeProblem(png,img,views*cw,rows.length*ch,`${views} vistas × ${rows.length} linhas de ${cw}×${ch} px`,`Uma coluna por vista (${VIEW_NAMES.join(', ')}) e uma linha por estado (${list(rows)}).`));
         else if(img&&checkTransparent(img,png,problems)){
           checkGrid(problems,png,img,{cw,ch,cols:views,rows:rows.length,rowName:i=>`"${rows[i]}" (linha ${i+1})`,
-            colName:c=>`vista ${VIEW_NAMES[c]} (coluna ${c+1})`,anchor,anchorFile:label});
+            colName:c=>`vista ${VIEW_NAMES[c]} (coluna ${c+1})`,anchor,anchorFile:label,footX:()=>false,footYTolerance:TOWER_FOOT_Y_TOLERANCE});
           sheets.push({key:'base',source:basePng,output:`${id}/base.webp`,cell:[cw,ch],views,rows:[...rows],anchor});
         }
       }
@@ -573,7 +579,7 @@ async function validateTower(spec,id,files,ctx,r){
     }
     if(!checkTransparent(img,s.label,problems))continue;
     // The weapon stands on its mount (foot line at the anchor); recoil and the crew moving leave the centre free.
-    checkGrid(problems,s.label,img,{cw,ch,cols:frames,rows:dirs,rowName:i=>`${DIRECTION_NAMES[DIRECTIONS[i]]} (linha ${i+1})`,anchor,footX:()=>false,anchorFile:label});
+    checkGrid(problems,s.label,img,{cw,ch,cols:frames,rows:dirs,rowName:i=>`${DIRECTION_NAMES[DIRECTIONS[i]]} (linha ${i+1})`,anchor,footX:()=>false,anchorFile:label,footYTolerance:TOWER_FOOT_Y_TOLERANCE});
     sheets.push({key:anim,source:s.source,...(Buffer.isBuffer(s.source)?{label:s.label}:{}),output:`${id}/${anim}.webp`,cell:[cw,ch],frames,directions:dirs,anchor,...(fps?.[anim]?{fps:fps[anim]}:{})});
   }
   const missing=TOWER_ANIMS.filter(a=>!sentAnims.includes(a));

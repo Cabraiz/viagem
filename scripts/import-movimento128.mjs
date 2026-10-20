@@ -30,6 +30,48 @@ async function checkGamePoses(encoded,label,columns=16,frames=128){
   assert.equal(new Set(hashes).size,frames,`${label}:96px game output must retain${frames} distinct poses`);
 }
 
+/** Torso x (alpha>20 pixels in the 25–55 % band of the figure height) and lowest foot row, per 192 px cell. */
+function poseAnchors(data,width,frames=128,columns=16){
+  const anchors=[];
+  for(let frame=0;frame<frames;frame++){
+    const sx=frame%columns*192,sy=Math.floor(frame/columns)*192;let top=192,bottom=-1;
+    for(let y=0;y<192;y++)for(let x=0;x<192;x++)if(data[((sy+y)*width+sx+x)*4+3]>20){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+    const y0=Math.round(top+(bottom-top)*.25),y1=Math.round(top+(bottom-top)*.55);let sum=0,count=0;
+    for(let y=y0;y<y1;y++)for(let x=0;x<192;x++)if(data[((sy+y)*width+sx+x)*4+3]>20){sum+=x;count++;}
+    anchors.push({x:sum/count,bottom});
+  }
+  return anchors;
+}
+const median=values=>{const sorted=[...values].sort((a,b)=>a-b),mid=sorted.length>>1;return sorted.length%2?sorted[mid]:(sorted[mid-1]+sorted[mid])/2;};
+/**
+ * The R06 sources are four native sheets of32 poses per clip, and most of them slide the figure across the cell
+ * every8 poses and snap it back, on a ground line that differs per sheet: in game the body skated and jumped.
+ * Every walk/attack pose is moved whole (no pose is redrawn) so its torso x and lowest foot row sit on the clip median.
+ */
+export function rootMotionShifts(anchors){
+  const targetX=median(anchors.map(a=>a.x)),targetY=median(anchors.map(a=>a.bottom));
+  return anchors.map(a=>({dx:Math.round(targetX-a.x),dy:Math.round(targetY-a.bottom)}));
+}
+/** Returns the192 px RGBA sheet with each pose shifted whole, its figure box and the shifts applied. */
+export async function normalizeRootMotion(bytes,label='movement128'){
+  const {data,info}=await sharp(bytes).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  const shifts=rootMotionShifts(poseAnchors(data,info.width)),out=Buffer.alloc(data.length),figure={left:192,top:192,right:0,bottom:0};
+  for(let frame=0;frame<128;frame++){
+    const sx=frame%16*192,sy=Math.floor(frame/16)*192,{dx,dy}=shifts[frame];
+    for(let y=0;y<192;y++)for(let x=0;x<192;x++){
+      const from=((sy+y)*info.width+sx+x)*4,alpha=data[from+3];if(alpha===0)continue;
+      const tx=x+dx,ty=y+dy;
+      if(alpha>20){
+        assert.ok(tx>=2&&tx<190&&ty>=2&&ty<190,`${label}: frame${frame} root-motion shift ${dx},${dy} touches cell edge`);
+        figure.left=Math.min(figure.left,tx);figure.top=Math.min(figure.top,ty);figure.right=Math.max(figure.right,tx+1);figure.bottom=Math.max(figure.bottom,ty+1);
+      }
+      if(tx<0||tx>=192||ty<0||ty>=192)continue;
+      data.copy(out,((sy+ty)*info.width+sx+tx)*4,from,from+4);
+    }
+  }
+  return {raw:out,width:info.width,height:info.height,figure,shifts};
+}
+
 /** Alpha/content checks over every cell, without changing Desktop pixels or synthesizing any pose. */
 export async function inspectMovement128(source,label='movement128'){
   return inspectMovementGrid(source,label,16,8);
@@ -104,12 +146,14 @@ export async function importMovement128({input,outRoot=ROOT,ids=[...FACE_CLASSES
           const idle=clip.motion==='idle',columns=idle?8:16,rows=idle?1:8,count=idle?8:128;
           // Content-addressed names keep every previous manifest usable if a later conversion fails.
           const key=idle?'idle8':`${clip.motion}128-${clip.direction}`;
-          const file=`${record.id}.${idle?'idle8':`${clip.motion}128-${clip.direction.toLowerCase()}`}.${clip.sourceSha256.slice(0,12)}.webp`,target=path.join(outRoot,SPEC.output,file);
-          const encoded=await sharp(bytes).resize(columns*96,rows*96,{kernel:'lanczos3'}).webp(WEBP).toBuffer();
+          // Idle is not shifted. Clips are, so they are named by the WebP bytes: a new alignment never reuses a cached URL.
+          const aligned=idle?undefined:await normalizeRootMotion(bytes,`${record.id}/${key}`);
+          const encoded=await (aligned?sharp(aligned.raw,{raw:{width:aligned.width,height:aligned.height,channels:4}}):sharp(bytes)).resize(columns*96,rows*96,{kernel:'lanczos3'}).webp(WEBP).toBuffer();
           await checkGamePoses(encoded,`${record.id}/${key}`,columns,count);
+          const file=`${record.id}.${idle?'idle8':`${clip.motion}128-${clip.direction.toLowerCase()}`}.${(idle?clip.sourceSha256:SHA(encoded)).slice(0,12)}.webp`,target=path.join(outRoot,SPEC.output,file);
           const tmp=path.join(path.dirname(target),`.${file}.${process.pid}-${randomBytes(4).toString('hex')}.tmp`);
           await mkdir(path.dirname(target),{recursive:true});staged.push({tmp,target});await writeFile(tmp,encoded);
-          const timing=MOVEMENT128_META.motions[clip.motion],f=clip.figure;
+          const timing=MOVEMENT128_META.motions[clip.motion],f=aligned?.figure??clip.figure;
           files[key]={file,cell:[96,96],frames:idle?1:128,...(idle?{directions:8,loop:false}:{durationMs:timing.durationMs,fps:128000/timing.durationMs,loop:timing.loop}),
             revision:6,movementHands:'empty',anchor:[.5,.875],height:record.height/2,
             figure:{left:Math.max(0,Math.floor(f.left/2)-2),top:Math.max(0,Math.floor(f.top/2)-2),right:Math.min(96,Math.ceil(f.right/2)+2),bottom:Math.min(96,Math.ceil(f.bottom/2)+2)},

@@ -62,3 +62,11 @@ test('sheet cells are outlined independently: no ring bleeds into the neighbouri
   assert.ok(alphaAt(out,w,6,8)>0,'ring inside the left cell');
 });
 
+
+test('figureBox (pixel worker, pior-quadro-2s): alpha > 20 over every cell folded together, null when empty',async()=>{
+  const {figureBox}=await import('../../src/client/render/outline-worker.ts');
+  const w=8,h=4,px=new Uint8ClampedArray(w*h*4),set=(x:number,y:number,a:number)=>{px[(y*w+x)*4+3]=a;};
+  assert.equal(figureBox(px,w,h,4),null);
+  set(1,1,255);set(6,2,21);set(5,3,20);// (6,2) folds to (2,2); alpha 20 is not figure
+  assert.deepEqual(figureBox(px,w,h,4),{left:1,top:1,right:3,bottom:3});
+});

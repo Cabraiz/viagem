@@ -43,6 +43,12 @@ let installed=false;
 const off=(win:object)=>{try{return (win as {localStorage?:Storage}).localStorage?.getItem('viagem:upload-queue')==='0';}catch{return false;}};
 /** The page's queue (dev probe and the bench read its size). */
 export const uploads=new UploadQueue();
+let enqueue:((px:number,run:()=>void)=>void)|undefined;
+/**
+ * A texture upload outside the Phaser loader (movement128 clips, city outline copies) through the same per-frame budget;
+ * runs at once when the queue is not installed (no createImageBitmap, the A/B switch, tests).
+ */
+export function queueUpload(px:number,run:()=>void){if(enqueue)enqueue(px,run);else run();}
 
 /**
  * Patches Phaser's ImageFile (and so SpriteSheetFile) once: the XHR blob is decoded with createImageBitmap and the file
@@ -59,6 +65,7 @@ export function installUploadQueue(Phaser:PhaserLike,win:{createImageBitmap?:typ
     if(win.document.hidden){uploads.flush();return;}
     if(!scheduled){scheduled=true;win.requestAnimationFrame(frame);}
   };
+  enqueue=(px,run)=>{uploads.push(px,run);schedule();};
   // A tab hidden while sheets wait: no frames come, so they go at once.
   (win.document as unknown as EventTarget).addEventListener?.('visibilitychange',()=>{if(win.document.hidden)uploads.flush();});
   proto.onProcess=function(this:ImageFileLike){

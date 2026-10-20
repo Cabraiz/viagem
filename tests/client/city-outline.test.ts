@@ -135,13 +135,14 @@ test('the ring measured on screen: a figure resampled to screen scale gets ~2 px
 // ---------- the Phaser side against a fake scene (no canvas in node: drawing calls are recorded) ----------
 interface FakeFrame {cutX:number;cutY:number;cutWidth:number;cutHeight:number}
 function fakeScene(sheets:Record<string,{cell:number;cols:number;rows:number}|{single:[number,number]}>){
-  const made=new Map<string,{w:number;h:number;frames:Map<string,[number,number,number,number]>}>();
+  const made=new Map<string,{w:number;h:number;frames:Map<string,[number,number,number,number]>;src?:unknown}>();
   const removed:string[]=[],anims=new Map<string,string>();
   const scene={
     game:{loop:{frame:0},canvas:{width:390}},scale:{displaySize:{width:390}},
     textures:{
       exists:(k:string)=>k in sheets||made.has(k),
       get:(k:string)=>{
+        const copy=made.get(k);if(copy)return {getSourceImage:()=>copy.src};
         const s=sheets[k];
         if('single' in s)return {getFrameNames:()=>[],get:():FakeFrame=>({cutX:0,cutY:0,cutWidth:s.single[0],cutHeight:s.single[1]}),getSourceImage:()=>({})};
         const names=Array.from({length:s.cols*s.rows},(_,i)=>String(i));
@@ -151,6 +152,10 @@ function fakeScene(sheets:Record<string,{cell:number;cols:number;rows:number}|{s
         const rec={w,h,frames:new Map<string,[number,number,number,number]>()};made.set(k,rec);
         const ctx={imageSmoothingEnabled:false,imageSmoothingQuality:'low',drawImage(){},getImageData:(_x:number,_y:number,iw:number,ih:number)=>({data:new Uint8ClampedArray(iw*ih*4)}),putImageData(){}};
         return {getContext:()=>ctx,add:(n:string,_s:number,x:number,y:number,fw:number,fh:number)=>{rec.frames.set(n,[x,y,fw,fh]);},refresh(){}};
+      },
+      addImage:(k:string,src:{width?:number;height?:number})=>{
+        const rec={w:src.width??0,h:src.height??0,frames:new Map<string,[number,number,number,number]>(),src};made.set(k,rec);
+        return {add:(n:string,_s:number,x:number,y:number,fw:number,fh:number)=>{rec.frames.set(n,[x,y,fw,fh]);}};
       },
       remove:(k:string)=>{made.delete(k);removed.push(k);},
     },
@@ -487,4 +492,40 @@ test('city "você" sticker in YouMarkers: one baked sprite, figure px on the cop
         [sprite.x+dir.x*r,sprite.y+dir.y*r,sprite.originX,sprite.originY,sprite.scaleX,sprite.scaleY,sprite.flipX,sprite.depth-(i<8?.2:.1)]);
     });
   }
+});
+
+// Last in the file: the page's outline worker is created once and kept, so every test above runs the sync path.
+test('worker path (pior-quadro-2s): the copy paints off the main thread, one job per base, late or cancelled replies are dropped',async()=>{
+  const g=globalThis as Record<string,unknown>,saved=['Worker','OffscreenCanvas','createImageBitmap','ImageBitmap'].map(k=>[k,Object.getOwnPropertyDescriptor(g,k)] as const);
+  const posted:{id:number;width:number;height:number;cells:unknown[];bands?:unknown;ring?:unknown}[]=[],workers:{onmessage?:(e:{data:unknown})=>void}[]=[];let closed=0;
+  class FakeBitmap {width:number;height:number;constructor(w=0,h=0){this.width=w;this.height=h;}close(){closed++;}}
+  Object.assign(g,{OffscreenCanvas:class{},ImageBitmap:FakeBitmap,createImageBitmap:async()=>new FakeBitmap(),
+    Worker:class{constructor(){workers.push(this);}postMessage(m:never){posted.push(m);}terminate(){}}});
+  const flush=()=>new Promise(r=>setTimeout(r,0));
+  const reply=(i:number)=>{const m=posted[i];workers[0].onmessage!({data:{id:m.id,bitmap:new FakeBitmap(m.width,m.height)}});};
+  try{
+    const f=fakeScene({movement:{cell:96,cols:16,rows:8}}),h=host(),out=new CityOutlines(f.scene,h);
+    assert.equal(out.variant('movement',HERO_SCALE),undefined,'painting: the base meanwhile');
+    f.next();assert.equal(out.variant('movement',HERO_SCALE),undefined);assert.equal(out.pending,1,'one job per base');
+    await flush();assert.equal(posted.length,1);assert.equal(posted[0].cells.length,128);assert.ok(posted[0].ring&&!posted[0].bands);
+    assert.equal(f.made.size,0,'no canvas painted on the main thread');
+    reply(0);f.next();
+    const v=out.variant('movement',HERO_SCALE)!;assert.ok(v);assert.equal(out.pending,0);
+    assert.deepEqual([f.made.get(v.key)!.w,f.made.get(v.key)!.h],[v.width,v.height]);assert.equal(f.made.get(v.key)!.frames.size,128);
+    assert.deepEqual(f.made.get(v.key)!.frames.get('17'),[1*v.geom.slotW,1*v.geom.slotH,v.geom.slotW,v.geom.slotH]);
+    // The "você" sticker of that copy: the bands, same lifecycle.
+    assert.equal(out.sticker(v.key),undefined);await flush();assert.ok(posted[1].bands&&!posted[1].ring);
+    reply(1);f.next();const st=out.sticker(v.key)!;assert.ok(st);assert.equal(f.made.get(st.key)!.frames.size,128);
+    // A zoom change while a rebuild paints: the old copies retire, the late reply of a cancelled job is closed, not shown.
+    f.next();h.z=PORTRAIT*1.2;assert.equal(out.variant('movement',HERO_SCALE),undefined);await flush();
+    f.next();h.z=PORTRAIT*1.5;out.variant('movement',HERO_SCALE);await flush();
+    assert.equal(posted.length,4,'two rebuild jobs posted: '+posted.length);const before=closed;reply(2);assert.equal(closed,before+1,'cancelled job: bitmap closed');
+    reply(3);f.next();const w=out.variant('movement',HERO_SCALE)!;assert.ok(w&&w.key!==v.key);
+    // releaseBase frees the worker copy's bitmap with its texture.
+    const c0=closed;out.releaseBase('movement');assert.equal(out.copyOf(w.key),undefined);assert.ok(f.removed.includes(w.key));assert.equal(closed,c0+3,'its bitmap closed, and the retiring copy and sticker of the old zoom');
+    // A failed paint marks the base: no retry loop.
+    const f2=fakeScene({gem:{single:[22,28]}}),out2=new CityOutlines(f2.scene,host());
+    out2.variant('gem',CITY_VIEW_SCALE);await flush();const m=posted.at(-1)!;workers[0].onmessage!({data:{id:m.id,error:'boom'}});
+    f2.next();assert.equal(out2.variant('gem',CITY_VIEW_SCALE),undefined);await flush();assert.equal(posted.at(-1),m,'failed once, not posted again');
+  }finally{for(const [k,d] of saved)if(d)Object.defineProperty(g,k,d);else Reflect.deleteProperty(g,k);}
 });

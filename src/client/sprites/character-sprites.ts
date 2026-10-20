@@ -4,6 +4,7 @@ import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite
 import {spriteUrl,originalUrl} from './art-urls.ts';
 import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,HERO_DIRECTION_PAGE,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
+import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from './movement128.ts';
@@ -43,6 +44,8 @@ export class CharacterSprites {
   private sheets=new Map<string,Sheet>();
   /** Fallback boxes measured from the texture (only a sheet the catalog does not measure; see measure()). */
   private measured=new Map<string,FigureBox|null>();
+  /** Pages the pixel worker is measuring (key → this request). */
+  private measuring=new Map<string,object>();
   /** Classes whose imported v2 atlas failed to download: they keep today's sheet for the session. */
   private failed=new Set<string>();
   private cardinalOriginal=new Set<string>();
@@ -88,17 +91,25 @@ export class CharacterSprites {
   }
   /**
    * Fallback for a sheet without a catalog box: reads the pixels once, when the file arrives (load event, not the
-   * frame loop). A 4-direction atlas is 1152×2304 (≈ 2.7 M pixels, tens of ms on a phone), hence the catalog.
+   * frame loop). A 4-direction atlas is 1152×2304 (≈ 2.7 M pixels, ~270 ms on a 4× phone), hence the catalog; the
+   * pixel worker reads it when there is one (the 8-direction `dir4c` atlases come without a box: card pior-quadro-2s).
    */
   private measure(id:string){
     const root=this.sheet(id);
     for(const sheet of [root,...(root.cardinals?[root.cardinals]:[])])this.measurePage(sheet);
   }
   private measurePage(sheet:Sheet){
-    if(sheet.figure||this.measured.has(sheet.key)||!this.scene.textures.exists(sheet.key))return;
+    if(sheet.figure||this.measured.has(sheet.key)||this.measuring.has(sheet.key)||!this.scene.textures.exists(sheet.key))return;
     let box:FigureBox|null=null;
     try{
       const image=this.scene.textures.get(sheet.key).getSourceImage() as CanvasImageSource&{width:number;height:number};
+      const off=figureOffThread(image,192);
+      if(off){
+        const token={};this.measuring.set(sheet.key,token);
+        // A page forgotten meanwhile (failed download, rejectPage) drops the late box.
+        void off.then(b=>{if(this.measuring.get(sheet.key)!==token)return;this.measuring.delete(sheet.key);this.measured.set(sheet.key,b);});
+        return;
+      }
       const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
       const ctx=canvas.getContext('2d',{willReadFrequently:true});
       if(ctx){
@@ -182,11 +193,11 @@ export class CharacterSprites {
         // that original once; a broken original keeps the working diagonals.
         if(!this.cardinalOriginal.has(id)&&originalUrl(sheet.cardinals.directional!.url))this.cardinalOriginal.add(id);
         else this.cardinalFailed.add(id);
-        this.sheets.delete(id);this.requested.delete(key);this.measured.delete(key);
+        this.sheets.delete(id);this.requested.delete(key);this.measured.delete(key);this.measuring.delete(key);
         break;
       }
       if(sheet.imported&&key===sheet.key){
-        this.failed.add(id);this.sheets.delete(id);this.requested.delete(sheet.key);this.measured.delete(sheet.key);
+        this.failed.add(id);this.sheets.delete(id);this.requested.delete(sheet.key);this.measured.delete(sheet.key);this.measuring.delete(sheet.key);
         break;
       }
     }

@@ -5,9 +5,12 @@
  *
  * - Art view: the piece's own rot plus the camera's quarter turns (live/rules.ts artViewOf); the sheet frame is that
  *   view (4 columns, 0/90/180/270).
- * - 'footprint' pieces put the front corner of their cells on the anchor, sorted by that corner, standing on the lowest
- *   ground under them (as the building lots, city-layer drawLot); the art's footprint a×b is the entry's before its rot
- *   (front along a: maps/city-decor.ts LUGARES).
+ * - 'footprint' pieces put the front corner of their cells on the anchor, standing on the lowest ground under them (as
+ *   the building lots, city-layer drawLot); the art's footprint a×b is the entry's before its rot (front along a:
+ *   maps/city-decor.ts LUGARES). They sort by the centre of their cells, not that corner: a point object beside the
+ *   piece (a pole along a 6×6 mountain's side) is in front of it exactly when its key passes the centre's on a square
+ *   footprint, where the front corner's key is ~a cells deeper and drew the mountain over the pole beside it
+ *   (montanha-sobre-poste). Actors still sort exactly against the piece's column (occlusion.ts actorDepth).
  * - 'wall' and 'prop' pieces stand at the centre of their cells on the ground there, sorted by that point.
  */
 import {groundZ,heightAt,type CityAsset} from './asset.ts';
@@ -37,7 +40,8 @@ export function decorSprite(entry:DecorEntry,sheet:DecorSheet,view:number,asset:
     let base=Infinity;
     for(let j=entry.r;j<entry.r+entry.h;j++)for(let i=entry.c;i<entry.c+entry.w;i++)base=Math.min(base,heightAt(asset,i,j));
     const at=project(wx,wy,base,view,pivot),o=buildingAnchor(a,b,frame,sheet.frameWidth,sheet.frameHeight,ART_CELL);
-    return {x:at.x,y:at.y,originX:o.originX,originY:sheet.originY,scale:sheet.scale,artView,frame,depth:depth(wx,wy,view,pivot),base};
+    const key=depth(origin.x+(entry.c+entry.w/2)*cell,origin.y+(entry.r+entry.h/2)*cell,view,pivot);
+    return {x:at.x,y:at.y,originX:o.originX,originY:sheet.originY,scale:sheet.scale,artView,frame,depth:key,base};
   }
   const wx=origin.x+(entry.c+entry.w/2)*cell,wy=origin.y+(entry.r+entry.h/2)*cell,base=groundZ(asset,wx,wy);
   const at=project(wx,wy,base,view,pivot);

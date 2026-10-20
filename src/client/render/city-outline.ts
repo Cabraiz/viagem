@@ -190,13 +190,13 @@ export class CityOutlines {
     for(let i=this.retired.length-1;i>=0;i--)if(frame-this.retired[i].at>=RETIRE_FRAMES){this.drop(this.retired[i].key);this.retired.splice(i,1);}
     if(!this.on)return;
     const zoom=this.host.zoom(),res=copyResolution(globalThis.devicePixelRatio);
-    if(this.variants.size&&(changedEnough(this.builtZoom,zoom)||res!==this.builtRes)){
+    if((this.variants.size||this.jobs.size)&&(changedEnough(this.builtZoom,zoom)||res!==this.builtRes)){
       for(const copies of this.variants.values())for(const v of copies)this.retire(v.key);
       for(const v of this.stickers.values())this.retire(v.key);
       this.variants.clear();this.stickers.clear();this.failed.clear();
       for(const id of [...this.jobs.keys()])this.cancel(id);
     }
-    if(!this.variants.size){this.builtZoom=zoom;this.builtRes=res;}
+    if(!this.variants.size&&!this.jobs.size){this.builtZoom=zoom;this.builtRes=res;}
   }
   private retire(key:string){this.retired.push({key,at:this.frameStamp});}
   /** Destroys a copy's texture and the animations made on it (CharacterSprites' city animations). */

@@ -11,6 +11,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
@@ -71,6 +72,8 @@ jobs:
   deploy-rooms:
     needs: build
     runs-on: ubuntu-latest
+    # Waits up to 30 min for an empty room (deploy-rooms.mjs --wait 30): 45 min stops a stuck checkout (20/10: 20 min).
+    timeout-minutes: 45
     environment:
       name: cloudflare-workers
     steps:
@@ -113,6 +116,7 @@ jobs:
   deploy:
     needs: [build, deploy-rooms]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write

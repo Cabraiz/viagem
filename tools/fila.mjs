@@ -262,7 +262,20 @@ function pronto(opt){
   writeJson(join(opt.board,'fila',`${card}.json`),entry);
   rmSync(join(opt.board,'fila','resultados',`${card}.json`),{force:true});
   log(`na fila: ${card} ${opt.branch} ${sha.slice(0,7)}${entry.protocol?' (protocolo)':''}${entry.worker?' (Worker)':''}`);
+  const folha=printsSheet(opt.board,opt.branch,sha);
+  if(folha!=='ok')log(`aviso: ${opt.branch}@${sha.slice(0,7)} ${folha} (prints.yml + tools/vigia-prints.mjs; por enquanto só avisa)`);
   return entry;
+}
+
+/**
+ * The CI print sheet of this commit (NEW-20261020-ORQ-prints-no-ci): 'ok', or why not. The board's vigia-prints unpacks
+ * each Prints run's artifact in evidence/prints-ci/<branch>/<sha7>/folha.json.
+ */
+export function printsSheet(board,branch,sha){
+  const file=join(board,'evidence','prints-ci',...branch.split('/'),sha.slice(0,7),'folha.json');
+  if(!existsSync(file))return 'sem folha de prints do CI';
+  try{const f=readJson(file);return f.ok?'ok':`folha de prints FALHOU: ${(f.fails??[]).join(' | ').slice(0,300)}`;}
+  catch(e){return `folha de prints ilegível (${e.message})`;}
 }
 
 function queued(opt){

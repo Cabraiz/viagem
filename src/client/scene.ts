@@ -837,9 +837,11 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
-    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up.
+    // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up; not
+    // while the city's near art is held (~15 MB of enemies in Phaser's first-in first-out loader held the relief
+    // albedo, and the bandwidth, behind them: partida-abre-com-P0). They come right after the cover goes, as before.
     const elenco=this.hooks.net?.elenco;
-    if(elenco&&elenco!==this.elenco){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
+    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;

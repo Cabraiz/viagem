@@ -286,6 +286,53 @@ test('the upgrade smoke (BUG-20261014-ORQ-mapa-cache-velho): the base checked ou
   }finally{w.cleanup();}
 });
 
+test('BUG-20261020-ORQ-fila-job-build: a red job:build (the CI smoke) is checked by the smoke on the main, then on the batch one branch at a time',()=>{
+  // The "CI" says job:build when a source says SMOKE-QUEBRADO (job:lint for OUTRO-JOB); the local smoke fails on it too.
+  const nl=String.fromCharCode(10);
+  const ci=`node -e "const fs=require('fs');const src=fs.readdirSync('src').filter(f=>f.endsWith('.ts')).map(f=>fs.readFileSync('src/'+f,'utf8')).join();`
+    +`const job=src.includes('OUTRO-JOB')?'job:lint':src.includes('SMOKE-QUEBRADO')?'job:build':null;`
+    +`if(job){console.log('FILA-FAILED: '+JSON.stringify([job]));process.exit(1);}"`;
+  const smoke=`node -e "const fs=require('fs');fs.appendFileSync(process.env.FILA_RUNS,'smoke'+String.fromCharCode(10));`
+    +`if(fs.readdirSync('src').filter(f=>f.endsWith('.ts')).some(f=>fs.readFileSync('src/'+f,'utf8').includes('SMOKE-QUEBRADO'))){console.log('trace');console.log('smoke normal: FALHOU · chunk: x 60 s');process.exit(1);}"`;
+  const opts=(w:{opts:string[]})=>[...w.opts.map(o=>o==='node check.mjs'?ci:o),'--smoke',smoke];
+  // Main green: the culprit goes back with reason smoke and the smoke's line; the other one goes in.
+  let w=world();
+  try{
+    w.branch('vgm/ok','src/ok.ts','export const ok=1;'+nl);
+    w.branch('vgm/smk','src/smk.ts','export const smk="SMOKE-QUEBRADO";'+nl);
+    main(['pronto','NEW-ok','--branch','vgm/ok',...w.opts]);main(['pronto','NEW-smk','--branch','vgm/smk',...w.opts]);
+    const state=main(['lote',...opts(w)]);
+    assert.equal(state.estado,'publicado');assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-ok']);
+    assert.equal(state.devolvidos.length,1);
+    const back=state.devolvidos[0];
+    assert.equal(back.card,'NEW-smk');assert.equal(back.motivo,'smoke');assert.equal(back.smoke,'smoke normal: FALHOU · chunk: x 60 s');
+    assert.deepEqual(back.falhas,['job:build']);
+    assert.equal(JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-smk.json'),'utf8')).motivo,'smoke');
+    // The main, step 1 (ok), step 2 (ok+smk) → the culprit; then the green batch's own smoke.
+    assert.equal(w.runs().filter(r=>r==='smoke').length,4);
+  }finally{w.cleanup();}
+  // Main red: aborted as before, nobody blamed.
+  w=world();
+  try{
+    writeFileSync(join(w.repo,'src/base.ts'),'export const base="SMOKE-QUEBRADO";'+nl);git(w.repo,'commit','-qam','main vermelha');git(w.repo,'push','-q','origin','main');
+    w.branch('vgm/a','src/a.ts','export const a=1;'+nl);
+    main(['pronto','NEW-a','--branch','vgm/a',...w.opts]);
+    const red=main(['lote',...opts(w)]);
+    assert.equal(red.abortado,'a main falha');assert.deepEqual(red.devolvidos,[]);
+    assert.ok(existsSync(join(w.board,'fila/NEW-a.json')),'not blamed');assert.ok(!existsSync(join(w.board,'fila/.lote')));
+    assert.equal(w.runs().filter(r=>r==='smoke').length,1,'only the main\'s smoke');
+  }finally{w.cleanup();}
+  // Another job with no rule: aborted without saying the main fails, no smoke run.
+  w=world();
+  try{
+    w.branch('vgm/j','src/j.ts','export const j="OUTRO-JOB";'+nl);
+    main(['pronto','NEW-j','--branch','vgm/j',...w.opts]);
+    const other=main(['lote',...opts(w)]);
+    assert.equal(other.abortado,'falha de job sem arquivo');assert.deepEqual(other.devolvidos,[]);
+    assert.ok(existsSync(join(w.board,'fila/NEW-j.json')));assert.deepEqual(w.runs(),[]);
+  }finally{w.cleanup();}
+});
+
 test('a failed smoke\'s reason: its verdict lines, not the traces before them',()=>{
   const trace='  rastro normal: '+JSON.stringify(Array.from({length:3},(_,s)=>({s,sala:'',tick:-1,salaMs:9,resp:false})));
   const out=[trace,'smoke normal: INFRA · não entrou: nada mudou em 90 s',trace,'smoke chaveiro: OK (travou nas 2 tentativas)'].join('\r\n');

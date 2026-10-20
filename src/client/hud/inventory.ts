@@ -3,7 +3,8 @@
  * Wild Rift's items. The rarity is the slot's border, a consumable's stack a number. A tap puts a weapon in the hand or
  * eats a consumable; holding (or dragging it off the bar) drops the item. With the 6 slots full, an item on the ground
  * within reach shows "Trocar" (it takes the place of the weapon in the hand). The room's refusals become a short line.
- * Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
+ * A kit de torre (torre-pela-caixa) wears its tier's rarity; a tap starts putting it on the ground ({t:'kit'}: the
+ * host opens hud/kit-place.ts, nothing goes to the room yet). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
  * the automatic weapons have no inventory and the bar stays hidden.
  *
  * inventorySlots, swapCandidate, inventoryRefusalText and inventoryKeyOf are pure (tests); createInventory paints .rh-inv.
@@ -13,6 +14,7 @@ import type {HudContext,HudPart} from './model.ts';
 import {itemDisplay} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {SHELL_DIALOG} from '../desktop-input.ts';
+import {kitPiece,kitRarity} from '../../rules/index.ts';
 
 /** Inventory size (sim/inventory.ts INVENTORY_SLOTS; a test keeps them equal). */
 export const INVENTORY_SLOTS=6;
@@ -30,10 +32,10 @@ export const RARITY_NAME:Readonly<Record<number,string>>={1:'verde',2:'azul',3:'
 
 export interface InventorySlot {
   index:number;id:string;name:string;
-  kind:'weapon'|'consumable';
-  /** Weapon: rarity 1–5 (the border). */
+  kind:'weapon'|'consumable'|'kit';
+  /** Weapon and kit: rarity 1–5 (the border; a kit's is its tower's tier). */
   rarity?:number;
-  /** Consumable: the stack (shown from 2). */
+  /** Consumable: the stack (shown from 2); a wall kit: its charges. */
   stack?:number;
   hand:boolean;
 }
@@ -41,13 +43,16 @@ export interface InventorySlot {
 export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undefined):InventorySlot[]|undefined{
   if(!player||player.hand===undefined)return undefined;
   return player.weapons.slice(0,INVENTORY_SLOTS).map((item,index)=>{
-    const display=itemDisplay(item.id),consumable=display.kind==='snack';
+    const display=itemDisplay(item.id),piece=kitPiece(item.id);
+    if(piece)return {index,id:item.id,name:display.name,kind:'kit',rarity:kitRarity(piece),stack:item.level,hand:false};
+    const consumable=display.kind==='snack';
     return {index,id:item.id,name:display.name,kind:consumable?'consumable':'weapon',
       ...(consumable?{stack:item.level}:{rarity:Math.max(1,Math.min(5,item.level))}),hand:index===player.hand};
   });
 }
 /** The slot's accessible name: "Pistola (azul), na mão", "Coxinha, 2". */
 export function slotLabel(slot:InventorySlot):string{
+  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para pôr no chão, segurar para largar`;
   if(slot.kind==='consumable')return `${slot.name}${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para usar, segurar para largar`;
   return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${slot.hand?', na mão':': tocar para equipar'}, segurar para largar`;
 }
@@ -99,9 +104,13 @@ export function inventoryKeyOf(event:KeyLike,otherDialogOpen:boolean,cidaOpen=fa
   return n-1;
 }
 
-export type InventoryCommand={t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string};
-/** What a tap on a slot sends: equip a weapon not in the hand, use a consumable; nothing for the weapon already held. */
+export type InventoryCommand={t:'equip'|'use'|'drop';slot:number}|{t:'take';pickup:string}|{t:'kit';slot:number};
+/**
+ * What a tap on a slot sends: equip a weapon not in the hand, use a consumable, start putting a kit on the ground
+ * ({t:'kit'}: for the host, not the room); nothing for the weapon already held.
+ */
 export function tapCommand(slot:InventorySlot):InventoryCommand|undefined{
+  if(slot.kind==='kit')return {t:'kit',slot:slot.index};
   if(slot.kind==='consumable')return {t:'use',slot:slot.index};
   return slot.hand?undefined:{t:'equip',slot:slot.index};
 }
@@ -159,7 +168,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       if(s?.rarity)b.dataset.rarity=String(s.rarity);else delete b.dataset.rarity;
       b.dataset.kind=s?.kind??'';
       b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemDisplay(s.id).icon,{size:24}):'';
-      b.querySelector('.rh-inv-pilha')!.textContent=s?.kind==='consumable'&&(s.stack??1)>1?String(s.stack):'';
+      b.querySelector('.rh-inv-pilha')!.textContent=s&&s.kind!=='weapon'&&(s.stack??1)>1?String(s.stack):'';
       b.setAttribute('aria-label',s?slotLabel(s):`Espaço ${i+1} vazio`);
       b.setAttribute('aria-pressed',String(!!s?.hand));
     }

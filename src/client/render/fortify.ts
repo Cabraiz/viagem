@@ -34,7 +34,8 @@ export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number
   playerAt:(id:string)=>Pt|undefined;
   /** The car's heading as drawn (chaveiro renderer): the rope hooks to the bumper the hero is behind. */
   carHeading?:()=>number}
-export interface GhostInput {piece:string;c:number;r:number;rot?:number;look:GhostLook}
+/** `w`/`h`: the footprint in cells when the HUD knows the room's own (a kit de torre: rules pieceCells), else the catalog's. */
+export interface GhostInput {piece:string;c:number;r:number;rot?:number;w?:number;h?:number;look:GhostLook}
 
 export class FortifyRenderer {
   private walls=new Map<string,Phaser.GameObjects.Graphics>();
@@ -121,7 +122,7 @@ export class FortifyRenderer {
   private drawGhost(k:number){
     const g=this.ghostG;g.clear();
     const gh=this.ghost;if(!gh)return;
-    const [w,h]=footprintCells(gh.piece,gh.rot),r=cellRect(gh.c,gh.r,w,h,this.options.cell),ok=gh.look==='ok';
+    const [w,h]=gh.w&&gh.h?[gh.w,gh.h]:footprintCells(gh.piece,gh.rot),r=cellRect(gh.c,gh.r,w,h,this.options.cell),ok=gh.look==='ok';
     const color=ok?this.c.cartolina:this.c.cone,view=this.options.projector.view;
     const faces=this.look(`fantasma|${gh.piece}|${w}x${h}|${ok?1:0}|${view}`,()=>[{x:0,y:0,z:0,l:w*this.options.cell,w:h*this.options.cell,h:GHOST_H(gh.piece),color}]);
     this.fill(g,r.cx,r.cy,faces,k,GHOST_ALPHA,color);

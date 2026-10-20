@@ -138,6 +138,8 @@ export interface StonewardsSystem extends SimSystem {
    * there is the root on the site's cell.
    */
   build(ctx:SimContext,playerId:string,order:string|FreeOrder,requestId?:string):TowerResult;
+  /** Kits de torre (torre-pela-caixa): a kit's piece on a grid cell, for free (buildFree with `kit`); 'fora' off the city. */
+  buildKit(ctx:SimContext,playerId:string,order:FreeOrder,requestId?:string):TowerResult;
   /** Tower defense: evolves a ready defense (`branch`: 'A'|'B'|'C' at the root, a child id or label like 'A4b' at a fork). */
   upgrade(ctx:SimContext,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult;
   /** Tower defense (torres-ajustes): repairs a standing defense below its maxHp, like the forge's barricade repair. */
@@ -277,6 +279,9 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       const plan=buildPlanFor(ctx.terrain);
       if(typeof order==='string')return buildDefense(ctx,state,plan,playerId,order,requestId,free,options.calm?.gate);
       return free?buildFree(ctx,state,plan,playerId,order,requestId,free):{ok:false,reason:'fora'};
+    },
+    buildKit(ctx,playerId,order,requestId){
+      return free?buildFree(ctx,state,buildPlanFor(ctx.terrain),playerId,order,requestId,free,'',true):{ok:false,reason:'fora'};
     },
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId,options.calm?.gate);},
     repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId,options.calm?.gate);},

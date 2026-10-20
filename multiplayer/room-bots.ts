@@ -49,6 +49,8 @@ export const BOT_NAMES:readonly string[]=Object.freeze([
  * was a frame behind, and it must not lock the wall's repair out for the whole intermission (review).
  */
 const RECIPE_REFUSALS=new Set(['no-weapon','full','recipe']);
+/** A bot whose kit de torre fit nowhere around it tries again this much later (it may have walked on). */
+export const KIT_RETRY_TICKS=5*HZ;
 
 /**
  * NEW-20261014-ORQ-carteira-e-pix: a bot that is not the forger sends what its wallet holds above its part of the
@@ -113,6 +115,8 @@ export class RoomBots {
   towersOff=false;
   /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
   readonly modes=new Map<string,Decision['mode']>();
+  /** Per bot: the tick its refused kit de torre may be tried again. */
+  private readonly kitRetry=new Map<string,number>();
   get ids(){return [...this.minds.keys()];}
   get size(){return this.minds.size;}
   has(id:string){return this.minds.has(id);}
@@ -188,7 +192,13 @@ export class RoomBots {
       sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       // D-051 manual combat: the bot's inventory (an autopilot leaves the person's alone, like their offers).
-      if(d.inventory&&this.chooses)sim.inventory(mind.id,d.inventory);
+      if(d.inventory&&this.chooses){
+        // A kit de torre (torre-pela-caixa) goes on the nearest cell that takes it; refused, the bot waits KIT_RETRY_TICKS.
+        const command=d.inventory;
+        if(command.t==='kit'){
+          if(tick>=(this.kitRetry.get(mind.id)??0)&&!sim.place(mind.id,command.slot,'near').ok)this.kitRetry.set(mind.id,tick+KIT_RETRY_TICKS);
+        }else sim.inventory(mind.id,command);
+      }
       if(d.forge){
         const result=sim.forge(mind.id,d.forge,`bot-${mind.id}-${++mind.req}`);
         if(result.ok)this.forged++;

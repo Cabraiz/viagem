@@ -90,9 +90,13 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * on the players (they drive the prediction), the 'vehicle' pickup kind (resource = its kind), the `vehicle` event and
  * their strings in the DICT; an older decoder would refuse the player mask and the event.
  * 27 given by the integration queue (tools/fila.mjs, lote 20261020-193932) to: NEW-20261014-ORQ-bancos-e-veiculos.
+ * Next (the queue numbers it) since the kits de torre (card NEW-20261020-ORQ-torre-pela-caixa): the kit items
+ * (`kit:<piece>`) in the inventories and on the ground, their strings at the end of the DICT, and the client's
+ * {t:'place'}; an older decoder would read the new indexes as unknown strings.
+ * 28 given by the integration queue (tools/fila.mjs, lote 20261020-230138) to: NEW-20261020-ORQ-torre-pela-caixa.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=27;
+export const PROTOCOL_VERSION=28;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -175,6 +179,10 @@ export const DICT:readonly string[]=[
   'banco-1','banco-2','banco-3','pao-duro','juros','posto','aberto','sacando','bicho','sem-cedulas','hero','enemy',
   // Veículos (card bancos-e-veiculos, part 2): the pickup kind, the vehicles (VEHICLE_KINDS) and the event's `what`.
   'vehicle','patinete','carrinho','crossfiteiro','pegou','acabou','largou',
+  // Kits de torre (card NEW-20261020-ORQ-torre-pela-caixa): the kit items a crate gives (rules/tower-kits.ts KIT_IDS).
+  'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
+  'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
+  'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;

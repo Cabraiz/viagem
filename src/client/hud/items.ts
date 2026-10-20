@@ -4,6 +4,7 @@
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
 import {isStickerName,type StickerName} from '../ui/sticker.ts';
+import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -52,6 +53,13 @@ const items:ItemDisplay[]=[
   {id:'pente',kind:'passive',name:'Pente Estendido',icon:'pente',blurb:'+1 projétil por disparo.',joke:'Sempre cabe mais um.'},
   {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'silenciador',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
 ];
+// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap puts the piece on the ground (hud/kit-place.ts).
+for(const id of KIT_IDS){
+  const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
+  const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
+  items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
+    blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
+}
 const byId=new Map(items.map(item=>[item.id,item]));
 
 /** Sticker of an id the client catalog does not know (the "who even picked that?" box). */

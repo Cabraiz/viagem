@@ -79,7 +79,8 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,SCALE_PROFILES,TOWER_SECONDS} from '../../rules/index.ts';
+import {BANCO,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
@@ -121,6 +122,13 @@ const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:params.get('torres')==='lista'?2:0;
 /** torres=lista: the kinds to stand next to the hero (`tipos=a,b`), pronta, on a ring of 2.4 u from the north. */
 const towerList=(params.get('tipos')??'').split(',').filter(k=>k in TOWER_LOOK) as TowerKind[];
+/**
+ * `kit=<peça>` with torres=1 (card torre-pela-caixa): instead of the showcase, that kit's tower in obra by the hero (built
+ * straight at its tier) and the "pôr torre" ghost of the next one beside it, with the room's footprint (hud/kit-place): green on free
+ * ground, red over the obra with `fantasma=ocupado`.
+ */
+const kitParam=towersParam===1?kitPiece(`kit:${params.get('kit')??''}`):undefined;
+const KIT_OBRA={dx:-1.4,dy:1.4},KIT_GHOST={dx:1.6,dy:1.4};
 const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
@@ -294,6 +302,7 @@ class CitySandbox extends Phaser.Scene {
     if(centre)this.mountBase(centre);
     if(tele)this.buildLab();
     if(towersParam)this.mountTowers();
+    if(kitParam)this.mountKit();
     if(bancos)this.mountBanks();
     if(obra&&this.chaveiro)this.mountObra();
     this.fit();
@@ -484,6 +493,17 @@ class CitySandbox extends Phaser.Scene {
     this.markDestination();
   }
   /** torres=1|12: the defenses around the hero (see the header) and the renderer on the city's projection. */
+  /** `kit=<peça>`: the kit's ghost (hud/kit-place KitPlace, the room's footprint) beside the kit's obra. */
+  private mountKit(){
+    const c=this.asset.cell,cell=CITY_BUILD_CELL,projector=this.cityProjector();
+    this.fortify??=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:()=>undefined});
+    const obra={x:this.at.x+KIT_OBRA.dx*c,y:this.at.y+KIT_OBRA.dy*c};
+    const structures=isTowerKit(kitParam!)?[{id:'kit-obra',kind:kitParam!,x:obra.x,y:obra.y,hp:100}]:[];
+    const place=new KitPlace(()=>0);
+    place.start(0,`kit:${kitParam}`,undefined,cell);
+    place.point(params.get('fantasma')==='ocupado'?obra:{x:this.at.x+KIT_GHOST.dx*c,y:this.at.y+KIT_GHOST.dy*c},cell);
+    this.fortify.setGhost(place.ghost({cell,structures}));
+  }
   private mountTowers(){
     const asset=this.asset,c=asset.cell,{x,y}=this.at,tick=0;
     let made=0;
@@ -494,6 +514,9 @@ class CitySandbox extends Phaser.Scene {
     };
     if(towersParam===2){
       towerList.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3;this.defenses.push(make(k,Math.cos(a)*2.4,Math.sin(a)*2.4,{fireTick:1e9}));});
+    }else if(kitParam){
+      // kit=: only the kit's tower, in obra (the showcase would hide it).
+      if(isTowerKit(kitParam))this.defenses.push(make(kitParam,KIT_OBRA.dx,KIT_OBRA.dy,{id:'kit-obra',startTick:-1e6,readyTick:1e6}));
     }else if(towersParam===12){
       const kinds:TowerKind[]=['vigia-do-predio','vigias-armados','atiradores-do-telhado','ninho-de-metralhadora','guarnicao-do-predio','ninho-do-sniper',
         'equipe-antimaterial','rojao-de-festa','morteiro','lanca-foguetes','holofote','arame-e-sirene'];
@@ -503,6 +526,7 @@ class CitySandbox extends Phaser.Scene {
       this.defenses.push(make('atiradores-do-telhado',-2.4,-1.6),make('morteiro',2.6,-1.4),make('holofote',.2,-2.6),
         make('arame-e-sirene',-2.6,1.8),make('obuseiro',2.8,2.2,{hp:40}),make('vigia-do-predio',.3,3.2,{startTick:-far,readyTick:far}),
         make('ninho-de-metralhadora',-4.6,-.2,{ruined:true,hp:0}),make('gustavao',4,-4,{fireTick:tick+45}));
+
       // Behind the tallest building within 9 u: one cell past its back corner along the view's depth axis (screen x kept).
       let best:{x:number;y:number;w:number;h:number;height:number}|undefined;
       for(const b of asset.blocks){

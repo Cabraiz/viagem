@@ -7,12 +7,14 @@
  *    or the nearest better weapon on the ground within LOOT_RADIUS (walk over it; with the six full, "Trocar" it). A
  *    bot that holds a firearm leaves the verde crates (mostly a pistol) to the ones still with the faca (the 16/10
  *    bench: one bot opened them all while four fought with the knife).
+ *  - a kit de torre (torre-pela-caixa) in a lull: build it where it stands ({t:'kit',slot}: the room's bots place it on
+ *    the nearest cell that takes it, sim/inventory.ts placeNear).
  */
 import type {OwnedItem,PickupState,PickupView,PlayerRunView,RunView,VehicleKind} from '../contract/index.ts';
 import {BASE_STATS} from '../contract/index.ts';
 import {getWeapon,resolveWeapon} from './weapons/catalog.ts';
 import {OPEN_REACH} from './crates.ts';
-import {INVENTORY_SLOTS,TAKE_REACH} from './inventory.ts';
+import {INVENTORY_SLOTS,TAKE_REACH,isKitItem} from './inventory.ts';
 import type {Point} from '../maps/index.ts';
 
 /** LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather). */
@@ -33,7 +35,7 @@ export function weaponScore(item:OwnedItem|{id:string;level:number}|undefined){
   return perSecond*(def.pattern==='pierce'||def.pattern==='homing'?1+Math.min(w.pierce,3)*.15:CROWD)*Math.min(2,.5+reach/6);
 }
 
-export type LootCommand={t:'equip'|'use';slot:number}|{t:'take';pickup:string};
+export type LootCommand={t:'equip'|'use';slot:number}|{t:'kit';slot:number}|{t:'take';pickup:string};
 export interface LootPlan {
   /** An inventory command this tick (the walking goes on). */
   command?:LootCommand;
@@ -58,6 +60,8 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   // 3. Loot only in a lull.
   if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return plan;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return plan;
+  const kit=inv.findIndex(isKitItem);
+  if(kit>=0&&!plan.command)plan.command={t:'kit',slot:kit};
   const handScore=Math.max(...inv.map(i=>weaponScore(i)),0),armed=handScore>=weaponScore(VERDE_PISTOL);
   const pickups=view.pickups as readonly (PickupState|RunView['pickups'][number])[];
   let goal:LootPlan['goal'],goalDist=radius;

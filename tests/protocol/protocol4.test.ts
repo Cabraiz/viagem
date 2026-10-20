@@ -9,7 +9,7 @@ import {
   DICT,FrameDecoder,FrameEncoder,MAX_PENDING_EVENTS,POS_SCALE,PROTOCOL_VERSION,WireIds,parseClientControl,parseServerControl,
   type FrameInput,type PlayerWireView,
 } from '../../src/protocol/protocol4.ts';
-import {ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
+import {KIT_IDS,ROSTER,ROTATION_WEIGHTS,drawRotation,roleOf,rotationIds,roundRoster} from '../../src/rules/index.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
 setRosterOnlyWithArt(false);
@@ -1713,7 +1713,7 @@ test('veículos: a parked vehicle (pickup kind vehicle, its kind in resource), a
   // Their strings: dictionary bytes appended after the banks' (every older index unchanged), once each.
   const added=['vehicle','patinete','carrinho','crossfiteiro','pegou','acabou','largou'],from=DICT.indexOf('enemy')+1;
   assert.equal(DICT[from-2],'hero','right after the banks');
-  assert.deepEqual(DICT.slice(from),added);
+  assert.deepEqual(DICT.slice(from,from+added.length),added);
   for(const s of added)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
   assert.ok(DICT.length<255,'255 is the inline escape');
   for(const bad of [{type:'vehicle',player:'uuid-0',kind:'jatinho',what:'pegou'},{type:'vehicle',player:'uuid-0',kind:'patinete',what:'voou'}]){
@@ -1739,4 +1739,18 @@ test('20x: a client gets at most AWAKE_PER_VIEWER awake enemies, the nearest (ti
   const r2=new FrameDecoder().decode(new FrameEncoder(new WireIds(),{viewer:'uuid-0'}).encode(small));assert.ok(r2.ok);
   const inArea=small.enemies.filter(e=>Math.hypot(e.x-small.players[0].x,e.y-small.players[0].y)<=INTEREST_RADIUS).length;
   assert.equal(r2.view.enemies.length,inArea,'under the cap: every one in the area');
+});
+
+test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventory and on the ground, their strings appended after the vehicles',()=>{
+  const from=DICT.indexOf('largou')+1;
+  assert.deepEqual(DICT.slice(from,from+KIT_IDS.length),[...KIT_IDS],'at the end, every older index unchanged');
+  for(const s of KIT_IDS)assert.equal(DICT.indexOf(s),DICT.lastIndexOf(s),`${s} once`);
+  assert.ok(DICT.length<255,'255 is the inline escape');
+  const w=busyWorld(new Rng(4),10),v=w.view;
+  v.players[0]=player('uuid-0',0,{weapons:[{id:'faca',level:1},{id:'kit:morteiro',level:1},{id:'kit:muro',level:6}],passives:[],hand:0});
+  v.pickups[0]={...v.pickups[0],kind:'item',resource:'kit:obuseiro',value:1};
+  const enc=new FrameEncoder(),bytes=enc.encode(v),res=new FrameDecoder().decode(bytes);
+  assert.ok(res.ok,!res.ok?res.error:'');
+  assert.deepEqual(res.view.players.find(p=>p.id==='uuid-0')!.weapons,v.players[0].weapons);
+  const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit:obuseiro',1]);
 });

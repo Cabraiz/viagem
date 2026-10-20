@@ -12,7 +12,7 @@ import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
-import {MARK_ID,parseMark,type MarkNote} from '../../rules/index.ts';
+import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
 import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
@@ -323,6 +323,17 @@ export class CoopClient {
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'build',round:this.run.round,req,piece,c,r,...(rot?{rot}:{})});
     this.obraHold.order(req,{piece,c,r,...(rot?{rot}:{})});return req;
+  }
+  /**
+   * Kits de torre (torre-pela-caixa): puts the kit in inventory `slot` (its `piece`) with the top-left cell of its
+   * footprint at (c,r) of the build grid, for free; the room answers {t:'built'} (onBuilt), like buildAt. The hero holds
+   * on the obra the way the room does (sim holdsObra): a wall piece or the root, never a higher tier.
+   */
+  place(slot:number,piece:string,c:number,r:number,rot?:BuildRot){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:'place',round:this.run.round,req,slot,c,r,...(rot?{rot}:{})});
+    if(piece==='muro'||piece==='barricada'||piece===ROOT_DEFENSE)this.obraHold.order(req,{piece,c,r,...(rot?{rot}:{})});
+    return req;
   }
   /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
   onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};

@@ -10,7 +10,7 @@ import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist,contractFiles} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -50,6 +50,19 @@ function orq<T>(fn:()=>T):T{process.env.FILA_ORQ='1';try{return fn();}finally{de
 test('ordered: P0 first, then arrival',()=>{
   const e=(card:string,prio:string,at:string)=>({card,prio,at});
   assert.deepEqual(ordered([e('c','P1','2'),e('a','P0','3'),e('b','P1','1')]).map((x:{card:string})=>x.card),['a','b','c']);
+});
+
+test('printsSheet: the CI print sheet of the commit (prints-no-ci): ok, failed with its reasons, or missing',()=>{
+  const board=mkdtempSync(join(tmpdir(),'fila-folha-'));
+  try{
+    const dir=join(board,'evidence','prints-ci','vgm','x','abc1234');
+    assert.equal(printsSheet(board,'vgm/x','abc1234ffff'),'sem folha de prints do CI');
+    mkdirSync(dir,{recursive:true});
+    writeFileSync(join(dir,'folha.json'),JSON.stringify({ok:true,fails:[]}));
+    assert.equal(printsSheet(board,'vgm/x','abc1234ffff'),'ok');
+    writeFileSync(join(dir,'folha.json'),JSON.stringify({ok:false,fails:['tremor']}));
+    assert.match(printsSheet(board,'vgm/x','abc1234ffff'),/FALHOU: tremor/);
+  }finally{rmSync(board,{recursive:true,force:true});}
 });
 
 test('failedFilesFromTap: the file of each top-level failure, from its location (node 26 TAP), repo-relative',()=>{

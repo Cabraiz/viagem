@@ -7,6 +7,7 @@
  * the items and the hand wear their `ui` sticker (hud/items.ts icon), the shots their `efeitos` strip (frames side by
  * side, square: frame size = strip height) and their `projeteis` piece (art/horde-art.ts aliases).
  */
+import {KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 
@@ -80,7 +81,9 @@ export class CrateOpenings{
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
   'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
-  'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador'];
+  'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador',
+  // Kits de torre (torre-pela-caixa): the tower's sticker on the ground.
+  ...KIT_IDS];
 /** hud/items.ts by id (an id the HUD does not know has no sticker here). */
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */

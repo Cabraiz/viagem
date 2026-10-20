@@ -13,6 +13,7 @@ import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
 import {NEW_WEAPONS,isConsumableId,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {UNITS_PER_TOKEN} from '../../src/rules/stonewards.ts';
+import {KIT_POOL,isKitId,kitId} from '../../src/rules/tower-kits.ts';
 
 // ---------- Fake context (the sim-progression pattern) ----------
 type Mutable<T>={-readonly [K in keyof T]:T[K]};
@@ -200,6 +201,7 @@ test('prize table: every item exists, weapons at the rarity (never below their m
       for(const item of prize.items){
         ids.get(r)!.add(`${item.id}:${item.level}`);
         if(isConsumableId(item.id))assert.ok(item.level===1||item.level===2);
+        else if(isKitId(item.id))assert.equal(item.level,1,'a tower kit');
         else{
           const w=getWeapon(item.id);assert.ok(w?.pattern,`${item.id} is a weapon`);
           const min=NEW_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
@@ -214,7 +216,7 @@ test('prize table: every item exists, weapons at the rarity (never below their m
   assert.deepEqual([...ids.get(1)!].sort(),['coxinha:1','pistola:1']);
   assert.deepEqual([...ids.get(2)!].sort(),['brigadeiro:1','cocada:1','escopeta:2','pacoca:1','submetralhadora:2']);
   assert.deepEqual([...ids.get(3)!].sort(),['brigadeiro:2','cocada:2','escopeta:3','macarico:3','pacoca:2','rifle:3','submetralhadora:3']);
-  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4','kit-torre:1','macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4']);
+  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4',...KIT_POOL[4].map(p=>`${kitId(p)}:1`),'macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4'].sort());
   assert.deepEqual([...ids.get(5)!].sort(),WEAPON_IDS.map(id=>`${legendaryId(id)}:5`).sort());
   assert.deepEqual([...grana].sort((a,b)=>a-b),[GRANA_VERDE,GRANA_DOURADA]);
   assert.deepEqual([...units].sort((a,b)=>a-b),[UNITS_PER_TOKEN/2,UNITS_PER_TOKEN]);

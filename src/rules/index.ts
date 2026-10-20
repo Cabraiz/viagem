@@ -21,6 +21,8 @@ export * from './enemy-rotation.ts';
 export * from './enemy-art-ids.ts';
 export * from './zueira-infinito.ts';
 export * from './towers.ts';
+// Kits de torre (torre-pela-caixa): what a crate's kit builds, by rarity.
+export * from './tower-kits.ts';
 export * from './marks.ts';
 export * from './bancos.ts';
 export * from './veiculos.ts';

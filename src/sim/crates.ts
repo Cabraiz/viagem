@@ -17,13 +17,13 @@
  *  - opening: a standing player (hasInventory) within OPEN_REACH who did not move this tick fills OPEN_SECONDS of its
  *    rarity, on the nearest crate; moving or losing hp starts over. From the roxa up, starting to open makes noise
  *    (hooks.onNoise, OPEN_NOISE_RADIUS): the lock creaks and calls the enemies around;
- *  - the prize (PRIZES) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
+ *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else the PRIZES row) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
  *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem).
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {UNITS_PER_TOKEN} from '../rules/index.ts';
+import {KIT_CHANCE,KIT_POOL,UNITS_PER_TOKEN,kitItem} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
 import {NEW_WEAPONS,isRarity,legendaryId,type ConsumableId,type Rarity} from './weapons/arsenal.ts';
@@ -168,9 +168,18 @@ export function rollPrize(rng:Rng,rarity:Rarity):Prize{
     // "bazuca ou qualquer arma dourada": every new weapon but the starting faca, even odds (the dourada is the only
     // source of the rojão, whose minimum is dourada).
     case 4:return u<.7?{items:[weaponItem(rng.pick(NEW_WEAPONS.filter(w=>w.id!=='faca').map(w=>w.id)),4)]}
-      :u<.9?{items:[{id:'kit-torre',level:1}]}:{items:[],grana:GRANA_DOURADA};
+      :u<.9?{items:[kitItem(rng.pick(KIT_POOL[4]))]}:{items:[],grana:GRANA_DOURADA};
     case 5:return {items:[{id:legendaryId(rng.pick(WEAPON_IDS)),level:5}],teamXp:LEGENDARY_TEAM_XP};
   }
+}
+
+/**
+ * What a crate gives (torre-pela-caixa): a kit de torre of its rarity's tier (rules KIT_POOL) with KIT_CHANCE, else its
+ * row of the prize table. Pure: same stream, same prize.
+ */
+export function rollCrate(rng:Rng,rarity:Rarity):Prize{
+  if(rng.next()<KIT_CHANCE)return {items:[kitItem(rng.pick(KIT_POOL[rarity]))]};
+  return rollPrize(rng,rarity);
 }
 
 export function createCrates(options:CratesOptions):Crates{
@@ -271,7 +280,7 @@ export function createCrates(options:CratesOptions):Crates{
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
-    const prize=rollPrize(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),record.rarity);
+    const prize=rollCrate(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),record.rarity);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
     if(prize.grana)hooks.addGrana?.(ctx,p,prize.grana);
     if(prize.towerUnits)hooks.addTowerUnits?.(ctx,prize.towerUnits);

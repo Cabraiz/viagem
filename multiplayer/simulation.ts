@@ -16,7 +16,7 @@ import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
 import {PIX_MAX,isVehicleKind,ticks} from '../src/contract/index.ts';
-import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult} from '../src/sim/index.ts';
+import {addGrana,drawMemo,seatedPlayers,splitAmong,walletOf,type InventoryResult,type KitOrder,type PlaceResult} from '../src/sim/index.ts';
 import type {EnemyState,LevelOffer,RoundState,SimEvent,Telegraph} from '../src/contract/index.ts';
 import type {CampView,EnemyView,NodeView,RunView,StructureView,TelegraphView} from '../src/contract/index.ts';
 import {ASLEEP_PER_VIEWER,INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/contract/index.ts';
@@ -698,6 +698,16 @@ export class Simulation {
     const p=this.players.get(id),inv=this.systems.inventory;
     if(this.result||!p?.online||p.spectator||!inv)return {ok:false,reason:'player'};
     return command.t==='take'?inv.take(id,command.pickup):inv[command.t](id,command.slot);
+  }
+  /**
+   * Kits de torre (torre-pela-caixa, {t:'place'}): the kit in `slot` builds its piece with its footprint's top-left cell
+   * at (c,r) of the build grid, for free; an accepted one spends the kit. `near` (the room's bots): the nearest cell
+   * around the hero that takes it. Refused like inventory().
+   */
+  place(id:string,slot:number,order:KitOrder|'near',requestId?:string):PlaceResult{
+    const p=this.players.get(id),inv=this.systems.inventory;
+    if(this.result||!p?.online||p.spectator||!inv)return {ok:false,reason:'player'};
+    return order==='near'?inv.placeNear(id,slot):inv.place(id,slot,order,requestId);
   }
   /**
    * D-052 the car's rope ({t:'puxar'}): hook (`on`) or drop it for `id`, validated by the sim (standing, near the car,

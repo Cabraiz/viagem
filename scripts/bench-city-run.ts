@@ -566,8 +566,9 @@ export class NavDriver {
         else if(!inside){mode='plaza';dir=this.field(this.nav.plaza,p,b.brain);}
       }else if(round.phase==='prepare'&&this.room.modes.get(mind.id)==='build'){mode='build';dir=b.brain;}
       // D-047: pushing the moto or clearing a delivery is the brain's own walk (its street route), in either phase; so is
-      // the walk to an ATM (bancos-e-veiculos, mode 'bank') and leaning on the car (D-052, mode 'carro').
-      else if(['push','clear','carro','bank'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
+      // the walk to an ATM (bancos-e-veiculos, mode 'bank'), to a parked vehicle (part 2, mode 'veiculo') and leaning on
+      // the car (D-052, mode 'carro').
+      else if(['push','clear','carro','bank','veiculo'].includes(this.room.modes.get(mind.id) as string)){mode='build';dir=b.brain;}
       else if(round.phase==='prepare'){
         view??=sim.botView();
         if(forger===undefined)forger=this.forger(view,minds);

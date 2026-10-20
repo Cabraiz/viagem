@@ -309,7 +309,7 @@ export class IslandScene extends Phaser.Scene {
   frameArea?:Rect;
   constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.zoomWant=this.zoomNow=clampZoom(hooks.zoom??ZOOM_DEFAULT);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
-   * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet and its stand-in, the
+   * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet, its walk in the 8 directions and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
    * the spawn. Teammates' sheets come right after the first frame (CharacterSprites.animate), the trees around as the
    * camera needs them, and the ring beyond in the background (pumpTrees).
@@ -325,6 +325,7 @@ export class IslandScene extends Phaser.Scene {
     }
     else{this.load.image('terrain-soil','/art/terrain/soil-grass.webp');this.load.image('terrain-bed','/art/terrain/riverbed.webp');}
     this.sprites.queue(this.hooks.classId);
+    this.sprites.queueOwnWalk(this.hooks.classId); // the first step walks (preload-heroi-primeiro)
     this.load.image('hero',thumbUrl(this.hooks.classId));
     if(this.hooks.net)for(const id of new Set([this.hooks.classId,...[...this.hooks.net.players.values()].map(p=>p.classId)]))this.classIcon(id);
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);

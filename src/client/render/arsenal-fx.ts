@@ -4,6 +4,7 @@
  *    rarity colour, that ring filling while it opens and a burst with the rarity name when it opens ('pickup' chest event).
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
  *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side; none while moving the car (D-052).
+ *    With full effects it casts its part of the hero's silhouette (render/silhouette.ts), so the shadow holds the weapon.
  *  - Each arsenal weapon's shot ('fire' event): muzzle flash, cone, blast or slash (arsenal-rules.ts FIRE_LOOK).
  * The art loads once, the first time a view shows the manual combat (no download for the automatic weapons); until then,
  * and for any piece the manifest lacks, the old looks stay (the chest, the parcel, no hand, no flash).
@@ -14,6 +15,8 @@ import type {Projector} from './projector.ts';
 import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
+import {silhouetteImage} from './silhouette.ts';
+import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
@@ -26,9 +29,10 @@ const HAND_DX=26,HAND_DY=-30;
 /**
  * Depths: rings on the ground (just over the horde's ground layer); the hand over the heroes (allies 96400, the local
  * one 96500); the shots over the hand (a flash at the barrel is beside the hero's body, under it it would not show), all
- * under the hit numbers on a player (layers.ts PLAYER_HIT_DEPTH 96600).
+ * under the hit numbers on a player (layers.ts PLAYER_HIT_DEPTH 96600). The hand's silhouette lies with the horde's ones
+ * (layers.ts -9979), under every body.
  */
-const RING_DEPTH=-9965,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
+const RING_DEPTH=-9965,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 
@@ -50,7 +54,7 @@ export class ArsenalFx{
   private queued=false;
   private rings:Phaser.GameObjects.Graphics;
   private arcs:Phaser.GameObjects.Graphics;
-  private hands=new Map<string,{image:Image;icon:string;seen:number}>();
+  private hands=new Map<string,{image:Image;sil:Image;icon:string;seen:number}>();
   private handOf=new Map<string,string>();
   private shots:Ring<ShotFx>;
   private bursts:Ring<BurstFx>;
@@ -62,7 +66,7 @@ export class ArsenalFx{
   /** Opening prediction for every hero who can open (has a hand slot, is in the run): the local one and the others. */
   private openings=new CrateOpenings();
   private canOpen=new Set<string>();
-  private now=0;private body=1;private reduced=false;
+  private now=0;private body=1;private reduced=false;private silhouettes=false;
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
 
@@ -124,8 +128,8 @@ export class ArsenalFx{
   }
 
   /** Start of a frame: the rings and arcs are redrawn, each hero's stillness follows its position. */
-  begin(now:number,body:number,reduced:boolean){
-    this.now=now;this.body=body;this.reduced=reduced;
+  begin(now:number,body:number,reduced:boolean,silhouettes=false){
+    this.now=now;this.body=body;this.reduced=reduced;this.silhouettes=silhouettes;
     this.rings.clear();this.arcs.clear();
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
   }
@@ -165,13 +169,17 @@ export class ArsenalFx{
       const at=this.options.locate?.(id);if(!at)continue;
       const key=iconKey(icon);if(!this.scene.textures.exists(key))continue;
       let hand=this.hands.get(id);
-      if(!hand){hand={image:this.track(this.scene.add.image(0,0,key).setDepth(HAND_DEPTH)),icon:'',seen:0};this.hands.set(id,hand);}
-      if(hand.icon!==icon){hand.icon=icon;hand.image.setTexture(key);}
-      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,hand.image.width);
-      hand.image.setPosition(q.x+HAND_DX*b,q.y+HAND_DY*b).setScale(HAND_PX*b/w).setVisible(true);
+      if(!hand){hand={image:this.track(this.scene.add.image(0,0,key).setDepth(HAND_DEPTH)),sil:this.track(silhouetteImage(this.scene,key,HAND_SIL_DEPTH)),icon:'',seen:0};this.hands.set(id,hand);}
+      if(hand.icon!==icon){hand.icon=icon;hand.image.setTexture(key);hand.sil.setTexture(key);}
+      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,hand.image.width),k=HAND_PX*b/w;
+      hand.image.setPosition(q.x+HAND_DX*b,q.y+HAND_DY*b).setScale(k).setVisible(true);
+      if(this.silhouettes){
+        const o=castOffset(HAND_DX*b,HAND_DY*b,this.q2);
+        hand.sil.setPosition(q.x+o.x,q.y+o.y).setScale(k,-k*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION).setVisible(true).setActive(true);
+      }else if(hand.sil.visible)hand.sil.setVisible(false).setActive(false);
       hand.seen=now;
     }
-    for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id))hand.image.setVisible(false);
+    for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);}
     this.shots.retain(this.drawShot);
     this.slashes=this.slashes.filter(s=>this.drawSlash(s));
     this.bursts.retain(this.drawBurst);

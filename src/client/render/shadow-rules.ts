@@ -29,3 +29,11 @@ export const SHADOW_DIR=(()=>{const l=Math.hypot(SUN_VIEW[0],SUN_VIEW[1]);return
  * length lies along SHADOW_DIR: the flipped up axis (0, 1) turned onto it.
  */
 export const SILHOUETTE_ROTATION=Math.atan2(SHADOW_DIR.y,SHADOW_DIR.x)-Math.PI/2;
+/**
+ * Where a point drawn at (dx, dy) screen px from the feet (dy < 0: above) falls in its body's silhouette: flipped at the
+ * feet, flattened, turned by SILHOUETTE_ROTATION. For a piece drawn apart from the frame (the weapon in the hand).
+ */
+export function castOffset(dx:number,dy:number,out:{x:number;y:number}={x:0,y:0}){
+  const c=Math.cos(SILHOUETTE_ROTATION),s=Math.sin(SILHOUETTE_ROTATION),y=-dy*SILHOUETTE.flatten;
+  out.x=dx*c-y*s;out.y=dx*s+y*c;return out;
+}

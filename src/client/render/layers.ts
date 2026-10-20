@@ -414,7 +414,7 @@ export class HordeRenderer{
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
-    this.arsenal.begin(timeMs,this.body,this.reduced);
+    this.arsenal.begin(timeMs,this.body,this.reduced,this.fx.silhouettes);
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);

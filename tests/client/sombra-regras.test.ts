@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CONTACT_MIN,CONTACT_PAD,SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,contactWidth} from '../../src/client/render/shadow-rules.ts';
+import {CONTACT_MIN,CONTACT_PAD,SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,castOffset,contactWidth} from '../../src/client/render/shadow-rules.ts';
 import {ENEMY_FEET} from '../../src/client/art/enemy-feet.ts';
 import {FX_BUDGET} from '../../src/client/render/legibility.ts';
 import {SUN_VIEW} from '../../src/client/render/light.ts';
@@ -45,4 +45,14 @@ test('the silhouette lies away from the sun (right and down), flattened, faint; 
   const scene=read('src/client/scene.ts');
   assert.match(scene,/castSilhouette\(this\.heroSil,this\.actor,p\.x,p\.y,!this\.economy,depth-2\)/);
   assert.match(scene,/castSilhouette\(objects\.sil,objects\.image,q\.x,q\.y,!this\.economy&&!down,depth-2\)/);
+});
+
+test('the weapon in the hand casts with the hero: a point above the feet falls along SHADOW_DIR, flattened', ()=>{
+  const up=castOffset(0,-30);
+  assert.ok(Math.abs(up.x-SHADOW_DIR.x*30*SILHOUETTE.flatten)<1e-9&&Math.abs(up.y-SHADOW_DIR.y*30*SILHOUETTE.flatten)<1e-9);
+  const feet=castOffset(26,0);
+  assert.ok(Math.abs(Math.hypot(feet.x,feet.y)-26)<1e-9,'a point on the ground keeps its distance from the feet');
+  const src=read('src/client/render/arsenal-fx.ts');
+  assert.match(src,/castOffset\(HAND_DX\*b,HAND_DY\*b/);
+  assert.match(read('src/client/render/layers.ts'),/arsenal\.begin\([^)]*this\.fx\.silhouettes\)/);
 });

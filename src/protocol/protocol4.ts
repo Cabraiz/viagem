@@ -89,9 +89,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the vehicles (card NEW-20261014-ORQ-bancos-e-veiculos, part 2): `ride`/`rideUntil`
  * on the players (they drive the prediction), the 'vehicle' pickup kind (resource = its kind), the `vehicle` event and
  * their strings in the DICT; an older decoder would refuse the player mask and the event.
+ * 27 given by the integration queue (tools/fila.mjs, lote 20261020-193932) to: NEW-20261014-ORQ-bancos-e-veiculos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=26;
+export const PROTOCOL_VERSION=27;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

@@ -8,6 +8,8 @@ import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from './movement128.ts';
+import {detailedFeetY,heroFeetY} from './hero-feet.ts';
+import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,type Movement128Textures} from './movement128-textures.ts';
 
 export type {FigureBox};
@@ -134,6 +136,12 @@ export class CharacterSprites {
   private scene:Phaser.Scene;
   private city?:CityOutlines;
   constructor(scene:Phaser.Scene,city?:CityOutlines){this.scene=scene;this.city=city;}
+  /** Each class's feet line for its detailed clips (hero-feet.ts heroFeetY: idle + the 8 walks). */
+  private feet=new Map<string,number|undefined>();
+  private feetY(id:string){
+    if(!this.feet.has(id))this.feet.set(id,heroFeetY([movementIdle8Plan(id),...HERO_DIRECTIONS.map(d=>movement128Plan(id,'walk',d))]));
+    return this.feet.get(id);
+  }
   queue(id:string){
     const idle=movementIdle8Plan(id);
     if(idle){this.queueDetailed(idle);return;}
@@ -253,8 +261,12 @@ export class CharacterSprites {
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
         if(sprite.texture.key!==key)sprite.setTexture(key,frame);else if(Number(sprite.frame.name)!==frame)sprite.setFrame(frame);
-        const origin=copy?variantOrigin(copy.geom,...detailed.anchor):{x:detailed.anchor[0],y:detailed.anchor[1]};
+        // The feet (BUG sombra/silhueta 20/10): the clip's anchor (0.875) sits under the art's feet (0.66–0.79 of the
+        // cell), so the hero floated over its ring, its contact shadow and its silhouette; its figure's bottom is the feet.
+        const ax=detailed.anchor[0],ay=this.feetY(id)??detailedFeetY(detailed);
+        const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(false).setFlipY(false);
+        setBareFrame(sprite,copy?{key:detailed.key,ox:ax,oy:ay,sx:scale,sy:scale}:undefined);
         state.stream=detailed;state.shown=motion;state.side=direction;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
@@ -278,6 +290,7 @@ export class CharacterSprites {
     const copy=this.city?.variant(sheet.key,scale,sheet.crop??undefined);
     if(copy&&sheet.city?.key!==copy.key){const set:AnimSet&{key:string}={key:copy.key};this.animations(sheet,copy.key,set);sheet.city=set;}
     const key=copy?copy.key:sheet.key,sx=copy?scale*copy.geom.kx:scale,sy=copy?scale*copy.geom.ky:scale,anims:AnimSet=copy&&sheet.city?sheet.city:sheet;
+    setBareFrame(sprite,copy?{key:sheet.key,ox:.5,oy:.88,sx:scale,sy:scale}:undefined);
     if(sprite.texture.key!==key){
       sprite.setTexture(key,0);
       if(copy){const o=variantOrigin(copy.geom,.5,.88);sprite.setOrigin(o.x,o.y);}else sprite.setOrigin(.5,.88);

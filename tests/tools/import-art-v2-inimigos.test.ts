@@ -179,3 +179,21 @@ test('towers: wrong rows, missing mount and a wall with a weapon are refused in 
   assert.match(t,/falta meta\.mount/);
   assert.match(w,/torres\/muro-de-concreto: um muro .* não tem arma; tire idle\.png da pasta/);
 }));
+
+test('towers: foot line within 12 % of the cell height and no foot-centre check on the base; 15 % off is refused',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada');
+  await writeEnemiesTowers(input);
+  const tower=path.join(input,'torres',TOWER.id),wall=path.join(input,'torres',WALL.id);
+  const side=(folder:string,file:string,anchor:number[])=>{
+    const p=path.join(folder,file);writeFileSync(p,JSON.stringify({...JSON.parse(readFileSync(p,'utf8')),anchor}));
+  };
+  // A character's 5 % would refuse all of these (the drawings stay where the fixture put them).
+  side(tower,'base.json',[.2,TOWER.anchor[1]-.1]);side(tower,'meta.json',[.5,.88+.1]);side(wall,'base.json',[.8,WALL.anchor[1]+.1]);
+  let r=await importArtV2({input,repoRoot,outRoot:path.join(dir,'saida'),groups:['torres'],write:false});
+  for(const id of [TOWER.id,WALL.id])assert.deepEqual(find(r.pieces,'torres',id).problems,[],id);
+  side(tower,'base.json',[.5,TOWER.anchor[1]-.15]);side(tower,'meta.json',[.5,.88-.15]);
+  r=await importArtV2({input,repoRoot,outRoot:path.join(dir,'saida'),groups:['torres'],write:false});
+  const t=find(r.pieces,'torres',TOWER.id).problems.join('\n');
+  assert.match(t,/base\.png, "pronta" \(linha 4\): base do desenho fora da linha de apoio.*± 38\.4/);
+  assert.match(t,/idle\.png, .*base do desenho fora da linha de apoio.*± 15\.4/);
+}));

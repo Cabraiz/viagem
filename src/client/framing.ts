@@ -3,7 +3,7 @@ import {heroSpeed,isLand,landmarks,obstacles,project,type Point} from '../maps/i
 import {SCALE_PROFILES,zoomFor} from '../rules/index.ts';
 import {projectView,normalizeView} from './projection.ts';
 import {HERO_MARGIN,crosses} from './hud/zones.ts';
-import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,MAX_ASPECT,REFERENCE_SHORT_SIDE_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
+import {CAMERA_LAG_UNITS,CAMERA_OFFSET_LONG_PX,CAMERA_OFFSET_SHORT_PX,DESKTOP_VISIBLE_LONG_PX,DESKTOP_VISIBLE_SHORT_PX,HERO_MIN_SCREEN_PX,HERO_WORLD_PX,MAX_ASPECT,REFERENCE_SHORT_SIDE_PX,TILE_X,TILE_Y,VISIBLE_LONG_PX,VISIBLE_SHORT_PX} from '../contract/index.ts';
 
 const center=project({x:12,y:12});
 export const SHORE={x:center.x,y:center.y+40,width:1290,height:710};
@@ -60,12 +60,16 @@ export const HERO_SHORT_RATIO=HERO_MIN_SCREEN_PX/390;
  * desktop window keeps its whole range and at the default `k` never shows more than the default camera the director
  * paces by (offscreen.ts HERO_DEFAULT_SCREEN_PX). Never more world than the off-screen contract (the widest camera,
  * VISIBLE_SHORT_PX × VISIBLE_LONG_PX world px), so nothing the director spawns "off screen" can pop up on this phone.
+ * A landscape screen may go out to the computer's camera (zoom-fixo-pc: DESKTOP_VISIBLE_SHORT_PX × DESKTOP_VISIBLE_LONG_PX,
+ * camera-zoom.ts ZOOM_DESKTOP), also in the contract; a phone's `k` never goes that low (clampZoom), a portrait window
+ * stays at the phone's widest.
  */
 export function followZoom(viewport:Viewport,k=1){
   const short=Math.max(1,Math.min(viewport.width,viewport.height)),long=Math.max(1,viewport.width,viewport.height);
   const hero=Math.max(HERO_MIN_SCREEN_PX,short*Math.max(VS_HERO_SHORT_RATIO,HERO_SHORT_RATIO));
   const today=Math.max(hero/HERO_WORLD_PX,short/TODAY_SHORT_PX,long/(TODAY_SHORT_PX*MAX_ASPECT));
-  return Math.max(today*k,short/VISIBLE_SHORT_PX,long/VISIBLE_LONG_PX);
+  const landscape=viewport.width>viewport.height;
+  return Math.max(today*k,short/(landscape?DESKTOP_VISIBLE_SHORT_PX:VISIBLE_SHORT_PX),long/(landscape?DESKTOP_VISIBLE_LONG_PX:VISIBLE_LONG_PX));
 }
 /** The widest short side (world px) of the camera before D-046: the hero at the 56 px floor on a 390 px short side. */
 export const TODAY_SHORT_PX=HERO_WORLD_PX*REFERENCE_SHORT_SIDE_PX/HERO_MIN_SCREEN_PX;

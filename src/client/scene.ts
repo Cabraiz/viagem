@@ -109,6 +109,8 @@ export interface SceneHooks {
   zoom?:number;
   /** The wheel or a pinch changed the wanted zoom (the shell saves it). */
   zoomChanged?:(k:number)=>void;
+  /** The computer's fixed zoom (zoom-fixo-pc): `zoom` as given (camera-zoom.ts ZOOM_DESKTOP), the wheel and pinch do nothing. */
+  zoomLocked?:boolean;
 }
 type Graphics=Phaser.GameObjects.Graphics;
 const polygon=(g:Graphics,points:Point[],color:number,alpha=1)=>{
@@ -307,7 +309,7 @@ export class IslandScene extends Phaser.Scene {
   besideWindow?:BesideWindow;
   /** Where the camera frames the hero beside that window (zones.ts besideArea), CSS px; the useful area without it. */
   frameArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;this.zoomWant=this.zoomNow=clampZoom(hooks.zoom??ZOOM_DEFAULT);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;const k=hooks.zoom??ZOOM_DEFAULT;this.zoomWant=this.zoomNow=hooks.zoomLocked?k:clampZoom(k);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet, its walk in the 8 directions and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -671,7 +673,7 @@ export class IslandScene extends Phaser.Scene {
   releaseInput(){this.hold.release();this.input.keyboard?.resetKeys();}
   /** The player's zoom factor (camera-zoom.ts), clamped; eased on screen and saved by the shell. */
   setZoom(k:number){
-    const next=clampZoom(k);if(next===this.zoomWant)return;
+    const next=clampZoom(k);if(this.hooks.zoomLocked||next===this.zoomWant)return;
     this.zoomWant=next;this.hooks.zoomChanged?.(next);
   }
   get zoomFactor(){return this.zoomWant;}

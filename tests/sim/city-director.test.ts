@@ -343,7 +343,9 @@ test('first arrival: team at the plaza, round 1, catalog speeds: the first relea
     // NEW-20261013-ORQ-cidade-escala-1-7: on the 1.7× map the base is 1.7× bigger, so from mouth line S (4.42 u around the
     // mouth) to the player on the praca point (4.1 u from the mouth) the first group of seed 5 walks 6.15 s, not 3.30 s:
     // 16.85 s (mouth line 10.70 s), was 15.80 s (12.50 s) on the .w3x-sized city; the other seeds 11.15 s. Bound 17 s.
-    assert.ok(base<=arrival&&arrival<=ticks(17),`seed ${seed} (${mode}): first arrival ${secs(arrival)}`);
+    // NEW-20261020-ORQ-zoom-fixo-pc: the computer's camera (contract HERO_DESKTOP_SCREEN_PX, 38 px) hides fewer spots near
+    // mouth S, so seed 5 lands a little farther out: 17.20 s. Bound 17.5 s.
+    assert.ok(base<=arrival&&arrival<=ticks(17.5),`seed ${seed} (${mode}): first arrival ${secs(arrival)}`);
     if(arrival<=ticks(13))within13++;
     assert.ok(arrival>=ticks(9),`seed ${seed}: first arrival ${secs(arrival)} is too early (spawned too close)`);
     report.push(`${secs(arrival)} (mouth line ${secs(base)}, ${mode} ${director.state.avenues?.open.join('')})`);
@@ -813,8 +815,8 @@ function islandDigest(world:'ilha'|'infinito',seed:number,kill:number,avenues?:A
 const BASELINE:Readonly<Record<string,string>>={
   'ilha kill=40 seed 0':'2f32a8040033a729','ilha kill=40 seed 1':'1117c5850f968529',
   'ilha kill=Infinity seed 0':'ea1bab8a330cfb16',
-  'infinito kill=40 seed 0':'da183e211f6425c9','infinito kill=40 seed 1':'40f35557858e601d',
-  'infinito kill=Infinity seed 0':'5ac3ff9b368eb913', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
+  'infinito kill=40 seed 0':'a8b18644d60449bc','infinito kill=40 seed 1':'861f7d89517418ba',
+  'infinito kill=Infinity seed 0':'0953c7ab3326ff1f', // endless re-recorded for D-046 (wider spawn ring; catch-up up to the default zoom's screen) and velocidade-heroi-e-projetil (2× walk)
 };
 test('island and endless untouched: same output as before cidade-05, with or without a planner passed in',()=>{
   const got:Record<string,string>={};

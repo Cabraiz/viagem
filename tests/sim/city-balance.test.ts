@@ -215,7 +215,7 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * move; with main's asset v2 the old digests still come out).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'1745d5982e3a9036','tutorial seed 8 r4':'2e2c613b32eeca13','plain seed 21 r10':'8f9d6f96824bd407',
+  'tutorial seed 3 r4':'904736d2bebf594f','tutorial seed 8 r4':'8dff5d5d74d1dc82','plain seed 21 r10':'f1578307e14a1b4e',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -312,7 +312,7 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // to the team, no gem pickups in the state), and ilha/infinito with it (their kills dropped gems too; infinito also loses the
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'9b61b65ea70a1462',ilha:'4ce386103fb9a83c',infinito:'c6625679e36445fa'};
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'70451020fb25ace3',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

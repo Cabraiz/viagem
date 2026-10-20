@@ -12,7 +12,8 @@
  *  - `hero=cx,cy`: hero start in cells.
  *  - `class=id`: the hero's class sheet (default cidadao-comum).
  *  - `cells=N`: visible width in cells instead of the game's city zoom.
- *  - `zoom=k`: the player's zoom factor (camera-zoom.ts, ZOOM_MIN..1); default ZOOM_DEFAULT like the game, 1 = the old framing.
+ *  - `zoom=k`: the player's zoom factor (camera-zoom.ts, ZOOM_MIN..1); default ZOOM_DEFAULT like the game, 1 = the old framing,
+ *    `zoom=pc` the computer's fixed one (ZOOM_DESKTOP, zoom-fixo-pc).
  *  - `base=1`: mounts the game's StonewardsRenderer (render/stonewards.ts) with fake, fixed views around the plaza
  *    (asset point `praca`; else the hero start), in a compact layout that fits a 390×844 screen (not the real mouth
  *    positions): the wall at the centre (70% life), the 4 barricades at 2.2 u — N whole (inteira, 100%), L damaged
@@ -69,7 +70,7 @@
  * Fake data only; nothing talks to the server.
  */
 import Phaser from 'phaser';
-import {ZOOM_DEFAULT,clampZoom} from '../camera-zoom.ts';
+import {ZOOM_DEFAULT,ZOOM_DESKTOP,clampZoom} from '../camera-zoom.ts';
 import {previewHills} from '../render/city/relevo/preview.ts';
 import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,makeSampleCity,parseCityAsset,project,queueCityArt,queueLiveArt,unproject,type CityArtPlan,type CityAsset} from '../render/city/index.ts';
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
@@ -114,7 +115,7 @@ const real=params.get('mapa')==='real';
 const heroParam=params.get('hero');
 const cellsOverride=Number(params.get('cells'))||undefined;
 /** `zoom=k`: the player's zoom factor (camera-zoom.ts; default the game's ZOOM_DEFAULT, `zoom=1` the old framing). */
-const zoomK=clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
+const zoomK=params.get('zoom')==='pc'?ZOOM_DESKTOP:clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
 const wanted=params.get('class')??'cidadao-comum';
 const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:0;

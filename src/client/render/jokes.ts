@@ -45,6 +45,15 @@ export const deathLines=(kind:string):readonly string[]=>isEnemyKind(kind)?DEATH
 export function deathLine(kind:string,id:string){
   const lines=deathLines(kind);return lines[Math.floor(hashPhase(id)*lines.length)%lines.length];
 }
+/**
+ * Death jokes stay but are rare (inimigos-sem-frases-anim-lenta): about 1 kill in 10 is drawn for one, by the enemy's
+ * id (every client draws the same), and at most one shows every DEATH_POP_GAP_MS on screen. The chefe's always shows.
+ */
+export const DEATH_POP_CHANCE=.1,DEATH_POP_GAP_MS=4000;
+export function deathPopAllowed(id:string,now:number,lastAt:number,boss=false){
+  if(boss)return true;
+  return now-lastAt>=DEATH_POP_GAP_MS&&hashPhase(`${id}#pop`)<DEATH_POP_CHANCE;
+}
 const ROSTER_STYLES=new Map<string,KindStyle>();
 const css=(n:number)=>`#${n.toString(16).padStart(6,'0')}`;
 /** Pop and poof style of a roster entry: the generic paper fill, its accent darkened as the stroke and lightened as the tint. */

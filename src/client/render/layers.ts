@@ -17,7 +17,7 @@ import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,
   POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
-import {bubbleAllowed,deathLine,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
+import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
 import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
@@ -481,7 +481,7 @@ export class HordeRenderer{
 
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
-    this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();
+    this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
     this.art.destroy();this.arsenal.destroy();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
@@ -687,8 +687,11 @@ export class HordeRenderer{
         star.image.setTint(i%2?0xfff1a8:kindStyle(kind).tint);
       }
     }
-    // The death joke of a boss or an elite always shows (recycling the oldest pop); plain kills respect the budget.
+    // Death jokes are rare (deathPopAllowed: ~1 kill in 10, one per DEATH_POP_GAP_MS; the chefe's always shows), then
+    // a boss or an elite recycles the oldest pop while plain kills respect the budget.
+    if(!deathPopAllowed(id,this.now,this.lastDeathPopAt,k==='chefe'))return;
     if(!admitPop(this.pops.active,this.fx.pops,k==='chefe'||!!this.enemies.get(id)?.elite))return;
+    this.lastDeathPopAt=this.now;
     const pop=this.pops.spawn();
     pop.born=this.now;pop.x=x;pop.y=y;pop.lift=lift+ENEMY_ART[k].height*.45*body;pop.rotation=(phase-.5)*.36;
     paint(pop.text,popStyle(kind),deathLine(kind,id));
@@ -699,6 +702,7 @@ export class HordeRenderer{
    * One per caster every SKILL_BUBBLE_GAP_MS (D-013); a newer line from the same caster replaces theirs.
    */
   private skillBubbleAt=new Map<string,number>();
+  private lastDeathPopAt=-Infinity;
   /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
   say(player:string,line:string){this.spawnSkillBubble(player,line);}
   private spawnSkillBubble(player:string,line:string,tag=false,priority=false){

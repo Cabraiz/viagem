@@ -210,6 +210,11 @@ export interface RunRecord {
    * and `enemyGrana`, `primes` (bank-prime) and `empties` (bank-empty). Absent in older JSON files.
    */
   banks?:BankRecord;
+  /**
+   * Veículos (bancos-e-veiculos, part 2), from the vehicle events: `rides` taken (pegou) per kind, how they ended
+   * (`acabou` ran out, `largou` a fall or the car) and the distinct `riders`. Absent in older JSON files.
+   */
+  vehicles?:VehicleRecord;
   /** remover-gemas (D-054): the sim second each team level was reached (levels[i] = level i+2). Absent in older JSON files. */
   levels?:number[];
   /**
@@ -235,6 +240,14 @@ export function countBankEvent(b:BankRecord,e:SimEvent):void{
   }else if(e.type==='bank-prime')b.primes++;
   else if(e.type==='bank-empty')b.empties++;
 }
+export interface VehicleRecord {rides:number;byKind:Record<string,number>;acabou:number;largou:number;riders:number}
+/** Folds one sim event into a run's vehicle counters (`seen` keeps the riders; pure besides its arguments). */
+export function countVehicleEvent(v:VehicleRecord,seen:Set<string>,e:SimEvent):void{
+  if(e.type!=='vehicle')return;
+  if(e.what==='pegou'){v.rides++;v.byKind[e.kind]=(v.byKind[e.kind]??0)+1;seen.add(e.player);v.riders=seen.size;}
+  else v[e.what]++;
+}
+export const emptyVehicles=():VehicleRecord=>({rides:0,byKind:{},acabou:0,largou:0,riders:0});
 export const emptyBanks=():BankRecord=>({grana:0,withdraws:0,share:null,enemyWithdraws:0,enemyGrana:0,primes:0,empties:0});
 export interface NumStats {n:number;mean:number;min:number;median:number;max:number}
 
@@ -417,6 +430,15 @@ export function summaryLines(runs:readonly RunRecord[]):string[]{
     const b=s.byPlayers[n]?.banks;
     if(b)out.push(`banks ${n}p: R$/run ${b.grana?.mean??'-'} share of Grana ${b.pooledShare===null?'-':`${r2(b.pooledShare*100)} %`} pooled (per run ${JSON.stringify(b.share)}; target ${BANK_SHARE_TARGET.min*100}–${BANK_SHARE_TARGET.max*100} %: ${b.verdict})`+
       ` | bicho withdraws/run ${b.enemyWithdraws?.mean??'-'} (R$ ${b.enemyGrana?.mean??'-'}) | primes/run ${b.primes?.mean??'-'} | dry ATMs/run ${b.empties?.mean??'-'}`);
+  }
+  for(const n of sizes){
+    const rs=runs.filter(r=>r.players===n&&r.vehicles);
+    if(!rs.length)continue;
+    const kinds:Record<string,number>={};
+    for(const r of rs)for(const [k,c] of Object.entries(r.vehicles!.byKind))kinds[k]=(kinds[k]??0)+c;
+    // Card target: every bot rides at least one per run (the bench's heroes are all bots).
+    out.push(`vehicles ${n}p: rides/run ${mean(rs.map(r=>r.vehicles!.rides))} per bot ${mean(rs.map(r=>r.vehicles!.rides/n))} (target ≥ 1) | runs where every bot rode ${rs.filter(r=>r.vehicles!.riders>=n).length}/${rs.length}`+
+      ` | by kind ${JSON.stringify(kinds)} | ended: ran out ${mean(rs.map(r=>r.vehicles!.acabou))} dropped ${mean(rs.map(r=>r.vehicles!.largou))}`);
   }
   for(const n of sizes){
     const rs=runs.filter(r=>r.players===n&&r.objective);
@@ -779,7 +801,7 @@ export function playRun(o:RunOptions):RunRecord{
     return r;
   };
   let interGathered:Record<string,number>={},boss:BossRecord|undefined,bossId:string|undefined;
-  const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks();
+  const moments:Record<string,number>={},deliveries={clean:0,dirty:0},banks=emptyBanks(),vehicles=emptyVehicles(),riders=new Set<string>();
   let waveStart:number|null=null,barricades=barricadeStates(sim.run.stonewards.state);
   const r1Arrival:Record<string,number|null>=Object.fromEntries(ids.map(id=>[id,null]));
   const st=()=>sim.run.stonewards.state;
@@ -855,6 +877,7 @@ export function playRun(o:RunOptions):RunRecord{
     trackNests(tick);
     for(const e of events as readonly SimEvent[]){
       countBankEvent(banks,e);
+      countVehicleEvent(vehicles,riders,e);
       if(e.type==='levelup')levelS.push(r2(tick/HZ));
       if(e.type==='moto'){
         const k=e.mode==='tranco'&&e.alone?'tranco-sozinho':e.mode;moments[k]=(moments[k]??0)+1;
@@ -934,6 +957,7 @@ export function playRun(o:RunOptions):RunRecord{
     ...(sim.run.nests?{nests:nestSummary()}:{}),
     enemies:{max:maxEnemies,seen:seenEnemies.size,alivePerMinute:Array.from(alivePerMinute,v=>v??0),newPerMinute:Array.from(newPerMinute,v=>v??0)},
     banks:{...banks,share:gr.earned>0?Math.round(banks.grana/gr.earned*1000)/1000:null},
+    vehicles,
     levels:levelS,
   };
   function nestSummary():NestRecord{

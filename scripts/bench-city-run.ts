@@ -70,7 +70,7 @@
  *
  *   node --experimental-strip-types scripts/bench-city-run.ts [--seeds 1-16] [--players 1,3,6]
  *     [--out evidence/NEW-20261012-ORQ-cidade-11-balanco-run/balanco.json] [--resume] [--cap-min 30]
- *     [--knobs <city-balance.json>] [--priority low|normal]
+ *     [--knobs <city-balance.json>] [--priority low|normal] [--no-vehicles]
  *
  * Merge mode (CI, NEW-20261014-ORQ-ci-github-shards-e-bench): plays nothing; reads every run JSON (an --out file) under
  * <dir>, prints the per-run lines and the same summary as above (+ a before/after table with --before <file>) and
@@ -724,7 +724,7 @@ export function classRotation(ids:readonly string[],count=6):string[]{
 }
 const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
 
-export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;objective?:'chaveiro';
+export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */
   combat?:'manual';
   /** D-051 (--mode ninhos, with --objective chaveiro): the nests instead of the waves (Simulation mode). */
@@ -757,6 +757,8 @@ export function playRun(o:RunOptions):RunRecord{
   const sim=new Simulation(o.seed,{world:'cidade',terrain:o.city,...(knobsApplied&&o.route==='simulation'?{cityBalance:o.knobs}:{}),
     ...(o.objective?{objective:o.objective}:{}),...(o.combat?{combat:o.combat}:{}),...(o.mode?{mode:o.mode}:{})} as ConstructorParameters<typeof Simulation>[1]);
   if(knobsApplied&&o.route==='assemble')injectAssemble(sim,o.knobs);
+  // --no-vehicles (the A/B of bancos-e-veiculos): the city never spawns one (the vehicles draw on their own streams).
+  if(o.vehicles===false&&sim.run.vehicles)sim.run.vehicles.state.next=Number.MAX_SAFE_INTEGER;
   const room=new RoomBots();
   const ids:string[]=[],cls:string[]=[];
   for(let i=0;i<o.players;i++){
@@ -990,7 +992,7 @@ function args(argv:readonly string[]){
     seeds:parseSeeds(get('--seeds')??'1-16'),players:parsePlayers(get('--players')??'1,3,6'),
     out:path.resolve(get('--out')??path.join(ROOT,'evidence',CARD,'balanco.json')),
     resume:argv.includes('--resume'),capMin:Number(get('--cap-min')??30),knobs:get('--knobs'),priority:get('--priority')??'low',
-    towers:!argv.includes('--no-towers'),
+    towers:!argv.includes('--no-towers'),vehicles:!argv.includes('--no-vehicles'),
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
@@ -1068,7 +1070,7 @@ async function main(){
   const done=new Set(file.runs.map(r=>r.key)),capTicks=Math.round(a.capMin*60*HZ);
   for(const seed of a.seeds)for(const players of a.players){
     if(done.has(runKey(seed,players)))continue;
-    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,objective:a.objective,combat:a.combat,mode:a.mode});
+    const run=playRun({seed,players,capTicks,city,nav,knobs,route,towers:a.towers,vehicles:a.vehicles,objective:a.objective,combat:a.combat,mode:a.mode});
     run.digest=runDigest(run);
     file.runs=[...file.runs.filter(r=>r.key!==run.key),run];
     file.updatedAt=new Date().toISOString();file.summary=summarize(file.runs);

@@ -12,7 +12,8 @@
  */
 import type Phaser from 'phaser';
 import {bandsRgba,outlineRgba} from './outline.ts';
-import type {OutlineJob,OutlineReply} from './outline-worker.ts';
+import type {OutlineReply} from './outline-worker.ts';
+import {nextJobId,onReply,pixelWorker,post} from './outline-jobs.ts';
 import {queueUpload} from '../preload/upload-queue.ts';
 import {CITY_RING,CITY_STICKER,CITY_STICKER_CSS,MAX_COPIES_PER_BASE,changedEnough,copyResolution,cityKey,isCityKey,rimForGround,slotOf,textureBytes,variantGeometry,variantOrigin,
   type CellCrop,type Rim,type VariantGeometry} from './city-outline-rules.ts';
@@ -37,23 +38,6 @@ type Img=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
 /** A copy being painted in the worker: registered on arrival unless a rebuild, releaseBase or destroy dropped it. */
 interface Job {base:string;drawScale:number;geom:VariantGeometry;width:number;height:number;slots:{name:string;x:number;y:number}[];sticker?:string}
 
-/**
- * One worker for the page (outline-worker.ts); undefined without Worker/OffscreenCanvas/createImageBitmap (tests, old
- * browsers) or after it failed: copies are then painted on the main thread as before.
- */
-let worker:Worker|undefined,workerBroken=false;
-const listeners=new Set<(reply:OutlineReply)=>void>(),brokenListeners=new Set<()=>void>();
-function outlineWorker():Worker|undefined{
-  if(worker||workerBroken)return worker;
-  if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined'||typeof createImageBitmap!=='function')return undefined;
-  try{
-    worker=new Worker(new URL('./outline-worker.ts',import.meta.url),{type:'module'});
-    worker.onmessage=(e:MessageEvent<OutlineReply>)=>{for(const l of listeners)l(e.data);};
-    worker.onerror=()=>{workerBroken=true;worker?.terminate();worker=undefined;for(const l of brokenListeners)l();};
-  }catch{workerBroken=true;worker=undefined;}
-  return worker;
-}
-
 export class CityOutlines {
   /** The current copies of each base key (one per draw-scale window, at most MAX_COPIES_PER_BASE). */
   private variants=new Map<string,CityVariant[]>();
@@ -68,9 +52,7 @@ export class CityOutlines {
   /** Copies in the worker, by job id; the bases (and stickers' copy keys) that have one, so a job is never doubled. */
   private jobs=new Map<number,Job>();
   private painting=new Set<string>();
-  private jobSerial=0;
-  private onReply=(reply:OutlineReply)=>this.arrive(reply);
-  private onBroken=()=>{this.jobs.clear();this.painting.clear();};
+  private unlisten?:()=>void;
   private serial=0;
   private frameStamp=-1;
   private builds=0;
@@ -178,7 +160,7 @@ export class CityOutlines {
     }catch{/* managers gone with the game */}
     this.variants.clear();this.stickers.clear();this.byKey.clear();this.retired.length=0;this.failed.clear();
     for(const id of [...this.jobs.keys()])this.cancel(id);
-    listeners.delete(this.onReply);brokenListeners.delete(this.onBroken);
+    this.unlisten?.();this.unlisten=undefined;
   }
 
   /** Once per game frame: city on/off, zoom and canvas resolution checks, retired copies destroyed, build budget reset. */
@@ -215,7 +197,7 @@ export class CityOutlines {
   private arrive(reply:OutlineReply){
     const job=this.jobs.get(reply.id);
     if(!job){if('bitmap' in reply)reply.bitmap.close();return;}
-    if('error' in reply){this.cancel(reply.id);this.failed.add(job.sticker??job.base);return;}
+    if(!('bitmap' in reply)){this.cancel(reply.id);this.failed.add(job.sticker??job.base);return;}
     const bitmap=reply.bitmap;
     queueUpload(job.width*job.height,()=>{
       if(this.jobs.get(reply.id)!==job){bitmap.close();return;}
@@ -253,18 +235,16 @@ export class CityOutlines {
     const frames=(single?['__BASE']:names).map(name=>{const f=tex.get(name);return {name,f,...slotOf(geom,f.cutX,f.cutY)};});
     let cols=1,rows=1;for(const s of frames){cols=Math.max(cols,s.col+1);rows=Math.max(rows,s.row+1);}
     const width=cols*geom.slotW,height=rows*geom.slotH;
-    const w=outlineWorker();
-    if(w){
-      const src=tex.getSourceImage() as ImageBitmapSource,k=geom.crop,id=++this.jobSerial;
+    if(pixelWorker()){
+      const src=tex.getSourceImage() as ImageBitmapSource,k=geom.crop,id=nextJobId();
       const job:Job={base,drawScale,geom,width,height,slots:single?[]:frames.map(s=>({name:s.name,x:s.col*geom.slotW,y:s.row*geom.slotH})),sticker};
       this.jobs.set(id,job);this.painting.add(sticker??base);
-      listeners.add(this.onReply);brokenListeners.add(this.onBroken);
+      this.unlisten??=onReply(reply=>this.arrive(reply),()=>{this.jobs.clear();this.painting.clear();});
       const cells=frames.map(s=>({sx:s.f.cutX+k.x,sy:s.f.cutY+k.y,sw:k.w,sh:k.h,dx:s.col*geom.slotW+geom.pad,dy:s.row*geom.slotH+geom.pad,dw:geom.cw,dh:geom.ch}));
       createImageBitmap(src).then(source=>{
         if(this.jobs.get(id)!==job){source.close();return;}
-        const msg:OutlineJob={id,source,width,height,cells,slotW:geom.slotW,slotH:geom.slotH,
-          ...(sticker?{bands:CITY_STICKER.map(b=>({width:b.css*geom.perCss,color:b.color}))}:{ring:{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha}})};
-        w.postMessage(msg,[source]);
+        post({kind:'outline',id,source,width,height,cells,slotW:geom.slotW,slotH:geom.slotH,
+          ...(sticker?{bands:CITY_STICKER.map(b=>({width:b.css*geom.perCss,color:b.color}))}:{ring:{radius:geom.ring,color:CITY_RING.color,alpha:CITY_RING.alpha}})});
       },()=>{if(this.jobs.get(id)===job){this.cancel(id);this.failed.add(sticker??base);}});
       return 'painting';
     }

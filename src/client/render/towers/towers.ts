@@ -30,7 +30,7 @@ import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
 import {SHADOW_SOFT_PX,castHeight,softShadow,towerShadowLook} from './tower-shadow.ts';
 import {lightEnabled} from '../light.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
-  towerArt,towerPhase,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
+  towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
 /** Where the defenses sit: the city's projection and depth (the sandbox and, after torres-fio, the scene). */
 export interface TowerWorld {
@@ -61,6 +61,8 @@ export interface TowerRendererOptions {
   economy?:boolean;
   /** The lighting is on (render/light.ts). Default lightEnabled() (`?luz=0` turns it off). */
   light?:boolean;
+  /** The map's cell (u) the city art is drawn on (art-plan.ts CityArtOptions.cell), for the delivered art's scale. Default 0.88. */
+  cell?:number|(()=>number|undefined);
 }
 
 interface Tower {
@@ -156,6 +158,8 @@ export class TowerRenderer {
   private stamp=0;
   private now=0;
   private unitPx=1;
+  /** World px across the diamond of a 1 u ground square (the delivered art's scale, towerArtScale). */
+  private diamondPx=1;
   private readonly breu=tokenColor('--c-breu');
   private readonly papel=tokenColor('--c-papel');
   private readonly amarelo=tokenColor('--c-amarelo');
@@ -191,10 +195,13 @@ export class TowerRenderer {
   private get s(){const k=this.o.actorScale;return typeof k==='function'?k():k??1;}
   /** Size unit of the weapons and effects: world px of 1/24 u, so they keep their size against the boxes at any scale. */
   private get f(){return this.unitPx/24;}
+  /** World px per art px of the delivered sheets (towerArtScale: the city scenery's). */
+  private get artScale(){const c=this.o.cell,cell=typeof c==='function'?c():c;return towerArtScale(this.diamondPx,cell&&cell>0?cell:undefined);}
   /** World px of 1 u along the ground (screen length of a unit step), for barrel lengths and blast ellipses. */
   private measure(){
-    const w=this.o.world,a=w.project(0,0,0,{x:0,y:0}),b=w.project(1,0,0,{x:0,y:0});
+    const w=this.o.world,a=w.project(0,0,0,{x:0,y:0}),b=w.project(1,0,0,{x:0,y:0}),c=w.project(0,1,0,{x:0,y:0});
     this.unitPx=Math.max(1,Math.hypot(b.x-a.x,b.y-a.y));
+    this.diamondPx=Math.max(1,Math.abs(b.x-a.x)+Math.abs(c.x-a.x));
   }
   /** The enemies the weapons aim at (parallel arrays; `air` 1 for flyers). Kept by reference, read every frame. */
   setEnemies(n:number,xs:ArrayLike<number>,ys:ArrayLike<number>,air?:ArrayLike<number>){
@@ -631,9 +638,9 @@ export class TowerRenderer {
   }
   private placeArt(t:Tower,view:number){
     const art=towerArt(t.view.kind)!,file=art.base!,img=t.base,w=this.o.world,p=w.project(t.view.x,t.view.y,0,this.p);
-    const reach=t.view.half?Math.max(t.view.half[0],t.view.half[1]):t.view.r,scale=2.2*reach*this.unitPx/file.cell[0],anchor=file.anchor??[.5,.85];
-    img.setTexture(towerBaseKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(scale)
-      .setFrame(baseFrame(t.phase,view,Math.max(1,Math.min(4,file.views??4))));
+    const scale=this.artScale,anchor=file.anchor??[.5,.85];
+    img.setTexture(towerBaseKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(scale/textureRatio(file))
+      .setFrame(baseFrame(t.phase,view,Math.max(1,Math.min(4,file.views??4)),Array.isArray(file.rows)?file.rows:undefined));
     const b=img.getBounds();t.rect.x=b.x;t.rect.y=b.y;t.rect.w=b.width;t.rect.h=b.height;
     if(art.mount){t.mount.x=p.x+(art.mount[0]-anchor[0]*file.cell[0])*scale;t.mount.y=p.y+(art.mount[1]-anchor[1]*file.cell[1])*scale;}
   }
@@ -777,7 +784,7 @@ export class TowerRenderer {
     const art=t.art?towerArt(t.view.kind):undefined;
     if(art?.idle&&this.scene.textures.exists(towerGunKey(t.view.kind))){
       const frames=Math.max(1,art.idle.frames??1),anchor=art.idle.anchor??[.5,.5];
-      t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(t.base.scaleX).setFrame(weaponFrame(t.dir,0,frames));
+      t.weapon.setTexture(towerGunKey(t.view.kind)).setOrigin(anchor[0],anchor[1]).setPosition(t.mount.x,t.mount.y).setScale(this.artScale/textureRatio(art.idle)).setFrame(weaponFrame(t.dir,0,frames));
       return;
     }
     const name=(d:number,r:boolean)=>`arma:${t.view.kind}:${d}:${r?1:0}:${Math.round(this.unitPx)}`;
@@ -848,15 +855,23 @@ export class TowerRenderer {
 /** Texture keys of a defense's imported sheets. */
 export const towerBaseKey=(kind:string)=>`art:torres:${kind}:base`;
 export const towerGunKey=(kind:string)=>`art:torres:${kind}:idle`;
-/** Queues the delivered tower sheets (single-page files only; the rest stays procedural). Call in preload. */
+/**
+ * Public URL of the lite copy of a defense's sheet (scripts/art-lite.mjs, family towers): one sheet per file, its
+ * pages joined, frames in order at `liteCell`.
+ */
+export const towerLiteUrl=(kind:string,name:string)=>`/art/lite/towers/${kind}/${name}.webp`;
+/**
+ * Queues the delivered tower sheets: the lite copy when the manifest has one (`liteCell`, a single page even when the
+ * delivered sheet is paged), else a single-page delivered file; the rest stays procedural. Call in preload.
+ */
 export function queueTowerArt(scene:Phaser.Scene){
+  const group=artIndex().groups.torres;if(!group)return;
   for(const kind of TOWER_KINDS as readonly TowerKind[]){
     const art=towerArt(kind);if(!art)continue;
-    for(const [key,file] of [[towerBaseKey(kind),art.base],[towerGunKey(kind),art.idle]] as const){
-      if(!file?.file||scene.textures.exists(key))continue;
-      const group=artIndex().groups.torres;if(!group)continue;
-      const url=groupFileUrl(group,file.file);
-      scene.load.spritesheet(key,url,{frameWidth:file.cell[0],frameHeight:file.cell[1]});
+    for(const [key,name,file] of [[towerBaseKey(kind),'base',art.base],[towerGunKey(kind),'idle',art.idle]] as const){
+      if(!file||scene.textures.exists(key))continue;
+      if(file.liteCell)scene.load.spritesheet(key,towerLiteUrl(kind,name),{frameWidth:file.liteCell[0],frameHeight:file.liteCell[1]});
+      else if(file.file&&(file.pages?.length??1)<=1)scene.load.spritesheet(key,groupFileUrl(group,file.file),{frameWidth:file.cell[0],frameHeight:file.cell[1]});
     }
   }
 }

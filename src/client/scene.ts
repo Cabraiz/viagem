@@ -876,6 +876,7 @@ export class IslandScene extends Phaser.Scene {
    */
   private makeTowers(){
     return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,economy:this.economy,
+      cell:()=>this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined,
       depthVersion:()=>this.city?.columnsVersion??0,
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
         project:(x,y,z,out)=>{const p=this.project({x,y});out.x=p.x;out.y=p.y-z*HEIGHT_PX;return out;}}});

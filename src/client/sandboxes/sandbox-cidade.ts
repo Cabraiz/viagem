@@ -519,6 +519,7 @@ class CitySandbox extends Phaser.Scene {
     if(!towersDrawn)return;
     const view=()=>this.view;
     this.towers=new TowerRenderer(this,{reduced:reducedMotion,groundDepth:CITY_GROUND_DEPTH+1,actorScale:CITY_VIEW_SCALE,camera:this.cameras.main,
+      ...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{}),
       depthVersion:()=>this.layer?.columnsVersion??0,
       world:{view,project:(px,py,z,out)=>{const p=project(px,py,groundZ(asset,px,py)+z,this.view);out.x=p.x;out.y=p.y;return out;},
         depth:(px,py)=>this.layer?this.layer.actorDepth(px,py,groundZ(asset,px,py)):0,

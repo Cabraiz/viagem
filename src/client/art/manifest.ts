@@ -65,6 +65,8 @@ function parseFile(value:unknown):ArtFile|undefined{
       ![p.columns,p.rows,p.firstFrame,p.frameCount].every(n=>Number.isInteger(n)&&(n as number)>=0))return undefined;
   }
   if(file.file===undefined&&file.pages===undefined)return undefined;
+  // A lite copy's cell (scripts/art-lite.mjs) is never larger than the file's; a malformed one is dropped.
+  if(file.liteCell!==undefined&&!(isCell(file.liteCell)&&file.liteCell[0]<=file.cell[0]&&file.liteCell[1]<=file.cell[1])){const {liteCell:_,...rest}=file;return rest;}
   return file;
 }
 /** An enemy file as the client draws it: its lite copy's cell when that copy is smaller (a malformed one is dropped). */

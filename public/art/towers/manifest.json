@@ -34,7 +34,11 @@
               "sha256": "8d657d0f8bc475029117bc58852645a6962a1ca9bc64fe79d0e38182aa4f6924"
             }
           ],
-          "sha256": "8d657d0f8bc475029117bc58852645a6962a1ca9bc64fe79d0e38182aa4f6924"
+          "sha256": "8d657d0f8bc475029117bc58852645a6962a1ca9bc64fe79d0e38182aa4f6924",
+          "liteCell": [
+            224,
+            224
+          ]
         },
         "fire": {
           "file": "antiaerea-quadrupla/fire.webp",
@@ -84,7 +88,11 @@
               "sha256": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123"
             }
           ],
-          "sha256": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123"
+          "sha256": "1f8fd21dee8171d3241ace529aa7feef0ef14f65e2cb0fd5cde99f4f65bc0123",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "reload": {
           "file": "antiaerea-quadrupla/reload.webp",
@@ -156,7 +164,11 @@
               "sha256": "568fa91c7e918ae925dc65d22bd32ac322879b982e46b345ed44443bf7f6ce45"
             }
           ],
-          "sha256": "568fa91c7e918ae925dc65d22bd32ac322879b982e46b345ed44443bf7f6ce45"
+          "sha256": "568fa91c7e918ae925dc65d22bd32ac322879b982e46b345ed44443bf7f6ce45",
+          "liteCell": [
+            160,
+            160
+          ]
         },
         "fire": {
           "file": "arame-e-sirene/fire.webp",
@@ -206,7 +218,11 @@
               "sha256": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e"
             }
           ],
-          "sha256": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e"
+          "sha256": "22cae18bc39ba90cc0adc0e5df3b4a902f56f03cbaff01f7e571356abd9c6e9e",
+          "liteCell": [
+            64,
+            64
+          ]
         }
       },
       "sha256": "163c250155e82ab4a3f039b5ba2e49f2e836a09e58aeb95c2f031c93f6530d27",
@@ -253,7 +269,11 @@
               "sha256": "d9bae5a744c8341f24dd0b30363551660b5bc277dd186754d705a0ab6e7a42d8"
             }
           ],
-          "sha256": "d9bae5a744c8341f24dd0b30363551660b5bc277dd186754d705a0ab6e7a42d8"
+          "sha256": "d9bae5a744c8341f24dd0b30363551660b5bc277dd186754d705a0ab6e7a42d8",
+          "liteCell": [
+            224,
+            512
+          ]
         },
         "fire": {
           "file": "atiradores-do-telhado/fire.webp",
@@ -303,7 +323,11 @@
               "sha256": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9"
             }
           ],
-          "sha256": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9"
+          "sha256": "c51b560b1ea3f5126e9e23d7deee9cd2d49ba98e2df9cc482266d60c307cdcf9",
+          "liteCell": [
+            96,
+            96
+          ]
         },
         "reload": {
           "file": "atiradores-do-telhado/reload.webp",
@@ -375,7 +399,11 @@
               "sha256": "2d9c91ff211c55a7314cac09a7d0a87b4cd2539a0e31f65c2593f62bcabe550e"
             }
           ],
-          "sha256": "2d9c91ff211c55a7314cac09a7d0a87b4cd2539a0e31f65c2593f62bcabe550e"
+          "sha256": "2d9c91ff211c55a7314cac09a7d0a87b4cd2539a0e31f65c2593f62bcabe550e",
+          "liteCell": [
+            224,
+            608
+          ]
         },
         "fire": {
           "file": "equipe-antimaterial/fire.webp",
@@ -425,7 +453,11 @@
               "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813"
             }
           ],
-          "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813"
+          "sha256": "e2eb83beab6b3a0e2c02d7248449aa3bc5e4ad7eca1b8a4775e52aa0c7875813",
+          "liteCell": [
+            96,
+            96
+          ]
         },
         "reload": {
           "file": "equipe-antimaterial/reload.webp",
@@ -504,7 +536,11 @@
               "sha256": "d26e3668cbad93808cb29a9d43f0f9f8a414cc38918edfa12aabdfc14244cfeb"
             }
           ],
-          "sha256": "f67ee52a3e5d04c24569e998cb29736cafe1beb3af127fd2d627b71594c7bd34"
+          "sha256": "f67ee52a3e5d04c24569e998cb29736cafe1beb3af127fd2d627b71594c7bd34",
+          "liteCell": [
+            320,
+            704
+          ]
         },
         "fire": {
           "file": "guarnicao-do-predio/fire.webp",
@@ -554,7 +590,11 @@
               "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c"
             }
           ],
-          "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c"
+          "sha256": "1143942161f580fef50db1fc5b9713d81f42b739f344eb315151f2112dd7769c",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "reload": {
           "file": "guarnicao-do-predio/reload.webp",
@@ -623,7 +663,11 @@
               "sha256": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a"
             }
           ],
-          "sha256": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a"
+          "sha256": "19aa4dd9b65b8e7b366d974f03bdc89e37fcaaea3a825ae9814262198fbaf64a",
+          "liteCell": [
+            256,
+            384
+          ]
         }
       },
       "sha256": "642fe64b1234c5a70c8567e288c7b61eb2047032b404b7c30496df1516c2b26c",
@@ -666,7 +710,11 @@
               "sha256": "fa08d221571c3f7798e1fff0cf9e649d599675af656f7f6da646aa37527bab11"
             }
           ],
-          "sha256": "fa08d221571c3f7798e1fff0cf9e649d599675af656f7f6da646aa37527bab11"
+          "sha256": "fa08d221571c3f7798e1fff0cf9e649d599675af656f7f6da646aa37527bab11",
+          "liteCell": [
+            128,
+            256
+          ]
         },
         "fire": {
           "file": "holofote/fire.webp",
@@ -716,7 +764,11 @@
               "sha256": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be"
             }
           ],
-          "sha256": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be"
+          "sha256": "bb1da322619aa0536ddd3b9f9e74ca7bb9f8878930ad2112e79a0cf5d6c4c0be",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "reload": {
           "file": "holofote/reload.webp",
@@ -788,7 +840,11 @@
               "sha256": "ab345c9c11c36d838e55a4ac56862c70971d476e78c2a1bdc2f3b9e948b64d1e"
             }
           ],
-          "sha256": "ab345c9c11c36d838e55a4ac56862c70971d476e78c2a1bdc2f3b9e948b64d1e"
+          "sha256": "ab345c9c11c36d838e55a4ac56862c70971d476e78c2a1bdc2f3b9e948b64d1e",
+          "liteCell": [
+            288,
+            256
+          ]
         },
         "fire": {
           "file": "lanca-foguetes/fire.webp",
@@ -838,7 +894,11 @@
               "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df"
             }
           ],
-          "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df"
+          "sha256": "c9aaaf7abce43fb9f7f629983f731b9155d16bfbef8ff359f8e4aa3465f9d7df",
+          "liteCell": [
+            160,
+            160
+          ]
         },
         "reload": {
           "file": "lanca-foguetes/reload-p1.webp",
@@ -907,7 +967,11 @@
               "sha256": "180a2deaadb3b8edb414a0bb3b9d29fa6b02a23eb11d5db112ea2bc94afaa62b"
             }
           ],
-          "sha256": "180a2deaadb3b8edb414a0bb3b9d29fa6b02a23eb11d5db112ea2bc94afaa62b"
+          "sha256": "180a2deaadb3b8edb414a0bb3b9d29fa6b02a23eb11d5db112ea2bc94afaa62b",
+          "liteCell": [
+            256,
+            256
+          ]
         }
       },
       "sha256": "e5767ae5ff1cfa8b9c7b366f216ac92f1189f2b4e33081efe7d770f6f5d73399",
@@ -947,7 +1011,11 @@
               "sha256": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f"
             }
           ],
-          "sha256": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f"
+          "sha256": "3fa69abe70b7cbc8edfcf7fbd5261d7400900a312c774c06aee6449fb564044f",
+          "liteCell": [
+            256,
+            256
+          ]
         }
       },
       "sha256": "83a7c326aa45e976e5d8deeaaa7c247936e9cc667190e79f249a3a6ea5a701f0",
@@ -990,7 +1058,11 @@
               "sha256": "3ac02ed55763e0eff38e43a9141676b55809f706a6455c2303d4219c8c9b22d7"
             }
           ],
-          "sha256": "3ac02ed55763e0eff38e43a9141676b55809f706a6455c2303d4219c8c9b22d7"
+          "sha256": "3ac02ed55763e0eff38e43a9141676b55809f706a6455c2303d4219c8c9b22d7",
+          "liteCell": [
+            224,
+            224
+          ]
         },
         "fire": {
           "file": "morteiro/fire.webp",
@@ -1040,7 +1112,11 @@
               "sha256": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc"
             }
           ],
-          "sha256": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc"
+          "sha256": "ebc554496447563384cc356c9ed55232befb012bd02b84b8da7046549a1c04dc",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "reload": {
           "file": "morteiro/reload.webp",
@@ -1109,7 +1185,11 @@
               "sha256": "893601765b1636e68253fbb735ab8b1dfd5b57f9d877b3c61fb633e883bb8929"
             }
           ],
-          "sha256": "893601765b1636e68253fbb735ab8b1dfd5b57f9d877b3c61fb633e883bb8929"
+          "sha256": "893601765b1636e68253fbb735ab8b1dfd5b57f9d877b3c61fb633e883bb8929",
+          "liteCell": [
+            192,
+            160
+          ]
         }
       },
       "sha256": "4c82700e4f68c94d3d621be53fbe28eb81ea0e63a2d0d7b836b7c5df7a412148",
@@ -1153,7 +1233,11 @@
               "sha256": "6fb7c5cc181bf266a880bf81533d308295080b6f945e9ae8bef3f4045a22f02b"
             }
           ],
-          "sha256": "6fb7c5cc181bf266a880bf81533d308295080b6f945e9ae8bef3f4045a22f02b"
+          "sha256": "6fb7c5cc181bf266a880bf81533d308295080b6f945e9ae8bef3f4045a22f02b",
+          "liteCell": [
+            192,
+            128
+          ]
         }
       },
       "sha256": "abf095503db9ec42f1ae551d6fde2908a395e4fc5c4621b708a38174028c4101",
@@ -1207,7 +1291,11 @@
               "sha256": "36ad72c828f537584ddccb78718bb237e6f6c77e69932362dee211dd9b0a4139"
             }
           ],
-          "sha256": "f0b3b5e8b5e5a2e646519fd2ed5e1fd0b1064904ec34612c8af07a1be4f53365"
+          "sha256": "f0b3b5e8b5e5a2e646519fd2ed5e1fd0b1064904ec34612c8af07a1be4f53365",
+          "liteCell": [
+            320,
+            576
+          ]
         },
         "fire": {
           "file": "ninho-de-metralhadora/fire.webp",
@@ -1257,7 +1345,11 @@
               "sha256": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7"
             }
           ],
-          "sha256": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7"
+          "sha256": "0425f72bfc1c29dfc844bc8d9d0da95c6d0eb854a043e027cf48c231720568a7",
+          "liteCell": [
+            128,
+            128
+          ]
         },
         "reload": {
           "file": "ninho-de-metralhadora/reload.webp",
@@ -1329,7 +1421,11 @@
               "sha256": "52e4ae2a24a89044aad0b527615808eaf7d196a021cb27453462e77f2dc7c974"
             }
           ],
-          "sha256": "52e4ae2a24a89044aad0b527615808eaf7d196a021cb27453462e77f2dc7c974"
+          "sha256": "52e4ae2a24a89044aad0b527615808eaf7d196a021cb27453462e77f2dc7c974",
+          "liteCell": [
+            224,
+            576
+          ]
         },
         "fire": {
           "file": "ninho-do-sniper/fire.webp",
@@ -1379,7 +1475,11 @@
               "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995"
             }
           ],
-          "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995"
+          "sha256": "925af16e6672224d24919f9acc73974c2fc5829ea61f8982c751bca67852e995",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "reload": {
           "file": "ninho-do-sniper/reload.webp",
@@ -1451,7 +1551,11 @@
               "sha256": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958"
             }
           ],
-          "sha256": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958"
+          "sha256": "82c1ddfed25d41f0b6da9442f91dbedb9a2182962a2ade4345af30750b0e0958",
+          "liteCell": [
+            320,
+            288
+          ]
         },
         "fire": {
           "file": "obuseiro/fire.webp",
@@ -1501,7 +1605,11 @@
               "sha256": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd"
             }
           ],
-          "sha256": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd"
+          "sha256": "3873643f3c9e6099fa4be6b3a98c633e78c9e7059a4dbbe946d370e29c38b7dd",
+          "liteCell": [
+            192,
+            192
+          ]
         },
         "reload": {
           "cell": [
@@ -1577,7 +1685,11 @@
               "sha256": "e15e8f27bef34acc8421baf358b956a5b20e8b6490e2113547b784ab69270dd7"
             }
           ],
-          "sha256": "e15e8f27bef34acc8421baf358b956a5b20e8b6490e2113547b784ab69270dd7"
+          "sha256": "e15e8f27bef34acc8421baf358b956a5b20e8b6490e2113547b784ab69270dd7",
+          "liteCell": [
+            128,
+            128
+          ]
         }
       },
       "sha256": "c5aeb56fd69a783c8b3623aa229bac29cfd72f995bdb5b5a6432f0d9533674db",
@@ -1624,7 +1736,11 @@
               "sha256": "602097b548321a500a98841dd1c260653364443a38cba57acebe1c1e393ccac7"
             }
           ],
-          "sha256": "602097b548321a500a98841dd1c260653364443a38cba57acebe1c1e393ccac7"
+          "sha256": "602097b548321a500a98841dd1c260653364443a38cba57acebe1c1e393ccac7",
+          "liteCell": [
+            224,
+            320
+          ]
         },
         "fire": {
           "file": "posto-de-radar/fire.webp",
@@ -1674,7 +1790,11 @@
               "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1"
             }
           ],
-          "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1"
+          "sha256": "1b046027a83feaed0bca4b91319f9c89fae04c0de1d30e45b1091a8f6c2a4ab1",
+          "liteCell": [
+            96,
+            96
+          ]
         }
       },
       "sha256": "3cba3a734bdf8e5793d57691f8d76d4f612238d198d7b82ea732530e61aa4a25",
@@ -1721,7 +1841,11 @@
               "sha256": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff"
             }
           ],
-          "sha256": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff"
+          "sha256": "2b9b128b6db97e9019383502f6edf38932470da58813b425455fac3274f15aff",
+          "liteCell": [
+            128,
+            160
+          ]
         },
         "fire": {
           "file": "rojao-de-festa/fire.webp",
@@ -1771,7 +1895,11 @@
               "sha256": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405"
             }
           ],
-          "sha256": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405"
+          "sha256": "4e56cd3352e305acc49835284e4e71c1cc260b9c9b4b7bdfb0272d7a054d6405",
+          "liteCell": [
+            64,
+            64
+          ]
         },
         "reload": {
           "file": "rojao-de-festa/reload.webp",
@@ -1843,7 +1971,11 @@
               "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc"
             }
           ],
-          "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc"
+          "sha256": "c86ee420ecd512d80a7b8ee63558af9dba80bf54d30550f05a478b27fb23febc",
+          "liteCell": [
+            224,
+            416
+          ]
         },
         "fire": {
           "file": "vigia-do-predio/fire.webp",
@@ -1893,7 +2025,11 @@
               "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883"
             }
           ],
-          "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883"
+          "sha256": "21362bed31a23ebdfa759366dbccca1dc158de73f90f6b269041c8c611058883",
+          "liteCell": [
+            64,
+            64
+          ]
         },
         "reload": {
           "file": "vigia-do-predio/reload.webp",
@@ -1965,7 +2101,11 @@
               "sha256": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c"
             }
           ],
-          "sha256": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c"
+          "sha256": "24bdde0eaa336cc8614025920b745bd41aa39de3c383e2eb81b76cc1e7d7f33c",
+          "liteCell": [
+            224,
+            416
+          ]
         },
         "fire": {
           "file": "vigias-armados/fire.webp",
@@ -2015,7 +2155,11 @@
               "sha256": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64"
             }
           ],
-          "sha256": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64"
+          "sha256": "a393255b692a52503bc5559e7e0fe18fe4db37ec48dcbe2347feac4258038b64",
+          "liteCell": [
+            80,
+            80
+          ]
         },
         "reload": {
           "file": "vigias-armados/reload.webp",

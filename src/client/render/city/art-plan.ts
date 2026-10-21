@@ -63,6 +63,12 @@ export const PROP_FAMILIES:Readonly<Record<PropKind,readonly string[]>>={
 };
 export const FOUNTAIN_PIECE='chafariz-congelado';
 /**
+ * The 4-view base sheets art/base-art.ts draws (its BASE_ART wall and barricade; the crate has one view and ~50 KB):
+ * their city lite copies keep the cell (cityLiteScale 1), so base-art swaps the url only. Not imported from base-art
+ * so the plan (and scripts/art-lite.mjs) stays apart from the Stonewards renderer; tests/client/art-lite.test.ts checks both lists agree.
+ */
+export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada'];
+/**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
  * the car about the hero's height, barrels, crates, benches and street junk at its waist or chest, the bent sign
@@ -71,7 +77,10 @@ export const FOUNTAIN_PIECE='chafariz-congelado';
  */
 export const PROP_WORLD_SCALE:Readonly<Record<PropKind,number>>={lamp:.46,car:.56,crate:.56,barrel:.56,bench:.56,debris:.56,pine:1,rubble:1};
 
-/** One texture to load: a single-page sheet of `views` frames (or more: extra rows are other states, unused). */
+/**
+ * One texture to load: a single-page sheet of `views` frames (or more: extra rows are other states, unused). The frame
+ * size and the scale are the texture's: a lite copy's (cityTexture) when the file has one.
+ */
 export interface CitySheet {key:string;url:string;frameWidth:number;frameHeight:number;
   /** Image origin y (fraction of the frame) of the anchor line: the footprint's front corner, or a prop's feet. */
   originY:number;
@@ -79,8 +88,12 @@ export interface CitySheet {key:string;url:string;frameWidth:number;frameHeight:
   footprint?:[number,number];
   /** Height drawn above the anchor line, world units at the sheet's display scale (occluders, chunk bounds). */
   height:number;
-  /** Display scale (game px per art px). */
-  scale:number}
+  /** Display scale (game px per texture px). */
+  scale:number;
+  /** Texture px per art px: below 1 on a smaller lite copy (cityTexture). The anchors count in art px (frame / texel). */
+  texel?:number}
+/** Texture px per art px of a sheet (1 without a smaller lite copy). */
+export const texelOf=(s:Pick<CitySheet,'texel'>)=>s.texel??1;
 
 export interface CityArtPlan {
   height:CityArtHeight;
@@ -162,6 +175,56 @@ function viewSheet(p:ArtPiece):ArtFile|undefined{
   if(!f||!f.file||(f.views??0)<4||(f.pages&&f.pages.length>1))return undefined;
   return f;
 }
+/**
+ * City lite copies (scripts/art-lite.mjs, NEW-20261021-E1-decor-lite-arte-perto): the sheet of a piece the city draws
+ * (the plan's lots, props, fountain and decor, and the nests of the live layer) that weighs over ~200 KB has a smaller
+ * lossy copy under /art/lite/city/ (cityLiteScale), its cell in the file's `liteCell`. Which file of a piece gets one: its view sheet,
+ * for the pieces the plan or the nests can draw, and the base's wall and barricades (art/base-art.ts loads them in the
+ * city's preload, NEW-20261021-E1-base-lite-muralha); unused building families and the other base pieces never load.
+ * Undefined: none.
+ */
+export function cityLiteFile(group:string,id:string,p:ArtPiece):string|undefined{
+  if(!viewSheet(p))return undefined;
+  if(group==='predios'&&UNUSED_FAMILIES.some(u=>pieceFamily(id)===u||pieceFamily(id).startsWith(`${u}-`)))return undefined;
+  if(group==='base'&&id!==FOUNTAIN_PIECE&&!BASE_LITE_PIECES.includes(id))return undefined;
+  if(group!=='predios'&&group!=='base'&&group!=='props'&&group!==DECOR_GROUP)return undefined;
+  return p.files.sheet?'sheet':Object.keys(p.files)[0];
+}
+/**
+ * Cell scale of a piece's city lite copy (scripts/art-lite.mjs): 1 (the same cell, lossy only) for the pieces drawn at
+ * the footprint scale (0.85 game px per art px on the Cidade Nevada: buildings, places, mountains, the fountain, the
+ * border boulders); 0.75 for those drawn smaller (props, walls, nests: ≤ 0.63), as sharp on screen. The towers' 0.5
+ * left the houses visibly softer on the prints: the canvas has the page's CSS size, a 3× phone screen magnifies it.
+ */
+export function cityLiteScale(group:string,id:string,p:Pick<ArtPiece,'meta'>):number{
+  if(group==='predios'||group==='base')return 1;
+  if(group===DECOR_GROUP&&!NEST_ID.test(id)&&(decorRule(id,p.meta)==='footprint'||DECOR_FILL.test(id)))return 1;
+  return .75;
+}
+/**
+ * Every file of a piece with a city lite copy, and its cell scale: the view sheet (cityLiteFile, cityLiteScale) and, in
+ * the decor, the live layer's loops (`anim`, `anim-<name>`: live/art.ts), those at their own cell (lossy only: the live
+ * layer places them in art px of the base cell).
+ */
+export function cityLiteFiles(group:string,id:string,p:ArtPiece):{name:string;scale:number}[]{
+  const sheet=cityLiteFile(group,id,p),out=sheet?[{name:sheet,scale:cityLiteScale(group,id,p)}]:[];
+  if(group===DECOR_GROUP)for(const [name,f] of Object.entries(p.files))
+    if((name==='anim'||name.startsWith('anim-'))&&f.file&&!(f.pages&&f.pages.length>1))out.push({name,scale:1});
+  return out;
+}
+export const cityLiteUrl=(url:string)=>url.replace(/^\/art\/city\//,'/art/lite/city/');
+/**
+ * What the city loads for a file: its lite copy (url, cell and texture px per art px) when the file has `liteCell`,
+ * else the file. `scale` (game px per art px) comes back per texture px. A lite copy that fails keeps its mound or
+ * stays undrawn (art/horde-art.ts liteOnly): the approved file has other cells.
+ */
+export function cityTexture(group:ArtGroup,f:ArtFile,scale:number):Pick<CitySheet,'url'|'frameWidth'|'frameHeight'|'scale'|'texel'>{
+  const url=groupFileUrl(group,f.file!),lite=f.liteCell;
+  if(!lite)return {url,frameWidth:f.cell[0],frameHeight:f.cell[1],scale};
+  const texel=lite[0]/f.cell[0];
+  return {url:cityLiteUrl(url),frameWidth:lite[0],frameHeight:lite[1],scale:scale/texel,texel};
+}
+
 const originYOf=(f:ArtFile,bottomPx:number)=>{
   const y=f.anchor?.[1];
   return typeof y==='number'&&y>0&&y<=1?y:1-bottomPx/f.cell[1];
@@ -192,8 +255,7 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
   const predios=index.groups.predios,props=index.groups.props,base=index.groups.base,chao=index.groups.chao;
   const footprintSheet=(group:ArtGroup,key:string,p:ArtPiece,f:ArtFile,fp:[number,number]):CitySheet=>{
     const originY=originYOf(f,16);
-    return {key,url:groupFileUrl(group,f.file!),frameWidth:f.cell[0],frameHeight:f.cell[1],originY,footprint:fp,
-      height:sheetHeight(f.cell[1],originY,fp,ART_CELL,big),scale:big};
+    return {key,...cityTexture(group,f,big),originY,footprint:fp,height:sheetHeight(f.cell[1],originY,fp,ART_CELL,big)};
   };
   for(const [id,p] of each(predios)){
     const fam=pieceFamily(id),fp=footprintOf(p),f=viewSheet(p);
@@ -214,8 +276,7 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
     for(const fam of PROP_FAMILIES[kind])for(const {id,f} of byFamily.get(fam)??[]){
       const originY=originYOf(f,8);
       const scale=small*PROP_WORLD_SCALE[kind];
-      const s:CitySheet={key:`city:prop:${kind}/${id}`,url:groupFileUrl(props!,f.file!),frameWidth:f.cell[0],frameHeight:f.cell[1],
-        originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale};
+      const s:CitySheet={key:`city:prop:${kind}/${id}`,...cityTexture(props!,f,scale),originY,height:f.cell[1]*originY*scale/HEIGHT_PX};
       out.push(s);plan.sheets.push(s);
     }
     if(out.length)plan.props[kind]=out;
@@ -232,14 +293,14 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
   if(cenario)for(const id of [...new Set(options.decor??[])].sort()){
     const p=cenario.pieces[id],f=p&&viewSheet(p);
     if(!p||!f||NEST_ID.test(id)||DECAL_ID.test(id))continue;
-    const rule=decorRule(id,p.meta),key=`city:decor:${id}`,url=groupFileUrl(cenario,f.file!);
+    const rule=decorRule(id,p.meta),key=`city:decor:${id}`;
     let s:DecorSheet;
     if(rule==='footprint'){
       const fp=footprintOf(p)??[1,1];
       s={...footprintSheet(cenario,key,p,f,fp),rule,covers:true};
     }else{
       const fill=rule==='prop'&&DECOR_FILL.test(id),originY=originYOf(f,rule==='wall'?16:8),scale=fill?big:small*DECOR_PROP_SCALE;
-      s={key,url,frameWidth:f.cell[0],frameHeight:f.cell[1],originY,height:f.cell[1]*originY*scale/HEIGHT_PX,scale,rule,covers:rule==='wall'||fill};
+      s={key,...cityTexture(cenario,f,scale),originY,height:f.cell[1]*originY*scale/HEIGHT_PX,rule,covers:rule==='wall'||fill};
     }
     plan.decor[id]=s;plan.sheets.push(s);
   }

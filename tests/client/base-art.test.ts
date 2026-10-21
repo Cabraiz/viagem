@@ -127,3 +127,11 @@ test('the sofa barricade draws at the city scenery scale (towerArtScale) when th
   const img=fakeImage(['art:base:barricada']);
   assert.equal(applyBaseArt(img as unknown as Img,'barricada','inteira',0,.5,0,real),true);assert.equal(img.scale,real);
 });
+
+test('a city lite copy at the same cell (liteCell = cell, base-lite-muralha) loads from /art/lite/city/ with the same frames; a smaller one keeps the approved file',()=>{
+  manifest({barricada:{...barricada(),files:{sheet:views('barricada.webp',[...DAMAGE,'quebrada'],{liteCell:[256,192]})}}});
+  assert.deepEqual(baseLoads(),[{key:'art:base:barricada',url:'/art/lite/city/base/barricada.webp',cell:[256,192]}]);
+  assert.deepEqual(baseFrame('barricada','avariada',1),{key:'art:base:barricada',frame:5});
+  manifest({barricada:{...barricada(),files:{sheet:views('barricada.webp',[...DAMAGE,'quebrada'],{liteCell:[192,144]})}}});
+  assert.deepEqual(baseLoads(),[{key:'art:base:barricada',url:'/art/city/base/barricada.webp',cell:[256,192]}],'a smaller cell would change the draw scale');
+});

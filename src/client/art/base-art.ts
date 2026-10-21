@@ -50,14 +50,23 @@ export function baseFile(id:string):ArtFile|undefined{
 }
 const validCell=(f:ArtFile)=>Array.isArray(f.cell)&&f.cell[0]>0&&f.cell[1]>0;
 
+/**
+ * A sheet with a city lite copy at its own cell (`liteCell` = cell: scripts/art-lite.mjs, render/city/art-plan.ts
+ * BASE_LITE_PIECES, NEW-20261021-E1-base-lite-muralha) loads that lossy copy under /art/lite/city/: the wall's 929 KB
+ * came before the first playable frame. Same cell, so frames, anchor and scale are unchanged, and a copy that fails
+ * falls back to the approved file (scene artFallback). A smaller liteCell would change the scale: the approved file stays.
+ */
+const sameCellLite=(f:ArtFile)=>!!f.liteCell&&f.liteCell[0]===f.cell[0]&&f.liteCell[1]===f.cell[1];
+const liteBaseUrl=(url:string)=>url.replace(/^\/art\/city\//,'/art/lite/city/');
+
 export interface BaseLoad {key:string;url:string;cell:[number,number]}
 /** Every texture the base art needs from the current manifest: each page of the used pieces (no piece → []). */
 export function baseLoads():BaseLoad[]{
   const out:BaseLoad[]=[];
   for(const id of USED){
     const file=baseFile(id);if(!file||!validCell(file))continue;
-    const pages=basePages(file);
-    pages.forEach((page,i)=>{const url=artUrl('base',page.file);if(url)out.push({key:baseArtKey(id,i,pages.length),url,cell:file.cell});});
+    const pages=basePages(file),lite=sameCellLite(file);
+    pages.forEach((page,i)=>{const url=artUrl('base',page.file);if(url)out.push({key:baseArtKey(id,i,pages.length),url:lite?liteBaseUrl(url):url,cell:file.cell});});
   }
   return out;
 }

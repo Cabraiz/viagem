@@ -418,12 +418,14 @@ class CitySandbox extends Phaser.Scene {
       const hp=[250,250,180,110,40,0][i];
       return {id:`m${i}`,kind:'muro',x:(c0+i+.5)*cell,y:(r0+.5)*cell,hp,maxHp:250,c:c0+i,r:r0};
     });
-    const bar=(id:string,c:number,r:number,rot:0|1,hp:number):StructureView=>{
+    const tick=100;
+    // barricada-construir: b0 is under the car's alert (untilTick: the red glow), 3 s left.
+    const bar=(id:string,c:number,r:number,rot:0|1,hp:number,alert=false):StructureView=>{
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
-      return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:400,c,r,...(rot?{rot}:{})};
+      return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
-    const structures=[...walls,bar('b0',c0+7,r0+1,0,400),bar('b1',c0-2,r0+2,1,220),bar('b2',c0+9,r0+3,0,0)];
-    const tick=100,objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
+    const structures=[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
+    const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;

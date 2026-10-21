@@ -34,7 +34,7 @@ import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 import {build as buildDefense,buildFree,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type FreeBuildContext,type TowerResult} from '../towers/system.ts';
-import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
+import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,unoAlertStep,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
 export {damageWall,isSiege,SIEGE_FLAG} from './wall.ts';
@@ -369,6 +369,8 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
         }
       }
       if(!state.wallDown){towerStep(ctx,state);defensesStep(ctx,state);if(contact)siegeStep(ctx,state);}
+      // NEW-20261021-ORQ-barricada-construir: the car near a barricada sounds its alert; 6 s later, still near, it falls.
+      if(!state.wallDown&&free?.car)unoAlertStep(ctx,options.terrain,state,free.car(ctx.tick),free.onTerrainChanged);
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}
     },

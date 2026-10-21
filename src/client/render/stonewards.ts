@@ -26,6 +26,7 @@ import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from './light.ts';
 import {objectiveOf} from './chaveiro/view.ts';
 import {TriBand} from './city/tri-band.ts';
+import {INTERATIVO_COR} from '../hud/tralha/model.ts';
 
 const LIGHT=lightEnabled();
 
@@ -90,6 +91,8 @@ export class StonewardsRenderer {
   private objective=false;
   private tick=0;
   private now=0;
+  /** barricada-construir part 2: the barricada square that wears the gold outline (hud/tralha). */
+  outline?:string;
   private q:Pt={x:0,y:0};
   private ringPts=Array.from({length:RING_SEGMENTS},()=>({x:0,y:0}));
   private readonly c={breu:0,papel:0,lilas:0,cartolina:0,cone:0,pedra:0,casca:0,claro:0};
@@ -307,6 +310,12 @@ export class StonewardsRenderer {
       const left=(s.untilTick!-this.tick)/SIM_HZ,pulse=.5+.5*Math.sin(this.now/(left<2?60:140));
       const l=this.project(s.x-CITY_BUILD_CELL*1.4,s.y),lx=l.x,ly=l.y,r=this.project(s.x+CITY_BUILD_CELL*1.4,s.y),w=Math.hypot(r.x-lx,r.y-ly);
       g.fillStyle(ALERT_RED,.25+.35*pulse).fillEllipse(x,y,w,w*.55);
+    }
+    // barricada-construir part 2: the square under the mouse or tapped wears the gold outline (the alert's red wins).
+    if(!alert&&isFreeBarricade(s)&&s.id===this.outline){
+      const c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,pts=[[c0,r0],[c0+CITY_BUILD_CELL,r0],[c0+CITY_BUILD_CELL,r0+CITY_BUILD_CELL],[c0,r0+CITY_BUILD_CELL]]
+        .map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
+      g.lineStyle(5*k,this.c.breu,.6).strokePoints(pts,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(pts,true);
     }
     if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);

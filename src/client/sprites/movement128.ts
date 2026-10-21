@@ -55,23 +55,36 @@ export function movementIdle8Plan(id:string):Movement128Plan|undefined{
 export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.indexOf(direction);
 
 /**
- * M16 (card movimento16-espelho, 21/10): 16 poses for walk and attack, 8 for the rest, drawn in 5 directions; E, NE
- * and SE show W, NW and SW mirrored. A class uses M16 only when its 15 sheets are all valid, else R06 (or legacy).
+ * M16 (card movimento16-espelho, 21/10): 16 poses for walk and attack, 8 for the rest, drawn in 5 directions: S, N and
+ * one side of each mirror pair (W×E, NW×NE, SW×SE); the other side shows it mirrored. The drawn side is chosen per class
+ * and per pair (plano B 21/10: viciado draws W, NW and SE, the better side of each pair in the estudo-espelho table) and
+ * read from the manifest: the side whose three sheets (walk, attack, idle) are there. A class uses M16 only when all 8
+ * directions resolve to valid sheets, else R06 (or legacy).
  */
 export type Movement16Motion=DetailedMotion|'idle';
+/** The default drawn directions (the importer's and the doc's; a class may draw E, NE or SE instead). */
 export const MOVEMENT16_DIRECTIONS=['S','SW','W','NW','N'] as const;
-export type Movement16Direction=typeof MOVEMENT16_DIRECTIONS[number];
+export type Movement16Direction=HeroDirection;
+/** Mirror pairs, the default drawn side first. */
+export const MOVEMENT16_PAIRS=[['W','E'],['NW','NE'],['SW','SE']] as const satisfies readonly (readonly [HeroDirection,HeroDirection])[];
+const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]])) as Partial<Record<HeroDirection,HeroDirection>>;
 export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000} as const;
 export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2]} as const;
-/** Which drawn sheet a direction shows, and whether mirrored. */
-export const MOVEMENT16_SOURCE:Record<HeroDirection,{source:Movement16Direction;flip:boolean}>={
-  S:{source:'S',flip:false},SW:{source:'SW',flip:false},W:{source:'W',flip:false},NW:{source:'NW',flip:false},N:{source:'N',flip:false},
-  NE:{source:'NW',flip:true},E:{source:'W',flip:true},SE:{source:'SW',flip:true},
-};
+const M16_MOTIONS=['walk','attack','idle'] as const;
+/**
+ * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
+ * manifest (S and N always), else its pair's other side mirrored. Both sides drawn: each shows its own.
+ */
+export function movement16Source(id:string,direction:HeroDirection):{source:HeroDirection;flip:boolean}{
+  const partner=PARTNER[direction],files=artPiece('personagens',id)?.files;
+  const drawn=(d:HeroDirection)=>!!files&&M16_MOTIONS.every(m=>files[`${m}16-${d}`]);
+  if(!partner||drawn(direction)||!drawn(partner))return {source:direction,flip:false};
+  return {source:partner,flip:true};
+}
 const m16Loop=(motion:Movement16Motion)=>motion!=='attack';
 /** A manifest plan only (never downloads). Mirrored directions share the drawn sheet's key, texture and cache entry. */
 export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroDirection):Movement128Plan|undefined{
-  current();const {source,flip}=MOVEMENT16_SOURCE[direction],lookup=`m16:${id}:${motion}:${direction}`;
+  current();const {source,flip}=movement16Source(id,direction),lookup=`m16:${id}:${motion}:${direction}`;
   if(plans.has(lookup))return plans.get(lookup)??undefined;
   const f=artPiece('personagens',id)?.files[`${motion}16-${source}`],p=f?.pages?.[0],original=f?.file&&artUrl('personagens',f.file);
   const [columns,rows]=MOVEMENT16_GRID[motion],frameCount=columns*rows,durationMs=MOVEMENT16_DURATION[motion],loop=m16Loop(motion);
@@ -86,10 +99,10 @@ export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroD
     columns,rows,frameCount,durationMs,loop,anchor:[.5,.875],height:f.height,figure:f.figure,flip,pivotX:f.pivotX};
   plans.set(lookup,plan);return plan;
 }
-/** True when all 15 M16 sheets (walk, attack, idle × the 5 drawn directions) are valid. */
+/** True when every direction of walk, attack and idle resolves to a valid M16 sheet (its own or its pair's, mirrored). */
 export function hasMovement16(id:string){
   current();let complete=m16.get(id);
-  if(complete===undefined)m16.set(id,complete=(['walk','attack','idle'] as const).every(m=>MOVEMENT16_DIRECTIONS.every(d=>movement16Plan(id,m,d))));
+  if(complete===undefined)m16.set(id,complete=M16_MOTIONS.every(m=>HERO_DIRECTIONS.every(d=>movement16Plan(id,m,d))));
   return complete;
 }
 /** The clip a class shows: M16 when complete, else R06 (walk128/attack128 and idle8); undefined = legacy. */
@@ -103,7 +116,8 @@ export function movementSheets(id:string,motion:Movement16Motion):Movement128Pla
     if(motion==='idle'){const idle=movementIdle8Plan(id);return idle?[idle]:[];}
     return HERO_DIRECTIONS.flatMap(d=>{const p=movement128Plan(id,motion,d);return p?[p]:[];});
   }
-  return MOVEMENT16_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,motion,d);return p?[p]:[];});
+  const seen=new Set<string>();
+  return HERO_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,motion,d);if(!p||seen.has(p.key))return [];seen.add(p.key);return [p];});
 }
 /** The frame a clip shows now: idle8 picks its direction's column; every other clip follows the clock. */
 export function movementFrame(plan:Movement128Plan,direction:HeroDirection,elapsedMs:number){

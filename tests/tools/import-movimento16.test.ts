@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,readFile,writeFile,rm,rename} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {MOVEMENT16_META,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movementPlan,hasMovement16} from '../../src/client/sprites/movement128.ts';
+import {movementPlan,hasMovement16,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
 
 sharp.cache(false);sharp.concurrency(1);
 const hash=(data:Buffer|string)=>createHash('sha256').update(data).digest('hex');
@@ -72,4 +72,21 @@ test('M16 rejects a wrong grid, missing alpha and repeated walk poses before wri
   await writeFile(walk,await sharp(good).flatten({background:'#fff'}).png().toBuffer());await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],write:true}),/alpha/);
   await writeFile(walk,await sheet(4,4,{distinct:false,slide:0}));await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],write:true}),/16 poses must be distinct/);
   assert.deepEqual(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado,old);
+}));
+
+test('plano B: the side delivered per pair is imported (SE instead of SW), the old side goes, both sides are refused',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const moveSide=async(from:string,to:string)=>{for(const motion of Object.keys(MOVEMENT16_META.motions))await rename(movement16Source(input,'aposentado',motion,from),movement16Source(input,'aposentado',motion,to)).catch(async()=>{
+    await mkdir(path.dirname(movement16Source(input,'aposentado',motion,to)),{recursive:true});await rename(movement16Source(input,'aposentado',motion,from),movement16Source(input,'aposentado',motion,to));});};
+  await moveSide('SW','SE');
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  assert.deepEqual(result.characters[0].drawn,['S','N','W','NW','SE']);assert.deepEqual(result.characters[0].mirrored,{E:'W',NE:'NW',SW:'SE'});
+  const keys=Object.keys(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files).filter(k=>k.includes('16-')).sort();
+  assert.deepEqual(keys,['attack','idle','walk'].flatMap(m=>['S','N','W','NW','SE'].map(d=>`${m}16-${d}`)).sort(),'SW keys dropped');
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.equal(hasMovement16('aposentado'),true);assert.deepEqual(drawnSource('aposentado','SW'),{source:'SE',flip:true});
+  assert.equal(movementPlan('aposentado','walk','SW')?.key,'sprite16:aposentado:walk:SE');
+  // Both W and E delivered: one side per pair.
+  for(const motion of Object.keys(MOVEMENT16_META.motions)){const e=movement16Source(input,'aposentado',motion,'E');await mkdir(path.dirname(e),{recursive:true});await writeFile(e,await readFile(movement16Source(input,'aposentado',motion,'W')));}
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado']}),/W and E both delivered/);
 }));

@@ -1,9 +1,10 @@
-// M16 gameplay (card movimento16-espelho, 21/10): 16 walk/attack poses and 8 rest poses in 5 drawn directions (S, SW, W,
-// NW, N); the game mirrors W/NW/SW into E/NE/SE (src/client/sprites/movement128.ts movement16Plan). Never replaces
+// M16 gameplay (card movimento16-espelho, 21/10): 16 walk/attack poses and 8 rest poses in 5 drawn directions: S, N and
+// ONE side of each pair W×E, NW×NE, SW×SE, chosen per class by the folders delivered (plano B: viciado draws W, NW, SE);
+// the game mirrors it into the other side (src/client/sprites/movement128.ts movement16Source). Never replaces
 // R06, dance or legacy files: a class without the 15 sheets keeps them. Dry-run is the default.
 //   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--write] [--report x.json]
 import assert from 'node:assert/strict';
-import {readFile,mkdir,writeFile,rename,rm} from 'node:fs/promises';
+import {readFile,mkdir,writeFile,rename,rm,access} from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -13,11 +14,27 @@ import {readIndex,readManifest,writeManifest,writeIndex,writeAtomic,WEBP} from '
 import {rootMotionShifts} from './import-movimento128.mjs';
 
 export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],directions:['S','SW','W','NW','N'],mirrored:{E:'W',NE:'NW',SE:'SW'},
+  pairs:[['W','E'],['NW','NE'],['SW','SE']],
   anchor:[.5,.875],movementHands:'empty',motions:{
     walk:{columns:4,rows:4,frames:16,durationMs:600,loop:true},
     attack:{columns:4,rows:4,frames:16,durationMs:1000,loop:false},
     idle:{columns:4,rows:2,frames:8,durationMs:2000,loop:true}}});
-const MOTIONS=Object.keys(MOVEMENT16_META.motions),DIRECTIONS=MOVEMENT16_META.directions;
+const MOTIONS=Object.keys(MOVEMENT16_META.motions);
+const exists=file=>access(file).then(()=>true,()=>false);
+/**
+ * The 5 directions a class draws: S, N and, for each mirror pair, the side delivered in all three motions (the default
+ * W/NW/SW when neither is complete, so the validation names what is missing). Both sides delivered: an error, one per pair.
+ */
+export async function movement16Drawn(input,id){
+  const complete=async d=>(await Promise.all(MOTIONS.map(m=>exists(movement16Source(input,id,m,d))))).every(Boolean);
+  const drawn=['S','N'];
+  for(const [a,b] of MOVEMENT16_META.pairs){
+    const [hasA,hasB]=[await complete(a),await complete(b)];
+    assert.ok(!(hasA&&hasB),`${id}: ${a} and ${b} both delivered; draw one side per pair (the other is mirrored)`);
+    drawn.push(hasB?b:a);
+  }
+  return drawn;
+}
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),SPEC=GROUPS.personagens,FOLDER='personagens-movimento16';
 const SHA=bytes=>createHash('sha256').update(bytes).digest('hex');
 const safeId=id=>typeof id==='string'&&/^[a-z][a-z0-9-]*$/.test(id);
@@ -115,13 +132,13 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
     const old=previous.pieces[id];
     if(old)assert.equal(old.kind,'dir8',`${id}: existing piece kind`);
     else assert.equal(index.groups.personagens.pieces[id],undefined,`${id}: index/group disagreement`);
-    const clips=[];
-    for(const motion of MOTIONS)for(const direction of DIRECTIONS)
+    const clips=[],drawn=await movement16Drawn(input,id);
+    for(const motion of MOTIONS)for(const direction of drawn)
       clips.push({...await inspectMovement16(movement16Source(input,id,motion,direction),motion,`${id}/${motion}/${direction}`),motion,direction});
     // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets.
     const height=clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
-    records.push({id,height,bootstrap:!old,clips,outputs:[]});
+    records.push({id,height,bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
   }
   if(write){
     assert.deepEqual(await readManifest(manifestFile),previous,'hero manifest changed during M16 validation');
@@ -146,6 +163,8 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
             pages:[{file,columns:m.columns,rows:m.rows,firstFrame:0,frameCount:m.frames,sha256:SHA(encoded)}],sha256:SHA(encoded)};
           clip.pivotX=files[key].pivotX;
         }
+        // The other side of each pair is mirrored now: a key it had from an earlier import goes (null drops it in the merge).
+        for(const motion of MOTIONS)for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
         for(const file of staged){await rename(file.tmp,file.target);record.outputs.push(file.target);}
         entries[record.id]={kind:'dir8',files,...(previous.pieces[record.id]?.meta?{meta:previous.pieces[record.id].meta}:{})};
       }finally{await Promise.all(staged.map(file=>rm(file.tmp,{force:true})));}
@@ -153,7 +172,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
     assert.deepEqual(await readManifest(manifestFile),previous,'hero manifest changed during M16 conversion');
     await writeManifest('personagens',SPEC,entries,{outRoot});await writeIndex({personagens:SPEC},{outRoot});
   }
-  return {revision:16,dryRun:!write,ids:[...ids],characters:records,cell:[96,96],directions:DIRECTIONS,mirrored:MOVEMENT16_META.mirrored,motions:MOVEMENT16_META.motions};
+  return {revision:16,dryRun:!write,ids:[...ids],characters:records,cell:[96,96],motions:MOVEMENT16_META.motions};
 }
 
 export function parseMovement16Args(args){
@@ -172,5 +191,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   sharp.cache(false);sharp.concurrency(1);
   const {report,...options}=parseMovement16Args(process.argv.slice(2)),result=await importMovement16(options);
   if(report)await writeAtomic(path.resolve(report),JSON.stringify(result,null,2)+'\n');
-  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.ids.join(', ')}: 16 walk+attack poses and 8 rest poses x 5 drawn directions (E/NE/SE mirrored); 96px game cells; R06/legacy preserved.`);
+  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')})`).join(', ')}: 16 walk+attack poses and 8 rest poses x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
 }

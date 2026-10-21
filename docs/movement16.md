@@ -1,6 +1,6 @@
 # Movimento M16 (5 direções + espelho)
 
-Card NEW-20261021-ORQ-movimento16-espelho (21/10). Teste com o viciado-em-bet: 16 poses de andar e de ataque, 8 de repouso, desenhadas em 5 direções (S, SW, W, NW, N). O jogo mostra E, NE e SE espelhando W, NW e SW. Quem não tem o M16 completo continua com a R06 (`docs/movement128.md`): 128 poses e 8 direções desenhadas.
+Card NEW-20261021-ORQ-movimento16-espelho (21/10). Teste com o viciado-em-bet: 16 poses de andar e de ataque, 8 de repouso, desenhadas em 5 direções: S, N e um lado de cada par (W×E, NW×NE, SW×SE). O jogo mostra o outro lado do par espelhado. O lado desenhado é escolhido por personagem e por par (plano B, 21/10): o viciado desenha W, NW e SE, o melhor lado de cada par na tabela de `evidence/NEW-estudo-espelho-5-direcoes/tabela.md`, e espelha E, NE e SW. Quem não tem o M16 completo continua com a R06 (`docs/movement128.md`): 128 poses e 8 direções desenhadas.
 
 ## Entrega
 
@@ -8,9 +8,9 @@ Em `arte-entrada/personagens-movimento16/<id>/`:
 
 | arquivo | tamanho | grade | poses | duração |
 |---|---|---|---|---|
-| `walk/{S,SW,W,NW,N}.png` | 768×768 | 4×4 | 16 (todas diferentes) | 600 ms, em loop |
-| `attack/{S,SW,W,NW,N}.png` | 768×768 | 4×4 | 16 (todas diferentes) | 1000 ms, sem loop |
-| `idle/{S,SW,W,NW,N}.png` | 768×384 | 4×2 | 8 (pode repetir) | 2000 ms, em loop |
+| `walk/{S,N}.png` + um lado de cada par | 768×768 | 4×4 | 16 (todas diferentes) | 600 ms, em loop |
+| `attack/{S,N}.png` + um lado de cada par | 768×768 | 4×4 | 16 (todas diferentes) | 1000 ms, sem loop |
+| `idle/{S,N}.png` + um lado de cada par | 768×384 | 4×2 | 8 (pode repetir) | 2000 ms, em loop |
 
 - Os PNG são RGBA, com células de 192, em ordem de leitura.
 - Cada célula tem desenho, transparência e margem de 2 px (alfa > 20).
@@ -35,7 +35,8 @@ O importador valida as 15 folhas antes de gravar e então:
 ## No jogo
 
 - **Quando usa:** `movementPlan` (src/client/sprites/movement128.ts) escolhe o M16 só quando as 15 folhas são válidas. Se faltar alguma, a classe fica inteira na R06.
-- **Espelho:** E, NE e SE usam a textura de W, NW e SW (mesma chave, mesmo cache, a fase do passo continua ao virar) com `flipX`.
+- **Lado por par:** o importador vê qual lado de cada par foi entregue nas 3 animações (os dois lados entregues é erro) e grava só esse; num reimport que troca de lado, as chaves do lado antigo saem do manifest. O cliente (`movement16Source`) lê do manifest: a direção com as 3 folhas mostra a sua; senão, a do outro lado do par.
+- **Espelho:** a direção espelhada usa a textura do outro lado do par (mesma chave, mesmo cache, a fase do passo continua ao virar) com `flipX`.
 - **Origem pelo corpo:** o Phaser 3.90 espelha o quadro dentro da própria caixa, em volta do centro da célula. Por isso:
   - a origem x é `pivotX/96` sem espelho e `1 − pivotX/96` com espelho;
   - na cópia de cidade, que tem recorte simétrico, o espelho é aplicado depois do `variantOrigin`;

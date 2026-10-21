@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {HOLD_MIN_MOVE,HOLD_RETARGET_MS,HoldFollow,INPUT_TEXTS,InputKindWatch,MARKER_MS,MOVE_KEYS,finePointer,focusLost,hotkeyFor,hotkeyOf,keyVector,mapButtonDown,markerVisible,turnFor} from '../../src/client/desktop-input.ts';
+import {HOLD_MIN_MOVE,HOLD_RETARGET_MS,HoldFollow,INPUT_TEXTS,InputKindWatch,MARKER_MS,MOVE_KEYS,finePointer,focusLost,hotkeyFor,hotkeyOf,keyVector,mapButtonDown,markerVisible,rightAttackDown,turnFor} from '../../src/client/desktop-input.ts';
 import {JoystickInput} from '../../src/client/joystick.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 import {quantizeDirection} from '../../src/protocol/input-track.ts';
@@ -134,7 +134,7 @@ test('focus lost: the phone pauses as before; the desktop never pauses and lets 
   // The settings window still pauses (both kinds).
   assert.match(explore,/const openSettings=\(\)=>\{pause\(true\);/);
   const scene=read('src/client/scene.ts');
-  assert.match(scene,/releaseInput\(\)\{this\.hold\.release\(\);this\.input\.keyboard\?\.resetKeys\(\);\}/);
+  assert.match(scene,/releaseInput\(\)\{this\.hold\.release\(\);this\.rightAttack\(false\);this\.input\.keyboard\?\.resetKeys\(\);\}/);
 });
 test('focus lost on the desktop: the real release lets go of the stick, its capture, the keys and the mouse hold',()=>{
   const explore=read('src/client/explore.ts'),scene=read('src/client/scene.ts');
@@ -204,20 +204,30 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   assert.match(scene,/const frozen=this\.paused\|\|!!net\.run\?\.pause;/,'D-050: the level-up pause holds the controls too');
 });
 
-test('right button on the map: works like the left one, the middle does nothing, the canvas menu stays shut',()=>{
+test('right button on the map: holds the attack toward the mouse and never walks; the middle does nothing; the menu stays shut',()=>{
   // Phaser's Pointer: primaryDown is the left button or a finger; rightButtonDown() reads buttons bit 2 (middle is bit 4).
-  const ptr=(primaryDown:boolean,buttons:number)=>({primaryDown,rightButtonDown:()=>(buttons&2)!==0});
-  assert.equal(mapButtonDown(ptr(true,1)),true,'left');assert.equal(mapButtonDown(ptr(true,0)),true,'finger');
-  assert.equal(mapButtonDown(ptr(false,2)),true,'right');assert.equal(mapButtonDown(ptr(false,4)),false,'middle');
-  assert.equal(mapButtonDown(ptr(false,0)),false,'none');assert.equal(mapButtonDown(ptr(true,3)),true,'left with right');
+  const ptr=(primaryDown:boolean,buttons:number,wasTouch=false)=>({primaryDown,wasTouch,rightButtonDown:()=>(buttons&2)!==0});
+  assert.equal(mapButtonDown(ptr(true,1)),true,'left walks');assert.equal(mapButtonDown(ptr(true,0,true)),true,'finger walks');
+  assert.equal(mapButtonDown(ptr(false,2)),false,'right never walks');assert.equal(mapButtonDown(ptr(false,4)),false,'middle');
+  assert.equal(rightAttackDown(ptr(false,2)),true,'right attacks');assert.equal(rightAttackDown(ptr(true,3)),true,'right with left held');
+  assert.equal(rightAttackDown(ptr(true,1)),false,'left');assert.equal(rightAttackDown(ptr(false,4)),false,'middle');
+  assert.equal(rightAttackDown(ptr(false,2,true)),false,'a finger has no right button');
   const scene=read('src/client/scene.ts');
   const down=scene.match(/this\.input\.on\('pointerdown',[\s\S]*?\n {4}\}\);/)?.[0]??'';
-  // The same press: an enemy under the right button becomes the priority target, the ground the walk and the hold.
-  assert.match(down,/if\(this\.paused\|\|!mapButtonDown\(pointer\)\)return;/);assert.doesNotMatch(down,/primaryDown/);
+  // The right press is handled first and always returns: no goTo, no hold, no route on it. Manual combat: the attack held.
+  const right=down.match(/if\(pointer\.button===2\)\{[\s\S]*?\n {8}return;\n {6}\}/)?.[0]??'';
+  assert.ok(right,'right branch');assert.doesNotMatch(right,/goTo|hold\.press|this\.route/);
+  assert.match(right,/if\(this\.hooks\.manual\?\.\(\)\)\{this\.rightAttack\(true\);return;\}/);
+  assert.ok(down.indexOf(right)<down.indexOf('mapButtonDown(pointer)'),'before the walk');
   assert.match(down,/if\(hit\)\{this\.attackTarget=hit;this\.horde\?\.setTarget\(hit\);/);assert.match(down,/this\.hold\.press\(target/);
-  // The hold follows while either button stays down and lets go when both are up.
+  // Let go when the button is up (checked every frame: an up outside the canvas too), on pause and on focus lost.
+  assert.match(scene,/if\(this\.rightHeld\)\{const pointer=this\.input\.mousePointer;if\(this\.paused\|\|!pointer\?\.rightButtonDown\(\)\)this\.rightAttack\(false\);\}/);
+  assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.rightAttack\(false\);/);assert.match(scene,/releaseInput\(\)\{[^\n]*this\.rightAttack\(false\);/);
+  // explore: the hook is Space's own attack (AttackButton.key), never pressed on a greyed button.
+  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(!down\)attackBtn\?\.key\(false\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true\);\}/);
+  // The hold-to-follow follows the left button only.
   const follow=scene.match(/private followHold\([\s\S]*?\n {2}\}\n/)?.[0]??'';
-  assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);assert.doesNotMatch(follow,/primaryDown/);
+  assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);
   // Phaser's disableContextMenu cancels 'contextmenu' on its mouse target, the game canvas only (no mouseTarget set):
   // text fields and the DOM menus keep the browser's menu.
   assert.ok(scene.indexOf('this.input.mouse?.disableContextMenu();')>=0&&scene.indexOf('this.input.mouse?.disableContextMenu();')<scene.indexOf("this.input.on('pointerdown'"));

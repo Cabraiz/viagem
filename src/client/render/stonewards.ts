@@ -357,7 +357,8 @@ export class StonewardsRenderer {
     const bar=barricadeBar(s.hp,s.maxHp);
     if(!bar.show)return;
     const bw=48*k,bh=6*k;
-    this.drawBar(g,x-bw/2,structureBarY('barricada',y,k,u),bw,bh,bar.fraction,bar.low,k);
+    // The junk wall is lower than the sofa the lift was made for: the bar sits just over it (muralha.ts top).
+    this.drawBar(g,x-bw/2,junk?this.muralha.top-bh-6*k:structureBarY('barricada',y,k,u),bw,bh,bar.fraction,bar.low,k);
   }
 
   /**

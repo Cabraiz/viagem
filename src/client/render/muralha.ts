@@ -15,6 +15,10 @@ import {cellKey,hashCell,muralhaColumn,muralhaEstado,muralhaHalf,muralhaPlan,mur
 const SHEET={reto:BASE_ART.muralha,pilar:BASE_ART.pilar} as const;
 /** Halves sit a little over their square's depth toward the neighbour; the pillar over both (it covers the joint). */
 const PILLAR_OVER=.002;
+/** Share of a straight frame's height over the ground centre that the whole wall fills at its middle (the rest is the far end rising). */
+const RETO_TOP=.65;
+/** About the share of the height each damage row keeps (scripts/import-muralha-tralha.mjs BITES), for the bar. */
+const KEPT:Readonly<Record<string,number>>={inteira:1,avariada:.75,'quase-caindo':.5};
 
 export interface MuralhaProjection {project(x:number,y:number,out:Pt):Pt;depth(x:number,y:number):number}
 interface Sheet {pecas:readonly string[];celula:number;anchor:[number,number];cell:[number,number]}
@@ -31,6 +35,8 @@ export class MuralhaLayer {
   private cells=new Set<string>();
   private a:Pt={x:0,y:0};private b:Pt={x:0,y:0};
   private ref:BaseFrameRef={key:'',frame:0};
+  /** Screen y of the top of the last square drawn (a whole wall's middle, or its pillar): where its life bar goes. */
+  top=0;
   constructor(private scene:Phaser.Scene,private projection:MuralhaProjection){}
 
   /** Both sheets are in the manifest and their textures are loaded. */
@@ -59,6 +65,7 @@ export class MuralhaLayer {
     for(let i=plan.length;i<list.length;i++)list[i].setVisible(false);
     const pr=this.projection,cx=(s.c+.5)*CITY_BUILD_CELL,cy=(s.r+.5)*CITY_BUILD_CELL;
     const at=pr.project(cx,cy,this.a),x=at.x,y=at.y;
+    this.top=y;
     plan.forEach((d,n)=>{
       const img=list[n],id=SHEET[d.kind],sheet=sheetOf(id)!;
       const axis:MuralhaAxis=d.axis??'c',step=pr.project(cx+(axis==='c'?CITY_BUILD_CELL:0),cy+(axis==='r'?CITY_BUILD_CELL:0),this.b);
@@ -69,6 +76,7 @@ export class MuralhaLayer {
       if(img.texture.key!==f.key)img.setTexture(f.key,f.frame);else img.setFrame(f.frame);
       const k=muralhaScale(dx,sheet.celula);
       img.setOrigin(sheet.anchor[0],sheet.anchor[1]).setScale(k.x,k.y).setPosition(x,y).setVisible(true);
+      this.top=Math.min(this.top,y-sheet.cell[1]*sheet.anchor[1]*k.y*(d.kind==='pilar'?1:RETO_TOP)*(KEPT[estado!]??1));
       if(d.toward===undefined){img.setCrop();img.setDepth(d.kind==='pilar'?depth+PILLAR_OVER:depth);return;}
       // Half toward the neighbour: the frame's side of the ground centre that faces it on screen.
       const w=sheet.cell[0],h=sheet.cell[1],mid=Math.round(sheet.anchor[0]*w);

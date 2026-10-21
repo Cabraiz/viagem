@@ -545,13 +545,22 @@ export const SOLO_TEXT={noRooms:'As partidas ainda não estão disponíveis nest
  * catches it). The room's own countdown starts the match.
  */
 export async function openSolo(hero:HeroClass,name:string,options:{bots:number;onJoined?:()=>void}){
+  // cena-nasce-rapido: what the match needs next starts with the click, not after the room answers. The menu track
+  // yields (the waiting room takes its own hold); the game's code (explore, scene, Phaser ~1.2 MB) and the city's map
+  // (~1 MB, the room's join waits for it: loadCity shares one download per hash) download beside the room's creation.
+  let menuHold:(()=>void)|undefined=holdMenuDownload();
+  const releaseMenu=()=>{menuHold?.();menuHold=undefined;};
+  void import('./explore.ts').catch(()=>undefined);void import('./scene.ts').catch(()=>undefined);
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const loadManifest=()=>import('./net/city-asset-loader.ts').then(m=>m.loadCityManifest());
-  const manifest=loadManifest().catch(()=>undefined);
+  const manifest=loadManifest().then(ref=>{
+    if(ref)void import('./net/city-asset-loader.ts').then(m=>m.loadCity(ref)).catch(()=>undefined);
+    return ref;
+  }).catch(()=>undefined);
   const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
-  if(!endpoint)throw new Error(SOLO_TEXT.noRooms);
+  if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
   const cityRef=await within(manifest,SOLO_MANIFEST_MS);
-  if(!cityRef)throw new Error(SOLO_TEXT.noCity);
+  if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
   const plan=soloPlan(options.bots),nick=name.trim().slice(0,NICK_MAX)||'Capivara Veloz';
   let client:CoopClient|undefined;
   try{
@@ -567,8 +576,10 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
     const opening=openExploration(hero,nick,joined);
     const layout=document.querySelector<HTMLElement>('dialog.explore-shell .explore-layout');
     if(layout)mountWaitingRoom(layout,joined,{solo:plan});
+    releaseMenu();
     await opening;
   }catch(e){
+    releaseMenu();
     // A stale chunk with the reload underway: the resume comes back to this room (same rule as openLobby).
     if(chunkFailed(e)&&reloadUnderway())return;
     const fatal=client?.fatal;client?.leave();

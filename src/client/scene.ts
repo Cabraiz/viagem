@@ -4,6 +4,7 @@ import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
+import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
@@ -34,8 +35,8 @@ import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
-import {TowerRenderer,queueTowerArt} from './render/towers/towers.ts';
-import {TowerFeed,hasTowers} from './render/towers/tower-rules.ts';
+import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
+import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
 import {buildPlanFor,elevation,farPath} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
@@ -336,7 +337,34 @@ export class IslandScene extends Phaser.Scene {
     for(const tree of new Set([...this.trees,...this.spawnTrees()]))if(tree)this.loadTree(tree.id);
     queueHordeArt(this); // imported art v2 (enemies, items, FX) when the manifest has it
     queueBaseArt(this); // imported Stonewards base art (wall, barricades, crates) when the manifest has it
-    queueTowerArt(this); // imported defense sheets (torres) when the manifest has them; else procedural
+    // The defenses' sheets (~11 MB, none standing at the opening; cena-nasce-rapido): in the city after the art around
+    // the hero (queueLateArt), a defense built before its sheet fetching it first (needTowerArt).
+    if(!(this.field instanceof CityTerrain))this.queueLateArt();
+  }
+  private lateArtQueued=false;
+  /** Imported defense sheets (torres) when the manifest has them, once; else procedural. */
+  private queueLateArt(){
+    if(this.lateArtQueued)return;
+    this.lateArtQueued=true;
+    queueTowerArt(this);
+    if(this.booted&&!this.load.isLoading())this.load.start();
+  }
+  private towerArtAsked=new Set<string>();
+  /** A defense made before its sheets: those two now, at high priority, past Phaser's first-in first-out queue. */
+  private needTowerArt(kind:TowerKind){
+    for(const l of towerLoads(kind)){
+      if(this.textures.exists(l.key)||this.towerArtAsked.has(l.key))continue;
+      this.towerArtAsked.add(l.key);
+      if(bitmapsAvailable()){
+        void fetchBitmap(l.url,'high').then(bitmap=>queueUpload(bitmap.width*bitmap.height,()=>{
+          if(this.textures.exists(l.key)){bitmap.close();return;}
+          this.textures.addSpriteSheet(l.key,bitmap as unknown as HTMLImageElement,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
+        }),()=>this.towerArtAsked.delete(l.key));
+      }else{
+        this.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
+        if(!this.load.isLoading())this.load.start();
+      }
+    }
   }
   /**
    * Texture key of a class's icon (a teammate's stand-in until its sheet is in), fetched at once the first time it is
@@ -479,7 +507,7 @@ export class IslandScene extends Phaser.Scene {
     this.booted=true;this.setEconomy(this.economy);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);
     // The city's near art still on its way: the cover stays until it is in (updateCity calls ready then).
-    if(this.cityHeld)this.readyHeld=true;else this.hooks.ready();
+    if(this.cityHeld)this.readyHeld=true;else{this.hooks.ready();this.queueLateArt();}
   }
   /** Viewport size in CSS px (the canvas fills the stage; Phaser RESIZE mode, 1 game px = 1 CSS px). */
   private viewport(){return {width:this.scale.width,height:this.scale.height};}
@@ -587,8 +615,9 @@ export class IslandScene extends Phaser.Scene {
     if(this.cityHeld){
       // The relief's albedo too (groundSettled: no chunk is live yet), so the ground is final when the cover goes.
       if(!(this.cityStream?.nearReady()&&this.city.groundSettled())&&performance.now()-this.heldSince<NEAR_ART_CAP_MS)return;
-      this.cityHeld=false;
+      this.cityHeld=false;this.releaseBackground();
       if(this.readyHeld){this.readyHeld=false;this.hooks.ready();}
+      this.queueLateArt();
     }
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
@@ -891,6 +920,7 @@ export class IslandScene extends Phaser.Scene {
    */
   private makeTowers(){
     return this.towers=new TowerRenderer(this,{reduced:this.reduced,groundDepth:TOWER_GROUND_DEPTH,actorScale:()=>this.actorScale,economy:this.economy,
+      needArt:kind=>this.needTowerArt(kind),
       cell:()=>this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined,
       depthVersion:()=>this.city?.columnsVersion??0,
       world:{view:()=>this.view,depth:(x,y)=>this.depth({x,y}),effectDepth:(x,y)=>this.city?this.city.effectDepth(x,y):this.depth({x,y}),
@@ -1332,12 +1362,17 @@ export class IslandScene extends Phaser.Scene {
     const complete=(key:string)=>done(key,true),failed=(file:Phaser.Loader.File)=>done(file.key,false);
     this.load.on(Phaser.Loader.Events.FILE_COMPLETE,complete);this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR,failed);
     this.cityHeld=true;this.heldSince=performance.now();
+    // The waiting room's background downloads (teammates, enemies, effects) wait for the art around the hero.
+    this.releaseBackground();this.backgroundHold=holdBackground();
     stream.pump();
     return ()=>{
       this.load.off(Phaser.Loader.Events.FILE_COMPLETE,complete);this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR,failed);
-      if(this.cityStream===stream){this.cityStream=undefined;this.cityHeld=false;}
+      if(this.cityStream===stream){this.cityStream=undefined;this.cityHeld=false;this.releaseBackground();}
     };
   }
+  /** The hold streamCityArt takes on the waiting room's P1/P2 downloads (background-hold.ts) until the near art is in. */
+  private backgroundHold?:()=>void;
+  private releaseBackground(){this.backgroundHold?.();this.backgroundHold=undefined;}
   /** The city's imported art plan (once: the manifest is loaded at boot); `?arte=0` / `?altura=a|b` for comparisons. */
   private cityArt():CityArtPlan{
     // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.

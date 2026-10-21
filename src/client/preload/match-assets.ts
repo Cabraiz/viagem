@@ -4,8 +4,8 @@
  * frames and telegraph art from the art v2 index), so every URL here is exactly one the game asks for later and the
  * preloader's download is what Phaser then finds in the cache.
  *
- * Priorities: P0 = the map's ground and this player's hero, its walk and attack clips included (the match opens with
- * them: preload-heroi-primeiro); P1 = teammates' heroes, enemies and the base pieces; P2 = the city's pine, items,
+ * Priorities: P0 = the map's ground and this player's hero with its walk clips (the match opens with them:
+ * preload-heroi-primeiro); P1 = its attack clips first (cena-nasce-rapido), teammates' heroes, enemies and the base pieces; P2 = the city's pine, items,
  * effects and HUD art.
  * Not listed: the city's buildings, props, decor and live sheets (the scene, open behind the waiting room, streams them
  * itself nearest the camera first, render/city/art-stream.ts: fetched here in list order they took the bandwidth from
@@ -69,7 +69,7 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     out.set(url,{url,priority,kind,...(bytes!==undefined?{bytes}:{})});
   };
   const known=(id:string)=>classes.some(c=>c.id===id);
-  // P0: own sheet and own portrait ('hero' texture), the ground, then the own walk and attack clips.
+  // P0: own sheet and own portrait ('hero' texture), the ground, then the own walk clips.
   add(heroSheetUrl(room.self),'P0','hero');
   if(known(room.self))add(thumbUrl(room.self),'P0','icon');
   const index=artIndex();
@@ -81,7 +81,11 @@ export function assetsParaPartida(room:MatchRoom):MatchAsset[]{
     if(new URLSearchParams(room.search??'').get('chao')!=='0')add(ALBEDO_URL,'P0','ground');
   }
   else for(const url of ENDLESS_GROUND)add(url,'P0','ground');
-  for(const url of heroMotionUrls(room.self))add(url,'P0','hero');
+  // The walk closes P0 (the first step walks); the attack opens P1 (cena-nasce-rapido: its 8 clips, ~2 MB, held the
+  // ready button ~2 s on a slow phone; still fetched right after, behind the waiting room's countdown).
+  const motion=heroMotionUrls(room.self);
+  for(const url of motion)if(url.includes('.walk128-'))add(url,'P0','hero');
+  for(const url of motion)if(!url.includes('.walk128-'))add(url,'P1','hero');
   // P1: teammates (sheet and class icon), enemies, base pieces.
   for(const id of new Set(room.others)){
     if(!id||id===room.self)continue;

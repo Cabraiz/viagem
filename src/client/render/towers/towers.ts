@@ -46,6 +46,11 @@ export interface TowerRendererOptions {
   world:TowerWorld;
   /** prefers-reduced-motion: no screen shake. */
   reduced:boolean;
+  /**
+   * A defense whose sheet is not loaded yet was made (the scene streams the tower art after the opening): fetch that
+   * kind's sheets now, ahead of the rest. It draws procedural until they arrive.
+   */
+  needArt?:(kind:TowerKind)=>void;
   /** Depth of the ground layer (crater decals, the wire's spark ring), just over the ground. */
   groundDepth:number;
   /** A counter that moves when the world's depths change (the city's chunks load or drop): depths are recomputed. */
@@ -72,6 +77,8 @@ interface Tower {
   /** Next re-scan of the horde for the nearest target (ms); the alpha last set; the cover test's last answer. */
   scanAt:number;alpha:number;covers:boolean;
   base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
+  /** Its imported sheet is in the manifest but not loaded yet (streamed after the match opens): drawn procedural until it arrives. */
+  artWait:boolean;
   /** The Gustavão's rails and sleepers: a decal in the ground layer, under the carriage and everything standing. */
   rail?:Phaser.GameObjects.Image;
   /** Its cast shadow (lighting card): a baked decal in the shadow layer, over the ground decals, under the defenses. */
@@ -336,12 +343,14 @@ export class TowerRenderer {
   private make(view:TowerView):Tower{
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
-      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,scanAt:0,alpha:1,covers:false,
+      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,artWait:false,scanAt:0,alpha:1,covers:false,
       dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1,depth:0,aimFor:NaN};
     t.prop.rect=t.rect;
     const art=towerArt(view.kind);
     t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
+    t.artWait=!!art?.base&&!t.art;
+    if(t.artWait)this.o.needArt?.(view.kind);
     return t;
   }
   private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();t.shadow?.destroy();}
@@ -610,6 +619,8 @@ export class TowerRenderer {
    */
   private drawTower(t:Tower,view:number){
     const w=this.o.world,v=t.view;
+    // The sheet arrived after the defense was made (cena-nasce-rapido: tower art streams in after the opening).
+    if(t.artWait&&this.scene.textures.exists(towerBaseKey(v.kind))){t.artWait=false;t.art=true;t.drawnPhase='';}
     if(t.drawnPhase!==t.phase||t.drawnView!==view){ // a defense stands still: its drawing changes only with its phase or the camera
       t.drawnPhase=t.phase;t.drawnView=view;t.drawnDir=-1;t.height=t.look.height;this.coverDirty=true;
       this.sortTower(t);
@@ -860,18 +871,26 @@ export const towerGunKey=(kind:string)=>`art:torres:${kind}:idle`;
  * pages joined, frames in order at `liteCell`.
  */
 export const towerLiteUrl=(kind:string,name:string)=>`/art/lite/towers/${kind}/${name}.webp`;
+/** A delivered tower sheet to load: texture key, URL and frame size. */
+export interface TowerLoad {key:string;url:string;frameWidth:number;frameHeight:number}
 /**
- * Queues the delivered tower sheets: the lite copy when the manifest has one (`liteCell`, a single page even when the
- * delivered sheet is paged), else a single-page delivered file; the rest stays procedural. Call in preload.
+ * The delivered sheets of `kind` (every kind without it): the lite copy when the manifest has one (`liteCell`, a single
+ * page even when the delivered sheet is paged), else a single-page delivered file; the rest stays procedural.
  */
-export function queueTowerArt(scene:Phaser.Scene){
-  const group=artIndex().groups.torres;if(!group)return;
-  for(const kind of TOWER_KINDS as readonly TowerKind[]){
-    const art=towerArt(kind);if(!art)continue;
-    for(const [key,name,file] of [[towerBaseKey(kind),'base',art.base],[towerGunKey(kind),'idle',art.idle]] as const){
-      if(!file||scene.textures.exists(key))continue;
-      if(file.liteCell)scene.load.spritesheet(key,towerLiteUrl(kind,name),{frameWidth:file.liteCell[0],frameHeight:file.liteCell[1]});
-      else if(file.file&&(file.pages?.length??1)<=1)scene.load.spritesheet(key,groupFileUrl(group,file.file),{frameWidth:file.cell[0],frameHeight:file.cell[1]});
+export function towerLoads(kind?:TowerKind):TowerLoad[]{
+  const group=artIndex().groups.torres;if(!group)return [];
+  const out:TowerLoad[]=[];
+  for(const k of kind?[kind]:TOWER_KINDS as readonly TowerKind[]){
+    const art=towerArt(k);if(!art)continue;
+    for(const [key,name,file] of [[towerBaseKey(k),'base',art.base],[towerGunKey(k),'idle',art.idle]] as const){
+      if(!file)continue;
+      if(file.liteCell)out.push({key,url:towerLiteUrl(k,name),frameWidth:file.liteCell[0],frameHeight:file.liteCell[1]});
+      else if(file.file&&(file.pages?.length??1)<=1)out.push({key,url:groupFileUrl(group,file.file),frameWidth:file.cell[0],frameHeight:file.cell[1]});
     }
   }
+  return out;
+}
+/** Queues the delivered tower sheets not loaded yet (towerLoads) on the scene's loader. */
+export function queueTowerArt(scene:Phaser.Scene){
+  for(const l of towerLoads())if(!scene.textures.exists(l.key))scene.load.spritesheet(l.key,l.url,{frameWidth:l.frameWidth,frameHeight:l.frameHeight});
 }

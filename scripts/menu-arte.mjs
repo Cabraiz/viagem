@@ -3,7 +3,8 @@
 //   - letreiro: the transparent margin trimmed, at the original's own size (1423 px wide) and q95 (menu-fundo-sangria:
 //     the 1000 px q82 copy looked pixelated; the PC shows it at most min(33.2vw, 56.4vh), 1218 px on a 4K screen);
 //   - heroi: only the hero's box of the 1920x1080 picture (src/client/ui/stadium.ts RECORTES keeps the same box, so the
-//     page puts it back where it was), full size and a 2/3 copy for windows under 1440 px;
+//     page puts it back where it was), full size and a 2/3 copy for windows under 1440 px; with an `esrgan` file (the
+//     box enlarged 2x by Real-ESRGAN, NEW-20261021-ORQ-heroi-esrgan-no-ar) every copy comes from it: 2x, 4/3, 1x, 2/3;
 //   - botao: the confirm button's pill, star and burst (E7), half size;
 //   - fundo: a hero's own background, bigger than the screen (the 1920x1080 picture in the middle at 320,313 of 2560x1707,
 //     like fundo-estadio-viciado), WebP q95; scripts/art-lite.mjs makes its lite copy.
@@ -20,12 +21,16 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const flag=process.argv.indexOf('--evidence');
 const evidence=flag>0?process.argv[flag+1]:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-elenco-cartoon-estadio';
 const soFlag=process.argv.indexOf('--so'),so=soFlag>0?process.argv[soFlag+1]:undefined,part=(name)=>!so||so===name;
+// heroi-esrgan-no-ar (the user, 21/10: option B): the box enlarged 2x by Real-ESRGAN x4plus-anime (E6,
+// NEW-20261021-ORQ-realesrgan-herois-menu), alpha without a halo.
+const ESRGAN='D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-realesrgan-herois-menu/saida';
 const HEROES=[
   // box = every pixel of the hero with any alpha in the 1920x1080 file (alphaBox: the soft edge under the soles too; a
   // `trim` dropped 2 px of it), the same numbers as RECORTES in stadium.ts.
-  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',box:{left:953,top:19,width:793,height:1058}},
+  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',
+    esrgan:'viciado-2x-x4plus-anime.png',box:{left:953,top:19,width:793,height:1058}},
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',heroi:'clt-cansado-1080p-no-lugar.png',
-    box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
+    esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};
@@ -67,9 +72,15 @@ for(const hero of HEROES){
   if(width!==1920||height!==1080)throw new Error(`${hero.heroi}: expected 1920x1080, got ${width}x${height}`);
   const found=await alphaBox(source);
   if(JSON.stringify(found)!==JSON.stringify(hero.box))throw new Error(`${hero.id}: the hero's box is ${JSON.stringify(found)}, update box and RECORTES`);
-  const cut=await sharp(source).extract(hero.box).toBuffer();
-  for(const scale of [1,2/3]){
+  // The 2x file is the same box twice as big: the page keeps the 1x box (RECORTES) and the feet stay on the bar.
+  const big=hero.esrgan?path.join(ESRGAN,hero.esrgan):undefined,base=big?2:1;
+  if(big){
+    const meta=await sharp(big).metadata();
+    if(meta.width!==hero.box.width*2||meta.height!==hero.box.height*2)throw new Error(`${hero.esrgan}: expected the box at 2x, got ${meta.width}x${meta.height}`);
+  }
+  const cut=big?await sharp(big).toBuffer():await sharp(source).extract(hero.box).toBuffer();
+  for(const scale of big?[2,4/3,1,2/3]:[1,2/3]){
     const w=Math.round(hero.box.width*scale),file=out('heroi',`${hero.id}-${w}.webp`);
-    report(file,await (scale===1?sharp(cut):sharp(cut).resize({width:w,kernel:'lanczos3'})).webp(HERO_WEBP).toFile(file));
+    report(file,await (scale===base?sharp(cut):sharp(cut).resize({width:w,kernel:'lanczos3'})).webp(HERO_WEBP).toFile(file));
   }
 }

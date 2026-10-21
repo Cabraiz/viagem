@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -178,8 +178,9 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
     assert.deepEqual([meta.width,meta.height],[STADIUM.bleed.w,STADIUM.bleed.h],file);
   }
   assert.equal(cutoutOf('viciado-em-bet')!.fundo,undefined,'the viciado keeps the stadium');
-  // 1920x1080: exactly where his scene had him; every window keeps him whole (contain) with his feet on the plateau.
-  assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.bleed,cut),{x:792,y:73,w:635,h:865});
+  // 1920x1080: where his scene had him, raised 5 px with the background (heroi-esrgan-no-ar: FEET_MARGIN under the
+  // viciado's sneaker); every window keeps him whole (contain) with his feet on the plateau.
+  assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.bleed,cut),{x:792,y:68,w:635,h:865});
   for(const [w,h] of [[1920,1080],[1920,950],[1590,903],[1366,768],[1280,720],[1024,768],[2560,1080]]){
     const box={w,h},placed=placeCutout(box,STADIUM.bleed,cut)!,fit=fitCutout(box,placed),m=cutoutMargin(h),e=1e-9;
     assert.ok(fit.y>=Math.min(m,placed.y)-e&&fit.y+fit.h<=h+e&&fit.x>=-e&&fit.x+fit.w<=w+e,`${w}x${h}: CLT whole`);
@@ -224,9 +225,11 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[1024,768],[2560,1080],[3440,1440],[1600,521]]){
     const box={w,h},{s,ox,oy}=frameArt(box,art),e=1e-9;
     assert.ok(ox<=e&&oy<=e&&ox+art.w*s>=w-e&&oy+art.h*s>=h-e,`${w}x${h}: the file covers the box`);
-    // The approved 1920x1080 inside the box (21:9 and wider: as wide as the box, the sky/feet past it never matter).
+    // The approved 1920x1080 inside the box (21:9 and wider: as wide as the box, the sky/feet past it never matter),
+    // but for the few px of sky raised out at the top to keep FEET_MARGIN under the lowest sole (heroi-esrgan-no-ar).
     const fx=ox+f.x*s,fy=oy+f.y*s;
-    if(w/h<=2560/1080+e) assert.ok(fx>=-.5&&fy>=-.5&&fx+f.w*s<=w+.5&&fy+f.h*s<=h+.5,`${w}x${h}: approved picture whole`);
+    if(w/h<=2560/1080+e) assert.ok(fx>=-.5&&fy>=-FEET_MARGIN-.5&&fx+f.w*s<=w+.5&&fy+f.h*s<=h+.5,`${w}x${h}: approved picture whole`);
+    assert.ok(oy+(f.y+art.feet!)*s<=h-FEET_MARGIN+1e-6,`${w}x${h}: ${FEET_MARGIN} px under the lowest sole`);
     // The boy (in the approved picture) whole, and still where the picture has him before the margin's fit.
     const placed=placeCutout(box,art,cutoutOf('viciado-em-bet')!)!;
     assert.ok(Math.abs(placed.x-(fx+953*s))<1e-6&&Math.abs(placed.y-(fy+19*s))<1e-6&&Math.abs(placed.h-1058*s)<1e-6,`${w}x${h}`);
@@ -239,9 +242,11 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
     const bar=placeOnBar(box,art,w*.7)!;
     assert.ok(bar.y>0&&bar.y<h,`${w}x${h}: bar ${bar.y}`);
   }
-  // 1920x1080: exactly the approved screen (scale 1, the bleed outside).
-  assert.deepEqual(frameArt({w:1920,h:1080},art),{s:1,ox:-320,oy:-313});
-  assert.deepEqual(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!),{x:953,y:19,w:793,h:1058});
+  // 1920x1080: the approved screen (scale 1, the bleed outside), raised 5 px: the back sneaker 8 px above the bottom.
+  assert.deepEqual(frameArt({w:1920,h:1080},art),{s:1,ox:-320,oy:-318});
+  assert.deepEqual(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!),{x:953,y:14,w:793,h:1058});
+  assert.equal(FEET_MARGIN,8);
+  assert.equal(art.feet,Math.max(...Object.values(RECORTES).map(c=>c.y+c.h)),'feet: the lowest sole of every hero drawn in place');
   // The plain files keep `cover` (the phone).
   assert.deepEqual(frameArt({w:1920,h:1080},STADIUM.wide),{s:1,ox:0,oy:0});
   // Wired: the PC block shows the file, main.ts frames it and puts the boy on it; the preload only where it shows.
@@ -252,22 +257,53 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
 });
 
-test('menu-pes-nitidez: the hero file by the shown width x DPR, never the 2/3 copy stretched; q95 files',async()=>{
+test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x DPR (2/3, 1x, 4/3, 2x), q95 files',async()=>{
   for(const id of ['viciado-em-bet','clt-cansado']){
-    const cut=cutoutOf(id)!,[small,big]=cut.files;
+    const cut=cutoutOf(id)!,ws=cut.files.map(([w])=>w);
+    assert.deepEqual(ws,[2/3,1,4/3,2].map(k=>Math.round(cut.w*k)),`${id}: the box at 2/3, 1x, 4/3 and 2x`);
+    const [small,one,,big]=cut.files;
     assert.equal(cutoutFile(cut,small[0]-10,1),small[1],`${id}: small window, the small file`);
-    assert.equal(cutoutFile(cut,small[0]+1,1),big[1],`${id}: over the small one, the big one`);
-    assert.equal(cutoutFile(cut,small[0]*.6,2),big[1],`${id}: HiDPI counts device pixels`);
+    assert.equal(cutoutFile(cut,small[0]+1,1),one[1],`${id}: over the small one, the 1x one (not the 2x)`);
+    assert.equal(cutoutFile(cut,cut.w*.8,2),big[1],`${id}: HiDPI counts device pixels`);
+    assert.equal(cutoutFile(cut,cut.w*.9,1.25),cut.files[2][1],`${id}: Windows at 125%, the 4/3 one`);
     assert.equal(cutoutFile(cut,big[0]*2,1),big[1],`${id}: bigger than every file, the biggest`);
-    const meta=await sharp(publicFile(big[1])).metadata();
-    assert.deepEqual([meta.width,meta.height],[cut.w,cut.h],`${id}: the full-size file is the box at 1x, never upscaled`);
+    const meta=await sharp(publicFile(one[1])).metadata();
+    assert.deepEqual([meta.width,meta.height],[cut.w,cut.h],`${id}: the 1x file is the box`);
+    const top=await sharp(publicFile(big[1])).metadata();
+    assert.deepEqual([top.width,top.height],[cut.w*2,cut.h*2],`${id}: the 2x file is Real-ESRGAN's, the box twice`);
   }
-  // The user's 1590x903 (DPR 1): the viciado shows ~657 px wide, so the full-size file, at ~0.83x (never above 1x).
+  // The user's 1590x903 (DPR 1): the viciado shows ~657 px wide, so the 1x file; the 2x one only where it is needed.
   const box={w:1590,h:903},cut=cutoutOf('viciado-em-bet')!,fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!);
   assert.equal(cutoutFile(cut,fit.w,1),'/art/menu/heroi/viciado-em-bet-793.webp');assert.ok(fit.w<=793);
   assert.match(main,/const file=cutoutFile\(cut,spot\.w,devicePixelRatio\);/);
   assert.ok(!/cutoutImg\.srcset/.test(main),'no srcset: the choice is the one above');
-  assert.ok(readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8').includes('const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};'));
+  const arte=readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8');
+  assert.ok(arte.includes('const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};'));
+  assert.ok(arte.includes("esrgan:'viciado-2x-x4plus-anime.png'")&&arte.includes("esrgan:'clt-2x-x4plus-anime.png'"));
+});
+
+test('heroi-esrgan-no-ar: the feet scripts/pes-no-chao.mjs checks are the soles in the approved picture, 8 px above the bottom',async()=>{
+  const src=readFileSync(new URL('../../scripts/pes-no-chao.mjs',import.meta.url),'utf8');
+  const pes=JSON.parse(src.match(/const PES=(\{[^\n]*\});/)![1]) as Record<string,[number,number,number][]>;
+  assert.deepEqual(Object.keys(pes),Object.keys(RECORTES),'every hero drawn in place has his feet');
+  for(const [id,feet] of Object.entries(pes)){
+    // Each foot's floor: the bottom edge of the sole's lowest row with alpha >= 128 in its columns of the 1x file.
+    const cut=cutoutOf(id)!,one=cut.files.find(([w])=>w===cut.w)!;
+    const {data,info}=await sharp(publicFile(one[1])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    assert.equal(feet.length,2,id);
+    for(const [x0,x1,floor] of feet){
+      let low=-1;
+      for(let x=Math.max(0,x0-cut.x);x<=Math.min(info.width-1,x1-cut.x);x++)for(let y=info.height-1;y>low;y--)if(data[(y*info.width+x)*4+3]>=128){low=y;break;}
+      assert.ok(low>=0&&Math.abs(cut.y+low+1-floor)<=1,`${id} ${x0}-${x1}: the sole ends at ${cut.y+low+1}, PES says ${floor}`);
+    }
+  }
+  // The viciado's front sneaker stands on the bar (the old BAR_TOP marks its back edge, ~8 px above the sole there).
+  const [front]=pes['viciado-em-bet'];
+  assert.ok(Math.abs(front[2]-barTop(1277/1920)*1080)<12,'the front sneaker on the bar');
+  assert.match(src,/const VIEWPORTS=\[\[1920,1080\],\[1920,1000\],\[1920,950\],\[1590,903\],\[1366,768\],\[1280,720\],\[2560,1080\],\[1024,768\]\];/);
+  assert.match(src,/const TOLERANCIA=4,ALPHA=128;/);
+  assert.match(src,/margin<FEET_MARGIN-1/);
+  assert.match(readFileSync(new URL('../../.github/workflows/prints.yml',import.meta.url),'utf8'),/node \.\.\/scripts\/pes-no-chao\.mjs \.\.\/folha-out/,'it runs in CI with the sheet');
 });
 
 test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{

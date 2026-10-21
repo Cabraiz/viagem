@@ -38,9 +38,11 @@ export function titleFit([top,big]:readonly [string,string]):number{
 
 /**
  * The final letreiro is a picture per hero (E7 makes it with the name and the nickname in the same design): its URL by
- * class id. Absent: the HTML letreiro above (name + plaque). Empty until the pictures arrive.
+ * class id. Absent: the HTML letreiro above (name + plaque), until that hero's picture arrives.
  */
-export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({});
+export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
+  'viciado-em-bet':'/art/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
+});
 /**
  * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them
  * (21/10). Empty until the first one arrives; adding an id brings that hero's face back.

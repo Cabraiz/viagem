@@ -2,7 +2,7 @@
 // (.github/workflows/prints.yml), so an executor pushes and waits instead of opening a browser on the shared PC, and a
 // visual fault (20/10: the standing hero trembling, idle↔walk at every reconcile, b837b93) shows on a sheet nobody had
 // to ask for. On the BUILT site (dist/ under vite preview + the local rooms Worker, as scripts/smoke-prod.mjs):
-//   1. the menu (character screen);
+//   1. the menu (character screen), then the name step after SELECIONAR (nome-depois-de-selecionar);
 //   2. a solo match: the hero standing (3 frames in a row, and a sampled window: a standing hero whose texture flips
 //      between an idle and a walk sheet = FAIL), walking by the keyboard (8 directions, 2 frames each), walking by the
 //      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then a right click: walks, no browser menu),
@@ -325,6 +325,11 @@ async function match(browser,base){
   try{
     await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
+    // The name field only shows after SELECIONAR (an older build without the step opens the dialog: no print, back out).
+    if(await p.evaluate(()=>{document.getElementById('confirm').click();return !!document.getElementById('trocar');})){
+      for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(400);await shot(p,'menu-nome','menu (nome, depois de SELECIONAR)',vp);}
+      await p.evaluate(()=>document.getElementById('trocar').click());
+    }else await p.evaluate(()=>document.getElementById('confirmation').close());
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
     // The mouse first, on every screen: the match starts against a wall, where the keys walk into it and no correction
     // ever lands; and by the time 1280×720's keys were done (~3 min) the horde had the hero down for 390×844's mouse.
@@ -344,7 +349,7 @@ async function openMenu(p,base,label){
 }
 /** Character → island: true once the solo match runs (false and a fail when it did not start in 180 s). */
 async function enterMatch(p,vp,label){
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
   await p.evaluate(()=>document.getElementById('enter-island').click());
   if(!await until(p,()=>window.__partidaPronta===true&&!!window.__perfScene?.actor,180000)){fails.push(`${label}: a partida solo não começou em 180 s`);await shot(p,'sem-partida',`sem partida (${label})`,vp);return false;}

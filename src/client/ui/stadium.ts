@@ -33,3 +33,28 @@ export function placeOnBar(box:{w:number;h:number},art:StadiumArt,atX:number,pos
   const whole=x0+(x1-x0)*Math.min(1,Math.max(0,(atX-ox)/dw));
   return {x:atX,y:oy+(barTop(whole)-y0)/(y1-y0)*dh};
 }
+
+/**
+ * A hero drawn in place on the wide picture (NEW-20261021-ORQ-menu-arte-viciado): the file is only the hero's box of the
+ * 1920x1080 picture (scripts/menu-arte.mjs, same numbers), so the page puts it back where it was. PC only
+ * (CUTOUT_QUERY); the phone, upright or on its side, keeps the dance.
+ */
+export interface StadiumCutout {
+  /** The box in the whole 1920x1080 picture, px. */
+  x:number;y:number;w:number;h:number;
+  /** Width → file (the full one and a 2/3 copy). */
+  files:readonly (readonly [number,string])[];
+}
+export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
+  'viciado-em-bet':{x:955,y:21,w:788,h:1053,files:[[525,'/art/menu/heroi/viciado-em-bet-525.webp'],[788,'/art/menu/heroi/viciado-em-bet-788.webp']]},
+});
+/** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
+export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
+export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
+/** The cutout's box in the stage (px) for the same `cover` the background uses (position `pos`, 0..1). */
+export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<StadiumCutout,'x'|'y'|'w'|'h'>,pos={x:.5,y:1}){
+  if(!(box.w>0&&box.h>0))return;
+  const s=Math.max(box.w/art.w,box.h/art.h);
+  const ox=(box.w-art.w*s)*pos.x,oy=(box.h-art.h*s)*pos.y;
+  return {x:ox+cut.x*s,y:oy+cut.y*s,w:cut.w*s,h:cut.h*s};
+}

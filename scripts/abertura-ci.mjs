@@ -121,7 +121,7 @@ async function open(ctx,url,label,kind,print){
     await p.waitForSelector('#confirm',{state:'attached',timeout:180000});
     await p.waitForFunction(()=>!!navigator.serviceWorker?.controller,null,{timeout:30000}).catch(()=>{});
     await sleep(2000);
-    await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card')?.click();document.getElementById('confirm').click();});
+    await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card')?.click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
     await p.waitForSelector('#enter-island',{state:'visible',timeout:30000});
     await p.evaluate(()=>{window.__ab.t0=performance.now();document.getElementById('enter-island').click();});
     let m={};

@@ -194,6 +194,17 @@ export function cityLiteScale(group:string,id:string,p:Pick<ArtPiece,'meta'>):nu
   if(group===DECOR_GROUP&&!NEST_ID.test(id)&&(decorRule(id,p.meta)==='footprint'||DECOR_FILL.test(id)))return 1;
   return .75;
 }
+/**
+ * Every file of a piece with a city lite copy, and its cell scale: the view sheet (cityLiteFile, cityLiteScale) and, in
+ * the decor, the live layer's loops (`anim`, `anim-<name>`: live/art.ts), those at their own cell (lossy only: the live
+ * layer places them in art px of the base cell).
+ */
+export function cityLiteFiles(group:string,id:string,p:ArtPiece):{name:string;scale:number}[]{
+  const sheet=cityLiteFile(group,id,p),out=sheet?[{name:sheet,scale:cityLiteScale(group,id,p)}]:[];
+  if(group===DECOR_GROUP)for(const [name,f] of Object.entries(p.files))
+    if((name==='anim'||name.startsWith('anim-'))&&f.file&&!(f.pages&&f.pages.length>1))out.push({name,scale:1});
+  return out;
+}
 export const cityLiteUrl=(url:string)=>url.replace(/^\/art\/city\//,'/art/lite/city/');
 /**
  * What the city loads for a file: its lite copy (url, cell and texture px per art px) when the file has `liteCell`,

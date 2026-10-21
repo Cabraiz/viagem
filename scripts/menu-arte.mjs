@@ -21,13 +21,23 @@ const flag=process.argv.indexOf('--evidence');
 const evidence=flag>0?process.argv[flag+1]:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-elenco-cartoon-estadio';
 const soFlag=process.argv.indexOf('--so'),so=soFlag>0?process.argv[soFlag+1]:undefined,part=(name)=>!so||so===name;
 const HEROES=[
-  // box = the hero's opaque pixels in the 1920x1080 file (sharp trim), the same numbers as RECORTES in stadium.ts.
-  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',box:{left:955,top:21,width:788,height:1053}},
+  // box = every pixel of the hero with any alpha in the 1920x1080 file (alphaBox: the soft edge under the soles too; a
+  // `trim` dropped 2 px of it), the same numbers as RECORTES in stadium.ts.
+  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',box:{left:953,top:19,width:793,height:1058}},
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',heroi:'clt-cansado-1080p-no-lugar.png',
-    box:{left:793,top:74,width:633,height:863},webp:{quality:92,alphaQuality:100,effort:6},
-    fundo:'fundo-clt-2560.png'},
+    box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
 ];
-const HERO_WEBP={quality:80,alphaQuality:90,effort:6};
+// menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
+const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};
+/** The box of every pixel with alpha > 0. */
+async function alphaBox(file){
+  const {data,info}=await sharp(file).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  let top=Infinity,bottom=-1,left=Infinity,right=-1;
+  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>0){
+    if(y<top)top=y;if(y>bottom)bottom=y;if(x<left)left=x;if(x>right)right=x;
+  }
+  return {left,top,width:right-left+1,height:bottom-top+1};
+}
 const out=(dir,file)=>{mkdirSync(path.join(root,'public/art/menu',dir),{recursive:true});return path.join(root,'public/art/menu',dir,file);};
 const report=(file,info)=>console.log(`${path.relative(root,file)}: ${info.width}x${info.height}, ${info.size} bytes`);
 // The confirm button (E7, 21/10, for every hero): a 9-slice pill without text (caps of 259 px of the 298 px height, the
@@ -55,12 +65,11 @@ for(const hero of HEROES){
   const source=path.join(dir,hero.heroi);
   const {width,height}=await sharp(source).metadata();
   if(width!==1920||height!==1080)throw new Error(`${hero.heroi}: expected 1920x1080, got ${width}x${height}`);
-  const trimmed=await sharp(source).trim().toBuffer({resolveWithObject:true});
-  const found={left:-trimmed.info.trimOffsetLeft,top:-trimmed.info.trimOffsetTop,width:trimmed.info.width,height:trimmed.info.height};
+  const found=await alphaBox(source);
   if(JSON.stringify(found)!==JSON.stringify(hero.box))throw new Error(`${hero.id}: the hero's box is ${JSON.stringify(found)}, update box and RECORTES`);
   const cut=await sharp(source).extract(hero.box).toBuffer();
   for(const scale of [1,2/3]){
     const w=Math.round(hero.box.width*scale),file=out('heroi',`${hero.id}-${w}.webp`);
-    report(file,await sharp(cut).resize({width:w,kernel:'lanczos3'}).webp(hero.webp??HERO_WEBP).toFile(file));
+    report(file,await (scale===1?sharp(cut):sharp(cut).resize({width:w,kernel:'lanczos3'})).webp(HERO_WEBP).toFile(file));
   }
 }

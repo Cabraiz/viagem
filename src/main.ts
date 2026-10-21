@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { CUTOUT_QUERY, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -175,16 +175,16 @@ function showStageFundo(url:string|undefined) {
 }
 function showCutout() {
   const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
-  // The whole boy on screen (menu-1080-720-menino-inteiro): the picture keeps its cover, he scales to fit the stage.
+  // The whole hero on screen, his feet on the floor the background's framing puts there (fitCutout, menu-pes-nitidez).
   const box={w:stage.clientWidth,h:stage.clientHeight},placed=cut&&placeCutout(box,STADIUM.bleed,cut),spot=placed&&fitCutout(box,placed);
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
   showStageFundo(spot?cut?.fundo:undefined);
   if(!cut||!spot) return;
-  const sizes=`${Math.round(spot.w)}px`,srcset=cut.files.map(([w,file])=>`${file} ${w}w`).join(', ');
-  if(cutoutImg.sizes!==sizes) cutoutImg.sizes=sizes;
-  if(cutoutImg.getAttribute('srcset')!==srcset) {cutoutImg.srcset=srcset;cutoutImg.src=cut.files[cut.files.length-1][1];}
+  // The file by the shown width x devicePixelRatio (never the 2/3 copy stretched on a big or HiDPI screen).
+  const file=cutoutFile(cut,spot.w,devicePixelRatio);
+  if(cutoutImg.getAttribute('src')!==file) cutoutImg.src=file;
   const css=`left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px;width:${Math.round(spot.w)}px;height:${Math.round(spot.h)}px`;
   if(cutoutImg.dataset.box!==css) {cutoutImg.dataset.box=css;cutoutImg.style.cssText=css;}
 }

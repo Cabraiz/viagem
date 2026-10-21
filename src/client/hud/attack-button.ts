@@ -38,6 +38,8 @@ export class AttackButton {
   private dragPick?:string;private dragging=false;
   private current?:string;
   private on=false;
+  /** The button's own press is a finger's (or pen's): only then the yellow reticle and its line show (desktop: the cone). */
+  private touchAim=false;
   constructor(private readonly button:HTMLButtonElement,host:HTMLElement,private readonly deps:AttackDeps,signal?:AbortSignal){
     this.svg=node('svg','atk-aim');this.svg.setAttribute('aria-hidden','true');this.hide(true);
     this.line=node('line','atk-aim-line');this.ring=node('circle','atk-aim-ring');this.knob=node('circle','atk-aim-knob');
@@ -47,7 +49,7 @@ export class AttackButton {
     button.addEventListener('pointerdown',e=>{
       if(!this.on||e.button!==0||button.disabled||this.pointer!==undefined)return;
       e.preventDefault();deps.wake();
-      this.pointer=e.pointerId;try{button.setPointerCapture?.(e.pointerId);}catch{/* a synthetic pointer (prints) */}
+      this.pointer=e.pointerId;this.touchAim=e.pointerType!=='mouse';try{button.setPointerCapture?.(e.pointerId);}catch{/* a synthetic pointer (prints) */}
       const r=button.getBoundingClientRect();this.centre={x:r.left+r.width/2,y:r.top+r.height/2};this.drag={x:0,y:0};this.dragPick=undefined;this.dragging=false;
       this.press.press();deps.setHeld(true);
     },opts);
@@ -70,8 +72,16 @@ export class AttackButton {
   /** The room's CombatMode turned manual (or back): off lets go of everything and hides the reticle. */
   setOn(on:boolean){if(on===this.on)return;this.on=on;if(!on)this.clear();}
   get active(){return this.on;}
-  /** Space on the desktop: held down / let go (the press is the same as the button's). */
-  key(down:boolean){if(!this.on)return;if(down){this.deps.wake();this.press.press();}else this.press.release();this.deps.setHeld(this.press.held);}
+  /**
+   * Space or the right mouse button on the desktop (`source`): held down / let go. The press is the button's, held while
+   * any key holds it; letting go of one key never leaves it held by nobody, and repeated presses never pile up.
+   */
+  key(down:boolean,source='espaco'){
+    if(!this.on)return;
+    if(down)this.deps.wake();
+    this.press.key(source,down);
+    this.deps.setHeld(this.press.held);
+  }
   /** One quick attack (a click on an enemy on the desktop). */
   once(){if(!this.on)return;this.press.press();this.press.release();}
   /** One input step (scene, every 50 ms): whether it attacks. */
@@ -79,13 +89,14 @@ export class AttackButton {
   /** Pause, focus lost, button greyed, run reset: nothing stays pressed, no reticle. */
   clear(){
     if(this.pointer!==undefined)try{this.button.releasePointerCapture?.(this.pointer);}catch{/* never captured */}
-    this.press.clear();this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.deps.setHeld(false);this.hide(true);
+    this.press.clear();this.touchAim=false;this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.deps.setHeld(false);this.hide(true);
   }
-  private end(){this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.press.release();this.deps.setHeld(false);this.hide(true);}
+  private end(){this.touchAim=false;this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.press.release();this.deps.setHeld(false);this.hide(true);}
   /** Every frame: the reticle while the button is held (the auto aim's pick, or the drag's). */
   frame(){
     const hero=this.deps.hero();
-    if(!this.on||!hero||!this.press.held){this.hide(true);if(hero)this.track(hero);return;}
+    // Desktop (Space, the right button, the mouse on the button): no yellow reticle nor line, the melee cone shows the aim.
+    if(!this.on||!hero||!this.press.held||!this.touchAim){this.hide(true);if(hero)this.track(hero);return;}
     const enemies=[...this.deps.enemies()] as (EnemyView&AimEnemy)[],toScreen=(p:Point)=>this.deps.toScreen(p);
     let reticle:Point|undefined,knob:Point|undefined,locked=false;
     if(this.centre){

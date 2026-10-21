@@ -77,6 +77,8 @@ export interface HordeRendererOptions{
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
   hand?:(id:string)=>HeldHand|undefined;
+  /** The scene draws the local hero's melee cone after placing him (selfCone); omitted: the renderer draws it at locate(). */
+  coneFromScene?:boolean;
   /**
    * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
    * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
@@ -357,7 +359,7 @@ export class HordeRenderer{
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand});
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,...(options.coneFromScene?{coneFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
@@ -451,6 +453,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
+  selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
   get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */

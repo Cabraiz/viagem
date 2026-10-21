@@ -222,9 +222,10 @@ test('right button on the map: holds the attack toward the mouse and never walks
   assert.match(down,/if\(hit\)\{this\.attackTarget=hit;this\.horde\?\.setTarget\(hit\);/);assert.match(down,/this\.hold\.press\(target/);
   // Let go when the button is up (checked every frame: an up outside the canvas too), on pause and on focus lost.
   assert.match(scene,/if\(this\.rightHeld\)\{const pointer=this\.input\.mousePointer;if\(this\.paused\|\|!pointer\?\.rightButtonDown\(\)\)this\.rightAttack\(false\);\}/);
-  assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*this\.rightAttack\(false\);/);assert.match(scene,/releaseInput\(\)\{[^\n]*this\.rightAttack\(false\);/);
-  // explore: the hook is Space's own attack (AttackButton.key), never pressed on a greyed button.
-  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(!down\)attackBtn\?\.key\(false\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true\);\}/);
+  // A pause lets go (unpausing does not: the press itself wakes the game, cone-por-cima-e-clique-em-loop).
+  assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*if\(paused\)this\.rightAttack\(false\);/);assert.match(scene,/releaseInput\(\)\{[^\n]*this\.rightAttack\(false\);/);
+  // explore: the hook is Space's own attack (AttackButton.key, its own key source), never pressed on a greyed button.
+  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(!down\)attackBtn\?\.key\(false,'direito'\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true,'direito'\);\}/);
   // The hold-to-follow follows the left button only.
   const follow=scene.match(/private followHold\([\s\S]*?\n {2}\}\n/)?.[0]??'';
   assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);

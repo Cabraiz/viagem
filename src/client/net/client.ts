@@ -108,6 +108,11 @@ export function reconnectBanner(net:{connected:boolean;fatal?:string;offlineMs(n
  * the room on the city waits at most this long for the manifest, then knocks once more with the full catalog (cidade-10).
  */
 export const CITY_RETRY_WAIT_MS=6000;
+/**
+ * Terminal drop in a match (the retry window ran out, the seat token is gone): the HUD shows it with "Voltar pra sala",
+ * which opens the room's invite link (NEW-20261009-UX-menu-e-conexao); a reload would land on the start screen.
+ */
+export const LINK_LOST='Conexão indisponível. Toca em Voltar pra sala pra entrar de novo.';
 /** Lobby status while that join waits for the city's manifest. */
 export const CITY_RETRY_STATUS='A sala está na Cidade Nevada. Buscando o mapa…';
 /** `promise`'s value if it settles within `ms`, else undefined (a rejection is undefined too). Never rejects. */
@@ -460,8 +465,8 @@ export class CoopClient {
       if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
       if(this.initialized&&Date.now()-this.lastSeenAt>retryWindow(this.run?.phase)||(!this.initialized&&this.attempts>=(this.token?TOKEN_JOIN_ATTEMPTS:2))){
         this.stopped=true;this.forgetToken();
-        // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
-        if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
+        // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
+        if(this.initialized)this.fatal=LINK_LOST;
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');

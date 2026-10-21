@@ -76,6 +76,8 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
         const q=capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain);p.x=q.x;p.y=q.y;
         if(input.target)p.target=input.target;else delete p.target;
+        // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
+        if(input.aim)p.aim=input.aim;else delete p.aim;
         // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
         if(manual&&input.attack)manual.attacking.add(p.id);
       }

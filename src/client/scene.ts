@@ -489,7 +489,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
-        aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);},
+        aim:()=>this.mouseGround(),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
@@ -704,6 +704,11 @@ export class IslandScene extends Phaser.Scene {
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
   /** D-051: the attack button's choice (a drag let go on an enemy), or undefined to go back to the auto aim. */
+  /** The ground point (world u) under the mouse, or undefined for a finger or a mouse that never moved (the auto aim). */
+  private mouseGround():Point|undefined{
+    const p=this.input.activePointer;
+    return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -1130,6 +1135,8 @@ export class IslandScene extends Phaser.Scene {
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
+    // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
+    const mouse=this.mouseGround();
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
       if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
@@ -1139,7 +1146,8 @@ export class IslandScene extends Phaser.Scene {
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.());this.accumulator-=STEP;
+      const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
+      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.

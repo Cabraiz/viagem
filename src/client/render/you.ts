@@ -10,6 +10,7 @@
 import type Phaser from 'phaser';
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
 import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,STICKER_CSS,arrowFrame,beakPoints,clampFraction,grownBeak,hpBarStep,ringBands,ringSize,spiralPoints} from './you-rules.ts';
+import {HEART_CSS,LOW_NUMBER_CSS,crackPoints,heartPoints,lowHpText,lowMarkLayout,lowMarkOn} from './low-hp-mark.ts';
 import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
 import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
@@ -62,6 +63,8 @@ export class YouMarkers {
   /** The ground ring and its beak: under the hero (RING_UNDER below the sprite on top), not over its legs. */
   private ring:Phaser.GameObjects.Graphics;
   private label:Phaser.GameObjects.Text;
+  /** Hp number next to the low bar (low-hp-mark.ts): Papel with a Breu stroke. */
+  private lowText:Phaser.GameObjects.Text;
   private ghosts=new Map<string,Sprite>();
   /** Sticker contour of the local hero: 8 Breu copies (outer) and 8 Papel copies, tint-filled, under the sprite. */
   private contour:Sprite[]=[];
@@ -69,7 +72,7 @@ export class YouMarkers {
   private fullSince:number|undefined;
   private readonly color={voce:tokenColor('--c-voce'),breu:tokenColor('--c-breu'),papel:tokenColor('--c-papel'),cone:tokenColor('--c-cone'),cartolina:tokenColor('--c-cartolina')};
   /** Last frame, for the acceptance probe (dev) and tests of the scene wiring. */
-  readonly last={ring:false,bar:false,arrow:false,low:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false,ride:undefined as VehicleKind|undefined};
+  readonly last={ring:false,bar:false,arrow:false,low:false,lowMark:false,covered:[] as string[],ghosts:0,contour:false,sticker:false,slow:false,slip:false,ride:undefined as VehicleKind|undefined};
   /** Scratch for the slip swirl (no allocation per frame). */
   private swirl=Array.from({length:14},()=>({x:0,y:0}));
   /** Imported "Você" ring (art/frames-art.ts heroi-voce); nothing is made without the art. */
@@ -88,7 +91,9 @@ export class YouMarkers {
     this.g=scene.add.graphics().setDepth(MARK_DEPTH).setName('voce');
     this.ring=scene.add.graphics().setName('voce-anel');
     this.label=scene.add.text(0,0,'Você',{fontFamily:token('--f-sistema'),fontSize:'32px',fontStyle:'800',color:token('--c-papel')}).setOrigin(.5,.5).setDepth(MARK_DEPTH+2).setVisible(false);
-    whenFontsReady(()=>this.label.updateText());
+    const {size,stroke,raster}=LOW_NUMBER_CSS;
+    this.lowText=scene.add.text(0,0,'',{fontFamily:token('--f-sistema'),fontSize:`${size*raster}px`,fontStyle:'800',color:token('--c-papel'),stroke:token('--c-breu'),strokeThickness:stroke*raster}).setOrigin(0,.5).setVisible(false);
+    whenFontsReady(()=>{this.label.updateText();this.lowText.updateText();});
   }
 
   setReduced(reduced:boolean){this.reduced=reduced;}
@@ -100,7 +105,8 @@ export class YouMarkers {
   update(now:number,zoom:number,marks:readonly HeroMark[]){
     const g=this.g,s=1/Math.max(.05,zoom),c=this.color;
     g.clear();this.ring.clear();this.art.begin();
-    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;this.last.ride=undefined;
+    this.last.ring=false;this.last.bar=false;this.last.arrow=false;this.last.low=false;this.last.lowMark=false;this.last.covered=[];this.last.contour=false;this.last.sticker=false;this.last.slow=false;this.last.slip=false;this.last.ride=undefined;
+    this.lowText.setVisible(false);
     const live=new Set<string>();
     let selfShown=false;
     for(const mark of marks){
@@ -161,6 +167,15 @@ export class YouMarkers {
           if(fraction>0)g.fillStyle(low?c.cone:c.cartolina,1).fillRect(left+s,top2+s,(bw-2*s)*fraction,bh-2*s);
         }
         this.last.bar=true;this.last.low=low;
+        // Low by shape too (acessibilidade): a cracked heart at the bar's left, the hp number at its right.
+        if(lowMarkOn(true,fraction,mark.downed)){
+          const at=lowMarkLayout(left,top2,bw,bh,s),heart=heartPoints(at.heart.x,at.heart.y,at.heart.width);
+          g.lineStyle(2*HEART_CSS.edge*s,c.breu,1).strokePoints(heart,true).fillStyle(c.cone,1).fillPoints(heart,true);
+          g.lineStyle(HEART_CSS.crack*s,c.breu,1).strokePoints(crackPoints(at.heart.x,at.heart.y,at.heart.width),false);
+          const label=lowHpText(mark.hp);if(this.lowText.text!==label)this.lowText.setText(label);
+          this.lowText.setScale(s/LOW_NUMBER_CSS.raster).setPosition(at.number.x,at.number.y).setDepth(over+.03).setVisible(top.visible);
+          this.last.lowMark=true;
+        }
       }
       if(mark.slow||mark.slip||mark.ride)this.drawStatus(mark,now,s);
       // "Você" arrow over the head: a ficha (Breu body, Papel edge) with a tail pointing down.
@@ -288,5 +303,5 @@ export class YouMarkers {
     return ghost;
   }
   forget(id:string){this.ghosts.get(id)?.destroy();this.ghosts.delete(id);}
-  destroy(){this.art.destroy();this.g.destroy();this.ring.destroy();this.label.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
+  destroy(){this.art.destroy();this.g.destroy();this.ring.destroy();this.label.destroy();this.lowText.destroy();for(const ghost of this.ghosts.values())ghost.destroy();this.ghosts.clear();for(const copy of this.contour)copy.destroy();this.contour.length=0;this.stickerSprite?.destroy();this.stickerSprite=undefined;}
 }

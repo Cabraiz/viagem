@@ -45,25 +45,25 @@ export function seedIndex(seed:string,modulo:number){
 
 export function resultHeadline(result:Pick<RunResult,'victory'|'seed'|'wall'|'objective'>){
   // The chaveiro (D-047): the subtitle is why it ended (aberto, perda total, time caído, timeout).
-  if(result.objective)return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:objectiveBill(result.objective).reason};
+  if(result.objective)return {title:result.victory?'Vitória!':'Derrota…',subtitle:objectiveBill(result.objective).reason};
   // The wall fell (VGM-046B): the subtitle says so, with one of its jokes.
   const lines=result.victory?VICTORY_LINES:result.wall?WALL_DOWN_LINES:DEFEAT_LINES;
-  return {title:result.victory?'VITÓRIA!':'DERROTA…',subtitle:lines[seedIndex(result.seed,lines.length)]};
+  return {title:result.victory?'Vitória!':'Derrota…',subtitle:lines[seedIndex(result.seed,lines.length)]};
 }
 
 /** RunResult plus the room's map (cidade-10, explore.ts runResult): absent on the island and in older callers. */
 export type MapRunResult=RunResult&{map?:MapId};
-/** The stats line's last item: the city by name (its seed is always 0 and says nothing), else "seed N" as before. */
+/** The stats line's last item: the city by name; elsewhere nothing (the seed is debug, revisao-visual §2.6). */
 /**
- * The head's round line: "Round 3/10", "Onda N" with the chaveiro (D-047), or, in the nests mode (D-051, no waves),
+ * The head's round line: "Rodada 3 de 10", "Onda N" with the chaveiro (D-047), or, in the nests mode (D-051, no waves),
  * the nests the team took down ("Ninhos 2/5"); the run's time already has its own line beside it.
  */
 export function resultRoundLine(result:Pick<RunResult,'round'|'totalRounds'|'objective'>,nests?:{down:number;total:number}):string{
   if(nests&&result.objective)return `Ninhos ${nests.down}/${nests.total}`;
-  return result.objective?objectiveBill(result.objective).wave:`Round ${result.round}/${result.totalRounds}`;
+  return result.objective?objectiveBill(result.objective).wave:`Rodada ${result.round} de ${result.totalRounds}`;
 }
 export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
-  return result.map==='cidade-nevada'?'Cidade Nevada':`seed ${result.seed}`;
+  return result.map==='cidade-nevada'?'Cidade Nevada':'';
 }
 
 /**
@@ -435,8 +435,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       round.textContent=resultRoundLine(result,nests);
       bill.hidden=!conta;root.dataset.objetivo=conta?conta.cause:'';
       if(conta){
-        // One ficha ("Orçamento R$ 456 · Grana R$ 372"): in landscape the head is one row and two fichas made it taller.
-        bill.innerHTML=`Orçamento <b></b> · Grana <b></b>${conta.debtVictory?' · falta <b></b>':''}`;
+        // One ficha ("Orçamento R$ 456, grana R$ 372"): in landscape the head is one row and two fichas made it taller.
+        bill.innerHTML=`Orçamento <b></b>, grana <b></b>${conta.debtVictory?', falta <b></b>':''}`;
         const [b1,b2,b3]=bill.querySelectorAll('b');b1.textContent=conta.budget;b2.textContent=conta.grana;if(b3)b3.textContent=conta.debt??'';
         bill.classList.toggle('rh-result-divida',conta.debtVictory);
         bill.setAttribute('aria-label',conta.aria);
@@ -444,7 +444,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       const vaca=conta?vaquinhaLine(result.objective?.share,id=>{const p=result.players.find(q=>q.id===id);return id===ctx.localId?'Você':p?railName(p.name):'Alguém';}):undefined;
       vaquinha.hidden=!vaca;vaquinha.textContent=vaca?.text??'';
       if(vaca)vaquinha.setAttribute('aria-label',vaca.aria);else vaquinha.removeAttribute('aria-label');
-      seed.textContent=resultSeedText(result);
+      seed.textContent=resultSeedText(result);seed.hidden=!seed.textContent;
       const fell=resultCause(ctx.tally.causes,ctx.localId);
       cause.hidden=!fell;
       if(fell){causeText.textContent=fell.text;const src=ctx.critterIcon?.(fell.kind)??'';causeIcon.hidden=!src;if(src)causeIcon.src=src;cause.dataset.kind=fell.kind;}

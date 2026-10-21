@@ -9,8 +9,8 @@ import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
-import { formatRoomCode, inviteCode } from './client/invite.ts';
-import { fitName } from './client/nick.ts';
+import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
+import { fitName } from './client/ui/nick.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -212,7 +212,7 @@ document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
 nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
-// A name longer than the rooms take is cut at a whole word with "…" (client/nick.ts) when the field is left, not mid-word.
+// A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{

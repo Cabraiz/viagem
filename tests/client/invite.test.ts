@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {formatRoomCode,inviteCode,isRoomCode,readRoomCode,shareLink} from '../../src/client/invite.ts';
+import {formatRoomCode,inviteCode,isRoomCode,readRoomCode,shareLink} from '../../src/client/ui/invite.ts';
 import {keyboardUp} from '../../src/client/lobby.ts';
 
 test('formatRoomCode: 4-3-3 groups for a full code, anything else as typed',()=>{

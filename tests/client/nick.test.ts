@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {fitName,NAME_MAX} from '../../src/client/nick.ts';
+import {fitName,NAME_MAX} from '../../src/client/ui/nick.ts';
 
 test('fitName: the last whole word that fits, with an ellipsis',()=>{
   assert.equal(fitName('Concurseira Eterna da Silva'),'Concurseira Eterna…');

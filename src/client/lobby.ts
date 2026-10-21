@@ -5,8 +5,8 @@ import { icon } from './ui/icon.ts';
 import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
-import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './invite.ts';
-import {fitName,NAME_MAX} from './nick.ts';
+import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
+import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
@@ -57,7 +57,7 @@ export function countdownJoke(seconds:number){
   return 'Bora!';
 }
 
-/** Invite link and the grouped code (invite.ts, NEW-20261009-UX-lobby-mobile). */
+/** Invite link and the grouped code (ui/invite.ts, NEW-20261009-UX-lobby-mobile). */
 export {shareLink,formatRoomCode,readRoomCode};
 
 /** `bot`: a room bot; `owner`: the dono da sala (D-025). */
@@ -471,7 +471,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   const status=dialog.querySelector<HTMLElement>('.coop-status')!;
   const nickInput=dialog.querySelector<HTMLInputElement>('#coop-nick')!;
   nickInput.value=fitName(name);
-  // A long name pasted or typed: cut at a whole word with "…" (nick.ts) as soon as the field is left, so it shows what the room will.
+  // A long name pasted or typed: cut at a whole word with "…" (ui/nick.ts) as soon as the field is left, so it shows what the room will.
   nickInput.addEventListener('change',()=>{nickInput.value=fitName(nickInput.value);});
   dialog.querySelector('.coop-nick-roll')!.addEventListener('click',()=>{nickInput.value=suggestNickname(Math.random,nickInput.value);});
   const actionButtons=()=>dialog.querySelectorAll<HTMLButtonElement>('button:not(.coop-close):not(.coop-nick-roll)');

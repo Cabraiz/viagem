@@ -7,6 +7,16 @@
 
 /** Pixels a frame may upload: one big sheet (a 2136×1424 death sheet is 3 MP) or a few dozen small icons. */
 export const UPLOAD_BUDGET_PX=1_000_000;
+/**
+ * Q4 (NEW-20261021-ORQ-q4-preaquecer-contagem): out of combat (the waiting room, the 3-2-1) nobody walks or fights, so a
+ * frame may upload this much: the city's art around the spawn and the teammates' sheets drain before the first step
+ * instead of falling into its frames. The scene switches it by the run's phase (setUploadBudget).
+ */
+export const WARMUP_BUDGET_PX=4_000_000;
+let budget=UPLOAD_BUDGET_PX;
+/** The page queue's per-frame budget (UPLOAD_BUDGET_PX in combat, WARMUP_BUDGET_PX before it). */
+export function setUploadBudget(px:number){budget=Number.isFinite(px)&&px>0?px:UPLOAD_BUDGET_PX;}
+export const uploadBudget=()=>budget;
 
 /**
  * Uploads waiting for a frame, in arrival order. `tick` runs them until the frame's budget is spent; the first one always
@@ -72,7 +82,7 @@ export function installUploadQueue(Phaser:PhaserLike,win:{createImageBitmap?:typ
   installed=true;
   const proto=Phaser.Loader.FileTypes.ImageFile.prototype,original=proto.onProcess,PROCESSING=Phaser.Loader.FILE_PROCESSING;
   let scheduled=false;
-  const frame=()=>{scheduled=false;uploads.tick();if(uploads.size)schedule();};
+  const frame=()=>{scheduled=false;uploads.tick(budget);if(uploads.size)schedule();};
   const schedule=()=>{
     if(win.document.hidden){uploads.flush();return;}
     if(!scheduled){scheduled=true;win.requestAnimationFrame(frame);}

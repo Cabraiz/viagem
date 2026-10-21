@@ -274,3 +274,22 @@ test('a figure off camera asks for no legacy sheet: it holds its pose; on camera
   sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
   assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
 });
+
+test('Q4: a pinned clip (the own walk) is loaded at once, never evicted, outside the eight; unpinned it is an LRU entry again',async()=>{
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,disposed:string[]=[],loaded:string[]=[];
+  const cache=new Movement128Textures(async plan=>{loaded.push(plan.key);return {dispose:()=>{disposed.push(plan.key);}};});
+  const own=Array.from({length:8},(_,i)=>({...first,key:'own:'+i}));
+  for(const plan of own)cache.pin(plan);
+  await flush();await flush();await flush();await flush();
+  assert.deepEqual(loaded.sort(),own.map(p=>p.key).sort(),'decoded without an owner');
+  // Ten other heroes' clips come and go: the eight unleased ones are the others', the own walk stays.
+  for(let i=0;i<10;i++){const owner={},plan={...first,key:'other:'+i};cache.request(owner,plan);await flush();cache.bind(owner,plan.key);cache.release(owner);}
+  assert.equal(cache.stats().ready,16);assert.equal(cache.stats().pinned,8);
+  assert.ok(!disposed.some(k=>k.startsWith('own:')),'no own walk evicted');
+  assert.equal(disposed.length,2);
+  // Adopted by the hero's sprite: no new load.
+  const hero={};assert.equal(cache.request(hero,own[3]),true);cache.release(hero);
+  cache.clearUnused();assert.ok(!disposed.some(k=>k.startsWith('own:')),'clearUnused keeps the pins');
+  for(const plan of own)cache.unpin(plan.key);
+  cache.clearUnused();assert.equal(cache.stats().ready,0);
+});

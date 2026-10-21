@@ -44,3 +44,18 @@ test('the loader patch decodes off the main thread and completes from the queue,
   assert.equal(uploads.size,0);assert.equal(frames.length,0);
   assert.equal(installUploadQueue({Loader:{FileTypes:{ImageFile},FILE_PROCESSING:3}} as never,win),false); // once
 });
+
+test('Q4: out of combat the frame budget is the warm-up one; in combat one big sheet a frame', async () => {
+  const {WARMUP_BUDGET_PX,setUploadBudget,uploadBudget}=await import('../../src/client/preload/upload-queue.ts');
+  const {warmBudget}=await import('../../src/client/preload/warm-up.ts');
+  assert.equal(warmBudget('combat'),UPLOAD_BUDGET_PX);
+  for(const phase of ['lobby','countdown','result',undefined])assert.equal(warmBudget(phase),WARMUP_BUDGET_PX,String(phase));
+  assert.ok(WARMUP_BUDGET_PX>=3*UPLOAD_BUDGET_PX);
+  setUploadBudget(WARMUP_BUDGET_PX);assert.equal(uploadBudget(),WARMUP_BUDGET_PX);
+  setUploadBudget(Number.NaN);assert.equal(uploadBudget(),UPLOAD_BUDGET_PX,'a bad value falls back to the combat budget');
+  // Three walk clips (1536×768 each) in one warm-up frame, one in a combat frame.
+  const q=new UploadQueue();for(let i=0;i<3;i++)q.push(1536*768,()=>{});
+  assert.equal(q.tick(WARMUP_BUDGET_PX),3);
+  for(let i=0;i<3;i++)q.push(1536*768,()=>{});
+  assert.equal(q.tick(UPLOAD_BUDGET_PX),1);
+});

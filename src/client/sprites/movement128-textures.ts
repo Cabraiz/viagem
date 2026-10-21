@@ -11,6 +11,12 @@ interface Entry {plan:Movement128Plan;state:'queued'|'loading'|'ready'|'failed';
 /** Shared soft LRU: a texture in use by a visible sprite is never evicted. At most two decodes are in flight. */
 export class Movement128Textures<T extends Owner=Owner> {
   private entries=new Map<string,Entry>();
+  /**
+   * Q4 (NEW-20261021-ORQ-q4-preaquecer-contagem): keys kept loaded for the scene's life, outside the LRU's count: the own
+   * hero's 8 walks. Shared with the other heroes' clips they were evicted between laps and fetched and uploaded again
+   * (a 1536×768 upload each, 15–20 of them in 40 s on the 4× phone, estudo 21/10).
+   */
+  private pinned=new Set<string>();
   private wanted=new Map<T,string>();
   private leases=new Map<T,string>();
   private tracked=new WeakSet<T>();
@@ -32,6 +38,14 @@ export class Movement128Textures<T extends Owner=Owner> {
     this.pump();return entry.state==='ready';
   }
   status(key:string){return this.entries.get(key)?.state;}
+  /** Keeps `plan` loaded (decoding it now if it is not), never evicted and not counted against `limit`. */
+  pin(plan:Movement128Plan){
+    this.pinned.add(plan.key);
+    if(!this.entries.has(plan.key)){const loaded=this.available?.(plan);this.entries.set(plan.key,{plan,state:loaded?'ready':'queued',used:++this.serial,...(loaded?{loaded}:{})});}
+    this.pump();
+  }
+  /** The pin goes; the key is an ordinary LRU entry again. */
+  unpin(key:string){this.pinned.delete(key);this.trim();}
   /** Bind only AFTER the sprite has switched: its old texture stays leased until it is no longer displayed. */
   bind(owner:T,key:string){
     if(this.entries.get(key)?.state!=='ready')return;
@@ -46,32 +60,32 @@ export class Movement128Textures<T extends Owner=Owner> {
     this.trim();this.pump();
   }
   clearUnused(){
-    const wanted=new Set(this.wanted.values()),held=new Set(this.leases.values());
+    const wanted=new Set([...this.wanted.values(),...this.pinned]),held=new Set(this.leases.values());
     for(const [key,e] of this.entries)if(e.state==='ready'&&!wanted.has(key)&&!held.has(key)){e.loaded?.dispose();this.entries.delete(key);}
   }
   stats(){
     const entries=[...this.entries.values()];
     return {ready:entries.filter(e=>e.state==='ready').length,loading:this.loading,queued:entries.filter(e=>e.state==='queued').length,
       leasedTextures:new Set(this.leases.values()).size,owners:this.leases.size,limit:this.limit,
-      keys:entries.filter(e=>e.state==='ready').map(e=>e.plan.key)};
+      keys:entries.filter(e=>e.state==='ready').map(e=>e.plan.key),pinned:this.pinned.size};
   }
   private trim(){
-    const wanted=new Set(this.wanted.values()),held=new Set(this.leases.values());
+    const wanted=new Set([...this.wanted.values(),...this.pinned]),held=new Set(this.leases.values());
     for(const [key,e] of this.entries)if(e.state==='queued'&&!wanted.has(key))this.entries.delete(key);
-    const ready=[...this.entries.values()].filter(e=>e.state==='ready');let count=ready.length;
+    const ready=[...this.entries.values()].filter(e=>e.state==='ready'&&!this.pinned.has(e.plan.key));let count=ready.length;
     // Keep the just-loaded requested page until the next animate binds it. This can briefly exceed the target.
     const candidates=ready.filter(e=>!held.has(e.plan.key)&&!wanted.has(e.plan.key)).sort((a,b)=>a.used-b.used);
     for(const e of candidates){if(count<=this.limit)break;e.loaded?.dispose();this.entries.delete(e.plan.key);count--;}
   }
   private pump(){
     this.trim();if(this.loading>=this.parallel)return;
-    const wanted=new Set(this.wanted.values());
+    const wanted=new Set([...this.wanted.values(),...this.pinned]);
     const next=[...this.entries.values()].filter(e=>e.state==='queued'&&wanted.has(e.plan.key)).sort((a,b)=>b.used-a.used);
     for(const e of next){
       if(this.loading>=this.parallel)break;
       e.state='loading';this.loading++;
       void Promise.resolve().then(()=>this.load(e.plan)).then(loaded=>{
-        if(![...this.wanted.values()].includes(e.plan.key)&&![...this.leases.values()].includes(e.plan.key)){
+        if(!this.pinned.has(e.plan.key)&&![...this.wanted.values()].includes(e.plan.key)&&![...this.leases.values()].includes(e.plan.key)){
           loaded.dispose();this.entries.delete(e.plan.key);
         }else{e.loaded=loaded;e.state='ready';}
       }).catch(()=>{e.state='failed';}).finally(()=>{this.loading--;this.trim();this.pump();});

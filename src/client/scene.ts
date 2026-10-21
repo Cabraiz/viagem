@@ -4,6 +4,7 @@ import {propChunks} from './terrain/tiles.ts';
 import {CityTerrain,TerrainField,randomSeed} from '../maps/index.ts';
 import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
+import {startWarmUp} from './preload/warm-up.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
@@ -396,6 +397,16 @@ export class IslandScene extends Phaser.Scene {
     if(!this.load.isLoading())this.load.start();
   }
   private iconsAsked=new Set<string>();
+  /**
+   * Q4 (NEW-20261021-ORQ-q4-preaquecer-contagem, preload/warm-up.ts): the own hero's 8 walks stay loaded for the scene's
+   * life (preloaded above, pinned out of the shared clip LRU), and out of combat the upload queue takes a bigger share
+   * of each frame so the art around the spawn is on the GPU before the first step.
+   */
+  private warmUp(){
+    // Offline (the island, no room): always the combat budget.
+    const stop=startWarmUp(this,this.hooks.classId,()=>this.hooks.net?this.hooks.net.run?.phase??'lobby':'combat');
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN,stop);
+  }
   create(){
     // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): Phaser's logic step and its render, charged to each frame.
     if(perf.on){
@@ -407,6 +418,7 @@ export class IslandScene extends Phaser.Scene {
       this.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{game.off(ev.PRE_STEP,step);game.off(ev.PRE_RENDER,logic);game.off(ev.POST_RENDER,render);});
     }
     this.standIn();
+    this.warmUp();
     // Reduced motion: the camera still follows, without the sway of the look-ahead.
     this.follow.lookAhead=!this.reduced;
     // Tree sheets come in as the hero walks (endless world) or after a map switch (island): a sketch turns into its sheet.

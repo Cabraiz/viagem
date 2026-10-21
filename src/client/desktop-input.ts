@@ -121,6 +121,12 @@ export const HOLD_MIN_MOVE=.3;
 export const MARKER_MS=600;
 
 /**
+ * A button that works the map (NEW-20261021-ORQ-botao-direito-ataca): the left one (or a finger, Phaser's primaryDown)
+ * and the right one do the same, on an enemy the priority target, on the ground the walk and the hold. The middle does nothing.
+ */
+export function mapButtonDown(pointer:{primaryDown:boolean;rightButtonDown():boolean}):boolean{return pointer.primaryDown||pointer.rightButtonDown();}
+
+/**
  * Warcraft 3 hold: press on the ground starts it (the click's own walk is the first target); while the button stays down,
  * move() hands back a new target no more often than HOLD_RETARGET_MS and only past HOLD_MIN_MOVE of change; release()
  * ends it and hands back the last target (where the release marker goes).

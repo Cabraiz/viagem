@@ -1,6 +1,6 @@
 /**
  * Muralha de tralha (NEW-20261021-ORQ-muralha-tralha-no-jogo): the E3's 10 straight junk pieces and 3 pillars
- * (arte-entrada/cenario/base/muralha-tralha/, card muralha-tralha-arte) → two base sheets the free barricade squares
+ * (arte-entrada/cenario/base/muralha-tralha-alta/, card muralha-mais-alta: 1.5× the first ones' height) → two base sheets the free barricade squares
  * draw (render/muralha-rules.ts):
  *   public/art/city/base/muralha-tralha.webp        reto-01..10
  *   public/art/city/base/muralha-tralha-pilar.webp  pilar-1..3
@@ -24,14 +24,18 @@ const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
 
 /** Damage rows, best first (base-art.ts names; a fallen square is removed, so no 'quebrada'). */
 export const DAMAGE=['inteira','avariada','quase-caindo'];
-/** Template geometry (molde.py): one cell is 700 px across along the wall; the box's ground centre in the 1536×1024 frame. */
+/**
+ * Template geometry (muralha-tralha-alta/molde.py, card muralha-mais-alta: the wall 1.5× the first one's height): one cell
+ * is 700 px across along the wall (`source`; the pillar template is scaled by 0.85 to fit the frame, so its cell is 595);
+ * the box's ground centre in the 1536×1024 frame.
+ */
 export const SOURCE_CELL=700;
 export const KINDS={
-  reto:{ids:Array.from({length:10},(_,i)=>`reto-${String(i+1).padStart(2,'0')}`),center:[768,694],
-    // Window around the centre (covers every piece's drift: reto-08 reaches 624 up), wall height on screen, ground slope.
-    window:{left:450,up:630,down:230},cell:[164,157],height:380,slope:.5,lift:45,piece:'muralha-tralha',columns:8},
-  pilar:{ids:['pilar-1','pilar-2','pilar-3'],center:[768,792],
-    window:{left:330,up:780,down:175},cell:[120,174],height:600,slope:0,lift:60,piece:'muralha-tralha-pilar',columns:6},
+  reto:{ids:Array.from({length:10},(_,i)=>`reto-${String(i+1).padStart(2,'0')}`),center:[768,785],source:SOURCE_CELL,
+    // Window around the centre (the box's top is 767 up), wall height on screen, ground slope.
+    window:{left:450,up:780,down:235},cell:[164,185],height:570,slope:.5,lift:45,piece:'muralha-tralha',columns:8},
+  pilar:{ids:['pilar-1','pilar-2','pilar-3'],center:[768,869],source:SOURCE_CELL*.85,
+    window:{left:290,up:860,down:155},cell:[124,217],height:765,slope:0,lift:51,piece:'muralha-tralha-pilar',columns:6},
 };
 /** Share of the full height kept, the bites taken off the top and the darkening, per damage state. */
 const BITES={inteira:{keep:1,bites:0,depth:0,jag:0,shade:1},avariada:{keep:.8,bites:2,depth:.3,jag:.035,shade:.86},'quase-caindo':{keep:.52,bites:3,depth:.2,jag:.05,shade:.72}};
@@ -98,14 +102,14 @@ export function dropFloating(data,width,height,base=24){
 /** Row names of a sheet: `<piece>:<state>`, pieces in order, states in DAMAGE order. */
 export const sheetRows=ids=>ids.flatMap(id=>DAMAGE.map(s=>`${id}:${s}`));
 /** Art px across one build cell along the wall in the sheet (the cell scaled with the window). */
-export const celulaOf=kind=>SOURCE_CELL*kind.cell[0]/(2*kind.window.left);
+export const celulaOf=kind=>(kind.source??SOURCE_CELL)*kind.cell[0]/(2*kind.window.left);
 
 async function main(){
   const require=createRequire(join(ROOT,'package.json')),sharp=require('sharp');
   const {GROUPS}=await import(pathToFileURL(join(ROOT,'scripts/art-v2/spec.mjs')).href);
   const {writeIndex}=await import(pathToFileURL(join(ROOT,'scripts/art-v2/convert.mjs')).href);
   const args=process.argv.slice(2),srcAt=args.indexOf('--src');
-  const SRC=srcAt>=0?args[srcAt+1]:'D:/Gits/viagem-board/arte-entrada/cenario/base/muralha-tralha';
+  const SRC=srcAt>=0?args[srcAt+1]:'D:/Gits/viagem-board/arte-entrada/cenario/base/muralha-tralha-alta';
   const spec=GROUPS.base,dir=join(ROOT,spec.output),manifestFile=join(dir,'manifest.json');
   const manifest=JSON.parse(readFileSync(manifestFile,'utf8'));
   for(const [name,kind] of Object.entries(KINDS)){
@@ -134,7 +138,7 @@ async function main(){
       pages:[{file,columns:cols,rows,firstFrame:0,frameCount:frames.length,sha256:hash}],sha256:hash};
     manifest.pieces[kind.piece]={kind:'views',files:{sheet:entry},sha256:sha256(`sheet ${hash}`),
       meta:{pecas:kind.ids,estados:DAMAGE,celula:+celulaOf(kind).toFixed(4),
-        origem:`arte-entrada/cenario/base/muralha-tralha (${name}, E3, card muralha-tralha-arte); dano assado por scripts/import-muralha-tralha.mjs`}};
+        origem:`arte-entrada/cenario/base/muralha-tralha-alta (${name}, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs`}};
     console.error(`${kind.piece}: ${frames.length} frames ${cw}×${ch}, ${cols}×${rows}, ${Math.round(webp.length/1024)} KB`);
   }
   manifest.pieces=Object.fromEntries(Object.keys(manifest.pieces).sort().map(k=>[k,manifest.pieces[k]]));

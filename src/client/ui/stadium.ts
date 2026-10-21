@@ -70,9 +70,9 @@ export interface StadiumCutout {
   fundo?:string;
 }
 export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
-  'viciado-em-bet':{x:955,y:21,w:788,h:1053,files:[[525,'/art/menu/heroi/viciado-em-bet-525.webp'],[788,'/art/menu/heroi/viciado-em-bet-788.webp']]},
+  'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp']]},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
-  'clt-cansado':{x:793,y:74,w:633,h:863,files:[[422,'/art/menu/heroi/clt-cansado-422.webp'],[633,'/art/menu/heroi/clt-cansado-633.webp']],
+  'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp']],
     fundo:'/art/lite/menu/fundo-clt-cansado.webp'},
 });
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
@@ -86,18 +86,26 @@ export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<Stad
   const f=art.focal??{x:0,y:0,w:art.w,h:art.h},k=f.w/WHOLE.w;
   return {x:ox+(f.x+cut.x*k)*s,y:oy+(f.y+cut.y*k)*s,w:cut.w*k*s,h:cut.h*k*s};
 }
-/** The margin the whole hero keeps from the stage's edges (px): 2% of its height, at least 8. */
+/** The margin a hero's head gets from the stage's top (px) when it would leave the screen: 2% of its height, at least 8. */
 export const cutoutMargin=(h:number)=>Math.max(8,h*.02);
 /**
- * The whole hero on screen (NEW-20261021-ORQ-menu-1080-720-menino-inteiro): `cover` cuts the picture's top on a window
- * wider than 16:9 (1920x950, a browser's bar) and puts his sneaker on the bottom edge at 1080p, so the cutout scales down
- * (contain) to the stage's height minus the margins, his feet where the picture has them (or lifted to the margin) and
- * his middle where it was; never bigger than `cover` made him.
+ * The whole hero on screen, standing on the picture's floor (menu-1080-720-menino-inteiro, then menu-pes-nitidez): his
+ * soles stay exactly where the background's framing (frameArt, via placeCutout) puts them, never lifted (a bottom margin
+ * left him floating over the bar, the user's 1590x903 print). Only when his head would leave the top (a window wider
+ * than the bleed) he shrinks around his feet down to the margin, his middle where it was, kept inside the box's width.
  */
 export function fitCutout(box:{w:number;h:number},spot:{x:number;y:number;w:number;h:number}){
-  const m=cutoutMargin(box.h),k=Math.min(1,(box.h-2*m)/spot.h,(box.w-2*m)/spot.w);
+  const feet=Math.min(spot.y+spot.h,box.h),top=spot.y>=0?spot.y:cutoutMargin(box.h);
+  const k=Math.min(1,(feet-top)/spot.h,box.w/spot.w);
   const w=spot.w*k,h=spot.h*k;
-  const y=Math.max(m,Math.min(spot.y+spot.h,box.h-m)-h);
-  const x=Math.min(Math.max(m,spot.x+(spot.w-w)/2),box.w-m-w);
-  return {x,y,w,h};
+  const x=Math.min(Math.max(0,spot.x+(spot.w-w)/2),box.w-w);
+  return {x,y:k<1?feet-h:spot.y-Math.max(0,spot.y+spot.h-box.h),w,h};
+}
+/**
+ * The cutout's file for a hero shown `shownW` CSS px wide on a `dpr` screen: the smallest one with at least as many
+ * pixels as the screen shows (never stretched above 1x when one is big enough), else the biggest.
+ */
+export function cutoutFile(cut:Pick<StadiumCutout,'files'>,shownW:number,dpr:number):string{
+  const need=shownW*(dpr>0?dpr:1),files=[...cut.files].sort(([a],[b])=>a-b);
+  return (files.find(([w])=>w>=need-.5)??files[files.length-1])[1];
 }

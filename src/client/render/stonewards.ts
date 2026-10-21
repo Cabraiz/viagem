@@ -27,6 +27,7 @@ import {LIT_SHADOW,lightEnabled} from './light.ts';
 import {objectiveOf} from './chaveiro/view.ts';
 import {TriBand} from './city/tri-band.ts';
 import {INTERATIVO_COR} from '../hud/tralha/model.ts';
+import {MuralhaLayer} from './muralha.ts';
 import {towerArtScale} from './towers/tower-rules.ts';
 
 const LIGHT=lightEnabled();
@@ -83,6 +84,8 @@ export class StonewardsRenderer {
   private piles=new Map<string,TriBand>();private pileKeys=new Map<string,string>();
   /** Imported base art: by structure id (wall, barricades) or `node:<id>` (crates); created only when the art exists. */
   private images=new Map<string,Phaser.GameObjects.Image>();
+  /** muralha-tralha-no-jogo: the junk wall the free barricade squares wear (render/muralha.ts), when its sheets are loaded. */
+  private muralha:MuralhaLayer;
   /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -105,6 +108,7 @@ export class StonewardsRenderer {
     this.scene=scene;this.options=options;
     this.ground=scene.add.graphics().setDepth(-9980).setName('base-chao');
     this.wall=scene.add.graphics().setName('base-muralha');
+    this.muralha=new MuralhaLayer(scene,options.projector);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.lilas=tokenColor('--c-lilas');
     c.cartolina=tokenColor('--c-cartolina');c.cone=tokenColor('--c-cone');
@@ -138,6 +142,8 @@ export class StonewardsRenderer {
     for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
     const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
     prune(this.towers,of('tower'));prune(this.barricades,of('barricade'));prune(this.piles,of('barricade'));
+    this.muralha.prune(of('barricade'));
+    this.muralha.setSquares(this.structures.filter(s=>structureRole(s.kind)==='barricade'&&isFreeBarricade(s)));
     for(const id of [...this.pileKeys.keys()])if(!this.piles.has(id))this.pileKeys.delete(id);
     prune(this.images,new Set([...this.lastHp.keys(),...[...this.marks.keys()].map(id=>`node:${id}`)]));
   }
@@ -166,6 +172,7 @@ export class StonewardsRenderer {
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
     for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
+    this.muralha.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
   }
@@ -310,7 +317,10 @@ export class StonewardsRenderer {
     const span=isFreeBarricade(s)?freeBarricadeSpan(s,CITY_BUILD_CELL):barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
     const p=this.project(s.x,s.y),x=p.x,y=p.y;
     g.setDepth(depth);
-    const img=this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);
+    // A free square wears the junk wall (muralha.ts) once its sheets are loaded; [] when down. Otherwise today's art.
+    const junk=isFreeBarricade(s)?this.muralha.draw(s,depth-BAR_OVER_ART):undefined;
+    if(junk)this.images.get(s.id)?.setVisible(false);
+    const img=junk?undefined:this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);
     const pile=this.piles.get(s.id);
     // barricada-construir: the car too close (StructureView untilTick on a free barricade): a red glow, pulsing faster
     // as the 6 s run out, then the room destroys it.
@@ -326,7 +336,10 @@ export class StonewardsRenderer {
         .map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
       g.lineStyle(5*k,this.c.breu,.6).strokePoints(pts,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(pts,true);
     }
-    if(img){
+    if(junk){
+      for(const i of junk){if(flash)i.setTintFill(this.c.claro);else if(alert)i.setTint(ALERT_RED);else i.clearTint();}
+      pile?.setVisible(false);
+    }else if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
       if(flash)img.setTintFill(this.c.claro);else if(alert)img.setTint(ALERT_RED);else img.clearTint();
       pile?.setVisible(false);

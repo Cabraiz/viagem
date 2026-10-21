@@ -131,22 +131,50 @@ const at=f=>pathToFileURL(process.cwd()+'/scripts/art-v2/'+f).href;
 const {writeIndex}=await import(at('convert.mjs')),{GROUPS}=await import(at('spec.mjs'));
 await writeIndex(GROUPS,{outRoot:process.cwd()});`;
 /**
- * A merge stopped with a conflict only in INDEX_FILE: the index is written again from the group manifests on disk
- * (the merge already joined them) with the importer's writeIndex, `node scripts/art-lite.mjs --check` must pass (every
- * lite copy and liteCell matches), and the merge is committed. {ok:false, why} leaves the merge for the caller to abort.
+ * art-lite's own record (NEW-20261020-ORQ-fila-art-lite-auto) and its copies: both made by `node scripts/art-lite.mjs`
+ * from the approved sheets, so a conflict in them is not real either (torres-entregues went back twice over it, 20/10).
  */
-export function resolveIndexConflict(dir){
+export const LITE_FILE='scripts/art-lite.json';
+const LITE_COPY=/^public\/art\/lite\//;
+/** Files the queue makes again instead of sending a branch back: the index, art-lite.json and the lite copies. */
+export const isGeneratedArt=(f)=>f===INDEX_FILE||f===LITE_FILE||LITE_COPY.test(f);
+/**
+ * A merge stopped with conflicts only in generated art (isGeneratedArt): art-lite.json gets both sides' entries (an
+ * entry whose source or copy differs is remade below, art-lite compares hashes), a conflicted copy takes the incoming
+ * side, the index is written again from the group manifests on disk (the merge already joined them) with the
+ * importer's writeIndex, `node scripts/art-lite.mjs` remakes what changed (only when art-lite's files are in the
+ * conflict), `--check` must pass (every lite copy and liteCell matches), and the merge is committed.
+ * {ok:false, why} leaves the merge for the caller to abort.
+ */
+export function resolveIndexConflict(dir,files=[INDEX_FILE]){
   const node=(args)=>spawnSync(process.execPath,args,{cwd:dir,encoding:'utf8',maxBuffer:64<<20});
   // The error's own line when there is one (a stack's last lines say nothing), else the end of the output.
   const tail=(r)=>{const lines=`${r.stderr??''}${r.stdout??''}`.trim().split(/\r?\n/).filter(l=>l.trim());
     return (lines.find(l=>/\b\w*Error\b/.test(l))??lines.slice(-2).join(' / ')).trim().slice(0,400);};
+  const label=files.length>2?`${files.slice(0,2).join(', ')}, …`:files.join(', ');
+  const lite=files.some(f=>f!==INDEX_FILE);
+  if(files.includes(LITE_FILE)){
+    const side=(n)=>{const r=tryGit(dir,'show',`:${n}:${LITE_FILE}`);return r.ok?JSON.parse(r.out):{};};
+    let ours,theirs;
+    try{ours=side(2);theirs=side(3);}catch(e){return {ok:false,why:`${LITE_FILE}: um dos lados não é JSON (${e.message.slice(0,200)})`};}
+    const joined={...ours,...theirs,files:{...ours.files,...theirs.files},enemyFigures:{...ours.enemyFigures,...theirs.enemyFigures}};
+    writeFileSync(join(dir,LITE_FILE),JSON.stringify(joined,null,1)+'\n');
+  }
+  // A copy deleted on one side has no --theirs: then --ours, else it goes (art-lite makes it again if it is needed).
+  for(const f of files.filter(f=>LITE_COPY.test(f)))
+    if(!tryGit(dir,'checkout','--theirs','--',f).ok&&!tryGit(dir,'checkout','--ours','--',f).ok)tryGit(dir,'rm','-q','--',f);
   const regen=node(['--input-type=module','-e',REGEN_INDEX]);
   if(regen.status!==0)return {ok:false,why:`${INDEX_FILE}: writeIndex falhou (${tail(regen)})`};
+  if(lite){
+    const made=node(['scripts/art-lite.mjs']);
+    if(made.status!==0)return {ok:false,why:`${label}: art-lite falhou ao regerar (${tail(made)})`};
+  }
   const check=node(['scripts/art-lite.mjs','--check']);
-  if(check.status!==0)return {ok:false,why:`${INDEX_FILE} regerado, mas art-lite --check falhou (${tail(check)})`};
-  const add=tryGit(dir,'add','--',INDEX_FILE);
+  if(check.status!==0)return {ok:false,why:`${label} regerado, mas art-lite --check falhou (${tail(check)})`};
+  // What art-lite remade besides the conflicted files (a copy, a liteCell in the index) goes in the same merge commit.
+  const add=lite?tryGit(dir,'add','-A','--','public/art',LITE_FILE):tryGit(dir,'add','--',INDEX_FILE);
   const commit=add.ok?tryGit(dir,'commit','-q','--no-edit'):add;
-  return commit.ok?{ok:true}:{ok:false,why:`${INDEX_FILE}: commit do merge falhou (${commit.err.slice(0,200)})`};
+  return commit.ok?{ok:true}:{ok:false,why:`${label}: commit do merge falhou (${commit.err.slice(0,200)})`};
 }
 
 // ---------- worktrees (the shared node_modules are junctions: always removed before the worktree, see ESCALA.md) ----------
@@ -324,9 +352,9 @@ function lote(opt){
         const r=tryGit(dir,'merge','--no-ff','--no-edit','-m',`fila ${id}: ${e.card}`,e.sha);
         if(!r.ok){
           const files=tryGit(dir,'diff','--name-only','--diff-filter=U').out.split('\n').filter(Boolean);
-          // Only the art index in conflict (it did in almost every lote): regenerated from the group manifests, checked.
-          const index=files.length===1&&files[0]===INDEX_FILE?resolveIndexConflict(dir):undefined;
-          if(index?.ok){log(`${e.card}: conflito só em ${INDEX_FILE}, regerado (writeIndex + art-lite --check)`);merged.push({e,index:true});continue;}
+          // Only generated art in conflict (the index did in almost every lote, art-lite.json with it): made again, checked.
+          const index=files.length&&files.every(isGeneratedArt)?resolveIndexConflict(dir,files):undefined;
+          if(index?.ok){log(`${e.card}: conflito só em arte gerada (${files.join(', ')}), regerado (writeIndex + art-lite + --check)`);merged.push({e,index:true});continue;}
           tryGit(dir,'merge','--abort');merged.push({e,conflict:files,...(index?{nota:index.why}:{})});continue;
         }
         merged.push({e});

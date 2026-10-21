@@ -93,6 +93,7 @@ import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
 import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
+import {heldHand} from '../sprites/hand-points.ts';
 import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './arsenal-view.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {queueBaseArt} from '../art/base-art.ts';
@@ -227,6 +228,8 @@ class CitySandbox extends Phaser.Scene {
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
+  /** The hero's swings so far (window.__cidade.golpe(): one more plays the attack clip; card arma-na-mao-viciado proofs). */
+  private swings=0;
   private camera=new FollowCamera();
   private view=Math.max(0,Math.min(3,Number(params.get('view'))|0));
   private at={x:0,y:0};
@@ -337,7 +340,7 @@ class CitySandbox extends Phaser.Scene {
   update(_t:number,dt:number){
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view);
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
@@ -513,6 +516,7 @@ class CitySandbox extends Phaser.Scene {
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
       ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF,
+        hand:(id:string)=>heldHand(this.sprites,id===SANDBOX_SELF?this.hero:id===SANDBOX_ALLY?this.ally:undefined),
         aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
@@ -711,7 +715,7 @@ class CitySandbox extends Phaser.Scene {
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   /**

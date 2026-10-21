@@ -50,3 +50,18 @@ O importador valida as 15 folhas antes de gravar e então:
 - `walk8.mjs` e `sheet.mjs`: geram a folha das 8 direções no sandbox da cidade.
 
 O falso **não** vai para o manifest real.
+
+## Arma na mão
+
+Card NEW-20261021-ORQ-arma-na-mao-viciado (21/10). Por enquanto só o viciado.
+
+No combate manual, a arma da mão vai para a mão do quadro que o herói mostra. Antes ela ficava ao lado do quadril.
+
+- **A mão:** `scripts/hand-points.mjs --ids <id>` mede, fora do jogo, a mão em cada pose M16 (16 de andar, 16 de ataque, 8 de repouso, nas 5 direções desenhadas) e grava `src/client/sprites/hand-points-data.ts`. Com `--sheet <pasta>`, salva também uma folha por clipe com um círculo na mão.
+  - É a mão que soca no ataque daquela direção: a da esquerda da tela no S, a da direita no N e a do lado para onde ele olha no W, NW e SE.
+  - Uma pose que a regra erra é corrigida à mão em `OVERRIDES`. No viciado W, a mão da arma é a de trás: some atrás do corpo nos quadros 1–3 e 8 do andar e no repouso. Nesses quadros a arma vai para trás do corpo.
+- **O espelho:** E, NE e SW usam a pose do par espelhada, então a arma troca de mão junto com o desenho.
+- **Na frente ou atrás:** a arma fica atrás do corpo nas vistas de costas (N, NW, NE) e nas poses marcadas; nas outras, na frente.
+- **Como segura:** cada adesivo tem cabo e ângulo do cano (`WEAPON_HOLD` em `hand-points.ts`). O cabo vai na mão e o cano aponta para onde o herói olha (`AIM_ANGLE`). Mirando para a esquerda, a arma é virada de cabeça para baixo para continuar em pé. O maçarico é carregado em pé e só espelha.
+- **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, a R06, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo.
+- **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.

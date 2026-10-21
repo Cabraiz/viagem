@@ -25,9 +25,12 @@ export const SPRITE_CLIPS={
 export const WALK_STRIDE=.68;
 /**
  * Share of the stride the cycle keeps up with (1 = the foot locked to the ground). Under 1 the cycle plays slower than
- * the ground goes by (the drawn walk at the 2× hero speed is a sprint; see the card). Mutable for the sandbox's proofs.
+ * the ground goes by. The hero covers ~5.7 heights a second across the screen, a sprint for a walk drawn at 0.68 heights
+ * a cycle: locked, that is ~8 cycles a second, too fast for the user (NEW-20261021-ORQ-passo-3x-mais-lento). The hero's
+ * speed stays, so the walk plays at half (~4 cycles/s) and the foot slides back half the ground, until a run with a
+ * longer drawn stride brings the lock back to 1. Mutable for the sandbox's proofs.
  */
-export const WALK_TUNE={lock:1};
+export const WALK_TUNE={lock:.5};
 /** Walk cycles a step of (dx, dy) world units adds, for a figure drawn `figurePx` world px tall; 0 on a teleport. */
 export function walkCycles(dx:number,dy:number,view:number,figurePx:number){
   const step=Math.hypot(dx,dy);

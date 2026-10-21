@@ -10,7 +10,7 @@ import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -368,13 +368,15 @@ export async function writeIndex(specs,{outRoot}){
 const LITE=`import {existsSync} from 'node:fs';
 if(existsSync('public/art/a/SEM-LITE')){console.error('art-lite: copies missing or older than their source: a/x');process.exit(1);}\n`;
 
-function artWorld(){
+function artWorld(lite=LITE){
   const w=world(),art=(dir:string,pieces:object)=>{mkdirSync(join(w.repo,dir),{recursive:true});writeFileSync(join(w.repo,dir,'manifest.json'),JSON.stringify({pieces},null,2)+'\n');};
   const index=(a:object,b:object)=>writeFileSync(join(w.repo,'public/art/manifest.json'),JSON.stringify({version:2,groups:{a:{output:'public/art/a',pieces:a},b:{output:'public/art/b',pieces:b}}})+'\n');
   mkdirSync(join(w.repo,'scripts/art-v2'),{recursive:true});
   writeFileSync(join(w.repo,'scripts/art-v2/spec.mjs'),SPEC);writeFileSync(join(w.repo,'scripts/art-v2/convert.mjs'),CONVERT);
-  writeFileSync(join(w.repo,'scripts/art-lite.mjs'),LITE);
+  writeFileSync(join(w.repo,'scripts/art-lite.mjs'),lite);
   art('public/art/a',{um:1});art('public/art/b',{dois:2});index({um:1},{dois:2});
+  const runLite=()=>{if(lite!==LITE)execFileSync(process.execPath,['scripts/art-lite.mjs'],{cwd:w.repo});};
+  runLite();
   git(w.repo,'add','-A');git(w.repo,'commit','-qm','arte');git(w.repo,'push','-q','origin','main');
   /**
    * A branch that imports into group `g` (its manifest and the index, as the importer writes both; `indexOnly`: the
@@ -384,11 +386,11 @@ function artWorld(){
     git(w.repo,'checkout','-q','-b',name,'main');
     const a=g==='a'?pieces:{um:1},b=g==='b'?pieces:{dois:2};
     if(!indexOnly)art(`public/art/${g}`,pieces);
-    index(a,b);
+    index(a,b);runLite();
     for(const [f,t] of Object.entries(extra))writeFileSync(join(w.repo,f),t);
     git(w.repo,'add','-A');git(w.repo,'commit','-qm',name);git(w.repo,'checkout','-q','main');
   };
-  return {...w,importing};
+  return {...w,importing,art,runLite};
 }
 
 test('a conflict only in public/art/manifest.json is regenerated from the group manifests, checked by art-lite and integrated; one with another file, or a red art-lite, goes back',()=>{
@@ -417,6 +419,66 @@ test('a conflict only in public/art/manifest.json is regenerated from the group 
     assert.match(git(w.repo,'log','-1','--format=%s',`${state.sha}^2`),/arte-b/,'the merge commit of arte-b is there');
     assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no batch worktree left');
   }finally{w.cleanup();}
+});
+
+// NEW-20261020-ORQ-fila-art-lite-auto: torres-entregues went back twice with public/art/manifest.json and
+// scripts/art-lite.json in conflict (art-lite remade the copies of the sheets the branch changed). Conflicts only in
+// generated art (the index, art-lite.json, public/art/lite/**) are made again by writeIndex + art-lite and checked; a
+// source file in the conflict still sends the branch back, untouched.
+// The stub art-lite: art-lite.json and lite/todas.txt from every group manifest, one line each (so they conflict).
+const LITE_MAKES=`import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
+const {GROUPS}=await import('./art-v2/spec.mjs');
+const read=f=>JSON.parse(readFileSync(f,'utf8')),files={};
+for(const s of Object.values(GROUPS)){const f=s.output+'/manifest.json';if(!existsSync(f))continue;
+  for(const [p,v] of Object.entries(read(f).pieces))files[s.output.split('/').pop()+'/'+p]=v;}
+const sorted=o=>Object.fromEntries(Object.entries(o).sort(([a],[b])=>a.localeCompare(b)));
+const todas=JSON.stringify(sorted(files))+'\\n';
+const rec=existsSync('scripts/art-lite.json')?read('scripts/art-lite.json'):{files:{}};
+if(process.argv.includes('--check')){
+  if(JSON.stringify(sorted(rec.files))!==JSON.stringify(sorted(files))||readFileSync('public/art/lite/todas.txt','utf8')!==todas){
+    console.error('art-lite: copies missing or older than their source');process.exit(1);}
+  process.exit(0);
+}
+rec.files=sorted({...rec.files,...files});
+mkdirSync('public/art/lite',{recursive:true});writeFileSync('public/art/lite/todas.txt',todas);
+writeFileSync('scripts/art-lite.json',JSON.stringify(rec)+'\\n');
+`;
+
+test('a conflict in public/art/manifest.json + scripts/art-lite.json + a lite copy is made again by art-lite and integrated; with a .ts in it, back untouched',()=>{
+  const w=artWorld(LITE_MAKES);
+  try{
+    writeFileSync(join(w.repo,'src-x.ts'),'0\n');git(w.repo,'add','-A');git(w.repo,'commit','-qm','x');git(w.repo,'push','-q','origin','main');
+    w.importing('vgm/arte-a','a',{um:1,tres:3},{'src-x.ts':'1\n'});
+    w.importing('vgm/arte-b','b',{dois:2,quatro:4});           // index, art-lite.json and lite/todas.txt conflict with arte-a's
+    // A third group (c) with its lite, plus a source file both it and arte-a changed.
+    writeFileSync(join(w.repo,'scripts/art-v2/spec.mjs'),SPEC.replace("};",",c:{output:'public/art/c'}};"));
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','grupo c');git(w.repo,'push','-q','origin','main');
+    git(w.repo,'checkout','-q','-b','vgm/arte-ts','main');
+    w.art('public/art/c',{sete:7});w.runLite();writeFileSync(join(w.repo,'src-x.ts'),'2\n');
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','arte-ts');git(w.repo,'checkout','-q','main');
+    for(const [card,branch] of [['NEW-arte-a','vgm/arte-a'],['NEW-arte-b','vgm/arte-b'],['NEW-arte-ts','vgm/arte-ts']])
+      main(['pronto',card,'--branch',branch,...w.opts]);
+    const state=main(['lote',...w.opts]);
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-arte-a','NEW-arte-b']);
+    assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-arte-ts']);
+    const back=state.devolvidos[0];
+    assert.ok(back.arquivos.includes('src-x.ts')&&back.arquivos.includes('scripts/art-lite.json'),back.arquivos.join(', '));
+    assert.equal(back.nota,undefined,'no regeneration tried');
+    git(w.repo,'fetch','-q','origin');
+    const show=(f:string)=>git(w.repo,'show',`origin/main:${f}`);
+    assert.deepEqual(JSON.parse(show('scripts/art-lite.json')).files,{'a/tres':3,'a/um':1,'b/dois':2,'b/quatro':4},'both sides in art-lite.json');
+    assert.deepEqual(JSON.parse(show('public/art/lite/todas.txt')),{'a/tres':3,'a/um':1,'b/dois':2,'b/quatro':4},'the copy made again');
+    const index=JSON.parse(show('public/art/manifest.json'));
+    assert.deepEqual(index.groups.a.pieces,{um:1,tres:3});assert.deepEqual(index.groups.b.pieces,{dois:2,quatro:4});
+    for(const f of ['scripts/art-lite.json','public/art/lite/todas.txt','public/art/manifest.json'])assert.ok(!show(f).includes('<<<<<<<'),f);
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no batch worktree left');
+  }finally{w.cleanup();}
+});
+
+test('isGeneratedArt: the index, art-lite.json and the lite copies; not a group manifest, a sheet or code',()=>{
+  assert.deepEqual(['public/art/manifest.json','scripts/art-lite.json','public/art/lite/towers/t1/base.webp','public/art/towers/manifest.json',
+    'public/art/towers/t1/base.webp','scripts/art-lite.mjs','src/client/art/manifest.ts'].filter(isGeneratedArt),
+  ['public/art/manifest.json','scripts/art-lite.json','public/art/lite/towers/t1/base.webp']);
 });
 
 // NEW-20261017-ORQ-fila-deploy-seguro + fila-deploy-ordem: lote 13 changed the city map (v2 → v3); the Worker went up

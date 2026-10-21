@@ -17,12 +17,13 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-palco { background-image: url('/art/ui-extra/estadio-1920.webp'); }
 }
 
-/* The hero. --dh is the dance canvas's height: its soles are at .754 of it, the highest head of any frame at .039, so the
-   figure is .715 x --dh tall; it reaches from the bar up to a small margin under the top. */
+/* The hero. --dh is the dance canvas's height: its soles are at .754 of it (the median), the highest head of any frame at
+   .039, so the figure is .715 x --dh tall; it reaches from the bar up to a small margin under the top. The canvas is
+   lifted to .78 so the boots stand on the bar's top, not in front of its face. */
 .estadio-heroi { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .estadio-heroi > * { --bar: var(--bar-y, 88%); --dh: calc((var(--bar) - 4vh) / .715); }
 .estadio-heroi .menu-dance {
-  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .754);
+  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .78);
   width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%);
   filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c-breu) 45%, transparent));
 }
@@ -119,6 +120,8 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
     inset: 0 0 auto 0; height: min(calc(100vw / .711), calc(100% - 230px));
     background-image: url('/art/ui-extra/estadio-retrato-768.webp');
   }
+  /* The crop's bottom edge melts into the colour under it. */
+  .estadio-palco::after { content: ''; position: absolute; inset: auto 0 0; height: 48px; background: linear-gradient(transparent, #4b3253); }
   .estadio-heroi > * { --dh: calc((var(--bar) - 84px) / .715); }
   .estadio-escolha {
     left: 0; right: 0; width: auto; align-items: center; justify-content: flex-start; gap: 10px;

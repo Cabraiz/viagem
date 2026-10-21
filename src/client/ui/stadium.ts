@@ -63,9 +63,17 @@ export interface StadiumCutout {
   x:number;y:number;w:number;h:number;
   /** Width → file (the full one and a 2/3 copy). */
   files:readonly (readonly [number,string])[];
+  /**
+   * The hero's own background (NEW-20261021-ORQ-tela-clt-pose2), drawn without him: a bleed with STADIUM.bleed's
+   * geometry (2560x1707, his 1920x1080 picture at 320,313), so the same framing fits it. Absent: the stadium.
+   */
+  fundo?:string;
 }
 export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'viciado-em-bet':{x:955,y:21,w:788,h:1053,files:[[525,'/art/menu/heroi/viciado-em-bet-525.webp'],[788,'/art/menu/heroi/viciado-em-bet-788.webp']]},
+  // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
+  'clt-cansado':{x:793,y:74,w:633,h:863,files:[[422,'/art/menu/heroi/clt-cansado-422.webp'],[633,'/art/menu/heroi/clt-cansado-633.webp']],
+    fundo:'/art/lite/menu/fundo-clt-cansado.webp'},
 });
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
 export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';

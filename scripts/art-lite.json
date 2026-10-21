@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2053,
-  "bytes": 1538224200,
-  "liteBytes": 496989062,
+  "files": 2054,
+  "bytes": 1539184706,
+  "liteBytes": 497716394,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17340,6 +17340,14 @@
    "liteBytes": 252586,
    "psnr": 49.4,
    "shownPsnr": 51.7
+  },
+  "menu/fundo-clt-cansado.webp": {
+   "source": "0c2846c7a86cede1b64e6366735fa8f3a81929cb6f844742d9aa89233d579ba1",
+   "lite": "8f28b3e746f1cbab544d026eae19feec910fbb79f29f75f11a67ae2c24b08110",
+   "bytes": 960506,
+   "liteBytes": 727332,
+   "psnr": 43,
+   "shownPsnr": 44.8
   },
   "menu/fundo-estadio-viciado.webp": {
    "source": "f8f7f6065b8d662a246dc1e96d664eeca67b18c35b008a81363acd0e64521387",

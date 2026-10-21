@@ -162,6 +162,17 @@ const menuDance=new MenuDance(document.getElementById('portrait')!);
 // the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
 const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
 let cutoutHold:(()=>void)|undefined;
+// A cutout with its own background (tela-clt-pose2) swaps the stage's picture once it is decoded (never a blank stage);
+// the CSS's stadium otherwise. Same geometry as the stadium's bleed, so frameStage's size and position fit both.
+let stageFundo='';
+function showStageFundo(url:string|undefined) {
+  const want=url?`url("${url}")`:'';
+  if(want===stageFundo) return;
+  stageFundo=want;
+  if(!url) {stage.style.backgroundImage='';return;}
+  const img=new Image();img.src=url;
+  void img.decode().catch(()=>{}).then(()=>{ if(stageFundo===want) stage.style.backgroundImage=want; });
+}
 function showCutout() {
   const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
   // The whole boy on screen (menu-1080-720-menino-inteiro): the picture keeps its cover, he scales to fit the stage.
@@ -169,6 +180,7 @@ function showCutout() {
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
+  showStageFundo(spot?cut?.fundo:undefined);
   if(!cut||!spot) return;
   const sizes=`${Math.round(spot.w)}px`,srcset=cut.files.map(([w,file])=>`${file} ${w}w`).join(', ');
   if(cutoutImg.sizes!==sizes) cutoutImg.sizes=sizes;

@@ -7,15 +7,18 @@
 //     box enlarged 2x by Real-ESRGAN, NEW-20261021-ORQ-heroi-esrgan-no-ar) every copy comes from it: 2x, 4/3, 1x, 2/3;
 //   - botao: the confirm button's pill, star and burst (E7), half size;
 //   - fundo: a hero's own background, bigger than the screen (the 1920x1080 picture in the middle at 320,313 of 2560x1707,
-//     like fundo-estadio-viciado), WebP q95; scripts/art-lite.mjs makes its lite copy.
+//     like fundo-estadio-viciado), WebP q95; scripts/art-lite.mjs makes its lite copy;
+//   - mureta (NEW-20261021-ORQ-mureta-camada-frente): the stadium's bar under its top edge, cut out of the very file the
+//     page draws (the lite fundo-estadio-viciado) and drawn over the viciado, so his back sneaker stands behind it. The
+//     edge is stadium.ts MURETA_TOPO; `--so mureta --mede` measures it again (prints the cubic) instead of trusting it.
 // A hero with its own `evidence` folder reads its files there. The CLT (NEW-20261021-ORQ-tela-clt-pose2) is encoded at a
 // higher quality than the first hero: no visible blocks on his outline at 1080p.
 //   node scripts/menu-arte.mjs [--evidence D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-elenco-cartoon-estadio]
-//        [--so letreiro|heroi|botao|fundo]   (only that part: the button's art is E7's, redone by its own cards)
+//        [--so letreiro|heroi|botao|fundo|mureta] [--mede]   (only that part: the button's art is E7's, redone by its own cards)
 import sharp from 'sharp';
 import {mkdirSync} from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const flag=process.argv.indexOf('--evidence');
@@ -52,6 +55,47 @@ const BUTTON=[['botao-pilula.png','pilula'],['botao-estrela.png','estrela'],['bo
 for(const [file,name] of part('botao')?BUTTON:[]){
   const source=path.join(evidence,file),{width}=await sharp(source).metadata(),target=out('botao',`${name}.webp`);
   report(target,await sharp(source).resize({width:Math.round(width/2)}).webp({quality:85,alphaQuality:95,effort:6}).toFile(target));
+}
+// The bar's top edge: per column, the top of the light band over the purple pad (4 rows of it), searched ±14 px around
+// a line read on gridded zooms; then a cubic fit, dropping what is more than 3 px off it (the crowd's highlights above).
+async function measureBar(file,focal){
+  const {data,info}=await sharp(file).removeAlpha().raw().toBuffer({resolveWithObject:true});
+  const at=(x,y)=>{const i=((y+focal.y)*info.width+(x+focal.x))*3;return [data[i],data[i+1],data[i+2]];};
+  // Left of 1330 the band is pale yellow (blue low), right of it white with the yellow wall behind (blue low too).
+  const band=(x,y)=>{const [r,g,b]=at(x,y);return x<1330?r>165&&g>165:Math.min(r,g,b)>170;};
+  const read=[[900,948],[1000,950],[1080,952],[1140,962],[1200,966],[1260,976],[1320,987],[1400,997],[1440,1006],[1520,1028],[1600,1051],[1680,1075],[1760,1097],[1840,1121]];
+  const guess=x=>{const i=Math.max(1,read.findIndex(([px])=>px>=x)),[a,b]=read[i-1],[c,d]=read[i];return b+(d-b)*(x-a)/(c-a);};
+  let xs=[],ys=[];
+  for(let x=900;x<=1840;x++){const g=Math.round(guess(x));for(let y=g-14;y<=g+14;y++)if([0,1,2,3].every(k=>band(x,y+k))){xs.push((x-1370)/470);ys.push(y);break;}}
+  const fit=()=>{
+    const A=Array.from({length:4},()=>Array(5).fill(0));
+    xs.forEach((x,k)=>{const p=[1,x,x*x,x*x*x];for(let i=0;i<4;i++){for(let j=0;j<4;j++)A[i][j]+=p[i]*p[j];A[i][4]+=p[i]*ys[k];}});
+    for(let i=0;i<4;i++){let m=i;for(let r=i+1;r<4;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;[A[i],A[m]]=[A[m],A[i]];
+      for(let r=0;r<4;r++)if(r!==i){const f=A[r][i]/A[i][i];for(let c=i;c<5;c++)A[r][c]-=f*A[i][c];}}
+    return A.map((row,i)=>row[4]/row[i]);
+  };
+  let coef;
+  for(let round=0;round<8;round++){
+    coef=fit();const y=x=>coef[0]+coef[1]*x+coef[2]*x*x+coef[3]*x**3,keep=xs.map((x,k)=>Math.abs(ys[k]-y(x))<=3);
+    xs=xs.filter((_,k)=>keep[k]);ys=ys.filter((_,k)=>keep[k]);
+  }
+  const rms=Math.sqrt(xs.reduce((a,x,k)=>a+(ys[k]-(coef[0]+coef[1]*x+coef[2]*x*x+coef[3]*x**3))**2,0)/xs.length);
+  return {coef:coef.map(v=>+v.toFixed(3)),rms,kept:xs.length};
+}
+if(part('mureta')){
+  const {STADIUM,MURETA_TOPO,muretaTopo,RECORTES}=await import(pathToFileURL(path.join(root,'src/client/ui/stadium.ts')).href);
+  const focal=STADIUM.bleed.focal,source=path.join(root,'public/art/lite/menu/fundo-estadio-viciado.webp');
+  if(process.argv.includes('--mede')){
+    const got=await measureBar(source,focal);
+    console.log(`mureta: coef ${JSON.stringify(got.coef)} (${got.kept} colunas, ${got.rms.toFixed(2)} px rms); stadium.ts tem ${JSON.stringify(MURETA_TOPO.coef)}`);
+  }
+  // The bar under its edge (alpha 0 above, 1 a px below, a 1 px ramp between), in the background file's own px.
+  const box=RECORTES['viciado-em-bet'].frente,left=focal.x+box.x,top=focal.y+box.y;
+  const {data,info}=await sharp(source).extract({left,top,width:box.w,height:box.h}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)
+    data[(y*info.width+x)*4+3]=Math.round(255*Math.min(1,Math.max(0,box.y+y+1-muretaTopo(box.x+x+.5))));
+  const file=path.join(root,'public',box.file);
+  report(file,await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).webp({quality:95,alphaQuality:100,smartSubsample:true,effort:6}).toFile(file));
 }
 for(const hero of HEROES){
   const dir=hero.evidence??evidence;

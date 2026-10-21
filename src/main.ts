@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -55,7 +55,7 @@ try {
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
-  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden></div>
+  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
@@ -161,6 +161,8 @@ const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
 // the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
 const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
+// mureta-camada-frente: the piece of the background over the hero (the bar), placed by the background's own framing.
+const frontImg=stage.querySelector<HTMLImageElement>('.estadio-mureta')!;
 let cutoutHold:(()=>void)|undefined;
 // A cutout with its own background (tela-clt-pose2) swaps the stage's picture once it is decoded (never a blank stage);
 // the CSS's stadium otherwise. Same geometry as the stadium's bleed, so frameStage's size and position fit both.
@@ -181,12 +183,23 @@ function showCutout() {
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
   showStageFundo(spot?cut?.fundo:undefined);
-  if(!cut||!spot) return;
+  if(!cut||!spot) {showFront(box,undefined);return;}
   // The file by the shown width x devicePixelRatio (never the 2/3 copy stretched on a big or HiDPI screen).
   const file=cutoutFile(cut,spot.w,devicePixelRatio);
   if(cutoutImg.getAttribute('src')!==file) cutoutImg.src=file;
   const css=`left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px;width:${Math.round(spot.w)}px;height:${Math.round(spot.h)}px`;
   if(cutoutImg.dataset.box!==css) {cutoutImg.dataset.box=css;cutoutImg.style.cssText=css;}
+  showFront(box,cut);
+}
+function showFront(box:{w:number;h:number},cut:StadiumCutout|undefined) {
+  const front=cut?.frente,art=STADIUM.bleed,show=!!front&&!cutoutImg.hidden&&box.w>0&&box.h>0;
+  frontImg.hidden=!show;
+  if(!front||!show) return;
+  if(frontImg.getAttribute('src')!==front.file) frontImg.src=front.file;
+  // The background's px exactly as frameStage draws it (its size and offset rounded), so the bar meets itself.
+  const {s,ox,oy}=frameArt(box,art),sx=Math.round(art.w*s)/art.w,sy=Math.round(art.h*s)/art.h,f=art.focal;
+  const css=`left:${Math.round(ox)+(f.x+front.x)*sx}px;top:${Math.round(oy)+(f.y+front.y)*sy}px;width:${front.w*sx}px;height:${front.h*sy}px`;
+  if(frontImg.dataset.box!==css) {frontImg.dataset.box=css;frontImg.style.cssText=css;}
 }
 new ResizeObserver(showCutout).observe(stage);
 cutoutScreen.addEventListener('change',showCutout);

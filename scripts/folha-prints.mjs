@@ -5,7 +5,7 @@
 //   1. the menu (character screen), then the name step after SELECIONAR (nome-depois-de-selecionar);
 //   2. a solo match: the hero standing (3 frames in a row, and a sampled window: a standing hero whose texture flips
 //      between an idle and a walk sheet = FAIL), walking by the keyboard (8 directions, 2 frames each), walking by the
-//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then a right click: walks, no browser menu),
+//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then the right button held: attacks, never walks, no browser menu),
 //      and a burst of short keyboard walks in open ground (every stop sampled: idle↔walk back and forth = tremor);
 //   2b. the phone (isMobile + hasTouch, 390×844, a match of its own): the hero standing, the joystick dragged by a
 //      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground;
@@ -300,18 +300,29 @@ async function mouseWalk(p,vp){
   await rightClick(p,vp);
 }
 /**
- * The right button (NEW-20261021-ORQ-botao-direito-ataca): a right click on open ground walks the hero like the left,
- * and its 'contextmenu' reaches the page already cancelled (the canvas keeps the browser's menu shut).
+ * The right button (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): held on open ground beside the hero it attacks (the
+ * manual combat swings toward the mouse) and never walks him; its 'contextmenu' reaches the page already cancelled (the
+ * canvas keeps the browser's menu shut).
  */
 async function rightClick(p,vp){
+  await clearOffer(p);
   await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
-  const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y,{button:'right'}),'botão direito');
-  // A new match in the middle (playing(): the hero down or dead) reloads the page: its __menus is gone, so the clicks
-  // before the reload went uncounted; a warning, not "sem contextmenu" (E1, 21/10: menus.filter of undefined).
+  const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
+  const h=await p.evaluate(HERO).catch(()=>null);
+  const m=Math.min(vp.w,vp.h);
+  const spot=h&&CLICK_SPOTS.map(([fx,fy])=>[Math.round(h.sx+fx*m),Math.round(h.sy+fy*m)]).find(([x,y])=>x>=20&&y>=20&&x<=vp.w-20&&y<=vp.h-20);
+  if(!spot||!await free(...spot)){avisos.push(`${vp.w}×${vp.h}: botão direito: nenhum ponto livre perto do herói`);return;}
+  const [x,y]=spot;
+  await p.mouse.move(x,y);await p.mouse.down({button:'right'});
+  const seen=await p.evaluate(SAMPLE,[60,900]).catch(()=>[]);
+  await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
+  const end=await p.evaluate(HERO).catch(()=>null);
+  await p.mouse.up({button:'right'});
   const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
   if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;
-  await shot(p,'direito',got?`botão direito em (${got.x},${got.y}): andou, menu do navegador ${open?'ABRIU':'fechado'} (${menus.length} cliques)`:'botão direito (não andou)',vp);
+  if(moved(h,end))fails.push(`${vp.w}×${vp.h}: botão direito andou com o herói (devia só atacar)`);
+  if(!seen.some(k=>/attack/i.test(k)))avisos.push(`${vp.w}×${vp.h}: botão direito segurado sem quadro de ataque (${[...new Set(seen)].join(', ')||'nada'})`);
   if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
   else if(open)fails.push(`${vp.w}×${vp.h}: botão direito abriu o menu do navegador em ${open}/${menus.length}`);
   await sleep(1200);

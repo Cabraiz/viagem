@@ -58,7 +58,7 @@ test('column and half from the projection, in the 4 camera views; scale: the cel
   s=step(1,1,0);assert.equal(muralhaColumn(s.dx,s.dy),0);
   assert.deepEqual(muralhaScale(-37,127.5,1),{x:37/127.5,y:37/127.5});
   assert.deepEqual(muralhaScale(37,127.5,1.5),{x:37/127.5,y:37/127.5*1.5},'height only');
-  assert.equal(MURALHA_ALTURA,1,'the delivered height (the stone wall) until the user asks otherwise');
+  assert.equal(MURALHA_ALTURA,1,'the delivered art (1.5× the stone wall, card muralha-mais-alta) as is');
 });
 
 test('damage row by life; a fallen square draws nothing',()=>{

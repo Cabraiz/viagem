@@ -13,8 +13,9 @@
 import {damageStage} from './stonewards-rules.ts';
 
 /**
- * Height of the junk wall: 1 = the delivered height (the stone wall's, muro-pedra: E3's template), 1.3 = 30 % taller.
- * The only knob: it scales the pieces vertically only, so their ends still meet the cell edges.
+ * Height of the junk wall: 1 = the delivered art's height (card muralha-mais-alta: drawn 1.5× the stone wall's, muro-pedra,
+ * so the jokes read), 1.2 = 20 % taller. The only knob: it scales the pieces vertically only, so their ends still meet
+ * the cell edges (past ~1.2 the art looks stretched: ask E3 for taller pieces).
  */
 export const MURALHA_ALTURA=1;
 /** Pieces in the sheets (meta.pecas): straight ones and pillars. */

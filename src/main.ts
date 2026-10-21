@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -83,10 +83,20 @@ menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-di
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
 // point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
 const stage=document.querySelector<HTMLElement>('.estadio-palco')!;
-const tallStadium=matchMedia(STADIUM_TALL_QUERY);
+const tallStadium=matchMedia(STADIUM_TALL_QUERY),cutoutScreen=matchMedia(CUTOUT_QUERY);
+// The PC shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
+// the bar and the hero on it are never cut. Its size and position in px; the CSS keeps `cover` until this runs.
+const stageArt=():StadiumArt=>tallStadium.matches?STADIUM.tall:cutoutScreen.matches?STADIUM.bleed:STADIUM.wide;
+function frameStage(box:{w:number;h:number}) {
+  const art=stageArt(),frame=art.focal&&box.w>0&&box.h>0?frameArt(box,art):undefined;
+  const size=frame?`${Math.round(art.w*frame.s)}px ${Math.round(art.h*frame.s)}px`:'',at=frame?`${Math.round(frame.ox)}px ${Math.round(frame.oy)}px`:'';
+  if(stage.style.backgroundSize!==size) stage.style.backgroundSize=size;
+  if(stage.style.backgroundPosition!==at) stage.style.backgroundPosition=at;
+}
 function placeHero() {
   const box={w:stage.clientWidth,h:stage.clientHeight},tall=tallStadium.matches;
-  const spot=placeOnBar(box,tall?STADIUM.tall:STADIUM.wide,box.w*(tall?.5:.7));
+  frameStage(box);
+  const spot=placeOnBar(box,stageArt(),box.w*(tall?.5:.7));
   if(!spot) return;
   const x=`${Math.round(spot.x)}px`,y=`${Math.round(spot.y)}px`;
   // Only on a real change: a custom property written on every resize tick restyles the stage for nothing.
@@ -95,6 +105,7 @@ function placeHero() {
 }
 new ResizeObserver(placeHero).observe(stage);
 tallStadium.addEventListener('change',placeHero);
+cutoutScreen.addEventListener('change',placeHero);
 placeHero();
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
@@ -149,14 +160,27 @@ let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
 // the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
-const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!,cutoutScreen=matchMedia(CUTOUT_QUERY);
+const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
 let cutoutHold:(()=>void)|undefined;
+// A cutout with its own background (tela-clt-pose2) swaps the stage's picture once it is decoded (never a blank stage);
+// the CSS's stadium otherwise. Same geometry as the stadium's bleed, so frameStage's size and position fit both.
+let stageFundo='';
+function showStageFundo(url:string|undefined) {
+  const want=url?`url("${url}")`:'';
+  if(want===stageFundo) return;
+  stageFundo=want;
+  if(!url) {stage.style.backgroundImage='';return;}
+  const img=new Image();img.src=url;
+  void img.decode().catch(()=>{}).then(()=>{ if(stageFundo===want) stage.style.backgroundImage=want; });
+}
 function showCutout() {
   const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
-  const spot=cut&&placeCutout({w:stage.clientWidth,h:stage.clientHeight},STADIUM.wide,cut);
+  // The whole boy on screen (menu-1080-720-menino-inteiro): the picture keeps its cover, he scales to fit the stage.
+  const box={w:stage.clientWidth,h:stage.clientHeight},placed=cut&&placeCutout(box,STADIUM.bleed,cut),spot=placed&&fitCutout(box,placed);
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
+  showStageFundo(spot?cut?.fundo:undefined);
   if(!cut||!spot) return;
   const sizes=`${Math.round(spot.w)}px`,srcset=cut.files.map(([w,file])=>`${file} ${w}w`).join(', ');
   if(cutoutImg.sizes!==sizes) cutoutImg.sizes=sizes;

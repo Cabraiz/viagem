@@ -97,10 +97,11 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   -webkit-text-stroke: .16em var(--c-lilas-escuro); paint-order: stroke fill; text-shadow: 0 .07em 0 var(--c-breu);
 }
 .estadio-letreiro { display: block; max-width: 100%; max-height: 34vh; object-fit: contain; }
-/* The hero's own letreiro picture (already tilted): as big as the approved screen's (tela-1080p: ~46% of the width),
-   never taller than the column leaves room for. */
+/* The hero's own letreiro picture (already tilted): the approved screen's (tela-1080p: ~46% of the width) 15% smaller
+   twice (the user, 21/10: menu-1080-720-menino-inteiro, then menu-fundo-sangria), never taller than the column leaves
+   room for. The file (1423 px) is never shown above 1x: 56.4vh is 1218 px on a 4K screen. */
 .estadio-titulo.com-letreiro { transform: none; }
-.estadio-titulo.com-letreiro .estadio-letreiro { width: min(46vw, 78vh); max-width: none; max-height: none; height: auto; }
+.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh); max-width: none; max-height: none; height: auto; }
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
@@ -135,9 +136,13 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    approved screen's layout (tela-1080p), the sign
    from the top, the row under it and the button low, near the bar. */
 @media (orientation: landscape) and (min-height: 521px) {
+  /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
+     it is never cut; `cover` around its middle until then. */
+  .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
   .estadio .estadio-confirmar { --bh: clamp(52px, 10vh, 120px); max-width: min(40vw, 640px); }
   .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(2vh, env(safe-area-inset-top)); }
-  .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: auto; margin-bottom: 5vh; }
+  /* The button right under the row (the user, 21/10: menu-fundo-sangria), not down at the bar. */
+  .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }
 }
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */

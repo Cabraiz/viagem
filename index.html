@@ -13,8 +13,9 @@
          with the HTML, before the bundle and the art index, so the menu's empty podium turns into the dance sooner.
          DEFAULT_HERO = playableClasses[0] (tests/client/menu-dance.test.ts checks it). -->
     <!-- menu-estadio: the stadium behind the menu (estadio.css), on screen from the first frame; the file the CSS picks. -->
-    <link rel="preload" href="/art/ui-extra/estadio-1920.webp" as="image" fetchpriority="high" media="(min-width: 1100px)" />
-    <link rel="preload" href="/art/ui-extra/estadio-1280.webp" as="image" fetchpriority="high" media="(max-width: 1099px) and (orientation: landscape), (min-width: 821px) and (max-width: 1099px)" />
+    <link rel="preload" href="/art/lite/menu/fundo-estadio-viciado.webp" as="image" fetchpriority="high" media="(orientation: landscape) and (min-height: 521px)" />
+    <link rel="preload" href="/art/ui-extra/estadio-1920.webp" as="image" fetchpriority="high" media="(min-width: 1100px) and (orientation: portrait), (min-width: 1100px) and (max-height: 520px)" />
+    <link rel="preload" href="/art/ui-extra/estadio-1280.webp" as="image" fetchpriority="high" media="(max-width: 1099px) and (orientation: landscape) and (max-height: 520px), (min-width: 821px) and (max-width: 1099px) and (orientation: portrait)" />
     <link rel="preload" href="/art/ui-extra/estadio-retrato-768.webp" as="image" fetchpriority="high" media="(orientation: portrait) and (max-width: 820px)" />
     <script>
       (function(){var DEFAULT_HERO='mendigo',id=DEFAULT_HERO;

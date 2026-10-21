@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, CUTOUT_QUERY, cutoutMargin, cutoutOf, fitCutout, frameArt, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -133,7 +133,8 @@ const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pat
 test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
   // The files exist, light, the sizes the code says.
   const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
-  assert.equal(sign.width,1000);assert.ok(sign.hasAlpha);
+  // menu-fundo-sangria: the original's own size (trimmed), never upscaled, never shown above 1x (56.4vh of 2160 = 1218).
+  assert.deepEqual([sign.width,sign.height],[1423,983]);assert.ok(sign.hasAlpha);assert.ok(.564*2160<=1423&&.332*3840<=1423*.9);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[955,21,788,1053],'the box scripts/menu-arte.mjs checks against the art');
   for(const [w,file] of cut.files){
@@ -141,7 +142,7 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
     assert.equal(meta.width,w,file);assert.ok(Math.abs(meta.height!-cut.h*w/cut.w)<1,file);assert.ok(meta.hasAlpha,file);
   }
   assert.ok(readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8').includes('box:{left:955,top:21,width:788,height:1053}'));
-  assert.equal(cutoutOf('clt-cansado'),undefined,'the others keep the dance');
+  assert.equal(cutoutOf('motogirl'),undefined,'the others keep the dance');
   // 1920x1080: exactly where the approved screen has him; 1280x720: the same, 2/3.
   assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.wide,cut),{x:955,y:21,w:788,h:1053});
   const small=placeCutout({w:1280,h:720},STADIUM.wide,cut)!;
@@ -160,7 +161,90 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
   assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
-  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet']);
+  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet','clt-cansado']);
+});
+
+test("tela-clt-pose2: the CLT cut out of his scene, on his own background without him (a bleed like the stadium's)",async()=>{
+  const cut=cutoutOf('clt-cansado')!;
+  assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[793,74,633,863],'the box scripts/menu-arte.mjs checks against the art');
+  assert.ok(readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8').includes('box:{left:793,top:74,width:633,height:863}'));
+  for(const [w,file] of cut.files){
+    const meta=await sharp(publicFile(file)).metadata();
+    assert.equal(meta.width,w,file);assert.ok(Math.abs(meta.height!-cut.h*w/cut.w)<1,file);assert.ok(meta.hasAlpha,file);
+  }
+  // His background has the stadium bleed's geometry, so frameArt/placeCutout(STADIUM.bleed) fit it as they are.
+  for(const file of [cut.fundo!,cut.fundo!.replace('/lite/','/')]){
+    const meta=await sharp(publicFile(file)).metadata();
+    assert.deepEqual([meta.width,meta.height],[STADIUM.bleed.w,STADIUM.bleed.h],file);
+  }
+  assert.equal(cutoutOf('viciado-em-bet')!.fundo,undefined,'the viciado keeps the stadium');
+  // 1920x1080: exactly where his scene had him; every window keeps him whole (contain) with his feet on the plateau.
+  assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.bleed,cut),{x:793,y:74,w:633,h:863});
+  for(const [w,h] of [[1920,1080],[1920,950],[1366,768],[1280,720],[1024,768],[2560,1080]]){
+    const box={w,h},fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!),m=cutoutMargin(h),e=1e-9;
+    assert.ok(fit.y>=m-e&&fit.y+fit.h<=h-m+e&&fit.x>=m-e&&fit.x+fit.w<=w-m+e,`${w}x${h}: CLT whole`);
+  }
+  // Wired: the stage swaps to his background once decoded while he stands there, and back to the stadium after.
+  assert.match(main,/showStageFundo\(spot\?cut\?\.fundo:undefined\);/);
+  assert.match(main,/img\.decode\(\)\.catch\(\(\)=>\{\}\)\.then\(\(\)=>\{ if\(stageFundo===want\) stage\.style\.backgroundImage=want; \}\);/);
+});
+
+test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, the letreiro 15% smaller',()=>{
+  const cut=cutoutOf('viciado-em-bet')!;
+  // The user's screens: 1080p, 1080p with the browser's bar (his print, 1917x948), 768p and 720p. Cap, horn and sneakers
+  // (the file's alpha fills its box) inside the stage with the margin, the feet never lower than the picture puts them.
+  for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1366,768],[1280,720],[1280,800],[2560,1080]]){
+    const box={w,h},placed=placeCutout(box,STADIUM.wide,cut)!,fit=fitCutout(box,placed),m=cutoutMargin(h);
+    assert.ok(fit.y>=m-1e-9&&fit.y+fit.h<=h-m+1e-9,`${w}x${h}: top ${fit.y}, bottom ${fit.y+fit.h}`);
+    assert.ok(fit.x>=m-1e-9&&fit.x+fit.w<=w-m+1e-9,`${w}x${h}: left ${fit.x}, right ${fit.x+fit.w}`);
+    assert.ok(Math.abs(fit.w/fit.h-cut.w/cut.h)<1e-9,'contain: never stretched');
+    assert.ok(fit.h<=placed.h+1e-9&&fit.y+fit.h<=placed.y+placed.h+1e-9,'never bigger, never lower than cover put him');
+    assert.ok(Math.abs(fit.x+fit.w/2-(placed.x+placed.w/2))<1e-9,'his middle stays');
+  }
+  // 1920x950 was the cut one: cover put his cap 109 px above the screen; now he is ~87% of that, the cap on screen.
+  const bar=fitCutout({w:1920,h:950},placeCutout({w:1920,h:950},STADIUM.wide,cut)!);
+  assert.ok(Math.abs(bar.y-19)<1e-9&&Math.abs(bar.h-912)<1e-9,JSON.stringify(bar));
+  assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\),spot=placed&&fitCutout\(box,placed\);/);
+  // The letreiro: 46vw / 78vh x .85 (the user, 21/10); the phone keeps its own sizes.
+  // Then 15% smaller again (menu-fundo-sangria): 46vw / 78vh x .85 x .85.
+  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh);'));
+  assert.ok(Math.abs(46*.85*.85-33.2)<.05&&Math.abs(78*.85*.85-56.4)<.05);
+  // The button right under the row, not pushed down to the bar.
+  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }'));
+  assert.ok(!css.includes('margin-bottom: 5vh'));
+  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
+});
+
+test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved picture is whole and no edge shows',async()=>{
+  const art=STADIUM.bleed,f=art.focal!;
+  const meta=await sharp(publicFile('/art/lite/menu/fundo-estadio-viciado.webp')).metadata();
+  assert.deepEqual([meta.width,meta.height],[art.w,art.h],'the file is the size STADIUM.bleed says');
+  for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1366,768],[1280,720],[1280,800],[1280,1024],[1024,768],[2560,1080],[3440,1440],[1600,521]]){
+    const box={w,h},{s,ox,oy}=frameArt(box,art),e=1e-9;
+    assert.ok(ox<=e&&oy<=e&&ox+art.w*s>=w-e&&oy+art.h*s>=h-e,`${w}x${h}: the file covers the box`);
+    // The approved 1920x1080 inside the box (21:9 and wider: as wide as the box, the sky/feet past it never matter).
+    const fx=ox+f.x*s,fy=oy+f.y*s;
+    if(w/h<=2560/1080+e) assert.ok(fx>=-.5&&fy>=-.5&&fx+f.w*s<=w+.5&&fy+f.h*s<=h+.5,`${w}x${h}: approved picture whole`);
+    // The boy (in the approved picture) whole, and still where the picture has him before the margin's fit.
+    const placed=placeCutout(box,art,cutoutOf('viciado-em-bet')!)!;
+    assert.ok(Math.abs(placed.x-(fx+955*s))<1e-6&&Math.abs(placed.y-(fy+21*s))<1e-6&&Math.abs(placed.h-1053*s)<1e-6,`${w}x${h}`);
+    const fit=fitCutout(box,placed);
+    assert.ok(fit.y>=cutoutMargin(h)-e&&fit.y+fit.h<=h-cutoutMargin(h)+e,`${w}x${h}: boy whole`);
+    // The bar under the hero: inside the box, at the approved picture's bar.
+    const bar=placeOnBar(box,art,w*.7)!;
+    assert.ok(bar.y>0&&bar.y<h,`${w}x${h}: bar ${bar.y}`);
+  }
+  // 1920x1080: exactly the approved screen (scale 1, the bleed outside).
+  assert.deepEqual(frameArt({w:1920,h:1080},art),{s:1,ox:-320,oy:-313});
+  assert.deepEqual(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!),{x:955,y:21,w:788,h:1053});
+  // The plain files keep `cover` (the phone).
+  assert.deepEqual(frameArt({w:1920,h:1080},STADIUM.wide),{s:1,ox:0,oy:0});
+  // Wired: the PC block shows the file, main.ts frames it and puts the boy on it; the preload only where it shows.
+  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {\n  /* E6's stadium`));
+  assert.ok(css.includes(".estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }"));
+  assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
+  assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
+  assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
 });
 
 test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{

@@ -52,7 +52,7 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
-    <h1 id="screen-title" class="estadio-titulo"><span>Bora pra</span> <span>torcida!</span></h1>
+    <h1 id="screen-title" class="estadio-titulo"><span>BORA PRA</span> <span>TORCIDA!</span></h1>
     <h2 id="class-name" class="estadio-classe"></h2>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
@@ -60,7 +60,7 @@ app.innerHTML = `
       <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
     </nav>
     <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
-    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>Esse sou eu!</button>
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>ESSE SOU EU!</button>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
@@ -183,7 +183,8 @@ function showInRow(smooth: boolean) {
 }
 new ResizeObserver(()=>showInRow(false)).observe(rowList);
 function renderSelected(announce=false) {
-  text('class-name',selected.name);
+  // Caps written in the text, not by CSS (design lint): the class pill shouts like the reference.
+  text('class-name',selected.name.toLocaleUpperCase('pt-BR'));
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.

@@ -7,7 +7,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .world.estadio {
   position: relative; max-width: none; margin: 0; padding: 0; min-height: 0;
   height: 100vh; height: 100dvh; overflow: hidden;
-  background: linear-gradient(#4b3253, #2a1c46 60%);
+  background: linear-gradient(var(--c-lilas-escuro) 60%, color-mix(in srgb, var(--c-lilas-escuro) 55%, var(--c-breu)));
 }
 .estadio-palco {
   position: absolute; inset: 0; overflow: hidden;
@@ -25,7 +25,6 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio-heroi .menu-dance {
   position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .78);
   width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%);
-  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c-breu) 45%, transparent));
 }
 /* The portrait only when the dance fails for good (danca-sem-fallback): feet at ~97% of the square art. */
 .estadio-heroi img {
@@ -49,18 +48,18 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
 }
 .estadio-titulo {
-  margin: 0; font: 400 clamp(40px, 10.5vh, 120px)/.9 var(--f-cartaz); text-transform: uppercase; letter-spacing: .01em;
+  margin: 0; font: 400 clamp(40px, 10.5vh, 120px)/.9 var(--f-cartaz); 
   transform: rotate(-4deg); transform-origin: 0 100%;
 }
 .estadio-titulo span {
-  display: block; color: #fff; -webkit-text-stroke: .16em var(--c-lilas); paint-order: stroke fill;
-  text-shadow: 0 .07em 0 var(--c-breu), 0 .12em .2em color-mix(in srgb, var(--c-breu) 50%, transparent);
+  display: block; color: var(--c-papel-claro); -webkit-text-stroke: .16em var(--c-lilas); paint-order: stroke fill;
+  text-shadow: 0 .07em 0 var(--c-breu);
 }
 .estadio-titulo span + span { color: var(--c-amarelo); font-size: 1.18em; }
 .estadio-classe {
-  margin: 0; padding: .14em .8em .18em; border: 3px solid var(--c-breu); border-radius: 999px; transform: rotate(-2deg);
+  margin: 0; padding: .14em .8em .18em; border: 3px solid var(--c-breu); border-radius: var(--r-pilula); transform: rotate(-2deg);
   background: var(--c-amarelo); color: var(--c-lilas); box-shadow: var(--s-1);
-  font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); text-transform: uppercase; max-width: 100%; overflow-wrap: anywhere;
+  font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere;
 }
 .estadio-fileira { display: flex; align-items: center; gap: 8px; width: 100%; }
 .estadio .round-button {
@@ -85,22 +84,22 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
-  width: 100%; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: 999px;
+  width: 100%; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: var(--r-pilula);
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
 }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
 /* "Esse sou eu!": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
 .estadio .estadio-confirmar {
   display: inline-flex; align-items: center; justify-content: center; gap: .45em; width: 100%; max-width: 440px;
-  min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: 999px;
-  background: linear-gradient(#FFE36B, var(--c-amarelo) 45%, #FFB21F); color: var(--c-lilas);
-  font: 400 clamp(24px, 4.6vh, 42px)/1 var(--f-cartaz); text-transform: uppercase; white-space: nowrap;
-  box-shadow: inset 0 3px 0 color-mix(in srgb, #fff 60%, transparent), 0 6px 0 var(--c-casca), 0 10px 18px color-mix(in srgb, var(--c-breu) 45%, transparent);
+  min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: var(--r-pilula);
+  background: linear-gradient(color-mix(in srgb, var(--c-amarelo) 60%, var(--c-papel-claro)), var(--c-amarelo) 45%, color-mix(in srgb, var(--c-amarelo) 75%, var(--c-cone))); color: var(--c-lilas);
+  font: 400 clamp(24px, 4.6vh, 42px)/1 var(--f-cartaz); white-space: nowrap;
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 6px 0 var(--c-casca);
 }
 .estadio .estadio-confirmar > span {
   padding: 0; color: var(--c-amarelo); font-size: 1.1em; -webkit-text-stroke: .1em var(--c-cone); paint-order: stroke fill;
 }
-.estadio .estadio-confirmar:active { transform: translateY(3px); box-shadow: inset 0 3px 0 color-mix(in srgb, #fff 60%, transparent), 0 3px 0 var(--c-casca); }
+.estadio .estadio-confirmar:active { transform: translateY(3px); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 3px 0 var(--c-casca); }
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
 @media (max-height: 520px) and (orientation: landscape) {
@@ -121,7 +120,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
     background-image: url('/art/ui-extra/estadio-retrato-768.webp');
   }
   /* The crop's bottom edge melts into the colour under it. */
-  .estadio-palco::after { content: ''; position: absolute; inset: auto 0 0; height: 48px; background: linear-gradient(transparent, #4b3253); }
+  .estadio-palco::after { content: ''; position: absolute; inset: auto 0 0; height: 48px; background: linear-gradient(transparent, var(--c-lilas-escuro)); }
   .estadio-heroi > * { --dh: calc((var(--bar) - 84px) / .715); }
   .estadio-escolha {
     left: 0; right: 0; width: auto; align-items: center; justify-content: flex-start; gap: 10px;

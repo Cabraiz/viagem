@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {HOLD_MIN_MOVE,HOLD_RETARGET_MS,HoldFollow,INPUT_TEXTS,InputKindWatch,MARKER_MS,MOVE_KEYS,finePointer,focusLost,hotkeyFor,hotkeyOf,keyVector,markerVisible,turnFor} from '../../src/client/desktop-input.ts';
+import {HOLD_MIN_MOVE,HOLD_RETARGET_MS,HoldFollow,INPUT_TEXTS,InputKindWatch,MARKER_MS,MOVE_KEYS,finePointer,focusLost,hotkeyFor,hotkeyOf,keyVector,mapButtonDown,markerVisible,turnFor} from '../../src/client/desktop-input.ts';
 import {JoystickInput} from '../../src/client/joystick.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 import {quantizeDirection} from '../../src/protocol/input-track.ts';
@@ -147,7 +147,7 @@ test('focus lost on the desktop: the real release lets go of the stick, its capt
   const release=scene.match(/releaseInput\(\)\{([^\n]*)\}\n/)?.[1]??'';
   assert.ok(release.includes('this.hold.release()')&&release.includes('this.input.keyboard?.resetKeys()'),release);
   // The hold also ends when the button is no longer down (a mouseup lost outside the window): followHold checks it.
-  assert.match(scene,/if\(this\.paused\|\|!pointer\?\.primaryDown\)\{\n\s*const last=this\.hold\.release\(\);/);
+  assert.match(scene,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{\n\s*const last=this\.hold\.release\(\);/);
   // And the release really ends the hold: no target comes back after it.
   const hold=new HoldFollow();hold.press({x:1,y:1},0);hold.release();
   assert.equal(hold.held,false);assert.equal(hold.move({x:9,y:9},10_000),undefined);
@@ -201,6 +201,28 @@ test('scene: a press on the canvas ground starts the hold, an enemy is still a t
   // The input still leaves through net.input (input-10hz); D-051: the attack button rides it as the 4th argument.
   assert.match(scene,/net\.input\(direction,false,this\.attackTarget,!frozen&&!!this\.hooks\.attacking\?\.\(\)\)/);
   assert.match(scene,/const frozen=this\.paused\|\|!!net\.run\?\.pause;/,'D-050: the level-up pause holds the controls too');
+});
+
+test('right button on the map: works like the left one, the middle does nothing, the canvas menu stays shut',()=>{
+  // Phaser's Pointer: primaryDown is the left button or a finger; rightButtonDown() reads buttons bit 2 (middle is bit 4).
+  const ptr=(primaryDown:boolean,buttons:number)=>({primaryDown,rightButtonDown:()=>(buttons&2)!==0});
+  assert.equal(mapButtonDown(ptr(true,1)),true,'left');assert.equal(mapButtonDown(ptr(true,0)),true,'finger');
+  assert.equal(mapButtonDown(ptr(false,2)),true,'right');assert.equal(mapButtonDown(ptr(false,4)),false,'middle');
+  assert.equal(mapButtonDown(ptr(false,0)),false,'none');assert.equal(mapButtonDown(ptr(true,3)),true,'left with right');
+  const scene=read('src/client/scene.ts');
+  const down=scene.match(/this\.input\.on\('pointerdown',[\s\S]*?\n {4}\}\);/)?.[0]??'';
+  // The same press: an enemy under the right button becomes the priority target, the ground the walk and the hold.
+  assert.match(down,/if\(this\.paused\|\|!mapButtonDown\(pointer\)\)return;/);assert.doesNotMatch(down,/primaryDown/);
+  assert.match(down,/if\(hit\)\{this\.attackTarget=hit;this\.horde\?\.setTarget\(hit\);/);assert.match(down,/this\.hold\.press\(target/);
+  // The hold follows while either button stays down and lets go when both are up.
+  const follow=scene.match(/private followHold\([\s\S]*?\n {2}\}\n/)?.[0]??'';
+  assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);assert.doesNotMatch(follow,/primaryDown/);
+  // Phaser's disableContextMenu cancels 'contextmenu' on its mouse target, the game canvas only (no mouseTarget set):
+  // text fields and the DOM menus keep the browser's menu.
+  assert.ok(scene.indexOf('this.input.mouse?.disableContextMenu();')>=0&&scene.indexOf('this.input.mouse?.disableContextMenu();')<scene.indexOf("this.input.on('pointerdown'"));
+  assert.doesNotMatch(read('src/main.ts')+read('src/client/explore.ts'),/mouseTarget|document\.addEventListener\('contextmenu'/);
+  const phaser=read('node_modules/phaser/src/input/mouse/MouseManager.js');
+  assert.match(phaser,/disableContextMenu: function \(\)\s*\{\s*this\.target\.addEventListener\('contextmenu', function \(event\)\s*\{\s*event\.preventDefault\(\);/);
 });
 
 test('texts per input kind: the phone keeps its words, the desktop speaks of keys and clicks',()=>{

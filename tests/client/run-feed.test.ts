@@ -202,10 +202,11 @@ test('a rematch keeps the players on their wire ids: nobody "leaves", critters o
   for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
   for(let i=0;i<4;i++){step(room);pump(room,feed,a);}
   assert.equal(room.run.snapshot().phase,'result');
-  command(room,b,{t:'rematch',round:1},clock);
+  // Both say "topa" (UX-resultado-revanche): the new run's countdown starts.
+  command(room,b,{t:'rematch',round:1},clock);command(room,a,{t:'rematch',round:1},clock);
   const left:string[]=[];
   for(let i=0;i<4;i++){step(room);pump(room,feed,a);left.push(...feed.left);}
-  assert.equal(room.run.snapshot().phase,'lobby');
+  assert.equal(room.run.snapshot().phase,'countdown');
   assert.deepEqual(left.filter(id=>room.sim.players.has(id)),[],'players are not re-sent as new');
   assert.equal(feed.players.size,2);assert.equal(feed.enemies.size,room.sim.world.enemies.size);
   assert.ok([...feed.players.values()].every(p=>!p.downed&&p.hp>0),'the fresh run state reached the client');

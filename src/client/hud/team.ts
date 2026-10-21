@@ -3,6 +3,7 @@
  * up to 6 portraits with HP, downed ring with rescue progress, offline/eliminated badges,
  * and banners telling who fell and how long is left.
  */
+import {putData,putHidden} from './dom-put.ts';
 import type {PlayerRunView,RunView} from '../../contract/index.ts';
 import {reviveBanner,clamp01,hpFraction,reviveAlerts,secondsLeft,secondsText,teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../render/map-label-rules.ts';
@@ -83,7 +84,7 @@ export function createTeamStrip():HudPart{
     for(const p of view.players){const nodes=members.get(p.id);if(nodes&&p.id!==ctx.localId)put(nodes,'cor',teamColor(view.players,p.id),v=>nodes.root.style.setProperty('--rh-cor',v));}
     const live=new Set(ordered.map(p=>p.id));
     for(const [id,nodes] of members)if(!live.has(id)){nodes.root.remove();members.delete(id);}
-    root.dataset.count=String(ordered.length);
+    putData(root,'count',String(ordered.length));
     // The level-up pause (D-050, ctx.pause): who picked and who the room still waits for.
     const marks=pickMarks(validPause(ctx.pause),view.players);
     ordered.forEach((player,index)=>{
@@ -138,7 +139,7 @@ export function createReviveAlerts():HudPart{
       live.textContent=fresh.map(alert=>alert.kind==='self'?'Você caiu!':`${alert.name} caiu!`).join(' ');
     }
     const banner=reviveBanner(view,ctx.localId,ctx.network,ctx.tally.causes,ctx.watching,ctx.worldRescue);
-    row.hidden=!banner;
+    putHidden(row,!banner);
     if(!banner)return;
     if(row.dataset.kind!==banner.kind)row.dataset.kind=banner.kind;
     row.classList.toggle('rh-alert-urgent',banner.urgent);

@@ -88,7 +88,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
 }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
-/* "Esse sou eu!": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
+/* "Selecionar": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
 .estadio .estadio-confirmar {
   display: inline-flex; align-items: center; justify-content: center; gap: .45em; width: 100%; max-width: 440px;
   min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: var(--r-pilula);

@@ -47,7 +47,7 @@ try {
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
 // chosen hero big, dancing on the bar, and on the side the title, the class name, the row of heroes between ‹ › and
-// "Esse sou eu!". Title, class and button are HTML over the picture, so the text can be translated and changed.
+// "Selecionar". Title, class and button are HTML over the picture, so the text can be translated and changed.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
@@ -62,7 +62,7 @@ app.innerHTML = `
       <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
     </nav>
     <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
-    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>ESSE SOU EU!</button>
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>SELECIONAR</button>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>

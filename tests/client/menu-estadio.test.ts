@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import {barTop, placeOnBar, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs; one screen with the approved stadium, the chosen hero big
-// on the bar, the row of heroes and "Esse sou eu!". Prints: evidence/NEW-20261021-ORQ-menu-estadio.
+// on the bar, the row of heroes and "Selecionar". Prints: evidence/NEW-20261021-ORQ-menu-estadio.
 const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
 const css=readFileSync(new URL('../../src/client/estadio.css',import.meta.url),'utf8');
 const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
@@ -13,7 +13,7 @@ const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
 test('one screen: no tabs, no catalog search; title, class, row, name and confirm are HTML over the stadium',()=>{
   for(const gone of ['role="tablist"','role="tab"','id="classes"','id="search"','data-role','page-next','setupSections','back-to-classes'])
     assert.ok(!main.includes(gone),`${gone} left the menu`);
-  for(const piece of ['class="estadio-palco"','id="portrait"','id="screen-title"','BORA PRA','TORCIDA!','id="class-name"','id="class-list"','id="previous"','id="next"','id="nickname"','id="confirm"','ESSE SOU EU!'])
+  for(const piece of ['class="estadio-palco"','id="portrait"','id="screen-title"','BORA PRA','TORCIDA!','id="class-name"','id="class-list"','id="previous"','id="next"','id="nickname"','id="confirm"','SELECIONAR'])
     assert.ok(main.includes(piece),piece);
   // The scripts that play the menu (smoke-prod, folha-prints, perf-andar) click a `.class-card` and then #confirm.
   assert.match(main,/class="class-card" data-hero="\$\{hero\.id\}"/);

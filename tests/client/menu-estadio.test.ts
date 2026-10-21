@@ -133,7 +133,8 @@ const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pat
 test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
   // The files exist, light, the sizes the code says.
   const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
-  assert.equal(sign.width,1000);assert.ok(sign.hasAlpha);
+  // menu-fundo-sangria: the original's own size (trimmed), never upscaled, never shown above 1x (56.4vh of 2160 = 1218).
+  assert.deepEqual([sign.width,sign.height],[1423,983]);assert.ok(sign.hasAlpha);assert.ok(.564*2160<=1423&&.332*3840<=1423*.9);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[955,21,788,1053],'the box scripts/menu-arte.mjs checks against the art');
   for(const [w,file] of cut.files){
@@ -180,8 +181,12 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
   assert.ok(Math.abs(bar.y-19)<1e-9&&Math.abs(bar.h-912)<1e-9,JSON.stringify(bar));
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\),spot=placed&&fitCutout\(box,placed\);/);
   // The letreiro: 46vw / 78vh x .85 (the user, 21/10); the phone keeps its own sizes.
-  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(39.1vw, 66.3vh);'));
-  assert.ok(Math.abs(46*.85-39.1)<1e-9&&Math.abs(78*.85-66.3)<1e-9);
+  // Then 15% smaller again (menu-fundo-sangria): 46vw / 78vh x .85 x .85.
+  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh);'));
+  assert.ok(Math.abs(46*.85*.85-33.2)<.05&&Math.abs(78*.85*.85-56.4)<.05);
+  // The button right under the row, not pushed down to the bar.
+  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }'));
+  assert.ok(!css.includes('margin-bottom: 5vh'));
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
 });
 

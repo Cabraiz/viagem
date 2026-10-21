@@ -679,7 +679,9 @@ export class Room {
     }
     else if(m.t==='rematch'){
       if(!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
-      if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();this.pushRun();}
+      // A "topa" (UX-resultado-revanche): the new run starts when everyone online voted, else the votes go out.
+      if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();}
+      this.pushRun();
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
     else if(m.t==='sos')this.sos(c,m,now);
@@ -1123,7 +1125,7 @@ export class Room {
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;
     // A pause goes out once per second of its clock (and when who is waiting changes), like the countdown.
-    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
+    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(run.rematchLeft!==undefined?{rematchLeft:Math.ceil(run.rematchLeft/RUN_HZ)}:{}),...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
     if(!force&&key===this.runKey)return;
     this.runKey=key;
     this.send({t:'run',run,tick:this.sim.tick});
@@ -1238,6 +1240,8 @@ export class Room {
     // Paused: the run's combat clock (elapsed, the timeout) stands still with the sim.
     const transition=paused?{started:false,finished:false}:this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
     if(transition.started){this.resetRun();this.syncSpectators();}
+    // The majority's rematch after REMATCH_MAJORITY_TICKS: a new run, the ones who did not vote watch it.
+    if(transition.rematch){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();
     if(++this.ticks%PRUNE_EVERY===0)this.prune();
     this.pushRun();

@@ -565,6 +565,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 hud.setRoster({owner:run.owner,canManage:net.isOwner,members:ids,bots:run.members.filter(m=>m.bot).map(m=>m.id),seatsLeft:Math.max(0,6-ids.length),
                   extra:[...net.players.values()].filter(p=>ids.includes(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.hp,online:p.online,spectator:false,weapons:[],passives:[],
                     ...(run.members.find(m=>m.id===p.id)?.bot?{bot:true}:{})}))});
+                // The collective rematch (UX-resultado-revanche): an older room sends no votes and the first tap starts it.
+                hud.setRematch(run.rematchVotes&&{votes:run.rematchVotes,voters:run.members.filter(m=>m.online&&!m.bot).map(m=>m.id),
+                  ...(run.rematchLeft!==undefined?{leftTicks:run.rematchLeft}:{})});
               }
               hud.setNetwork(net.showReconnecting()?RECONNECTING:undefined);
               hud.avoidHero(controller?.scene.heroScreenRect());

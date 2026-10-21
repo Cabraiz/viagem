@@ -1,7 +1,7 @@
 /**
  * `acao=1` (D-051 step 2): the game's own action button in the attack mode (hud/skill.ts + hud/attack-button.ts) over
  *   the stand-in enemies (`n`, with `parado=1` for prints); `arrasto=dx,dy` holds a drag that far from the button's
- *   centre (CSS px) so a print shows the yellow line and the reticle; `segura=1` holds it with no drag (the auto aim).
+ *   centre (CSS px) so a print shows the thumb's knob (no yellow reticle nor line, 21/10); `segura=1` holds it with no drag.
  * Cidade Nevada render sandbox (cards cidade-03a, cidade-04, cidade-03, barricadas-cliente):
  * `?sandbox=cidade[&mapa=real][&n=300][&view=0..3][&hero=cx,cy][&class=id][&cells=N][&base=1[&fase=prepare|wave]]`.
  *

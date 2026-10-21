@@ -427,7 +427,7 @@ class CitySandbox extends Phaser.Scene {
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
-    this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
+    this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     this.stone.push(view);
     if(carMoves)return; // anda=: the car and its rope, no ghost over the hero
     // The ghost: a free spot to the car's left (green), or on the car itself (`fantasma=carro`, red).
@@ -445,7 +445,7 @@ class CitySandbox extends Phaser.Scene {
    */
   private mountBase(c:{x:number;y:number}){
     const projector=this.cityProjector();
-    this.stone=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE});
+    this.stone=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     const at=(dx:number,dy:number)=>({x:+(c.x+dx).toFixed(3),y:+(c.y+dy).toFixed(3)});
     const tick=1000,R=BASE_R;
     const structures:StructureView[]=[

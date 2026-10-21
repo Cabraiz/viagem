@@ -26,6 +26,12 @@ const USED:readonly string[]=Object.values(BASE_ART);
  * wall is ~150 px wide, a barricade spans 2 u of a plaza mouth (≈ 98 px in the city) and a crate ≈ 0.7 u.
  */
 export const BASE_WIDTH:Readonly<Record<string,number>>={'muralha-acampamento':170,barricada:180,'caixa-saque':64};
+/**
+ * Pieces drawn at the city scenery's scale (world px per art px, render/towers/tower-rules.ts towerArtScale, like the
+ * delivered towers) when the caller gives it: the sofa barricade (NEW-20261021-ORQ-barricada-sofa) is as big as it was
+ * drawn next to the buildings, not stretched to BASE_WIDTH.
+ */
+export const BASE_ART_SCALED:ReadonlySet<string>=new Set([BASE_ART.barricade]);
 /** The importer's foot rule for pieces standing on the ground (spec.mjs ANCHOR). */
 const DEFAULT_ANCHOR:[number,number]=[.5,.88];
 /** States the broken end of a damage sheet may be called (barricade 'quebrada', wall 'ruina'). */
@@ -133,8 +139,12 @@ export function baseFrame(id:string,state:string,view:number,frame=0,out:BaseFra
   }
   return undefined;
 }
-/** Scale that draws a cell of `file` BASE_WIDTH[id] world px wide at the endless map's size, times `u` (actor scale). */
-export function baseDrawScale(id:string,file:ArtFile,u=1):number{
+/**
+ * Scale that draws a cell of `file` BASE_WIDTH[id] world px wide at the endless map's size, times `u` (actor scale);
+ * a BASE_ART_SCALED piece takes `artPx` (world px per art px) when given.
+ */
+export function baseDrawScale(id:string,file:ArtFile,u=1,artPx?:number):number{
+  if(artPx!==undefined&&artPx>0&&BASE_ART_SCALED.has(id))return artPx;
   return (BASE_WIDTH[id]??file.cell[0])/file.cell[0]*u;
 }
 
@@ -144,12 +154,12 @@ const ref:BaseFrameRef={key:'',frame:0};
  * scale BASE_WIDTH × `u`) and returns true; the caller positions it and sets its depth. False (the image untouched)
  * when the piece, the state or its loaded texture is missing: the caller hides the image and draws its Graphics.
  */
-export function applyBaseArt(image:Phaser.GameObjects.Image,id:string,state:string|undefined,view:number,u=1,frame=0):boolean{
+export function applyBaseArt(image:Phaser.GameObjects.Image,id:string,state:string|undefined,view:number,u=1,frame=0,artPx?:number):boolean{
   if(!state||!hasArt('base',id))return false;
   const file=baseFile(id),at=file&&baseFrame(id,state,view,frame,ref);
   if(!file||!at||!image.scene.textures.exists(at.key))return false;
   if(image.texture.key!==at.key)image.setTexture(at.key,at.frame);else image.setFrame(at.frame);
   const anchor=file.anchor??DEFAULT_ANCHOR;
-  image.setOrigin(anchor[0],anchor[1]).setScale(baseDrawScale(id,file,u));
+  image.setOrigin(anchor[0],anchor[1]).setScale(baseDrawScale(id,file,u,artPx));
   return true;
 }

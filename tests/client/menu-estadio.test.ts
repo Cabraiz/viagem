@@ -133,8 +133,9 @@ const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pat
 test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
   // The files exist, light, the sizes the code says.
   const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
-  // menu-fundo-sangria: the original's own size (trimmed), never upscaled, never shown above 1x (56.4vh of 2160 = 1218).
-  assert.deepEqual([sign.width,sign.height],[1423,983]);assert.ok(sign.hasAlpha);assert.ok(.564*2160<=1423&&.332*3840<=1423*.9);
+  // letreiro-na-cena: cut out of the stadium Codex redrew with the sign inside, 2x the most the PC shows (56.4vh of 2160
+  // = 1218 px), so a 200 % zoom on a 4K screen still has a pixel per pixel.
+  assert.deepEqual([sign.width,sign.height],[2436,1698]);assert.ok(sign.hasAlpha);assert.ok(2*Math.floor(.564*2160)<=2436&&2*.332*3840<=2436*1.05);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[953,19,793,1058],'the box scripts/menu-arte.mjs checks against the art');
   for(const [w,file] of cut.files){

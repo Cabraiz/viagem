@@ -13,6 +13,8 @@
 //      the hero beside a house (silhouette);
 // each at 1280×720 and 390×844 (DPR 1). Out: <out>/folha-<sha>.png (every frame with its caption), <out>/folha.json
 // ({ok, fails, consoleErrors, frames, tremor}), the frames themselves, and the Step Summary when GITHUB_STEP_SUMMARY is set.
+// 0. the match's opening, when scripts/abertura-ci.mjs ran first into the same <out> (its abertura.json): its numbers
+//    against the main's on the header (red when it got worse), its prints first, its fails on the sheet's.
 // node scripts/folha-prints.mjs [outDir=folha-out] [--dist dist] [--sha <sha>]: run from the checkout whose dist/ and
 // rooms Worker it plays (its own scripts/local-worker.mjs). Exit 0 ok, 1 the sheet failed, 2 infrastructure.
 // Waits by state (window.__partidaPronta, __fotoPronta, the hero's texture), never a fixed long sleep: swiftshader is slow.
@@ -143,6 +145,17 @@ async function playing(p){
 }
 
 const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
+/** scripts/abertura-ci.mjs's result in <out> (it runs before this script), or null. */
+let abertura=null;
+const secs=ms=>Number.isFinite(ms)?`${(ms/1000).toFixed(1).replace('.',',')} s`:'—';
+/** The opening in one line: each number of this branch, the main's and how much worse (+) or better (−). */
+function aberturaLine(){
+  if(!abertura)return '';
+  const m=abertura.mediana??{},b=m.branch??{},a=m.main,pct=abertura.piora??{};
+  const cell=key=>`${secs(b[key])}${a?` (main ${secs(a[key])}${Number.isFinite(pct[key])?`, ${pct[key]>0?'+':''}${pct[key]} %`:''})`:''}`;
+  const head=`abertura${abertura.ok?'':' PIOROU/FALHOU'} (celular CPU ${abertura.cpu}×, ${abertura.kbps/1000} Mbps, ${abertura.rttMs} ms; mediana de ${abertura.pares})`;
+  return `${head}: frio cena ${cell('frio.cena')} · jogável ${cell('frio.jogavel')} · volta cena ${cell('volta.cena')} · jogável ${cell('volta.jogavel')}`;
+}
 async function shot(p,name,caption,vp){
   // JPEG frames (the artifact stays a few MB: PNG frames made it 48 MB); the sheet itself is a PNG.
   const file=`${String(frames.length).padStart(2,'0')}-${name}-${vp.w}x${vp.h}.jpg`;
@@ -351,10 +364,10 @@ async function sheet(browser,file){
     const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
     return `<figure><img src="${src}"><figcaption>${esc(f.caption)}${f.hero?` <small>${esc(f.hero.key)}#${esc(f.hero.frame)}</small>`:''}</figcaption></figure>`;
   }).join('');
-  const head=`folha ${sha} · ${fails.length?`FALHOU: ${fails.join(' | ')}`:'ok'}`;
+  const head=`folha ${sha} · ${fails.length?`FALHOU: ${fails.join(' | ')}`:'ok'}`,ab=aberturaLine();
   const html=`<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#111;color:#eee;font:13px system-ui}h1{font-size:15px;margin:8px;color:${fails.length?'#f66':'#6f6'}}
 main{display:flex;flex-wrap:wrap;gap:6px;padding:6px}figure{margin:0;width:320px}img{width:320px;height:240px;object-fit:contain;background:#000;display:block}
-figcaption{padding:2px 0}small{color:#999;word-break:break-all}</style><h1>${head.replace(/[&<>]/g,'')}</h1><main>${cells}</main>`;
+figcaption{padding:2px 0}small{color:#999;word-break:break-all}h2{font-size:14px;margin:0 8px 6px;color:${abertura?.ok===false?'#f66':'#9cf'}}</style><h1>${head.replace(/[&<>]/g,'')}</h1>${ab?`<h2>${ab.replace(/[&<>]/g,'')}</h2>`:''}<main>${cells}</main>`;
   const ctx=await browser.newContext({viewport:{width:1662,height:600},deviceScaleFactor:1});
   try{const p=await ctx.newPage();await p.setContent(html,{waitUntil:'load',timeout:60000});await p.screenshot({path:file,fullPage:true,timeout:60000});}
   finally{await ctx.close().catch(()=>{});}
@@ -365,6 +378,8 @@ const mpFile=join(dist,'multiplayer.json');
 const restore=()=>{if(original!==undefined){try{writeFileSync(mpFile,original);}catch{}original=undefined;}};
 process.on('exit',restore);
 mkdirSync(outDir,{recursive:true});
+try{abertura=JSON.parse(readFileSync(join(outDir,'abertura.json'),'utf8'));}catch{}
+if(abertura){frames.push(...(abertura.frames??[]));fails.push(...(abertura.fails??[]));avisos.push(...(abertura.avisos??[]));}
 try{
   if(!existsSync(mpFile))throw new Infra(`${mpFile} não existe: rode npm run build antes`);
   const {chromium}=await playwright();
@@ -390,11 +405,12 @@ try{
 }finally{
   restore();preview?.stop();await Promise.resolve(worker?.stop()).catch(()=>{});
 }
-const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames};
+const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames,
+  abertura:abertura&&{ok:abertura.ok,linha:aberturaLine(),mediana:abertura.mediana,piora:abertura.piora,desvio:abertura.desvio,baseSha:abertura.baseSha}};
 writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;
 console.log(line);
 if(process.env.GITHUB_STEP_SUMMARY){
-  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (parado; trocas idle↔walk em cada parada e na rajada): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples,paradas:v.stops,rajada:v.burst}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
+  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (parado; trocas idle↔walk em cada parada e na rajada): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples,paradas:v.stops,rajada:v.burst}])))}\`\n\n${abertura?`${aberturaLine()}\n\n`:''}Artefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
 }
 process.exit(code);

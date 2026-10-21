@@ -277,6 +277,23 @@ test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x 
   assert.ok(arte.includes("esrgan:'viciado-2x-x4plus-anime.png'")&&arte.includes("esrgan:'clt-2x-x4plus-anime.png'"));
 });
 
+test('heroi-esrgan-no-ar: the floor scripts/pes-no-chao.mjs checks the feet against is the sole in the approved picture',async()=>{
+  const src=readFileSync(new URL('../../scripts/pes-no-chao.mjs',import.meta.url),'utf8');
+  const chao=JSON.parse(src.match(/const CHAO=(\{[^}]*\});/)![1].replace(/'/g,'"'));
+  assert.deepEqual(Object.keys(chao),Object.keys(RECORTES),'every hero drawn in place has a floor');
+  for(const [id,floor] of Object.entries(chao) as [string,number][]){
+    // The bottom edge of the sole's lowest row with alpha >= 128 in the 1x file (the box of the 1920x1080 picture).
+    const cut=cutoutOf(id)!,one=cut.files.find(([w])=>w===cut.w)!;
+    const {data,info}=await sharp(publicFile(one[1])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    let low=-1;
+    for(let y=info.height-1;y>=0&&low<0;y--)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>=128){low=y;break;}
+    assert.ok(Math.abs(cut.y+low+1-floor)<=1,`${id}: the sole ends at ${cut.y+low+1}, CHAO says ${floor}`);
+  }
+  assert.match(src,/const VIEWPORTS=\[\[1920,1080\],\[1920,950\],\[1590,903\],\[1366,768\],\[1280,720\],\[2560,1080\],\[1024,768\]\];/);
+  assert.match(src,/const TOLERANCIA=4,ALPHA=128;/);
+  assert.match(readFileSync(new URL('../../.github/workflows/prints.yml',import.meta.url),'utf8'),/node \.\.\/scripts\/pes-no-chao\.mjs \.\.\/folha-out/,'it runs in CI with the sheet');
+});
+
 test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{
   const pill=await sharp(publicFile('/art/menu/botao/pilula.webp')).metadata();
   assert.deepEqual([pill.width,pill.height],[742,149]);

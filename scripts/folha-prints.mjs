@@ -107,8 +107,11 @@ const HERO=()=>{
 };
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
-/** Out of play: the own hero is dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). */
-const DEAD=()=>/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+/**
+ * Out of play: the own hero is dead (the torcida's bar of UX-espectador, .spect; before it the banner "Assistindo: <ally>")
+ * or the match ended (the result screen, .rh-result).
+ */
+const DEAD=()=>!!document.querySelector('.spect:not([hidden])')||/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */

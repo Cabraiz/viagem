@@ -65,3 +65,10 @@ No combate manual, a arma da mão vai para a mão do quadro que o herói mostra.
 - **Como segura:** cada adesivo tem cabo e ângulo do cano (`WEAPON_HOLD` em `hand-points.ts`). O cabo vai na mão e o cano aponta para onde o herói olha (`AIM_ANGLE`). Mirando para a esquerda, a arma é virada de cabeça para baixo para continuar em pé. O maçarico é carregado em pé e só espelha.
 - **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, a R06, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo.
 - **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.
+
+## Passo sem deslizar e pés no chão
+
+Card NEW-20261021-ORQ-passo-sem-deslizar-e-sombra (21/10). Vale para todos os heróis (M16, R06 e legado).
+- **Andar:** o ciclo avança com a distância andada na tela, não com o relógio (`sprite-motion.ts` `walkCycles`). A passada desenhada é `WALK_STRIDE` = 0,68 altura de figura por ciclo, a mediana das 29 caminhadas laterais medida por `scripts/passada.mjs`. Na cidade, a 3,99 u/s, isso dá ~8 ciclos/s de lado e ~4 de frente. Antes o ciclo levava 857 ms e o chão corria ~7× mais rápido que o pé. Parado, o quadro congela, sem pedalar. Uma virada mantém a fase. `WALK_TUNE.lock` < 1 desacelera o ciclo (no sandbox, `passo=0.5`).
+- **Pés:** cada clipe fica na sua própria linha de pé (`hero-feet-data.ts`, gerado por `node scripts/hero-feet.mjs`): a última linha opaca (alpha > 128), mediana dos quadros. A linha única por classe deixava o viciado 3–4 px acima da sombra andando. Depois de importar arte, rode o script de novo: o teste `heroi-pes` falha se faltar algum clipe.
+- **Prova:** sandbox `?sandbox=cidade&mapa=real&tele=1`. `window.__cidade.freeze()` + `step(ms)` + `move(x, y)` filmam quadro a quadro (o screenshot não roda quadro).

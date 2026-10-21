@@ -2,13 +2,13 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,type Movement128Plan} from './movement128.ts';
-import {detailedFeetY,heroFeetY} from './hero-feet.ts';
+import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
 import {watchOrphans} from './texture-orphans.ts';
@@ -132,7 +132,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan;hand?:HandFrame}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -263,10 +263,13 @@ export class CharacterSprites {
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y};this.states.set(sprite,state);}
+    if(!state){state={motion:new SpriteMotion(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
-    if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;}
+    if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
+    // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
+    // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
+    if(motion==='walk')state.cycles+=walkCycles(dx,dy,view,96*this.viewScale*HERO_DRAW_SCALE);
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
     const seen=movement128Visible(sprite,this.scene);
@@ -274,7 +277,9 @@ export class CharacterSprites {
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){
-        const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE,frame=movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+        const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE;
+        // The walk by the ground walked, attack and rest by the clock.
+        const frame=motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -283,7 +288,7 @@ export class CharacterSprites {
         // cell), so the hero floated over its ring, its contact shadow and its silhouette; its figure's bottom is the feet.
         // M16's E/NE/SE are W/NW/SW mirrored: Phaser flips inside the frame's box (city copy included, its crop is
         // symmetric), so the body's pivot column goes to 1 − x and the figure stays on the same world point.
-        const flip=!!detailed.flip,ax=movementPivotX(detailed),ay=this.feetY(id)??detailedFeetY(detailed);
+        const flip=!!detailed.flip,ax=movementPivotX(detailed),ay=clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed);
         const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
@@ -335,7 +340,10 @@ export class CharacterSprites {
       sprite.setFlipX(legacyFlip(sprite.flipX,dx,dy,view));
       sprite.play(anims.single![motion],true);
     }
-    if(!alive)sprite.anims.pause();else sprite.anims.resume();
+    // The legacy walk too follows the ground walked: its 6 frames by the cycle, the clip held (passo-sem-deslizar).
+    if(motion==='walk'&&alive){
+      sprite.anims.pause();sprite.anims.setProgress(cycleFrame(state.cycles,SPRITE_CLIPS.walk.frames.length)/(SPRITE_CLIPS.walk.frames.length-1));
+    }else if(!alive)sprite.anims.pause();else sprite.anims.resume();
     // Switch to the legacy sheet first, then release the detailed atlas and its derived city copies safely.
     state.hand=undefined;
     if(state.stream||this.detailed){state.stream=undefined;if(detailed)this.detailed?.unbind(sprite);else this.detailed?.release(sprite);}

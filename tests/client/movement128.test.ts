@@ -5,9 +5,11 @@ import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from '../../src/client/sprites/movement128.ts';
 import {Movement128Textures,movement128Textures} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
-import {HERO_ANIM_RATE,HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 /** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
 const T=(ms:number)=>Math.ceil(ms/HERO_ANIM_RATE);
+/** The walk frame after `steps` steps of 0.1 u along x (passo-sem-deslizar: the walk follows the ground, not the clock). */
+const W=(steps:number)=>String(cycleFrame(steps*walkCycles(.1,0,0,96*.8),128));
 import {screenDirection} from '../../src/client/projection.ts';
 import {heroSheetUrl,assetsParaPartida} from '../../src/client/preload/match-assets.ts';
 
@@ -130,7 +132,7 @@ test('both missing manifest IDs and a catalog-free hero start from preloaded nat
       renderer.animate(sprite as never,id,0,0,0,true,0,screenDirection(...vectors[direction],0));assert.equal(sprite.frame.name,String(i));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);
     }
     scene.time.now=10;renderer.animate(sprite as never,id,.1,0,0,true,0,screenDirection(0,1,0));await flush();assert.equal(requests.length,1);assert.equal(sprite.texture.key,`sprite128:${id}:idle8`,'native idle survives while walk loads');
-    scene.time.now=10+T(300);renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,'64');
+    scene.time.now=10+T(300);renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,W(2));
     assert.equal(loads.length,1,'no legacy or other15 clips were queued');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().ready,2);assert.equal(cache.stats().leasedTextures,1);
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(images.size,0,'adopted preload and streamed clip are disposed together');
@@ -241,12 +243,12 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
   try{
     render(0);render(10);await flush();assert.equal(requests.length,1);assert.match(sprite.texture.key,/dir4c$/,'legacy stays while the requested page loads');
     decoders.get(requests[0])!();await flush();render(10+T(300));
-    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,'64');assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
+    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,W(2));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
     assert.deepEqual(renderer.figureIn(sprite as never,'aposentado'),clip().figure);
-    render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,'64');
+    render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,W(2));
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');
-    decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,'96','turn/late arrival retains450ms walk phase');
-    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,'96');
+    decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,W(4),'turn/late arrival keeps the walk phase');
+    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,W(4));
     decoders.get(requests[2])!();await flush();render(1424+T(500),'N',1);assert.equal(sprite.frame.name,'64');
     render(1424+T(600),'N',2);assert.equal(sprite.frame.name,'76','overlapping attack event cannot restart the1000ms swing');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().leasedTextures,1);

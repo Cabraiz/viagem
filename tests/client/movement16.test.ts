@@ -5,7 +5,7 @@ import {EventEmitter} from 'node:events';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement16Plan,movementPlan,movementSheets,movementFrame,movementPivotX,hasMovement16,movement128Figure,movement16Source} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
-import {HERO_ANIM_RATE,HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 import {heroSheetUrl,heroMotionUrls} from '../../src/client/preload/match-assets.ts';
 import {variantGeometry,variantOrigin,copyX,cropOf} from '../../src/client/render/city-outline-rules.ts';
@@ -122,7 +122,9 @@ test('the sprite shows E/NE/SE as W/NW/SW flipped on the pivot, keeps the walk p
   const before=Number(sprite.frame.name);step(.1,16);step(.1,1);
   assert.equal(sprite.texture.key,`sprite16:${ID}:walk:W`,'E draws the W sheet');assert.equal(sprite.flipX,true);
   assert.ok(Math.abs(sprite.originX-(1-PIVOT.W/96))<1e-9);
-  assert.ok(Number(sprite.frame.name)>=before&&Number(sprite.frame.name)<=before+1,'the walk phase survives the turn');
+  // The walk follows the ground walked (passo-sem-deslizar): 13 steps before the turn, 15 after, one cycle across it.
+  const c=walkCycles(.1,0,0,96*.8);
+  assert.equal(before,cycleFrame(13*c,16));assert.equal(Number(sprite.frame.name),cycleFrame(15*c,16),'the walk phase survives the turn');
   assert.ok(Math.abs(sprite.originY-80/96)<1e-9,'feet line from the M16 rests and walks');
   await flush();events.emit('shutdown');
 });

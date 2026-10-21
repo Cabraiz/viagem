@@ -16,8 +16,11 @@ import type Phaser from 'phaser';
 import {artPiece,artUrl,hasArt,type ArtFile,type ArtPage} from './manifest.ts';
 import {damageStage} from '../render/stonewards-rules.ts';
 
-/** The `base` ids the renderer draws today (ART-IDS.md). The rest of the group (fountain, forge, helicopter…) has no world anchor yet. */
-export const BASE_ART={wall:'muralha-acampamento',barricade:'barricada',crate:'caixa-saque'} as const;
+/**
+ * The `base` ids the renderer draws today (ART-IDS.md). The rest of the group (fountain, forge, helicopter…) has no world anchor yet.
+ * `muralha`/`pilar`: the junk wall the free barricade squares wear (render/muralha-rules.ts; 2 views = the two diagonals).
+ */
+export const BASE_ART={wall:'muralha-acampamento',barricade:'barricada',crate:'caixa-saque',muralha:'muralha-tralha',pilar:'muralha-tralha-pilar'} as const;
 export type BaseArtId=typeof BASE_ART[keyof typeof BASE_ART];
 const USED:readonly string[]=Object.values(BASE_ART);
 

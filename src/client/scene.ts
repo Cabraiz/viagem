@@ -952,6 +952,8 @@ export class IslandScene extends Phaser.Scene {
     if(!ghost&&!this.fortify)return;
     const f=this.makeFortify();f?.setGhost(ghost);f?.setHints(ghost?hints:[]);
   }
+  /** barricada-construir part 2 (hud/tralha): the barricada square that wears the gold outline (undefined: none). */
+  setTralhaOutline(id:string|undefined){if(this.stone)this.stone.outline=id;}
   /** D-052 slice 3 (the build HUD aims the ghost): the ground point (world u) under a client point (CSS px, viewport). */
   worldAt(clientX:number,clientY:number):Point|undefined{
     const canvas=this.game.canvas;

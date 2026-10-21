@@ -124,8 +124,8 @@ test('every city file the city draws over 64 KB (art-plan cityLiteFiles: view sh
 
 test('the base wall and barricades (art/base-art.ts) load their city lite copies at the same cell, before the first playable frame; a failed copy falls back to the approved file (base-lite-muralha)',()=>{
   const index=JSON.parse(readFileSync('public/art/manifest.json','utf8')),base=index.groups.base;
-  // art-plan's list is base-art's 4-view pieces (kept apart so scripts/art-lite.mjs does not load the renderer).
-  assert.deepEqual([...BASE_LITE_PIECES].sort(),Object.values<string>(BASE_ART).filter(id=>(base.pieces[id]?.files.sheet.views??0)>=4).sort());
+  // art-plan's list is base-art's view pieces (2 or 4 views; kept apart so scripts/art-lite.mjs does not load the renderer).
+  assert.deepEqual([...BASE_LITE_PIECES].sort(),Object.values<string>(BASE_ART).filter(id=>(base.pieces[id]?.files.sheet.views??0)>=2).sort());
   setArtIndex(parseArtIndex(index));
   try{
     const loads=baseLoads();

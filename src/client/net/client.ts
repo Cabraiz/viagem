@@ -140,6 +140,8 @@ const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classI
  * order. `welcome`: the held message is a welcome (first join or reconnection), so the seat is not applied yet.
  */
 type MapWait={ws:WebSocket;queue:(object|ArrayBuffer)[];failed:boolean;welcome:boolean};
+/** barricada-construir part 2: the room's answer to a destruir / coletar tap (client.tralha). */
+export interface TralhaAnswer {t:'destruiu'|'coleta';req:number;ok:boolean;reason?:string;pix?:number;until?:number;done?:true}
 export class CoopClient {
   terrain=defaultTerrain;
   /**
@@ -343,6 +345,16 @@ export class CoopClient {
   /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
   onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};
   /** D-052, the car's rope: {t:'puxar',round,req,on} hooks (on) or drops it; the room answers {t:'puxou'} (onPulled). */
+  /**
+   * barricada-construir part 2: {t:'destruir'|'coletar'} on a barricada square (its structure's wire id). The room
+   * answers onTralha: {t:'destruiu',req,ok,pix?|reason?}, {t:'coleta',req,ok,until?|reason?} and, when a coleta ends,
+   * {t:'coleta',req,ok,done?|reason?}.
+   */
+  tralha(kind:'destruir'|'coletar',id:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:kind,round:this.run.round,req,id});return req;
+  }
+  onTralha:(answer:TralhaAnswer)=>void=()=>{};
   pull(on:boolean){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'puxar',round:this.run.round,req,on});return req;
@@ -594,6 +606,10 @@ export class CoopClient {
       // D-052: the hero's own accepted free obra holds them (obra-hold.ts); `defense` is its wire id when the room sends it.
       this.obraHold.answer({req:m.req,ok:m.ok,...(typeof m.defense==='string'?{defense:m.defense}:{})});
       this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{}),...(typeof m.defense==='string'?{defense:m.defense}:{})});
+    }
+    else if((m.t==='destruiu'||m.t==='coleta')&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean'){
+      this.onTralha({t:m.t,req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{}),...(Number.isFinite(m.pix)?{pix:m.pix}:{}),
+        ...(Number.isFinite(m.until)?{until:m.until}:{}),...(m.done===true?{done:true}:{})});
     }
     else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,

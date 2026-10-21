@@ -41,6 +41,8 @@ import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullStat
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
+import {TralhaPick} from './hud/tralha/model.ts';
+import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import type {KeyValue} from './economy.ts';
 import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
@@ -110,6 +112,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
   /** Kits de torre (torre-pela-caixa): a tap on the kit's slot puts its tower on the ground (ghost, ✓/✕). */
   let kitHud:KitPlaceHud|undefined;const kitPlace=new KitPlace();
+  let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -200,6 +203,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onTurn:()=>kitPlace.turn(),
         onAim:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p)kitPlace.point(p,cell());},
         canvas:()=>controller?.game.canvas});
+      // barricada-construir part 2: tap a barricada de tralha → COLETAR / DESTRUIR; the mouse over it → outline + hand.
+      const squares=()=>hud?.view?.structures??[];
+      tralhaHud=new TralhaHud(host.el,{
+        onTap:(x,y)=>{const p=controller?.scene.worldAt(x,y);return !!p&&tralhaPick.tap(squares(),p,cell());},
+        onHover:(x,y)=>{const p=x===undefined||y===undefined?undefined:controller?.scene.worldAt(x,y);return tralhaPick.move(squares(),p,cell());},
+        onAct:kind=>{const r=tralhaPick.act(kind,net,hud?.view?.tick??0);if(r==='offline')obraSay('Agora não dá');},
+        canvas:()=>controller?.game.canvas,
+        busy:()=>fortBuild.open||kitPlace.active});
+      net.onTralha=answer=>{const text=tralhaPick.answer(answer);if(text)obraSay(text);};
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
@@ -323,7 +335,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -661,6 +673,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   const car=view&&objectiveOf(view)?.car;
                   scene.setBuildGhost(kitPlace.ghost({cell:buildPlanFor(net.terrain).cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
+              }
+              // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
+              if(tralhaHud&&controller){
+                const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id),structures=view?.structures??[];
+                const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
+                  &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0&&!fortBuild.open&&!kitPlace.active;
+                if(!available)tralhaPick.reset();else tralhaPick.sync(structures);
+                const sel=tralhaPick.selected===undefined?undefined:structures.find(s=>s.id===tralhaPick.selected),tick=view?.tick??0;
+                const progress=tralhaPick.progress(tick);
+                tralhaHud.update({available,...(sel?{at:scene.locate(sel).screen}:{}),...(progress!==undefined?{hero:scene.locate(net.predicted).screen,progress}:{})});
+                scene.setTralhaOutline(available?tralhaPick.outline(structures,tick):undefined);
               }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

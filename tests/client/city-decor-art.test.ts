@@ -7,7 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
-import {ART_CELL,DECOR_PROP_SCALE,buildCityArtPlan,decorRule,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
+import {ART_CELL,DECOR_PROP_SCALE,buildCityArtPlan,cityLiteFile,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
+import {liteOnly} from '../../src/client/art/horde-art.ts';
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
 import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
@@ -158,4 +159,33 @@ test('the real asset places no refused piece, and its walls sit on 1×1 cells', 
     const rule=decorRule(e.id);
     if(rule==='wall')assert.ok(e.w===1&&e.h===1,e.id);
   }
+});
+
+test('a lite copy (liteCell, decor-lite-arte-perto) draws the same piece: lite url and cell, the same anchor, height and on-screen size', ()=>{
+  const lite=(index:ArtIndex)=>{
+    const raw=JSON.parse(JSON.stringify(index));
+    for(const id of ['farmacia-1','poste-concreto-1']){const f=raw.groups.cenario.pieces[id].files.sheet;f.liteCell=[Math.ceil(f.cell[0]/2),Math.ceil(f.cell[1]/2)];}
+    return parseArtIndex(raw);
+  };
+  const a=mini([]),decor=['farmacia-1','poste-concreto-1'];
+  const full=buildCityArtPlan(cenarioIndex(),{cell:1.496,decor}),half=buildCityArtPlan(lite(cenarioIndex()),{cell:1.496,decor});
+  for(const id of decor){
+    const o=full.decor[id],l=half.decor[id];
+    assert.equal(o.url,`/art/city/decor/${id}/sheet.webp`);assert.equal(texelOf(o),1);
+    assert.equal(l.url,`/art/lite/city/decor/${id}/sheet.webp`);
+    assert.deepEqual([l.frameWidth,l.frameHeight],[o.frameWidth/2,o.frameHeight/2]);
+    assert.equal(texelOf(l),.5);
+    assert.ok(Math.abs(l.scale*l.frameHeight-o.scale*o.frameHeight)<1e-9,`${id}: same drawn size`);
+    assert.equal(l.height,o.height);assert.equal(l.originY,o.originY);
+    for(const view of [0,1,2,3]){
+      const e={id,c:2,r:1,w:id==='farmacia-1'?2:1,h:1,rot:0},d=decorSprite(e,o,view,a,VIEW_PIVOT),dl=decorSprite(e,l,view,a,VIEW_PIVOT);
+      assert.ok(Math.abs(d.originX-dl.originX)<1e-9,`${id} view ${view}: originX ${dl.originX} vs ${d.originX}`);
+      assert.ok(Math.abs(dl.scale-d.scale*2)<1e-9,"per texture px: twice the scale on half the texels");assert.equal(dl.frame,d.frame);
+    }
+  }
+  assert.ok(liteOnly(half.decor['farmacia-1'].url),'no fallback to the approved file (other cells)');
+  assert.equal(cityLiteFile('cenario','farmacia-1',cenarioIndex().groups.cenario!.pieces['farmacia-1']),'sheet');
+  assert.equal(cityLiteFile('cenario','bueiro',{kind:'decor',files:{sheet:{file:'bueiro/sheet.webp',cell:[256,256],frames:1}}} as never),undefined,'decals are no view sheet');
+  assert.equal(cityLiteFile('base','forja',{kind:'views',files:{sheet:{file:'forja.webp',cell:[256,256],views:4}}} as never),undefined,'base pieces other than the fountain load elsewhere');
+  assert.equal(cityLiteFile('predios','arena-1',{kind:'views',files:{sheet:{file:'arena-1.webp',cell:[256,256],views:4}}} as never),undefined,'unused building families');
 });

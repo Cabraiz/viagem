@@ -5,9 +5,11 @@
  * - the 4-view base sheet (`sheet`, or `views` from older imports) of every `ninho-<tema>-<estado>` (the nests are not decor: the scene places them);
  * - the ground decals (rules.isDecal: any file of theirs, 1 view, baked into the ground by decalMeshes).
  * Texture keys are `city:live:<id>:<file>`; the base images of the decor are the city layer's (E1), not loaded here.
+ * A file with `liteCell` (a nest's sheet, scripts/art-lite.mjs) loads its smaller lite copy at that cell.
  */
 import type {ArtFile,ArtIndex} from '../../../art/manifest.ts';
 import {groupFileUrl} from '../../../art/manifest.ts';
+import {cityLiteUrl} from '../art-plan.ts';
 import type {LivePiece} from './layer.ts';
 import {isDecal} from './rules.ts';
 
@@ -24,7 +26,8 @@ export function liveSheets(index:ArtIndex):LiveSheet[]{
       const key=liveTextureKey(id,name);
       if(!isLiveFile(id,name)||!file.file||seen.has(key))continue;
       seen.add(key);
-      out.push({key,url:groupFileUrl(group,file.file),frameWidth:file.cell[0],frameHeight:file.cell[1]});
+      const url=groupFileUrl(group,file.file),lite=file.liteCell;
+      out.push(lite?{key,url:cityLiteUrl(url),frameWidth:lite[0],frameHeight:lite[1]}:{key,url,frameWidth:file.cell[0],frameHeight:file.cell[1]});
     }
   return out;
 }

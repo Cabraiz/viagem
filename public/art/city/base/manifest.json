@@ -150,7 +150,11 @@
               "sha256": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606"
             }
           ],
-          "sha256": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606"
+          "sha256": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606",
+          "liteCell": [
+            252,
+            236
+          ]
         }
       },
       "sha256": "1349ce06a457d38cc228fec441f826b0b9230b0085567bcac68517add5724968",

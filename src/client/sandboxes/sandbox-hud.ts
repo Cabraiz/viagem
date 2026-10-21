@@ -328,6 +328,11 @@ function load(next:HudScenario){
   };
   if(scenario==='result')hud.showResult(shamed(withShare(withBill(tied(named(fakeResult(players,!params.has('lose')&&(!conta||conta==='opened'),params.has('full'))))))));
   // The owner's result (D-025: "Arrumar a sala"), and the playtest's "Métricas" chip with ?dev=1 (the layout audit).
+  // `votos=N[&falta=S]` (UX-resultado-revanche): the room's rematch vote, the last N players said "topa" (the local one only with all) (S: the majority's clock).
+  if(scenario==='result'&&params.has('votos')){
+    const ids=view.players.map(p=>p.id),n=Number(params.get('votos'))||0,left=params.get('falta');
+    hud.setRematch({votes:ids.slice(ids.length-n),voters:ids,...(left?{leftTicks:Number(left)*20}:{})});
+  }
   if(scenario==='result'&&params.has('dono')){const ids=view.players.map(p=>p.id);hud.setRoster({owner:'p1',canManage:true,members:ids,bots:ids.slice(ids.length-bots),seatsLeft:Math.max(0,6-ids.length),extra:[]});}
   // `data-hud-ready` says the scene is drawn (the audit measures only then: BUG-audit-scroll-flaky); with the chip, once
   // its module and stylesheet are in.

@@ -40,7 +40,7 @@
 .rh[data-hud=fone] .rh-camp-com-relogio :is(.rh-camp-num,.rh-camp-wall>.ic){display:none}
 /* The last 5 s of the intermission: Laranja Cone with Breu text and the round chip's pulse (topbar.ts rh-urgent). */
 .rh[data-hud=fone] .rh-camp-relogio[data-urgente] b{background:var(--c-cone);color:var(--c-breu);box-shadow:0 0 0 1px var(--c-breu)}
-.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:rh-pulse .6s ease-in-out infinite alternate}
+.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:rh-pulse .3s ease-in-out 4 alternate}
 @media (prefers-reduced-motion:reduce){.rh[data-hud=fone] .rh-camp-relogio[data-urgente] .rh-camp-relogio-ficha{animation:none}}
 
 /* ---------- The team: a fan of half-size portraits (44 → 24 px), like cards in a hand ---------- */

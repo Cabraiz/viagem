@@ -16,6 +16,7 @@ import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
+import {TriBand} from './city/tri-band.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
@@ -36,6 +37,12 @@ const HAND_DX=26,HAND_DY=-30;
 const RING_DEPTH=-9965,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
+/**
+ * Card Q2: the crates' and weapons' rarity rings are frozen into triangles (city/tri-band.ts), one look per kind, rarity
+ * and body (to the hundredth), each pickup taking a band of its look this frame (the crate's pulse is a scale); Phaser
+ * replayed 418-836 commands of rings every frame. Under the opening arc, which stays live. A look unused this long goes.
+ */
+const RING_BAND_DEPTH=RING_DEPTH-.001,RING_LOOK_MS=3000;
 
 interface ShotFx {image:Image;born:number;x:number;y:number;angle:number;look:FireLook;frames:number;scale:number}
 interface BurstFx {image:Image;label:Phaser.GameObjects.Text;born:number;x:number;y:number;rarity:Rarity}
@@ -64,6 +71,7 @@ export class ArsenalFx{
   private q:Pt={x:0,y:0};private q2:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:PROGRESS_POINTS},()=>({x:0,y:0}));
   private frameRef:BaseFrameRef={key:'',frame:0};
+  private ringLooks=new Map<string,{bands:TriBand[];used:number;seen:number}>();
   /** Opening prediction for every hero who can open (has a hand slot, is in the run): the local one and the others. */
   private openings=new CrateOpenings();
   private canOpen=new Set<string>();
@@ -132,6 +140,11 @@ export class ArsenalFx{
   begin(now:number,body:number,reduced:boolean,silhouettes=false){
     this.now=now;this.body=body;this.reduced=reduced;this.silhouettes=silhouettes;
     this.rings.clear();this.arcs.clear();
+    for(const [key,look] of this.ringLooks){
+      for(const band of look.bands)band.setVisible(false);
+      look.used=0;
+      if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
+    }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
   }
 
@@ -143,8 +156,10 @@ export class ArsenalFx{
   crate(id:string,x:number,y:number,value:number,q:Pt):BaseFrameRef|undefined{
     const rarity=rarityOf(value),b=this.body,color=this.colors[rarity];
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.006);
-    this.rings.fillStyle(color,.22).fillEllipse(q.x,q.y,58*b*pulse,24*b*pulse);
-    this.rings.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(q.x,q.y,58*b*pulse,24*b*pulse);
+    this.ringBand(`c|${color}|${Math.round(b*100)}`,g=>{
+      g.fillStyle(color,.22).fillEllipse(0,0,58*b,24*b);
+      g.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(0,0,58*b,24*b);
+    },q).setScale(pulse);
     const progress=this.openings.progress(id,x,y,value);
     if(progress>0){
       // The opening fills the crate's own ring (on the ground, under the hero): Breu under, the rarity colour over.
@@ -161,7 +176,17 @@ export class ArsenalFx{
     const kit=kitPiece(resource);
     if(!kit&&!isWeaponItem(resource))return;
     const color=this.colors[kit?kitRarity(kit):rarityOf(value)],b=this.body;
-    this.rings.lineStyle(Math.max(2,2.5*b),color,.95).strokeEllipse(q.x,q.y,40*b,17*b);
+    this.ringBand(`i|${color}|${Math.round(b*100)}`,g=>{g.lineStyle(Math.max(2,2.5*b),color,.95).strokeEllipse(0,0,40*b,17*b);},q);
+  }
+  /** A band of the ring look `key` (drawn by `draw` at the origin the first time) shown at `q` this frame. */
+  private ringBand(key:string,draw:(g:Phaser.GameObjects.Graphics)=>void,q:Pt):TriBand{
+    let look=this.ringLooks.get(key);
+    if(!look){look={bands:[],used:0,seen:this.now};this.ringLooks.set(key,look);}
+    look.seen=this.now;
+    let band=look.bands[look.used];
+    if(!band){band=TriBand.make(this.scene,draw).setDepth(RING_BAND_DEPTH);look.bands.push(band);}
+    look.used++;
+    return band.setPosition(q.x,q.y).setScale(1).setVisible(true);
   }
 
   /** End of a frame: the hands, the shots and the bursts. */
@@ -189,6 +214,8 @@ export class ArsenalFx{
 
   destroy(){
     this.shots.clear();this.bursts.clear();this.hands.clear();
+    for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
+    this.ringLooks.clear();
     for(const o of this.objects)o.destroy();
     this.objects.length=0;
   }

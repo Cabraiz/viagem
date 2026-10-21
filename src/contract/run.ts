@@ -36,5 +36,12 @@ export interface RunState {
    * older room: the buttons stay off).
    */
   pause?:RunPause;
+  /**
+   * Result only (UX-resultado-revanche): who said "topa" to the rematch (people online; bots never vote). Absent from an
+   * older room: the first tap starts the rematch, as before.
+   */
+  rematchVotes?:string[];
+  /** Result only: ticks until the majority's rematch starts without the rest (present while the votes are a majority). */
+  rematchLeft?:number;
 }
 export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[];skips?:Record<string,number>;rerolls?:Record<string,number>}

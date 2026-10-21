@@ -10,6 +10,7 @@
  * Each choice is a price tag from the corner shop (etiqueta); picking one stamps "LEVEI" on it (the one show moment),
  * with a "tum" and a 15 ms buzz. The DOM is rebuilt only when the shown offer changes.
  */
+import {putAttr,putData,putHidden,putText} from './dom-put.ts';
 import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
 import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
@@ -348,8 +349,8 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     // The chosen offer is no longer "waiting", even before the server drops it.
     const waiting=offers.filter(offer=>offer.id!==pending?.id).length;
     const chipWas=chip.hidden;
-    chip.hidden=!state.chip||waiting<=0;
-    chip.dataset.mode=state.mode;
+    putHidden(chip,!state.chip||waiting<=0);
+    putData(chip,'mode',state.mode);
     if(waiting!==lastPending&&waiting>0){
       if(chipWas||waiting>lastPending)beat();
       lastPending=waiting;const text=chipText(waiting);
@@ -358,24 +359,24 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
     if(waiting<=0)lastPending=0;
     const offer=stamp?.offer??offers[0];
     const visible=!!stamp||(!!offer&&offer.choices.length>0&&state.panel);
-    chip.setAttribute('aria-expanded',String(visible));
+    putAttr(chip,'aria-expanded',String(visible));
     // D-052: in a pause the window waits with the team: someone else still picks ("Esperando os outros jogadores…"),
     // and once this phone picked it stays as just that line and the buttons until the room resumes.
     const local=options.localId??'',othersWait=paused&&waitingIds.some(id=>id!==local);
-    wait.hidden=!othersWait;
+    putHidden(wait,!othersWait);
     const onlyWait=othersWait&&!waitingIds.includes(local)&&(!visible||!offer);
     root.classList.toggle('rh-ofc-only-wait',onlyWait);
-    if(onlyWait){if(!offer)shown=undefined;cards.replaceChildren();title.textContent=OFFER_WINDOW_TITLE;root.dataset.count='0';root.hidden=false;return;}
-    if(!visible||!offer){if(!offer)shown=undefined;root.hidden=true;return;}
-    root.hidden=false;
+    if(onlyWait){if(!offer)shown=undefined;cards.replaceChildren();putText(title,OFFER_WINDOW_TITLE);putData(root,'count','0');putHidden(root,false);return;}
+    if(!visible||!offer){if(!offer)shown=undefined;putHidden(root,true);return;}
+    putHidden(root,false);
     if(offer.id!==shown?.id){shown=offer;render(offer);markPending();}
     else if(!stamp)shown=offer;
     if(stamp)return;
     if(root.classList.contains('rh-offer-pending')!==(!!pending&&pending.id===offer.id))markPending();
     // Taking all: the next head gets its default as soon as the previous stamp is done.
     if(takingAll&&!pending&&(state.mode==='intermission'||paused)){pick(offer.defaultIndex);return;}
-    takeAll.hidden=!((state.mode==='intermission'||paused)&&offers.length>=TAKE_ALL_MIN);
-    later.hidden=state.mode!=='intermission'||paused;
+    putHidden(takeAll,!((state.mode==='intermission'||paused)&&offers.length>=TAKE_ALL_MIN));
+    putHidden(later,state.mode!=='intermission'||paused);
     const line=state.mode==='intermission'?fallLine(view,options.localId??''):'';
     if(fall.textContent!==line){
       // "Zé caiu, 27 s." and the hint " Dá pra andar." in their own spans (the forge drops the hint in landscape).

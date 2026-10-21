@@ -108,22 +108,34 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
 }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
-/* "Selecionar": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
+/* The confirm button (E7's art, menu-arte-viciado, every hero): a 9-slice pill without text (scripts/menu-arte.mjs,
+   742x149: caps of 130 px each side, the middle stretches), the star on the left, the burst on the right; the text
+   (SELECIONAR / BORA!) stays HTML. --bh is its height; the caps keep the art's proportion at any width. */
 .estadio .estadio-confirmar {
-  display: inline-flex; align-items: center; justify-content: center; gap: .45em; width: 100%; max-width: 440px;
-  min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: var(--r-pilula);
-  background: linear-gradient(color-mix(in srgb, var(--c-amarelo) 60%, var(--c-papel-claro)), var(--c-amarelo) 45%, color-mix(in srgb, var(--c-amarelo) 75%, var(--c-cone))); color: var(--c-lilas);
-  font: 400 clamp(24px, 4.6vh, 42px)/1 var(--f-cartaz); white-space: nowrap;
-  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 6px 0 var(--c-casca);
+  --bh: clamp(52px, 8.5vh, 76px);
+  display: flex; align-items: center; width: 100%; max-width: 440px; height: var(--bh); min-height: 0;
+  padding: 0 calc(var(--bh) * .34) calc(var(--bh) * .06) calc(var(--bh) * .16);
+  border: 0 solid transparent; border-radius: 0; background: none; box-shadow: none;
+  border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch;
+  color: var(--c-lilas-escuro); font: 400 calc(var(--bh) * .48)/1 var(--f-cartaz); white-space: nowrap;
 }
+.estadio .estadio-confirmar > span { padding: 0; }
 .estadio .estadio-confirmar > span[aria-hidden] {
-  padding: 0; color: var(--c-amarelo); font-size: 1.1em; -webkit-text-stroke: .1em var(--c-cone); paint-order: stroke fill;
+  flex: none; width: calc(var(--bh) * .8); height: calc(var(--bh) * .76); font-size: 0; color: transparent;
+  background: url('/art/menu/botao/estrela.webp') 50% 50% / contain no-repeat;
 }
-.estadio .estadio-confirmar:active { transform: translateY(3px); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 3px 0 var(--c-casca); }
+.estadio .estadio-confirmar-texto { flex: 1; text-align: center; }
+.estadio .estadio-confirmar::after {
+  content: ''; flex: none; width: calc(var(--bh) * .26); height: calc(var(--bh) * .38);
+  background: url('/art/menu/botao/icone-direita.webp') 50% 50% / contain no-repeat;
+}
+.estadio .estadio-confirmar:active { transform: translateY(2px); }
 
-/* PC with a hero's letreiro picture (stadium.ts CUTOUT_QUERY): the approved screen's layout (tela-1080p), the sign
+/* PC (stadium.ts CUTOUT_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
+   approved screen's layout (tela-1080p), the sign
    from the top, the row under it and the button low, near the bar. */
 @media (orientation: landscape) and (min-height: 521px) {
+  .estadio .estadio-confirmar { --bh: clamp(52px, 10vh, 120px); max-width: min(40vw, 640px); }
   .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(2vh, env(safe-area-inset-top)); }
   .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: auto; margin-bottom: 5vh; }
 }
@@ -136,7 +148,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-classe { font-size: 18px; border-width: 2px; }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
-  .estadio .estadio-confirmar { min-height: 46px; font-size: 24px; }
+  .estadio .estadio-confirmar { --bh: 46px; }
   .estadio .round-button { width: 40px; height: 40px; }
 }
 

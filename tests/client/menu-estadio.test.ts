@@ -162,3 +162,13 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
   assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet']);
 });
+
+test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{
+  const pill=await sharp(publicFile('/art/menu/botao/pilula.webp')).metadata();
+  assert.deepEqual([pill.width,pill.height],[742,149]);
+  // The caps: 259 px of the 1483 px original = 130 of the half-size copy, as wide as .872 of the height.
+  assert.ok(css.includes("border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch;"));
+  assert.ok(Math.abs(130/149-.872)<.002);
+  for(const file of ['estrela','icone-direita'])assert.ok(css.includes(`url('/art/menu/botao/${file}.webp')`),file);
+  assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
+});

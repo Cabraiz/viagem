@@ -154,9 +154,10 @@ export interface ChaveiroOptions {
    */
   muros?:{radius:number;standing():readonly {id:string;x:number;y:number}[]};
   /**
-   * chaveiro-no-final (the user, 21/10: "importante é o chaveiro vir no final"): he leaves his LAST delivery no sooner
-   * than this many seconds after the run started (mode 'ninhos': the nests' ramp, NEST_PACE.ramp), so a team that
-   * pushes and clears everything does not bring him before the horde peaks; he waits at the door. Absent: no wait.
+   * chaveiro-no-final (the user, 21/10: "importante é o chaveiro vir no final"; option B'): the car opens no sooner than
+   * this many seconds after the run started (mode 'ninhos': the nests' ramp, NEST_PACE.ramp). A team that pushes and
+   * clears everything would bring him before the horde peaks: he waits at his LAST delivery's door just long enough
+   * (holdTick); a slower run never waits. Absent: no wait.
    */
   finalNotBefore?:number;
 }
@@ -288,8 +289,18 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const stopTicks=(i:number)=>stops[i].kind==='morta'?mortaTicks():stops[i].kind==='entrega'?ticks(ENTREGA_SECONDS):0;
   /** The last delivery's index (where chaveiro-no-final holds him), -1 without one. */
   function lastEntrega(){for(let i=stops.length-1;i>=0;i--)if(stops[i].kind==='entrega')return i;return -1;}
-  /** The tick before which he does not leave the last delivery (options.finalNotBefore), or null. */
-  const holdTick=(tick:number)=>options.finalNotBefore===undefined?null:(state.startTick??tick)+ticks(options.finalNotBefore);
+  /**
+   * The tick before which he does not leave the last delivery (options.finalNotBefore), or null: the run's start +
+   * finalNotBefore less the fastest rest after it (the road, every dead moto pushed, abrindo), so the car opens no
+   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later.
+   */
+  function holdTick(tick:number){
+    const last=lastEntrega();
+    if(options.finalNotBefore===undefined||last<0)return null;
+    let rest=rideTicks(stops[last].s,last+1)+ticks(ABRINDO_SECONDS);
+    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=PUSH_TICKS;
+    return (state.startTick??tick)+ticks(options.finalNotBefore)-Math.ceil(rest);
+  }
   function eta(tick:number){
     if(state.ended)return 0;
     let t=held(tick);
@@ -353,7 +364,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         return;
       }
       case 'entrega':{
-        // chaveiro-no-final: the last delivery holds him until finalNotBefore (left stays at 0 while he waits).
+        // chaveiro-no-final: the last delivery holds him until holdTick (left stays at 0 while he waits).
         if(moto.left>0)moto.left--;
         const hold=moto.stop===lastEntrega()?holdTick(ctx.tick):null;
         if(moto.left<=0&&(hold===null||ctx.tick>=hold))next();

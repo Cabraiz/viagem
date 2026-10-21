@@ -1,9 +1,9 @@
 // NEW-20261021-ORQ-chaveiro-no-final: the chaveiro is the match's end (the user, 21/10: "importante é o chaveiro vir no
-// final"; option B). The real match (multiplayer/worker.ts createOptions + room.ts CITY_OBJECTIVE_DEFAULT): Cidade
+// final"; option B'). The real match (multiplayer/worker.ts createOptions + room.ts CITY_OBJECTIVE_DEFAULT): Cidade
 // Nevada, the chaveiro objective, the nests, the manual combat. A perfect team rides along the moto (every dead moto
 // pushed in 4 s) and keeps him and the car clear (clean deliveries, no fall, no alarm): the fastest he can come. He still
-// leaves his last delivery only once the nests' ramp is over (NEST_PACE.ramp), the boss comes before he opens the car,
-// and the run's outcome is victory on that very tick (the room stops the sim there: nothing is born after him).
+// opens the car only once the nests' ramp is over (NEST_PACE.ramp: he waited just enough at his last delivery), the boss
+// comes before he opens it, and the run's outcome is victory on that very tick (the room stops the sim there: nothing is born after him).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -14,7 +14,7 @@ import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems} from '../../src/sim/assemble.ts';
-import {ABRINDO_SECONDS,BOSS_ETA_SECONDS,ENTREGA_RADIUS} from '../../src/sim/chaveiro/system.ts';
+import {BOSS_ETA_SECONDS,ENTREGA_RADIUS} from '../../src/sim/chaveiro/system.ts';
 import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -59,11 +59,11 @@ test('the chaveiro ends the match: a perfect team brings him only after the nest
   const {ch,outcomes,bossTick,leftLast,firstEta,end}=perfectRun(11);
   assert.equal(ch.state.ended,'victory',`he opened the car (ended ${ch.state.ended}, outcomes ${JSON.stringify(outcomes)})`);
   const ramp=ticks(NEST_PACE.ramp);
-  // He waited at the last delivery's door: left it on the ramp's tick (the run started on tick 1), not before.
-  assert.ok(leftLast!==null&&leftLast>=ramp&&leftLast<=ramp+2,`left the last delivery at ${leftLast} (ramp ${ramp})`);
-  assert.ok(end!/SIM_HZ>=NEST_PACE.ramp+ABRINDO_SECONDS,`opened at ${(end!/SIM_HZ).toFixed(0)} s, after the ramp (${NEST_PACE.ramp} s)`);
+  // He waited at the last delivery's door just enough: the car opens on the ramp's end (the pushes take a few ticks over PUSH_SECONDS), no sooner.
+  assert.ok(leftLast!==null,'he left the last delivery');
+  assert.ok(end!>=ramp&&end!<=ramp+ticks(10),`opened at ${(end!/SIM_HZ).toFixed(1)} s, at the ramp's end (${NEST_PACE.ramp} s)`);
   // The ETA counted the wait from the start (the boss is called by it).
-  assert.ok(firstEta>=NEST_PACE.ramp,`ETA at the start ${firstEta.toFixed(0)} s ≥ ${NEST_PACE.ramp} s`);
+  assert.ok(firstEta>=NEST_PACE.ramp-1,`ETA on tick 1 ${firstEta.toFixed(2)} s ≥ ${NEST_PACE.ramp} s less that tick`);
   // The run's outcome is victory on the very tick he opens the car: the room (multiplayer/room.ts) steps the sim only in
   // combat and moves to the result on that outcome, so nothing is born after him (the sim alone would go on spawning).
   assert.deepEqual(outcomes,[{outcome:'victory',tick:end}],`the run ends once, with him: ${JSON.stringify(outcomes)}`);

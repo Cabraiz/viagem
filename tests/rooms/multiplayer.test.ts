@@ -140,6 +140,8 @@ test('room gates input by phase and round; duplicate rematch resets only once',(
   // UX-resultado-revanche: b's repeated "topa" is one vote of two; a's settles it, and the countdown starts at once.
   command(room,b,{t:'rematch',round:1},4600);command(room,b,{t:'rematch',round:1},4600);
   assert.equal(room.run.snapshot().round,1);assert.deepEqual(room.run.snapshot().rematchVotes,[idOf(b)]);
+  // Both phones hear the same vote (the run message goes to everyone).
+  for(const who of [a,b])assert.deepEqual(who.messages.filter((m:any)=>m.t==='run').at(-1).run.rematchVotes,[idOf(b)]);
   command(room,a,{t:'rematch',round:1},4600);command(room,a,{t:'rematch',round:1},4600);
   assert.equal(room.run.snapshot().round,2);assert.equal(room.run.snapshot().phase,'countdown');
   assert.equal(p.score,0);assert.equal(p.hp,p.stats.maxHp);assert.equal(p.ack,0);assert.equal(room.sim.tick,0);

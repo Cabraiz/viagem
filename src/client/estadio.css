@@ -121,7 +121,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio .estadio-confirmar > span { padding: 0; }
 .estadio .estadio-confirmar > span[aria-hidden] {
-  flex: none; width: calc(var(--bh) * .8); height: calc(var(--bh) * .76); font-size: 0; color: transparent;
+  flex: none; width: calc(var(--bh) * .8); height: calc(var(--bh) * .76); overflow: hidden; color: transparent;
   background: url('/art/menu/botao/estrela.webp') 50% 50% / contain no-repeat;
 }
 .estadio .estadio-confirmar-texto { flex: 1; text-align: center; }

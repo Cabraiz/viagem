@@ -17,6 +17,7 @@ import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
+import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
@@ -259,7 +260,23 @@ export function queueHordeArt(scene:Phaser.Scene){
  * Each id is asked once per scene; true when something was queued. A failed page keeps the reserve.
  */
 const asked=new WeakMap<object,Set<string>>();
+/** Critters first seen while the background was held (queueEnemyArt): asked when it lets go. */
+const deferred=new WeakMap<object,Set<string>>();
 export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  // The opening's near art holds the link (background-hold.ts, cena-nasce-rapido): the critters seen under the cover
+  // ask once it lets go (the procedural look stands in meanwhile, as for any sheet still on its way).
+  if(backgroundHeld()){
+    let wait=deferred.get(scene);
+    if(!wait){
+      const ids=wait=new Set<string>();deferred.set(scene,ids);
+      const off=onBackgroundFree(()=>{
+        off();if(deferred.get(scene)===ids)deferred.delete(scene);
+        if(!scene.sys.isActive())return;
+        for(const later of ids)queueEnemyArt(scene,later);
+      });
+    }
+    wait.add(id);return false;
+  }
   let seen=asked.get(scene);if(!seen){seen=new Set();asked.set(scene,seen);}
   if(seen.has(id))return false;
   seen.add(id);

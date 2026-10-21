@@ -217,7 +217,7 @@ test('lobby.ts: a stale chunk never leaves the room (the seat waits for the relo
 
 test('explore.ts: the phase on the shell drives matchEnded; the scene chunk 404 asks the watch; the HUD slot is lent in combat only',()=>{
   const explore=read('src/client/explore.ts');
-  assert.match(explore,/const previous=shell\.dataset\.runPhase;\s*\n\s*setData\(shell,'runPhase',run\.phase\);/);
+  assert.match(explore,/const previous=shell\.dataset\.runPhase;\s*\n\s*putData\(shell,'runPhase',run\.phase\);/);
   assert.match(explore,/if\(leftMatch\(previous,run\.phase\)\)matchEnded\(\)/);
   assert.match(explore,/\}catch\(e\)\{if\(!closed\)\{\$\('\.explore-loading'\)\.textContent=chunkFailed\(e\)\?/);
   assert.match(explore,/net\.run\?\.phase!=='combat'\)return false;runHud\.queueRow\(el,UPDATE_ROW_MS\)/);

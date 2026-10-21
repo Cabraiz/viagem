@@ -43,6 +43,16 @@ test('CityArtStream: STREAM_FILES at once, nearest first, the order asked again 
   stream.settled('nope',true);assert.equal(loads.length,5,'an answer for a file it did not ask is ignored');
 });
 
+test("CityArtStream: while the first frame's art is not all in, nothing farther takes a slot (cena-nasce-rapido)",()=>{
+  const missing=[{key:'n1',px:0},{key:'n2',px:0},{key:'f1',px:300},{key:'f2',px:600}];
+  const loads:string[]=[];
+  const stream=new CityArtStream({missing:()=>missing.filter(m=>!loads.includes(m.key)||m.px===0&&!done.has(m.key)),load:key=>{loads.push(key);return true;}});
+  const done=new Set<string>();
+  stream.pump();assert.deepEqual(loads,['n1','n2'],'two slots stay free while n1 and n2 come');
+  done.add('n1');stream.settled('n1',true);assert.deepEqual(loads,['n1','n2'],'n2 still on its way');
+  done.add('n2');stream.settled('n2',true);assert.deepEqual(loads,['n1','n2','f1','f2'],'then the rest, nearest first');
+});
+
 test('CityArtStream: a failed or unknown file is never asked again and does not hold the match',()=>{
   const missing=[{key:'near',px:0},{key:'unknown',px:0},{key:'far',px:900}];
   const loads:string[]=[];

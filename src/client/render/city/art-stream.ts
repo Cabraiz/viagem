@@ -41,11 +41,15 @@ export class CityArtStream {
   private readonly host:ArtStreamHost;
   private readonly files:number;
   constructor(host:ArtStreamHost,files=STREAM_FILES){this.host=host;this.files=Math.max(1,files);}
-  /** Fills the free slots with the nearest missing art. */
+  /**
+   * Fills the free slots with the nearest missing art; while the first frame's art is not all in, only that art (a
+   * farther file would take the link from its last ones: cena-nasce-rapido, the nests' ~5 MB under the cover).
+   */
   pump(){
     if(this.flight.size>=this.files)return;
-    for(const {key,px} of this.host.missing()){
-      if(this.flight.size>=this.files)break;
+    const missing=this.host.missing(),nearLeft=()=>missing.some(m=>m.px===0&&!this.answered.has(m.key));
+    for(const {key,px} of missing){
+      if(this.flight.size>=this.files||px>0&&nearLeft())break;
       if(this.flight.has(key)||this.answered.has(key))continue;
       if(this.host.load(key,px))this.flight.add(key);else this.answered.add(key);
     }

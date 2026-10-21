@@ -14,7 +14,7 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
-import {createResultScreen,type ResultRoster} from './result.ts';
+import {createResultScreen,type ResultRoster,type RematchVotes} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
 import {createHurtFrame} from './hurt.ts';
@@ -583,6 +583,8 @@ export class RunHud {
   rematchRefused(label:string){this.result.refuse(label);}
   /** Owner and bots on the result screen (D-025): crown, robot and the owner's "Arrumar turma". */
   setRoster(roster:ResultRoster){this.result.setRoster(roster);}
+  /** The room's rematch vote on the result (UX-resultado-revanche): "✓ topa" on the cards, "Revanche (3/6)" on the button. */
+  setRematch(votes:RematchVotes|undefined){this.result.setRematch(votes);}
 
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){

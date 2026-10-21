@@ -22,7 +22,7 @@
 .coop-wait-ready{width:100%;border:2px solid var(--c-breu);background:var(--c-amarelo);color:var(--c-breu);box-shadow:var(--s-1)}
 .coop-wait-ready.is-ready{border-color:var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel)}
 .coop-wait-count{margin:0;font:900 64px/1 var(--f-cartaz);color:var(--c-cone);text-shadow:0 4px 0 var(--c-breu);font-variant-numeric:tabular-nums}
-.coop-wait[data-phase=countdown] .coop-wait-count{animation:coop-count-beat 1s ease-in-out infinite}
+.coop-wait[data-phase=countdown] .coop-wait-count{animation:coop-count-beat 1s ease-in-out 2}
 .coop-wait[data-phase=countdown] .coop-wait-headline{font-size:17px;color:var(--c-papel)}
 .coop-wait[data-phase=countdown] .coop-wait-line{display:none}
 @keyframes coop-ready-pop{0%{transform:scale(.6) rotate(-6deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:none}}
@@ -234,3 +234,35 @@
   .coop-wait-share-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .coop-wait-share.is-saying .coop-wait-share-text{z-index:2;pointer-events:none;top:calc(100% + 6px);left:0;right:0;width:fit-content;max-width:100%;height:auto;margin:0 auto;clip:auto;overflow:visible;white-space:normal;text-align:center;box-sizing:border-box;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel-claro);color:var(--c-breu);font-size:var(--t-13)}
 }
+/* Lobby in landscape (NEW-20261009-UX-lobby-mobile): two columns, make a room on the left, join one on the right, no
+   scroll at 844×390. With the phone's keyboard up (data-typing, lobby.ts) only the field's column stays, pinned to the
+   top of what is still visible. */
+.coop-lobby-make>h2{margin-top:12px}.coop-lobby h2:focus{outline:none}.coop-lobby-join>.coop-divider{margin:20px 0}
+@media(max-height:500px) and (orientation:landscape){
+  .coop-lobby{width:min(760px,calc(100% - 24px));max-width:none;padding:14px 20px 12px;text-align:left}
+  .coop-lobby .coop-close{position:absolute;top:4px;right:4px;float:none}
+  .coop-lobby-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;align-items:start}
+  .coop-lobby-make>h2{font-size:var(--t-28);margin:4px 0 6px}.coop-lobby-make>p{margin:0;font-size:var(--t-13);line-height:1.45}
+  .coop-lobby .coop-nick{margin-top:10px}.coop-lobby button:not(.coop-close){margin-top:10px}
+  .coop-lobby-join{padding-top:6px;padding-right:40px}.coop-lobby-join>.coop-divider{margin:0 0 12px;text-align:left;font-weight:700}
+  .coop-lobby .coop-status{margin:8px 0 0}
+}
+.coop-lobby[data-typing]{margin-top:max(8px,env(safe-area-inset-top));max-height:calc(var(--coop-vv-h,100dvh) - 16px);padding-top:12px;padding-bottom:10px}
+.coop-lobby[data-typing=code] .coop-lobby-make,.coop-lobby[data-typing=code] .coop-divider,.coop-lobby[data-typing=nick] .coop-lobby-join,.coop-lobby[data-typing=nick] .coop-lobby-make>h2,.coop-lobby[data-typing=nick] .coop-lobby-make>p{display:none}
+.coop-lobby[data-typing] .coop-lobby-cols{display:block}.coop-lobby[data-typing] .coop-lobby-join{padding-right:48px}
+.coop-lobby[data-typing] .coop-nick{margin-top:0}
+@media(orientation:landscape){
+  .coop-lobby[data-typing=code] form{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:end}.coop-lobby[data-typing=code] form label{grid-column:1/-1}
+  .coop-lobby[data-typing=code] form button:not(.coop-close){width:auto;margin-top:0;padding:0 22px}.coop-lobby[data-typing] .coop-status{margin:6px 0 0}
+}
+/* Classe de cada um (NEW-20261009-UX-escolha-classe): linha curta sob o nome, Lilás como o "(você)"; nome de classe
+   comprido termina em reticências sem alargar o chip. No botão do dono (célula estreita da grade) ela é a 2ª linha
+   inteira do botão; o nome (flex:1) nunca desce. */
+.coop-wait-members .coop-wait-class{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:400 var(--t-13)/1.15 var(--f-sistema);font-style:normal;color:var(--c-lilas);text-align:left}
+.coop-wait-members li>span:has(>.coop-wait-class){line-height:1.15;min-width:0}
+.coop-wait-members button:has(>.coop-wait-class){flex-wrap:wrap;row-gap:0}
+.coop-wait-members button>.coop-wait-class{flex:1 0 100%;margin:-4px 0 0}
+/* Retrato a 125%, convidado com 5 ou 6 na sala: a janela rolaria (59 px). A linha da classe sai; o rosto continua
+   mostrando a classe e o leitor de tela continua lendo. */
+@media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}

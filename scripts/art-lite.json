@@ -7,23 +7,23 @@
  },
  "summary": {
   "files": 2035,
-  "bytes": 1534361118,
-  "liteBytes": 495266618,
+  "bytes": 1534701044,
+  "liteBytes": 495380822,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
  "files": {
   "city/base/barricada.webp": {
-   "source": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b",
-   "lite": "88a80ed614490d5da36efc229453d6f3113d47a6c9b9731ea95aed5410cc081f",
-   "bytes": 208794,
-   "liteBytes": 136262,
+   "source": "d1f3f887498f2fc5c8db25b7ae42fff8ac7eeee3e74a7ddfb28a07bef05635ae",
+   "lite": "514cc35598f32fa74ae9ebf30bae7cfe786cf79b924b7166d43178a3e298630c",
+   "bytes": 548720,
+   "liteBytes": 250466,
    "liteCell": [
-    384,
+    256,
     256
    ],
-   "psnr": 48.5,
-   "shownPsnr": 48.5
+   "psnr": 43.6,
+   "shownPsnr": 43.6
   },
   "city/base/chafariz-congelado.webp": {
    "source": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606",

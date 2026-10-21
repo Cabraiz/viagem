@@ -17,7 +17,7 @@ if(scene==='menu')openSoundSettings(document.querySelector<HTMLElement>('.menu-c
 else{
   const settings=document.createElement('dialog');settings.className='explore-settings';settings.setAttribute('aria-label','Configurações do jogo');
   settings.innerHTML=`<div class="explore-settings-heading"><h2>Configurações</h2><button class="explore-settings-close" aria-label="Voltar ao jogo">${icon('fechar',{size:32})}</button></div>`
-    +`<div class="explore-settings-content"><button type="button" class="explore-economy" aria-pressed="false"><span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag" data-on="false">Desligado</span></span><span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span></button><div class="explore-sound"></div></div>`;
+    +`<div class="explore-settings-content"><div class="explore-economy explore-quality" role="group" aria-label="Qualidade"><span class="explore-economy-head"><span class="explore-economy-title">Qualidade</span><span class="explore-economy-tag" data-on="true">Automática</span></span><span class="explore-quality-levels"><button type="button" data-level="leve" aria-pressed="false">Leve</button><button type="button" data-level="normal" aria-pressed="true">Normal</button><button type="button" data-level="alta" aria-pressed="false">Alta</button></span><span class="explore-economy-note">O jogo inteiro, sem fritar a mão.</span></div><div class="explore-sound"></div></div>`;
   mountAudioControls(settings.querySelector<HTMLElement>('.explore-sound')!,getAudio());
   settings.querySelector('.explore-settings-close')!.addEventListener('click',()=>settings.close());
   document.body.append(settings);

@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutOf, fitCutout, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -153,7 +153,8 @@ const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!,cutou
 let cutoutHold:(()=>void)|undefined;
 function showCutout() {
   const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
-  const spot=cut&&placeCutout({w:stage.clientWidth,h:stage.clientHeight},STADIUM.wide,cut);
+  // The whole boy on screen (menu-1080-720-menino-inteiro): the picture keeps its cover, he scales to fit the stage.
+  const box={w:stage.clientWidth,h:stage.clientHeight},placed=cut&&placeCutout(box,STADIUM.wide,cut),spot=placed&&fitCutout(box,placed);
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's

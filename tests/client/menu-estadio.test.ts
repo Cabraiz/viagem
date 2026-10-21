@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, CUTOUT_QUERY, cutoutMargin, cutoutOf, fitCutout, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -161,6 +161,28 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
   assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
   assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet']);
+});
+
+test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, the letreiro 15% smaller',()=>{
+  const cut=cutoutOf('viciado-em-bet')!;
+  // The user's screens: 1080p, 1080p with the browser's bar (his print, 1917x948), 768p and 720p. Cap, horn and sneakers
+  // (the file's alpha fills its box) inside the stage with the margin, the feet never lower than the picture puts them.
+  for(const [w,h] of [[1920,1080],[1920,950],[1917,948],[1366,768],[1280,720],[1280,800],[2560,1080]]){
+    const box={w,h},placed=placeCutout(box,STADIUM.wide,cut)!,fit=fitCutout(box,placed),m=cutoutMargin(h);
+    assert.ok(fit.y>=m-1e-9&&fit.y+fit.h<=h-m+1e-9,`${w}x${h}: top ${fit.y}, bottom ${fit.y+fit.h}`);
+    assert.ok(fit.x>=m-1e-9&&fit.x+fit.w<=w-m+1e-9,`${w}x${h}: left ${fit.x}, right ${fit.x+fit.w}`);
+    assert.ok(Math.abs(fit.w/fit.h-cut.w/cut.h)<1e-9,'contain: never stretched');
+    assert.ok(fit.h<=placed.h+1e-9&&fit.y+fit.h<=placed.y+placed.h+1e-9,'never bigger, never lower than cover put him');
+    assert.ok(Math.abs(fit.x+fit.w/2-(placed.x+placed.w/2))<1e-9,'his middle stays');
+  }
+  // 1920x950 was the cut one: cover put his cap 109 px above the screen; now he is ~87% of that, the cap on screen.
+  const bar=fitCutout({w:1920,h:950},placeCutout({w:1920,h:950},STADIUM.wide,cut)!);
+  assert.ok(Math.abs(bar.y-19)<1e-9&&Math.abs(bar.h-912)<1e-9,JSON.stringify(bar));
+  assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.wide,cut\),spot=placed&&fitCutout\(box,placed\);/);
+  // The letreiro: 46vw / 78vh x .85 (the user, 21/10); the phone keeps its own sizes.
+  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(39.1vw, 66.3vh);'));
+  assert.ok(Math.abs(46*.85-39.1)<1e-9&&Math.abs(78*.85-66.3)<1e-9);
+  assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
 });
 
 test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{

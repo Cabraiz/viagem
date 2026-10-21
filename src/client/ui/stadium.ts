@@ -58,3 +58,18 @@ export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<Stad
   const ox=(box.w-art.w*s)*pos.x,oy=(box.h-art.h*s)*pos.y;
   return {x:ox+cut.x*s,y:oy+cut.y*s,w:cut.w*s,h:cut.h*s};
 }
+/** The margin the whole hero keeps from the stage's edges (px): 2% of its height, at least 8. */
+export const cutoutMargin=(h:number)=>Math.max(8,h*.02);
+/**
+ * The whole hero on screen (NEW-20261021-ORQ-menu-1080-720-menino-inteiro): `cover` cuts the picture's top on a window
+ * wider than 16:9 (1920x950, a browser's bar) and puts his sneaker on the bottom edge at 1080p, so the cutout scales down
+ * (contain) to the stage's height minus the margins, his feet where the picture has them (or lifted to the margin) and
+ * his middle where it was; never bigger than `cover` made him.
+ */
+export function fitCutout(box:{w:number;h:number},spot:{x:number;y:number;w:number;h:number}){
+  const m=cutoutMargin(box.h),k=Math.min(1,(box.h-2*m)/spot.h,(box.w-2*m)/spot.w);
+  const w=spot.w*k,h=spot.h*k;
+  const y=Math.max(m,Math.min(spot.y+spot.h,box.h-m)-h);
+  const x=Math.min(Math.max(m,spot.x+(spot.w-w)/2),box.w-m-w);
+  return {x,y,w,h};
+}

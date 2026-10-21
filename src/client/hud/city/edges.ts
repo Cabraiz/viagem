@@ -94,7 +94,7 @@ export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];g
   // Bancos: one bank, the robbed one first (rules/bancos.ts BANK_SHORT names it for the screen reader).
   const bank=bankForArrow(input.banks,hero,isOnScreen);
   if(bank)targets.push({key:`banco:${bank.id}`,kind:'banco',screen:locate(bank),world:{x:bank.x,y:bank.y},distance:dist(bank),
-    name:bank.state==='bicho'?`Bicho sacando no ${BANK_SHORT[bank.name]}`:`Banco ${BANK_SHORT[bank.name]} · R$ ${bank.saldo}`,...(bank.state==='bicho'?{danger:true}:{})});
+    name:bank.state==='bicho'?`Bicho sacando no ${BANK_SHORT[bank.name]}`:`Banco ${BANK_SHORT[bank.name]}: R$ ${bank.saldo}`,...(bank.state==='bicho'?{danger:true}:{})});
   // Base: in the intermission when the plaza is out of view (Cone with the seconds after the horn); in a wave only after a hit on the wall.
   const plaza={x:map.plaza.x,y:map.plaza.y};
   if((input.phase==='prepare'||input.wallHitRecently)&&!isOnScreen(plaza)){

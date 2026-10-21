@@ -267,11 +267,11 @@ export class BankRenderer {
     const p=this.options.projector.project(x,y,this.q),h=this.options.projector.project(hero.x,hero.y,{x:0,y:0}),b=faceBounds(faces);
     return h.x>p.x+b.x0&&h.x<p.x+b.x1&&h.y-30>p.y+b.y0&&h.y-10<p.y+b.y1;
   }
-  /** The tag over the sign: "Pão-Duro · R$ 32", "Pão-Duro · bicho sacando!" or "Pão-Duro · SEM CÉDULAS 2:10". */
+  /** The tag over the sign: "Pão-Duro: R$ 32", "Pão-Duro: bicho sacando!" or "Pão-Duro sem cédulas: 2:10". */
   private drawTag(b:BankView,d:BankDraw,k:number){
     const short=BANK_SHORT[b.name],s=emptySeconds(b,this.state.tick);
     const look=b.state==='bicho'?'bicho':b.state==='sem-cedulas'?'vazio':'normal';
-    const text=b.state==='bicho'?`${short} · bicho sacando!`:b.state==='sem-cedulas'?`${short} · SEM CÉDULAS${s?` ${clock(s)}`:''}`:`${short} · R$ ${b.saldo}`;
+    const text=b.state==='bicho'?`${short}: bicho sacando!`:b.state==='sem-cedulas'?`${short} sem cédulas${s?`: ${clock(s)}`:''}`:`${short}: R$ ${b.saldo}`;
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
     const p=this.topAt(b,-.2*M,.5*M);

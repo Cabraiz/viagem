@@ -36,7 +36,6 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-title h2{font:20px var(--f-cartaz);margin:0;color:var(--c-papel)}
 .explore-title p{font-size:11px;margin:4px 0 0;overflow-wrap:anywhere}
 .explore-quest{padding:12px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu)}
-.explore-quest small{display:block;color:var(--c-lilas);font-size:10px;font-weight:800}
 .explore-quest strong{display:block;font:17px var(--f-cartaz);margin-top:5px}
 .explore-quest span{display:block;font-size:12px;color:var(--c-lilas);margin-top:5px}
 .explore-map{width:82px;height:82px;justify-self:center;border:3px solid var(--c-papel-claro);border-radius:50%;background:var(--cena-agua)}
@@ -125,7 +124,7 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .economy-toast-icon .ic{width:18px;height:18px}
 .economy-toast-icon{flex:none;display:grid;place-items:center}
 .economy-toast-text{display:block;min-width:0;margin:0;padding:2px 0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-13)/1.2 var(--f-sistema);text-align:left}
-.economy-toast-text strong+span::before{content:' · '}
+.economy-toast-text strong+span::before{content:'. '}
 /* A portrait phone has room for the news only: "Tava engasgando" was cut to "Tava engas…" (varredura do celular). */
 @media (max-width:420px){.economy-toast-text strong+span{display:none}}
 .economy-toast-text strong{font-weight:800}

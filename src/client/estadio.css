@@ -135,6 +135,9 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    approved screen's layout (tela-1080p), the sign
    from the top, the row under it and the button low, near the bar. */
 @media (orientation: landscape) and (min-height: 521px) {
+  /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
+     it is never cut; `cover` around its middle until then. */
+  .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
   .estadio .estadio-confirmar { --bh: clamp(52px, 10vh, 120px); max-width: min(40vw, 640px); }
   .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(2vh, env(safe-area-inset-top)); }
   .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: auto; margin-bottom: 5vh; }

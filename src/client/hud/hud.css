@@ -836,7 +836,7 @@
 .rh-rcard-topa{position:absolute;top:-13px;right:-5px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-amarelo);border:2px solid var(--c-breu);color:var(--c-breu);font:800 var(--t-13)/1.2 var(--f-sistema);transform:rotate(4deg);box-shadow:0 2px 0 var(--c-breu);pointer-events:none}
 /* The defeat's "O que derrubou a turma … Faltou N rounds pro síndico". */
 .rh-result-lost{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-amarelo)}
-/* "📸 Compartilhar": the icon alone in portrait (the row already has Revanche and Sair), the word in landscape. */
+/* "Compartilhar" (camera sticker): the icon alone in portrait (the row already has Revanche and Sair), the word in landscape. */
 .rh-result .rh-result-share{flex:0 0 auto;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
 .rh-result .rh-result-share .rh-share-long{margin-left:6px}
 @media (min-height:501px){.rh-result .rh-result-share .rh-share-long{display:none}}
@@ -859,3 +859,5 @@
 }
 /* Last resort when the cards would scroll (fitCards): the defeat's extra line goes. */
 .rh-result.rh-result-nolost .rh-result-lost{display:none}
+/* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
+@media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}

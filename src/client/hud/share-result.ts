@@ -1,5 +1,5 @@
 /**
- * "📸 Compartilhar" on the result (UX-resultado-revanche): a picture of the run's joke prizes, drawn on a canvas (no
+ * "Compartilhar" on the result (UX-resultado-revanche): a picture of the run's joke prizes, drawn on a canvas (no
  * network, no images to load, so it is ready in a few ms) and handed to the phone's share sheet; where the browser cannot
  * share files, it downloads. Pure parts (shareCard) are tested without a DOM.
  */
@@ -47,7 +47,7 @@ export function drawShareCard(doc:Document,card:ShareCard,victory:boolean):HTMLC
     g.fillText(fit(g,row.name+(row.me?' (eu)':''),SHARE_W-2*PAD-60),PAD+30,y+52);
     g.fillStyle=INK.lilas;g.font='900 50px "Londrina Solid",sans-serif';
     const [top,...rest]=row.prizes;
-    g.fillText(fit(g,`🏆 ${top}`,SHARE_W-2*PAD-60),PAD+30,y+106);
+    g.fillText(fit(g,top,SHARE_W-2*PAD-60),PAD+30,y+106);
     if(rest.length){g.font='700 30px system-ui,sans-serif';g.textAlign='right';g.fillText(fit(g,`+ ${rest.join(' · ')}`,(SHARE_W-2*PAD)/2),SHARE_W-PAD-30,y+52);}
     g.textAlign='center';y+=ROW;
   }

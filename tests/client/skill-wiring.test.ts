@@ -129,7 +129,7 @@ test('the rematch clears the cooldown: the first tap of the new run casts',()=>{
   for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
   settle(room,feed,a,[a,b]);
   assert.equal(room.run.snapshot().phase,'result');
-  command(room,b,{t:'rematch',round:room.run.snapshot().round});
+  const round=room.run.snapshot().round;command(room,b,{t:'rematch',round});command(room,a,{t:'rematch',round});
   settle(room,feed,a,[a,b]);
   assert.equal(me.skillReadyTick,0,'wire cooldown cleared');assert.equal((me as any).skillReady,undefined,'skill state cleared (resetSkill)');
   startRun(room,[a,b]);pump(room,feed,a);

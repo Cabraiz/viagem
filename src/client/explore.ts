@@ -1,5 +1,6 @@
 import './explore.css';
 import {putData,putHidden,putText} from './hud/dom-put.ts';
+import {firstShown,shownHolds,stickyQuery} from './hud/dom-find.ts';
 import type { HeroClass } from '../rules/index.ts';
 import {buildPlanFor,landmarks} from '../maps/index.ts';
 import type { CoopClient } from './net/client.ts';
@@ -87,6 +88,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span><br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
+  /** The position callback's per-frame lookups (Q6): the template's elements found once, the HUD's windows through live
+   * class lists instead of `:not([hidden])` walks over the whole page every frame (hud/dom-find.ts). */
+  const find=stickyQuery(shell);
+  const trayLists=[document.getElementsByClassName('rh-forge'),document.getElementsByClassName('rh-cida')] as HTMLCollectionOf<HTMLElement>[];
+  const obraList=document.getElementsByClassName('rh-obra') as HTMLCollectionOf<HTMLElement>;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
   let skill:SkillButton|undefined;
   /** D-051 manual combat: the same #coop-attack as the attack button (press, hold, drag, reticle); idle otherwise. */
@@ -516,29 +522,29 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         // whole shell, and the HUD reads layout right after (BUG-20261014-ORQ-engasgo-andando-celular).
         const now=performance.now(),slow=now-shellDataAt>=SHELL_DATA_MS;
         if(slow){shellDataAt=now;putData(shell,'playerX',p.x.toFixed(3));putData(shell,'playerY',p.y.toFixed(3));}
-        if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
+        if(!net){find('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));find('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
           // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
           if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
           const self=net.players.get(net.id);putData(shell,'playerId',net.id);putData(shell,'connected',String(net.connected));if(slow&&SHELL_DEBUG)putData(shell,'tick',String(net.tick));putData(shell,'players',String(net.players.size));
-          const health=$('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
+          const health=find('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
           putData(shell,'offline',String(!net.connected&&!net.fatal));
-          showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
+          showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
           const manual=net.combat==='manual';
           if(shell.dataset.combat!==net.combat){
             shell.dataset.combat=net.combat;skill?.setCombat(net.combat);attackBtn?.setOn(manual);
-            const noticeEl=$('.explore-notice'),kind=inputWatch.kind;if(noticeEl.textContent===coopNotice(kind,!manual))noticeEl.textContent=coopNotice(kind,manual);
+            const noticeEl=find('.explore-notice'),kind=inputWatch.kind;if(noticeEl.textContent===coopNotice(kind,!manual))noticeEl.textContent=coopNotice(kind,manual);
           }
           // D-050: the level-up pause zeroes the attack like the rest of the input (a press there is not kept for later).
           if(net.run?.pause)attackBtn?.clear();
           // D-052: pushing or pulling the car the hands are busy (net.handsBusy): the button dims and a held press lets go.
-          const busy=manual&&net.handsBusy,attackEl=$<HTMLButtonElement>('#coop-attack');
+          const busy=manual&&net.handsBusy,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
@@ -637,11 +643,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // status rows down to it (framing.ts framesBeside, zones.ts besideArea; BUG-20261013-ORQ-camera-centro-heroi,
               // BUG-20261014-ORQ-forja-cobre-heroi-retrato).
               if(controller){
-                const scene=controller.scene,el=trayEl=document.querySelector<HTMLElement>('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
+                const scene=controller.scene,el=trayEl=firstShown(trayLists);
                 // Its box is read after the paint (box-cache.ts), not here after the frame's writes (F3); for a frame
                 // after it opens there is none yet.
                 const box=el?trayBox.get(now,el):undefined,rect=box?.el===el?box.rect:undefined,hero=scene.heroScreenRect();
-                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
+                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:shownHolds(obraList,'rh-obra-janela'),
                   tray:el&&rect?{kind:el.classList.contains('rh-cida')?'cida':'forja',rect}:undefined,hero:hero&&{width:hero.width,height:hero.height}});
                 scene.frameArea=rect&&(scene.besideWindow==='forja'||scene.besideWindow==='cida')?besideArea(z,rect):undefined;
               }
@@ -657,17 +663,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             const out=controls.stick==='dimmed';
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
             if(applyControls(shell,controls))reset();
-            {const attack=$<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
+            {const attack=find<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
             if(controls.skill!=='live')attackBtn?.clear();
           }
-          putText($('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
+          putText(find('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
           // The party's tags are rebuilt only when one of them reads differently (not 60 new spans a second).
           const partyLines=[...net.players.values()].map(player=>`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`),party=partyLines.join('|');
-          if(party!==partyKey){partyKey=party;$('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
+          if(party!==partyKey){partyKey=party;find('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
           syncTurn();
           // The tick moves every frame: the debug line follows at the shell attributes' pace, and only while it is read
           // (its <details> open, or ?perf=1).
-          const diagnostics=$('#coop-diagnostics');
+          const diagnostics=find('#coop-diagnostics');
           if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
         }
       },

@@ -2,6 +2,9 @@
 # built site (a solo match + modo foto scenes) at 1280x720 and 390x844 and leaves folha-<sha>.png + folha.json in the
 # artifact `folha-<sha>`. The board's tools/vigia-prints.mjs (no Claude tokens) downloads it and drops the result in the
 # branch owner's inbox, so an executor pushes and waits instead of opening a browser on the shared PC.
+# The match's opening first (scripts/abertura-ci.mjs, NEW-20261021-ORQ-prints-ci-mede-abertura): this build against the
+# main it branched from (the merge-base, from the compare API: no deep fetch of a 2.7 GB history; its dist cached by sha),
+# on a throttled phone; worse by more than 15 % turns the sheet red. A ref on main itself compares main with main.
 # workflow_dispatch with `ref`: the sheet of any branch or FULL sha (a short sha is fetched as a branch and fails; e.g. b837b939975781bfa77a6c627d6f384906763744, the trembling hero) with THIS commit's script.
 name: Prints
 on:
@@ -23,7 +26,7 @@ env:
 jobs:
   folha:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       # The script (this commit) at the root; the game to print (inputs.ref or this commit) in game/.
       - uses: actions/checkout@v7
@@ -52,6 +55,30 @@ jobs:
         run: npm ci --include=optional
       - working-directory: game
         run: npm run build
+      - id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base=$(gh api "repos/${{ github.repository }}/compare/main...$(git -C game rev-parse HEAD)" --jq .merge_base_commit.sha 2>/dev/null || true)
+          echo "sha=$base" >> "$GITHUB_OUTPUT"; echo "short=${base:0:7}" >> "$GITHUB_OUTPUT"; echo "base da abertura: ${base:-nenhuma}"
+      - id: basedist
+        if: steps.base.outputs.sha != ''
+        uses: actions/cache@v4
+        with:
+          path: base/dist
+          key: abertura-dist-${{ steps.base.outputs.sha }}
+      - if: steps.base.outputs.sha != '' && steps.basedist.outputs.cache-hit != 'true'
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ steps.base.outputs.sha }}
+          path: base
+      # The base's build: the branch's packages when the lock is the same (the usual case), else its own.
+      - if: steps.base.outputs.sha != '' && steps.basedist.outputs.cache-hit != 'true'
+        working-directory: base
+        run: |
+          if cmp -s package-lock.json ../game/package-lock.json; then ln -s ../game/node_modules node_modules; else npm ci --include=optional; fi
+          npx vite build
       - id: pw
         uses: actions/cache@v4
         with:
@@ -65,6 +92,12 @@ jobs:
       - if: steps.pw.outputs.cache-hit == 'true'
         working-directory: game
         run: npx playwright install-deps chromium
+      - name: Abertura da partida (branch × main; o veredito fica no abertura.json, lido pela folha)
+        working-directory: game
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/game/node_modules/playwright
+        run: |
+          node ../scripts/abertura-ci.mjs ../folha-out --dist dist --base-dist ../base/dist --base-sha "${{ steps.base.outputs.sha }}" || echo "::warning::abertura: infra (exit $?)"
       - name: Folha de prints (1 = falhou, 2 = infra, tentada mais uma vez)
         working-directory: game
         env:

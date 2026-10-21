@@ -21,7 +21,8 @@ import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
-import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {TriBand} from '../city/tri-band.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -33,27 +34,34 @@ const COVER_ALPHA=.45;
 const ART_PX=1/ART_SCALE;
 /** Empty rows over the art's tallest part (sign, pig, snail), a share of the cell: the tag sits on what is drawn. */
 const ART_TOP_PAD=.17;
+/** The ground's frozen pieces, in the order the one Graphics drew them: hold ring, saldo ring, shadow. */
+const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 
 export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
   figKey:string;
+  /**
+   * The ground (card Q2): hold ring, saldo ring and shadow, each frozen into triangles (city/tri-band.ts) at the bank and
+   * re-frozen only when its groundKeys key changes; Phaser replayed ~190 commands per bank every frame for the same
+   * drawing.
+   */
+  ground:{hold?:TriBand;ring?:TriBand;shadow?:TriBand;keys:{hold:string;ring:string;shadow:string}};
   /** The imported art (kiosk, screen, slot), made when its textures are in. */
   art?:{body:Phaser.GameObjects.Image;tela:Phaser.GameObjects.Image;saque:Phaser.GameObjects.Image}}
 
 export class BankRenderer {
   private scene:Phaser.Scene;
   private options:BankRendererOptions;
-  private ground:Phaser.GameObjects.Graphics;
   private fx:Phaser.GameObjects.Graphics;
   private draws=new Map<string,BankDraw>();
   private state=new BankTracker();
   private now=0;
   private q:Pt={x:0,y:0};
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
-  /** Reused every frame (no allocation per frame): the saldo ring's points, the shadow's corners, the banks in view. */
-  private ring:Pt[]=[];private corners=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];private live=new Set<string>();
+  /** Reused every frame (no allocation per frame): the banks in view. */
+  private live=new Set<string>();
   /** The ATM's faces per name, screen look and view (boxFaces is pure). */
   private faces=new Map<string,readonly Face[]>();
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,dim:0};
@@ -63,7 +71,6 @@ export class BankRenderer {
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
-    this.ground=scene.add.graphics().setDepth(-9978);
     this.fx=scene.add.graphics().setDepth(FX_DEPTH);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
@@ -102,15 +109,14 @@ export class BankRenderer {
   update(time:number){
     this.now=time;
     const st=this.state;st.settle(time);
-    this.ground.clear();this.fx.clear();
+    this.fx.clear();
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     const live=this.live;live.clear();
     for(const b of st.banks){
       live.add(b.id);
       const d=this.drawOf(b.id);
       const screen=screenOf(b,st.tick,time,reduced);
-      this.drawArea(b,k);
-      this.drawShadow(b.x,b.y);
+      this.drawGround(b,d,k);
       const depth=proj.depth(b.x,b.y),art=this.artOf(b.name);
       if(art)this.drawArt(b,d,art,screen.look,depth);
       else{
@@ -166,11 +172,12 @@ export class BankRenderer {
   }
   private destroyDraw(d:BankDraw){
     d.figure.destroy();d.tag.destroy();d.balloon.destroy();
+    const g=d.ground;g.hold?.destroy();g.ring?.destroy();g.shadow?.destroy();
     if(d.art){d.art.body.destroy();d.art.tela.destroy();d.art.saque.destroy();}
   }
 
   destroy(){
-    this.ground.destroy();this.fx.destroy();
+    this.fx.destroy();
     for(const d of this.draws.values())this.destroyDraw(d);
     this.draws.clear();
   }
@@ -196,7 +203,7 @@ export class BankRenderer {
       d={figure:s.add.graphics(),
         tag:s.add.text(0,0,'',this.tagStyle('normal')).setOrigin(.5,1).setDepth(FX_DEPTH+1),
         balloon:s.add.text(0,0,'',this.balloonStyle(false)).setOrigin(.5,1).setDepth(FX_DEPTH+2).setVisible(false),
-        tagText:'',tagLook:'',figKey:''};
+        tagText:'',tagLook:'',figKey:'',ground:{keys:{hold:'',ring:'',shadow:''}}};
       this.draws.set(id,d);
     }
     return d;
@@ -212,29 +219,39 @@ export class BankRenderer {
     return {x:p.x+o.x,y:p.y+o.y};
   }
   /**
-   * The ground: a thin ring where a hero holds it (holdR), and the saldo ring around the slab (Cartolina; Cone while a
-   * critter robs it; an empty ring when it has no notes).
+   * The ground: a thin ring where a hero holds it (holdR), the saldo ring around the slab (Cartolina; Cone while a
+   * critter robs it; an empty ring when it has no notes; breathing while a hero is paid) and the kiosk's shadow. Each
+   * piece is drawn once in the bank's local space and frozen (TriBand); per frame it only moves and the saldo ring scales.
    */
-  private drawArea(b:BankView,k:number){
-    const g=this.ground,p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
-    const hold=BANCO.holdR*42,paying=b.state==='sacando';
-    g.lineStyle(2*k,paying?c.cartolina:c.papel,paying?.75:.35).strokeEllipse(p.x,p.y,hold*2,hold);
-    const r=1.25*M*42,share=saldoShare(b),pulse=paying&&!this.options.reduced?1+Math.sin(this.now*.01)*.04:1;
-    g.lineStyle(7*k,c.breu,.55).strokeEllipse(p.x,p.y,r*2*pulse,r*pulse);
-    if(share<=0)return;
-    const color=b.state==='bicho'?c.cone:c.cartolina,n=Math.max(2,Math.ceil(48*share)),pts=this.ring;
-    while(pts.length<n+1)pts.push({x:0,y:0});
-    for(let i=0;i<=n;i++){const a=-Math.PI/2+share*Math.PI*2*i/n;pts[i].x=p.x+Math.cos(a)*r*pulse;pts[i].y=p.y+Math.sin(a)*r*.5*pulse;}
-    g.lineStyle(4*k,color,1).strokePoints(pts,false,false,n+1);
-  }
-  private drawShadow(x:number,y:number){
-    const v=this.options.projector.view,p=this.options.projector.project(x,y,this.q),ax=p.x+8,ay=p.y+3;
-    const corners=this.corners;
-    for(let i=0;i<4;i++){
-      const o=isoOffset(i===0||i===3?ATM_HALF.l:-ATM_HALF.l,i<2?ATM_HALF.w:-ATM_HALF.w,0,v);
-      corners[i].x=ax+o.x*1.15;corners[i].y=ay+o.y*1.15;
+  private drawGround(b:BankView,d:BankDraw,k:number){
+    const g=d.ground,keys=groundKeys(b,k,this.options.projector.view),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
+    if(g.keys.hold!==keys.hold||!g.hold){
+      g.keys.hold=keys.hold;g.hold?.destroy();
+      const hold=BANCO.holdR*42,paying=b.state==='sacando';
+      g.hold=TriBand.make(this.scene,gr=>{gr.lineStyle(2*k,paying?c.cartolina:c.papel,paying?.75:.35).strokeEllipse(0,0,hold*2,hold);}).setDepth(HOLD_DEPTH);
     }
-    this.ground.fillStyle(LIGHT?LIT_SHADOW.color:this.c.breu,LIGHT?LIT_SHADOW.alpha:.25).fillPoints(corners,true);
+    if(g.keys.ring!==keys.ring||!g.ring){
+      g.keys.ring=keys.ring;g.ring?.destroy();
+      const r=1.25*M*42,share=saldoShare(b),color=b.state==='bicho'?c.cone:c.cartolina;
+      g.ring=TriBand.make(this.scene,gr=>{
+        gr.lineStyle(7*k,c.breu,.55).strokeEllipse(0,0,r*2,r);
+        if(share<=0)return;
+        const n=Math.max(2,Math.ceil(48*share)),pts:Pt[]=[];
+        for(let i=0;i<=n;i++){const a=-Math.PI/2+share*Math.PI*2*i/n;pts.push({x:Math.cos(a)*r,y:Math.sin(a)*r*.5});}
+        gr.lineStyle(4*k,color,1).strokePoints(pts,false,false,n+1);
+      }).setDepth(RING_DEPTH);
+    }
+    if(g.keys.shadow!==keys.shadow||!g.shadow){
+      g.keys.shadow=keys.shadow;g.shadow?.destroy();
+      const v=this.options.projector.view,corners:Pt[]=[];
+      for(let i=0;i<4;i++){
+        const o=isoOffset(i===0||i===3?ATM_HALF.l:-ATM_HALF.l,i<2?ATM_HALF.w:-ATM_HALF.w,0,v);
+        corners.push({x:8+o.x*1.15,y:3+o.y*1.15});
+      }
+      g.shadow=TriBand.make(this.scene,gr=>{gr.fillStyle(LIGHT?LIT_SHADOW.color:c.breu,LIGHT?LIT_SHADOW.alpha:.25).fillPoints(corners,true);}).setDepth(SHADOW_DEPTH);
+    }
+    g.hold.setPosition(p.x,p.y);g.shadow.setPosition(p.x,p.y);
+    g.ring.setPosition(p.x,p.y).setScale(groundPulse(b,this.now,this.options.reduced));
   }
   private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number){
     const p=this.options.projector.project(x,y,this.q),pts=this.pts;

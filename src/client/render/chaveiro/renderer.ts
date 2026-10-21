@@ -16,7 +16,7 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from './iso.ts';
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
-import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap} from './rules.ts';
+import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap,deliveryKey,deliveryPulse,fallenKey} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
@@ -37,6 +37,8 @@ export interface ChaveiroRendererOptions {projector:Projector;reduced:boolean;
 interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number;moto:boolean}
 /** Car faces cached by look (parts, hazard, trunk step, wrecked, view): the car is redrawn every frame, its boxes rarely change. */
 const CAR_CACHE_MAX=48;
+/** The ground's frozen pieces, in the order the one Graphics drew them: the delivery ring under the shadows, the fallen parts over. */
+const DELIVERY_DEPTH=-9979.001,FALLEN_DEPTH=-9978.999;
 /** Frozen figures kept per role (car, moto, the chaveiro standing): a few looks each (hazard on/off, poses, headings). */
 const FROZEN_MAX=24;
 /** The moto's heading is frozen in this many steps per turn (5.6°: its route turns rarely). */
@@ -102,11 +104,18 @@ export class ChaveiroRenderer {
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,claro:0};
   /** The car, the moto and the standing chaveiro, frozen per look (FrozenFigures). */
   private frozenCar:FrozenFigures;private frozenMoto:FrozenFigures;private frozenOpener:FrozenFigures;
+  /**
+   * Card Q2: the parts lying on the ground (frozen per set, like the car) and the delivery ring (frozen per contour
+   * width, breathing by scale): the chaveiro's ground Graphics replayed ~250 commands every frame for them.
+   */
+  private frozenFallen:FrozenFigures;
+  private delivery?:{band:TriBand;key:string};
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
     this.scene=scene;this.options=options;
     const breu=()=>this.c.breu;
     this.frozenCar=new FrozenFigures(scene,breu);this.frozenMoto=new FrozenFigures(scene,breu);this.frozenOpener=new FrozenFigures(scene,breu);
+    this.frozenFallen=new FrozenFigures(scene,breu);
     this.ground=scene.add.graphics().setDepth(-9979).setName('chaveiro-chao');
     this.car=scene.add.graphics().setName('chaveiro-carro');this.moto=scene.add.graphics().setName('chaveiro-moto');this.opener=scene.add.graphics().setName('chaveiro-abrindo');
     this.fx=scene.add.graphics().setDepth(FX_DEPTH).setName('chaveiro-fx');
@@ -128,10 +137,10 @@ export class ChaveiroRenderer {
   update(time:number){
     const dt=this.lastTime===undefined?0:time-this.lastTime;
     this.now=this.lastTime=time;
-    const g=this.ground;g.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
+    this.ground.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
-    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.carTurn=this.carHeading=0;return;}
+    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.delivery?.band.setVisible(false);this.carTurn=this.carHeading=0;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -146,9 +155,13 @@ export class ChaveiroRenderer {
     // Ground: the delivery spot, the shadows, the fallen parts. The speed bumps are not drawn (the old Papel/Breu
     // stripes, card remover-desenhos-antigos): the moto's slowing down and its line say it until there is art.
     if(view.delivery)this.drawDelivery(view.delivery,k);
+    else this.delivery?.band.setVisible(false);
     this.drawShadow(view.car.x,view.car.y,CAR_HALF.l,CAR_HALF.w,carH);
     const parts=fallenParts(view.car.parts,fallingBits);
-    if(parts.length)this.drawFigure(g,view.car.x,view.car.y,carH,parts,k,1);
+    if(parts.length){
+      const at=proj.project(view.car.x,view.car.y,this.q);
+      this.frozenFallen.show(fallenKey(view.car.parts,fallingBits,carStep,proj.view,k),()=>boxFaces(parts,carH,proj.view),k,at.x,at.y,FALLEN_DEPTH,1);
+    }else this.frozenFallen.hide();
 
     // The car (and the parts falling off it), trembling: the engine never stops.
     const ended=st.endedAt!==undefined?time-st.endedAt:0;
@@ -212,7 +225,8 @@ export class ChaveiroRenderer {
 
   destroy(){
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
-    this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();
+    this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
+    this.delivery?.band.destroy();this.delivery=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 
@@ -246,12 +260,6 @@ export class ChaveiroRenderer {
     const b=faceBounds(faces);
     return h.x>ax+b.x0&&h.x<ax+b.x1&&h.y-30>ay+b.y0&&h.y-10<ay+b.y1;
   }
-  /** Fills the boxes' faces at the world point (x, y), Breu contour in CSS px; returns the faces drawn. */
-  private drawFigure(g:Phaser.GameObjects.Graphics,x:number,y:number,heading:number,boxes:readonly Box[],k:number,alpha:number,shift?:{x:number;y:number}){
-    const faces=boxFaces(boxes,heading,this.options.projector.view);
-    this.drawFaces(g,x,y,faces,k,shift,alpha);
-    return faces;
-  }
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
   private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number,shift?:{x:number;y:number},alpha=1){
     const p=this.options.projector.project(x,y,this.q),ax=p.x+(shift?.x??0),ay=p.y+(shift?.y??0),pts=this.pts;
@@ -271,12 +279,18 @@ export class ChaveiroRenderer {
     const color=LIGHT?LIT_SHADOW.color:this.c.breu,alpha=LIGHT?LIT_SHADOW.alpha:.25;
     this.ground.fillStyle(color,alpha).fillPoints(corners,true);
   }
-  /** The next delivery: a ring on the ground and a tag with the seconds until he gets there. */
+  /** The next delivery: a ring on the ground (frozen, breathing by scale) and a tag with the seconds until he gets there. */
   private drawDelivery(d:{x:number;y:number;etaS:number},k:number){
-    const p=this.options.projector.project(d.x,d.y,this.q),r=1.2*M*42;
-    const pulse=this.options.reduced?0:Math.sin(this.now*.006)*.08;
-    this.ground.lineStyle(3*k,this.c.breu,.9).strokeEllipse(p.x,p.y,r*2*(1+pulse),r*(1+pulse));
-    this.ground.lineStyle(2*k,this.c.papel,1).strokeEllipse(p.x,p.y,r*2*(1+pulse),r*(1+pulse));
+    const p=this.options.projector.project(d.x,d.y,this.q),r=1.2*M*42,key=deliveryKey(k);
+    if(this.delivery?.key!==key){
+      this.delivery?.band.destroy();
+      const c=this.c;
+      this.delivery={key,band:TriBand.make(this.scene,g=>{
+        g.lineStyle(3*k,c.breu,.9).strokeEllipse(0,0,r*2,r);
+        g.lineStyle(2*k,c.papel,1).strokeEllipse(0,0,r*2,r);
+      }).setDepth(DELIVERY_DEPTH)};
+    }
+    this.delivery.band.setPosition(p.x,p.y).setScale(deliveryPulse(this.now,this.options.reduced)).setVisible(true);
     this.deliveryText.setText(`entrega em ${Math.max(0,Math.ceil(d.etaS))} s`).setPosition(p.x,p.y-r*.6).setScale(k).setVisible(true);
   }
   /** Smoke puffs: the car's exhaust always (the engine runs), the moto's when it runs (light) or died (dark). */

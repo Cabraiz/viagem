@@ -12,7 +12,9 @@ import {ZONE_WINDOWS} from './hud/zones.ts';
 /** The match windows a thumb control must not cover (the emote bar hides while one is open). */
 const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
-import {RunHud} from './hud/hud.ts';
+import {RunHud,defaultPortrait} from './hud/hud.ts';
+import {SpectatorBar} from './hud/spectator.ts';
+import './hud/spectator.css';
 import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
 import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
@@ -97,6 +99,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let emotes:EmoteBar|undefined;
   let hud:RunHud|undefined,resultShown:number|undefined;
   let rescue:RescueBoard|undefined;
+  /** The torcida's bar while out or watching (UX-espectador). */
+  let spect:SpectatorBar|undefined;
   /**
    * The obra menu (torres-ligar, D-041): the build sites in the intermission, its build/upgrade to the room and the
    * room's {t:'built'} answer (a stamp on the marker, or the refusal as a row of the announcement slot).
@@ -202,6 +206,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onEmote=note=>hud?.emote(note.player,note.id);
     // Edge arrows, minimap, "Me salva" and the rescue lines (UX-bordas-fora-da-tela, ORQ-minimapa, UX-resgate-e-ping).
     rescue=new RescueBoard({net,hud,actions:$('.explore-actions'),scene:()=>controller?.scene,onTap:()=>pause(false)});
+    // Out or watching (UX-espectador): ‹ › pick the friend, the chinelo is screen-only, "Voltar ao lobby" leaves the room.
+    spect=new SpectatorBar($('.explore-layout'),{onStep:dir=>{controller?.scene.watchStep(dir);},onLeave:()=>close(),
+      target:()=>controller?.scene.watchedScreen(),portrait:classId=>defaultPortrait(classId)});
     // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): the frame meter on the phone; loaded only with the flag.
     if(perfEnabled(location.search))void import('./dev/perf-overlay.ts').then(m=>m.startPerfOverlay());
     if(uxMetricsEnabled(location.search))void import('./dev/ux-metrics.ts').then(m=>{
@@ -308,7 +315,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -646,8 +653,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   tray:el&&rect?{kind:el.classList.contains('rh-cida')?'cida':'forja',rect}:undefined,hero:hero&&{width:hero.width,height:hero.height}});
                 scene.frameArea=rect&&(scene.besideWindow==='forja'||scene.besideWindow==='cida')?besideArea(z,rect):undefined;
               }
-              // Out or watching: the camera follows a teammate; the banner names who (a tap on a portrait changes it).
-              hud.setWatching(controller?.scene.watching()?.name);
+              // Out or watching: the camera follows a teammate; the torcida's bar names who (‹ › or a tap on a portrait
+              // changes it) and the top banner keeps "Você tá fora. Volta na revanche." (UX-espectador).
+              spect?.update({phase:run.phase,eliminated:!!net.feed.players.get(net.id)?.eliminated,spectator:!!member?.spectator,watching:controller?.scene.watching()});
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.

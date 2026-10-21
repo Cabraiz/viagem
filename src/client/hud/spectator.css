@@ -1,0 +1,36 @@
+/* NEW-20261009-UX-espectador: the torcida's bar takes the bottom band where the thumbs were (they hide while out).
+   Ficha Breu over the map, Papel text; the chinelo is the bar's one Amarelo (a choice), "Voltar ao lobby" is secondary. */
+.spect{position:absolute;z-index:var(--z-hud);left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);box-sizing:border-box;width:min(360px,calc(100% - 32px));display:grid;gap:8px;padding:8px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);font:800 var(--t-16)/1.1 var(--f-sistema);pointer-events:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.spect[hidden]{display:none}
+.spect button{font:inherit;cursor:pointer;touch-action:manipulation}
+.spect-alvo{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;gap:6px}
+.spect-seta{width:48px;height:48px;padding:0 0 4px;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-lilas);color:var(--c-papel);font:900 var(--t-28)/1 var(--f-cartaz)}
+.spect-seta:disabled{opacity:.4;cursor:default}
+.spect-seta:not(:disabled):active{background:var(--c-amarelo);color:var(--c-breu)}
+.spect-quem{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
+.spect-quem::before{content:'Assistindo';font:700 var(--t-13)/1 var(--f-sistema);opacity:.8}
+.spect-rosto{width:32px;height:32px;flex:none;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-retrato-a);object-fit:cover}
+.spect-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spect-acoes{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.spect-acoes button{min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 10px;border:2px solid var(--c-breu);border-radius:var(--r-etiqueta);box-shadow:var(--s-1)}
+.spect-chinelo{background:var(--c-amarelo);color:var(--c-breu)}
+.spect-sair{background:var(--c-papel);color:var(--c-lilas);font-size:var(--t-13)!important;line-height:1.1!important}
+.spect-sair.is-confirm{background:var(--c-cone);color:var(--c-breu)}
+.spect-acoes button:active{transform:translateY(2px);box-shadow:none}
+/* The out player's thumbs: the bar replaces them (no dead stick under a finger). */
+.coop-shell[data-out=true] .explore-stick,.coop-shell[data-out=true] #coop-attack,.coop-shell[data-out=true] .explore-stick-hint{visibility:hidden}
+/* Landscape on a short phone: one row (‹ who › | Chinelo | Voltar), so the bar stays low and thin. */
+@media(max-height:500px) and (min-width:600px){
+  .spect{width:min(620px,calc(100% - 32px));grid-template-columns:auto 1fr;align-items:center;bottom:max(10px,env(safe-area-inset-bottom))}
+  .spect-alvo{grid-template-columns:44px minmax(110px,auto) 44px}
+  .spect-seta{width:44px;height:44px}
+  .spect-acoes button{min-height:44px}
+}
+/* The flying slipper and its line: over the field, never a finger target. */
+.spect-fx{position:fixed;inset:0;z-index:var(--z-hud);pointer-events:none;overflow:hidden}
+.spect-voo{position:fixed;width:48px;height:48px;transform:translate(-50%,-50%);filter:drop-shadow(0 3px 0 var(--c-breu))}
+.spect-voo.is-landed{animation:spect-quica .3s ease-out}
+.spect-linha{position:fixed;transform:translate(-50%,calc(-100% - 34px));max-width:220px;padding:6px 10px;border:2px solid var(--c-breu);border-radius:var(--r-balao);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);text-align:center;box-shadow:var(--s-1);animation:spect-sobe 1.4s ease-out forwards}
+@keyframes spect-quica{50%{scale:1.25}}
+@keyframes spect-sobe{0%{opacity:0;margin-top:8px}15%{opacity:1;margin-top:0}80%{opacity:1}100%{opacity:0;margin-top:-10px}}
+@media(prefers-reduced-motion:reduce){.spect-voo.is-landed,.spect-linha{animation:none}}

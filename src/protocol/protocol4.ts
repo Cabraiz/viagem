@@ -96,9 +96,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 28 given by the integration queue (tools/fila.mjs, lote 20261020-230138) to: NEW-20261020-ORQ-torre-pela-caixa.
  * Next (the queue numbers it) since the mouse's melee aim (card NEW-20261021-ORQ-cone-ataque-melee): input segment flags
  * carry the aim's bucket in bits 2+ (protocol/input-track.ts); an older room refuses those segments.
+ * 29 given by the integration queue (tools/fila.mjs, lote 20261021-035259) to: NEW-20261021-ORQ-cone-ataque-melee.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=28;
+export const PROTOCOL_VERSION=29;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

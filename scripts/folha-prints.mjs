@@ -107,8 +107,8 @@ const HERO=()=>{
 };
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
-/** The own hero is dead: the HUD says "Assistindo: <ally>". */
-const DEAD=()=>/Assistindo:/.test(document.body.innerText);
+/** Out of play: the own hero is dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). */
+const DEAD=()=>/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -119,7 +119,28 @@ const SAMPLE=([n,ms])=>new Promise(done=>{
 });
 /** The level-up offer (D-050) pauses the solo match until a card is taken: takes the first one, so the hero walks again. */
 const TAKE_OFFER=()=>{const c=[...document.querySelectorAll('.rh-card')].find(b=>!b.disabled&&b.getClientRects().length&&!b.closest('[hidden]'));c?.click();return !!c;};
-async function clearOffer(p){for(let i=0;i<4&&await p.evaluate(TAKE_OFFER).catch(()=>false);i++)await sleep(700);}
+async function clearOffer(p){
+  for(let i=0;i<4&&await p.evaluate(TAKE_OFFER).catch(()=>false);i++)await sleep(700);
+  await playing(p);
+}
+/** Each match page's way back in (set by openMenu): base URL, label, restarts left. */
+const matchPages=new WeakMap();
+/**
+ * A dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his own:
+ * a new match on the same page (a warning on the sheet), at most twice per page.
+ */
+async function playing(p){
+  const m=matchPages.get(p);
+  if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
+  const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
+  await shot(p,'fim',`${m.label}: herói morto ou partida acabou`,{w:vp.width,h:vp.height});
+  if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
+  avisos.push(`${m.label} ${at}: herói morto ou partida acabou: partida nova`);
+  await p.goto(`${m.base}/?perf=1`,{waitUntil:'load',timeout:90000});
+  await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
+  await enterMatch(p,{w:vp.width,h:vp.height},m.label);
+  await p.evaluate(TAKE_OFFER).catch(()=>{});
+}
 
 const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
 async function shot(p,name,caption,vp){
@@ -242,22 +263,19 @@ async function match(browser,base){
   p.on('pageerror',e=>consoleErrors.push(`pageerror: ${String(e).slice(0,300)}`));
   p.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text().slice(0,300));});
   try{
-    await openMenu(p,base);
+    await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
     for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
       // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
-      for(const stage of [standing,mouseWalk,keyboardWalk,burst]){
-        // A hero killed by the critters (minutes of walking) watches an ally: nothing of his own to print.
-        if(await p.evaluate(DEAD).catch(()=>false)){avisos.push(`${vp.w}×${vp.h}: o herói morreu (assistindo um aliado): pulei ${stage.name} em diante`);await shot(p,'morto','herói morto (assistindo)',vp);break;}
-        await stage(p,vp);
-      }
+      for(const stage of [standing,mouseWalk,keyboardWalk,burst])await stage(p,vp);
     }
   }finally{await ctx.close().catch(()=>{});}
 }
 /** The menu of the built site with the room's latency and the perf scene (the meter's panel hidden). */
-async function openMenu(p,base){
+async function openMenu(p,base,label){
+  matchPages.set(p,{base,label,left:2});
   await p.addInitScript(LATENCY);
   await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
@@ -290,7 +308,7 @@ async function phone(browser,base){
   const p=await ctx.newPage();
   p.on('pageerror',e=>consoleErrors.push(`celular: pageerror: ${String(e).slice(0,300)}`));
   try{
-    await openMenu(p,base);
+    await openMenu(p,base,'celular');
     if(!await enterMatch(p,vp,'celular'))return;
     await standing(p,tag);
     const cdp=await ctx.newCDPSession(p);

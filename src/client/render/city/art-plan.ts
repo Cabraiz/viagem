@@ -63,11 +63,11 @@ export const PROP_FAMILIES:Readonly<Record<PropKind,readonly string[]>>={
 };
 export const FOUNTAIN_PIECE='chafariz-congelado';
 /**
- * The 4-view base sheets art/base-art.ts draws (its BASE_ART wall and barricade; the crate has one view and ~50 KB):
+ * The 2- and 4-view base sheets art/base-art.ts draws (its BASE_ART wall, barricade and junk wall; the crate has one view and ~50 KB):
  * their city lite copies keep the cell (cityLiteScale 1), so base-art swaps the url only. Not imported from base-art
  * so the plan (and scripts/art-lite.mjs) stays apart from the Stonewards renderer; tests/client/art-lite.test.ts checks both lists agree.
  */
-export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada'];
+export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada','muralha-tralha','muralha-tralha-pilar'];
 /**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
@@ -170,9 +170,9 @@ const footprintOf=(p:ArtPiece):[number,number]|undefined=>{
   return Array.isArray(f)&&f.length===2&&f.every(n=>Number.isInteger(n)&&n>0&&n<=8)?[f[0] as number,f[1] as number]:undefined;
 };
 /** The 4-view sheet of a piece: one file, one page, at least 4 frames. */
-function viewSheet(p:ArtPiece):ArtFile|undefined{
+function viewSheet(p:ArtPiece,minViews=4):ArtFile|undefined{
   const f=p.files.sheet??Object.values(p.files)[0];
-  if(!f||!f.file||(f.views??0)<4||(f.pages&&f.pages.length>1))return undefined;
+  if(!f||!f.file||(f.views??0)<minViews||(f.pages&&f.pages.length>1))return undefined;
   return f;
 }
 /**
@@ -184,7 +184,8 @@ function viewSheet(p:ArtPiece):ArtFile|undefined{
  * Undefined: none.
  */
 export function cityLiteFile(group:string,id:string,p:ArtPiece):string|undefined{
-  if(!viewSheet(p))return undefined;
+  // base: the junk wall has 2 views (the two diagonals, base-art BASE_ART.muralha).
+  if(!viewSheet(p,group==='base'?2:4))return undefined;
   if(group==='predios'&&UNUSED_FAMILIES.some(u=>pieceFamily(id)===u||pieceFamily(id).startsWith(`${u}-`)))return undefined;
   if(group==='base'&&id!==FOUNTAIN_PIECE&&!BASE_LITE_PIECES.includes(id))return undefined;
   if(group!=='predios'&&group!=='base'&&group!=='props'&&group!==DECOR_GROUP)return undefined;

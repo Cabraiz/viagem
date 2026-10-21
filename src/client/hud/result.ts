@@ -10,7 +10,8 @@ import {MAX_AWARDS_PER_PLAYER,awardsOf,computeAwards,type Award} from './awards.
 import {itemDisplay} from './items.ts';
 import {sticker as drawSticker} from '../ui/sticker.ts';
 import {formatDuration,teamOrder,type HudContext,type RunResult} from './model.ts';
-import {resultCause} from './cause.ts';
+import {causeCopy,resultCause,topCause,type CauseLog} from './cause.ts';
+import {shareCard,shareResultImage} from './share-result.ts';
 import {icon} from '../ui/icon.ts';
 import {faceExpression,faceImg} from '../ui/face-crop.ts';
 import {WALL_DOWN_LINES} from '../../rules/index.ts';
@@ -63,6 +64,35 @@ export function resultRoundLine(result:Pick<RunResult,'round'|'totalRounds'|'obj
 }
 export function resultSeedText(result:Pick<MapRunResult,'seed'|'map'>){
   return result.map==='cidade-nevada'?'Cidade Nevada':`seed ${result.seed}`;
+}
+
+/**
+ * The defeat's second line (UX-resultado-revanche): "O que derrubou a turma: Tio do Pavê (4 quedas)" and, with rounds,
+ * "Faltou 3 rounds pro síndico". Undefined on a win or with nothing to say.
+ */
+export function defeatLine(result:Pick<RunResult,'victory'|'round'|'totalRounds'|'objective'>,causes:CauseLog){
+  if(result.victory)return undefined;
+  const parts:string[]=[];
+  const team=topCause(causes);
+  if(team)parts.push(`O que derrubou a turma: ${causeCopy(team.kind).name} (${team.count} ${team.count===1?'queda':'quedas'})`);
+  const left=result.objective?0:result.totalRounds-result.round;
+  if(left>0)parts.push(`Faltou ${left===1?'1 round':`${left} rounds`} pro síndico`);
+  return parts.length?parts.join('. '):undefined;
+}
+
+/** The room's rematch vote (RunState.rematchVotes): who said "topa", who is asked (people online) and the majority's clock. */
+export interface RematchVotes {votes:readonly string[];voters:readonly string[];leftTicks?:number}
+/**
+ * The rematch button's words: "Revanche (2/4)" before the local vote, "Topei! (2/4)" after it, "Começa em 7 s (3/4)"
+ * while a majority waits for the rest. A solo room says just "Revanche"; an older room (no votes) keeps its old words.
+ */
+export function rematchLabel(votes:RematchVotes|undefined,localId:string,asked:boolean,hz=20){
+  if(!votes)return asked?'Esperando a galera…':'Revanche';
+  const total=votes.voters.length,yes=votes.votes.filter(id=>votes.voters.includes(id)).length;
+  const count=total>1?` (${yes}/${total})`:'';
+  const mine=asked||votes.votes.includes(localId);
+  if(votes.leftTicks!==undefined&&mine)return `Começa em ${Math.max(1,Math.ceil(votes.leftTicks/hz))} s${count}`;
+  return `${mine?'Topei!':'Revanche'}${count}`;
 }
 
 /** 980 → "980", 9120 → "9,1k", 18420 → "18,4k", 123456 → "123k". */
@@ -153,6 +183,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   const titles=el('div','rh-result-titles',head);
   const title=el('h2','rh-result-title',titles);title.id='rh-result-title';
   const subtitle=el('p','rh-result-sub',titles);
+  // The defeat's "O que derrubou a turma … Faltou N rounds pro síndico" (UX-resultado-revanche).
+  const lost=el('p','rh-result-lost',titles);lost.hidden=true;
   const stats=el('div','rh-result-stats',head);
   const time=el('span','rh-result-stat',stats),round=el('span','rh-result-stat',stats),seed=el('span','rh-result-seed',stats);
   // What downed you (UX-voce-e-dano f): critter sticker + name, one line.
@@ -195,14 +227,30 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   manage.addEventListener('click',()=>{managing=!managing;armed=undefined;syncManage();if(shownResult)renderGrid(shownResult.result,shownResult.ctx);});
   // Head (landscape) and actions share a row: CSS moves them via grid areas, DOM order stays readable.
 
-  let asked=false;
-  const resetRematch=()=>{asked=false;rematch.disabled=false;rematch.textContent='Revanche';rematch.classList.remove('rh-waiting');};
+  let asked=false,refused=false,rematchVotes:RematchVotes|undefined,localId='';
+  /** Cards opened with a tap (all four numbers), by player id; cleared on every new result. */
+  const openCards=new Set<string>();
+  const syncRematch=()=>{
+    if(refused)return;
+    const mine=asked||!!rematchVotes?.votes.includes(localId);
+    rematch.disabled=mine;rematch.textContent=rematchLabel(rematchVotes,localId,mine);rematch.classList.toggle('rh-waiting',mine);
+  };
+  const resetRematch=()=>{asked=false;refused=false;rematchVotes=undefined;syncRematch();};
   rematch.addEventListener('click',()=>{
     if(asked)return;
-    asked=true;
-    rematch.disabled=true;rematch.textContent='Esperando a galera…';rematch.classList.add('rh-waiting');
+    asked=true;syncRematch();
     options.onRematch();
   });
+  // "Compartilhar" (camera sticker): a picture of the prizes for the group chat.
+  const share=el('button','rh-result-btn rh-result-share');share.type='button';
+  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-long">Compartilhar</span>`;share.setAttribute('aria-label','Compartilhar os prêmios');
+  share.addEventListener('click',()=>{
+    if(!shownResult||share.disabled)return;
+    share.disabled=true;
+    const {result,ctx,awards}=shownResult,players=teamOrder(result.players,ctx.localId);
+    void shareResultImage(document,shareCard(resultHeadline(result),players,awards,ctx.localId),result.victory).finally(()=>{share.disabled=false;});
+  });
+  actions.insertBefore(share,exit);
   let exited=false;
   exit.addEventListener('click',()=>{if(exited)return;exited=true;options.onExit?.();});
 
@@ -246,22 +294,24 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       more.setAttribute('aria-label',`e mais: ${shown.hidden.map(item=>`${itemDisplay(item.id).name} nível ${item.level}`).join(', ')}`);
     }
 
+    // The prize first (UX-resultado-revanche): the joke is what the turma reads; the numbers come under it.
+    const list=el('ul','rh-rcard-awards',node);
     const numbers=el('dl','rh-rcard-stats',node);
     const s=player.stats;
     const tally=ctx.tally.players.get(player.id);
     const rows:[string,number][]=[
       ['dano',s?.damage??0],
-      ['abates',Math.max(s?.kills??0,tally?.kills??0)],
       ['salvou',Math.max(s?.revives??0,tally?.revives??0)],
+      ['abates',Math.max(s?.kills??0,tally?.kills??0)],
       ['coletas',Math.max(s?.pickups??0,tally?.pickups??0)],
     ];
+    // Two numbers show (dano, salvou); a tap on the card opens abates and coletas.
     for(const [label,value] of rows){
-      const cell=el('div','rh-rstat',numbers);
+      const cell=el('div',label==='dano'||label==='salvou'?'rh-rstat':'rh-rstat rh-rstat-more',numbers);
       const dd=el('dd','rh-rstat-value',cell);dd.textContent=compactNumber(value);
       const dt=el('dt','rh-rstat-label',cell);dt.textContent=label;
     }
 
-    const list=el('ul','rh-rcard-awards',node);
     if(shameChip&&shameChip.playerId===player.id){
       const chip=el('li','rh-award rh-award-shame');chip.dataset.key=shameChip.key;chip.setAttribute('aria-label',shameChip.aria);chipEl={chip,list};
       const mark=el('span','rh-award-emoji',chip);mark.setAttribute('aria-hidden','true');
@@ -280,6 +330,16 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       chip.setAttribute('aria-label',`${award.title}: ${award.line}`);
     }
     list.hidden=!awards.length;
+    list.querySelector('.rh-award:not(.rh-award-shame)')?.classList.add('rh-award-top');
+    // "✓ topa" (the room's rematch vote): a sticker on the card's corner.
+    if(rematchVotes?.votes.includes(player.id)){const topa=el('span','rh-rcard-topa',node);topa.textContent='✓ topa';}
+    node.classList.toggle('is-open',openCards.has(player.id));
+    if(!managing){
+      node.addEventListener('click',()=>{
+        if(openCards.has(player.id))openCards.delete(player.id);else openCards.add(player.id);
+        node.classList.toggle('is-open',openCards.has(player.id));fitCards();
+      });
+    }
     if(managing&&!me){
       const asking=armed?.id===player.id,who={name:player.name,bot:!!bot};
       // A bot goes out by the door (the neutral button); a person is expelled: the cross, outlined in Cone, lighter.
@@ -354,8 +414,10 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     if(grid.scrollHeight>grid.clientHeight+1){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
     // Last resort (DSG-adesivos-itens: long vice lines like "Empatou em … e perdeu no desempate."): the award jokes go,
     // titles and stickers stay; each chip keeps its whole text in its aria-label.
-    grid.classList.remove('rh-result-tight');
+    grid.classList.remove('rh-result-tight');root.classList.remove('rh-result-nolost');
     if(grid.scrollHeight>grid.clientHeight+1)grid.classList.add('rh-result-tight');
+    // Then the defeat's "O que derrubou a turma" line (its cause is in the "Te derrubou" ficha too).
+    if(grid.scrollHeight>grid.clientHeight+1)root.classList.add('rh-result-nolost');
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
@@ -367,6 +429,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       root.dataset.outcome=result.victory?'victory':'defeat';
       title.textContent=headline.title;
       subtitle.textContent=headline.subtitle;
+      const why=defeatLine(result,ctx.tally.causes);lost.hidden=!why;lost.textContent=why??'';
       time.innerHTML=`${icon('relogio')} ${formatDuration(result.durationTicks)}`;
       const conta=result.objective&&objectiveBill(result.objective);
       round.textContent=resultRoundLine(result,nests);
@@ -397,7 +460,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
         else shameIcon.innerHTML=icon('suor',{size:32});
         shame.dataset.key=moment.key;
       }
-      shownResult={result,ctx,awards:computeAwards(result,ctx.tally)};
+      shownResult={result,ctx,awards:computeAwards(result,ctx.tally)};localId=ctx.localId;openCards.clear();
       managing=false;armed=undefined;syncManage();
       renderGrid(result,ctx);
       resetRematch();exited=false;
@@ -419,7 +482,12 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
       if(shownResult&&!root.hidden){root.classList.remove('rh-result-in');renderGrid(shownResult.result,shownResult.ctx);}
     },
     /** The room refused the rematch (not enough lifetime left): the button stops waiting and says what to do. */
-    refuse(label:string){asked=true;rematch.disabled=true;rematch.classList.remove('rh-waiting');rematch.textContent=label;},
+    refuse(label:string){asked=true;refused=true;rematch.disabled=true;rematch.classList.remove('rh-waiting');rematch.textContent=label;},
+    /** The room's rematch vote (UX-resultado-revanche); undefined from an older room (the first tap starts it). */
+    setRematch(next:RematchVotes|undefined){
+      const before=JSON.stringify(rematchVotes?.votes??[]);rematchVotes=next;syncRematch();
+      if(shownResult&&!root.hidden&&JSON.stringify(next?.votes??[])!==before){root.classList.remove('rh-result-in');renderGrid(shownResult.result,shownResult.ctx);}
+    },
     destroy(){landscape?.removeEventListener('change',onTurn);clearTimeout(disarm);root.remove();},
   };
 }

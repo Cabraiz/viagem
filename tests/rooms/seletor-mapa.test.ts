@@ -298,7 +298,8 @@ test('rematch keeps the map (the same Simulation persists)',async()=>{
   // Combat on the city waits for cidade-05 (the director): end the run before any combat step.
   room.run.finish('defeat');room.advance(t+=50);assert.equal(room.run.snapshot().phase,'result');
   say(room,a,{t:'rematch',round:round(room)},t);
-  assert.equal(room.run.snapshot().phase,'lobby');
+  // The only person voted: straight to the countdown (UX-resultado-revanche).
+  assert.equal(room.run.snapshot().phase,'countdown');
   assert.equal(room.sim,sim);assert.deepEqual(room.map,CITY);assert.equal(room.sim.terrain.world,'cidade');
   assert.equal(room.roster().map,'cidade-nevada');
 });

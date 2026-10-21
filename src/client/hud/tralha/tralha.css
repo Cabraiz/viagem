@@ -8,7 +8,7 @@
   font:800 var(--t-13)/1 var(--f-sistema);cursor:pointer;pointer-events:auto;touch-action:manipulation}
 .rh .rh-tralha-bola[hidden]{display:none}
 .rh .rh-tralha-destruir{background:var(--c-cone)}
-.rh-tralha-barra{position:absolute;width:64px;height:8px;margin:0 0 0 -32px;border-radius:4px;background:var(--c-breu);
+.rh-tralha-barra{position:absolute;width:64px;height:8px;margin:0 0 0 -32px;border-radius:var(--r-etiqueta);background:var(--c-breu);
   box-shadow:0 0 0 2px var(--c-papel);overflow:hidden}
 .rh-tralha-barra[hidden]{display:none}
 .rh-tralha-barra>i{display:block;height:100%;width:0;background:var(--c-amarelo)}

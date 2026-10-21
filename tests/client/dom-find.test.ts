@@ -5,7 +5,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {firstShown,shownHolds,stickyQuery} from '../../src/client/hud/dom-find.ts';
+import {firstShown,liveSelector,shownHolds,stickyQuery,type LiveRoot} from '../../src/client/hud/dom-find.ts';
+import {COVERING,WINDOWS} from '../../src/client/hud/edges.ts';
 
 /** An element at a page position (`at`), with a hidden attribute and children of some classes. */
 class El {
@@ -61,4 +62,40 @@ test('explore.ts: the position callback walks no :not([hidden]) selector over th
   assert.doesNotMatch(block,/rh-forge:not\(\[hidden\]\)|rh-obra:not\(\[hidden\]\)/);
   // The template's elements come from the sticky lookup, not a fresh querySelector each frame.
   assert.doesNotMatch(block,/\$(<[^>]+>)?\('(#coop-health|#coop-attack|#coop-objective|#coop-diagnostics|\.explore-layout)'\)/);
+});
+
+/** A page node for liveSelector: classes, an id, a tag and children (getElementsByTagName walks every descendant). */
+class Node_ {
+  readonly cls:string[];readonly id:string;readonly tag:string;readonly children:Node_[];
+  constructor(cls:string[],children:Node_[]=[],tag='div',id=''){this.cls=cls;this.children=children;this.tag=tag;this.id=id;}
+  all():Node_[]{return [this,...this.children.flatMap(c=>c.all())];}
+  getElementsByTagName(tag:string){return this.all().slice(1).filter(n=>n.tag===tag);}
+}
+function page(...top:Node_[]){
+  const queries:string[]=[];
+  const all=()=>top.flatMap(n=>n.all());
+  const root={queries,getElementsByClassName:(name:string)=>all().filter(n=>n.cls.includes(name)),getElementById:(id:string)=>all().find(n=>n.id===id)??null,
+    querySelectorAll:(sel:string)=>{queries.push(sel);return [];}};
+  return root;
+}
+
+test('liveSelector: COVERING and WINDOWS come from live lists (no querySelectorAll), unique, with the stack children and the camera buttons',()=>{
+  const row=new Node_(['rh-row']),killcam=new Node_(['rh-killcam']),btn=new Node_([],[],'button'),inner=new Node_([],[btn]),other=new Node_([],[],'span');
+  const offer=new Node_(['rh-offer','rh-offer-chip']),attack=new Node_([],[],'button','coop-attack');
+  const root=page(new Node_(['rh-round']),new Node_(['rh-stack'],[row,killcam]),new Node_(['explore-camera'],[inner,other]),offer,attack,new Node_(['rh-minimap']),new Node_(['unrelated']));
+  const covering=liveSelector(root as unknown as LiveRoot,COVERING),windows=liveSelector(root as unknown as LiveRoot,WINDOWS);
+  const got=[...covering()] as unknown as Node_[];
+  assert.equal(root.queries.length,0,'every COVERING part is a live-list form');
+  assert.equal(got.length,new Set(got).size);
+  for(const el of [row,killcam,btn,offer,attack])assert.ok(got.includes(el));
+  assert.ok(!got.includes(other)&&!got.some(n=>n.cls.includes('unrelated')));
+  assert.deepEqual(([...windows()] as unknown as Node_[]).map(n=>n.cls[0]).sort(),['rh-minimap','rh-offer']);
+  assert.equal(root.queries.length,0,'nor any WINDOWS part');
+  assert.equal([...covering()].length,got.length,'the same answer on the next call');
+});
+
+test('liveSelector: a selector part it does not know falls back to querySelectorAll for the whole list',()=>{
+  const root=page(new Node_(['a']));
+  [...liveSelector(root as unknown as LiveRoot,'.a,.b[data-x]')()];
+  assert.deepEqual(root.queries,['.a,.b[data-x]']);
 });

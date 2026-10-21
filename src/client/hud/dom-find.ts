@@ -51,3 +51,30 @@ export function shownHolds<T extends Shown<T>&{getElementsByClassName(name:strin
   for(let i=0;i<outer.length;i++){const el=outer[i];if(!el.hasAttribute('hidden')&&el.getElementsByClassName(inner).length)return true;}
   return false;
 }
+
+/** What liveSelector reads from a document (a Document, or a fake one in the tests). */
+export interface LiveRoot {
+  getElementsByClassName(name:string):LiveList<Element>;getElementById(id:string):Element|null;querySelectorAll(selector:string):Iterable<Element>;
+}
+type Part=(out:Set<Element>)=>void;
+const CLASS=/^\.([\w-]+)(?::not\(\[hidden\]\))?$/,ID=/^#([\w-]+)$/,CHILDREN=/^\.([\w-]+)>:not\(\[hidden\]\)$/,TAG=/^\.([\w-]+) ([a-z]+)$/;
+/**
+ * The elements of a selector list made of `.class`, `.class:not([hidden])`, `#id`, `.class>:not([hidden])` and
+ * `.class tag` parts, from the browser's live lists instead of a querySelectorAll over the page (Q6: RescueBoard's
+ * COVERING/WINDOWS boxes, 0.8 % of a 4× phone's main thread). Hidden ones are kept in: the caller skips everything
+ * under a `[hidden]` (closest), which covers the `:not([hidden])`. Unique, in no particular order. Any other part
+ * makes the whole list fall back to querySelectorAll.
+ */
+export function liveSelector(root:LiveRoot,selector:string):()=>Iterable<Element>{
+  const parts:Part[]=[];
+  for(const raw of selector.split(',')){
+    const s=raw.trim();let m:RegExpExecArray|null;
+    if((m=CLASS.exec(s))){const list=root.getElementsByClassName(m[1]);parts.push(out=>{for(let i=0;i<list.length;i++)out.add(list[i]);});}
+    else if((m=ID.exec(s))){const id=m[1];parts.push(out=>{const el=root.getElementById(id);if(el)out.add(el);});}
+    else if((m=CHILDREN.exec(s))){const list=root.getElementsByClassName(m[1]);parts.push(out=>{for(let i=0;i<list.length;i++)for(const el of list[i].children)out.add(el);});}
+    else if((m=TAG.exec(s))){const list=root.getElementsByClassName(m[1]),tag=m[2];parts.push(out=>{for(let i=0;i<list.length;i++)for(const el of list[i].getElementsByTagName(tag))out.add(el);});}
+    else return ()=>root.querySelectorAll(selector);
+  }
+  const out=new Set<Element>();
+  return ()=>{out.clear();for(const part of parts)part(out);return out;};
+}

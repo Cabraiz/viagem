@@ -19,6 +19,7 @@ import {railName} from '../render/map-label-rules.ts';
 import type {IslandScene} from '../scene.ts';
 import {layoutEdges,pointedTargets,inView,COVERING,WINDOWS,type EdgeOptions} from './edges.ts';
 import {LayoutCache,viewportSize} from './box-cache.ts';
+import {liveSelector} from './dom-find.ts';
 import type {Rect,ScreenZones} from './zones.ts';
 import {WcMinimapDriver} from './wc-minimap/driver.ts';
 import {radar,keepWarnings,holdLine,sosButton,type SpawnWarning} from './radar.ts';
@@ -43,9 +44,13 @@ export const CITY_TARGETS_MS=100;
 
 /** The HUD pieces that hide the map (edges.ts COVERING, shared with the arrows sandbox and pinned by a test). */
 export {COVERING};
+/** The selectors' live lists, compiled once per document (dom-find.ts liveSelector, Q6). */
+const lookups=new WeakMap<Document,Map<string,()=>Iterable<Element>>>();
 function boxes(doc:Document,selector:string):Rect[]{
+  let byDoc=lookups.get(doc);if(!byDoc)lookups.set(doc,byDoc=new Map());
+  let find=byDoc.get(selector);if(!find)byDoc.set(selector,find=liveSelector(doc,selector));
   const out:Rect[]=[];
-  for(const el of doc.querySelectorAll(selector)){
+  for(const el of find()){
     if((el as HTMLElement).closest('[hidden]'))continue;
     const r=el.getBoundingClientRect();if(r.width>0&&r.height>0)out.push({x:r.left,y:r.top,width:r.width,height:r.height});
   }

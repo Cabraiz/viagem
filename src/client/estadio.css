@@ -97,10 +97,10 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   -webkit-text-stroke: .16em var(--c-lilas-escuro); paint-order: stroke fill; text-shadow: 0 .07em 0 var(--c-breu);
 }
 .estadio-letreiro { display: block; max-width: 100%; max-height: 34vh; object-fit: contain; }
-/* The hero's own letreiro picture (already tilted): as big as the approved screen's (tela-1080p: ~46% of the width),
-   never taller than the column leaves room for. */
+/* The hero's own letreiro picture (already tilted): the approved screen's (tela-1080p: ~46% of the width) 15% smaller
+   (the user, 21/10: menu-1080-720-menino-inteiro), never taller than the column leaves room for. */
 .estadio-titulo.com-letreiro { transform: none; }
-.estadio-titulo.com-letreiro .estadio-letreiro { width: min(46vw, 78vh); max-width: none; max-height: none; height: auto; }
+.estadio-titulo.com-letreiro .estadio-letreiro { width: min(39.1vw, 66.3vh); max-width: none; max-height: none; height: auto; }
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {

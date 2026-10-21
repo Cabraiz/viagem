@@ -63,3 +63,12 @@ test('the renderers freeze the grounds (TriBand) behind their keys, and no longe
   assert.match(chav,/this\.frozenFallen\.show\(fallenKey\(/);
   assert.doesNotMatch(chav,/this\.ground\.lineStyle\([^)]*\)\.strokeEllipse/,'no delivery ellipses on the ground Graphics');
 });
+
+test('arsenal rings: one frozen look per kind, colour and body, a band per pickup each frame, hidden at begin',()=>{
+  const fx=src('arsenal-fx.ts');
+  assert.match(fx,/this\.ringBand\(`c\|\$\{color\}\|\$\{Math\.round\(b\*100\)\}`[^]*?\.setScale\(pulse\)/);
+  assert.match(fx,/this\.ringBand\(`i\|\$\{color\}\|\$\{Math\.round\(b\*100\)\}`/);
+  assert.match(fx,/if\(!band\)\{band=TriBand\.make\(this\.scene,draw\)/);
+  assert.match(fx,/for\(const band of look\.bands\)band\.setVisible\(false\);\s*look\.used=0;/);
+  assert.doesNotMatch(fx,/this\.rings\.[a-zA-Z]+\([^)]*\)\.(fill|stroke)Ellipse/,'no ring ellipses on the per-frame Graphics');
+});

@@ -33,6 +33,10 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio-heroi.dancing img { visibility: hidden; }
 .estadio-heroi.dance-pending img { visibility: hidden; }
+/* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the dance hides. */
+.estadio-recorte { position: absolute; z-index: 1; pointer-events: none; }
+.estadio-recorte[hidden] { display: none; }
+.estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }
 
 .estadio .menu-config {
   position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
@@ -93,6 +97,10 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   -webkit-text-stroke: .16em var(--c-lilas-escuro); paint-order: stroke fill; text-shadow: 0 .07em 0 var(--c-breu);
 }
 .estadio-letreiro { display: block; max-width: 100%; max-height: 34vh; object-fit: contain; }
+/* The hero's own letreiro picture (already tilted): as big as the approved screen's (tela-1080p: ~46% of the width),
+   never taller than the column leaves room for. */
+.estadio-titulo.com-letreiro { transform: none; }
+.estadio-titulo.com-letreiro .estadio-letreiro { width: min(46vw, 78vh); max-width: none; max-height: none; height: auto; }
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
@@ -108,15 +116,23 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   font: 400 clamp(24px, 4.6vh, 42px)/1 var(--f-cartaz); white-space: nowrap;
   box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 6px 0 var(--c-casca);
 }
-.estadio .estadio-confirmar > span {
+.estadio .estadio-confirmar > span[aria-hidden] {
   padding: 0; color: var(--c-amarelo); font-size: 1.1em; -webkit-text-stroke: .1em var(--c-cone); paint-order: stroke fill;
 }
 .estadio .estadio-confirmar:active { transform: translateY(3px); box-shadow: inset 0 3px 0 color-mix(in srgb, var(--c-papel-claro) 60%, transparent), 0 3px 0 var(--c-casca); }
+
+/* PC with a hero's letreiro picture (stadium.ts CUTOUT_QUERY): the approved screen's layout (tela-1080p), the sign
+   from the top, the row under it and the button low, near the bar. */
+@media (orientation: landscape) and (min-height: 521px) {
+  .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(2vh, env(safe-area-inset-top)); }
+  .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: auto; margin-bottom: 5vh; }
+}
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
 @media (max-height: 520px) and (orientation: landscape) {
   .estadio-escolha { gap: 6px; width: min(50vw, 560px); }
   .estadio-titulo { font-size: calc(clamp(30px, 11vh, 60px) * var(--titulo-fit, 1)); }
+  .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 38vh; }
   .estadio-classe { font-size: 18px; border-width: 2px; }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
@@ -140,7 +156,10 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   }
   .estadio-titulo { font-size: calc(clamp(30px, 10vw, 46px) * var(--titulo-fit, 1)); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
   .estadio-titulo span { display: inline; }
+  .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }
   .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
+  /* A letreiro picture hides the plaque: the row (or the name) takes its push down under the bar. */
+  .estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }
   .estadio .class-card { width: 58px; }
   .estadio-fileira, .estadio-nome { max-width: 520px; }
 }

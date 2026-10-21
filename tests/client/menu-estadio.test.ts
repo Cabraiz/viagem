@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, placeOnBar, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, RECORTES, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -74,9 +74,9 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
 });
 
 test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
-  // Today nobody has the new art nor a letreiro picture: every tile is a "?", the sign is HTML.
-  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),[]);
-  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);assert.equal(letreiroOf(hero.id),undefined);}
+  // Nobody has the new row face yet (every tile a "?"); only the viciado has his letreiro picture (menu-arte-viciado).
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet']);
+  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(hero.id!=='viciado-em-bet')assert.equal(letreiroOf(hero.id),undefined);}
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
   assert.ok(css.includes('.estadio .card-misterio'));
@@ -126,4 +126,39 @@ test('nome-depois-de-selecionar: Enter in the field enters, Escape goes back, th
     const src=readFileSync(new URL(`../../scripts/${script}.mjs`,import.meta.url),'utf8');
     assert.ok(src.includes("c.click();if(!document.getElementById('confirmation').open)c.click();"),script);
   }
+});
+
+const publicFile=(url:string)=>new URL(`../../public${url}`,import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1');
+
+test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1080, put back in place on the PC',async()=>{
+  // The files exist, light, the sizes the code says.
+  const sign=await sharp(publicFile(letreiroOf('viciado-em-bet')!)).metadata();
+  assert.equal(sign.width,1000);assert.ok(sign.hasAlpha);
+  const cut=cutoutOf('viciado-em-bet')!;
+  assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[955,21,788,1053],'the box scripts/menu-arte.mjs checks against the art');
+  for(const [w,file] of cut.files){
+    const meta=await sharp(publicFile(file)).metadata();
+    assert.equal(meta.width,w,file);assert.ok(Math.abs(meta.height!-cut.h*w/cut.w)<1,file);assert.ok(meta.hasAlpha,file);
+  }
+  assert.ok(readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8').includes('box:{left:955,top:21,width:788,height:1053}'));
+  assert.equal(cutoutOf('clt-cansado'),undefined,'the others keep the dance');
+  // 1920x1080: exactly where the approved screen has him; 1280x720: the same, 2/3.
+  assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.wide,cut),{x:955,y:21,w:788,h:1053});
+  const small=placeCutout({w:1280,h:720},STADIUM.wide,cut)!;
+  for(const [k,v] of Object.entries({x:955,y:21,w:788,h:1053}))assert.ok(Math.abs(small[k as keyof typeof small]-v*2/3)<1e-9,k);
+  // A narrower window (16:10): cover cuts the sides, the hero moves with the picture, his feet keep the bar.
+  const pc=placeCutout({w:1280,h:800},STADIUM.wide,cut)!,s=800/1080,ox=(1280-1920*s)/2;
+  assert.ok(Math.abs(pc.x-(ox+955*s))<1e-9&&Math.abs(pc.y-21*s)<1e-9&&Math.abs(pc.h-1053*s)<1e-9);
+  assert.equal(placeCutout({w:0,h:0},STADIUM.wide,cut),undefined);
+  // PC only: the phone (upright or on its side, under 521 px tall) keeps the dance; the dance is held while he stands.
+  assert.equal(CUTOUT_QUERY,'(orientation: landscape) and (min-height: 521px)');
+  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`),'the CSS and main.ts agree on what a PC is');
+  assert.match(main,/const cut=cutoutScreen\.matches\?cutoutOf\(selected\.id\):undefined;/);
+  assert.match(main,/if\(spot&&!cutoutHold\) cutoutHold=menuDance\.hold\(\);/);
+  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n\s*showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
+  assert.ok(css.includes('.estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }'));
+  // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
+  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
+  assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
+  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet']);
 });

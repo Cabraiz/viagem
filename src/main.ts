@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -55,7 +55,7 @@ try {
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
-  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
+  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
@@ -147,6 +147,25 @@ function lazySrc(img: HTMLImageElement, url: string) {
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
+// A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
+// the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
+const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!,cutoutScreen=matchMedia(CUTOUT_QUERY);
+let cutoutHold:(()=>void)|undefined;
+function showCutout() {
+  const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
+  const spot=cut&&placeCutout({w:stage.clientWidth,h:stage.clientHeight},STADIUM.wide,cut);
+  stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
+  if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
+  else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
+  if(!cut||!spot) return;
+  const sizes=`${Math.round(spot.w)}px`,srcset=cut.files.map(([w,file])=>`${file} ${w}w`).join(', ');
+  if(cutoutImg.sizes!==sizes) cutoutImg.sizes=sizes;
+  if(cutoutImg.getAttribute('srcset')!==srcset) {cutoutImg.srcset=srcset;cutoutImg.src=cut.files[cut.files.length-1][1];}
+  const css=`left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px;width:${Math.round(spot.w)}px;height:${Math.round(spot.h)}px`;
+  if(cutoutImg.dataset.box!==css) {cutoutImg.dataset.box=css;cutoutImg.style.cssText=css;}
+}
+new ResizeObserver(showCutout).observe(stage);
+cutoutScreen.addEventListener('change',showCutout);
 const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
   menuDance.show(hero.id);
@@ -203,9 +222,10 @@ function renderSelected(announce=false) {
   const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
   if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
-  sign.hidden=!picture;document.getElementById('class-name')!.hidden=!!picture;
+  sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
+  showCutout(); // first: a hero standing in place never starts his dance
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.

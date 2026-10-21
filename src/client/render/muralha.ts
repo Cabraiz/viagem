@@ -16,7 +16,7 @@ const SHEET={reto:BASE_ART.muralha,pilar:BASE_ART.pilar} as const;
 /** Halves sit a little over their square's depth toward the neighbour; the pillar over both (it covers the joint). */
 const PILLAR_OVER=.002;
 /** Share of a straight frame's height over the ground centre that the whole wall fills at its middle (the rest is the far end rising). */
-const RETO_TOP=.65;
+const RETO_TOP=.76;
 /** About the share of the height each damage row keeps (scripts/import-muralha-tralha.mjs BITES), for the bar. */
 const KEPT:Readonly<Record<string,number>>={inteira:1,avariada:.75,'quase-caindo':.5};
 

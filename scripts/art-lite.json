@@ -6,13 +6,25 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2033,
-  "bytes": 1533200672,
-  "liteBytes": 494791170,
+  "files": 2035,
+  "bytes": 1534361118,
+  "liteBytes": 495266618,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
  "files": {
+  "city/base/barricada.webp": {
+   "source": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b",
+   "lite": "88a80ed614490d5da36efc229453d6f3113d47a6c9b9731ea95aed5410cc081f",
+   "bytes": 208794,
+   "liteBytes": 136262,
+   "liteCell": [
+    384,
+    256
+   ],
+   "psnr": 48.5,
+   "shownPsnr": 48.5
+  },
   "city/base/chafariz-congelado.webp": {
    "source": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606",
    "lite": "acea4e52861c823c6e5a2012d92674f21e7a73b3a1693e98d302ea71aa359a96",
@@ -24,6 +36,18 @@
    ],
    "psnr": 41.7,
    "shownPsnr": 41.7
+  },
+  "city/base/muralha-acampamento.webp": {
+   "source": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1",
+   "lite": "4284d7d64b3171bc36bda58129a7504cb6041051122a479d90fe042c69920bbf",
+   "bytes": 951652,
+   "liteBytes": 339186,
+   "liteCell": [
+    328,
+    272
+   ],
+   "psnr": 42.6,
+   "shownPsnr": 42.6
   },
   "city/buildings/boteco-esquina-2x1-1.webp": {
    "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",

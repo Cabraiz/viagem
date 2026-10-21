@@ -258,3 +258,19 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(removed.length,4);
   }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}
 });
+
+test('a figure off camera asks for no legacy sheet: it holds its pose; on camera, dead, the legacy pose still loads',()=>{
+  setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const loads:string[]=[],events=new EventEmitter();
+  const scene={events,time:{now:0},textures:{exists:()=>false},cameras:{main:{worldView:{left:0,right:400,top:0,bottom:800}}},
+    load:{spritesheet:(key:string)=>loads.push(key),once(){},on(){},isLoading:()=>false,start(){},list:{size:0}}};
+  class Sprite extends EventEmitter {
+    scene=scene;active=true;visible=true;alpha=1;x=5000;y=5000;texture={key:'stand-in'};frame={name:'0'};stops=0;
+    anims={isPlaying:false,stop:()=>{this.stops++;}};
+    getBounds(){return {left:this.x-10,right:this.x+10,top:this.y-10,bottom:this.y+10};}
+  }
+  const sprite=new Sprite(),renderer=new CharacterSprites(scene as never);
+  renderer.animate(sprite as never,'aposentado',0,0);renderer.animate(sprite as never,'aposentado',1,0);
+  assert.deepEqual(loads,[],'no dir4/dir4c for a figure the camera cannot see');assert.equal(sprite.texture.key,'stand-in');assert.ok(sprite.stops>0);
+  sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
+  assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
+});

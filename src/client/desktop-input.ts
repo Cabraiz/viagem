@@ -121,10 +121,15 @@ export const HOLD_MIN_MOVE=.3;
 export const MARKER_MS=600;
 
 /**
- * A button that works the map (NEW-20261021-ORQ-botao-direito-ataca): the left one (or a finger, Phaser's primaryDown)
- * and the right one do the same, on an enemy the priority target, on the ground the walk and the hold. The middle does nothing.
+ * The button that walks the map: the left one (or a finger, Phaser's primaryDown); on an enemy the priority target, on
+ * the ground the walk and the hold. The right one never walks (rightAttackDown); the middle does nothing.
  */
-export function mapButtonDown(pointer:{primaryDown:boolean;rightButtonDown():boolean}):boolean{return pointer.primaryDown||pointer.rightButtonDown();}
+export function mapButtonDown(pointer:{primaryDown:boolean}):boolean{return pointer.primaryDown;}
+/**
+ * The right mouse button attacks (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar, like Space): held, the hero swings toward
+ * the mouse where he stands (the melee cone shows); it never walks nor moves the route. A finger never has one.
+ */
+export function rightAttackDown(pointer:{wasTouch:boolean;rightButtonDown():boolean}):boolean{return !pointer.wasTouch&&pointer.rightButtonDown();}
 
 /**
  * Warcraft 3 hold: press on the ground starts it (the click's own walk is the first target); while the button stays down,
@@ -160,7 +165,7 @@ export const INPUT_TEXTS:Readonly<Record<InputKind,{soloNotice:string;soloHelp:s
 /** D-051 manual combat: the room's opening words speak of the attack button (phone) and of Space (desktop). */
 export const MANUAL_NOTICE:Readonly<Record<InputKind,string>>={
   touch:'Arraste para andar. Segure Atacar pra bater; arraste o botão para mirar.',
-  mouse:'WASD, setas ou clique pra andar. Segure Espaço pra atacar; clique num bicho para bater nele.',
+  mouse:'WASD, setas ou clique pra andar. Segure o botão direito ou Espaço pra atacar; clique num bicho para bater nele.',
 };
 /** The room's opening words for an input kind and its combat. */
 export const coopNotice=(kind:InputKind,manual:boolean)=>manual?MANUAL_NOTICE[kind]:INPUT_TEXTS[kind].coopNotice;

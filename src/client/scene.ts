@@ -58,7 +58,7 @@ import {FpsWatch,frameGateMs} from './economy.ts';
 import {QUALITY_WATCH,qualityProfile,type QualityLevel} from './quality.ts';
 import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
-import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible} from './desktop-input.ts';
+import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
@@ -99,6 +99,8 @@ export interface SceneHooks {
   attacking?:()=>boolean;
   /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
   enemyPicked?:(id:string)=>void;
+  /** D-051: the right mouse button pressed (true) or let go (false) holds the attack like Space. Absent: no manual attack. */
+  attackHold?:(down:boolean)=>void;
   /** D-051: the room plays the manual combat (the target words say "ataque", not "a arma atira sozinha"). */
   manual?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
@@ -207,6 +209,8 @@ export class IslandScene extends Phaser.Scene {
   private goal?:Point;
   /** Desktop (controles-desktop): the held mouse button follows the cursor (Warcraft 3), re-targeted on a throttle. */
   private hold=new HoldFollow();
+  /** The right mouse button holds the attack (rightAttackDown); let go when it is up, on pause or focus lost. */
+  private rightHeld=false;
   /** A mouse walk's marker shows until this time (MARKER_MS after the click or the release); undefined: to the end. */
   private markerUntil?:number;
   private discovered=new Set<number>();
@@ -433,9 +437,18 @@ export class IslandScene extends Phaser.Scene {
     this.events.once('shutdown',dropRings);this.events.once('destroy',dropRings);
     // Only the canvas's own presses land here (POINTER_DOWN needs the canvas as the down element): a press on the DOM HUD
     // never walks. A mouse press on the ground also starts the hold-to-follow (followHold); one on an enemy targets it.
-    // The right button does the same as the left (mapButtonDown), and the canvas keeps the browser's menu shut.
+    // The right button attacks where the hero stands (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): in the manual combat
+    // it holds the attack toward the mouse (the melee cone shows), with the automatic weapons it only picks an enemy under
+    // it; it never walks. The canvas keeps the browser's menu shut.
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
+      if(pointer.button===2){
+        if(this.paused||!rightAttackDown(pointer))return;
+        if(this.hooks.manual?.()){this.rightAttack(true);return;}
+        const hit=this.enemyAt(this.cameras.main.getWorldPoint(pointer.x,pointer.y));
+        if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.message('Alvo priorizado. A arma atira sozinha quando ele chega perto.');}
+        return;
+      }
       if(this.paused||!mapButtonDown(pointer))return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=this.enemyAt(p);
@@ -720,12 +733,14 @@ export class IslandScene extends Phaser.Scene {
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
-  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.input.keyboard?.resetKeys();}
+  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.rightAttack(false);this.input.keyboard?.resetKeys();}
   /**
    * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
    * mouse button's follow (a walk already ordered by a click goes on to its marker, like a tap's).
    */
-  releaseInput(){this.hold.release();this.input.keyboard?.resetKeys();}
+  releaseInput(){this.hold.release();this.rightAttack(false);this.input.keyboard?.resetKeys();}
+  /** The right mouse button's attack held or let go (once per change). */
+  private rightAttack(down:boolean){if(this.rightHeld===down)return;this.rightHeld=down;this.hooks.attackHold?.(down);}
   /** The player's zoom factor (camera-zoom.ts), clamped; eased on screen and saved by the shell. */
   setZoom(k:number){
     const next=clampZoom(k);if(this.hooks.zoomLocked||next===this.zoomWant)return;
@@ -884,6 +899,7 @@ export class IslandScene extends Phaser.Scene {
   }
   update(_time:number,delta:number){
     this.watchFrames(_time);
+    if(this.rightHeld){const pointer=this.input.mousePointer;if(this.paused||!pointer?.rightButtonDown())this.rightAttack(false);}
     // The room named the run's drawn enemies ({t:'elenco'}): their imported art loads now, before they show up; not
     // while the city's near art is held (~15 MB of enemies in Phaser's first-in first-out loader held the relief
     // albedo, and the bandwidth, behind them: partida-abre-com-P0). They come right after the cover goes, as before.

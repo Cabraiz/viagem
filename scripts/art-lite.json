@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2053,
-  "bytes": 1538054800,
-  "liteBytes": 497139626,
+  "files": 2054,
+  "bytes": 1539184706,
+  "liteBytes": 497716394,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -50,28 +50,28 @@
    "shownPsnr": 42.6
   },
   "city/base/muralha-tralha-pilar.webp": {
-   "source": "506f8e27f1199bc8492756d8c3a018a493d36f16d34a4626a52405dc57a7d97b",
-   "lite": "3173637c545743c04e5cb0a59705e1f5ac46e51f40025c09ea23c70ee1261fd8",
-   "bytes": 375942,
-   "liteBytes": 157706,
+   "source": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151",
+   "lite": "dee4a454096420890102d3a20a359d44643f46c0be61cf7cee340079c79ddcfc",
+   "bytes": 476256,
+   "liteBytes": 164072,
    "liteCell": [
-    120,
-    174
+    124,
+    217
    ],
-   "psnr": 36.3,
-   "shownPsnr": 36.3
+   "psnr": 36.1,
+   "shownPsnr": 36.1
   },
   "city/base/muralha-tralha.webp": {
-   "source": "87e4289268bf9f97d9fa8d92d1e7af05bfe51f62fddec42d4f784e75c373d573",
-   "lite": "9c8942a0f06edb94f6940f7e4beefe8e10c4e952c342e6df1099848c26796502",
-   "bytes": 1482326,
-   "liteBytes": 507250,
+   "source": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7",
+   "lite": "89824c4bd7b93c3e4b3744cec99cb160e5eaee5bbc6e4ce27fe53162d53987bf",
+   "bytes": 1880974,
+   "liteBytes": 606750,
    "liteCell": [
     164,
-    157
+    185
    ],
-   "psnr": 37.4,
-   "shownPsnr": 37.4
+   "psnr": 36.9,
+   "shownPsnr": 36.9
   },
   "city/buildings/boteco-esquina-2x1-1.webp": {
    "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",
@@ -17348,6 +17348,14 @@
    "liteBytes": 727332,
    "psnr": 43,
    "shownPsnr": 44.8
+  },
+  "menu/fundo-estadio-viciado.webp": {
+   "source": "f8f7f6065b8d662a246dc1e96d664eeca67b18c35b008a81363acd0e64521387",
+   "lite": "5c623bcf8a49b8b627ae0141d11f3d8ccdeef9755c8eb703728214837d403813",
+   "bytes": 630944,
+   "liteBytes": 470902,
+   "psnr": 44.5,
+   "shownPsnr": 46
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",

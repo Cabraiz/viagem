@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import {barTop, placeOnBar, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
+import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs; one screen with the approved stadium, the chosen hero big
 // on the bar, the row of heroes and "Selecionar". Prints: evidence/NEW-20261021-ORQ-menu-estadio.
@@ -79,4 +80,50 @@ test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
   assert.ok(css.includes('.estadio .card-misterio'));
+});
+
+// nome-depois-de-selecionar (the user, 21/10): the name field only after SELECIONAR; then the button enters.
+function fakeEtapa(value=''){
+  const focused:Array<{preventScroll?:boolean}|undefined>=[];let selected=0;
+  const parts={section:{dataset:{etapa:'escolher'} as Record<string,string|undefined>},row:{hidden:false},nameRow:{hidden:true},
+    input:{value,focus:(o?:{preventScroll?:boolean})=>{focused.push(o);},select:()=>{selected++;}},label:{textContent:'SELECIONAR' as string|null}};
+  return {parts,focused,selected:()=>selected};
+}
+
+test('nome-depois-de-selecionar: no name field before SELECIONAR; after it the field shows, focused, and the button enters',()=>{
+  // The page as it opens: the name row (with #nickname inside) hidden, the step "escolher", the button SELECIONAR.
+  assert.match(main,/data-etapa="escolher"/);
+  assert.match(main,/<div class="estadio-nome" hidden>[\s\S]*?<input id="nickname"[\s\S]*?<\/div>\s*<button id="confirm"/);
+  assert.ok(css.includes('.estadio-fileira[hidden], .estadio-nome[hidden] { display: none; }'),'the flex rows really hide');
+  const {parts,focused,selected}=fakeEtapa();
+  assert.equal(etapaOf(parts),'escolher');assert.equal(parts.nameRow.hidden,true);assert.equal(parts.row.hidden,false);
+  // SELECIONAR: the row gives its place to the name, which gets the focus; the button says it enters.
+  showEtapa(parts,'nome');
+  assert.equal(etapaOf(parts),'nome');assert.equal(parts.nameRow.hidden,false);assert.equal(parts.row.hidden,true);
+  assert.deepEqual(focused,[{preventScroll:true}]);assert.equal(parts.label.textContent,CONFIRM_TEXT.nome);
+  assert.equal(selected(),0,'an empty field has nothing to select');
+  // ‹ / Escape: back to the row, the name hidden again, the button SELECIONAR.
+  showEtapa(parts,'escolher');
+  assert.equal(parts.nameRow.hidden,true);assert.equal(parts.row.hidden,false);assert.equal(parts.label.textContent,'SELECIONAR');
+  // A saved name comes filled and selected (typing replaces it); on a touch with a saved name, no focus (no keyboard).
+  const saved=fakeEtapa('Zé');showEtapa(saved.parts,'nome');assert.equal(saved.selected(),1);
+  const touch=fakeEtapa('Zé');showEtapa(touch.parts,'nome',{focusName:false});assert.deepEqual(touch.focused,[]);assert.equal(touch.parts.nameRow.hidden,false);
+  assert.match(main,/focusName:matchMedia\('\(pointer: fine\)'\)\.matches\|\|!nameInput\.value\.trim\(\)/);
+  assert.match(main,/nameInput\.value=nickname;/,'the saved name fills the field');
+});
+
+test('nome-depois-de-selecionar: Enter in the field enters, Escape goes back, the confirm click follows the step',()=>{
+  assert.equal(nameKey({key:'Enter'}),'entrar');assert.equal(nameKey({key:'Escape'}),'voltar');
+  assert.equal(nameKey({key:'Enter',isComposing:true}),undefined,'Enter that ends an IME word does not enter');
+  assert.equal(nameKey({key:'a'}),undefined);
+  assert.match(main,/if\(key==='entrar'\) document\.getElementById\('confirm'\)!\.click\(\); else backToRow\(\);/);
+  // Step 1: the click only locks the hero; step 2: the name check and the dialog as before.
+  assert.match(main,/if\(etapaOf\(etapa\)==='escolher'\) \{chooseHero\(\);return;\}\s*if\(!nickname\.trim\(\)\)/);
+  assert.match(main,/getElementById\('trocar'\)!\.addEventListener\('click',backToRow\)/);
+  assert.match(main,/'back-to-menu'\)!\.addEventListener\('click',\(\)=>\{dialog\.close\(\);backToRow\(\);\}\)/,'"Trocar de personagem" goes back to the row');
+  // The scripts that play the menu click #confirm again when the first click only selected.
+  for(const script of ['smoke-prod','folha-prints','perf-andar','abertura-ci']){
+    const src=readFileSync(new URL(`../../scripts/${script}.mjs`,import.meta.url),'utf8');
+    assert.ok(src.includes("c.click();if(!document.getElementById('confirmation').open)c.click();"),script);
+  }
 });

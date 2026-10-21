@@ -71,7 +71,7 @@ try{
   const cdp=await ctx.newCDPSession(p);
   await p.goto(`${base}/?perf=1${QUERY?`&${QUERY}`:''}`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Perf';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Perf';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
   await p.evaluate(()=>document.getElementById('enter-island').click());
   await p.waitForFunction(()=>window.__partidaPronta===true,null,{timeout:240000,polling:1000});

@@ -12,6 +12,7 @@ import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -49,13 +50,14 @@ try {
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
 // chosen hero big, dancing on the bar, and on the side the letreiro with the hero's name, the plaque with his nickname
 // (ui/apelidos.ts; botao-selecionar), the row of heroes between ‹ › and "Selecionar". Letreiro, plaque and button are
-// HTML over the picture, so the text can be translated and changed.
+// HTML over the picture, so the text can be translated and changed. The name field only after "Selecionar"
+// (nome-depois-de-selecionar, ui/menu-etapa.ts): the row gives its place to [‹] [chosen tile] [name], the button enters.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-  <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
+  <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
@@ -63,8 +65,12 @@ app.innerHTML = `
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>
       <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
     </nav>
-    <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
-    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>SELECIONAR</button>
+    <div class="estadio-nome" hidden>
+      <button type="button" id="trocar" class="round-button" aria-label="Trocar personagem">‹</button>
+      <span id="escolhido" class="class-card estadio-escolhido" aria-hidden="true"></span>
+      <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" enterkeyhint="go" />
+    </div>
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
@@ -227,8 +233,32 @@ nameInput.value=nickname;
 nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
 // A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
+// Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
+// enters. ‹, Escape or the dialog's "Trocar de personagem" go back to the row.
+const etapa={section:document.getElementById('personagem')!,row:document.querySelector<HTMLElement>('.estadio-fileira')!,
+  nameRow:document.querySelector<HTMLElement>('.estadio-nome')!,input:nameInput,label:document.querySelector<HTMLElement>('.estadio-confirmar-texto')!};
+function chooseHero() {
+  document.getElementById('escolhido')!.innerHTML=hasNewArt(selected.id)
+    ?`<img class="card-portrait" draggable="false" src="${thumbUrl(selected)}" alt="" width="256" height="256" decoding="async" />`
+    :'<span class="card-misterio">?</span>';
+  // A mouse gets the cursor in the field; a touch only when it is empty (a saved name never pops the keyboard for nothing).
+  showEtapa(etapa,'nome',{focusName:matchMedia('(pointer: fine)').matches||!nameInput.value.trim()});
+}
+function backToRow() {
+  showEtapa(etapa,'escolher');
+  showInRow(false);
+  rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`)?.focus({preventScroll:true});
+}
+document.getElementById('trocar')!.addEventListener('click',backToRow);
+nameInput.addEventListener('keydown',event=>{
+  const key=nameKey(event);
+  if(!key) return;
+  event.preventDefault();
+  if(key==='entrar') document.getElementById('confirm')!.click(); else backToRow();
+});
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
+  if(etapaOf(etapa)==='escolher') {chooseHero();return;}
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
   nameInput.setCustomValidity('');
   nickname=nameInput.value=fitName(nickname);
@@ -259,7 +289,7 @@ let invite=inviteCode(location.search);
 if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
 const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
 coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
-document.getElementById('back-to-menu')!.addEventListener('click',()=>dialog.close());
+document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
 const island=islandFlag(location.search);

@@ -63,6 +63,10 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere; text-wrap: balance;
 }
 .estadio-fileira { display: flex; align-items: center; gap: 8px; width: 100%; }
+/* Step 2 (nome-depois-de-selecionar): the row gives its place to [‹] [the chosen tile, locked] [the name field]. */
+.estadio-nome { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 0 8px; }
+.estadio-fileira[hidden], .estadio-nome[hidden] { display: none; }
+.estadio-nome .estadio-escolhido { cursor: default; }
 .estadio .round-button {
   flex: none; width: 44px; height: 44px; border: 3px solid var(--c-papel-claro); border-radius: var(--r-circulo);
   background: var(--c-breu); color: var(--c-amarelo); box-shadow: var(--s-1); font: 900 30px/1 var(--f-cartaz); padding: 0 0 3px;
@@ -79,7 +83,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   background: linear-gradient(var(--c-lilas), var(--c-lilas-escuro)); box-shadow: var(--s-1);
   transition: transform .12s, border-color .12s;
 }
-.estadio .class-card[aria-pressed=true] {
+.estadio .class-card[aria-pressed=true], .estadio .estadio-escolhido {
   border-color: var(--c-amarelo); background: linear-gradient(var(--c-amarelo), var(--c-cone));
   box-shadow: 0 0 0 3px var(--c-breu), var(--s-1); transform: translateY(-3px);
 }
@@ -92,7 +96,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
-  width: 100%; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: var(--r-pilula);
+  flex: 1; min-width: 0; width: auto; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: var(--r-pilula);
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
 }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
@@ -138,7 +142,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-titulo span { display: inline; }
   .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
   .estadio .class-card { width: 58px; }
-  .estadio-fileira { max-width: 520px; }
+  .estadio-fileira, .estadio-nome { max-width: 520px; }
 }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }

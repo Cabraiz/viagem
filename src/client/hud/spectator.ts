@@ -97,6 +97,8 @@ export class SpectatorBar {
     for(const b of [this.prev,this.next])b.addEventListener('click',()=>{if(!b.disabled)this.options.onStep(Number(b.dataset.dir) as 1|-1);});
     root.querySelector('.spect-chinelo')!.addEventListener('click',()=>this.throwChinelo());
     this.leave.addEventListener('click',()=>this.tapLeave());
+    // A mouse click leaves no focus behind: the desktop's Space (the skill key) must never press "Voltar ao lobby".
+    root.addEventListener('click',e=>{if(e.detail>0)(e.target as HTMLElement).closest('button')?.blur();});
     parent.append(root,this.fx);
   }
 

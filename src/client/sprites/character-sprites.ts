@@ -2,12 +2,12 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,type Movement128Plan} from './movement128.ts';
+import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,heroRuns,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -269,7 +269,8 @@ export class CharacterSprites {
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
-    if(motion==='walk')state.cycles+=walkCycles(dx,dy,view,96*this.viewScale*HERO_DRAW_SCALE);
+    // A class that runs (run16, HERO_GAIT) keeps its foot locked at the run's longer stride (passo-3x-mais-lento).
+    if(motion==='walk')state.cycles+=heroRuns(id)?walkCycles(dx,dy,view,96*this.viewScale*HERO_DRAW_SCALE,RUN_STRIDE,1):walkCycles(dx,dy,view,96*this.viewScale*HERO_DRAW_SCALE);
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
     const seen=movement128Visible(sprite,this.scene);

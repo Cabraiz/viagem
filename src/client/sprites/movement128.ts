@@ -1,12 +1,12 @@
 import {artIndexVersion,artPiece,artUrl} from '../art/manifest.ts';
-import {HERO_ANIM_RATE,HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,HERO_GAIT,type HeroDirection} from './sprite-motion.ts';
 import type {FigureBox} from './sprite-catalog.ts';
 
 export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
 export const MOVEMENT128_DURATION={walk:600,attack:1000} as const;
 export interface Movement128Plan {
-  key:string;url:string;original:string;motion:DetailedMotion|'idle';direction?:HeroDirection;
+  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run';direction?:HeroDirection;
   columns:number;rows:number;frameCount:number;
   durationMs:number;loop:boolean;anchor:[number,number];height:number;figure:FigureBox;
   /** M16: the sheet is the drawn direction's mirror (E/NE/SE show W/NW/SW with flipX; `key` is the drawn sheet's). */
@@ -15,8 +15,8 @@ export interface Movement128Plan {
   pivotX?:number;
 }
 let version=-1;
-const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>();
-function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();}}
+const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>();
+function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();}}
 const box=(v:unknown):v is FigureBox=>{
   if(!v||typeof v!=='object')return false;
   const b=v as FigureBox;
@@ -61,15 +61,15 @@ export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.index
  * read from the manifest: the side whose three sheets (walk, attack, idle) are there. A class uses M16 only when all 8
  * directions resolve to valid sheets, else R06 (or legacy).
  */
-export type Movement16Motion=DetailedMotion|'idle';
+export type Movement16Motion=DetailedMotion|'idle'|'run';
 /** The default drawn directions (the importer's and the doc's; a class may draw E, NE or SE instead). */
 export const MOVEMENT16_DIRECTIONS=['S','SW','W','NW','N'] as const;
 export type Movement16Direction=HeroDirection;
 /** Mirror pairs, the default drawn side first. */
 export const MOVEMENT16_PAIRS=[['W','E'],['NW','NE'],['SW','SE']] as const satisfies readonly (readonly [HeroDirection,HeroDirection])[];
 const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]])) as Partial<Record<HeroDirection,HeroDirection>>;
-export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000} as const;
-export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2]} as const;
+export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600} as const;
+export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4]} as const;
 const M16_MOTIONS=['walk','attack','idle'] as const;
 /**
  * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
@@ -105,19 +105,28 @@ export function hasMovement16(id:string){
   if(complete===undefined)m16.set(id,complete=M16_MOTIONS.every(m=>HERO_DIRECTIONS.every(d=>movement16Plan(id,m,d))));
   return complete;
 }
+/** True when an M16 class also has a valid run (run16) in every direction (optional, card passo-3x-mais-lento). */
+export function hasRun16(id:string){
+  current();let complete=run16.get(id);
+  if(complete===undefined)run16.set(id,complete=hasMovement16(id)&&HERO_DIRECTIONS.every(d=>movement16Plan(id,'run',d)));
+  return complete;
+}
+/** The class moves at a run (HERO_GAIT) when it has one: its 'walk' clips are the run's. */
+export const heroRuns=(id:string)=>HERO_GAIT.run&&hasRun16(id);
 /** The clip a class shows: M16 when complete, else R06 (walk128/attack128 and idle8); undefined = legacy. */
-export function movementPlan(id:string,motion:Movement16Motion,direction:HeroDirection):Movement128Plan|undefined{
+export function movementPlan(id:string,motion:DetailedMotion|'idle',direction:HeroDirection):Movement128Plan|undefined{
+  if(motion==='walk'&&heroRuns(id))return movement16Plan(id,'run',direction);
   if(hasMovement16(id))return movement16Plan(id,motion,direction);
   return motion==='idle'?movementIdle8Plan(id):movement128Plan(id,motion,direction);
 }
 /** Every distinct sheet (by texture key) of one motion, the drawn directions only for M16. */
-export function movementSheets(id:string,motion:Movement16Motion):Movement128Plan[]{
+export function movementSheets(id:string,motion:DetailedMotion|'idle'):Movement128Plan[]{
   if(!hasMovement16(id)){
     if(motion==='idle'){const idle=movementIdle8Plan(id);return idle?[idle]:[];}
     return HERO_DIRECTIONS.flatMap(d=>{const p=movement128Plan(id,motion,d);return p?[p]:[];});
   }
-  const seen=new Set<string>();
-  return HERO_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,motion,d);if(!p||seen.has(p.key))return [];seen.add(p.key);return [p];});
+  const seen=new Set<string>(),shown=motion==='walk'&&heroRuns(id)?'run':motion;
+  return HERO_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,shown,d);if(!p||seen.has(p.key))return [];seen.add(p.key);return [p];});
 }
 /** The frame a clip shows now: idle8 picks its direction's column; every other clip follows the clock. */
 export function movementFrame(plan:Movement128Plan,direction:HeroDirection,elapsedMs:number){
@@ -132,7 +141,7 @@ export const movementPivotX=(plan:Pick<Movement128Plan,'anchor'|'pivotX'>)=>plan
 export function movement128Figure(id:string):FigureBox|undefined{
   current();if(figures.has(id))return figures.get(id);
   let result:FigureBox|undefined;
-  const all=hasMovement16(id)?(['walk','attack','idle'] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement16Plan(id,motion,direction))):
+  const all=hasMovement16(id)?(['walk','attack','idle',...(hasRun16(id)?['run'] as const:[])] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement16Plan(id,motion,direction))):
     [movementIdle8Plan(id),...(['walk','attack'] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement128Plan(id,motion,direction)))];
   for(const p of all){
     if(!p)continue;

@@ -18,8 +18,11 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
   anchor:[.5,.875],movementHands:'empty',motions:{
     walk:{columns:4,rows:4,frames:16,durationMs:600,loop:true},
     attack:{columns:4,rows:4,frames:16,durationMs:1000,loop:false},
-    idle:{columns:4,rows:2,frames:8,durationMs:2000,loop:true}}});
-const MOTIONS=Object.keys(MOVEMENT16_META.motions);
+    idle:{columns:4,rows:2,frames:8,durationMs:2000,loop:true},
+    // Optional (card passo-3x-mais-lento): a run, the hero's gait when the class has it; the walk stays.
+    run:{columns:4,rows:4,frames:16,durationMs:600,loop:true}}});
+/** The motions every M16 class draws; `run` is optional, all 5 drawn directions or none. */
+const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run'];
 const exists=file=>access(file).then(()=>true,()=>false);
 /**
  * The 5 directions a class draws: S, N and, for each mirror pair, the side delivered in all three motions (the default
@@ -90,7 +93,8 @@ function poseAnchors(data,width,columns,frames){
 export async function alignMovement16(bytes,motion,label=motion){
   const {columns,frames}=MOVEMENT16_META.motions[motion];
   const {data,info}=await sharp(bytes).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors);
+  // A run keeps each pose's height (its flight off the ground): only the torso x is aligned, the feet stay as drawn.
+  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors).map(s=>motion==='run'?{...s,dy:0}:s);
   const out=Buffer.alloc(data.length),figure={left:192,top:192,right:0,bottom:0},xs=[];
   for(let frame=0;frame<frames;frame++){
     const sx=frame%columns*192,sy=Math.floor(frame/columns)*192,{dx,dy}=shifts[frame];xs.push(anchors[frame].x+dx);
@@ -133,7 +137,13 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
     if(old)assert.equal(old.kind,'dir8',`${id}: existing piece kind`);
     else assert.equal(index.groups.personagens.pieces[id],undefined,`${id}: index/group disagreement`);
     const clips=[],drawn=await movement16Drawn(input,id);
-    for(const motion of MOTIONS)for(const direction of drawn)
+    const optional=[];
+    for(const motion of OPTIONAL_MOTIONS){
+      const has=await Promise.all(drawn.map(d=>exists(movement16Source(input,id,motion,d))));
+      assert.ok(has.every(Boolean)||!has.some(Boolean),`${id}: ${motion} needs all of ${drawn.join(' ')} or none`);
+      if(has[0])optional.push(motion);
+    }
+    for(const motion of [...MOTIONS,...optional])for(const direction of drawn)
       clips.push({...await inspectMovement16(movement16Source(input,id,motion,direction),motion,`${id}/${motion}/${direction}`),motion,direction});
     // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets.
     const height=clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
@@ -164,7 +174,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
           clip.pivotX=files[key].pivotX;
         }
         // The other side of each pair is mirrored now: a key it had from an earlier import goes (null drops it in the merge).
-        for(const motion of MOTIONS)for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
+        for(const motion of [...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
         for(const file of staged){await rename(file.tmp,file.target);record.outputs.push(file.target);}
         entries[record.id]={kind:'dir8',files,...(previous.pieces[record.id]?.meta?{meta:previous.pieces[record.id].meta}:{})};
       }finally{await Promise.all(staged.map(file=>rm(file.tmp,{force:true})));}

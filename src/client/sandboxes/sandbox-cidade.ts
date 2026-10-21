@@ -114,7 +114,7 @@ import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
-import {WALK_TUNE} from '../sprites/sprite-motion.ts';
+import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -197,6 +197,8 @@ const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 const ruler=params.get('regua')==='1',RULER_STEPS=5;
 /** `passo=k` (card passo-sem-deslizar): the share of the stride the walk cycle keeps up with (sprite-motion.ts WALK_TUNE). */
 if(params.has('passo'))WALK_TUNE.lock=Number(params.get('passo'));
+/** `corrida=0` (card passo-3x-mais-lento): the walk instead of the run for a class that has one (sprite-motion.ts HERO_GAIT). */
+if(params.get('corrida')==='0')HERO_GAIT.run=false;
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');

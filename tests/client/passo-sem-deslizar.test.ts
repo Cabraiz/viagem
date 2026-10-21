@@ -2,7 +2,7 @@
 // pace with the ground (the clock-driven cycle drew a foot going back ~7× slower than the city's ground went by).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FACING_TELEPORT,WALK_STRIDE,WALK_TUNE,cycleFrame,screenMotion,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {FACING_TELEPORT,HERO_GAIT,RUN_STRIDE,WALK_STRIDE,WALK_TUNE,cycleFrame,screenMotion,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 import {CITY_HERO_SPEED,HERO_SPEED_MULT} from '../../src/maps/index.ts';
 import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 
@@ -52,4 +52,12 @@ test('cycleFrame wraps over the cycle and never leaves the clip', ()=>{
   assert.equal(cycleFrame(1.999999,16),15);
   assert.equal(cycleFrame(2,16),0);
   assert.equal(cycleFrame(3.25,6),1);
+});
+
+test('the run (passo-3x-mais-lento): its longer drawn stride keeps the foot locked at ~4.6 cycles a second across the screen', ()=>{
+  const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60;let cycles=0;
+  for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE,RUN_STRIDE,1);
+  assert.ok(cycles>4.2&&cycles<5,`run cycles in 1 s: ${cycles}`);
+  assert.ok(RUN_STRIDE>1.6*WALK_STRIDE,'the run is drawn with a longer stride than the walk');
+  assert.equal(HERO_GAIT.run,true,'a class with a run runs by default');
 });

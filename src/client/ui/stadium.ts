@@ -61,7 +61,10 @@ export function placeOnBar(box:{w:number;h:number},art:StadiumArt,atX:number,pos
 export interface StadiumCutout {
   /** The box in the whole 1920x1080 picture, px. */
   x:number;y:number;w:number;h:number;
-  /** Width → file (the full one and a 2/3 copy). */
+  /**
+   * Width → file: the box at 2/3, 1x, 4/3 and 2x, all from the 2x Real-ESRGAN enlargement (heroi-esrgan-no-ar);
+   * cutoutFile picks one by the shown width × DPR, so a 1x screen never loads the 2x one.
+   */
   files:readonly (readonly [number,string])[];
   /**
    * The hero's own background (NEW-20261021-ORQ-tela-clt-pose2), drawn without him: a bleed with STADIUM.bleed's
@@ -70,9 +73,11 @@ export interface StadiumCutout {
   fundo?:string;
 }
 export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
-  'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp']]},
+  'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp'],
+    [1057,'/art/menu/heroi/viciado-em-bet-1057.webp'],[1586,'/art/menu/heroi/viciado-em-bet-1586.webp']]},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
-  'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp']],
+  'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
+    [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
     fundo:'/art/lite/menu/fundo-clt-cansado.webp'},
 });
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */

@@ -252,22 +252,29 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
 });
 
-test('menu-pes-nitidez: the hero file by the shown width x DPR, never the 2/3 copy stretched; q95 files',async()=>{
+test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x DPR (2/3, 1x, 4/3, 2x), q95 files',async()=>{
   for(const id of ['viciado-em-bet','clt-cansado']){
-    const cut=cutoutOf(id)!,[small,big]=cut.files;
+    const cut=cutoutOf(id)!,ws=cut.files.map(([w])=>w);
+    assert.deepEqual(ws,[2/3,1,4/3,2].map(k=>Math.round(cut.w*k)),`${id}: the box at 2/3, 1x, 4/3 and 2x`);
+    const [small,one,,big]=cut.files;
     assert.equal(cutoutFile(cut,small[0]-10,1),small[1],`${id}: small window, the small file`);
-    assert.equal(cutoutFile(cut,small[0]+1,1),big[1],`${id}: over the small one, the big one`);
-    assert.equal(cutoutFile(cut,small[0]*.6,2),big[1],`${id}: HiDPI counts device pixels`);
+    assert.equal(cutoutFile(cut,small[0]+1,1),one[1],`${id}: over the small one, the 1x one (not the 2x)`);
+    assert.equal(cutoutFile(cut,cut.w*.8,2),big[1],`${id}: HiDPI counts device pixels`);
+    assert.equal(cutoutFile(cut,cut.w*.9,1.25),cut.files[2][1],`${id}: Windows at 125%, the 4/3 one`);
     assert.equal(cutoutFile(cut,big[0]*2,1),big[1],`${id}: bigger than every file, the biggest`);
-    const meta=await sharp(publicFile(big[1])).metadata();
-    assert.deepEqual([meta.width,meta.height],[cut.w,cut.h],`${id}: the full-size file is the box at 1x, never upscaled`);
+    const meta=await sharp(publicFile(one[1])).metadata();
+    assert.deepEqual([meta.width,meta.height],[cut.w,cut.h],`${id}: the 1x file is the box`);
+    const top=await sharp(publicFile(big[1])).metadata();
+    assert.deepEqual([top.width,top.height],[cut.w*2,cut.h*2],`${id}: the 2x file is Real-ESRGAN's, the box twice`);
   }
-  // The user's 1590x903 (DPR 1): the viciado shows ~657 px wide, so the full-size file, at ~0.83x (never above 1x).
+  // The user's 1590x903 (DPR 1): the viciado shows ~657 px wide, so the 1x file; the 2x one only where it is needed.
   const box={w:1590,h:903},cut=cutoutOf('viciado-em-bet')!,fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!);
   assert.equal(cutoutFile(cut,fit.w,1),'/art/menu/heroi/viciado-em-bet-793.webp');assert.ok(fit.w<=793);
   assert.match(main,/const file=cutoutFile\(cut,spot\.w,devicePixelRatio\);/);
   assert.ok(!/cutoutImg\.srcset/.test(main),'no srcset: the choice is the one above');
-  assert.ok(readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8').includes('const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};'));
+  const arte=readFileSync(new URL('../../scripts/menu-arte.mjs',import.meta.url),'utf8');
+  assert.ok(arte.includes('const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};'));
+  assert.ok(arte.includes("esrgan:'viciado-2x-x4plus-anime.png'")&&arte.includes("esrgan:'clt-2x-x4plus-anime.png'"));
 });
 
 test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, burst), the text stays HTML, every hero',async()=>{

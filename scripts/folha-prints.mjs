@@ -201,9 +201,11 @@ async function walkByPress(p,vp,press,label){
     const m=Math.min(vp.w,vp.h),x=Math.round((Number.isFinite(h.sx)?h.sx:vp.w/2)+fx*m),y=Math.round((Number.isFinite(h.sy)?h.sy:vp.h/2)+fy*m);
     if(x<20||y<20||x>vp.w-20||y>vp.h-20||hud.some(([l,t,r,b])=>x>=l&&x<=r&&y>=t&&y<=b))continue;
     await press(x,y);
-    await sleep(900);
-    const after=await p.evaluate(HERO).catch(()=>null),notice=await p.evaluate(NOTICE).catch(()=>'');
+    // Back as soon as he walks (the caller prints him walking, not already arrived).
+    let after=null;
+    for(const end=Date.now()+900;Date.now()<end&&!moved(h,after);)after=await p.evaluate(HERO).catch(()=>null);
     if(moved(h,after))return {x,y,tried};
+    const notice=await p.evaluate(NOTICE).catch(()=>'');
     tried.push(`(${x},${y}) ${/não dá/i.test(notice)?'sem caminho':'não andou'}`);
   }
   fails.push(`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
@@ -213,7 +215,7 @@ async function mouseWalk(p,vp){
   // A click on open ground (the 20/10 sheet clicked a fixed spot that fell on a building: "Por aqui não dá", no walk).
   const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y),'mouse');
   await shot(p,'mouse1',got?`mouse: clique em (${got.x},${got.y})${got.tried.length?`; antes ${got.tried.join(', ')}`:''} 1/3`:'mouse: clique (não andou)',vp);
-  for(let i=2;i<=3;i++){await sleep(400);await shot(p,`mouse${i}`,`mouse: clique ${i}/3`,vp);}
+  for(let i=2;i<=3;i++){await sleep(250);await shot(p,`mouse${i}`,`mouse: clique ${i}/3`,vp);}
   await sleep(1500);
   // Hold-to-follow: press the ground and sweep the cursor in a half circle around the hero; he follows while it is down.
   await clearOffer(p);
@@ -277,7 +279,7 @@ async function stickDrag(p,cdp,dx,dy,ms,during){
 }
 /** The phone (D-009: the game is mobile): a touch context and a match of its own; the stick by a finger, then a tap. */
 async function phone(browser,base){
-  const vp={w:390,h:844},tag={w:'celular',h:'390x844'};
+  const vp={w:390,h:844},tag={w:'celular-390',h:844};
   const ctx=await browser.newContext({viewport:{width:vp.w,height:vp.h},deviceScaleFactor:1,isMobile:true,hasTouch:true});
   const p=await ctx.newPage();
   p.on('pageerror',e=>consoleErrors.push(`celular: pageerror: ${String(e).slice(0,300)}`));

@@ -234,7 +234,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   let menuHold:(()=>void)|undefined;
   const stopPreload=()=>{preloader?.abort();menuHold?.();menuHold=undefined;};
   const panel=document.createElement('section');panel.className='coop-wait';panel.setAttribute('aria-label','Sala de espera');
-  panel.innerHTML=`<div class="coop-wait-code"><small>SALA</small><strong></strong><button class="coop-wait-share" type="button"><span class="coop-wait-share-icon" aria-hidden="true">${icon('aviao',{size:24})}</span><span class="coop-wait-share-text">Chamar a turma</span></button></div>
+  panel.innerHTML=`<div class="coop-wait-code"><small>Sala</small><strong></strong><button class="coop-wait-share" type="button"><span class="coop-wait-share-icon" aria-hidden="true">${icon('aviao',{size:24})}</span><span class="coop-wait-share-text">Chamar a turma</span></button></div>
     <div class="coop-wait-news" role="alert" hidden><strong></strong><span></span></div>
     <p class="coop-wait-owner" role="status" hidden></p>
     <p class="coop-wait-headline" role="status" aria-live="polite"></p>

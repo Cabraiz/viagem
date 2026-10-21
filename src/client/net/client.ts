@@ -573,7 +573,7 @@ export class CoopClient {
       this.combat=m.combat==='manual'?'manual':'auto';
       // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
-      this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
+      this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);

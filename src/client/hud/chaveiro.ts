@@ -156,7 +156,7 @@ export function objectiveBill(result:ObjectiveResult):ObjectiveBill{
 export const VAQUINHA_ZERO_JOKES:readonly string[]=['pediu o recibo','esqueceu a carteira no carro','vai pagar no PIX (mentira)'];
 /**
  * The result's vaquinha line (carteira-e-pix, ObjectiveResult.share): each player's part of the bill, in the room's
- * order, "Vaquinha: Ana R$ 12 · Bot R$ 8 · Zé R$ 0, pediu o recibo"; me as "Você". Undefined with no share.
+ * order, "Vaquinha: Ana R$ 12; Bot R$ 8; Zé R$ 0, pediu o recibo"; me as "Você". Undefined with no share.
  */
 export function vaquinhaLine(share:readonly VaquinhaShare[]|undefined,nameOf:(id:string)=>string){
   if(!share?.length)return undefined;
@@ -165,5 +165,5 @@ export function vaquinhaLine(share:readonly VaquinhaShare[]|undefined,nameOf:(id
     const paid=Math.max(0,Math.round(Number.isFinite(s.paid)?s.paid:0));
     return `${nameOf(s.id)} ${reais(paid)}${paid>0?'':`, ${VAQUINHA_ZERO_JOKES[zeros++%VAQUINHA_ZERO_JOKES.length]}`}`;
   });
-  return {text:`Vaquinha: ${parts.join(' · ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`};
+  return {text:`Vaquinha: ${parts.join('; ')}`,aria:`Vaquinha da conta: ${parts.join('; ')}.`};
 }

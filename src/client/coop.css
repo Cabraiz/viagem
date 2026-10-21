@@ -255,3 +255,14 @@
   .coop-lobby[data-typing=code] form{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:end}.coop-lobby[data-typing=code] form label{grid-column:1/-1}
   .coop-lobby[data-typing=code] form button:not(.coop-close){width:auto;margin-top:0;padding:0 22px}.coop-lobby[data-typing] .coop-status{margin:6px 0 0}
 }
+/* Classe de cada um (NEW-20261009-UX-escolha-classe): linha curta sob o nome, Lilás como o "(você)"; nome de classe
+   comprido termina em reticências sem alargar o chip. No botão do dono (célula estreita da grade) ela é a 2ª linha
+   inteira do botão; o nome (flex:1) nunca desce. */
+.coop-wait-members .coop-wait-class{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:400 var(--t-13)/1.15 var(--f-sistema);font-style:normal;color:var(--c-lilas);text-align:left}
+.coop-wait-members li>span:has(>.coop-wait-class){line-height:1.15;min-width:0}
+.coop-wait-members button:has(>.coop-wait-class){flex-wrap:wrap;row-gap:0}
+.coop-wait-members button>.coop-wait-class{flex:1 0 100%;margin:-4px 0 0}
+/* Retrato a 125%, convidado com 5 ou 6 na sala: a janela rolaria (59 px). A linha da classe sai; o rosto continua
+   mostrando a classe e o leitor de tela continua lendo. */
+@media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}

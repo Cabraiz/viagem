@@ -780,15 +780,16 @@ export class CoopClient {
   /**
    * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
    * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
-   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target).
+   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target). `aim`: the
+   * mouse's direction from the hero on a PC (sent only while attacking; the melee swing goes there).
    */
-  input(direction:Point,skill:boolean,target?:string,attack=false){
+  input(direction:Point,skill:boolean,target?:string,attack=false,aim?:Point){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
     if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
     // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
     if(this.handsBusy)attack=false;
-    const {input,active}=this.batcher.step(direction,skill,target,attack);
+    const {input,active}=this.batcher.step(direction,skill,target,attack,aim);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
     if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap);}

@@ -23,7 +23,7 @@ import {ASLEEP_PER_VIEWER,INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/cont
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
 import {DEFENSES,RAIL,phaseOf,type DefenseState,type FreeOrder,type PieceState,type TowerResult} from '../src/sim/index.ts';
-import type {ColetaOutcome} from '../src/sim/towers/tralha.ts';
+import type {ColetaOutcome} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';

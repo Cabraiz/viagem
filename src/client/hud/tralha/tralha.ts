@@ -74,9 +74,9 @@ export class TralhaHud {
     const show=state.available&&(!!state.at||state.progress!==undefined);
     this.el.hidden=!show;
     if(!show)return;
-    for(const [b,dx] of [[this.coletar,-36],[this.destruir,36]] as const){
+    for(const [b,dx] of [[this.coletar,-38],[this.destruir,38]] as const){
       b.hidden=!state.at;
-      if(state.at){b.style.left=`${state.at.x+dx}px`;b.style.top=`${state.at.y-52}px`;}
+      if(state.at){b.style.left=`${state.at.x+dx}px`;b.style.top=`${state.at.y-60}px`;}
     }
     this.barra.hidden=state.progress===undefined||!state.hero;
     if(state.progress!==undefined&&state.hero){

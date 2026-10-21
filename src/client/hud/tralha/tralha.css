@@ -3,7 +3,7 @@
    coleta's bar over the hero's square. Positioned in viewport px by the HUD each frame. */
 .rh-tralha{position:fixed;left:0;top:0;width:0;height:0;z-index:2;pointer-events:none}
 .rh-tralha[hidden]{display:none}
-.rh .rh-tralha-bola{position:absolute;display:grid;place-items:center;width:56px;height:56px;margin:-28px 0 0 -28px;padding:0;
+.rh .rh-tralha-bola{position:absolute;display:grid;place-items:center;width:64px;height:64px;margin:-32px 0 0 -32px;padding:0;
   border-radius:50%;border:3px solid var(--c-amarelo);background:var(--c-papel);color:var(--c-breu);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);
   font:800 var(--t-13)/1 var(--f-sistema);cursor:pointer;pointer-events:auto;touch-action:manipulation}
 .rh .rh-tralha-bola[hidden]{display:none}

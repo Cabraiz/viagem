@@ -751,7 +751,7 @@
 /* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
    A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
    praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
-   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
+   (its inline transform, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
    BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (18 px stickers, "Vai pra praça!" at 13 px,
    the joke line goes) for OBJECTIVE_FULL_MS; then it folds to the distance and the arrow only (data-compact, a small
    ficha), and goes when there is no arrow to show (objective.ts). */
@@ -768,7 +768,7 @@
 .rh-objetivo[data-compact=true] :is(.rh-objetivo-mark,.rh-objetivo-body){display:none}
 .rh-objetivo[data-compact=true] .rh-objetivo-m{min-width:0}
 .rh-objetivo-m:empty{display:none}
-.rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}
+.rh-objetivo-arrow{will-change:transform} /* turned by its inline transform (city/objective.ts) */
 .rh-objetivo-arrow[hidden]{display:none}
 .rh-ended .rh-objetivo{display:none}
 /* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */

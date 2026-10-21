@@ -243,7 +243,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   });
   // "Compartilhar" (camera sticker): a picture of the prizes for the group chat.
   const share=el('button','rh-result-btn rh-result-share');share.type='button';
-  share.innerHTML=`${drawSticker('camera',{size:28})}<span class="rh-share-long">Compartilhar</span>`;share.setAttribute('aria-label','Compartilhar os prêmios');
+  share.innerHTML=`${drawSticker('camera',{size:24})}<span class="rh-share-long">Compartilhar</span>`;share.setAttribute('aria-label','Compartilhar os prêmios');
   share.addEventListener('click',()=>{
     if(!shownResult||share.disabled)return;
     share.disabled=true;

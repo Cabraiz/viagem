@@ -2,7 +2,7 @@
 # built site (a solo match + modo foto scenes) at 1280x720 and 390x844 and leaves folha-<sha>.png + folha.json in the
 # artifact `folha-<sha>`. The board's tools/vigia-prints.mjs (no Claude tokens) downloads it and drops the result in the
 # branch owner's inbox, so an executor pushes and waits instead of opening a browser on the shared PC.
-# workflow_dispatch with `ref`: the sheet of any commit (e.g. b837b93, the trembling hero) with THIS commit's script.
+# workflow_dispatch with `ref`: the sheet of any branch or FULL sha (a short sha is fetched as a branch and fails; e.g. b837b939975781bfa77a6c627d6f384906763744, the trembling hero) with THIS commit's script.
 name: Prints
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'commit/branch to print (default: this one)'
+        description: 'branch or full 40-char sha to print (default: this one)'
         required: false
         default: ''
 permissions:

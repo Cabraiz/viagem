@@ -9,6 +9,12 @@
  *   node scripts/art-lite.mjs --all      remake every copy
  *   node scripts/art-lite.mjs --kinds sprites,menu   refresh only these families, keeping other entries and files
  *
+ * City (NEW-20261021-E1-decor-lite-arte-perto): the 4-view sheets the city draws and the decor's live loops
+ * (render/city/art-plan.ts cityLiteFiles: building lots, props, the fountain, the decor, the nests, `anim*`) that weigh over CITY_LITE_MIN_BYTES get a lossy copy,
+ * every cell × its scale (1, or 0.75 for the sheets drawn small), at public/art/lite/city/<group dir>/<file>; its cell goes to the file
+ * as `liteCell` (the group's manifest and the index), from which the city loads the copy (art-plan.ts cityTexture). A
+ * reimport drops `liteCell`; this script puts it back, and --check fails until it does.
+ *
  * Enemies (NEW-20261016-ORQ-inimigos-peso-download): the copy is also smaller, cell by cell, down to what a phone
  * shows. The game canvas has the page's CSS size, so an enemy's figure is drawn at artTargetHeight × the hero's 56 CSS
  * px over 96 world px at the closest zoom (camera-zoom.ts ZOOM_MAX), elites ELITE_SCALE bigger: the copy keeps
@@ -36,6 +42,7 @@ import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
 import {HERO_MIN_SCREEN_PX} from '../src/contract/offscreen.ts';
+import {cityLiteFiles} from '../src/client/render/city/art-plan.ts';
 
 const require=createRequire(import.meta.url);
 const sharp=require('sharp');
@@ -59,7 +66,16 @@ export const LITE_TEXELS=.9;
  * (ZOOM_MAX; measured in the sandbox cidade, 390×844): LITE_TEXELS of that, as for the enemies.
  */
 export const TOWER_LITE_SCALE=.5;
-const KINDS=['trees','sprites','enemies','menu','towers'];
+/**
+ * City files below this keep the approved file: a copy would save a few KB. 200 KB (the card's first cut) left 24
+ * sheets of 100–190 KB (walls, poles, small houses: 3 MB) in the opening's art, decor-lite-arte-perto fases d1.
+ */
+export const CITY_LITE_MIN_BYTES=64*1024;
+/** Shown psnr a city copy keeps (tests/client/art-lite.test.ts: no copy below 36 dB at the size a phone draws it). */
+const CITY_MIN_PSNR=36;
+/** The art groups the city draws from (art-plan.ts), by their GROUPS key. */
+const CITY_GROUPS=['predios','base','props','cenario'];
+const KINDS=['trees','sprites','enemies','menu','towers','city'];
 const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 /**
  * Towers (NEW-20261020-ORQ-torres-entregues): the files a match loads (render/towers queueTowerArt: the base and the
@@ -148,7 +164,7 @@ for(const kind of kinds){
   if(!existsSync(dir))continue;
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
-  if(kind==='towers')continue; // joined per file below
+  if(kind==='towers'||kind==='city')continue; // joined per file / smaller per cell below
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;
@@ -212,6 +228,50 @@ if(towersMoved){
 `);
   await writeIndex({torres:GROUPS.torres},{outRoot:ROOT});
   console.error('art-lite:',towersMoved,'tower files got a new liteCell (manifest and index)');
+}
+
+// ---------- city: the files the city draws over CITY_LITE_MIN_BYTES, every cell × its scale (cityLiteFiles) ----------
+const cityMoved=new Set();
+if(kinds.includes('city'))for(const group of CITY_GROUPS){
+  const spec=GROUPS[group],file=join(ROOT,spec.output,'manifest.json');
+  if(!existsSync(file))continue;
+  const m=JSON.parse(readFileSync(file,'utf8')),dir=spec.output.replace(/^public\/art\//,'');
+  for(const [id,piece] of Object.entries(m.pieces??{}))for(const {name,scale:k} of cityLiteFiles(group,id,piece)){
+    const f=piece.files[name];
+    if(!f?.file)continue;
+    const source=readFileSync(join(ROOT,spec.output,f.file)),key=`${dir}/${f.file}`,out=join(ROOT,'public/art/lite',key);
+    const liteCell=source.length>CITY_LITE_MIN_BYTES?[Math.ceil(f.cell[0]*k),Math.ceil(f.cell[1]*k)]:undefined;
+    if(String(f.liteCell)!==String(liteCell)){
+      cityMoved.add(group);
+      if(liteCell)f.liteCell=liteCell;else delete f.liteCell;
+    }
+    if(!liteCell){if(manifest.files[key]&&!args.has('--check')){delete manifest.files[key];save();}continue;}
+    const entry=manifest.files[key];
+    if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;
+    stale.push(key);
+    if(args.has('--check'))continue;
+    // The copy is already at the size a phone draws it (at most): its psnr is the shown one. A small busy sheet
+    // (puxadinho-1, 84×136 cells: 34.9 dB at quality 90, 35.9 at 100) loses more: the next setting up to CITY_MIN_PSNR,
+    // lossless last.
+    const s=k<1?await shrink(await decode(source),f.cell,liteCell):await decode(source);
+    let lite,shown;
+    for(const webp of [WEBP,{...WEBP,quality:95},{lossless:true,effort:WEBP.effort}]){
+      lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(webp).toBuffer();
+      shown=psnr(s.data,await rgba(lite));
+      if(shown>=CITY_MIN_PSNR)break;
+    }
+    mkdirSync(dirname(out),{recursive:true});writeFileSync(out,lite);
+    manifest.files[key]={source:sha(source),lite:sha(lite),bytes:source.length,liteBytes:lite.length,liteCell,psnr:shown,shownPsnr:shown};
+    console.error(key,`${Math.round(source.length/1024)} → ${Math.round(lite.length/1024)} KB`,`cell ${liteCell.join('×')}`,`psnr ${shown} dB`);
+    save();
+  }
+  if(cityMoved.has(group)&&!args.has('--check'))writeFileSync(file,`${JSON.stringify(m,null,2)}
+`);
+}
+if(cityMoved.size&&args.has('--check')){console.error(`art-lite: city files with a stale liteCell in ${[...cityMoved].join(', ')} (node scripts/art-lite.mjs --kinds city)`);process.exit(1);}
+if(cityMoved.size){
+  await writeIndex(Object.fromEntries([...cityMoved].map(g=>[g,GROUPS[g]])),{outRoot:ROOT});
+  console.error('art-lite: city files got a new liteCell in',[...cityMoved].join(', '),'(manifest and index)');
 }
 
 // ---------- `liteCell` on the enemy files (manifest and index): what the client takes as the cell ----------

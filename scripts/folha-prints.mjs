@@ -5,7 +5,10 @@
 //   1. the menu (character screen);
 //   2. a solo match: the hero standing (3 frames in a row, and a sampled window: a standing hero whose texture flips
 //      between an idle and a walk sheet = FAIL), walking by the keyboard (8 directions, 2 frames each), walking by the
-//      mouse (a far click, 3 frames);
+//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow),
+//      and a burst of short keyboard walks in open ground (every stop sampled: idle↔walk back and forth = tremor);
+//   2b. the phone (isMobile + hasTouch, 390×844, a match of its own): the hero standing, the joystick dragged by a
+//      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground;
 //   3. modo foto scenes (src/client/dev/foto.ts, no room): a box opening (arsenal), beside towers (torres=1), shadows,
 //      the hero beside a house (silhouette);
 // each at 1280×720 and 390×844 (DPR 1). Out: <out>/folha-<sha>.png (every frame with its caption), <out>/folha.json
@@ -37,7 +40,11 @@ const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS
  * A standing hero (still for STAND_STILL_MS) is sampled for STAND_FRAMES drawn frames (at most STAND_MAX_MS: swiftshader
  * draws 1280×720 at ~5 fps): any idle↔walk texture flip in it fails.
  */
-const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500,STOP_FRAMES=15;
+const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500,STOP_FRAMES=15,STOP_MS=2500,STOP_FLIPS_FAIL=2;
+/** The burst (direction, ms held): stops in open ground, where the room's corrections really move the hero. */
+const BURST=[['E',300],['W',500],['S',250],['N',650],['SE',400],['NW',300],['E',700],['W',350],['SW',450],['NE',250],['S',550],['N',400]];
+/** Where a click may walk the hero: offsets from his spot on the page, in fractions of min(w,h). */
+const CLICK_SPOTS=[[.3,.2],[-.3,.2],[.3,-.15],[-.3,-.15],[0,.3],[.35,0],[-.35,0],[0,-.25]];
 /**
  * A real network (init script of the match page): the room's messages arrive 80–200 ms late, in order. The local Worker
  * answers at once, so the client's prediction never got a server correction and a standing hero was never nudged —
@@ -91,7 +98,17 @@ async function until(p,fn,ms,arg){
 }
 
 /** What the hero shows now (?perf=1 publishes the scene as window.__perfScene; the meter's panel is hidden by CSS). */
-const HERO=()=>{const s=window.__perfScene,a=s?.actor;return a?{key:String(a.texture?.key??''),frame:String(a.frame?.name??''),x:Math.round(a.x),y:Math.round(a.y)}:null;};
+const HERO=()=>{
+  const s=window.__perfScene,a=s?.actor;if(!a)return null;
+  // His spot on the page: world → camera → the canvas box (CSS may scale the canvas).
+  const c=s.cameras?.main,cv=s.game?.canvas,r=cv?.getBoundingClientRect?.();
+  const sx=c&&r?r.left+(a.x-c.worldView.x)*c.zoom*r.width/cv.width:NaN,sy=c&&r?r.top+(a.y-c.worldView.y)*c.zoom*r.height/cv.height:NaN;
+  return {key:String(a.texture?.key??''),frame:String(a.frame?.name??''),x:Math.round(a.x),y:Math.round(a.y),sx:Math.round(sx),sy:Math.round(sy)};
+};
+/** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
+const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
+/** Out of play: the own hero is dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). */
+const DEAD=()=>/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -102,7 +119,28 @@ const SAMPLE=([n,ms])=>new Promise(done=>{
 });
 /** The level-up offer (D-050) pauses the solo match until a card is taken: takes the first one, so the hero walks again. */
 const TAKE_OFFER=()=>{const c=[...document.querySelectorAll('.rh-card')].find(b=>!b.disabled&&b.getClientRects().length&&!b.closest('[hidden]'));c?.click();return !!c;};
-async function clearOffer(p){for(let i=0;i<4&&await p.evaluate(TAKE_OFFER).catch(()=>false);i++)await sleep(700);}
+async function clearOffer(p){
+  for(let i=0;i<4&&await p.evaluate(TAKE_OFFER).catch(()=>false);i++)await sleep(700);
+  await playing(p);
+}
+/** Each match page's way back in (set by openMenu): base URL, label, restarts left. */
+const matchPages=new WeakMap();
+/**
+ * A dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his own:
+ * a new match on the same page (a warning on the sheet), at most twice per page.
+ */
+async function playing(p){
+  const m=matchPages.get(p);
+  if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
+  const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
+  await shot(p,'fim',`${m.label}: herói morto ou partida acabou`,{w:vp.width,h:vp.height});
+  if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
+  avisos.push(`${m.label} ${at}: herói morto ou partida acabou: partida nova`);
+  await p.goto(`${m.base}/?perf=1`,{waitUntil:'load',timeout:90000});
+  await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
+  await enterMatch(p,{w:vp.width,h:vp.height},m.label);
+  await p.evaluate(TAKE_OFFER).catch(()=>{});
+}
 
 const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
 async function shot(p,name,caption,vp){
@@ -140,20 +178,83 @@ async function keyboardWalk(p,vp){
     await sleep(500);await shot(p,`tecla-${dir}-1`,`teclado ${dir} (1/2)`,vp);
     await sleep(250);await shot(p,`tecla-${dir}-2`,`teclado ${dir} (2/2)`,vp);
     for(const k of keys)await p.keyboard.up(k);
-    // Stopping: walk → rest is one flip; more is the hero going back and forth while the reconciles land (tremor).
-    const seen=await p.evaluate(SAMPLE,[STOP_FRAMES,STAND_MAX_MS]).catch(()=>[]);
-    let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
-    const t=tremor[`${vp.w}x${vp.h}`]??={};(t.stops??=[]).push(flips);
-    if(flips>1)fails.push(`${vp.w}×${vp.h}: ao parar (${dir}) o herói trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor)`);
+    await stopped(p,vp,dir);
   }
   await releaseAll(p);
 }
+/**
+ * Right after letting go: STOP_FRAMES drawn frames AND at least STOP_MS (the room's corrections land 80–200 ms late; a
+ * nudge after them walks the hero again). Walk → rest is one flip; more is the hero going back and forth (tremor).
+ */
+async function stopped(p,vp,label,list='stops'){
+  const seen=await p.evaluate(([n,ms,min])=>new Promise(done=>{
+    const seen=[],t0=performance.now();
+    const step=()=>{const a=window.__perfScene?.actor;if(a)seen.push(String(a.texture?.key??''));const t=performance.now()-t0;if((seen.length<n||t<min)&&t<ms)requestAnimationFrame(step);else done(seen);};
+    requestAnimationFrame(step);
+  }),[STOP_FRAMES,STAND_MAX_MS,STOP_MS]).catch(()=>[]);
+  let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
+  const t=tremor[`${vp.w}x${vp.h}`]??={};(t[list]??=[]).push(flips);
+  // b837b93's trembling stops flipped 3–5× (phone joystick); 2 is one late nudge (seen once on 20/10's main against a
+  // wall): a warning, so the sheet does not fail every branch on it.
+  const msg=`${vp.w}×${vp.h}: ao parar (${label}) o herói trocou idle↔walk ${flips}× em ${seen.length} quadros`;
+  if(flips>STOP_FLIPS_FAIL)fails.push(`${msg} (tremor)`);else if(flips>1)avisos.push(`${msg} (um empurrão tardio)`);
+}
+/** The burst (BURST): short walks in open ground, each stop sampled; how many stops trembled goes on the sheet. */
+async function burst(p,vp){
+  for(const [dir,ms] of BURST){
+    await clearOffer(p);
+    for(const k of KEYS[dir])await p.keyboard.down(k);
+    await sleep(ms);
+    for(const k of KEYS[dir])await p.keyboard.up(k);
+    await stopped(p,vp,`rajada ${dir} ${ms} ms`,'burst');
+  }
+  const b=tremor[`${vp.w}x${vp.h}`]?.burst??[];
+  await shot(p,'rajada',`rajada: ${b.filter(f=>f>STOP_FLIPS_FAIL).length}/${b.length} paradas com tremor`,vp);
+}
+/** Moved: the hero's world spot is more than 6 px from where it was. */
+const moved=(a,b)=>!!(a&&b)&&Math.hypot(a.x-b.x,a.y-b.y)>6;
+/**
+ * A press (a click, a tap) that walks the hero: tries CLICK_SPOTS around him, off the HUD, until one moves him in 900 ms
+ * (a spot on a building has no way there: the scene says "Por aqui não dá" and he stays). The spot, or null and a fail.
+ */
+async function walkByPress(p,vp,press,label){
+  // A free spot: the game's canvas is what the page would press there (scene.ts walks on the canvas's own presses only).
+  const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
+  const tried=[];
+  for(const [fx,fy] of CLICK_SPOTS){
+    await clearOffer(p);
+    const h=await p.evaluate(HERO).catch(()=>null);if(!h)break;
+    const m=Math.min(vp.w,vp.h),x=Math.round((Number.isFinite(h.sx)?h.sx:vp.w/2)+fx*m),y=Math.round((Number.isFinite(h.sy)?h.sy:vp.h/2)+fy*m);
+    if(x<20||y<20||x>vp.w-20||y>vp.h-20||!await free(x,y))continue;
+    await press(x,y);
+    // Back as soon as he walks (the caller prints him walking, not already arrived).
+    let after=null;
+    for(const end=Date.now()+900;Date.now()<end&&!moved(h,after);)after=await p.evaluate(HERO).catch(()=>null);
+    if(moved(h,after))return {x,y,tried};
+    const notice=await p.evaluate(NOTICE).catch(()=>'');
+    tried.push(`(${x},${y}) ${/não dá/i.test(notice)?'sem caminho':'não andou'}`);
+  }
+  fails.push(`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
+  return null;
+}
 async function mouseWalk(p,vp){
-  // A click far from the hero (who sits about mid-screen): toward the upper left, inside the canvas, away from the HUD.
-  await clearOffer(p);
-  await p.mouse.click(Math.round(vp.w*.25),Math.round(vp.h*.4));
-  for(let i=1;i<=3;i++){await sleep(400);await shot(p,`mouse${i}`,`mouse: clique longe ${i}/3`,vp);}
+  // A click on open ground (the 20/10 sheet clicked a fixed spot that fell on a building: "Por aqui não dá", no walk).
+  const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y),'mouse');
+  await shot(p,'mouse1',got?`mouse: clique em (${got.x},${got.y})${got.tried.length?`; antes ${got.tried.join(', ')}`:''} 1/3`:'mouse: clique (não andou)',vp);
+  for(let i=2;i<=3;i++){await sleep(250);await shot(p,`mouse${i}`,`mouse: clique ${i}/3`,vp);}
   await sleep(1500);
+  // Hold-to-follow: press the ground and sweep the cursor in a half circle around the hero; he follows while it is down.
+  await clearOffer(p);
+  const h=await p.evaluate(HERO).catch(()=>null);
+  if(!h||!Number.isFinite(h.sx))return;
+  const r=Math.min(vp.w,vp.h)*.28;
+  await p.mouse.move(h.sx+r,h.sy);await p.mouse.down();
+  for(let i=1;i<=10;i++){const a=i/10*Math.PI;await p.mouse.move(h.sx+Math.cos(a)*r,h.sy+Math.sin(a)*r*.6,{steps:2});await sleep(150);}
+  await shot(p,'mouse-segura','mouse: segurando (o herói segue o cursor)',vp);
+  const end=await p.evaluate(HERO).catch(()=>null);
+  await p.mouse.up();
+  if(!moved(h,end))fails.push(`${vp.w}×${vp.h}: mouse segurado não moveu o herói`);
+  await sleep(1200);
 }
 
 async function match(browser,base){
@@ -162,23 +263,64 @@ async function match(browser,base){
   p.on('pageerror',e=>consoleErrors.push(`pageerror: ${String(e).slice(0,300)}`));
   p.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text().slice(0,300));});
   try{
-    await p.addInitScript(LATENCY);
-    await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
-    await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
-    await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
+    await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
-    await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
-    await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
-    await p.evaluate(()=>document.getElementById('enter-island').click());
-    if(!await until(p,()=>window.__partidaPronta===true&&!!window.__perfScene?.actor,180000)){fails.push('a partida solo não começou em 180 s');await shot(p,'sem-partida','sem partida',VIEWPORTS[0]);return;}
-    // The own walk clips load after the match starts (P0 since preload-heroi-primeiro): give them a moment, by state.
-    await sleep(3000);
+    if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
     for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
-      await standing(p,vp);
-      await keyboardWalk(p,vp);
-      await mouseWalk(p,vp);
+      // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
+      for(const stage of [standing,mouseWalk,keyboardWalk,burst])await stage(p,vp);
     }
+  }finally{await ctx.close().catch(()=>{});}
+}
+/** The menu of the built site with the room's latency and the perf scene (the meter's panel hidden). */
+async function openMenu(p,base,label){
+  matchPages.set(p,{base,label,left:2});
+  await p.addInitScript(LATENCY);
+  await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
+  await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
+  await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
+}
+/** Character → island: true once the solo match runs (false and a fail when it did not start in 180 s). */
+async function enterMatch(p,vp,label){
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
+  await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
+  await p.evaluate(()=>document.getElementById('enter-island').click());
+  if(!await until(p,()=>window.__partidaPronta===true&&!!window.__perfScene?.actor,180000)){fails.push(`${label}: a partida solo não começou em 180 s`);await shot(p,'sem-partida',`sem partida (${label})`,vp);return false;}
+  // The own walk clips load after the match starts (P0 since preload-heroi-primeiro): give them a moment.
+  await sleep(3000);return true;
+}
+/** A finger on the joystick (CDP touch events: Playwright only taps), dragged toward (dx,dy) and held ms; during() runs held. */
+async function stickDrag(p,cdp,dx,dy,ms,during){
+  const r=await p.evaluate(()=>{const b=document.querySelector('.explore-stick')?.getBoundingClientRect();return b&&b.width?{x:b.left+b.width/2,y:b.top+b.height/2,w:b.width}:null;});
+  if(!r)return false;
+  const at=f=>[{x:r.x+dx*r.w*.4*f,y:r.y+dy*r.w*.4*f,id:1}];
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:at(0)});
+  for(let i=1;i<=4;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:at(i/4)});await sleep(30);}
+  const end=Date.now()+ms;await during?.();await sleep(Math.max(0,end-Date.now()));
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  return true;
+}
+/** The phone (D-009: the game is mobile): a touch context and a match of its own; the stick by a finger, then a tap. */
+async function phone(browser,base){
+  const vp={w:390,h:844},tag={w:'celular-390',h:844};
+  const ctx=await browser.newContext({viewport:{width:vp.w,height:vp.h},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+  const p=await ctx.newPage();
+  p.on('pageerror',e=>consoleErrors.push(`celular: pageerror: ${String(e).slice(0,300)}`));
+  try{
+    await openMenu(p,base,'celular');
+    if(!await enterMatch(p,vp,'celular'))return;
+    await standing(p,tag);
+    const cdp=await ctx.newCDPSession(p);
+    for(const [dir,dx,dy] of [['NE',.71,-.71],['SE',.71,.71],['SW',-.71,.71],['NW',-.71,-.71],['N',0,-1],['E',1,0],['S',0,1],['W',-1,0]]){
+      await clearOffer(p);
+      const ok=await stickDrag(p,cdp,dx,dy,900,async()=>{await sleep(600);await shot(p,`cel-stick-${dir}`,`celular: joystick ${dir}`,vp);});
+      if(!ok){fails.push('celular: joystick (.explore-stick) não está na tela');break;}
+      await stopped(p,tag,`joystick ${dir}`);
+    }
+    const got=await walkByPress(p,vp,(x,y)=>p.touchscreen.tap(x,y),'celular: toque');
+    await shot(p,'cel-toque',got?`celular: toque em (${got.x},${got.y}) 1/2`:'celular: toque (não andou)',vp);
+    await sleep(400);await shot(p,'cel-toque2','celular: toque 2/2',vp);
   }finally{await ctx.close().catch(()=>{});}
 }
 
@@ -236,6 +378,7 @@ try{
   try{browser=await chromium.launch();}catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
   try{
     await match(browser,preview.url);
+    await phone(browser,preview.url);
     await fotos(browser,preview.url);
     if(consoleErrors.some(e=>e.startsWith('pageerror')||/: pageerror/.test(e)))fails.push('pageerror no console (ver folha.json)');
     await sheet(browser,join(outDir,`folha-${sha}.png`));
@@ -252,6 +395,6 @@ writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;
 console.log(line);
 if(process.env.GITHUB_STEP_SUMMARY){
-  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (herói parado): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
+  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (parado; trocas idle↔walk em cada parada e na rajada): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples,paradas:v.stops,rajada:v.burst}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
 }
 process.exit(code);

@@ -25,7 +25,7 @@ const CAST_SHADOW:ShadowLook|undefined=LIGHT?Object.freeze({length:SHADOW_PER_HE
 const sunTint=(img:Phaser.GameObjects.Image)=>LIGHT?img.setTint(BUILDING_TINT.topLeft,BUILDING_TINT.topRight,BUILDING_TINT.bottomLeft,BUILDING_TINT.bottomRight):img;
 import {groundQuads,pieceGeometry,type GroundQuad,type PieceGeometry} from './faces.ts';
 import {CityMaterials,buildingAnchor,buildingFrame,cellUvPatches,frameUv,frontCorner,groundShadeOverlay,propAnchor,propFrame,type TextureLookup} from './materials.ts';
-import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,type CityArtPlan,type CityLot} from './art-plan.ts';
+import {ART_CELL,blockArt,fountainLot,lotCells,moundPiece,planHasArt,planHasBuildingArt,propSheet,texelOf,type CityArtPlan,type CityLot} from './art-plan.ts';
 import {CoverFader,HERO_SCREEN,actorDepth,coveringColumns,occluderFor,outlineAlpha,propCovers,type ColumnRef,type Figure} from './occlusion.ts';
 import {borderFog,drawFogRing} from './border-fog.ts';
 import {BLOCK_COLORS,CITY_PALETTE,OUTLINE_PX,PROP_COLORS,SHADOW,groundColor} from './palette.ts';
@@ -612,7 +612,7 @@ export class CityLayer {
         for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++){this.columns.set(j*width+i,column);cells.push(j*width+i);}
         sprites.push({blockId:fade,key:d.depth,fade,obj:img});
       }
-      this.vivo?.attach(e,img,d.artView);
+      this.vivo?.attach(e,img,d.artView,texelOf(sheet));
       out.push(decorKey(e));
     }
     return out;
@@ -645,7 +645,7 @@ export class CityLayer {
     const wx=origin.x+(lot.x+fc.i*lot.w)*cell,wy=origin.y+(lot.y+fc.j*lot.h)*cell;
     const at=project(wx,wy,base,view,this.pivot),key=depth(wx,wy,view,this.pivot);
     const frame=buildingFrame(view,lot.turns,this.materials.frames(s.key));
-    const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth,s.frameHeight,ART_CELL);
+    const a=buildingAnchor(lot.a,lot.b,frame,s.frameWidth/texelOf(s),s.frameHeight/texelOf(s),ART_CELL);
     const obj=sunTint(this.scene.add.image(at.x,at.y,s.key,frame).setOrigin(a.originX,s.originY).setScale(s.scale).setDepth(this.depthOf(key)));
     const box:CityBlock={id:lot.id,kind:'building',x:lot.x,y:lot.y,w:lot.w,h:lot.h,height:lot.height};
     const fade=`l:${lot.id}`,column:ColumnRef={key,occ:occluderFor(box,this.asset,base,view,this.pivot),fade};

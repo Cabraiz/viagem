@@ -99,7 +99,12 @@ async function decodeSheet(url:string,w:number,h:number):Promise<Sheet>{
   try{await image.decode();if(image.naturalWidth!==w||image.naturalHeight!==h)throw new Error('movement128 dimensions');return image;}
   catch(error){image.src='';throw error;}
 }
-function free(image:Sheet){if('close' in image)image.close();else image.src='';}
+/**
+ * An <img> the scene's loader preloaded still has Phaser's onerror on it: clearing its src fires it, and Phaser's handler
+ * throws (File.revokeObjectURL on a finished file). The M16 rests (5 preloaded sheets) are evicted by the LRU and hit it.
+ */
+export function freeSheet(image:Sheet){if('close' in image)image.close();else{image.onload=image.onerror=null;image.src='';}}
+const free=freeSheet;
 const shared=new WeakMap<object,Shared>();
 
 /** Uses real Image decoding plus Phaser textures; nothing is added to the preload list. */

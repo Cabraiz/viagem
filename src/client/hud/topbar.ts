@@ -2,6 +2,7 @@
  * Top of the run HUD (VGM-040): round chip ("Round N/10" + critters or interval countdown),
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
+import {putHidden} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
 import {bossInfo,nestCount,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
@@ -34,7 +35,7 @@ export function createTopBar():HudPart{
     const round=roundInfo(view);
     // D-051 nests: no waves, so no "Onda N" and no critter count; the chip keeps only the chaveiro's clock.
     const nests=!!round?.nests;
-    chip.hidden=!round||(nests&&!round.chaveiro);
+    putHidden(chip,!round||(nests&&!round.chaveiro));
     put('nests',String(nests),()=>{label.hidden=detail.hidden=nests;if(nests)chip.dataset.modo='ninhos';else delete chip.dataset.modo;});
     if(round){
       put('label',round.label,v=>{label.textContent=v;});
@@ -51,8 +52,8 @@ export function createTopBar():HudPart{
       // D-051 nests: the nests still standing ("[ninho] 6/8") after his clock.
       const clock=round.chaveiro,count=nests?nestCount(view):undefined;
       put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
-        eta.hidden=!clock;
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep">·</i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
+        putHidden(eta,!clock);
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);
@@ -64,9 +65,9 @@ export function createTopBar():HudPart{
     if(lastLevel>=0&&view.team.level>lastLevel){xp.classList.remove('rh-pop');void xp.offsetWidth;xp.classList.add('rh-pop');}
     lastLevel=view.team.level;
     const info=bossInfo(view);
-    boss.hidden=!info;
+    putHidden(boss,!info);
     if(info){
-      put('boss',info.enraged?`${info.name} · FURIOSO`:info.name,v=>{bossName.textContent=v;});
+      put('boss',info.enraged?`${info.name} tá furioso`:info.name,v=>{bossName.textContent=v;});
       put('bossHp',`scaleX(${info.fraction})`,v=>{bossFill.style.transform=v;});
       boss.classList.toggle('rh-enraged',info.enraged);
     }
@@ -88,7 +89,7 @@ const intervalLines=[
 export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'|'evento'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
-export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10,word:'Round'|'Onda'='Round'):Marquee|undefined{
+export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10,word:'Rodada'|'Onda'='Rodada'):Marquee|undefined{
   if(event.phase==='wave'){
     const boss=event.index>=total;
     return {title:event.name||`${word} ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};

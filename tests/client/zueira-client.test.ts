@@ -81,7 +81,7 @@ test('copy: every event has a banner, the kill-cam names who closed the round, e
     const t=shameText({player:'a',key,round:3,tick:1,source:'pombos',seconds:4},'Tia Cleide');
     assert.ok(t.text.startsWith('Tia Cleide')&&t.joke.length>0,key);
   }
-  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé').text,'Zé caiu no Round 1 pra um bêbado do boteco.');
+  assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé').text,'Zé caiu na rodada 1 pra um bêbado do boteco.');
   assert.equal(shameText({player:'a',key:'recaida',round:5,tick:1,seconds:3},'Tia').text,'Tia levantou e caiu de novo em 3 s.');
   // varredura-celular: the chaveiro counts in Ondas, the nests mode (D-051) has no number at all.
   assert.equal(shameText({player:'a',key:'cedo',round:1,tick:1,source:'bebado'},'Zé','onda').text,'Zé caiu na Onda 1 pra um bêbado do boteco.');

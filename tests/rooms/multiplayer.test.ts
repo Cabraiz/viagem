@@ -137,12 +137,17 @@ test('room gates input by phase and round; duplicate rematch resets only once',(
   p.score=30;downAll(room);room.advance(4500);
   const result=room.run.snapshot();assert.equal(result.outcome,'defeat');assert.ok(result.resultId);
   room.advance(4550);assert.equal(room.run.snapshot().resultId,result.resultId);
+  // UX-resultado-revanche: b's repeated "topa" is one vote of two; a's settles it, and the countdown starts at once.
   command(room,b,{t:'rematch',round:1},4600);command(room,b,{t:'rematch',round:1},4600);
-  assert.equal(room.run.snapshot().round,2);assert.equal(room.run.snapshot().phase,'lobby');
+  assert.equal(room.run.snapshot().round,1);assert.deepEqual(room.run.snapshot().rematchVotes,[idOf(b)]);
+  // Both phones hear the same vote (the run message goes to everyone).
+  for(const who of [a,b])assert.deepEqual(who.messages.filter((m:any)=>m.t==='run').at(-1).run.rematchVotes,[idOf(b)]);
+  command(room,a,{t:'rematch',round:1},4600);command(room,a,{t:'rematch',round:1},4600);
+  assert.equal(room.run.snapshot().round,2);assert.equal(room.run.snapshot().phase,'countdown');
   assert.equal(p.score,0);assert.equal(p.hp,p.stats.maxHp);assert.equal(p.ack,0);assert.equal(room.sim.tick,0);
   assert.equal(p.downed,undefined);assert.equal(room.sim.outcome,undefined);
   assert.equal(room.sim.world.enemies.size,0);assert.equal(p.attackTick,0);
-  command(room,a,{t:'ready',round:1,ready:true},4700);assert.ok(room.run.snapshot().members.every(m=>!m.ready));
+  command(room,a,{t:'ready',round:1,ready:false},4700);assert.ok(room.run.snapshot().members.every(m=>m.ready),'a stale round changes nothing');
 });
 test('late arrival is spectator; original member reconnects without restarting combat',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);

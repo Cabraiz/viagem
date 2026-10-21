@@ -18,6 +18,11 @@ export const RUN_COUNTDOWN_TICKS=3*RUN_HZ;
  * one who missed the start watches that run and plays the rematch.
  */
 export const LOBBY_AWAY_TICKS=10*RUN_HZ;
+/**
+ * The collective rematch (UX-resultado-revanche): it starts when every person online said "topa", or this long after the
+ * first "topa" with a majority; who did not vote watches that run and plays the next.
+ */
+export const REMATCH_MAJORITY_TICKS=10*RUN_HZ;
 
 export class RunLifecycle {
   private members=new Map<string,RunMember>();
@@ -33,6 +38,9 @@ export class RunLifecycle {
   /** D-047: the chaveiro's bill of the run that just ended (RunState.objective, result only). */
   private objective?:ObjectiveResult;
   private owner?:string;
+  /** Result only: who voted for the rematch, and ticks since the first vote. */
+  private votes=new Set<string>();
+  private voteTicks=0;
   private readonly roomId:string;
   private durationTicks:number;
   constructor(roomId:string,durationTicks=RUN_DURATION_TICKS){
@@ -88,7 +96,11 @@ export class RunLifecycle {
     }
   }
   /** One call per server tick, independent of packet arrivals or rendering rate. `shame` goes with a timeout result. */
-  step(shame?:ShameMoment):{started:boolean;finished:boolean}{
+  step(shame?:ShameMoment):{started:boolean;finished:boolean;rematch?:true}{
+    if(this.phase==='result'&&this.votes.size){
+      this.voteTicks++;
+      if(this.settleVotes())return {started:false,finished:false,rematch:true};
+    }
     if(this.phase==='lobby'||this.phase==='countdown'){
       let crossed=false;
       for(const m of this.members.values())if(!m.online){const n=(this.away.get(m.id)??0)+1;this.away.set(m.id,n);crossed||=n===LOBBY_AWAY_TICKS;}
@@ -130,17 +142,41 @@ export class RunLifecycle {
   finish(outcome:RunOutcome,shame?:ShameMoment){
     if(this.phase!=='combat')return false;
     this.phase='result';this.outcome=outcome;this.resultId=this.roomId+':'+this.round;this.shame=shame&&{...shame};this.objective=undefined;
+    this.votes.clear();this.voteTicks=0;
     for(const member of this.members.values())member.ready=!!member.bot;
     return true;
   }
   /** D-047: the objective's bill for the result just decided (simulation output, never a client message); result phase only. */
   setObjective(result:ObjectiveResult|undefined){if(this.phase==='result')this.objective=result&&structuredClone(result);}
-  /** Guard with the round from the request so duplicate clicks cannot reset twice. */
+  /**
+   * A "topa" for the rematch; the round from the request guards against a stale or repeated tap. True when it starts the
+   * new run (every person online voted); otherwise the vote waits for the rest or for the majority (step).
+   */
   rematch(id:string,round:number){
-    if(this.phase!=='result'||round!==this.round||!this.members.get(id)?.online)return false;
+    const member=this.members.get(id);
+    if(this.phase!=='result'||round!==this.round||!member?.online||member.bot||this.votes.has(id))return false;
+    this.votes.add(id);
+    return this.settleVotes();
+  }
+  /** People online in the result: the ones the rematch asks. */
+  private voters(){return [...this.members.values()].filter(m=>m.online&&!m.bot);}
+  private majority(){
+    const voters=this.voters(),yes=voters.filter(m=>this.votes.has(m.id)).length;
+    return {all:yes>0&&yes===voters.length,most:yes*2>voters.length};
+  }
+  /** Starts the rematch when everyone online voted, or the majority did and REMATCH_MAJORITY_TICKS went by. */
+  private settleVotes(){
+    const {all,most}=this.majority();
+    if(!all&&!(most&&this.voteTicks>=REMATCH_MAJORITY_TICKS))return false;
+    const voted=new Set(this.votes);
     this.round++;this.phase='lobby';this.elapsed=0;this.countdown=RUN_COUNTDOWN_TICKS;
-    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;this.objective=undefined;
-    for(const member of this.members.values()){member.ready=!!member.bot;member.spectator=false;}
+    this.outcome=undefined;this.resultId=undefined;this.shame=undefined;this.objective=undefined;this.votes.clear();this.voteTicks=0;
+    // Voters already said "topa": they are ready (the countdown starts at once); the rest watch that run, unless all voted.
+    for(const member of this.members.values()){
+      member.ready=!!member.bot||voted.has(member.id);
+      member.spectator=!all&&!member.bot&&!voted.has(member.id);
+    }
+    this.refreshCountdown();
     return true;
   }
   snapshot():RunState{
@@ -148,6 +184,11 @@ export class RunLifecycle {
       remaining:this.phase==='countdown'?this.countdown:Math.max(0,this.durationTicks-this.elapsed),
       members:[...this.members.values()].map(m=>({...m})),outcome:this.outcome,resultId:this.resultId,
       ...(this.phase==='result'&&this.shame?{shame:{...this.shame}}:{}),...(this.owner?{owner:this.owner}:{}),
-      ...(this.phase==='result'&&this.objective?{objective:structuredClone(this.objective)}:{})};
+      ...(this.phase==='result'&&this.objective?{objective:structuredClone(this.objective)}:{}),
+      ...(this.phase==='result'?this.voteState():{})};
+  }
+  private voteState():Pick<RunState,'rematchVotes'|'rematchLeft'>{
+    const votes=[...this.votes].filter(id=>this.members.get(id)?.online);
+    return {rematchVotes:votes,...(this.votes.size&&this.majority().most?{rematchLeft:Math.max(0,REMATCH_MAJORITY_TICKS-this.voteTicks)}:{})};
   }
 }

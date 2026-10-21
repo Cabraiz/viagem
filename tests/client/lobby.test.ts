@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView} from '../../src/client/lobby.ts';
+import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView,compositionLine,COMPOSITION_LINES,memberClassName} from '../../src/client/lobby.ts';
 import {RunLifecycle,RUN_HZ,RUN_COUNTDOWN_TICKS} from '../../src/sim/run.ts';
 import type {RunMember,RunState} from '../../src/sim/run.ts';
 
@@ -66,12 +66,12 @@ test('countdownJoke: distinct jokes for 3 (and above), 2, 1 and 0',()=>{
 });
 
 test('shareLink: invite format, trimmed origin, encoded code round-trips',()=>{
-  assert.equal(shareLink('https://viagem.example','ABCDEF0123'),'https://viagem.example/?room=ABCDEF0123#personagem');
-  assert.equal(shareLink('https://viagem.example///','ABCDEF0123'),'https://viagem.example/?room=ABCDEF0123#personagem');
-  assert.equal(shareLink('http://127.0.0.1:5173/','A B&C'),'http://127.0.0.1:5173/?room=A%20B%26C#personagem');
+  assert.equal(shareLink('https://viagem.example','ABCDEF0123'),'https://viagem.example/?sala=ABCDEF0123');
+  assert.equal(shareLink('https://viagem.example///','ABCDEF0123'),'https://viagem.example/?sala=ABCDEF0123');
+  assert.equal(shareLink('http://127.0.0.1:5173/','A B&C'),'http://127.0.0.1:5173/?sala=A%20B%26C');
   for(const code of ['ABCDEF0123','A B&C=#?','çé/%']){
     const url=new URL(shareLink('https://viagem.example/',code));
-    assert.equal(url.searchParams.get('room'),code);assert.equal(url.hash,'#personagem');assert.equal(url.pathname,'/');
+    assert.equal(url.searchParams.get('sala'),code);assert.equal(url.hash,'');assert.equal(url.pathname,'/');
   }
 });
 
@@ -161,4 +161,23 @@ test('sha256Hex matches node:crypto (token hashes in the room storage, VGM-047)'
   const {sha256Hex}=await import('../../src/protocol/sha256.ts');const {createHash}=await import('node:crypto');
   for(const text of ['','abc','a'.repeat(55),'a'.repeat(56),'a'.repeat(64),'ção🎉'.repeat(40),crypto.randomUUID()+crypto.randomUUID()])
     assert.equal(sha256Hex(text),createHash('sha256').update(text).digest('hex'));
+});
+
+test('compositionLine: 3+ with every class known names the first missing role, support first; never blocks',()=>{
+  const m=(...ids:(string|undefined)[])=>ids.map(classId=>({classId}));
+  // CLT (frente), Viciado em Bet (dano), Fofoqueira (controle): no support.
+  assert.equal(compositionLine(m('clt-cansado','viciado-em-bet','vizinha-fofoqueira')),COMPOSITION_LINES['Suporte']);
+  assert.match(COMPOSITION_LINES['Suporte'],/café/);
+  // Mendigo (suporte), Maromba (dano), Fofoqueira: nobody up front.
+  assert.equal(compositionLine(m('mendigo','maromba','vizinha-fofoqueira')),COMPOSITION_LINES['Linha de frente']);
+  // All four roles: nothing to say.
+  assert.equal(compositionLine(m('clt-cansado','mendigo','viciado-em-bet','vizinha-fofoqueira')),undefined);
+  // Two players, or a class still unknown: no verdict yet.
+  assert.equal(compositionLine(m('clt-cansado','viciado-em-bet')),undefined);
+  assert.equal(compositionLine(m('clt-cansado','viciado-em-bet',undefined)),undefined);
+  for(const line of Object.values(COMPOSITION_LINES))assert.ok(line.length<=70,line);
+});
+
+test('memberClassName: the class short name under the chip, empty until known',()=>{
+  assert.equal(memberClassName('clt-cansado'),'CLT');assert.equal(memberClassName(undefined),'');assert.equal(memberClassName('nao-existe'),'');
 });

@@ -814,7 +814,7 @@ async function validateOneFile(spec,id,files,ctx,r){
     // Top-down 1-view pieces (decals, rings) do not stand on a foot point. The rules use the PIECE's anchor (sidecar:
     // a building stands on its base corner), with the AIRBORNE/LUNGE rows of spec.mjs.
     checkGrid(problems,label,img,{cw:cell[0],ch:cell[1],cols:views,rows:n,rowName,colName,anchor:views>1?anchor:undefined,
-      footY:r=>!AIRBORNE_ANIMS.has(rows?.[r]),footX:r=>!AIRBORNE_ANIMS.has(rows?.[r])&&!LUNGE_ANIMS.has(rows?.[r]),character,anchorFile:sideLabel});
+      footY:r=>!AIRBORNE_ANIMS.has(rows?.[r]),footX:r=>!spec.freeFootX?.[stem]&&!AIRBORNE_ANIMS.has(rows?.[r])&&!LUNGE_ANIMS.has(rows?.[r]),character,anchorFile:sideLabel});
     sheets.push({key:'sheet',source:png,output,cell,views,rows:rows??Array.from({length:n},(_,r)=>String(r+1)),...(anchor?{anchor}:{}),...(fps!==undefined?{fps}:{})});
     return {kind};
   }

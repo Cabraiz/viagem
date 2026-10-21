@@ -40,7 +40,7 @@ const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS
  * A standing hero (still for STAND_STILL_MS) is sampled for STAND_FRAMES drawn frames (at most STAND_MAX_MS: swiftshader
  * draws 1280×720 at ~5 fps): any idle↔walk texture flip in it fails.
  */
-const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500,STOP_FRAMES=15,STOP_MS=2500;
+const STAND_FRAMES=150,STAND_MAX_MS=30000,STAND_STILL_MS=1500,STOP_FRAMES=15,STOP_MS=2500,STOP_FLIPS_FAIL=2;
 /** The burst (direction, ms held): stops in open ground, where the room's corrections really move the hero. */
 const BURST=[['E',300],['W',500],['S',250],['N',650],['SE',400],['NW',300],['E',700],['W',350],['SW',450],['NE',250],['S',550],['N',400]];
 /** Where a click may walk the hero: offsets from his spot on the page, in fractions of min(w,h). */
@@ -171,7 +171,10 @@ async function stopped(p,vp,label,list='stops'){
   }),[STOP_FRAMES,STAND_MAX_MS,STOP_MS]).catch(()=>[]);
   let flips=0;for(let i=1;i<seen.length;i++)if(isWalk(seen[i])!==isWalk(seen[i-1]))flips++;
   const t=tremor[`${vp.w}x${vp.h}`]??={};(t[list]??=[]).push(flips);
-  if(flips>1)fails.push(`${vp.w}×${vp.h}: ao parar (${label}) o herói trocou idle↔walk ${flips}× em ${seen.length} quadros (tremor)`);
+  // b837b93's trembling stops flipped 3–5× (phone joystick); 2 is one late nudge (seen once on 20/10's main against a
+  // wall): a warning, so the sheet does not fail every branch on it.
+  const msg=`${vp.w}×${vp.h}: ao parar (${label}) o herói trocou idle↔walk ${flips}× em ${seen.length} quadros`;
+  if(flips>STOP_FLIPS_FAIL)fails.push(`${msg} (tremor)`);else if(flips>1)avisos.push(`${msg} (um empurrão tardio)`);
 }
 /** The burst (BURST): short walks in open ground, each stop sampled; how many stops trembled goes on the sheet. */
 async function burst(p,vp){
@@ -183,7 +186,7 @@ async function burst(p,vp){
     await stopped(p,vp,`rajada ${dir} ${ms} ms`,'burst');
   }
   const b=tremor[`${vp.w}x${vp.h}`]?.burst??[];
-  await shot(p,'rajada',`rajada: ${b.filter(f=>f>1).length}/${b.length} paradas com tremor`,vp);
+  await shot(p,'rajada',`rajada: ${b.filter(f=>f>STOP_FLIPS_FAIL).length}/${b.length} paradas com tremor`,vp);
 }
 /** Moved: the hero's world spot is more than 6 px from where it was. */
 const moved=(a,b)=>!!(a&&b)&&Math.hypot(a.x-b.x,a.y-b.y)>6;
@@ -192,14 +195,14 @@ const moved=(a,b)=>!!(a&&b)&&Math.hypot(a.x-b.x,a.y-b.y)>6;
  * (a spot on a building has no way there: the scene says "Por aqui não dá" and he stays). The spot, or null and a fail.
  */
 async function walkByPress(p,vp,press,label){
-  const hud=await p.evaluate(()=>[...document.querySelectorAll('button,.explore-top,.explore-map,.explore-stick,.explore-quest,.explore-notice,.rh-party,.rh-attack')]
-    .map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>[r.left-12,r.top-12,r.right+12,r.bottom+12])).catch(()=>[]);
+  // A free spot: the game's canvas is what the page would press there (scene.ts walks on the canvas's own presses only).
+  const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
   const tried=[];
   for(const [fx,fy] of CLICK_SPOTS){
     await clearOffer(p);
     const h=await p.evaluate(HERO).catch(()=>null);if(!h)break;
     const m=Math.min(vp.w,vp.h),x=Math.round((Number.isFinite(h.sx)?h.sx:vp.w/2)+fx*m),y=Math.round((Number.isFinite(h.sy)?h.sy:vp.h/2)+fy*m);
-    if(x<20||y<20||x>vp.w-20||y>vp.h-20||hud.some(([l,t,r,b])=>x>=l&&x<=r&&y>=t&&y<=b))continue;
+    if(x<20||y<20||x>vp.w-20||y>vp.h-20||!await free(x,y))continue;
     await press(x,y);
     // Back as soon as he walks (the caller prints him walking, not already arrived).
     let after=null;

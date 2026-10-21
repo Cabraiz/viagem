@@ -90,6 +90,18 @@ test('rapid turns decode at most two atlases in parallel and skip obsolete queue
   assert.equal(disposed.length,2);assert.equal(cache.stats().ready,1);cache.release(owner);cache.clearUnused();
 });
 
+test('the same clip asked every frame (Q6 fast path) still starts once a decode slot frees and binds once',async()=>{
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,loaded:string[]=[],finish=new Map<string,()=>void>();
+  const cache=new Movement128Textures(plan=>new Promise(resolve=>{loaded.push(plan.key);finish.set(plan.key,()=>resolve({dispose:()=>{}}));}));
+  const owners=[{},{},{}],plans=owners.map((_,i)=>({...first,key:'slot:'+i}));
+  for(let frame=0;frame<5;frame++){owners.forEach((o,i)=>cache.request(o,plans[i]));await Promise.resolve();}
+  assert.deepEqual(loaded,['slot:0','slot:1']);assert.equal(cache.stats().queued,1);
+  finish.get('slot:0')!();await flush();assert.deepEqual(loaded,['slot:0','slot:1','slot:2'],'the freed slot pumps the queued clip without a new key');
+  assert.equal(cache.request(owners[0],plans[0]),true);cache.bind(owners[0],plans[0].key);cache.bind(owners[0],plans[0].key);
+  assert.equal(cache.stats().owners,1);cache.release(owners[0]);assert.equal(cache.stats().owners,0);
+  assert.equal(cache.request(owners[0],plans[0]),true,'after a release the owner asks again through the full path');
+});
+
 test('both missing manifest IDs and a catalog-free hero start from preloaded native idle8 without any legacy texture',async()=>{
   const previous=Object.getOwnPropertyDescriptor(globalThis,'Image'),requests:string[]=[];
   class FakeImage {src='';decoding='';naturalWidth=1536;naturalHeight=768;get width(){return this.naturalWidth;}get height(){return this.naturalHeight;}async decode(){requests.push(this.src);}}

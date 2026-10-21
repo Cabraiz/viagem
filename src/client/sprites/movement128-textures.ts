@@ -25,16 +25,22 @@ export class Movement128Textures<T extends Owner=Owner> {
   }
   request(owner:T,plan:Movement128Plan):boolean{
     if(!this.tracked.has(owner)){this.tracked.add(owner);owner.once?.('destroy',()=>this.release(owner));}
+    const same=this.wanted.get(owner)===plan.key;
     this.wanted.set(owner,plan.key);
     let entry=this.entries.get(plan.key);
     if(!entry){const loaded=this.available?.(plan);entry={plan,state:loaded?'ready':'queued',used:++this.serial,...(loaded?{loaded}:{})};this.entries.set(plan.key,entry);}
-    else entry.used=++this.serial;
+    else{
+      entry.used=++this.serial;
+      // The same clip as last frame (every frame of a walk, Q6): wanted did not change, so neither trim nor pump has
+      // anything new to do (a finished decode pumps on its own). They built two Sets and two arrays per hero per frame.
+      if(same)return entry.state==='ready';
+    }
     this.pump();return entry.state==='ready';
   }
   status(key:string){return this.entries.get(key)?.state;}
   /** Bind only AFTER the sprite has switched: its old texture stays leased until it is no longer displayed. */
   bind(owner:T,key:string){
-    if(this.entries.get(key)?.state!=='ready')return;
+    if(this.entries.get(key)?.state!=='ready'||this.leases.get(owner)===key)return;
     this.leases.set(owner,key);this.trim();
   }
   /** Legacy is temporarily displayed while this owner's requested detailed page is still decoding. */

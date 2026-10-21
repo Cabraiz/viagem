@@ -19,7 +19,7 @@ import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
 import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
-import {BASE_ART,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
+import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
@@ -27,6 +27,7 @@ import {LIT_SHADOW,lightEnabled} from './light.ts';
 import {objectiveOf} from './chaveiro/view.ts';
 import {TriBand} from './city/tri-band.ts';
 import {INTERATIVO_COR} from '../hud/tralha/model.ts';
+import {towerArtScale} from './towers/tower-rules.ts';
 
 const LIGHT=lightEnabled();
 
@@ -57,7 +58,9 @@ export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
    * framing.ts CITY_VIEW_SCALE in the city, so they keep their size next to the heroes under the city zoom. The camp ring
    * (world units) and the CSS-px nodes, bars and pops need nothing. Default 1.
    */
-  actorScale?:()=>number}
+  actorScale?:()=>number;
+  /** The map's cell (u) for the scenery-scaled pieces (base-art BASE_ART_SCALED, towerArtScale); default ART_CELL. */
+  cell?:()=>number|undefined}
 
 export class StonewardsRenderer {
   /** Economy mode (scene.setEconomy): drops the towers' cast shadows (lighting card). */
@@ -173,11 +176,17 @@ export class StonewardsRenderer {
    * The imported art of `key` (piece `id` in `state`, camera column `view`), shown and returned; undefined (and its
    * image hidden) when the piece, the state or the texture is missing. The image is created only once the art exists.
    */
+  /** World px per art px of the city scenery (towerArtScale) under this projection and map cell. */
+  private artPx(){
+    const pr=this.options.projector,a=pr.project(0,0,{x:0,y:0}),b=pr.project(1,0,{x:0,y:0}),c=pr.project(0,1,{x:0,y:0});
+    const cell=this.options.cell?.();
+    return towerArtScale(Math.max(1,Math.abs(b.x-a.x)+Math.abs(c.x-a.x)),cell&&cell>0?cell:undefined);
+  }
   private art(key:string,id:string,state:string|undefined,view:number,u:number,frame=0){
     let img=this.images.get(key);
     if(!state||!baseFile(id)){img?.setVisible(false);return undefined;}
     if(!img){img=this.scene.add.image(0,0,'__DEFAULT').setVisible(false);this.images.set(key,img);}
-    if(!applyBaseArt(img,id,state,view,u,frame)){img.setVisible(false);return undefined;}
+    if(!applyBaseArt(img,id,state,view,u,frame,BASE_ART_SCALED.has(id)?this.artPx():undefined)){img.setVisible(false);return undefined;}
     return img.setVisible(true);
   }
 

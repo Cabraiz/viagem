@@ -1,7 +1,10 @@
 // The heroes' own art on the stadium menu (NEW-20261021-ORQ-menu-arte-viciado): the approved letreiro (name + plaque in
 // one picture) and the hero drawn in place over the 1920x1080 stadium, as light WebPs under public/art/menu/.
-//   - letreiro: the transparent margin trimmed, at the original's own size (1423 px wide) and q95 (menu-fundo-sangria:
-//     the 1000 px q82 copy looked pixelated; the PC shows it at most min(33.2vw, 56.4vh), 1218 px on a 4K screen);
+//   - letreiro: the transparent margin trimmed, LETREIRO_WIDTH wide (never upscaled) and q95. The PC shows it at most
+//     min(33.2vw, 56.4vh), 1218 px on a 4K screen; 2× that holds a 200 % zoom. The first one was cut out of the 1080p
+//     screen (~900 px) and enlarged: pixelated. NEW-20261021-ORQ-letreiro-viciado-alta redrew the sign alone (Codex on
+//     flat green, ~1450 px native), doubled it with Real-ESRGAN (realesrgan-x4plus-anime, 4× then halved) and keyed it
+//     at that size (no green halo): 2897 px;
 //   - heroi: only the hero's box of the 1920x1080 picture (src/client/ui/stadium.ts RECORTES keeps the same box, so the
 //     page puts it back where it was), full size and a 2/3 copy for windows under 1440 px;
 //   - botao: the confirm button's pill, star and burst (E7), half size;
@@ -22,12 +25,14 @@ const evidence=flag>0?process.argv[flag+1]:'D:/Gits/viagem-board/evidence/NEW-20
 const soFlag=process.argv.indexOf('--so'),so=soFlag>0?process.argv[soFlag+1]:undefined,part=(name)=>!so||so===name;
 const HEROES=[
   // box = the hero's opaque pixels in the 1920x1080 file (sharp trim), the same numbers as RECORTES in stadium.ts.
-  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',box:{left:955,top:21,width:788,height:1053}},
+  {id:'viciado-em-bet',letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-viciado-alta/letreiro-2-anime-recorte.png',heroi:'viciado-1080p-no-lugar.png',box:{left:955,top:21,width:788,height:1053}},
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',heroi:'clt-cansado-1080p-no-lugar.png',
     box:{left:793,top:74,width:633,height:863},webp:{quality:92,alphaQuality:100,effort:6},
     fundo:'fundo-clt-2560.png'},
 ];
 const HERO_WEBP={quality:80,alphaQuality:90,effort:6};
+/** The letreiro's width: 2× the most the PC shows (1218 px on 4K). */
+const LETREIRO_WIDTH=2436;
 const out=(dir,file)=>{mkdirSync(path.join(root,'public/art/menu',dir),{recursive:true});return path.join(root,'public/art/menu',dir,file);};
 const report=(file,info)=>console.log(`${path.relative(root,file)}: ${info.width}x${info.height}, ${info.size} bytes`);
 // The confirm button (E7, 21/10, for every hero): a 9-slice pill without text (caps of 259 px of the 298 px height, the
@@ -41,9 +46,9 @@ for(const [file,name] of part('botao')?BUTTON:[]){
 for(const hero of HEROES){
   const dir=hero.evidence??evidence;
   if(part('letreiro')&&hero.letreiro){
-    const sign=await sharp(path.join(dir,hero.letreiro)).trim().toBuffer();
+    const sign=await sharp(path.resolve(dir,hero.letreiro)).trim().toBuffer();
     const signFile=out('letreiro',`${hero.id}.webp`);
-    report(signFile,await sharp(sign).webp({quality:95,alphaQuality:100,smartSubsample:true,effort:6}).toFile(signFile));
+    report(signFile,await sharp(sign).resize({width:LETREIRO_WIDTH,kernel:'lanczos3',withoutEnlargement:true}).webp({quality:95,alphaQuality:100,smartSubsample:true,effort:6}).toFile(signFile));
   }
   if(part('fundo')&&hero.fundo){
     const source=path.join(dir,hero.fundo),{width,height}=await sharp(source).metadata();

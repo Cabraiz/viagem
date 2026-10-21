@@ -9,6 +9,8 @@ import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
+import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
+import { fitName } from './client/ui/nick.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -38,7 +40,7 @@ try {
   if (saved && typeof saved.name === 'string' && typeof saved.classId === 'string') {
     // D-053: a saved hidden class falls back to the first playable one.
     if(isPlayableClass(saved.classId)) selected = getClass(saved.classId) ?? selected;
-    nickname = saved.name.slice(0,20);
+    nickname = fitName(saved.name);
     color = colors.includes(saved.color) ? saved.color : color;
   }
 } catch { /* armazenamento indisponível: criação continua sem persistência */ }
@@ -59,7 +61,7 @@ app.innerHTML = `
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>
       <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
     </nav>
-    <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
+    <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
     <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>ESSE SOU EU!</button>
   </section>
 </main>
@@ -210,11 +212,14 @@ document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
 nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
+// A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
+nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
   nameInput.setCustomValidity('');
-  const saved={version:1,classId:selected.id,name:nickname.trim(),color};
+  nickname=nameInput.value=fitName(nickname);
+  const saved={version:1,classId:selected.id,name:nickname,color};
   let persisted=false;
   try {localStorage.setItem('viagem:hero:v1',JSON.stringify(saved));persisted=true;} catch { /* fallback explícito abaixo */ }
   text('chosen-name',saved.name);setArt('chosen-art',selected);
@@ -235,7 +240,12 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
   finally{releaseDance();coopButton.disabled=false;}
 }
-coopButton.addEventListener('click',()=>void openCoop());
+// Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
+// straight in (below); a new player makes one first and the confirmation's button says which room it opens.
+let invite=inviteCode(location.search);
+if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
+const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
+coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
 document.getElementById('back-to-menu')!.addEventListener('click',()=>dialog.close());
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
@@ -274,6 +284,7 @@ renderSelected();
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
+else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();
 // Modo foto (D-049): one named scene from fake data, drawn once, window.__fotoPronta (src/client/dev/foto.ts).
 if(new URLSearchParams(location.search).has('foto'))void import('./client/dev/foto.ts').then(m=>m.abrirFoto());
 if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./client/sandboxes/sandbox-horde.ts').then(m=>m.openHordeSandbox());

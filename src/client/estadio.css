@@ -1,0 +1,135 @@
+/* menu-estadio (the user, 21/10): the menu is one screen, the approved stadium (scripts/estadio-fundo.mjs) behind it.
+   PC and landscape phones: the whole picture, the hero big on the bar at 70% of the width, the choice on the left like
+   the reference (evidence/NEW-20261021-ORQ-tela-estadio-fundo/escolhida-completa.png). Phone held upright: the tall
+   crop on top, the hero in the middle on the bar, the title over the sky and the choice under the bar.
+   main.ts placeOnBar() writes --hero-x / --bar-y (px in the stage) where the bar's top is; the dancer stands there. */
+html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
+.world.estadio {
+  position: relative; max-width: none; margin: 0; padding: 0; min-height: 0;
+  height: 100vh; height: 100dvh; overflow: hidden;
+  background: linear-gradient(#4b3253, #2a1c46 60%);
+}
+.estadio-palco {
+  position: absolute; inset: 0; overflow: hidden;
+  background: url('/art/ui-extra/estadio-1280.webp') 50% 100% / cover no-repeat;
+}
+@media (min-width: 1100px) {
+  .estadio-palco { background-image: url('/art/ui-extra/estadio-1920.webp'); }
+}
+
+/* The hero. --dh is the dance canvas's height: its soles are at .754 of it, the highest head of any frame at .039, so the
+   figure is .715 x --dh tall; it reaches from the bar up to a small margin under the top. */
+.estadio-heroi { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.estadio-heroi > * { --bar: var(--bar-y, 88%); --dh: calc((var(--bar) - 4vh) / .715); }
+.estadio-heroi .menu-dance {
+  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .754);
+  width: calc(var(--dh) * 1.5); height: var(--dh); transform: translateX(-50%);
+  filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--c-breu) 45%, transparent));
+}
+/* The portrait only when the dance fails for good (danca-sem-fallback): feet at ~97% of the square art. */
+.estadio-heroi img {
+  position: absolute; left: var(--hero-x, 70%); top: calc(var(--bar) - var(--dh) * .715 / .97);
+  width: calc(var(--dh) * .715 / .97); height: calc(var(--dh) * .715 / .97); transform: translateX(-50%); object-fit: contain;
+}
+.estadio-heroi.dancing img { visibility: hidden; }
+.estadio-heroi.dance-pending img { visibility: hidden; }
+
+.estadio .menu-config {
+  position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
+  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+  border: 3px solid var(--c-breu); border-radius: var(--r-circulo); background: var(--c-lilas); color: var(--c-papel-claro);
+  box-shadow: var(--s-1);
+}
+
+/* The choice: title, class, row, name, button. Left column on a wide screen. */
+.estadio-escolha {
+  position: absolute; z-index: 5; top: 0; bottom: 0; left: max(3vw, 16px, env(safe-area-inset-left)); width: min(46vw, 640px);
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: clamp(8px, 1.8vh, 18px);
+  padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
+}
+.estadio-titulo {
+  margin: 0; font: 400 clamp(40px, 10.5vh, 120px)/.9 var(--f-cartaz); text-transform: uppercase; letter-spacing: .01em;
+  transform: rotate(-4deg); transform-origin: 0 100%;
+}
+.estadio-titulo span {
+  display: block; color: #fff; -webkit-text-stroke: .16em var(--c-lilas); paint-order: stroke fill;
+  text-shadow: 0 .07em 0 var(--c-breu), 0 .12em .2em color-mix(in srgb, var(--c-breu) 50%, transparent);
+}
+.estadio-titulo span + span { color: var(--c-amarelo); font-size: 1.18em; }
+.estadio-classe {
+  margin: 0; padding: .14em .8em .18em; border: 3px solid var(--c-breu); border-radius: 999px; transform: rotate(-2deg);
+  background: var(--c-amarelo); color: var(--c-lilas); box-shadow: var(--s-1);
+  font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); text-transform: uppercase; max-width: 100%; overflow-wrap: anywhere;
+}
+.estadio-fileira { display: flex; align-items: center; gap: 8px; width: 100%; }
+.estadio .round-button {
+  flex: none; width: 44px; height: 44px; border: 3px solid var(--c-papel-claro); border-radius: var(--r-circulo);
+  background: var(--c-breu); color: var(--c-amarelo); box-shadow: var(--s-1); font: 900 30px/1 var(--f-cartaz); padding: 0 0 3px;
+}
+.estadio .class-list {
+  flex: 1; min-width: 0; display: flex; gap: 8px; padding: 6px 4px 8px; margin: 0;
+  overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; scrollbar-width: none; overscroll-behavior-x: contain;
+}
+.estadio .class-list::-webkit-scrollbar { display: none; }
+.estadio .class-card {
+  flex: none; position: relative; width: clamp(54px, 9vh, 80px); height: auto; aspect-ratio: .82; min-width: 0; min-height: 0;
+  padding: 0; overflow: hidden; scroll-snap-align: center; cursor: pointer;
+  border: 3px solid var(--c-papel-claro); border-radius: var(--r-janela);
+  background: linear-gradient(var(--c-lilas), var(--c-lilas-escuro)); box-shadow: var(--s-1);
+  transition: transform .12s, border-color .12s;
+}
+.estadio .class-card[aria-pressed=true] {
+  border-color: var(--c-amarelo); background: linear-gradient(var(--c-amarelo), var(--c-cone));
+  box-shadow: 0 0 0 3px var(--c-breu), var(--s-1); transform: translateY(-3px);
+}
+.estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
+.estadio #nickname {
+  width: 100%; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: 999px;
+  background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
+}
+.estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
+/* "Esse sou eu!": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
+.estadio .estadio-confirmar {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45em; width: 100%; max-width: 440px;
+  min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: 999px;
+  background: linear-gradient(#FFE36B, var(--c-amarelo) 45%, #FFB21F); color: var(--c-lilas);
+  font: 400 clamp(24px, 4.6vh, 42px)/1 var(--f-cartaz); text-transform: uppercase; white-space: nowrap;
+  box-shadow: inset 0 3px 0 color-mix(in srgb, #fff 60%, transparent), 0 6px 0 var(--c-casca), 0 10px 18px color-mix(in srgb, var(--c-breu) 45%, transparent);
+}
+.estadio .estadio-confirmar > span {
+  padding: 0; color: var(--c-amarelo); font-size: 1.1em; -webkit-text-stroke: .1em var(--c-cone); paint-order: stroke fill;
+}
+.estadio .estadio-confirmar:active { transform: translateY(3px); box-shadow: inset 0 3px 0 color-mix(in srgb, #fff 60%, transparent), 0 3px 0 var(--c-casca); }
+
+/* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .estadio-escolha { gap: 6px; width: min(50vw, 560px); }
+  .estadio-titulo { font-size: clamp(30px, 11vh, 60px); }
+  .estadio-classe { font-size: 18px; border-width: 2px; }
+  .estadio .class-card { width: 48px; }
+  .estadio #nickname { min-height: 40px; }
+  .estadio .estadio-confirmar { min-height: 46px; font-size: 24px; }
+  .estadio .round-button { width: 40px; height: 40px; }
+}
+
+/* Phone held upright (main.ts STADIUM_TALL_QUERY): the tall crop fills the top, as tall as the width allows but always
+   leaving the choice's room under it; the hero in the middle, the title over the sky. */
+@media (orientation: portrait) and (max-width: 820px) {
+  .estadio-palco {
+    inset: 0 0 auto 0; height: min(calc(100vw / .711), calc(100% - 230px));
+    background-image: url('/art/ui-extra/estadio-retrato-768.webp');
+  }
+  .estadio-heroi > * { --dh: calc((var(--bar) - 84px) / .715); }
+  .estadio-escolha {
+    left: 0; right: 0; width: auto; align-items: center; justify-content: flex-start; gap: 10px;
+    padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  .estadio-titulo { font-size: clamp(30px, 10vw, 46px); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
+  .estadio-titulo span { display: inline; }
+  .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
+  .estadio .class-card { width: 58px; }
+  .estadio-fileira { max-width: 520px; }
+}
+
+#enter-island { display: block; width: 100%; margin: 12px auto; }
+#explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

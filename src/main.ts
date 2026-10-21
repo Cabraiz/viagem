@@ -1,12 +1,13 @@
 import './client/style.css';
-import { setupSections } from './client/sections.ts';
-import { filterClasses, getClass, isPlayableClass, playableClasses as classes, roles, type HeroClass } from './rules/index.ts';
+import './client/estadio.css';
+import { getClass, isPlayableClass, playableClasses as classes, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
+import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -30,9 +31,6 @@ if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./
 
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];
 let selected = classes[0];
-let query = '';
-let role = 'Todas';
-let page = 0;
 let color = colors[0];
 let nickname = '';
 try {
@@ -45,40 +43,49 @@ try {
   }
 } catch { /* armazenamento indisponível: criação continua sem persistência */ }
 
+// menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
+// chosen hero big, dancing on the bar, and on the side the title, the class name, the row of heroes between ‹ › and
+// "Esse sou eu!". Title, class and button are HTML over the picture, so the text can be translated and changed.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
-<main class="world criacao" data-build="viagem-island-v1">
-  <nav class="section-nav" aria-label="Criação">
-    <a class="wordmark" href="#personagem" aria-label="viagem, início">viagem</a>
-    <div class="section-tabs" role="tablist" aria-label="Seções da criação"><button type="button" role="tab" id="tab-personagem" aria-controls="personagem" aria-selected="true">Personagem</button><button type="button" role="tab" id="tab-classes" aria-controls="classes" aria-selected="false" tabindex="-1">Classes</button></div>
-    <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-  </nav>
-  <section id="personagem" class="journey-screen creation-window" role="tabpanel" aria-labelledby="tab-personagem">
-    <h1 id="screen-title" class="sr-only">Crie seu personagem</h1>
-    <div class="window-content">
-      <section class="portrait-panel" aria-label="Personagem selecionado">
-        <h2 id="class-name"></h2>
-        <div id="portrait" class="portrait dance-pending" role="img"></div>
-        <nav class="portrait-navigation" aria-label="Trocar personagem"><button id="previous" class="round-button" aria-label="Classe anterior">‹</button><button id="next" class="round-button" aria-label="Próxima classe">›</button></nav>
-      </section>
-      <div class="character-sheet">
-        <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
-        <div class="selection-footer"><button id="confirm" class="primary-button">Esse sou eu!</button></div>
-      </div>
-    </div>
-  </section>
-  <section id="classes" class="journey-screen roster" role="tabpanel" aria-labelledby="tab-classes" hidden>
-    <div class="roster-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Encontre sua classe…" aria-label="Buscar classe" /></label><div class="role-filters" aria-label="Filtrar por especialidade">${['Todas',...roles].map(value=>`<button class="filter" data-role="${value}" aria-pressed="${value==='Todas'}">${suit(value)}${value}</button>`).join('')}</div><span id="results-count" aria-live="polite"></span></div>
-    <div id="class-list" class="class-list"></div>
-    <nav class="roster-pagination" aria-label="Páginas de classes"><button id="page-prev" class="round-button" aria-label="Página anterior">‹</button><span id="page-count"></span><button id="page-next" class="round-button" aria-label="Próxima página">›</button></nav>
+<main class="world criacao estadio" data-build="viagem-island-v1">
+  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
+  <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+  <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
+    <h1 id="screen-title" class="estadio-titulo"><span>Bora pra</span> <span>torcida!</span></h1>
+    <h2 id="class-name" class="estadio-classe"></h2>
+    <nav class="estadio-fileira" aria-label="Trocar personagem">
+      <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
+      <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>
+      <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
+    </nav>
+    <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="20" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>Esse sou eu!</button>
   </section>
 </main>
-<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-classes" class="link-button">Voltar às classes</button></dialog>
+<dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
 <div class="sr-only" id="announcement" aria-live="polite"></div>`;
 
 // The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
 const menuConfig=document.querySelector<HTMLButtonElement>('.menu-config')!;
 menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(menuConfig)).catch(e=>console.error('settings failed to load',e));});
+
+// The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
+// point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
+const stage=document.querySelector<HTMLElement>('.estadio-palco')!;
+const tallStadium=matchMedia(STADIUM_TALL_QUERY);
+function placeHero() {
+  const box={w:stage.clientWidth,h:stage.clientHeight},tall=tallStadium.matches;
+  const spot=placeOnBar(box,tall?STADIUM.tall:STADIUM.wide,box.w*(tall?.5:.7));
+  if(!spot) return;
+  const x=`${Math.round(spot.x)}px`,y=`${Math.round(spot.y)}px`;
+  // Only on a real change: a custom property written on every resize tick restyles the stage for nothing.
+  if(stage.style.getPropertyValue('--hero-x')!==x) stage.style.setProperty('--hero-x',x);
+  if(stage.style.getPropertyValue('--bar-y')!==y) stage.style.setProperty('--bar-y',y);
+}
+new ResizeObserver(placeHero).observe(stage);
+tallStadium.addEventListener('change',placeHero);
+placeHero();
 
 function text(id: string,value: string) { document.getElementById(id)!.textContent=value; }
 function artStyle(hero: HeroClass, detailed=false) {
@@ -86,7 +93,7 @@ function artStyle(hero: HeroClass, detailed=false) {
 }
 // BUG-menu-travando: the big portrait is an <img> with srcset (768/1024 for the real DPR), decoded off-screen before it
 // swaps in, so a class change never waits on a decode inside a frame. Neighbours are warmed so the next tap is instant.
-const portraitSizes='(orientation: landscape) 34vw, calc(100vw - 48px)';
+const portraitSizes='(orientation: landscape) 60vh, 70vw';
 const warmed=new Map<string,HTMLImageElement>();
 function portraitImage(hero: HeroClass, first=false) {
   let img=warmed.get(hero.id);
@@ -117,15 +124,16 @@ function warmNeighbours(hero: HeroClass) {
     portraitImage(selected);
   });
 }
-// Catalog thumbs live in the Classes tab: they load when it shows them (hidden panels never intersect).
+// The row's thumbs load when they scroll into the row (the row is their root), plus a margin on each side.
+const rowList=document.getElementById('class-list')!;
 const lazyArt=new IntersectionObserver(entries=>{
   for(const entry of entries) if(entry.isIntersecting) { const img=entry.target as HTMLImageElement; img.dataset.seen='1'; if(img.dataset.src) img.src=img.dataset.src; lazyArt.unobserve(img); }
-},{rootMargin:'300px 0px'});
+},{root:rowList,rootMargin:'0px 160px'});
 function lazySrc(img: HTMLImageElement, url: string) {
   if(img.dataset.seen) { img.src=url; return; }
   img.dataset.src=url; lazyArt.observe(img);
 }
-// After the first screen is up, the page of thumbs already rendered comes in idle time, so "Classes" opens filled.
+// After the first screen is up, the rest of the row comes in idle time, so scrolling it never shows empty frames.
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
@@ -145,7 +153,7 @@ function showPortrait(hero: HeroClass, interactive: boolean) {
   const failed=()=>{ forget(img); if(token===portraitToken) frame.removeAttribute('aria-busy'); };
   if(!current) { img.addEventListener('error',()=>{ forget(img); placed=false; showThumb(); },{once:true}); place(); return; }
   img.decode().then(place,failed);
-  // Not on screen yet: the new class's thumb (17 KB, the catalog card uses the same file) holds the frame right away,
+  // Not on screen yet: the new class's thumb (17 KB, the row uses the same file) holds the frame right away,
   // so the name and the art never disagree; the full art replaces it once decoded.
   if(!(img.complete&&img.naturalWidth)) showThumb();
   function showThumb() {
@@ -163,117 +171,44 @@ function setArt(id: string,hero: HeroClass) {
     element.style.cssText=shown?.currentSrc.includes(`/${hero.id}`)?`background-image:url('${shown.currentSrc}')`:artStyle(hero,true);
   }
 }
+// The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
+// chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}"><img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" /></button>`).join('');
+rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
+function showInRow(smooth: boolean) {
+  const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
+  if(!card||!rowList.clientWidth) return;
+  const left=card.offsetLeft-(rowList.clientWidth-card.offsetWidth)/2;
+  rowList.scrollTo({left:Math.max(0,left),behavior:smooth&&!matchMedia('(prefers-reduced-motion: reduce)').matches?'smooth':'auto'});
+}
+new ResizeObserver(()=>showInRow(false)).observe(rowList);
 function renderSelected(announce=false) {
-  const index=classes.indexOf(selected);
   text('class-name',selected.name);
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
-  document.querySelectorAll<HTMLButtonElement>('[data-hero]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.hero===selected.id)));
+  rowList.querySelectorAll<HTMLButtonElement>('[data-hero]').forEach(button=>{const on=String(button.dataset.hero===selected.id);if(button.getAttribute('aria-pressed')!==on)button.setAttribute('aria-pressed',on);});
+  showInRow(announce);
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}`);
 }
-// The catalog never scrolls (criacao-tela-cheia): a page holds as many cards as the grid's box fits, so a phone gets
-// fewer per page and the arrows (or a swipe) turn pages. Hidden (other tab) keeps the last measured size.
-const CARD_MIN_W=92, CARD_MIN_H=112, CARD_GAP=8;
-// Before the catalog was ever shown (hidden tab), guess from the viewport so a small phone does not fetch 12 thumbs.
-let lastPageSize=Math.max(1,Math.floor((innerWidth-24+CARD_GAP)/(CARD_MIN_W+CARD_GAP))*Math.floor((innerHeight-200+CARD_GAP)/(CARD_MIN_H+CARD_GAP)));
-function rosterPageSize() {
-  const list=document.getElementById('class-list');
-  if(!list||!list.clientWidth||!list.clientHeight) return lastPageSize;
-  const cols=Math.max(1,Math.floor((list.clientWidth+CARD_GAP)/(CARD_MIN_W+CARD_GAP)));
-  const rows=Math.max(1,Math.floor((list.clientHeight+CARD_GAP)/(CARD_MIN_H+CARD_GAP)));
-  list.style.setProperty('--cols',String(cols)); list.style.setProperty('--rows',String(rows));
-  return lastPageSize=cols*rows;
-}
-// Card names stay on ONE line: a name that does not fit shrinks 0.5 px at a time down to NAME_MIN_PX (the CSS
-// ellipsis covers anything still too long at the floor). The text is measured with a Range, in sub-pixels:
-// scrollWidth rounds, so a name 0.4 px too wide would read as fitting and still show the ellipsis.
-const NAME_MIN_PX=8;
-function fitCardNames(container: HTMLElement) {
-  const range=document.createRange();
-  container.querySelectorAll<HTMLElement>('.card-label strong').forEach(name=>{
-    name.style.fontSize='';
-    let size=parseFloat(getComputedStyle(name).fontSize);
-    range.selectNodeContents(name);
-    const tooWide=()=>range.getBoundingClientRect().width>name.getBoundingClientRect().width;
-    while(tooWide()&&size>NAME_MIN_PX){ size=Math.max(NAME_MIN_PX,size-.5); name.style.fontSize=`${size}px`; }
-  });
-}
-let renderedPageSize=0;
-function renderRoster() {
-  const results=filterClasses(query,role);
-  const pageSize=renderedPageSize=rosterPageSize();
-  const pages=Math.max(1,Math.ceil(results.length/pageSize));
-  page=Math.max(0,Math.min(page,pages-1));
-  const container=document.getElementById('class-list')!;
-  container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazyArt.unobserve(img));
-  container.innerHTML=results.length?results.slice(page*pageSize,page*pageSize+pageSize).map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}"><img class="card-portrait class-art" draggable="false" data-src="/art/portraits/${hero.id}-thumb.webp" alt="" width="256" height="256" decoding="async" aria-hidden="true" /><span class="card-label"><strong>${hero.name}</strong></span><span class="card-suit">${suit(hero.role,{label:true})}</span><span class="selected-mark" aria-hidden="true">✓</span></button>`).join(''):'<p class="empty-state">Nenhuma classe por aqui. Tente outro nome ou especialidade.</p>';
-  container.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
-  fitCardNames(container);
-  text('results-count',`${results.length} ${results.length===1?'classe':'classes'}`);
-  text('page-count',`${page+1} / ${pages}`);
-  // One page only: the pager says nothing, so it goes (and gives its row back to the grid).
-  (document.querySelector('.roster-pagination') as HTMLElement).hidden=pages<=1;
-  (document.getElementById('page-prev') as HTMLButtonElement).disabled=page===0;
-  (document.getElementById('page-next') as HTMLButtonElement).disabled=page>=pages-1;
-}
-function pickCard(target: EventTarget|null) {
-  const button=(target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
-  if(!button) return;
+rowList.addEventListener('click',event=>{
+  const button=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
+  if(!button||button.dataset.hero===selected.id) return;
   selected=getClass(button.dataset.hero!)!;
   renderSelected(true);
-  sections.show('personagem');
-}
-document.getElementById('class-list')!.addEventListener('click',event=>pickCard(event.target));
-// The catalog's pressed-state fade only runs when someone can see it: from the carousel, off-screen, it flips silently.
-let catalogVisible=false;
-new IntersectionObserver(entries=>{ catalogVisible=entries[entries.length-1].isIntersecting; }).observe(document.getElementById('class-list')!);
+});
+rowList.addEventListener('dragstart',event=>event.preventDefault());
 function cycle(direction:number) {
   selected=classes[(classes.indexOf(selected)+direction+classes.length)%classes.length];
-  const nextPage=Math.floor(classes.indexOf(selected)/rosterPageSize());
-  // Rebuilding the catalog on every tap re-created its images and re-laid the page: only when the page or filter moves.
-  if(query!==''||role!=='Todas'||nextPage!==page) {
-    query=''; role='Todas'; page=nextPage;
-    (document.getElementById('search') as HTMLInputElement).value='';
-    document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.role==='Todas')));
-    renderRoster();
-  }
-  const list=document.getElementById('class-list')!;
-  if(!catalogVisible) { list.dataset.quiet=''; requestAnimationFrame(()=>requestAnimationFrame(()=>delete list.dataset.quiet)); }
   renderSelected(true);
 }
-document.querySelector('.portrait-navigation')!.addEventListener('pointerdown',()=>warmNeighbours(selected),{once:true,passive:true});
+document.querySelector('.estadio-fileira')!.addEventListener('pointerdown',()=>warmNeighbours(selected),{once:true,passive:true});
 document.getElementById('previous')!.addEventListener('click',()=>cycle(-1));
 document.getElementById('next')!.addEventListener('click',()=>cycle(1));
 const nameInput=document.getElementById('nickname') as HTMLInputElement;
 nameInput.value=nickname;
 nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
-document.getElementById('search')!.addEventListener('input',event=>{query=(event.target as HTMLInputElement).value;page=0;renderRoster();});
-document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(button=>button.addEventListener('click',()=>{
-  role=button.dataset.role!;page=0;
-  document.querySelectorAll<HTMLButtonElement>('[data-role]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-  renderRoster();
-}));
-document.getElementById('page-prev')!.addEventListener('click',()=>{page--;renderRoster();});
-document.getElementById('page-next')!.addEventListener('click',()=>{page++;renderRoster();});
-// Swipe on the catalog turns the page; a real swipe swallows the click so it never also picks a class.
-// A touch tap picks on pointerup: right after a swipe, Chrome on Android may not synthesize the click for the next
-// tap, and a lost tap reads as a dead card. The click that may still follow is swallowed, so it never picks twice.
-{
-  const list=document.getElementById('class-list')!;
-  let startX=0,startY=0,swallow=false;
-  list.addEventListener('pointerdown',event=>{startX=event.clientX;startY=event.clientY;swallow=false;},{passive:true});
-  list.addEventListener('dragstart',event=>event.preventDefault());
-  list.addEventListener('pointerup',event=>{
-    const dx=event.clientX-startX,dy=event.clientY-startY;
-    if(event.pointerType!=='mouse'&&Math.abs(dx)<10&&Math.abs(dy)<10){swallow=true;pickCard(event.target);return;}
-    if(Math.abs(dx)<48||Math.abs(dx)<Math.abs(dy)*1.5)return;
-    const next=dx<0?document.getElementById('page-next') as HTMLButtonElement:document.getElementById('page-prev') as HTMLButtonElement;
-    swallow=true; if(!next.disabled)next.click();
-  },{passive:true});
-  list.addEventListener('click',event=>{if(swallow){event.stopImmediatePropagation();event.preventDefault();swallow=false;}},{capture:true});
-}
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
@@ -300,7 +235,7 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   finally{releaseDance();coopButton.disabled=false;}
 }
 coopButton.addEventListener('click',()=>void openCoop());
-document.getElementById('back-to-classes')!.addEventListener('click',()=>{dialog.close();sections.show('classes');});
+document.getElementById('back-to-menu')!.addEventListener('click',()=>dialog.close());
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
 const island=islandFlag(location.search);
@@ -333,14 +268,7 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
   finally {releaseDance();button.disabled=false;button.textContent=label;}
 });
-// Same page size (e.g. the tab just became visible after rendering hidden): only the names need refitting.
-const sections=setupSections(()=>{const size=rosterPageSize();if(size!==renderedPageSize){page=Math.floor(page*renderedPageSize/size);renderRoster();}else fitCardNames(document.getElementById('class-list')!);});
-renderRoster();renderSelected();
-// The display font arrives after the first render and is wider than the fallback: fit the names again.
-// A face may start loading only when the names first use it, after `ready` already settled: refit on every load too.
-const refitNames=()=>fitCardNames(document.getElementById('class-list')!);
-document.fonts?.ready.then(refitNames);
-document.fonts?.addEventListener('loadingdone',refitNames);
+renderSelected();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());

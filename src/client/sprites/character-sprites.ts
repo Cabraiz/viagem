@@ -11,6 +11,7 @@ import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivo
 import {detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
+import {watchOrphans} from './texture-orphans.ts';
 
 export type {FigureBox};
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
@@ -244,6 +245,7 @@ export class CharacterSprites {
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number}){
+    watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
     if(!state){state={motion:new SpriteMotion(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y};this.states.set(sprite,state);}
@@ -252,7 +254,8 @@ export class CharacterSprites {
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;}
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
-    const detailed=alive&&movement128Visible(sprite,this.scene)?movementPlan(id,motion,direction):undefined;
+    const seen=movement128Visible(sprite,this.scene);
+    const detailed=alive&&seen?movementPlan(id,motion,direction):undefined;
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){
@@ -278,6 +281,9 @@ export class CharacterSprites {
       }
     }
     if(!this.scene.textures.exists(root.key)||(root.cardinals&&!this.scene.textures.exists(root.cardinals.key))){
+      // Off camera the legacy sheets (~0.8–1 MB a class) are not worth asking for (card heroi-fora-da-tela-sem-folha-
+      // legada: −2.8 s on a cold opening with 2 bots): hold the last pose and its lease; the clip comes back on camera.
+      if(!seen&&sprite.visible!==false&&sprite.active!==false&&sprite.alpha!==0){sprite.anims.stop();return;}
       this.queueLegacy(id);if(!this.scene.load.isLoading()&&this.scene.load.list.size)this.scene.load.start();
       if(!this.scene.textures.exists(root.key))return;
     }

@@ -9,6 +9,7 @@
  *
  * inventorySlots, swapCandidate, inventoryRefusalText and inventoryKeyOf are pure (tests); createInventory paints .rh-inv.
  */
+import {putHidden} from './dom-put.ts';
 import type {PlayerRunView,PickupView,RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';
 import {itemDisplay} from './items.ts';
@@ -152,13 +153,13 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
   const send=(command:InventoryCommand)=>{if(!options.onCommand(command))say(inventoryRefusalText('player'));};
   const paintSwap=()=>{
     candidate=live?swapCandidate(slots,pickups,hero):undefined;
-    swap.hidden=!candidate;
+    putHidden(swap,!candidate);
     if(!candidate)return;
     const name=itemDisplay(candidate.resource!).name,key=`${candidate.id}`;
     if(swap.dataset.pickup!==key){swap.dataset.pickup=key;swap.innerHTML=`${sticker(itemDisplay(candidate.resource!).icon,{size:24})}<span>Trocar</span>`;swap.setAttribute('aria-label',`Trocar pela ${name}`);}
   };
   const paint=()=>{
-    el.hidden=!live||!slots;
+    putHidden(el,!live||!slots);
     for(let i=0;i<INVENTORY_SLOTS;i++){
       const b=buttons[i],s=slots?.[i];
       const key=s?`${s.id}|${s.rarity??''}|${s.stack??''}|${s.hand}`:'';

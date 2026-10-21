@@ -165,8 +165,16 @@ export interface FreePieceDef {
 }
 export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.freeze({
   muro:Object.freeze({id:'muro',name:'Muro',footprint:Object.freeze([1,1]) as readonly [number,number],price:4,hp:250,limit:40,buildSeconds:1,blocks:true,drag:1}),
-  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:10,hp:400,limit:8,buildSeconds:2,blocks:false,drag:.4}),
+  // NEW-20261021-ORQ-barricada-construir (user, 21/10): the muralha de tralha, built square by square; a wall to the
+  // enemies (they walk around it and bash it only when it shuts them off the car). R$ 5 a square: the old 2×1's price per cell.
+  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([1,1]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
 });
+/**
+ * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
+ * car's body; the car within UNO_ALERT_CELLS of a standing barricada sounds its alert, and a barricada still that close
+ * UNO_ALERT_SECONDS later is destroyed (the team moves the car, or loses the square).
+ */
+export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{

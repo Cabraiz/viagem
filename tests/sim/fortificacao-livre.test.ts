@@ -1,12 +1,12 @@
 /**
  * D-052, fortification anywhere (sim-fortificação, slice 2 of NEW-20261016-ORQ-carro-e-fortificacao-livre), on the REAL
  * Cidade Nevada: the free build of towers/system.ts buildFree and towers/free-build.ts.
- *  1. Rules: the pieces' numbers and footprints (rot turns the barricade).
+ *  1. Rules: the pieces' numbers and footprints (both 1×1 since barricada-construir).
  *  2. A root on a cell: any phase, its cell and centre, the ficha; the refusals in order (fora, carro, ocupado (a crate too), limite,
  *     away, balance/grana, defense, duplicate).
  *  3. Muro: a blocker to the enemies, a blocking siege target, paid in Grana, queued per hero, gone at 0 hp.
  *  4. Tranca: a ring of muros around the car is never closed (one of them is refused 'tranca').
- *  5. Barricade: the drag on an enemy standing on it; rot 1.
+ *  5. Barricade (barricada-construir): a 1×1 blocker, a blocking siege target, kept UNO_BUILD_CELLS off the car.
  *  6. Evolution: a free root grows centred; a larger tier needs free ground ('size'); the Gustavão is out ('max').
  *  7. The site bridge (bots, today's HUD): a site id builds the root on the site's cell; the rail is refused.
  *  8. A rematch reset drops the muros' blockers; a checkpoint's state raises them again.
@@ -27,7 +27,7 @@ import {cityTerrainFrom,type CityTerrain} from '../../src/maps/city/terrain.ts';
 import {buildPlanFor,type CellRect} from '../../src/maps/index.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {CAR_BUILD_GAP,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
+import {CAR_BUILD_GAP,UNO_BUILD_CELLS,DEFENSES,DEFENSE_LIMIT,FREE_PIECE_DEFS,ROOT_DEFENSE,pieceCells} from '../../src/rules/index.ts';
 import {FREE_CELL,MURO_BLOCK_R,gridSize,onGround,pieceDrag,type FreeBuildHooks} from '../../src/sim/towers/free-build.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
@@ -96,8 +96,9 @@ test('rules: the muro and the barricada (D-052 numbers), footprints and rot', ()
   assert.deepEqual({...FREE_PIECE_DEFS.muro,footprint:[...FREE_PIECE_DEFS.muro.footprint]},
     {id:'muro',name:'Muro',footprint:[1,1],price:4,hp:250,limit:40,buildSeconds:1,blocks:true,drag:1});
   const b=FREE_PIECE_DEFS.barricada;
-  assert.deepEqual([b.price,b.hp,b.limit,b.blocks,b.drag],[10,400,8,false,.4]);
-  assert.deepEqual(pieceCells('barricada'),[2,1]);assert.deepEqual(pieceCells('barricada',1),[1,2]);
+  // NEW-20261021-ORQ-barricada-construir: a square of the muralha de tralha, solid to the enemies.
+  assert.deepEqual([b.price,b.hp,b.limit,b.blocks,b.drag],[5,200,40,true,1]);
+  assert.deepEqual(pieceCells('barricada'),[1,1]);assert.deepEqual(pieceCells('barricada',1),[1,1]);
   assert.deepEqual(pieceCells('muro',1),[1,1]);assert.deepEqual(pieceCells(ROOT_DEFENSE),[1,1]);
   assert.deepEqual(pieceCells('ninho-de-metralhadora'),[3,3]);
 });
@@ -239,25 +240,22 @@ test('tranca: the moto keeps a way to the car (a ring around the moto, far from 
   assert.ok(run({car:()=>({...CAR,radius:CAR_R})}).every(x=>x==='ok'));
 });
 
-test('barricada: 2×1 (rot 1: 1×2); an enemy on it walks at 40 %; a non-blocking siege target', ()=>{
-  const g=rig();
-  let at:{c:number;r:number}|undefined;
-  for(const o of ring(5))if(onGround(city,o,2,1)&&onGround(city,o,1,2)){at=o;break;}
-  assert.ok(at);
-  const lying=order(g,'barricada',at!.c,at!.r);
-  assert.equal(lying.ok,true,JSON.stringify(lying));
+test('barricada (barricada-construir): a 1×1 square, a blocker to the enemies, a blocking siege target; never within UNO_BUILD_CELLS of the car', ()=>{
+  const g=rig(),at=spot(0);
+  const done=order(g,'barricada',at.c,at.r);
+  assert.equal(done.ok,true,JSON.stringify(done));
   const p=g.sys.state.defenses!.pieces![0];
-  assert.deepEqual({x:p.x,y:p.y},{x:(at!.c+1)*FREE_CELL,y:(at!.r+.5)*FREE_CELL});
-  assert.equal(g.terrain.blockers().length,0,'no blocker');
-  assert.equal(pieceDrag(g.sys.state,{x:p.x+.5,y:p.y}),.4);
-  assert.equal(pieceDrag(g.sys.state,{x:p.x,y:p.y+FREE_CELL}),1,'off it');
-  const t=structureTargets(g.sys.state,false).find(x=>x.id===p.id)!;
-  assert.equal(t.blocking,undefined);
-  // rot 1 stands up: the cell under the lying one's right half is taken, the column below it is not.
-  const h=rig(),up=order(h,'barricada',at!.c,at!.r,undefined,1);
-  assert.equal(up.ok,true);
-  const q=h.sys.state.defenses!.pieces![0];
-  assert.equal(q.rot,1);assert.deepEqual({x:q.x,y:q.y},{x:(at!.c+.5)*FREE_CELL,y:(at!.r+1)*FREE_CELL});
+  assert.deepEqual({x:p.x,y:p.y},centre(at.c,at.r));
+  assert.equal(g.terrain.blockers().length,1,'its blocker disc');
+  assert.equal(pieceDrag(g.sys.state,{x:p.x,y:p.y}),1,'no drag: they walk around it');
+  assert.equal(structureTargets(g.sys.state,false).find(x=>x.id===p.id)!.blocking,true);
+  // Too close to the car's body: refused 'carro' (a muro there is fine as before).
+  const near=[2,3,4,5].flatMap(k=>ring(k)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:FREE_CELL,h:FREE_CELL};
+    const gap=Math.hypot(Math.max(r.x-CAR.x,0,CAR.x-(r.x+r.w)),Math.max(r.y-CAR.y,0,CAR.y-(r.y+r.h)));
+    return gap>=CAR_R+CAR_BUILD_GAP&&gap<CAR_R+UNO_BUILD_CELLS*FREE_CELL;})!;
+  assert.ok(near);
+  assert.deepEqual(order(rig(),'barricada',near.c,near.r),{ok:false,reason:'carro'});
+  assert.equal(order(rig(),'muro',near.c,near.r).ok,true);
   assert.equal(CAR_BUILD_GAP,1.5);
 });
 

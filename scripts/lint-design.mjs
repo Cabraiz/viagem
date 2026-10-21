@@ -4,7 +4,7 @@
  * cor fora dos tokens (hex, rgb()/hsl()/…, nome de cor), font-family que não seja var(--f-*), border-radius fora de
  * var(--r-*)/50%/0, sombra com blur > 0 (em box-shadow, text-shadow, drop-shadow ou qualquer variável que guarde
  * sombra), text-transform:uppercase, qualquer letter-spacing positivo e texto menor que o mínimo (13 px na partida,
- * 10 px fora), contando px, rem e calc(). Entende CSS aninhado.
+ * 10 px fora), contando px, rem e calc(), e animação `infinite` (NEW-20261009-DSG-movimento). Entende CSS aninhado.
  * Em src/**\/*.ts e multiplayer/*.ts (sandboxes inclusive), emoji e ✦ em código (comentários não contam) têm de bater com o baseline de
  * scripts/design-lint-baseline.json: subir falha, e descer sem baixar o número também (o débito é dos cards
  * DSG-icones-sistema e DSG-adesivos-itens).
@@ -186,6 +186,7 @@ export function lintCss(file,css){
       const m=value.match(/^(-?[\d.]+)(em|px|rem)?$/);
       if(m&&parseFloat(m[1])>0)add(d,'letter-spacing','letter-spacing positivo (tracking em rótulo é tique de template)');
     }
+    if((prop==='animation'||prop==='animation-iteration-count')&&/(^|[\s,])infinite([\s,]|$)/i.test(bare))add(d,'infinite','animação infinite (roda 1–2 vezes ao aparecer e para; a urgência fica na cor, design §2.5)');
     if(prop==='font-size'||prop==='font'){
       const min=MATCH_CSS.has(file)?MIN_MATCH:MIN_OTHER;
       const px=prop==='font'?shorthandSize(value):sizePx(value);

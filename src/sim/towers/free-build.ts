@@ -19,9 +19,10 @@
  *   the siege groups bash it like a tower (a non-blocking target).
  * - State: JSON-safe, in TowersState.pieces (created on the first piece); a fallen piece leaves the list.
  */
-import {RADIUS,walkable,CITY_BUILD_CELL,type CellRect,type CityTerrain,type Point,type Rect,type TerrainField} from '../../maps/index.ts';
-import type {FreePiece} from '../../contract/index.ts';
-import {DEFENSES,FREE_PIECE_DEFS,pieceCells,type BuildPiece} from '../../rules/index.ts';
+import {RADIUS,walkable,CITY_BUILD_CELL,type CellRect,type CityTerrain,type FlowGrid,type Point,type Rect,type TerrainField} from '../../maps/index.ts';
+import {ticks,type FreePiece} from '../../contract/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,UNO_ALERT_CELLS,UNO_ALERT_SECONDS,pieceCells,type BuildPiece} from '../../rules/index.ts';
+import type {SimContext} from '../context.ts';
 import {blockingCity} from '../stonewards/barricades.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 
@@ -32,6 +33,8 @@ export interface PieceState extends Point {
   owner:string;hp:number;maxHp:number;
   /** Its obra runs startTick → readyTick (a dragged wall's obras are queued one after the other). */
   startTick:number;readyTick:number;
+  /** A barricada the car came within UNO_ALERT_CELLS of: the tick it falls unless the car leaves (unoAlertStep). */
+  alertUntil?:number;
 }
 /** {t:'build'} on the grid: `piece` with its footprint's top-left cell at (c,r). */
 export interface FreeOrder {piece:BuildPiece;c:number;r:number;rot?:0|1}
@@ -88,6 +91,10 @@ export function onGround(city:CityTerrain,o:{c:number;r:number},w:number,h:numbe
 export const piecesOf=(state:StonewardsState):readonly PieceState[]=>state.defenses?.pieces??[];
 export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind).length;
 
+/** NEW-20261021-ORQ-barricada-construir: the pieces that are walls to the enemies (rules FREE_PIECE_DEFS blocks: muro, barricada). */
+export const blocksEnemies=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].blocks;
+/** The standing blocking pieces (the moto rides around them, the tranca check counts them). */
+export const blockingPieces=(state:StonewardsState)=>piecesOf(state).filter(p=>blocksEnemies(p.kind));
 /** The muro's blocker disc (its cell's centre). */
 const muroDisc=(p:PieceState)=>({x:(p.cell.c+.5)*FREE_CELL,y:(p.cell.r+.5)*FREE_CELL,r:MURO_BLOCK_R});
 /** Flow-grid cells (asset.unitsPerCell, inclusive) a muro's blocker decides, one cell of margin. */
@@ -98,7 +105,7 @@ function muroCells(city:CityTerrain,p:PieceState):CellRect{
 /** Raises (or with `gone` removes) a muro's blocker and reports the flow cells when it changed. */
 export function setMuro(terrain:TerrainField|undefined,p:PieceState,gone:boolean,onTerrainChanged?:(rect:CellRect)=>void){
   const city=blockingCity(terrain);
-  if(!city||p.kind!=='muro')return;
+  if(!city||!blocksEnemies(p.kind))return;
   const before=city.blockerVersion;
   city.setBlocker(p.id,gone?undefined:muroDisc(p));
   if(city.blockerVersion!==before)onTerrainChanged?.(muroCells(city,p));
@@ -130,7 +137,7 @@ export const isPiece=(state:StonewardsState,id:string)=>piecesOf(state).some(p=>
 
 /** Siege targets: a muro blocks (any body pressed against it bashes it), a barricade is a non-blocking target like a tower. */
 export function pieceTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
-  return piecesOf(state).map(p=>p.kind==='muro'?{id:p.id,x:p.x,y:p.y,radius:MURO_BLOCK_R,blocking:true as const}
+  return piecesOf(state).map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:MURO_BLOCK_R,blocking:true as const}
     :{id:p.id,x:p.x,y:p.y,radius:Math.max(...pieceCells(p.kind,p.rot??0))*FREE_CELL/2});
 }
 
@@ -210,8 +217,82 @@ function connected(city:CityTerrain,muros:readonly Point[],car:Point,moto:Point|
  * cut off from a spawn's or the moto's). Without a car (the wall mode) the wall's spot stands in for it.
  */
 export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:number},car:Point,moto:Point|undefined):boolean{
-  const muros=piecesOf(state).filter(p=>p.kind==='muro').map(p=>({x:p.x,y:p.y}));
+  const muros=blockingPieces(state).map(p=>({x:(p.cell.c+.5)*FREE_CELL,y:(p.cell.r+.5)*FREE_CELL}));
   const extra={x:(cell.c+.5)*FREE_CELL,y:(cell.r+.5)*FREE_CELL};
   if(connected(city,[...muros,extra],car,moto))return false;
   return connected(city,muros,car,moto);
+}
+
+// ---------- Barricada construída (NEW-20261021-ORQ-barricada-construir) ----------
+/** Distance (u) from a rect's edge to a point (0 inside). */
+const rectGap=(r:Rect,p:Point)=>Math.hypot(Math.max(r.x-p.x,0,p.x-(r.x+r.w)),Math.max(r.y-p.y,0,p.y-(r.y+r.h)));
+
+/**
+ * The car near a barricada (user, 21/10): the car's body within UNO_ALERT_CELLS cells of a standing barricada sounds its
+ * alert (alertUntil; the view's untilTick, the client glows it red); the car out of that range calls it off; still in
+ * range at alertUntil, the barricada is destroyed (its blocker too; a 'structure' event at hp 0). Returns the ids destroyed this tick.
+ */
+export function unoAlertStep(ctx:SimContext,terrain:TerrainField|undefined,state:StonewardsState,car:{x:number;y:number;radius:number}|undefined,onTerrainChanged?:(rect:CellRect)=>void):string[]{
+  const list=state.defenses?.pieces,gone:string[]=[];
+  if(!list?.length)return gone;
+  const reach=UNO_ALERT_CELLS*FREE_CELL;
+  for(let i=list.length-1;i>=0;i--){
+    const p=list[i];
+    if(p.kind!=='barricada')continue;
+    const near=!!car&&rectGap(pieceRectOf(p),car)<car.radius+reach;
+    if(!near){delete p.alertUntil;continue;}
+    if(p.alertUntil===undefined){p.alertUntil=ctx.tick+ticks(UNO_ALERT_SECONDS);continue;}
+    if(ctx.tick<p.alertUntil)continue;
+    list.splice(i,1);setMuro(terrain,p,true,onTerrainChanged);gone.push(p.id);
+    ctx.emit({type:'structure',id:p.id,hp:0,maxHp:p.maxHp});
+  }
+  return gone;
+}
+
+/**
+ * "Só quebra quando 100 % trancado" (user, 21/10): which enemy-grid cells still reach the target (the car; the wall's
+ * spot without one), 4-connected on the enemies' flow grid (the blocking pieces shut). A body in a reached cell walks
+ * around the barricadas and never bashes them; a body cut off from the target bashes the one it is pressed against.
+ * Rebuilt only when the grid's version or the target's cell changed.
+ */
+export function reachMap(grid:FlowGrid&{readonly version:number}):(e:Point,target:Point)=>boolean{
+  const w=grid.width,h=grid.height,cs=grid.cellSize,ox=grid.originX??0,oy=grid.originY??0;
+  const seen=new Uint8Array(w*h),queue=new Int32Array(w*h);
+  let version=-1,from=-2;
+  const cellOf=(p:Point)=>{const x=Math.floor((p.x-ox)/cs),y=Math.floor((p.y-oy)/cs);return x<0||y<0||x>=w||y>=h?-1:x+y*w;};
+  /** The open cell nearest p within a 5×5 block (a body pressed on a wall has its centre's cell shut), else -1. */
+  const openNear=(p:Point,mark?:Uint8Array)=>{
+    const x=Math.floor((p.x-ox)/cs),y=Math.floor((p.y-oy)/cs);
+    let best=-1,dist=Infinity;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+      const vx=x+dx,vy=y+dy;
+      if(vx<0||vy<0||vx>=w||vy>=h||!grid.walkable(vx,vy))continue;
+      if(mark&&!mark[vx+vy*w])continue;
+      const d=dx*dx+dy*dy;
+      if(d<dist){dist=d;best=vx+vy*w;}
+    }
+    return best;
+  };
+  const flood=(target:Point)=>{
+    seen.fill(0);
+    const start=openNear(target);
+    if(start<0)return;
+    let head=0,tail=0;
+    queue[tail++]=start;seen[start]=1;
+    while(head<tail){
+      const u=queue[head++],ux=u%w,uy=(u-ux)/w;
+      for(const [dx,dy] of STEPS){
+        const vx=ux+dx,vy=uy+dy;
+        if(vx<0||vy<0||vx>=w||vy>=h)continue;
+        const v=vx+vy*w;
+        if(seen[v]||!grid.walkable(vx,vy))continue;
+        seen[v]=1;queue[tail++]=v;
+      }
+    }
+  };
+  return (e,target)=>{
+    const t=cellOf(target);
+    if(grid.version!==version||t!==from){version=grid.version;from=t;flood(target);}
+    return openNear(e,seen)>=0;
+  };
 }

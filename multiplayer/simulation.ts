@@ -1035,7 +1035,11 @@ export function defenseView(d:DefenseState,tick:number):StructureView{
     phase:phaseOf(d,tick),...(turn===undefined?{}:{aim:turn}),...(d.shots===undefined?{}:{shots:d.shots}),
     ...(d.cell?{c:d.cell.c,r:d.cell.r}:{}),...(d.rot?{rot:d.rot}:{})};
 }
-/** D-052: a wall piece as the client sees it (kind 'muro'|'barricada', its cell and rot; phase obra → pronta/danificada). */
+/**
+ * D-052: a wall piece as the client sees it (kind 'muro'|'barricada', its cell and rot; phase obra → pronta/danificada).
+ * NEW-20261021-ORQ-barricada-construir: `untilTick` on a barricada is the car's alert (it falls at that tick unless the car leaves).
+ */
 export function pieceView(p:PieceState,tick:number):StructureView{
-  return {id:p.id,kind:p.kind,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,phase:phaseOf(p,tick),c:p.cell.c,r:p.cell.r,...(p.rot?{rot:p.rot}:{})};
+  return {id:p.id,kind:p.kind,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,phase:phaseOf(p,tick),c:p.cell.c,r:p.cell.r,...(p.rot?{rot:p.rot}:{}),
+    ...(p.alertUntil!==undefined?{untilTick:p.alertUntil}:{})};
 }

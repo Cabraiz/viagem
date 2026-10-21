@@ -1,10 +1,13 @@
 import type { HeroClass } from '../rules/index.ts';
+import {putHidden} from './hud/dom-put.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
 import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
+import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
+import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
@@ -18,7 +21,7 @@ import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
 /** Nicknames shown by the "Sortear" button; the HUD and sheet cap names at 20 characters. */
-export const NICK_MAX=20;
+export const NICK_MAX=NAME_MAX;
 const NICK_HEADS=['Capivara','Pastel','Coxinha','Tiozão','Pombo','Boleto','Chinelo','Molotov','Cachaça','Marmita','Agiota','Pavê','Biscoito','Sacolé'];
 const NICK_TAILS=['Veloz','Turbo','do Grau','Lendário','Sem Wi-Fi','de Feira','Cansado','Fujão','Raiz','Nutella','do Bairro','Atrasado','de Ouro','Brabo'];
 
@@ -55,11 +58,8 @@ export function countdownJoke(seconds:number){
   return 'Bora!';
 }
 
-/**
- * Invite link, same format the island uses (`?room=` prefills the lobby). `extra`: more query (`&dev=1&g=…` when this
- * tab chose "medir a turma" in the playtest, dev/ux-flag.ts inviteQuery).
- */
-export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?room=${encodeURIComponent(code)}${extra}#personagem`;
+/** Invite link and the grouped code (ui/invite.ts, NEW-20261009-UX-lobby-mobile). */
+export {shareLink,formatRoomCode,readRoomCode};
 
 /** `bot`: a room bot; `owner`: the dono da sala (D-025). */
 /** `classId`: the class picked (for the chip's face), undefined until the player's state arrives. */
@@ -143,6 +143,11 @@ export function mapInfoText(seed:number,endless:boolean,map?:MapRef):string{
   if(map?.id==='cidade-nevada')return `Cidade Nevada, versão ${map.version}${map.hash?` (${map.hash.slice(0,8)})`:''}`;
   return endless?`Mapa ${seed}`:`Ilha ${seed}, relevo procedural`;
 }
+/**
+ * The phone's keyboard is up (lobby typing mode, coop.css data-typing): the visible part of the page is short, or much
+ * shorter than the page (Android keeps the layout and shrinks only the visual viewport).
+ */
+export const keyboardUp=(visible:number,page:number)=>visible<=260||visible<page*.75;
 /** Lobby orientation, as coop.css and the HUD zones decide it (zones.ts orientationOf): landscape up to 500 px tall. */
 export const lobbyOrientation=(viewport:{width:number;height:number}):Orientation=>viewport.height<=500?'landscape':'portrait';
 /**
@@ -243,7 +248,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     <div class="coop-wait-actions"><button class="coop-wait-ready" type="button" aria-pressed="false">Tô pronto!</button><button class="coop-wait-bot" type="button" hidden>${icon('robo')}<span>Adicionar bot</span></button></div>
     <p class="coop-wait-count" aria-hidden="true"></p>`;
   const $=<T extends HTMLElement>(s:string)=>panel.querySelector<T>(s)!;
-  $('.coop-wait-code strong').textContent=client.code;
+  $('.coop-wait-code strong').textContent=formatRoomCode(client.code);
   // Read at each tap: the playtest's "Medir a turma" (dev only) may change what the invite carries.
   const link=()=>shareLink(options.origin??location.origin,client.code,inviteQuery(location.search));
   const shareButton=$<HTMLButtonElement>('.coop-wait-share');
@@ -252,11 +257,11 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const label=shareButton.querySelector<HTMLElement>('.coop-wait-share-text')!;
     const say=(text:string)=>{label.textContent=text;shareButton.classList.add('is-saying');setTimeout(()=>{label.textContent='Chamar a turma';shareButton.classList.remove('is-saying');},2500);};
     try{
-      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${client.code}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
+      if(navigator.share){await navigator.share({title:'Viagem',text:`Bora pra sala ${formatRoomCode(client.code)}? O bêbado não espera.`,url:link()});say('Convite enviado!');return;}
       await navigator.clipboard.writeText(link());say('Copiado! Manda no grupo da família.');
     }catch(error){
       if((error as DOMException)?.name==='AbortError')return;
-      say(`Código: ${client.code}`);
+      say(`Código: ${formatRoomCode(client.code)}`);
     }
   });
   if(options.solo)shareButton.hidden=true;
@@ -346,8 +351,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       ownerNews=text?{text,until:Infinity}:undefined;ownerSeen=owner;
     }
     // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
-    panel.hidden=!view.visible||!!client.fatal;
-    mapSlot.hidden=panel.hidden;
+    const off=!view.visible||!!client.fatal;
+    putHidden(panel,off);putHidden(mapSlot,off);
     if(!view.visible)return;
     // The map selector follows the room: owner, countdown, connection, the room's map and its download.
     const roomMap=roomMapId(client),load=client.mapLoad;
@@ -455,17 +460,21 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   return {panel,update,dispose(){clearInterval(timer);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
 }
 
-/** `room` fills the code (in place of ?room=); with `autoJoin` the lobby enters it by itself (back from a version reload). */
+/** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */
 export interface LobbyOptions {room?:string;autoJoin?:boolean}
 export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions={}){
   // Loaded together (CSS stays dynamic so the pure helpers above import in node tests).
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const dialog=document.createElement('dialog');dialog.className='coop-lobby';dialog.setAttribute('aria-label','Jogar com amigos');
-  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2>Chama a turma.</h2><p>Até seis personagens na mesma sala. Compartilhe o código, encontre os amigos e enfrentem os bêbados.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button><div class="coop-divider">ou entre na sala de alguém</div><form><label for="room-code">Código da sala</label><input id="room-code" maxlength="10" pattern="[a-fA-F0-9]{10}" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="10 letras e números"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p><small>Partidas de até 30 minutos. Pontos desta versão valem só na sala. As classes ainda compartilham o mesmo ataque básico.</small>`;
-  document.body.append(dialog);dialog.showModal();
+  // Two columns in landscape (coop.css): make a room on the left, join one on the right.
+  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><div class="coop-lobby-cols"><div class="coop-lobby-make"><h2 tabindex="-1">Chama a turma.</h2><p>Até seis personagens na mesma sala. Manda o link, junta a galera e enfrentem os bêbados.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="60" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button></div><div class="coop-lobby-join"><div class="coop-divider">ou entre na sala de alguém</div><form novalidate><label for="room-code">Código da sala</label><input id="room-code" maxlength="80" required autocomplete="off" autocapitalize="characters" enterkeyhint="go" spellcheck="false" placeholder="3103-A23-B68"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p></div></div>`;
+  // The title takes the opening focus: on the close button it drew a focus ring over the corner (and no keyboard pops up).
+  document.body.append(dialog);dialog.showModal();dialog.querySelector<HTMLElement>('h2')!.focus({preventScroll:true});
   const status=dialog.querySelector<HTMLElement>('.coop-status')!;
   const nickInput=dialog.querySelector<HTMLInputElement>('#coop-nick')!;
-  nickInput.value=name.slice(0,NICK_MAX);
+  nickInput.value=fitName(name);
+  // A long name pasted or typed: cut at a whole word with "…" (ui/nick.ts) as soon as the field is left, so it shows what the room will.
+  nickInput.addEventListener('change',()=>{nickInput.value=fitName(nickInput.value);});
   dialog.querySelector('.coop-nick-roll')!.addEventListener('click',()=>{nickInput.value=suggestNickname(Math.random,nickInput.value);});
   const actionButtons=()=>dialog.querySelectorAll<HTMLButtonElement>('button:not(.coop-close):not(.coop-nick-roll)');
   for(const b of actionButtons())b.disabled=true;
@@ -474,6 +483,16 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   const cancel=()=>{closed=true;client?.leave();dialog.close();dialog.remove();document.getElementById('confirm')?.focus();};
   dialog.querySelector('.coop-close')!.addEventListener('click',cancel);
   dialog.addEventListener('cancel',e=>{e.preventDefault();cancel();});
+  // Keyboard up on a field: only that field's column stays, at the top of what the keyboard leaves (no scroll).
+  const typing=()=>{
+    if(!dialog.isConnected){window.visualViewport?.removeEventListener('resize',typing);return;}
+    const vv=window.visualViewport,field=document.activeElement?.id;
+    const visible=vv?.height??innerHeight,mode=field==='room-code'?'code':field==='coop-nick'?'nick':undefined;
+    if(mode&&keyboardUp(visible,innerHeight)){dialog.dataset.typing=mode;dialog.style.setProperty('--coop-vv-h',`${Math.round(visible)}px`);}
+    else{delete dialog.dataset.typing;dialog.style.removeProperty('--coop-vv-h');}
+  };
+  window.visualViewport?.addEventListener('resize',typing);
+  dialog.addEventListener('focusin',typing);dialog.addEventListener('focusout',()=>setTimeout(typing,0));
   // The city's manifest (a few bytes) rides along: its ref goes in join.maps (the 392 KB city only when a room picks it).
   // The lobby does not wait for it: a join takes it if it has arrived, waiting at most until MANIFEST_BUDGET_MS after
   // the lobby opened (later, the join offers the endless map only).
@@ -485,18 +504,20 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   const endpoint=await fetch('/multiplayer.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(c=>c?.endpoint as string|undefined).catch(()=>undefined);
   if(closed)return;
   const codeInput=dialog.querySelector<HTMLInputElement>('#room-code')!;
-  codeInput.value=(options.room??new URL(location.href).searchParams.get('room')??'').toUpperCase();
+  codeInput.value=formatRoomCode(readRoomCode(options.room??''));
+  // Pasted with or without dashes (or the whole invite link): shown grouped as soon as it is a full code.
+  codeInput.addEventListener('input',()=>{const code=readRoomCode(codeInput.value);if(isRoomCode(code))codeInput.value=formatRoomCode(code);});
   let busy=false,outdated=false;
   async function enter(create:boolean){
     if(busy||closed||outdated)return;
     if(!endpoint){status.textContent='As salas ainda não estão disponíveis neste endereço. Tente novamente após a publicação.';return;}
     busy=true;for(const b of actionButtons())b.disabled=true;
     try{
-      let code=codeInput.value.trim().toUpperCase();
-      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=code;}
+      let code=readRoomCode(codeInput.value);
+      if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
       if(closed)return;
-      if(!/^[A-F0-9]{10}$/.test(code))throw new Error('O código deve ter 10 letras e números.');
-      const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
+      if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
+      const nick=fitName(nickInput.value)||fitName(name);
       const cityRef=await within(manifest,manifestBy-performance.now());
       if(closed)return;
       client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=manifestAgain;client.onStatus=m=>{status.textContent=m;};await client.join();
@@ -561,7 +582,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
   if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
   const cityRef=await within(manifest,SOLO_MANIFEST_MS);
   if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
-  const plan=soloPlan(options.bots),nick=name.trim().slice(0,NICK_MAX)||'Capivara Veloz';
+  const plan=soloPlan(options.bots),nick=fitName(name)||'Capivara Veloz';
   let client:CoopClient|undefined;
   try{
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a

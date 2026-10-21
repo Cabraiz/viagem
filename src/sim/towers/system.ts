@@ -45,7 +45,7 @@ import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
-import {CAR_BUILD_GAP,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
+import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
 import {RADIUS} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
@@ -240,9 +240,9 @@ export function holdsObra(state:StonewardsState,playerId:string,tick:number):boo
  * at (c,r) of the build grid (free-build.ts), at any phase of the run. Refusals, in order: 'duplicate', 'wall-down',
  * 'player' (not standing), 'defense' (a tower that is not the root: towers evolve), 'fora' (off the grid or a cell off
  * walkable ground), 'ninho' (within CAR_NEST_KEEP_OUT of a living nest), 'carro' (within CAR_BUILD_GAP of the car's
- * body), 'ocupado' (a standing thing or a body on it), 'limite' (DEFENSE_LIMIT / the piece's limit), 'away'
+ * body; a barricada UNO_BUILD_CELLS cells), 'ocupado' (a standing thing or a body on it), 'limite' (DEFENSE_LIMIT / the piece's limit), 'away'
  * (BUILD_REACH), 'balance' (the root's ficha) or 'grana' (a piece's R$, from the builder's wallet), 'tranca' (a muro that
- * would cut the car off from the borda or the moto). A ruin under the footprint is cleared. The builder's obras queue:
+ * would cut the car off from the borda or the moto; a barricada may: then the enemies bash it, free-build.ts). A ruin under the footprint is cleared. The builder's obras queue:
  * this one starts when their last one is done.
  * `kit` (torre-pela-caixa: a kit de torre from the inventory, sim/inventory.ts place): any tower that stands on the grid
  * (rules isTowerKit: a tier-N kit builds that tower straight away, with its own hp and TIER_BUILD_SECONDS) or a wall
@@ -262,7 +262,8 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     const rect=pieceRect(cell,w,h);
     for(const n of free.nests?.(ctx.tick)??[])if(rectDistance(rect,n)<CAR_NEST_KEEP_OUT)return {ok:false,reason:'ninho'};
     const car=free.car?.(ctx.tick);
-    if(car&&rectDistance(rect,car)<car.radius+CAR_BUILD_GAP)return {ok:false,reason:'carro'};
+    // NEW-20261021-ORQ-barricada-construir: a barricada keeps UNO_BUILD_CELLS cells off the car's body.
+    if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
     if(!withinReach(rect,p))return {ok:false,reason:'away'};

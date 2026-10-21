@@ -75,7 +75,7 @@ const memoryStore=()=>{const m=new Map<string,string>();return {m,getItem:(k:str
 test('invite: carries &dev=1&g=<label> only when this tab chose "Medir a turma" (and the flag is on), never the room code',()=>{
   resetUxFlagMemory();
   const store=memoryStore();
-  assert.equal(shareLink('https://viagem.cyou/','ABCDEF1234'),'https://viagem.cyou/?room=ABCDEF1234#personagem');
+  assert.equal(shareLink('https://viagem.cyou/','ABCDEF1234'),'https://viagem.cyou/?sala=ABCDEF1234');
   assert.equal(inviteQuery('?dev=1',store),'','metrics on, team not measured: plain invite');
   setMeasuringTeam(true,store);
   assert.equal(inviteQuery('',store),'','flag off: plain invite even with the choice stored');

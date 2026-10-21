@@ -34,7 +34,7 @@
 .rh-round-detail .ic{width:20px;height:20px}
 .rh-round-detail b{font:400 var(--t-16)/1 var(--f-cartaz)}
 /* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
-.rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .6s ease-in-out infinite alternate}
+.rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .3s ease-in-out 4 alternate}
 /* Level badge with the XP as a thin thread under it (no full-width bar). */
 .rh-xp{order:0;position:relative;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;margin:0}
 .rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
@@ -66,7 +66,7 @@
 .rh-boss-name{display:block;text-align:center;font:400 var(--t-16)/1.05 var(--f-cartaz);margin-bottom:3px}
 .rh-boss-track{height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-boss-fill{display:block;height:100%;transform-origin:left;background:var(--c-cone);transition:transform .2s}
-.rh-boss.rh-enraged{animation:rh-shake .35s linear infinite}
+.rh-boss.rh-enraged{animation:rh-shake .35s linear 2}
 
 /* ---------- Center stack (revive alerts) ---------- */
 .rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + max(70px,var(--rh-coluna,54px) + 16px));right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -82,7 +82,7 @@
 .rh-marquee{position:relative;display:flex;align-items:baseline;justify-content:center;gap:8px;width:max-content;max-width:min(100%,560px);padding:3px 20px 4px;white-space:nowrap;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
 .rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:4px;bottom:4px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
 .rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
-.rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) infinite}
+.rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) 4}
 .rh-marquee-title{flex:0 0 auto;max-width:60%;min-width:0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
 .rh-marquee-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
 .rh-marquee-sub:empty{display:none}
@@ -138,7 +138,7 @@
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
 .rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}
-.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .7s ease-in-out infinite alternate}
+.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .35s ease-in-out 4 alternate}
 .rh-member[data-state=downed] .rh-member-img{filter:grayscale(.8) brightness(.85)}
 .rh-member[data-state=downed] .rh-member-hp{visibility:hidden}
 .rh-member[data-state=eliminated] .rh-member-img{filter:grayscale(1) brightness(.6)}
@@ -154,7 +154,7 @@
 .rh-alert[data-kind=self] .rh-alert-text{font-size:15px}
 .rh-alert[data-kind=self] .rh-alert-track{background:var(--c-trilho)}
 .rh-alert[data-kind=self] .rh-alert-fill{background:var(--c-breu)}
-.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear infinite}
+.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear 2}
 
 /* In, hold, then fade out in place (UX-zonas-tela: 1.8 s in all). Scale only, never above 1, from the top edge
    (.rh-marquee transform-origin 50% 0): every frame stays inside the banner's own slot, so the exit never crosses the

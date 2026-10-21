@@ -250,7 +250,7 @@ test('barricada (barricada-construir): a 1×1 square, a blocker to the enemies, 
   assert.equal(pieceDrag(g.sys.state,{x:p.x,y:p.y}),1,'no drag: they walk around it');
   assert.equal(structureTargets(g.sys.state,false).find(x=>x.id===p.id)!.blocking,true);
   // Too close to the car's body: refused 'carro' (a muro there is fine as before).
-  const near=ring(2).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:FREE_CELL,h:FREE_CELL};
+  const near=[2,3,4,5].flatMap(k=>ring(k)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:FREE_CELL,h:FREE_CELL};
     const gap=Math.hypot(Math.max(r.x-CAR.x,0,CAR.x-(r.x+r.w)),Math.max(r.y-CAR.y,0,CAR.y-(r.y+r.h)));
     return gap>=CAR_R+CAR_BUILD_GAP&&gap<CAR_R+UNO_BUILD_CELLS*FREE_CELL;})!;
   assert.ok(near);

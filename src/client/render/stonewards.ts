@@ -305,7 +305,7 @@ export class StonewardsRenderer {
     const alert=isFreeBarricade(s)&&s.untilTick!==undefined&&this.tick<s.untilTick;
     if(alert){
       const left=(s.untilTick!-this.tick)/SIM_HZ,pulse=.5+.5*Math.sin(this.now/(left<2?60:140));
-      const l=this.project(s.x-CITY_BUILD_CELL*.8,s.y),r=this.project(s.x+CITY_BUILD_CELL*.8,s.y),w=Math.hypot(r.x-l.x,r.y-l.y);
+      const l=this.project(s.x-CITY_BUILD_CELL*1.4,s.y),lx=l.x,ly=l.y,r=this.project(s.x+CITY_BUILD_CELL*1.4,s.y),w=Math.hypot(r.x-lx,r.y-ly);
       g.fillStyle(ALERT_RED,.25+.35*pulse).fillEllipse(x,y,w,w*.55);
     }
     if(img){

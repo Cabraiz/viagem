@@ -57,7 +57,11 @@
               "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b"
             }
           ],
-          "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b"
+          "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b",
+          "liteCell": [
+            384,
+            256
+          ]
         }
       },
       "sha256": "bbbf448d54e11f344dff5cde950bae6dbf1be4431eae6e41e96737533b2fd32e",
@@ -301,7 +305,11 @@
               "sha256": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1"
             }
           ],
-          "sha256": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1"
+          "sha256": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1",
+          "liteCell": [
+            328,
+            272
+          ]
         }
       },
       "sha256": "44e2eccb6bfdc9b7734f15a78f2b7cf93e3e9aab8312a5e63d02a785e695aeb6",

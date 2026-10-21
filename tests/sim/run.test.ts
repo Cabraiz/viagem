@@ -35,7 +35,8 @@ test('victory and defeat emit one result and rematch rejects stale requests',()=
     const result=run.snapshot();assert.equal(run.finish('timeout'),false);run.step();assert.deepEqual(run.snapshot(),result);
     assert.equal(result.resultId,'room:1');assert.equal(run.rematch('a',1),true);assert.equal(run.rematch('a',1),false);
     assert.equal(run.ready('a',1,true),false);assert.equal(run.snapshot().elapsed,0);assert.equal(run.snapshot().outcome,undefined);
-    assert.equal(run.snapshot().round,2);assert.equal(run.snapshot().members[0].ready,false);
+    // The only person voted: the new run's countdown starts at once (UX-resultado-revanche).
+    assert.equal(run.snapshot().round,2);assert.equal(run.snapshot().members[0].ready,true);assert.equal(run.snapshot().phase,'countdown');
   }
 });
 test('server ticks end duration exactly and snapshots cannot mutate state',()=>{
@@ -72,6 +73,35 @@ test('a member away from the lobby for LOBBY_AWAY_TICKS stops holding the start 
   assert.equal(state.members.find(m=>m.id==='b')?.spectator,true);assert.equal(state.members.find(m=>m.id==='a')?.spectator,false);
   // Back during the run: watching, seat kept; the rematch brings b back in.
   run.join('b');assert.equal(run.snapshot().members.find(m=>m.id==='b')?.online,true);
-  run.finish('defeat');assert.equal(run.rematch('a',1),true);
+  run.finish('defeat');assert.equal(run.rematch('a',1),false);assert.equal(run.rematch('b',1),true);
   assert.equal(run.snapshot().members.find(m=>m.id==='b')?.spectator,false);
+});
+test('the rematch is collective: everyone online, or the majority after 10 s (UX-resultado-revanche)',async()=>{
+  const {REMATCH_MAJORITY_TICKS}=await import('../../src/sim/run.ts');
+  const run=new RunLifecycle('room');start(run,['a','b','c']);run.join('bot',{bot:true});run.finish('defeat');
+  assert.deepEqual(run.snapshot().rematchVotes,[]);
+  assert.equal(run.rematch('a',1),false,'one of three waits');assert.equal(run.rematch('a',1),false,'a repeated tap is no second vote');
+  assert.equal(run.rematch('bot',1),false,'bots never vote');
+  assert.deepEqual(run.snapshot().rematchVotes,['a']);assert.equal(run.snapshot().rematchLeft,undefined,'no majority yet');
+  for(let i=0;i<REMATCH_MAJORITY_TICKS;i++)assert.equal(run.step().rematch,undefined);
+  const late=new RunLifecycle('room');start(late,['a','b','c']);late.finish('defeat');late.rematch('a',1);late.rematch('b',1);
+  assert.equal(late.snapshot().rematchLeft,REMATCH_MAJORITY_TICKS,'a majority shows its clock');
+  for(let i=1;i<REMATCH_MAJORITY_TICKS;i++)assert.equal(late.step().rematch,undefined);
+  assert.equal(late.snapshot().rematchLeft,1);assert.equal(late.step().rematch,true);
+  assert.equal(run.snapshot().rematchLeft,undefined);
+  assert.equal(run.rematch('b',1),true,'2 of 3 after 10 s: starts now');
+  const next=run.snapshot();assert.equal(next.round,2);assert.equal(next.phase,'countdown');assert.equal(next.rematchVotes,undefined);
+  assert.equal(next.members.find(m=>m.id==='c')?.spectator,true,'who did not vote watches');
+  assert.equal(next.members.find(m=>m.id==='a')?.spectator,false);assert.equal(next.members.find(m=>m.id==='bot')?.spectator,false);
+});
+test('all people voting start the rematch at once; one leaving counts for the rest',()=>{
+  const run=new RunLifecycle('room');start(run,['a','b']);run.finish('victory');
+  run.rematch('a',1);assert.equal(run.snapshot().rematchLeft,undefined,'half is no majority');
+  run.setOnline('b',false);assert.deepEqual(run.snapshot().rematchVotes,['a']);
+  assert.equal(run.step().rematch,true,'b left: a is everyone online');
+  // Everyone online voted: nobody is benched; the away b is the lobby's rule (LOBBY_AWAY_TICKS), as before.
+  assert.equal(run.snapshot().members.find(m=>m.id==='b')?.spectator,false);assert.equal(run.snapshot().phase,'lobby');
+  const two=new RunLifecycle('room');start(two,['a','b']);two.finish('defeat');
+  assert.equal(two.rematch('b',1),false);assert.equal(two.rematch('a',1),true);
+  assert.equal(two.snapshot().phase,'countdown');assert.ok(two.snapshot().members.every(m=>!m.spectator&&m.ready));
 });

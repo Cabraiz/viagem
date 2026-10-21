@@ -1,4 +1,5 @@
 import './explore.css';
+import {putData,putHidden,putText} from './hud/dom-put.ts';
 import type { HeroClass } from '../rules/index.ts';
 import {buildPlanFor,landmarks} from '../maps/index.ts';
 import type { CoopClient } from './net/client.ts';
@@ -19,6 +20,7 @@ import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {besideFrom,freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
+import {formatRoomCode,shareLink} from './ui/invite.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
@@ -33,7 +35,7 @@ import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {FortifyHud} from './hud/fortify/fortify.ts';
-import {FORT_AIM_FIRST,FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
+import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
@@ -46,10 +48,8 @@ import {LayoutCache,viewportSize} from './hud/box-cache.ts';
 
 /** The shell's data attributes that change every frame (the hero's spot, the tick) are written at most this often (ms). */
 const SHELL_DATA_MS=250;
-/** Writes a data attribute only when its value changed (a write, even of the same value, invalidates the subtree's style). */
-const setData=(el:HTMLElement,key:string,value:string)=>{if(el.dataset[key]!==value)el.dataset[key]=value;};
-/** The same for a text node: a textContent write replaces the children even when the text is the same. */
-const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
+/** ?perf=1: the shell also carries the attributes only measurements read (data-tick, data-enemies), and the room's debug line. */
+const SHELL_DEBUG=perfEnabled(globalThis.location?.search??'');
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
 /** How long the "Gira fora da briga" answer to a tap on the locked camera stays (balloon or slot row). */
@@ -217,6 +217,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD (zones audit, boss marquee).
     if(import.meta.env.DEV){
       (window as unknown as {__hud?:RunHud}).__hud=hud;
+      // barricada-construir: build barricada squares on build-grid cells until the gesture lands (dev only).
+      (window as unknown as {__construirEm?:unknown}).__construirEm=(cells:{c:number;r:number}[])=>construirEm(net,cells);
       // The overlay module (and its CSS) is loaded on demand, so it never reaches the build.
       (window as unknown as {__zones?:unknown}).__zones={measure:()=>measureZones(),audit:(hero?:Rect)=>auditBoxes(auditBoxesFromDom(),measureZones(),hero),
         overlay:async(on:boolean)=>{zoneOverlay=on;const debug=await import('./hud/zones-debug.ts');if(!on)debug.clearZoneOverlay();else debug.drawZoneOverlay(measureZones());}};
@@ -224,7 +226,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${inviteQuery(location.search)}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=castSkill=()=>{if(skill?.attackMode)return;pause(false);skill?.tap(()=>net.cast(),performance.now());};
@@ -335,7 +337,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onResumed=news=>{skill?.reset();showResumed(news);};if(net.resumedNotice)skill?.reset();showResumed(net.resumedNotice);
   }
   const syncTurn=()=>{
-    const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
+    const locked=!!controller?.scene.rotationLocked();putData(shell,'cameraLocked',String(locked));
     if(cameraGroup.dataset.locked!==String(locked))cameraGroup.dataset.locked=String(locked);
     for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]')){
       if(button.disabled!==!sceneReady)button.disabled=!sceneReady;
@@ -508,21 +510,21 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
-      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');setData(canvas,'spriteAnimation',animation);setData(canvas,'spriteFrame',frame);setData(canvas,'spriteSheets',String(sheets));},
+      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
         // The shell's data attributes (tests, scripts, CSS) are written only when they change, and the ones that change
         // every frame (the hero's spot, the tick) at most every SHELL_DATA_MS: each write invalidates the style of the
         // whole shell, and the HUD reads layout right after (BUG-20261014-ORQ-engasgo-andando-celular).
         const now=performance.now(),slow=now-shellDataAt>=SHELL_DATA_MS;
-        if(slow){shellDataAt=now;setData(shell,'playerX',p.x.toFixed(3));setData(shell,'playerY',p.y.toFixed(3));}
+        if(slow){shellDataAt=now;putData(shell,'playerX',p.x.toFixed(3));putData(shell,'playerY',p.y.toFixed(3));}
         if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
           // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
           if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
-          const self=net.players.get(net.id);setData(shell,'playerId',net.id);setData(shell,'connected',String(net.connected));if(slow)setData(shell,'tick',String(net.tick));setData(shell,'players',String(net.players.size));
+          const self=net.players.get(net.id);putData(shell,'playerId',net.id);putData(shell,'connected',String(net.connected));if(slow&&SHELL_DEBUG)putData(shell,'tick',String(net.tick));putData(shell,'players',String(net.players.size));
           const health=$('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
-          setData(shell,'offline',String(!net.connected&&!net.fatal));
+          putData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
           if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
@@ -543,7 +545,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;
-            setData(shell,'runPhase',run.phase);setData(shell,'runRound',String(run.round));
+            putData(shell,'runPhase',run.phase);putData(shell,'runRound',String(run.round));
             // The version watch reads the phase from the shell (update-toast.ts inMatchOf): out of countdown/combat, an
             // update that waited reloads now; any other change moves the notice to where it shows (HUD slot or top).
             if(previous!==run.phase){if(leftMatch(previous,run.phase))matchEnded();else if(updateSlot)setMatchSlot(updateSlot);}
@@ -554,7 +556,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
-              setData(shell,'hudResult',String(resultShown!==undefined));
+              putData(shell,'hudResult',String(resultShown!==undefined));
               // After showResult: the coach's end-of-run rule already ran, the metrics read what it learned.
               ux?.tick();
               // Owner, bots and who is still here on the result screen (D-025): crown, robot, "Arrumar turma".
@@ -563,6 +565,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 hud.setRoster({owner:run.owner,canManage:net.isOwner,members:ids,bots:run.members.filter(m=>m.bot).map(m=>m.id),seatsLeft:Math.max(0,6-ids.length),
                   extra:[...net.players.values()].filter(p=>ids.includes(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.hp,online:p.online,spectator:false,weapons:[],passives:[],
                     ...(run.members.find(m=>m.id===p.id)?.bot?{bot:true}:{})}))});
+                // The collective rematch (UX-resultado-revanche): an older room sends no votes and the first tap starts it.
+                hud.setRematch(run.rematchVotes&&{votes:run.rematchVotes,voters:run.members.filter(m=>m.online&&!m.bot).map(m=>m.id),
+                  ...(run.rematchLeft!==undefined?{leftTicks:run.rematchLeft}:{})});
               }
               hud.setNetwork(net.showReconnecting()?RECONNECTING:undefined);
               hud.avoidHero(controller?.scene.heroScreenRect());
@@ -659,13 +664,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             {const attack=$<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
             if(controls.skill!=='live')attackBtn?.clear();
           }
-          setText($('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
+          putText($('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
           // The party's tags are rebuilt only when one of them reads differently (not 60 new spans a second).
           const partyLines=[...net.players.values()].map(player=>`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`),party=partyLines.join('|');
           if(party!==partyKey){partyKey=party;$('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
           syncTurn();
-          // The tick moves every frame: the debug line follows at the shell attributes' pace.
-          if(slow)setText($('#coop-diagnostics'),`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
+          // The tick moves every frame: the debug line follows at the shell attributes' pace, and only while it is read
+          // (its <details> open, or ?perf=1).
+          const diagnostics=$('#coop-diagnostics');
+          if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
         }
       },
       discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
@@ -677,11 +684,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
         if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
           if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
-        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);putHidden(hud.el,false);}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.
         ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined,phase==='combat');
-        shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
+        putData(shell,'offers',String(view.offers.length));
+        // The enemy count changes all wave long: on the shell's root only for ?perf=1 (no test or script reads it).
+        if(SHELL_DEBUG)putData(shell,'enemies',String(view.enemies.length));
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),

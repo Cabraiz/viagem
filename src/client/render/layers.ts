@@ -20,6 +20,7 @@ import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headl
 import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {planAlert} from './telegraph-alert.ts';
 import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
 import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_ART_IDS,DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,OP_SPRITE,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
@@ -985,11 +986,13 @@ export class HordeRenderer{
     // layer (never under a critter), the zone part under the danger edge and what is in the air over it.
     const css=this.css(),f=this.decorFrame;
     f.u=u;f.ticksLeft=t.fireTick-this.nowTick;f.now=this.now;f.reduced=this.reduced;f.phase=t.phase;f.css=css;
-    const ops=planDecor(t,f,this.projectTo,this.decor);
+    planDecor(t,f,this.projectTo,this.decor);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
     // Line widths follow the UI scale (≥ 1): under ~0.55 zoom (the old whole-island view) a fixed 8px world line got ~2px.
     // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
+    // The "!" in the middle (accessibility: danger by shape, not only by color), in the air over the kind's drawing.
+    const ops=planAlert(t,f,this.pts,n,this.projectTo,this.decor);
     const top=this.top,w=this.ui;
     top.fillStyle(fill,.08+.1*u).fillPoints(this.pts,true,true,n);
     // Three hard bands on the zone's edge (Laranja Cone = danger only): Breu outside, Papel, Cone core. Breu holds on

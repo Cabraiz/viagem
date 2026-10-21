@@ -16,6 +16,7 @@ export interface BareFrame {key:string;ox:number;oy:number;sx:number;sy:number}
  */
 const bare=new WeakMap<Body,BareFrame>();
 export function setBareFrame(body:Body,frame:BareFrame|undefined){if(frame)bare.set(body,frame);else bare.delete(body);}
+export function bareFrameOf(body:Body){return bare.get(body);}
 export function silhouetteImage(scene:Phaser.Scene,key:string,depth:number){
   return scene.add.image(0,0,key).setDepth(depth).setTintFill(LIT_SHADOW.color).setAlpha(SILHOUETTE.alpha).setVisible(false).setActive(false);
 }

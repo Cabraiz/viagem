@@ -56,7 +56,7 @@ import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
 import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
-import {HoldFollow,MARKER_MS,keyVector,markerVisible} from './desktop-input.ts';
+import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
@@ -430,8 +430,10 @@ export class IslandScene extends Phaser.Scene {
     this.events.once('shutdown',dropRings);this.events.once('destroy',dropRings);
     // Only the canvas's own presses land here (POINTER_DOWN needs the canvas as the down element): a press on the DOM HUD
     // never walks. A mouse press on the ground also starts the hold-to-follow (followHold); one on an enemy targets it.
+    // The right button does the same as the left (mapButtonDown), and the canvas keeps the browser's menu shut.
+    this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown',(pointer:Phaser.Input.Pointer)=>{
-      if(this.paused||!pointer.primaryDown)return;
+      if(this.paused||!mapButtonDown(pointer))return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
       const hit=this.enemyAt(p);
       this.hold.release();
@@ -753,7 +755,7 @@ export class IslandScene extends Phaser.Scene {
   private followHold(time:number,steering:boolean){
     if(!this.hold.held)return;
     const pointer=this.input.mousePointer??this.input.activePointer;
-    if(this.paused||!pointer?.primaryDown){
+    if(this.paused||!pointer||!mapButtonDown(pointer)){
       const last=this.hold.release();
       if(last&&!this.paused&&this.route.length){this.markerUntil=time+MARKER_MS;this.destination.clear();this.drawDestination(last);}
       return;

@@ -52,6 +52,11 @@ export interface EnemyAiOptions {
   rng?:Rng;
   structures?:(ctx:SimContext)=>readonly StructureTarget[];
   hitStructure?:(ctx:SimContext,structureId:string,amount:number,enemy:EnemyState)=>void;
+  /**
+   * NEW-20261021-ORQ-barricada-construir: whether a body pressed against blocking structure `id` bashes it (absent:
+   * always). The built barricadas are bashed only by a body with no way to its target (assemble: free-build reachMap).
+   */
+  bashes?:(e:EnemyState,id:string)=>boolean;
   /** D-052: the ground's speed multiplier under a body (a free barricade slows; 1 or absent: none). */
   drag?:(e:EnemyState)=>number;
   /** Minimum ticks between two barks on screen (global). */
@@ -552,7 +557,7 @@ export class EnemyAi implements SimSystem {
         }
         // Barricades (cidade-06): pressed against a blocking structure, the body bashes it (one hit per contact cooldown).
         if(memory.state!==STATE.joke&&ctx.tick>=memory.hitReady)for(const s of structures){
-          if(!s.blocking||!(Math.hypot(s.x-e.x,s.y-e.y)-s.radius<=e.radius+PLAYER_RADIUS+.05))continue;
+          if(!s.blocking||!(Math.hypot(s.x-e.x,s.y-e.y)-s.radius<=e.radius+PLAYER_RADIUS+.05)||this.options.bashes?.(e,s.id)===false)continue;
           memory.hitReady=ctx.tick+def.contactCooldown;
           this.options.hitStructure?.(ctx,s.id,e.damage,e);
           break;

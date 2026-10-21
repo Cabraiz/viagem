@@ -9,11 +9,15 @@ import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 const FIGURE=96*.5444722215136416*HERO_DRAW_SCALE; // a hero's drawn height in the city (world px)
 const near=(a:number,b:number,eps=1e-9)=>assert.ok(Math.abs(a-b)<eps,`${a} ≈ ${b}`);
 
-test('the foot is locked to the ground: the drawn stride per cycle × cycles = the screen distance walked', ()=>{
-  for(const [dx,dy] of [[.05,0],[0,.05],[.03,-.04],[-.05,.05],[.035,.035]]){
-    const s=screenMotion(dx,dy,0),cycles=walkCycles(dx,dy,0,FIGURE);
-    near(cycles*WALK_STRIDE*FIGURE,Math.hypot(s.x,s.y));
-  }
+test('locked, the drawn stride per cycle × cycles = the screen distance walked; at lock k, k of it', ()=>{
+  const lock=WALK_TUNE.lock;
+  try{
+    for(const [dx,dy] of [[.05,0],[0,.05],[.03,-.04],[-.05,.05],[.035,.035]]){
+      const s=screenMotion(dx,dy,0);
+      WALK_TUNE.lock=1;near(walkCycles(dx,dy,0,FIGURE)*WALK_STRIDE*FIGURE,Math.hypot(s.x,s.y));
+      WALK_TUNE.lock=.5;near(walkCycles(dx,dy,0,FIGURE)*WALK_STRIDE*FIGURE,Math.hypot(s.x,s.y)/2);
+    }
+  }finally{WALK_TUNE.lock=lock;}
 });
 
 test('the foreshortening: the same world step across the screen plays twice the cycle of one up the screen', ()=>{
@@ -30,14 +34,16 @@ test('standing still never treads, a teleport adds nothing, and a bigger figure 
   near(walkCycles(.1,0,0,FIGURE)/walkCycles(.1,0,0,2*FIGURE),2);
 });
 
-test('the city hero at full speed across the screen: ~8 cycles a second with the foot locked, half at lock 0.5', ()=>{
-  const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60;let cycles=0;
-  for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE);
-  assert.ok(cycles>7.5&&cycles<9,`cycles in 1 s: ${cycles}`);
-  const lock=WALK_TUNE.lock;
-  const full=walkCycles(.1,0,0,FIGURE);
-  try{WALK_TUNE.lock=.5;near(walkCycles(.1,0,0,FIGURE),full/2);}finally{WALK_TUNE.lock=lock;}
-  assert.equal(WALK_TUNE.lock,1,'the game ships the foot locked');
+test('the city hero at full speed across the screen: ~8 cycles a second with the foot locked, ~4 as shipped', ()=>{
+  const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60,lock=WALK_TUNE.lock;
+  const second=()=>{let cycles=0;for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE);return cycles;};
+  try{
+    WALK_TUNE.lock=1;const locked=second();
+    assert.ok(locked>7.5&&locked<9,`cycles in 1 s, foot locked: ${locked}`);
+    WALK_TUNE.lock=.5;near(second(),locked/2);
+  }finally{WALK_TUNE.lock=lock;}
+  // passo-3x-mais-lento: the user keeps the hero's speed and wants a slower walk; half until the viciado gets a run.
+  assert.equal(WALK_TUNE.lock,.5,'the game ships the walk at half the ground');
 });
 
 test('cycleFrame wraps over the cycle and never leaves the clip', ()=>{

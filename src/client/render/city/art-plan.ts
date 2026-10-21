@@ -172,7 +172,7 @@ function viewSheet(p:ArtPiece):ArtFile|undefined{
 /**
  * City lite copies (scripts/art-lite.mjs, NEW-20261021-E1-decor-lite-arte-perto): the sheet of a piece the city draws
  * (the plan's lots, props, fountain and decor, and the nests of the live layer) that weighs over ~200 KB has a smaller
- * lossy copy under /art/lite/city/, its cell in the file's `liteCell`. Which file of a piece gets one: its view sheet,
+ * lossy copy under /art/lite/city/ (cityLiteScale), its cell in the file's `liteCell`. Which file of a piece gets one: its view sheet,
  * for the pieces the plan or the nests can draw (unused building families and the base pieces other than the fountain
  * load elsewhere or never). Undefined: none.
  */
@@ -182,6 +182,17 @@ export function cityLiteFile(group:string,id:string,p:ArtPiece):string|undefined
   if(group==='base'&&id!==FOUNTAIN_PIECE)return undefined;
   if(group!=='predios'&&group!=='base'&&group!=='props'&&group!==DECOR_GROUP)return undefined;
   return p.files.sheet?'sheet':Object.keys(p.files)[0];
+}
+/**
+ * Cell scale of a piece's city lite copy (scripts/art-lite.mjs): 1 (the same cell, lossy only) for the pieces drawn at
+ * the footprint scale (0.85 game px per art px on the Cidade Nevada: buildings, places, mountains, the fountain, the
+ * border boulders); 0.75 for those drawn smaller (props, walls, nests: ≤ 0.63), as sharp on screen. The towers' 0.5
+ * left the houses visibly softer on the prints: the canvas has the page's CSS size, a 3× phone screen magnifies it.
+ */
+export function cityLiteScale(group:string,id:string,p:Pick<ArtPiece,'meta'>):number{
+  if(group==='predios'||group==='base')return 1;
+  if(group===DECOR_GROUP&&!NEST_ID.test(id)&&(decorRule(id,p.meta)==='footprint'||DECOR_FILL.test(id)))return 1;
+  return .75;
 }
 export const cityLiteUrl=(url:string)=>url.replace(/^\/art\/city\//,'/art/lite/city/');
 /**

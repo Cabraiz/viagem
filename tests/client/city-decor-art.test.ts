@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
-import {ART_CELL,DECOR_PROP_SCALE,buildCityArtPlan,cityLiteFile,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
+import {ART_CELL,DECOR_PROP_SCALE,buildCityArtPlan,cityLiteFile,cityLiteScale,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
 import {liteOnly} from '../../src/client/art/horde-art.ts';
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
@@ -184,6 +184,15 @@ test('a lite copy (liteCell, decor-lite-arte-perto) draws the same piece: lite u
     }
   }
   assert.ok(liteOnly(half.decor['farmacia-1'].url),'no fallback to the approved file (other cells)');
+  // Footprint pieces keep their cell (lossy only, as sharp); the smaller-drawn props, walls and nests take 0.75.
+  assert.equal(cityLiteScale('cenario','farmacia-1',{meta:{footprint:[2,1],storeys:1}}),1);
+  assert.equal(cityLiteScale('cenario','montanha-4x4-1',{}),1);
+  assert.equal(cityLiteScale('cenario','pedregulho-2',{}),1);
+  assert.equal(cityLiteScale('predios','casa-2x1-1',{}),1);
+  assert.equal(cityLiteScale('cenario','ninho-festa-ativo',{meta:{footprint:[3,3]}}),.75);
+  assert.equal(cityLiteScale('cenario','outdoor-1',{meta:{footprint:[1,1]}}),.75);
+  assert.equal(cityLiteScale('cenario','muro-pichado-reto-intacto',{}),.75);
+  assert.equal(cityLiteScale('props','fonte',{}),.75);
   assert.equal(cityLiteFile('cenario','farmacia-1',cenarioIndex().groups.cenario!.pieces['farmacia-1']),'sheet');
   assert.equal(cityLiteFile('cenario','bueiro',{kind:'decor',files:{sheet:{file:'bueiro/sheet.webp',cell:[256,256],frames:1}}} as never),undefined,'decals are no view sheet');
   assert.equal(cityLiteFile('base','forja',{kind:'views',files:{sheet:{file:'forja.webp',cell:[256,256],views:4}}} as never),undefined,'base pieces other than the fountain load elsewhere');

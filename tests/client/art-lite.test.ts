@@ -8,7 +8,7 @@ import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {treeUrl,spriteUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from '../../src/client/sprites/art-urls.ts';
 import {setArtIndex,parseArtIndex,artIndex} from '../../src/client/art/manifest.ts';
 import {enemyPieceLoads,liteEnemyUrl,liteOnly} from '../../src/client/art/horde-art.ts';
-import {buildCityArtPlan,cityLiteFile} from '../../src/client/render/city/art-plan.ts';
+import {buildCityArtPlan,cityLiteFile,cityLiteScale} from '../../src/client/render/city/art-plan.ts';
 import {liveSheets} from '../../src/client/render/city/live/art.ts';
 
 const manifest=JSON.parse(readFileSync('scripts/art-lite.json','utf8'));
@@ -83,7 +83,7 @@ test('the horde loader asks for the enemies\' lite copies; a failed copy falls b
   }
 });
 
-test('every city sheet the city draws over 200 KB (art-plan cityLiteFile) has its half-size copy, made from the approved file as it is now; the plan and the nests load it, never the original', ()=>{
+test('every city sheet the city draws over 200 KB (art-plan cityLiteFile) has its lossy copy (cells × cityLiteScale: 1 for the footprint pieces, 0.75 for the smaller ones), made from the approved file as it is now; the plan and the nests load it, never the original', ()=>{
   const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));
   let copies=0,bytes=0,liteBytes=0;
   for(const group of ['predios','base','props','cenario']){
@@ -92,8 +92,8 @@ test('every city sheet the city draws over 200 KB (art-plan cityLiteFile) has it
       const name=cityLiteFile(group,id,piece);if(!name)continue;
       const f=piece.files[name],src=`${g.output}/${f.file}`,key=src.replace(/^public\/art\//,''),size=readFileSync(src).length;
       if(size<=200*1024){assert.equal(f.liteCell,undefined,`${key}: ${size} B keeps the approved file`);continue;}
-      // CITY_LITE_SCALE (scripts/art-lite.mjs, the towers' 0.5): the script runs on import, so the number is here.
-      assert.deepEqual(f.liteCell,[Math.ceil(f.cell[0]*.5),Math.ceil(f.cell[1]*.5)],`${key}: liteCell (node scripts/art-lite.mjs --kinds city)`);
+      const k=cityLiteScale(group,id,piece);
+      assert.deepEqual(f.liteCell,[Math.ceil(f.cell[0]*k),Math.ceil(f.cell[1]*k)],`${key}: liteCell (node scripts/art-lite.mjs --kinds city)`);
       const entry=manifest.files[key];
       assert.ok(entry,`${key}: no copy in scripts/art-lite.json`);
       assert.equal(entry.source,sha(src),`${key}: the approved file changed after its copy`);
@@ -103,7 +103,7 @@ test('every city sheet the city draws over 200 KB (art-plan cityLiteFile) has it
     }
   }
   assert.ok(copies>=80,`${copies} city copies`);
-  assert.ok(liteBytes<bytes*.15,`${liteBytes} of ${bytes}`);
+  assert.ok(liteBytes<bytes*.35,`${liteBytes} of ${bytes}`);
   // The opening's heaviest (cena-nasce-rapido fase 2): the plan asks for their copies at the smaller cell.
   setArtIndex(parseArtIndex(index));
   try{

@@ -10,9 +10,9 @@
  *   node scripts/art-lite.mjs --kinds sprites,menu   refresh only these families, keeping other entries and files
  *
  * City (NEW-20261021-E1-decor-lite-arte-perto): the 4-view sheets the city draws (render/city/art-plan.ts cityLiteFile:
- * building lots, props, the fountain, the decor and the nests) that weigh over CITY_LITE_MIN_BYTES get a smaller copy,
- * every cell × CITY_LITE_SCALE, at public/art/lite/city/<group dir>/<file>; the smaller cell goes to the file as
- * `liteCell` (the group's manifest and the index), from which the city loads the copy (art-plan.ts cityTexture). A
+ * building lots, props, the fountain, the decor and the nests) that weigh over CITY_LITE_MIN_BYTES get a lossy copy,
+ * every cell × art-plan cityLiteScale (1 or 0.75), at public/art/lite/city/<group dir>/<file>; its cell goes to the file
+ * as `liteCell` (the group's manifest and the index), from which the city loads the copy (art-plan.ts cityTexture). A
  * reimport drops `liteCell`; this script puts it back, and --check fails until it does.
  *
  * Enemies (NEW-20261016-ORQ-inimigos-peso-download): the copy is also smaller, cell by cell, down to what a phone
@@ -42,7 +42,7 @@ import {writeIndex} from './art-v2/convert.mjs';
 import {artTargetHeight,chooseAnim,HERO_FIGURE_PX,MASS_ALPHA,unusedEnemyFile} from '../src/client/art/horde-art.ts';
 import {ELITE_SCALE} from '../src/client/render/keys.ts';
 import {HERO_MIN_SCREEN_PX} from '../src/contract/offscreen.ts';
-import {cityLiteFile} from '../src/client/render/city/art-plan.ts';
+import {cityLiteFile,cityLiteScale} from '../src/client/render/city/art-plan.ts';
 
 const require=createRequire(import.meta.url);
 const sharp=require('sharp');
@@ -66,12 +66,6 @@ export const LITE_TEXELS=.9;
  * (ZOOM_MAX; measured in the sandbox cidade, 390×844): LITE_TEXELS of that, as for the enemies.
  */
 export const TOWER_LITE_SCALE=.5;
-/**
- * City sheets (see the header): every cell × this. The largest any of them is drawn is the footprint pieces' (buildings,
- * places, mountains: one art cell per 1.496 u city cell, 0.85 game px per art px), the towers' scale: the same factor
- * (TOWER_LITE_SCALE). Props, walls and nests are drawn smaller (≤ 0.63), so they keep more.
- */
-export const CITY_LITE_SCALE=TOWER_LITE_SCALE;
 /** City sheets below this keep the approved file (a copy would save little: most small pieces are ~50–150 KB). */
 export const CITY_LITE_MIN_BYTES=200*1024;
 /** Shown psnr a city copy keeps (tests/client/art-lite.test.ts: no copy below 36 dB at the size a phone draws it). */
@@ -233,7 +227,7 @@ if(towersMoved){
   console.error('art-lite:',towersMoved,'tower files got a new liteCell (manifest and index)');
 }
 
-// ---------- city: the sheets the city draws over CITY_LITE_MIN_BYTES, every cell × CITY_LITE_SCALE ----------
+// ---------- city: the sheets the city draws over CITY_LITE_MIN_BYTES, every cell × cityLiteScale ----------
 const cityMoved=new Set();
 if(kinds.includes('city'))for(const group of CITY_GROUPS){
   const spec=GROUPS[group],file=join(ROOT,spec.output,'manifest.json');
@@ -243,7 +237,7 @@ if(kinds.includes('city'))for(const group of CITY_GROUPS){
     const name=cityLiteFile(group,id,piece),f=name&&piece.files[name];
     if(!f?.file)continue;
     const source=readFileSync(join(ROOT,spec.output,f.file)),key=`${dir}/${f.file}`,out=join(ROOT,'public/art/lite',key);
-    const liteCell=source.length>CITY_LITE_MIN_BYTES?[Math.ceil(f.cell[0]*CITY_LITE_SCALE),Math.ceil(f.cell[1]*CITY_LITE_SCALE)]:undefined;
+    const k=cityLiteScale(group,id,piece),liteCell=source.length>CITY_LITE_MIN_BYTES?[Math.ceil(f.cell[0]*k),Math.ceil(f.cell[1]*k)]:undefined;
     if(String(f.liteCell)!==String(liteCell)){
       cityMoved.add(group);
       if(liteCell)f.liteCell=liteCell;else delete f.liteCell;
@@ -256,7 +250,7 @@ if(kinds.includes('city'))for(const group of CITY_GROUPS){
     // The copy is already at the size a phone draws it (at most): its psnr is the shown one. A small busy sheet
     // (puxadinho-1, 84×136 cells: 34.9 dB at quality 90, 35.9 at 100) loses more: the next setting up to CITY_MIN_PSNR,
     // lossless last.
-    const s=await shrink(await decode(source),f.cell,liteCell);
+    const s=k<1?await shrink(await decode(source),f.cell,liteCell):await decode(source);
     let lite,shown;
     for(const webp of [WEBP,{...WEBP,quality:95},{lossless:true,effort:WEBP.effort}]){
       lite=await sharp(s.data,{raw:{width:s.width,height:s.height,channels:4}}).webp(webp).toBuffer();

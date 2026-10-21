@@ -475,7 +475,7 @@ class CitySandbox extends Phaser.Scene {
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
       ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF,
-        aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
+        aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[

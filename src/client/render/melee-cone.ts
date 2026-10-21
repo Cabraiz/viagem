@@ -23,6 +23,8 @@ export const MELEE_CONES:Readonly<Record<string,{area:number;half:number}>>={fac
 export const FADE_IN_MS=80,FADE_OUT_MS=2000;
 /** The reference's cyan (outside the UI palette, like the XP gem's --c-gema: an aim on the map, not a system colour). */
 export const CONE_FILL=0x5ff5e6,CONE_RIM=0xc8fff9,CONE_FILL_ALPHA=.25;
+/** Breu under the rim and the curls (the map's rule: Breu outlines everything on it), so the cyan reads on snow too. */
+const BREU=0x1e1530;
 /** The rim band: the inner line at this fraction of the radius, the runes in the middle of the band. */
 export const BAND_INNER=.84;
 
@@ -51,6 +53,8 @@ export function arcPoints(x:number,y:number,r:number,a0:number,a1:number,n:numbe
 export const runeCount=(radius:number,half:number)=>Math.max(3,Math.round(radius*BAND_INNER*2*half/.32));
 
 const ARC_POINTS=40,GLYPH_POINTS=8;
+/** In the city, how far under the hero's actor depth the cone lies (under the shadow at −1). */
+export const CITY_UNDER=1.5;
 
 export class MeleeCone{
   private g:Phaser.GameObjects.Graphics;
@@ -63,9 +67,11 @@ export class MeleeCone{
   private screen:Pt[]=Array.from({length:ARC_POINTS+2},()=>({x:0,y:0}));
   private glyph:Pt[]=Array.from({length:GLYPH_POINTS},()=>({x:0,y:0}));
   private q:Pt={x:0,y:0};
+  /** The ground layer's depth (outside the city). */
+  private depth:number;
 
   constructor(scene:Phaser.Scene,projector:Projector,depth:number){
-    this.projector=projector;
+    this.projector=projector;this.depth=depth;
     this.g=scene.add.graphics().setDepth(depth).setName('cone-ataque');
   }
   get object(){return this.g;}
@@ -90,7 +96,9 @@ export class MeleeCone{
     const g=this.g;g.clear();
     const a=this.alpha(now);
     if(a<=.004||!hero||this.radius<=0){g.setVisible(false);return;}
-    g.setVisible(true);
+    // City (the projector's actor depths): the ground there is pieces at actor depths, so the cone sits just under the
+    // hero, below its "você" ring and shadow (you-rules RING_UNDER .3, shadow −1), like those; elsewhere the ground layer.
+    g.setVisible(true).setDepth(this.projector.depthOverride?this.projector.depth(hero.x,hero.y)-CITY_UNDER:this.depth);
     let ux=this.dir.x,uy=this.dir.y;
     if(aim){const dx=aim.x-hero.x,dy=aim.y-hero.y,len=Math.hypot(dx,dy);if(len>1e-3){ux=dx/len;uy=dy/len;}}
     const base=Math.atan2(uy,ux);
@@ -111,7 +119,7 @@ export class MeleeCone{
     // The rim band, a touch denser than the fill.
     const ri=r*BAND_INNER;
     this.band(x,y,r,ri,a0,a1,a);
-    // Straight sides: thin, from the apex to the inner line.
+    // Straight sides: thin, from the apex to the rim.
     const q=this.q;
     for(const t of [a0,a1]){
       p.project(x,y,screen[0]);p.project(x+Math.cos(t)*r,y+Math.sin(t)*r,q);
@@ -119,10 +127,11 @@ export class MeleeCone{
     }
     // The rim: a soft glow, the bright thick line, the thinner parallel one inside.
     arcPoints(x,y,r,a0,a1,n,world);for(let i=0;i<n;i++)project(world[i],screen[i]);
-    g.lineStyle(9*b,CONE_FILL,.18*a).strokePoints(screen,false,false,n);
-    g.lineStyle(Math.max(2,3.6*b),CONE_RIM,.95*a).strokePoints(screen,false,false,n);
+    g.lineStyle(10*b,CONE_FILL,.2*a).strokePoints(screen,false,false,n);
+    g.lineStyle(Math.max(3,6.5*b),BREU,.4*a).strokePoints(screen,false,false,n);
+    g.lineStyle(Math.max(2,4.5*b),CONE_RIM,a).strokePoints(screen,false,false,n);
     arcPoints(x,y,ri,a0,a1,n,world);for(let i=0;i<n;i++)project(world[i],screen[i]);
-    g.lineStyle(Math.max(1,1.6*b),CONE_RIM,.75*a).strokePoints(screen,false,false,n);
+    g.lineStyle(Math.max(1,2*b),CONE_RIM,.85*a).strokePoints(screen,false,false,n);
     this.runes(x,y,(r+ri)/2,(r-ri)*.62,a0,a1,a,b);
     this.ornament(x,y,r,a0,-1,a,b);
     this.ornament(x,y,r,a1,1,a,b);
@@ -139,7 +148,7 @@ export class MeleeCone{
   /** Small runes on the ground along the band: three glyphs taking turns (a crossed bar, a diamond, a chevron). */
   private runes(x:number,y:number,rm:number,size:number,a0:number,a1:number,a:number,b:number){
     const g=this.g,p=this.projector,count=runeCount(this.radius,Math.min(this.half,Math.PI)),pts=this.glyph,q=this.q;
-    g.lineStyle(Math.max(1,1.5*b),CONE_RIM,.8*a);
+    g.lineStyle(Math.max(1,1.8*b),CONE_RIM,.9*a);
     for(let k=0;k<count;k++){
       const t=a0+(a1-a0)*(k+.5)/count,cx=x+Math.cos(t)*rm,cy=y+Math.sin(t)*rm;
       // Local ground basis: radial (out) and tangent (along the arc), so the glyph lies flat on the band.
@@ -173,6 +182,7 @@ export class MeleeCone{
       const u=i/(n-1),ang=start+side*u*Math.PI*1.4,rad=cr*(1-.55*u);
       p.project(cx+Math.cos(ang)*rad,cy+Math.sin(ang)*rad,pts[i]);
     }
-    this.g.lineStyle(Math.max(1.5,2.6*b),CONE_RIM,.9*a).strokePoints(pts,false,false,n);
+    this.g.lineStyle(Math.max(2.5,5*b),BREU,.35*a).strokePoints(pts,false,false,n);
+    this.g.lineStyle(Math.max(1.5,3*b),CONE_RIM,a).strokePoints(pts,false,false,n);
   }
 }

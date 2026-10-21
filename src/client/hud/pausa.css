@@ -15,7 +15,7 @@
 .rh-pausa-prazo-fill{display:block;height:100%;transform-origin:left;background:var(--c-papel);transition:transform .25s linear}
 .rh-pausa-linha{font:700 var(--t-13)/1.25 var(--f-sistema);text-wrap:balance}
 .rh-pausa[data-urgente]{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);box-shadow:0 0 0 2px var(--c-papel),var(--s-2);text-shadow:none}
-.rh-pausa[data-urgente] .rh-pausa-titulo{animation:rh-pulse .6s ease-in-out infinite alternate}
+.rh-pausa[data-urgente] .rh-pausa-titulo{animation:rh-pulse .3s ease-in-out 4 alternate}
 .rh-pausa[data-urgente] .rh-pausa-prazo-fill{background:var(--c-breu)}
 .rh-pausa[data-urgente] .rh-pausa-prazo{background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)}
 /* Landscape and short portrait phones (360×690: the window's top is ~85 px under the hero's feet): a lower box. */
@@ -28,10 +28,10 @@
 .rh-member-escolha{position:absolute;top:24px;left:calc(50% - 31px);display:flex;line-height:0}
 .rh-member-escolha[hidden]{display:none}
 .rh-member-escolha .ic{width:20px;height:20px}
-/* Thinking: a small Papel ficha with three Breu dots, breathing slowly (static with reduced motion). */
+/* Thinking: a small Papel ficha with three Breu dots, two breaths when it shows up, then still (design §2.5; static with reduced motion). */
 .rh-member[data-escolha=pensando] .rh-member-escolha{width:20px;height:12px;border-radius:var(--r-ficha);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu);
   background-image:radial-gradient(circle,var(--c-breu) 1.5px,transparent 2px);background-size:6px 12px;background-position:1px 0;background-repeat:repeat-x;
-  animation:rh-pausa-pensa 1.2s ease-in-out infinite alternate}
+  animation:rh-pausa-pensa .6s ease-in-out 4 alternate}
 @keyframes rh-pausa-pensa{to{opacity:.55}}
 /* Picked: the "pronto" check on a Cartolina ficha (a favor) with the Breu edge, readable on the dimmed world. */
 .rh-member[data-escolha=escolheu] .rh-member-escolha{padding:1px;border-radius:var(--r-ficha);background:var(--c-cartolina);box-shadow:0 0 0 1px var(--c-breu)}

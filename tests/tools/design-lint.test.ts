@@ -57,6 +57,13 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.equal(sizePx('clamp(13px,3vw,16px)'),13);assert.equal(sizePx('calc(2 * var(--t-13))'),26);
 });
 
+test('design lint: no infinite animation (it plays once or twice when it shows up, then stops)',()=>{
+  assert.deepEqual(rules('.a{animation:rh-pulse .6s ease-in-out infinite alternate}','src/client/hud/hud.css'),['infinite']);
+  assert.deepEqual(rules('.a{animation-iteration-count:INFINITE}'),['infinite']);
+  assert.deepEqual(rules('.a{animation:rh-pulse .3s ease-in-out 4 alternate}','src/client/hud/hud.css'),[]);
+  assert.deepEqual(rules('.a{animation-name:infinite-scroll}'),[]);
+});
+
 test('design lint: CSS nesting is linted at every depth',()=>{
   const css='.a{color:var(--c-breu);\n  .b{border-radius:3px;\n    &:hover{box-shadow:0 2px 8px var(--c-breu)}}\n  margin:0}';
   const v=lintCss('src/client/coop.css',css) as Violation[];

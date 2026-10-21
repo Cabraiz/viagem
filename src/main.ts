@@ -11,6 +11,7 @@ import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts'
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
+import { plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -46,15 +47,16 @@ try {
 } catch { /* armazenamento indisponível: criação continua sem persistência */ }
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
-// chosen hero big, dancing on the bar, and on the side the title, the class name, the row of heroes between ‹ › and
-// "Selecionar". Title, class and button are HTML over the picture, so the text can be translated and changed.
+// chosen hero big, dancing on the bar, and on the side the letreiro with the hero's name, the plaque with his nickname
+// (ui/apelidos.ts; botao-selecionar), the row of heroes between ‹ › and "Selecionar". Letreiro, plaque and button are
+// HTML over the picture, so the text can be translated and changed.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
-    <h1 id="screen-title" class="estadio-titulo"><span>BORA PRA</span> <span>TORCIDA!</span></h1>
+    <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span></h1>
     <h2 id="class-name" class="estadio-classe"></h2>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
@@ -185,8 +187,12 @@ function showInRow(smooth: boolean) {
 }
 new ResizeObserver(()=>showInRow(false)).observe(rowList);
 function renderSelected(announce=false) {
-  // Caps written in the text, not by CSS (design lint): the class pill shouts like the reference.
-  text('class-name',selected.name.toLocaleUpperCase('pt-BR'));
+  // Caps written in the text, not by CSS (design lint): the letreiro is the hero's name (a long one shrinks the sign,
+  // --titulo-fit) and the pill his nickname or, until he gets one, his subtitle (ui/apelidos.ts).
+  const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
+  top.textContent=lines[0];top.hidden=!lines[0];big.textContent=lines[1];
+  const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
+  text('class-name',plaqueText(selected));
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.

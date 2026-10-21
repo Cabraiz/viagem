@@ -48,6 +48,7 @@ import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../cont
 import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
 import {RADIUS} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
+import type {TralhaState} from './tralha.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
   type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
@@ -87,6 +88,8 @@ export interface TowersState {
   gustavoes:number;
   /** D-052: the standing wall pieces (muro, barricada; free-build.ts), created by the first one. */
   pieces?:PieceState[];
+  /** barricada-construir part 2: the map's barricadas laid, the heroes' coletas (towers/tralha.ts). */
+  tralha?:TralhaState;
 }
 
 /** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */
@@ -110,7 +113,7 @@ const ID_PREFIX='defesa';
 const HANDLED_PREFIX='obra:';
 const HANDLED_LIMIT=256;
 
-const towersOf=(state:StonewardsState):TowersState=>state.defenses??=({list:[],gustavoes:0});
+export const towersOf=(state:StonewardsState):TowersState=>state.defenses??=({list:[],gustavoes:0});
 /** The defenses that count against DEFENSE_LIMIT. */
 export const standingDefenses=(state:StonewardsState)=>(state.defenses?.list??[]).filter(d=>!d.ruined);
 export function defensePhase(d:DefenseState,tick:number):DefensePhase{return phaseOf(d,tick);}
@@ -257,6 +260,8 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     if(!city)return {ok:false,reason:'fora'};
     const piece=order.piece,rot=order.rot===1?1:0,wall=isFreePiece(piece);
     if(!wall&&piece!==ROOT_DEFENSE&&!(kit&&isTowerKit(piece)))return {ok:false,reason:'defense'};
+    // barricada-construir part 2: a barricada is never bought, only placed from a collected kit (towers/tralha.ts).
+    if(piece==='barricada'&&!kit)return {ok:false,reason:'defense'};
     const [w,h]=pieceCells(piece,rot),cell={c:order.c,r:order.r};
     if(!onGround(city,cell,w,h))return {ok:false,reason:'fora'};
     const rect=pieceRect(cell,w,h);

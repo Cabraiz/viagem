@@ -120,6 +120,8 @@ const OUT=()=>{
 };
 /** A down hero is often picked up by the solo bots: waited for this long before a new match. */
 const DOWN_WAIT_MS=25000;
+/** FOLHA_FORCAR_CAIDO=1: the hero counts as down before every mouse test (proves the sheet's message; the run fails). */
+const FORCE_DOWN=process.env.FOLHA_FORCAR_CAIDO==='1';
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -259,10 +261,25 @@ async function walkByPress(p,vp,press,label){
     const notice=await p.evaluate(NOTICE).catch(()=>'');
     tried.push(`(${x},${y}) ${/não dá/i.test(notice)?'sem caminho':'não andou'}`);
   }
-  fails.push(`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
+  const out=await p.evaluate(OUT).catch(()=>'');
+  fails.push(out?`${vp.w}×${vp.h}: ${label}: herói ${out==='caido'?'caído':'fora de jogo'} durante o teste (não é o ${label} que falhou)`
+    :`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
   return null;
 }
+/**
+ * Before the mouse: the hero up (a down one gets DOWN_WAIT_MS to be picked up, then a new match). Still out of play: the
+ * sheet says so ("herói caído antes do teste de mouse"), not "nenhum ponto andou", and the mouse test is skipped.
+ */
+async function upForMouse(p,vp){
+  await clearOffer(p);
+  const out=FORCE_DOWN?'caido':await p.evaluate(OUT).catch(()=>'');
+  if(!out)return true;
+  fails.push(`${vp.w}×${vp.h}: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste de mouse${FORCE_DOWN?' (forçado: FOLHA_FORCAR_CAIDO=1)':''}`);
+  await shot(p,'mouse-caido',`mouse: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste`,vp);
+  return false;
+}
 async function mouseWalk(p,vp){
+  if(!await upForMouse(p,vp))return;
   // A click on open ground (the 20/10 sheet clicked a fixed spot that fell on a building: "Por aqui não dá", no walk).
   const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y),'mouse');
   await shot(p,'mouse1',got?`mouse: clique em (${got.x},${got.y})${got.tried.length?`; antes ${got.tried.join(', ')}`:''} 1/3`:'mouse: clique (não andou)',vp);
@@ -289,7 +306,10 @@ async function mouseWalk(p,vp){
 async function rightClick(p,vp){
   await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
   const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y,{button:'right'}),'botão direito');
-  const menus=await p.evaluate(()=>window.__menus).catch(()=>[]);
+  // A new match in the middle (playing(): the hero down or dead) reloads the page: its __menus is gone, so the clicks
+  // before the reload went uncounted; a warning, not "sem contextmenu" (E1, 21/10: menus.filter of undefined).
+  const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
+  if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;
   await shot(p,'direito',got?`botão direito em (${got.x},${got.y}): andou, menu do navegador ${open?'ABRIU':'fechado'} (${menus.length} cliques)`:'botão direito (não andou)',vp);
   if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
@@ -306,10 +326,11 @@ async function match(browser,base){
     await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
-    for(const vp of VIEWPORTS){
+    // The mouse first, on every screen: the match starts against a wall, where the keys walk into it and no correction
+    // ever lands; and by the time 1280×720's keys were done (~3 min) the horde had the hero down for 390×844's mouse.
+    for(const stages of [[standing,mouseWalk],[keyboardWalk,burst]])for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
-      // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
-      for(const stage of [standing,mouseWalk,keyboardWalk,burst])await stage(p,vp);
+      for(const stage of stages)await stage(p,vp);
     }
   }finally{await ctx.close().catch(()=>{});}
 }

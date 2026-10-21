@@ -3,7 +3,7 @@ import {putData,putHidden,putText} from './hud/dom-put.ts';
 import {firstShown,shownHolds,stickyQuery} from './hud/dom-find.ts';
 import type { HeroClass } from '../rules/index.ts';
 import {buildPlanFor,landmarks} from '../maps/index.ts';
-import type { CoopClient } from './net/client.ts';
+import {LINK_LOST,type CoopClient} from './net/client.ts';
 import './coop.css';
 import './fun/fun.css';
 import {EmoteBar} from './fun/emotes.ts';
@@ -26,7 +26,9 @@ import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
-import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
+import {showFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
+import './hud/menu.css';
+import {BACK_ONLINE_ROW_MS,BackOnlineWatch,createGameMenu,menuBack,menuFocus,type GameMenu} from './hud/menu.ts';
 import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
@@ -40,6 +42,8 @@ import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullStat
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
+import {TralhaPick} from './hud/tralha/model.ts';
+import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import type {KeyValue} from './economy.ts';
 import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
@@ -114,6 +118,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
   /** Kits de torre (torre-pela-caixa): a tap on the kit's slot puts its tower on the ground (ghost, ✓/✕). */
   let kitHud:KitPlaceHud|undefined;const kitPlace=new KitPlace();
+  let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -204,6 +209,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onTurn:()=>kitPlace.turn(),
         onAim:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p)kitPlace.point(p,cell());},
         canvas:()=>controller?.game.canvas});
+      // barricada-construir part 2: tap a barricada de tralha → COLETAR / DESTRUIR; the mouse over it → outline + hand.
+      const squares=()=>hud?.view?.structures??[];
+      tralhaHud=new TralhaHud(host.el,{
+        onTap:(x,y)=>{const p=controller?.scene.worldAt(x,y);return !!p&&tralhaPick.tap(squares(),p,cell());},
+        onHover:(x,y)=>{const p=x===undefined||y===undefined?undefined:controller?.scene.worldAt(x,y);return tralhaPick.move(squares(),p,cell());},
+        onAct:kind=>{const r=tralhaPick.act(kind,net,hud?.view?.tick??0);if(r==='offline')obraSay('Agora não dá');},
+        canvas:()=>controller?.game.canvas,
+        busy:()=>fortBuild.open||kitPlace.active});
+      net.onTralha=answer=>{const text=tralhaPick.answer(answer);if(text)obraSay(text);};
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
@@ -265,6 +279,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   settingsContent.prepend(cameraSettings);
   const cameraNote=cameraSettings.querySelector<HTMLElement>('.explore-settings-camera-note')!;
   shell.append(settings);
+  // The match menu (NEW-20261009-UX-menu-e-conexao): in a room the gear opens Continuar / Configurações / Copiar convite /
+  // Sair da partida (with its confirmation) over today's settings, which become the menu's "Configurações" view. The room
+  // code and the connection line head the menu; "Classes" leaves the dialog (leaving the room asks first now).
+  let menu:GameMenu|undefined;
+  if(net){
+    menu=createGameMenu(settings,settings.querySelector<HTMLElement>('.explore-settings-heading h2')!,settingsContent as HTMLElement,{
+      onResume:()=>closeSettings(),onLeave:()=>close(),
+      onView:()=>{if(settings.open)menuFocus(menu!).focus();}});
+    const help=settings.querySelector('.explore-help');
+    menu.status.append($('#coop-code'),$('#coop-network'));menu.invite.append($('#coop-copy'));help?.remove();
+    $('.explore-exit').hidden=true;
+  }
   $('#explorer-name').textContent=name;
   // The settings' title picture (not the first <img> of the shell: with the imported art the view buttons' stickers are
   // <img> too, and the left one used to wear the hero's portrait, hud-mobile-minimo).
@@ -315,14 +341,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
     setMusicScene('menu');
   };
   const pause=(value:boolean)=>{paused=value;if(value){reset();attackBtn?.clear();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
-  const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
+  const openSettings=()=>{pause(true);shell.classList.add('settings-open');menu?.show('menu');settings.showModal();(menu?menuFocus(menu):$('.explore-settings-close')).focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
@@ -357,6 +383,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Portrait (pacote-bugs-ux design review): the top band has no free row under the camera buttons (the XP bar is 20 px
   // below), so the answer is a row of the announcement slot, "[cadeado] Gira fora da briga", ahead of the coach's hint;
   // the real lock keeps its beat in view. Landscape keeps the balloon under the buttons (nothing there to cover).
+  /** The "Voltou!" row once the link is back after a drop (hud/menu.ts backOnline). */
+  const backOnline=new BackOnlineWatch(),backRow=document.createElement('div');backRow.className='economy-toast back-online-toast';backRow.setAttribute('role','status');backRow.hidden=true;
+  backRow.innerHTML='<p class="economy-toast-text"><strong></strong></p>';
   const cameraRow=document.createElement('div');cameraRow.className='explore-camera-row';cameraRow.setAttribute('role','status');cameraRow.hidden=true;
   cameraRow.innerHTML=`${icon('cadeado',{size:24})}<span>Gira fora da briga</span>`;
   const portrait=typeof matchMedia==='function'?matchMedia('(min-height:501px)'):undefined;
@@ -378,7 +407,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
-  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();closeSettings();},{signal});
+  // Esc: from the menu's settings or its exit question back to the menu, from the menu (or solo's settings) to the game.
+  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();},{signal});
   $('.explore-exit').addEventListener('click',close,{signal});
   shell.addEventListener('cancel',e=>{e.preventDefault();openSettings();},{signal});
   // Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): data-input="mouse" hides the joystick in every phase
@@ -415,6 +445,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // mouse button (no key stays stuck) and plays on when the focus comes back.
   const lost=()=>focusLost(inputWatch.kind,{pause:()=>pause(true),release:()=>{reset();controller?.scene.releaseInput();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lost();},{signal});
+  // Back from the background: a drop ending soon after counts for the "Voltou!" row (hud/menu.ts BackOnlineWatch).
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)backOnline.wake(performance.now());},{signal});
   window.addEventListener('blur',lost,{signal});
   // D-051: a held attack (button or Space) never stays held without the focus, phone or desktop.
   document.addEventListener('visibilitychange',()=>{if(document.hidden)attackBtn?.clear();},{signal});
@@ -546,7 +578,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           putData(shell,'offline',String(!net.connected&&!net.fatal));
           showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
@@ -589,6 +621,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   ...(run.rematchLeft!==undefined?{leftTicks:run.rematchLeft}:{})});
               }
               hud.setNetwork(net.showReconnecting()?RECONNECTING:undefined);
+              // Back after a drop (NEW-20261009-UX-menu-e-conexao): "Voltou! O round tá no 4", a row of the announcement slot.
+              const back=backOnline.frame(net.connected,now,run);
+              if(back){backRow.querySelector('strong')!.textContent=back;hud.queueRow(backRow,BACK_ONLINE_ROW_MS);}
               hud.avoidHero(controller?.scene.heroScreenRect());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
               const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
@@ -644,6 +679,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   const car=view&&objectiveOf(view)?.car;
                   scene.setBuildGhost(kitPlace.ghost({cell:buildPlanFor(net.terrain).cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
+              }
+              // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
+              if(tralhaHud&&controller){
+                const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id),structures=view?.structures??[];
+                const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
+                  &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0&&!fortBuild.open&&!kitPlace.active;
+                if(!available)tralhaPick.reset();else tralhaPick.sync(structures);
+                const sel=tralhaPick.selected===undefined?undefined:structures.find(s=>s.id===tralhaPick.selected),tick=view?.tick??0;
+                const progress=tralhaPick.progress(tick);
+                tralhaHud.update({available,...(sel?{at:scene.locate(sel).screen}:{}),...(progress!==undefined?{hero:scene.locate(net.predicted).screen,progress}:{})});
+                scene.setTralhaOutline(available?tralhaPick.outline(structures,tick):undefined);
               }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;

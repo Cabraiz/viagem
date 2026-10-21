@@ -89,7 +89,8 @@ export function onGround(city:CityTerrain,o:{c:number;r:number},w:number,h:numbe
 }
 
 export const piecesOf=(state:StonewardsState):readonly PieceState[]=>state.defenses?.pieces??[];
-export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind).length;
+/** The team's standing pieces of a kind (the map's own tralha, owner 'mapa', never counts against the limit). */
+export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(state).filter(p=>p.kind===kind&&p.owner!=='mapa').length;
 
 /** NEW-20261021-ORQ-barricada-construir: the pieces that are walls to the enemies (rules FREE_PIECE_DEFS blocks: muro, barricada). */
 export const blocksEnemies=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].blocks;

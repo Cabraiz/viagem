@@ -79,11 +79,13 @@ import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
+import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {BANCO,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
+import {unprojectView} from '../projection.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
 import {YouMarkers} from '../render/you.ts';
 import {MapLabel} from '../render/map-labels.ts';
@@ -179,6 +181,14 @@ const bancos=real&&params.get('bancos')==='1';
 const obra=objective&&params.get('obra')==='1';
 /** `anda=<graus>` with obra=1 (D-052): the car swings back and forth (sandbox-chaveiro.ts carSwing), pulled by the hero's rope. */
 const carMoves=obra&&params.has('anda');
+/** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
+const tralhaShot=obra&&params.get('tralha')==='1';
+/**
+ * `muralha=1` with obra=1 (muralha-tralha-no-jogo): instead of the walls and b0..b2, the junk wall by the hero: a row of 5
+ * whole squares behind him and a row of 5 damaged ones (avariada, quase-caindo in turn) in front; `muralha=2`: an L, a T
+ * and a lone square (the joints: halves + pillars).
+ */
+const muralhaShot=obra?params.get('muralha'):null;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
@@ -262,6 +272,8 @@ class CitySandbox extends Phaser.Scene {
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
+    // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match.
+    if(muralhaShot&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
     if(ninhos&&!arsenal)queueHordeArt(this);
   }
@@ -424,13 +436,15 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
-    const structures=[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
+    const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
     const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     this.stone.push(view);
+    if(tralhaShot){this.mountTralha(projector,structures.find(x=>x.id==='b1')!);return;}
+    if(muralhaShot)return; // the junk wall alone, no ghost
     if(carMoves)return; // anda=: the car and its rope, no ghost over the hero
     // The ghost: a free spot to the car's left (green), or on the car itself (`fantasma=carro`, red).
     const wanted=params.get('fantasma')??'vigia-do-predio',piece=wanted==='carro'?'vigia-do-predio':wanted;
@@ -440,6 +454,29 @@ class CitySandbox extends Phaser.Scene {
     const sites=[-6,-3,3,6].flatMap(dx=>[-4,4].map(dy=>({x:car.x+dx,y:car.y+dy})));
     this.fortify.setGhost({piece,c:at.c,r:at.r,look});
     this.fortify.setHints(buildHints(piece,sites,ctx));
+  }
+  /** `muralha=1|2`: the junk wall's squares around the hero (cells of CITY_BUILD_CELL). */
+  private muralhaSquares(bar:(id:string,c:number,r:number,rot:0|1,hp:number)=>StructureView):StructureView[]{
+    const cell=CITY_BUILD_CELL,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell),row=[-2,-1,0,1,2];
+    if(muralhaShot==='2')return [
+      ...[0,1,2,3].map(i=>bar(`l${i}`,hc-4+i,hr-3,0,200)),...[1,2].map(i=>bar(`m${i}`,hc-4,hr-3+i,1,200)),
+      ...[0,1,2,3,4].map(i=>bar(`t${i}`,hc+1+i,hr+1,0,200)),...[1,2].map(i=>bar(`u${i}`,hc+3,hr+1-i,1,200)),
+      bar('so',hc-3,hr+2,1,200)];
+    return [...row.map((d,i)=>bar(`w${i}`,hc+d,hr-2,0,200)),...row.map((d,i)=>bar(`d${i}`,hc+d,hr+2,0,i%2?40:110))];
+  }
+  /**
+   * `tralha=1` with obra=1 (barricada-construir part 2): barricada b1 tapped: its gold outline, the two circles COLETAR /
+   * DESTRUIR over it and a coleta's bar half way over the hero (hud/tralha, the game's own HUD on a sandbox host).
+   */
+  private mountTralha(projector:{project(x:number,y:number,out:{x:number;y:number}):{x:number;y:number}},b1:StructureView){
+    this.stone!.outline=b1.id;
+    const host=document.createElement('div');host.className='rh';host.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:6';document.getElementById('cidade')!.append(host);
+    const hud=new TralhaHud(host,{onTap:()=>false,onHover:()=>false,onAct:()=>{},canvas:()=>this.game.canvas,busy:()=>false});
+    const screen=(wx:number,wy:number)=>{
+      const cam=this.cameras.main,q=projector.project(wx,wy,{x:0,y:0}),r=this.game.canvas.getBoundingClientRect(),k=r.width/this.scale.width;
+      return {x:r.left+(q.x-cam.worldView.x)*cam.zoom*k,y:r.top+(q.y-cam.worldView.y)*cam.zoom*k};
+    };
+    this.events.on('postupdate',()=>hud.update({available:true,at:screen(b1.x,b1.y),hero:screen(this.at.x,this.at.y),progress:.5}));
   }
   /**
    * `base=1`: the game's Stonewards renderer on a projector equal to the city layer's (same rotation pivot, the
@@ -475,7 +512,8 @@ class CitySandbox extends Phaser.Scene {
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
     const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
-      ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF}:{})});
+      ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF,
+        aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
       telegraphs:[

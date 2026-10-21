@@ -18,7 +18,9 @@ export type WorldKind='ilha'|'infinito'|'cidade';
  * manual combat (CombatMode 'manual'): the equipped weapon fires while it is held. With the automatic weapons (the
  * default) it is ignored, like before. `skill`: the class skill (ignored in manual combat).
  */
-export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean}
+export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean;
+  /** The mouse's aim while attacking on a PC (a unit vector, one of the input's 32 directions; cone-ataque-melee). */
+  aim?:Point}
 /**
  * D-051: how heroes fight. 'auto' (the default): every weapon of the build fires on its own and the skill casts.
  * 'manual' (Wild Rift): only the equipped weapon fires, while PlayerInput.attack is held, at the server's auto aim
@@ -64,6 +66,8 @@ export interface SimPlayer extends Point {
   facing:Point;
   /** Enemy id prioritized by tap, if still valid. */
   target?:string;
+  /** Manual combat: the mouse's aim of the last step that attacked with one (PlayerInput.aim); the melee swing goes there. */
+  aim?:Point;
   build:PlayerBuild; stats:PlayerStats;
   downed?:{sinceTick:number;bleedOutTick:number;progress:number};
   eliminated?:boolean;

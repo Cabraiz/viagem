@@ -322,6 +322,150 @@
         ]
       }
     },
+    "muralha-tralha": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muralha-tralha.webp",
+          "cell": [
+            164,
+            157
+          ],
+          "views": 2,
+          "rows": [
+            "reto-01:inteira",
+            "reto-01:avariada",
+            "reto-01:quase-caindo",
+            "reto-02:inteira",
+            "reto-02:avariada",
+            "reto-02:quase-caindo",
+            "reto-03:inteira",
+            "reto-03:avariada",
+            "reto-03:quase-caindo",
+            "reto-04:inteira",
+            "reto-04:avariada",
+            "reto-04:quase-caindo",
+            "reto-05:inteira",
+            "reto-05:avariada",
+            "reto-05:quase-caindo",
+            "reto-06:inteira",
+            "reto-06:avariada",
+            "reto-06:quase-caindo",
+            "reto-07:inteira",
+            "reto-07:avariada",
+            "reto-07:quase-caindo",
+            "reto-08:inteira",
+            "reto-08:avariada",
+            "reto-08:quase-caindo",
+            "reto-09:inteira",
+            "reto-09:avariada",
+            "reto-09:quase-caindo",
+            "reto-10:inteira",
+            "reto-10:avariada",
+            "reto-10:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.732558
+          ],
+          "pages": [
+            {
+              "file": "muralha-tralha.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 60,
+              "sha256": "87e4289268bf9f97d9fa8d92d1e7af05bfe51f62fddec42d4f784e75c373d573"
+            }
+          ],
+          "sha256": "87e4289268bf9f97d9fa8d92d1e7af05bfe51f62fddec42d4f784e75c373d573",
+          "liteCell": [
+            164,
+            157
+          ]
+        }
+      },
+      "sha256": "a312beae1436fbbca9feef4526e6c42494722e8a203db5d146e4807010af5b37",
+      "meta": {
+        "pecas": [
+          "reto-01",
+          "reto-02",
+          "reto-03",
+          "reto-04",
+          "reto-05",
+          "reto-06",
+          "reto-07",
+          "reto-08",
+          "reto-09",
+          "reto-10"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.5556,
+        "origem": "arte-entrada/cenario/base/muralha-tralha (reto, E3, card muralha-tralha-arte); dano assado por scripts/import-muralha-tralha.mjs"
+      }
+    },
+    "muralha-tralha-pilar": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muralha-tralha-pilar.webp",
+          "cell": [
+            120,
+            174
+          ],
+          "views": 2,
+          "rows": [
+            "pilar-1:inteira",
+            "pilar-1:avariada",
+            "pilar-1:quase-caindo",
+            "pilar-2:inteira",
+            "pilar-2:avariada",
+            "pilar-2:quase-caindo",
+            "pilar-3:inteira",
+            "pilar-3:avariada",
+            "pilar-3:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.816754
+          ],
+          "pages": [
+            {
+              "file": "muralha-tralha-pilar.webp",
+              "columns": 6,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 18,
+              "sha256": "506f8e27f1199bc8492756d8c3a018a493d36f16d34a4626a52405dc57a7d97b"
+            }
+          ],
+          "sha256": "506f8e27f1199bc8492756d8c3a018a493d36f16d34a4626a52405dc57a7d97b",
+          "liteCell": [
+            120,
+            174
+          ]
+        }
+      },
+      "sha256": "ef2285dad6736aadda2dd0f9d5d028a07d73932ca3e83ee3a924f764d4b0d807",
+      "meta": {
+        "pecas": [
+          "pilar-1",
+          "pilar-2",
+          "pilar-3"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.2727,
+        "origem": "arte-entrada/cenario/base/muralha-tralha (pilar, E3, card muralha-tralha-arte); dano assado por scripts/import-muralha-tralha.mjs"
+      }
+    },
     "no-coco": {
       "kind": "views",
       "files": {

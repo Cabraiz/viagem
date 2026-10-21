@@ -237,9 +237,9 @@
 /* Lobby in landscape (NEW-20261009-UX-lobby-mobile): two columns, make a room on the left, join one on the right, no
    scroll at 844×390. With the phone's keyboard up (data-typing, lobby.ts) only the field's column stays, pinned to the
    top of what is still visible. */
-.coop-lobby-make>h2{margin-top:12px}.coop-lobby-join>.coop-divider{margin:20px 0}
+.coop-lobby-make>h2{margin-top:12px}.coop-lobby h2:focus{outline:none}.coop-lobby-join>.coop-divider{margin:20px 0}
 @media(max-height:500px) and (orientation:landscape){
-  .coop-lobby{width:min(760px,calc(100% - 24px));padding:14px 20px 12px}
+  .coop-lobby{width:min(760px,calc(100% - 24px));max-width:none;padding:14px 20px 12px;text-align:left}
   .coop-lobby .coop-close{position:absolute;top:4px;right:4px;float:none}
   .coop-lobby-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;align-items:start}
   .coop-lobby-make>h2{font-size:var(--t-28);margin:4px 0 6px}.coop-lobby-make>p{margin:0;font-size:var(--t-13);line-height:1.45}
@@ -251,3 +251,7 @@
 .coop-lobby[data-typing=code] .coop-lobby-make,.coop-lobby[data-typing=code] .coop-divider,.coop-lobby[data-typing=nick] .coop-lobby-join,.coop-lobby[data-typing=nick] .coop-lobby-make>h2,.coop-lobby[data-typing=nick] .coop-lobby-make>p{display:none}
 .coop-lobby[data-typing] .coop-lobby-cols{display:block}.coop-lobby[data-typing] .coop-lobby-join{padding-right:48px}
 .coop-lobby[data-typing] .coop-nick{margin-top:0}
+@media(orientation:landscape){
+  .coop-lobby[data-typing=code] form{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:end}.coop-lobby[data-typing=code] form label{grid-column:1/-1}
+  .coop-lobby[data-typing=code] form button:not(.coop-close){width:auto;margin-top:0;padding:0 22px}.coop-lobby[data-typing] .coop-status{margin:6px 0 0}
+}

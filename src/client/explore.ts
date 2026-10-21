@@ -33,7 +33,7 @@ import {ObraHud} from './hud/towers/obra.ts';
 import type {ObraView} from './hud/towers/model.ts';
 import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWorld} from './hud/towers/wiring.ts';
 import {FortifyHud} from './hud/fortify/fortify.ts';
-import {FORT_AIM_FIRST,FortBuild,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
+import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
@@ -217,6 +217,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     // Dev server only (dropped from builds): the acceptance scripts read and poke the HUD (zones audit, boss marquee).
     if(import.meta.env.DEV){
       (window as unknown as {__hud?:RunHud}).__hud=hud;
+      // barricada-construir: build barricada squares on build-grid cells until the gesture lands (dev only).
+      (window as unknown as {__construirEm?:unknown}).__construirEm=(cells:{c:number;r:number}[])=>construirEm(net,cells);
       // The overlay module (and its CSS) is loaded on demand, so it never reaches the build.
       (window as unknown as {__zones?:unknown}).__zones={measure:()=>measureZones(),audit:(hero?:Rect)=>auditBoxes(auditBoxesFromDom(),measureZones(),hero),
         overlay:async(on:boolean)=>{zoneOverlay=on;const debug=await import('./hud/zones-debug.ts');if(!on)debug.clearZoneOverlay();else debug.drawZoneOverlay(measureZones());}};

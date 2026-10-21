@@ -63,6 +63,12 @@ export const PROP_FAMILIES:Readonly<Record<PropKind,readonly string[]>>={
 };
 export const FOUNTAIN_PIECE='chafariz-congelado';
 /**
+ * The 4-view base sheets art/base-art.ts draws (its BASE_ART wall and barricade; the crate has one view and ~50 KB):
+ * their city lite copies keep the cell (cityLiteScale 1), so base-art swaps the url only. Not imported from base-art
+ * so the plan (and scripts/art-lite.mjs) stays apart from the Stonewards renderer; tests/client/art-lite.test.ts checks both lists agree.
+ */
+export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada'];
+/**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts
  * the car about the hero's height, barrels, crates, benches and street junk at its waist or chest, the bent sign
@@ -173,13 +179,14 @@ function viewSheet(p:ArtPiece):ArtFile|undefined{
  * City lite copies (scripts/art-lite.mjs, NEW-20261021-E1-decor-lite-arte-perto): the sheet of a piece the city draws
  * (the plan's lots, props, fountain and decor, and the nests of the live layer) that weighs over ~200 KB has a smaller
  * lossy copy under /art/lite/city/ (cityLiteScale), its cell in the file's `liteCell`. Which file of a piece gets one: its view sheet,
- * for the pieces the plan or the nests can draw (unused building families and the base pieces other than the fountain
- * load elsewhere or never). Undefined: none.
+ * for the pieces the plan or the nests can draw, and the base's wall and barricades (art/base-art.ts loads them in the
+ * city's preload, NEW-20261021-E1-base-lite-muralha); unused building families and the other base pieces never load.
+ * Undefined: none.
  */
 export function cityLiteFile(group:string,id:string,p:ArtPiece):string|undefined{
   if(!viewSheet(p))return undefined;
   if(group==='predios'&&UNUSED_FAMILIES.some(u=>pieceFamily(id)===u||pieceFamily(id).startsWith(`${u}-`)))return undefined;
-  if(group==='base'&&id!==FOUNTAIN_PIECE)return undefined;
+  if(group==='base'&&id!==FOUNTAIN_PIECE&&!BASE_LITE_PIECES.includes(id))return undefined;
   if(group!=='predios'&&group!=='base'&&group!=='props'&&group!==DECOR_GROUP)return undefined;
   return p.files.sheet?'sheet':Object.keys(p.files)[0];
 }

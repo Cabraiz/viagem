@@ -2,7 +2,7 @@
  * D-052 slice 4 (card NEW-20261016-ORQ-carro-e-fortificacao-livre, render), pure rules kept apart from Phaser so node
  * tests import them. Placeholder look until the art arrives (fortify.ts draws boxes).
  * - The build grid (maps/build-sites.ts CITY_BUILD_CELL, origin 0,0 of the city; contract/build.ts): a piece's footprint
- *   in cells (a defense from the catalog, the wall 1×1, the barricade 2×1; rot 1 turns it H×W), the top-left cell that
+ *   in cells (a defense from the catalog, the wall and the barricade 1×1 (rules FREE_PIECE_DEFS); rot 1 turns it H×W), the top-left cell that
  *   centres it under a point (the finger, the mouse) and its rectangle back in world u.
  * - The ghost before the room answers: red when it is clearly refused here (too close to the car, to a living nest, or
  *   over a piece already standing); green otherwise. 'tranca' and 'fora' need the sim's flow field and walk mesh: the
@@ -13,7 +13,7 @@
  * The fields are read by shape (c/r/rot on the structures, car.rope) so this works before and after the contract lands.
  */
 import {CAR_RADIUS,CAR_ROPE,type FreeBuildRefusal} from '../../contract/index.ts';
-import {DEFENSES,type DefenseId} from '../../rules/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,type DefenseId} from '../../rules/index.ts';
 
 /** How close to a living nest nothing is built (proposal §2; the room refuses with 'ninho'). */
 export const NEST_BUILD_KEEP_OUT=6;
@@ -30,7 +30,7 @@ export const isGridPiece=(kind:string)=>kind==='muro'||kind==='barricada'||isDef
 
 /** Footprint in cells [w,h] of a piece (rot 1 swaps them); unknown kinds take one cell. */
 export function footprintCells(piece:string,rot?:number):[number,number]{
-  const [w,h]=piece==='barricada'?[2,1]:piece==='muro'?[1,1]:isDefense(piece)?DEFENSES[piece].footprint:[1,1];
+  const [w,h]=piece==='barricada'||piece==='muro'?FREE_PIECE_DEFS[piece].footprint:isDefense(piece)?DEFENSES[piece].footprint:[1,1];
   return rot===1?[h,w]:[w,h];
 }
 /** The piece's rectangle from its top-left cell (world u). */

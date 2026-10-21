@@ -22,7 +22,7 @@ import {cityLoot} from './stonewards/loot.ts';
 import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
-import {MURO_BLOCK_R,pieceDrag,piecesOf} from './towers/free-build.ts';
+import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
 import {holdsObra} from './towers/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
@@ -297,6 +297,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;
+  const reach=avenues?reachMap(avenues.grid):undefined;
   // The boss walks over the plaza barricades (cidade-06; it spawns inside the base and never bashes structures, D-010):
   // its steer runs on a barricade-free copy of the city, or with the four mouths closed it finds no way out of the plaza.
   const open=cityTerrain?new CityTerrain(cityTerrain.asset,cityTerrain.signature):undefined;
@@ -321,6 +322,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-047: the car (and the riding moto) instead of the wall; the car's hits go to the chaveiro, the moto takes none.
     // D-052: an enemy on a free barricade walks slowed (towers/free-build.ts pieceDrag).
     drag:e=>pieceDrag(stonewards.state,e),
+    // NEW-20261021-ORQ-barricada-construir: a built piece is bashed only by a body cut off from the car (the wall's
+    // spot without one); with a way around, the bodies walk it (the flow fields already route around the blockers).
+    ...(reach?{bashes:(e:EnemyState,id:string)=>!isPiece(stonewards.state,id)||!reach(e,chaveiro?.targets().find(o=>o.id===CAR_ID)??stonewards.state.wall)}:{}),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
@@ -404,7 +408,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
       helper:id=>!!options.bot?.(id)||!!options.autopilot?.(id),
       // D-052: the moto rides around a muro built across his way.
-      muros:{radius:MURO_BLOCK_R,standing:()=>piecesOf(stonewards.state).filter(m=>m.kind==='muro')}},cp?.chaveiro);
+      muros:{radius:MURO_BLOCK_R,standing:()=>blockingPieces(stonewards.state)}},cp?.chaveiro);
     if(nestMode){
       const entrances={N:p.spawnN,S:p.spawnS,L:p.spawnL,O:p.spawnO},car={x:wall.x,y:wall.y},city=cityTerrain;
       // The plan's keep-offs: the moto's four possible routes (one per entrance) and the run's start.

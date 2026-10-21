@@ -105,3 +105,12 @@ export function needsFortify(view:{structures:readonly {kind:string}[];objective
   const car=(view.objective as {car?:{rope?:string}}|undefined)?.car;
   return !!car?.rope;
 }
+
+/**
+ * What one frozen wall segment is drawn for (card NEW-20261021-E2-obra-muro-assado): its damage stage, the hit flash,
+ * the view, the bar (fraction and low colour; '-' when whole or fallen) and the camera's contour width `k` (to the
+ * hundredth). The renderer freezes the segment (TriBand) again only when this key changes; per frame it only moves it.
+ */
+export function wallKey(stage:number,flash:boolean,view:number,bar:{fraction:number;low:boolean}|undefined,k:number):string{
+  return `${stage}|${flash?1:0}|${view}|${bar?`${bar.fraction}|${bar.low?1:0}`:'-'}|${Math.round(k*100)}`;
+}

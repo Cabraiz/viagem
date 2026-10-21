@@ -8,6 +8,8 @@
  * - the rope (ObjectiveView.car.rope): from the hero holding it to the car's bumper on his side, sagging with slack.
  * Free barricades are the city barricades (stonewards.ts, turned by rot); defenses are the towers renderer's.
  * Pure drawing: the scene pushes each new RunView and calls update every frame; the rules are in fortify-rules.ts.
+ * Card NEW-20261021-E2-obra-muro-assado: each wall segment is frozen into triangles (TriBand) per wallKey and frozen
+ * again only when that key changes; per frame it only moves (the obra-muro Graphics replayed ~740 commands a frame).
  */
 import Phaser from 'phaser';
 import type {RunView,StructureView} from '../../contract/index.ts';
@@ -16,7 +18,8 @@ import {boxFaces,mix,type Box,type Face} from './chaveiro/iso.ts';
 import {CAR_HALF} from './chaveiro/figures.ts';
 import {objectiveOf} from './chaveiro/view.ts';
 import {HIT_FLASH_MS,damageStage,hpDropped,wallBar} from './stonewards-rules.ts';
-import {cellRect,footprintCells,ropeLine,type CellRect,type GhostLook} from './fortify-rules.ts';
+import {cellRect,footprintCells,ropeLine,wallKey,type CellRect,type GhostLook} from './fortify-rules.ts';
+import {TriBand} from './city/tri-band.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {HEIGHT_PX} from './city/projection.ts';
 
@@ -38,7 +41,7 @@ export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number
 export interface GhostInput {piece:string;c:number;r:number;rot?:number;w?:number;h?:number;look:GhostLook}
 
 export class FortifyRenderer {
-  private walls=new Map<string,Phaser.GameObjects.Graphics>();
+  private walls=new Map<string,{band:TriBand;key:string}>();
   private wallViews:StructureView[]=[];
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -66,7 +69,7 @@ export class FortifyRenderer {
     this.wallViews=view.structures.filter(s=>s.kind==='muro');
     if(!this.options.reduced)for(const id of hpDropped(this.lastHp,this.wallViews))this.flashUntil.set(id,this.now+HIT_FLASH_MS);
     this.lastHp=new Map(this.wallViews.map(s=>[s.id,s.hp]));
-    for(const [id,g] of this.walls)if(!this.lastHp.has(id)){g.destroy();this.walls.delete(id);this.flashUntil.delete(id);}
+    for(const [id,w] of this.walls)if(!this.lastHp.has(id)){w.band.destroy();this.walls.delete(id);this.flashUntil.delete(id);}
     const car=objectiveOf(view)?.car as {x:number;y:number;rope?:string}|undefined;
     this.car=car&&{x:car.x,y:car.y,rope:car.rope};
   }
@@ -83,7 +86,7 @@ export class FortifyRenderer {
   }
 
   destroy(){
-    for(const g of this.walls.values())g.destroy();this.walls.clear();
+    for(const w of this.walls.values())w.band.destroy();this.walls.clear();
     this.ghostG.destroy();this.hintG.destroy();this.ropeG.destroy();
   }
 
@@ -93,7 +96,11 @@ export class FortifyRenderer {
     return f;
   }
   private fill(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number,alpha=1,line=this.c.breu){
-    const p=this.options.projector.project(x,y,this.q),ax=p.x,ay=p.y,pts=this.pts;
+    const p=this.options.projector.project(x,y,this.q);
+    this.fillAt(g,p.x,p.y,faces,k,alpha,line);
+  }
+  private fillAt(g:Phaser.GameObjects.Graphics,ax:number,ay:number,faces:readonly Face[],k:number,alpha=1,line=this.c.breu){
+    const pts=this.pts;
     for(const f of faces){
       for(let i=0;i<4;i++){pts[i].x=ax+f.pts[i].x;pts[i].y=ay+f.pts[i].y;}
       g.fillStyle(f.color,f.alpha*alpha).fillPoints(pts,true);
@@ -102,21 +109,28 @@ export class FortifyRenderer {
   }
 
   private drawWall(s:StructureView,k:number){
-    let g=this.walls.get(s.id);
-    if(!g){g=this.scene.add.graphics().setName('obra-muro');this.walls.set(s.id,g);}
-    g.clear().setDepth(this.options.projector.depth(s.x,s.y));
     const ratio=s.maxHp>0?s.hp/s.maxHp:0,down=s.hp<=0,stage=damageStage(ratio,down),cell=this.options.cell;
     const flash=(this.flashUntil.get(s.id)??0)>this.now,view=this.options.projector.view;
-    const worn=mix(this.c.papel,this.c.breu,.22),color=flash?mix(this.c.papel,0xffffff,.6):stage>=2?worn:this.c.papel;
-    const faces=this.look(`muro|${stage}|${flash?1:0}|${view}`,()=>down
-      ?[{x:-.2*cell,y:.1*cell,z:0,l:.35*cell,w:.3*cell,h:.18,color:this.c.papel},{x:.2*cell,y:-.15*cell,z:0,l:.3*cell,w:.35*cell,h:.14,color:mix(this.c.papel,this.c.breu,.22)}]
-      :[{x:0,y:0,z:0,l:.96*cell,w:.96*cell,h:WALL_H*(1-.18*stage),color}]);
-    this.fill(g,s.x,s.y,faces,k);
-    const bar=wallBar(s.hp,s.maxHp);
-    if(down||bar.fraction>=1)return;
-    const p=this.options.projector.project(s.x,s.y,this.q),bw=26*k,bh=5*k,by=p.y-WALL_H*HEIGHT_PX-10*k;
-    g.fillStyle(this.c.breu,1).fillRect(p.x-bw/2-k,by-k,bw+2*k,bh+2*k);
-    g.fillStyle(bar.low?this.c.cone:this.c.cartolina,1).fillRect(p.x-bw/2,by,bw*bar.fraction,bh);
+    const bar=wallBar(s.hp,s.maxHp),showBar=!down&&bar.fraction<1,key=wallKey(stage,flash,view,showBar?bar:undefined,k);
+    let w=this.walls.get(s.id);
+    if(w?.key!==key){
+      w?.band.destroy();
+      const worn=mix(this.c.papel,this.c.breu,.22),color=flash?mix(this.c.papel,0xffffff,.6):stage>=2?worn:this.c.papel;
+      const faces=this.look(`muro|${stage}|${flash?1:0}|${view}`,()=>down
+        ?[{x:-.2*cell,y:.1*cell,z:0,l:.35*cell,w:.3*cell,h:.18,color:this.c.papel},{x:.2*cell,y:-.15*cell,z:0,l:.3*cell,w:.35*cell,h:.14,color:mix(this.c.papel,this.c.breu,.22)}]
+        :[{x:0,y:0,z:0,l:.96*cell,w:.96*cell,h:WALL_H*(1-.18*stage),color}]);
+      // Drawn in the segment's local space (its projected centre at 0,0), then frozen.
+      const band=TriBand.make(this.scene,g=>{
+        this.fillAt(g,0,0,faces,k);
+        if(!showBar)return;
+        const bw=26*k,bh=5*k,by=-WALL_H*HEIGHT_PX-10*k;
+        g.fillStyle(this.c.breu,1).fillRect(-bw/2-k,by-k,bw+2*k,bh+2*k);
+        g.fillStyle(bar.low?this.c.cone:this.c.cartolina,1).fillRect(-bw/2,by,bw*bar.fraction,bh);
+      }).setName('obra-muro');
+      w={band,key};this.walls.set(s.id,w);
+    }
+    const p=this.options.projector.project(s.x,s.y,this.q);
+    w.band.setPosition(p.x,p.y).setDepth(this.options.projector.depth(s.x,s.y));
   }
 
   private drawGhost(k:number){

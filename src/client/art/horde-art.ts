@@ -237,9 +237,12 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   }
   return out;
 }
-/** Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. */
+/**
+ * Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. The
+ * city's (render/city/art-plan.ts cityTexture) are all smaller.
+ */
 const LITE_ONLY=new Set<string>();
-export const liteOnly=(url:string)=>LITE_ONLY.has(url);
+export const liteOnly=(url:string)=>LITE_ONLY.has(url)||url.startsWith('/art/lite/city/');
 const validCell=(f:ArtFile)=>Array.isArray(f.cell)&&f.cell[0]>0&&f.cell[1]>0;
 
 /** Preload: queues every imported horde texture (nothing with an empty manifest). Failures keep the procedural art. */

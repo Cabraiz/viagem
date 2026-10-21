@@ -10,20 +10,20 @@
  * The limits and prices are the approved proposal's; the room (slice 2) is the judge and answers 'limite'.
  */
 import {CAR_PULL_REACH,CAR_RADIUS,type BuildRot,type FreeBuildRefusal,type PullRefusal} from '../../../contract/index.ts';
-import {DEFENSE_LIMIT} from '../../../rules/index.ts';
+import {DEFENSE_LIMIT,FREE_PIECE_DEFS} from '../../../rules/index.ts';
 import {cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,type CellRect,type FortStructure,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
 
 /** Proposal §2: wall segments and barricades a team may have standing. */
-export const WALL_LIMIT=40,BARRICADE_LIMIT=8;
+export const WALL_LIMIT=FREE_PIECE_DEFS.muro.limit,BARRICADE_LIMIT=FREE_PIECE_DEFS.barricada.limit;
 /** The tower root built from the free build (TOWER_TOKENS.root: 1 ficha). */
 export const ROOT_PIECE='vigia-do-predio';
 export type FortPiece=typeof ROOT_PIECE|'muro'|'barricada';
 export interface PieceCard {piece:FortPiece;name:string;price:string;limit:number}
 export const PIECES:readonly PieceCard[]=Object.freeze([
   {piece:ROOT_PIECE,name:'Vigia',price:'1 ficha',limit:DEFENSE_LIMIT},
-  {piece:'muro',name:'Muro',price:'R$ 4',limit:WALL_LIMIT},
-  {piece:'barricada',name:'Barricada',price:'R$ 10',limit:BARRICADE_LIMIT},
+  {piece:'muro',name:'Muro',price:`R$ ${FREE_PIECE_DEFS.muro.price}`,limit:WALL_LIMIT},
+  {piece:'barricada',name:'Barricada',price:`R$ ${FREE_PIECE_DEFS.barricada.price}`,limit:BARRICADE_LIMIT},
 ]);
 /** "Construir aqui" before the ghost has a place (FortBuild.confirm 'none'): what the phone says. */
 export const FORT_AIM_FIRST='Arraste no mapa primeiro';
@@ -157,4 +157,13 @@ export class FortBuild {
   reset(){this.answers.clear();this.sent.clear();this.dragged.clear();this.toggle(false);}
   /** A standing piece changed (built, fallen): the room's old answers may no longer hold. */
   forgetAnswers(){this.answers.clear();}
+}
+
+/**
+ * NEW-20261021-ORQ-barricada-construir: the one entry point of the build gesture (still open: drag a line, marked spots
+ * or the car's fan). Orders one barricada square per cell (the room checks each: carro, ocupado, grana…); returns the
+ * request ids sent (undefined: offline). A dev shortcut calls it until the gesture lands.
+ */
+export function construirEm(net:FortNet,cells:readonly {c:number;r:number}[]):(number|undefined)[]{
+  return cells.map(({c,r})=>net.buildAt('barricada',c,r));
 }

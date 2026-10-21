@@ -38,6 +38,8 @@ const RING_SEGMENTS=56;
 const CRATE_PREFIX='caixa-';
 /** Imported art sits this much under its spot's Graphics, so the life bar drawn there stays on top of the sheet. */
 const BAR_OVER_ART=.001;
+/** barricada-construir: the car-alert glow (the telegraphs' danger red). */
+const ALERT_RED=0xd2392f;
 /** Sandbag rows of the procedural barricade, bottom first, by damage stage (3: down, not drawn). */
 const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,4,2],2:[5,2],3:[]};
 /** Share of Papel in the sandbags' colour by damage stage (the rest Pedra): darker as the life drops. */
@@ -298,9 +300,17 @@ export class StonewardsRenderer {
     g.setDepth(depth);
     const img=this.art(s.id,BASE_ART.barricade,baseState(BASE_ART.barricade,ratio,down),this.options.projector.view+span.turn,u);
     const pile=this.piles.get(s.id);
+    // barricada-construir: the car too close (StructureView untilTick on a free barricade): a red glow, pulsing faster
+    // as the 6 s run out, then the room destroys it.
+    const alert=isFreeBarricade(s)&&s.untilTick!==undefined&&this.tick<s.untilTick;
+    if(alert){
+      const left=(s.untilTick!-this.tick)/SIM_HZ,pulse=.5+.5*Math.sin(this.now/(left<2?60:140));
+      const l=this.project(s.x-CITY_BUILD_CELL*.8,s.y),r=this.project(s.x+CITY_BUILD_CELL*.8,s.y),w=Math.hypot(r.x-l.x,r.y-l.y);
+      g.fillStyle(ALERT_RED,.25+.35*pulse).fillEllipse(x,y,w,w*.55);
+    }
     if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
-      if(flash)img.setTintFill(this.c.claro);else img.clearTint();
+      if(flash)img.setTintFill(this.c.claro);else if(alert)img.setTint(ALERT_RED);else img.clearTint();
       pile?.setVisible(false);
     }else{
       const a=this.project(span.ax,span.ay),ax=a.x,ay=a.y,b=this.project(span.bx,span.by),bx=b.x,by=b.y;

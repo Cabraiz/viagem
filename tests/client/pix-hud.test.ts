@@ -285,7 +285,7 @@ test('the top bar shows my wallet, never "do time"; the Cida tray pays from my w
 test('the result\'s vaquinha: each player\'s part, me as "Você", the R$ 0 with its joke',()=>{
   const names:Record<string,string>={p1:'Você',p2:'Ana',p3:'Bot',p4:'Zé',p5:'Tio'};const nameOf=(id:string)=>names[id];
   const line=vaquinhaLine([{id:'p2',had:30,paid:12},{id:'p3',had:8,paid:8},{id:'p4',had:0,paid:0},{id:'p5',had:0,paid:0}],nameOf)!;
-  assert.equal(line.text,`Vaquinha: Ana R$ 12 · Bot R$ 8 · Zé R$ 0, ${VAQUINHA_ZERO_JOKES[0]} · Tio R$ 0, ${VAQUINHA_ZERO_JOKES[1]}`);
+  assert.equal(line.text,`Vaquinha: Ana R$ 12; Bot R$ 8; Zé R$ 0, ${VAQUINHA_ZERO_JOKES[0]}; Tio R$ 0, ${VAQUINHA_ZERO_JOKES[1]}`);
   assert.equal(VAQUINHA_ZERO_JOKES[0],'pediu o recibo','the approved joke first');
   assert.match(line.aria,/^Vaquinha da conta: /);
   assert.equal(vaquinhaLine([],nameOf),undefined);assert.equal(vaquinhaLine(undefined,nameOf),undefined);

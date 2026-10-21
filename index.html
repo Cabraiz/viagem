@@ -19,7 +19,7 @@
         try{if(/[?&]sandbox=/.test(location.search))return;var s=JSON.parse(localStorage.getItem('viagem:hero:v1')||'null');if(s&&typeof s.classId==='string'&&/^[a-z0-9-]{1,40}$/.test(s.classId))id=s.classId;}catch(e){}
         var l=document.createElement('link');l.rel='preload';l.as='image';l.href='/art/lite/menu/danca/'+id+'-p1.webp';l.setAttribute('fetchpriority','high');document.head.appendChild(l);})();
     </script>
-    <title>viagem · Crie seu personagem</title>
+    <title>viagem: crie seu personagem</title>
   </head>
   <body>
     <div id="app"></div>

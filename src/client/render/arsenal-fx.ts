@@ -64,6 +64,8 @@ export interface ArsenalOptions {
   aim?:()=>Pt|undefined;
   /** The hero's weapon hand on screen, when its pose has one measured; undefined: the sticker at the side. */
   hand?:(id:string)=>HeldHand|undefined;
+  /** The scene draws the local hero's cone itself, right after placing him (drawSelfCone): update() leaves it alone. */
+  coneFromScene?:boolean;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -110,6 +112,15 @@ export class ArsenalFx{
       for(const r of [1,2,3,4,5] as Rarity[]){const c=token(RARITY_TOKEN[r]);if(c)this.colors[r]=tokenColor(RARITY_TOKEN[r]);}
       this.papel=tokenColor('--c-papel');this.breu=tokenColor('--c-breu');
     }catch{/* no tokens.css (tests): the fallbacks */}
+  }
+
+  /**
+   * The local hero's cone this frame, at the hero as drawn (`at`, world u) and just under its shadow (`shadow` depth):
+   * called by the scene after it placed him, so the cone follows his depth step by step and never covers him.
+   */
+  drawSelfCone(at:Pt,shadow:number){
+    const alive=this.cone.alpha(this.now)>0;
+    this.cone.draw(this.now,this.body,alive?at:undefined,alive?this.options.aim?.():undefined,shadow);
   }
 
   /** Per authoritative view: is this the manual combat, who holds what (and the art, the first time). */
@@ -236,8 +247,10 @@ export class ArsenalFx{
       hand.seen=now;
     }
     for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);}
-    const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
-    this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
+    if(!this.options.coneFromScene){
+      const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
+      this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
+    }
     this.shots.retain(this.drawShot);
     this.slashes=this.slashes.filter(s=>this.drawSlash(s));
     this.bursts.retain(this.drawBurst);

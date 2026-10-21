@@ -464,7 +464,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(hotkey.kind==='turn'){shell.querySelector<HTMLButtonElement>(`[data-turn="${hotkey.turn}"]:not(:disabled)`)?.click();return;}
     if(hotkey.kind==='skill'){
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill.
-      if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true);return;}
+      if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
     if(emotes&&!emotes.root.hidden)emotes.setOpen(!emotes.open);
@@ -473,7 +473,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // focused skill button casts once (the keydown above), not twice.
   document.addEventListener('keyup',event=>{if(!closed&&hotkeyOf(event,settings.open)?.kind==='skill')event.preventDefault();},{signal});
   // D-051: letting go of Space ends the held attack (any keyup of it, even with the settings open or a modifier down).
-  document.addEventListener('keyup',event=>{if(!closed&&event.code==='Space')attackBtn?.key(false);},{signal});
+  document.addEventListener('keyup',event=>{if(!closed&&event.code==='Space')attackBtn?.key(false,'espaco');},{signal});
   $('.explore-pause').addEventListener('click',closeSettings,{signal});
   // Consent (VGM-053B, D7): whether this player's embarrassing moment may show on the result, for everyone in the room.
   if(net){
@@ -561,7 +561,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(!down)attackBtn?.key(false);else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true);},
+      attackHold:down=>{if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{

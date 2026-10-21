@@ -49,12 +49,26 @@ export function arcPoints(x:number,y:number,r:number,a0:number,a1:number,n:numbe
   return out;
 }
 
+/**
+ * The cone's depth: under the hero's shadow (`shadow`, its depth this frame), in the city at the actor depths, elsewhere
+ * also never over the ground layer's `ground`; without a shadow depth, the old way (the hero's world point).
+ */
+export function coneDepth(city:boolean,ground:number,shadow:number|undefined,heroDepth:()=>number){
+  if(shadow!==undefined)return city?shadow-UNDER_SHADOW:Math.min(ground,shadow-UNDER_SHADOW);
+  return city?heroDepth()-CITY_UNDER:ground;
+}
+
 /** Runes along the band: how many fit an arc of this length (world u), one every ~0.32 u, at least 3. */
 export const runeCount=(radius:number,half:number)=>Math.max(3,Math.round(radius*BAND_INNER*2*half/.32));
 
 const ARC_POINTS=40,GLYPH_POINTS=8;
-/** In the city, how far under the hero's actor depth the cone lies (under the shadow at −1). */
-export const CITY_UNDER=1.5;
+/**
+ * How far under the hero's shadow the cone lies (cone-por-cima-e-clique-em-loop): the shadow and the hero's silhouette are at
+ * the actor depth −2 (scene.ts place), the "você" ring at −1, so the cone is always on the ground under all of them.
+ */
+export const UNDER_SHADOW=.5;
+/** In the city, how far under the hero's actor depth the cone lies when no shadow depth is given (under the shadow at −2). */
+export const CITY_UNDER=2+UNDER_SHADOW;
 
 export class MeleeCone{
   private g:Phaser.GameObjects.Graphics;
@@ -91,14 +105,17 @@ export class MeleeCone{
     if(len>1e-6){this.dir.x=dx/len;this.dir.y=dy/len;}
   }
 
-  /** Draws the frame: the cone at the hero (world), toward `aim` (world, the mouse) when given, else the swing's direction. */
-  draw(now:number,body:number,hero:Pt|undefined,aim?:Pt){
+  /**
+   * Draws the frame: the cone at the hero (world), toward `aim` (world, the mouse) when given, else the swing's direction.
+   * `shadow`: the depth of the hero's shadow this frame (the drawn hero, scene.ts place): the cone goes just under it.
+   */
+  draw(now:number,body:number,hero:Pt|undefined,aim?:Pt,shadow?:number){
     const g=this.g;g.clear();
     const a=this.alpha(now);
     if(a<=.004||!hero||this.radius<=0){g.setVisible(false);return;}
     // City (the projector's actor depths): the ground there is pieces at actor depths, so the cone sits just under the
     // hero, below its "você" ring and shadow (you-rules RING_UNDER .3, shadow −1), like those; elsewhere the ground layer.
-    g.setVisible(true).setDepth(this.projector.depthOverride?this.projector.depth(hero.x,hero.y)-CITY_UNDER:this.depth);
+    g.setVisible(true).setDepth(coneDepth(!!this.projector.depthOverride,this.depth,shadow,()=>this.projector.depth(hero.x,hero.y)));
     let ux=this.dir.x,uy=this.dir.y;
     if(aim){const dx=aim.x-hero.x,dy=aim.y-hero.y,len=Math.hypot(dx,dy);if(len>1e-3){ux=dx/len;uy=dy/len;}}
     const base=Math.atan2(uy,ux);

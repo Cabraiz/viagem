@@ -107,6 +107,8 @@ const HERO=()=>{
 };
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
+/** The own hero is dead: the HUD says "Assistindo: <ally>". */
+const DEAD=()=>/Assistindo:/.test(document.body.innerText);
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -245,11 +247,12 @@ async function match(browser,base){
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
     for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
-      await standing(p,vp);
       // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
-      await mouseWalk(p,vp);
-      await keyboardWalk(p,vp);
-      await burst(p,vp);
+      for(const stage of [standing,mouseWalk,keyboardWalk,burst]){
+        // A hero killed by the critters (minutes of walking) watches an ally: nothing of his own to print.
+        if(await p.evaluate(DEAD).catch(()=>false)){avisos.push(`${vp.w}×${vp.h}: o herói morreu (assistindo um aliado): pulei ${stage.name} em diante`);await shot(p,'morto','herói morto (assistindo)',vp);break;}
+        await stage(p,vp);
+      }
     }
   }finally{await ctx.close().catch(()=>{});}
 }

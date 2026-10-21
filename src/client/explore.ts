@@ -560,6 +560,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
+      // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
+      attackHold:down=>{if(!down)attackBtn?.key(false);else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true);},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{

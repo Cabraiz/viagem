@@ -113,11 +113,13 @@ const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
  * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 a main sheet failed its 390×844 mouse on it), dead
  * ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
  */
-const DEAD=()=>{
+const OUT=()=>{
+  if(/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
   const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
-  if(st?.downed||(me&&me.hp<=0))return true;
-  return /Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+  return st?.downed||(me&&me.hp<=0)?'caido':'';
 };
+/** A down hero is often picked up by the solo bots: waited for this long before a new match. */
+const DOWN_WAIT_MS=25000;
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -136,11 +138,14 @@ async function clearOffer(p){
 const matchPages=new WeakMap();
 /**
  * A dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his own:
- * a new match on the same page (a warning on the sheet), at most twice per page.
+ * a new match on the same page (a warning on the sheet), at most 4 times per page (21/10: with the down hero counted,
+ * twice ran out mid-sheet). A down one first gets DOWN_WAIT_MS to be picked up.
  */
 async function playing(p){
   const m=matchPages.get(p);
-  if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
+  let out=m?await p.evaluate(OUT).catch(()=>''):'';
+  if(out==='caido'){for(const end=Date.now()+DOWN_WAIT_MS;out==='caido'&&Date.now()<end;){await sleep(1000);out=await p.evaluate(OUT).catch(()=>'');}}
+  if(!out)return;
   const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
   await shot(p,'fim',`${m.label}: herói caído/morto ou partida acabou`,{w:vp.width,h:vp.height});
   if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
@@ -295,7 +300,7 @@ async function match(browser,base){
 }
 /** The menu of the built site with the room's latency and the perf scene (the meter's panel hidden). */
 async function openMenu(p,base,label){
-  matchPages.set(p,{base,label,left:2});
+  matchPages.set(p,{base,label,left:4});
   await p.addInitScript(LATENCY);
   await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});

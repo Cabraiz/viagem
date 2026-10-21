@@ -77,8 +77,11 @@ interface Tower {
   /** Next re-scan of the horde for the nearest target (ms); the alpha last set; the cover test's last answer. */
   scanAt:number;alpha:number;covers:boolean;
   base:Phaser.GameObjects.Image;weapon:Phaser.GameObjects.Image;
-  /** Its imported sheet is in the manifest but not loaded yet (streamed after the match opens): drawn procedural until it arrives. */
-  artWait:boolean;
+  /**
+   * Its imported sheet is in the manifest but not loaded yet (streamed after the match opens; cena-nasce-rapido): the
+   * defense is not drawn until it arrives or `hideUntil` (ms) passes, then procedural until it does.
+   */
+  artWait:boolean;hideUntil:number;
   /** The Gustavão's rails and sleepers: a decal in the ground layer, under the carriage and everything standing. */
   rail?:Phaser.GameObjects.Image;
   /** Its cast shadow (lighting card): a baked decal in the shadow layer, over the ground decals, under the defenses. */
@@ -343,14 +346,14 @@ export class TowerRenderer {
   private make(view:TowerView):Tower{
     const look=TOWER_LOOK[view.kind];
     const t:Tower={view,look,cal:CALIBRE[look.calibre],phase:'obra-1',
-      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,artWait:false,scanAt:0,alpha:1,covers:false,
+      base:this.scene.add.image(0,0,'__DEFAULT'),weapon:this.scene.add.image(0,0,'__DEFAULT'),art:false,artWait:false,hideUntil:0,scanAt:0,alpha:1,covers:false,
       dir:0,want:0,turnMs:0,recoilUntil:0,drawnDir:-1,drawnRecoil:false,drawnPhase:'',drawnView:-1,
       rect:{x:0,y:0,w:0,h:0},prop:{x:0,y:0,rect:{x:0,y:0,w:0,h:0}},mount:{x:0,y:0},height:0,seen:0,target:-1,depth:0,aimFor:NaN};
     t.prop.rect=t.rect;
     const art=towerArt(view.kind);
     t.art=!!art?.base&&this.scene.textures.exists(towerBaseKey(view.kind));
     t.artWait=!!art?.base&&!t.art;
-    if(t.artWait)this.o.needArt?.(view.kind);
+    if(t.artWait){t.hideUntil=this.now+TOWER_ART_WAIT_MS;this.o.needArt?.(view.kind);}
     return t;
   }
   private drop(t:Tower){t.base.destroy();t.weapon.destroy();t.rail?.destroy();t.shadow?.destroy();}
@@ -619,8 +622,13 @@ export class TowerRenderer {
    */
   private drawTower(t:Tower,view:number){
     const w=this.o.world,v=t.view;
-    // The sheet arrived after the defense was made (cena-nasce-rapido: tower art streams in after the opening).
-    if(t.artWait&&this.scene.textures.exists(towerBaseKey(v.kind))){t.artWait=false;t.art=true;t.drawnPhase='';}
+    // The sheet arrived after the defense was made (cena-nasce-rapido: tower art streams in after the opening); until
+    // then nothing is drawn (no procedural box swapped under the player's eyes), for at most TOWER_ART_WAIT_MS.
+    if(t.artWait){
+      if(this.scene.textures.exists(towerBaseKey(v.kind))){t.artWait=false;t.art=true;t.drawnPhase='';}
+      else if(this.now<t.hideUntil){if(t.base.visible){t.base.setVisible(false);t.weapon.setVisible(false);}return;}
+      if(!t.base.visible){t.base.setVisible(true);t.weapon.setVisible(true);t.drawnPhase='';}
+    }
     if(t.drawnPhase!==t.phase||t.drawnView!==view){ // a defense stands still: its drawing changes only with its phase or the camera
       t.drawnPhase=t.phase;t.drawnView=view;t.drawnDir=-1;t.height=t.look.height;this.coverDirty=true;
       this.sortTower(t);
@@ -863,6 +871,8 @@ export class TowerRenderer {
   }
 }
 
+/** How long a defense made before its sheet waits unseen for it (fetched first: ~1 s on a 9 Mbps phone), then procedural. */
+export const TOWER_ART_WAIT_MS=5000;
 /** Texture keys of a defense's imported sheets. */
 export const towerBaseKey=(kind:string)=>`art:torres:${kind}:base`;
 export const towerGunKey=(kind:string)=>`art:torres:${kind}:idle`;

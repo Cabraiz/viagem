@@ -22,7 +22,7 @@
 .coop-wait-ready{width:100%;border:2px solid var(--c-breu);background:var(--c-amarelo);color:var(--c-breu);box-shadow:var(--s-1)}
 .coop-wait-ready.is-ready{border-color:var(--c-papel);background:var(--c-lilas-escuro);color:var(--c-papel)}
 .coop-wait-count{margin:0;font:900 64px/1 var(--f-cartaz);color:var(--c-cone);text-shadow:0 4px 0 var(--c-breu);font-variant-numeric:tabular-nums}
-.coop-wait[data-phase=countdown] .coop-wait-count{animation:coop-count-beat 1s ease-in-out infinite}
+.coop-wait[data-phase=countdown] .coop-wait-count{animation:coop-count-beat 1s ease-in-out 2}
 .coop-wait[data-phase=countdown] .coop-wait-headline{font-size:17px;color:var(--c-papel)}
 .coop-wait[data-phase=countdown] .coop-wait-line{display:none}
 @keyframes coop-ready-pop{0%{transform:scale(.6) rotate(-6deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:none}}

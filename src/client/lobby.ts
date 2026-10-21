@@ -1,4 +1,5 @@
 import {getClass,type HeroClass,type Role} from '../rules/index.ts';
+import {putHidden} from './hud/dom-put.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from '../contract/index.ts';
 import { icon } from './ui/icon.ts';
@@ -371,8 +372,8 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
       ownerNews=text?{text,until:Infinity}:undefined;ownerSeen=owner;
     }
     // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
-    panel.hidden=!view.visible||!!client.fatal;
-    mapSlot.hidden=panel.hidden;
+    const off=!view.visible||!!client.fatal;
+    putHidden(panel,off);putHidden(mapSlot,off);
     if(!view.visible)return;
     // The map selector follows the room: owner, countdown, connection, the room's map and its download.
     const roomMap=roomMapId(client),load=client.mapLoad;

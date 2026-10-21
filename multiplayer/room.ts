@@ -671,6 +671,7 @@ export class Room {
     else if(m.t==='cida')this.cida(c,m);
     else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
     else if(m.t==='place')this.place(c,m);
+    else if(m.t==='destruir'||m.t==='coletar')this.tralha(c,m);
     else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
@@ -1058,6 +1059,20 @@ export class Room {
       :this.sim.place(c.playerId!,m.slot,{c:m.c,r:m.r,...(m.rot===1?{rot:1 as const}:{})},`k:${m.req}`);
     this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind,defense:this.ids.label('structures',result.defense)}:{reason:result.reason})});
   }
+  /**
+   * barricada-construir part 2: {t:'destruir'|'coletar',round,req,id} on a barricada square (its wire id). Malformed taps
+   * are dropped; outside combat, another round or the level-up pause: 'fase'. destruir answers {t:'destruiu',req,ok,pix?|reason?};
+   * coletar answers {t:'coleta',req,ok,until?|reason?} at once and again {t:'coleta',req,ok,done:true|reason} when it ends.
+   */
+  private tralha(c:Connection,m:any){
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.id!=='string'||m.id.length>12)return;
+    const state=this.run.snapshot(),id=this.ids.resolve(m.id);
+    const reply=m.t==='destruir'?'destruiu':'coleta';
+    if(state.phase!=='combat'||m.round!==state.round||this.levelup.paused){this.sendJson(c,{t:reply,req:m.req,ok:false,reason:'fase'});return;}
+    if(id===undefined){this.sendJson(c,{t:reply,req:m.req,ok:false,reason:'nada'});return;}
+    const result=m.t==='destruir'?this.sim.destruir(c.playerId!,id):this.sim.coletar(c.playerId!,id,m.req);
+    this.sendJson(c,{t:reply,req:m.req,...result});
+  }
   private cida(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
@@ -1230,6 +1245,9 @@ export class Room {
       this.pushElenco();
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
       for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});
+      // barricada-construir part 2: each ended coleta goes to its collector.
+      for(const o of this.sim.coletas)for(const c of this.connections.values())if(c.playerId===o.player&&o.req!==undefined)
+        this.sendJson(c,{t:'coleta',req:o.req,ok:o.ok,...(o.ok?{done:true}:{reason:o.reason})});
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
       const outcome=this.sim.outcome;

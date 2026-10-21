@@ -107,8 +107,19 @@ const HERO=()=>{
 };
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
-/** Out of play: the own hero is dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). */
-const DEAD=()=>/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+/**
+ * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 12+ branches failed their 390×844 mouse on it),
+ * dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts).
+ */
+const OUT=()=>{
+  if(/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
+  const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
+  return st?.downed||(me&&me.hp<=0)?'caido':'';
+};
+/** A down hero is often picked up by the solo bots: waited for this long before a new match. */
+const DOWN_WAIT_MS=25000;
+/** FOLHA_FORCAR_CAIDO=1: the hero counts as down before every mouse test (proves the sheet's message; the run fails). */
+const FORCE_DOWN=process.env.FOLHA_FORCAR_CAIDO==='1';
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -126,16 +137,19 @@ async function clearOffer(p){
 /** Each match page's way back in (set by openMenu): base URL, label, restarts left. */
 const matchPages=new WeakMap();
 /**
- * A dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his own:
- * a new match on the same page (a warning on the sheet), at most twice per page.
+ * A down or dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his
+ * own: a new match on the same page (a warning on the sheet), at most 4 times per page. A down one first gets
+ * DOWN_WAIT_MS to be picked up.
  */
 async function playing(p){
   const m=matchPages.get(p);
-  if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
+  let out=m?await p.evaluate(OUT).catch(()=>''):'';
+  if(out==='caido'){for(const end=Date.now()+DOWN_WAIT_MS;out==='caido'&&Date.now()<end;){await sleep(1000);out=await p.evaluate(OUT).catch(()=>'');}}
+  if(!out)return;
   const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
-  await shot(p,'fim',`${m.label}: herói morto ou partida acabou`,{w:vp.width,h:vp.height});
+  await shot(p,'fim',`${m.label}: herói caído/morto ou partida acabou`,{w:vp.width,h:vp.height});
   if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
-  avisos.push(`${m.label} ${at}: herói morto ou partida acabou: partida nova`);
+  avisos.push(`${m.label} ${at}: herói caído/morto ou partida acabou: partida nova`);
   await p.goto(`${m.base}/?perf=1`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   await enterMatch(p,{w:vp.width,h:vp.height},m.label);
@@ -234,10 +248,25 @@ async function walkByPress(p,vp,press,label){
     const notice=await p.evaluate(NOTICE).catch(()=>'');
     tried.push(`(${x},${y}) ${/não dá/i.test(notice)?'sem caminho':'não andou'}`);
   }
-  fails.push(`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
+  const out=await p.evaluate(OUT).catch(()=>'');
+  fails.push(out?`${vp.w}×${vp.h}: ${label}: herói ${out==='caido'?'caído':'fora de jogo'} durante o teste (não é o ${label} que falhou)`
+    :`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
   return null;
 }
+/**
+ * Before the mouse: the hero up (a down one gets DOWN_WAIT_MS to be picked up, then a new match). Still out of play: the
+ * sheet says so ("herói caído antes do teste de mouse"), not "nenhum ponto andou", and the mouse test is skipped.
+ */
+async function upForMouse(p,vp){
+  await clearOffer(p);
+  const out=FORCE_DOWN?'caido':await p.evaluate(OUT).catch(()=>'');
+  if(!out)return true;
+  fails.push(`${vp.w}×${vp.h}: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste de mouse${FORCE_DOWN?' (forçado: FOLHA_FORCAR_CAIDO=1)':''}`);
+  await shot(p,'mouse-caido',`mouse: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste`,vp);
+  return false;
+}
 async function mouseWalk(p,vp){
+  if(!await upForMouse(p,vp))return;
   // A click on open ground (the 20/10 sheet clicked a fixed spot that fell on a building: "Por aqui não dá", no walk).
   const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y),'mouse');
   await shot(p,'mouse1',got?`mouse: clique em (${got.x},${got.y})${got.tried.length?`; antes ${got.tried.join(', ')}`:''} 1/3`:'mouse: clique (não andou)',vp);
@@ -266,16 +295,17 @@ async function match(browser,base){
     await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
-    for(const vp of VIEWPORTS){
+    // The mouse first, on every screen: the match starts against a wall, where the keys walk into it and no correction
+    // ever lands; and by the time 1280×720's keys were done (~3 min) the horde had the hero down for 390×844's mouse.
+    for(const stages of [[standing,mouseWalk],[keyboardWalk,burst]])for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
-      // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
-      for(const stage of [standing,mouseWalk,keyboardWalk,burst])await stage(p,vp);
+      for(const stage of stages)await stage(p,vp);
     }
   }finally{await ctx.close().catch(()=>{});}
 }
 /** The menu of the built site with the room's latency and the perf scene (the meter's panel hidden). */
 async function openMenu(p,base,label){
-  matchPages.set(p,{base,label,left:2});
+  matchPages.set(p,{base,label,left:4});
   await p.addInitScript(LATENCY);
   await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});

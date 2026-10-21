@@ -28,3 +28,4 @@
   .game-menu-status,.game-menu-live{grid-column:1/-1}
   .explore-settings .game-menu-item,.explore-settings .game-menu-invite button{min-height:48px;padding:10px 14px}
 }
+.game-menu-host .explore-exit[hidden]{display:none}

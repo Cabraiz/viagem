@@ -460,6 +460,8 @@ export class IslandScene extends Phaser.Scene {
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
+        // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
+        aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);},
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).

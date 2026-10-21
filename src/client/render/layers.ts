@@ -71,6 +71,8 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /** The ground point the local hero aims at (world u): the mouse on a PC, undefined on touch (melee aim cone, render/melee-cone.ts). */
+  aim?:()=>Pt|undefined;
   /**
    * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
    * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
@@ -351,7 +353,7 @@ export class HordeRenderer{
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,

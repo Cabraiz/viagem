@@ -8,7 +8,8 @@ import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {treeUrl,spriteUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from '../../src/client/sprites/art-urls.ts';
 import {setArtIndex,parseArtIndex,artIndex} from '../../src/client/art/manifest.ts';
 import {enemyPieceLoads,liteEnemyUrl,liteOnly} from '../../src/client/art/horde-art.ts';
-import {buildCityArtPlan,cityLiteFiles} from '../../src/client/render/city/art-plan.ts';
+import {BASE_LITE_PIECES,buildCityArtPlan,cityLiteFiles,cityLiteScale} from '../../src/client/render/city/art-plan.ts';
+import {BASE_ART,baseLoads} from '../../src/client/art/base-art.ts';
 import {liveSheets} from '../../src/client/render/city/live/art.ts';
 
 const manifest=JSON.parse(readFileSync('scripts/art-lite.json','utf8'));
@@ -118,5 +119,27 @@ test('every city file the city draws over 64 KB (art-plan cityLiteFiles: view sh
     const loop=liveSheets(artIndex()).find(s=>s.key==='city:live:academia-praca-1:anim-balanco')!,f=index.groups.cenario.pieces['academia-praca-1'].files['anim-balanco'];
     assert.equal(loop.url,'/art/lite/city/decor/academia-praca-1/anim-balanco.webp');
     assert.deepEqual([loop.frameWidth,loop.frameHeight],f.cell);
+  }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
+});
+
+test('the base wall and barricades (art/base-art.ts) load their city lite copies at the same cell, before the first playable frame; a failed copy falls back to the approved file (base-lite-muralha)',()=>{
+  const index=JSON.parse(readFileSync('public/art/manifest.json','utf8')),base=index.groups.base;
+  // art-plan's list is base-art's 4-view pieces (kept apart so scripts/art-lite.mjs does not load the renderer).
+  assert.deepEqual([...BASE_LITE_PIECES].sort(),Object.values<string>(BASE_ART).filter(id=>(base.pieces[id]?.files.sheet.views??0)>=4).sort());
+  setArtIndex(parseArtIndex(index));
+  try{
+    const loads=baseLoads();
+    for(const id of BASE_LITE_PIECES){
+      const f=base.pieces[id].files.sheet,l=loads.find(x=>x.key===`art:base:${id}`)!;
+      assert.equal(cityLiteScale('base',id,base.pieces[id]),1,`${id}: same cell`);
+      assert.deepEqual(f.liteCell,f.cell,`${id}: liteCell = cell`);
+      assert.equal(l.url,`/art/lite/city/base/${f.file}`);
+      assert.ok(existsSync(`public${l.url}`),l.url);
+      assert.ok(!liteOnly(l.url)&&originalUrl(l.url)===`/art/city/base/${f.file}`,`${l.url}: falls back to the approved file`);
+      const entry=manifest.files[`city/base/${f.file}`];
+      assert.ok(entry.liteBytes<entry.bytes*.7,`${id}: ${entry.liteBytes} of ${entry.bytes}`);
+    }
+    // The crate has one view (and ~50 KB): the approved file.
+    assert.equal(loads.find(x=>x.key==='art:base:caixa-saque')?.url,'/art/city/base/caixa-saque.webp');
   }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
 });

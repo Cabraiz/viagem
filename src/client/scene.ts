@@ -508,6 +508,8 @@ export class IslandScene extends Phaser.Scene {
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround(),
+        // …drawn by the scene right after the hero is placed: under his shadow, at his drawn depth (cone-por-cima).
+        coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
@@ -733,14 +735,16 @@ export class IslandScene extends Phaser.Scene {
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
-  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();this.rightAttack(false);this.input.keyboard?.resetKeys();}
+  setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();if(paused)this.rightAttack(false);this.input.keyboard?.resetKeys();}
   /**
    * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
    * mouse button's follow (a walk already ordered by a click goes on to its marker, like a tap's).
    */
   releaseInput(){this.hold.release();this.rightAttack(false);this.input.keyboard?.resetKeys();}
   /** The right mouse button's attack held or let go (once per change). */
-  private rightAttack(down:boolean){if(this.rightHeld===down)return;this.rightHeld=down;this.hooks.attackHold?.(down);}
+  // The flag changes after the hook (cone-por-cima-e-clique-em-loop): the press wakes a "Controles pausados" pause
+  // (setPaused(false)) inside the hook, and a let-go there would leave the attack held with nobody to release it.
+  private rightAttack(down:boolean){if(this.rightHeld===down)return;this.hooks.attackHold?.(down);this.rightHeld=down;}
   /** The player's zoom factor (camera-zoom.ts), clamped; eased on screen and saved by the shell. */
   setZoom(k:number){
     const next=clampZoom(k);if(this.hooks.zoomLocked||next===this.zoomWant)return;
@@ -1193,6 +1197,7 @@ export class IslandScene extends Phaser.Scene {
     const unitPx=this.unitPx(smooth);this.correction.step(delta,unitPx);
     this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
+    this.horde?.selfCone(this.position,this.shadow.depth);
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);

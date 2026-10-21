@@ -133,11 +133,21 @@ export function rayEnd(hero:Point,dir:Point,range:number,toScreen:ToScreen):Poin
  */
 export class AttackPress {
   private down=false;private latched=false;
+  /** Keys holding it on the desktop (Space, the right mouse button): it lets go when the last one does. */
+  private readonly keys=new Set<string>();
   press(){this.down=true;this.latched=true;}
   release(){this.down=false;}
+  /**
+   * A desktop key (`source`) held down or let go (cone-por-cima-e-clique-em-loop): held while any key holds it; a key let
+   * go that never pressed releases nothing, and repeated presses never pile up (one latch, one step).
+   */
+  key(source:string,down:boolean){
+    if(down){this.keys.add(source);this.press();}
+    else if(this.keys.delete(source)&&!this.keys.size)this.release();
+  }
   get held(){return this.down;}
   /** One input step: whether it attacks (held now, or pressed since the last step). */
   take(){const on=this.down||this.latched;this.latched=false;return on;}
   /** Pause, focus lost, run reset: nothing stays pressed. */
-  clear(){this.down=false;this.latched=false;}
+  clear(){this.down=false;this.latched=false;this.keys.clear();}
 }

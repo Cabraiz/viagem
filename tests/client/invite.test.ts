@@ -26,7 +26,7 @@ test('inviteCode: ?sala= (or the older ?room=) only when it is a valid code',()=
 });
 test('the link "Chamar a turma" shares opens the same room (shareLink → inviteCode round trip)',()=>{
   const link=shareLink('https://viagem.cyou/','3103A23B68','&dev=1&g=abc123'),url=new URL(link);
-  assert.equal(url.searchParams.get('sala'),'3103A23B68');assert.equal(url.hash,'#personagem');
+  assert.equal(url.searchParams.get('sala'),'3103A23B68');assert.equal(url.hash,'');
   assert.equal(inviteCode(url.search),'3103A23B68');
 });
 test('main.ts: a ?sala= link fills and enters the room (saved hero at once, a new one from the confirmation)',()=>{

@@ -37,4 +37,4 @@ export function inviteCode(search:string){
  * Invite link: `?sala=` opens the room straight away (a saved hero joins by itself; a new player makes one first).
  * `extra`: more query (`&dev=1&g=…` when this tab chose "medir a turma" in the playtest, dev/ux-flag.ts inviteQuery).
  */
-export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?sala=${encodeURIComponent(code)}${extra}#personagem`;
+export const shareLink=(origin:string,code:string,extra='')=>`${origin.replace(/\/+$/,'')}/?sala=${encodeURIComponent(code)}${extra}`;

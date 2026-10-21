@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { classes } from '../../src/rules/classes.ts';
 import { declarations } from '../../scripts/lint-design.mjs';
 
-const menuCss = ['src/client/style.css', 'src/client/sections.css', 'src/client/world.css'];
+const menuCss = ['src/client/style.css', 'src/client/estadio.css', 'src/client/world.css'];
 
 test('menu CSS never repaints the whole screen on scroll', () => {
   for (const file of menuCss) for (const d of declarations(fs.readFileSync(file, 'utf8'))) {
@@ -26,6 +26,6 @@ test('every class ships the 768 px portrait used by srcset, lighter than the 102
 
 test('the menu only loads the game engine when the player goes to play', () => {
   const main = fs.readFileSync('src/main.ts', 'utf8');
-  assert.doesNotMatch(main, /^import .*(phaser|\.\/client\/(?!ui\/|sections\.ts|style\.css)|\.\/(sim|maps|protocol|contract)\/)/m);
+  assert.doesNotMatch(main, /^import .*(phaser|\.\/client\/(?!ui\/|estadio\.css|style\.css)|\.\/(sim|maps|protocol|contract)\/)/m);
   assert.doesNotMatch(fs.readFileSync('index.html', 'utf8'), /modulepreload|phaser|classes-atlas/);
 });

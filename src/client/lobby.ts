@@ -6,6 +6,7 @@ import {faceHtml} from './ui/face-crop.ts';
 import {railName} from './render/map-label-rules.ts';
 import {inviteQuery} from './dev/ux-flag.ts';
 import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './invite.ts';
+import {fitName,NAME_MAX} from './nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
 import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
@@ -19,7 +20,7 @@ import {objectiveFromSearch,soloMemory,soloNext,soloPlan,type SoloPlan} from './
 // ---------- Pure helpers (no DOM, tested in node) ----------
 
 /** Nicknames shown by the "Sortear" button; the HUD and sheet cap names at 20 characters. */
-export const NICK_MAX=20;
+export const NICK_MAX=NAME_MAX;
 const NICK_HEADS=['Capivara','Pastel','Coxinha','Tiozão','Pombo','Boleto','Chinelo','Molotov','Cachaça','Marmita','Agiota','Pavê','Biscoito','Sacolé'];
 const NICK_TAILS=['Veloz','Turbo','do Grau','Lendário','Sem Wi-Fi','de Feira','Cansado','Fujão','Raiz','Nutella','do Bairro','Atrasado','de Ouro','Brabo'];
 
@@ -465,11 +466,13 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
   const [,{CoopClient}]=await Promise.all([import('./coop.css'),import('./net/client.ts')]);
   const dialog=document.createElement('dialog');dialog.className='coop-lobby';dialog.setAttribute('aria-label','Jogar com amigos');
   // Two columns in landscape (coop.css): make a room on the left, join one on the right.
-  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><div class="coop-lobby-cols"><div class="coop-lobby-make"><h2>Chama a turma.</h2><p>Até seis personagens na mesma sala. Manda o link, junta a galera e enfrentem os bêbados.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="${NICK_MAX}" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button></div><div class="coop-lobby-join"><div class="coop-divider">ou entre na sala de alguém</div><form novalidate><label for="room-code">Código da sala</label><input id="room-code" maxlength="80" required autocomplete="off" autocapitalize="characters" enterkeyhint="go" spellcheck="false" placeholder="3103-A23-B68"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p></div></div>`;
+  dialog.innerHTML=`<button class="coop-close" aria-label="Fechar">${icon('fechar',{size:32})}</button><div class="coop-lobby-cols"><div class="coop-lobby-make"><h2>Chama a turma.</h2><p>Até seis personagens na mesma sala. Manda o link, junta a galera e enfrentem os bêbados.</p><div class="coop-nick"><label for="coop-nick">Apelido na sala</label><div><input id="coop-nick" maxlength="60" autocomplete="nickname" spellcheck="false"/><button type="button" class="coop-nick-roll" aria-label="Sortear apelido engraçado">${icon('dado')} Sortear</button></div></div><button id="create-room">Criar sala</button></div><div class="coop-lobby-join"><div class="coop-divider">ou entre na sala de alguém</div><form novalidate><label for="room-code">Código da sala</label><input id="room-code" maxlength="80" required autocomplete="off" autocapitalize="characters" enterkeyhint="go" spellcheck="false" placeholder="3103-A23-B68"/><button type="submit">Entrar na sala</button></form><p class="coop-status" role="status"></p></div></div>`;
   document.body.append(dialog);dialog.showModal();
   const status=dialog.querySelector<HTMLElement>('.coop-status')!;
   const nickInput=dialog.querySelector<HTMLInputElement>('#coop-nick')!;
-  nickInput.value=name.slice(0,NICK_MAX);
+  nickInput.value=fitName(name);
+  // A long name pasted or typed: cut at a whole word with "…" (nick.ts) as soon as the field is left, so it shows what the room will.
+  nickInput.addEventListener('change',()=>{nickInput.value=fitName(nickInput.value);});
   dialog.querySelector('.coop-nick-roll')!.addEventListener('click',()=>{nickInput.value=suggestNickname(Math.random,nickInput.value);});
   const actionButtons=()=>dialog.querySelectorAll<HTMLButtonElement>('button:not(.coop-close):not(.coop-nick-roll)');
   for(const b of actionButtons())b.disabled=true;
@@ -512,7 +515,7 @@ export async function openLobby(hero:HeroClass,name:string,options:LobbyOptions=
       if(create){status.textContent='Criando sua sala…';const asked=objectiveFromSearch(location.search),r=await fetch(new URL('/rooms',endpoint),{method:'POST',body:JSON.stringify(asked),signal:AbortSignal.timeout(10000)});const data=await r.json();if(!r.ok)throw new Error(data.error??'Não foi possível criar a sala.');code=data.code;codeInput.value=formatRoomCode(code);}
       if(closed)return;
       if(!isRoomCode(code))throw new Error('O código tem 10 letras e números (com ou sem traço).');
-      const nick=nickInput.value.trim().slice(0,NICK_MAX)||name;
+      const nick=fitName(nickInput.value)||fitName(name);
       const cityRef=await within(manifest,manifestBy-performance.now());
       if(closed)return;
       client=new CoopClient(endpoint,code,nick,hero.id);client.cityRef=cityRef;client.cityManifest=manifestAgain;client.onStatus=m=>{status.textContent=m;};await client.join();
@@ -577,7 +580,7 @@ export async function openSolo(hero:HeroClass,name:string,options:{bots:number;o
   if(!endpoint){releaseMenu();throw new Error(SOLO_TEXT.noRooms);}
   const cityRef=await within(manifest,SOLO_MANIFEST_MS);
   if(!cityRef){releaseMenu();throw new Error(SOLO_TEXT.noCity);}
-  const plan=soloPlan(options.bots),nick=name.trim().slice(0,NICK_MAX)||'Capivara Veloz';
+  const plan=soloPlan(options.bots),nick=fitName(name)||'Capivara Veloz';
   let client:CoopClient|undefined;
   try{
     // sala-solo-privada: a room only for this person, already on the solo map (a plain-text body: no CORS preflight; a

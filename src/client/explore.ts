@@ -19,6 +19,7 @@ import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {besideFrom,freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
+import {formatRoomCode,shareLink} from './invite.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
@@ -226,7 +227,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${inviteQuery(location.search)}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=castSkill=()=>{if(skill?.attackMode)return;pause(false);skill?.tap(()=>net.cast(),performance.now());};

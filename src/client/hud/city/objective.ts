@@ -13,6 +13,7 @@
  * OBJECTIVE_FULL_MS on screen (summed over its turns in the slot) it folds to the distance and the arrow only
  * (data-compact), and while there is no arrow to show it goes (hidden) until the arrow comes back.
  */
+import {putHidden,turnMoved} from '../dom-put.ts';
 import {icon} from './deps.ts';
 import {OBJECTIVE_JOKE,OBJECTIVE_TEXT,objectiveMeters,type CityObjective} from './route.ts';
 
@@ -40,7 +41,7 @@ export function createObjectiveRow(doc:Document=document,now:()=>number=()=>perf
   // The distance changes every step: kept out of the live region (a screen reader hears the line once).
   const meters=el('b','rh-objetivo-m',row);meters.setAttribute('aria-hidden','true');
   const arrow=el('span','rh-objetivo-arrow',row);arrow.insertAdjacentHTML('beforeend',icon('voltar',{size:32,label:'Caminho até a praça'}));
-  let shown=false,lastM='',lastTurn='',compact=false;
+  let shown=false,lastM='',lastTurn:number|undefined,compact=false;
   /** Time the whole line has been on screen (ms), summed over its turns; since: when the current turn began. */
   let seenMs=0,since:number|undefined;
   const setShown=(next:boolean)=>{
@@ -53,14 +54,16 @@ export function createObjectiveRow(doc:Document=document,now:()=>number=()=>perf
     if(!objective)return setShown(false);
     const m=objective.meters===undefined?'':objectiveMeters(objective.meters);
     if(m!==lastM){lastM=m;meters.textContent=m;}
-    // The sticker points left (180°): turned by the route's bearing plus half a turn, whole degrees.
-    const turn=objective.bearing===undefined?'':`${Math.round(objective.bearing)+180}deg`;
-    if(turn!==lastTurn){lastTurn=turn;arrow.hidden=!turn;if(turn)arrow.style.setProperty('--rumo',turn);}
+    // The sticker points left (180°): turned by the route's bearing plus half a turn, whole degrees. Its own transform
+    // (no custom property for the children to inherit), rewritten only for a turn the eye sees (dom-put turnMoved).
+    const turn=objective.bearing===undefined?undefined:Math.round(objective.bearing)+180;
+    putHidden(arrow,turn===undefined);
+    if(turn!==undefined&&turnMoved(lastTurn,turn)){lastTurn=turn;arrow.style.transform=`rotate(${turn}deg)`;}
     let changed=false;
     if(!compact&&shown&&since!==undefined&&seenMs+now()-since>=OBJECTIVE_FULL_MS){
       compact=true;row.dataset.compact='true';row.classList.add('rh-objetivo-compact');changed=true;
     }
     // Folded, the row is only the arrow (and the distance): with no arrow there is nothing left to show.
-    return setShown(!compact||!!turn)||changed;
+    return setShown(!compact||turn!==undefined)||changed;
   }};
 }

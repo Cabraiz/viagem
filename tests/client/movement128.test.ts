@@ -90,6 +90,18 @@ test('rapid turns decode at most two atlases in parallel and skip obsolete queue
   assert.equal(disposed.length,2);assert.equal(cache.stats().ready,1);cache.release(owner);cache.clearUnused();
 });
 
+test('the same clip asked every frame (Q6 fast path) still starts once a decode slot frees and binds once',async()=>{
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,loaded:string[]=[],finish=new Map<string,()=>void>();
+  const cache=new Movement128Textures(plan=>new Promise(resolve=>{loaded.push(plan.key);finish.set(plan.key,()=>resolve({dispose:()=>{}}));}));
+  const owners=[{},{},{}],plans=owners.map((_,i)=>({...first,key:'slot:'+i}));
+  for(let frame=0;frame<5;frame++){owners.forEach((o,i)=>cache.request(o,plans[i]));await Promise.resolve();}
+  assert.deepEqual(loaded,['slot:0','slot:1']);assert.equal(cache.stats().queued,1);
+  finish.get('slot:0')!();await flush();assert.deepEqual(loaded,['slot:0','slot:1','slot:2'],'the freed slot pumps the queued clip without a new key');
+  assert.equal(cache.request(owners[0],plans[0]),true);cache.bind(owners[0],plans[0].key);cache.bind(owners[0],plans[0].key);
+  assert.equal(cache.stats().owners,1);cache.release(owners[0]);assert.equal(cache.stats().owners,0);
+  assert.equal(cache.request(owners[0],plans[0]),true,'after a release the owner asks again through the full path');
+});
+
 test('both missing manifest IDs and a catalog-free hero start from preloaded native idle8 without any legacy texture',async()=>{
   const previous=Object.getOwnPropertyDescriptor(globalThis,'Image'),requests:string[]=[];
   class FakeImage {src='';decoding='';naturalWidth=1536;naturalHeight=768;get width(){return this.naturalWidth;}get height(){return this.naturalHeight;}async decode(){requests.push(this.src);}}
@@ -273,4 +285,24 @@ test('a figure off camera asks for no legacy sheet: it holds its pose; on camera
   assert.deepEqual(loads,[],'no dir4/dir4c for a figure the camera cannot see');assert.equal(sprite.texture.key,'stand-in');assert.ok(sprite.stops>0);
   sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
   assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
+});
+
+test('movement128Visible (Q6): an unrotated sprite is tested from its size and origin, the box getBounds would give, without calling it',async()=>{
+  const {movement128Visible}=await import('../../src/client/sprites/movement128-textures.ts');
+  const scene={cameras:{main:{worldView:{left:0,right:400,top:0,bottom:800}}}} as unknown as Phaser.Scene;
+  let bounds=0;
+  // A 96×96 frame anchored at its feet (.5,.875), drawn at ×1.2 and mirrored (negative scale: the box is the same).
+  const sprite=(x:number,y:number,extra:object={})=>({visible:true,active:true,alpha:1,rotation:0,parentContainer:null,x,y,width:96,height:96,
+    displayOriginX:48,displayOriginY:84,scaleX:-1.2,scaleY:1.2,getBounds(){bounds++;return {left:x-58,right:x+58,top:y-101,bottom:y+15};},...extra}) as unknown as Phaser.GameObjects.Sprite;
+  assert.equal(movement128Visible(sprite(200,400),scene),true);
+  // The box reaches the camera's padded edge (96 px): left = 600-48*1.2 = 542.4 > 400+96 → off; 550 → left 492.4 → on.
+  assert.equal(movement128Visible(sprite(600,400),scene),false);
+  assert.equal(movement128Visible(sprite(550,400),scene),true);
+  // Below: top = y-84*1.2; y=1000 → 899.2 > 896 off; y=995 → 894.2 on.
+  assert.equal(movement128Visible(sprite(200,1000),scene),false);
+  assert.equal(movement128Visible(sprite(200,995),scene),true);
+  assert.equal(bounds,0);
+  // Rotated, or inside a container: Phaser's getBounds.
+  movement128Visible(sprite(200,400,{rotation:.3}),scene);movement128Visible(sprite(200,400,{parentContainer:{}}),scene);
+  assert.equal(bounds,2);
 });

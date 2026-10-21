@@ -5,6 +5,8 @@
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
  *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side; none while moving the car (D-052).
  *    With full effects it casts its part of the hero's silhouette (render/silhouette.ts), so the shadow holds the weapon.
+ *    A hero whose pose has a measured hand (card arma-na-mao-viciado: the viciado's M16, sprites/hand-points.ts) holds
+ *    it: the sticker's grip on that hand, the barrel where the hero faces, behind the body when the hand is.
  *  - Each arsenal weapon's shot ('fire' event): muzzle flash, cone, blast or slash (arsenal-rules.ts FIRE_LOOK).
  *  - The local hero's melee swing: the aim cone on the ground (render/melee-cone.ts).
  * The art loads once, the first time a view shows the manual combat (no download for the automatic weapons); until then,
@@ -21,6 +23,7 @@ import {MeleeCone,meleeCone} from './melee-cone.ts';
 import {TriBand} from './city/tri-band.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
+import {DEFAULT_HOLD,WEAPON_HOLD,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
@@ -38,6 +41,8 @@ const HAND_DX=26,HAND_DY=-30;
  * ground layer (layers.ts -9970: the telegraphs stay on top of it).
  */
 const RING_DEPTH=-9965,CONE_DEPTH=-9974,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
+/** A held weapon sits this much over (or, behind the body, under) its hero's sprite depth. */
+const HELD_DEPTH_STEP=.02;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 /**
@@ -57,6 +62,8 @@ export interface ArsenalOptions {
   selfId?:()=>string|undefined;
   /** The ground point the local hero aims at (world u): the mouse on a PC; undefined on touch (the swing's direction). */
   aim?:()=>Pt|undefined;
+  /** The hero's weapon hand on screen, when its pose has one measured; undefined: the sticker at the side. */
+  hand?:(id:string)=>HeldHand|undefined;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -214,11 +221,17 @@ export class ArsenalFx{
       let hand=this.hands.get(id);
       if(!hand){hand={image:this.track(this.scene.add.image(0,0,key).setDepth(HAND_DEPTH)),sil:this.track(silhouetteImage(this.scene,key,HAND_SIL_DEPTH)),icon:'',seen:0};this.hands.set(id,hand);}
       if(hand.icon!==icon){hand.icon=icon;hand.image.setTexture(key);hand.sil.setTexture(key);}
-      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,hand.image.width),k=HAND_PX*b/w;
-      hand.image.setPosition(q.x+HAND_DX*b,q.y+HAND_DY*b).setScale(k).setVisible(true);
+      const q=projector.project(at.x,at.y,this.q),w=Math.max(1,hand.image.width),held=this.options.hand?.(id);
+      let dx=HAND_DX*b,dy=HAND_DY*b,k=HAND_PX*b/w,rotation=0,flipX=false,flipY=false,ox=.5,oy=.5,depth=HAND_DEPTH;
+      if(held){
+        const hold=WEAPON_HOLD[icon]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
+        dx=held.x-q.x;dy=held.y-q.y;k=hold.px*b/w;rotation=pose.rotation;flipX=pose.flipX;flipY=pose.flipY;ox=pose.ox;oy=pose.oy;
+        depth=held.depth+(held.behind?-HELD_DEPTH_STEP:HELD_DEPTH_STEP);
+      }
+      hand.image.setPosition(q.x+dx,q.y+dy).setOrigin(ox,oy).setRotation(rotation).setFlip(flipX,flipY).setDepth(depth).setScale(k).setVisible(true);
       if(this.silhouettes){
-        const o=castOffset(HAND_DX*b,HAND_DY*b,this.q2);
-        hand.sil.setPosition(q.x+o.x,q.y+o.y).setScale(k,-k*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION).setVisible(true).setActive(true);
+        const o=castOffset(dx,dy,this.q2);
+        hand.sil.setPosition(q.x+o.x,q.y+o.y).setOrigin(ox,oy).setFlip(flipX,flipY).setScale(k,-k*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION-rotation).setVisible(true).setActive(true);
       }else if(hand.sil.visible)hand.sil.setVisible(false).setActive(false);
       hand.seen=now;
     }

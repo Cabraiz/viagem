@@ -25,6 +25,7 @@ import { CoopClient, STEP } from './net/client.ts';
 import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
+import {heldHand} from './sprites/hand-points.ts';
 import {liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
@@ -494,6 +495,8 @@ export class IslandScene extends Phaser.Scene {
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround(),
+        // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
+        hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).

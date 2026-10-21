@@ -7,6 +7,7 @@
  * 84 against 74), and the hero would jump when it turns.
  */
 import type {FigureBox} from './sprite-catalog.ts';
+import {HERO_FEET} from './hero-feet-data.ts';
 
 /** The cell of a detailed clip (movement128.ts: 96×96). */
 export const DETAILED_CELL=96;
@@ -20,4 +21,14 @@ export function heroFeetY(plans:readonly ({anchor:[number,number];figure?:Figure
   const ys=plans.filter(p=>!!p).map(p=>detailedFeetY(p!)).sort((a,b)=>a-b);
   if(!ys.length)return undefined;
   const m=ys.length>>1;return ys.length%2?ys[m]:(ys[m-1]+ys[m])/2;
+}
+/**
+ * The feet line (0..1 of the cell) of one clip, measured from its own pixels (scripts/hero-feet.mjs, card
+ * passo-sem-deslizar): the class-wide line left a clip whose feet sit higher (the viciado walks 3–4 px over its rest
+ * line) floating over its shadow, and dropping onto it when it stopped. Undefined for a sheet the table does not know
+ * (a reimport): the caller falls back to heroFeetY.
+ */
+export function clipFeetY(url:string,table:Readonly<Record<string,number>>=HERO_FEET):number|undefined{
+  const row=table[url.slice(url.lastIndexOf('/')+1).split('?')[0]];
+  return typeof row==='number'&&row>DETAILED_CELL/2&&row<=DETAILED_CELL?row/DETAILED_CELL:undefined;
 }

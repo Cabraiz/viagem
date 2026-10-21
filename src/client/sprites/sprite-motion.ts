@@ -2,19 +2,41 @@ import {HERO_SPEED_MULT} from '../../maps/index.ts';
 
 export type Motion='idle'|'walk'|'attack';
 /**
- * Hero animation speed (NEW-20261018-ORQ-animacao-heroi-70, the user's ask): every hero clip plays at 0.7 of its
- * drawn rate (the R06 walk's 600 ms cycle takes ~857 ms, the 1000 ms attack ~1429 ms, the legacy clips' frameRate × 0.7).
- * The hero's walking speed in the world does not change.
+ * Hero animation speed (NEW-20261018-ORQ-animacao-heroi-70, the user's ask): the clock-driven hero clips play at 0.7 of
+ * their drawn rate (the 1000 ms attack takes ~1429 ms, the rests and the legacy clips' frameRate × 0.7). The walk is not
+ * clock-driven any more: it follows the ground walked (walkCycles, card passo-sem-deslizar).
  */
 export const HERO_ANIM_RATE=.7;
 // Idle drawings vary in pose in the candidate atlases. Hold a single pose so
 // standing characters cannot appear to walk even when world coordinates stop.
 export const SPRITE_CLIPS={
   idle:{frames:[0],frameRate:3*HERO_ANIM_RATE,repeat:-1},
-  // 5 fps at the base walk, × HERO_SPEED_MULT (velocidade-heroi-e-projetil): the steps keep up with the 2× walk (no foot slide).
+  // Legacy walk: its frames are set by the ground walked (walkCycles); the frameRate only matters for a clip left playing.
   walk:{frames:[6,7,8,9,10,11],frameRate:5*HERO_SPEED_MULT*HERO_ANIM_RATE,repeat:-1},
   attack:{frames:[12,13,14,15,16,17],frameRate:6*HERO_ANIM_RATE,repeat:0},
 } as const;
+/**
+ * Feet on the ground (NEW-20261021-ORQ-passo-sem-deslizar): a walk cycle advances with the distance the figure walks on
+ * screen, not with the clock, so the planted foot keeps pace with the ground at any speed (a wall, a slowdown, the
+ * reconcile easing) and a figure standing still never treads. WALK_STRIDE is the drawn travel of the planted foot per
+ * cycle, in heights of the figure (the median of the 29 M16 and R06 side walks; scripts/passada.mjs). The
+ * screen distance carries the isometric foreshortening, as the drawings do (a walk N or S travels half the pixels).
+ */
+export const WALK_STRIDE=.68;
+/**
+ * Share of the stride the cycle keeps up with (1 = the foot locked to the ground). Under 1 the cycle plays slower than
+ * the ground goes by (the drawn walk at the 2× hero speed is a sprint; see the card). Mutable for the sandbox's proofs.
+ */
+export const WALK_TUNE={lock:1};
+/** Walk cycles a step of (dx, dy) world units adds, for a figure drawn `figurePx` world px tall; 0 on a teleport. */
+export function walkCycles(dx:number,dy:number,view:number,figurePx:number){
+  const step=Math.hypot(dx,dy);
+  if(!(figurePx>0)||step>FACING_TELEPORT)return 0;
+  const s=screenMotion(dx,dy,view);
+  return Math.hypot(s.x,s.y)*WALK_TUNE.lock/(WALK_STRIDE*figurePx);
+}
+/** The frame of a looping clip of `frames` after `cycles` cycles. */
+export const cycleFrame=(cycles:number,frames:number)=>Math.min(frames-1,Math.floor((cycles-Math.floor(cycles))*frames));
 /** How long a swing shows (legacy clip and the R06 attack alike: 1000 ms drawn, /HERO_ANIM_RATE on screen). */
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;
 /** A figure without an input (teammates, enemies' riders) keeps walking this long after its drawing last moved. */

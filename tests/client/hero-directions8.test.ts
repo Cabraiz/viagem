@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Facing8Tracker,HERO_DIRECTIONS,HERO_DIRECTION_PAGE,SPRITE_CLIPS} from '../../src/client/sprites/sprite-motion.ts';
+import {Facing8Tracker,HERO_DIRECTIONS,HERO_DIRECTION_PAGE,SPRITE_CLIPS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
@@ -46,18 +47,20 @@ function fixture(cardLoaded=true){
   return {sprites:new CharacterSprites(scene as never),sprite,scene,animations,loads,listeners,complete(){const callbacks=once.get('complete')??[];once.delete('complete');for(const fn of callbacks)fn();}};
 }
 test('renderer selects both pages and the right walk block without mirroring or restarting progress',()=>{
-  const f=fixture();let x=0,y=0;
+  // The legacy walk follows the ground walked (passo-sem-deslizar): its cycle carries across the 8 turns.
+  const f=fixture();let x=0,y=0,cycles=0;const figurePx=96*HERO_DRAW_SCALE;
   f.sprites.animate(f.sprite as never,'aposentado',0,0);
   for(const direction of HERO_DIRECTIONS){
     const [sx,sy]=vectors[direction],intent=screenDirection(sx,sy,0),page=HERO_DIRECTION_PAGE[direction];
-    x+=intent.x*.1;y+=intent.y*.1;
+    x+=intent.x*.1;y+=intent.y*.1;cycles+=walkCycles(intent.x*.1,intent.y*.1,0,figurePx);
     f.sprites.animate(f.sprite as never,'aposentado',x,y,0,true,0,intent);
     assert.equal(f.sprite.texture.key,`sprite:aposentado:${page.page}`,direction);
     assert.equal(f.sprite.flipX,false,direction);
     const anim=f.animations.get(f.sprite.played);
     assert.deepEqual(anim.frames.frames,SPRITE_CLIPS.walk.frames.map(n=>n+page.block*18),direction);
   }
-  assert.equal(f.sprite.progress,.4);
+  const n=SPRITE_CLIPS.walk.frames.length;
+  assert.equal(f.sprite.progress,cycleFrame(cycles,n)/(n-1));
   setArtIndex(parseArtIndex(undefined));
 });
 test('missing lite cardinals retry their original once, then retain the working diagonal sheet',()=>{

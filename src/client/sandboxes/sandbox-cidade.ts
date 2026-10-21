@@ -114,6 +114,7 @@ import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
+import {WALK_TUNE} from '../sprites/sprite-motion.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -194,6 +195,8 @@ const muralhaShot=obra?params.get('muralha'):null;
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
 const ruler=params.get('regua')==='1',RULER_STEPS=5;
+/** `passo=k` (card passo-sem-deslizar): the share of the stride the walk cycle keeps up with (sprite-motion.ts WALK_TUNE). */
+if(params.has('passo'))WALK_TUNE.lock=Number(params.get('passo'));
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');
@@ -228,6 +231,8 @@ class CitySandbox extends Phaser.Scene {
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
+  /** window.__cidade.step's clock (ms). */
+  private stepAt?:number;
   /** The hero's swings so far (window.__cidade.golpe(): one more plays the attack clip; card arma-na-mao-viciado proofs). */
   private swings=0;
   private camera=new FollowCamera();
@@ -715,7 +720,11 @@ class CitySandbox extends Phaser.Scene {
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
+      /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
+      move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */
+      step:(dt:number)=>{this.stepAt=(this.stepAt??performance.now())+dt;this.game.step(this.stepAt,dt);},cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
   }
   /**

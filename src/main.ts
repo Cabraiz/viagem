@@ -8,6 +8,7 @@ import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
+import { formatRoomCode, inviteCode } from './client/invite.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -299,7 +300,12 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
   catch(e){if(!chunkFailed(e))text('explore-error','Não foi possível abrir as salas.');}
   finally{releaseDance();coopButton.disabled=false;}
 }
-coopButton.addEventListener('click',()=>void openCoop());
+// Invite link (?sala=, NEW-20261009-UX-lobby-mobile): the lobby enters that room by itself, once. A saved hero goes
+// straight in (below); a new player makes one first and the confirmation's button says which room it opens.
+let invite=inviteCode(location.search);
+if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
+const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
+coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
 document.getElementById('back-to-classes')!.addEventListener('click',()=>{dialog.close();sections.show('classes');});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
@@ -345,6 +351,7 @@ document.fonts?.addEventListener('loadingdone',refitNames);
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());
 if(resume?.view==='lobby'&&nickname.trim())void openCoop(resume.room?{room:resume.room,autoJoin:true}:{});
+else if(invite&&nickname.trim()&&!new URLSearchParams(location.search).has('foto'))void openInvite();
 // Modo foto (D-049): one named scene from fake data, drawn once, window.__fotoPronta (src/client/dev/foto.ts).
 if(new URLSearchParams(location.search).has('foto'))void import('./client/dev/foto.ts').then(m=>m.abrirFoto());
 if(new URLSearchParams(location.search).get('sandbox')==='horda')void import('./client/sandboxes/sandbox-horde.ts').then(m=>m.openHordeSandbox());

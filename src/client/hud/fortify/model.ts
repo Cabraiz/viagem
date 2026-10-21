@@ -23,7 +23,7 @@ export interface PieceCard {piece:FortPiece;name:string;price:string;limit:numbe
 export const PIECES:readonly PieceCard[]=Object.freeze([
   {piece:ROOT_PIECE,name:'Vigia',price:'1 ficha',limit:DEFENSE_LIMIT},
   {piece:'muro',name:'Muro',price:`R$ ${FREE_PIECE_DEFS.muro.price}`,limit:WALL_LIMIT},
-  {piece:'barricada',name:'Barricada',price:`R$ ${FREE_PIECE_DEFS.barricada.price}`,limit:BARRICADE_LIMIT},
+  // barricada-construir part 2: no barricada here: it comes from the map's tralha (hud/tralha) and is placed as a kit.
 ]);
 /** "Construir aqui" before the ghost has a place (FortBuild.confirm 'none'): what the phone says. */
 export const FORT_AIM_FIRST='Arraste no mapa primeiro';

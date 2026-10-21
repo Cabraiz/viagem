@@ -38,7 +38,7 @@ test('the chaveiro clock: whole seconds as m:ss, never negative',()=>{
 
 test('the round chip: "Onda N" plus his clock while the objective runs, "Round N/10" without it or once it ended',()=>{
   const plain=roundInfo(withObjective());
-  assert.equal(plain?.label,'Round 3/10');
+  assert.equal(plain?.label,'Rodada 3 de 10');
   assert.equal(plain?.chaveiro,undefined);
   const live=roundInfo(withObjective(objective()));
   assert.equal(live?.label,'Onda 3');
@@ -49,7 +49,7 @@ test('the round chip: "Onda N" plus his clock while the objective runs, "Round N
   const late={...withObjective(objective()),round:{...withObjective().round!,index:12}};
   assert.equal(roundInfo(late)?.label,'Onda 12');
   const ended=roundInfo(withObjective(objective({ended:'victory'})));
-  assert.equal(ended?.label,'Round 3/10');
+  assert.equal(ended?.label,'Rodada 3 de 10');
   assert.equal(liveObjective(withObjective(objective({ended:'defeat'}))),undefined);
   // The interval keeps its countdown, with the clock.
   const prep=roundInfo({...withObjective(objective()),round:{...withObjective().round!,phase:'prepare',phaseEndsTick:withObjective().tick+60}});
@@ -82,14 +82,14 @@ test('D-051 nests: the result counts the nests that fell instead of "Onda N"',()
   const objective={outcome:'defeat',cause:'timeout',wave:4,budget:120,grana:30,paid:30,debt:0} as unknown as ObjectiveResult;
   assert.equal(resultRoundLine({round:4,totalRounds:10,objective},{down:1,total:3}),'Ninhos 1/3');
   assert.equal(resultRoundLine({round:4,totalRounds:10,objective}),'Onda 4');
-  assert.equal(resultRoundLine({round:4,totalRounds:10}),'Round 4/10');
+  assert.equal(resultRoundLine({round:4,totalRounds:10}),'Rodada 4 de 10');
 });
 
 test('the round banner with the chaveiro: "Onda N" and no boss line by the round number',()=>{
   assert.equal(marqueeFor({index:12,phase:'wave'},Infinity,'Onda')?.title,'Onda 12');
   assert.equal(marqueeFor({index:12,phase:'wave'},Infinity,'Onda')?.tone,'round');
   assert.equal(marqueeFor({index:10,phase:'wave'})?.tone,'boss');
-  assert.equal(marqueeFor({index:4,phase:'wave'})?.title,'Round 4');
+  assert.equal(marqueeFor({index:4,phase:'wave'})?.title,'Rodada 4');
 });
 
 test('why he stopped: the card\'s words, one short line each, shown once per stop and dropped when he rides again',()=>{
@@ -196,7 +196,7 @@ test('the result\'s bill: why it ended, the budget, the Grana and "vitória com 
     assert.equal(b.reason,OBJECTIVE_CAUSE_TEXT[cause]);
   }
   assert.equal(resultHeadline({victory:false,seed:'0',objective:result({cause:'car',outcome:'defeat'})}).subtitle,OBJECTIVE_CAUSE_TEXT.car);
-  assert.equal(resultHeadline({victory:true,seed:'0',objective:result()}).title,'VITÓRIA!');
+  assert.equal(resultHeadline({victory:true,seed:'0',objective:result()}).title,'Vitória!');
   // Without the objective the old lines stay.
   assert.notEqual(resultHeadline({victory:true,seed:'0'}).subtitle,OBJECTIVE_CAUSE_TEXT.opened);
 });

@@ -53,7 +53,8 @@ import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
 import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
 import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
-import {FpsWatch,frameGateMs,renderProfile} from './economy.ts';
+import {FpsWatch,frameGateMs} from './economy.ts';
+import {QUALITY_WATCH,qualityProfile,type QualityLevel} from './quality.ts';
 import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible} from './desktop-input.ts';
@@ -103,9 +104,9 @@ export interface SceneHooks {
   runView?:(view:RunView)=>void;
   /** The HUD's kill-cam picture (CSS px, viewport coordinates) while it shows, VGM-053B. */
   killcamRect?:()=>Rect|undefined;
-  /** Economy mode at start (VGM-048: 30 fps, fewer effects); setEconomy changes it live. */
-  economy?:boolean;
-  /** The FPS watch saw the combat stay under 40 fps (coop, economy off): the shell turns economy on and says so. */
+  /** Quality level at start (Q3: Leve is the old economy mode plus a still scenery; default Normal); setQuality changes it live. */
+  quality?:QualityLevel;
+  /** The FPS watch saw the first 10 s of combat under 40 fps (coop, above Leve): the shell steps the level down and says so. */
   slow?:()=>void;
   /** The player's zoom at start (camera-zoom.ts: a factor on the follow zoom; default ZOOM_DEFAULT). */
   zoom?:number;
@@ -230,11 +231,12 @@ export class IslandScene extends Phaser.Scene {
   private stamp=0;
   private distance=0;
   private paused=false;
-  /** Economy mode (VGM-048) and the FPS watch that may ask for it (coop combat only). */
+  /** Quality level (Q3) and its economy look (VGM-048), and the FPS watch that may step it down (coop combat only). */
+  private quality:QualityLevel='normal';
   private economy=false;
-  /** create() ran: the frame gate and the horde exist (setEconomy before that only keeps the choice). */
+  /** create() ran: the frame gate and the horde exist (setQuality before that only keeps the choice). */
   private booted=false;
-  private readonly fpsWatch=new FpsWatch();
+  private readonly fpsWatch=new FpsWatch(QUALITY_WATCH);
   /** rAF time of the last drawn frame: Phaser's own delta is smoothed and clamped at 200 ms, too kind to a slow phone. */
   private lastFrameAt?:number;
   private accumulator=0;
@@ -311,7 +313,7 @@ export class IslandScene extends Phaser.Scene {
   besideWindow?:BesideWindow;
   /** Where the camera frames the hero beside that window (zones.ts besideArea), CSS px; the useful area without it. */
   frameArea?:Rect;
-  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;const k=hooks.zoom??ZOOM_DEFAULT;this.zoomWant=this.zoomNow=hooks.zoomLocked?k:clampZoom(k);this.economy=!!hooks.economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
+  constructor(hooks:SceneHooks){super('island');this.hooks=hooks;const k=hooks.zoom??ZOOM_DEFAULT;this.zoomWant=this.zoomNow=hooks.zoomLocked?k:clampZoom(k);this.quality=hooks.quality??'normal';this.economy=qualityProfile(this.quality).economy;this.terrainWatch=new SceneTerrain(hooks.net?.terrain??new TerrainField(randomSeed()));this.trees=this.chooseTrees();}
   /**
    * What the first frame needs, in the order it is fetched (N27): the ground, this hero's sheet, its walk in the 8 directions and its stand-in, the
    * room's class icons (only the classes in the room; one joining later is fetched then, classIcon) and the trees by
@@ -490,6 +492,8 @@ export class IslandScene extends Phaser.Scene {
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
+        // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
+        aim:()=>this.mouseGround(),
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
@@ -498,7 +502,8 @@ export class IslandScene extends Phaser.Scene {
       // Caídos' light columns follow the figures' scale (CITY_VIEW_SCALE in the city).
       this.downedLayer=new DownedLayer(this,p=>this.project(p),p=>this.depth(p),()=>this.actorScale);
       // The wall, the towers and the kill-cam's copy follow the figures' scale too (CITY_VIEW_SCALE in the city).
-      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale});
+      this.stone=new StonewardsRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.position,actorScale:()=>this.actorScale,
+        cell:()=>this.field instanceof CityTerrain?this.field.asset.unitsPerCell:undefined});
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
@@ -506,7 +511,7 @@ export class IslandScene extends Phaser.Scene {
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
-    this.booted=true;this.setEconomy(this.economy);
+    this.booted=true;this.setQuality(this.quality);
     this.hooks.terrain?.(this.field.seed,this.field.signature);this.hooks.position(this.position);
     // The city's near art still on its way: the cover stays until it is in (updateCity calls ready then).
     if(this.cityHeld)this.readyHeld=true;else{this.hooks.ready();this.queueLateArt();}
@@ -704,6 +709,11 @@ export class IslandScene extends Phaser.Scene {
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
   /** D-051: the attack button's choice (a drag let go on an enemy), or undefined to go back to the auto aim. */
+  /** The ground point (world u) under the mouse, or undefined for a finger or a mouse that never moved (the auto aim). */
+  private mouseGround():Point|undefined{
+    const p=this.input.activePointer;
+    return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -825,13 +835,13 @@ export class IslandScene extends Phaser.Scene {
     this.you.update(time,this.cameras.main.zoom,this.marks);
     this.marks.length=0;
   }
-  /** Economy mode (VGM-048): 30 fps and the reduced effects budget, or back to 60 and the full one. */
-  setEconomy(on:boolean){
-    this.economy=on;const profile=renderProfile(on);
+  /** Quality level (Q3): Leve is 30 fps, the reduced effects, the economy look (VGM-048) and a still scenery; Normal and Alta the full game. */
+  setQuality(level:QualityLevel){
+    this.quality=level;const profile=qualityProfile(level),on=profile.economy;this.economy=on;
     // A tap before the scene booted: create() applies it.
     if(!this.booted)return;
     this.horde?.setEffects(profile.effects);
-    this.city?.setEconomy(on);
+    this.city?.setEconomy(on);this.city?.setStill(profile.still);
     this.applyGrade();
     if(this.stone)this.stone.economy=on;
     const towers=this.towers;if(towers)towers.economy=on; // their cast shadows (a renderer built later reads this.economy)
@@ -844,7 +854,7 @@ export class IslandScene extends Phaser.Scene {
    * CATCH_UP_GATE_MS while the page is far behind the room (N27, slow phone: drawing is what keeps it behind).
    */
   private frameGate(){
-    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=renderProfile(this.economy).fps;
+    const loop=this.game.loop as unknown as {fpsLimit:number;hasFpsLimit:boolean;_limitRate:number},fps=qualityProfile(this.quality).fps;
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
@@ -854,6 +864,7 @@ export class IslandScene extends Phaser.Scene {
   /** Catching up with the room (slow phone): the lab probe and the tests read it. */
   get catchingUp(){return this.catchUp.on;}
   get economyOn(){return this.economy;}
+  get qualityLevel(){return this.quality;}
   /** Frames per second of the last whole watch windows (lab report and DEV probe). */
   get fpsHistory():readonly number[]{return this.fpsWatch.history;}
   private watchFrames(time:number){
@@ -863,7 +874,7 @@ export class IslandScene extends Phaser.Scene {
       if(this.catchUp.update(document.hidden?0:net.backlog.ms,time)!==was){this.frameGate();this.fpsWatch.taint();}
       if(this.catchUp.on){this.fpsWatch.taint();return;}
     }
-    if(!net||this.economy||this.fpsWatch.done||last===undefined)return;
+    if(!net||this.quality==='leve'||this.fpsWatch.done||last===undefined)return;
     if(document.hidden){this.fpsWatch.taint();return;}
     if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
     if(this.fpsWatch.frame(time-last))this.hooks.slow?.();
@@ -948,6 +959,8 @@ export class IslandScene extends Phaser.Scene {
     if(!ghost&&!this.fortify)return;
     const f=this.makeFortify();f?.setGhost(ghost);f?.setHints(ghost?hints:[]);
   }
+  /** barricada-construir part 2 (hud/tralha): the barricada square that wears the gold outline (undefined: none). */
+  setTralhaOutline(id:string|undefined){if(this.stone)this.stone.outline=id;}
   /** D-052 slice 3 (the build HUD aims the ghost): the ground point (world u) under a client point (CSS px, viewport). */
   worldAt(clientX:number,clientY:number):Point|undefined{
     const canvas=this.game.canvas;
@@ -1130,6 +1143,8 @@ export class IslandScene extends Phaser.Scene {
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=Math.min(this.accumulator+delta/1000,.2);
     this.steps.sync(net.predicted);
+    // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
+    const mouse=this.mouseGround();
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
       if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
@@ -1139,7 +1154,8 @@ export class IslandScene extends Phaser.Scene {
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.());this.accumulator-=STEP;
+      const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
+      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
@@ -1279,7 +1295,7 @@ export class IslandScene extends Phaser.Scene {
       const art=this.cityArt();
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
       city.setActorScale(this.actorScale);
-      city.setEconomy(this.economy);
+      city.setEconomy(this.economy);city.setStill(qualityProfile(this.quality).still);
       // A map switch into the city: its ground arrives after the first chunks, which are rebuilt with it.
       if(queueCityArt(this,{...art,sheets:art.sheets.filter(s=>s.key.startsWith('city:ground:'))})){
         this.load.once(Phaser.Loader.Events.COMPLETE,()=>{if(this.city===city)city.refresh();});
@@ -1567,7 +1583,7 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
       const terrain=(s as unknown as {landscape?:{stats?:unknown}}).landscape?.stats;
       const props=(s as unknown as {props:unknown[];signs:unknown[]});
       return {terrain,props:props.props.length,signs:props.signs.length,textures:scene.textures.getTextureKeys().length,view:s.view,zoom:cam.zoom,camera,target:s.attackTarget,hero:screen(s.project(s.position)),heroRect:scene.heroScreenRect(),center:screen(s.project({x:12,y:12})),enemies,players,horde:s.horde?.stats(),you:you?{...you.last,covered:[...you.last.covered]}:undefined,
-        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,fps:[...scene.fpsHistory],catchUp:scene.catchingUp,backlogMs:Math.round(net?.backlog.ms??0)};
+        zueira:scene.zueiraState(),blackout:scene.blackoutAudit(),economy:scene.economyOn,quality:scene.qualityLevel,fps:[...scene.fpsHistory],catchUp:scene.catchingUp,backlogMs:Math.round(net?.backlog.ms??0)};
     };
     (window as unknown as {__island?:unknown}).__island={game,scene,probe};
   }

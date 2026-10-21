@@ -110,7 +110,7 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
   const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective)}:{}),...(nestsMode(view)?{nests:true as const}:{})};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
-    const label=objective?`Onda ${round.index}`:`Round ${round.index}/${total}`;
+    const label=objective?`Onda ${round.index}`:`Rodada ${round.index} de ${total}`;
     if(round.phase==='prepare'){
       const countdown=secondsLeft(round.phaseEndsTick,view.tick);
       return {index:round.index,total,label,phase:'prepare',remaining:0,countdown,detail:`Intervalo ${countdown} s`,...chaveiro};
@@ -121,7 +121,7 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
   if(view.wave){
     const phase=view.wave.phase??'wave';
     const remaining=awakeCount(view.enemies);
-    return {index:view.wave.index,total:TOTAL_ROUNDS,label:`Round ${view.wave.index}/${TOTAL_ROUNDS}`,phase,remaining,detail:phase==='prepare'?'Intervalo':`${remaining} bichos`};
+    return {index:view.wave.index,total:TOTAL_ROUNDS,label:`Rodada ${view.wave.index} de ${TOTAL_ROUNDS}`,phase,remaining,detail:phase==='prepare'?'Intervalo':`${remaining} bichos`};
   }
   return undefined;
 }
@@ -157,7 +157,7 @@ export function reviveAlerts(view:RunView,localId:string):ReviveAlert[]{
     const seconds=secondsLeft(player.downed.bleedOutTick,view.tick);
     const progress=clamp01(player.downed.progress);
     if(player.id===localId)alerts.push({kind:'self',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Te salvando… ${Math.round(progress*100)}%`:`Você caiu! Grita por socorro: ${seconds} s`});
-    else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá · ${seconds} s`});
+    else alerts.push({kind:'ally',playerId:player.id,name:player.name,seconds,progress,text:progress>0?`Salvando ${player.name}… ${Math.round(progress*100)}%`:`${player.name} caiu! Corre lá: ${seconds} s`});
   }
   return alerts.sort((a,b)=>Number(b.kind==='self')-Number(a.kind==='self')||a.seconds-b.seconds);
 }
@@ -175,7 +175,7 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
  * grouped ("Zé e Bia caíram!", "3 da turma caíram!"); a rescue in progress names who is being saved, plus the rest.
  */
 /** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
-export const watchingText=(name:string)=>`Assistindo: ${name.trim().split(/\s+/)[0]?.slice(0,9)??''}`;
+export const watchingText=(name:string)=>`Assistindo: ${railName(name)}`;
 
 export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};
@@ -203,7 +203,7 @@ export function reviveBanner(view:RunView,localId:string,network?:string,causes?
   if(alerts.length===1){const a=alerts[0];return {kind:'ally',key:`ally:${a.playerId}`,text:a.text,seconds,progress:a.progress,urgent:seconds<=5};}
   const saving=alerts.find(a=>a.progress>0),rest=alerts.length-1;
   const who=alerts.length===2?`${alerts[0].name} e ${alerts[1].name}`:`${alerts.length} da turma`;
-  const text=saving?`Salvando ${saving.name}… ${Math.round(saving.progress*100)}% · +${rest} ${rest===1?'caído':'caídos'}`:`${who} caíram! Corre lá · ${seconds} s`;
+  const text=saving?`Salvando ${saving.name}… ${Math.round(saving.progress*100)}%. Mais ${rest} ${rest===1?'caído':'caídos'}`:`${who} caíram! Corre lá: ${seconds} s`;
   return {kind:'ally',key:'group',text,seconds,progress:saving?.progress??0,urgent:seconds<=5};
 }
 

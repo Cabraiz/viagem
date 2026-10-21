@@ -48,7 +48,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom));
 }
 .estadio-titulo {
-  margin: 0; font: 400 clamp(40px, 10.5vh, 120px)/.9 var(--f-cartaz); 
+  margin: 0; font: 400 calc(clamp(40px, 10.5vh, 120px) * var(--titulo-fit, 1))/.9 var(--f-cartaz); max-width: 100%;
   transform: rotate(-4deg); transform-origin: 0 100%;
 }
 .estadio-titulo span {
@@ -56,10 +56,11 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   text-shadow: 0 .07em 0 var(--c-breu);
 }
 .estadio-titulo span + span { color: var(--c-amarelo); font-size: 1.18em; }
+.estadio-titulo span[hidden] { display: none; }
 .estadio-classe {
   margin: 0; padding: .14em .8em .18em; border: 3px solid var(--c-breu); border-radius: var(--r-pilula); transform: rotate(-2deg);
   background: var(--c-amarelo); color: var(--c-lilas); box-shadow: var(--s-1);
-  font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere;
+  font: 400 clamp(20px, 3.6vh, 36px)/1.05 var(--f-cartaz); max-width: 100%; overflow-wrap: anywhere; text-wrap: balance;
 }
 .estadio-fileira { display: flex; align-items: center; gap: 8px; width: 100%; }
 .estadio .round-button {
@@ -82,13 +83,20 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   border-color: var(--c-amarelo); background: linear-gradient(var(--c-amarelo), var(--c-cone));
   box-shadow: 0 0 0 3px var(--c-breu), var(--s-1); transform: translateY(-3px);
 }
+.estadio .card-misterio {
+  display: grid; place-items: center; width: 100%; height: 100%; background: var(--c-lilas);
+  font: 400 clamp(34px, 5.6vh, 52px)/1 var(--f-cartaz); color: var(--c-amarelo);
+  -webkit-text-stroke: .16em var(--c-lilas-escuro); paint-order: stroke fill; text-shadow: 0 .07em 0 var(--c-breu);
+}
+.estadio-letreiro { display: block; max-width: 100%; max-height: 34vh; object-fit: contain; }
+.estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
   width: 100%; max-width: 440px; min-height: 48px; padding: 0 20px; border: 3px solid var(--c-breu); border-radius: var(--r-pilula);
   background: var(--c-papel-claro); color: var(--c-lilas); font: 800 var(--t-16) var(--f-sistema); box-shadow: var(--s-1);
 }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
-/* "Esse sou eu!": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
+/* "Selecionar": a provisional CSS button until the art without text (E3) arrives; the text stays HTML. */
 .estadio .estadio-confirmar {
   display: inline-flex; align-items: center; justify-content: center; gap: .45em; width: 100%; max-width: 440px;
   min-height: clamp(52px, 8.5vh, 76px); padding: 6px 28px; border: 4px solid var(--c-breu); border-radius: var(--r-pilula);
@@ -104,7 +112,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
 @media (max-height: 520px) and (orientation: landscape) {
   .estadio-escolha { gap: 6px; width: min(50vw, 560px); }
-  .estadio-titulo { font-size: clamp(30px, 11vh, 60px); }
+  .estadio-titulo { font-size: calc(clamp(30px, 11vh, 60px) * var(--titulo-fit, 1)); }
   .estadio-classe { font-size: 18px; border-width: 2px; }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
@@ -126,7 +134,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
     left: 0; right: 0; width: auto; align-items: center; justify-content: flex-start; gap: 10px;
     padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
-  .estadio-titulo { font-size: clamp(30px, 10vw, 46px); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
+  .estadio-titulo { font-size: calc(clamp(30px, 10vw, 46px) * var(--titulo-fit, 1)); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
   .estadio-titulo span { display: inline; }
   .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
   .estadio .class-card { width: 58px; }

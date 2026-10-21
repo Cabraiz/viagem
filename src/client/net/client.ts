@@ -108,6 +108,11 @@ export function reconnectBanner(net:{connected:boolean;fatal?:string;offlineMs(n
  * the room on the city waits at most this long for the manifest, then knocks once more with the full catalog (cidade-10).
  */
 export const CITY_RETRY_WAIT_MS=6000;
+/**
+ * Terminal drop in a match (the retry window ran out, the seat token is gone): the HUD shows it with "Voltar pra sala",
+ * which opens the room's invite link (NEW-20261009-UX-menu-e-conexao); a reload would land on the start screen.
+ */
+export const LINK_LOST='Conexão indisponível. Toca em Voltar pra sala pra entrar de novo.';
 /** Lobby status while that join waits for the city's manifest. */
 export const CITY_RETRY_STATUS='A sala está na Cidade Nevada. Buscando o mapa…';
 /** `promise`'s value if it settles within `ms`, else undefined (a rejection is undefined too). Never rejects. */
@@ -135,6 +140,8 @@ const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classI
  * order. `welcome`: the held message is a welcome (first join or reconnection), so the seat is not applied yet.
  */
 type MapWait={ws:WebSocket;queue:(object|ArrayBuffer)[];failed:boolean;welcome:boolean};
+/** barricada-construir part 2: the room's answer to a destruir / coletar tap (client.tralha). */
+export interface TralhaAnswer {t:'destruiu'|'coleta';req:number;ok:boolean;reason?:string;pix?:number;until?:number;done?:true}
 export class CoopClient {
   terrain=defaultTerrain;
   /**
@@ -338,6 +345,16 @@ export class CoopClient {
   /** D-052: the room's answer to a rope tap ({t:'puxou'}): ok, or why not (contract PullRefusal). */
   onPulled:(result:{req:number;ok:boolean;reason?:string})=>void=()=>{};
   /** D-052, the car's rope: {t:'puxar',round,req,on} hooks (on) or drops it; the room answers {t:'puxou'} (onPulled). */
+  /**
+   * barricada-construir part 2: {t:'destruir'|'coletar'} on a barricada square (its structure's wire id). The room
+   * answers onTralha: {t:'destruiu',req,ok,pix?|reason?}, {t:'coleta',req,ok,until?|reason?} and, when a coleta ends,
+   * {t:'coleta',req,ok,done?|reason?}.
+   */
+  tralha(kind:'destruir'|'coletar',id:string){
+    if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    const req=++this.forgeId;this.out(this.socket,{t:kind,round:this.run.round,req,id});return req;
+  }
+  onTralha:(answer:TralhaAnswer)=>void=()=>{};
   pull(on:boolean){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const req=++this.forgeId;this.out(this.socket,{t:'puxar',round:this.run.round,req,on});return req;
@@ -460,8 +477,8 @@ export class CoopClient {
       if(event?.code===REPLACED_CLOSE){this.replaced(ws);return;}
       if(this.initialized&&Date.now()-this.lastSeenAt>retryWindow(this.run?.phase)||(!this.initialized&&this.attempts>=(this.token?TOKEN_JOIN_ATTEMPTS:2))){
         this.stopped=true;this.forgetToken();
-        // In a match this is terminal too (the HUD shows it with a reload button); before joining, the lobby shows it.
-        if(this.initialized)this.fatal='Conexão indisponível. Atualiza a página pra voltar pra turma.';
+        // In a match this is terminal too (the HUD shows it with "Voltar pra sala"); before joining, the lobby shows it.
+        if(this.initialized)this.fatal=LINK_LOST;
         this.onStatus(this.fatal??'Conexão indisponível. Volte às classes e entre novamente.');this.rejectReady?.(new Error('Não foi possível conectar à sala.'));return;
       }
       this.onStatus('Conexão caiu. Tentando voltar à mesma sala…');
@@ -561,7 +578,7 @@ export class CoopClient {
       this.combat=m.combat==='manual'?'manual':'auto';
       // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
-      this.onStatus('Conectado · até 6 amigos');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
+      this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);
@@ -589,6 +606,10 @@ export class CoopClient {
       // D-052: the hero's own accepted free obra holds them (obra-hold.ts); `defense` is its wire id when the room sends it.
       this.obraHold.answer({req:m.req,ok:m.ok,...(typeof m.defense==='string'?{defense:m.defense}:{})});
       this.onBuilt({req:m.req,ok:m.ok,...(typeof m.kind==='string'?{kind:m.kind}:{}),...(typeof m.reason==='string'?{reason:m.reason}:{}),...(typeof m.defense==='string'?{defense:m.defense}:{})});
+    }
+    else if((m.t==='destruiu'||m.t==='coleta')&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean'){
+      this.onTralha({t:m.t,req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{}),...(Number.isFinite(m.pix)?{pix:m.pix}:{}),
+        ...(Number.isFinite(m.until)?{until:m.until}:{}),...(m.done===true?{done:true}:{})});
     }
     else if(m.t==='puxou'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onPulled({req:m.req,ok:m.ok,...(typeof m.reason==='string'?{reason:m.reason}:{})});
     else if(m.t==='bought'&&Number.isSafeInteger(m.req)&&typeof m.ok==='boolean')this.onBought({req:m.req,item:String(m.item??''),ok:m.ok,
@@ -780,15 +801,16 @@ export class CoopClient {
   /**
    * One fixed 50 ms step from the scene (input-10hz): predicted at once, sent only as a change of the quantized
    * direction, skill or target, at most every SEND_MIN_MS, plus a keepalive each KEEPALIVE_MS while walking.
-   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target).
+   * `attack` (D-051, manual combat): the attack button held on this step (segment bit 1, with its target). `aim`: the
+   * mouse's direction from the hero on a PC (sent only while attacking; the melee swing goes there).
    */
-  input(direction:Point,skill:boolean,target?:string,attack=false){
+  input(direction:Point,skill:boolean,target?:string,attack=false,aim?:Point){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
     if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
     // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
     if(this.handsBusy)attack=false;
-    const {input,active}=this.batcher.step(direction,skill,target,attack);
+    const {input,active}=this.batcher.step(direction,skill,target,attack,aim);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
     if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap);}

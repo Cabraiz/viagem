@@ -6,6 +6,7 @@
  *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side; none while moving the car (D-052).
  *    With full effects it casts its part of the hero's silhouette (render/silhouette.ts), so the shadow holds the weapon.
  *  - Each arsenal weapon's shot ('fire' event): muzzle flash, cone, blast or slash (arsenal-rules.ts FIRE_LOOK).
+ *  - The local hero's melee swing: the aim cone on the ground (render/melee-cone.ts).
  * The art loads once, the first time a view shows the manual combat (no download for the automatic weapons); until then,
  * and for any piece the manifest lacks, the old looks stay (the chest, the parcel, no hand, no flash).
  */
@@ -16,6 +17,7 @@ import {Ring} from './pool.ts';
 import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
+import {MeleeCone,meleeCone} from './melee-cone.ts';
 import {TriBand} from './city/tri-band.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
@@ -32,9 +34,10 @@ const HAND_DX=26,HAND_DY=-30;
  * Depths: rings on the ground (just over the horde's ground layer); the hand over the heroes (allies 96400, the local
  * one 96500); the shots over the hand (a flash at the barrel is beside the hero's body, under it it would not show), all
  * under the hit numbers on a player (layers.ts PLAYER_HIT_DEPTH 96600). The hand's silhouette lies with the horde's ones
- * (layers.ts -9979), under every body.
+ * (layers.ts -9979), under every body. The melee aim cone lies on the ground over the silhouettes and under the horde's
+ * ground layer (layers.ts -9970: the telegraphs stay on top of it).
  */
-const RING_DEPTH=-9965,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
+const RING_DEPTH=-9965,CONE_DEPTH=-9974,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 /**
@@ -50,6 +53,10 @@ interface BurstFx {image:Image;label:Phaser.GameObjects.Text;born:number;x:numbe
 export interface ArsenalOptions {
   projector:Projector;
   locate?:(id:string)=>Pt|undefined;
+  /** Id of the local hero: only their melee swing lays the aim cone. */
+  selfId?:()=>string|undefined;
+  /** The ground point the local hero aims at (world u): the mouse on a PC; undefined on touch (the swing's direction). */
+  aim?:()=>Pt|undefined;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -78,11 +85,15 @@ export class ArsenalFx{
   private now=0;private body=1;private reduced=false;private silhouettes=false;
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
+  private cone:MeleeCone;
+  /** The local hero's melee cone for the weapon in hand (radius, half aperture), from the last view; undefined: none. */
+  private selfCone?:{weapon:string;radius:number;half:number};
 
   constructor(scene:Phaser.Scene,options:ArsenalOptions){
     this.scene=scene;this.options=options;
     this.rings=this.track(scene.add.graphics().setDepth(RING_DEPTH).setName('arsenal-aneis'));
     this.arcs=this.track(scene.add.graphics().setDepth(FX_DEPTH).setName('arsenal-golpes'));
+    this.cone=new MeleeCone(scene,options.projector,CONE_DEPTH);this.track(this.cone.object);
     const image=()=>this.track(scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{o.image.setVisible(active).setActive(active);if(!active)o.image.setAlpha(1).setScale(1).setRotation(0);};
     this.shots=new Ring<ShotFx>(()=>({image:image(),born:0,x:0,y:0,angle:0,look:FIRE_LOOK.pistola,frames:1,scale:1}),showImage,24);
@@ -97,14 +108,15 @@ export class ArsenalFx{
   /** Per authoritative view: is this the manual combat, who holds what (and the art, the first time). */
   push(view:RunView){
     let manual=false;
-    this.handOf.clear();this.canOpen.clear();
-    const car=view.objective?.car;
+    this.handOf.clear();this.canOpen.clear();this.selfCone=undefined;
+    const car=view.objective?.car,me=this.options.selfId?.();
     for(const p of view.players){
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
       const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id);
       if(icon)this.handOf.set(p.id,icon);
+      if(p.id===me){const weapon=p.weapons[p.hand]?.id,cone=weapon&&meleeCone(weapon,p,p.classId);if(cone)this.selfCone={weapon,...cone};}
     }
     this.manual=manual;
     if(manual&&!this.queued)this.queueArt();
@@ -115,7 +127,11 @@ export class ArsenalFx{
     if(!this.manual)return;
     if(event.type==='damage')this.openings.hurt(event.target,this.now);
     else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value));
-    else if(event.type==='fire'){const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy);}
+    else if(event.type==='fire'){
+      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy);
+      const cone=this.selfCone;
+      if(cone&&cone.weapon===event.weapon&&event.player===this.options.selfId?.())this.cone.swing(this.now,cone.radius,cone.half,event.dx??0,event.dy??0);
+    }
   }
 
   /**
@@ -207,6 +223,8 @@ export class ArsenalFx{
       hand.seen=now;
     }
     for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);}
+    const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
+    this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
     this.shots.retain(this.drawShot);
     this.slashes=this.slashes.filter(s=>this.drawSlash(s));
     this.bursts.retain(this.drawBurst);

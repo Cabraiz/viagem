@@ -15,11 +15,11 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
-import {UNITS_PER_TOKEN,refreshStats} from '../rules/index.ts';
+import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
-import {drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
+import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
@@ -32,7 +32,7 @@ import {CityTerrain,baseHeroSpeed,cityNestPlan,type NestPlan,type NestSize} from
 import {citySpeed} from './city/speed.ts';
 import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
-import {NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
+import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityRunStart} from './city/tutorial.ts';
 import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
@@ -287,6 +287,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     onTerrainChanged:rect=>{avenues?.grid.refresh(rect);avenues?.invalidate([rect]);},
     // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
     // of (the chaveiro and the nests, created below; the wall mode has none of them).
+    // barricada-construir part 2: the map's barricadas, collected into the inventory's kit:barricada (manual combat).
+    ...(objective&&manual?{tralha:{
+      carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')?w.level:0),0),
+      give:(p:SimPlayer)=>{const own=p.build.weapons.find(w=>w.id===kitId('barricada'));if(own){own.level++;return true;}return addItem(p,{id:kitId('barricada'),level:1});},
+    }}:{}),
     ...(cityWorld?{freeBuild:objective?{
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
       moto:(tick:number)=>{if(!chaveiro||chaveiro.state.ended)return undefined;const m=chaveiro.view(tick).moto;return {x:m.x,y:m.y};},
@@ -403,6 +408,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       onOutcome,runEnded:()=>bossDown||director!.state.stage==='done',
       // D-051 (A4): the trigger stays the ETA; in mode 'ninhos' the boss leaves from the biggest live nest.
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
+      // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
+      ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],

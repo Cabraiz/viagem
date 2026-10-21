@@ -7,6 +7,9 @@ import './net-fatal.css';
 import {needsUpdate} from '../protocol/index.ts';
 export {needsUpdate};
 
+/** The way back after a terminal drop in a room (LINK_LOST): the room's invite link, not a reload. */
+export const BACK_TO_ROOM='Voltar pra sala';
+
 /**
  * Shows (or updates) the panel in `host`; `inline` puts it in the flow (lobby window) instead of over the scene.
  * `action` replaces the reload (kicked from the room, D-025: reloading would knock on the same door); `title` goes

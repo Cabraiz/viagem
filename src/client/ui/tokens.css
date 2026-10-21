@@ -100,6 +100,7 @@
   --r-balao:10px;    /* falas e emotes */
   --r-janela:12px;   /* sistema persistente */
   --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
+  --r-pilula:999px;  /* só o menu do estádio (menu-estadio): classe, nome e "Esse sou eu!", como na referência aprovada */
 
   /* ---------- Sombras duras e contorno ---------- */
   --s-1:0 3px 0 var(--c-breu);

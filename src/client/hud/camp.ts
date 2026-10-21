@@ -17,6 +17,7 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
+import {putAttr,putData,putHidden,putText} from './dom-put.ts';
 import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
@@ -225,9 +226,9 @@ export function createCamp(options:CampOptions):CampPart{
     fill.style.transform=`scaleX(${bar.fraction})`;
     readout.classList.toggle('rh-camp-low',bar.low||down);
     if(readout.classList.contains('rh-camp-carro')!==bar.car)readout.classList.toggle('rh-camp-carro',bar.car);
-    hp.textContent=String(bar.value);
+    putText(hp,String(bar.value));
     if(track.getAttribute('aria-label')!==bar.label)track.setAttribute('aria-label',bar.label);
-    track.setAttribute('aria-valuenow',String(Math.round(bar.fraction*100)));
+    putAttr(track,'aria-valuenow',String(Math.round(bar.fraction*100)));
   };
   // My wallet (D-048, carteira-e-pix), "R$ 120", always shown, before the fichas; rewritten only when it changes.
   const grana=el('span','rh-camp-grana',readout);grana.setAttribute('role','img');
@@ -336,8 +337,8 @@ export function createCamp(options:CampOptions):CampPart{
   const render=()=>{
     const view=last;
     const camp=view?.camp;
-    readout.hidden=!camp;
-    if(!view||!camp){forge.hidden=true;notice.hidden=true;return;}
+    putHidden(readout,!camp);
+    if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
     paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view);
     const money=granaReadout(camp.grana);
@@ -358,17 +359,17 @@ export function createCamp(options:CampOptions):CampPart{
     // Chaveiro mode (D-047): the car stands where the wall was (the sim's forge checks that spot), and there is no wall.
     home=inCamp(hero,wall??view.structures.find(s=>s.kind===CAR_ID));
     if(warning&&performance.now()<warning.until){
-      notice.hidden=false;notice.dataset.kind='wall';noticeText.textContent=warning.text;noticeTime.textContent='';arrow.hidden=true;noticeJoke.textContent='';
+      putHidden(notice,false);putData(notice,'kind','wall');putText(noticeText,warning.text);putText(noticeTime,'');putHidden(arrow,true);putText(noticeJoke,'');
     }else if(prepare&&camp.hornEndsTick!==undefined&&standing){
       warning=undefined;
       const left=secondsLeft(camp.hornEndsTick,view.tick);
-      notice.hidden=false;notice.dataset.kind=home?'home':'horn';
+      putHidden(notice,false);putData(notice,'kind',home?'home':'horn');
       notice.classList.toggle('rh-horn-urgent',!home&&left<=5);
-      noticeText.textContent=home?'Bichos chegando':'Volta pra base';noticeTime.textContent=`${left} s`;
+      putText(noticeText,home?'Bichos chegando':'Volta pra base');putText(noticeTime,`${left} s`);
       const bearing=hero?.bearing;
-      arrow.hidden=home||bearing===undefined;
+      putHidden(arrow,home||bearing===undefined);
       if(bearing!==undefined)arrow.style.setProperty('--rumo',`${Math.round(bearing)+180}deg`);
-    }else{warning=undefined;notice.hidden=true;}
+    }else{warning=undefined;putHidden(notice,true);}
     // ---------- forge ----------
     // A barricade within CAMP_RADIUS of the hero (city only): the window opens there too, even away from the wall.
     spot=barricadeAt(hero,view.structures,bocas,CAMP_RADIUS);

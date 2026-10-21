@@ -210,14 +210,14 @@ test('lobby.ts: a stale chunk never leaves the room (the seat waits for the relo
   assert.ok(caught>0&&left>caught,'the seat is kept only while a reload is really underway; otherwise the client leaves');
   assert.match(lobby,/dialog\.dataset\.room=code;\s*\n\s*const \{openExploration\}=await import\('\.\/explore\.ts'\)/,'room recorded before the island chunk loads');
   assert.match(lobby,/export async function openLobby\(hero:HeroClass,name:string,options:LobbyOptions=\{\}\)/);
-  assert.match(lobby,/codeInput\.value=\(options\.room\?\?/);
+  assert.match(lobby,/codeInput\.value=formatRoomCode\(readRoomCode\(options\.room\?\?/);
   assert.match(lobby,/if\(options\.autoJoin&&endpoint&&codeInput\.value\)void enter\(false\);/);
   assert.match(lobby,/import\('\.\/net-fatal\.ts'\)\.catch\(/,'the fatal panel import cannot throw out of the catch');
 });
 
 test('explore.ts: the phase on the shell drives matchEnded; the scene chunk 404 asks the watch; the HUD slot is lent in combat only',()=>{
   const explore=read('src/client/explore.ts');
-  assert.match(explore,/const previous=shell\.dataset\.runPhase;\s*\n\s*setData\(shell,'runPhase',run\.phase\);/);
+  assert.match(explore,/const previous=shell\.dataset\.runPhase;\s*\n\s*putData\(shell,'runPhase',run\.phase\);/);
   assert.match(explore,/if\(leftMatch\(previous,run\.phase\)\)matchEnded\(\)/);
   assert.match(explore,/\}catch\(e\)\{if\(!closed\)\{\$\('\.explore-loading'\)\.textContent=chunkFailed\(e\)\?/);
   assert.match(explore,/net\.run\?\.phase!=='combat'\)return false;runHud\.queueRow\(el,UPDATE_ROW_MS\)/);

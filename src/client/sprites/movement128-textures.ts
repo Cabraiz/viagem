@@ -160,6 +160,19 @@ export function movement128Visible(sprite:Phaser.GameObjects.Sprite,scene:Phaser
   if(sprite.visible===false||sprite.active===false||sprite.alpha===0)return false;
   const view=scene.cameras?.main?.worldView;
   if(!view||!sprite.getBounds)return true;
-  const b=sprite.getBounds(),pad=96;
+  const pad=96,b=unrotatedBounds(sprite)??sprite.getBounds();
   return b.right>=view.left-pad&&b.left<=view.right+pad&&b.bottom>=view.top-pad&&b.top<=view.bottom+pad;
+}
+/** Reused by movement128Visible: getBounds() made a new Rectangle per hero per frame (Q6, CharacterSprites.animate). */
+const box={left:0,right:0,top:0,bottom:0};
+/**
+ * The box getBounds gives for an unrotated sprite outside a container, from its size, origin and scale, without the
+ * four corner transforms (Q6). Undefined otherwise: getBounds handles rotation and containers.
+ */
+function unrotatedBounds(sprite:Phaser.GameObjects.Sprite){
+  if(sprite.rotation!==0||sprite.parentContainer||typeof sprite.width!=='number'||typeof sprite.displayOriginX!=='number')return undefined;
+  const ax=sprite.x-sprite.displayOriginX*sprite.scaleX,bx=ax+sprite.width*sprite.scaleX;
+  const ay=sprite.y-sprite.displayOriginY*sprite.scaleY,by=ay+sprite.height*sprite.scaleY;
+  box.left=Math.min(ax,bx);box.right=Math.max(ax,bx);box.top=Math.min(ay,by);box.bottom=Math.max(ay,by);
+  return box;
 }

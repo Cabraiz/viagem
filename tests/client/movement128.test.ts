@@ -274,3 +274,23 @@ test('a figure off camera asks for no legacy sheet: it holds its pose; on camera
   sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
   assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
 });
+
+test('movement128Visible (Q6): an unrotated sprite is tested from its size and origin, the box getBounds would give, without calling it',async()=>{
+  const {movement128Visible}=await import('../../src/client/sprites/movement128-textures.ts');
+  const scene={cameras:{main:{worldView:{left:0,right:400,top:0,bottom:800}}}} as unknown as Phaser.Scene;
+  let bounds=0;
+  // A 96×96 frame anchored at its feet (.5,.875), drawn at ×1.2 and mirrored (negative scale: the box is the same).
+  const sprite=(x:number,y:number,extra:object={})=>({visible:true,active:true,alpha:1,rotation:0,parentContainer:null,x,y,width:96,height:96,
+    displayOriginX:48,displayOriginY:84,scaleX:-1.2,scaleY:1.2,getBounds(){bounds++;return {left:x-58,right:x+58,top:y-101,bottom:y+15};},...extra}) as unknown as Phaser.GameObjects.Sprite;
+  assert.equal(movement128Visible(sprite(200,400),scene),true);
+  // The box reaches the camera's padded edge (96 px): left = 600-48*1.2 = 542.4 > 400+96 → off; 550 → left 492.4 → on.
+  assert.equal(movement128Visible(sprite(600,400),scene),false);
+  assert.equal(movement128Visible(sprite(550,400),scene),true);
+  // Below: top = y-84*1.2; y=1000 → 899.2 > 896 off; y=995 → 894.2 on.
+  assert.equal(movement128Visible(sprite(200,1000),scene),false);
+  assert.equal(movement128Visible(sprite(200,995),scene),true);
+  assert.equal(bounds,0);
+  // Rotated, or inside a container: Phaser's getBounds.
+  movement128Visible(sprite(200,400,{rotation:.3}),scene);movement128Visible(sprite(200,400,{parentContainer:{}}),scene);
+  assert.equal(bounds,2);
+});

@@ -11,7 +11,7 @@ import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts'
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
-import { plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -56,7 +56,7 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
-    <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span></h1>
+    <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
@@ -177,7 +177,10 @@ function setArt(id: string,hero: HeroClass) {
 }
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}"><img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" /></button>`).join('');
+// The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}">${hasNewArt(hero.id)
+  ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
+  :'<span class="card-misterio" aria-hidden="true">?</span>'}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
@@ -189,10 +192,14 @@ new ResizeObserver(()=>showInRow(false)).observe(rowList);
 function renderSelected(announce=false) {
   // Caps written in the text, not by CSS (design lint): the letreiro is the hero's name (a long one shrinks the sign,
   // --titulo-fit) and the pill his nickname or, until he gets one, his subtitle (ui/apelidos.ts).
+  // The hero's own letreiro picture (E7) replaces both when it exists; its alt says what it shows.
   const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
-  top.textContent=lines[0];top.hidden=!lines[0];big.textContent=lines[1];
+  const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
+  top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
+  if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
+  sign.hidden=!picture;document.getElementById('class-name')!.hidden=!!picture;
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
-  text('class-name',plaqueText(selected));
+  text('class-name',plaque);
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.

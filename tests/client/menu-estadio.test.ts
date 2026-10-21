@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
 import {barTop, placeOnBar, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
-import {APELIDOS, BIG_CHARS, MIN_FIT, TOP_CHARS, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
+import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs; one screen with the approved stadium, the chosen hero big
@@ -70,4 +70,13 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
   assert.equal(titleFit(titleLines('Passageira do Busão')),1);assert.equal(titleFit(titleLines('Caça-Promoção')),1);
   assert.ok(titleFit(titleLines('Desenvolvedora Fullstack Sênior'))<1);
   assert.ok(titleFit(titleLines('Supercalifragilisticoexpialidoso'))<1);
+});
+
+test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
+  // Today nobody has the new art nor a letreiro picture: every tile is a "?", the sign is HTML.
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),[]);
+  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);assert.equal(letreiroOf(hero.id),undefined);}
+  assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
+  assert.match(main,/class="estadio-letreiro" alt="" hidden/);
+  assert.ok(css.includes('.estadio .card-misterio'));
 });

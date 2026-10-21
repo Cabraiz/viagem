@@ -35,3 +35,16 @@ export function titleFit([top,big]:readonly [string,string]):number{
   const fit=Math.min(1,top?TOP_CHARS/top.length:1,big?BIG_CHARS/big.length:1);
   return Math.max(MIN_FIT,Math.floor(fit*100)/100);
 }
+
+/**
+ * The final letreiro is a picture per hero (E7 makes it with the name and the nickname in the same design): its URL by
+ * class id. Absent: the HTML letreiro above (name + plaque). Empty until the pictures arrive.
+ */
+export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({});
+/**
+ * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them
+ * (21/10). Empty until the first one arrives; adding an id brings that hero's face back.
+ */
+export const ARTE_NOVA:ReadonlySet<string>=new Set<string>([]);
+export const letreiroOf=(id:string):string|undefined=>LETREIROS[id];
+export const hasNewArt=(id:string)=>ARTE_NOVA.has(id);

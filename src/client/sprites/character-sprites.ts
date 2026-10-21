@@ -252,7 +252,15 @@ export class CharacterSprites {
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;}
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
-    const detailed=alive&&movement128Visible(sprite,this.scene)?motion==='idle'?movementIdle8Plan(id):movement128Plan(id,motion,direction):undefined;
+    const shown=movement128Visible(sprite,this.scene);
+    // A hero with detailed clips out of view (a bot across the map, the own hero before the camera snaps) whose legacy
+    // sheets are not loaded: nothing to draw, so they are not fetched for it (~1 MB per hero at the opening;
+    // cena-nasce-rapido). Its clip's lease goes as on the legacy path, the blank texture first; in view, the clips.
+    if(alive&&!shown&&movementIdle8Plan(id)&&(!this.scene.textures.exists(root.key)||root.cardinals&&!this.scene.textures.exists(root.cardinals.key))){
+      if(state.stream||this.detailed){sprite.anims.stop();sprite.setTexture('__DEFAULT');state.stream=undefined;this.detailed?.release(sprite);}
+      state.shown=motion;state.side=direction;return;
+    }
+    const detailed=alive&&shown?motion==='idle'?movementIdle8Plan(id):movement128Plan(id,motion,direction):undefined;
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){

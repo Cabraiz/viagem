@@ -249,6 +249,12 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
     assert.equal(requests.length,4,'turning in idle uses the same eight-pose texture');
     sprite.visible=false;render(2953,'N',2,false);assert.match(sprite.texture.key,/dir4c$/);assert.equal(cache.stats().leasedTextures,0);
     sprite.visible=true;render(3053,'N',2,false);assert.equal(cache.stats().leasedTextures,1);
+    // cena-nasce-rapido: out of view with the legacy sheets not loaded, none is fetched (this scene has no loader) and
+    // the clip's lease still goes, the sprite blank; back in view, the clip again.
+    keys.delete('sprite:aposentado:dir4');keys.delete('sprite:aposentado:dir4c');
+    sprite.visible=false;render(3063,'N',2,false);assert.equal(sprite.texture.key,'__DEFAULT');assert.equal(cache.stats().leasedTextures,0);
+    keys.add('sprite:aposentado:dir4');keys.add('sprite:aposentado:dir4c');
+    sprite.visible=true;render(3073,'N',2,false);await flush();assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');assert.equal(cache.stats().leasedTextures,1);
     render(3153,'S',3);await flush();assert.equal(requests.length,5);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8','leaving idle keeps the oblique rest until attack loads');
     failures.get(requests[4])!();await flush();assert.equal(requests.length,6,'failed lite tries the original exactly once');
     render(3163,'S',3);assert.equal(sprite.texture.key,'sprite128:aposentado:idle8');

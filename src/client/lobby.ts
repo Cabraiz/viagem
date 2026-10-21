@@ -1,4 +1,4 @@
-import type { HeroClass } from '../rules/index.ts';
+import {getClass,type HeroClass,type Role} from '../rules/index.ts';
 import {putHidden} from './hud/dom-put.ts';
 import type { CoopClient } from './net/client.ts';
 import type { RunState } from '../contract/index.ts';
@@ -49,6 +49,27 @@ export const WAITING_LINES:readonly string[]=Object.freeze([
 ]);
 export const WAITING_LINE_SECONDS=5;
 export const waitingLine=(elapsedSeconds:number)=>WAITING_LINES[Number.isFinite(elapsedSeconds)?Math.floor(Math.max(0,elapsedSeconds)/WAITING_LINE_SECONDS)%WAITING_LINES.length:0];
+
+/**
+ * The team's makeup, as a joke that never blocks (NEW-20261009-UX-escolha-classe): with 3+ in the room and every class
+ * known, the first missing role (support first: someone has to bring the coffee) says so; undefined when all is covered.
+ */
+export const COMPOSITION_LINES:Readonly<Record<Role,string>>=Object.freeze({
+  'Suporte':'Time sem suporte: quem vai passar o café?',
+  'Linha de frente':'Ninguém na linha de frente: quem vai levar a primeira chinelada?',
+  'Dano':'Time sem dano: vão vencer a horda no papo?',
+  'Controle':'Ninguém de controle: a horda vai entrar sem pedir licença.',
+});
+const COMPOSITION_ORDER:readonly Role[]=['Suporte','Linha de frente','Dano','Controle'];
+export function compositionLine(members:readonly {classId?:string}[]){
+  if(members.length<3)return undefined;
+  const roles=new Set<Role>();
+  for(const m of members){const role=m.classId?getClass(m.classId)?.role:undefined;if(!role)return undefined;roles.add(role);}
+  const missing=COMPOSITION_ORDER.find(role=>!roles.has(role));
+  return missing?COMPOSITION_LINES[missing]:undefined;
+}
+/** The class's short name under a chip's name ("CLT"); empty until the class is known. */
+export const memberClassName=(classId:string|undefined)=>classId?getClass(classId)?.name??'':'';
 
 /** Joke for each countdown second (3, 2, 1). */
 export function countdownJoke(seconds:number){
@@ -391,7 +412,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     const tightNews=showNews&&view.phase!=='countdown'&&view.members.length>=4;
     if(tightNews)$('.coop-wait-headline').hidden=true;
     const hint=view.canManage&&(view.members.length>1||view.seatsLeft>0);
-    setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint?OWNER_HINT:waitingLine((now()-started)/1000));
+    // The team's makeup takes the joke's place; for the owner it takes turns with the hint (WAITING_LINE_SECONDS each).
+    const makeup=compositionLine(view.members),turn=Math.floor((now()-started)/1000/WAITING_LINE_SECONDS)%2===1;
+    setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint&&!(makeup&&turn)?OWNER_HINT:makeup??waitingLine((now()-started)/1000));
     // Portrait, a guest in a fuller room: the selector's fixed line ("Quem escolhe o mapa é o dono da sala.") takes the
     // joke's place, so the window fits without scrolling and the ready button stays in view (cidade-09).
     $('.coop-wait-line').hidden=jokeYields(orientation,view)||tightNews&&orientation==='portrait';
@@ -428,7 +451,10 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
         // Ready or waiting (check or clock) for everyone; a bot is always ready and wears the robot in the chip's corner,
         // so "pronto" never rests on the green alone. The crown marks the owner for everyone.
         const status=icon(m.ready?'pronto':'relogio'),robot=m.bot?`<span class="coop-wait-botmark">${icon('robo',{label:'bot'})}</span>`:'';
-        const said=`${m.bot?' bot':''}${m.owner?', dono da sala':''}${m.ready?', pronto':', ainda não'}`;
+        // The class's short name under the name (escolha-classe), read aloud after it: inside the name's box on a chip, on
+        // the owner's button the whole second row (the grid's cell is narrow). An <em>: the `>span` name rules skip it.
+        const role=memberClassName(m.classId),kind=role?`<em class="coop-wait-class" aria-hidden="true">${escapeHtml(role)}</em>`:'';
+        const said=`${m.bot?' bot':''}${role?`, ${role}`:''}${m.owner?', dono da sala':''}${m.ready?', pronto':', ainda não'}`;
         const crown=m.owner?icon('coroa',{className:'coop-wait-crown'}):'';
         // The person's face left of the name (rostos-hud, 24 px circle: the chip keeps its height); an empty circle until
         // the class is known. An <i>, so the chip's `>span` name rules (flex, ellipsis) skip it. Robot sticker and crown stay.
@@ -443,9 +469,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
           const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
-          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})}</button></li>`;
+          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})+kind}</button></li>`;
         }
-        return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}</span>${m.self?' <small>(você)</small>':''}${crown}<span class="sr-only">${said}</span></li>`;
+        return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}${m.self?' <small>(você)</small>':''}${kind}</span>${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
       wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }

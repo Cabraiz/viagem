@@ -175,7 +175,7 @@ export const WATCH_TEXT='Você assiste daqui. Entra na revanche.';
  * grouped ("Zé e Bia caíram!", "3 da turma caíram!"); a rescue in progress names who is being saved, plus the rest.
  */
 /** Out or watching, once the camera follows a teammate (2 words, camera-segue / UX onda 4). */
-export const watchingText=(name:string)=>`Assistindo: ${name.trim().split(/\s+/)[0]?.slice(0,9)??''}`;
+export const watchingText=(name:string)=>`Assistindo: ${railName(name)}`;
 
 export function reviveBanner(view:RunView,localId:string,network?:string,causes?:Pick<CauseLog,'last'>,watching?:string,worldRescue=false):ReviveBanner|undefined{
   if(network)return {kind:'ally',key:'net',text:network,seconds:Infinity,progress:0,urgent:false};

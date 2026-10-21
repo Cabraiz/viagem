@@ -10,7 +10,7 @@ import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,type Movement128Plan} from './movement128.ts';
 import {detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
-import {movement128Textures,movement128Visible,type Movement128Textures} from './movement128-textures.ts';
+import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
 
 export type {FigureBox};
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
@@ -166,7 +166,7 @@ export class CharacterSprites {
       const cleanup=()=>{
         for(const key of this.detailedPreloads.keys())if(!cache.status(key)&&this.scene.textures.exists(key)){
           const image=this.scene.textures.get(key).getSourceImage() as HTMLImageElement|ImageBitmap;
-          this.scene.textures.remove(key);if('close' in image)image.close();else image.src='';
+          this.scene.textures.remove(key);freeSheet(image);
         }
         for(const key of this.detailedPreloads.keys())this.requested.delete(key);
         this.detailedPreloads.clear();this.detailed=undefined;this.preloadCleanup=false;

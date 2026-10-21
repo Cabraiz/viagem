@@ -125,3 +125,10 @@ test('the sprite shows E/NE/SE as W/NW/SW flipped on the pivot, keeps the walk p
   assert.ok(Math.abs(sprite.originY-80/96)<1e-9,'feet line from the M16 rests and walks');
   await flush();events.emit('shutdown');
 });
+
+test('freeing a loader-preloaded <img> drops its handlers first (clearing the src fired Phaser onerror, a page error)',async()=>{
+  const {freeSheet}=await import('../../src/client/sprites/movement128-textures.ts');
+  let fired=0;const img={src:'x.webp',onload:()=>{fired++;},onerror:()=>{fired++;}} as unknown as HTMLImageElement;
+  freeSheet(img);assert.equal(img.src,'');assert.equal(img.onerror,null);assert.equal(img.onload,null);assert.equal(fired,0);
+  let closed=false;freeSheet({width:1,height:1,close(){closed=true;}} as unknown as ImageBitmap);assert.ok(closed);
+});

@@ -5,7 +5,7 @@
 //   1. the menu (character screen);
 //   2. a solo match: the hero standing (3 frames in a row, and a sampled window: a standing hero whose texture flips
 //      between an idle and a walk sheet = FAIL), walking by the keyboard (8 directions, 2 frames each), walking by the
-//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow),
+//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then a right click: walks, no browser menu),
 //      and a burst of short keyboard walks in open ground (every stop sampled: idle↔walk back and forth = tremor);
 //   2b. the phone (isMobile + hasTouch, 390×844, a match of its own): the hero standing, the joystick dragged by a
 //      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground;
@@ -254,6 +254,21 @@ async function mouseWalk(p,vp){
   const end=await p.evaluate(HERO).catch(()=>null);
   await p.mouse.up();
   if(!moved(h,end))fails.push(`${vp.w}×${vp.h}: mouse segurado não moveu o herói`);
+  await sleep(1200);
+  await rightClick(p,vp);
+}
+/**
+ * The right button (NEW-20261021-ORQ-botao-direito-ataca): a right click on open ground walks the hero like the left,
+ * and its 'contextmenu' reaches the page already cancelled (the canvas keeps the browser's menu shut).
+ */
+async function rightClick(p,vp){
+  await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
+  const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y,{button:'right'}),'botão direito');
+  const menus=await p.evaluate(()=>window.__menus).catch(()=>[]);
+  const open=menus.filter(v=>!v).length;
+  await shot(p,'direito',got?`botão direito em (${got.x},${got.y}): andou, menu do navegador ${open?'ABRIU':'fechado'} (${menus.length} cliques)`:'botão direito (não andou)',vp);
+  if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
+  else if(open)fails.push(`${vp.w}×${vp.h}: botão direito abriu o menu do navegador em ${open}/${menus.length}`);
   await sleep(1200);
 }
 

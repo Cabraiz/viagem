@@ -5,6 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createPreloader,slowConnection,MAX_FETCHES,SLOW_FETCHES} from '../../src/client/preload/preloader.ts';
+import {holdBackground,backgroundHeld} from '../../src/client/preload/background-hold.ts';
 import {preloadBlock,preloadRing,preloadText,PRELOAD_CAP_MS} from '../../src/client/preload/ready-gate.ts';
 import type {MatchAsset} from '../../src/client/preload/match-assets.ts';
 
@@ -92,6 +93,24 @@ test('2g/3g: 2 at once, P2 only after release (the match start)',async()=>{
   p.release();await tick();
   assert.deepEqual(f.calls.slice(4).map(c=>c.url),['/c2','/c1']);
   assert.ok(f.peak()<=SLOW_FETCHES);
+});
+
+test("the page-wide hold (the scene's near art, cena-nasce-rapido): P0 goes on, P1/P2 wait until the last hold goes",async()=>{
+  const f=fakeFetch();
+  const first=holdBackground(),second=holdBackground();
+  assert.equal(backgroundHeld(),true);
+  const p=createPreloader({fetch:f.fetch,connection:{effectiveType:'4g'}});
+  p.add(list);
+  await tick();
+  assert.deepEqual(f.calls.map(c=>c.url),['/a1','/a2'],'only P0 while held');
+  for(const c of f.calls)c.done();await tick();
+  assert.deepEqual(f.calls.map(c=>c.url),['/a1','/a2']);
+  first();first();await tick();
+  assert.equal(f.calls.length,2,'another hold still taken (and a release counts once)');
+  second();await tick();
+  assert.equal(backgroundHeld(),false);
+  assert.deepEqual(f.calls.map(c=>c.url),['/a1','/a2','/b1','/b2','/c2','/c1'],'the rest in order once free');
+  p.abort();
 });
 
 test('a file in flight counts by its bytes when the length is known',async()=>{

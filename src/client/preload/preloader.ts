@@ -2,10 +2,11 @@
  * Downloads a match's files ahead of it (NEW-20261013-ORQ-3g-precarga-partida), so Phaser's loads later hit the cache
  * (the service worker's Cache Storage, public/sw.js; the HTTP cache without it). Priority order, at most 4 fetches at
  * once (2 on a 2g/3g connection, which also holds P2 back until `release()`, the match start), P0 asked with
- * `priority:'high'`. Never throws: a failed file counts as done (the game then falls back as it does today).
+ * `priority:'high'`; P1/P2 wait while the scene's near art holds the link (background-hold.ts). Never throws: a failed file counts as done (the game then falls back as it does today).
  * No DOM beyond an injectable fetch and connection, so it runs in node tests.
  */
 import type {AssetPriority,MatchAsset} from './match-assets.ts';
+import {backgroundHeld,onBackgroundFree} from './background-hold.ts';
 
 export const MAX_FETCHES=4;
 export const SLOW_FETCHES=2;
@@ -22,6 +23,8 @@ interface BodyLike {ok:boolean;headers?:{get(name:string):string|null};body?:{ge
 type FetchLike=(url:string,init:{signal:AbortSignal;priority:'high'|'auto'|'low';credentials:'same-origin'})=>Promise<BodyLike>;
 export interface PreloaderOptions {
   fetch?:FetchLike;
+  /** True while P1/P2 must wait (background-hold.ts: the scene's near art first); default the page-wide hold. */
+  held?:()=>boolean;
   connection?:{effectiveType?:string};
   onProgress?:(p:PreloadProgress)=>void;
 }
@@ -53,8 +56,9 @@ export function createPreloader(options:PreloaderOptions={}):Preloader{
   };
   const progress=():PreloadProgress=>({P0:part('P0'),P1:part('P1'),P2:part('P2'),bytes,slow});
   const notify=()=>{try{options.onProgress?.(progress());}catch{/* a broken listener never stops the downloads */}};
+  const held=options.held??backgroundHeld;
   const next=()=>{
-    const i=queue.findIndex(a=>released||a.priority!=='P2');
+    const i=queue.findIndex(a=>a.priority==='P0'||!held()&&(released||a.priority!=='P2'));
     return i<0?undefined:queue.splice(i,1)[0];
   };
   const pump=()=>{
@@ -86,6 +90,7 @@ export function createPreloader(options:PreloaderOptions={}):Preloader{
     }catch{return false;}
     finally{flight.delete(item);}
   };
+  const unfree=options.held?undefined:onBackgroundFree(()=>pump());
   return {
     add(items){
       if(stopped)return;
@@ -100,6 +105,6 @@ export function createPreloader(options:PreloaderOptions={}):Preloader{
     },
     progress,
     release(){if(released||stopped)return;released=true;pump();},
-    abort(){if(stopped)return;stopped=true;queue.length=0;controller.abort();},
+    abort(){if(stopped)return;stopped=true;unfree?.();queue.length=0;controller.abort();},
   };
 }

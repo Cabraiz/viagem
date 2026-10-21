@@ -43,6 +43,16 @@ test('CityArtStream: STREAM_FILES at once, nearest first, the order asked again 
   stream.settled('nope',true);assert.equal(loads.length,5,'an answer for a file it did not ask is ignored');
 });
 
+test("CityArtStream: while the first frame's art is not all in, nothing farther takes a slot (cena-nasce-rapido)",()=>{
+  const missing=[{key:'n1',px:0},{key:'n2',px:0},{key:'f1',px:300},{key:'f2',px:600}];
+  const loads:string[]=[];
+  const stream=new CityArtStream({missing:()=>missing.filter(m=>!loads.includes(m.key)||m.px===0&&!done.has(m.key)),load:key=>{loads.push(key);return true;}});
+  const done=new Set<string>();
+  stream.pump();assert.deepEqual(loads,['n1','n2'],'two slots stay free while n1 and n2 come');
+  done.add('n1');stream.settled('n1',true);assert.deepEqual(loads,['n1','n2'],'n2 still on its way');
+  done.add('n2');stream.settled('n2',true);assert.deepEqual(loads,['n1','n2','f1','f2'],'then the rest, nearest first');
+});
+
 test('CityArtStream: a failed or unknown file is never asked again and does not hold the match',()=>{
   const missing=[{key:'near',px:0},{key:'unknown',px:0},{key:'far',px:900}];
   const loads:string[]=[];
@@ -64,11 +74,17 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
   const ground=src.slice(src.indexOf('  private drawGround(){'));
   assert.match(ground,/const stopStream=this\.streamCityArt\(city,art\);/);
   assert.match(ground,/const drop=\(\)=>\{stopStream\(\);city\.destroy\(\);/);
-  assert.match(src,/if\(this\.cityHeld\)this\.readyHeld=true;else this\.hooks\.ready\(\);/,'create holds the cover while the near art comes');
+  assert.match(src,/if\(this\.cityHeld\)this\.readyHeld=true;else\{this\.hooks\.ready\(\);this\.queueLateArt\(\);\}/,'create holds the cover while the near art comes');
+  // cena-nasce-rapido: the defenses' sheets (~11 MB) are not in the city's preload; they follow the near art, and the
+  // waiting room's P1/P2 wait for it too (background-hold.ts).
+  assert.match(preload,/if\(!\(this\.field instanceof CityTerrain\)\)this\.queueLateArt\(\);/);
+  assert.doesNotMatch(src.slice(src.indexOf('  preload(){'),src.indexOf('  private lateArtQueued')),/queueTowerArt\(this\)/,'no tower sheet before the first frame in the city');
   const update=src.slice(src.indexOf('  private updateCity(delta:number){'),src.indexOf('this.city.update({camera'));
   assert.match(update,/this\.cityStream\?\.nearReady\(\)&&this\.city\.groundSettled\(\)/,'near art and the final ground');
   assert.match(update,/performance\.now\(\)-this\.heldSince<NEAR_ART_CAP_MS\)return;/,'no chunk is built while held, at most the cap');
   assert.match(update,/if\(this\.readyHeld\)\{this\.readyHeld=false;this\.hooks\.ready\(\);\}/);
+  assert.match(update,/this\.cityHeld=false;this\.releaseBackground\(\);/,'the background downloads go on with the cover');
+  assert.match(src.slice(src.indexOf('  private updateCity(delta:number){')),/this\.queueLateArt\(\);/,'the towers after the near art');
   const stream=src.slice(src.indexOf('  private streamCityArt('),src.indexOf('  private cityArt():'));
   assert.match(stream,/if\(ok\)city\.artArrived\(key\);stream\.settled\(key,ok\);/);
   assert.match(stream,/Events\.FILE_LOAD_ERROR,failed/);
@@ -76,6 +92,7 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
   assert.match(stream,/fetchBitmap\(s\.url,px===0\?'high':'low'\)\.then\(bitmap=>queueUpload\(bitmap\.width\*bitmap\.height,/);
   assert.match(stream,/this\.textures\.addSpriteSheet\(key,bitmap as unknown as HTMLImageElement,\{frameWidth:s\.frameWidth,frameHeight:s\.frameHeight\}\)/);
   assert.match(stream,/this\.load\.off\(Phaser\.Loader\.Events\.FILE_COMPLETE,complete\)/,'the stop forgets the listeners');
+  assert.match(stream,/this\.releaseBackground\(\);this\.backgroundHold=holdBackground\(\);/,'held while the near art comes');
 });
 
 test("scene.ts: the run's enemies wait for the near city art (they held the albedo behind them in the loader)",()=>{
@@ -99,4 +116,15 @@ test('relief albedo joins the running loader (the stream never lets it reach COM
   const src=read('render/city/relevo/baker.ts');
   assert.match(src,/this\.scene\.events\.once\(Phaser\.Scenes\.Events\.UPDATE,start\);/);
   assert.doesNotMatch(src,/Loader\.Events\.COMPLETE,start/);
+});
+
+test('towers.ts: a defense made before its sheet is not drawn until it lands (fetched first), procedural only after TOWER_ART_WAIT_MS',()=>{
+  const src=read('render/towers/towers.ts');
+  assert.match(src,/if\(t\.artWait\)\{t\.hideUntil=this\.now\+TOWER_ART_WAIT_MS;this\.o\.needArt\?\.\(view\.kind\);\}/);
+  const draw=src.slice(src.indexOf('  private drawTower('),src.indexOf('  private sortTower('));
+  assert.match(draw,/if\(this\.scene\.textures\.exists\(towerBaseKey\(v\.kind\)\)\)\{t\.artWait=false;t\.art=true;t\.drawnPhase='';\}/,'adopts the sheet when it lands');
+  assert.match(draw,/else if\(this\.now<t\.hideUntil\)\{if\(t\.base\.visible\)\{t\.base\.setVisible\(false\);t\.weapon\.setVisible\(false\);\}return;\}/,'unseen meanwhile');
+  const scene=read('scene.ts');
+  assert.match(scene,/needArt:kind=>this\.needTowerArt\(kind\)/);
+  assert.match(scene.slice(scene.indexOf('  private needTowerArt(')),/fetchBitmap\(l\.url,'high'\)/,'past the loader\'s queue');
 });

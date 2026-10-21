@@ -17,6 +17,7 @@ import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
+import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
 /**
@@ -236,9 +237,12 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
   }
   return out;
 }
-/** Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. */
+/**
+ * Lite copies smaller than their approved file (manifest.ts liteCell): the cells differ, so no fallback to it. The
+ * city's (render/city/art-plan.ts cityTexture) are all smaller.
+ */
 const LITE_ONLY=new Set<string>();
-export const liteOnly=(url:string)=>LITE_ONLY.has(url);
+export const liteOnly=(url:string)=>LITE_ONLY.has(url)||url.startsWith('/art/lite/city/');
 const validCell=(f:ArtFile)=>Array.isArray(f.cell)&&f.cell[0]>0&&f.cell[1]>0;
 
 /** Preload: queues every imported horde texture (nothing with an empty manifest). Failures keep the procedural art. */
@@ -259,7 +263,23 @@ export function queueHordeArt(scene:Phaser.Scene){
  * Each id is asked once per scene; true when something was queued. A failed page keeps the reserve.
  */
 const asked=new WeakMap<object,Set<string>>();
+/** Critters first seen while the background was held (queueEnemyArt): asked when it lets go. */
+const deferred=new WeakMap<object,Set<string>>();
 export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  // The opening's near art holds the link (background-hold.ts, cena-nasce-rapido): the critters seen under the cover
+  // ask once it lets go (the procedural look stands in meanwhile, as for any sheet still on its way).
+  if(backgroundHeld()){
+    let wait=deferred.get(scene);
+    if(!wait){
+      const ids=wait=new Set<string>();deferred.set(scene,ids);
+      const off=onBackgroundFree(()=>{
+        off();if(deferred.get(scene)===ids)deferred.delete(scene);
+        if(!scene.sys.isActive())return;
+        for(const later of ids)queueEnemyArt(scene,later);
+      });
+    }
+    wait.add(id);return false;
+  }
   let seen=asked.get(scene);if(!seen){seen=new Set();asked.set(scene,seen);}
   if(seen.has(id))return false;
   seen.add(id);

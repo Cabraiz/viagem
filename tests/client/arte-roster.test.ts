@@ -7,6 +7,7 @@ import {projectileAction} from '../../src/client/art/horde-actions.ts';
 const artPieceOf=(id:string)=>artPiece('inimigos',id);
 import {ACTION_ALIASES,HERO_FIGURE_PX,deathAnim,MASS_ALPHA,applyEnemyArt,artLoads,artTargetHeight,drawnScale,topRow,deathDuration,enemyArtActive,enemyArtId,enemyArtOn,enemyPieceLoads,hasDeathArt,
   loopAnim,pieceAction,playEnemyAction,queueEnemyArt} from '../../src/client/art/horde-art.ts';
+import {holdBackground} from '../../src/client/preload/background-hold.ts';
 import {actAnim,PHASE_ACTING,PHASE_BUFFED} from '../../src/client/render/phase-look.ts';
 import {enemyKind} from '../../src/client/render/keys.ts';
 import {ROSTER as ENEMY_ROSTER} from '../../src/rules/index.ts';
@@ -27,7 +28,7 @@ interface Mock {[k:string]:unknown;texture:{key:string};frame:number;scaleX:numb
 function mockScene(loaded:Set<string>,loading=false){
   const queued:string[]=[];let starts=0;
   const scene={textures:{exists:(k:string)=>loaded.has(k)},add:{image:()=>mockImage(scene)},events:{on(){},off(){}},
-    load:{spritesheet:(k:string)=>{queued.push(k);},isLoading:()=>loading,start:()=>{starts++;}},queued,get starts(){return starts;}};
+    sys:{isActive:()=>true},load:{spritesheet:(k:string)=>{queued.push(k);},isLoading:()=>loading,start:()=>{starts++;}},queued,get starts(){return starts;}};
   return scene;
 }
 function mockImage(scene:object):Mock{
@@ -74,6 +75,17 @@ test('queueEnemyArt: once per id and scene, skips what is loaded, starts the loa
   const busy=mockScene(new Set(),true);
   assert.equal(queueEnemyArt(busy as never,'rato-de-boteco'),true);assert.equal(busy.queued.length,3);assert.equal(busy.starts,0,'joins the running load');
   const other=mockScene(new Set());assert.equal(queueEnemyArt(other as never,'grauzeiro'),true,'another scene asks again');
+});
+
+test("queueEnemyArt under the opening's hold (cena-nasce-rapido): nothing asked while held, then once when it lets go",()=>{
+  useArt({grauzeiro});
+  const s=mockScene(new Set()),release=holdBackground();
+  assert.equal(queueEnemyArt(s as never,'grauzeiro'),false);assert.equal(queueEnemyArt(s as never,'grauzeiro'),false);
+  assert.deepEqual(s.queued,[],'the near art has the link');
+  release();
+  assert.deepEqual(s.queued,['art:enemy:grauzeiro:idle','art:enemy:grauzeiro:aim','art:enemy:grauzeiro:charge','art:enemy:grauzeiro:crash']);
+  assert.equal(s.starts,1);
+  assert.equal(queueEnemyArt(s as never,'grauzeiro'),false,'asked once');
 });
 
 test('applyEnemyArt by roster id: own sheet once loaded, the reserve before and without a piece; the base kind\'s art is never borrowed',()=>{

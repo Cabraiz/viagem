@@ -74,7 +74,7 @@ test('real manifest, endless map: no city art; a class with no sheet adds nothin
   assert.deepEqual(urls(list.filter(a=>a.kind==='ground')),[...ENDLESS_GROUND]);
 });
 
-test("real manifest: the own hero's walk and attack clips (8 directions) are P0, after the ground; teammates' are not listed",()=>{
+test("real manifest: the own hero's walk clips (8 directions) close P0, after the ground; its attack opens P1; teammates' are not listed",()=>{
   real();
   const self=ids.find(id=>heroMotionUrls(id).length)!,mate=ids.find(id=>id!==self&&heroMotionUrls(id).length)!;
   assert.ok(self&&mate,'the manifest has heroes with detailed clips');
@@ -84,7 +84,9 @@ test("real manifest: the own hero's walk and attack clips (8 directions) are P0,
   assert.ok(motion.slice(0,8).every(u=>u.includes('.walk128-'))&&motion.slice(8).every(u=>u.includes('.attack128-')),'walk first');
   for(const map of ['cidade-nevada','infinito'] as const){
     const list=assetsParaPartida({self,others:[mate],map}),p0=list.filter(a=>a.priority==='P0').map(a=>a.url);
-    assert.deepEqual(p0.slice(-16),motion,`${map}: the clips close P0`);
+    assert.deepEqual(p0.slice(-8),motion.slice(0,8),`${map}: the walk closes P0`);
+    const p1=list.filter(a=>a.priority==='P1').map(a=>a.url);
+    assert.deepEqual(p1.slice(0,8),motion.slice(8),`${map}: the attack opens P1 (cena-nasce-rapido)`);
     assert.ok(p0.indexOf(motion[0])>Math.max(...list.filter(a=>a.kind==='ground').map(a=>p0.indexOf(a.url))),`${map}: ground first`);
     assert.equal(p0[0],heroSheetUrl(self),`${map}: the resting sheet (first frame) still opens the list`);
     for(const u of heroMotionUrls(mate))assert.equal(list.some(a=>a.url===u),false,`${map}: no teammate clip`);

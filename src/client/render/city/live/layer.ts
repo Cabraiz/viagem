@@ -100,12 +100,15 @@ export class CityLive {
     this.makeGlow();
   }
 
-  /** Live parts of a decor whose base image was just created (CityLayer). `artView` = the art view the frame shows. */
-  attach(entry:DecorEntry,base:Phaser.GameObjects.Image,artView:ArtView){
+  /**
+   * Live parts of a decor whose base image was just created (CityLayer). `artView` = the art view the frame shows;
+   * `texel` = texture px per art px of that image (below 1 on a lite copy: the offsets of the meta are art px).
+   */
+  attach(entry:DecorEntry,base:Phaser.GameObjects.Image,artView:ArtView,texel=1){
     const key=decorKey(entry);
     this.detach(key);
-    const piece=this.options.piece(entry.id),meta=liveMeta(piece?.meta),cell=meta.cell??[base.frame.realWidth,base.frame.realHeight] as [number,number];
-    const f=cellFrame(base,cell),depth=base.depth;
+    const piece=this.options.piece(entry.id),meta=liveMeta(piece?.meta),cell=meta.cell??[base.frame.realWidth/texel,base.frame.realHeight/texel] as [number,number];
+    const f=cellFrame({x:base.x,y:base.y,originX:base.originX,originY:base.originY,scaleX:base.scaleX*texel},cell),depth=base.depth;
     const a:Attached={entry,key,rect:{x:f.left,y:f.top,w:cell[0]*f.scale,h:cell[1]*f.scale},loops:[],depth,visible:true};
     if(piece)this.addLoops(a,piece,meta,f,artView);
     const kind=lightKind(entry.id);
@@ -154,7 +157,9 @@ export class CityLive {
       const {piece,file,tex}=found;
       keep.add(n.id);
       const at=place(n.x,n.y),anchor=file.anchor??(piece.meta?.anchor as [number,number]|undefined)??[.5,.88];
-      const frame=(file.views??4)>=4?((Math.round(view)%4)+4)%4:0,scale=NEST_SCALE[n.size]/ART_SCALE;
+      const frame=(file.views??4)>=4?((Math.round(view)%4)+4)%4:0;
+      // Per texture px: a lite copy (liteCell, art.ts liveSheets) is smaller than the art cell.
+      const scale=NEST_SCALE[n.size]/ART_SCALE/(file.liteCell?file.liteCell[0]/file.cell[0]:1);
       let e=this.nests.get(n.id);
       if(!e||e.art!==art){e?.img.destroy();e={img:this.scene.add.image(0,0,tex,frame).setOrigin(anchor[0],anchor[1]),art};this.nests.set(n.id,e);}
       e.img.setFrame(frame).setPosition(at.x,at.y).setScale(scale).setDepth(at.depth);

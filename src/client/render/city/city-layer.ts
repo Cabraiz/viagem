@@ -199,7 +199,9 @@ export class CityLayer {
   private readonly fountain?:CityLot;
   /** Building cells without art shown are low mounds (moundOf): only when the plan has building art at all. */
   private readonly mounds:boolean=false;
-  private readonly still=reducedMotion();
+  /** prefers-reduced-motion, and the Leve quality level (setStill): the fountain glint holds still. */
+  private readonly motionReduced=reducedMotion();
+  private still=this.motionReduced;
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
   /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
@@ -313,6 +315,12 @@ export class CityLayer {
 
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
+  /** Quality Leve (scene.setQuality): the glint and the live scenery (CityLive) hold their first frame. */
+  setStill(on:boolean){
+    const still=this.motionReduced||on;if(still===this.still)return;
+    this.still=still;this.vivo?.setStill(on);
+    if(still)for(const live of this.live.values())live.glints.setAlpha(1);
+  }
 
   /** The ground drawn is final (no albedo still on its way, no chunk waiting for its rebuild): the modo foto waits for it. */
   groundSettled(){return this.stale.size===0&&this.lateArt.size===0&&(!this.relief||this.relief.albedoSettled);}

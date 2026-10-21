@@ -14,7 +14,7 @@
  * - 'wall' and 'prop' pieces stand at the centre of their cells on the ground there, sorted by that point.
  */
 import {groundZ,heightAt,type CityAsset} from './asset.ts';
-import {ART_CELL,type DecorSheet} from './art-plan.ts';
+import {ART_CELL,texelOf,type DecorSheet} from './art-plan.ts';
 import {artViewOf,decorKey,type ArtView,type DecorEntry} from './live/rules.ts';
 import {buildingAnchor,frontCorner} from './materials.ts';
 import {depth,project,type Pt} from './projection.ts';
@@ -39,7 +39,7 @@ export function decorSprite(entry:DecorEntry,sheet:DecorSheet,view:number,asset:
     const wx=origin.x+(entry.c+fc.i*entry.w)*cell,wy=origin.y+(entry.r+fc.j*entry.h)*cell;
     let base=Infinity;
     for(let j=entry.r;j<entry.r+entry.h;j++)for(let i=entry.c;i<entry.c+entry.w;i++)base=Math.min(base,heightAt(asset,i,j));
-    const at=project(wx,wy,base,view,pivot),o=buildingAnchor(a,b,frame,sheet.frameWidth,sheet.frameHeight,ART_CELL);
+    const at=project(wx,wy,base,view,pivot),o=buildingAnchor(a,b,frame,sheet.frameWidth/texelOf(sheet),sheet.frameHeight/texelOf(sheet),ART_CELL);
     const key=depth(origin.x+(entry.c+entry.w/2)*cell,origin.y+(entry.r+entry.h/2)*cell,view,pivot);
     return {x:at.x,y:at.y,originX:o.originX,originY:sheet.originY,scale:sheet.scale,artView,frame,depth:key,base};
   }

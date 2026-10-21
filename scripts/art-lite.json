@@ -6,13 +6,2917 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 1791,
-  "bytes": 1459734912,
-  "liteBytes": 471590046,
+  "files": 2033,
+  "bytes": 1533200672,
+  "liteBytes": 494791170,
   "worstPsnr": 31.3,
-  "worstShownPsnr": 36.6
+  "worstShownPsnr": 36
  },
  "files": {
+  "city/base/chafariz-congelado.webp": {
+   "source": "3ee4ccd013a58708546fd38060921e32dbeaa52e469c2bddc4e34619d1e45606",
+   "lite": "acea4e52861c823c6e5a2012d92674f21e7a73b3a1693e98d302ea71aa359a96",
+   "bytes": 790244,
+   "liteBytes": 217770,
+   "liteCell": [
+    504,
+    472
+   ],
+   "psnr": 41.7,
+   "shownPsnr": 41.7
+  },
+  "city/buildings/boteco-esquina-2x1-1.webp": {
+   "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",
+   "lite": "aff67e826922893de39bf777020caf309b09bcc34064a95647b0a6db1fbd6e05",
+   "bytes": 277790,
+   "liteBytes": 89104,
+   "liteCell": [
+    328,
+    296
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/buildings/casa-terrea-1x1-1.webp": {
+   "source": "7d3bec46eded8a330728807ee796b8f6b180c84abe331476858e0cc11d4dc296",
+   "lite": "6de9b04c18a7106fa85545d3a22683862b6cc19bd06933afb552b19670ea6bd7",
+   "bytes": 132396,
+   "liteBytes": 48172,
+   "liteCell": [
+    184,
+    184
+   ],
+   "psnr": 40.1,
+   "shownPsnr": 40.1
+  },
+  "city/buildings/casa-terrea-1x1-2.webp": {
+   "source": "f05cd38ef78843c5ddd563b71163b76839269c4825be73b95f06a2e3e53eee70",
+   "lite": "b7ff9865fde62f405e8727fca2bc0434f5ec2d29c6aad3c9d4b4ec0d73d25125",
+   "bytes": 142830,
+   "liteBytes": 51370,
+   "liteCell": [
+    184,
+    200
+   ],
+   "psnr": 39.5,
+   "shownPsnr": 39.5
+  },
+  "city/buildings/casa-terrea-1x1-3.webp": {
+   "source": "b12f9813efa784c4680587beb75eb1eb01c1911f815460397a86e7dc33dd0a1a",
+   "lite": "e4db3cdd2699db5a0e95231838bda2e05056a051ab714a0fc2e3c889f9bdc329",
+   "bytes": 149606,
+   "liteBytes": 53196,
+   "liteCell": [
+    192,
+    208
+   ],
+   "psnr": 40.3,
+   "shownPsnr": 40.3
+  },
+  "city/buildings/casa-terrea-2x1-3.webp": {
+   "source": "5545e24b8febb82321285ebc5f38f2f61f896ef44ade26201f215a428bebd4db",
+   "lite": "e75ec8d88e1617389ce02050ba433e8cd6d10d7fc1430d88203c8985bf3e566b",
+   "bytes": 251808,
+   "liteBytes": 82126,
+   "liteCell": [
+    328,
+    248
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/buildings/entulho-1x1-1.webp": {
+   "source": "0a05dd1353f8b5255d61e8575041d790c34dd53008723b8a3969f8fa2b8a0a18",
+   "lite": "f8f58110a305a18a4046518416cd8feb742326ec7ec97df68d362c266295d5c7",
+   "bytes": 89900,
+   "liteBytes": 32638,
+   "liteCell": [
+    216,
+    152
+   ],
+   "psnr": 41,
+   "shownPsnr": 41
+  },
+  "city/buildings/entulho-1x1-2.webp": {
+   "source": "3fe5b66b2bcd4b906f8da917e97165b61202ddb76798303046adf2802e36aa01",
+   "lite": "dc8b32e29d1aeb4e6e756717fd34ec2836525859e0ecfc3a0214cd870952a973",
+   "bytes": 88088,
+   "liteBytes": 35804,
+   "liteCell": [
+    216,
+    152
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/buildings/entulho-1x1-3.webp": {
+   "source": "3390a8d7f5b7dd1cb1f9ba73451bb675947530355d36f79f7ab57d90c1c24be7",
+   "lite": "fcc215dfdd0033e30e8c89514cfe0dc13294b8cb46ddcf890dd97706d6aa051f",
+   "bytes": 93090,
+   "liteBytes": 36412,
+   "liteCell": [
+    200,
+    168
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/buildings/entulho-2x1-1.webp": {
+   "source": "2542a2bae9a5401bca86bc927dd05a822336a1529ca630931a4c8d21ca420105",
+   "lite": "2c93c049ecd149e4b305c5641c7abfab53f266785bad717e0df202e348610b3f",
+   "bytes": 173436,
+   "liteBytes": 60746,
+   "liteCell": [
+    328,
+    200
+   ],
+   "psnr": 42.6,
+   "shownPsnr": 42.6
+  },
+  "city/buildings/galpao-3x2-1.webp": {
+   "source": "1c7ebe4df990bf9e0e92bf3b7f7519f8e1f20cf0c7b2bfbdf9dbf5820a1cba66",
+   "lite": "954145c8a3e9e3b05e63ab73d00ae00b40e0d2d30761f76a505d9ebc3bfe152d",
+   "bytes": 581556,
+   "liteBytes": 177112,
+   "liteCell": [
+    456,
+    376
+   ],
+   "psnr": 41.9,
+   "shownPsnr": 41.9
+  },
+  "city/buildings/garagem-oficina-2x1-1.webp": {
+   "source": "1303ef282f51f029b97535da0fab8668567dfa9ff8cc84ca0d4a6c598266dc35",
+   "lite": "1ed79c02cb0f8394c85866bd80f5d9b77b5e1377df73f59f1ee75ceb251159cb",
+   "bytes": 218028,
+   "liteBytes": 72286,
+   "liteCell": [
+    328,
+    224
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/buildings/mercadinho-2x2-1.webp": {
+   "source": "cb08b37a0b9a920f90ca767ca2f32e5c1010425397181b576696eabd74e1bef4",
+   "lite": "74dcb19f3898427815b7af91487f700a38d1851e1535845edd3d9791c5d449f1",
+   "bytes": 417868,
+   "liteBytes": 128952,
+   "liteCell": [
+    344,
+    320
+   ],
+   "psnr": 40.9,
+   "shownPsnr": 40.9
+  },
+  "city/buildings/predio-2x2-1.webp": {
+   "source": "e71aa1522f04c4c69bd38660b115bcc828e80207ee3e7e5aa9ba9ad74a464a4e",
+   "lite": "f239061307148949bf24ea155f5fe9deb3aa729d5e4a839a6127b293a859e10e",
+   "bytes": 584908,
+   "liteBytes": 176934,
+   "liteCell": [
+    336,
+    432
+   ],
+   "psnr": 40.9,
+   "shownPsnr": 40.9
+  },
+  "city/buildings/predio-2x2-2.webp": {
+   "source": "dc05f42db3bd13328f7d218db3d811ed881c8d89bbf120d32df721e6d7884afc",
+   "lite": "a51229d2c3a84d49070cd39270fd4aad91f0253be27e7a0f82c2fddc01a6bd88",
+   "bytes": 551446,
+   "liteBytes": 170624,
+   "liteCell": [
+    328,
+    400
+   ],
+   "psnr": 40.2,
+   "shownPsnr": 40.2
+  },
+  "city/buildings/predio-3x2-2.webp": {
+   "source": "7e81f6e7a826aaa7e7a50648d335c687fc2001e53ccd8b36d6db73518093037b",
+   "lite": "1a679819b828cd12a2a0f14c92961147be346ffd6b39c1c34d4f1de1fd8e7d4f",
+   "bytes": 830864,
+   "liteBytes": 228524,
+   "liteCell": [
+    448,
+    560
+   ],
+   "psnr": 42.1,
+   "shownPsnr": 42.1
+  },
+  "city/buildings/sobrado-2x1-3.webp": {
+   "source": "8a086561d3e847b750128703bcae11fe9fc0b6051cb876e41f0f3f2df95f8f23",
+   "lite": "9c6b1b69d13bcaeb461b5295a8ccc2e6f1999909a49c4cd893aab5e8f25fdb18",
+   "bytes": 283626,
+   "liteBytes": 92616,
+   "liteCell": [
+    328,
+    288
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/buildings/sobrado-2x2-1.webp": {
+   "source": "9981e27c4126ace55b79d6fef292414359e87daa0082a4f0ba53efc7e6032af7",
+   "lite": "541244979e9e073aad2c080639299aacb5e3ac8fd313f7dca606b823dc08a91b",
+   "bytes": 537236,
+   "liteBytes": 169848,
+   "liteCell": [
+    328,
+    400
+   ],
+   "psnr": 39.9,
+   "shownPsnr": 39.9
+  },
+  "city/buildings/sobrado-2x2-2.webp": {
+   "source": "2924c68a79aa9b9ff5bdd44b8d0b4b8cf30a53b8b3ccce5bccfcce2c73c701e5",
+   "lite": "102910d297919f947df8dcd17aa1f7662c0cf5759a5bd06665d254bb6286bf66",
+   "bytes": 549938,
+   "liteBytes": 171680,
+   "liteCell": [
+    328,
+    400
+   ],
+   "psnr": 40,
+   "shownPsnr": 40
+  },
+  "city/buildings/sobrado-2x2-3.webp": {
+   "source": "3189660cc842a8f955a6f412ad1a1fbb52568c99f2b9c951f21b6e13149b7076",
+   "lite": "e5046fcec0b5d4f0f2edacacf1211072b160f894d928799e0401aff62ce529b2",
+   "bytes": 557948,
+   "liteBytes": 171446,
+   "liteCell": [
+    320,
+    408
+   ],
+   "psnr": 40.5,
+   "shownPsnr": 40.5
+  },
+  "city/decor/academia-praca-1/anim-balanco.webp": {
+   "source": "90a2aeb7bac44c0291ba2e5a07fcb756394c92bdd9dccbbf9421d91ba61d3dbd",
+   "lite": "81d5b29c74cc9515967010b099703ffc7ae7a049e574a2af95740e2c70c5ca2e",
+   "bytes": 598604,
+   "liteBytes": 321780,
+   "liteCell": [
+    167,
+    167
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/decor/academia-praca-1/sheet.webp": {
+   "source": "34cf79b686ac191eae0ea36bc83372c6271bcc11317fcd94acf21b2b4433f917",
+   "lite": "41ba0e0eb551f17b5460e6e0bc44df41bcb363056304d3526a76b9c28f0267a2",
+   "bytes": 301506,
+   "liteBytes": 77360,
+   "liteCell": [
+    246,
+    168
+   ],
+   "psnr": 39.7,
+   "shownPsnr": 39.7
+  },
+  "city/decor/academia-praca-2/anim-balanco.webp": {
+   "source": "50a6beab448d7ae9d3cd0ae4919d6a43e8041b36409598367126938f49e82b61",
+   "lite": "6bb74fb42e0a48979e4c79d5146db37aa0294502b51469156f827422199dfd0d",
+   "bytes": 326758,
+   "liteBytes": 174576,
+   "liteCell": [
+    120,
+    120
+   ],
+   "psnr": 40.4,
+   "shownPsnr": 40.4
+  },
+  "city/decor/academia-praca-2/sheet.webp": {
+   "source": "6012f650e16a2e3891c51ba9d5ab450c121f082cf111311010f2fab2b193a37f",
+   "lite": "c91c6ed59e5f0a4d7615eb29ebf7cc82fa01c0b246b69f4d79bccd48efcffb7d",
+   "bytes": 264474,
+   "liteBytes": 71418,
+   "liteCell": [
+    234,
+    180
+   ],
+   "psnr": 40.9,
+   "shownPsnr": 40.9
+  },
+  "city/decor/acougue-1/sheet.webp": {
+   "source": "09ef51f8a3bc2b4839e7d9ab6c72aa4952cf96621258f6c93700a706ce5e5efd",
+   "lite": "85e1fcdb030e108a5244da229cc2a044c8ce906302f1cc8f16668160805813fe",
+   "bytes": 149236,
+   "liteBytes": 63676,
+   "liteCell": [
+    168,
+    208
+   ],
+   "psnr": 38.6,
+   "shownPsnr": 38.6
+  },
+  "city/decor/acougue-2/sheet.webp": {
+   "source": "518cad7d5f752d956e3ca052e2e2ad5ee705fc325137a946a37fdfb54827d6ab",
+   "lite": "8bdcf8c10091642e0da95b19ed63c9ec9b7386401868b828c50cd7b45f4017c0",
+   "bytes": 200638,
+   "liteBytes": 78958,
+   "liteCell": [
+    208,
+    232
+   ],
+   "psnr": 37,
+   "shownPsnr": 37
+  },
+  "city/decor/alambrado-ponta-intacto/sheet.webp": {
+   "source": "646a4c15c59bacde5207cd228c475b39c551120568398e9a638410ffc8fa9aa7",
+   "lite": "e5183c83d71973d6a41a3494a66b6b438a99b4864bd95484e8402b27d3221a30",
+   "bytes": 196446,
+   "liteBytes": 66284,
+   "liteCell": [
+    504,
+    186
+   ],
+   "psnr": 49.5,
+   "shownPsnr": 49.5
+  },
+  "city/decor/alambrado-ponta-quebrado/sheet.webp": {
+   "source": "adfe4b44a95c45809a23cfaef0712d614013355aaabb45e2cc604301e4e4ebaa",
+   "lite": "9bd117f2a7984f9ff5cfa86ab29dd2b36c349b688010f2d4dc85c0cfc6086dc4",
+   "bytes": 188098,
+   "liteBytes": 61534,
+   "liteCell": [
+    498,
+    186
+   ],
+   "psnr": 48.3,
+   "shownPsnr": 48.3
+  },
+  "city/decor/alambrado-portao-intacto/sheet.webp": {
+   "source": "54fd13a4efcfb19359c25a3372f6f059f322d56f3c13bce69a77982a26d0e143",
+   "lite": "1b0e5390ac5c2cc02240a01add87d5558333bb6ee9f553e14009ed89299acabf",
+   "bytes": 246204,
+   "liteBytes": 76940,
+   "liteCell": [
+    552,
+    186
+   ],
+   "psnr": 48.6,
+   "shownPsnr": 48.6
+  },
+  "city/decor/alambrado-portao-quebrado/sheet.webp": {
+   "source": "1ff6b5fef3dd1d9cb51fa577d902c8f68ed22242ef0ff8067cd140d7e93e9728",
+   "lite": "8241777f78764e1e022bfd5108d0c0c288951a8a5584cb5cafbab2641eee96a9",
+   "bytes": 178590,
+   "liteBytes": 59598,
+   "liteCell": [
+    552,
+    186
+   ],
+   "psnr": 48.1,
+   "shownPsnr": 48.1
+  },
+  "city/decor/alambrado-quina-intacto/sheet.webp": {
+   "source": "52863608f4ef127858f5668d7b8d478873f1f08d5f7c29f60ceb60b83838a198",
+   "lite": "2cf8484a4d3e3ab8662e80d6aeb09da15dab5f4d8d8a06988bafaf3f19ef3978",
+   "bytes": 191590,
+   "liteBytes": 69650,
+   "liteCell": [
+    402,
+    216
+   ],
+   "psnr": 48.7,
+   "shownPsnr": 48.7
+  },
+  "city/decor/alambrado-quina-quebrado/sheet.webp": {
+   "source": "44b78d42068b908c495c8d02a7cd471c5fdd6ce695637e782718ea3df42e0010",
+   "lite": "0be527fb28a82691f787555385b5c957139bcfef9336f5c1054bb550d04a6abc",
+   "bytes": 198166,
+   "liteBytes": 70916,
+   "liteCell": [
+    402,
+    210
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/alambrado-reto-intacto/sheet.webp": {
+   "source": "d66190b2e70d40e1017c3c868502b21380cc3db1946640bd7dd6c2b0aa9c06f6",
+   "lite": "6d7c6a276c959ad96563ed48b6b784600a45f62dc070ba621d48382d32ce1dcf",
+   "bytes": 171444,
+   "liteBytes": 66082,
+   "liteCell": [
+    540,
+    228
+   ],
+   "psnr": 51.4,
+   "shownPsnr": 51.4
+  },
+  "city/decor/alambrado-reto-quebrado/sheet.webp": {
+   "source": "d96bfd40537bfc1f457aa0265e0f90a8bc98106b34e0f55e82c6d472e565b03e",
+   "lite": "a8066d99a1e3e6fb1cf32d30c3067a46a7b13821f551a704ddebea8510bf794e",
+   "bytes": 140618,
+   "liteBytes": 54210,
+   "liteCell": [
+    528,
+    192
+   ],
+   "psnr": 49.9,
+   "shownPsnr": 49.9
+  },
+  "city/decor/alambrado-t-intacto/sheet.webp": {
+   "source": "2c8ed6180b3f064b4e490c2e4c587cc6edf3669e145aadf68351aaf5101f4392",
+   "lite": "9a1d761f5eab6bd32240c77b0eb118c2be0eb782e32989020f22ed38cf052b8d",
+   "bytes": 221636,
+   "liteBytes": 75506,
+   "liteCell": [
+    660,
+    186
+   ],
+   "psnr": 50.1,
+   "shownPsnr": 50.1
+  },
+  "city/decor/alambrado-t-quebrado/sheet.webp": {
+   "source": "29b0ee16fe551a679952e244cd956a8874d02cba6b03ca8e46163b9da3d236da",
+   "lite": "88628016aee3a7c5685b93f83b6cd896e7f1b4de535277ed77a5ce7868c47242",
+   "bytes": 189042,
+   "liteBytes": 62332,
+   "liteCell": [
+    648,
+    186
+   ],
+   "psnr": 48.1,
+   "shownPsnr": 48.1
+  },
+  "city/decor/antena-parabolica-1/sheet.webp": {
+   "source": "9eab10b999523b6f64423eb27ca339dc1b18397ee46ed67295118b5a647c9f6f",
+   "lite": "5b13732c39a60b42a1ec628ad3cad3c440b886713e0fdd81c5f4f0e3457a0a31",
+   "bytes": 65978,
+   "liteBytes": 23514,
+   "liteCell": [
+    102,
+    114
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
+  "city/decor/arvore-natal-torta-1/sheet.webp": {
+   "source": "f34149772c6ccf25da0e395a9cf8cab312910d00a44a74e4e6d02964c1f8f145",
+   "lite": "ca9d3f32fd9114dcd76a4378beb99dbf06e1a6668dd2866960c6176909880cf2",
+   "bytes": 169352,
+   "liteBytes": 52070,
+   "liteCell": [
+    150,
+    216
+   ],
+   "psnr": 42.5,
+   "shownPsnr": 42.5
+  },
+  "city/decor/banca-jornal-1/sheet.webp": {
+   "source": "e8c14575e91d4e0c0ff4684b96f6caf04d0233d98ddfe7a6065bb7af46b86dee",
+   "lite": "c3ca082876f530e361966afdecdfb46fbc4024c147d354657b0c857789d462be",
+   "bytes": 321536,
+   "liteBytes": 71346,
+   "liteCell": [
+    300,
+    192
+   ],
+   "psnr": 41.7,
+   "shownPsnr": 41.7
+  },
+  "city/decor/banca-jornal-2/sheet.webp": {
+   "source": "d3cec609f7f7ae29d80c877f23a108964bb98970a086577c87672c4617d9dfb1",
+   "lite": "010e82aecff59f1fbb2ed9131a5057e17f42f63cc12da32ae3cf9b0644c813b5",
+   "bytes": 288114,
+   "liteBytes": 65636,
+   "liteCell": [
+    276,
+    192
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/decor/barraca-feira-1/sheet.webp": {
+   "source": "706c7d9f6be2c078e5f9f1637412cc4a58a2bc171c5c2d643f1cca8231cdc14f",
+   "lite": "bda72431b193000fe15f9bd6cca30b158d54462f8208a64e68c8db3391695bb9",
+   "bytes": 258968,
+   "liteBytes": 59008,
+   "liteCell": [
+    270,
+    192
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
+  "city/decor/barraca-feira-2/sheet.webp": {
+   "source": "2882a2b755f3209c96ab1d8dddd4f7723bdf0b97bfb269f769eb5ff0a88a38c4",
+   "lite": "3055921abd34092b6308315a3acaa3d8d5205025f79467c3e3e20bab50f6c5a2",
+   "bytes": 288318,
+   "liteBytes": 72164,
+   "liteCell": [
+    270,
+    192
+   ],
+   "psnr": 40.9,
+   "shownPsnr": 40.9
+  },
+  "city/decor/bicicleta-1/sheet.webp": {
+   "source": "1daccdae689978a5dc165632ed76a428fbd9f97b258cfd9fa2a6aeb4d8d19752",
+   "lite": "c9822649b2a4f014a9e17a5164da7b049b5f58a3cc21bbde04698daf8cf33592",
+   "bytes": 79134,
+   "liteBytes": 32108,
+   "liteCell": [
+    192,
+    108
+   ],
+   "psnr": 45.5,
+   "shownPsnr": 45.5
+  },
+  "city/decor/bicicleta-2/sheet.webp": {
+   "source": "408752e2413ee133db05e53264f6a50f4ab846d55d136de7f70cf85dc8eb5a33",
+   "lite": "9fe924e6c79d6b4737f2ec6b14be6234690054af2ce4a06d34c54010452cb599",
+   "bytes": 75586,
+   "liteBytes": 29524,
+   "liteCell": [
+    162,
+    102
+   ],
+   "psnr": 44.1,
+   "shownPsnr": 44.1
+  },
+  "city/decor/borracharia-1/anim-pneu.webp": {
+   "source": "aa03468b450ed6ff4f5857ee861db1e4c1decd4bd0d46fade6691c4d618ab4cd",
+   "lite": "56b54d62401c015b8b95d37a665277e7ca4721d8bc8c6dbf7b71c9eb0c1d3102",
+   "bytes": 82736,
+   "liteBytes": 51182,
+   "liteCell": [
+    94,
+    94
+   ],
+   "psnr": 48.4,
+   "shownPsnr": 48.4
+  },
+  "city/decor/borracharia-1/sheet.webp": {
+   "source": "aa6d0598bdf5228ab97ebc7343145d2c47f55f2c2c04cce12b859a7c6b8f1e6f",
+   "lite": "c7b9dfaab5206a5c47099ef33aa25a44a7fa30b58508c4939571a68b011220c8",
+   "bytes": 172108,
+   "liteBytes": 65892,
+   "liteCell": [
+    192,
+    216
+   ],
+   "psnr": 38.4,
+   "shownPsnr": 38.4
+  },
+  "city/decor/borracharia-2/sheet.webp": {
+   "source": "2e2e7dab18a25e23f3554326c411ef5c53ebec54a356bed27c7da3ebc421a95a",
+   "lite": "1cb37b5d808958616c534b53f659e1fad68dcda0fb982f6f7b9206eb17368f98",
+   "bytes": 156444,
+   "liteBytes": 63944,
+   "liteCell": [
+    192,
+    208
+   ],
+   "psnr": 39,
+   "shownPsnr": 39
+  },
+  "city/decor/boteco-apocaliptico-1/anim-janela.webp": {
+   "source": "5e4f1d8703a81229b831876a01f73db4b03e2df0c099a78e3d82e76274726495",
+   "lite": "c1fa6a896fe63c199eca9b64ad442ab6d9ca59ee7333130c6540837bcbe963cc",
+   "bytes": 74952,
+   "liteBytes": 46888,
+   "liteCell": [
+    127,
+    127
+   ],
+   "psnr": 48,
+   "shownPsnr": 48
+  },
+  "city/decor/boteco-apocaliptico-1/sheet.webp": {
+   "source": "099ac43430ba78fd6c48744d97d34017bffebe7d55436f4367d9828c4da9a8cb",
+   "lite": "46fb5ff8ad4cb93f057e1734440307ecab94282be6e753868a557b23a452426f",
+   "bytes": 248308,
+   "liteBytes": 91750,
+   "liteCell": [
+    328,
+    216
+   ],
+   "psnr": 39.9,
+   "shownPsnr": 39.9
+  },
+  "city/decor/boteco-apocaliptico-2/sheet.webp": {
+   "source": "d15c7c66d2fe5e1d47e67e826d8ac06f7f5c274101fd09f0b354f5ba3bd2c690",
+   "lite": "90150b8486c3226aafd46ca69d7f360403eb30addfe804a2619354d9e31816e6",
+   "bytes": 299410,
+   "liteBytes": 114110,
+   "liteCell": [
+    328,
+    248
+   ],
+   "psnr": 38.3,
+   "shownPsnr": 38.3
+  },
+  "city/decor/cacamba-entulho-1/sheet.webp": {
+   "source": "a0fcc6be181ca2c5357d8fd73928d7ed2aca173362128296146ae0ab6fc88af4",
+   "lite": "518c175c7ac1051db2bd4cd571d53ced3f27501fcef6953b6163327df0f6c3d7",
+   "bytes": 125320,
+   "liteBytes": 34008,
+   "liteCell": [
+    174,
+    120
+   ],
+   "psnr": 38.4,
+   "shownPsnr": 38.4
+  },
+  "city/decor/cacamba-entulho-2/sheet.webp": {
+   "source": "8acf15a5ef1566ee8ae4d92dfd59f15a0f38d1d4fa8022dce0495439cff29f10",
+   "lite": "33b534fcceb213b21669d04f9004ce353e37dae7db1a060d67ea3e13491e7dde",
+   "bytes": 127554,
+   "liteBytes": 34512,
+   "liteCell": [
+    186,
+    114
+   ],
+   "psnr": 39,
+   "shownPsnr": 39
+  },
+  "city/decor/cachoeira-congelada/sheet.webp": {
+   "source": "76e29052d0cd5d5bed7fd0076aa2cc0fe5b721c30deeb8cfea86263865c0ccf7",
+   "lite": "1f02137ea4a4067c1c8a753600fa1f806ff54df8b97470989b9b539e69444449",
+   "bytes": 221578,
+   "liteBytes": 89634,
+   "liteCell": [
+    408,
+    248
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
+  "city/decor/caixa-dagua-1/sheet.webp": {
+   "source": "4a579ce1186f2b4e7223a97cb450714c8c585387db390ee90a76efdd434b8bcf",
+   "lite": "ff0adf77809ec2853b6925ad4739ecff40c000399ca9eeb226def32490899a0e",
+   "bytes": 86692,
+   "liteBytes": 30578,
+   "liteCell": [
+    78,
+    126
+   ],
+   "psnr": 37.7,
+   "shownPsnr": 37.7
+  },
+  "city/decor/caixa-dagua-2/sheet.webp": {
+   "source": "f34db0a152560edf340cd995a4d2aebb9c95d70321649f270f14da802c07f285",
+   "lite": "6c937668ba51b00e0dba4a2bb669d6692b17ab2f4b04e823a666dceab4e3c6e7",
+   "bytes": 85630,
+   "liteBytes": 28464,
+   "liteCell": [
+    90,
+    126
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/decor/carrinho-pipoca-1/sheet.webp": {
+   "source": "0c87836c3349566cede6a1b5117cc69220facb949869259c84dc5924ace3d280",
+   "lite": "58135ff410ecf161344f9a24248e60d97246286e651b142f9081a91d9f01f47e",
+   "bytes": 152960,
+   "liteBytes": 41356,
+   "liteCell": [
+    168,
+    150
+   ],
+   "psnr": 39.2,
+   "shownPsnr": 39.2
+  },
+  "city/decor/carrinho-pipoca-2/sheet.webp": {
+   "source": "b12749d72fd217d4a10b08206038f6446cc9a26b4a52c483ccfc2355f00aca9b",
+   "lite": "2618c885304072784dbde68d66a969027a9740268f0759045396d4f2f81fd957",
+   "bytes": 162008,
+   "liteBytes": 45332,
+   "liteCell": [
+    204,
+    156
+   ],
+   "psnr": 42.4,
+   "shownPsnr": 42.4
+  },
+  "city/decor/carroca-1/sheet.webp": {
+   "source": "f0a488167430d4a01265e82438de0b6c006a8437b7ed07867c98431c916e1724",
+   "lite": "972c14b8526595e0c2b7e04101d100d51997dd43dd89a9f3c99077b954b82d70",
+   "bytes": 97202,
+   "liteBytes": 31896,
+   "liteCell": [
+    228,
+    126
+   ],
+   "psnr": 43.3,
+   "shownPsnr": 43.3
+  },
+  "city/decor/carroca-2/sheet.webp": {
+   "source": "a2a00e6a15187a95f31c0e8ce85c201d9949763ab4ad90de2c79195e8d449001",
+   "lite": "58bc76b7c27c5dce5bc0e490c1bba4e87fe2f75f71a8f4bad9f29499dbe5b58c",
+   "bytes": 102952,
+   "liteBytes": 31282,
+   "liteCell": [
+    192,
+    132
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
+  "city/decor/casa-geminada-1/sheet.webp": {
+   "source": "661b33586501304ce306f6602cd6e7933fb39c08fb281a55dfd82491fc680b55",
+   "lite": "4eee5320d0f29791fad920824bd0fb697affd2fed0c4fb15a35959de68fb248f",
+   "bytes": 291166,
+   "liteBytes": 105960,
+   "liteCell": [
+    328,
+    240
+   ],
+   "psnr": 38,
+   "shownPsnr": 38
+  },
+  "city/decor/casa-geminada-2/sheet.webp": {
+   "source": "9aa99f3b33e7d0311da72191cf15769fed10c7f8605f61933c0d47935a526e4c",
+   "lite": "a495ccbc03d232887197b14df6a2f0ca842c95e9dd38d19cb625a53872abe1da",
+   "bytes": 269626,
+   "liteBytes": 106464,
+   "liteCell": [
+    328,
+    248
+   ],
+   "psnr": 40.2,
+   "shownPsnr": 40.2
+  },
+  "city/decor/casa-laje-1x1-1/sheet.webp": {
+   "source": "6598d858f6218acb3b8f164bf16bb6bf0528946580c4ac03629a2ce8c7424b68",
+   "lite": "cf08133dd04e40e9bfeab5f33256607feacce86ed623e1cf9e898b08ec6ad54c",
+   "bytes": 158600,
+   "liteBytes": 60186,
+   "liteCell": [
+    184,
+    208
+   ],
+   "psnr": 37.2,
+   "shownPsnr": 37.2
+  },
+  "city/decor/casa-laje-1x1-2/sheet.webp": {
+   "source": "ea3472800c8ad948ffcadc34588a51956221243492c91298de31fbc8b02b96bc",
+   "lite": "9c1f3dbed953a86b7e98879bbff01f54b3666420f4b8530a317e69ee4aeae081",
+   "bytes": 163238,
+   "liteBytes": 61498,
+   "liteCell": [
+    184,
+    208
+   ],
+   "psnr": 36.4,
+   "shownPsnr": 36.4
+  },
+  "city/decor/casa-laje-2x1-1/sheet.webp": {
+   "source": "b784af37c072e4c20ba954a357dbdde706630da4509d46be4dd0948b83de3da6",
+   "lite": "f8555cbb1fab383bd4f8291176947f17136fde3d3ab8361f6bc00d525da2eb0e",
+   "bytes": 286262,
+   "liteBytes": 104744,
+   "liteCell": [
+    328,
+    264
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
+  },
+  "city/decor/casa-laje-2x1-2/sheet.webp": {
+   "source": "0b912874037ece20a9b94a160e2be3d8ecba364ac0f45b088446d91617a67450",
+   "lite": "365e37be6d80a53698246721773929e4c835c2055f10fe2ac47115702df2653d",
+   "bytes": 468982,
+   "liteBytes": 154280,
+   "liteCell": [
+    328,
+    400
+   ],
+   "psnr": 40.6,
+   "shownPsnr": 40.6
+  },
+  "city/decor/cerca-madeira-ponta-intacto/sheet.webp": {
+   "source": "8152b823adbfe92660234ea10e9553d9c1ac472ec6de51af3dbbad60c44200a9",
+   "lite": "679a474bc6012624fa0a81445f42042fa0ad4f6c41b392e077ea8b1acad4adeb",
+   "bytes": 74424,
+   "liteBytes": 21460,
+   "liteCell": [
+    348,
+    132
+   ],
+   "psnr": 47.6,
+   "shownPsnr": 47.6
+  },
+  "city/decor/cerca-madeira-ponta-quebrado/sheet.webp": {
+   "source": "facd91915fbf895c67c9834f0d4d0b85bbeed238761353b70ba2df0a705276b6",
+   "lite": "a6f662fd7fcba54ce137a5af650d5787398b72e322b736e0d6f04f79ffcdb275",
+   "bytes": 86570,
+   "liteBytes": 25320,
+   "liteCell": [
+    354,
+    138
+   ],
+   "psnr": 46.1,
+   "shownPsnr": 46.1
+  },
+  "city/decor/cerca-madeira-portao-intacto/sheet.webp": {
+   "source": "9430a96187d356ad9be264853a9764ef65065c16d327061a7495a01a64b354c2",
+   "lite": "3bda66b1c643c111ebf3d8f758e5fa24bd57c940fc55019746865ddcec756556",
+   "bytes": 152472,
+   "liteBytes": 39744,
+   "liteCell": [
+    516,
+    204
+   ],
+   "psnr": 46.3,
+   "shownPsnr": 46.3
+  },
+  "city/decor/cerca-madeira-portao-quebrado/sheet.webp": {
+   "source": "e9e3269cd39b0ad1e9845b690fe539cf04139af2adb6b69f0626f6d366466a63",
+   "lite": "01b84ab04913a4dd28ed8b706745f78b99ea2cbe537aa49682444b65517a09bd",
+   "bytes": 134256,
+   "liteBytes": 40700,
+   "liteCell": [
+    522,
+    204
+   ],
+   "psnr": 46.8,
+   "shownPsnr": 46.8
+  },
+  "city/decor/cerca-madeira-quina-intacto/sheet.webp": {
+   "source": "af183cb5db4bf7becd2a0ca99c6c08fac8bbbac227450bd00129cee53df6dace",
+   "lite": "2de5a78ac763130364786857aa1d45dafa1b5bed3a6da3b2d9e62c253cd286de",
+   "bytes": 84138,
+   "liteBytes": 27756,
+   "liteCell": [
+    264,
+    150
+   ],
+   "psnr": 44.7,
+   "shownPsnr": 44.7
+  },
+  "city/decor/cerca-madeira-quina-quebrado/sheet.webp": {
+   "source": "70e1b7492ee2db6605dcfe5d5b712985f1e219073336f373464eb35709cf9c4e",
+   "lite": "ebd7ffd09a5dc11b578df03b9749910817b2135890b7184be909ac9c6dabe5dd",
+   "bytes": 91224,
+   "liteBytes": 28488,
+   "liteCell": [
+    264,
+    150
+   ],
+   "psnr": 43.7,
+   "shownPsnr": 43.7
+  },
+  "city/decor/cerca-madeira-reto-intacto/sheet.webp": {
+   "source": "46f17d862ae72dcdf8863c52ecae5db616d07c376e9330fedac252b502ba0ca7",
+   "lite": "a2421086393cbe92e35899a6bb79a3b66a880a5d265fd119dce00b507f556f84",
+   "bytes": 71692,
+   "liteBytes": 21796,
+   "liteCell": [
+    366,
+    138
+   ],
+   "psnr": 46.9,
+   "shownPsnr": 46.9
+  },
+  "city/decor/cerca-madeira-reto-quebrado/sheet.webp": {
+   "source": "490151a38aeb7b409d038ead33f8a28eacb8e1816933a5a1b39a4b581c25be37",
+   "lite": "fcdc675098d3dd37487b4585f83b996c84b41cc8a642b299c62d22829fdebf85",
+   "bytes": 66678,
+   "liteBytes": 21314,
+   "liteCell": [
+    372,
+    138
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/cerca-madeira-t-intacto/sheet.webp": {
+   "source": "15572ac5419334d8c9f6594ba0c4cdabd1b7bee972e83cfd6f8720d77ca94e07",
+   "lite": "3ac80d91630a43f596770e50f55e8592e9df44ceb288c1419f3516fbbb2d75f2",
+   "bytes": 90428,
+   "liteBytes": 31686,
+   "liteCell": [
+    462,
+    132
+   ],
+   "psnr": 45.5,
+   "shownPsnr": 45.5
+  },
+  "city/decor/cerca-madeira-t-quebrado/sheet.webp": {
+   "source": "e8c2dfc79330302f53f097c893e0048cd93567325fe827d14968933c575f5cd7",
+   "lite": "2a01599eed60b6e32381f0c9ae56b99ecada41b95ecd4c1e9906f39aa0b4be39",
+   "bytes": 91814,
+   "liteBytes": 32050,
+   "liteCell": [
+    462,
+    138
+   ],
+   "psnr": 45,
+   "shownPsnr": 45
+  },
+  "city/decor/condominio-guarita-1/sheet.webp": {
+   "source": "0a1fa2e0aa2ccf441c717e27ad6590983c373027b2bb0b1853b54a514fd839ee",
+   "lite": "f66989063af8c51e77e69a994bdfbbdcde3546a40d6615a84526e3dc2114eb7b",
+   "bytes": 196392,
+   "liteBytes": 77164,
+   "liteCell": [
+    328,
+    256
+   ],
+   "psnr": 42.5,
+   "shownPsnr": 42.5
+  },
+  "city/decor/condominio-guarita-2/sheet.webp": {
+   "source": "6dff69f73ed94a21e1401bab92be6bc1ad509ccef3cd5972055809e34f0cf51d",
+   "lite": "4f0a5a9592af6be2d90f250f7b167ec13926c6ee7b275cd896773f663cdf5a65",
+   "bytes": 187584,
+   "liteBytes": 73004,
+   "liteCell": [
+    328,
+    240
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/decor/conjunto-habitacional-1/sheet.webp": {
+   "source": "52b97e3b3ac7324fc5b498b2b6f1ce3b722fbab01d217e2ac1cd731d00d18adf",
+   "lite": "5963351d11d0c7f892b9d41c63b6baa0a05af76244d99534e21f2f5700f07bf2",
+   "bytes": 1573510,
+   "liteBytes": 466370,
+   "liteCell": [
+    640,
+    648
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/decor/conjunto-habitacional-2/sheet.webp": {
+   "source": "3555b5e03ec9ff179cb9b27d5938cdfb3de66d39d987b07b8db230551a4c1deb",
+   "lite": "a31767941f2ab6f053169673bccaf9ae019b557b928377b071aa929f7ac15207",
+   "bytes": 1335498,
+   "liteBytes": 377912,
+   "liteCell": [
+    640,
+    624
+   ],
+   "psnr": 42.4,
+   "shownPsnr": 42.4
+  },
+  "city/decor/escola-1/anim-bandeirola.webp": {
+   "source": "9408e39f3ddc0cd41314b4ca882721913894a29efb21c978f0ffac66218967d2",
+   "lite": "069d9f9d714e6e8e5bbfb8430c7fe098c14f2b641713a37ceed80a26ddd326e9",
+   "bytes": 124780,
+   "liteBytes": 89904,
+   "liteCell": [
+    147,
+    147
+   ],
+   "psnr": 50.2,
+   "shownPsnr": 50.2
+  },
+  "city/decor/escola-1/sheet.webp": {
+   "source": "d960e54affa9107ff8414c2f6c8fcd91e876645d97b1b78e12067ec6dc22aee3",
+   "lite": "e4dbc8441266879020bb60c88f4e9116e0fc429b40250397d7c259d66dc08eba",
+   "bytes": 446260,
+   "liteBytes": 155394,
+   "liteCell": [
+    464,
+    296
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/decor/escola-2/sheet.webp": {
+   "source": "19f2e7202ee35f7145bcde113339843da626bc4f652dc553f21098524ac8ffe6",
+   "lite": "c9413b3395a7b6fa4aa0482a304f192c342d3b7fd63d79bc428f9cf45c280525",
+   "bytes": 424576,
+   "liteBytes": 156744,
+   "liteCell": [
+    512,
+    280
+   ],
+   "psnr": 41.1,
+   "shownPsnr": 41.1
+  },
+  "city/decor/farmacia-1/anim-cruz.webp": {
+   "source": "72f4349cd13dd470f7d7509919925c2afd7e3a7886e953a6df323bb43e5889c7",
+   "lite": "a4a7e6947af9e0cd0b1a4561c3f5f4924adc84c8084c363c46730560acbaecb5",
+   "bytes": 118838,
+   "liteBytes": 64682,
+   "liteCell": [
+    111,
+    111
+   ],
+   "psnr": 44.9,
+   "shownPsnr": 44.9
+  },
+  "city/decor/farmacia-1/sheet.webp": {
+   "source": "4a4c526dd02aea5fca4e68b470198509756976282f576f53dc6b8b03fd93723a",
+   "lite": "0c0efc4b23f5a4497174dec8ddcb5ea459200d1c16d8f338c46bf15550a2dc14",
+   "bytes": 334060,
+   "liteBytes": 113022,
+   "liteCell": [
+    328,
+    296
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/decor/farmacia-2/anim-cruz.webp": {
+   "source": "152d04c0404974372c36d69c6dc1bbef11af1469e34dbb895a8a856eec4ab195",
+   "lite": "4057d1e78faca029c941a7f230002ded5129373b30d7430e7704075093a5ecbc",
+   "bytes": 91770,
+   "liteBytes": 48366,
+   "liteCell": [
+    104,
+    104
+   ],
+   "psnr": 46.9,
+   "shownPsnr": 46.9
+  },
+  "city/decor/farmacia-2/sheet.webp": {
+   "source": "8f459fea9fac24fa913b810935ff462867267353891af2d0cf5b1047d9da9e2a",
+   "lite": "f3dd6b15e7a675806b32fcc637df342b74050ea25fb9273c1d36326159d47c81",
+   "bytes": 263002,
+   "liteBytes": 96088,
+   "liteCell": [
+    328,
+    256
+   ],
+   "psnr": 41.7,
+   "shownPsnr": 41.7
+  },
+  "city/decor/feira-coberta-1/anim-lona.webp": {
+   "source": "5f5f82657b1551988c6846b3649e88fc5f423d47527f0c5090e412d9b64d0219",
+   "lite": "75a21a1c64af85225d0cf972a1169b16de88c20ede424a2b4088838afa9c8227",
+   "bytes": 369886,
+   "liteBytes": 163006,
+   "liteCell": [
+    136,
+    136
+   ],
+   "psnr": 44.2,
+   "shownPsnr": 44.2
+  },
+  "city/decor/feira-coberta-1/sheet.webp": {
+   "source": "f0f0fd6c9ff8d41fb36b233a280b93a59c57005d240ddae1dd49b19738f4b1b5",
+   "lite": "cf718424804921b38d1828dd0e81902724268de94f1b30975577a12a00776d55",
+   "bytes": 333466,
+   "liteBytes": 149100,
+   "liteCell": [
+    640,
+    288
+   ],
+   "psnr": 44.2,
+   "shownPsnr": 44.2
+  },
+  "city/decor/feira-coberta-2/anim-lona.webp": {
+   "source": "d15b6dc2c73fc1372ea5e51955d9fce0b55ffdf397278b73bdc7fd46ab69a3da",
+   "lite": "56259447116d6994970ab5cea524c56605da16e024e8eeba9b57e511a06b6701",
+   "bytes": 231512,
+   "liteBytes": 123666,
+   "liteCell": [
+    131,
+    131
+   ],
+   "psnr": 42.7,
+   "shownPsnr": 42.7
+  },
+  "city/decor/feira-coberta-2/sheet.webp": {
+   "source": "8bd62f4f4e1015e95659905954c6ca4a9b72f500c6edbec965abfafe303ad1be",
+   "lite": "1ae4b89359d9ff5c186e600a276df420c1a403a4e4229f1e302ff74d6c0ed971",
+   "bytes": 409156,
+   "liteBytes": 158320,
+   "liteCell": [
+    640,
+    344
+   ],
+   "psnr": 42.4,
+   "shownPsnr": 42.4
+  },
+  "city/decor/fogueira-tambor-1/anim.webp": {
+   "source": "f994819e42f04f88df7533658699c05fb4122cf1b4de3c24274d1b7bfbab73e9",
+   "lite": "4ead5b4c2977b744e6524e35f8ef60b848ac7c179a41efc108642d43e244082a",
+   "bytes": 408046,
+   "liteBytes": 165170,
+   "liteCell": [
+    96,
+    168
+   ],
+   "psnr": 38.9,
+   "shownPsnr": 38.9
+  },
+  "city/decor/fogueira-tambor-1/sheet.webp": {
+   "source": "8f0b94af55d0d437c2f25b5bade70ec694a31601220f18b698fb2affc9cf9966",
+   "lite": "a3dbb79307248ecb2023608d66f8c18c89dbf504e4ad4538c9d7a4709108de53",
+   "bytes": 67960,
+   "liteBytes": 18726,
+   "liteCell": [
+    72,
+    126
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
+  },
+  "city/decor/fogueira-tambor-2/anim.webp": {
+   "source": "92b5bdfa844083081495a5c61efedd5568c261e5f524c0e790b0c94178e92680",
+   "lite": "d7ee9c0fd5a8057534352e13c83d367e8389d8a884517955e457919f3f56b9c3",
+   "bytes": 435684,
+   "liteBytes": 182962,
+   "liteCell": [
+    96,
+    160
+   ],
+   "psnr": 37.7,
+   "shownPsnr": 37.7
+  },
+  "city/decor/fogueira-tambor-2/sheet.webp": {
+   "source": "3621b6bdd752b92b3ab4274c9682d197b3e539551e1ec379737536c2ade1d88b",
+   "lite": "7448b49ebdf14559702e4b051e8fc67bf417187cf8c14907e7ab102e19e21eaa",
+   "bytes": 69212,
+   "liteBytes": 18958,
+   "liteCell": [
+    72,
+    120
+   ],
+   "psnr": 36.9,
+   "shownPsnr": 36.9
+  },
+  "city/decor/geladeira-calcada-1/sheet.webp": {
+   "source": "4582aa076073297f8305b6a6826f0b06bab7e0868361f1329e2a80cfb478dec6",
+   "lite": "359aee1c273ffa1c1e7baeec762ce2f2095c70a8c21e539761e5aff789d2d3a5",
+   "bytes": 99542,
+   "liteBytes": 25536,
+   "liteCell": [
+    84,
+    150
+   ],
+   "psnr": 40,
+   "shownPsnr": 40
+  },
+  "city/decor/geladeira-calcada-2/sheet.webp": {
+   "source": "dadc682033334d7eba42d1129cc9b46d8b963159e66d2837fd2baa8723438af8",
+   "lite": "b6fa04f305ae5bf2273051adc4abc3dc0e6a3f48a212d50a96c185f588171aec",
+   "bytes": 110346,
+   "liteBytes": 26642,
+   "liteCell": [
+    84,
+    156
+   ],
+   "psnr": 38.5,
+   "shownPsnr": 38.5
+  },
+  "city/decor/grade-ponta-intacto/sheet.webp": {
+   "source": "b4f310403b6a522ab936bc8b2e9535139e4221b6b5b05dcf687a520609ee12bf",
+   "lite": "c736038804804d07edd9cca1972b3a0001ce3b4183ca6f4281acac52a6f86635",
+   "bytes": 116252,
+   "liteBytes": 38396,
+   "liteCell": [
+    372,
+    174
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/grade-ponta-quebrado/sheet.webp": {
+   "source": "75d77a0c1ca49d5fca60827a0a71511ecc3565e61b251a26a07a640257df8e48",
+   "lite": "eec9ca1a7eaf12bddcd242035b53be664d34828daa7660e19bcfddc1502bdb3b",
+   "bytes": 121808,
+   "liteBytes": 39514,
+   "liteCell": [
+    390,
+    180
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/grade-portao-intacto/sheet.webp": {
+   "source": "226b19abe3ca89f1a21df070ba0ee9ad5989f7b4ce58ac3e802a1eb088c33427",
+   "lite": "7a518e45508268b799f30e058b7f62bb70dac202f9f5d221f22a1e4b824ce539",
+   "bytes": 143398,
+   "liteBytes": 46604,
+   "liteCell": [
+    504,
+    186
+   ],
+   "psnr": 47.3,
+   "shownPsnr": 47.3
+  },
+  "city/decor/grade-portao-quebrado/sheet.webp": {
+   "source": "c87daa699ee2c4bf49c75fa13a24d8e87669737aa380ac6358a485cf2b357c71",
+   "lite": "5632b83be86f0904291104d781e702123cc5865ad1522728e0cef9e627d6e0c5",
+   "bytes": 143916,
+   "liteBytes": 46782,
+   "liteCell": [
+    564,
+    180
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/grade-quina-intacto/sheet.webp": {
+   "source": "3ca4c109524544e2d1b4688df09e0808adb8f7d6f324024005606762fc492498",
+   "lite": "1f49659b7d5c66ed3990a41edd6e41233a2d938e510890a6b53a425d41b49dd5",
+   "bytes": 115844,
+   "liteBytes": 42016,
+   "liteCell": [
+    372,
+    192
+   ],
+   "psnr": 49.6,
+   "shownPsnr": 49.6
+  },
+  "city/decor/grade-quina-quebrado/sheet.webp": {
+   "source": "18a4ee917893cddda88d3847aaa188155282e44b0974764597fe5735b6413193",
+   "lite": "99c7d8315f2c1e170c8b5d07dc2cfe1426d5da53384e186c5a2983883f25fd0e",
+   "bytes": 126054,
+   "liteBytes": 45560,
+   "liteCell": [
+    360,
+    192
+   ],
+   "psnr": 48.1,
+   "shownPsnr": 48.1
+  },
+  "city/decor/grade-reto-intacto/sheet.webp": {
+   "source": "ff3b3e37216006bd43837a52b91cda6f4009cf79c53211693a57c7c99cd10317",
+   "lite": "8b000e1d5acc9ca580f2d75430337edd0b86a9f0d6d1fdf2e7487ff0aa7e9a30",
+   "bytes": 131550,
+   "liteBytes": 45292,
+   "liteCell": [
+    468,
+    204
+   ],
+   "psnr": 48,
+   "shownPsnr": 48
+  },
+  "city/decor/grade-reto-quebrado/sheet.webp": {
+   "source": "a10a80d7b16abec8ee8a85672ab6775de18b5d2975fdef5329b714afb07838cb",
+   "lite": "ba1a350d2e8a7e2496dbfb51e9e9cc22a68da4514904398bca4b0dcca1704833",
+   "bytes": 123428,
+   "liteBytes": 43262,
+   "liteCell": [
+    456,
+    192
+   ],
+   "psnr": 47.4,
+   "shownPsnr": 47.4
+  },
+  "city/decor/grade-t-intacto/sheet.webp": {
+   "source": "192400d21edaafe171d6f46c46a7ddfd6107a140e06dfd7f6df60fce97d60df8",
+   "lite": "541808312f630f210d7dd3d902f979fe8d199791eac4d0430e14be116eddcf84",
+   "bytes": 137188,
+   "liteBytes": 46370,
+   "liteCell": [
+    552,
+    174
+   ],
+   "psnr": 48.8,
+   "shownPsnr": 48.8
+  },
+  "city/decor/grade-t-quebrado/sheet.webp": {
+   "source": "feab4ea50df85c4333df9c8b434ef27cb9c2d8197a878910ce87b843ec9eaa16",
+   "lite": "68773433734c5b372c290176ec867e1c08482a5156201dcafcead704569a3a80",
+   "bytes": 140926,
+   "liteBytes": 48200,
+   "liteCell": [
+    540,
+    174
+   ],
+   "psnr": 48.6,
+   "shownPsnr": 48.6
+  },
+  "city/decor/igreja-evangelica-1/sheet.webp": {
+   "source": "7aea209c12e70bcb606c012a51d8fe7e5a5f165b491d4b9ea1bbb00b8b17b172",
+   "lite": "25ec95acd906bafae5a8d175bb420e2f29eada10908f20aaa51143c2b35807cb",
+   "bytes": 214320,
+   "liteBytes": 76896,
+   "liteCell": [
+    328,
+    200
+   ],
+   "psnr": 40.6,
+   "shownPsnr": 40.6
+  },
+  "city/decor/igreja-evangelica-2/sheet.webp": {
+   "source": "12f4bd7e715cd1f72b28df9f81c6d666f29ba2aa742d71a08d60da234d79ec66",
+   "lite": "bb5cf2a80c10b0a2de750a24cda5a7be7e84e990db004b8c9a30fdb893e95109",
+   "bytes": 278420,
+   "liteBytes": 100546,
+   "liteCell": [
+    328,
+    240
+   ],
+   "psnr": 38.8,
+   "shownPsnr": 38.8
+  },
+  "city/decor/igrejinha-1/sheet.webp": {
+   "source": "7c1c530c33c5d373df409dae32e06743a33bbafd597dec526ad9a0479ed3c0e9",
+   "lite": "cb47d27b99a64870519d123839544b7080ac2294e104da4a0f836e91fdd5d225",
+   "bytes": 649104,
+   "liteBytes": 217442,
+   "liteCell": [
+    376,
+    464
+   ],
+   "psnr": 39.1,
+   "shownPsnr": 39.1
+  },
+  "city/decor/igrejinha-2/sheet.webp": {
+   "source": "02d8f2ff82e914141db8209fd4e4b5d57493c81b9da1633d1d6a9094dbd735b6",
+   "lite": "532f19119a60664f8a0f6493c49c8e8a6f26d3152ff10b5951e3c71bb60b7744",
+   "bytes": 579282,
+   "liteBytes": 197246,
+   "liteCell": [
+    344,
+    440
+   ],
+   "psnr": 39.1,
+   "shownPsnr": 39.1
+  },
+  "city/decor/juros/anim-sacando.webp": {
+   "source": "f1fe433ada6e5b3e595417e26bfa6ff8eff8d2213d0123f895ed4fc77c45ba26",
+   "lite": "3494d4253544d034fd68137c4d67faf63967d33ce31d8cb63bcf2992f805c41c",
+   "bytes": 234930,
+   "liteBytes": 110636,
+   "liteCell": [
+    108,
+    108
+   ],
+   "psnr": 39.4,
+   "shownPsnr": 39.4
+  },
+  "city/decor/juros/sheet.webp": {
+   "source": "c0626b0f3ee196e8d021f06fb92264c646c9fa8fa2b6b3c403aeaca59ecf7b04",
+   "lite": "833097bcf6f16797aa927f406064c78e3c5b21f9d2218a5a143c4d0da61be9c7",
+   "bytes": 152188,
+   "liteBytes": 35854,
+   "liteCell": [
+    162,
+    243
+   ],
+   "psnr": 43.5,
+   "shownPsnr": 43.5
+  },
+  "city/decor/kombi-velha-1/sheet.webp": {
+   "source": "707cdf9646297618f12f1f8bd561245bb8516dfafecc587e39898b386de0f8cf",
+   "lite": "5db75ebc655fcb7dae95100c2c878cc32922069b04f5b5af7bdf218d01dc7ba2",
+   "bytes": 278376,
+   "liteBytes": 61654,
+   "liteCell": [
+    258,
+    180
+   ],
+   "psnr": 40.3,
+   "shownPsnr": 40.3
+  },
+  "city/decor/kombi-velha-2/sheet.webp": {
+   "source": "56a11d4d2e5d54d40e8330b9cd9bd98791756346144dacf5b05a6d265021b71a",
+   "lite": "824f5c3ef25dd1c9586c614ab2ad5716a05160357d3bca7cab4d5dd003977b7d",
+   "bytes": 270806,
+   "liteBytes": 59340,
+   "liteCell": [
+    252,
+    180
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/decor/lan-house-1/sheet.webp": {
+   "source": "3b821a53bb03c5a8fefd8ae2c651fdceabc63195659ab5d80129ad16fe1774d9",
+   "lite": "c8be847fc6da36a6086b8f0bf001eb4e4861f7631822258ad4d3b9d2835f9cc1",
+   "bytes": 144810,
+   "liteBytes": 53670,
+   "liteCell": [
+    176,
+    192
+   ],
+   "psnr": 39.2,
+   "shownPsnr": 39.2
+  },
+  "city/decor/lan-house-2/sheet.webp": {
+   "source": "ccebd208b492933330e987cbd10618c442499a15c6e4a543d79ce296ee30aa89",
+   "lite": "5219fc4183f5697a8956738e162bb5e6c978f0275bf343653f934c078b6dfaa8",
+   "bytes": 163440,
+   "liteBytes": 75372,
+   "liteCell": [
+    200,
+    184
+   ],
+   "psnr": 36.4,
+   "shownPsnr": 36.4
+  },
+  "city/decor/loterica-1/anim-letreiro.webp": {
+   "source": "fefb8416a023407bbe63511077bf8c17ed78fd9a9ae0ba2cd5050551b300a99f",
+   "lite": "2449ff9f898f81d710c798f99fddbc47a49f4db4cedb9548dc3e9b73def21527",
+   "bytes": 109498,
+   "liteBytes": 54272,
+   "liteCell": [
+    78,
+    78
+   ],
+   "psnr": 44.1,
+   "shownPsnr": 44.1
+  },
+  "city/decor/loterica-1/sheet.webp": {
+   "source": "be73dfb0c0e83b2f1a101dca52ddb2e220b193ff01457745de9b5b209a60cbf4",
+   "lite": "0f280145649e38abda3c869593b7bd697d26d221bf440586918b3f23b26c6863",
+   "bytes": 184214,
+   "liteBytes": 71488,
+   "liteCell": [
+    224,
+    232
+   ],
+   "psnr": 38.3,
+   "shownPsnr": 38.3
+  },
+  "city/decor/loterica-2/anim-letreiro.webp": {
+   "source": "0667642ac1d6d92676db0d22236fcbbb3704ec9251826de81299adb630a35272",
+   "lite": "cb8ac09b50dc5226b26e256859ec4e99fb230f2a1903ef1f6ade700e4b1db620",
+   "bytes": 74588,
+   "liteBytes": 48394,
+   "liteCell": [
+    106,
+    106
+   ],
+   "psnr": 48.5,
+   "shownPsnr": 48.5
+  },
+  "city/decor/loterica-2/sheet.webp": {
+   "source": "ad41db0cd4d8ea20f609670a5c20baa62712888be0babdb93d90a80e75c21339",
+   "lite": "31a4e2a8c5253d83a7994870b4b6ea8813d7774becf28c3394c257ad2b377911",
+   "bytes": 167928,
+   "liteBytes": 63872,
+   "liteCell": [
+    184,
+    208
+   ],
+   "psnr": 37.9,
+   "shownPsnr": 37.9
+  },
+  "city/decor/luminaria-quebrada-pisca-1/anim.webp": {
+   "source": "329f5e6a50c81bab67ce5acc160792461834c90aa64fba78f26b75c140407350",
+   "lite": "883e88282051c491cd870d2701fedf8fa78f1abe4746f4e15ac0e046c1b02020",
+   "bytes": 298368,
+   "liteBytes": 150034,
+   "liteCell": [
+    216,
+    224
+   ],
+   "psnr": 46.4,
+   "shownPsnr": 46.4
+  },
+  "city/decor/luminaria-quebrada-pisca-1/sheet.webp": {
+   "source": "4e35b5ec68d37e3a2cfb65710637b8432062f1e1d49448684fc453cfa6f94e28",
+   "lite": "d0bdc961cc35067dacaf06f6b7ff73ceee77b1d4b3a54f2113808bf778733434",
+   "bytes": 75038,
+   "liteBytes": 25906,
+   "liteCell": [
+    162,
+    168
+   ],
+   "psnr": 45.8,
+   "shownPsnr": 45.8
+  },
+  "city/decor/luminaria-quebrada-pisca-2/anim.webp": {
+   "source": "d18ebb43b8c4234bffadf67aaaedd8add4b825d962d9462d8a6159b9fc7a89c2",
+   "lite": "7a18f25e76bc40f71312937f1e1b51535d3cba8083bd8ca0ded41718f0452966",
+   "bytes": 259486,
+   "liteBytes": 129348,
+   "liteCell": [
+    216,
+    240
+   ],
+   "psnr": 47.5,
+   "shownPsnr": 47.5
+  },
+  "city/decor/montanha-4x4-1/sheet.webp": {
+   "source": "0d9d63de7c5a46aaa3c1e7a4971d371d02fe63d5518db685fe5bfc30f8c9f752",
+   "lite": "20dc6945de303ba10d50c293db86fa6a19c5bd6399b660140cc2637cafc885c3",
+   "bytes": 1627172,
+   "liteBytes": 600362,
+   "liteCell": [
+    632,
+    680
+   ],
+   "psnr": 41.8,
+   "shownPsnr": 41.8
+  },
+  "city/decor/montanha-4x4-2/sheet.webp": {
+   "source": "4b792b334c8e2fe0ba9653089ee9a789875ebbaa89cc7297dd495b12d51aa655",
+   "lite": "52655173b52a2e4a24a93a1ca17b98ca25a4e51f51df29d001cd231aab1874e1",
+   "bytes": 1170470,
+   "liteBytes": 432064,
+   "liteCell": [
+    672,
+    536
+   ],
+   "psnr": 42.8,
+   "shownPsnr": 42.8
+  },
+  "city/decor/montanha-6x6-1/sheet.webp": {
+   "source": "fc185808dcf593ba7dfa4751b4ba83edc989e5b55c2032087b9aa4825214b28d",
+   "lite": "e2f61a0732ceeeae924dbc740b858085248393cdeffacad2a7e236c34f274617",
+   "bytes": 2736678,
+   "liteBytes": 936750,
+   "liteCell": [
+    936,
+    848
+   ],
+   "psnr": 42.8,
+   "shownPsnr": 42.8
+  },
+  "city/decor/montanha-6x6-2/sheet-p1.webp": {
+   "source": "0f8a896b9ddf3380bedbef04268be6257162ff4d06aca29c926d74c2285ffd6c",
+   "lite": "f81c83226d023170f26b02cb5abf31843b086954bbe7d77bd641cc733a70b66f",
+   "bytes": 2770094,
+   "liteBytes": 928998,
+   "liteCell": [
+    1056,
+    832
+   ],
+   "psnr": 44.7,
+   "shownPsnr": 44.7
+  },
+  "city/decor/morro-3x3/sheet.webp": {
+   "source": "60c3c50b6252aa28df7234b7e7fa715769989dd4fe0e7ab11c925b7ce3b0859c",
+   "lite": "dde111a374ad6a245112ce76e4bda1bafb6518abede184219e2ee4e57a72e07a",
+   "bytes": 598454,
+   "liteBytes": 228628,
+   "liteCell": [
+    488,
+    304
+   ],
+   "psnr": 39.8,
+   "shownPsnr": 39.8
+  },
+  "city/decor/moto-velha-1/sheet.webp": {
+   "source": "e9fb5de46c79952b74020099095c6fb00b8d65685efe5c7b5aad822af3ad612a",
+   "lite": "44efdfd90061979ccd11c03703d63aee7ccfa47804247e6dcd2244b1aa0e920a",
+   "bytes": 86128,
+   "liteBytes": 31016,
+   "liteCell": [
+    186,
+    108
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
+  "city/decor/moto-velha-2/sheet.webp": {
+   "source": "6c25a0a9b0208fbe14cdba5d389f47eff25cbc0148f06ee2422e8922287d7351",
+   "lite": "75f27c5bd4f3ede1b72f0209e5785c01cd94211e8f8f8dee2d8a5021378df9f8",
+   "bytes": 71908,
+   "liteBytes": 25500,
+   "liteCell": [
+    168,
+    108
+   ],
+   "psnr": 45.1,
+   "shownPsnr": 45.1
+  },
+  "city/decor/muro-condominio-ponta-intacto/sheet.webp": {
+   "source": "aafa269a43164c830a1d45f4a08ce887d73d6186eaa320ed62f27a3ca6b1509e",
+   "lite": "ee86734181d44add663dcd998761a914ad805ee6b123970dbec60a0154aefb2f",
+   "bytes": 166700,
+   "liteBytes": 41160,
+   "liteCell": [
+    612,
+    204
+   ],
+   "psnr": 47.8,
+   "shownPsnr": 47.8
+  },
+  "city/decor/muro-condominio-ponta-quebrado/sheet.webp": {
+   "source": "5aab1724449952e1bf62b46eac5de0dab02e190d73a4a65496765daf2222e7ff",
+   "lite": "c75db259d2026f8b51a5d610bff095f2a9b97c7eb7d0024f58a92b29d317c2d0",
+   "bytes": 164486,
+   "liteBytes": 41622,
+   "liteCell": [
+    618,
+    204
+   ],
+   "psnr": 47.1,
+   "shownPsnr": 47.1
+  },
+  "city/decor/muro-condominio-portao-intacto/sheet.webp": {
+   "source": "a1e68c2aa5097eda5ca890d6c700492c6dd0e94402f04873052cb4a63202d38e",
+   "lite": "b646e5be31b732ffca08de687bd980150af1e59be1d16ff40c554834fc9548a7",
+   "bytes": 167276,
+   "liteBytes": 48948,
+   "liteCell": [
+    672,
+    204
+   ],
+   "psnr": 48.2,
+   "shownPsnr": 48.2
+  },
+  "city/decor/muro-condominio-portao-quebrado/sheet.webp": {
+   "source": "8c44aab1def9b672925a2cb0719acade6ca6d360d376818ef0114a6a408e4555",
+   "lite": "50fb9ac79bec3167b6b5313043c0b6aaeb7c58a904a734e5318e0e845a002851",
+   "bytes": 150146,
+   "liteBytes": 43898,
+   "liteCell": [
+    612,
+    204
+   ],
+   "psnr": 46.6,
+   "shownPsnr": 46.6
+  },
+  "city/decor/muro-condominio-quina-intacto/sheet.webp": {
+   "source": "0c3c2d12895b9b25df0e68d9f733d3c7618714907dd77f3ec9f7e1fa3b69b20e",
+   "lite": "7d73cff5009cdd50a3f5e231a9d3c7581668ab5d76ea0010f329ca1c3dd44b28",
+   "bytes": 196592,
+   "liteBytes": 51020,
+   "liteCell": [
+    492,
+    246
+   ],
+   "psnr": 47.8,
+   "shownPsnr": 47.8
+  },
+  "city/decor/muro-condominio-quina-quebrado/sheet.webp": {
+   "source": "dce9c477bfadb58058bd6aecb648a62cc0f4eb80009d6d2737e6d25198e8c616",
+   "lite": "2deb4665b13bc9fcb4ffb16f756ebaf4d39942a7a469e368298de74f9c6b0639",
+   "bytes": 190002,
+   "liteBytes": 49684,
+   "liteCell": [
+    480,
+    246
+   ],
+   "psnr": 47,
+   "shownPsnr": 47
+  },
+  "city/decor/muro-condominio-reto-intacto/sheet.webp": {
+   "source": "39adbe9da065771a07161078be0d75d56ad996dc6eba11ed371fb5010f7899b6",
+   "lite": "ef8ed401ed3956182974ed23692552bee5ae81d2805d172eb57effcbc332cf5c",
+   "bytes": 170738,
+   "liteBytes": 43632,
+   "liteCell": [
+    624,
+    204
+   ],
+   "psnr": 48.3,
+   "shownPsnr": 48.3
+  },
+  "city/decor/muro-condominio-reto-quebrado/sheet.webp": {
+   "source": "ae69c65c1cd7650ed15be55ceeae0beb6f20f0d4451c9070aa4d6893e07a07d7",
+   "lite": "d524627822fcd14ed62d67344b4aa228adf05e27ba2cdcf65c35ccfdc1182753",
+   "bytes": 155458,
+   "liteBytes": 42914,
+   "liteCell": [
+    624,
+    204
+   ],
+   "psnr": 47.4,
+   "shownPsnr": 47.4
+  },
+  "city/decor/muro-condominio-t-intacto/sheet.webp": {
+   "source": "4c0f672a50b039fff6b8702d090d1724bca92b49cd29462bee32e8310bfcedae",
+   "lite": "af9687500dc5c7e2116d22923142b3804b61003d500fcd9c4af5afd3644d4be4",
+   "bytes": 216568,
+   "liteBytes": 57134,
+   "liteCell": [
+    642,
+    198
+   ],
+   "psnr": 46.1,
+   "shownPsnr": 46.1
+  },
+  "city/decor/muro-condominio-t-quebrado/sheet.webp": {
+   "source": "b3175e258bbefc9b6db82f3212ad0b28f9d1a76c76a952c9faba706930fa706f",
+   "lite": "fae9b6ca52b17c179086524d57640123f469d3e530b77afbebbcacd3a7ceb237",
+   "bytes": 216632,
+   "liteBytes": 61976,
+   "liteCell": [
+    648,
+    198
+   ],
+   "psnr": 45.9,
+   "shownPsnr": 45.9
+  },
+  "city/decor/muro-pichado-ponta-intacto/sheet.webp": {
+   "source": "47d171c537f8230b615dde5cffd5530c051bcca9d4ab3ed06db331b3754dbdaf",
+   "lite": "4fae6f79007138043c11183945824d19c5d00508111414bfe19b60a2e9b832ee",
+   "bytes": 157330,
+   "liteBytes": 39794,
+   "liteCell": [
+    486,
+    192
+   ],
+   "psnr": 44.6,
+   "shownPsnr": 44.6
+  },
+  "city/decor/muro-pichado-ponta-quebrado/sheet.webp": {
+   "source": "5b485f2e73577b118f0a49832c59bb3d3e596dc983fe5649f9e3552315ddeb15",
+   "lite": "0c6e014b891a66ce952ded0bdc182fcce86bb3392404edfcc904f16ab547c008",
+   "bytes": 138872,
+   "liteBytes": 36600,
+   "liteCell": [
+    492,
+    198
+   ],
+   "psnr": 44.8,
+   "shownPsnr": 44.8
+  },
+  "city/decor/muro-pichado-portao-intacto/sheet.webp": {
+   "source": "d153e9a1e58110fc40ae2e161677aafa2cf08b850175b9d0291f02088725a545",
+   "lite": "9b1e58b4c83641504b9da65af20099a0c794c733000197ccc3847f72e3f8d16f",
+   "bytes": 181008,
+   "liteBytes": 42786,
+   "liteCell": [
+    690,
+    198
+   ],
+   "psnr": 45.8,
+   "shownPsnr": 45.8
+  },
+  "city/decor/muro-pichado-portao-quebrado/sheet.webp": {
+   "source": "ddee7688cfef1e1b2b166fb23c60823e8f68e879b120326d18bb8bf7b4b2b8ea",
+   "lite": "3b6e9b1722728d41d509b652507db7d6978eeceea5e3131fcfe88508c8f1d0f3",
+   "bytes": 183980,
+   "liteBytes": 51932,
+   "liteCell": [
+    726,
+    210
+   ],
+   "psnr": 46.1,
+   "shownPsnr": 46.1
+  },
+  "city/decor/muro-pichado-quina-intacto/sheet.webp": {
+   "source": "4cef942b1648a42c60add60ff886977864b2a8951d55309cff3036ca6ac1372d",
+   "lite": "86f229e61fd6ceeb86e7bb7f9bd203c995eb4d75eaaac0b244021077dbb529db",
+   "bytes": 218250,
+   "liteBytes": 53574,
+   "liteCell": [
+    462,
+    198
+   ],
+   "psnr": 45.2,
+   "shownPsnr": 45.2
+  },
+  "city/decor/muro-pichado-quina-quebrado/sheet.webp": {
+   "source": "b23d10836dd0f8d09f22305bf0622e6ddc2f2456e5b7e7a653791182de090307",
+   "lite": "7dfa7e80181851fa8116e353830253ae0922cf795a78609450f2acff3544c9c6",
+   "bytes": 237856,
+   "liteBytes": 61268,
+   "liteCell": [
+    720,
+    204
+   ],
+   "psnr": 45.7,
+   "shownPsnr": 45.7
+  },
+  "city/decor/muro-pichado-reto-intacto/sheet.webp": {
+   "source": "81c07ba6aa5da66df7ce33f8ae704696e784588ba5291d00989525678ff2de93",
+   "lite": "2f32cb82f61f5b9193fb9571544592b32c90f6dd86e65be332edb6311e559736",
+   "bytes": 171666,
+   "liteBytes": 45130,
+   "liteCell": [
+    588,
+    192
+   ],
+   "psnr": 45.4,
+   "shownPsnr": 45.4
+  },
+  "city/decor/muro-pichado-reto-quebrado/sheet.webp": {
+   "source": "5dc314e5c282ffd7311b09b4989a78556027ca3b234ecbc819da8952270cd79b",
+   "lite": "f9439094d3c6052dd09dc3343256134a38fa242a4d49927104a6630c1d88f412",
+   "bytes": 145394,
+   "liteBytes": 41764,
+   "liteCell": [
+    588,
+    198
+   ],
+   "psnr": 45.8,
+   "shownPsnr": 45.8
+  },
+  "city/decor/muro-pichado-t-intacto/sheet.webp": {
+   "source": "b325eefcc16cc9637cc26240b7c60de9d84a44c06d7b6ab12634fc33ee12a4ed",
+   "lite": "5c7163122cafba49389574e3eb04355aa67fc293d9326deedaf8bd8aafa9ac5c",
+   "bytes": 194482,
+   "liteBytes": 51802,
+   "liteCell": [
+    588,
+    186
+   ],
+   "psnr": 45.1,
+   "shownPsnr": 45.1
+  },
+  "city/decor/muro-pichado-t-quebrado/sheet.webp": {
+   "source": "55d323ffbb62b17c353d3f8925ddd8caea844ab3a19b0a878bd6cc6b8f2c9795",
+   "lite": "aa9ec11e0276b7356a4b51994874c1e9a6ce33a4014019b4dd23d2d153f6db0e",
+   "bytes": 208720,
+   "liteBytes": 55938,
+   "liteCell": [
+    600,
+    192
+   ],
+   "psnr": 44.2,
+   "shownPsnr": 44.2
+  },
+  "city/decor/ninho-bichos-ativo/sheet.webp": {
+   "source": "cebc339bc5a7840b09fad42528068896b4d40e9272a6acf3b08088a86f441e51",
+   "lite": "478b48c92246743f44cd871d83a2e0465ac2bed957ec2cc252c3ed9956645fa6",
+   "bytes": 669952,
+   "liteBytes": 165582,
+   "liteCell": [
+    498,
+    270
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
+  "city/decor/ninho-bichos-destruido/sheet.webp": {
+   "source": "8da82719f2c9c5449746616c2c8cc521314faf15da645e208f1d99019bd5a064",
+   "lite": "63f8bde0aa898eac50684b6e862cb532a92127705efb383e7c4ba4c8a8ec63a0",
+   "bytes": 654104,
+   "liteBytes": 157050,
+   "liteCell": [
+    444,
+    234
+   ],
+   "psnr": 40.6,
+   "shownPsnr": 40.6
+  },
+  "city/decor/ninho-bichos-dormindo/sheet.webp": {
+   "source": "5725943ff713e9cb54f993589965c1e9f574d1484602f3828b134287da4194a1",
+   "lite": "1c2abccc1ddabbbb0487e55ccded5e41a9bdd155b60a8ed2bda78beda53ebc8a",
+   "bytes": 689106,
+   "liteBytes": 150592,
+   "liteCell": [
+    480,
+    270
+   ],
+   "psnr": 41.8,
+   "shownPsnr": 41.8
+  },
+  "city/decor/ninho-escritorio-ativo/sheet.webp": {
+   "source": "76dcb8c8fb14e83828f0aec7d2c83e5edad28c69c9694accf666248d3d3a482d",
+   "lite": "e79a9e1d9ac0d74bc08fd3708469092170138db3f37778617106d0705ad03057",
+   "bytes": 1050050,
+   "liteBytes": 208840,
+   "liteCell": [
+    510,
+    426
+   ],
+   "psnr": 41.8,
+   "shownPsnr": 41.8
+  },
+  "city/decor/ninho-escritorio-dormindo/sheet.webp": {
+   "source": "48d7a5563ff1ed38f342b59de816d3bf141af21e7e60898337362d55a7df76b9",
+   "lite": "52678c9d9e24d9a0c9f5c8854593b19fe5d06df28506c0984ff3b7cebf8e2cc8",
+   "bytes": 1005820,
+   "liteBytes": 170768,
+   "liteCell": [
+    510,
+    456
+   ],
+   "psnr": 42.1,
+   "shownPsnr": 42.1
+  },
+  "city/decor/ninho-festa-ativo/sheet.webp": {
+   "source": "244bb7b7eca1d205c3e4e6bd30b8316336e01eefce25b6326a76e0b1337ce689",
+   "lite": "5ecca1577be952063f1d64fcd566d0ff82184c88f75da09fdecc9fa0121b0151",
+   "bytes": 902636,
+   "liteBytes": 204812,
+   "liteCell": [
+    510,
+    414
+   ],
+   "psnr": 44.1,
+   "shownPsnr": 44.1
+  },
+  "city/decor/ninho-festa-destruido/sheet.webp": {
+   "source": "eb663edbbac2d4eacf54794ede96780093d870e1151ea04c66b861ea1b365ac4",
+   "lite": "47f7ffcf81fa4b74baca79359d28ccbded0f685fdca28d75ee881ddeca93afee",
+   "bytes": 621344,
+   "liteBytes": 145382,
+   "liteCell": [
+    414,
+    234
+   ],
+   "psnr": 42,
+   "shownPsnr": 42
+  },
+  "city/decor/ninho-festa-dormindo/sheet.webp": {
+   "source": "bc05319f48675438e46aa97a1e01e702f6fdc036a16691f66477c8d5dfaefc3a",
+   "lite": "c0579138e4b3f2b667675cae102ac617ed03956b8790b618b7f74b1e4fd25d8b",
+   "bytes": 933904,
+   "liteBytes": 194770,
+   "liteCell": [
+    480,
+    408
+   ],
+   "psnr": 43.6,
+   "shownPsnr": 43.6
+  },
+  "city/decor/outdoor-1/sheet.webp": {
+   "source": "01d141e69634f99800fd0b3382ce9325627be68e6757d08e3c23e2be0a9de8b7",
+   "lite": "1c8bbc289d777c697067531e85041a81dfe58b3ab35dd03dce6a2ce5c7c797f7",
+   "bytes": 372084,
+   "liteBytes": 79846,
+   "liteCell": [
+    234,
+    330
+   ],
+   "psnr": 41.3,
+   "shownPsnr": 41.3
+  },
+  "city/decor/outdoor-2/sheet.webp": {
+   "source": "2ba8c00d1ae1d902860f0f0c4dfa632038bfdc35fcc022b85a088e4a280913c7",
+   "lite": "5c46dce631a312dd0adea272f67bc47f680f0880dc3eba9a43daeb605126077e",
+   "bytes": 461368,
+   "liteBytes": 99168,
+   "liteCell": [
+    498,
+    330
+   ],
+   "psnr": 45.3,
+   "shownPsnr": 45.3
+  },
+  "city/decor/padaria-1/anim-toldo.webp": {
+   "source": "8f696d3c83a7a60c86497b2d43b288fa7c1b409e2757dff29b7fa0eb0e2d2b0f",
+   "lite": "d28f58783f6e8123a95eb8e15d96180706f99da863d6167a004f5332e891b2a3",
+   "bytes": 257550,
+   "liteBytes": 127418,
+   "liteCell": [
+    157,
+    157
+   ],
+   "psnr": 47,
+   "shownPsnr": 47
+  },
+  "city/decor/padaria-1/sheet.webp": {
+   "source": "3a5a24d4b9bd39795a78465529dac79cbf9ebab24641e9e6ac19ce89ebab97b1",
+   "lite": "ffb1de22a7b1789d7fd3a91fecc8f6b0ed5c4d9abab5b5e6b58501e6fc54684e",
+   "bytes": 310668,
+   "liteBytes": 109202,
+   "liteCell": [
+    328,
+    272
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/decor/padaria-2/anim-toldo.webp": {
+   "source": "c99b9603ea0e634fd80c98422848eb4ac4c0a299733594aa7141753a2d8daa55",
+   "lite": "a3a15f1aafaf2a4504ed550bb453cdda5f8433123524ba826bf61c7030d48fa6",
+   "bytes": 88692,
+   "liteBytes": 54918,
+   "liteCell": [
+    119,
+    119
+   ],
+   "psnr": 46.8,
+   "shownPsnr": 46.8
+  },
+  "city/decor/padaria-2/sheet.webp": {
+   "source": "195c8cd9225c68cedc28c71e2ca3fd45dfb762737447da3de62dafef2a45b82a",
+   "lite": "fa364ab47b3c09ad506141ce2567fc133b42b16ac07c7fee2630bc77f669b1b3",
+   "bytes": 262228,
+   "liteBytes": 98746,
+   "liteCell": [
+    328,
+    240
+   ],
+   "psnr": 39.6,
+   "shownPsnr": 39.6
+  },
+  "city/decor/pao-duro/sheet.webp": {
+   "source": "871b676a097d5784051314dda0dc347dc5605c793ba95d24b015f41676b27863",
+   "lite": "040171663041f4e34de4bb8717e5acfbd180a13923be3101b97c73f99df81b3e",
+   "bytes": 132482,
+   "liteBytes": 37004,
+   "liteCell": [
+    141,
+    210
+   ],
+   "psnr": 40.6,
+   "shownPsnr": 40.6
+  },
+  "city/decor/pedregulho-1/sheet.webp": {
+   "source": "caafe1fc8107540dcd6301332c0d123487bd355b41b0798036deaf6c01b3128d",
+   "lite": "3aa2fab8ecec4168f1926318d7f0f2202081f7bb69c2ecd08929d1e2e8236859",
+   "bytes": 68768,
+   "liteBytes": 31568,
+   "liteCell": [
+    160,
+    128
+   ],
+   "psnr": 42.1,
+   "shownPsnr": 42.1
+  },
+  "city/decor/pedregulho-2/sheet.webp": {
+   "source": "ee41f7042c760d55663a368c798e9f6614547df924e5a9aec8af3c4195254979",
+   "lite": "75e93b969a850659550c37f7b3a3a19c9f2a169734ac350807f25ab0dbda042c",
+   "bytes": 68440,
+   "liteBytes": 31314,
+   "liteCell": [
+    160,
+    120
+   ],
+   "psnr": 41.7,
+   "shownPsnr": 41.7
+  },
+  "city/decor/penhasco2-quina-externa/sheet.webp": {
+   "source": "642bfaffb956f1d7f42e0c419e6e95cbf9b5da84625879949a7121c39ef553a5",
+   "lite": "6d9235531fa494b9778db74235a780cf9dc3041f1fc3be0c2b5c0ba79ee42bc8",
+   "bytes": 116038,
+   "liteBytes": 49662,
+   "liteCell": [
+    208,
+    184
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/decor/penhasco2-quina-interna/sheet.webp": {
+   "source": "18fe0e25515257674a87f823bb7faca7ae24cf7aeee08ec79da35a9f516e2f08",
+   "lite": "2dca160194ea12b049a44c3aebe9e3aacc5bf65398438b8d8a1135fb804e801b",
+   "bytes": 115758,
+   "liteBytes": 49098,
+   "liteCell": [
+    216,
+    176
+   ],
+   "psnr": 40.9,
+   "shownPsnr": 40.9
+  },
+  "city/decor/penhasco2-reto/sheet.webp": {
+   "source": "bb533c0c85de19085db12a83fc792681632f2fe4ad440c3e196902e5edc16296",
+   "lite": "0aea23069219ae347eb6b672c6bd3c81b4f4a447c17e200c6b53425c0b277d14",
+   "bytes": 97644,
+   "liteBytes": 43582,
+   "liteCell": [
+    272,
+    168
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
+  "city/decor/pneus-empilhados-1/sheet.webp": {
+   "source": "e3d0227a925a783346e9c1ddcc7b5916ca73bb050513fc641c37cb0e9943dfd2",
+   "lite": "c8f018c43c33bb81dc32a2026a618efcd8a040050402cc74351f052bc347cc29",
+   "bytes": 68394,
+   "liteBytes": 21978,
+   "liteCell": [
+    108,
+    96
+   ],
+   "psnr": 42.8,
+   "shownPsnr": 42.8
+  },
+  "city/decor/pneus-empilhados-2/sheet.webp": {
+   "source": "63ef64536071ae7eb3899bfa8973e03733d6153a92d4abf36160a48d2f65841e",
+   "lite": "a57760adfaebbfe2d32e6e7cba8b4bcbbc01aca2497ae3e9a664558184f77602",
+   "bytes": 70924,
+   "liteBytes": 20424,
+   "liteCell": [
+    144,
+    96
+   ],
+   "psnr": 43.3,
+   "shownPsnr": 43.3
+  },
+  "city/decor/ponte/sheet.webp": {
+   "source": "67a38204deed8c558a01944469b5d656441524210bb16a8b99a226a49a905099",
+   "lite": "e112180da37674d2f67d18305d674fd4bdce8b9be20e4ccfbcf005f482473ff7",
+   "bytes": 261706,
+   "liteBytes": 102982,
+   "liteCell": [
+    640,
+    304
+   ],
+   "psnr": 45.3,
+   "shownPsnr": 45.3
+  },
+  "city/decor/ponto-mototaxi-1/sheet.webp": {
+   "source": "d7298ae5520145710a6ec335b6eba907f8c19881ee8e3827fe997c247a52a99b",
+   "lite": "795a9ec790ff9fee8f592d1f77959892554614e664a5098ca843db22b24ef8b4",
+   "bytes": 336500,
+   "liteBytes": 85962,
+   "liteCell": [
+    306,
+    204
+   ],
+   "psnr": 41.4,
+   "shownPsnr": 41.4
+  },
+  "city/decor/ponto-mototaxi-2/sheet.webp": {
+   "source": "1d17dfeb282a333a30713ce7ed8a89d656b190ea7c76b5847da6240628cba8e1",
+   "lite": "ff3d008ef78cb32e262583d5e1dc5815e88ab6cd8df3d184b404d759825e2819",
+   "bytes": 270554,
+   "liteBytes": 73978,
+   "liteCell": [
+    258,
+    204
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
+  "city/decor/poste-aceso-amarelo-1/sheet.webp": {
+   "source": "2739b591dd517de9aaabf22f744879edb8e33562989a9e50d06177d86a71a26e",
+   "lite": "808a80305b93604d50d723b876178995da53cd7b58b014c0b443946ef059d03a",
+   "bytes": 242372,
+   "liteBytes": 66154,
+   "liteCell": [
+    234,
+    342
+   ],
+   "psnr": 41.4,
+   "shownPsnr": 41.4
+  },
+  "city/decor/poste-aceso-amarelo-2/sheet.webp": {
+   "source": "259f414bacad34ea129cec8e2b1fd8c66b233e8c553199e6bbd37a3a69147c77",
+   "lite": "5f441cdbe1225a0a8a1dcbadd65b143f83969ec546748082231bcd3af12f13c4",
+   "bytes": 173798,
+   "liteBytes": 52448,
+   "liteCell": [
+    264,
+    330
+   ],
+   "psnr": 43.9,
+   "shownPsnr": 43.9
+  },
+  "city/decor/poste-concreto-1/sheet.webp": {
+   "source": "302c8ef5c3ddbf27fde15c66b3f2265c87286b168d9ad3435a4d4594e7bb06c4",
+   "lite": "8ccff0fa80c6a1fd187162f8f30e5dc0a5ee8b8d04a4709f50e1c30c1aa345a9",
+   "bytes": 170206,
+   "liteBytes": 50668,
+   "liteCell": [
+    120,
+    360
+   ],
+   "psnr": 44.5,
+   "shownPsnr": 44.5
+  },
+  "city/decor/poste-concreto-2/sheet.webp": {
+   "source": "8c9c1546806573f2bf8bfcacd93d4fa9e4284186cf8974ab64f1d3126b8fb0ee",
+   "lite": "bd361dbee258d2f71a2768c5b709b50bd140074de5b6e0f3e67fb93c3896088b",
+   "bytes": 195012,
+   "liteBytes": 57578,
+   "liteCell": [
+    126,
+    360
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
+  "city/decor/poste-concreto-3/sheet.webp": {
+   "source": "ee7a2c4ecd935949eae10a2f2ea08415ea8a76fd64ef3efa6e81e1bed060f4ab",
+   "lite": "ec902865ae416d79081913e2ea06c081146cdbcc125d22237d0fb621d01f7d5b",
+   "bytes": 214562,
+   "liteBytes": 66658,
+   "liteCell": [
+    216,
+    360
+   ],
+   "psnr": 44.5,
+   "shownPsnr": 44.5
+  },
+  "city/decor/poste-gato-1/sheet.webp": {
+   "source": "6d3492b2ab2be712f13ae59b35db73a45704d4b561ec2691633cc56045cf7c12",
+   "lite": "f165c08690c1b9f1675c1f99c7593666cca53934211f9c92a3c83aefdf0a8707",
+   "bytes": 190340,
+   "liteBytes": 58796,
+   "liteCell": [
+    126,
+    330
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
+  "city/decor/poste-gato-2/sheet.webp": {
+   "source": "494816ba3a51f53214dfa67b153e03fa5a776381e2133df1919d66346a3191c2",
+   "lite": "b6ff40c20c2192fbd46fa747760ffc697416146a8e1236b97cad5e1fa76d4831",
+   "bytes": 154484,
+   "liteBytes": 47754,
+   "liteCell": [
+    114,
+    336
+   ],
+   "psnr": 43.3,
+   "shownPsnr": 43.3
+  },
+  "city/decor/posto-policial-2/sheet.webp": {
+   "source": "89d8b1f3314b15b00f1562f35eb67927bdc0a79e375f3353508221d19dc97cd3",
+   "lite": "038dd0af7ea4ad3d590c9a35a73bb71f06fa777b294334f81403f358c39393cb",
+   "bytes": 193974,
+   "liteBytes": 77672,
+   "liteCell": [
+    336,
+    232
+   ],
+   "psnr": 42.4,
+   "shownPsnr": 42.4
+  },
+  "city/decor/posto/sheet.webp": {
+   "source": "192d1f578b193eb7a113c52645594d392ffc128d9b846ba3ee0d02369cd389cb",
+   "lite": "3f6338fc46e8f96541a92f7aea2e6822d69cbf27a62a0fecb1ebc98eec9c7765",
+   "bytes": 137768,
+   "liteBytes": 36002,
+   "liteCell": [
+    140,
+    210
+   ],
+   "psnr": 37.5,
+   "shownPsnr": 37.5
+  },
+  "city/decor/predinho-3a-1/sheet.webp": {
+   "source": "a3c5e0eb6a997c083b62f72d7aebc437ba1b1abba069d3fed17f04da540aa29c",
+   "lite": "cdfbf2df7f86cd88caf0392ac2058427cadd3b4a64ae989653a84f24bbb8722b",
+   "bytes": 1051668,
+   "liteBytes": 345776,
+   "liteCell": [
+    384,
+    616
+   ],
+   "psnr": 39,
+   "shownPsnr": 39
+  },
+  "city/decor/predinho-3a-2/sheet.webp": {
+   "source": "a3ad820e4e8f2e698e90e9fef50a0d102b4d9c15271d065ed65d25b3723c7850",
+   "lite": "5ccb6ba78e4f269476ee37febd6540ad089ac2c21172ae1710be169beb161a44",
+   "bytes": 871056,
+   "liteBytes": 258586,
+   "liteCell": [
+    360,
+    576
+   ],
+   "psnr": 41,
+   "shownPsnr": 41
+  },
+  "city/decor/predio-apto-5a-1/sheet.webp": {
+   "source": "ee28e8d55411933d9dc2202ca285cf031cafb06b9e847e99ac8f734e4a107e86",
+   "lite": "b26cb8b11bbe29e947294fc8d8f8e3e990d15d529473d71429c3f187bf4b6313",
+   "bytes": 2542398,
+   "liteBytes": 611294,
+   "liteCell": [
+    528,
+    1144
+   ],
+   "psnr": 41.7,
+   "shownPsnr": 41.7
+  },
+  "city/decor/predio-apto-5a-2/sheet.webp": {
+   "source": "22994347fdf5d8aaec5e86c0e1ae4f189e3e113d2dbabf5fc953f80bd8f65dbf",
+   "lite": "5640b02d45cb2bd634069f37e9e4a6237608d844a2b1290ef7a80b1d417cde33",
+   "bytes": 2081754,
+   "liteBytes": 587428,
+   "liteCell": [
+    496,
+    864
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/decor/presepio-quebrado-1/sheet.webp": {
+   "source": "b2211e8c49cea2fc9094a2c0377e0b10059fc17d8c6e2ed6cb40fdc1fe66eea9",
+   "lite": "3385f821fa949b52f76814f8f1d5e89bf10bcd02ee517942d045f6a74fc26f36",
+   "bytes": 97824,
+   "liteBytes": 29070,
+   "liteCell": [
+    120,
+    114
+   ],
+   "psnr": 38.5,
+   "shownPsnr": 38.5
+  },
+  "city/decor/presepio-quebrado-2/sheet.webp": {
+   "source": "1b5a2384df01702e82c069af61cd33ad1081d500d8356f2c599e5217e13147f6",
+   "lite": "8988bfbc6141426ef6526eef45c8d726fb1f3dbb87317f7f88ed8db243a4f8b7",
+   "bytes": 94832,
+   "liteBytes": 28614,
+   "liteCell": [
+    120,
+    114
+   ],
+   "psnr": 39.4,
+   "shownPsnr": 39.4
+  },
+  "city/decor/puxadinho-1/sheet.webp": {
+   "source": "08e3b6bf85a27c33009b283b46513ceb45905c643aa9598ccfcc3650942fc600",
+   "lite": "04a17a710ec09556178372abe118b5727686bb1255ea771781a57a63bf428f08",
+   "bytes": 224940,
+   "liteBytes": 98590,
+   "liteCell": [
+    168,
+    272
+   ],
+   "psnr": 36,
+   "shownPsnr": 36
+  },
+  "city/decor/puxadinho-2/sheet.webp": {
+   "source": "7a76f27a4835687ee8ad5ce7e88a7bae7a92e5092b207afca1ff5967abd85c62",
+   "lite": "3712415b30fcbf9ecaa0803016024919472ac4b25838f2d3132747764dacbc5e",
+   "bytes": 180720,
+   "liteBytes": 76226,
+   "liteCell": [
+    184,
+    224
+   ],
+   "psnr": 36.3,
+   "shownPsnr": 36.3
+  },
+  "city/decor/quadra-2/anim-rede.webp": {
+   "source": "1dddb6ad417fcdd54f688f9de885fe7098c38c69dc5724c3c8b15cef967b096c",
+   "lite": "a8b335ad518afb819bc60aa39345c4bad4ad9f58a22eb18c4d35e56ec3dacac9",
+   "bytes": 163974,
+   "liteBytes": 124428,
+   "liteCell": [
+    125,
+    125
+   ],
+   "psnr": 49,
+   "shownPsnr": 49
+  },
+  "city/decor/quadra-2/sheet.webp": {
+   "source": "f00f6a5a7a5dd66a3f34de4efeb9efefd9b07835b28044e0430793cb44fbd6fc",
+   "lite": "02a2df784756a7d65daec9bb010878790ced09084e0ac0c412a5a194e3bdc9d7",
+   "bytes": 569728,
+   "liteBytes": 219314,
+   "liteCell": [
+    440,
+    344
+   ],
+   "psnr": 38.8,
+   "shownPsnr": 38.8
+  },
+  "city/decor/rampa/sheet.webp": {
+   "source": "1db90b98859bef5b33e34c7e9bf77ec10423fc4e4443d72ce94cc49a020c3cf9",
+   "lite": "47b42a4f33c22907f446f50437938bed7afd874e090c89c5f5fecd7eb744bfad",
+   "bytes": 173434,
+   "liteBytes": 72714,
+   "liteCell": [
+    448,
+    216
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
+  "city/decor/salao-beleza-1/anim-cortina.webp": {
+   "source": "a3b8838d48398d71afecdbe0fb18d60f40c10d840d7d01343ae72491a957241c",
+   "lite": "60c1f23a2b3abdaee72c172d8d536139e6f26e4802f629f0f9cc51ccdb2aeed7",
+   "bytes": 137502,
+   "liteBytes": 95482,
+   "liteCell": [
+    92,
+    92
+   ],
+   "psnr": 46,
+   "shownPsnr": 46
+  },
+  "city/decor/salao-beleza-1/sheet.webp": {
+   "source": "448eed283ad4a30f91f9066f8143855a1fe7d8914adab28b6afa1d71656dfbbd",
+   "lite": "503a1e713e037bb81a004d99364e48d4a6e254e28e1f2a465d76ac04082f1bf2",
+   "bytes": 178162,
+   "liteBytes": 68476,
+   "liteCell": [
+    176,
+    224
+   ],
+   "psnr": 39.8,
+   "shownPsnr": 39.8
+  },
+  "city/decor/salao-beleza-2/anim-cortina.webp": {
+   "source": "ae94f31d795d5b4db2d3fa0d9c9defddc970996602f311a0bf3f900a6fa09356",
+   "lite": "e4b439d5ff48b182cb61a8b7e03011505133e891427899630122ee0dd3d63a72",
+   "bytes": 94338,
+   "liteBytes": 68354,
+   "liteCell": [
+    88,
+    88
+   ],
+   "psnr": 43.7,
+   "shownPsnr": 43.7
+  },
+  "city/decor/salao-beleza-2/sheet.webp": {
+   "source": "b7f09425f2b33ee70efe9efc766c73aa61e6a546ec9a9b0c3a9f9eacad34813c",
+   "lite": "0cfda98e44db719f17da247d231271f18884c32cd206cfe63879c72a33dab53f",
+   "bytes": 174282,
+   "liteBytes": 65154,
+   "liteCell": [
+    176,
+    240
+   ],
+   "psnr": 38.1,
+   "shownPsnr": 38.1
+  },
+  "city/decor/tapume-ponta-intacto/sheet.webp": {
+   "source": "c4af1be83102dc39030f1ec3cda8e48179520b6646a4a1dd5f22fbe10eb60dc6",
+   "lite": "825da49116aab2ff9431930f87a7b1f6ea5bb02def4445a344718733b270cbc2",
+   "bytes": 164100,
+   "liteBytes": 41302,
+   "liteCell": [
+    522,
+    198
+   ],
+   "psnr": 45.2,
+   "shownPsnr": 45.2
+  },
+  "city/decor/tapume-ponta-quebrado/sheet.webp": {
+   "source": "048f5632e89a15f90ecbde0fa1203871cd5287c44921dd84fd9d5298fb2de817",
+   "lite": "5356d7e17c9052daa74b48cf5750c2ccd7472ae4b167e12f5027e00fbe27c9e5",
+   "bytes": 163020,
+   "liteBytes": 47968,
+   "liteCell": [
+    576,
+    204
+   ],
+   "psnr": 45.5,
+   "shownPsnr": 45.5
+  },
+  "city/decor/tapume-portao-intacto/sheet.webp": {
+   "source": "e6450dd4b08b5af076a9d984e111b222544e63a9e86735471ba928239fe3eed2",
+   "lite": "f376ed6f3e25ddb51c2e89de679374b28ce41ef471d50a0a93c4c2a697a78e21",
+   "bytes": 173030,
+   "liteBytes": 39274,
+   "liteCell": [
+    558,
+    204
+   ],
+   "psnr": 46.8,
+   "shownPsnr": 46.8
+  },
+  "city/decor/tapume-portao-quebrado/sheet.webp": {
+   "source": "c4b1787142ef0d130dff88c4dac995bab0f112ad926413ece783c225da98e2bf",
+   "lite": "cc9daf5bc3ca70330e833b5938ef516b5af1edb7b8751a69a4d7c7382f49c200",
+   "bytes": 158848,
+   "liteBytes": 45404,
+   "liteCell": [
+    564,
+    216
+   ],
+   "psnr": 47.7,
+   "shownPsnr": 47.7
+  },
+  "city/decor/tapume-quina-intacto/sheet.webp": {
+   "source": "c829ab84864127452b2ff1da50a84c00689cfbdc4b78e5feb0490d74cd1c0bda",
+   "lite": "f7e3c41b1f779cf0f89a8fa1ebbc9df0ba74e6e39b16e6a6bb673d507ffedc05",
+   "bytes": 191332,
+   "liteBytes": 50102,
+   "liteCell": [
+    372,
+    240
+   ],
+   "psnr": 43.3,
+   "shownPsnr": 43.3
+  },
+  "city/decor/tapume-quina-quebrado/sheet.webp": {
+   "source": "429ac1a8ab896baccfc2261a1257ab837af7ba8387df32a1ce3e8fd80d48dd5d",
+   "lite": "369b21f6fc1e7a2b59d693c12e0bc4d3df3068ea7ea4956ff574286358172986",
+   "bytes": 177832,
+   "liteBytes": 49838,
+   "liteCell": [
+    378,
+    234
+   ],
+   "psnr": 43.5,
+   "shownPsnr": 43.5
+  },
+  "city/decor/tapume-reto-intacto/sheet.webp": {
+   "source": "b62a79ee8843b9c316f4b2bd58f7633b1f74813275a6841822ba552cf86779f4",
+   "lite": "d3aacb6a12b0c13e1f3361bc7b31882cd9e417ae2b18a04a92b8c57259d855d6",
+   "bytes": 195368,
+   "liteBytes": 47702,
+   "liteCell": [
+    612,
+    210
+   ],
+   "psnr": 45,
+   "shownPsnr": 45
+  },
+  "city/decor/tapume-reto-quebrado/sheet.webp": {
+   "source": "3d8e90ae107fb9d7e6b93e3112c80ed6b68913bc9dbf714477cd4a2141fd0734",
+   "lite": "b99a31bb590f3031742ad501ebbd07fefdf707aea33268122f109058bd1bedfe",
+   "bytes": 210850,
+   "liteBytes": 57450,
+   "liteCell": [
+    618,
+    204
+   ],
+   "psnr": 43.2,
+   "shownPsnr": 43.2
+  },
+  "city/decor/tapume-t-intacto/sheet.webp": {
+   "source": "fdf70097b66a91a6782f6e464b3e8e150cf75fac249121dd6dc847245e567adf",
+   "lite": "66bf70ec6331e482764c53cbc413ce6912902201be416876b5d468ee0146f424",
+   "bytes": 157960,
+   "liteBytes": 47720,
+   "liteCell": [
+    672,
+    204
+   ],
+   "psnr": 47.2,
+   "shownPsnr": 47.2
+  },
+  "city/decor/tapume-t-quebrado/sheet.webp": {
+   "source": "e3fa47b8b2f499fe28fee43672302a96433ceee53e0059311823975430f5617a",
+   "lite": "420a5a1a335a701ccc8168d334eebfc0108115311882b7e8b8bb2e8a167dbad1",
+   "bytes": 170186,
+   "liteBytes": 56504,
+   "liteCell": [
+    708,
+    204
+   ],
+   "psnr": 47.5,
+   "shownPsnr": 47.5
+  },
+  "city/decor/ubs-1/sheet.webp": {
+   "source": "49cf1fa6cef575f69ee2820ac87c9eda51c5d7e17aac643475673a921d331ca7",
+   "lite": "1b5b9a0bc6316569d375816862bbc7a56666c5f71dc20113f1c75287621b3145",
+   "bytes": 379936,
+   "liteBytes": 133334,
+   "liteCell": [
+    408,
+    296
+   ],
+   "psnr": 41.8,
+   "shownPsnr": 41.8
+  },
+  "city/decor/ubs-2/sheet.webp": {
+   "source": "0e412d198945fa50d1f2e92c1a792180188606575971af74e0598276041b1c91",
+   "lite": "618cff67dea11c5c92f50cdefa74c8f7942098deba416e6bed38cc235aee8b54",
+   "bytes": 383026,
+   "liteBytes": 141892,
+   "liteCell": [
+    384,
+    296
+   ],
+   "psnr": 41,
+   "shownPsnr": 41
+  },
+  "city/decor/varal-roupa-1/sheet.webp": {
+   "source": "b3adf96d37366724607324a5c878b1e7fe48f31ba943f5fece3bfa8bc3f29320",
+   "lite": "d1c4499a877aa7bf692594623e8d14a2d932617e88a8741223619f3091987307",
+   "bytes": 118536,
+   "liteBytes": 45348,
+   "liteCell": [
+    258,
+    156
+   ],
+   "psnr": 44.9,
+   "shownPsnr": 44.9
+  },
+  "city/decor/varal-roupa-2/sheet.webp": {
+   "source": "2379e6974b765f77298f3a469637dda1edad9548dd2c6cc97704d6b7f0e33723",
+   "lite": "2c088a3f89537e5e6a9b7ceeac9565627af9a398119a4d0b9c1ddded9839ab37",
+   "bytes": 106948,
+   "liteBytes": 38616,
+   "liteCell": [
+    282,
+    150
+   ],
+   "psnr": 45.1,
+   "shownPsnr": 45.1
+  },
+  "city/props/arbusto-1.webp": {
+   "source": "9418a37d9d3965d33c050a215d66cff7a9311978c78cf7f81ef429a8dad499c2",
+   "lite": "f6cf345bc5943dd5e0600b30a473bd7848654b26d61ea3943bdfa1ace6650e65",
+   "bytes": 98562,
+   "liteBytes": 24758,
+   "liteCell": [
+    120,
+    102
+   ],
+   "psnr": 37.2,
+   "shownPsnr": 37.2
+  },
+  "city/props/arbusto-3.webp": {
+   "source": "ec3db21e88000d26e56438dce4cf2427a8ab22eb0854194ada9e80ee541c665a",
+   "lite": "5cd792697cbf632ca11808ba19020cd4b9308d43c3885f86cf9630c6c4f39792",
+   "bytes": 116424,
+   "liteBytes": 31974,
+   "liteCell": [
+    150,
+    102
+   ],
+   "psnr": 38,
+   "shownPsnr": 38
+  },
+  "city/props/arvore-nevada-1.webp": {
+   "source": "1e944cd308d4a18e1d19e36f981a6d4f4f0a5bd97b219fa6362472977585e90e",
+   "lite": "b059f51bd03293b0d85262dd62960e87c43e3aadf80fd4eb9fb4e5223b31401f",
+   "bytes": 226710,
+   "liteBytes": 62418,
+   "liteCell": [
+    126,
+    276
+   ],
+   "psnr": 41.3,
+   "shownPsnr": 41.3
+  },
+  "city/props/arvore-nevada-2.webp": {
+   "source": "2c3214366901aeb03b2a7e5752497e00221d72746903415d5b6d445067cf50b5",
+   "lite": "b688a0bebebb3bd1fdecd1b07d5b8c85734dde09494bbea1d53ee4f647b5fe6d",
+   "bytes": 397654,
+   "liteBytes": 90150,
+   "liteCell": [
+    234,
+    270
+   ],
+   "psnr": 41,
+   "shownPsnr": 41
+  },
+  "city/props/arvore-nevada-3.webp": {
+   "source": "690206982541c2b71f5a216a686b941166a6278dd5aab69ec00345faf8bf8e04",
+   "lite": "8702c6f5371127006b575894ccb7e21f35ebf657e2cba066324f04f71fc6429f",
+   "bytes": 244598,
+   "liteBytes": 70832,
+   "liteCell": [
+    192,
+    276
+   ],
+   "psnr": 42.5,
+   "shownPsnr": 42.5
+  },
+  "city/props/arvore-nevada-4.webp": {
+   "source": "d938084610597475348a20ac31380780877c8f874e3cc1235c24a888f5827faf",
+   "lite": "46e0e980fa16d6296ba06866a81e0a493f49070f7f53229567c0568dc63e631e",
+   "bytes": 251750,
+   "liteBytes": 79368,
+   "liteCell": [
+    246,
+    276
+   ],
+   "psnr": 43.6,
+   "shownPsnr": 43.6
+  },
+  "city/props/arvore-nevada-5.webp": {
+   "source": "24678acb47b8cd53113ca668cdfaafcc32b4dd9fbc790a5d2a93f52c43eda635",
+   "lite": "5f599f13f06b0c156c7cd3766a1bb75db1400fda21b0f169f87e03c0afb9f899",
+   "bytes": 200048,
+   "liteBytes": 67458,
+   "liteCell": [
+    210,
+    282
+   ],
+   "psnr": 44.5,
+   "shownPsnr": 44.5
+  },
+  "city/props/arvore-nevada-6.webp": {
+   "source": "85041936c7c3b3503ebe2566a124c9d074be6b8ab731ad0b94a46aaa01c0dd31",
+   "lite": "10becc58e92f3b12c4cbd9cfe1c4d90f1fca9b1b1ea98987a8d827ff5516494b",
+   "bytes": 221782,
+   "liteBytes": 72858,
+   "liteCell": [
+    270,
+    282
+   ],
+   "psnr": 45.9,
+   "shownPsnr": 45.9
+  },
+  "city/props/bicicleta-presa-gelo.webp": {
+   "source": "2c58d94e62b89c037dd2f5a8f5bb7e14123e2e017019fcd42c65d75f69b06a3d",
+   "lite": "144c5efffb07e6fd0fdd08b19a642fe17bb7ccf0848a43a812ab240a778a298f",
+   "bytes": 90608,
+   "liteBytes": 28708,
+   "liteCell": [
+    156,
+    120
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/props/boneco-neve-tio-pave.webp": {
+   "source": "2b0ea844facc3fc13d5d5ec4ead2789e111eeb75c5f6cae29a9ddc4ad9d49321",
+   "lite": "f7fbc745a3ab9454bac82074d17a055a291c16ba22e6aac4bb303f93fa495271",
+   "bytes": 162794,
+   "liteBytes": 42138,
+   "liteCell": [
+    174,
+    174
+   ],
+   "psnr": 41.3,
+   "shownPsnr": 41.3
+  },
+  "city/props/carrinho-supermercado.webp": {
+   "source": "50e730517bc1d776611580791126e896c23ecaf36c1e9eb8280a40d5cfd07858",
+   "lite": "a7d0786d6a77a00416aec11ac5b42a4953b1a6b6896cd52f2c53992c78f7338c",
+   "bytes": 65912,
+   "liteBytes": 24244,
+   "liteCell": [
+    96,
+    108
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/props/carro-velho-1.webp": {
+   "source": "4c5de46a7a9dcf64157a5fc88b0fab458307b1955e49c0bb06c5748310b41e79",
+   "lite": "69b3e8142838d354c520103a08328847288a56ba9e806a74d898658a9597ba43",
+   "bytes": 192962,
+   "liteBytes": 42216,
+   "liteCell": [
+    168,
+    144
+   ],
+   "psnr": 38.4,
+   "shownPsnr": 38.4
+  },
+  "city/props/carro-velho-2.webp": {
+   "source": "8e0294a4176ded9289026ec2fa9ddc8e5e1ee98ec4458d3ab3937f1204c98ed9",
+   "lite": "ee8f89b4ea3084dc74489d56c5cc98ec25a2e77a7d8a599f29c4ccce8928f05b",
+   "bytes": 193484,
+   "liteBytes": 44270,
+   "liteCell": [
+    198,
+    144
+   ],
+   "psnr": 39.3,
+   "shownPsnr": 39.3
+  },
+  "city/props/coqueiro-1.webp": {
+   "source": "055ea6d5b5d6ec5b4cc35bc2e61b12827147f8cb2d46ebeca8123536c599a191",
+   "lite": "44cf055d1e61edb713c1d0e2a7e1a5f60017c6a52c64d59add41e100f8eeaa93",
+   "bytes": 415660,
+   "liteBytes": 121570,
+   "liteCell": [
+    258,
+    396
+   ],
+   "psnr": 41.6,
+   "shownPsnr": 41.6
+  },
+  "city/props/coqueiro-2.webp": {
+   "source": "604071c3dddffb58982d46d49415fb8e9429cb06d9b2969468d31aa052196602",
+   "lite": "e8919e6f9fb0d560e517e7c0d3f9a287c7d1ef27930fe33da10f9fc9b0909c75",
+   "bytes": 508900,
+   "liteBytes": 134978,
+   "liteCell": [
+    432,
+    390
+   ],
+   "psnr": 43.7,
+   "shownPsnr": 43.7
+  },
+  "city/props/coqueiro-3.webp": {
+   "source": "d9747e8b239f00187986e0ffdc5fbaaba7dd9873ec898e7dedf91847d77b4330",
+   "lite": "f0a6c78ba2785d2bfd7b0e1d6c4c32ef53d5fc6ea3cbf0d49c6a555512d3772c",
+   "bytes": 621320,
+   "liteBytes": 156376,
+   "liteCell": [
+    384,
+    402
+   ],
+   "psnr": 41.9,
+   "shownPsnr": 41.9
+  },
+  "city/props/fonte.webp": {
+   "source": "0cb13d2be570d5081f2e451d77a8ca6a3904ad153a17febbcd1f1e3f87fd8ac2",
+   "lite": "986b7e22cfc74f8f3083e082f4a47277927860f018d5a54e6213638e90b16066",
+   "bytes": 335756,
+   "liteBytes": 71598,
+   "liteCell": [
+    252,
+    204
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
+  },
+  "city/props/mesa-bar.webp": {
+   "source": "44bd5b8c48908d1aa77884dfd6ff07c50b30a676c6065998277261f7183c7400",
+   "lite": "1007575f9b5632fac2041c3d05c1a6b7c84e42a400b0e8556b6de34acfe56b6e",
+   "bytes": 71556,
+   "liteBytes": 21520,
+   "liteCell": [
+    138,
+    108
+   ],
+   "psnr": 41.2,
+   "shownPsnr": 41.2
+  },
+  "city/props/mirante.webp": {
+   "source": "cd458329ec757ca27779206b5d518ba8bbb2015778b399cf1dadf172b1af7c0f",
+   "lite": "d6ec438d84047079862306b60f711522148597e8dc79959b279180fe361986ab",
+   "bytes": 512740,
+   "liteBytes": 123716,
+   "liteCell": [
+    300,
+    366
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
+  "city/props/onibus-tombado.webp": {
+   "source": "7c09db2f0653bfc1b86ea7738c810eb2491df9a0ad46a37ef9122714f1954f72",
+   "lite": "6ef2cd95ff867acdfcb889b8f250bc08a0867a84b72af024334b6bdb7cb6d833",
+   "bytes": 395428,
+   "liteBytes": 85400,
+   "liteCell": [
+    366,
+    234
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/props/orelhao.webp": {
+   "source": "8d15c4b15ffea279b97cb81ed0bece04b7ae385149e35736d5f533e63608be75",
+   "lite": "a557d4f3b3c6a6059b0054897bbdb120b2a57146a19a4a96dc2894434a694f46",
+   "bytes": 182076,
+   "liteBytes": 39550,
+   "liteCell": [
+    150,
+    192
+   ],
+   "psnr": 39.8,
+   "shownPsnr": 39.8
+  },
+  "city/props/placa-torta.webp": {
+   "source": "f0fdc894a1ff7339e527a4741627d4b245ad471aaedb4bae1f5a18e10cf7b6cb",
+   "lite": "cfab5e200a1c30aa6c290cac2d1e9d46af6e4338b82d8afb2858142cd34af9b0",
+   "bytes": 131168,
+   "liteBytes": 40368,
+   "liteCell": [
+    144,
+    204
+   ],
+   "psnr": 42.3,
+   "shownPsnr": 42.3
+  },
+  "city/props/ponto-onibus.webp": {
+   "source": "cbc7a822c3afb22c4b2006c963f954ac22b4c9fc1af5683be0efa82c37cbbaaa",
+   "lite": "8c085205990df8efd16d327358b6b12e91709503799c75f845a15071badb27e0",
+   "bytes": 337074,
+   "liteBytes": 71740,
+   "liteCell": [
+    270,
+    222
+   ],
+   "psnr": 40.8,
+   "shownPsnr": 40.8
+  },
+  "city/props/portal-praca.webp": {
+   "source": "41532ae8027bd56fc41f1bd564ee6c6576f81aa93c590bf3949702371a22afd4",
+   "lite": "c3ff171b3d8fa20a5d33f4750ffb92dfb0fad9476370a5a041bbca02508f8c68",
+   "bytes": 518318,
+   "liteBytes": 120318,
+   "liteCell": [
+    372,
+    306
+   ],
+   "psnr": 40.7,
+   "shownPsnr": 40.7
+  },
+  "city/props/poste.webp": {
+   "source": "5706552c99d79145165393390429ec42e33dc7b86b2975b3462d47427ab549cd",
+   "lite": "f21e6f8ad0834fd00d02012e85e6de740ec3069a7e9a14dfca2b3a708ea7ea0c",
+   "bytes": 395848,
+   "liteBytes": 109152,
+   "liteCell": [
+    150,
+    330
+   ],
+   "psnr": 43.4,
+   "shownPsnr": 43.4
+  },
+  "city/props/rocha-1.webp": {
+   "source": "7b329e7b1ed9bd291da7473f0d39e1a88789df6880e08423a2d164680f7d0e2e",
+   "lite": "56a7ca870fffab60bf91e9f6987cfcb471e5bf460182b4e7944a59aa70af484c",
+   "bytes": 164752,
+   "liteBytes": 36208,
+   "liteCell": [
+    198,
+    120
+   ],
+   "psnr": 38.5,
+   "shownPsnr": 38.5
+  },
+  "city/props/rocha-2.webp": {
+   "source": "629f17c832eb339b668dcb582610d4ae6347d87bc5348f2719c45cbb02b9852d",
+   "lite": "5a9c886542d7f391607671200322731eeccde4e5f4f5f60cda6dc8dda8640226",
+   "bytes": 88250,
+   "liteBytes": 22362,
+   "liteCell": [
+    108,
+    114
+   ],
+   "psnr": 38.5,
+   "shownPsnr": 38.5
+  },
+  "city/props/rocha-3.webp": {
+   "source": "21a9b8631cb3e388c3cedb1b40ef8f5cc2e70fa73fd59badab9da0e4f062b1e4",
+   "lite": "336dc2a1455667c043ae4e6f1fe5acda10f09da32a149f8f750abfaab39e9b0d",
+   "bytes": 113736,
+   "liteBytes": 26438,
+   "liteCell": [
+    138,
+    114
+   ],
+   "psnr": 39.2,
+   "shownPsnr": 39.2
+  },
+  "city/props/varal-congelado.webp": {
+   "source": "60767433ba689084a5a02604752b57c808cc2c7e520379477850a87f50e2c51f",
+   "lite": "f60b9fe156fb11541c28a5fa1a6bb0967df058eef6bebcf4f6afddf9eadf4645",
+   "bytes": 113710,
+   "liteBytes": 39682,
+   "liteCell": [
+    270,
+    168
+   ],
+   "psnr": 42.9,
+   "shownPsnr": 42.9
+  },
   "enemies/agiota/death.webp": {
    "source": "03d95deb40329a895029e4c68585ddce07bdb33ad2158bdcc578c34001450412",
    "lite": "441f547d2546bd2e17aeb04a569d07bd630ffada6fa3ad7c9c11990b2f46af9e",

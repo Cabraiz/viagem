@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2052,
-  "bytes": 1537094294,
-  "liteBytes": 496412294,
+  "files": 2053,
+  "bytes": 1537725238,
+  "liteBytes": 496883196,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17340,6 +17340,14 @@
    "liteBytes": 252586,
    "psnr": 49.4,
    "shownPsnr": 51.7
+  },
+  "menu/fundo-estadio-viciado.webp": {
+   "source": "f8f7f6065b8d662a246dc1e96d664eeca67b18c35b008a81363acd0e64521387",
+   "lite": "5c623bcf8a49b8b627ae0141d11f3d8ccdeef9755c8eb703728214837d403813",
+   "bytes": 630944,
+   "liteBytes": 470902,
+   "psnr": 44.5,
+   "shownPsnr": 46
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",

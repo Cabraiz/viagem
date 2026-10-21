@@ -108,6 +108,11 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-economy-tag{flex:none;padding:3px 8px;border:2px solid var(--c-papel);border-radius:var(--r-etiqueta);font:800 var(--t-13)/1.1 var(--f-sistema);color:var(--c-papel)}
 .explore-economy-tag[data-on=true]{background:var(--c-amarelo);border-color:var(--c-breu);color:var(--c-breu)}
 .explore-economy-note{font-size:13px;line-height:1.3}
+/* Q3: the quality row is a group of three levels, not one switch; the row keeps the old switch's frame. */
+.explore-quality{border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-lilas-escuro)}
+.explore-quality-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.explore-settings .explore-quality-levels button{min-width:0;padding:8px 4px;background:var(--c-lilas);font-weight:800}
+.explore-settings .explore-quality-levels button[aria-pressed=true]{background:var(--c-amarelo);border-color:var(--c-breu);color:var(--c-breu)}
 /* Aviso quando o modo liga sozinho: uma vaga da faixa de avisos do HUD (fila com os avisos e a dica do treinador, fora do
    herói e dos polegares). Ficha Breu: adesivo de 24, duas linhas curtas e o Desligar de 44 encostado na borda; some em 9 s. */
 /* BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (an 18 px sticker, the two parts of the line

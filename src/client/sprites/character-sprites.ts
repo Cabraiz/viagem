@@ -12,8 +12,14 @@ import {detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
 import {watchOrphans} from './texture-orphans.ts';
+import {handPoint,type HandPoint} from './hand-points.ts';
+import type {HeroDirection} from './sprite-motion.ts';
 
 export type {FigureBox};
+/** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
+interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection}
+/** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen. */
+export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection}
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 
 /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas) of one texture. */
@@ -126,7 +132,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;stream?:Movement128Plan;hand?:HandFrame}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -241,6 +247,15 @@ export class CharacterSprites {
     }
   }
   /**
+   * The weapon hand of the pose `sprite` shows (card arma-na-mao-viciado): the measured point of its M16 frame
+   * (hand-points.ts) and how that frame is drawn. Undefined for a clip without measured hands (the legacy sheets, R06,
+   * a class not measured yet): render/arsenal-fx.ts then keeps the weapon sticker at the hero's side.
+   */
+  handPose(sprite:Phaser.GameObjects.Sprite):HandPose|undefined{
+    const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
+    return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction}:undefined;
+  }
+  /**
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
    */
@@ -273,6 +288,7 @@ export class CharacterSprites {
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
+        state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction};
         state.stream=detailed;state.shown=motion;state.side=direction;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
@@ -321,6 +337,7 @@ export class CharacterSprites {
     }
     if(!alive)sprite.anims.pause();else sprite.anims.resume();
     // Switch to the legacy sheet first, then release the detailed atlas and its derived city copies safely.
+    state.hand=undefined;
     if(state.stream||this.detailed){state.stream=undefined;if(detailed)this.detailed?.unbind(sprite);else this.detailed?.release(sprite);}
   }
 }

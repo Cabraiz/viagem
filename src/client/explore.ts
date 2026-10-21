@@ -40,7 +40,8 @@ import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
-import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
+import type {KeyValue} from './economy.ts';
+import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
 import {pageZoomEvent,saveZoom,startZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
@@ -77,15 +78,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
+    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
-      <div class="explore-quest"><small>PRIMEIROS PASSOS</small><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
+      <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
       <div class="explore-map" aria-hidden="true"><svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="39" ry="39" fill="#c8d795"/><path d="M50 68 35 47 69 47 50 24 35 47" fill="none" stroke="#f7e5b2" stroke-width="5"/><g fill="#a184b4"><circle cx="35" cy="47" r="3"/><circle cx="69" cy="47" r="3"/><circle cx="50" cy="24" r="3"/></g><circle id="explore-dot" cx="50" cy="68" r="4" fill="#fff7d3" stroke="#7e638f" stroke-width="2"/></svg></div>
       <div class="explore-notice" role="status">${INPUT_TEXTS.touch.soloNotice}</div>
-      <div class="explore-loading" role="status">Preparando um lugar para sua história…</div>
+      <div class="explore-loading" role="status">Arrumando a ilha pra visita…</div>
     </section>
-    <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span><br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
+    <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span></p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
@@ -443,26 +444,37 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     sync();shame.addEventListener('click',()=>{net.setShamePref(!net.allowsShame);sync();},{signal});
     settingsContent.append(shame);
   }
-  // Economy mode (VGM-048): 30 fps and fewer effects; persisted on this phone, turned on by itself when the game chokes.
-  let economy:EconomySettings=loadEconomy(economyStore());
+  // Quality levels (Q3, NEW-20261021-E6-q3-niveis-qualidade): Leve / Normal / Alta in the gear, saved on this device. The device
+  // picks at first; the FPS watch steps it down once per match when the first 10 s of combat choke. `?qualidade=` (lab) forces one.
+  const forced=qualityFromUrl(location.search);
+  let quality:QualitySettings=loadQuality(economyStore(),detectQuality(deviceHints(globalThis.navigator as {deviceMemory?:number;hardwareConcurrency?:number}|undefined,finePointer())));
+  if(forced)quality={level:forced,chosen:true,auto:false,declined:quality.declined};
+  /** The level before the watch's step: the toast's "Desfazer" goes back to it. */
+  let stepFrom:QualityLevel|undefined;
   let zoomSave:ReturnType<typeof setTimeout>|undefined;
-  const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
-  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag"></span></span>'
-    +'<span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span>';
-  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!;
+  const QUALITY_NOTE:Record<QualityLevel,string>={leve:'Cenário parado e menos efeito: o celular agradece, a bateria também.',normal:'O jogo inteiro, sem fritar a mão.',alta:'Tudo no talo. Coisa de PC.'};
+  const economyButton=document.createElement('div');economyButton.className='explore-economy explore-quality';economyButton.setAttribute('role','group');economyButton.setAttribute('aria-label','Qualidade');
+  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Qualidade</span><span class="explore-economy-tag"></span></span>'
+    +`<span class="explore-quality-levels">${QUALITY_LEVELS.map(l=>`<button type="button" data-level="${l}" aria-pressed="false">${QUALITY_LABEL[l]}</button>`).join('')}</span>`
+    +'<span class="explore-economy-note"></span>';
+  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!,qualityNote=economyButton.querySelector<HTMLElement>('.explore-economy-note')!;
   const economyToast=document.createElement('div');economyToast.className='economy-toast';economyToast.setAttribute('role','status');economyToast.hidden=true;
-  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Modo econômico ligado</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desligar</button>`;
+  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Qualidade baixou pra Leve</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desfazer</button>`;
   // Coop: the HUD's announcement slot takes it in line (one row at a time, off the hero). Solo has no HUD and no watch.
   const hideEconomyToast=()=>{if(hud)hud.dropRow(economyToast);else economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
-  const syncEconomy=()=>{
-    economyButton.setAttribute('aria-pressed',String(economy.on));
-    economyTag.textContent=economy.on?'Ligado':'Desligado';economyTag.dataset.on=String(economy.on);
-    shell.dataset.economy=String(economy.on);
+  const syncQuality=()=>{
+    for(const b of economyButton.querySelectorAll<HTMLButtonElement>('[data-level]'))b.setAttribute('aria-pressed',String(b.dataset.level===quality.level));
+    economyTag.textContent=quality.chosen?'Sua escolha':'Automática';economyTag.dataset.on=String(!quality.chosen);
+    qualityNote.textContent=QUALITY_NOTE[quality.level];
+    shell.dataset.quality=quality.level;shell.dataset.economy=String(qualityProfile(quality.level).economy);
   };
-  const setEconomy=(next:EconomySettings)=>{economy=next;saveEconomy(economyStore(),economy);controller?.scene.setEconomy(economy.on);syncEconomy();};
-  syncEconomy();
-  economyButton.addEventListener('click',()=>{setEconomy(toggleEconomy(economy,!economy.on));hideEconomyToast();},{signal});
-  economyToast.querySelector('button')!.addEventListener('click',event=>{event.stopPropagation();setEconomy(toggleEconomy(economy,false));hideEconomyToast();},{signal});
+  const setQuality=(next:QualitySettings)=>{quality=next;saveQuality(economyStore(),quality);controller?.scene.setQuality(quality.level);syncQuality();};
+  syncQuality();
+  economyButton.addEventListener('click',event=>{
+    const level=(event.target as HTMLElement).closest<HTMLElement>('[data-level]')?.dataset.level as QualityLevel|undefined;
+    if(!level)return;setQuality(chooseQuality(quality,level));hideEconomyToast();
+  },{signal});
+  economyToast.querySelector('button')!.addEventListener('click',event=>{event.stopPropagation();setQuality(undoQuality(quality,stepFrom??quality.level));hideEconomyToast();},{signal});
   // The toast sits over the map: its taps never reach the game (like the HUD panels).
   for(const type of ['pointerdown','touchstart'])economyToast.addEventListener(type,event=>event.stopPropagation(),{signal});
   // Near the top of the settings (the panel scrolls on a phone): right under the title and the way back.
@@ -474,8 +486,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const unmountSound=mountAudioControls(sound,getAudio());
   signal.addEventListener('abort',unmountSound,{once:true});
   const slow=()=>{
-    const next=autoEconomy(economy);if(!next)return;
-    setEconomy(next);
+    const next=stepDown(quality);if(!next)return;
+    stepFrom=quality.level;setQuality(next);
+    economyToast.querySelector('strong')!.textContent=`Qualidade baixou pra ${QUALITY_LABEL[next.level]}`;
     if(hud){hud.queueRow(economyToast,ECONOMY_TOAST_MS);return;}
     economyToast.hidden=false;if(economyTimer)clearTimeout(economyTimer);economyTimer=setTimeout(hideEconomyToast,ECONOMY_TOAST_MS);
   };
@@ -672,10 +685,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           // The tick moves every frame: the debug line follows at the shell attributes' pace, and only while it is read
           // (its <details> open, or ?perf=1).
           const diagnostics=$('#coop-diagnostics');
-          if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
+          if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length} de 6 na sala. A sala responde em ${net.rtt} ms.`);
         }
       },
-      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
+      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name}: ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
         if(net)attackBtn?.lastHit.note(view.events,net.id,view.tick,id=>net.feed.enemies.has(id));
@@ -694,7 +707,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
-      economy:economy.on,slow,
+      quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
       ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},

@@ -291,7 +291,7 @@ export class ChaveiroRenderer {
       }).setDepth(DELIVERY_DEPTH)};
     }
     this.delivery.band.setPosition(p.x,p.y).setScale(deliveryPulse(this.now,this.options.reduced)).setVisible(true);
-    this.deliveryText.setText(`entrega · ${Math.max(0,Math.ceil(d.etaS))} s`).setPosition(p.x,p.y-r*.6).setScale(k).setVisible(true);
+    this.deliveryText.setText(`entrega em ${Math.max(0,Math.ceil(d.etaS))} s`).setPosition(p.x,p.y-r*.6).setScale(k).setVisible(true);
   }
   /** Smoke puffs: the car's exhaust always (the engine runs), the moto's when it runs (light) or died (dark). */
   private smoke(view:ChaveiroView,mx:number,my:number,heading:number,alarm:boolean,time:number,reduced:boolean,k:number){

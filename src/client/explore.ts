@@ -425,7 +425,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Focus lost: the phone pauses as before; the desktop never pauses, it lets go of every held key, the stick and the held
   // mouse button (no key stays stuck) and plays on when the focus comes back.
   const lost=()=>focusLost(inputWatch.kind,{pause:()=>pause(true),release:()=>{reset();controller?.scene.releaseInput();}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)lost();else backOnline.wake(performance.now());},{signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)lost();},{signal});
+  // Back from the background: a drop ending soon after counts for the "Voltou!" row (hud/menu.ts BackOnlineWatch).
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)backOnline.wake(performance.now());},{signal});
   window.addEventListener('blur',lost,{signal});
   // D-051: a held attack (button or Space) never stays held without the focus, phone or desktop.
   document.addEventListener('visibilitychange',()=>{if(document.hidden)attackBtn?.clear();},{signal});

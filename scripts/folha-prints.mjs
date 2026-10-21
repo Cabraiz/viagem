@@ -109,8 +109,15 @@ const HERO=()=>{
 };
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
-/** Out of play: the own hero is dead ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). */
-const DEAD=()=>/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+/**
+ * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 a main sheet failed its 390×844 mouse on it), dead
+ * ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
+ */
+const DEAD=()=>{
+  const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
+  if(st?.downed||(me&&me.hp<=0))return true;
+  return /Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+};
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -135,9 +142,9 @@ async function playing(p){
   const m=matchPages.get(p);
   if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
   const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
-  await shot(p,'fim',`${m.label}: herói morto ou partida acabou`,{w:vp.width,h:vp.height});
+  await shot(p,'fim',`${m.label}: herói caído/morto ou partida acabou`,{w:vp.width,h:vp.height});
   if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
-  avisos.push(`${m.label} ${at}: herói morto ou partida acabou: partida nova`);
+  avisos.push(`${m.label} ${at}: herói caído/morto ou partida acabou: partida nova`);
   await p.goto(`${m.base}/?perf=1`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   await enterMatch(p,{w:vp.width,h:vp.height},m.label);

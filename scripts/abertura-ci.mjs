@@ -4,10 +4,11 @@
 // for the returning player (a 2nd page in the same profile). Until 21/10 only scripts like the board's fases.mjs measured
 // it, by hand on the user's PC (44 → 29 s in batch 46): a card that slowed it down went unseen.
 // Measures THIS build (--dist) against the main it branched from (--base-dist, the merge-base's build), in pairs whose
-// order alternates (the runner's drift falls on both), and compares the medians: a number PIORA worse (and at least
+// order alternates (the runner's drift falls on both), and compares the medians (5 pairs: with 3, main against itself
+// differed by up to 13 % on the returning player's playable time, one sample being ±15 % on swiftshader): a number PIORA worse (and at least
 // PIORA_MIN_MS, the noise of a 7 s opening) fails. The rooms Worker is this checkout's (scripts/local-worker.mjs) for
 // both builds: a base whose protocol it no longer speaks does not open, which is a warning (no comparison), not a fail.
-//   node scripts/abertura-ci.mjs [outDir=folha-out] --dist dist [--base-dist <dir>] [--base-sha <sha>] [--pares 3]
+//   node scripts/abertura-ci.mjs [outDir=folha-out] --dist dist [--base-dist <dir>] [--base-sha <sha>] [--pares 5]
 //     [--cpu 4] [--kbps 9000] [--rtt 170]
 // Out: <out>/abertura.json ({ok, fails, avisos, mediana, piora, desvio, runs, frames}) and the opening prints, which
 // scripts/folha-prints.mjs puts on the sheet (its header, red on a fail). Exit 0 measured (the verdict is in the json),
@@ -23,7 +24,7 @@ import {pathToFileURL} from 'node:url';
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const outDir=resolve(process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')))??'folha-out');
 const dist=resolve(arg('dist','dist')),baseDist=arg('base-dist')?resolve(arg('base-dist')):undefined,baseSha=String(arg('base-sha','')).slice(0,7);
-const PARES=Number(arg('pares',3)),CPU=Number(arg('cpu',4)),KBPS=Number(arg('kbps',9000)),RTT=Number(arg('rtt',170));
+const PARES=Number(arg('pares',5)),CPU=Number(arg('cpu',4)),KBPS=Number(arg('kbps',9000)),RTT=Number(arg('rtt',170));
 /** Worse by more than this fraction of the base's median, and by at least PIORA_MIN_MS: the sheet fails. */
 const PIORA=0.15,PIORA_MIN_MS=1000;
 /** One opening, click → playable, at most this long (swiftshader at CPU 4×). */

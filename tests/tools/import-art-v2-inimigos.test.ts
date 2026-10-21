@@ -197,3 +197,23 @@ test('towers: foot line within 12 % of the cell height and no foot-centre check 
   assert.match(t,/base\.png, "pronta" \(linha 4\): base do desenho fora da linha de apoio.*± 38\.4/);
   assert.match(t,/idle\.png, .*base do desenho fora da linha de apoio.*± 15\.4/);
 }));
+
+test('base: the sofa barricade (freeFootX) is checked by its foot line only; the same drawing in another piece is refused off-centre',async()=>withTemp(async dir=>{
+  const input=path.join(dir,'entrada'),C=128,rows=['inteira','avariada','quase-caindo','quebrada'];
+  // Sofa centred in each cell, and a cart at the right side whose wheels are the lowest pixels.
+  const data=Buffer.alloc(4*C*4*C*4);
+  for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+    const put=(x0:number,x1:number,y0:number,y1:number)=>{for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)data.set([120,60,40,255],((r*C+y)*4*C+c*C+x)*4);};
+    put(24,104,50,106);put(96,118,80,110);
+  }
+  const write=async(id:string,states:string[])=>{
+    const folder=path.join(input,'cenario','base');mkdirSync(folder,{recursive:true});
+    await sharp(data,{raw:{width:4*C,height:4*C,channels:4}}).png().toFile(path.join(folder,`${id}.png`));
+    writeFileSync(path.join(folder,`${id}.json`),JSON.stringify({kind:'views',cell:[C,C],views:4,rows:states,anchor:[.5,110/C],meta:{states}}));
+  };
+  await write('barricada',rows);
+  await write('muralha-acampamento',['inteira','avariada','quase-caindo','ruina']);
+  const r=await importArtV2({input,repoRoot,outRoot:path.join(dir,'saida'),groups:['base'],write:false});
+  assert.deepEqual(find(r.pieces,'base','barricada').problems,[]);
+  assert.match(find(r.pieces,'base','muralha-acampamento').problems.join('\n'),/base do desenho fora do ponto de apoio/);
+}));

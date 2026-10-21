@@ -3,7 +3,8 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,hasArt} from '../../src/client/art/manifest.ts';
-import {BASE_ART,BASE_WIDTH,applyBaseArt,baseArtKey,baseDrawScale,baseFile,baseFrame,baseLoads,baseRow,baseState,
+import {towerArtScale} from '../../src/client/render/towers/tower-rules.ts';
+import {BASE_ART,BASE_ART_SCALED,BASE_WIDTH,applyBaseArt,baseArtKey,baseDrawScale,baseFile,baseFrame,baseLoads,baseRow,baseState,
   baseStateFrames,baseStates,queueBaseArt} from '../../src/client/art/base-art.ts';
 
 const EMPTY={version:2,groups:{}};
@@ -111,6 +112,20 @@ test('applyBaseArt: texture, frame, anchor and BASE_WIDTH × actor scale; false 
   manifest({'muralha-acampamento':{kind:'views',files:{sheet:views('muralha.webp',[...DAMAGE,'ruina'])},meta:{states:[...DAMAGE,'ruina']}}});
   assert.equal(applyBaseArt(fakeImage(['art:base:barricada']) as unknown as Img,'barricada','inteira',0),false);
   assert.equal(applyBaseArt(fakeImage(['art:base:muralha-acampamento']) as unknown as Img,'muralha-acampamento','ruina',0),true);
+});
+
+test('the sofa barricade draws at the city scenery scale (towerArtScale) when the renderer gives it; the wall and crate keep BASE_WIDTH',()=>{
+  manifest({barricada:barricada()});
+  const file=baseFile('barricada')!;
+  assert.deepEqual([...BASE_ART_SCALED],['barricada']);
+  // 84 projected px per 1 u diamond (TILE_X 42): 0.5 world px per art px on the 0.88 u sample city, 0.85 on the 1.496 u map.
+  const sample=towerArtScale(84),real=towerArtScale(84,1.496);
+  assert.equal(sample,.5);assert.ok(Math.abs(real-.85)<1e-9);
+  assert.equal(baseDrawScale('barricada',file,.54,real),real,'the actor scale does not apply');
+  assert.equal(baseDrawScale('barricada',file,.5),BASE_WIDTH.barricada/256*.5,'no artPx: BASE_WIDTH as before');
+  assert.equal(baseDrawScale('muralha-acampamento',{...file},.5,real),BASE_WIDTH['muralha-acampamento']/256*.5);
+  const img=fakeImage(['art:base:barricada']);
+  assert.equal(applyBaseArt(img as unknown as Img,'barricada','inteira',0,.5,0,real),true);assert.equal(img.scale,real);
 });
 
 test('a city lite copy at the same cell (liteCell = cell, base-lite-muralha) loads from /art/lite/city/ with the same frames; a smaller one keeps the approved file',()=>{

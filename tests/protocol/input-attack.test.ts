@@ -2,7 +2,7 @@
 // (attackPress) so a tap shorter than the 10 Hz slot still attacks once. Style of input-track.test.ts.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {InputBatcher,InputTrack,SEGMENT_ATTACK,SEGMENT_SKILL,segmentOf,segmentWire} from '../../src/protocol/input-track.ts';
+import {DIRECTIONS,InputBatcher,InputTrack,SEGMENT_AIM_SHIFT,SEGMENT_ATTACK,SEGMENT_SKILL,segmentOf,segmentWire} from '../../src/protocol/input-track.ts';
 import type {PlayerInput,SimPlayer} from '../../src/contract/types.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
@@ -10,13 +10,13 @@ const body={x:0,y:0} as SimPlayer;
 /** Every step the track hands out over `n` ticks (clock: 50 ms a tick from `t0`). */
 function steps(t:InputTrack,n:number,t0:number){const out:(PlayerInput|undefined)[]=[];for(let i=1;i<=n;i++)out.push(t.next(body,t0+i*50));return out;}
 
-test('segment flags: 0–3 accepted (bit 0 skill, bit 1 attack), anything else refused; the wire round-trips',()=>{
+test('segment flags: 0–131 accepted (bit 0 skill, bit 1 attack, bits 2+ the aim), anything else refused; the wire round-trips',()=>{
   assert.equal(SEGMENT_SKILL,1);assert.equal(SEGMENT_ATTACK,2);
   assert.deepEqual(segmentOf([5,1,0,0]),{from:5,x:1,y:0,skill:false});
   assert.deepEqual(segmentOf([5,1,0,1]),{from:5,x:1,y:0,skill:true});
   assert.deepEqual(segmentOf([5,1,0,2]),{from:5,x:1,y:0,skill:false,attack:true});
   assert.deepEqual(segmentOf([5,0,0,3,'e12']),{from:5,x:0,y:0,skill:true,target:'e12',attack:true});
-  for(const flags of [4,-1,1.5,'2',true,null])assert.equal(segmentOf([5,1,0,flags]),undefined,String(flags));
+  for(const flags of [132,-1,1.5,'2',true,null])assert.equal(segmentOf([5,1,0,flags]),undefined,String(flags));
   for(const w of [[5,1,0,0],[5,1,0,1],[5,1,0,2],[5,0,0,3,'e12']])assert.deepEqual(segmentWire(segmentOf(w)!),w);
   // No attack: the segment has no attack key at all (the track's state, in the replay hash, is as before).
   assert.equal('attack' in segmentOf([5,1,0,1])!,false);
@@ -78,4 +78,42 @@ test('Simulation: the held attack reaches the players system as PlayerInput.atta
   for(let i=1;i<=8;i++)s.step(1000+i*50);
   assert.deepEqual(seen,[true,true,true]);
   assert.equal(p.ack,3,'standing while holding spends the client steps; the release stands still');
+});
+
+// NEW-20261021-ORQ-cone-ataque-melee: the mouse's aim while attacking (bits 2+ of the flags: bucket + 1).
+test('aim: bits 2+ carry the bucket + 1 and round-trip; no aim, no key',()=>{
+  assert.equal(SEGMENT_AIM_SHIFT,2);
+  assert.deepEqual(segmentOf([5,0,0,SEGMENT_ATTACK|1<<SEGMENT_AIM_SHIFT]),{from:5,x:0,y:0,skill:false,attack:true,aim:0});
+  assert.deepEqual(segmentOf([5,0,0,SEGMENT_ATTACK|32<<SEGMENT_AIM_SHIFT,'e3']),{from:5,x:0,y:0,skill:false,target:'e3',attack:true,aim:31});
+  for(const w of [[5,1,0,2|8<<2],[5,0,0,3|32<<2,'e12']])assert.deepEqual(segmentWire(segmentOf(w)!),w);
+  assert.equal('aim' in segmentOf([5,1,0,2])!,false);
+});
+
+test('batcher: the aim goes only while attacking, quantized; moving the mouse without the attack sends nothing',()=>{
+  const b=new InputBatcher();b.reset(0);
+  b.step({x:0,y:0},false,undefined,false,{x:0,y:5});
+  assert.equal(b.take(0),undefined,'no attack: the mouse alone is no change');
+  const r=b.step({x:0,y:0},false,undefined,true,{x:0,y:5});
+  const up=DIRECTIONS.findIndex(d=>d.x===0&&d.y===1);
+  assert.deepEqual(r.input.aim,{x:0,y:1});
+  assert.deepEqual(b.take(100)!.steps,[[2,0,0,SEGMENT_ATTACK|(up+1)<<SEGMENT_AIM_SHIFT]]);
+  b.step({x:0,y:0},false,undefined,true,{x:.05,y:5});
+  assert.equal(b.take(200),undefined,'a tiny turn stays in the bucket (hysteresis)');
+  b.step({x:0,y:0},false,undefined,true,{x:5,y:0});
+  assert.deepEqual(b.take(300)!.steps,[[4,0,0,SEGMENT_ATTACK|1<<SEGMENT_AIM_SHIFT]]);
+  const off=b.step({x:0,y:0},false,undefined,false,{x:5,y:0});
+  assert.equal('aim' in off.input,false);
+  assert.deepEqual(b.take(400)!.steps,[[5,0,0,0]]);
+});
+
+test('track: a late tap keeps its aim for the press even when the release segment came with it',()=>{
+  const t=new InputTrack();t.reset(0);
+  assert.ok(t.accept({seq:3,steps:[[1,1,0,0]]},0));
+  steps(t,10,0);
+  const applied=t.applied;
+  assert.ok(t.accept({seq:applied,steps:[[4,1,0,SEGMENT_ATTACK|9<<SEGMENT_AIM_SHIFT],[5,1,0,0]]},600));
+  const [first,second]=steps(t,2,600);
+  assert.equal(first?.attack,true);assert.deepEqual(first?.aim,DIRECTIONS[8]);
+  assert.equal(second?.aim,undefined);
+  assert.equal(t.state().pressAim,undefined,'spent with the press');
 });

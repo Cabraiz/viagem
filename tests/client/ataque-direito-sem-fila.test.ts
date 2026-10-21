@@ -1,5 +1,5 @@
 // NEW-20261021-ORQ-cone-por-cima-e-clique-em-loop: the right mouse button and Space never leave the attack held after
-// they let go (fast clicks attacked forever on the live game), and the desktop shows no yellow reticle nor its line.
+// they let go (fast clicks attacked forever on the live game), and no yellow reticle nor its line shows (desktop and phone).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -41,13 +41,19 @@ test('a press that wakes the game (pause(false)) stays releasable: the scene let
   assert.match(explore,/attackBtn\.key\(true,'espaco'\);return;\}/);assert.match(explore,/event\.code==='Space'\)attackBtn\?\.key\(false,'espaco'\);/);
 });
 
-test('desktop: no yellow reticle nor line while Space or the right button holds the attack; a finger on the button keeps them',()=>{
-  const button=read('src/client/hud/attack-button.ts');
-  // Only a press of the button by a finger (or pen) shows the reticle and its line; the keys and the mouse never do.
-  assert.match(button,/this\.pointer=e\.pointerId;this\.touchAim=e\.pointerType!=='mouse';/);
-  assert.match(button,/if\(!this\.on\|\|!hero\|\|!this\.press\.held\|\|!this\.touchAim\)\{this\.hide\(true\);/);
+test('no yellow reticle nor line anywhere, the phone too (21/10): the drag still picks the target and shows only the knob',()=>{
+  const button=read('src/client/hud/attack-button.ts'),css=read('src/client/coop.css');
+  // The svg only holds the thumb's knob: no ring, no line, nor their yellow CSS.
+  assert.doesNotMatch(button,/atk-aim-ring|atk-aim-line|touchAim/);
+  assert.doesNotMatch(css,/atk-aim-ring|atk-aim-line|\.atk-aim[^{]*\{[^}]*amarelo/);
+  assert.match(button,/this\.svg\.append\(this\.knob\);/);
+  // The drag still picks (dragAim every frame while held) and a release out of the dead zone chooses it.
+  assert.match(button,/const d=dragAim\(this\.centre,this\.drag,hero,enemies,/);
+  assert.match(button,/if\(this\.dragging\)this\.dragPick=d\.pick\?\.id;else this\.track\(hero,enemies\);/);
+  assert.match(button,/if\(!cancel&&this\.dragging&&this\.dragPick\)deps\.choose\(this\.dragPick\);/);
+  // Shown only while dragging (the knob); the auto aim and the keys never show anything.
+  assert.match(button,/this\.hide\(!this\.dragging\);/);
   assert.match(button,/key\(down:boolean,source='espaco'\)\{\n\s*if\(!this\.on\)return;\n\s*if\(down\)this\.deps\.wake\(\);\n\s*this\.press\.key\(source,down\);/);
-  assert.doesNotMatch(button,/touchAim=true/,'never forced on');
 });
 
 test('the cone lies under the hero\'s shadow at the depth he is drawn at, in the city and outside it',()=>{

@@ -175,6 +175,16 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
  * UNO_ALERT_SECONDS later is destroyed (the team moves the car, or loses the square).
  */
 export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
+/**
+ * NEW-20261021-ORQ-barricada-construir part 2 (user, 21/10 ~00h10): the map already has barricadas de tralha.
+ * TRALHA_GROUPS groups of TRALHA_GROUP_CELLS squares are laid from the run's rng at the start; a hero taps one square:
+ * DESTRUIR (at once, DESTRUIR_PIX R$ to the wallet) or COLETAR (COLETAR_SECONDS standing by it, a hit cancels; the
+ * square becomes a kit:barricada in the inventory, CARREGA_MAX at most: 1 = one in the hands at a time). Building is the
+ * kit's place (free); a barricada is never bought.
+ */
+export const TRALHA_GROUPS=6,TRALHA_GROUP_CELLS=5,COLETAR_SECONDS=1.5,DESTRUIR_PIX=2,CARREGA_MAX=1;
+/** How far (u, from the square's edge) a hero reaches a barricada square to collect or destroy it. */
+export const TRALHA_REACH=3;
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{

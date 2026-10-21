@@ -78,7 +78,9 @@ const centre=(c:number,r:number)=>({x:(c+.5)*FREE_CELL,y:(r+.5)*FREE_CELL});
 /** Steps Ana onto the cell (the reach rule) and orders it. */
 function order(g:Rig,piece:string,c:number,r:number,req?:string,rot?:0|1){
   const at=centre(c,r);g.ana.x=at.x+FREE_CELL*1.5;g.ana.y=at.y;
-  return g.sys.build(g.ctx,'ana',{piece:piece as never,c,r,...(rot!==undefined?{rot}:{})},req);
+  const o={piece:piece as never,c,r,...(rot!==undefined?{rot}:{})};
+  // barricada-construir part 2: a barricada is never bought, only placed from its kit (the collected tralha).
+  return piece==='barricada'?g.sys.buildKit(g.ctx,'ana',o,req):g.sys.build(g.ctx,'ana',o,req);
 }
 /** Walkable cells on Chebyshev ring `k` (cells) around the cell of `at` (the car's by default), clockwise from the top-left. */
 function ring(k:number,at:{x:number;y:number}=CAR):{c:number;r:number}[]{

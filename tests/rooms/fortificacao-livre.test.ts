@@ -27,8 +27,8 @@ const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',impor
 const CITY={id:'cidade-nevada',version:manifest.version,hash:manifest.hash} as const;
 
 /** Ana alone in a city room (the chaveiro), in the first wave, with R$ 100 and the camp's material. */
-async function cityWave(){
-  const t0=Date.now(),room=new Room(t0,7,{cityText,cityRef:CITY,cityPlayable:true}),a=peer();
+async function cityWave(extra:{combat?:'manual'}={}){
+  const t0=Date.now(),room=new Room(t0,7,{cityText,cityRef:CITY,cityPlayable:true,...extra}),a=peer();
   room.connect(a,t0);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum',maps:clientCatalog(CITY)},t0);
   say(room,a,{t:'setMap',map:'cidade-nevada'},t0+OWNER_GAP_MS);await room.ready();
   let t=t0+OWNER_GAP_MS+100;
@@ -68,7 +68,7 @@ test('a muro by cell: built in a wave, on the wire as kind muro with its c/r; ma
     {piece:'muro',c:1,r:5000},{piece:'muro',c:1,r:1,rot:2},{piece:'muro',c:'1',r:1},{piece:7,c:1,r:1}])say(room,a,{t:'build',round,req:9,...bad},s.t);
   assert.equal(a.messages.filter(m=>m.t==='built').length,before);
   // The same cell again: taken.
-  say(room,a,{t:'build',round,req:2,piece:'barricada',c:cell.c,r:cell.r,rot:1},s.t);
+  say(room,a,{t:'build',round,req:2,piece:'muro',c:cell.c,r:cell.r},s.t);
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:2,ok:false,reason:'ocupado'});
 });
 
@@ -95,4 +95,30 @@ test('the root by cell and by site (the bots, the HUD of today); the level-up pa
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:3,ok:false,reason:'pausa'});
   say(room,a,{t:'build',round,req:4,site:buildPlanFor(room.sim.terrain).sites[2].id},s.t);
   assert.deepEqual(a.messages.findLast(m=>m.t==='built'),{t:'built',req:4,ok:false,reason:'pausa'});
+});
+
+test('barricada-construir part 2: the map\'s tralha on the wire; {t:destruir} pays, {t:coletar} answers twice and gives the kit',async()=>{
+  // The tralha goes into the inventory: the manual combat's rooms (D-051).
+  const s=await cityWave({combat:'manual'}),{room,a,ana}=s,round=room.run.snapshot().round;
+  s.tick(2);
+  const squares=lastStructures(a.frames).filter(x=>x.kind==='barricada'&&x.c!==undefined&&x.hp>0);
+  assert.ok(squares.length>=2,`tralha on the wire: ${squares.length}`);
+  const [one,two]=squares,stand=(q:any)=>{ana.x=(q.c+.5)*FREE_CELL+FREE_CELL;ana.y=(q.r+.5)*FREE_CELL;};
+  const grana=ana.grana??0;
+  stand(one);say(room,a,{t:'destruir',round,req:5,id:one.id},s.t);
+  assert.deepEqual(a.messages.findLast(m=>m.t==='destruiu'),{t:'destruiu',req:5,ok:true,pix:2});
+  assert.equal(ana.grana,grana+2);
+  // Malformed: dropped; another round: 'fase'.
+  const n=a.messages.length;
+  say(room,a,{t:'destruir',round,req:0,id:two.id},s.t);say(room,a,{t:'coletar',round,req:6,id:7},s.t);
+  assert.equal(a.messages.length,n);
+  say(room,a,{t:'coletar',round:round+1,req:6,id:two.id},s.t);
+  assert.deepEqual(a.messages.at(-1),{t:'coleta',req:6,ok:false,reason:'fase'});
+  stand(two);say(room,a,{t:'coletar',round,req:7,id:two.id},s.t);
+  const started=a.messages.findLast(m=>m.t==='coleta')!;
+  assert.equal(started.ok,true);assert.ok(Number.isSafeInteger(started.until));
+  s.tick(40);
+  assert.deepEqual(a.messages.findLast(m=>m.t==='coleta'),{t:'coleta',req:7,ok:true,done:true});
+  assert.ok(ana.build.weapons.some(w=>w.id==='kit:barricada'),'the kit in the inventory');
+  assert.ok(!lastStructures(a.frames).some(x=>x.id===two.id&&x.hp>0),'the square left the map');
 });

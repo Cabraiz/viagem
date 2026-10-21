@@ -246,17 +246,23 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     return spawned>0;
   }
 
-  /** Instant wave: every live enemy inside any cone is hit once per volley. One fire event per direction. */
+  /**
+   * Instant wave: every live enemy inside any cone is hit once per volley. One fire event per direction.
+   * Manual combat with the mouse's aim (cone-ataque-melee, PlayerInput.aim): the wave goes where the mouse points and
+   * strikes only who is inside that cone; with nobody there it is a swing at the air (the cone shows, the cooldown runs),
+   * like LoL. Without an aim (a phone, a bot): the auto aim below.
+   */
   function fireCone(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
+    const aim=opts.manual?player.aim:undefined;
     // D-051 manual combat: the wave goes where the aim points (nobody in reach: no wave).
-    const aimed=opts.manual?manualTargets(ctx,player,w.area,1,true)[0]:undefined;
-    if(opts.manual&&!aimed)return false;
-    const half=w.def.coneHalfAngle??.6,face=aimed?towardOr(player,aimed):facingOf(player);
+    const aimed=opts.manual&&!aim?manualTargets(ctx,player,w.area,1,true)[0]:undefined;
+    if(opts.manual&&!aim&&!aimed)return false;
+    const half=w.def.coneHalfAngle??.6,face=aim??(aimed?towardOr(player,aimed):facingOf(player));
     scratch.length=0;
     ctx.enemyIndex.query(player.x,player.y,w.area+1.5,scratch);
     const near=scratch.filter(e=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=w.area+e.radius)
       .sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
-    if(!near.length)return false;
+    if(!near.length&&!aim)return false;
     let dirs=Array.from({length:w.amount},(_,i)=>rotate(face,2*Math.PI*i/w.amount));
     const inCone=(e:EnemyState)=>{
       const dx=e.x-player.x,dy=e.y-player.y,dist=Math.hypot(dx,dy);
@@ -266,7 +272,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     // A player standing still keeps an old facing, so a hug from behind was never answered: when the facing
     // cones would hit nobody, the wave turns to the tapped target if it is in reach (like targets()), otherwise
     // to the nearest enemy in reach (ties by id), instead of shouting at the air.
-    if(!near.some(inCone)){
+    if(!aim&&!near.some(inCone)){
       const tapped=player.target?near.find(e=>e.id===player.target):undefined;
       const target=tapped??near.reduce((best,e)=>Math.hypot(e.x-player.x,e.y-player.y)<Math.hypot(best.x-player.x,best.y-player.y)?e:best);
       const dx=target.x-player.x,dy=target.y-player.y,dist=Math.hypot(dx,dy)||1;

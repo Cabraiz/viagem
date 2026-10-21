@@ -195,9 +195,9 @@ test('settings map line: "Cidade Nevada" with version and short hash in the city
   assert.doesNotMatch(explore,/relevo procedural/,'the text lives in mapInfoText only');
 });
 
-test('result stats line: "Cidade Nevada" in the city, "seed N" elsewhere (explore passes the room\'s map)',()=>{
-  assert.equal(resultSeedText({seed:'12'}),'seed 12');
-  assert.equal(resultSeedText({seed:'9',map:'infinito'}),'seed 9');
+test('result stats line: "Cidade Nevada" in the city, nothing elsewhere (no seed on screen) (explore passes the room\'s map)',()=>{
+  assert.equal(resultSeedText({seed:'12'}),'');
+  assert.equal(resultSeedText({seed:'9',map:'infinito'}),'');
   assert.equal(resultSeedText({seed:'0',map:'cidade-nevada'}),'Cidade Nevada');
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
   assert.match(explore,/\.\.\.\(net\?\.map\.id==='cidade-nevada'\?\{map:net\.map\.id\}:\{\}\)/);

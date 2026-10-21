@@ -7,10 +7,12 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutOf, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
+import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
@@ -46,23 +48,29 @@ try {
 } catch { /* armazenamento indisponível: criação continua sem persistência */ }
 
 // menu-estadio (the user, 21/10): no Personagem/Classes tabs, one screen. The approved stadium behind everything, the
-// chosen hero big, dancing on the bar, and on the side the title, the class name, the row of heroes between ‹ › and
-// "Esse sou eu!". Title, class and button are HTML over the picture, so the text can be translated and changed.
+// chosen hero big, dancing on the bar, and on the side the letreiro with the hero's name, the plaque with his nickname
+// (ui/apelidos.ts; botao-selecionar), the row of heroes between ‹ › and "Selecionar". Letreiro, plaque and button are
+// HTML over the picture, so the text can be translated and changed. The name field only after "Selecionar"
+// (nome-depois-de-selecionar, ui/menu-etapa.ts): the row gives its place to [‹] [chosen tile] [name], the button enters.
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
-  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div></div>
+  <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-  <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title">
-    <h1 id="screen-title" class="estadio-titulo"><span>BORA PRA</span> <span>TORCIDA!</span></h1>
+  <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
+    <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>
       <button id="next" class="round-button" aria-label="Próximo personagem">›</button>
     </nav>
-    <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" />
-    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span>ESSE SOU EU!</button>
+    <div class="estadio-nome" hidden>
+      <button type="button" id="trocar" class="round-button" aria-label="Trocar personagem">‹</button>
+      <span id="escolhido" class="class-card estadio-escolhido" aria-hidden="true"></span>
+      <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" enterkeyhint="go" />
+    </div>
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
@@ -139,6 +147,25 @@ function lazySrc(img: HTMLImageElement, url: string) {
 addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
+// A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
+// the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
+const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!,cutoutScreen=matchMedia(CUTOUT_QUERY);
+let cutoutHold:(()=>void)|undefined;
+function showCutout() {
+  const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
+  const spot=cut&&placeCutout({w:stage.clientWidth,h:stage.clientHeight},STADIUM.wide,cut);
+  stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
+  if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
+  else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
+  if(!cut||!spot) return;
+  const sizes=`${Math.round(spot.w)}px`,srcset=cut.files.map(([w,file])=>`${file} ${w}w`).join(', ');
+  if(cutoutImg.sizes!==sizes) cutoutImg.sizes=sizes;
+  if(cutoutImg.getAttribute('srcset')!==srcset) {cutoutImg.srcset=srcset;cutoutImg.src=cut.files[cut.files.length-1][1];}
+  const css=`left:${Math.round(spot.x)}px;top:${Math.round(spot.y)}px;width:${Math.round(spot.w)}px;height:${Math.round(spot.h)}px`;
+  if(cutoutImg.dataset.box!==css) {cutoutImg.dataset.box=css;cutoutImg.style.cssText=css;}
+}
+new ResizeObserver(showCutout).observe(stage);
+cutoutScreen.addEventListener('change',showCutout);
 const thumbUrl=(hero: HeroClass)=>`/art/portraits/${hero.id}-thumb.webp`;
 function showPortrait(hero: HeroClass, interactive: boolean) {
   menuDance.show(hero.id);
@@ -175,7 +202,10 @@ function setArt(id: string,hero: HeroClass) {
 }
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}"><img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" /></button>`).join('');
+// The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}">${hasNewArt(hero.id)
+  ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
+  :'<span class="card-misterio" aria-hidden="true">?</span>'}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
@@ -185,8 +215,17 @@ function showInRow(smooth: boolean) {
 }
 new ResizeObserver(()=>showInRow(false)).observe(rowList);
 function renderSelected(announce=false) {
-  // Caps written in the text, not by CSS (design lint): the class pill shouts like the reference.
-  text('class-name',selected.name.toLocaleUpperCase('pt-BR'));
+  // Caps written in the text, not by CSS (design lint): the letreiro is the hero's name (a long one shrinks the sign,
+  // --titulo-fit) and the pill his nickname or, until he gets one, his subtitle (ui/apelidos.ts).
+  // The hero's own letreiro picture (E7) replaces both when it exists; its alt says what it shows.
+  const lines=titleLines(selected.name),title=document.getElementById('screen-title')!,[top,big]=title.querySelectorAll('span');
+  const sign=title.querySelector<HTMLImageElement>('.estadio-letreiro')!,picture=letreiroOf(selected.id),plaque=plaqueText(selected);
+  top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
+  if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
+  sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
+  const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
+  text('class-name',plaque);
+  showCutout(); // first: a hero standing in place never starts his dance
   showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
@@ -214,8 +253,32 @@ nameInput.value=nickname;
 nameInput.addEventListener('input',()=>{nickname=nameInput.value;nameInput.setCustomValidity('');});
 // A name longer than the rooms take is cut at a whole word with "…" (client/ui/nick.ts) when the field is left, not mid-word.
 nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameInput.value);});
+// Step 2 (nome-depois-de-selecionar): "Selecionar" locks the hero, the name field takes the row's place and the button
+// enters. ‹, Escape or the dialog's "Trocar de personagem" go back to the row.
+const etapa={section:document.getElementById('personagem')!,row:document.querySelector<HTMLElement>('.estadio-fileira')!,
+  nameRow:document.querySelector<HTMLElement>('.estadio-nome')!,input:nameInput,label:document.querySelector<HTMLElement>('.estadio-confirmar-texto')!};
+function chooseHero() {
+  document.getElementById('escolhido')!.innerHTML=hasNewArt(selected.id)
+    ?`<img class="card-portrait" draggable="false" src="${thumbUrl(selected)}" alt="" width="256" height="256" decoding="async" />`
+    :'<span class="card-misterio">?</span>';
+  // A mouse gets the cursor in the field; a touch only when it is empty (a saved name never pops the keyboard for nothing).
+  showEtapa(etapa,'nome',{focusName:matchMedia('(pointer: fine)').matches||!nameInput.value.trim()});
+}
+function backToRow() {
+  showEtapa(etapa,'escolher');
+  showInRow(false);
+  rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`)?.focus({preventScroll:true});
+}
+document.getElementById('trocar')!.addEventListener('click',backToRow);
+nameInput.addEventListener('keydown',event=>{
+  const key=nameKey(event);
+  if(!key) return;
+  event.preventDefault();
+  if(key==='entrar') document.getElementById('confirm')!.click(); else backToRow();
+});
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
+  if(etapaOf(etapa)==='escolher') {chooseHero();return;}
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
   nameInput.setCustomValidity('');
   nickname=nameInput.value=fitName(nickname);
@@ -246,7 +309,7 @@ let invite=inviteCode(location.search);
 if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
 const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
 coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
-document.getElementById('back-to-menu')!.addEventListener('click',()=>dialog.close());
+document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
 const island=islandFlag(location.search);

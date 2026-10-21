@@ -48,8 +48,8 @@ export const HEAD_ROOM=80;
 /** Room a tag (a caído's clock, a group's distance, the base's horn seconds) takes above its ficha, so stacked arrows never cover it. */
 export const TAG_ROOM=16;
 /**
- * Room a caído's first name takes under its ficha ("Concursei", design review janela-caido). The name is never wider
- * than the ficha (Londrina 13 px, at most 9 letters as the team strip cuts it), so it fits wherever the arrow fits.
+ * Room a caído's first name takes under its ficha ("Concurseira", design review janela-caido). The name is never wider
+ * than the ficha (Londrina 13 px, at most RAIL_MAX = 11 letters, rules/names.ts railName), so it fits wherever the arrow fits.
  */
 export const NAME_ROOM=16;
 /**

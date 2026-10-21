@@ -80,7 +80,9 @@ const OVERLAY_DEPTH=.25,HALO_DEPTH=.4;
 
 interface Loop {sprite:Phaser.GameObjects.Sprite;key:string;fps:number;frames:number;first:number;flicker:boolean}
 interface Light {kind:LightKind;key:string;halo:Phaser.GameObjects.Image;pool:Phaser.GameObjects.Image;alpha:number;poolAlpha:number;loop?:Loop}
-interface Attached {entry:DecorEntry;key:string;rect:Rect;loops:Loop[];light?:Light;insulators?:Pt[];depth:number;visible:boolean}
+interface Attached {entry:DecorEntry;key:string;rect:Rect;loops:Loop[];light?:Light;insulators?:Pt[];depth:number;visible:boolean;
+  /** Its first frame is on and nothing steps while the layer is held still. */
+  still?:boolean}
 
 function reducedMotion(){
   try{return typeof window!=='undefined'&&!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}catch{return false;}
@@ -92,10 +94,13 @@ export class CityLive {
   /** Every pole pair of the map (rules.polePairs), by pole key. */
   private readonly pairsOf=new Map<string,[string,string][]>();
   private readonly nests=new Map<string,{img:Phaser.GameObjects.Image;art:string}>();
-  private readonly reduced:boolean;
+  /** prefers-reduced-motion. */
+  private readonly motionReduced:boolean;
+  /** Reduced motion or the Leve quality level (setStill): loops and lights hold their first frame, set once. */
+  private reduced:boolean;
 
   constructor(private readonly scene:Phaser.Scene,decor:readonly DecorEntry[],private readonly options:CityLiveOptions){
-    this.reduced=options.reduced??reducedMotion();
+    this.motionReduced=this.reduced=options.reduced??reducedMotion();
     for(const pair of polePairs(decor))for(const k of pair){const l=this.pairsOf.get(k);if(l)l.push(pair);else this.pairsOf.set(k,[pair]);}
     this.makeGlow();
   }
@@ -128,12 +133,20 @@ export class CityLive {
     this.attached.delete(key);
   }
 
+  /** Quality Leve (CityLayer.setStill): loops and lights go to their first frame and stay there; off, they step again. */
+  setStill(on:boolean){
+    const reduced=this.motionReduced||on;if(reduced===this.reduced)return;
+    this.reduced=reduced;for(const a of this.attached.values())a.still=false;
+  }
+
   /** Per frame: loops and lights inside the camera step; the rest hide. */
   update(camera:Rect,nowMs:number){
     for(const a of this.attached.values()){
       const on=onCamera(a.rect,camera);
       if(on!==a.visible){a.visible=on;for(const l of a.loops)l.sprite.setVisible(on);if(a.light){a.light.halo.setVisible(on);a.light.pool.setVisible(on);}}
       if(!on)continue;
+      // Held still: the first frame once (attach, setStill), then nothing per frame.
+      if(this.reduced){if(a.still)continue;a.still=true;}
       for(const l of a.loops)l.sprite.setFrame(l.first+loopFrame(nowMs,l.fps,l.frames,l.key,this.reduced));
       if(a.light){
         const L=a.light,frame=L.loop?loopFrame(nowMs,L.loop.fps,L.loop.frames,L.loop.key,this.reduced):0;

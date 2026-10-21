@@ -23,6 +23,7 @@ import {ASLEEP_PER_VIEWER,INTEREST_HYSTERESIS,INTEREST_RADIUS} from '../src/cont
 import {nodesNear,remainingOf,touchedNode,WORK_PER_UNIT} from '../src/sim/index.ts';
 import type {BuyResult} from '../src/sim/index.ts';
 import {DEFENSES,RAIL,phaseOf,type DefenseState,type FreeOrder,type PieceState,type TowerResult} from '../src/sim/index.ts';
+import type {ColetaOutcome} from '../src/sim/index.ts';
 import type {RunState} from '../src/sim/index.ts';
 import {InputTrack,STEP_MS} from '../src/protocol/index.ts';
 import {ShameTracker} from '../src/sim/index.ts';
@@ -710,6 +711,22 @@ export class Simulation {
     return order==='near'?inv.placeNear(id,slot):inv.place(id,slot,order,requestId);
   }
   /**
+   * barricada-construir part 2 ({t:'destruir'} / {t:'coletar'}): a barricada square `piece` (sim id) the hero reaches;
+   * destruir pays the hero at once, coletar starts the hero's coleta (its end comes back in `coletas` after a step).
+   */
+  destruir(id:string,piece:string){
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false as const,reason:'player' as const};
+    return this.systems.stonewards.destruir(this.world,id,piece);
+  }
+  coletar(id:string,piece:string,req?:number){
+    const p=this.players.get(id);
+    if(this.result||!p?.online||p.spectator)return {ok:false as const,reason:'player' as const};
+    return this.systems.stonewards.coletar(this.world,id,piece,req);
+  }
+  /** The coletas that ended on the last step (the room tells each collector). */
+  coletas:ColetaOutcome[]=[];
+  /**
    * D-052 the car's rope ({t:'puxar'}): hook (`on`) or drop it for `id`, validated by the sim (standing, near the car,
    * nobody else on it). `requestId` makes a resent tap apply once. Refused once the run is decided, without the
    * objective, or for an offline or spectating player ('fase').
@@ -860,6 +877,7 @@ export class Simulation {
     }
     // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.
     this.casts=[];
+    this.coletas=this.systems.stonewards.drainColetas();
     for(const [id,t] of this.tracks)if(t.tapped!==undefined){const p=this.players.get(id);if(p)this.casts.push({id,seq:t.tapped,ok:p.skillTick!==castBefore.get(id),readyTick:skillReadyTick(p)});}
     if(!this.result)this.result=this.pending.victory?'victory':this.pending.defeat?'defeat':undefined;
     this.pending=undefined;

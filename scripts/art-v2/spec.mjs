@@ -356,6 +356,9 @@ export const GROUPS=Object.freeze({
   },
   base:{
     title:'5. Base Stonewards',input:'cenario/base',output:'public/art/city/base',kind:'views',kinds:['views','frames'],views:4,pieces:'any',expected:BASE,
+    // `freeFootX`: pieces whose lowest pixels are not their centre (the sofa barricade's shopping cart reaches lower
+    // than the sofa, at the side): only the foot LINE is checked, like the towers.
+    freeFootX:{barricada:true},
   },
   props:{
     title:'6. Props e decoração',input:'cenario/props',output:'public/art/city/props',kind:'views',kinds:['views','nineslice'],views:4,pieces:'any',expected:PROPS,

@@ -53,7 +53,7 @@ export function createTopBar():HudPart{
       const clock=round.chaveiro,count=nests?nestCount(view):undefined;
       put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
         putHidden(eta,!clock);
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep">·</i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);
@@ -67,7 +67,7 @@ export function createTopBar():HudPart{
     const info=bossInfo(view);
     putHidden(boss,!info);
     if(info){
-      put('boss',info.enraged?`${info.name} · FURIOSO`:info.name,v=>{bossName.textContent=v;});
+      put('boss',info.enraged?`${info.name} tá furioso`:info.name,v=>{bossName.textContent=v;});
       put('bossHp',`scaleX(${info.fraction})`,v=>{bossFill.style.transform=v;});
       boss.classList.toggle('rh-enraged',info.enraged);
     }
@@ -89,7 +89,7 @@ const intervalLines=[
 export interface Marquee {title:string;subtitle?:string;tone:'round'|'interval'|'boss'|'evento'}
 
 /** Marquee copy for a round event; pure so tests can check the copy. */
-export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10,word:'Round'|'Onda'='Round'):Marquee|undefined{
+export function marqueeFor(event:{index:number;phase:'wave'|'prepare'|'end';name?:string;modifier?:string},total=10,word:'Rodada'|'Onda'='Rodada'):Marquee|undefined{
   if(event.phase==='wave'){
     const boss=event.index>=total;
     return {title:event.name||`${word} ${event.index}`,subtitle:event.modifier??(boss?'O Síndico Supremo quer falar com você':undefined),tone:boss?'boss':'round'};

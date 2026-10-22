@@ -7,7 +7,7 @@ import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
-import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameMoved, moveOf, placeCutout, placeOnBar, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY, type Move, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
+import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
@@ -87,10 +87,11 @@ const tallStadium=matchMedia(STADIUM_TALL_QUERY),cutoutScreen=matchMedia(CUTOUT_
 // The PC shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
 // the bar and the hero on it are never cut. Its size and position in px; the CSS keeps `cover` until this runs.
 const stageArt=():StadiumArt=>tallStadium.matches?STADIUM.tall:cutoutScreen.matches?STADIUM.bleed:STADIUM.wide;
-// A hero's own background moved with him (clt-mesmo-lugar, stadium.ts lugar): set when it is swapped in (showStageFundo).
-let stageMove:Move=SEM_MOVE;
+// The hero whose picture the stage shows (his own background moved with him, clt-mesmo-lugar; or the stadium he stands
+// in), framed for him (heroi-grande-por-tela, stadium.ts frameHero): set together with the picture (showStageFundo).
+let stageCut:StadiumCutout|undefined;
 function frameStage(box:{w:number;h:number}) {
-  const art=stageArt(),frame=art.focal&&box.w>0&&box.h>0?frameMoved(box,art,stageMove):undefined;
+  const art=stageArt(),frame=art.focal&&box.w>0&&box.h>0?(stageCut?frameHero(box,art,stageCut):frameArt(box,art)):undefined;
   const size=frame?`${Math.round(art.w*frame.s)}px ${Math.round(art.h*frame.s)}px`:'',at=frame?`${Math.round(frame.ox)}px ${Math.round(frame.oy)}px`:'';
   if(stage.style.backgroundSize!==size) stage.style.backgroundSize=size;
   if(stage.style.backgroundPosition!==at) stage.style.backgroundPosition=at;
@@ -168,16 +169,16 @@ const frontImg=stage.querySelector<HTMLImageElement>('.estadio-mureta')!;
 let cutoutHold:(()=>void)|undefined;
 // A cutout with its own background (tela-clt-pose2) swaps the stage's picture once it is decoded (never a blank stage);
 // the CSS's stadium otherwise. Same geometry as the stadium's bleed, so frameStage's size and position fit both.
-let stageFundo='';
-function showStageFundo(url:string|undefined,move:Move=SEM_MOVE) {
-  const want=url?`url("${url}")`:'';
-  if(want===stageFundo) return;
-  stageFundo=want;
+let stageFundo='',stageWant:StadiumCutout|undefined;
+function showStageFundo(cut:StadiumCutout|undefined) {
+  const url=cut?.fundo,want=url?`url("${url}")`:'';
+  if(want===stageFundo&&cut===stageWant) return;
+  stageFundo=want;stageWant=cut;
   // The picture and its framing change together, so neither is ever drawn with the other's.
-  const swap=(image:string,m:Move)=>{stage.style.backgroundImage=image;stageMove=m;frameStage({w:stage.clientWidth,h:stage.clientHeight});};
-  if(!url) {swap('',SEM_MOVE);return;}
+  const swap=()=>{stage.style.backgroundImage=want;stageCut=cut;frameStage({w:stage.clientWidth,h:stage.clientHeight});};
+  if(!url) {swap();return;}
   const img=new Image();img.src=url;
-  void img.decode().catch(()=>{}).then(()=>{ if(stageFundo===want) swap(want,move); });
+  void img.decode().catch(()=>{}).then(()=>{ if(stageWant===cut) swap(); });
 }
 function showCutout() {
   const cut=cutoutScreen.matches?cutoutOf(selected.id):undefined;
@@ -186,7 +187,7 @@ function showCutout() {
   stage.classList.toggle('com-recorte',!!spot);cutoutImg.hidden=!spot;
   if(spot&&!cutoutHold) cutoutHold=menuDance.hold();
   else if(!spot&&cutoutHold) {menuDance.show(selected.id);cutoutHold();cutoutHold=undefined;} // the new hero's dance, not the last one's
-  showStageFundo(spot?cut?.fundo:undefined,cut?moveOf(cut):SEM_MOVE);
+  showStageFundo(spot?cut:undefined);
   if(!cut||!spot) {showFront(box,undefined);return;}
   // The file by the shown width x devicePixelRatio (never the 2/3 copy stretched on a big or HiDPI screen).
   const file=cutoutFile(cut,spot.w,devicePixelRatio);
@@ -198,10 +199,10 @@ function showCutout() {
 function showFront(box:{w:number;h:number},cut:StadiumCutout|undefined) {
   const front=cut?.frente,art=STADIUM.bleed,show=!!front&&!cutoutImg.hidden&&box.w>0&&box.h>0;
   frontImg.hidden=!show;
-  if(!front||!show) return;
+  if(!cut||!front||!show) return;
   if(frontImg.getAttribute('src')!==front.file) frontImg.src=front.file;
   // The background's px exactly as frameStage draws it (its size and offset rounded), so the bar meets itself.
-  const {s,ox,oy}=frameArt(box,art),sx=Math.round(art.w*s)/art.w,sy=Math.round(art.h*s)/art.h,f=art.focal;
+  const {s,ox,oy}=frameHero(box,art,cut),sx=Math.round(art.w*s)/art.w,sy=Math.round(art.h*s)/art.h,f=art.focal;
   const css=`left:${Math.round(ox)+(f.x+front.x)*sx}px;top:${Math.round(oy)+(f.y+front.y)*sy}px;width:${front.w*sx}px;height:${front.h*sy}px`;
   if(frontImg.dataset.box!==css) {frontImg.dataset.box=css;frontImg.style.cssText=css;}
 }

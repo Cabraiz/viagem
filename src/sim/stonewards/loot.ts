@@ -28,8 +28,7 @@ import {isStanding} from '../revive.ts';
 import {AvenuePlanner} from '../city/avenues.ts';
 import {cityLayoutFrom,cityTerrainOf} from '../city/grid.ts';
 import {cityRunStart} from '../city/tutorial.ts';
-import {CRATE_BODY_RADIUS} from '../../rules/crate-size.ts';
-import {CITY_MAP_SCALE,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
+import {CITY_MAP_SCALE,CRATE_BODY_RADIUS,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
 import type {NodeInfo} from './resources.ts';
 import type {ResourceKind} from './state.ts';
 

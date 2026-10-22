@@ -48,6 +48,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
+  'aura':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&arma=pistola&aura=3&hero=112,182',descricao:'upgrades-megabonk: o anel de fumaça do Defumador (aura de dano, nível 3) em volta do herói'},
   'oferta-tomos':{sandbox:'hud',query:'state=offer-tomos&frozen=1',descricao:'upgrades-megabonk: os tomos na tela de nível (+1 projétil, aura, estilingue, dano)'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
   'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},

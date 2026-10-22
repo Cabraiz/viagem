@@ -111,7 +111,7 @@ export class ArsenalFx{
     this.rings=this.track(scene.add.graphics().setDepth(RING_DEPTH).setName('arsenal-aneis'));
     this.arcs=this.track(scene.add.graphics().setDepth(FX_DEPTH).setName('arsenal-golpes'));
     this.cone=new MeleeCone(scene,options.projector,CONE_DEPTH);this.track(this.cone.object);
-    this.aura=new AuraRings(scene,options.projector,CONE_DEPTH-.5);this.track(this.aura.object);
+    this.aura=new AuraRings(scene,options.projector,CONE_DEPTH-.5);
     const image=()=>this.track(scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{o.image.setVisible(active).setActive(active);if(!active)o.image.setAlpha(1).setScale(1).setRotation(0);};
     this.shots=new Ring<ShotFx>(()=>({image:image(),born:0,x:0,y:0,angle:0,look:FIRE_LOOK.pistola,frames:1,scale:1}),showImage,24);
@@ -271,6 +271,7 @@ export class ArsenalFx{
   }
 
   destroy(){
+    this.aura.destroy();
     this.shots.clear();this.bursts.clear();this.hands.clear();
     for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
     this.ringLooks.clear();

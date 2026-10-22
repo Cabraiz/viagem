@@ -7,10 +7,11 @@
 import type Phaser from 'phaser';
 import {AURA,classBonusOf,computeStats} from '../../rules/index.ts';
 import type {Projector} from './projector.ts';
+import {CITY_UNDER} from './melee-cone.ts';
 
 type Pt={x:number;y:number};
 /** Smoke white with a lilac rim (the defumador's sticker), Breu under the rim so it reads on snow. */
-export const AURA_FILL=0xe9e2f5,AURA_RIM=0xb9a6e0,AURA_FILL_ALPHA=.16,AURA_RIM_ALPHA=.75;
+export const AURA_FILL=0xd9cdf2,AURA_RIM=0x9d82d9,AURA_FILL_ALPHA=.3,AURA_RIM_ALPHA=.95;
 const BREU=0x1e1530,POINTS=48;
 
 /** World radius of a hero's aura from its view (passives, class), or 0 without the Defumador. */
@@ -23,25 +24,33 @@ export function auraRingRadius(p:{classId:string;weapons:readonly {id:string;lev
 /** Fill opacity at `now` (ms): a slow breath around AURA_FILL_ALPHA; steady with reduced motion. */
 export const auraAlpha=(now:number,reduced:boolean)=>reduced?AURA_FILL_ALPHA:AURA_FILL_ALPHA*(1+.35*Math.sin(now*.003));
 
+/**
+ * One Graphics per ring: in the city the ground is pieces at actor depths (projector.depthOverride), so each ring lies
+ * just under its hero (melee-cone CITY_UNDER, under the shadow); elsewhere on the ground layer's depth.
+ */
 export class AuraRings{
-  private g:Phaser.GameObjects.Graphics;
+  private pool:Phaser.GameObjects.Graphics[]=[];
   private pts:Pt[]=Array.from({length:POINTS},()=>({x:0,y:0}));
-  private projector:Projector;
+  private projector:Projector;private scene:Phaser.Scene;private depth:number;
+  /** Every Graphics made so far (the owner tracks them for destroy). */
+  readonly made:Phaser.GameObjects.Graphics[]=[];
   constructor(scene:Phaser.Scene,projector:Projector,depth:number){
-    this.projector=projector;
-    this.g=scene.add.graphics().setDepth(depth).setName('aura-defumador');
+    this.scene=scene;this.projector=projector;this.depth=depth;
   }
-  get object(){return this.g;}
   /** Redraws every ring: `rings` world centre and radius (u), `body` the line scale. */
   draw(rings:readonly {x:number;y:number;r:number}[],now:number,body:number,reduced:boolean){
-    const g=this.g;g.clear();
-    g.setVisible(rings.length>0);
-    for(const {x,y,r} of rings){
-      for(let i=0;i<POINTS;i++){const t=2*Math.PI*i/POINTS;this.projector.project(x+Math.cos(t)*r,y+Math.sin(t)*r,this.pts[i]);}
+    while(this.pool.length<rings.length){const g=this.scene.add.graphics().setName('aura-defumador');this.pool.push(g);this.made.push(g);}
+    this.pool.forEach((g,i)=>{
+      g.clear();
+      const ring=rings[i];
+      if(!ring){g.setVisible(false);return;}
+      const {x,y,r}=ring,p=this.projector;
+      g.setVisible(true).setDepth(p.depthOverride?p.depth(x,y)-CITY_UNDER:this.depth);
+      for(let k=0;k<POINTS;k++){const t=2*Math.PI*k/POINTS;p.project(x+Math.cos(t)*r,y+Math.sin(t)*r,this.pts[k]);}
       g.fillStyle(AURA_FILL,auraAlpha(now,reduced)).fillPoints(this.pts,true,true);
-      g.lineStyle(Math.max(2,4*body),BREU,.35).strokePoints(this.pts,true,true);
-      g.lineStyle(Math.max(1,2*body),AURA_RIM,AURA_RIM_ALPHA).strokePoints(this.pts,true,true);
-    }
+      g.lineStyle(Math.max(3,6*body),BREU,.5).strokePoints(this.pts,true,true);
+      g.lineStyle(Math.max(2,3*body),AURA_RIM,AURA_RIM_ALPHA).strokePoints(this.pts,true,true);
+    });
   }
-  destroy(){this.g.destroy();}
+  destroy(){for(const g of this.made)g.destroy();this.made.length=0;this.pool.length=0;}
 }

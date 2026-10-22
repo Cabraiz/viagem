@@ -5,6 +5,7 @@
  * holds every group's manifest: {version:2, groups:{[group]:{output, pieces:{[id]:ArtPiece}}}}.
  * Pure (no Phaser, no DOM): renderers ask `artPiece(group,id)` / `artUrl(group,file)`; loading is `loadArtManifest`.
  */
+import {STUDY} from '../render/estudo-flutuando.ts';
 export interface ArtPage {file:string;columns:number;rows:number;firstFrame:number;frameCount:number}
 export interface ArtFile {
   /** Single-page sheet, relative to the group's output folder. */
@@ -99,7 +100,7 @@ export function parseArtIndex(value:unknown):ArtIndex{
   for(const [id,g] of safeEntries(value.groups)){
     if(!isObject(g)||typeof g.output!=='string'||!/^public\/art\/[a-z0-9/_-]+$/.test(g.output)||g.output.includes('..')||!isObject(g.pieces))continue;
     const pieces:Record<string,ArtPiece>=Object.create(null);
-    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos');if(piece)pieces[pid]=piece;}
+    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos'&&!STUDY?.cheia);if(piece)pieces[pid]=piece;}
     groups[id]={output:g.output,pieces};
   }
   return {version:2,groups};

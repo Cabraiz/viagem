@@ -8,6 +8,7 @@
  * and imports Phaser as a type, so this module loads without Phaser.
  */
 import type Phaser from 'phaser';
+import {STUDY,studyEnemyUrl} from '../render/estudo-flutuando.ts';
 import {artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
@@ -231,7 +232,7 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
-      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      const lite=studyEnemyUrl(url,liteEnemyUrl(url));if(file.liteCell)LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }
@@ -641,7 +642,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
   let copy:CityVariant|undefined,copyTop:CityVariant|undefined,copyMid:CityVariant|undefined;
-  if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
+  if(city&&city.active()&&(STUDY?.aro==='breu'||city.rimAt(actor.x??0,actor.y??0)==='breu')){
     copy=city.variant(frame.key,scale);
     const same=(v:CityVariant|undefined)=>!!v&&!!copy&&v.geom.slotW===copy.geom.slotW&&v.geom.slotH===copy.geom.slotH;
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}

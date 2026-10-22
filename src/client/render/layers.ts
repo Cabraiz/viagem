@@ -32,6 +32,7 @@ import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIn
 import {sunlit} from './light-actors.ts';
 import {contactWidth} from './shadow-rules.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
+import {STUDY,STUDY_CONTACT,STUDY_CONTACT_KEY,ensureStudyContact} from './estudo-flutuando.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
@@ -345,6 +346,7 @@ export class HordeRenderer{
       if(!active)o.image.clearTint().setAlpha(1).setScale(1).setRotation(0).setFlipX(false);
     };
     ensureCityShadow(scene);
+    if(STUDY?.contato)ensureStudyContact(scene.textures);
     const shadow=()=>this.track(scene.add.image(0,0,hordeShadowKey(this.cityOn,FX.shadow)).setDepth(-9980).setVisible(false).setActive(false));
     const bar=(key:string,depth:number)=>this.track(scene.add.image(0,0,key).setOrigin(0,0).setDepth(depth).setVisible(false).setActive(false));
     const showActor=(o:{image:Image;shadow:Image},active:boolean)=>{
@@ -782,7 +784,10 @@ export class HordeRenderer{
     const old=art.width*size*fit*(flying?.45:.66)*body,feet=ENEMY_FEET[a.art];
     const cellW=feet?Math.abs(a.image.frame.width*a.image.scaleX):0,shadow=flying?old:contactWidth(feet,a.asleep,cellW,old);
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
-    this.drawSilhouette(a,q.x,q.y,flying);
+    // Study inimigos-flutuando V2 (?estudo=contato, debug only): a smaller, dark, soft contact shadow.
+    if(STUDY?.contato){if(a.shadow.texture.key!==STUDY_CONTACT_KEY)a.shadow.setTexture(STUDY_CONTACT_KEY);a.shadow.setScale(shadow*.95/STUDY_CONTACT.w,shadow*.38/STUDY_CONTACT.h);}
+    if(STUDY?.semContato)a.shadow.setVisible(false);
+    this.drawSilhouette(a,q.x,q.y,flying||STUDY?.sil===false);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}

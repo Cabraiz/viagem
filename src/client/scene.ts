@@ -10,7 +10,7 @@ import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {GHOST_ALPHA,GHOST_TINT,GhostCam,ghostBounds,ghostSpeed} from './ghost.ts';
-import {FollowCamera,StepLerp,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -256,7 +256,11 @@ export class IslandScene extends Phaser.Scene {
   private readonly fpsWatch=new FpsWatch(QUALITY_WATCH);
   /** rAF time of the last drawn frame: Phaser's own delta is smoothed and clamped at 200 ms, too kind to a slow phone. */
   private lastFrameAt?:number;
+  /** rAF ms since the previous frame (0 on the first): the step clock's time (framing.ts stepClock). */
+  private frameMs=0;
   private accumulator=0;
+  /** Where the prediction was drawn last frame (before the correction): the frame's own motion for the fade. */
+  private lastSmooth?:Point;
   private attackTarget?:string;
   private skillEffects?:Graphics;
   private displayed?:Point;
@@ -910,7 +914,7 @@ export class IslandScene extends Phaser.Scene {
   /** Frames per second of the last whole watch windows (lab report and DEV probe). */
   get fpsHistory():readonly number[]{return this.fpsWatch.history;}
   private watchFrames(time:number){
-    const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
+    const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;this.frameMs=last===undefined?0:time-last;
     if(net&&this.booted){
       const was=this.catchUp.on;
       if(this.catchUp.update(document.hidden?0:net.backlog.ms,time)!==was){this.frameGate();this.fpsWatch.taint();}
@@ -1187,7 +1191,7 @@ export class IslandScene extends Phaser.Scene {
       this.hooks.runView?.(runView);
     }
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
-    this.accumulator=Math.min(this.accumulator+delta/1000,.2);
+    this.accumulator=stepClock(this.accumulator,this.frameMs);
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
     const mouse=this.mouseGround();
@@ -1217,7 +1221,8 @@ export class IslandScene extends Phaser.Scene {
       effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
     // The reconcile error fades at most CORRECTION_MAX_PX per frame on screen (one world unit's px at this zoom).
-    const unitPx=this.unitPx(smooth);this.correction.step(delta,unitPx);
+    const unitPx=this.unitPx(smooth),last=this.lastSmooth;this.lastSmooth=smooth;
+    this.correction.step(delta,unitPx,last&&{x:smooth.x-last.x,y:smooth.y-last.y});
     this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     this.horde?.selfCone(this.position,this.shadow.depth);

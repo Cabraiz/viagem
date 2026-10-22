@@ -304,7 +304,7 @@ async function mouseWalk(p,vp){
  * manual combat swings toward the mouse) and never walks him; its 'contextmenu' reaches the page already cancelled (the
  * canvas keeps the browser's menu shut).
  */
-const TRACK_ON=()=>{window.__dirTrack=[];const t0=performance.now();const step=()=>{const s=window.__perfScene,a=s?.actor,n=s?.hooks?.net;if(a&&window.__dirTrack){const c=s.correction,r=s.route,i=s.intent;window.__dirTrack.push([Math.round(performance.now()-t0),Math.round(a.x),Math.round(a.y),n?+n.predicted.x.toFixed(2):null,n?+n.predicted.y.toFixed(2):null,c?+(+c.x).toFixed(2):null,c?+(+c.y).toFixed(2):null,r?.length??-1,i?+(Math.hypot(i.x,i.y)).toFixed(2):null,n?.pending?.length??-1,s.rightHeld?1:0,s.hold?.held?1:0,String(a.texture?.key??'').replace(/^.*?:(idle|walk|attack)/,'$1'),n?.tick??-1]);requestAnimationFrame(step);}else if(window.__dirTrack)requestAnimationFrame(step);};requestAnimationFrame(step);};
+const TRACK_ON=()=>{window.__dirTrack=[];const t0=performance.now();const step=()=>{const s=window.__perfScene,a=s?.actor,n=s?.hooks?.net;if(a&&window.__dirTrack){const c=s.correction,r=s.route,i=s.intent;window.__dirTrack.push([Math.round(performance.now()-t0),Math.round(a.x),Math.round(a.y),n?+n.predicted.x.toFixed(2):null,n?+n.predicted.y.toFixed(2):null,c?+(+c.x).toFixed(2):null,c?+(+c.y).toFixed(2):null,r?.length??-1,i?+(Math.hypot(i.x,i.y)).toFixed(2):null,n?.pending?.length??-1,s.rightHeld?1:0,s.hold?.held?1:0,String(a.texture?.key??'').replace(/^.*?:(idle|walk|attack)/,'$1'),n?.tick??-1,n?.effects?.slipUntil??0,n?.effects?.slowUntil??0,n?.effects?.slip?`${n.effects.slip.x},${n.effects.slip.y}`:'']);requestAnimationFrame(step);}else if(window.__dirTrack)requestAnimationFrame(step);};requestAnimationFrame(step);};
 const TRACK_OFF=()=>{const t=window.__dirTrack;window.__dirTrack=undefined;return t;};
 const diag={};
 async function rightClick(p,vp){
@@ -323,7 +323,7 @@ async function rightClick(p,vp){
   await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
   const end=await p.evaluate(HERO).catch(()=>null);
   await p.mouse.up({button:'right'});
-  (diag[`${vp.w}x${vp.h}`]??=[]).push({moved:moved(h,end),h,end,spot,tPress,cols:'ms,ax,ay,px,py,cx,cy,route,intent,pending,rightHeld,holdHeld,tex,tick',track:await p.evaluate(TRACK_OFF).catch(()=>null)});
+  (diag[`${vp.w}x${vp.h}`]??=[]).push({moved:moved(h,end),h,end,spot,tPress,cols:'ms,ax,ay,px,py,cx,cy,route,intent,pending,rightHeld,holdHeld,tex,tick,slipUntil,slowUntil,slip',track:await p.evaluate(TRACK_OFF).catch(()=>null)});
   const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
   if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;

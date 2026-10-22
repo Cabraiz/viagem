@@ -11,7 +11,7 @@
 //     the bar — not a pixel of it seen below the edge (the layer drawn and aligned), and at least 15% of its sneaker hidden.
 //   - A hero on a floor of his own picture (the CLT, PES): each foot's lowest row with alpha >= 128 in its columns
 //     against the row where its sole touches the floor in the approved 1920x1080 picture, put on the screen by the
-//     background as the page draws it (frameArt must agree), ±4 px.
+//     background as the page draws it (frameHero must agree), ±4 px.
 //   - Every hero: what is seen of him (alpha > 0, not under the layer) at least FEET_MARGIN - 1 px above the window's
 //     bottom (8, 1 for rounding: the ORQ, 21/10, the back sneaker touched the edge at 1920x1000); his box inside it.
 //   - Same place (NEW-20261021-ORQ-clt-mesmo-lugar, the user: "os rostos deles e corpo deles estejam meio que quase no
@@ -121,7 +121,7 @@ const quantile=(v,q)=>{const s=[...v].sort((a,b)=>a-b);return s.length?s[Math.mi
 
 async function main(){
   mkdirSync(outDir,{recursive:true});
-  const {frameMoved,moveOf,SEM_MOVE,STADIUM,RECORTES,FEET_MARGIN,muretaTopo,placeCutout,fitCutout}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
+  const {frameHero,STADIUM,RECORTES,FEET_MARGIN,muretaTopo,placeCutout,fitCutout}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
   for(const [id,cut] of Object.entries(RECORTES))
     if(!(cut.frente?id in NA_MURETA:id in PES))throw new Error(`${id}: um herói recortado sem ${cut.frente?'NA_MURETA':'PES'} em scripts/pes-no-chao.mjs`);
   const {chromium}=await playwright();
@@ -156,8 +156,8 @@ async function main(){
             return {top:r.top,left:r.left,box:{w:stage.clientWidth,h:stage.clientHeight},size:num(cs.backgroundSize),at:num(cs.backgroundPosition),
               file:img.currentSrc||img.src,img:{l:ir.left,t:ir.top,r:ir.right,b:ir.bottom}};
           });
-          // His own background moves with him (lugar), the stadium does not.
-          const art=STADIUM.bleed,f=art.focal,frame=frameMoved(drawn.box,art,cut.fundo?moveOf(cut):SEM_MOVE);
+          // His own background moves with him (lugar), the stadium does not; both zoomed for him (heroi-grande-por-tela).
+          const art=STADIUM.bleed,f=art.focal,frame=frameHero(drawn.box,art,cut);
           // The background as the page draws it (its px size/position); a whole-picture point → the screen and back.
           const [bw,bh]=drawn.size,[bx,by]=drawn.at,sx=bw/art.w,sy=bh/art.h;
           const toX=X=>drawn.left+bx+(f.x+X)*sx,toY=Y=>drawn.top+by+(f.y+Y)*sy,fromX=x=>(x-drawn.left-bx)/sx-f.x;
@@ -170,7 +170,7 @@ async function main(){
           const why=[],pes=[];
           if(!(Number.isFinite(bh)&&bh>0))why.push(`fundo sem tamanho em px (${JSON.stringify(drawn.size)})`);
           const frameY=drawn.top+frame.oy+(f.y+1000)*frame.s;
-          if(Math.abs(toY(1000)-frameY)>ALINHA)why.push(`fundo desenhado fora do frameMoved (${toY(1000).toFixed(1)} × ${frameY.toFixed(1)})`);
+          if(Math.abs(toY(1000)-frameY)>ALINHA)why.push(`fundo desenhado fora do frameHero (${toY(1000).toFixed(1)} × ${frameY.toFixed(1)})`);
           // His face through the <img> as drawn (its box is his box of the whole picture).
           const r=cut.rosto,iw=(drawn.img.r-drawn.img.l)/cut.w;
           // Where stadium.ts puts that face (the offset of a hero in another's place is his own, lugar).

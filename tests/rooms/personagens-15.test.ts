@@ -27,13 +27,13 @@ test('the menu\'s list is the 15 with R06 art, in the roster\'s order; the 20 ot
   assert.equal(playableClassId(42),playableClasses[0].id);
 });
 
-test('a room seats a hidden or unknown class as the first playable one, a playable one as it is; its bots never draw outside the 15',()=>{
+test('a room seats a person\'s hidden or locked class as the viciado, a released one as it is; its bots never draw outside the 15',()=>{
   const seen=new Set<string>();
   for(let seed=1;seed<=12;seed++){
     const room=new Room(1000,seed),a=peer(),b=peer();
-    const ana=join(room,a,'Ana','aposentado',1000),bia=join(room,b,'Bia','coach',1000);
-    assert.equal(room.sim.players.get(ana)!.classId,playableClasses[0].id,'a hidden class plays the first playable one');
-    assert.equal(room.sim.players.get(bia)!.classId,'coach');
+    const ana=join(room,a,'Ana','aposentado',1000),bia=join(room,b,'Bia','clt-cansado',1000);
+    assert.equal(room.sim.players.get(ana)!.classId,'viciado-em-bet','a hidden class plays the viciado (cadeado-so-clt-viciado)');
+    assert.equal(room.sim.players.get(bia)!.classId,'clt-cansado');
     let t=1100;
     for(let k=0;k<4;k++){say(room,a,{t:'bot-add',round:room.run.snapshot().round},t);t+=OWNER_GAP_MS+1;}
     const bots=room.run.snapshot().members.filter(m=>m.bot);

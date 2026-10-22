@@ -1,12 +1,14 @@
 /** Port of the rules sector: pure rules shared by client and server (no DOM, Phaser or network). */
 export * from './budget.ts';
 export * from './classes.ts';
+export * from './personagens-liberados.ts';
 export * from './kits.ts';
 export * from './names.ts';
 export * from './offers.ts';
 export * from './passives.ts';
 export * from './revive.ts';
 export * from './scale.ts';
+export * from './crate-size.ts';
 export * from './sos.ts';
 export * from './emotes.ts';
 export * from './stats.ts';

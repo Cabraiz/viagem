@@ -158,6 +158,9 @@ function shorthandSize(value){
   }
   return undefined;
 }
+// The one tracking the user ordered (selecionar-espacamento, 22/10: "aumente o espaçamento entre as letras em 2x"): the
+// stadium's SELECIONAR, painted to match the generated button art. Keyed by file + exact selector, nothing else.
+const TRACKING_OK=new Set(['src/client/estadio.css .estadio .estadio-confirmar-texto']);
 const RADIUS_PART=/^(var\(--r-[a-z]+\)|50%|0|0px|inherit|initial)$/;
 
 export function lintCss(file,css){
@@ -184,7 +187,7 @@ export function lintCss(file,css){
     if(prop==='text-transform'&&/uppercase/i.test(value))add(d,'uppercase','text-transform:uppercase (caixa alta só dentro de carimbo, escrita no texto)');
     if(prop==='letter-spacing'){
       const m=value.match(/^(-?[\d.]+)(em|px|rem)?$/);
-      if(m&&parseFloat(m[1])>0)add(d,'letter-spacing','letter-spacing positivo (tracking em rótulo é tique de template)');
+      if(m&&parseFloat(m[1])>0&&!TRACKING_OK.has(`${file} ${d.selector}`))add(d,'letter-spacing','letter-spacing positivo (tracking em rótulo é tique de template)');
     }
     if((prop==='animation'||prop==='animation-iteration-count')&&/(^|[\s,])infinite([\s,]|$)/i.test(bare))add(d,'infinite','animação infinite (roda 1–2 vezes ao aparecer e para; a urgência fica na cor, design §2.5)');
     if(prop==='font-size'||prop==='font'){

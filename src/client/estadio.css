@@ -117,24 +117,30 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    (SELECIONAR / BORA!) stays HTML. --bh is its height; the caps keep the art's proportion at any width.
    botao-igual-gerado (the user, 22/10): the star, text and burst where the generated screen has them (tela-1080p, pill
    815x151; here .953 of --bh, the art's 3 px of air around it): the star .62 of the pill tall and whole inside it, half its
-   width from the left edge, a bit above the middle; the text and the burst higher still, over the pill's orange lip. */
+   width from the left edge, a bit above the middle; the text and the burst higher still, over the pill's orange lip.
+   fonte-botao-coerente (the user, 22/10): the text in Lilita One, the generated art's smooth fat letter (one weight). */
 .estadio .estadio-confirmar {
   --bh: clamp(52px, 8.5vh, 76px);
   display: flex; align-items: center; width: 100%; max-width: 440px; height: var(--bh); min-height: 0;
   padding: 0 calc(var(--bh) * .345) calc(var(--bh) * .048) calc(var(--bh) * .5);
   border: 0 solid transparent; border-radius: 0; background: none; box-shadow: none;
   border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch; container-type: inline-size;
-  color: color-mix(in srgb, var(--arte-roxo-sombra) 35%, var(--c-breu)); font: 900 calc(var(--bh) * .54)/1 var(--f-cartaz); white-space: nowrap;
+  color: color-mix(in srgb, var(--arte-roxo-sombra) 35%, var(--c-breu)); font: 400 calc(var(--bh) * .54)/1 var(--f-botao); white-space: nowrap;
 }
 .estadio .estadio-confirmar > span { padding: 0; }
 .estadio .estadio-confirmar > span[aria-hidden] {
   flex: none; width: calc(var(--bh) * .623); height: calc(var(--bh) * .587); overflow: hidden; color: transparent;
   background: url('/art/menu/botao/estrela.webp') 50% 50% / contain no-repeat;
 }
-/* SELECIONAR is 4.63 em wide: on a narrow phone the text shrinks before it runs into the burst (the star never moves). */
+/* selecionar-espacamento (the user, 22/10: "aumente o espaçamento entre as letras em 2x" + "desça ele levemente"): the
+   Lilita One's own gap between the letters is ~.048 em (3.6 px of 75.8 at 1920x1080), so .048 em more doubles it; the
+   indent gives back the spacing Chrome leaves after the R, so the ink stays centred; .03 --bh lower.
+   The line is 6.05 em wide with the spacing (5.57 before): on a narrow phone the text shrinks before it runs into the burst
+   (the star never moves), with the .42 em of air it had before. */
 .estadio .estadio-confirmar-texto {
-  flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.064); rotate: -2deg;
-  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));
+  flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.034); rotate: -2deg;
+  letter-spacing: .048em; text-indent: .048em;
+  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));
 }
 .estadio .estadio-confirmar::after {
   content: ''; flex: none; width: calc(var(--bh) * .301); height: calc(var(--bh) * .445); translate: 0 calc(var(--bh) * -.055);
@@ -144,15 +150,34 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 
 /* PC (stadium.ts CUTOUT_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
    approved screen's layout (tela-1080p), the sign
-   from the top, the row under it and the button low, near the bar. */
+   from the top, the row and the button right under it. */
 @media (orientation: landscape) and (min-height: 521px) {
   /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
      it is never cut; `cover` around its middle until then. */
   .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
-  .estadio .estadio-confirmar { --bh: clamp(52px, 10vh, 120px); max-width: min(40vw, 640px); }
-  .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(2vh, env(safe-area-inset-top)); }
-  /* The button right under the row (the user, 21/10: menu-fundo-sangria), not down at the bar. */
-  .estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }
+  /* fileira-botao-maiores-embaixo (the user, 22/10: "em 1080p isso deve ir para baixo (? e o selecionar) e ficar 30%
+     maior"): only the row and the button grow 30% (button 640x108 → 832x140, tiles 80 → 104 px, in vh so every PC
+     screen is the 1080p one scaled). The title and the pill stay where they were (round 2, "por que você desceu?"). The
+     whole block 2vw to the right ("mover levemente para a direita", ~40 px at 1920).
+     fileira-botao-colados-titulo (the user, 22/10: "ponha mais para cima, é para ficar embaixo do título da pessoa"): the
+     row and the button back in the column's flow, right under each hero's title (the letreiro picture, or the HTML name +
+     pill), 2.5vh between title and row and between row and button. With an HTML title the column stays centred as it was:
+     the button's negative margin takes off what the row + button add over the old spacer (gap + old row + gap + old
+     button), so the title does not move. */
+  .estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }
+  .estadio-escolha > :is(.estadio-fileira, .estadio-nome, .estadio-confirmar) { flex: none; width: min(77vh, 60vw); margin-top: calc(2.5vh - clamp(8px, 1.8vh, 18px)); }
+  .estadio-escolha > .estadio-confirmar { margin-bottom: calc(2 * clamp(8px, 1.8vh, 18px) + clamp(54px, 9vh, 80px) / .82 + 14px + clamp(52px, 10vh, 120px) - 5vh - 9.63vh / .82 - 14px - max(52px, 13vh)); }
+  .estadio-fileira, .estadio-nome { gap: .96vh; }
+  .estadio .round-button { width: 5.3vh; height: 5.3vh; font-size: 3.6vh; }
+  .estadio .class-list { gap: .96vh; }
+  .estadio .class-card { width: 9.63vh; }
+  .estadio .card-misterio { font-size: 6.3vh; }
+  .estadio .estadio-confirmar { --bh: max(52px, 13vh); max-width: none; }
+  /* The sign from the top, the row and the button right under it. fileira-botao-colados-titulo (the user, 22/10: "não
+     curto ele ficar colado na parte de cima"): 5.5vh of air over the sign (2vh before). The HTML titles keep their
+     centred place (~25% from the top). */
+  .estadio-escolha:has(.com-letreiro) { justify-content: flex-start; padding-top: max(5.5vh, env(safe-area-inset-top)); }
+  .estadio-escolha:has(.com-letreiro)::after { display: none; }
 }
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */

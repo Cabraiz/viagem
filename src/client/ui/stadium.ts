@@ -11,6 +11,11 @@ export interface StadiumArt {
   /** A bleed file: the approved 1920x1080 inside it (file px). Framed by it (frameArt), not by `cover`. */
   focal?:{x:number;y:number;w:number;h:number};
   /**
+   * What frameArt fits in the window (file px), when not just `focal`: the approved picture plus some of the bleed, so
+   * the whole scene stands further back (estadio-folga-topo). Its bottom and right edges are focal's.
+   */
+  view?:{x:number;y:number;w:number;h:number};
+  /**
    * The lowest sole of the heroes drawn on it, a row of the whole 1920x1080 picture (alpha > 0: RECORTES' box bottom,
    * `desce` included):
    * frameArt keeps it FEET_MARGIN px above the box's bottom (heroi-esrgan-no-ar: the viciado's back sneaker at 1077 of
@@ -26,22 +31,26 @@ export const STADIUM={
   wide:{w:1920,h:1080,crop:[0,0,1,1]} satisfies StadiumArt,
   tall:{w:768,h:1080,crop:[422/1920,0,1190/1920,1]} satisfies StadiumArt,
   // E6's stadium past every edge (NEW-20261021-ORQ-fundo-estadio-sangria): the approved picture intact at 320,313.
-  bleed:{w:2560,h:1707,crop:[-320/1920,-313/1080,2240/1920,1394/1080],focal:{x:320,y:313,w:1920,h:1080},feet:1081} satisfies StadiumArt,
+  // Framed by `view` (estadio-folga-topo, the user, 22/10: the viciado's cap ~15 px under the window's top): the approved
+  // picture plus 10% of its size of the bleed above and to its left, so the scene stands ~9% further back and his cap gets
+  // ~10% of the window over it. Bottom and right: the approved picture's (the bar, the feet).
+  bleed:{w:2560,h:1707,crop:[-320/1920,-313/1080,2240/1920,1394/1080],focal:{x:320,y:313,w:1920,h:1080},
+    view:{x:128,y:205,w:2112,h:1188},feet:1081} satisfies StadiumArt,
 };
 /**
  * Where the file lands in the box: scale `s` (box px per file px) and its top-left corner. A plain file: `cover` at
  * `pos` (CSS background-position, 0..1). A bleed file (menu-fundo-sangria): the approved picture whole on screen
- * (contain, its middle in the box's middle), never less than `cover` of the whole file, and the file always covering
- * the box (the offset clamped), so no window shows an edge or cuts the approved picture.
+ * (its `view` contained, the view's middle in the box's middle), never less than `cover` of the whole file, and the file
+ * always covering the box (the offset clamped), so no window shows an edge or cuts the approved picture.
  */
 export function frameArt(box:{w:number;h:number},art:StadiumArt,pos={x:.5,y:1}){
   const f=art.focal;
   if(!f){const s=Math.max(box.w/art.w,box.h/art.h);return {s,ox:(box.w-art.w*s)*pos.x,oy:(box.h-art.h*s)*pos.y};}
-  const s=Math.max(Math.min(box.w/f.w,box.h/f.h),box.w/art.w,box.h/art.h);
+  const v=art.view??f,s=Math.max(Math.min(box.w/v.w,box.h/v.h),box.w/art.w,box.h/art.h);
   const clamp=(v:number,lo:number,hi=0)=>Math.min(hi,Math.max(lo,v));
   // Wider than the bleed (past ~2.4:1) the approved picture can't fit: its bottom (the bar, the feet) stays on screen.
   const feet=art.feet===undefined?0:box.h-(f.y+art.feet)*s-FEET_MARGIN;
-  return {s,ox:clamp(box.w/2-(f.x+f.w/2)*s,box.w-art.w*s),oy:clamp(box.h/2-(f.y+f.h/2)*s,box.h-art.h*s,Math.min(0,box.h-(f.y+f.h)*s,feet))};
+  return {s,ox:clamp(box.w/2-(v.x+v.w/2)*s,box.w-art.w*s),oy:clamp(box.h/2-(v.y+v.h/2)*s,box.h-art.h*s,Math.min(0,box.h-(f.y+f.h)*s,feet))};
 }
 /** Where the CSS shows the tall crop (estadio.css uses the same media query). */
 export const STADIUM_TALL_QUERY='(orientation: portrait) and (max-width: 820px)';
@@ -100,9 +109,9 @@ export interface StadiumCutout {
   /**
    * Stands in another hero's place (clt-mesmo-lugar, the user, 21/10: "os rostos deles e corpo deles estejam meio que
    * quase no mesmo lugar"): his whole picture (the cutout AND his `fundo`, so his feet stay on his own floor) scaled
-   * `k` and moved so his face's middle lands on `de`'s, `dy` px lower (his head is bigger for his height). See moveOf.
+   * `k` and moved so his face's middle lands on `de`'s, `dx` px right of it and `dy` px lower. See moveOf.
    */
-  lugar?:{de:string;k:number;dy:number};
+  lugar?:{de:string;k:number;dx?:number;dy:number};
 }
 /** A whole-picture point of a hero's own picture → the stage's whole picture: k*p + (dx,dy). */
 export interface Move {k:number;dx:number;dy:number}
@@ -122,20 +131,23 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
     [1057,'/art/menu/heroi/viciado-em-bet-1057.webp'],[1586,'/art/menu/heroi/viciado-em-bet-1586.webp']],
     desce:4,frente:{x:940,y:940,w:820,h:170,file:'/art/menu/mureta-estadio.webp'},rosto:{x:1278,y:159,w:195,h:160}},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
-  // In the viciado's place (clt-mesmo-lugar): 12% bigger (his face 11% narrower than the viciado's) and his face 26 px
-  // lower: his head is bigger for his height, so his hair stays ~10 px under the window's top (1366x768) and his soles
-  // land ~90 px over the viciado's, on his own plateau (his background moves with him, frameMoved).
+  // In the viciado's place (clt-mesmo-lugar), then bigger, to the right and lower (clt-direita-15-maior, the user, 22/10:
+  // "e ponha ele mais para a direita e 15% maior", then "não curto ele ficar colado na parte de cima"): k 1.12 x 1.114,
+  // the most the room lets with >= 8% of the window over his hair and FEET_MARGIN under his soles (1280x720; 15% would
+  // leave ~5%), his face 100 px right of the viciado's (~4.7% of the window) and 33 px lower, so his box's bottom lands on
+  // the viciado's lowest sole (1081) and his briefcase keeps ~5% of the window to the right edge. His own plateau moves
+  // with him (frameMoved).
   'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
     [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
-    fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.12,dy:26}},
+    fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.248,dx:100,dy:33}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
-/** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dy` lower. */
+/** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */
 export function moveOf(cut:Partial<Pick<StadiumCutout,'rosto'|'lugar'>>):Move{
   const l=cut.lugar,other=l&&RECORTES[l.de];
   if(!l||!other||!cut.rosto)return SEM_MOVE;
   const there=rostoNoPalco(other),mine=cut.rosto;
-  return {k:l.k,dx:there.x+there.w/2-l.k*(mine.x+mine.w/2),dy:there.y+there.h/2+l.dy-l.k*(mine.y+mine.h/2)};
+  return {k:l.k,dx:there.x+there.w/2+(l.dx??0)-l.k*(mine.x+mine.w/2),dy:there.y+there.h/2+l.dy-l.k*(mine.y+mine.h/2)};
 }
 /** His face on the stage's whole picture (px): moved (lugar), then `desce`; before any slide of frameMoved's clamp. */
 export function rostoNoPalco(cut:Pick<StadiumCutout,'rosto'|'desce'>&Partial<Pick<StadiumCutout,'lugar'>>){

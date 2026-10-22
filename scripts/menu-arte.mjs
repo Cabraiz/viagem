@@ -4,7 +4,9 @@
 //     min(33.2vw, 56.4vh), 1218 px on a 4K screen; 2x that holds a 200 % zoom. The first one was cut out of the 1080p
 //     screen (~900 px) and enlarged: pixelated. NEW-20261021-ORQ-letreiro-na-cena (the user chose variation 2): Codex
 //     redrew the stadium with the sign inside it (the scene's light on it), the sign was cut out of that picture (mask of
-//     a green-only edit + grabCut, 1 px eaten, no halo) after Real-ESRGAN (x4plus-anime, 4x then halved): 2726 px;
+//     a green-only edit + grabCut, 1 px eaten, no halo) after Real-ESRGAN (x4plus-anime, 4x then halved): 2726 px.
+//     The CLT's (NEW-20261021-ORQ-letreiro-clt-na-cena, the user chose variation 2: an office plaque of frosted glass, not
+//     the viciado's balloon letters) the same way, drawn into the plateau's sunset;
 //   - heroi: only the hero's box of the 1920x1080 picture (src/client/ui/stadium.ts RECORTES keeps the same box, so the
 //     page puts it back where it was), full size and a 2/3 copy for windows under 1440 px; with an `esrgan` file (the
 //     box enlarged 2x by Real-ESRGAN, NEW-20261021-ORQ-heroi-esrgan-no-ar) every copy comes from it: 2x, 4/3, 1x, 2/3;
@@ -35,7 +37,8 @@ const HEROES=[
   // `trim` dropped 2 px of it), the same numbers as RECORTES in stadium.ts.
   {id:'viciado-em-bet',letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-na-cena/letreiro-2-2x.png',heroi:'viciado-1080p-no-lugar.png',
     esrgan:'viciado-2x-x4plus-anime.png',box:{left:953,top:19,width:793,height:1058}},
-  {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',heroi:'clt-cansado-1080p-no-lugar.png',
+  {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',
+    letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-clt-na-cena/letreiro-2-2x.png',heroi:'clt-cansado-1080p-no-lugar.png',
     esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.

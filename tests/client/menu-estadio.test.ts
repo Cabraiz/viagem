@@ -74,9 +74,10 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
 });
 
 test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
-  // Nobody has the new row face yet (every tile a "?"); only the viciado has his letreiro picture (menu-arte-viciado).
-  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet']);
-  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(hero.id!=='viciado-em-bet')assert.equal(letreiroOf(hero.id),undefined);}
+  // Nobody has the new row face yet (every tile a "?"); only the viciado (menu-arte-viciado) and the CLT
+  // (letreiro-clt-na-cena) have their letreiro picture.
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado']);
+  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(!(hero.id in LETREIROS))assert.equal(letreiroOf(hero.id),undefined);}
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
   assert.ok(css.includes('.estadio .card-misterio'));
@@ -136,6 +137,9 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   // letreiro-na-cena: cut out of the stadium Codex redrew with the sign inside, 2x the most the PC shows (56.4vh of 2160
   // = 1218 px), so a 200 % zoom on a 4K screen still has a pixel per pixel.
   assert.deepEqual([sign.width,sign.height],[2436,1698]);assert.ok(sign.hasAlpha);assert.ok(2*Math.floor(.564*2160)<=2436&&2*.332*3840<=2436*1.05);
+  // letreiro-clt-na-cena: the CLT's office plaque, cut out of his sunset the same way, as wide (flatter, so shorter).
+  const clt=await sharp(publicFile(letreiroOf('clt-cansado')!)).metadata();
+  assert.deepEqual([clt.width,clt.height],[2436,1368]);assert.ok(clt.hasAlpha);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[953,19,793,1058],'the box scripts/menu-arte.mjs checks against the art');
   for(const [w,file] of cut.files){
@@ -194,7 +198,11 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
 
 test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plateau moved with him under his feet",async()=>{
   const clt=cutoutOf('clt-cansado')!,vic=cutoutOf('viciado-em-bet')!,move=moveOf(clt);
-  assert.deepEqual(clt.lugar,{de:'viciado-em-bet',k:1.12,dy:26});
+  // clt-direita-15-maior (the user, 22/10: "e ponha ele mais para a direita e 15% maior", then lower, >= 8% over his
+  // hair): k 1.12 x ~1.11 (the most the room lets, estadio-folga-topo below), his face 100 px right of the viciado's and
+  // 33 px lower; the viciado's own rules unchanged.
+  assert.deepEqual(clt.lugar,{de:'viciado-em-bet',k:1.248,dx:100,dy:33});
+  assert.ok(clt.lugar!.k/1.12>=1.1&&clt.lugar!.k/1.12<=1.15,'10-15% bigger than the clt-mesmo-lugar one');
   assert.equal(moveOf(vic),SEM_MOVE,'the viciado stays where his picture has him');
   // The faces (eyes to chin, cheek to cheek) are faces: skin-and-features boxes inside each 1x file, not hair or cap.
   for(const cut of [vic,clt]){
@@ -202,30 +210,36 @@ test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plat
     assert.ok(r.x>cut.x&&r.y>cut.y&&r.x+r.w<cut.x+cut.w&&r.y+r.h<cut.y+cut.h*.45,`${cut.files[0][1]}: face in the top of the box`);
     assert.ok(r.w>=120&&r.w<=220&&r.h>=110&&r.h<=200);
   }
-  // On the stage's picture his face's middle is the viciado's, dy lower; scaled by k.
+  // On the stage's picture his face's middle is the viciado's, dx right and dy lower; scaled by k.
   const there=rostoNoPalco(vic),mine=rostoNoPalco(clt);
-  assert.ok(Math.abs(mine.x+mine.w/2-(there.x+there.w/2))<1e-9&&Math.abs(mine.y+mine.h/2-(there.y+there.h/2)-26)<1e-9);
-  // Every window (PC: the cutouts; the phone keeps the dance, both on the same spot of the bar): the faces' middles
-  // within 3% of the width and of the height, the faces as tall within 10%, his hair as far under the top as the cap.
+  assert.ok(Math.abs(mine.x+mine.w/2-(there.x+there.w/2)-100)<1e-9&&Math.abs(mine.y+mine.h/2-(there.y+there.h/2)-33)<1e-9);
+  // Every window (PC: the cutouts; the phone keeps the dance, both on the same spot of the bar): his face's middle
+  // where the viciado's is plus his own offset (dx, dy through the stadium's framing; dx 4-6% of the width) within 3% of
+  // the width and of the height, his face 5-20% taller (k), his whole box in the window, FEET_MARGIN under it.
+  // Windows wider than the bleed (21:9) shrink him around his feet (fitCutout) to keep his hair on screen: within 5%.
   for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[2560,1080],[1024,768],[3440,1440]]){
     const box={w,h},on=(cut:typeof vic)=>{
       const fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!),k=fit.w/cut.w,r=cut.rosto;
       return {cx:fit.x+(r.x-cut.x+r.w/2)*k,cy:fit.y+(r.y-cut.y+r.h/2)*k,h:r.h*k,top:fit.y,bottom:fit.y+fit.h};
     };
-    const a=on(vic),b=on(clt);
-    assert.ok(Math.abs(a.cx-b.cx)<=.03*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
-    assert.ok(Math.abs(a.cy-b.cy)<=.03*h,`${w}x${h}: faces ${a.cy.toFixed(0)} × ${b.cy.toFixed(0)} down`);
-    assert.ok(b.h/a.h>=.9&&b.h/a.h<=1.1,`${w}x${h}: faces as big`);
-    assert.ok(b.top>=a.top-1.5&&b.bottom<=h,`${w}x${h}: CLT whole, his hair no closer to the top than the viciado's cap`);
+    const a=on(vic),b=on(clt),{s:k}=frameArt(box,STADIUM.bleed),tol=w/h>2.2?.05:.03;
+    if(w/h<=2.2) assert.ok(100*k/w>=.04&&100*k/w<=.06,`${w}x${h}: ${(100*k/w*100).toFixed(1)}% to the right`);
+    assert.ok(Math.abs(b.cx-a.cx-100*k)<=tol*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
+    assert.ok(Math.abs(b.cy-a.cy-33*k)<=tol*h,`${w}x${h}: faces ${a.cy.toFixed(0)} × ${b.cy.toFixed(0)} down`);
+    assert.ok(b.h/a.h>=1.05&&b.h/a.h<=1.15,`${w}x${h}: his face ${(b.h/a.h).toFixed(2)}x the viciado's`);
+    assert.ok(b.top>=Math.min(.06*h,cutoutMargin(h))-1e-9&&b.bottom<=h-FEET_MARGIN+1e-9,`${w}x${h}: CLT whole, ${(h-b.bottom).toFixed(1)} px under him`);
     // His background where his move puts it, always covering the box; he stands in it exactly where his scene had him.
     const {s,ox,oy}=frameMoved(box,STADIUM.bleed,move),f=STADIUM.bleed.focal,e=1e-6;
     assert.ok(ox<=e&&oy<=e&&ox+STADIUM.bleed.w*s>=w-e&&oy+STADIUM.bleed.h*s>=h-e,`${w}x${h}: his background covers the box`);
     const placed=placeCutout(box,STADIUM.bleed,clt)!;
     assert.ok(Math.abs(placed.x-(ox+(f.x+clt.x)*s))<e&&Math.abs(placed.y+placed.h-(oy+(f.y+clt.y+clt.h)*s))<e,`${w}x${h}: feet on his plateau`);
   }
-  // 1920x1080: the stadium's framing moved by k, his box 12% bigger, right of where his scene had him.
-  const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!;
-  assert.ok(Math.abs(at.w-635*1.12)<1e-9&&at.x>950&&at.x<970,JSON.stringify(at));
+  // 1920x1080: the stadium's framing moved by k, his box 24.8% bigger than his scene's, right of where it had him
+  // (whole-picture px 1015..1030, through the stadium's framing: estadio-folga-topo stands it further back), his
+  // briefcase 4-6% of the window from the right edge.
+  const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!,stadium=frameArt({w:1920,h:1080},STADIUM.bleed),px=(X:number)=>stadium.ox+(STADIUM.bleed.focal!.x+X)*stadium.s;
+  assert.ok(Math.abs(at.w-635*1.248*stadium.s)<1e-9&&at.x>px(1015)&&at.x<px(1030),JSON.stringify(at));
+  assert.ok(1920-at.x-at.w>=.04*1920&&1920-at.x-at.w<=.06*1920,`${(1920-at.x-at.w).toFixed(0)} px to the right edge`);
   // Wired: the stage's background framed with the shown picture's move, set together with the picture.
   assert.match(main,/frame=art\.focal&&box\.w>0&&box\.h>0\?frameMoved\(box,art,stageMove\):undefined;/);
   assert.match(main,/const swap=\(image:string,m:Move\)=>\{stage\.style\.backgroundImage=image;stageMove=m;frameStage\(\{w:stage\.clientWidth,h:stage\.clientHeight\}\);\};/);
@@ -252,8 +266,9 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
   // Then 15% smaller again (menu-fundo-sangria): 46vw / 78vh x .85 x .85.
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh);'));
   assert.ok(Math.abs(46*.85*.85-33.2)<.05&&Math.abs(78*.85*.85-56.4)<.05);
-  // The button right under the row, not pushed down to the bar.
-  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }'));
+  // The button right under the row (fileira-botao-maiores-embaixo: both low, pinned to the bottom on the PC).
+  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro)::after { display: none; }'));
+  assert.ok(!/\.estadio-confirmar \{[^}]*margin-top: auto/.test(css));
   assert.ok(!css.includes('margin-bottom: 5vh'));
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
 });
@@ -282,10 +297,12 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
     const bar=placeOnBar(box,art,w*.7)!;
     assert.ok(bar.y>0&&bar.y<h,`${w}x${h}: bar ${bar.y}`);
   }
-  // 1920x1080: the approved screen (scale 1, the bleed outside), raised 9 px: the back sneaker (4 px lower, desce) 8 px
-  // above the bottom.
-  assert.deepEqual(frameArt({w:1920,h:1080},art),{s:1,ox:-320,oy:-322});
-  assert.deepEqual(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!),{x:953,y:14,w:793,h:1058});
+  // 1920x1080: the approved screen plus 10% of the bleed above and to the left (estadio-folga-topo: scale 1/1.1), its right
+  // edge on the window's, raised 9 px: the back sneaker (4 px lower, desce) 8 px above the bottom.
+  const round=(o:Record<string,number>)=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,Math.round(v*1000)/1000]));
+  assert.deepEqual(round(frameArt({w:1920,h:1080},art)),{s:.909,ox:-116.364,oy:-195.273});
+  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1040.909,y:110.182,w:720.909,h:961.818});
+  assert.deepEqual(art.view,{x:f.x-f.w*.1,y:f.y-f.h*.1,w:f.w*1.1,h:f.h*1.1},'view: 10% more above and to the left');
   assert.equal(FEET_MARGIN,8);
   assert.equal(art.feet,Math.max(...Object.values(RECORTES).map(c=>c.y+(c.desce??0)+c.h)),'feet: the lowest sole of every hero drawn in place');
   // The plain files keep `cover` (the phone).
@@ -296,6 +313,25 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
+});
+
+test('estadio-folga-topo: on the PC every hero has >= 6% of the window over his head, his feet still on the bar',()=>{
+  // The user (22/10, 1920x946): the viciado's cap ~15 px under the top. The scene now stands ~9% further back (view).
+  const art=STADIUM.bleed,e=1e-9;
+  for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1600,900]]){
+    const box={w,h};
+    for(const id of Object.keys(RECORTES)){
+      const placed=placeCutout(box,art,cutoutOf(id)!)!,fit=fitCutout(box,placed);
+      // clt-direita-15-maior (the user, 22/10: "não curto ele ficar colado na parte de cima"): the CLT >= 8%.
+      const room=id==='clt-cansado'?.08:.06;
+      assert.ok(fit.y>=h*room-e,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
+      assert.ok((['x','y','w','h'] as const).every(k=>Math.abs(fit[k]-placed[k])<1e-6),`${id} ${w}x${h}: not lifted, not shrunk (his feet where the framing puts them)`);
+    }
+    // The lowest sole at least FEET_MARGIN over the bottom, exactly that from 16:9 up (narrower: the bleed's floor under
+    // the bar shows, as before); the bar's layer and scripts/pes-no-chao.mjs measure the rest.
+    const {s,oy}=frameArt(box,art),sole=oy+(art.focal!.y+art.feet!)*s;
+    assert.ok(sole<=h-FEET_MARGIN+1e-6&&(w/h<16/9-.01||sole>=h-FEET_MARGIN-1e-6),`${w}x${h}: lowest sole ${(h-sole).toFixed(1)} px over the bottom`);
+  }
 });
 
 test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x DPR (2/3, 1x, 4/3, 2x), q95 files',async()=>{
@@ -430,7 +466,9 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
   const R=151,near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got-want)<=.03,`${what}: ${got.toFixed(3)} vs ${want.toFixed(3)} (pill heights)`);
   near(rel(starBox.x0),80/R,'star left margin');near(rel(starBox.x1),174/R,'star right edge');
   near(rel(starBox.y0),26/R,'star top');near(rel(starBox.y1),120/R,'star bottom');
-  near(rel(middle+textUp-top),62.5/R,'text centre');
+  // selecionar-espacamento: the user asked the text "levemente" lower than the generated screen, .03 --bh (4 px at 1080p).
+  near(rel(middle+textUp-top),62.5/R+rel(.03),'text centre');
+  assert.ok(rel(middle+textUp-top)>62.5/R+.02,'the text lower than the generated screen');
   near(rel(bh)*191/198,70/R,'burst height (its opaque rows)');near(rel(middle+burstUp-top),64/R,'burst centre');
   near(rel(padR-3*cap),53/R,'burst right margin');
   // Whole inside the pill, on every screen (the ratios hold at any --bh: 1920x1080 … 390x844).
@@ -439,8 +477,71 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
     assert.ok(s(starBox.y0)>=0&&s(starBox.y1)<=s(H),`${screen}: the star inside the pill, top to bottom`);
     assert.ok(s(starBox.x0)>=s(.25*H),`${screen}: air left of the star`);
   }
-  // The text shrinks before it reaches the burst: SELECIONAR is 4.63 em of ink, the cap leaves 5.
-  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));'));
+  // selecionar-espacamento: twice the Lilita One's own gap (~.048 em) between the letters, the indent giving back the
+  // spacing after the R so the line stays centred (±2%).
+  const ls=num(text,/letter-spacing: ([.\d]+)em;/),indent=num(text,/text-indent: ([.\d]+)em;/);
+  assert.ok(ls>=.04&&ls<=.06,'letter-spacing doubles the gap');
+  assert.ok(Math.abs(indent-ls)<1e-9,'indent = spacing: the trailing spacing after the R is given back');
+  // The text shrinks before it reaches the burst: the line is 6.05 em with the spacing (5.57 + 10 × .048), the cap leaves
+  // the .42 em of air it had before.
+  assert.ok(Math.abs(5.57+10*ls-6.05)<.01);
+  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));'));
+  assert.ok(6.5-(5.57+10*ls)>=.4,'air before the burst');
   assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
   assert.ok(btn.includes('container-type: inline-size;'));
+});
+
+test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger, right under each title, the sign off the top, the block 2vw right; phones as they were',async()=>{
+  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const vh=(re:RegExp)=>{const m=pc.match(re);assert.ok(m,String(re));return Number(m![1])/100;};
+  // In the column's flow (fileira-botao-maiores-embaixo had them pinned to the bottom; the user: "é para ficar embaixo do
+  // título da pessoa"), 2.5vh under whatever is above (the column's own gap + a margin).
+  const flow='.estadio-escolha > :is(.estadio-fileira, .estadio-nome, .estadio-confirmar) { flex: none; width: min(77vh, 60vw); margin-top: calc(2.5vh - clamp(8px, 1.8vh, 18px)); }';
+  assert.ok(pc.includes(flow),'the row and the button in the flow, right under the title');
+  assert.ok(!/position: absolute/.test(pc)&&!/[ ;{]bottom: /.test(pc),'nothing pinned to the bottom');
+  assert.ok(pc.includes('.estadio .estadio-confirmar { --bh: max(52px, 13vh); max-width: none; }'));
+  const bh=vh(/--bh: max\(52px, ([.\d]+)vh\); max-width: none;/),colW=.77,gapVh=vh(/margin-top: calc\(([.\d]+)vh - clamp/);
+  const tile=vh(/\.estadio \.class-card \{ width: ([.\d]+)vh; \}/),arrow=vh(/\.estadio \.round-button \{ width: ([.\d]+)vh;/);
+  const rowGap=vh(/\.estadio \.class-list \{ gap: ([.\d]+)vh; \}/),signTop=vh(/:has\(\.com-letreiro\) \{ justify-content: flex-start; padding-top: max\(([.\d]+)vh, env\(safe-area-inset-top\)\); \}/);
+  // The HTML title and its pill where they were (round 2, "por que você desceu?"): the column keeps its old width and
+  // centring; the button's negative margin gives back what the new row + button add over the old spacer.
+  assert.ok(!/\.estadio-escolha \{[^}]*width:/.test(pc)&&!/\.estadio-escolha \{[^}]*justify-content: flex-end/.test(pc),'the column as it was');
+  assert.ok(pc.includes('.estadio-escolha > .estadio-confirmar { margin-bottom: calc(2 * clamp(8px, 1.8vh, 18px) + clamp(54px, 9vh, 80px) / .82 + 14px + clamp(52px, 10vh, 120px) - 5vh - 9.63vh / .82 - 14px - max(52px, 13vh)); }'));
+  assert.ok(css.includes('.estadio .class-card {\n  flex: none; position: relative; width: clamp(54px, 9vh, 80px); height: auto; aspect-ratio: .82;'),'the old tile');
+  assert.ok(css.includes('padding: 6px 4px 8px; margin: 0;')&&css.includes('gap: clamp(8px, 1.8vh, 18px);'),'the old row padding and gap');
+  assert.ok(pc.includes('.estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }'),'2vw to the right');
+  // 1920x1080: 30% over the old sizes (button 640x108, tiles 80, arrows 44, gaps 8), ±3%.
+  const near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got/want-1)<=.03,`${what}: ${got.toFixed(1)} vs ${want}`);
+  near(colW*1080,832,'button width');near(bh*1080,140.4,'button height');near(tile*1080,104,'tile width');
+  near(arrow*1080,57.2,'arrow');near(rowGap*1080,10.4,'gap between tiles');
+  // A small, even gap (2–3% of the height) title → row and row → button; the sign 5–6% off the top ("não curto ele
+  // ficar colado na parte de cima").
+  assert.ok(gapVh>=.02&&gapVh<=.03&&signTop>=.05&&signTop<=.06,`gap ${gapVh}, sign top ${signTop}`);
+  const signs=await Promise.all(['viciado-em-bet','clt-cansado'].map(async id=>{const m=await sharp(publicFile(letreiroOf(id)!)).metadata();return [id,m.height!/m.width!] as const;}));
+  for(const [w,h] of [[1920,1080],[1920,1000],[1366,768],[2560,1440],[1280,720],[1280,800],[1600,521]] as const){
+    const left=Math.max(.03*w,16)+.02*w,width=Math.min(colW*h,.6*w),g=Math.min(Math.max(8,.018*h),18);
+    const row=tile*h/.82+14,button=Math.max(52,bh*h),gap=gapVh*h;
+    const blocks:[string,number,number][]=signs.map(([id,k])=>{const top=Math.max(signTop*h,0);return [id,top,top+Math.min(.332*w,.564*h)*k];});
+    // The HTML title (the mendigo's: name + pill, centred as before): the old block's pill bottom.
+    const oldBtn=Math.min(Math.max(52,.1*h),120),oldRow=Math.min(Math.max(54,.09*h),80)/.82+14,titleAndPill=.3*h;
+    const pillBottom=h/2+(titleAndPill-g-(oldRow+g+oldBtn))/2;
+    blocks.push(['mendigo',h/2-(titleAndPill+g+oldRow+g+oldBtn)/2,pillBottom]);
+    for(const [id,titleTop,titleBottom] of blocks){
+      const screen=`${w}x${h} ${id}`,rowTop=titleBottom+gap,buttonTop=rowTop+row+gap,buttonBottom=buttonTop+button;
+      assert.ok(titleTop>=.05*h-1e-9,`${screen}: air over the title (${titleTop.toFixed(0)})`);
+      assert.ok(rowTop-titleBottom>=.02*h&&rowTop-titleBottom<=.03*h,`${screen}: title → row`);
+      assert.ok(buttonTop-(rowTop+row)>=.02*h&&buttonTop-(rowTop+row)<=.03*h,`${screen}: row → button`);
+      assert.ok(buttonBottom<=h-.05*h,`${screen}: air under the button (${(h-buttonBottom).toFixed(0)})`);
+    }
+    assert.ok(left+width<=w*.56,`${w}x${h}: the column ends left of the hero (${(left+width).toFixed(0)})`);
+    const fit=Math.floor((width-2*arrow*h-2*rowGap*h-8)/(tile*h+rowGap*h));
+    assert.ok(fit>=5,`${w}x${h}: ${fit} tiles in the row`);
+  }
+  // Phones (390x844, 360x740 upright; 844x390 on its side) keep their own rules: the new sizes only in the PC block.
+  for(const rule of ['width: 9.63vh;','--bh: max(52px, 13vh)','width: 5.3vh','width: min(77vh, 60vw)'])assert.equal(css.split(rule).length,2,`${rule} only once (the PC)`);
+  assert.equal(css.split('gap: .96vh;').length,3,'the row gaps only in the PC block');
+  const shortLand=css.slice(css.indexOf('@media (max-height: 520px) and (orientation: landscape) {')).split('\n}')[0];
+  assert.ok(shortLand.includes('.estadio .estadio-confirmar { --bh: 46px; }')&&shortLand.includes('.estadio .class-card { width: 48px; }'));
+  const tall=css.slice(css.indexOf('@media (orientation: portrait) and (max-width: 820px) {')).split('\n}')[0];
+  assert.ok(tall.includes('.estadio .class-card { width: 58px; }'));
 });

@@ -42,6 +42,7 @@ export function titleFit([top,big]:readonly [string,string]):number{
  */
 export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
   'viciado-em-bet':'/art/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
+  'clt-cansado':'/art/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
 });
 /**
  * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them

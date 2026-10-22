@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
 import {skin} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
-import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
+import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,patchShiftX,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
 import {FIRE_LOOK} from '../../src/client/render/arsenal-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
@@ -173,6 +173,20 @@ test('patchCrop: the fingers square around the hand in the shown frame, mirrored
   const geom={cellW:96,cellH:96,crop:{x:20,y:10,w:56,h:80},cw:28,ch:40,pad:4,ring:2,perCss:1,slotW:36,slotH:48,kx:2,ky:2};
   assert.deepEqual(patchCrop({x:30,y:50},false,geom),[9-r/2,24-r/2,r,r]);
   assert.deepEqual(patchCrop({x:30,y:50},true,geom),[27-r/2,24-r/2,r,r]);
+});
+
+test('the fingers patch of a mirrored pose sits on the fist, not on its mirror behind the body (quadro-sangra-vizinho)', ()=>{
+  // Phaser 3.90, measured headless (WebGL): a flipped Image cropped at [c, y, w, h] in shown coords samples the right
+  // texels but draws them frameW − 2·x px to the left of where the uncropped sprite shows them; patchShiftX undoes it.
+  const r=HAND_PATCH,pose={point:{x:30,y:50,behind:false},ox:.5,oy:.75,scale:.5,flip:true,direction:'E' as const};
+  const sprite={x:100,y:200,depth:1,rotation:0,visible:true,texture:{key:'k'},frame:{name:3},originX:.5,originY:.75,scaleX:.5,scaleY:.5,flipX:true};
+  const patch=heldHand({handPose:()=>pose},sprite)!.patch!;
+  assert.deepEqual(patch.crop,[66-r,50-r,2*r,2*r]);
+  // Uncropped, the mirrored fist is at 96 − 30 = 66 → 100 + (66 − 48)·0.5 = 109; Phaser puts the crop at 30 → 91.
+  assert.equal(patch.x,100+18,'shifted by (96 − 2·30)·0.5');
+  assert.equal(heldHand({handPose:()=>({...pose,flip:false})},{...sprite,flipX:false})!.patch!.x,100,'unmirrored: no shift');
+  // A city copy: frame = the slot.
+  assert.equal(patchShiftX([27-1.75,0,3.5,3.5],36,1,true),2*27-36);
 });
 
 test('heldLook: the held weapon loses the icon\'s gloss (greyer, highlights down, darker), alpha kept', ()=>{

@@ -65,6 +65,13 @@ export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeo
   return [(flip?w-x:x)-rx,y-ry,2*rx,2*ry];
 }
 /**
+ * How far right (screen px) the patch must sit from the sprite so its fist lands on the sprite's (BUG-20261022-ORQ-quadro-
+ * sangra-vizinho, 22/10: "uma mão flutuando atrás de mim"). Phaser 3.90 samples a mirrored crop from the right texels
+ * (Frame.setCropUVs) but places the quad at the crop's unmirrored spot (MultiPipeline.batchSprite): the fist showed at
+ * the mirror of the hand, on the far side of the body, `frameW − 2·x` px away. Measured in a headless WebGL Phaser.
+ */
+export const patchShiftX=(crop:readonly number[],frameW:number,scaleX:number,flip:boolean)=>flip?(2*crop[0]+crop[2]-frameW)*scaleX:0;
+/**
  * The weapon hand of a hero sprite on screen (scene.ts and the city sandbox feed render/arsenal-fx.ts with it), when the
  * pose it shows has one measured. A downed hero lies turned (−90°): the measured hand no longer fits, none.
  */
@@ -74,8 +81,11 @@ export function heldHand<S extends HandSprite>(sprites:HandPoses<S>,sprite:S|und
   const at=handOnScreen(pose.point,sprite,pose.ox,pose.oy,pose.scale,pose.flip,{x:0,y:0});
   const held:HeldHand={x:at.x,y:at.y,aim:AIM_ANGLE[pose.direction],behind:pose.point.behind,depth:sprite.depth};
   // Behind the body the sprite already covers the weapon: no patch.
-  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
-    sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop:patchCrop(pose.point,pose.flip,pose.geom)};
+  if(!held.behind){
+    const crop=patchCrop(pose.point,sprite.flipX,pose.geom);
+    held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x+patchShiftX(crop,pose.geom?.slotW??96,sprite.scaleX,sprite.flipX),y:sprite.y,
+      ox:sprite.originX,oy:sprite.originY,sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop};
+  }
   return held;
 }
 

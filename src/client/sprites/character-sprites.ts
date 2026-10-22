@@ -5,7 +5,7 @@ import {spriteUrl,originalUrl} from './art-urls.ts';
 import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
-import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
+import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
@@ -17,9 +17,9 @@ import type {HeroDirection} from './sprite-motion.ts';
 
 export type {FigureBox};
 /** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
-interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection}
-/** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen. */
-export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection}
+interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
+/** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen (`geom`: the city copy shown). */
+export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 
 /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas) of one texture. */
@@ -253,7 +253,7 @@ export class CharacterSprites {
    */
   handPose(sprite:Phaser.GameObjects.Sprite):HandPose|undefined{
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
-    return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction}:undefined;
+    return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
   }
   /**
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
@@ -305,7 +305,7 @@ export class CharacterSprites {
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
-        state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction};
+        state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.

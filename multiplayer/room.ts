@@ -1145,7 +1145,10 @@ export class Room {
   /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
   private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    return pause?{...snap,pause:{...pause,...this.sim.offerCharges()}}:snap;
+    // The minuto de Minerva (mode 'ninhos'): its end tick while it lasts; one push when it shows, one when it goes.
+    const until=snap.phase==='combat'?this.sim.run.nests?.state.minervaUntil:undefined;
+    const minerva=until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{};
+    return pause?{...snap,...minerva,pause:{...pause,...this.sim.offerCharges()}}:{...snap,...minerva};
   }
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;

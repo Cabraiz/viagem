@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {SimWorld} from '../../src/sim/core.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 import type {NestPlan} from '../../src/maps/nests.ts';
-import {createSono,noiseP,WAKE_SIGHT,BAND_RADIUS,ALERT_PAUSE,LOST_AFTER,MODE,NOISE_EVERY,SEE_RADIUS,SLEEP_ANYWHERE,type Sono,type SonoOptions} from '../../src/sim/ninhos/sono.ts';
+import {createSono,noiseP,WAKE_SIGHT,WANDER_SIGHT,BAND_RADIUS,ALERT_PAUSE,LOST_AFTER,MODE,NOISE_EVERY,SEE_RADIUS,SLEEP_ANYWHERE,type Sono,type SonoOptions} from '../../src/sim/ninhos/sono.ts';
 import {isAlive,queryHittable} from '../../src/sim/projectiles.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {BASE_STATS,ticks,type EnemyState,type SimEvent,type SimPlayer} from '../../src/contract/index.ts';
@@ -169,10 +169,18 @@ test('alerta → caçando at the noise; caçando with nobody near → perdeu, ho
   for(let k=0;k<ticks(LOST_AFTER);k++)w.step();
   assert.equal(z1.memory?.sono,MODE.perdeu);
   assert.deepEqual(sono.goal(w,z1),{x:2,y:0,pace:1});
-  // A player in sight: caçando again.
-  const p=addPlayer(w,'p1',z1.x+SEE_RADIUS-1,z1.y);
+  // Card monstros-espalhados: a perdeu spots a player within WANDER_SIGHT (SEE_RADIUS − 25 %), not farther.
+  z1.x=-10;// far from home: it stays perdeu while the player steps in
+  const p=addPlayer(w,'p1',z1.x+WANDER_SIGHT+.5,z1.y);
+  w.step();
+  assert.equal(z1.memory?.sono,MODE.perdeu,'past the wanderer sight');
+  p.x=z1.x+WANDER_SIGHT-.5;
   w.step();
   assert.equal(z1.memory?.sono,MODE.cacando);
+  // The hunt keeps its sight (SEE_RADIUS): a player past WANDER_SIGHT but within SEE_RADIUS is still seen.
+  p.x=z1.x+SEE_RADIUS-.5;
+  for(let k=0;k<=ticks(LOST_AFTER);k++)w.step();
+  assert.equal(z1.memory?.sono,MODE.cacando,'caçando keeps SEE_RADIUS');
   p.x=1e3;
   for(let k=0;k<=ticks(LOST_AFTER);k++)w.step();
   assert.equal(z1.memory?.sono,MODE.perdeu);
@@ -237,7 +245,8 @@ test('a hit target (a nest) takes the hits after the might, stands in the hit te
 });
 
 test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wakes the sleeper caçando with its band, one acordou; just past it, nobody; a downed hero or a spectator wakes nothing; the cap of awake bodies (maxAwake) stops it', ()=>{
-  assert.ok(WAKE_SIGHT>=5&&WAKE_SIGHT<=7&&WAKE_SIGHT<SEE_RADIUS);
+  // Card monstros-espalhados: 5 → 3.75 (−25 %); the wanderers 14 → 10.5, the hunt keeps 14.
+  assert.equal(WAKE_SIGHT,3.75);assert.equal(WANDER_SIGHT,10.5);assert.equal(SEE_RADIUS,14);
   // Past the sight of every body of B (40,0 and 41,1): nobody wakes, ever.
   const far=world();far.w.step();
   addPlayer(far.w,'p1',40-WAKE_SIGHT-.05,0);
@@ -264,4 +273,20 @@ test('card ninhos-perto-ataca-20x: a hero (person or bot) within WAKE_SIGHT wake
   addPlayer(capped.w,'c',0,40);
   for(let i=0;i<5;i++)capped.w.step();
   assert.equal(capped.w.enemies.size,0,'the cap holds the sight');
+});
+
+test('card monstros-espalhados: a noise inside a safe place draws the alerta to its door (SonoOptions.door), never in', ()=>{
+  // A "safe place" east of x 10 with its door at (10, 0): a noise at (20, 0) sends the woken body to the door.
+  const {w,sono}=world(undefined,{door:p=>p.x>10?{x:10,y:0}:undefined});
+  w.step();
+  sono.noise('p1',{x:20,y:0,r:1e6,p:1});
+  for(let k=0;k<=ticks(.5);k++)w.step();
+  const alert=[...w.enemies.values()].filter(e=>e.memory?.sono===MODE.alerta);
+  assert.ok(alert.length>0,'someone heard it');
+  for(const e of alert)assert.deepEqual(sono.goal(w,e),{x:10,y:0,pace:.8});
+  // A noise outside every safe place: straight to it, as before.
+  const out=world(undefined,{door:p=>p.x>10?{x:10,y:0}:undefined});out.w.step();
+  out.sono.noise('p1',{x:5,y:5,r:1e6,p:1});
+  for(let k=0;k<=ticks(.5);k++)out.w.step();
+  for(const e of out.w.enemies.values())if(e.memory?.sono===MODE.alerta)assert.deepEqual(out.sono.goal(out.w,e),{x:5,y:5,pace:.8});
 });

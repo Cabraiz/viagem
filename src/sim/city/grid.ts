@@ -403,6 +403,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
    * (the cache only saves the rebuild), so the run stays the same whatever was cached.
    */
   const goalFields=new Map<number,{field:FlowField;gridVersion:number}>();
+  let goalBuilt=-1;
   const isGoal=(target:Point)=>typeof (target as {pace?:unknown}).pace==='number';
   const towardGoal=(ctx:SimContext,e:EnemyState,target:Point,out:Point,terrain:CityTerrain|undefined)=>{
     const g=grid!,cs=g.cellSize,ox=g.originX??0,oy=g.originY??0,cx=Math.floor((target.x-ox)/cs),cy=Math.floor((target.y-oy)/cs);
@@ -410,10 +411,16 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const key=cy*g.width+cx,v=cityGrid?.version??0;
     let s=goalFields.get(key);
     if(s)goalFields.delete(key);
-    else{
-      if(goalFields.size>=GOAL_FIELDS)goalFields.delete(goalFields.keys().next().value!);
-      s={field:new FlowField(g,[]),gridVersion:v};s.field.setTargets([{x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs}]);
+    else if(goalFields.size>=GOAL_FIELDS||goalFields.size&&goalBuilt===ctx.tick){
+      // BUG-20261022-ORQ-minerva-acordar-trava: more goals than fields (a crowd that lost the hero walks to as many
+      // homes) missed the cache every tick, and a new field reads the whole grid (~3 ms): 20+ a tick froze the room.
+      // The oldest field takes the new goal instead (only its pass is redone, lazily; the grid check below brings it
+      // up to date), and a tick builds at most one new field.
+      const old=goalFields.keys().next().value!;
+      s=goalFields.get(old)!;goalFields.delete(old);
+      s.field.setTargets([{x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs}]);
     }
+    else{s={field:new FlowField(g,[]),gridVersion:v};s.field.setTargets([{x:ox+(cx+.5)*cs,y:oy+(cy+.5)*cs}]);goalBuilt=ctx.tick;}
     goalFields.set(key,s);
     if(v!==s.gridVersion){
       const r=cityGrid?.changedSince?.(s.gridVersion);

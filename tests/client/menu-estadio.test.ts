@@ -364,3 +364,43 @@ test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, bu
   for(const file of ['estrela','icone-direita'])assert.ok(css.includes(`url('/art/menu/botao/${file}.webp')`),file);
   assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
 });
+
+test('botao-igual-gerado: the star, text and burst sit in the pill where the generated screen has them, at any size',()=>{
+  // The rule's numbers, in --bh (the button's height).
+  const rule=(sel:string)=>css.slice(css.indexOf(sel+' {')).split('\n}')[0];
+  const num=(src:string,re:RegExp)=>{const m=src.match(re);assert.ok(m,String(re));return Number(m![1]);};
+  const btn=rule('.estadio .estadio-confirmar'),star=rule('.estadio .estadio-confirmar > span[aria-hidden]');
+  const text=rule('.estadio .estadio-confirmar-texto'),burst=rule('.estadio .estadio-confirmar::after');
+  const pad=btn.match(/padding: 0 calc\(var\(--bh\) \* ([.\d]+)\) calc\(var\(--bh\) \* ([.\d]+)\) calc\(var\(--bh\) \* ([.\d]+)\);/);
+  assert.ok(pad,'padding in --bh');
+  const [padR,padB,padL]=pad!.slice(1).map(Number);
+  const sw=num(star,/width: calc\(var\(--bh\) \* ([.\d]+)\)/),sh=num(star,/height: calc\(var\(--bh\) \* ([.\d]+)\)/);
+  const textUp=num(text,/translate: 0 calc\(var\(--bh\) \* (-[.\d]+)\)/);
+  const bw=num(burst,/width: calc\(var\(--bh\) \* ([.\d]+)\)/),bh=num(burst,/height: calc\(var\(--bh\) \* ([.\d]+)\)/);
+  const burstUp=num(burst,/translate: 0 calc\(var\(--bh\) \* (-[.\d]+)\)/);
+  // The pill art (742x149, caps 130 px = .872 --bh) is opaque on rows 3..144 and from column 3 on each side.
+  const top=3/149,H=142/149,cap=.872/130;
+  const middle=(1-padB)/2;
+  // estrela.webp 224x211, opaque columns 8..215: `contain` in the span.
+  const k=Math.min(sw/224,sh/211);
+  const starBox={x0:padL+(sw-224*k)/2+8*k-3*cap,x1:padL+(sw-224*k)/2+216*k-3*cap,y0:middle-211*k/2-top,y1:middle+211*k/2-top};
+  const rel=(v:number)=>v/H;
+  // tela-1080p.png (evidence/NEW-20261021-ORQ-elenco-cartoon-estadio): pill x 62..877, y 863..1014 (151 px); star
+  // 142..236 x 889..983; text centred at y 925.5; the burst 892..962 tall, its right edge 53 px from the pill's.
+  const R=151,near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got-want)<=.03,`${what}: ${got.toFixed(3)} vs ${want.toFixed(3)} (pill heights)`);
+  near(rel(starBox.x0),80/R,'star left margin');near(rel(starBox.x1),174/R,'star right edge');
+  near(rel(starBox.y0),26/R,'star top');near(rel(starBox.y1),120/R,'star bottom');
+  near(rel(middle+textUp-top),62.5/R,'text centre');
+  near(rel(bh)*191/198,70/R,'burst height (its opaque rows)');near(rel(middle+burstUp-top),64/R,'burst centre');
+  near(rel(padR-3*cap),53/R,'burst right margin');
+  // Whole inside the pill, on every screen (the ratios hold at any --bh: 1920x1080 … 390x844).
+  for(const [w,h,px] of [[1920,1080,108],[2560,1440,120],[1366,768,76.8],[1280,720,72],[1280,800,80],[844,390,46],[390,844,71.7],[360,740,62.9]] as const){
+    const s=(v:number)=>v*px,screen=`${w}x${h}`;
+    assert.ok(s(starBox.y0)>=0&&s(starBox.y1)<=s(H),`${screen}: the star inside the pill, top to bottom`);
+    assert.ok(s(starBox.x0)>=s(.25*H),`${screen}: air left of the star`);
+  }
+  // The text shrinks before it reaches the burst: SELECIONAR is 4.63 em of ink, the cap leaves 5.
+  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));'));
+  assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
+  assert.ok(btn.includes('container-type: inline-size;'));
+});

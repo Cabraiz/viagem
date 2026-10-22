@@ -91,7 +91,7 @@ export class ArsenalFx{
   /** Opening prediction for every hero who can open (has a hand slot, is in the run): the local one and the others. */
   private openings=new CrateOpenings();
   private canOpen=new Set<string>();
-  private now=0;private body=1;private reduced=false;private silhouettes=false;
+  private now=0;private body=1;private reduced=false;
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
   private cone:MeleeCone;
@@ -171,8 +171,8 @@ export class ArsenalFx{
   }
 
   /** Start of a frame: the rings and arcs are redrawn, each hero's stillness follows its position. */
-  begin(now:number,body:number,reduced:boolean,silhouettes=false){
-    this.now=now;this.body=body;this.reduced=reduced;this.silhouettes=silhouettes;
+  begin(now:number,body:number,reduced:boolean){
+    this.now=now;this.body=body;this.reduced=reduced;
     this.rings.clear();this.arcs.clear();
     for(const [key,look] of this.ringLooks){
       for(const band of look.bands)band.setVisible(false);
@@ -240,10 +240,8 @@ export class ArsenalFx{
         depth=held.depth+(held.behind?-HELD_DEPTH_STEP:HELD_DEPTH_STEP);
       }
       hand.image.setPosition(q.x+dx,q.y+dy).setOrigin(ox,oy).setRotation(rotation).setFlip(flipX,flipY).setDepth(depth).setScale(k).setVisible(true);
-      if(this.silhouettes){
-        const o=castOffset(dx,dy,this.q2);
-        hand.sil.setPosition(q.x+o.x,q.y+o.y).setOrigin(ox,oy).setFlip(flipX,flipY).setScale(k,-k*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION-rotation).setVisible(true).setActive(true);
-      }else if(hand.sil.visible)hand.sil.setVisible(false).setActive(false);
+      const o=castOffset(dx,dy,this.q2);
+      hand.sil.setPosition(q.x+o.x,q.y+o.y).setOrigin(ox,oy).setFlip(flipX,flipY).setScale(k,-k*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION-rotation).setVisible(true).setActive(true);
       hand.seen=now;
     }
     for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);}

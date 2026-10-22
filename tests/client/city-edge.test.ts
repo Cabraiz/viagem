@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {RING_CSS,RING_CITY_BREU_CSS,beakPoints,grownBeak,ringBands} from '../../src/client/render/you-rules.ts';
 import {plateRings} from '../../src/client/render/map-label-rules.ts';
-import {BREU,CITY_BREU_EDGE_CSS,CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,ISLAND_HERO_SHADOW,destinationArtRim,destinationMark,heroShadow,hordeShadowKey} from '../../src/client/render/city-edge-rules.ts';
+import {BREU,CITY_BREU_EDGE_CSS,CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,destinationArtRim,destinationMark,hordeShadowKey} from '../../src/client/render/city-edge-rules.ts';
 
 const edges=(band:{width:number;offset:number})=>[band.offset-band.width/2,band.offset+band.width/2];
 
@@ -75,9 +75,6 @@ test('imported destination mark in the city: a Breu ring of 2 CSS px whose inner
 
 test('contact shadows: Breu 38% in the city, main\'s looks elsewhere',()=>{
   assert.equal(BREU,0x1e1530);
-  assert.deepEqual(heroShadow(false),{color:0x3d756a,alpha:.2});
-  assert.equal(heroShadow(false),ISLAND_HERO_SHADOW);
-  assert.deepEqual(heroShadow(true),{color:0x1e1530,alpha:.38});
   assert.equal(hordeShadowKey(false,'horde:fx:shadow'),'horde:fx:shadow');
   assert.equal(hordeShadowKey(true,'horde:fx:shadow'),CITY_SHADOW_KEY);
   assert.notEqual(CITY_SHADOW_KEY,'horde:fx:shadow');

@@ -22,7 +22,7 @@ import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel
 import {ChaveiroTracker} from './tracker.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
-import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoFootY,unoFrame} from './uno-art.ts';
+import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoBox,unoFootY,unoFrame} from './uno-art.ts';
 
 const LIGHT=lightEnabled();
 /** Effects over the figures (waves, smoke, icons, bars), under the horde's bars (95000) and balloons. */
@@ -186,15 +186,16 @@ export class ChaveiroRenderer {
     // behind its centre line goes under it (the car is long; the sim's critters hit it from all around).
     const carDepth=proj.depth(view.car.x,view.car.y),carAt=proj.project(view.car.x,view.car.y,this.q);
     const carX=carAt.x+shake.x,carY=carAt.y+shake.y;
-    const uno=this.unoImage();
+    const uno=this.unoImage();let unoTop:{x:number;y:number;width:number;height:number}|undefined;
     if(uno){
       // The imported Uno (uno-art.ts): the view of its nose, wheels on the footprint's lowest corner; the parts it lost
       // darken it (the sheet has no damaged views yet), wrecked darker still; the parts falling are drawn live over it.
       this.frozenCar.hide();
       const lost=bitCount(view.car.parts)/CAR_PARTS.length,tint=wrecked?0x6c6c74:mix(0xffffff,0x9a96a0,lost);
-      uno.setFrame(unoFrame(carH,proj.view)).setScale(UNO_SCALE).setPosition(carX,carY+unoFootY(carH,proj.view))
-        .setDepth(carDepth).setTint(tint).setVisible(true);
-      uno.setAlpha(this.coversBox(view.car.x,view.car.y,uno.getBounds(),carDepth)?COVER_ALPHA:1);
+      const frame=unoFrame(carH,proj.view),footY=carY+unoFootY(carH,proj.view);
+      unoTop=unoBox(frame,carX,footY);
+      uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
+      uno.setAlpha(this.coversBox(unoTop,carDepth)?COVER_ALPHA:1);
       if(fallingBits){
         const boxes:Box[]=[];
         for(const [bit,at] of this.state.falling)if(fallingBits&bit)boxes.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
@@ -247,7 +248,7 @@ export class ChaveiroRenderer {
     if(alarm)this.drawWaves(view.car.x,view.car.y,k,time,st.alarmSince);
     if(mode==='morta')this.drawPush(mx,my,view.moto.push??0,k,time);
     if(mode==='tombo')this.drawDizzy(mx,my,heading,k,time);
-    if(!view.ended)this.drawCarBar(view.car,k);
+    if(!view.ended)this.drawCarBar(view.car,k,unoTop?.y);
     if(view.ended==='victory'&&chargerLabel(ended)){
       const p=this.at(view.car.x,view.car.y,-1.7*M,0,CAR_TOP+.9*M);
       this.label.setPosition(p.x,p.y).setScale(k).setVisible(true);
@@ -292,7 +293,7 @@ export class ChaveiroRenderer {
     return h.x>ax+b.x0&&h.x<ax+b.x1&&h.y-30>ay+b.y0&&h.y-10<ay+b.y1;
   }
   /** The same for a figure drawn as an image: `b` its bounds on the screen (world px). */
-  private coversBox(x:number,y:number,b:{x:number;y:number;width:number;height:number},depth:number){
+  private coversBox(b:{x:number;y:number;width:number;height:number},depth:number){
     const hero=this.options.hero?.();if(!hero)return false;
     if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
     const h=this.options.projector.project(hero.x,hero.y,{x:0,y:0});
@@ -401,9 +402,10 @@ export class ChaveiroRenderer {
     }
   }
   /** The car's life: the hits left of the limit, the wall's bar (Cartolina, Cone and a notch when low). */
-  private drawCarBar(car:ChaveiroView['car'],k:number){
+  /** `roof`: the imported Uno's top on the screen (its roof is above the boxes' CAR_TOP): the bar clears it. */
+  private drawCarBar(car:ChaveiroView['car'],k:number,roof?:number){
     const top=this.at(car.x,car.y,0,0,CAR_TOP),left=car.limit>0?Math.max(0,1-car.hits/car.limit):0,low=left<CAR_LOW;
-    const bw=72*k,bh=8*k,bx=top.x-bw/2,by=top.y-40*k,g=this.fx,c=this.c;
+    const bw=72*k,bh=8*k,bx=top.x-bw/2,by=Math.min(top.y-40*k,roof===undefined?Infinity:roof-bh-8*k),g=this.fx,c=this.c;
     g.fillStyle(c.breu,1).fillRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);
     g.fillStyle(low?c.cone:c.cartolina,1).fillRect(bx,by,bw*left,bh);
     g.lineStyle(2*k,c.papel,1).strokeRoundedRect(bx-2*k,by-2*k,bw+4*k,bh+4*k,4*k);

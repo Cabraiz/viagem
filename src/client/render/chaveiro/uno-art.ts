@@ -21,6 +21,17 @@ export type UnoView=typeof UNO_VIEWS[number];
  */
 export const UNO_SCALE=2*(CAR_HALF.l+CAR_HALF.w)*42/281;
 
+/** Each view's opaque box in the sheet (w × h px, as scripts/import-uno.mjs printed it): centred, its bottom on the wheel line. */
+export const UNO_SIZES:Readonly<Record<UnoView,readonly [number,number]>>={
+  S:[176,203],SO:[292,216],O:[305,168],NO:[267,194],N:[174,185],NE:[273,195],L:[307,169],SE:[281,219],
+};
+
+/** The car's box on the screen (world px) for `frame` with its wheel line at (x, y): the life bar and the fade read it. */
+export function unoBox(frame:number,x:number,y:number):{x:number;y:number;width:number;height:number}{
+  const [w,h]=UNO_SIZES[UNO_VIEWS[frame]],width=w*UNO_SCALE,height=h*UNO_SCALE;
+  return {x:x-width/2,y:y-height,width,height};
+}
+
 /** Screen octants from the right, clockwise (y down), to the sheet's frames. */
 const OCTANT_FRAME=[6,7,0,1,2,3,4,5];
 

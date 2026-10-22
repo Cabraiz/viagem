@@ -109,9 +109,9 @@ export interface StadiumCutout {
   /**
    * Stands in another hero's place (clt-mesmo-lugar, the user, 21/10: "os rostos deles e corpo deles estejam meio que
    * quase no mesmo lugar"): his whole picture (the cutout AND his `fundo`, so his feet stay on his own floor) scaled
-   * `k` and moved so his face's middle lands on `de`'s, `dy` px lower (his head is bigger for his height). See moveOf.
+   * `k` and moved so his face's middle lands on `de`'s, `dx` px right of it and `dy` px lower. See moveOf.
    */
-  lugar?:{de:string;k:number;dy:number};
+  lugar?:{de:string;k:number;dx?:number;dy:number};
 }
 /** A whole-picture point of a hero's own picture → the stage's whole picture: k*p + (dx,dy). */
 export interface Move {k:number;dx:number;dy:number}
@@ -131,20 +131,23 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
     [1057,'/art/menu/heroi/viciado-em-bet-1057.webp'],[1586,'/art/menu/heroi/viciado-em-bet-1586.webp']],
     desce:4,frente:{x:940,y:940,w:820,h:170,file:'/art/menu/mureta-estadio.webp'},rosto:{x:1278,y:159,w:195,h:160}},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
-  // In the viciado's place (clt-mesmo-lugar): 12% bigger (his face 11% narrower than the viciado's) and his face 26 px
-  // lower: his head is bigger for his height, so his hair stays ~10 px under the window's top (1366x768) and his soles
-  // land ~90 px over the viciado's, on his own plateau (his background moves with him, frameMoved).
+  // In the viciado's place (clt-mesmo-lugar), then bigger, to the right and lower (clt-direita-15-maior, the user, 22/10:
+  // "e ponha ele mais para a direita e 15% maior", then "não curto ele ficar colado na parte de cima"): k 1.12 x 1.114,
+  // the most the room lets with >= 8% of the window over his hair and FEET_MARGIN under his soles (1280x720; 15% would
+  // leave ~5%), his face 100 px right of the viciado's (~4.7% of the window) and 33 px lower, so his box's bottom lands on
+  // the viciado's lowest sole (1081) and his briefcase keeps ~5% of the window to the right edge. His own plateau moves
+  // with him (frameMoved).
   'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
     [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
-    fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.12,dy:26}},
+    fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.248,dx:100,dy:33}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
-/** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dy` lower. */
+/** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */
 export function moveOf(cut:Partial<Pick<StadiumCutout,'rosto'|'lugar'>>):Move{
   const l=cut.lugar,other=l&&RECORTES[l.de];
   if(!l||!other||!cut.rosto)return SEM_MOVE;
   const there=rostoNoPalco(other),mine=cut.rosto;
-  return {k:l.k,dx:there.x+there.w/2-l.k*(mine.x+mine.w/2),dy:there.y+there.h/2+l.dy-l.k*(mine.y+mine.h/2)};
+  return {k:l.k,dx:there.x+there.w/2+(l.dx??0)-l.k*(mine.x+mine.w/2),dy:there.y+there.h/2+l.dy-l.k*(mine.y+mine.h/2)};
 }
 /** His face on the stage's whole picture (px): moved (lugar), then `desce`; before any slide of frameMoved's clamp. */
 export function rostoNoPalco(cut:Pick<StadiumCutout,'rosto'|'desce'>&Partial<Pick<StadiumCutout,'lugar'>>){

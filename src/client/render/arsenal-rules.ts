@@ -7,7 +7,7 @@
  * the items and the hand wear their `ui` sticker (hud/items.ts icon), the shots their `efeitos` strip (frames side by
  * side, square: frame size = strip height) and their `projeteis` piece (art/horde-art.ts aliases).
  */
-import {KIT_IDS} from '../../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 
@@ -23,7 +23,7 @@ export const RARITY_NAME:Readonly<Record<Rarity,string>>={1:'Verde',2:'Azul',3:'
  * The sim's crate numbers, mirrored (the client never imports src/sim; tests/client/arsenal-render.test.ts checks them
  * against sim/crates.ts): reach to open and seconds to open by rarity.
  */
-export const CRATE_OPEN_REACH=1;
+export const CRATE_OPEN_REACH=CRATE_OPEN_RADIUS;
 export const CRATE_OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 export const crateOpenSeconds=(rarity:number)=>CRATE_OPEN_SECONDS[rarityOf(rarity)-1];
 /** The crate's art (art/base-art.ts BASE_ART.crate) and its opening rows. */

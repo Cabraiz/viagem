@@ -33,7 +33,7 @@ import {sunlit} from './light-actors.ts';
 import {contactWidth} from './shadow-rules.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
-import {ArsenalFx} from './arsenal-fx.ts';
+import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
@@ -967,7 +967,8 @@ export class HordeRenderer{
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
     if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
-    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
+    // The D-051 crate (its sheet) is 3× the old chest (rules/crate-size.ts), and so is its shadow.
+    const shadow=(a.kind==='chest'?a.arsenal?CRATE_SHADOW_PX:34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor)=>{

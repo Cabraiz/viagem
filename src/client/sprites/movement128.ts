@@ -155,6 +155,11 @@ export function movementSheets(id:string,motion:DetailedMotion|'idle'):Movement1
   const seen=new Set<string>(),shown=motion==='walk'&&heroRuns(id)?'run':motion;
   return HERO_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,shown,d);if(!p||seen.has(p.key))return [];seen.add(p.key);return [p];});
 }
+/** The frame of a swing `progress` (0..1) of the way through: its frames spread over the swing's time (ataque-1s). */
+export function swingFrame(plan:Pick<Movement128Plan,'frameCount'>,progress:number):number{
+  const n=plan.frameCount??MOVEMENT128_FRAMES;
+  return Math.max(0,Math.min(n-1,Math.floor(progress*n)));
+}
 /** The frame a clip shows now: idle8 picks its direction's column; every other clip follows the clock. */
 export function movementFrame(plan:Movement128Plan,direction:HeroDirection,elapsedMs:number){
   return plan.motion==='idle'&&!(plan.durationMs>0)?movementIdle8Frame(direction):movement128Frame(plan,elapsedMs);
@@ -180,7 +185,8 @@ export function movement128Figure(id:string):FigureBox|undefined{
 }
 /**
  * All source poses stay available; the display samples the cycle at the actual render cadence, played at
- * HERO_ANIM_RATE of the drawn duration (the manifest keeps 600/1000 ms, the art's own timing).
+ * HERO_ANIM_RATE of the drawn duration (the manifest keeps 600/1000 ms, the art's own timing). The hero's attack plays by
+ * swingFrame instead (ATTACK_MS).
  */
 export function movement128Frame(plan:Pick<Movement128Plan,'durationMs'|'loop'>&{frameCount?:number},elapsedMs:number):number{
   if(!(plan.durationMs>0))return 0;

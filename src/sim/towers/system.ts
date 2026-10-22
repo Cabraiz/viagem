@@ -41,7 +41,7 @@ import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
-import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
+import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
@@ -196,8 +196,8 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
 /** What the free build needs beyond the state (stonewards/system.ts): the objective's hooks and the flow grid's refresh. */
 export interface FreeBuildContext extends FreeBuildHooks {onTerrainChanged?(rect:CellRect):void}
 
-/** A forge tower's body (u), the moto's (chaveiro MOTO_RADIUS) and a crate's (a 'chest' pickup), for 'ocupado'. */
-const FORGE_TOWER_R=.6,MOTO_BODY_R=.5,CRATE_BODY_R=.5;
+/** A forge tower's body (u), the moto's (chaveiro MOTO_RADIUS) and a crate's (a 'chest' pickup, rules/crate-size.ts), for 'ocupado'. */
+const FORGE_TOWER_R=.6,MOTO_BODY_R=.5,CRATE_BODY_R=CRATE_BODY_RADIUS;
 /**
  * Whether something standing already holds part of `rect`: a standing defense's square, a piece, a forge tower, a body
  * (another standing hero, a live enemy, the moto), a crate (D-051: a 'chest' pickup, so none ends up inside a muro) or,

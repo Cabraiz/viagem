@@ -21,7 +21,7 @@ import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
 import {MeleeCone,meleeCone} from './melee-cone.ts';
 import {TriBand} from './city/tri-band.ts';
-import {kitPiece,kitRarity} from '../../rules/index.ts';
+import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
@@ -30,8 +30,12 @@ import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
-/** Drawn sizes at the endless map's scale (CSS px, times the actor scale): crate width, item sticker, hand sticker. */
-const CRATE_PX=64,ITEM_PX=34,HAND_PX=36;
+/** Drawn sizes at the endless map's scale (CSS px, times the actor scale): crate width (3× since coleta-3x), item sticker, hand sticker. */
+const CRATE_PX=64*CRATE_SCALE,ITEM_PX=34,HAND_PX=36;
+/** The crate's rarity ring (its body on the ground, rules/crate-size.ts CRATE_BODY_RADIUS) and its opening arc, at body 1 (CSS px). */
+const CRATE_RING_W=58*CRATE_SCALE,CRATE_RING_H=24*CRATE_SCALE,CRATE_ARC_RX=36*CRATE_SCALE,CRATE_ARC_RY=15*CRATE_SCALE;
+/** The crate's shadow width at body 1 (CSS px; render/layers.ts draws it). */
+export const CRATE_SHADOW_PX=34*CRATE_SCALE;
 /** Where the hand sticker sits from the hero's feet (CSS px): at the side, about hip height. */
 const HAND_DX=26,HAND_DY=-30;
 /**
@@ -194,13 +198,13 @@ export class ArsenalFx{
     const rarity=rarityOf(value),b=this.body,color=this.colors[rarity];
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.006);
     this.ringBand(`c|${color}|${Math.round(b*100)}`,g=>{
-      g.fillStyle(color,.22).fillEllipse(0,0,58*b,24*b);
-      g.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(0,0,58*b,24*b);
+      g.fillStyle(color,.22).fillEllipse(0,0,CRATE_RING_W*b,CRATE_RING_H*b);
+      g.lineStyle(Math.max(2,3*b),color,.95).strokeEllipse(0,0,CRATE_RING_W*b,CRATE_RING_H*b);
     },q).setScale(pulse);
     const progress=this.openings.progress(id,x,y,value);
     if(progress>0){
       // The opening fills the crate's own ring (on the ground, under the hero): Breu under, the rarity colour over.
-      const n=Math.max(2,Math.ceil(PROGRESS_POINTS*progress)),rx=36*b,ry=15*b,pts=this.pts;
+      const n=Math.max(2,Math.ceil(PROGRESS_POINTS*progress)),rx=CRATE_ARC_RX*b,ry=CRATE_ARC_RY*b,pts=this.pts;
       for(let i=0;i<n;i++){const t=-Math.PI/2+progress*Math.PI*2*i/(n-1);pts[i].x=q.x+Math.cos(t)*rx;pts[i].y=q.y+Math.sin(t)*ry;}
       this.rings.lineStyle(9*b,this.breu,.8).strokePoints(pts,false,false,n);
       this.rings.lineStyle(5*b,color,1).strokePoints(pts,false,false,n);

@@ -26,7 +26,7 @@ import {HEIGHT_PX} from './city/projection.ts';
 /** Wall segment height (u) when whole; each damage stage takes a share off. */
 const WALL_H=.95;
 /** The ghost's box height (u) per piece: a defense stands tall, the wall like the wall, the barricade low. */
-const GHOST_H=(piece:string)=>piece==='muro'?WALL_H:piece==='barricada'?.55:1.3;
+const GHOST_H=(piece:string)=>piece==='muro'?WALL_H:piece==='barricada'?1.1:1.3;
 /** The ghost's fill alpha; the hints' outline alpha. */
 const GHOST_ALPHA=.5,HINT_ALPHA=.35;
 /** Rope hand and bumper heights (u). */

@@ -9,11 +9,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {MURALHA_ALTURA,MURALHA_ESTADOS,MURALHA_PILARES,MURALHA_RETOS,cellKey,muralhaColumn,muralhaEstado,muralhaHalf,muralhaPlan,muralhaScale,retoOf,type MuralhaSquare} from '../../src/client/render/muralha-rules.ts';
 import {Projector} from '../../src/client/render/projector.ts';
+import {BARRICADA_CELLS} from '../../src/rules/towers.ts';
 import {BASE_ART} from '../../src/client/art/base-art.ts';
 import {DAMAGE,KINDS,SOURCE_CELL,sheetRows} from '../../scripts/import-muralha-tralha.mjs';
 
 const set=(sq:MuralhaSquare[])=>new Set(sq.map(s=>cellKey(s.c,s.r)));
-const row=(n:number,c0=0,r=0)=>Array.from({length:n},(_,i)=>({c:c0+i,r}));
+/** barricada-2x: squares are N cells wide, so neighbours (and these helpers' squares) sit N cells apart. */
+const N=BARRICADA_CELLS;
+const row=(n:number,c0=0,r=0)=>Array.from({length:n},(_,i)=>({c:c0+i*N,r}));
+const at=(c:number,r:number,rot?:number)=>({c:c*N,r:r*N,...(rot!==undefined?{rot}:{})});
 
 test('a row of 5: the ends draw a half toward the row + a pillar, the 3 in between one whole piece along the row',()=>{
   const sq=row(5,10,4),cells=set(sq),plans=sq.map(s=>muralhaPlan(s,cells));
@@ -22,15 +26,18 @@ test('a row of 5: the ends draw a half toward the row + a pillar, the 3 in betwe
   for(const p of plans.slice(1,4))assert.deepEqual(p.map(d=>[d.kind,d.axis,d.toward]),[['reto','c',undefined]]);
   // Along r the same, on the other axis.
   const col=row(3).map(s=>({c:4,r:s.c})),cc=set(col);
+  // Squares one cell apart are not neighbours (they overlap: the room never lets that stand).
+  assert.equal(N,2);
+  assert.deepEqual(muralhaPlan({c:0,r:0},set([{c:0,r:0},{c:1,r:0}])).map(d=>[d.kind,d.toward]),[['reto',undefined]]);
   assert.deepEqual(muralhaPlan(col[1],cc).map(d=>[d.kind,d.axis]),[['reto','r']]);
 });
 
 test('corner, T, cross and a lone square',()=>{
-  const L=[{c:0,r:0},{c:1,r:0},{c:0,r:1}],cl=set(L);
+  const L=[at(0,0),at(1,0),at(0,1)],cl=set(L);
   assert.deepEqual(muralhaPlan(L[0],cl).map(d=>[d.kind,d.axis,d.toward]),[['reto','c',1],['reto','r',1],['pilar',undefined,undefined]]);
-  const T=[{c:0,r:0},{c:-1,r:0},{c:1,r:0},{c:0,r:1}];
+  const T=[at(0,0),at(-1,0),at(1,0),at(0,1)];
   assert.equal(muralhaPlan(T[0],set(T)).length,4,'3 halves + pillar');
-  const X=[...T,{c:0,r:-1}];
+  const X=[...T,at(0,-1)];
   assert.equal(muralhaPlan(X[0],set(X)).length,5,'4 halves + pillar');
   assert.deepEqual(muralhaPlan({c:7,r:7},new Set([cellKey(7,7)])).map(d=>[d.kind,d.axis]),[['reto','c']],'alone: whole, along x');
   assert.deepEqual(muralhaPlan({c:7,r:7,rot:1},new Set([cellKey(7,7)])).map(d=>[d.kind,d.axis]),[['reto','r']],'alone, rot 1: along y');

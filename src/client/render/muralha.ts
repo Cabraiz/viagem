@@ -7,6 +7,7 @@
 import type Phaser from 'phaser';
 import type {StructureView} from '../../contract/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
+import {BARRICADA_CELLS} from '../../rules/towers.ts';
 import {artPiece} from '../art/manifest.ts';
 import {BASE_ART,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import type {Pt} from './projector.ts';
@@ -19,6 +20,8 @@ const PILLAR_OVER=.002;
 const RETO_TOP=.76;
 /** About the share of the height each damage row keeps (scripts/import-muralha-tralha.mjs BITES), for the bar. */
 const KEPT:Readonly<Record<string,number>>={inteira:1,avariada:.75,'quase-caindo':.5};
+/** barricada-2x: a square's side (u); its art spans it, so the pieces are drawn BARRICADA_CELLS× wider and taller. */
+const SIDE=BARRICADA_CELLS*CITY_BUILD_CELL;
 
 export interface MuralhaProjection {project(x:number,y:number,out:Pt):Pt;depth(x:number,y:number):number}
 interface Sheet {pecas:readonly string[];celula:number;anchor:[number,number];cell:[number,number]}
@@ -63,12 +66,12 @@ export class MuralhaLayer {
     const estado=muralhaEstado(s.hp,s.maxHp),plan=estado?muralhaPlan({c:s.c,r:s.r,rot:s.rot},this.cells):[];
     while(list.length<plan.length)list.push(this.scene.add.image(0,0,'__DEFAULT').setName('base-muralha-tralha'));
     for(let i=plan.length;i<list.length;i++)list[i].setVisible(false);
-    const pr=this.projection,cx=(s.c+.5)*CITY_BUILD_CELL,cy=(s.r+.5)*CITY_BUILD_CELL;
+    const pr=this.projection,cx=s.c*CITY_BUILD_CELL+SIDE/2,cy=s.r*CITY_BUILD_CELL+SIDE/2;
     const at=pr.project(cx,cy,this.a),x=at.x,y=at.y;
     this.top=y;
     plan.forEach((d,n)=>{
       const img=list[n],id=SHEET[d.kind],sheet=sheetOf(id)!;
-      const axis:MuralhaAxis=d.axis??'c',step=pr.project(cx+(axis==='c'?CITY_BUILD_CELL:0),cy+(axis==='r'?CITY_BUILD_CELL:0),this.b);
+      const axis:MuralhaAxis=d.axis??'c',step=pr.project(cx+(axis==='c'?SIDE:0),cy+(axis==='r'?SIDE:0),this.b);
       const dx=step.x-x,dy=step.y-y;
       const col=d.kind==='reto'?muralhaColumn(dx,dy):hashCell(s.c!,s.r!,7)&1;
       const f=baseFrame(id,`${sheet.pecas[d.piece]}:${estado}`,col,0,this.ref);
@@ -81,7 +84,7 @@ export class MuralhaLayer {
       // Half toward the neighbour: the frame's side of the ground centre that faces it on screen.
       const w=sheet.cell[0],h=sheet.cell[1],mid=Math.round(sheet.anchor[0]*w);
       if(muralhaHalf(d.toward,dx)>0)img.setCrop(mid,0,w-mid,h);else img.setCrop(0,0,mid,h);
-      const q=CITY_BUILD_CELL/4*d.toward;
+      const q=SIDE/4*d.toward;
       img.setDepth(pr.depth(cx+(axis==='c'?q:0),cy+(axis==='r'?q:0))-(pr.depth(cx,cy)-depth));
     });
     return list.slice(0,plan.length);

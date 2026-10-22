@@ -20,6 +20,7 @@ import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.t
 import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
 import {MeleeCone,meleeCone} from './melee-cone.ts';
+import {AuraRings,auraRingRadius} from './aura-ring.ts';
 import {TriBand} from './city/tri-band.ts';
 import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
@@ -102,6 +103,9 @@ export class ArsenalFx{
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
   private cone:MeleeCone;
+  /** upgrades-megabonk: the Defumador's rings, and each hero's aura radius from the last view (u). */
+  private aura:AuraRings;
+  private auraOf=new Map<string,number>();
   /** The local hero's melee cone for the weapon in hand (radius, half aperture), from the last view; undefined: none. */
   private selfCone?:{weapon:string;radius:number;half:number};
 
@@ -110,6 +114,7 @@ export class ArsenalFx{
     this.rings=this.track(scene.add.graphics().setDepth(RING_DEPTH).setName('arsenal-aneis'));
     this.arcs=this.track(scene.add.graphics().setDepth(FX_DEPTH).setName('arsenal-golpes'));
     this.cone=new MeleeCone(scene,options.projector,CONE_DEPTH);this.track(this.cone.object);
+    this.aura=new AuraRings(scene,options.projector,CONE_DEPTH-.5);
     const image=()=>this.track(scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{o.image.setVisible(active).setActive(active);if(!active)o.image.setAlpha(1).setScale(1).setRotation(0);};
     this.shots=new Ring<ShotFx>(()=>({image:image(),born:0,x:0,y:0,angle:0,look:FIRE_LOOK.pistola,frames:1,scale:1}),showImage,24);
@@ -133,9 +138,11 @@ export class ArsenalFx{
   /** Per authoritative view: is this the manual combat, who holds what (and the art, the first time). */
   push(view:RunView){
     let manual=false;
-    this.handOf.clear();this.canOpen.clear();this.selfCone=undefined;
+    this.handOf.clear();this.canOpen.clear();this.selfCone=undefined;this.auraOf.clear();
     const car=view.objective?.car,me=this.options.selfId?.();
     for(const p of view.players){
+      const aura=p.spectator||p.eliminated||p.downed?0:auraRingRadius(p);
+      if(aura>0)this.auraOf.set(p.id,aura);
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
@@ -187,6 +194,9 @@ export class ArsenalFx{
       if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
     }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
+    const rings:{x:number;y:number;r:number}[]=[];
+    for(const [id,r] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r});}
+    this.aura.draw(rings,now,body,reduced);
   }
 
   /**
@@ -277,6 +287,7 @@ export class ArsenalFx{
   }
 
   destroy(){
+    this.aura.destroy();
     this.shots.clear();this.bursts.clear();this.hands.clear();
     for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
     this.ringLooks.clear();

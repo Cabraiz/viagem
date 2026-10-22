@@ -10,7 +10,9 @@
 //                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
 //   node tools/fila.mjs cancelar <lote>
 // Options for tests and the simulation: --repo <main checkout> --board <board dir> --wt <worktree root> --remote origin
-// --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules.
+// --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules
+// --disco "<free GB>,<total GB>" (a simulated drive; tools/wt-guarda.mjs: no lote below 25 GB free, a warning above 85%).
+// After publishing, the worktrees of the integrated cards are removed (limpaIntegradas).
 //
 // Board files: fila/<card>.json (queued), fila/lotes/<lote>.json (a batch), fila/resultados/<card>.json (the answer to
 // the owner: integrado + SHA, or devolvido + reason), integrated/<card> (as before). fila/.lote is the batch lock.
@@ -23,6 +25,7 @@ import {existsSync,mkdirSync,readFileSync,readdirSync,renameSync,rmSync,writeFil
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {JUNCTIONS,removeWorktreeSafe} from './wt-rm.mjs';
+import {avalia,avisaUso,exigeEspaco,protecoes,salvaEvidencias,worktrees} from './wt-guarda.mjs';
 
 const SELF_ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const PRIO={P0:0,P1:1,P2:2,P3:3};
@@ -338,6 +341,9 @@ function answer(opt,entry,result){
 
 function lote(opt){
   const lockDir=join(opt.board,'fila','.lote');
+  // BUG-20261022-ORQ-disco-cheio-guarda: a lote makes up to four checkouts; below 25 GB free it does not start (the
+  // Orquestrador gets a note; above 85% of use, a warning). --disco "<free GB>,<total GB>" simulates the drive.
+  exigeEspaco(opt.board,opt.wt,'abrir o lote',{fake:opt.disco});
   mkdirSync(join(opt.board,'fila'),{recursive:true});
   try{mkdirSync(lockDir);}catch{
     let open='?';try{open=readFileSync(join(lockDir,'lote.txt'),'utf8').trim();}catch{/* no id */}
@@ -492,12 +498,40 @@ function publicar(opt){
     mkdirSync(join(opt.board,'integrated'),{recursive:true});writeFileSync(join(opt.board,'integrated',e.card),'');
   }
   removeWorktree(opt,state.dir,state.branch);
-  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString()});
+  const limpas=limpaIntegradas(opt,state);
+  writeJson(p,{...state,estado:'publicado',em:new Date().toISOString(),worktreesRemovidas:limpas});
   rmdirSyncSafe(join(opt.board,'fila','.lote'));
   log(`publicado ${state.sha.slice(0,7)}: ${state.integrados.map(e=>e.card).join(', ')}`);
+  try{const aviso=avisaUso(opt.board,opt.wt,{fake:opt.disco});if(aviso)log(aviso);}catch{/* only a warning */}
   if(state.contrato?.length)log(`${outOfStep(state.contrato)}; confira o site em ~25 min`);
   for(const d of state.devolvidos)log(`avise ${d.card}: ${d.motivo}`);
   return {...state,estado:'publicado'};
+}
+
+/**
+ * BUG-20261022-ORQ-disco-cheio-guarda: after the push, the worktree of each card this lote integrated goes (tools/wt-rm.mjs,
+ * branch too), its untracked final evidence copied to the board first. Only when its branch is still at the SHA the lote
+ * took, it has no tracked change nor untracked file outside evidence/, and no other queued entry or card in progress names
+ * it (tools/wt-guarda.mjs `avalia`). A failure is logged, never thrown: the lote is already published. Returns the folders.
+ */
+function limpaIntegradas(opt,state){
+  const out=[];
+  let lista;try{lista=worktrees(opt.repo);}catch(e){log(`limpeza pós-publicação: ${e.message}`);return out;}
+  const prot=protecoes(opt.board);
+  for(const w of lista){
+    const e=!w.main&&w.branch&&state.integrados.find(x=>x.branch===w.branch);
+    if(!e)continue;
+    if(w.head!==e.sha){log(`worktree mantida ${w.path}: ${w.branch} andou depois do pronto`);continue;}
+    const v=avalia(w,prot,{alvo:state.sha,idadeMs:0,repo:opt.repo});
+    if(!v.pode){log(`worktree mantida ${w.path}: ${v.motivo}`);continue;}
+    try{
+      const evid=salvaEvidencias(w.path,opt.board,e.card);
+      removeWorktreeSafe(w.path,{repo:opt.repo,deleteBranch:true});
+      out.push(w.path.replace(/\\/g,'/'));
+      log(`worktree removida ${w.path} (${e.card})${evid.length?`, ${evid.length} prova(s) copiadas`:''}`);
+    }catch(err){log(`ATENÇÃO: worktree ${w.path} não removida: ${err.message}`);}
+  }
+  return out;
 }
 
 function cancelar(opt){

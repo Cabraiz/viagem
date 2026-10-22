@@ -236,7 +236,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     if(n<=0||!spots.length)return 0;
     // NEST_PACE.warmRow: during the warm start the waves play that round row (1: the tutorial's light bodies).
     const row=warming(ctx.tick)?NEST_PACE.warmRow:nestRound(f);
-    const hp=ROUNDS[row-1].hpScale*playerScale(state.players).hp;
+    // E6 (upgrades-megabonk): the mode's own hp curve where the row has one.
+    const hp=(ROUNDS[row-1].hpNinhos??ROUNDS[row-1].hpScale)*playerScale(state.players).hp;
     let out=0;
     for(const kind of pickKinds(n,row)){
       const at=spots[(state.sent*7+out)%spots.length];

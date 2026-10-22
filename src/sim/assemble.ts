@@ -426,7 +426,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
         plan:players=>{
           const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city),...(options.nestPopulation!==undefined?{population:options.nestPopulation}:{})});
-          const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*ROUNDS[SLEEPER_ROUND-1].hpScale,speedMap:citySpeed,
+          const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*(ROUNDS[SLEEPER_ROUND-1].hpNinhos??ROUNDS[SLEEPER_ROUND-1].hpScale),speedMap:citySpeed,
             // Shots and kills are heard from the previous step's events; the alarm and the riding moto while they last.
             events:()=>world.lastEvents,
             ambient:ctx=>{

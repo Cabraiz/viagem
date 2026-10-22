@@ -25,20 +25,32 @@ const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toF
  * tint (0: only its light and shade, 1: its full colour). The palette keeps the colour; the photo brings the detail.
  * Ice is the most saturated photo: its tint dominates (D-038 review of the delivery).
  */
-export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7} as const;
+export const ALBEDO_CHROMA={neve:.5,'neve-pisada':.7,calcada:.6,gelo:.2,terra:.7,agua:1} as const;
 /**
  * World units one photo spans (its mirrored pair twice that). Larger than life on purpose: at the game's camera a real
  * sett (~28 in a photo of ~2.8 m) is ~4 px and reads as grain; the paving and the ice are drawn ~3× life size.
  */
-export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4} as const;
+export const ALBEDO_SPAN_UNITS={neve:4.4,'neve-pisada':4.4,calcada:6.6,gelo:6.6,terra:4.4,agua:6.6} as const;
 /** How strongly the photo's detail shows over the palette tone (0 none .. 1 all): the snows stay quiet under the figures. */
-export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8} as const;
+export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra:.8,agua:1} as const;
 /** The albedo's detail never takes a tone further than this from its palette base (the palette's contrast rule). */
 export const ALBEDO_SPAN={lo:.72,hi:1.22} as const;
 const slot=(name:typeof ALBEDO_SLOTS[number])=>ALBEDO_SLOTS.indexOf(name).toFixed(1);
 const mean=(name:typeof ALBEDO_SLOTS[number])=>`vec3(${ALBEDO_MEANS[ALBEDO_SLOTS.indexOf(name)].map(v=>v.toFixed(4)).join(',')})`;
 const albedo=(name:typeof ALBEDO_SLOTS[number])=>
   `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${(1/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)})`;
+
+/**
+ * Water with the atlas (card NEW-20261022-ORQ-agua-realista): the painted tile in its own colours (chroma and strength
+ * 1, over its own mean instead of a palette tone: the flat palette blue is what read as a vector drawing), lifted a
+ * little so the open water is not a hole next to the snow.
+ */
+export const WATER_ART_LIFT=1.25;
+/**
+ * The shore (cover G, bilinear: 0.5 on the cell edge) is pushed in and out by noise, so the water's edge is ragged and
+ * not the cell grid: open water from WATER_EDGE.open, a ledge of shore ice from WATER_EDGE.shelf (snow side).
+ */
+export const WATER_EDGE={wobble:.34,shelf:.30,open:.47} as const;
 
 /** Coarse ray steps over the chunk's own height range; 7 bisections refine the hit below 0.1 px. */
 export const RELIEF_RAY_STEPS=48;
@@ -85,7 +97,7 @@ const vec3 SNOW=${vec3(CITY_PALETTE.neve)},SNOW_SUN=${vec3(MATERIALS['neve-tampa
 const vec3 PACKED=${vec3(CITY_PALETTE['neve-pisada'])},PACKED_DETAIL=${vec3(CITY_PALETTE['neve-pisada-detalhe'])};
 const vec3 COBBLE=${vec3(CITY_PALETTE.calcada)},COBBLE_JOINT=${vec3(CITY_PALETTE['calcada-junta'])};
 const vec3 ICE=${vec3(CITY_PALETTE.gelo)},ICE_DETAIL=${vec3(CITY_PALETTE['gelo-detalhe'])},ICE_GLINT=${vec3(CITY_PALETTE['gelo-brilho'])};
-const vec3 WATER=${vec3(CITY_PALETTE.agua)},WATER_SHALLOW=${vec3(CITY_PALETTE['agua-raso'])};
+const vec3 WATER=${vec3(CITY_PALETTE.agua)},WATER_SHALLOW=${vec3(CITY_PALETTE['agua-raso'])},WATER_ART=${mean('agua')}*${WATER_ART_LIFT.toFixed(2)};
 const vec3 RUBBLE=${vec3(CITY_PALETTE['entulho-chao'])},RUBBLE_DETAIL=${vec3(CITY_PALETTE['entulho-chao-detalhe'])};
 const vec3 CLIFF_LIGHT=${vec3(CITY_PALETTE['penhasco-clara'])},CLIFF_DARK=${vec3(CITY_PALETTE['penhasco-escura'])},CLIFF_CAP=${vec3(CITY_PALETTE['penhasco-tampa'])};
 const vec3 ROCK_SUN=${vec3(MATERIALS.pedra.luz)},ROCK=${vec3(MATERIALS.pedra.clara)},ROCK_SHADE=${vec3(MATERIALS.pedra.escura)};
@@ -234,9 +246,19 @@ void main(){
  color=mix(color,mix(CLIFF_CAP,SNOW_SUN,0.5),cliff*(1.0-flank)*0.5);
  color=mix(color,cliffRock,flank*(1.0-smoothstep(0.7,0.85,fine+grain*0.3)*0.5));
 
- // Water (fountain, lake): deep blue, shallow at its edge. The layer's decor still draws its rim and glints.
- vec3 water=mix(WATER,WATER_SHALLOW,1.0-smoothstep(0.55,0.95,cv.g));
- color=mix(color,water,smoothstep(0.42,0.52,cv.g));
+ // Water (fountain, lake): the shore wobbles with the noise, so the edge is ragged and not the cell grid. Without the
+ // atlas: deep blue, shallow at its edge; with it, the painted water, a touch lighter and greener in the shallows.
+ float wm=cv.g+(fbm(w*0.9+vec2(5.1,1.7))-0.5)*${WATER_EDGE.wobble.toFixed(2)}+(fine-0.5)*0.05;
+ float shallow=1.0-smoothstep(${WATER_EDGE.open.toFixed(2)},0.85,wm);
+ vec3 water=mix(WATER,WATER_SHALLOW,shallow);
+ vec3 paint=WATER_ART*${albedo('agua')};
+ water=mix(water,mix(paint,mix(paint,ICE,0.35),shallow*0.6),albedoOn);
+ // Shore ice: a thin ledge between the ground and the open water, lit like the snow; a wet dark seam at its lip (the
+ // layer's decor no longer draws the striped rim over the relief, decor.ts groundDecor waterDecor).
+ vec3 shelf=mix(ice,SNOW_SUN,0.5)*mix(1.0,0.9,smoothstep(0.55,0.75,grain));
+ color=mix(color,shelf,smoothstep(${WATER_EDGE.shelf.toFixed(2)},${(WATER_EDGE.shelf+0.06).toFixed(2)},wm));
+ float open=smoothstep(${WATER_EDGE.open.toFixed(2)},${(WATER_EDGE.open+0.05).toFixed(2)},wm);
+ color=mix(color,water*mix(0.8,1.0,smoothstep(${(WATER_EDGE.open+0.02).toFixed(2)},${(WATER_EDGE.open+0.10).toFixed(2)},wm)),open);
 
  gl_FragColor=vec4(clamp(lightGrade(color),0.0,1.0),1.0); // lighting card: warm/cool grade, baked (identity with ?luz=0)
 }`;

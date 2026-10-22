@@ -153,8 +153,13 @@ function rubbleGround(out:DecorPrim[],at:At,r:()=>number,speckRange:readonly [nu
   specks(out,at,r,speckRange,C['entulho-chao-detalhe']);
 }
 
-/** Fountain water (bible §8.7): shallow tone, ice rim and foam ring on edges that touch non-water; glint picked per chunk. */
-function water(out:DecorPrim[],asset:CityAsset,cx:number,cy:number,at:At,glint:boolean){
+/**
+ * Fountain water (bible §8.7): shallow tone, ice rim and foam ring on edges that touch non-water; glint picked per chunk.
+ * Without `withDecor` nothing: the relief shader paints the water and a ragged shore itself (card agua-realista), and the
+ * drawn rim, foam ring and diamond glints over the painted water read as a vector drawing.
+ */
+function water(out:DecorPrim[],asset:CityAsset,cx:number,cy:number,at:At,glint:boolean,withDecor:boolean){
+  if(!withDecor)return;
   const rim=(e:Edge)=>groundAt(asset,cx+NEIGHBOUR[e][0],cy+NEIGHBOUR[e][1])!=='water';
   const edges=(['n','e','s','w'] as const).filter(rim),band=(e:Edge,d0:number,d1:number)=>[onEdge(e,0,d0),onEdge(e,1,d0),onEdge(e,1,d1),onEdge(e,0,d1)].map(([u,v])=>at(u,v));
   for(const e of edges)out.push(poly(C['agua-raso'],band(e,0,0.36)));
@@ -175,7 +180,7 @@ function water(out:DecorPrim[],asset:CityAsset,cx:number,cy:number,at:At,glint:b
  * Ground decoration of a chunk, cell by cell in the back-to-front order of groundQuads. Every primitive stays inside
  * its cell's quad; street ruts end exactly on the cell edge where the next packed cell's ruts start.
  */
-export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT):DecorPrim[]{
+export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt=VIEW_PIVOT,waterDecor=true):DecorPrim[]{
   const v=normalizeView(view),out:DecorPrim[]=[],glints=new Set<string>();
   // Glints are chosen in world row-major order, so the cap picks the same cells in every view.
   for(let cy=chunk.y0;cy<chunk.y1&&glints.size<GLINT.perChunk;cy++)for(let cx=chunk.x0;cx<chunk.x1&&glints.size<GLINT.perChunk;cx++)
@@ -189,7 +194,7 @@ export function groundDecor(chunk:CityChunk,asset:CityAsset,view:number,pivot:Pt
       case 'cobble':cobble(out,q.cy,at,r);break;
       case 'ice':ice(out,at,r);break;
       case 'rubble':rubbleGround(out,at,r,rubble);break;
-      case 'water':water(out,asset,q.cx,q.cy,at,glints.has(`${q.cx},${q.cy}`));break;
+      case 'water':water(out,asset,q.cx,q.cy,at,glints.has(`${q.cx},${q.cy}`),waterDecor);break;
     }
   }
   return out;

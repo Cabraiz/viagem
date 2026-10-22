@@ -7,7 +7,7 @@
  * CityAsset type and the terrain's height scale.
  */
 import type {CityAsset as MapsCityAsset,CityBlock as MapsCityBlock} from '../../../maps/index.ts';
-import {CITY_HEIGHT_PX_PER_UNIT,cityRelief} from '../../../maps/index.ts';
+import {CITY_HEIGHT_PX_PER_UNIT,WALL_FAMILIES,cityRelief,wallLines} from '../../../maps/index.ts';
 import {CITY_MAP_SCALE} from '../../../rules/index.ts';
 import type {BlockKind,CityAsset,CityBlock,CityPointName,CityProp,PropKind} from './asset.ts';
 import {HEIGHT_PX} from './projection.ts';
@@ -125,9 +125,33 @@ const COVER_NONE=0,COVER_PLAIN=1,COVER_RUBBLE=2,COVER_EDGE=3;
  *    whose cell is under a render block are dropped; one per spot: a prop closer than PROP_STACK to one already kept,
  *    or closer than PROP_DEDUP to one of its kind, is dropped too.
  * 6. Points: inicio, praca, spawnN/S/L/O and bocas N/S/L/O as bocaN/bocaS/bocaL/bocaO.
- * 7. Decor (the new scenery): copied as is, omitted when empty.
+ * 7. Decor (the new scenery): copied as is, omitted when empty. The wall cells the scenery left bare (the keep-outs
+ *    of maps/city-decor.ts: the plaza's disc, build sites, nest blocks) get their line too (leftoverWallLines), so no
+ *    wall of a decorated map is drawn as the procedural brick box (card NEW-20261022-ORQ-trocar-procedurais-por-arte).
  * The result is already in parseCityAsset's normal form (parsing it returns an equal value).
  */
+/** FNV-1a of a text (maps/city-decor.ts hashText): the same wall family the scenery gave the rest of the block. */
+const hashText=(s:string)=>{let h=0x811c9dc5;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),0x01000193);return h>>>0;};
+/**
+ * Lines for the wall cells of a decorated map that no scenery piece stands on or covers (maps/city-decor.ts leaves the
+ * keep-outs bare: the plaza's disc, the build sites, the nest blocks), on those cells only: maps/city-decor.ts wallLines,
+ * the family of each cell's block (the one its other cells wear), intact. Nothing on a map without scenery.
+ */
+export function leftoverWallLines(asset:MapsCityAsset):MapsCityAsset['decor']{
+  if(!asset.decor.length)return [];
+  const W=asset.cells.w,H=asset.cells.h,unit=asset.unitsPerCell,taken=new Uint8Array(W*H),block:(string|undefined)[]=new Array(W*H);
+  for(const d of asset.decor)for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)taken[r*W+c]=1;
+  for(const b of asset.blocks){
+    if(b.kind!=='wall')continue;
+    for(const [x,y,w,h] of b.rects){
+      const c0=Math.max(0,Math.round(x/unit)),r0=Math.max(0,Math.round(y/unit)),c1=Math.min(W,Math.round((x+w)/unit)),r1=Math.min(H,Math.round((y+h)/unit));
+      for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)if(!taken[r*W+c])block[r*W+c]=b.id;
+    }
+  }
+  if(!block.some(Boolean))return [];
+  return wallLines(W,H,i=>block[i]!==undefined,i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],new Uint8Array(W*H));
+}
+
 export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):CityAsset{
   const W=asset.cells.w,H=asset.cells.h,cell=asset.unitsPerCell,cells=W*H;
 
@@ -252,8 +276,9 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
     bocaN:pt(p.bocas.N),bocaS:pt(p.bocas.S),bocaL:pt(p.bocas.L),bocaO:pt(p.bocas.O),
   };
 
-  // 7. Scenery (cenario-no-mapa): as placed by the maps sector, already on the cell grid.
-  const decor=asset.decor.map(q=>({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(q.links!==undefined?{links:q.links}:{}),...(q.cover?{cover:true}:{})}));
+  // 7. Scenery (cenario-no-mapa): as placed by the maps sector, already on the cell grid; the bare wall cells' lines.
+  const placed=asset.decor.length?[...asset.decor,...leftoverWallLines(asset)]:[];
+  const decor=placed.map(q=>({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(q.links!==undefined?{links:q.links}:{}),...(q.cover?{cover:true}:{})}));
 
   return {version:1,name:asset.name,cell,width:W,height:H,origin:{x:0,y:0},heights,corners,ground,blocks,props,...(decor.length?{decor}:{}),points};
 }

@@ -18,21 +18,21 @@
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
-import {PROJECTILE_SPEED_MULT,attackTargets} from '../../rules/index.ts';
+import {HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
 
-/** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through PROJECTILE_SPEED_MULT (4 u/s for 2 s, same reach). */
-const FLING_SPEED=8*PROJECTILE_SPEED_MULT,FLING_SECONDS=1/PROJECTILE_SPEED_MULT,FLING_PIERCE=2;
+/** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through HERO_SHOT_SPEED_MULT (same reach). */
+const FLING_SPEED=8*HERO_SHOT_SPEED_MULT,FLING_SECONDS=1/HERO_SHOT_SPEED_MULT,FLING_PIERCE=2;
 /** Angle between projectiles of one straight volley. */
 const FAN_STEP=.14;
 /**
  * Initial spread of a homing volley, before steering takes over; HOMING_TURN is the most it turns per tick (rad): the
- * tuned .25 × PROJECTILE_SPEED_MULT, so the slower pigeon flies the same curves (same turn per unit flown).
+ * tuned .25 × HERO_SHOT_SPEED_MULT, so the slower pigeon flies the same curves (same turn per unit flown).
  */
-const HOMING_SPREAD=.35,HOMING_TURN=.25*PROJECTILE_SPEED_MULT;
+const HOMING_SPREAD=.35,HOMING_TURN=.25*HERO_SHOT_SPEED_MULT;
 
 interface WeaponOptions {
   cap?:number;

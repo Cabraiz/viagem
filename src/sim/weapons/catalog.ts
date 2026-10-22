@@ -4,7 +4,7 @@
  */
 import type {ItemDef,PlayerStats} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
-import {PROJECTILE_SPEED_MULT} from '../../rules/index.ts';
+import {HERO_SHOT_SPEED_MULT} from '../../rules/index.ts';
 import {NEW_WEAPONS,legendaryWeapons} from './arsenal.ts';
 
 export const WEAPON_IDS=['chinelo','boleto','cafe','guarda-chuva','pombo','audio'] as const;
@@ -31,9 +31,9 @@ export interface WeaponLevel {
   amount:number;
   /** Radius in world units: projectile/puddle/aura radius, cone length, orbit distance for orbit. */
   area:number;
-  /** Units per second for moving projectiles (tuned: pierce/homing fly PROJECTILE_SPEED_MULT × it); radians per second for orbit. */
+  /** Units per second for moving projectiles (tuned: pierce/homing fly HERO_SHOT_SPEED_MULT × it); radians per second for orbit. */
   speed:number;
-  /** Seconds a projectile, orbiter, puddle or aura lives (tuned: pierce/homing fly 1 / PROJECTILE_SPEED_MULT × it). */
+  /** Seconds a projectile, orbiter, puddle or aura lives (tuned: pierce/homing fly 1 / HERO_SHOT_SPEED_MULT × it). */
   duration:number;
   /** Extra enemies a projectile passes through after its first hit (PIERCE_INFINITE = no limit). */
   pierce:number;
@@ -74,13 +74,13 @@ const lv=(damage:number,cooldown:number,amount:number,area:number,speed:number,d
 
 const INF=PIERCE_INFINITE;
 
-/** Patterns whose projectiles travel (their duration is a flight time): rules PROJECTILE_SPEED_MULT applies to them. */
+/** Patterns whose projectiles travel (their duration is a flight time): rules HERO_SHOT_SPEED_MULT applies to them. */
 export const travels=(pattern:WeaponPattern)=>pattern==='pierce'||pattern==='homing';
 /**
  * Speed and flight-time factors of a pattern (the tables hold the tuned numbers): travelling shots fly
- * PROJECTILE_SPEED_MULT × the speed for 1 / it × the time, the same reach; the offer text shows these real seconds.
+ * HERO_SHOT_SPEED_MULT × the speed for 1 / it × the time, the same reach; the offer text shows these real seconds.
  */
-const speedScale=(pattern:WeaponPattern)=>travels(pattern)?PROJECTILE_SPEED_MULT:1;
+export const speedScale=(pattern:WeaponPattern)=>travels(pattern)?HERO_SHOT_SPEED_MULT:1;
 const lifeScale=(pattern:WeaponPattern)=>1/speedScale(pattern);
 
 /** pt-BR number: at most 2 decimals, comma separator. */
@@ -253,7 +253,7 @@ export interface ResolvedWeapon {
   durationTicks:number; pierce:number; knockback:number; rehitTicks:number; range:number;
 }
 
-/** The table's speed and duration are the tuned ones; a travelling pattern resolves them through PROJECTILE_SPEED_MULT. */
+/** The table's speed and duration are the tuned ones; a travelling pattern resolves them through HERO_SHOT_SPEED_MULT. */
 export function resolveWeapon(def:WeaponDef,level:number,stats:PlayerStats):ResolvedWeapon{
   const row=weaponLevel(def,level);
   const t=(s:number)=>Math.round(s*SIM_HZ);

@@ -40,6 +40,11 @@ export interface HudContext {
    * the run is not paused. The offer opens by itself in it; the pause's own HUD (clock, who is picking) reads it too.
    */
   pause?:RunPause;
+  /**
+   * Minuto de Minerva (relogio-minerva): the sim tick the monsters wake at (RunState.minervaAteTick from the room's
+   * {t:'run'}, combat only), set by Hud.setMinerva; undefined: no minute this run.
+   */
+  minervaAteTick?:number;
 }
 
 /** Common shape of every DOM part of the HUD. */

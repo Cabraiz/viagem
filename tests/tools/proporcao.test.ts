@@ -8,11 +8,12 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,SEAM_MAX,TOL,cells,headScale,measureClass,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
-const classes=Object.keys(manifest.pieces).filter(id=>Object.keys(manifest.pieces[id].files??{}).some(k=>k.startsWith('idle16-')));
+const classes:string[]=measuredClasses(manifest);
+assert.ok(classes.includes('clt-cansado'),'the CLT runs (corrida-clt): its run is measured against its idle8');
 /**
  * Walks drawn before this gate (movimento16-espelho, 21/10) that miss it. The walk only shows with HERO_GAIT.run off: the
  * viciado runs. A fixed one leaves the list (the test asks for that), a new miss fails.

@@ -145,8 +145,9 @@ for(const id of ids){
   const m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
   for(const [name,f] of Object.entries(files)){
     // The sheets the game shows (movement128.ts movementPlan): M16 when the class has it (5 drawn directions), else R06
-    // (walk128/attack128 in the 8 directions, idle8 one pose per direction).
-    const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:walk|attack)128-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
+    // (walk128/attack128 in the 8 directions, idle8 one pose per direction, and run16 when it runs).
+    // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128.
+    const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:(?:walk|attack)128|run16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
     if(!m&&!idle8)continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix);

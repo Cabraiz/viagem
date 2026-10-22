@@ -26,11 +26,11 @@ test('the radius grows with the build\'s area like the sim\'s strike (area × st
   const plain=meleeCone('faca',{weapons:[{id:'faca',level:1}],passives:[]},'nenhuma-classe');
   assert.ok(plain);
   const base=computeStats({weapons:[],passives:[]},classBonusOf('nenhuma-classe')).area;
-  assert.equal(plain.radius,1.3*base);assert.equal(plain.half,1);
+  assert.equal(plain.radius,2.6*base,'melee-alcance-2x: the faca reaches 1.3 × 2');assert.equal(plain.half,1);
   const build={weapons:[{id:'faca',level:2}],passives:[{id:'megafone',level:3}]};
   const big=meleeCone('faca',build,'concursado');
   assert.ok(big);
-  assert.ok(Math.abs(big.radius-1.3*computeStats(build,classBonusOf('concursado')).area)<1e-9);
+  assert.ok(Math.abs(big.radius-2.6*computeStats(build,classBonusOf('concursado')).area)<1e-9);
   assert.ok(big.radius>plain.radius,'megafone widens it');
 });
 

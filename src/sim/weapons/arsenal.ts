@@ -10,7 +10,6 @@
  */
 import type {ItemDef} from '../../contract/index.ts';
 import type {WeaponDef,WeaponLevel} from './catalog.ts';
-import {SILENCER_PER_LEVEL} from '../../rules/index.ts';
 
 export type Rarity=1|2|3|4|5;
 export const RARITIES:readonly Rarity[]=[1,2,3,4,5];
@@ -58,11 +57,16 @@ const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{ver
  */
 /** Noise of a legendary and of a weapon the arsenal does not list (the automatic game's): a pistol's. */
 export const DEFAULT_NOISE=NOISE.pistola;
+/**
+ * The faca's reach (u, its row's area and range): 1.3 doubled (card melee-alcance-2x, usuário 22/10: "duplique o
+ * alcance do ataque melee"). Only the heroes' melee; the critters' bites keep theirs.
+ */
+export const FACA_REACH=1.3*2;
 export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
   weapon({id:'faca',name:'Faca de Pão',icon:'faca',pattern:'cone',coneHalfAngle:1,minRarity:1,noise:NOISE.faca,
     quip:'Corta pão, corta bicho.',intro:'Golpe em arco bem de perto. Não faz barulho nenhum.',
     //           dmg  cd  amt area spd dur pierce kb  hit  range
-    verde:row(12,.5,1,1.3,0,.15,1e6,.3,.2,1.3)}),
+    verde:row(12,.5,1,FACA_REACH,0,.15,1e6,.3,.2,FACA_REACH)}),
   weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:NOISE.pistola,
     quip:'Tava guardada no armário desde 1987.',intro:'Um tiro certeiro no bicho mais perto.',
     verde:row(15,.6,1,.22,10,.7,0,.2,.5,7)}),
@@ -123,12 +127,10 @@ export const isConsumableId=(id:string):id is ConsumableId=>(CONSUMABLE_IDS as r
 
 
 /**
- * D-051: how far a shot of `weaponId` is heard (world units), after the Silenciador de Garagem (SILENCER_PER_LEVEL a
- * level, never below 0). The D-051 nests (E1) read it on the 'fire' event's weapon.
+ * D-051: how far a shot of `weaponId` is heard (world units). The D-051 nests (E1) read it on the 'fire' event's weapon.
+ * (The Silenciador de Garagem that took noise off is gone: melee-alcance-2x, usuário 22/10 "remova esse poder".)
  */
-export function weaponNoise(weaponId:string,passives:readonly {id:string;level:number}[]=[]){
-  const base=(ARSENAL_BY_ID.get(weaponId)?.noise)??DEFAULT_NOISE;
-  const silencer=passives.find(p=>p.id==='silenciador')?.level??0;
-  return Math.max(0,base*(1-SILENCER_PER_LEVEL*silencer));
+export function weaponNoise(weaponId:string){
+  return (ARSENAL_BY_ID.get(weaponId)?.noise)??DEFAULT_NOISE;
 }
 const ARSENAL_BY_ID:ReadonlyMap<string,ArsenalWeapon>=new Map(NEW_WEAPONS.map(w=>[w.id,w]));

@@ -135,7 +135,7 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
 
 test('the map share trickles out (NEST_PACE.trickle a second, the first batch with the wave), and the wave bodies take the march, hp and damage of NEST_PACE once',()=>{
   const saved=structuredClone(NEST_PACE);
-  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,mapShare:[.1,.1],trickle:[2,2],march:.5,hp:2,damage:.5});
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,mapShare:[.1,.1],trickle:[2,2],march:[.5,.5],hp:2,damage:.5});
   try{
     const r=rig();
     r.world.step();

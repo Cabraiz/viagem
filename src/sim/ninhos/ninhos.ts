@@ -56,17 +56,20 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *    22/10: "calibra, mas sem diminuir número de inimigos": the quota, the population and the waves never shrink to
  *    balance a run, the pace and the bodies' strength do);
  *  - trickle: map recruits leaving per second (the rest of the wave's share follows, a batch a second, not all at once);
- *  - march: × the speed of a wave's bodies (recruits, nest-born, outside);
- *  - hp, damage: × the hp and the hit of a wave's bodies;
+ *  - march: × the speed of a wave's bodies (recruits, nest-born, outside), by room size;
+ *  - hp, damage: × the hp and the hit of a wave's bodies (the hp is E6's curve: leave it at 1 without asking);
  *  - perNest: [min, max] bodies born in each live nest per wave;
  *  - floor: the outside group never shrinks below this share of itself, whatever the kills past the quota;
  *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
-// Bench (seeds 1-16, evidence/NEW-20261022-ORQ-monstros-espalhados): see the card's status.md.
-export const NEST_PACE={period:[60,45] as [number,number],minerva:MINERVA_S,first:[45,90] as [number,number],alive:[8,60] as [number,number],
+// Bench (seeds 1-16, 1p and 6p, evidence/NEW-20261022-ORQ-monstros-espalhados/bench): with the quota at 10 % of today's
+// horde, the waves of the first draft (period 60/45 s, first wave 45–90 s, 2–6 recruits a second, full march) won
+// 1p 0/16 and 6p 2/16 (the car fell). The pace that keeps every body (the user: "sem diminuir número de inimigos"):
+// period 90/60 s, the first wave 90–120 s after the minuto de Minerva, 1–3 recruits a second, march × .85 on 1p.
+export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[90,120] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
-  trickle:[2,6] as [number,number],march:1,hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
+  trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
 /** The first wave's window (s): NEST_PACE.first. */
 export const FIRST_EXIT:readonly [number,number]=NEST_PACE.first;
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
@@ -260,7 +263,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     // Once per body (a recruit that slept again and comes back keeps its tune).
     if(e.memory?.tuned===1)return;
     (e.memory??={}).tuned=1;
-    if(NEST_PACE.march!==1)e.speed*=NEST_PACE.march;
+    const march=pace(NEST_PACE.march,state.players);
+    if(march!==1)e.speed*=march;
     if(NEST_PACE.hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*NEST_PACE.hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*NEST_PACE.hp)));}
     if(NEST_PACE.damage!==1)e.damage*=NEST_PACE.damage;
   }

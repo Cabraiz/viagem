@@ -32,8 +32,9 @@ const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
 const BEHIND=new Set(['N','NW','NE']);
 /**
- * Manual fixes, `<id>:<motion>16-<DIR>` → {frame: [x, y]} in the 96 px cell; a third element 1 puts the weapon behind
- * the body in that pose (the hand is hidden behind it).
+ * Manual fixes, `<id>:<sheet name>` → {frame: [x, y]} in the 96 px cell; a third element 1 puts the weapon behind
+ * the body in that pose (the hand is hidden behind it). `keys`: fists marked by eye (guided), `pick`: the tracked
+ * candidate, `behind`: the whole sheet's weapon behind the body (the far hand).
  * viciado W: the weapon hand is the far one; while walking it swings behind the body for frames 1-3 and 8 (the rule
  * then finds the near hand: in between its neighbours instead), and at rest it hangs hidden (the rule finds the nose).
  */
@@ -54,7 +55,9 @@ const CLT_KEYS={
   SE:[[54.4,48],[54,48],[41,47],[43,36],[42,37],[42,39],[60,56],[70,57],[73,49],[74,53],[71.6,53],[70,54],[65,56],[60,48],[57,46],[58,44]],
 };
 const OVERRIDES={
-  ...Object.fromEntries(Object.entries(CLT_KEYS).map(([d,k])=>[`clt-cansado:attack128-${d}`,{keys:Object.fromEntries(k.map((p,i)=>[i*8,p]))}])),
+  ...Object.fromEntries(Object.entries(CLT_KEYS).map(([d,k])=>[`clt-cansado:attack128-${d}`,{keys:Object.fromEntries(k.map((p,i)=>[i*8,p])),
+    // W and E punch with the far hand (the near one wears the watch): the weapon goes behind the body, out past it.
+    ...(d==='W'||d==='E'?{behind:true}:{})}])),
   'clt-cansado:idle8':{2:[58,59],6:[50,56]},
   // The walk E swings both hands past the body in turn, each hidden half the stride: the hand in front, pose by pose
   // (the weapon changes hands where they cross, a few px apart).
@@ -152,7 +155,7 @@ for(const id of ids){
     const poses=await posesOf(src);
     points.forEach((p,i)=>{if(p?.[2]===1){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}});
     if(points.some(p=>!p))throw new Error(`${f.file}: no hand in frame ${points.findIndex(p=>!p)}`);
-    table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:BEHIND.has(dir),points};
+    table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:fix.behind??BEHIND.has(dir),points};
     if(sheetDir){fs.mkdirSync(sheetDir,{recursive:true});await debugSheet(src,points,path.join(sheetDir,`${id}.${name}.png`));}
     console.log(f.file,points.length);
   }

@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
 import {skin} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
-import {AIM_ANGLE,DEFAULT_HOLD,WEAPON_HOLD,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
+import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
 import {FIRE_LOOK} from '../../src/client/render/arsenal-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
@@ -27,6 +27,8 @@ const shown=(id:string)=>{
 };
 /** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
 const SCREEN_PER_CELL=45/50;
+/** Skin pixels the fingers patch must hold in a pose in front (a fist is ~5×5 cell px). */
+const MIN_FINGERS=6;
 
 test('every sheet the game shows the viciado and the CLT has its hand in each frame, inside the figure', ()=>{
   for(const id of HELD){
@@ -44,7 +46,7 @@ test('every sheet the game shows the viciado and the CLT has its hand in each fr
 });
 
 test('the grip lands on the drawn hand: skin within 3 screen px of it in every frame, a hidden hand on the body', async ()=>{
-  const reach=3/SCREEN_PER_CELL,worst:{at:string;d:number}[]=[];
+  const reach=3/SCREEN_PER_CELL,worst:{at:string;d:number}[]=[],few:{at:string;n:number}[]=[];
   for(const id of HELD)for(const [name,f] of shown(id)){
     const {data,info}=await sharp(fileURLToPath(new URL(`../../public/art/sprites/${f.file}`,import.meta.url))).raw().ensureAlpha().toBuffer({resolveWithObject:true});
     const cols=info.width/96;
@@ -60,10 +62,38 @@ test('the grip lands on the drawn hand: skin within 3 screen px of it in every f
         const k=px(x,y);if(skin(data[k],data[k+1],data[k+2],data[k+3]))d=Math.min(d,Math.hypot(x-p[0],y-p[1]));
       }
       worst.push({at:`${f.file} #${i}`,d});
+      // The fingers patch (HAND_PATCH around the point) holds the hand's pixels: they are what closes over the handle.
+      let fingers=0;
+      for(let y=Math.round(p[1]-HAND_PATCH);y<=Math.round(p[1]+HAND_PATCH);y++)for(let x=Math.round(p[0]-HAND_PATCH);x<=Math.round(p[0]+HAND_PATCH);x++){
+        const k=px(x,y);if(x>=0&&y>=0&&x<96&&y<96&&skin(data[k],data[k+1],data[k+2],data[k+3]))fingers++;
+      }
+      few.push({at:`${f.file} #${i}`,n:fingers});
     }
   }
   worst.sort((a,b)=>b.d-a.d);
+  few.sort((a,b)=>a.n-b.n);
+  assert.ok(few[0].n>=MIN_FINGERS,`hand pixels under the fingers patch (≥${MIN_FINGERS}): ${few.slice(0,5).map(w=>`${w.at} ${w.n}`).join(', ')}`);
   assert.ok(worst[0].d<=reach,`grip off the hand (cell px, ≤${reach.toFixed(1)}): ${worst.slice(0,5).map(w=>`${w.at} ${w.d.toFixed(1)}`).join(', ')}`);
+});
+
+test('drawing order: from the back (N, NW, NE) and with the far hand, the weapon goes behind the hero', ()=>{
+  for(const id of HELD)for(const [name,f] of shown(id)){
+    const sheet=HAND_POINTS[f.file];
+    if(name==='idle8'){
+      // One pose per direction (S, SW, W, NW, N, NE, E, SE): the back views' poses behind.
+      for(const i of [3,4,5])assert.equal(sheet.points[i][2],1,`${id} idle8 ${i}`);
+      continue;
+    }
+    if(/-(N|NW|NE)$/.test(name))assert.equal(sheet.behind,true,`${id} ${name}`);
+  }
+  // The CLT throws its punches W and E with the far hand (the watch is on the near one).
+  const clt=filesOf('clt-cansado');
+  for(const d of ['W','E'])assert.equal(HAND_POINTS[clt[`attack128-${d}`].file].behind,true,d);
+  // Behind → under the hero's depth; in front → over it (render/arsenal-fx.ts HELD_DEPTH_STEP).
+  const sprites={handPose:()=>({point:{x:30,y:50,behind:true},ox:.5,oy:.75,scale:.5,flip:false,direction:'N' as const})};
+  const sprite={x:0,y:0,depth:100,rotation:0,visible:true,texture:{key:'k'},frame:{name:0},originX:.5,originY:.75,scaleX:.5,scaleY:.5,flipX:false};
+  const held=heldHand(sprites,sprite)!;
+  assert.equal(held.behind,true);assert.equal(held.patch,undefined,'behind: the body covers it, no fingers patch');
 });
 
 test('the hand never jumps between two poses of a dense sheet (no swap to the other hand, the elbow or the face)', ()=>{
@@ -132,4 +162,25 @@ test('heldHand: on screen from the pose, none for a downed (turned) or hidden he
   assert.equal(heldHand(sprites,{...sprite,visible:false}),undefined);
   assert.equal(heldHand(sprites,{...sprite,id:'r06'}),undefined);
   assert.equal(heldHand(sprites,undefined),undefined);
+});
+
+test('patchCrop: the fingers square around the hand in the shown frame, mirrored with it, mapped onto a city copy', ()=>{
+  const r=HAND_PATCH;
+  assert.deepEqual(patchCrop({x:30,y:50},false),[30-r,50-r,2*r,2*r]);
+  // Phaser crops a mirrored frame in its mirrored coordinates: the square goes to 96 − x.
+  assert.deepEqual(patchCrop({x:30,y:50},true),[66-r,50-r,2*r,2*r]);
+  // A city copy: the cell's crop from (20, 10), resampled 2:1, padded 4: the hand at 4 + (30 − 20)/2 = 9, 4 + 40/2 = 24.
+  const geom={cellW:96,cellH:96,crop:{x:20,y:10,w:56,h:80},cw:28,ch:40,pad:4,ring:2,perCss:1,slotW:36,slotH:48,kx:2,ky:2};
+  assert.deepEqual(patchCrop({x:30,y:50},false,geom),[9-r/2,24-r/2,r,r]);
+  assert.deepEqual(patchCrop({x:30,y:50},true,geom),[27-r/2,24-r/2,r,r]);
+});
+
+test('heldLook: the held weapon loses the icon\'s gloss (greyer, highlights down, darker), alpha kept', ()=>{
+  const px=new Uint8ClampedArray([255,255,255,255, 200,60,40,128]);
+  heldLook(px);
+  assert.ok(px[0]<235&&px[0]===px[1]&&px[1]===px[2],'a white highlight comes down');
+  assert.equal(px[3],255);assert.equal(px[7],128);
+  // The red is closer to its grey than before.
+  assert.ok(px[4]-px[6]<(200-40)*.85,String([...px.slice(4,8)]));
+  assert.ok(HELD_TINT.behind<HELD_TINT.front);
 });

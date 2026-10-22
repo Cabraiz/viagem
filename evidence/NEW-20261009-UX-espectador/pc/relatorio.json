@@ -1,0 +1,343 @@
+{
+ "errors": [],
+ "console": [],
+ "sent": [
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "sem-t:{\"type\":\"ping\"}",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack"
+ ],
+ "steps": [
+  "01-retrato-barra",
+  "02-retrato-proximo",
+  "03-retrato-chinelo-voando",
+  "04-retrato-chinelo-caiu",
+  "05-retrato-sair-confirma",
+  "06-paisagem-barra",
+  "07-paisagem-chinelo-voando",
+  "08-depois-de-sair"
+ ],
+ "before": {
+  "bar": "Cafeteira",
+  "watching": "bot-2",
+  "arrows": true,
+  "alvo": {
+   "x": 639.9955851457898,
+   "y": 395.0740587156122
+  },
+  "tela": [
+   1280,
+   720
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   1280,
+   720,
+   1280,
+   720
+  ],
+  "cam": [
+   1280,
+   720
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 1635.546875,
+   "key": "sprite128:maromba:walk:N:cidade:6",
+   "frame": "122",
+   "w": 49.55907154044169,
+   "h": 55.7539554829969,
+   "scr": [
+    640.7559179181782,
+    395.16118851002983
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 6225.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    1280,
+    720
+   ],
+   "ps": [
+    1280,
+    720
+   ],
+   "gs": [
+    1280,
+    720
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 130
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 115
+   }
+  ]
+ },
+ "afterNext": {
+  "bar": "Robozinho",
+  "watching": "bot-1",
+  "arrows": true,
+  "alvo": {
+   "x": 700.1468491901173,
+   "y": 395.1476579633768
+  },
+  "tela": [
+   1280,
+   720
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   1280,
+   720,
+   1280,
+   720
+  ],
+  "cam": [
+   1280,
+   720
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 2330.494450831269,
+   "key": "sprite128:clt-cansado:walk:NE:cidade:11",
+   "frame": "70",
+   "w": 52.90936591753788,
+   "h": 52.05598904790018,
+   "scr": [
+    700.5376918054666,
+    395.19890306210704
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 8125.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    1280,
+    720
+   ],
+   "ps": [
+    1280,
+    720
+   ],
+   "gs": [
+    1280,
+    720
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 130
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 115
+   }
+  ]
+ },
+ "afterPrev": {
+  "bar": "Cafeteira",
+  "watching": "bot-2",
+  "arrows": true,
+  "alvo": {
+   "x": 524.9908611475954,
+   "y": 413.6939239462999
+  },
+  "tela": [
+   1280,
+   720
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   1280,
+   720,
+   1280,
+   720
+  ],
+  "cam": [
+   1280,
+   720
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 2389.137620192312,
+   "key": "sprite128:maromba:walk:SW:cidade:9",
+   "frame": "92",
+   "w": 43.364187597886485,
+   "h": 54.9795949901775,
+   "scr": [
+    524.9784237739333,
+    413.76693674967106
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 5025.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    1280,
+    720
+   ],
+   "ps": [
+    1280,
+    720
+   ],
+   "gs": [
+    1280,
+    720
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 130
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 115
+   }
+  ]
+ },
+ "leaveText": "Sai da sala? Toca de novo",
+ "leaveReset": "Voltar ao lobby",
+ "landNext": {
+  "bar": "Robozinho",
+  "watching": "bot-1",
+  "arrows": true,
+  "alvo": {
+   "x": 601.7000601457446,
+   "y": 363.98529471974473
+  },
+  "tela": [
+   1280,
+   720
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   1280,
+   720,
+   1280,
+   720
+  ],
+  "cam": [
+   1280,
+   720
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 1859.2013478201225,
+   "key": "sprite128:clt-cansado:walk:E:cidade:14",
+   "frame": "124",
+   "w": 52.90936591753788,
+   "h": 52.05598904790018,
+   "scr": [
+    602.1547931250218,
+    363.1245951530121
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 11525.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    1280,
+    720
+   ],
+   "ps": [
+    1280,
+    720
+   ],
+   "gs": [
+    1280,
+    720
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 130
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 115
+   }
+  ]
+ },
+ "afterLeave": {
+  "shell": false,
+  "socket": 3
+ }
+}

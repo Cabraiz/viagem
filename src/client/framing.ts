@@ -351,6 +351,17 @@ export function chooseWatched(players:readonly Watchable[],from:Point,current?:s
   const pick=(list:readonly Watchable[])=>list.reduce<Watchable|undefined>((best,p)=>!best||Math.hypot(p.x-from.x,p.y-from.y)<Math.hypot(best.x-from.x,best.y-from.y)?p:best,undefined)?.id;
   return pick(players.filter(p=>p.standing))??pick(players.filter(p=>p.inRun));
 }
+/**
+ * The spectator's ‹ › (UX-espectador): the next teammate still in the run (standing or downed) after `current`, in id
+ * order (the team strip's), wrapping around; `dir` -1 goes back. Undefined when nobody is left to watch.
+ */
+export function cycleWatched(players:readonly Watchable[],current:string|undefined,dir:1|-1):string|undefined{
+  const ids=players.filter(p=>p.inRun).map(p=>p.id).sort();
+  if(!ids.length)return undefined;
+  const at=current===undefined?-1:ids.indexOf(current);
+  if(at<0)return ids[dir>0?0:ids.length-1];
+  return ids[(at+dir+ids.length)%ids.length];
+}
 
 /** Screen point (CSS px, canvas) of a projected world point under a camera centred at `center`. */
 export function toScreen(p:Point,center:Point,viewport:Viewport,zoom:number):Point{

@@ -101,7 +101,21 @@ export interface StadiumCutout {
    * whole 1920x1080 picture, framed like the background (placeCutout), never fitted to the hero (fitCutout).
    */
   frente?:{x:number;y:number;w:number;h:number;file:string};
+  /**
+   * His face in the whole 1920x1080 picture he was cut out of (eyes to chin, cheek to cheek), px. The heroes' faces
+   * stand in the same place on screen (clt-mesmo-lugar): scripts/pes-no-chao.mjs and the tests measure them by it.
+   */
+  rosto:{x:number;y:number;w:number;h:number};
+  /**
+   * Stands in another hero's place (clt-mesmo-lugar, the user, 21/10: "os rostos deles e corpo deles estejam meio que
+   * quase no mesmo lugar"): his whole picture (the cutout AND his `fundo`, so his feet stay on his own floor) scaled
+   * `k` and moved so his face's middle lands on `de`'s, `dy` px lower (his head is bigger for his height). See moveOf.
+   */
+  lugar?:{de:string;k:number;dy:number};
 }
+/** A whole-picture point of a hero's own picture → the stage's whole picture: k*p + (dx,dy). */
+export interface Move {k:number;dx:number;dy:number}
+export const SEM_MOVE:Move=Object.freeze({k:1,dx:0,dy:0});
 /**
  * The top edge of the stadium's bar (the padded top's silhouette) in the whole 1920x1080 picture: y at x, a cubic fit
  * (scripts/menu-arte.mjs --so mureta measures it on fundo-estadio-viciado: the top of the light band over the purple
@@ -115,19 +129,49 @@ export function muretaTopo(x:number){
 export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp'],
     [1057,'/art/menu/heroi/viciado-em-bet-1057.webp'],[1586,'/art/menu/heroi/viciado-em-bet-1586.webp']],
-    desce:4,frente:{x:940,y:940,w:820,h:170,file:'/art/menu/mureta-estadio.webp'}},
+    desce:4,frente:{x:940,y:940,w:820,h:170,file:'/art/menu/mureta-estadio.webp'},rosto:{x:1278,y:159,w:195,h:160}},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
+  // In the viciado's place (clt-mesmo-lugar): 12% bigger (his face 11% narrower than the viciado's) and his face 26 px
+  // lower: his head is bigger for his height, so his hair stays ~10 px under the window's top (1366x768) and his soles
+  // land ~90 px over the viciado's, on his own plateau (his background moves with him, frameMoved).
   'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
     [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
-    fundo:'/art/lite/menu/fundo-clt-cansado.webp'},
+    fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.12,dy:26}},
 });
+type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
+/** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dy` lower. */
+export function moveOf(cut:Partial<Pick<StadiumCutout,'rosto'|'lugar'>>):Move{
+  const l=cut.lugar,other=l&&RECORTES[l.de];
+  if(!l||!other||!cut.rosto)return SEM_MOVE;
+  const there=rostoNoPalco(other),mine=cut.rosto;
+  return {k:l.k,dx:there.x+there.w/2-l.k*(mine.x+mine.w/2),dy:there.y+there.h/2+l.dy-l.k*(mine.y+mine.h/2)};
+}
+/** His face on the stage's whole picture (px): moved (lugar), then `desce`; before any slide of frameMoved's clamp. */
+export function rostoNoPalco(cut:Pick<StadiumCutout,'rosto'|'desce'>&Partial<Pick<StadiumCutout,'lugar'>>){
+  const m=moveOf(cut),r=cut.rosto;
+  return {x:m.k*r.x+m.dx,y:m.k*r.y+m.dy+(cut.desce??0),w:m.k*r.w,h:m.k*r.h};
+}
+/**
+ * A hero's own background (`fundo`, a bleed with the stadium's geometry) where the stadium's framing (frameArt) and his
+ * move put it, so his feet stay on his floor: scale `s` (box px per file px) and its top-left corner, always covering the box
+ * (a window wider than his picture reaches slides it, and placeCutout slides him with it).
+ */
+export function frameMoved(box:{w:number;h:number},art:StadiumArt,move:Move=SEM_MOVE,pos={x:.5,y:1}){
+  const {s,ox,oy}=frameArt(box,art,pos),f=art.focal??{x:0,y:0,w:art.w,h:art.h},kf=f.w/WHOLE.w,S=s*move.k;
+  if(move===SEM_MOVE)return {s,ox,oy};
+  const clamp=(v:number,lo:number)=>Math.min(0,Math.max(lo,v));
+  return {s:S,ox:clamp(ox+(f.x*(1-move.k)+kf*move.dx)*s,box.w-art.w*S),oy:clamp(oy+(f.y*(1-move.k)+kf*move.dy)*s,box.h-art.h*S)};
+}
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
 export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
 export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
-/** The cutout's box in the stage (px) for the same framing the background uses (frameArt; `pos` for `cover`). */
-export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>,pos={x:.5,y:1}){
+/**
+ * The cutout's box in the stage (px) for the same framing the background uses (frameArt; `pos` for `cover`); a hero in
+ * another's place (lugar) by his own background's (frameMoved), so he and his floor never part.
+ */
+export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Placeable,pos={x:.5,y:1}){
   if(!(box.w>0&&box.h>0))return;
-  const {s,ox,oy}=frameArt(box,art,pos);
+  const {s,ox,oy}=frameMoved(box,art,moveOf(cut),pos);
   // The whole picture's px → the file's px: the same for the plain wide file, shifted by the bleed for E6's.
   const f=art.focal??{x:0,y:0,w:art.w,h:art.h},k=f.w/WHOLE.w;
   return {x:ox+(f.x+cut.x*k)*s,y:oy+(f.y+(cut.y+(cut.desce??0))*k)*s,w:cut.w*k*s,h:cut.h*k*s};

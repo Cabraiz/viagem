@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Card NEW-20261021-ORQ-arma-na-mao-viciado: measures, offline, where the weapon hand is in every M16 pose of a class
- * (walk 16, attack 16, idle 8, the 5 drawn directions; docs/movement16.md) and writes src/client/sprites/hand-points-data.ts.
+ * (walk 16, attack 16, idle 8, run 16 when drawn, the 5 drawn directions; docs/movement16.md) and writes src/client/sprites/hand-points-data.ts.
  * The weapon hand is the one that punches in the attack sheet of that direction (the leading side): S screen-left,
  * N screen-right, and the facing side for W, NW and SE (the mirrored E, NE and SW reuse it flipped, so in the mirror
  * the weapon changes hands with the drawing).
@@ -104,7 +104,7 @@ for(const id of ids){
   const files=manifest.groups.personagens.pieces[id]?.files??{};
   for(const key of Object.keys(table))if(key.startsWith(`${id}.`))delete table[key];
   for(const [name,f] of Object.entries(files)){
-    const m=/^(walk|attack|idle)16-(\w+)$/.exec(name);if(!m)continue;
+    const m=/^(walk|attack|idle|run)16-(\w+)$/.exec(name);if(!m)continue;
     const dir=m[2],src=path.join(ROOT,'public/art/sprites',f.file);
     const points=await measure(src,dir),fix=OVERRIDES[`${id}:${name}`]??{};
     for(const [i,p] of Object.entries(fix))points[Number(i)]=p;

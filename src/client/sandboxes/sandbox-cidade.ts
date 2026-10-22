@@ -114,7 +114,7 @@ import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
-import {WALK_TUNE} from '../sprites/sprite-motion.ts';
+import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -197,6 +197,10 @@ const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 const ruler=params.get('regua')==='1',RULER_STEPS=5;
 /** `passo=k` (card passo-sem-deslizar): the share of the stride the walk cycle keeps up with (sprite-motion.ts WALK_TUNE). */
 if(params.has('passo'))WALK_TUNE.lock=Number(params.get('passo'));
+/** `corrida=0` (card passo-3x-mais-lento): the walk instead of the run for a class that has one (sprite-motion.ts HERO_GAIT). */
+if(params.get('corrida')==='0')HERO_GAIT.run=false;
+/** Walk proofs (passo-3x-mais-lento): after `__cidade.fixar()` the camera stays put, so the ground stands still on screen and a planted foot must too. */
+let cameraFixed=false;
 const reducedMotion=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const style=document.createElement('style');
@@ -716,13 +720,15 @@ class CitySandbox extends Phaser.Scene {
     this.hero.setPosition(feet.x,feet.y);this.shadow.setPosition(feet.x,feet.y);
     const viewport={width:this.scale.width,height:this.scale.height};
     const c=this.camera.snap(feet,viewport,zoom);
-    cam.centerOn(c.x,c.y);
+    if(!cameraFixed)cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */
+      fixar:(on=true)=>{cameraFixed=on;},
       /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */
       step:(dt:number)=>{this.stepAt=(this.stepAt??performance.now())+dt;this.game.step(this.stepAt,dt);},cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
       viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};

@@ -74,9 +74,10 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
 });
 
 test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
-  // Nobody has the new row face yet (every tile a "?"); only the viciado has his letreiro picture (menu-arte-viciado).
-  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet']);
-  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(hero.id!=='viciado-em-bet')assert.equal(letreiroOf(hero.id),undefined);}
+  // Nobody has the new row face yet (every tile a "?"); only the viciado (menu-arte-viciado) and the CLT
+  // (letreiro-clt-na-cena) have their letreiro picture.
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado']);
+  for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(!(hero.id in LETREIROS))assert.equal(letreiroOf(hero.id),undefined);}
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
   assert.ok(css.includes('.estadio .card-misterio'));
@@ -136,6 +137,9 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   // letreiro-na-cena: cut out of the stadium Codex redrew with the sign inside, 2x the most the PC shows (56.4vh of 2160
   // = 1218 px), so a 200 % zoom on a 4K screen still has a pixel per pixel.
   assert.deepEqual([sign.width,sign.height],[2436,1698]);assert.ok(sign.hasAlpha);assert.ok(2*Math.floor(.564*2160)<=2436&&2*.332*3840<=2436*1.05);
+  // letreiro-clt-na-cena: the CLT's office plaque, cut out of his sunset the same way, as wide (flatter, so shorter).
+  const clt=await sharp(publicFile(letreiroOf('clt-cansado')!)).metadata();
+  assert.deepEqual([clt.width,clt.height],[2436,1368]);assert.ok(clt.hasAlpha);
   const cut=cutoutOf('viciado-em-bet')!;
   assert.deepEqual([cut.x,cut.y,cut.w,cut.h],[953,19,793,1058],'the box scripts/menu-arte.mjs checks against the art');
   for(const [w,file] of cut.files){

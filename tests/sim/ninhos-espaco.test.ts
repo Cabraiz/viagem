@@ -18,10 +18,14 @@ import {createRunSystems} from '../../src/sim/assemble.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 import {SPACING_GAP} from '../../src/sim/enemies/ai.ts';
 
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
+
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain,PLAZA=city.asset.points.praca;
+// The bodies' spacing is the subject: no minuto de Minerva (it holds every critter still for the first minute).
+NEST_PACE.minerva=0;
 
 function run(mode:'ninhos'|'rounds'){
   const world=new SimWorld({terrain:city.fork(),seed:3,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});

@@ -47,26 +47,33 @@ export function hashCell(c:number,r:number,salt=0):number{
  * The straight piece of a cell: one of the 5 of its parity along `axis` (even cells the even pieces, odd cells the odd
  * ones), by its hash, so two squares side by side in a run never show the same piece.
  */
-export function retoOf(c:number,r:number,axis:MuralhaAxis):number{
-  return 2*(hashCell(c,r)%(MURALHA_RETOS/2))+((axis==='c'?c:r)&1);
+export function retoOf(c:number,r:number,axis:MuralhaAxis,retos=MURALHA_RETOS):number{
+  return 2*(hashCell(c,r)%(retos/2))+((axis==='c'?c:r)&1);
 }
-export const pilarOf=(c:number,r:number)=>hashCell(c,r,2)%MURALHA_PILARES;
+export const pilarOf=(c:number,r:number,pilares=MURALHA_PILARES)=>hashCell(c,r,2)%pilares;
 /** Half pieces at a joint: their own seed per side, so a corner's two halves rarely match. */
-const halfOf=(c:number,r:number,axis:MuralhaAxis,toward:1|-1)=>hashCell(c,r,(axis==='c'?3:5)+(toward>0?0:1))%MURALHA_RETOS;
+const halfOf=(c:number,r:number,axis:MuralhaAxis,toward:1|-1,retos:number)=>hashCell(c,r,(axis==='c'?3:5)+(toward>0?0:1))%retos;
+
+/**
+ * Pieces in a wall's sheets (meta.pecas): the junk wall's 10 + 3 by default; the built muro's (muro-bloco, card
+ * trocar-procedurais-por-arte) has its own count. `retos` is even (two parities).
+ */
+export interface MuralhaCounts {retos:number;pilares:number}
+export const MURALHA_COUNTS:MuralhaCounts=Object.freeze({retos:MURALHA_RETOS,pilares:MURALHA_PILARES});
 
 export const cellKey=(c:number,r:number)=>`${c},${r}`;
 
-/** What square `s` draws, given every free barricade cell standing (`cells`: cellKey). */
-export function muralhaPlan(s:MuralhaSquare,cells:ReadonlySet<string>):MuralhaDraw[]{
-  const {c,r}=s,has=(dc:number,dr:number)=>cells.has(cellKey(c+dc,r+dr));
+/** What square `s` draws, given every square of its wall standing (`cells`: cellKey), with the sheets' `counts`. */
+export function muralhaPlan(s:MuralhaSquare,cells:ReadonlySet<string>,counts:MuralhaCounts=MURALHA_COUNTS):MuralhaDraw[]{
+  const {c,r}=s,{retos,pilares}=counts,has=(dc:number,dr:number)=>cells.has(cellKey(c+dc,r+dr));
   const e=has(1,0),w=has(-1,0),n=has(0,-1),so=has(0,1),count=+e+ +w+ +n+ +so;
-  if(count===0){const axis:MuralhaAxis=s.rot===1?'r':'c';return [{kind:'reto',piece:retoOf(c,r,axis),axis}];}
-  if(count===2&&e&&w)return [{kind:'reto',piece:retoOf(c,r,'c'),axis:'c'}];
-  if(count===2&&n&&so)return [{kind:'reto',piece:retoOf(c,r,'r'),axis:'r'}];
+  if(count===0){const axis:MuralhaAxis=s.rot===1?'r':'c';return [{kind:'reto',piece:retoOf(c,r,axis,retos),axis}];}
+  if(count===2&&e&&w)return [{kind:'reto',piece:retoOf(c,r,'c',retos),axis:'c'}];
+  if(count===2&&n&&so)return [{kind:'reto',piece:retoOf(c,r,'r',retos),axis:'r'}];
   const out:MuralhaDraw[]=[];
-  const half=(axis:MuralhaAxis,toward:1|-1)=>out.push({kind:'reto',piece:halfOf(c,r,axis,toward),axis,toward});
+  const half=(axis:MuralhaAxis,toward:1|-1)=>out.push({kind:'reto',piece:halfOf(c,r,axis,toward,retos),axis,toward});
   if(e)half('c',1);if(w)half('c',-1);if(so)half('r',1);if(n)half('r',-1);
-  out.push({kind:'pilar',piece:pilarOf(c,r)});
+  out.push({kind:'pilar',piece:pilarOf(c,r,pilares)});
   return out;
 }
 

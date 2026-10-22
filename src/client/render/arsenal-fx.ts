@@ -74,6 +74,12 @@ export interface ArsenalOptions {
   cityOutlines?:CityOutlines;
   /** The scene draws the local hero's cone itself, right after placing him (drawSelfCone): update() leaves it alone. */
   coneFromScene?:boolean;
+  /**
+   * The scene draws the hands itself (drawHands), once every hero is placed and animated this frame: update() leaves them
+   * alone. Drawn in update() (before the scene moved the heroes) the weapon kept the last frame's spot and pose and
+   * trailed the running hero by a frame's step (BUG-20261022-ORQ-arma-flutua-corrida-clt: ~4 px at 60 fps, ~8 at 30).
+   */
+  handsFromScene?:boolean;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -240,8 +246,20 @@ export class ArsenalFx{
     return band.setPosition(q.x,q.y).setScale(1).setVisible(true);
   }
 
-  /** End of a frame: the hands, the shots and the bursts. */
+  /** End of a frame: the hands (unless the scene draws them: handsFromScene), the shots and the bursts. */
   update(){
+    if(!this.options.handsFromScene)this.drawHands();
+    const b=this.body,now=this.now;
+    if(!this.options.coneFromScene){
+      const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
+      this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
+    }
+    this.shots.retain(this.drawShot);
+    this.slashes=this.slashes.filter(s=>this.drawSlash(s));
+    this.bursts.retain(this.drawBurst);
+  }
+  /** The weapon in each hero's hand, on the pose and spot the hero's sprite shows now. */
+  drawHands(){
     const {projector}=this.options,b=this.body,now=this.now;
     for(const [id,icon] of this.handOf){
       const at=this.options.locate?.(id);if(!at)continue;
@@ -277,13 +295,6 @@ export class ArsenalFx{
       hand.seen=now;
     }
     for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);hand.grip.setVisible(false).setActive(false);}
-    if(!this.options.coneFromScene){
-      const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
-      this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
-    }
-    this.shots.retain(this.drawShot);
-    this.slashes=this.slashes.filter(s=>this.drawSlash(s));
-    this.bursts.retain(this.drawBurst);
   }
 
   destroy(){

@@ -888,6 +888,18 @@ export class CityLayer {
     this.faded.clear();
     for(const [id,a] of alphas){this.setFade(id,a);this.faded.add(id);}
   }
+  private readonly coverScratch=new Set<string>();
+  /**
+   * Whether some drawn piece covers a figure standing at world (x, y): the see-through's own test (applyOcclusion).
+   * Faded pieces stack (a dense block in front leaves 3-4 layers at FADE_ALPHA and the figure is gone), so the scene
+   * also draws the figure's copy on top, as behind a canopy (BUG-20261022-ORQ-heroi-some-atras-predio).
+   */
+  covers(x:number,y:number,z=groundZ(this.asset,x,y)):boolean{
+    if(this.view<0)return false;
+    const out=this.coverScratch;out.clear();
+    this.collectCovering({x,y,z},this.view,out);
+    return out.size>0;
+  }
   private collectCovering(f:Figure,view:number,out:Set<string>){
     const {cx,cy}=cellOf(this.asset,f.x,f.y);
     if(!Number.isFinite(cx)||!Number.isFinite(cy)||cx<0||cy<0||cx>=this.asset.width||cy>=this.asset.height)return;

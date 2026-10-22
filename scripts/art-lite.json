@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2071,
-  "bytes": 1543598330,
-  "liteBytes": 499700810,
+  "bytes": 1543596446,
+  "liteBytes": 499699876,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17430,11 +17430,11 @@
    "shownPsnr": 46
   },
   "menu/fundo-gato-nada-pra-comer.webp": {
-   "source": "93f88b17dd548bf53aa15d96c11d7eb76f5748bca92ff566a174972575070675",
-   "lite": "b0b511496d57346907bd7bde53a50bf7800c9c8b44872158ceb16e74fd340609",
-   "bytes": 836604,
-   "liteBytes": 614994,
-   "psnr": 43.6,
+   "source": "a39964c17de5f58ac5679d91544f81292bbb521ee6110525fa670a729bfebc68",
+   "lite": "8e7ff07245d59f57502d59c70b2fb95ea9b6ebb976131765808d4a888783ece4",
+   "bytes": 834720,
+   "liteBytes": 614060,
+   "psnr": 43.7,
    "shownPsnr": 45.4
   },
   "sprites/aposentado.dir4.webp": {

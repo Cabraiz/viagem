@@ -8989,6 +8989,147 @@
         ]
       }
     },
+    "penhasco3-bloco-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "penhasco3-bloco-1/sheet.webp",
+          "cell": [
+            329,
+            271
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.97048
+          ],
+          "pages": [
+            {
+              "file": "penhasco3-bloco-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "3443ea89263bf21f65b0b141016e7d1f3b14c538ba726840176a1b16c4b93874"
+            }
+          ],
+          "sha256": "3443ea89263bf21f65b0b141016e7d1f3b14c538ba726840176a1b16c4b93874",
+          "liteCell": [
+            329,
+            271
+          ]
+        }
+      },
+      "sha256": "b23c5a872d68a761ee9ed156663d9247c384afd49c5a928fd2d2f8b8cc6fceb5",
+      "meta": {
+        "cell": [
+          329,
+          271
+        ],
+        "footprint": [
+          2,
+          2
+        ],
+        "origem": "arte-entrada/cenario/decor/rochas-grandes/b-bloco-1.png (Codex, E3, card rochas-grandes)"
+      }
+    },
+    "penhasco3-bloco-2": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "penhasco3-bloco-2/sheet.webp",
+          "cell": [
+            329,
+            293
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.972696
+          ],
+          "pages": [
+            {
+              "file": "penhasco3-bloco-2/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "b670c698d689dc623614675d745e8d9be79512f13d3b069a1e9d43eceb7fb46f"
+            }
+          ],
+          "sha256": "b670c698d689dc623614675d745e8d9be79512f13d3b069a1e9d43eceb7fb46f",
+          "liteCell": [
+            329,
+            293
+          ]
+        }
+      },
+      "sha256": "371657d91f2ec7bc6396c8623507dc202861a89eec42fccaaf7fb49066aa910d",
+      "meta": {
+        "cell": [
+          329,
+          293
+        ],
+        "footprint": [
+          2,
+          2
+        ],
+        "origem": "arte-entrada/cenario/decor/rochas-grandes/b-bloco-2.png (Codex, E3, card rochas-grandes)"
+      }
+    },
+    "penhasco3-reto": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "penhasco3-reto/sheet.webp",
+          "cell": [
+            251,
+            226
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.964602
+          ],
+          "pages": [
+            {
+              "file": "penhasco3-reto/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "25ed9f1f765fabc1ad703d16a9fea955b0af480c6dc725a32a1e37b150c95bfb"
+            }
+          ],
+          "sha256": "25ed9f1f765fabc1ad703d16a9fea955b0af480c6dc725a32a1e37b150c95bfb",
+          "liteCell": [
+            251,
+            226
+          ]
+        }
+      },
+      "sha256": "5831f22e3161c5d37ea32a09195a272de724130eaa0d44e7bf763edb288166cd",
+      "meta": {
+        "cell": [
+          251,
+          226
+        ],
+        "footprint": [
+          2,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/rochas-grandes/b-reto.png (Codex, E3, card rochas-grandes)"
+      }
+    },
     "piscina-plastico-1": {
       "kind": "decor",
       "files": {

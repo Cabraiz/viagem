@@ -1,6 +1,6 @@
 import './client/style.css';
 import './client/estadio.css';
-import { getClass, isPlayableClass, playableClasses as classes, type HeroClass } from './rules/index.ts';
+import { getClass, heroiPadrao, isLiberado, playableClasses, type HeroClass } from './rules/index.ts';
 import { mountIcons } from './client/ui/icon-sprite.ts';
 import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
@@ -12,9 +12,10 @@ import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
-import { etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
+import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
+import './client/ui/cadeado.css';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -33,15 +34,19 @@ startMenuMusic();
 if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});
 if(new URLSearchParams(location.search).get('sandbox')==='audio')void import('./client/sandboxes/sandbox-audio.ts').then(m=>m.openAudioSandbox()).catch(e=>console.error('audio sandbox failed to load',e));
 
+// cadeado-so-clt-viciado: the released heroes open the row, the locked ones follow (roster order in each part), so the
+// first tile is always one that can be chosen (the scripts that play the menu click the first `.class-card`).
+const classes = [...playableClasses.filter(hero=>isLiberado(hero.id)),...playableClasses.filter(hero=>!isLiberado(hero.id))];
 const colors = ['#75b8a6','#ed8f91','#a391d4','#edc66a','#73add1','#d99bbf'];
-let selected = classes[0];
+// cadeado-so-clt-viciado: the menu opens on a released hero (the viciado), never on a locked one.
+let selected = heroiPadrao();
 let color = colors[0];
 let nickname = '';
 try {
   const saved = JSON.parse(localStorage.getItem('viagem:hero:v1') ?? 'null');
   if (saved && typeof saved.name === 'string' && typeof saved.classId === 'string') {
-    // D-053: a saved hidden class falls back to the first playable one.
-    if(isPlayableClass(saved.classId)) selected = getClass(saved.classId) ?? selected;
+    // D-053 + cadeado-so-clt-viciado: a saved hidden or locked class falls back to the viciado.
+    if(isLiberado(saved.classId)) selected = getClass(saved.classId) ?? selected;
     nickname = fitName(saved.name);
     color = colors.includes(saved.color) ? saved.color : color;
   }
@@ -70,7 +75,7 @@ app.innerHTML = `
       <span id="escolhido" class="class-card estadio-escolhido" aria-hidden="true"></span>
       <label for="nickname" class="sr-only">Seu nome de aventura</label><input id="nickname" maxlength="60" placeholder="Como a turma vai te chamar?" autocomplete="nickname" enterkeyhint="go" />
     </div>
-    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
+    <button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★</span><span class="estadio-cadeado" hidden>${icon('cadeado',{size:48})}</span><span class="estadio-confirmar-texto">SELECIONAR</span></button>
   </section>
 </main>
 <dialog id="confirmation" aria-labelledby="confirmation-title"><button id="close-dialog" class="close-dialog" aria-label="Fechar">${icon('fechar',{size:32})}</button><h2 id="confirmation-title" class="sr-only">Personagem escolhido</h2><div class="chosen-card"><div id="chosen-art" class="class-art" aria-hidden="true"></div><div class="chosen-id"><strong id="chosen-name"></strong><p id="chosen-class"></p></div></div><p id="save-status" class="save-status" role="status"></p><div class="chosen-actions"><div class="solo-row"><button id="enter-island" class="secondary-button">Jogar sozinho</button><div class="solo-bots" role="group" aria-labelledby="solo-bots-title"><span id="solo-bots-title" class="solo-bots-title">Bots</span><button type="button" class="solo-bots-step" data-step="-1" aria-label="Menos um bot">−</button><output class="solo-bots-value" aria-live="polite"><span aria-hidden="true"></span><span class="sr-only"></span></output><button type="button" class="solo-bots-step" data-step="1" aria-label="Mais um bot">+</button></div></div></div><p id="explore-error" class="explore-error" role="status"></p><button id="back-to-menu" class="link-button">Trocar de personagem</button></dialog>
@@ -244,9 +249,10 @@ function setArt(id: string,hero: HeroClass) {
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
 // The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}" aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}">${hasNewArt(hero.id)
+// cadeado-so-clt-viciado: a locked hero (rules/personagens-liberados.ts) keeps his tile, darkened under a lock.
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${hasNewArt(hero.id)
   ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
-  :'<span class="card-misterio" aria-hidden="true">?</span>'}</button>`).join('');
+  :'<span class="card-misterio" aria-hidden="true">?</span>'}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
@@ -273,7 +279,16 @@ function renderSelected(announce=false) {
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
   rowList.querySelectorAll<HTMLButtonElement>('[data-hero]').forEach(button=>{const on=String(button.dataset.hero===selected.id);if(button.getAttribute('aria-pressed')!==on)button.setAttribute('aria-pressed',on);});
   showInRow(announce);
-  if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}`);
+  showLock();
+  if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}${isLiberado(selected.id)?'':'. Em breve.'}`);
+}
+// A locked hero can be looked at, never chosen: SELECIONAR turns into a disabled "EM BREVE" with the lock in the star's place.
+function showLock() {
+  const button=document.getElementById('confirm') as HTMLButtonElement,locked=!isLiberado(selected.id);
+  if(button.disabled===locked) return;
+  button.disabled=locked;
+  button.querySelector<HTMLElement>('.estadio-cadeado')!.hidden=!locked;
+  document.querySelector('.estadio-confirmar-texto')!.textContent=locked?'EM BREVE':CONFIRM_TEXT[etapaOf(etapa)];
 }
 rowList.addEventListener('click',event=>{
   const button=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
@@ -299,6 +314,7 @@ nameInput.addEventListener('change',()=>{nickname=nameInput.value=fitName(nameIn
 const etapa={section:document.getElementById('personagem')!,row:document.querySelector<HTMLElement>('.estadio-fileira')!,
   nameRow:document.querySelector<HTMLElement>('.estadio-nome')!,input:nameInput,label:document.querySelector<HTMLElement>('.estadio-confirmar-texto')!};
 function chooseHero() {
+  if(!isLiberado(selected.id)) return;
   document.getElementById('escolhido')!.innerHTML=hasNewArt(selected.id)
     ?`<img class="card-portrait" draggable="false" src="${thumbUrl(selected)}" alt="" width="256" height="256" decoding="async" />`
     :'<span class="card-misterio">?</span>';
@@ -319,6 +335,7 @@ nameInput.addEventListener('keydown',event=>{
 });
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
+  if(!isLiberado(selected.id)) return; // a locked hero never gets past here (a click, Enter or a script)
   if(etapaOf(etapa)==='escolher') {chooseHero();return;}
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
   nameInput.setCustomValidity('');

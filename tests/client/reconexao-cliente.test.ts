@@ -57,7 +57,7 @@ const sockets=(c:InstanceType<typeof CoopClient>)=>(c as any).socket as FakeSock
 /** Clients of the running test, left in `finally` (a failed assert must not leave timers keeping node alive). */
 const clients:InstanceType<typeof CoopClient>[]=[];
 // D-053: playable classes only (a hidden one would be seated as the first playable anyway).
-const client=(name='Ana',classId='mendigo')=>{const c=new CoopClient('http://sala','ABCDEF1234',name,classId);clients.push(c);return c;};
+const client=(name='Ana',classId='clt-cansado')=>{const c=new CoopClient('http://sala','ABCDEF1234',name,classId);clients.push(c);return c;};
 const cleanup=()=>{for(const c of clients.splice(0))c.leave();};
 
 test('client: the old socket still open on the room, the phone reconnects with its token and keeps the character',async()=>{

@@ -62,7 +62,8 @@ test('the HUD mounts the clock first in the announcement slot and the explore wi
   assert.match(hud,/stack\.append\(minerva\.el,/);
   assert.match(hud,/import '\.\/minerva\.css';/);
   const explore=readFileSync(new URL('../../src/client/explore.ts',import.meta.url),'utf8');
-  assert.match(explore,/setMinerva\(run\.phase==='combat'\?minervaOf\(run\):undefined\)/);
+  // Every view (the run state comes with the frames; the clock compares it with the frame's tick).
+  assert.match(explore,/hud\.setMinerva\(phase==='combat'&&net\?\.run\?minervaOf\(net\.run\):undefined\);hud\.setPause\(/);
   // It never takes taps (the joystick and Atacar keep working under it).
   const css=readFileSync(new URL('../../src/client/hud/minerva.css',import.meta.url),'utf8');
   assert.match(css,/\.rh-minerva\{[^}]*pointer-events:none/);

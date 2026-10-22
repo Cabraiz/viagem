@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
 import {ENEMY_STRIDE_DEFAULT,ENEMY_STRIDE_MIN,ENEMY_WALK,ENEMY_WALK_MAX_CPS,FACE_ACTING,FACE_NEAR,applyEnemyArt,enemyDrawScale,enemyStride,
-  enemyWalkCycles,facingRow,playEnemyAction,targetRow} from '../../src/client/art/horde-art.ts';
+  enemyWalkCycles,facingRow,pieceAction,playEnemyAction,targetRow} from '../../src/client/art/horde-art.ts';
 import {ENEMY_STRIDES} from '../../src/client/art/enemy-strides.ts';
 import {CONTACT_REACH,eventAction,type ActionActor,type ActionWorld} from '../../src/client/art/horde-actions.ts';
 import type {EnemyKind} from '../../src/client/render/keys.ts';
@@ -136,4 +136,10 @@ test('a contact hit from any enemy is a swing (attack) within reach; a shot from
   assert.equal(cue('a1'),undefined,`the boleto from ${5-1} u (> ${CONTACT_REACH}): its throw played on the shot`);
   assert.equal(cue('t1'),'t1:shove','the Tio shoves, near or not');
   assert.equal(cue('b1','ghost'),undefined,'a player the renderer does not know: no guess');
+});
+
+test('every walking enemy of the manifest has a sheet to swing with on a contact hit',()=>{
+  const pieces=JSON.parse(fs.readFileSync('public/art/manifest.json','utf8')).groups.inimigos.pieces as Record<string,ArtPiece>;
+  const none=Object.entries(pieces).filter(([,p])=>p.files.walk&&!pieceAction(p,'attack')).map(([id])=>id);
+  assert.deepEqual(none,[]);
 });

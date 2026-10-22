@@ -46,10 +46,11 @@ function slide(A,B,ox,oy,sc){
   }
   return bs*sc;
 }
+const m0frames=art=>pieces[art].files.walk.frames;
 const by=new Map();for(const r of log.rows){if(!/:walk(:p\d+)?$/.test(r[8]))continue;(by.get(r[1])??by.set(r[1],[]).get(r[1])).push(r);}
 const out=[];
 for(const [id,rows] of by){
-  const art=rows[0][2];let periods=[],cycles=[],win=[],acc=0,changes=0,started=false,prev;
+  const art=rows[0][2];let periods=[],cycles=[],win=[],acc=0,changes=0,started=false,prev,stillMs=0,stillChanges=0;
   for(const r of rows){
     const m=await mask(r[8],r[9]);
     if(prev){
@@ -58,18 +59,20 @@ for(const [id,rows] of by){
       if(prev.m.row!==m.row){acc=0;started=false;win=[];prev={r,m};continue;} // turning at the end of the lane
       // B's cell point under A's cell point u: u − (P_b − P_a)/scale; the slide s: B's foot at u − o + s.
       const ox=(bx-ax)/sc,oy=(by_-ay)/sc;
+      // Standing still (under 0.05 px a frame): any step the legs take here is treading in place.
+      if(Math.hypot(bx-ax,by_-ay)<.05){stillMs+=r[0]-prev.r[0];if(ak!==bk||af!==bf)stillChanges++;}
       const d=slide(prev.m,m,ox,oy,sc);acc+=d;
       if(ak!==bk||af!==bf){changes++;if(started){periods.push(Math.abs(acc));win.push(acc);if(win.length>=m.frames){cycles.push(Math.abs(win.reduce((x,y)=>x+y,0)));win=[];}}started=true;acc=0;}
     }
     prev={r,m};
   }
   const secs=(rows.at(-1)[0]-rows[0][0])/1000,s=periods.sort((a,b)=>a-b);
-  out.push({id,art,cps:changes/(rows.length?(pieces[art].files.walk.frames):1)/secs,n:s.length,med:s[s.length>>1]??NaN,p90:s[Math.floor(s.length*.9)]??NaN,max:s.at(-1)??NaN,scale:rows[0][10],cyc:cycles.sort((a,b)=>a-b),figure:0});
+  out.push({id,art,cps:changes/(rows.length?(pieces[art].files.walk.frames):1)/secs,n:s.length,med:s[s.length>>1]??NaN,p90:s[Math.floor(s.length*.9)]??NaN,max:s.at(-1)??NaN,scale:rows[0][10],cyc:cycles.sort((a,b)=>a-b),still:stillMs>500?stillChanges/m0frames(art)/(stillMs/1000):NaN});
 }
 out.sort((a,b)=>a.art.localeCompare(b.art));
-const lines=['| inimigo | ciclos/s | deriva do pé por ciclo: mediana px | máx px | ciclos medidos | tremido do desenho por quadro: mediana px | p90 px |','|---|---|---|---|---|---|---|'];
+const lines=['| inimigo | ciclos/s | pernas parado (ciclos/s) | deriva do pé por ciclo: mediana px | máx px | ciclos medidos | tremido do desenho por quadro: mediana px | p90 px |','|---|---|---|---|---|---|---|---|'];
 const f=v=>Number.isFinite(v)?v.toFixed(1):'—';
-for(const o of out)lines.push(`| ${o.art} | ${o.cps.toFixed(2)} | ${f(o.cyc[o.cyc.length>>1])} | ${f(o.cyc.at(-1))} | ${o.cyc.length} | ${f(o.med)} | ${f(o.p90)} |`);
+for(const o of out)lines.push(`| ${o.art} | ${o.cps.toFixed(2)} | ${o.still===o.still?o.still.toFixed(2):'—'} | ${f(o.cyc[o.cyc.length>>1])} | ${f(o.cyc.at(-1))} | ${o.cyc.length} | ${f(o.med)} | ${f(o.p90)} |`);
 console.log(lines.join('\n'));
 const i=process.argv.indexOf('--md');if(i>0)fs.writeFileSync(process.argv[i+1],lines.join('\n')+'\n');
 const j=process.argv.indexOf('--json');if(j>0)fs.writeFileSync(process.argv[j+1],JSON.stringify(out,null,1));

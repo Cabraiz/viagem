@@ -375,8 +375,11 @@ const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
  * sheet) for a piece the table does not know yet.
  */
 export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_MAX_CPS=3;
-/** `byGround:false` brings back the clock-driven walk (the sandbox's before/after proof, `?sandbox=horda&relogio=1`). */
-export const ENEMY_WALK={byGround:true};
+/**
+ * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
+ * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
+ */
+export const ENEMY_WALK={byGround:true,faceTarget:true};
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
 export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
 /**
@@ -544,6 +547,9 @@ export const hitGap=(hitMs:number)=>Math.max(HIT_GAP_MIN_MS,HIT_GAP_HITS*hitMs);
  */
 export const ACTION_ALIASES:Readonly<Record<string,readonly string[]>>={
   poop:['attack'],throw:['attack'],joke:['shove','attack'],shove:['attack'],slam:['shove','attack'],charge:['crash','attack'],
+  // A contact hit (horde-actions.ts CONTACT_REACH) is a swing of whatever arm the piece has (monstros-sem-deslizar):
+  // half the roster has no 'attack' sheet, only its role's move.
+  attack:['shove','slam','throw','lecture','pose','summon','poop'],
 };
 const NO_ALIAS:readonly string[]=Object.freeze([]);
 export function pieceAction(piece:ArtPiece,action:string):string|undefined{
@@ -668,7 +674,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // A sheet that did not load drops the action and keeps the loop.
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined;
-  if(actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
+  if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
   let frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
   let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;

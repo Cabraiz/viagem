@@ -8,11 +8,12 @@
  *
  *   node scripts/pes-inimigos-sandbox.mjs <out-prefix> --andar a,b,c [--url http://127.0.0.1:4266/] [--relogio]
  *        [--vel 0.35] [--rumo 1,0] [--quadros 240] [--cada 2] [--clip x,y,w,h]
+ *   --cerco a,b,c instead of --andar: they close in on the hero and hit him (the facing and the swing).
  */
 import {pathToFileURL} from 'node:url';import {join} from 'node:path';import {existsSync,writeFileSync,mkdirSync} from 'node:fs';
 const arg=(n,d)=>{const i=process.argv.indexOf(`--${n}`);return i>0?process.argv[i+1]:d;};
-const OUT=process.argv[2],BASE=arg('url','http://127.0.0.1:4266/'),ANDAR=arg('andar','bebado'),FRAMES=Number(arg('quadros',240)),EVERY=Number(arg('cada',2));
-const query=`?sandbox=horda&n=0&elenco=1&hud=0&andar=${ANDAR}&vel=${arg('vel','0.35')}&rumo=${arg('rumo','1,0')}${process.argv.includes('--relogio')?'&relogio=1':''}`;
+const OUT=process.argv[2],BASE=arg('url','http://127.0.0.1:4266/'),CERCO=arg('cerco'),ANDAR=CERCO??arg('andar','bebado'),FRAMES=Number(arg('quadros',240)),EVERY=Number(arg('cada',2));
+const query=`?sandbox=horda&n=0&elenco=1&hud=0&${CERCO?'cerco':'andar'}=${ANDAR}&vel=${arg('vel','0.35')}&rumo=${arg('rumo','1,0')}${process.argv.includes('--relogio')?'&relogio=1':''}`;
 const {claimSlot}=await import(pathToFileURL('D:/Gits/viagem/tools/vaga.mjs').href);
 const pwDir='D:/Gits/viagem-tools/node_modules/playwright';
 const pw=await import(pathToFileURL(join(pwDir,existsSync(join(pwDir,'index.mjs'))?'index.mjs':'index.js')).href);

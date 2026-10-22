@@ -162,7 +162,12 @@ function settle(points,poses,behind){
     const a=points[i-1],b=points[i],c=points[i+1];
     if(Math.hypot(b[0]-a[0],b[1]-a[1])<=9)continue;
     const m=[Math.round((a[0]+c[0])*5)/10,Math.round((a[1]+c[1])*5)/10];
-    points[i]=b[2]===1?[...m,1]:m;
+    // Halfway lies on the drawn arm (a fast punch): held there; in the air (a hand swap, the far hand coming out
+    // behind the head) the weapon passes that pose behind the body instead.
+    let near=false;
+    for(let y=Math.floor(m[1]-3);y<=Math.ceil(m[1]+3)&&!near;y++)for(let x=Math.floor(m[0]-3);x<=Math.ceil(m[0]+3);x++)
+      if(x>=0&&y>=0&&x<CELL&&y<CELL&&Math.hypot(x-m[0],y-m[1])<=3&&poses[i].skin(x,y)){near=true;break;}
+    points[i]=near&&b[2]!==1?m:[...onBody(poses[i],m),1];
   }
 }
 

@@ -69,6 +69,13 @@ const OVERRIDES={
   'viciado-em-bet:idle16-W':Object.fromEntries(Array.from({length:8},(_,i)=>[i,[46,56,1]])),
 };
 
+// The bots' attack fists marked by eye (scripts/hand-mark.mjs): scripts/hand-keys/<id>.json, {sheet: {keys, behind?}}.
+const KEYS_DIR=path.join(ROOT,'scripts/hand-keys');
+if(fs.existsSync(KEYS_DIR))for(const f of fs.readdirSync(KEYS_DIR).filter(f=>f.endsWith('.json'))){
+  for(const [name,o] of Object.entries(JSON.parse(fs.readFileSync(path.join(KEYS_DIR,f),'utf8'))))
+    if(o.keys&&Object.keys(o.keys).length)OVERRIDES[`${f.slice(0,-5)}:${name}`]={keys:o.keys,...(o.behind!==undefined?{behind:o.behind}:{})};
+}
+
 const args=process.argv.slice(2);
 const arg=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};
 const ids=(arg('--ids')??'viciado-em-bet').split(',');

@@ -3,7 +3,15 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import type {Movement128Plan} from './movement128.ts';
 import {queueUpload} from '../preload/upload-queue.ts';
 
+/**
+ * The LRU's budget in R06 sheets (1536×768, 128 cells of 96 px). A smaller sheet weighs its share (sheetWeight): an M16
+ * run or walk (4×4 cells) is 1/8 of one, a rest (4×2) 1/16. Counted by sheets, the 8 left the viciado's own 10 M16 clips
+ * (5 rests + 5 runs) evicting each other as he turned, and each eviction dropped their city copy and "você" sticker:
+ * the contour fell back to the offset copies until the worker rebuilt them (card corrida-proporcao-contorno).
+ */
 export const MOVEMENT128_TEXTURE_LIMIT=8;
+/** A sheet's weight in the LRU: its cells over an R06 sheet's 128. */
+export const sheetWeight=(plan:{columns:number;rows:number})=>Math.max(1,plan.columns*plan.rows)/128;
 interface Owner {active?:boolean;visible?:boolean;scene?:unknown;once?(event:string,fn:()=>void):unknown}
 interface LoadedTexture {dispose():void}
 interface Entry {plan:Movement128Plan;state:'queued'|'loading'|'ready'|'failed';used:number;loaded?:LoadedTexture}
@@ -64,10 +72,10 @@ export class Movement128Textures<T extends Owner=Owner> {
   private trim(){
     const wanted=new Set(this.wanted.values()),held=new Set(this.leases.values());
     for(const [key,e] of this.entries)if(e.state==='queued'&&!wanted.has(key))this.entries.delete(key);
-    const ready=[...this.entries.values()].filter(e=>e.state==='ready');let count=ready.length;
+    const ready=[...this.entries.values()].filter(e=>e.state==='ready');let count=0;for(const e of ready)count+=sheetWeight(e.plan);
     // Keep the just-loaded requested page until the next animate binds it. This can briefly exceed the target.
     const candidates=ready.filter(e=>!held.has(e.plan.key)&&!wanted.has(e.plan.key)).sort((a,b)=>a.used-b.used);
-    for(const e of candidates){if(count<=this.limit)break;e.loaded?.dispose();this.entries.delete(e.plan.key);count--;}
+    for(const e of candidates){if(count<=this.limit+1e-9)break;e.loaded?.dispose();this.entries.delete(e.plan.key);count-=sheetWeight(e.plan);}
   }
   private pump(){
     this.trim();if(this.loading>=this.parallel)return;

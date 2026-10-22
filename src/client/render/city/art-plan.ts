@@ -67,7 +67,7 @@ export const FOUNTAIN_PIECE='chafariz-congelado';
  * their city lite copies keep the cell (cityLiteScale 1), so base-art swaps the url only. Not imported from base-art
  * so the plan (and scripts/art-lite.mjs) stays apart from the Stonewards renderer; tests/client/art-lite.test.ts checks both lists agree.
  */
-export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada','muralha-tralha','muralha-tralha-pilar'];
+export const BASE_LITE_PIECES:readonly string[]=['muralha-acampamento','barricada','muralha-tralha','muralha-tralha-pilar','muro-bloco','muro-bloco-pilar','moto-chaveiro'];
 /**
  * Prop sheets against the city hero (proporcoes-postes-predios; hero 1.75 m ≈ 1.245 u drawn): delivered at
  * 1/ART_SCALE they stood about twice too tall — the lamp 4.1× the hero, a barrel or a crate at its head. × 0.56 puts

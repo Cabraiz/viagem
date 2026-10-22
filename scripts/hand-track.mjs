@@ -13,6 +13,17 @@
 export const CELL=96;
 /** Skin: the heroes' warm tones (alpha > 40), not their clothes, hair or outline. */
 export const skin=(r,g,b,a)=>a>40&&r>150&&g>90&&g<205&&b<140&&r-b>70&&r>g;
+/**
+ * The weapon hand's tone per class (BUG-20261022-ORQ-arma-flutua-corrida-clt: the bots' 13 R06 classes had no hand, the
+ * weapon floated at their hip). The skin rule above also takes a yellow shirt or apron (caça-promoção, feirante: g near
+ * r) and a pink robe (vizinha: b over g) for a hand, so the other classes read skin with g < 0.74 r and b < g; the
+ * pedreiro's hands are grey gloves (neutral grey, not his yellow helmet or orange vest). The CLT and the viciado keep
+ * the rule they were measured with.
+ */
+const warmSkin=(r,g,b,a)=>skin(r,g,b,a)&&g<r*.74&&b<g;
+const glove=(r,g,b,a)=>a>40&&r>=112&&r<=175&&Math.abs(r-g)<16&&Math.abs(g-b)<16&&Math.abs(r-b)<20;
+export const HAND_TONE={'clt-cansado':skin,'viciado-em-bet':skin,pedreiro:glove};
+export const handTone=id=>HAND_TONE[id]??warmSkin;
 
 /** The opaque figure's box, rows and columns (alpha > 40). */
 export function figureOf(px){
@@ -22,6 +33,10 @@ export function figureOf(px){
 }
 /** The head's rows: the top 36% of the figure (hair, face, ears). */
 export const headBottom=fig=>fig.top+fig.h*.36;
+/** The legs' rows: the bottom quarter of the figure (bare shins and knees, sandals: skin too, never a walking hand). */
+export const feetTop=fig=>fig.bot-fig.h*.25;
+/** The feet rule per pose accessor: off for the classes measured before it (px.legacy: the CLT and the viciado, as approved). */
+const footOf=(px,fig)=>px.legacy?CELL:feetTop(fig);
 
 /** The skin pixels connected (8-way) to `seed` within `radius` px of `center`. */
 function blob(px,seed,center,radius){
@@ -75,12 +90,12 @@ export function handEnd(found,last){
   return gap(a,last.hand)+gap(b,last.elbow)<=gap(b,last.hand)+gap(a,last.elbow)?{hand:a,elbow:b}:{hand:b,elbow:a};
 }
 /** The skin nearest `p` within `radius` (outside the head when `noHead`), or undefined. */
-function nearestSkin(px,p,radius,headY){
+function nearestSkin(px,p,radius,headY,footY=CELL){
   let best,bd=Infinity;
   const x0=Math.max(0,Math.floor(p[0]-radius)),x1=Math.min(CELL-1,Math.ceil(p[0]+radius));
   const y0=Math.max(0,Math.floor(p[1]-radius)),y1=Math.min(CELL-1,Math.ceil(p[1]+radius));
   for(let y=y0;y<=y1;y++){
-    if(headY!==undefined&&y<headY)continue;
+    if(headY!==undefined&&y<headY||y>footY)continue;
     for(let x=x0;x<=x1;x++){
       if(!px.skin(x,y))continue;
       const d=Math.hypot(x-p[0],y-p[1]);if(d<=radius&&d<bd){bd=d;best=[x,y];}
@@ -88,6 +103,8 @@ function nearestSkin(px,p,radius,headY){
   }
   return best;
 }
+/** A skin blob that runs down into the feet rows: a bare leg or a foot, not a hand (whole blob, not just near the seed). */
+function legOf(px,seed,fig){return blob(px,seed,seed,CELL).some(q=>q[1]>footOf(px,fig));}
 /** A hidden hand stays on the body that hides it: the nearest solid pixel (alpha > 200) when the line leaves it. */
 export function onBody(px,p){
   const solid=(x,y)=>x>=0&&y>=0&&x<CELL&&y<CELL&&px.alpha(x,y)>200;
@@ -104,12 +121,13 @@ export function candidates(px){
   const fig=figureOf(px);if(!fig)return [];
   // Lower than the head rows of the search: a side view's face reaches 40% down (the CLT's walk E).
   const headY=fig.top+fig.h*.42,shoulder=[(fig.left+fig.right)/2,fig.top+fig.h*.4],seen=new Set(),out=[];
-  for(let y=Math.ceil(headY);y<=fig.bot;y++)for(let x=0;x<CELL;x++){
+  for(let y=Math.ceil(headY);y<=footOf(px,fig);y++)for(let x=0;x<CELL;x++){
     if(!px.skin(x,y)||seen.has(y*CELL+x))continue;
-    const whole=blob(px,[x,y],[x,y],CELL),pixels=whole.filter(p=>p[1]>=headY);
+    const whole=blob(px,[x,y],[x,y],CELL),pixels=whole.filter(p=>p[1]>=headY&&p[1]<=footOf(px,fig));
     for(const p of pixels)seen.add(p[1]*CELL+p[0]);
     // Skin reaching up into the head is the face (or the neck), not a hand at rest.
-    if(pixels.length<4||whole.some(p=>p[1]<headBottom(fig)))continue;
+    // …and skin reaching down into the feet is a bare leg or a sandal (the vizinha's calves, the feirante's feet).
+    if(pixels.length<4||whole.some(p=>p[1]<headBottom(fig))||whole.some(p=>p[1]>footOf(px,fig)))continue;
     // Far from the shoulders: the end of the blob away from them is the hand.
     const ends=[walk(pixels,pixels[0]).far];ends.push(walk(pixels,ends[0]).far);
     const away=ends.reduce((a,b)=>Math.hypot(b[0]-shoulder[0],b[1]-shoulder[1])>Math.hypot(a[0]-shoulder[0],a[1]-shoulder[1])?b:a);
@@ -130,9 +148,11 @@ export function track(poses,start,elbow=start){
   for(let i=0;i<poses.length;i++){
     const px=poses[i],fig=figureOf(px);
     // Lost, the search grows with the poses hidden and skips the head (the nose is skin); in sight, it follows anywhere.
-    const radius=lost?Math.min(LOST_MAX,SEARCH+lost):SEARCH,seed=fig&&nearestSkin(px,p,radius,lost?headBottom(fig):undefined);
-    if(!seed){out.push(undefined);hidden.push(i);lost++;continue;}
-    arm=handEnd(endsOf(blob(px,seed,seed,REACH)),arm);
+    const radius=lost?Math.min(LOST_MAX,SEARCH+lost):SEARCH,seed=fig&&nearestSkin(px,p,radius,lost||!px.legacy?headBottom(fig):undefined,footOf(px,fig));
+    // The bots' classes: a walking hand never reaches the head rows (the face is skin: caça-promoção's walk W).
+    const near=seed&&blob(px,seed,seed,REACH).filter(q=>px.legacy||q[1]>=headBottom(fig));
+    if(!seed||near.some(q=>q[1]>footOf(px,fig))&&legOf(px,seed,fig)){out.push(undefined);hidden.push(i);lost++;continue;}
+    arm=handEnd(endsOf(near),arm);
     out.push(arm.hand);p=arm.hand;lost=0;
   }
   // The hidden poses: in a line from the last seen to the next seen (around the loop), behind the body.
@@ -152,11 +172,18 @@ export function track(poses,start,elbow=start){
  * on the weapon `side` (−1 screen-left, +1 right). `pick` forces a candidate (OVERRIDES: by its index from the side).
  */
 export function trackSheet(poses,side,pick){
-  const all=candidates(poses[0]).sort((a,b)=>side*b.point[0]-side*a.point[0]);
-  if(!all.length)return undefined;
-  const runs=all.map(c=>track(poses,c.point,c.elbow));
+  // A back view may start with both hands hidden in front of the body (an attack N): the track starts at the first pose
+  // that shows a hand and goes round the loop from there (the sheets loop).
+  const from=poses.findIndex(px=>candidates(px).length);
+  if(from<0)return undefined;
+  const loop=[...poses.slice(from),...poses.slice(0,from)],unloop=pts=>[...pts.slice(poses.length-from),...pts.slice(0,poses.length-from)];
+  const all=candidates(loop[0]).sort((a,b)=>side*b.point[0]-side*a.point[0]);
+  const runs=all.map(c=>{const r=track(loop,c.point,c.elbow);return {...r,points:unloop(r.points)};});
   if(pick!==undefined)return runs[pick];
-  return runs.reduce((best,r)=>r.hidden<best.hidden?r:best);
+  const best=runs.reduce((best,r)=>r.hidden<best.hidden?r:best);
+  // The bots' classes: the hand on the weapon side (runs come outermost on it first) unless hidden a quarter of the clip
+  // longer, so the weapon keeps its hand when the hero turns (the coach's walk N and NW took the other one).
+  return poses[0].legacy?best:runs.find(r=>r.hidden<=best.hidden+poses.length/4)??best;
 }
 
 /**

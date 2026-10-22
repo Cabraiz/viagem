@@ -526,6 +526,8 @@ export class IslandScene extends Phaser.Scene {
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
+        // …drawn by the scene once every hero is placed and animated (end of updateCoop): on this frame's pose and spot.
+        handsFromScene:true,
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
@@ -839,6 +841,8 @@ export class IslandScene extends Phaser.Scene {
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
     // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
+    // City: the same copy behind a building, wall or prop (the see-through's layers stack in a dense block).
+    if(this.city)covered=this.city.covers(this.position.x,this.position.y);
     this.selfCovered=covered;
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
@@ -1240,7 +1244,7 @@ export class IslandScene extends Phaser.Scene {
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
-      const q=this.project(player),depth=this.depth(player),covered=this.treeCovers(q,depth);
+      const q=this.project(player),depth=this.depth(player),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
@@ -1260,7 +1264,7 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setCity(city).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*k,zoomNow):q.y+15*k,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*k,zoomNow):q.y+15*k,covered&&!this.city?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -1270,6 +1274,8 @@ export class IslandScene extends Phaser.Scene {
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
+    // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
+    this.horde?.hands();
     this.updateWatch(view.players,delta);
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}

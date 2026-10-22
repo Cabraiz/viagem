@@ -40,6 +40,8 @@ function world(){
   const runs=join(root,'runs.txt');writeFileSync(runs,'');
   const opts=['--repo',repo,'--board',board,'--wt',wt,'--no-modules','--suite','node check.mjs'];
   process.env.FILA_RUNS=runs;
+  // A roomy simulated drive (the 25 GB guard reads the real one otherwise: a CI runner has less).
+  process.env.VIAGEM_DISCO='500,1000';
   return {root,repo,board,branch,opts,runs:()=>readFileSync(runs,'utf8').split('\n').filter(Boolean),
     cleanup:()=>rmSync(root,{recursive:true,force:true})};
 }
@@ -515,4 +517,60 @@ test('contractFiles: the maps\' manifests and bytes, the protocol and multiplaye
   assert.deepEqual(contractFiles(['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts',
     'src/protocol/room.ts','public/multiplayer.json','public/maps/thumbs/a.webp','src/sim/core.ts','public/art/manifest.json','tests/protocol/x.test.ts']),
   ['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts','src/protocol/room.ts','public/multiplayer.json']);
+});
+
+// BUG-20261022-ORQ-disco-cheio-guarda: D: filled up with 110 worktrees on 22/10.
+test('disco: below 25 GB free the lote does not start (note to the Orquestrador, once per half hour); above 85% of use it starts with a warning',()=>{
+  const w=world();
+  try{
+    w.branch('vgm/a','src/a.ts','export const a=1;\n');
+    main(['pronto','NEW-a','--branch','vgm/a',...w.opts]);
+    const caixa=()=>{try{return readFileSync(join(w.board,'caixa/ORQ.md'),'utf8');}catch{return '';}};
+    assert.throws(()=>main(['lote',...w.opts,'--disco','10,1000']),/10\.0 GB livres \(mínimo 25 GB\): recusei abrir o lote/);
+    assert.throws(()=>main(['lote',...w.opts,'--disco','10,1000']));
+    assert.equal(caixa().match(/recusei abrir o lote/g)?.length,1,'one note, not one per attempt');
+    assert.match(caixa(),/### .*Z · disco → ORQ\n\[P0\] disco/);
+    assert.ok(!existsSync(join(w.board,'fila/.lote')),'no lock taken');
+    assert.ok(existsSync(join(w.board,'fila/NEW-a.json')),'the entry is still queued');
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,1,'no worktree made');
+    const state=main(['lote',...w.opts,'--disco','100,1000']);
+    assert.equal(state.estado,'publicado','90% of use: it runs');
+    assert.match(caixa(),/\[aviso\] disco .* 90% de uso/);
+  }finally{w.cleanup();}
+});
+
+test('disco: after publishing, the worktrees of the integrated cards go (evidence copied); one queued again, with work in it, a moved branch or a card not integrated stay',()=>{
+  const w=world();
+  try{
+    const wtOf=(name:string)=>{
+      w.branch(`vgm/${name}`,`src/${name}.ts`,`export const ${name}=1;\n`);
+      const dir=join(w.root,'wt',name);git(w.repo,'worktree','add','-q',dir,`vgm/${name}`);return dir;
+    };
+    const a=wtOf('a'),b=wtOf('b'),c=wtOf('c'),d=wtOf('d'),f=wtOf('f');
+    mkdirSync(join(a,'evidence/NEW-a/frames'),{recursive:true});
+    writeFileSync(join(a,'evidence/NEW-a/retrato.png'),'png');writeFileSync(join(a,'evidence/NEW-a/frames/frame-001.png'),'bruto');
+    for(const x of ['a','b','d'])main(['pronto',`NEW-${x}`,'--branch',`vgm/${x}`,...w.opts]);
+    main(['pronto','NEW-f','--branch','vgm/f','--worker',...w.opts]);
+    writeFileSync(join(b,'src/b.ts'),'export const b=2;// ainda mexendo\n');// tracked work in progress
+    writeFileSync(join(d,'src/d.ts'),'export const d=2;\n');git(d,'commit','-qam','depois do pronto');// moved: sent back
+    const state=main(['lote',...w.opts]);
+    assert.equal(state.estado,'aguardando-worker');
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card).sort(),['NEW-a','NEW-b','NEW-f']);
+    // While the lote waits for the Worker, f's owner goes on and queues a newer SHA.
+    writeFileSync(join(f,'src/f.ts'),'export const f=2;\n');git(f,'commit','-qam','f2');
+    main(['pronto','NEW-f','--branch','vgm/f',...w.opts]);
+    const pub=orq(()=>main(['publicar',state.lote,...w.opts]));
+    assert.equal(pub.estado,'publicado');
+    assert.ok(!existsSync(a),'the integrated card\'s worktree is gone');
+    assert.equal(git(w.repo,'branch','--list','vgm/a'),'','and its branch');
+    assert.equal(readFileSync(join(w.board,'evidence/NEW-a/NEW-a/retrato.png'),'utf8'),'png','the final evidence copied first');
+    assert.ok(!existsSync(join(w.board,'evidence/NEW-a/NEW-a/frames')),'not the raw frames');
+    assert.ok(existsSync(join(b,'src/b.ts')),'tracked work in progress: kept');
+    assert.ok(existsSync(f),'queued again with a newer SHA: kept');
+    assert.ok(existsSync(d),'a branch that moved after pronto: kept');
+    assert.ok(existsSync(c),'not integrated: kept');
+    const lote=JSON.parse(readFileSync(join(w.board,'fila/lotes',`${state.lote}.json`),'utf8'));
+    assert.deepEqual(lote.worktreesRemovidas,[a.replace(/\\/g,'/')]);
+    assert.equal(git(w.repo,'worktree','list').split('\n').length,5,'b, c, d, f and the main checkout; no batch worktree');
+  }finally{w.cleanup();}
 });

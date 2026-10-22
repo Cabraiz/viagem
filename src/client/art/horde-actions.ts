@@ -48,6 +48,12 @@ export const PROJECTILE_ACTIONS:Readonly<Record<string,readonly ActionOwner[]>>=
  * already played 'attack' (its damage would play it a second time).
  */
 export const CONTACT_ACTIONS:Readonly<Partial<Record<EnemyKind,EnemyAction>>>={'tio-pave':'shove'};
+/**
+ * Any other enemy that hurts a player within this reach (world units) swings its 'attack' (card monstros-sem-deslizar,
+ * the user: "e os inimigos me atacam de costas?"): no hit lands from an enemy standing still. Farther than this it was a
+ * shot or a bomb (agiota, anão, atiradores), whose throw plays on the projectile.
+ */
+export const CONTACT_REACH=2;
 /** A bark of these kinds is their joke (the Tio stops to tell it, sim/enemies/ai.ts 'joker'). */
 export const BARK_ACTIONS:Readonly<Partial<Record<EnemyKind,EnemyAction>>>={'tio-pave':'joke'};
 /** The chefe's summon: one spawn-warning per minion, 2.5 u around him (sim/boss.ts summon), only from phase 2. */
@@ -62,6 +68,8 @@ export interface ActionWorld {
   /** Nearest live actor of `kind` to (x, y) within `max` world units. */
   nearest(kind:EnemyKind,x:number,y:number,max:number):ActionActor|undefined;
   telegraph(id:string):{kind?:TelegraphKind;x:number;y:number}|undefined;
+  /** Where player `id` is (world units), for the contact swing's reach; absent: only CONTACT_ACTIONS swing. */
+  player?(id:string):{x:number;y:number}|undefined;
 }
 export interface ActionCue {enemy:string;action:EnemyAction}
 
@@ -86,8 +94,9 @@ export function eventAction(event:SimEvent,world:ActionWorld,out:ActionCue):Acti
   switch(event.type){
     case 'damage':{
       if(world.enemy(event.target)){out.enemy=event.target;out.action='hit';return out;}
-      const by=event.source!==undefined?world.enemy(event.source):undefined,action=by&&CONTACT_ACTIONS[by.kind];
-      if(!by||!action)return undefined;
+      const by=event.source!==undefined?world.enemy(event.source):undefined;if(!by)return undefined;
+      let action=CONTACT_ACTIONS[by.kind];
+      if(!action){const p=world.player?.(event.target);if(!p||Math.hypot(p.x-by.nx,p.y-by.ny)>CONTACT_REACH)return undefined;action='attack';}
       out.enemy=by.id;out.action=action;return out;
     }
     case 'telegraph':{

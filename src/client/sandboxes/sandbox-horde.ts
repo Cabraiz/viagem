@@ -11,6 +11,10 @@
  * explosão; above and below the cast in portrait, left and right of it in landscape.
  * aliado=1 (with elenco=1): the second player stands beside the first, so hero, ally and cast sizes compare at a glance.
  * arte=<kind>:<roster id>,… draws a roster enemy's imported art in that kind's slot (artist preview of pack 04…).
+ * andar=<id>,<id>… (with elenco=1; card monstros-sem-deslizar): those enemies walk to and fro across the screen, one lane
+ * each under the first player (who stands still, so the camera does too), at `vel` heights of their figure a second
+ * (default 0.35, the bêbado's pace measured in the city), along screen direction `rumo=sx,sy` (default 1,0: side on);
+ * `relogio=1` brings back the clock-driven walk (horde-art.ts ENEMY_WALK) for the before/after.
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -30,16 +34,22 @@ import {HordeRenderer} from '../render/layers.ts';
 import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
-import {ENEMY_ART_ID,queueHordeArt} from '../art/horde-art.ts';
+import {ENEMY_ART_ID,ENEMY_WALK,artTargetHeight,queueHordeArt} from '../art/horde-art.ts';
+import {ENEMY_DRAW_SCALE} from '../render/draw-scale.ts';
 import {artPiece} from '../art/manifest.ts';
 import {enemyKind} from '../render/keys.ts';
 import {artReady} from '../ui/art-boot.ts';
 
-type FakeEnemy=EnemyView&{speed:number;wobble:number};
+type FakeEnemy=EnemyView&{speed:number;wobble:number;lane?:{a:Point;b:Point;toB:boolean}};
 type FakePickup=PickupView&{until:number};
 type FakeProjectile=ProjectileView&{until:number};
 /** `?say=ficou`: demo of the left-behind balloon right after a crate's line (cidade-07 / BUG-…-balao-ficou-pra-tras). */
 const SAY_DEMO=new URLSearchParams(location.search).get('say');
+/** `?andar=` walkers (see the header): ids, pace in figure heights a second, screen direction, and the lanes' size (world px). */
+const ANDAR=(new URLSearchParams(location.search).get('andar')??'').split(',').filter(Boolean);
+const ANDAR_VEL=Number(new URLSearchParams(location.search).get('vel'))||.35;
+const ANDAR_RUMO=((new URLSearchParams(location.search).get('rumo')??'1,0').split(',').map(Number)) as [number,number];
+const LANE_HALF=230,LANE_GAP=95;
 /** D-033 cast (design/arte-v2.md §4); the elite (Funcionário do Mês) is any of them. */
 const KINDS:{kind:string;weight:number;hp:number;speed:number}[]=[
   {kind:'bebado',weight:36,hp:30,speed:.9},{kind:'pombos',weight:26,hp:12,speed:1.7},
@@ -142,6 +152,7 @@ class FakeHorde {
   private lineUp(){
     const me=this.players[0];me.x=12;me.y=12.5;
     this.players.forEach((p,i)=>{if(i){p.x=me.x+14+i;p.y=me.y-14-i;}});
+    if(ANDAR.length){this.walkers(me);return;}
     // `aliado=1`: the second player stands beside the hero (hero, ally and the cast side by side, for size checks).
     if(new URLSearchParams(location.search).get('aliado')==='1'){const p=fromScreen(me,-95,15);this.players[1].x=p.x;this.players[1].y=p.y;}
     // `roster=1` (papeis-de-inimigo): the same slots filled with new P0 roster enemies of different roles, drawn with
@@ -185,6 +196,17 @@ class FakeHorde {
       const d=Math.hypot(me.x-pose.x,me.y-pose.y)||1;
       this.projectiles.push({id:`r${this.next++}`,source:'reflexo',x:pose.x,y:pose.y,vx:(me.x-pose.x)/d*.14*SIM_HZ,vy:(me.y-pose.y)/d*.14*SIM_HZ,radius:.2,hostile:true,until:this.tick+Math.floor(d/.14)});
     }
+  }
+  /** `andar=`: one lane per id under the first player, each walker starting at its own point of the lane. */
+  private walkers(me:Point){
+    const [rx,ry]=ANDAR_RUMO,l=Math.hypot(rx,ry)||1,ux=rx/l,uy=ry/l;
+    ANDAR.forEach((id,i)=>{
+      const sy=60+i*LANE_GAP,a=fromScreen(me,-LANE_HALF*ux,sy-LANE_HALF*uy),b=fromScreen(me,LANE_HALF*ux,sy+LANE_HALF*uy);
+      const e=this.spawn(a,id),f=(i*.37)%1;e.x=a.x+(b.x-a.x)*f;e.y=a.y+(b.y-a.y)*f;
+      // Screen px a second over the screen px a world unit covers that way (42 across per unit on x, 21 down on y).
+      const d=screenDir(ux,uy),px=Math.hypot((d.dx-d.dy)*42,(d.dx+d.dy)*21);
+      e.speed=ANDAR_VEL*artTargetHeight(id)*ENEMY_DRAW_SCALE/px;e.lane={a,b,toB:true};e.phase=undefined;
+    });
   }
   private lined(kind:string){return this.enemies.find(e=>e.kind===kind&&!e.elite);}
   /**
@@ -235,6 +257,13 @@ class FakeHorde {
   }
   step(){
     this.tick++;
+    if(this.lineup&&ANDAR.length){
+      for(const e of this.enemies){
+        const l=e.lane;if(!l)continue;const to=l.toB?l.b:l.a,dx=to.x-e.x,dy=to.y-e.y,d=Math.hypot(dx,dy),step=e.speed/SIM_HZ;
+        if(d<=step){e.x=to.x;e.y=to.y;l.toB=!l.toB;}else{e.x+=dx/d*step;e.y+=dy/d*step;}
+      }
+      return;
+    }
     if(this.lineup){
       this.lineUpDanger();this.lineUpCharge();
       for(const b of this.projectiles){b.x+=b.vx/SIM_HZ;b.y+=b.vy/SIM_HZ;} // vx/vy in units per second, like the sim and the wire
@@ -414,6 +443,7 @@ export async function openHordeSandbox(){
   // ?arte=bebado:dono-do-boteco,anao-molotov:espetinho-suspeito — preview of roster art (pack 04…) in a current kind's
   // slot, until the roster art is wired in the render. Sandbox only: the game never reads this.
   for(const pair of (params.get('arte')??'').split(',')){const [kind,id]=pair.split(':');if(kind&&id&&Object.hasOwn(ENEMY_ART_ID,kind))(ENEMY_ART_ID as Record<string,string>)[kind]=id;}
+  if(params.get('relogio')==='1')ENEMY_WALK.byGround=false;
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;
   const reduced=params.get('reduced')==='1';

@@ -364,20 +364,24 @@ export function fileFps(file:ArtFile,anim:string):number{
 export const ENEMY_ANIM_RATE=.7;
 const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
 /**
- * Feet on the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
+ * Walk by the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
  * estivesse rápida"): the walk sheet is not clock-driven any more but follows the ground the enemy covers on screen,
- * like the hero's (sprites/sprite-motion.ts walkCycles): a cycle every drawn stride (art/enemy-strides.ts, measured by
- * scripts/passada-inimigos.mjs), so the planted foot keeps pace with the ground at any speed (chasing, pushed by the
- * crowd, slowed) and an enemy standing still never treads in place. A sheet with no measurable step (wheels, a blob
- * gliding) counts at least ENEMY_STRIDE_MIN, and the legs never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a
- * slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median sheet) for a piece the table does not know yet.
+ * like the hero's (sprites/sprite-motion.ts walkCycles): a cycle every visible step of the sheet (art/enemy-strides.ts,
+ * how far the feet open, scripts/passada-inimigos.mjs), so the legs go as fast as the enemy goes (slow in a crowd,
+ * faster on a chase) and an enemy standing still never treads in place. The generated walks are drawn almost in place
+ * (the planted foot travels back ~0.01 of the figure a cycle, `volta` in that script): no timing keeps their foot on
+ * one spot, only new art does. A sheet whose feet hardly open (wheels, a blob) counts ENEMY_STRIDE_MIN, and the legs
+ * never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median
+ * sheet) for a piece the table does not know yet.
  */
-export const ENEMY_STRIDE_MIN=.12,ENEMY_STRIDE_DEFAULT=.19,ENEMY_WALK_MAX_CPS=3;
-/** Drawn stride (heights of the figure per walk cycle) of art `id`. */
+export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_MAX_CPS=3;
+/** `byGround:false` brings back the clock-driven walk (the sandbox's before/after proof, `?sandbox=horda&relogio=1`). */
+export const ENEMY_WALK={byGround:true};
+/** Visible step (heights of the figure per walk cycle) of art `id`. */
 export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
 /**
  * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
- * drawn at `stride`: the foot locked to the ground (walkCycles, lock 1), capped at ENEMY_WALK_MAX_CPS; 0 on a teleport.
+ * stepping `stride`: a cycle per stride walked on screen (walkCycles, lock 1), capped at ENEMY_WALK_MAX_CPS; 0 on a teleport.
  */
 export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number):number{
   return Math.min(walkCycles(dx,dy,view,figurePx,stride,1),ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
@@ -641,7 +645,19 @@ export function enemyArtFlies(id:string|undefined):boolean|undefined{
   const piece=id?artPiece('inimigos',id):undefined;
   return piece?Object.hasOwn(piece.files,'fly'):undefined;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
+/**
+ * Facing the target (card monstros-sem-deslizar, the user: "e os inimigos me atacam de costas?"): an enemy within
+ * FACE_NEAR of its nearest player, or swinging at one within FACE_ACTING, shows the 8-direction row towards that player
+ * instead of the one of its last step (a crowd shoving it sideways, or a step back, turned its back on the hero).
+ */
+export const FACE_NEAR=1.6,FACE_ACTING=3;
+/** The row an enemy at (x, y) shows: towards `target` when near (or acting and within reach), else `row`. */
+export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined,acting:boolean,view:number,row:number):number{
+  if(!target)return row;
+  const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
+  return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
+}
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -651,18 +667,21 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.
   const textures=image.scene.textures;
-  let action=loop?currentAction(s,now):undefined,frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
+  let action=loop?currentAction(s,now):undefined;
+  if(actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
+  let frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
   let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
   // The walk by the ground walked since the last draw (monstros-sem-deslizar); the clock for every other loop. A fresh
   // image starts at its own phase of the cycle, so a pack never steps in unison.
   const wx=actor.x,wy=actor.y,walkFile=piece.files.walk;
-  if(walkFile&&wx!==undefined&&wy!==undefined){
+  const byGround=ENEMY_WALK.byGround&&!!walkFile&&wx!==undefined&&wy!==undefined;
+  if(byGround){
     if(Number.isNaN(s.lx))s.cycles=actor.phase;
     else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt);
     s.lx=wx;s.ly=wy;s.lt=now;
   }
-  const walkCol=(a:string|undefined)=>a==='walk'&&walkFile&&wx!==undefined?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile).frames):-1;
+  const walkCol=(a:string|undefined)=>a==='walk'&&byGround?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile!).frames):-1;
   let col=action?-1:walkCol(anim);
   if(!action&&anim)frame=col>=0?enemyFrameAt(id,piece,anim,s.row,col,base):enemyFrame(id,piece,anim,s.row,t,base);
   // That loop's sheet is not there (still loading, or it failed): another loop of the piece that is, before the reserve.

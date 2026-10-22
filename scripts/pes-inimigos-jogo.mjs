@@ -18,15 +18,27 @@ const chromium=pw.chromium??pw.default.chromium;let browser,release;
 try{
   release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:'E6 monstros-sem-deslizar'});
   browser=await chromium.launch({args:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']});
-  const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1});
+  const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1,serviceWorkers:'block'});
   await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:solo-bots:v1','0');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
-  const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  // --dist <dir>: the site under test served from a local build at the production origin (the rooms worker only
+  // accepts https://viagem.cyou), so the page plays a real match on the real worker with this branch's client.
+  const DIST=arg('dist');
+  if(DIST){
+    const {readFile}=await import('node:fs/promises');const {extname,resolve}=await import('node:path');
+    const TYPES={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.webp':'image/webp','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wasm':'application/wasm'};
+    await ctx.route('https://viagem.cyou/**',async route=>{
+      const u=new URL(route.request().url());let f=resolve(DIST,'.'+decodeURIComponent(u.pathname));if(u.pathname.endsWith('/'))f=resolve(f,'index.html');
+      try{const body=await readFile(f);await route.fulfill({status:200,body,headers:{'content-type':TYPES[extname(f)]??'application/octet-stream','cache-control':'no-store'}});}
+      catch{await route.fulfill({status:404,body:'not found'});}
+    });
+  }
+  const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});globalThis.__page=page;globalThis.__errors=errors;
   await page.goto(URL_+(URL_.includes('?')?'&':'?')+'perf=1',{waitUntil:'load',timeout:180000});
   await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
   await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Tia Cleide';n.dispatchEvent(new Event('input',{bubbles:true}));const c=document.getElementById('confirm');c.click();const n2=document.getElementById('nickname');n2.value='Tia Cleide';n2.dispatchEvent(new Event('input',{bubbles:true}));c.click();});
   await page.waitForFunction(()=>document.getElementById('confirmation')?.open,null,{timeout:30000});
   await page.evaluate(()=>document.getElementById('enter-island').click());
-  await page.waitForFunction(()=>{const s=document.querySelector('dialog.explore-shell');return s&&!s.querySelector('.explore-loading:not([hidden])')&&!s.querySelector('.coop-wait:not([hidden])')&&window.__perfScene?.actor;},null,{timeout:240000});
+  await page.waitForFunction(()=>{const s=document.querySelector('dialog.explore-shell');return s&&!s.querySelector('.explore-loading:not([hidden])')&&!s.querySelector('.coop-wait:not([hidden])')&&window.__perfScene?.actor;},null,{timeout:90000});
   const clear=async()=>{for(let i=0;i<4;i++){const b=page.getByRole('button',{name:/^Pular/});if(await b.count()&&await b.first().isVisible()){await b.first().click().catch(()=>{});await sleep(400);}else break;}};
   await clear();
   // Walk towards the nest the HUD points at (--tecla, screen up by default) until enemies show, then stand still.
@@ -68,4 +80,4 @@ try{
   for(let i=0;i<SHOTS;i++){await page.screenshot({path:`${OUT}-f${String(i).padStart(3,'0')}.png`,clip});stamps.push(Date.now()-s0);}
   writeFileSync(`${OUT}-fotos.json`,JSON.stringify({clip,stamps}));
   console.log('fotos',SHOTS,'em',stamps.at(-1),'ms; erros:',errors.length,errors.slice(0,3).join(' | '));
-}finally{await browser?.close();release?.();}
+}catch(e){console.log('falhou:',e.message.split('\n')[0],'erros da página:',globalThis.__errors?.slice(0,6));await globalThis.__page?.screenshot({path:`${OUT}-erro.png`}).catch(()=>{});process.exitCode=2;}finally{await browser?.close();release?.();}

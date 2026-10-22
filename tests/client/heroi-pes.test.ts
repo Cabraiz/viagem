@@ -36,7 +36,8 @@ test('every hero class in the manifest stands above the old 0.875 anchor, at the
 
 test('the hero sprite uses the feet and hands the silhouette its bare frame', ()=>{
   const src=read('src/client/sprites/character-sprites.ts');
-  assert.match(src,/ay=clipFeetY\(detailed\.original\)\?\?this\.feetY\(id\)\?\?detailedFeetY\(detailed\)/);
+  // (minus the run's foot shift within a pose, passo-3x-mais-lento)
+  assert.match(src,/ay=\(clipFeetY\(detailed\.original\)\?\?this\.feetY\(id\)\?\?detailedFeetY\(detailed\)\)/);
   assert.match(src,/setBareFrame\(sprite,copy\?\{key:detailed\.key/);
   assert.match(src,/setBareFrame\(sprite,copy\?\{key:sheet\.key/);
   assert.match(read('src/client/render/silhouette.ts'),/const plain=b&&b\.key!==body\.texture\.key/);

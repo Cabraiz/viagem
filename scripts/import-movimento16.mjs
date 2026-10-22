@@ -18,8 +18,11 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
   anchor:[.5,.875],movementHands:'empty',motions:{
     walk:{columns:4,rows:4,frames:16,durationMs:600,loop:true},
     attack:{columns:4,rows:4,frames:16,durationMs:1000,loop:false},
-    idle:{columns:4,rows:2,frames:8,durationMs:2000,loop:true}}});
-const MOTIONS=Object.keys(MOVEMENT16_META.motions);
+    idle:{columns:4,rows:2,frames:8,durationMs:2000,loop:true},
+    // Optional (card passo-3x-mais-lento): a run, the hero's gait when the class has it; the walk stays.
+    run:{columns:4,rows:4,frames:16,durationMs:600,loop:true}}});
+/** The motions every M16 class draws; `run` is optional, all 5 drawn directions or none. */
+const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run'];
 const exists=file=>access(file).then(()=>true,()=>false);
 /**
  * The 5 directions a class draws: S, N and, for each mirror pair, the side delivered in all three motions (the default
@@ -39,6 +42,18 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),SPEC=
 const SHA=bytes=>createHash('sha256').update(bytes).digest('hex');
 const safeId=id=>typeof id==='string'&&/^[a-z][a-z0-9-]*$/.test(id);
 export const movement16Source=(input,id,motion,direction)=>path.join(input,FOLDER,id,motion,direction+'.png');
+/**
+ * A run's phase table (optional, next to its sheet; card passo-3x-mais-lento): per pose, `d` the ground it covers in
+ * figure heights and `v` the planted foot's travel in 96 px cell px ([0,0] in flight). The game picks the pose by the
+ * ground walked and shifts the sprite by the part of `v` already walked, so the planted foot stays put.
+ */
+async function readPhase(file,label){
+  if(!await exists(file))return undefined;
+  const phase=JSON.parse(await readFile(file,'utf8')),n=MOVEMENT16_META.motions.run.frames;
+  assert.ok(Array.isArray(phase.d)&&phase.d.length===n&&phase.d.every(x=>Number.isFinite(x)&&x>0&&x<1),`${label}: phase.d needs ${n} distances in (0, 1)`);
+  assert.ok(Array.isArray(phase.v)&&phase.v.length===n&&phase.v.every(p=>Array.isArray(p)&&p.length===2&&p.every(x=>Number.isFinite(x)&&Math.abs(x)<24)),`${label}: phase.v needs ${n} [x, y] shifts under 24 px`);
+  return {d:phase.d,v:phase.v};
+}
 
 /** Every cell drawn, transparent somewhere and 2 px off the edge (alpha > 20); walk/attack poses all distinct. */
 export async function inspectMovement16(source,motion,label=`${motion}`){
@@ -90,7 +105,9 @@ function poseAnchors(data,width,columns,frames){
 export async function alignMovement16(bytes,motion,label=motion){
   const {columns,frames}=MOVEMENT16_META.motions[motion];
   const {data,info}=await sharp(bytes).ensureAlpha().raw().toBuffer({resolveWithObject:true});
-  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors);
+  // A run is placed by its assembler (torso on x 96, each pose at the height it flies, the planted foot measured in
+  // run/<dir>.phase.json): moving a pose would move that foot, so it stays as drawn.
+  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors).map(s=>motion==='run'?{dx:0,dy:0}:s);
   const out=Buffer.alloc(data.length),figure={left:192,top:192,right:0,bottom:0},xs=[];
   for(let frame=0;frame<frames;frame++){
     const sx=frame%columns*192,sy=Math.floor(frame/columns)*192,{dx,dy}=shifts[frame];xs.push(anchors[frame].x+dx);
@@ -133,8 +150,16 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
     if(old)assert.equal(old.kind,'dir8',`${id}: existing piece kind`);
     else assert.equal(index.groups.personagens.pieces[id],undefined,`${id}: index/group disagreement`);
     const clips=[],drawn=await movement16Drawn(input,id);
-    for(const motion of MOTIONS)for(const direction of drawn)
-      clips.push({...await inspectMovement16(movement16Source(input,id,motion,direction),motion,`${id}/${motion}/${direction}`),motion,direction});
+    const optional=[];
+    for(const motion of OPTIONAL_MOTIONS){
+      const has=await Promise.all(drawn.map(d=>exists(movement16Source(input,id,motion,d))));
+      assert.ok(has.every(Boolean)||!has.some(Boolean),`${id}: ${motion} needs all of ${drawn.join(' ')} or none`);
+      if(has[0])optional.push(motion);
+    }
+    for(const motion of [...MOTIONS,...optional])for(const direction of drawn){
+      const source=movement16Source(input,id,motion,direction),phase=motion==='run'?await readPhase(source.replace(/\.png$/,'.phase.json'),`${id}/${motion}/${direction}`):undefined;
+      clips.push({...await inspectMovement16(source,motion,`${id}/${motion}/${direction}`),motion,direction,...(phase?{phase}:{})});
+    }
     // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets.
     const height=clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
@@ -162,9 +187,10 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
             figure:{left:Math.max(0,Math.floor(f.left/2)-2),top:Math.max(0,Math.floor(f.top/2)-2),right:Math.min(96,Math.ceil(f.right/2)+2),bottom:Math.min(96,Math.ceil(f.bottom/2)+2)},
             pages:[{file,columns:m.columns,rows:m.rows,firstFrame:0,frameCount:m.frames,sha256:SHA(encoded)}],sha256:SHA(encoded)};
           clip.pivotX=files[key].pivotX;
+          if(clip.phase)files[key].phase=clip.phase;
         }
         // The other side of each pair is mirrored now: a key it had from an earlier import goes (null drops it in the merge).
-        for(const motion of MOTIONS)for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
+        for(const motion of [...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
         for(const file of staged){await rename(file.tmp,file.target);record.outputs.push(file.target);}
         entries[record.id]={kind:'dir8',files,...(previous.pieces[record.id]?.meta?{meta:previous.pieces[record.id].meta}:{})};
       }finally{await Promise.all(staged.map(file=>rm(file.tmp,{force:true})));}

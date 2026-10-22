@@ -5,7 +5,9 @@
  * D-036 movement effects (the bêbado's burp, the pombos' poop) are a pure function of the player's effect state and
  * the server tick, so the room and the phone step them the same way:
  * - tick < slipUntil: each step slides along `slip` at PLAYER_SLIP_SPEED (scaled to the world's hero speed; walls and sea stop it like walking), the
- *   stick's direction is ignored; like walking, a slide needs a step (a player standing still does not slide);
+ *   stick's direction is ignored; like walking, a slide needs a step that walks (a player standing still does not slide,
+ *   nor does one who only holds the attack or the skill: since D-051 those steps reach the room while standing, and a
+ *   held attack slid the hero along the poop, BUG-20261022-ORQ-botao-direito-anda);
  * - else tick < slowUntil: walking at heroSpeed(terrain) × PLAYER_SLOW_MULT;
  * - else plain walking;
  * - D-047: while tick < fastUntil (Dona Cida's brigadeiro) the walk above goes × CIDA_FAST_MULT.
@@ -54,9 +56,12 @@ export function walkMult(effects:MoveEffects|undefined,tick:number):number{
 const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
 /**
  * One movement tick of a player at server tick `tick` (the room's players system and the phone's replay): a slide
- * while slipping (direction ignored), else a walk, slowed while slowed. Collision-safe like moveDirection.
+ * while slipping (any direction that walks: the slide's own is taken), else a walk, slowed while slowed. A step without
+ * a direction (the attack or the skill held in place) stands, slipping or not. Collision-safe like moveDirection.
  */
 export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):Point{
+  const length=Math.hypot(direction.x,direction.y);
+  if(!Number.isFinite(length)||length<.01)return p;
   const slide=slipping(effects,tick);
   // The world's hero speed (city 1.99 u/s, D-026); slip keeps its ratio to walking so the city stays in proportion.
   const walk=heroSpeed(terrain);

@@ -55,6 +55,15 @@ export interface RoundDef {
   /** Seconds; past this the rest of a regular round retreats to the sea. */
   maxDuration:number;
   hpScale:number;
+  /**
+   * Card upgrades-megabonk (usuário 22/10: "aumentar a HP dos inimigos no início do jogo, já que nossos personagens vão
+   * ficar mais fortes"): the hpScale of this row in mode 'ninhos' (D-051, the live game: the nests' groups and, through
+   * SLEEPER_ROUND, the map's sleepers), when it differs from `hpScale`. The bench (scripts/bench-ttk.ts) had the first 4
+   * minutes' kills at ~1 hit (the faca's 24 one-shot the 7-22 hp bodies) against ~2.2 from minute 6; rows 1-6 there
+   * go 1.3, 1.4, 1.5, 1.55, 1.6, 1.7 (were .35, .8, 1.1, 1.35, 1.55, 1.7), so the first minutes take ~2 hits too. The
+   * rounds mode (island, endless, the city's waves) keeps `hpScale` and its tutorial round. Same enemy counts.
+   */
+  hpNinhos?:number;
   /** Pombos-only groups taken from the budget; `at` is a fraction of the spawn window. */
   swarm?:{size:[number,number];at:number[]};
   /** One elite with a chest, outside the budget. */
@@ -68,11 +77,11 @@ export interface RoundDef {
 export const ROUNDS:readonly RoundDef[]=[
   // D-033 cast: the anão debuts in round 3 with a modest share (taken from the bêbados), 4-8% after that.
   // P1 trio (taken from the bêbados too): motoboy from round 3, coach from 4, influencer from 5, a few % each.
-  {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35},
-  {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8},
-  {index:3,budget:32,weights:{bebado:.54,pombos:.25,'tio-pave':.15,'anao-molotov':.03,motoboy:.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1},
-  {index:4,budget:46,weights:{bebado:.43,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35},
-  {index:5,budget:54,weights:{bebado:.35,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03,influencer:.03},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,
+  {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:.35,hpNinhos:1.3},
+  {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:.8,hpNinhos:1.4},
+  {index:3,budget:32,weights:{bebado:.54,pombos:.25,'tio-pave':.15,'anao-molotov':.03,motoboy:.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.1,hpNinhos:1.5},
+  {index:4,budget:46,weights:{bebado:.43,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.35,hpNinhos:1.55},
+  {index:5,budget:54,weights:{bebado:.35,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03,influencer:.03},group:[5,8],cadence:5,maxDuration:65,hpScale:1.55,hpNinhos:1.6,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},
   {index:6,budget:76,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05,coach:.02,motoboy:.03,influencer:.02},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
     swarm:{size:[14,18],at:[.3,.7]}},

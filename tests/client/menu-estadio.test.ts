@@ -438,7 +438,7 @@ test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, bu
   assert.ok(css.includes("border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch;"));
   assert.ok(Math.abs(130/149-.872)<.002);
   for(const file of ['estrela','icone-direita'])assert.ok(css.includes(`url('/art/menu/botao/${file}.webp')`),file);
-  assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
+  assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-cadeado" hidden>\$\{icon\('cadeado',\{size:48\}\)\}<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
 });
 
 test('botao-igual-gerado: the star, text and burst sit in the pill where the generated screen has them, at any size',()=>{

@@ -14,6 +14,10 @@
 //     background as the page draws it (frameArt must agree), ±4 px.
 //   - Every hero: what is seen of him (alpha > 0, not under the layer) at least FEET_MARGIN - 1 px above the window's
 //     bottom (8, 1 for rounding: the ORQ, 21/10, the back sneaker touched the edge at 1920x1000); his box inside it.
+//   - Same place (NEW-20261021-ORQ-clt-mesmo-lugar, the user: "os rostos deles e corpo deles estejam meio que quase no
+//     mesmo lugar"): every hero's face (stadium.ts `rosto`, through his drawn <img>) within MESMO_LUGAR of the width and
+//     of the height from the first hero's, at each window. The phone held upright (PHONE: no cutout, the dance): the
+//     dancer's box the same for every one of them.
 // Out: <out>/pes.json ({ok, fails, rows}) and <out>/pes-<hero>-<w>x<h>.png.
 // node scripts/pes-no-chao.mjs [outDir=folha-out] [--dist dist] [--url http://127.0.0.1:5173/]: run from the checkout
 // whose dist/ it serves (or against a running server with --url). Exit 0 ok, 1 a foot is off, 2 infrastructure.
@@ -42,7 +46,8 @@ const NOMES={"clt-cansado":['pé esquerdo','pé direito']};
  * viciado's back sneaker: its heel and side go behind (~22% of it), its laces and toe stay over the edge.
  */
 const NA_MURETA={"viciado-em-bet":{"frente":[1000,1260],"tras":[1500,1746,950]}};
-const TOLERANCIA=4,ALPHA=128,ALINHA=1.5,ESCONDIDO=.15;
+const TOLERANCIA=4,ALPHA=128,ALINHA=1.5,ESCONDIDO=.15,MESMO_LUGAR=.03;
+const PHONE=[390,844];
 class Infra extends Error {}
 
 async function playwright(){
@@ -115,7 +120,7 @@ const quantile=(v,q)=>{const s=[...v].sort((a,b)=>a-b);return s.length?s[Math.mi
 
 async function main(){
   mkdirSync(outDir,{recursive:true});
-  const {frameArt,STADIUM,RECORTES,FEET_MARGIN,muretaTopo}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
+  const {frameMoved,moveOf,SEM_MOVE,STADIUM,RECORTES,FEET_MARGIN,muretaTopo}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
   for(const [id,cut] of Object.entries(RECORTES))
     if(!(cut.frente?id in NA_MURETA:id in PES))throw new Error(`${id}: um herói recortado sem ${cut.frente?'NA_MURETA':'PES'} em scripts/pes-no-chao.mjs`);
   const {chromium}=await playwright();
@@ -131,6 +136,7 @@ async function main(){
       try{
         await page.goto(url,{waitUntil:'load',timeout:60000});
         await page.waitForSelector('[data-hero="clt-cansado"]',{timeout:60000});
+        const rostos=[];
         for(const hero of Object.keys(RECORTES)){
           const cut=RECORTES[hero];
           await page.click(`[data-hero="${hero}"]`);
@@ -149,7 +155,8 @@ async function main(){
             return {top:r.top,left:r.left,box:{w:stage.clientWidth,h:stage.clientHeight},size:num(cs.backgroundSize),at:num(cs.backgroundPosition),
               file:img.currentSrc||img.src,img:{l:ir.left,t:ir.top,r:ir.right,b:ir.bottom}};
           });
-          const art=STADIUM.bleed,f=art.focal,frame=frameArt(drawn.box,art);
+          // His own background moves with him (lugar), the stadium does not.
+          const art=STADIUM.bleed,f=art.focal,frame=frameMoved(drawn.box,art,cut.fundo?moveOf(cut):SEM_MOVE);
           // The background as the page draws it (its px size/position); a whole-picture point → the screen and back.
           const [bw,bh]=drawn.size,[bx,by]=drawn.at,sx=bw/art.w,sy=bh/art.h;
           const toX=X=>drawn.left+bx+(f.x+X)*sx,toY=Y=>drawn.top+by+(f.y+Y)*sy,fromX=x=>(x-drawn.left-bx)/sx-f.x;
@@ -162,7 +169,10 @@ async function main(){
           const why=[],pes=[];
           if(!(Number.isFinite(bh)&&bh>0))why.push(`fundo sem tamanho em px (${JSON.stringify(drawn.size)})`);
           const frameY=drawn.top+frame.oy+(f.y+1000)*frame.s;
-          if(Math.abs(toY(1000)-frameY)>ALINHA)why.push(`fundo desenhado fora do frameArt (${toY(1000).toFixed(1)} × ${frameY.toFixed(1)})`);
+          if(Math.abs(toY(1000)-frameY)>ALINHA)why.push(`fundo desenhado fora do frameMoved (${toY(1000).toFixed(1)} × ${frameY.toFixed(1)})`);
+          // His face through the <img> as drawn (its box is his box of the whole picture).
+          const r=cut.rosto,iw=(drawn.img.r-drawn.img.l)/cut.w;
+          rostos.push({hero,cx:drawn.img.l-drawn.left+(r.x-cut.x+r.w/2)*iw,cy:drawn.img.t-drawn.top+(r.y-cut.y+r.h/2)*iw,h:r.h*iw});
           if(spec){
             // The layer's edge where the background draws the bar.
             const barTop=x=>toY(muretaTopo(fromX(x+.5)));
@@ -198,19 +208,46 @@ async function main(){
           if(i.l<-.5||i.t<-.5||i.r>w+.5||i.b>h+.5)why.push(`herói fora da janela (${Math.round(i.l)},${Math.round(i.t)} a ${Math.round(i.r)},${Math.round(i.b)})`);
           if(why.length)fails.push(`${hero} ${w}x${h}: ${why.join('; ')}`);
         }
+        const [ref,...others]=rostos;
+        for(const o of others){
+          const dx=(o.cx-ref.cx)/w,dy=(o.cy-ref.cy)/h,row=rows.find(r=>r.hero===o.hero&&r.w===w&&r.h===h);
+          row.rosto={dx:+(dx*100).toFixed(2),dy:+(dy*100).toFixed(2),tamanho:+(o.h/ref.h).toFixed(2)};
+          if(Math.abs(dx)>MESMO_LUGAR||Math.abs(dy)>MESMO_LUGAR)
+            fails.push(`${o.hero} ${w}x${h}: rosto fora do lugar do ${ref.hero} (${(dx*100).toFixed(1)}% da largura, ${(dy*100).toFixed(1)}% da altura; máximo ${MESMO_LUGAR*100}%)`);
+        }
       }finally{await page.close();}
     }
+    // The phone held upright: no cutout, every hero's dancer on the same spot of the bar.
+    const page=await browser.newPage({viewport:{width:PHONE[0],height:PHONE[1]},deviceScaleFactor:1});
+    try{
+      await page.goto(url,{waitUntil:'load',timeout:60000});
+      await page.waitForSelector('[data-hero="clt-cansado"]',{timeout:60000});
+      const boxes=[];
+      for(const hero of Object.keys(RECORTES)){
+        await page.click(`[data-hero="${hero}"]`);
+        await page.waitForFunction(id=>document.querySelector(`[data-hero="${id}"]`)?.getAttribute('aria-pressed')==='true',hero,{timeout:60000});
+        await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        boxes.push(await page.evaluate(()=>{const r=document.querySelector('#portrait').getBoundingClientRect();return {hidden:!!document.querySelector('.estadio-recorte')?.hidden,x:r.x,y:r.y,w:r.width,h:r.height};}));
+        writeFileSync(join(outDir,`pes-${hero}-${PHONE[0]}x${PHONE[1]}.png`),await page.screenshot());
+      }
+      const why=[];
+      if(boxes.some(b=>!b.hidden))why.push('recorte no celular em pé (é a dança)');
+      if(boxes.some(b=>['x','y','w','h'].some(k=>Math.abs(b[k]-boxes[0][k])>1)))why.push(`dançarinos em lugares diferentes ${JSON.stringify(boxes)}`);
+      rows.push({hero:'celular',w:PHONE[0],h:PHONE[1],file:'dança',pes:[],margin:'-',img:boxes[0],celular:why.length?'FALHOU':'ok'});
+      if(why.length)fails.push(`celular ${PHONE[0]}x${PHONE[1]}: ${why.join('; ')}`);
+    }finally{await page.close();}
   }finally{await browser.close();server?.close();}
   const ok=!fails.length;
   writeFileSync(join(outDir,'pes.json'),JSON.stringify({ok,tolerancia:TOLERANCIA,fails,rows},null,1));
   const sign=d=>`${d>=0?'+':''}${d}`;
   const feetText=r=>r.pes.map(p=>'sola' in p?`${p.pe}: sola ${sign(p.sola)} do topo, vão ${p.vao}`:'escondido' in p?`${p.pe}: ${Math.round(p.escondido*100)}% atrás`:`${p.pe} ${p.feet}/${p.floor} (${sign(p.diff)})`).join(', ');
-  for(const r of rows)console.log(`${r.hero.padEnd(15)} ${`${r.w}x${r.h}`.padEnd(10)} ${feetText(r)}  margem ${r.margin} px  (${r.file})`);
+  const lugarText=r=>r.rosto?`  rosto ${sign(r.rosto.dx)}% ${sign(r.rosto.dy)}% (x${r.rosto.tamanho})`:r.celular?`  dança no mesmo lugar: ${r.celular}`:'';
+  for(const r of rows)console.log(`${r.hero.padEnd(15)} ${`${r.w}x${r.h}`.padEnd(10)} ${feetText(r)}  margem ${r.margin} px${lugarText(r)}  (${r.file})`);
   for(const f of fails)console.log(`FALHOU: ${f}`);
-  console.log(ok?`pés no chão: ok (${rows.length} telas, ±${TOLERANCIA} px)`:`pés no chão: ${fails.length} falha(s)`);
+  console.log(ok?`pés no chão e mesmo lugar: ok (${rows.length} telas, ±${TOLERANCIA} px, rostos ±${MESMO_LUGAR*100}%)`:`pés no chão: ${fails.length} falha(s)`);
   if(process.env.GITHUB_STEP_SUMMARY){
     const {appendFileSync}=await import('node:fs');
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### Pés no chão do menu (±${TOLERANCIA} px, margem >= 8 px, pé de trás atrás da mureta): ${ok?'ok':'FALHOU'}\n\n| herói | tela | pés | margem embaixo |\n|---|---|---|---|\n${rows.map(r=>`| ${r.hero} | ${r.w}×${r.h} | ${feetText(r)} | ${r.margin} px |`).join('\n')}\n`);
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY,`\n### Pés no chão do menu (±${TOLERANCIA} px, margem >= 8 px, pé de trás atrás da mureta, rostos no mesmo lugar ±${MESMO_LUGAR*100}%): ${ok?'ok':'FALHOU'}\n\n| herói | tela | pés | margem embaixo | mesmo lugar |\n|---|---|---|---|---|\n${rows.map(r=>`| ${r.hero} | ${r.w}×${r.h} | ${feetText(r)} | ${r.margin} px | ${lugarText(r).trim()} |`).join('\n')}\n`);
   }
   return ok?0:1;
 }

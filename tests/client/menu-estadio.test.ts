@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameMoved, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, columnRight, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameHero, frameMoved, headRoom, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -192,8 +192,8 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
     assert.ok(Math.abs(fit.y+fit.h-(placed.y+placed.h))<1e-9,`${w}x${h}: his feet on the plateau, where the framing puts it`);
   }
   // Wired: the stage swaps to his background once decoded while he stands there, and back to the stadium after.
-  assert.match(main,/showStageFundo\(spot\?cut\?\.fundo:undefined,cut\?moveOf\(cut\):SEM_MOVE\);/);
-  assert.match(main,/img\.decode\(\)\.catch\(\(\)=>\{\}\)\.then\(\(\)=>\{ if\(stageFundo===want\) swap\(want,move\); \}\);/);
+  assert.match(main,/showStageFundo\(spot\?cut:undefined\);/);
+  assert.match(main,/img\.decode\(\)\.catch\(\(\)=>\{\}\)\.then\(\(\)=>\{ if\(stageWant===cut\) swap\(\); \}\);/);
 });
 
 test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plateau moved with him under his feet",async()=>{
@@ -217,32 +217,38 @@ test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plat
   // where the viciado's is plus his own offset (dx, dy through the stadium's framing; dx 4-6% of the width) within 3% of
   // the width and of the height, his face 5-20% taller (k), his whole box in the window, FEET_MARGIN under it.
   // Windows wider than the bleed (21:9) shrink him around his feet (fitCutout) to keep his hair on screen: within 5%.
+  // heroi-grande-por-tela: where a hero grown to the window fills the room between the column and the right edge (16:10,
+  // 1280x800), both stand in that room and the CLT is not left of the viciado.
   for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[2560,1080],[1024,768],[3440,1440]]){
     const box={w,h},on=(cut:typeof vic)=>{
       const fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!),k=fit.w/cut.w,r=cut.rosto;
-      return {cx:fit.x+(r.x-cut.x+r.w/2)*k,cy:fit.y+(r.y-cut.y+r.h/2)*k,h:r.h*k,top:fit.y,bottom:fit.y+fit.h};
+      return {cx:fit.x+(r.x-cut.x+r.w/2)*k,cy:fit.y+(r.y-cut.y+r.h/2)*k,h:r.h*k,top:fit.y,bottom:fit.y+fit.h,x:fit.x,w:fit.w};
     };
     const a=on(vic),b=on(clt),{s:k}=frameArt(box,STADIUM.bleed),tol=w/h>2.2?.05:.03;
     if(w/h<=2.2) assert.ok(100*k/w>=.04&&100*k/w<=.06,`${w}x${h}: ${(100*k/w*100).toFixed(1)}% to the right`);
-    assert.ok(Math.abs(b.cx-a.cx-100*k)<=tol*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
+    const grown=(cut:typeof vic)=>frameHero(box,STADIUM.bleed,cut).s>frameMoved(box,STADIUM.bleed,moveOf(cut)).s+1e-9;
+    const room=.98*w-columnRight(box),full=grown(vic)&&grown(clt)&&[a,b].some(o=>o.w>=.95*room);
+    if(full) assert.ok(b.cx>=a.cx&&[a,b].every(o=>o.x>=columnRight(box)-1e-6&&o.x+o.w<=.98*w+1e-6),`${w}x${h}: both in the room`);
+    else assert.ok(Math.abs(b.cx-a.cx-100*k)<=tol*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
     assert.ok(Math.abs(b.cy-a.cy-33*k)<=tol*h,`${w}x${h}: faces ${a.cy.toFixed(0)} × ${b.cy.toFixed(0)} down`);
     assert.ok(b.h/a.h>=1.05&&b.h/a.h<=1.15,`${w}x${h}: his face ${(b.h/a.h).toFixed(2)}x the viciado's`);
     assert.ok(b.top>=Math.min(.06*h,cutoutMargin(h))-1e-9&&b.bottom<=h-FEET_MARGIN+1e-9,`${w}x${h}: CLT whole, ${(h-b.bottom).toFixed(1)} px under him`);
-    // His background where his move puts it, always covering the box; he stands in it exactly where his scene had him.
-    const {s,ox,oy}=frameMoved(box,STADIUM.bleed,move),f=STADIUM.bleed.focal,e=1e-6;
+    // His background where his move and his zoom (heroi-grande-por-tela) put it, always covering the box; he stands in it
+    // exactly where his scene had him.
+    const {s,ox,oy}=frameHero(box,STADIUM.bleed,clt),f=STADIUM.bleed.focal,e=1e-6;
     assert.ok(ox<=e&&oy<=e&&ox+STADIUM.bleed.w*s>=w-e&&oy+STADIUM.bleed.h*s>=h-e,`${w}x${h}: his background covers the box`);
     const placed=placeCutout(box,STADIUM.bleed,clt)!;
     assert.ok(Math.abs(placed.x-(ox+(f.x+clt.x)*s))<e&&Math.abs(placed.y+placed.h-(oy+(f.y+clt.y+clt.h)*s))<e,`${w}x${h}: feet on his plateau`);
   }
-  // 1920x1080: the stadium's framing moved by k, his box 24.8% bigger than his scene's, right of where it had him
-  // (whole-picture px 1015..1030, through the stadium's framing: estadio-folga-topo stands it further back), his
+  // 1920x1080: the stadium's framing moved by k (his box 24.8% bigger than his scene's), then zoomed about his soles
+  // (heroi-grande-por-tela: ~5% more, his hair headRoom under the top; with k, ~17% over the clt-mesmo-lugar one), his
   // briefcase 4-6% of the window from the right edge.
-  const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!,stadium=frameArt({w:1920,h:1080},STADIUM.bleed),px=(X:number)=>stadium.ox+(STADIUM.bleed.focal!.x+X)*stadium.s;
-  assert.ok(Math.abs(at.w-635*1.248*stadium.s)<1e-9&&at.x>px(1015)&&at.x<px(1030),JSON.stringify(at));
+  const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!,stadium=frameArt({w:1920,h:1080},STADIUM.bleed),z=at.w/(635*1.248*stadium.s);
+  assert.ok(z>=1.03&&z<=1.08&&Math.abs(at.y-headRoom(1080))<1e-6&&1.248*z/1.12>=1.15,JSON.stringify({...at,z}));
   assert.ok(1920-at.x-at.w>=.04*1920&&1920-at.x-at.w<=.06*1920,`${(1920-at.x-at.w).toFixed(0)} px to the right edge`);
   // Wired: the stage's background framed with the shown picture's move, set together with the picture.
-  assert.match(main,/frame=art\.focal&&box\.w>0&&box\.h>0\?frameMoved\(box,art,stageMove\):undefined;/);
-  assert.match(main,/const swap=\(image:string,m:Move\)=>\{stage\.style\.backgroundImage=image;stageMove=m;frameStage\(\{w:stage\.clientWidth,h:stage\.clientHeight\}\);\};/);
+  assert.match(main,/frame=art\.focal&&box\.w>0&&box\.h>0\?\(stageCut\?frameHero\(box,art,stageCut\):frameArt\(box,art\)\):undefined;/);
+  assert.match(main,/const swap=\(\)=>\{stage\.style\.backgroundImage=want;stageCut=cut;frameStage\(\{w:stage\.clientWidth,h:stage\.clientHeight\}\);\};/);
 });
 
 test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, the letreiro 15% smaller',()=>{
@@ -284,9 +290,11 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
     const fx=ox+f.x*s,fy=oy+f.y*s;
     if(w/h<=2560/1080+e) assert.ok(fx>=-.5&&fy>=-(FEET_MARGIN+(art.feet!-f.h)*s)-.5&&fx+f.w*s<=w+.5&&fy+f.h*s<=h+.5,`${w}x${h}: approved picture whole`);
     assert.ok(oy+(f.y+art.feet!)*s<=h-FEET_MARGIN+1e-6,`${w}x${h}: ${FEET_MARGIN} px under the lowest sole`);
-    // The boy (in the approved picture) whole, and still where the picture has him before the margin's fit.
-    const placed=placeCutout(box,art,cutoutOf('viciado-em-bet')!)!;
-    assert.ok(Math.abs(placed.x-(fx+953*s))<1e-6&&Math.abs(placed.y-(fy+23*s))<1e-6&&Math.abs(placed.h-1058*s)<1e-6,`${w}x${h}`);
+    // The boy (in the approved picture) whole, and still where his framing (heroi-grande-por-tela: this one zoomed about
+    // his soles, frameHero) has him before the margin's fit; his soles where this framing puts them.
+    const vic=cutoutOf('viciado-em-bet')!,placed=placeCutout(box,art,vic)!,hero=frameHero(box,art,vic),hx=hero.ox+f.x*hero.s,hy=hero.oy+f.y*hero.s;
+    assert.ok(hero.s>=s-e&&Math.abs(placed.x-(hx+953*hero.s))<1e-6&&Math.abs(placed.y-(hy+23*hero.s))<1e-6&&Math.abs(placed.h-1058*hero.s)<1e-6,`${w}x${h}`);
+    assert.ok(Math.abs(placed.y+placed.h-(fy+1081*s))<1e-6,`${w}x${h}: his soles where the stadium's framing has them`);
     const fit=fitCutout(box,placed);
     assert.ok(fit.y>=Math.min(cutoutMargin(h),placed.y)-e&&fit.y+fit.h<=h+e,`${w}x${h}: boy whole`);
     // menu-pes-nitidez: up to 21:9 he is exactly where the approved picture has him, his soles on its floor.
@@ -300,7 +308,8 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   // edge on the window's, raised 9 px: the back sneaker (4 px lower, desce) 8 px above the bottom.
   const round=(o:Record<string,number>)=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,Math.round(v*1000)/1000]));
   assert.deepEqual(round(frameArt({w:1920,h:1080},art)),{s:.909,ox:-116.364,oy:-195.273});
-  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1040.909,y:110.182,w:720.909,h:961.818});
+  // heroi-grande-por-tela: the boy zoomed about his soles (x1.07), his cap 4% (43.2 px) under the top.
+  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1015.807,y:43.2,w:771.114,h:1028.8});
   assert.deepEqual(art.view,{x:f.x-f.w*.1,y:f.y-f.h*.1,w:f.w*1.1,h:f.h*1.1},'view: 10% more above and to the left');
   assert.equal(FEET_MARGIN,8);
   assert.equal(art.feet,Math.max(...Object.values(RECORTES).map(c=>c.y+(c.desce??0)+c.h)),'feet: the lowest sole of every hero drawn in place');
@@ -314,23 +323,42 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
 });
 
-test('estadio-folga-topo: on the PC every hero has >= 6% of the window over his head, his feet still on the bar',()=>{
-  // The user (22/10, 1920x946): the viciado's cap ~15 px under the top. The scene now stands ~9% further back (view).
+test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 3-6% under the top, his feet on the bar',()=>{
+  // The user (22/10): "o tamanho dos nossos personagens deve ser meio que tentar ser grande para chegar na borda de cima,
+  // mas depende do tamanho da tela; 720 vai ser diferente de 1080"; before, "o chapéu não ficar tão colado". One rule
+  // (frameHero) for both heroes and every window, replacing the fixed rooms (>= 6%, the CLT >= 8%) of estadio-folga-topo.
   const art=STADIUM.bleed,e=1e-9;
+  assert.equal(headRoom(1080),43.2);assert.equal(headRoom(600),28,'at least 28 px');
   for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1600,900]]){
     const box={w,h};
     for(const id of Object.keys(RECORTES)){
-      const placed=placeCutout(box,art,cutoutOf(id)!)!,fit=fitCutout(box,placed);
-      // clt-direita-15-maior (the user, 22/10: "não curto ele ficar colado na parte de cima"): the CLT >= 8%.
-      const room=id==='clt-cansado'?.08:.06;
-      assert.ok(fit.y>=h*room-e,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
+      const cut=cutoutOf(id)!,placed=placeCutout(box,art,cut)!,fit=fitCutout(box,placed);
+      const was=frameMoved(box,art,moveOf(cut)),s0=was.s*(art.focal!.w/1920),feet0=was.oy+(art.focal!.y+cut.y+(cut.desce??0)+cut.h)*was.s;
+      assert.ok(fit.y>=.03*h-e&&fit.y<=.06*h+e&&Math.abs(fit.y-headRoom(h))<1e-6,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
       assert.ok((['x','y','w','h'] as const).every(k=>Math.abs(fit[k]-placed[k])<1e-6),`${id} ${w}x${h}: not lifted, not shrunk (his feet where the framing puts them)`);
+      // Bigger than the framing alone had him (estadio-folga-topo's ~10% / 8% over him), his soles where it had them.
+      assert.ok(placed.h>cut.h*s0+e&&Math.abs(placed.y+placed.h-feet0)<1e-6,`${id} ${w}x${h}: grown about his soles`);
+      // Whole on screen, right of the column, 2% of the width off the right edge; the lowest sole FEET_MARGIN over the bottom.
+      assert.ok(placed.x>=columnRight(box)-1e-6&&placed.x+placed.w<=.98*w+1e-6,`${id} ${w}x${h}: ${placed.x.toFixed(0)}..${(placed.x+placed.w).toFixed(0)}, column ${columnRight(box).toFixed(0)}`);
+      assert.ok(placed.y+placed.h<=h-FEET_MARGIN+1e-6,`${id} ${w}x${h}: ${(h-placed.y-placed.h).toFixed(1)} px under his soles`);
+      // His picture still covers the box.
+      const {s,ox,oy}=frameHero(box,art,cut);
+      assert.ok(ox<=e&&oy<=e&&ox+art.w*s>=w-e&&oy+art.h*s>=h-e,`${id} ${w}x${h}: his picture covers the box`);
     }
     // The lowest sole at least FEET_MARGIN over the bottom, exactly that from 16:9 up (narrower: the bleed's floor under
     // the bar shows, as before); the bar's layer and scripts/pes-no-chao.mjs measure the rest.
     const {s,oy}=frameArt(box,art),sole=oy+(art.focal!.y+art.feet!)*s;
     assert.ok(sole<=h-FEET_MARGIN+1e-6&&(w/h<16/9-.01||sole>=h-FEET_MARGIN-1e-6),`${w}x${h}: lowest sole ${(h-sole).toFixed(1)} px over the bottom`);
   }
+  // 720 and 1080 from the same rule: the hero fills the same share of the window, not the same px.
+  const share=(w:number,h:number)=>placeCutout({w,h},art,cutoutOf('viciado-em-bet')!)!.h/h;
+  assert.ok(Math.abs(share(1280,720)-share(1920,1080))<.01,`${share(1280,720).toFixed(3)} × ${share(1920,1080).toFixed(3)}`);
+  // The window wider than the bleed and the 4:3 ones keep what they had (never smaller: the file must cover the box).
+  for(const [w,h] of [[2560,1080],[3440,1440],[1280,1024],[1024,768]])for(const id of Object.keys(RECORTES))
+    assert.deepEqual(frameHero({w,h},art,cutoutOf(id)!),frameMoved({w,h},art,moveOf(cutoutOf(id)!)),`${id} ${w}x${h}`);
+  // The column the hero keeps off: estadio.css's PC block.
+  assert.ok(css.includes('.estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }'));
+  assert.ok(css.includes('.estadio-escolha > :is(.estadio-fileira, .estadio-nome, .estadio-confirmar) { flex: none; width: min(77vh, 60vw);'));
 });
 
 test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x DPR (2/3, 1x, 4/3, 2x), q95 files',async()=>{
@@ -393,7 +421,7 @@ test('heroi-esrgan-no-ar: the feet scripts/pes-no-chao.mjs checks are the soles 
   assert.match(src,/const TOLERANCIA=4,ALPHA=128,ALINHA=1\.5,ESCONDIDO=\.15,MESMO_LUGAR=\.03;\nconst PHONE=\[390,844\];/);
   // clt-mesmo-lugar: the faces compared at every window, his background checked by the moved framing.
   assert.match(src,/if\(Math\.abs\(dx\)>MESMO_LUGAR\|\|Math\.abs\(dy\)>MESMO_LUGAR\)/);
-  assert.match(src,/frame=frameMoved\(drawn\.box,art,cut\.fundo\?moveOf\(cut\):SEM_MOVE\);/);
+  assert.match(src,/frame=frameHero\(drawn\.box,art,cut\);/);
   assert.match(src,/margin<FEET_MARGIN-1/);
   assert.match(readFileSync(new URL('../../.github/workflows/prints.yml',import.meta.url),'utf8'),/node \.\.\/scripts\/pes-no-chao\.mjs \.\.\/folha-out/,'it runs in CI with the sheet');
 });
@@ -424,7 +452,7 @@ test('mureta-camada-frente: the stadium bar cut out of the background, drawn ove
   assert.ok(Math.abs(muretaTopo(1277)-981)<2,'the bar under the front heel');
   // Wired: over the hero (after it in the stage), framed by the background's own rounded px, only with his cutout.
   assert.match(main,/<img class="estadio-recorte"[^>]*><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden><\/div>/);
-  assert.match(main,/const \{s,ox,oy\}=frameArt\(box,art\),sx=Math\.round\(art\.w\*s\)\/art\.w,sy=Math\.round\(art\.h\*s\)\/art\.h,f=art\.focal;/);
+  assert.match(main,/const \{s,ox,oy\}=frameHero\(box,art,cut\),sx=Math\.round\(art\.w\*s\)\/art\.w,sy=Math\.round\(art\.h\*s\)\/art\.h,f=art\.focal;/);
   assert.match(main,/if\(!cut\|\|!spot\) \{showFront\(box,undefined\);return;\}/);
   assert.ok(css.includes('.estadio-mureta { position: absolute; z-index: 1; pointer-events: none; }'));
   assert.equal(cutoutOf('clt-cansado')!.frente,undefined,'the CLT stands on his plateau: nothing in front of him');
@@ -437,7 +465,7 @@ test('menu-arte-viciado: the confirm button is E7\'s art (9-slice pill, star, bu
   assert.ok(css.includes("border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch;"));
   assert.ok(Math.abs(130/149-.872)<.002);
   for(const file of ['estrela','icone-direita'])assert.ok(css.includes(`url('/art/menu/botao/${file}.webp')`),file);
-  assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
+  assert.match(main,/<button id="confirm" class="primary-button estadio-confirmar"><span aria-hidden="true">★<\/span><span class="estadio-cadeado" hidden>\$\{icon\('cadeado',\{size:48\}\)\}<\/span><span class="estadio-confirmar-texto">SELECIONAR<\/span><\/button>/);
 });
 
 test('botao-igual-gerado: the star, text and burst sit in the pill where the generated screen has them, at any size',()=>{

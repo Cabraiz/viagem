@@ -349,6 +349,9 @@ function load(next:HudScenario){
   hud.setPause(scenario==='offer-open'||scenario==='offer-open-downed'?{leftMs:9000,totalMs:12_000,level:view.team.level,waiting:view.players.map(p=>p.id).sort()}:undefined);
   // `pausa=` (D-050 HUD): the scene's own pause over it (who picked, the seconds), sent like the room's.
   if(pausa)sendPause();
+  // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
+  const minerva=Number(params.get('minerva'));
+  hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
 }
 
 load(scenario);

@@ -15,6 +15,7 @@ import {ZONE_WINDOWS} from './hud/zones.ts';
 const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
+import {minervaOf} from './hud/minerva.ts';
 import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
 import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
@@ -170,7 +171,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
       heroRect:()=>controller?.scene.heroScreenRect()});
     // D-050: the level-up pause reaches the HUD with each run state (no frame brings it: the tick stands still).
-    net.onRun=run=>hud?.setPause(run.phase==='combat'?run.pause:undefined);
+    // Minuto de Minerva (relogio-minerva): the tick the monsters wake at; the clock compares it with each frame's tick.
+    net.onRun=run=>{hud?.setPause(run.phase==='combat'?run.pause:undefined);hud?.setMinerva(run.phase==='combat'?minervaOf(run):undefined);};
     net.onForged=answer=>hud?.forged(answer);
     net.onBought=answer=>hud?.bought(answer);
     net.onInventory=result=>hud?.inventoryAnswer(result);

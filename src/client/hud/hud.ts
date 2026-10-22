@@ -30,6 +30,7 @@ import {WcMinimap} from './wc-minimap/minimap.ts';
 import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,cityAssetOf,ROW_WAITS_OBJECTIVE_MS,type CityObjective,type ObjectivePart} from './city/index.ts';
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
+import {createMinerva} from './minerva.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {createInventory,type InventoryCommand,type InventoryPart} from './inventory.ts';
@@ -41,6 +42,7 @@ import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
+import './minerva.css';
 import {createPausePart} from './pausa.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
@@ -199,6 +201,8 @@ export class RunHud {
       onKick:id=>options.onKick?.(id),onAddBot:()=>options.onAddBot?.(),onRemoveBot:id=>options.onRemoveBot?.(id)});
     const camp=this.camp=createCamp({onForge:(recipe,target)=>options.onForge?.(recipe,target)});this.forgeEl=camp.forge;
     const killcam=this.killcam=createKillcam();
+    // The Minuto de Minerva clock (relogio-minerva): the slot's first row while the monsters sleep.
+    const minerva=createMinerva();
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
     const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
@@ -208,10 +212,10 @@ export class RunHud {
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    stack.append(minerva.el,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
@@ -263,6 +267,11 @@ export class RunHud {
       &&JSON.stringify([was.skips,was.rerolls])===JSON.stringify([pause.skips,pause.rerolls])))return;
     if(pause)this.ctx.pause=pause;else delete this.ctx.pause;
     if(this.last)this.update(this.last);
+  }
+
+  /** Minuto de Minerva: the room's RunState.minervaAteTick (combat only), or undefined; the clock reads it on each view. */
+  setMinerva(untilTick?:number){
+    if(untilTick===undefined)delete this.ctx.minervaAteTick;else this.ctx.minervaAteTick=untilTick;
   }
 
   update(view:RunView){

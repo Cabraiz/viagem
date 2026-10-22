@@ -1,0 +1,31 @@
+/* The "Minuto de Minerva" clock (hud/minerva.ts): first row of the announcement slot (.rh-stack), a paper sticker with an
+   analog clock (seconds hand sweeping once in 60 s, the eaten slice behind it) and "Minuto de Minerva / 42 s".
+   The last 5 s pulse in Laranja Cone; at zero the sticker turns into "Os monstros acordaram!" and leaves. */
+.rh-minerva{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;box-sizing:border-box;
+  background:var(--c-papel);color:var(--c-breu);border:3px solid var(--c-breu);border-radius:var(--r-etiqueta);box-shadow:var(--s-1);
+  pointer-events:none;transform-origin:50% 0}
+.rh-minerva[hidden]{display:none}
+.rh-minerva-face{flex:none;width:58px;height:58px;overflow:visible}
+.rh-minerva-rim{fill:var(--c-papel-claro);stroke:var(--c-breu);stroke-width:5}
+.rh-minerva-slice{fill:color-mix(in srgb,var(--c-lilas) 30%,transparent)}
+.rh-minerva-tick{stroke:var(--c-breu);stroke-width:3;stroke-linecap:round}
+.rh-minerva-tick-big{stroke-width:5}
+.rh-minerva-hand line{stroke:var(--c-cone);stroke-width:5;stroke-linecap:round}
+.rh-minerva-pin{fill:var(--c-breu)}
+.rh-minerva-text{display:flex;flex-direction:column;align-items:flex-start;line-height:1}
+.rh-minerva-title{font:400 var(--t-16)/1.05 var(--f-botao);color:var(--c-lilas);white-space:nowrap}
+.rh-minerva-count{font:400 var(--t-28)/1 var(--f-botao);color:var(--c-breu);font-variant-numeric:tabular-nums}
+.rh-minerva-urgente{animation:rh-minerva-pulso .5s ease-in-out infinite alternate}
+.rh-minerva-urgente .rh-minerva-count{color:var(--c-cone);text-shadow:var(--s-texto)}
+.rh-minerva-urgente .rh-minerva-rim{fill:color-mix(in srgb,var(--c-cone) 22%,var(--c-papel-claro))}
+@keyframes rh-minerva-pulso{from{transform:scale(1)}to{transform:scale(1.08)}}
+.rh-minerva[data-phase=wake]{background:var(--c-cone);animation:rh-minerva-acorda .25s ease-out both}
+.rh-minerva[data-phase=wake] .rh-minerva-title{font-size:var(--t-21);color:var(--c-breu)}
+.rh-minerva[data-phase=wake] .rh-minerva-count{display:none}
+@keyframes rh-minerva-acorda{0%{transform:scale(.7) rotate(-4deg)}70%{transform:scale(1.12) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+@media (prefers-reduced-motion:reduce){.rh-minerva-urgente,.rh-minerva[data-phase=wake]{animation:none}}
+/* The phone: a smaller sticker so the band and the hero keep their room. */
+.rh[data-hud=fone] .rh-minerva{gap:6px;padding:4px 10px 4px 4px}
+.rh[data-hud=fone] .rh-minerva-face{width:44px;height:44px}
+.rh[data-hud=fone] .rh-minerva-title{font-size:var(--t-13)}
+.rh[data-hud=fone] .rh-minerva-count{font-size:var(--t-21)}

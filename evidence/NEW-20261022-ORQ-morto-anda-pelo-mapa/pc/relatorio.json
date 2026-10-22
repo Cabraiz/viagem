@@ -1,0 +1,199 @@
+{
+ "errors": [],
+ "console": [],
+ "sent": [
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "sem-t:{\"type\":\"ping\"}",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack"
+ ],
+ "steps": [
+  "01-caiu-fantasma",
+  "02-andou",
+  "03-clique",
+  "04-seguindo-amigo",
+  "05-solto-de-novo"
+ ],
+ "states": {
+  "01-caiu-fantasma": {
+   "ghost": {
+    "x": 164.61,
+    "y": 223.65,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     640,
+     395
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    460,
+    580,
+    820,
+    704
+   ],
+   "stickBox": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "02-andou": {
+   "ghost": {
+    "x": 164.15,
+    "y": 215.99,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     640,
+     395
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    460,
+    580,
+    820,
+    704
+   ],
+   "stickBox": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "03-clique": {
+   "ghost": {
+    "x": 165.08,
+    "y": 211.25,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     640,
+     394
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    460,
+    580,
+    820,
+    704
+   ],
+   "stickBox": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "04-seguindo-amigo": {
+   "watching": "Fusquinha Turbo",
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Assistindo\" Fusquinha",
+   "fig": {
+    "vis": false,
+    "a": 0.78,
+    "scr": [
+     -3386,
+     2259
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    460,
+    580,
+    820,
+    704
+   ],
+   "stickBox": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "05-solto-de-novo": {
+   "ghost": {
+    "x": 170.57,
+    "y": 145.07,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     640,
+     395
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    460,
+    580,
+    820,
+    704
+   ],
+   "stickBox": [
+    0,
+    0,
+    0,
+    0
+   ]
+  }
+ }
+}

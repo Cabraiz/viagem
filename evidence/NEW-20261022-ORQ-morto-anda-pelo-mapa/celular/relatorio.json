@@ -1,0 +1,269 @@
+{
+ "errors": [],
+ "console": [],
+ "sent": [
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "sem-t:{\"type\":\"ping\"}",
+  "ack",
+  "ack",
+  "ack",
+  "ping"
+ ],
+ "steps": [
+  "01-caiu-fantasma",
+  "02-andou",
+  "03-andou-mais",
+  "04-seguindo-amigo",
+  "05-solto-de-novo",
+  "06-deitado",
+  "07-deitado-andou"
+ ],
+ "states": {
+  "01-caiu-fantasma": {
+   "ghost": {
+    "x": 164.61,
+    "y": 223.65,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     195,
+     446
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    16,
+    572,
+    374,
+    696
+   ],
+   "stickBox": [
+    24,
+    708,
+    136,
+    820
+   ]
+  },
+  "02-andou": {
+   "ghost": {
+    "x": 161.02,
+    "y": 214.2,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     197,
+     445
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    16,
+    572,
+    374,
+    696
+   ],
+   "stickBox": [
+    24,
+    708,
+    136,
+    820
+   ]
+  },
+  "03-andou-mais": {
+   "ghost": {
+    "x": 156.49,
+    "y": 218.73,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     193,
+     446
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    16,
+    572,
+    374,
+    696
+   ],
+   "stickBox": [
+    24,
+    708,
+    136,
+    820
+   ]
+  },
+  "04-seguindo-amigo": {
+   "watching": "Rodinho Turbo",
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Assistindo\" Rodinho",
+   "fig": {
+    "vis": false,
+    "a": 0.78,
+    "scr": [
+     -1646,
+     1855
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    16,
+    572,
+    374,
+    696
+   ],
+   "stickBox": [
+    24,
+    708,
+    136,
+    820
+   ]
+  },
+  "05-solto-de-novo": {
+   "ghost": {
+    "x": 149.69,
+    "y": 163.11,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     195,
+     447
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    16,
+    572,
+    374,
+    696
+   ],
+   "stickBox": [
+    24,
+    708,
+    136,
+    820
+   ]
+  },
+  "06-deitado": {
+   "ghost": {
+    "x": 149.69,
+    "y": 163.11,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     422,
+     219
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    124,
+    316,
+    720,
+    380
+   ],
+   "stickBox": [
+    18,
+    278,
+    114,
+    374
+   ]
+  },
+  "07-deitado-andou": {
+   "ghost": {
+    "x": 153.7,
+    "y": 159.1,
+    "choices": 2
+   },
+   "watching": null,
+   "body": {
+    "x": 164.61,
+    "y": 223.65
+   },
+   "bar": "\"Fantasma\" Pelo mapa",
+   "fig": {
+    "vis": true,
+    "a": 0.78,
+    "scr": [
+     423,
+     219
+    ]
+   },
+   "stick": "visible",
+   "bars": [
+    124,
+    316,
+    720,
+    380
+   ],
+   "stickBox": [
+    18,
+    278,
+    114,
+    374
+   ]
+  }
+ }
+}

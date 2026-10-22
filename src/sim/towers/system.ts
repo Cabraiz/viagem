@@ -41,13 +41,14 @@ import type {StonewardsState} from '../stonewards/state.ts';
 import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,RAIL,ROOT_DEFENSE,childrenOf,payUnits,phaseOf,pickChild,type DefenseDef,type DefenseId,type DefensePhase} from './catalog.ts';
 import {footprint,railRect,rectDistance,type BuildPlan,type Rect} from './sites.ts';
 import {REPAIR_FRACTION} from '../stonewards/forge.ts';
-import {EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
+import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/index.ts';
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
 import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
 import {RADIUS} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
+import type {TralhaState} from './tralha.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
   type FreeBuildHooks,type FreeOrder,type PieceState} from './free-build.ts';
 
@@ -87,6 +88,8 @@ export interface TowersState {
   gustavoes:number;
   /** D-052: the standing wall pieces (muro, barricada; free-build.ts), created by the first one. */
   pieces?:PieceState[];
+  /** barricada-construir part 2: the map's barricadas laid, the heroes' coletas (towers/tralha.ts). */
+  tralha?:TralhaState;
 }
 
 /** 'balance': not enough fichas de torre (a root, the Gustavão); 'grana': not enough R$ (an evolution, a repair). */
@@ -110,7 +113,7 @@ const ID_PREFIX='defesa';
 const HANDLED_PREFIX='obra:';
 const HANDLED_LIMIT=256;
 
-const towersOf=(state:StonewardsState):TowersState=>state.defenses??=({list:[],gustavoes:0});
+export const towersOf=(state:StonewardsState):TowersState=>state.defenses??=({list:[],gustavoes:0});
 /** The defenses that count against DEFENSE_LIMIT. */
 export const standingDefenses=(state:StonewardsState)=>(state.defenses?.list??[]).filter(d=>!d.ruined);
 export function defensePhase(d:DefenseState,tick:number):DefensePhase{return phaseOf(d,tick);}
@@ -193,8 +196,8 @@ export function build(ctx:SimContext,state:StonewardsState,plan:BuildPlan,player
 /** What the free build needs beyond the state (stonewards/system.ts): the objective's hooks and the flow grid's refresh. */
 export interface FreeBuildContext extends FreeBuildHooks {onTerrainChanged?(rect:CellRect):void}
 
-/** A forge tower's body (u), the moto's (chaveiro MOTO_RADIUS) and a crate's (a 'chest' pickup), for 'ocupado'. */
-const FORGE_TOWER_R=.6,MOTO_BODY_R=.5,CRATE_BODY_R=.5;
+/** A forge tower's body (u), the moto's (chaveiro MOTO_RADIUS) and a crate's (a 'chest' pickup, rules/crate-size.ts), for 'ocupado'. */
+const FORGE_TOWER_R=.6,MOTO_BODY_R=.5,CRATE_BODY_R=CRATE_BODY_RADIUS;
 /**
  * Whether something standing already holds part of `rect`: a standing defense's square, a piece, a forge tower, a body
  * (another standing hero, a live enemy, the moto), a crate (D-051: a 'chest' pickup, so none ends up inside a muro) or,
@@ -257,6 +260,8 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     if(!city)return {ok:false,reason:'fora'};
     const piece=order.piece,rot=order.rot===1?1:0,wall=isFreePiece(piece);
     if(!wall&&piece!==ROOT_DEFENSE&&!(kit&&isTowerKit(piece)))return {ok:false,reason:'defense'};
+    // barricada-construir part 2: a barricada is never bought, only placed from a collected kit (towers/tralha.ts).
+    if(piece==='barricada'&&!kit)return {ok:false,reason:'defense'};
     const [w,h]=pieceCells(piece,rot),cell={c:order.c,r:order.r};
     if(!onGround(city,cell,w,h))return {ok:false,reason:'fora'};
     const rect=pieceRect(cell,w,h);
@@ -403,6 +408,19 @@ export function radarBonus(state:StonewardsState,d:DefenseState,tick:number):num
 const reaches=(def:DefenseDef,e:EnemyState)=>def.hits==='all'||(def.hits==='air')===isFlying(e);
 const byDistance=(at:Point)=>(a:EnemyState,b:EnemyState)=>Math.hypot(a.x-at.x,a.y-at.y)-Math.hypot(b.x-at.x,b.y-at.y)||(a.id<b.id?-1:a.id>b.id?1:0);
 
+/**
+ * Card upgrades-megabonk: the towers' equivalents of the tomes. A defense built by a hero of the manual combat (an
+ * inventory: build.hand) fires with its owner's tomes: damage × might (Óculos), cooldown × cooldown (Café), blast radius
+ * × area (Megafone), +amount targets (Bombinha: +1 projétil is one more target a volley). Undefined: the tower's own
+ * numbers (an automatic-game hero, or an owner who left the run).
+ */
+export function ownerBoost(ctx:SimContext,owner:string):{might:number;cooldown:number;area:number;amount:number}|undefined{
+  const p=ctx.players.get(owner);
+  if(!p||p.build.hand===undefined)return undefined;
+  const {might,cooldown,area,amount}=p.stats;
+  return might===1&&cooldown===1&&area===1&&amount===0?undefined:{might,cooldown,area,amount};
+}
+
 /** Defenses fire in combat: ready ones (pronta/danificada) on their cooldown, at targets their kind reaches. */
 export function defensesStep(ctx:SimContext,state:StonewardsState){
   const towers=state.defenses;
@@ -412,8 +430,11 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
   let rng:ReturnType<SimContext['rng']['fork']>|undefined;
   for(const d of towers.list){
     if(d.ruined||ctx.tick<d.readyTick||ctx.tick<d.fireTick)continue;
-    const def=DEFENSES[d.kind];
-    if(def.target==='none')continue;
+    const base=DEFENSES[d.kind];
+    if(base.target==='none')continue;
+    const boost=ownerBoost(ctx,d.owner);
+    const def:DefenseDef=boost?{...base,damage:base.damage*boost.might,cooldown:Math.max(1,Math.round(base.cooldown*boost.cooldown)),
+      area:base.area*boost.area,shots:base.shots+boost.amount}:base;
     const range=def.range*(1+radarBonus(state,d,ctx.tick));
     ctx.enemyIndex.query(d.x,d.y,range,found);
     const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));

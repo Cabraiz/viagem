@@ -12,8 +12,8 @@ import {matchAssets} from '../../src/client/preload/match-assets.ts';
 
 const file=new URL(`../../public${ALBEDO_URL}`,import.meta.url);
 
-test('the atlas: 5 materials in a power-of-two WebP under /art (Service Worker cache, out of lite/), each slot padded',async()=>{
-  assert.deepEqual([...ALBEDO_SLOTS],['neve','neve-pisada','calcada','gelo','terra'],'asfalto delivered but no ground kind is asphalt');
+test('the atlas: 6 materials in a power-of-two WebP under /art (Service Worker cache, out of lite/), each slot padded',async()=>{
+  assert.deepEqual([...ALBEDO_SLOTS],['neve','neve-pisada','calcada','gelo','terra','agua'],'asfalto delivered but no ground kind is asphalt');
   assert.match(ALBEDO_URL,/^\/art\/chao\/[a-z-]+\.webp$/,'not under /art/lite/: the scene fallback would ask for an original that does not exist');
   assert.ok(existsSync(file),ALBEDO_URL);
   const m=await sharp(fileURLToPath(file)).metadata();

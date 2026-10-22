@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {DETAILED_CELL,detailedFeetY,heroFeetY} from '../../src/client/sprites/hero-feet.ts';
+import {DETAILED_CELL,clipFeetY,detailedFeetY,heroFeetY} from '../../src/client/sprites/hero-feet.ts';
+import {HERO_FEET} from '../../src/client/sprites/hero-feet-data.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
@@ -35,8 +36,32 @@ test('every hero class in the manifest stands above the old 0.875 anchor, at the
 
 test('the hero sprite uses the feet and hands the silhouette its bare frame', ()=>{
   const src=read('src/client/sprites/character-sprites.ts');
-  assert.match(src,/ay=this\.feetY\(id\)\?\?detailedFeetY\(detailed\)/);
+  // (minus the run's foot shift within a pose, passo-3x-mais-lento)
+  assert.match(src,/ay=\(clipFeetY\(detailed\.original\)\?\?this\.feetY\(id\)\?\?detailedFeetY\(detailed\)\)/);
   assert.match(src,/setBareFrame\(sprite,copy\?\{key:detailed\.key/);
   assert.match(src,/setBareFrame\(sprite,copy\?\{key:sheet\.key/);
   assert.match(read('src/client/render/silhouette.ts'),/const plain=b&&b\.key!==body\.texture\.key/);
+});
+
+// Card passo-sem-deslizar (21/10): each clip stands on its own measured feet row (scripts/hero-feet.mjs).
+test('a clip stands on its own measured feet row; a sheet the table does not know falls back', ()=>{
+  const table={'x.walk16-w.abc.webp':70,'x.bad.webp':20};
+  assert.equal(clipFeetY('/art/lite/sprites/x.walk16-w.abc.webp',table),70/96);
+  assert.equal(clipFeetY('/art/sprites/x.walk16-w.abc.webp?v=3',table),70/96);
+  assert.equal(clipFeetY('/art/sprites/x.idle16-w.new.webp',table),undefined);
+  assert.equal(clipFeetY('/art/sprites/x.bad.webp',table),undefined);
+});
+
+test('the feet table knows every detailed hero clip in the manifest (rerun scripts/hero-feet.mjs after an import)', ()=>{
+  const pieces=JSON.parse(read('public/art/manifest.json')).groups.personagens.pieces as Record<string,{files:Record<string,{file:string;cell?:number[]}>}>;
+  let n=0;
+  for(const piece of Object.values(pieces))for(const [name,f] of Object.entries(piece.files)){
+    if(!/^(walk|attack|idle)(16|128)-[A-Z]+$|^idle8$/.test(name)||f.cell?.[0]!==96)continue;n++;
+    assert.ok(typeof HERO_FEET[f.file]==='number',`${f.file} has no feet row`);
+  }
+  assert.ok(n>=200,`detailed clips: ${n}`);
+  // The case that floated: the viciado walks on row 69–70 and rests on 72–74 (the class line put both at ~74).
+  const viciado=Object.entries(HERO_FEET).filter(([k])=>k.startsWith('viciado-em-bet.'));
+  const walk=viciado.filter(([k])=>k.includes('.walk16-')).map(([,v])=>v),idle=viciado.filter(([k])=>k.includes('.idle16-')).map(([,v])=>v);
+  assert.ok(Math.max(...walk)<=70&&Math.min(...idle)>=72,`walk ${walk} idle ${idle}`);
 });

@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from '../../src/client/sprites/movement128.ts';
-import {Movement128Textures,movement128Textures} from '../../src/client/sprites/movement128-textures.ts';
+import {Movement128Textures,movement128Textures,sheetWeight} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
-import {HERO_ANIM_RATE,HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,ATTACK_MS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 /** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
 const T=(ms:number)=>Math.ceil(ms/HERO_ANIM_RATE);
+/** The walk frame after `steps` steps of 0.1 u along x (passo-sem-deslizar: the walk follows the ground, not the clock). */
+const W=(steps:number)=>String(cycleFrame(steps*walkCycles(.1,0,0,96*.8),128));
 import {screenDirection} from '../../src/client/projection.ts';
 import {heroSheetUrl,assetsParaPartida} from '../../src/client/preload/match-assets.ts';
 
@@ -72,6 +74,20 @@ test('shared LRU keeps eight unleased atlases, honors live leases and frees deri
   cache.release(held);cache.clearUnused();assert.equal(cache.stats().ready,0);assert.equal(disposed.length,11);
 });
 
+test("M16 sheets weigh their share of an R06 one (corrida-proporcao-contorno): a hero's 10 rests and runs never evict each other",async()=>{
+  assert.equal(sheetWeight({columns:16,rows:8}),1);assert.equal(sheetWeight({columns:4,rows:4}),1/8);assert.equal(sheetWeight({columns:4,rows:2}),1/16);
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,disposed:string[]=[];
+  const cache=new Movement128Textures(async plan=>({dispose:()=>{disposed.push(plan.key);}}));
+  // The viciado turning: 5 rests (4×2) and 5 runs (4×4), each shown then left, plus 7 R06 sheets of the other heroes.
+  const m16=Array.from({length:10},(_,i)=>({...first,key:'m16:'+i,columns:4,rows:i<5?2:4,frameCount:i<5?8:16}));
+  for(const plan of [...m16,...Array.from({length:7},(_,i)=>({...first,key:'r06:'+i}))]){const owner={};cache.request(owner,plan);await flush();cache.bind(owner,plan.key);cache.release(owner);}
+  assert.deepEqual(disposed,[]);assert.equal(cache.stats().ready,17,'7 + 10 × (1/16 or 1/8) ≤ 8');
+  // An eighth R06 sheet passes the budget (8.94): the oldest go first, down to 8, all ten before any R06 sheet.
+  const owner={};cache.request(owner,{...first,key:'r06:7'});await flush();cache.bind(owner,'r06:7');cache.release(owner);
+  assert.deepEqual(disposed,m16.map(p=>p.key));
+  cache.clearUnused();
+});
+
 test('more than eight simultaneously visible leased atlases are never evicted; dropping a lease restores the target',async()=>{
   setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,disposed:string[]=[];
   const cache=new Movement128Textures(async plan=>({dispose:()=>{disposed.push(plan.key);}})),owners=Array.from({length:9},()=>({}));
@@ -88,6 +104,18 @@ test('rapid turns decode at most two atlases in parallel and skip obsolete queue
   finish.get(loaded[0])!();finish.get(loaded[1])!();await flush();assert.equal(loaded.length,3);assert.equal(loaded[2],'turn:15');
   finish.get('turn:15')!();await flush();assert.equal(cache.request(owner,{...first,key:'turn:15'}),true);
   assert.equal(disposed.length,2);assert.equal(cache.stats().ready,1);cache.release(owner);cache.clearUnused();
+});
+
+test('the same clip asked every frame (Q6 fast path) still starts once a decode slot frees and binds once',async()=>{
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,loaded:string[]=[],finish=new Map<string,()=>void>();
+  const cache=new Movement128Textures(plan=>new Promise(resolve=>{loaded.push(plan.key);finish.set(plan.key,()=>resolve({dispose:()=>{}}));}));
+  const owners=[{},{},{}],plans=owners.map((_,i)=>({...first,key:'slot:'+i}));
+  for(let frame=0;frame<5;frame++){owners.forEach((o,i)=>cache.request(o,plans[i]));await Promise.resolve();}
+  assert.deepEqual(loaded,['slot:0','slot:1']);assert.equal(cache.stats().queued,1);
+  finish.get('slot:0')!();await flush();assert.deepEqual(loaded,['slot:0','slot:1','slot:2'],'the freed slot pumps the queued clip without a new key');
+  assert.equal(cache.request(owners[0],plans[0]),true);cache.bind(owners[0],plans[0].key);cache.bind(owners[0],plans[0].key);
+  assert.equal(cache.stats().owners,1);cache.release(owners[0]);assert.equal(cache.stats().owners,0);
+  assert.equal(cache.request(owners[0],plans[0]),true,'after a release the owner asks again through the full path');
 });
 
 test('both missing manifest IDs and a catalog-free hero start from preloaded native idle8 without any legacy texture',async()=>{
@@ -118,7 +146,7 @@ test('both missing manifest IDs and a catalog-free hero start from preloaded nat
       renderer.animate(sprite as never,id,0,0,0,true,0,screenDirection(...vectors[direction],0));assert.equal(sprite.frame.name,String(i));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);
     }
     scene.time.now=10;renderer.animate(sprite as never,id,.1,0,0,true,0,screenDirection(0,1,0));await flush();assert.equal(requests.length,1);assert.equal(sprite.texture.key,`sprite128:${id}:idle8`,'native idle survives while walk loads');
-    scene.time.now=10+T(300);renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,'64');
+    scene.time.now=10+T(300);renderer.animate(sprite as never,id,.2,0,0,true,0,screenDirection(0,1,0));assert.equal(sprite.texture.key,`sprite128:${id}:walk:S`);assert.equal(sprite.frame.name,W(2));
     assert.equal(loads.length,1,'no legacy or other15 clips were queued');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().ready,2);assert.equal(cache.stats().leasedTextures,1);
     events.emit('shutdown');assert.equal(cache.stats().ready,0);assert.equal(images.size,0,'adopted preload and streamed clip are disposed together');
@@ -229,14 +257,14 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
   try{
     render(0);render(10);await flush();assert.equal(requests.length,1);assert.match(sprite.texture.key,/dir4c$/,'legacy stays while the requested page loads');
     decoders.get(requests[0])!();await flush();render(10+T(300));
-    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,'64');assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
+    assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S');assert.equal(sprite.frame.name,W(2));assert.equal(sprite.flipX,false);assert.equal(sprite.flipY,false);assert.equal(sprite.scaleX,96/60*.8);
     assert.deepEqual(renderer.figureIn(sprite as never,'aposentado'),clip().figure);
-    render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,'64');
+    render(10+T(400),'N');await flush();assert.equal(requests.length,2);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:S','turning holds the old oblique direction while the next decodes');assert.equal(sprite.frame.name,W(2));
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');
-    decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,'96','turn/late arrival retains450ms walk phase');
-    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,'96');
-    decoders.get(requests[2])!();await flush();render(1424+T(500),'N',1);assert.equal(sprite.frame.name,'64');
-    render(1424+T(600),'N',2);assert.equal(sprite.frame.name,'76','overlapping attack event cannot restart the1000ms swing');
+    decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,W(4),'turn/late arrival keeps the walk phase');
+    render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,W(4));
+    decoders.get(requests[2])!();await flush();render(1424+ATTACK_MS/2,'N',1);assert.equal(sprite.frame.name,'64','half the swing (ATTACK_MS, ataque-1s), half the poses');
+    render(1424+600,'N',2);assert.equal(sprite.frame.name,'0','the next hit restarts the swing from its first pose');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().leasedTextures,1);
     setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const attackKey=sprite.texture.key;
     render(1424+T(1000)+1,'N',2,false);await flush();assert.equal(requests.length,4);assert.equal(sprite.texture.key,attackKey,'stopping holds the same oblique camera while rest decodes');
@@ -273,4 +301,24 @@ test('a figure off camera asks for no legacy sheet: it holds its pose; on camera
   assert.deepEqual(loads,[],'no dir4/dir4c for a figure the camera cannot see');assert.equal(sprite.texture.key,'stand-in');assert.ok(sprite.stops>0);
   sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
   assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
+});
+
+test('movement128Visible (Q6): an unrotated sprite is tested from its size and origin, the box getBounds would give, without calling it',async()=>{
+  const {movement128Visible}=await import('../../src/client/sprites/movement128-textures.ts');
+  const scene={cameras:{main:{worldView:{left:0,right:400,top:0,bottom:800}}}} as unknown as Phaser.Scene;
+  let bounds=0;
+  // A 96×96 frame anchored at its feet (.5,.875), drawn at ×1.2 and mirrored (negative scale: the box is the same).
+  const sprite=(x:number,y:number,extra:object={})=>({visible:true,active:true,alpha:1,rotation:0,parentContainer:null,x,y,width:96,height:96,
+    displayOriginX:48,displayOriginY:84,scaleX:-1.2,scaleY:1.2,getBounds(){bounds++;return {left:x-58,right:x+58,top:y-101,bottom:y+15};},...extra}) as unknown as Phaser.GameObjects.Sprite;
+  assert.equal(movement128Visible(sprite(200,400),scene),true);
+  // The box reaches the camera's padded edge (96 px): left = 600-48*1.2 = 542.4 > 400+96 → off; 550 → left 492.4 → on.
+  assert.equal(movement128Visible(sprite(600,400),scene),false);
+  assert.equal(movement128Visible(sprite(550,400),scene),true);
+  // Below: top = y-84*1.2; y=1000 → 899.2 > 896 off; y=995 → 894.2 on.
+  assert.equal(movement128Visible(sprite(200,1000),scene),false);
+  assert.equal(movement128Visible(sprite(200,995),scene),true);
+  assert.equal(bounds,0);
+  // Rotated, or inside a container: Phaser's getBounds.
+  movement128Visible(sprite(200,400,{rotation:.3}),scene);movement128Visible(sprite(200,400,{parentContainer:{}}),scene);
+  assert.equal(bounds,2);
 });

@@ -26,13 +26,13 @@ const PASSIVES=['cafe-forte','marmita','tenis','megafone','bone','oculos','carta
 
 test('round chip shows Round N/10 with critters in a wave and a countdown in the interval',()=>{
   const wave=fakeView('wave',1);
-  assert.deepEqual(roundInfo(wave),{index:3,total:10,label:'Round 3/10',phase:'wave',remaining:23,detail:'23 bichos'});
+  assert.deepEqual(roundInfo(wave),{index:3,total:10,label:'Rodada 3 de 10',phase:'wave',remaining:23,detail:'23 bichos'});
   wave.round!.remaining=1;assert.equal(roundInfo(wave)!.detail,'falta 1 bicho');
   const prepare=fakeView('prepare',1);
   assert.equal(roundInfo(prepare)!.countdown,17);assert.equal(roundInfo(prepare)!.detail,'Intervalo 17 s');
   prepare.tick=prepare.round!.phaseEndsTick+40;assert.equal(roundInfo(prepare)!.countdown,0);
   const legacy:RunView={...fakeView('wave',1),round:undefined,wave:{index:2,label:'Onda 2'}};
-  assert.equal(roundInfo(legacy)!.label,'Round 2/10');
+  assert.equal(roundInfo(legacy)!.label,'Rodada 2 de 10');
   assert.equal(roundInfo({...legacy,wave:undefined}),undefined);
 });
 
@@ -96,7 +96,7 @@ test('round marquee: absurd name and modifier, boss round, interval joke',()=>{
   assert.deepEqual(marqueeFor({index:3,phase:'wave',name:ROUND_NAMES[0],modifier}),{title:ROUND_NAMES[0],subtitle:modifier,tone:'round'});
   const boss=marqueeFor({index:10,phase:'wave',name:BOSS_ROUND_NAMES[0]})!;
   assert.equal(boss.tone,'boss');assert.equal('kicker' in boss,false);assert.equal(boss.title,BOSS_ROUND_NAMES[0]);assert.ok(boss.subtitle);
-  assert.equal(marqueeFor({index:2,phase:'wave'})!.title,'Round 2');
+  assert.equal(marqueeFor({index:2,phase:'wave'})!.title,'Rodada 2');
   assert.equal(marqueeFor({index:4,phase:'prepare'})!.title,'Intervalo!');
   assert.equal(marqueeFor({index:4,phase:'end'}),undefined);
 });
@@ -183,7 +183,7 @@ test('offer and result copy helpers are deterministic pt-BR',()=>{
   assert.equal(queueLabel(0),'');assert.equal(queueLabel(2),'+2 na fila');
   const offer=fakeView('offer-round',1).offers[0];
   assert.deepEqual(choiceFlags(offer,2),{isDefault:true,luck:false});assert.deepEqual(choiceFlags(offer,3),{isDefault:false,luck:true});
-  assert.equal(resultHeadline({victory:true,seed:'a'}).title,'VITÓRIA!');assert.equal(resultHeadline({victory:false,seed:'a'}).title,'DERROTA…');
+  assert.equal(resultHeadline({victory:true,seed:'a'}).title,'Vitória!');assert.equal(resultHeadline({victory:false,seed:'a'}).title,'Derrota…');
   assert.deepEqual(resultHeadline({victory:true,seed:'x'}),resultHeadline({victory:true,seed:'x'}));
   assert.equal(compactNumber(980),'980');assert.equal(compactNumber(18420),'18,4k');assert.equal(compactNumber(21050),'21k');assert.equal(compactNumber(Number.NaN),'0');
 });

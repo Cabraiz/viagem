@@ -14,7 +14,7 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
-import {createResultScreen,type ResultRoster} from './result.ts';
+import {createResultScreen,type ResultRoster,type RematchVotes} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
 import {createHurtFrame} from './hurt.ts';
@@ -103,6 +103,8 @@ export function playStamp(){
 export const OFFER_AFTER_KILLCAM_MS=1000;
 /** Clearance kept between the hero's sprite and the center banner, in CSS px. */
 export const HERO_MARGIN_PX=40;
+/** The passive readouts that go see-through over the hero (RunHud.veil). */
+const READOUT_CLASSES=['rh-round','rh-xp','rh-boss','rh-member','rh-camp'];
 
 /** What rescue.ts hands the HUD for the city's walk to the plaza (RunHud.setCityRoute). */
 export interface CityRouteInput {terrain:unknown;hero:{x:number;y:number};view:number}
@@ -135,6 +137,7 @@ export class RunHud {
   private layoutVersion=0;
   private rowsKey='';private rowsVersion=-1;private rowsBox?:Rect;
   private readouts:{el:HTMLElement;rect:Rect}[]=[];private readoutVersion=-1;
+  private readoutLists?:HTMLCollectionOf<HTMLElement>[];
   private zonesCache?:ScreenZones;private zonesVersion=-1;private zonesFresh=false;
   private readonly relayout=()=>{this.layoutVersion++;};
   private obraInput?:ZoneInput;private obraInputVersion=-1;
@@ -540,10 +543,13 @@ export class RunHud {
    * Their boxes are cached until the layout changes (the veil only changes opacity, not layout).
    */
   private veil(hero:Rect,margin:number){
-    const readouts=[...this.el.querySelectorAll<HTMLElement>('.rh-round,.rh-xp,.rh-boss,.rh-member,.rh-camp')];
-    if(this.readoutVersion!==this.layoutVersion||readouts.length!==this.readouts.length||readouts.some((el,i)=>this.readouts[i]?.el!==el)){
+    // Live class lists (Q6): a querySelectorAll per frame walked the whole HUD; the browser keeps these up to date.
+    const lists=this.readoutLists??=READOUT_CLASSES.map(name=>this.el.getElementsByClassName(name) as HTMLCollectionOf<HTMLElement>);
+    let same=this.readoutVersion===this.layoutVersion,n=0;
+    for(const list of lists)for(let i=0;i<list.length;i++,n++)if(this.readouts[n]?.el!==list[i])same=false;
+    if(!same||n!==this.readouts.length){
       this.readoutVersion=this.layoutVersion;
-      this.readouts=readouts.map(el=>{const r=el.getBoundingClientRect();return {el,rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});
+      this.readouts=lists.flatMap(list=>[...list]).map(el=>{const r=el.getBoundingClientRect();return {el,rect:{x:r.left,y:r.top,width:r.width,height:r.height}};});
     }
     veiled(this.readouts,hero,margin).forEach((under,i)=>{const el=this.readouts[i].el;if(el.classList.contains('rh-veiled')!==under)el.classList.toggle('rh-veiled',under);});
   }
@@ -577,6 +583,8 @@ export class RunHud {
   rematchRefused(label:string){this.result.refuse(label);}
   /** Owner and bots on the result screen (D-025): crown, robot and the owner's "Arrumar turma". */
   setRoster(roster:ResultRoster){this.result.setRoster(roster);}
+  /** The room's rematch vote on the result (UX-resultado-revanche): "✓ topa" on the cards, "Revanche (3/6)" on the button. */
+  setRematch(votes:RematchVotes|undefined){this.result.setRematch(votes);}
 
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){

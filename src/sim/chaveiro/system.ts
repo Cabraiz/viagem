@@ -153,6 +153,13 @@ export interface ChaveiroOptions {
    * way makes him replan around it (the tranca rule keeps a way from him to the car). Absent: he rides through them.
    */
   muros?:{radius:number;standing():readonly {id:string;x:number;y:number}[]};
+  /**
+   * chaveiro-no-final (the user, 21/10: "importante é o chaveiro vir no final"; option B'): the car opens no sooner than
+   * this many seconds after the run started (mode 'ninhos': the nests' ramp, NEST_PACE.ramp). A team that pushes and
+   * clears everything would bring him before the horde peaks: he waits at his LAST delivery's door just long enough
+   * (holdTick); a slower run never waits. Absent: no wait.
+   */
+  finalNotBefore?:number;
 }
 
 export interface ChaveiroSystem {
@@ -268,15 +275,31 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     state.ended=outcome;state.endTick=ctx.tick;
     if(!options.runEnded?.())options.onOutcome(outcome);
   }
-  /** Seconds of riding from `s` to the end of the route (speed bumps ahead at their pace). */
-  function rideTicks(s:number,from:number){
+  /** Ticks of riding from `s` to `to` (the end of the route by default; speed bumps ahead at their pace). */
+  function rideTicks(s:number,from:number,to=L){
     let t=0,cur=s;
     for(let i=from;i<stops.length;i++){
-      const o=stops[i];if(o.kind!=='lombada'||o.s+bump<=cur)continue;
-      const start=Math.max(cur,o.s),stop=Math.min(L,o.s+bump);
+      const o=stops[i];if(o.kind!=='lombada'||o.s+bump<=cur||o.s>=to)continue;
+      const start=Math.max(cur,o.s),stop=Math.min(to,o.s+bump);
       t+=Math.max(0,start-cur)/speed+Math.max(0,stop-start)/bumpSpeed;cur=Math.max(cur,stop);
     }
-    return t+Math.max(0,L-cur)/speed;
+    return t+Math.max(0,to-cur)/speed;
+  }
+  /** Ticks a stop ahead still takes (a dead moto by the crew now, a delivery as a dirty one); a bump is in rideTicks. */
+  const stopTicks=(i:number)=>stops[i].kind==='morta'?mortaTicks():stops[i].kind==='entrega'?ticks(ENTREGA_SECONDS):0;
+  /** The last delivery's index (where chaveiro-no-final holds him), -1 without one. */
+  function lastEntrega(){for(let i=stops.length-1;i>=0;i--)if(stops[i].kind==='entrega')return i;return -1;}
+  /**
+   * The tick before which he does not leave the last delivery (options.finalNotBefore), or null: the run's start +
+   * finalNotBefore less the fastest rest after it (the road, every dead moto pushed, abrindo), so the car opens no
+   * sooner than finalNotBefore. Only a perfect team ever waits; a slower one is already later.
+   */
+  function holdTick(tick:number){
+    const last=lastEntrega();
+    if(options.finalNotBefore===undefined||last<0)return null;
+    let rest=rideTicks(stops[last].s,last+1)+ticks(ABRINDO_SECONDS);
+    for(let i=last+1;i<stops.length;i++)if(stops[i].kind==='morta')rest+=PUSH_TICKS;
+    return (state.startTick??tick)+ticks(options.finalNotBefore)-Math.ceil(rest);
   }
   function eta(tick:number){
     if(state.ended)return 0;
@@ -289,10 +312,17 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       case 'lombada':next++;break;
     }
     // A bump being ridden counts in rideTicks (from its own index).
-    t+=rideTicks(moto.s,moto.task==='lombada'?moto.stop:next);
-    for(let i=next;i<stops.length;i++){
-      const k=stops[i].kind;
-      if(k==='morta')t+=mortaTicks();else if(k==='entrega')t+=ticks(ENTREGA_SECONDS);
+    const from=moto.task==='lombada'?moto.stop:next,last=lastEntrega(),hold=holdTick(tick);
+    if(hold!==null&&last>=moto.stop){
+      // Up to the end of the last delivery, then the wait at its door (chaveiro-no-final), then the rest.
+      const se=stops[last].s;
+      t+=rideTicks(moto.s,from,se);
+      for(let i=next;i<=last;i++)t+=stopTicks(i);
+      t=Math.max(t,hold-tick)+rideTicks(se,last+1);
+      for(let i=last+1;i<stops.length;i++)t+=stopTicks(i);
+    }else{
+      t+=rideTicks(moto.s,from);
+      for(let i=next;i<stops.length;i++)t+=stopTicks(i);
     }
     return (t+ticks(ABRINDO_SECONDS))/SIM_HZ;
   }
@@ -333,7 +363,13 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         else if(moto.left<=0){next();ctx.emit({type:'moto',mode:'tranco',alone:true});}
         return;
       }
-      case 'entrega':if(--moto.left<=0)next();return;
+      case 'entrega':{
+        // chaveiro-no-final: the last delivery holds him until holdTick (left stays at 0 while he waits).
+        if(moto.left>0)moto.left--;
+        const hold=moto.stop===lastEntrega()?holdTick(ctx.tick):null;
+        if(moto.left<=0&&(hold===null||ctx.tick>=hold))next();
+        return;
+      }
       case 'abrindo':if(--moto.left<=0)end(ctx,'victory');return;
     }
   }

@@ -141,3 +141,12 @@ export function routeHeadingAt(route:readonly {x:number;y:number}[]|undefined,p:
   }
   return Math.atan2(route[best+1].y-route[best].y,route[best+1].x-route[best].x);
 }
+
+/**
+ * The ground's frozen pieces (card Q2, NEW-20261021-E5-q2-graphics-assados): the delivery ring is drawn once per contour
+ * width (to the hundredth) and breathes by scale; the fallen parts once per set of parts on the ground, car heading step,
+ * view and contour width (as the frozen car). Same key: no redraw.
+ */
+export const deliveryKey=(k:number)=>`${Math.round(k*100)}`;
+export const deliveryPulse=(now:number,reduced:boolean)=>reduced?1:1+Math.sin(now*.006)*.08;
+export const fallenKey=(parts:number,falling:number,carStep:number,view:number,k:number)=>`${parts&~falling}|${carStep}|${view}|${Math.round(k*10)}`;

@@ -41,6 +41,8 @@
 .rh .rh-ofc .rh-card-name{display:block;margin:0;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh .rh-ofc .rh-card-value{display:block;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-papel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh .rh-ofc .rh-card-value-new{color:var(--c-cartolina)}
+/* upgrades-megabonk: the tome's gain ("+1 projétil", "+10% dano"), short and big under the name. */
+.rh .rh-ofc .rh-card-gain{display:block;font:400 var(--t-16)/1.1 var(--f-cartaz);color:var(--c-cartolina);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rh .rh-ofc .rh-card-rarity{position:absolute;left:8px;top:2px;font:700 11px/1.2 var(--f-sistema);color:var(--rar)}
 .rh .rh-ofc .rh-card-level{position:absolute;right:8px;top:2px;font:400 var(--t-13)/1.2 var(--f-cartaz);color:var(--c-amarelo)}
 /* The old tag's pieces stay in the DOM (labels, tests) but the wide card says it all. */

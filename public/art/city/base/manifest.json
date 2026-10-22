@@ -33,7 +33,7 @@
         "sheet": {
           "file": "barricada.webp",
           "cell": [
-            384,
+            256,
             256
           ],
           "views": 4,
@@ -45,7 +45,7 @@
           ],
           "anchor": [
             0.5,
-            0.87890625
+            0.85
           ],
           "pages": [
             {
@@ -54,17 +54,17 @@
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b"
+              "sha256": "d1f3f887498f2fc5c8db25b7ae42fff8ac7eeee3e74a7ddfb28a07bef05635ae"
             }
           ],
-          "sha256": "72b426c3d74d1982c33b0a3a3138de175b47f1139ef2d83016ffe415f43e088b",
+          "sha256": "d1f3f887498f2fc5c8db25b7ae42fff8ac7eeee3e74a7ddfb28a07bef05635ae",
           "liteCell": [
-            384,
+            256,
             256
           ]
         }
       },
-      "sha256": "bbbf448d54e11f344dff5cde950bae6dbf1be4431eae6e41e96737533b2fd32e",
+      "sha256": "c4c4727b165de4b38554b6b0c210d778a3824b9a74389bb9fb4086dbcc0238db",
       "meta": {
         "states": [
           "inteira",
@@ -73,10 +73,10 @@
           "quebrada"
         ],
         "footprint": [
-          2,
+          1,
           1
         ],
-        "origem": "torres/muro-sacos-de-areia (pronta, danificada, danificada, ruina), NEW-20261020-ORQ-torres-entregues"
+        "origem": "arte-entrada/cenario/base/barricada (sofá, 15/10), NEW-20261021-ORQ-barricada-sofa"
       }
     },
     "caixa-saque": {
@@ -320,6 +320,150 @@
           "quase-caindo",
           "ruina"
         ]
+      }
+    },
+    "muralha-tralha": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muralha-tralha.webp",
+          "cell": [
+            164,
+            185
+          ],
+          "views": 2,
+          "rows": [
+            "reto-01:inteira",
+            "reto-01:avariada",
+            "reto-01:quase-caindo",
+            "reto-02:inteira",
+            "reto-02:avariada",
+            "reto-02:quase-caindo",
+            "reto-03:inteira",
+            "reto-03:avariada",
+            "reto-03:quase-caindo",
+            "reto-04:inteira",
+            "reto-04:avariada",
+            "reto-04:quase-caindo",
+            "reto-05:inteira",
+            "reto-05:avariada",
+            "reto-05:quase-caindo",
+            "reto-06:inteira",
+            "reto-06:avariada",
+            "reto-06:quase-caindo",
+            "reto-07:inteira",
+            "reto-07:avariada",
+            "reto-07:quase-caindo",
+            "reto-08:inteira",
+            "reto-08:avariada",
+            "reto-08:quase-caindo",
+            "reto-09:inteira",
+            "reto-09:avariada",
+            "reto-09:quase-caindo",
+            "reto-10:inteira",
+            "reto-10:avariada",
+            "reto-10:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.768473
+          ],
+          "pages": [
+            {
+              "file": "muralha-tralha.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 60,
+              "sha256": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7"
+            }
+          ],
+          "sha256": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7",
+          "liteCell": [
+            164,
+            185
+          ]
+        }
+      },
+      "sha256": "bb153fb435a0c0ce00703220974f88b6b3d61b5212473c4c82739200dfa9c44d",
+      "meta": {
+        "pecas": [
+          "reto-01",
+          "reto-02",
+          "reto-03",
+          "reto-04",
+          "reto-05",
+          "reto-06",
+          "reto-07",
+          "reto-08",
+          "reto-09",
+          "reto-10"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.5556,
+        "origem": "arte-entrada/cenario/base/muralha-tralha-alta (reto, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs"
+      }
+    },
+    "muralha-tralha-pilar": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muralha-tralha-pilar.webp",
+          "cell": [
+            124,
+            217
+          ],
+          "views": 2,
+          "rows": [
+            "pilar-1:inteira",
+            "pilar-1:avariada",
+            "pilar-1:quase-caindo",
+            "pilar-2:inteira",
+            "pilar-2:avariada",
+            "pilar-2:quase-caindo",
+            "pilar-3:inteira",
+            "pilar-3:avariada",
+            "pilar-3:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.847291
+          ],
+          "pages": [
+            {
+              "file": "muralha-tralha-pilar.webp",
+              "columns": 6,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 18,
+              "sha256": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151"
+            }
+          ],
+          "sha256": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151",
+          "liteCell": [
+            124,
+            217
+          ]
+        }
+      },
+      "sha256": "98c0d312675015810e13e3cb04f41087e9a799ce38a4c1d8bf249c1d6ef78c20",
+      "meta": {
+        "pecas": [
+          "pilar-1",
+          "pilar-2",
+          "pilar-3"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.2069,
+        "origem": "arte-entrada/cenario/base/muralha-tralha-alta (pilar, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs"
       }
     },
     "no-coco": {

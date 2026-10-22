@@ -48,6 +48,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'hud-topo':{sandbox:'hud',query:'state=wave&frozen=1',descricao:'HUD em onda (topo, time, controles)'},
   'arsenal-retrato':{sandbox:'hud',query:'state=wave&frozen=1&players=4&arsenal=1',descricao:'D-051: a arma na mão de cada um no retrato do time'},
   'oferta':{sandbox:'hud',query:'state=offer-open&frozen=1',descricao:'oferta aberta'},
+  'aura':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&arma=pistola&aura=3&hero=112,182',descricao:'upgrades-megabonk: o anel de fumaça do Defumador (aura de dano, nível 3) em volta do herói'},
+  'oferta-tomos':{sandbox:'hud',query:'state=offer-tomos&frozen=1',descricao:'upgrades-megabonk: os tomos na tela de nível (+1 projétil, aura, estilingue, dano)'},
   'forja':{sandbox:'hud',query:'state=camp-forge&frozen=1',descricao:'forja no intervalo'},
   'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},
   'carro-soltar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=corda',descricao:'D-052 HUD: Soltar (na corda)'},
@@ -70,6 +72,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'obra':{sandbox:'obra',query:'cena=arvore',descricao:'menu de obra com a árvore aberta'},
   'config-jogo':{sandbox:'config',query:'cena=jogo',descricao:'engrenagem do jogo: Música, Efeitos e vibração'},
   'config-menu':{sandbox:'config',query:'cena=menu',descricao:'engrenagem do menu: Música, Efeitos e vibração'},
+  'menu-sala':{sandbox:'config',query:'cena=sala',descricao:'engrenagem numa sala: Continuar, Configurações, Copiar convite, Sair'},
+  'menu-sair':{sandbox:'config',query:'cena=sala&vista=sair',descricao:'engrenagem numa sala: "Seus amigos vão ficar com um a menos, certeza?"'},
   'elenco-roster':{sandbox:'elenco',query:'pagina=1',descricao:'folha de contato do elenco com arte (herói + S, SE, E; ids=, novos=1, pagina=N)'},
 });
 

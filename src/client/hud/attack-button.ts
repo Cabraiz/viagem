@@ -1,10 +1,10 @@
 /**
  * D-051 manual combat, step 2: the attack button's press, hold and drag on #coop-attack, and the reticle over the map.
  * - pointerdown on the button: attacks (AttackPress: a tap is one attack, holding attacks on every input step);
- * - dragging past DEAD_ZONE_PX: a yellow line from the hero and a reticle on the enemy in the thumb's cone
- *   (hud/attack-aim.ts dragAim); letting go there chooses it (PlayerInput.target), with an empty cone it chooses nothing;
- * - inside the dead zone the reticle follows the auto aim (the server's order, attackTargets), so a tap shows what it hit.
- * The reticle is a DOM <svg> over the layout, above the canvas and under the HUD; it is only a guess, the server decides.
+ * - dragging past DEAD_ZONE_PX picks the enemy in the thumb's cone (hud/attack-aim.ts dragAim); letting go there
+ *   chooses it (PlayerInput.target), with an empty cone it chooses nothing; inside the dead zone the auto aim stays.
+ * No yellow reticle nor line anywhere (the player asked, 21/10): only the thumb's knob, a DOM <svg> over the layout, while
+ * dragging. The pick is only a guess, the server decides.
  * Only in the manual combat; the button stays the class skill otherwise (explore.ts wires one or the other).
  */
 import type {EnemyView,Point} from '../../contract/index.ts';
@@ -33,16 +33,15 @@ export class AttackButton {
   readonly press=new AttackPress();
   readonly lastHit=new LastHit();
   private readonly svg:SVGSVGElement;
-  private readonly line:SVGLineElement;private readonly ring:SVGCircleElement;private readonly knob:SVGCircleElement;
+  private readonly knob:SVGCircleElement;
   private pointer?:number;private centre?:Point;private drag:Point={x:0,y:0};
   private dragPick?:string;private dragging=false;
   private current?:string;
   private on=false;
   constructor(private readonly button:HTMLButtonElement,host:HTMLElement,private readonly deps:AttackDeps,signal?:AbortSignal){
     this.svg=node('svg','atk-aim');this.svg.setAttribute('aria-hidden','true');this.hide(true);
-    this.line=node('line','atk-aim-line');this.ring=node('circle','atk-aim-ring');this.knob=node('circle','atk-aim-knob');
-    this.ring.setAttribute('r','22');this.knob.setAttribute('r','14');
-    this.svg.append(this.line,this.ring,this.knob);host.append(this.svg);
+    this.knob=node('circle','atk-aim-knob');this.knob.setAttribute('r','14');
+    this.svg.append(this.knob);host.append(this.svg);
     const opts=signal?{signal}:{};
     button.addEventListener('pointerdown',e=>{
       if(!this.on||e.button!==0||button.disabled||this.pointer!==undefined)return;
@@ -70,39 +69,36 @@ export class AttackButton {
   /** The room's CombatMode turned manual (or back): off lets go of everything and hides the reticle. */
   setOn(on:boolean){if(on===this.on)return;this.on=on;if(!on)this.clear();}
   get active(){return this.on;}
-  /** Space on the desktop: held down / let go (the press is the same as the button's). */
-  key(down:boolean){if(!this.on)return;if(down){this.deps.wake();this.press.press();}else this.press.release();this.deps.setHeld(this.press.held);}
+  /**
+   * Space or the right mouse button on the desktop (`source`): held down / let go. The press is the button's, held while
+   * any key holds it; letting go of one key never leaves it held by nobody, and repeated presses never pile up.
+   */
+  key(down:boolean,source='espaco'){
+    if(!this.on)return;
+    if(down)this.deps.wake();
+    this.press.key(source,down);
+    this.deps.setHeld(this.press.held);
+  }
   /** One quick attack (a click on an enemy on the desktop). */
   once(){if(!this.on)return;this.press.press();this.press.release();}
   /** One input step (scene, every 50 ms): whether it attacks. */
   take(){return this.on&&this.press.take();}
-  /** Pause, focus lost, button greyed, run reset: nothing stays pressed, no reticle. */
+  /** Pause, focus lost, button greyed, run reset: nothing stays pressed, no knob. */
   clear(){
     if(this.pointer!==undefined)try{this.button.releasePointerCapture?.(this.pointer);}catch{/* never captured */}
     this.press.clear();this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.deps.setHeld(false);this.hide(true);
   }
   private end(){this.pointer=undefined;this.centre=undefined;this.dragging=false;this.dragPick=undefined;this.press.release();this.deps.setHeld(false);this.hide(true);}
-  /** Every frame: the reticle while the button is held (the auto aim's pick, or the drag's). */
+  /** Every frame: the drag's pick and the thumb's knob while the button is dragged; the auto aim's memory otherwise. */
   frame(){
     const hero=this.deps.hero();
-    if(!this.on||!hero||!this.press.held){this.hide(true);if(hero)this.track(hero);return;}
-    const enemies=[...this.deps.enemies()] as (EnemyView&AimEnemy)[],toScreen=(p:Point)=>this.deps.toScreen(p);
-    let reticle:Point|undefined,knob:Point|undefined,locked=false;
-    if(this.centre){
-      const d=dragAim(this.centre,this.drag,hero,enemies,toScreen,this.dragPick);
-      knob=d.knob;
-      if(d.mode==='arrasto'){this.dragging=true;this.dragPick=d.pick?.id;reticle=d.reticle;locked=!!d.pick;}
-      else this.dragging=false;
-    }
-    if(!this.dragging){const pick=this.track(hero,enemies);if(pick){reticle=toScreen(pick);locked=true;}}
-    this.hide(!reticle);
-    if(!reticle)return;
-    const h=toScreen(hero);
-    this.line.setAttribute('x1',String(h.x));this.line.setAttribute('y1',String(h.y));this.line.setAttribute('x2',String(reticle.x));this.line.setAttribute('y2',String(reticle.y));
-    this.ring.setAttribute('cx',String(reticle.x));this.ring.setAttribute('cy',String(reticle.y));
-    this.svg.dataset.lock=locked?'alvo':'vazio';this.svg.dataset.mode=this.dragging?'arrasto':'auto';
-    this.knob.style.display=knob&&this.dragging?'':'none';
-    if(knob){this.knob.setAttribute('cx',String(knob.x));this.knob.setAttribute('cy',String(knob.y));}
+    if(!this.on||!hero||!this.press.held||!this.centre){this.hide(true);if(hero)this.track(hero);return;}
+    const enemies=[...this.deps.enemies()] as (EnemyView&AimEnemy)[];
+    const d=dragAim(this.centre,this.drag,hero,enemies,p=>this.deps.toScreen(p),this.dragPick);
+    this.dragging=d.mode==='arrasto';
+    if(this.dragging)this.dragPick=d.pick?.id;else this.track(hero,enemies);
+    this.hide(!this.dragging);
+    if(this.dragging){this.knob.setAttribute('cx',String(d.knob.x));this.knob.setAttribute('cy',String(d.knob.y));}
   }
   /** The auto aim, keeping its hysteresis memory every frame like the server's SimPlayer.autoTarget. */
   private track(hero:Point,enemies:AimEnemy[]=[...this.deps.enemies()]){

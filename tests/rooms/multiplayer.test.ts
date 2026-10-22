@@ -11,7 +11,7 @@ import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
 const WALK=heroSpeed();
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../../src/rules/sos.ts';
 import {RECIPES} from '../../src/rules/stonewards.ts';
-import {playableClasses} from '../../src/rules/classes.ts';
+import {PERSONAGEM_PADRAO} from '../../src/rules/personagens-liberados.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
 /** Test peer: JSON control messages parsed in `messages`, protocol 4 frames in `frames` (in arrival order in `log`). */
@@ -25,11 +25,11 @@ test('six slots, seventh refused, and rooms isolated',()=>{
   assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
   const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,6);
 });
-test('a class this build no longer has (old client with tia-festa) plays as the first playable class (D-053), a non-string is refused',()=>{
+test('a class this build no longer has (old client with tia-festa) plays as the viciado (D-053, cadeado-so-clt-viciado), a non-string is refused',()=>{
   const r=new Room(1000),old=peer();r.connect(old,1000);
   r.receive(old,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Tia Cleide',classId:'tia-festa'}),1000);
   const w=old.messages.find(m=>m.t==='welcome');
-  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,playableClasses[0].id);
+  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,PERSONAGEM_PADRAO);
   const bad=peer();r.connect(bad,1000);r.receive(bad,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Zé',classId:42}),1000);
   assert.equal(bad.closes[0]?.code,4003);
 });
@@ -137,12 +137,17 @@ test('room gates input by phase and round; duplicate rematch resets only once',(
   p.score=30;downAll(room);room.advance(4500);
   const result=room.run.snapshot();assert.equal(result.outcome,'defeat');assert.ok(result.resultId);
   room.advance(4550);assert.equal(room.run.snapshot().resultId,result.resultId);
+  // UX-resultado-revanche: b's repeated "topa" is one vote of two; a's settles it, and the countdown starts at once.
   command(room,b,{t:'rematch',round:1},4600);command(room,b,{t:'rematch',round:1},4600);
-  assert.equal(room.run.snapshot().round,2);assert.equal(room.run.snapshot().phase,'lobby');
+  assert.equal(room.run.snapshot().round,1);assert.deepEqual(room.run.snapshot().rematchVotes,[idOf(b)]);
+  // Both phones hear the same vote (the run message goes to everyone).
+  for(const who of [a,b])assert.deepEqual(who.messages.filter((m:any)=>m.t==='run').at(-1).run.rematchVotes,[idOf(b)]);
+  command(room,a,{t:'rematch',round:1},4600);command(room,a,{t:'rematch',round:1},4600);
+  assert.equal(room.run.snapshot().round,2);assert.equal(room.run.snapshot().phase,'countdown');
   assert.equal(p.score,0);assert.equal(p.hp,p.stats.maxHp);assert.equal(p.ack,0);assert.equal(room.sim.tick,0);
   assert.equal(p.downed,undefined);assert.equal(room.sim.outcome,undefined);
   assert.equal(room.sim.world.enemies.size,0);assert.equal(p.attackTick,0);
-  command(room,a,{t:'ready',round:1,ready:true},4700);assert.ok(room.run.snapshot().members.every(m=>!m.ready));
+  command(room,a,{t:'ready',round:1,ready:false},4700);assert.ok(room.run.snapshot().members.every(m=>m.ready),'a stale round changes nothing');
 });
 test('late arrival is spectator; original member reconnects without restarting combat',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);

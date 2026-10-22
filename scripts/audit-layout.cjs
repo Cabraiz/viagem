@@ -246,12 +246,19 @@ const SCENES=[
     // The stamp: a picked tag shows "LEVEI" over its own text; nothing may spill (reduced motion makes it instant).
     await run('hud carimbo LEVEI no intervalo','/?sandbox=hud&players=6&state=offer-round&frozen=1','.rh',13,async()=>{await page.waitForSelector('.rh-card');await page.waitForTimeout(400);await page.evaluate(()=>{const c=document.querySelectorAll('.rh-card')[1];c.closest('.rh-offer').classList.add('rh-offer-pending','rh-offer-stamping');c.classList.add('rh-card-chosen');});});
     await run('hud carimbo LEVEI em combate','/?sandbox=hud&players=6&state=offer-open&frozen=1','.rh',13,async()=>{await page.waitForSelector('.rh-card');await page.evaluate(()=>{const c=document.querySelectorAll('.rh-card')[1];c.closest('.rh-offer').classList.add('rh-offer-pending','rh-offer-stamping');c.classList.add('rh-card-chosen');});});
-    // Real long names: the lobby keeps 20 characters, the team strip shows the first name cut at 9 (team.ts).
-    const longNames=async()=>{await page.waitForSelector('.rh-rcard-name,.rh-member-name');await page.evaluate(()=>{
+    // Real long names: the lobby keeps 20 characters, the team strip shows the first name by the rail rule (rules/names.ts
+    // railName: whole up to 11 letters, else 7 and a dot), with the widest first names a room can bring.
+    const longNames=async mesa=>{await page.waitForSelector('.rh-rcard-name,.rh-member-name',{state:'attached'});await page.evaluate(async mesa=>{
+      const {railName}=await import('/src/rules/names.ts');
       const names=['Maria Aparecida dos','Seu Jorge do Pastel','Wagner Washington Mo','Tia da Festa Junina','Concurseira Eterna d','Zé do Pix Parcelado'];
+      const rail=['Concurseira Eterna','Washington Luís','Maximilianos Neto','Wwwwwwwwwww','Constantino','Zé'];
       document.querySelectorAll('.rh-rcard-name').forEach((e,i)=>{e.textContent=names[i%names.length];});
-      document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=names[(i+1)%names.length].split(' ')[0].slice(0,9);});
-    });};
+      document.querySelectorAll('.rh-member:not(.rh-me) .rh-member-name').forEach((e,i)=>{e.textContent=railName(rail[i%rail.length]);});
+      // The caído arrow's name (edges.ts) is the same rail name: the widest ones first.
+      document.querySelectorAll('.rh-edge-name:not([hidden])').forEach((e,i)=>{e.textContent=railName(rail[(i+3)%rail.length]);});
+      // The phone's fan shows a name only on a touch; the desktop's column (D-044) always does, and widens to the widest.
+      if(mesa===true)window.__hud.setInput('mouse');
+    },mesa);await page.waitForTimeout(200);};
     await run('hud resultado, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&nomes=longos','.rh',13);
     // The owner arranging the room with six players: each card trades its prizes (and, in landscape, its numbers) for the
     // 48 px "Expulsar" / "Tirar bot" button, one of them armed with the longest confirmation.
@@ -272,6 +279,9 @@ const SCENES=[
         await page.waitForTimeout(300);});
     await run('hud combate, 6p, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1','.rh',13,longNames);
     await run('hud caído, 6p, nomes longos','/?sandbox=hud&players=6&state=downed&frozen=1','.rh',13,longNames);
+    await run('hud setas na borda, nomes longos','/?sandbox=hud&players=6&state=wave&frozen=1&cenario=bordas','.rh',13,longNames);
+    for(const [name,state] of [['combate','wave'],['caído','downed']])
+      await run(`hud ${name} no PC (coluna), 6p, nomes longos`,`/?sandbox=hud&players=6&state=${state}&frozen=1`,'.rh',13,()=>longNames(true));
     await run('lobby','/','dialog.coop-lobby',10,async()=>{await page.evaluate(async()=>{const {classes}=await import('/src/rules/classes.ts');const {openLobby}=await import('/src/client/lobby.ts');void openLobby(classes[0],'Maria Aparecida');});await page.waitForTimeout(900);});
     // The real SkillButton (sticker + "Habilidade", E7-skill-hud-wiring), ready and cooling with the widest note.
     for(const [label,setup] of [['botão de habilidade','ready'],['botão de habilidade, recarga','cooling'],['botão de habilidade, nota','note']])

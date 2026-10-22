@@ -2,10 +2,10 @@
 // (.github/workflows/prints.yml), so an executor pushes and waits instead of opening a browser on the shared PC, and a
 // visual fault (20/10: the standing hero trembling, idle↔walk at every reconcile, b837b93) shows on a sheet nobody had
 // to ask for. On the BUILT site (dist/ under vite preview + the local rooms Worker, as scripts/smoke-prod.mjs):
-//   1. the menu (character screen);
+//   1. the menu (character screen), then the name step after SELECIONAR (nome-depois-de-selecionar);
 //   2. a solo match: the hero standing (3 frames in a row, and a sampled window: a standing hero whose texture flips
 //      between an idle and a walk sheet = FAIL), walking by the keyboard (8 directions, 2 frames each), walking by the
-//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow),
+//      mouse (a click on open ground: spots around the hero until one walks him, 3 frames, then the hold-to-follow, then the right button held: attacks, never walks, no browser menu),
 //      and a burst of short keyboard walks in open ground (every stop sampled: idle↔walk back and forth = tremor);
 //   2b. the phone (isMobile + hasTouch, 390×844, a match of its own): the hero standing, the joystick dragged by a
 //      finger (the 4 diagonals of the dir4 page and the 4 cardinals), a tap on open ground;
@@ -13,6 +13,8 @@
 //      the hero beside a house (silhouette);
 // each at 1280×720 and 390×844 (DPR 1). Out: <out>/folha-<sha>.png (every frame with its caption), <out>/folha.json
 // ({ok, fails, consoleErrors, frames, tremor}), the frames themselves, and the Step Summary when GITHUB_STEP_SUMMARY is set.
+// 0. the match's opening, when scripts/abertura-ci.mjs ran first into the same <out> (its abertura.json): its numbers
+//    against the main's on the header (red when it got worse), its prints first, its fails on the sheet's.
 // node scripts/folha-prints.mjs [outDir=folha-out] [--dist dist] [--sha <sha>]: run from the checkout whose dist/ and
 // rooms Worker it plays (its own scripts/local-worker.mjs). Exit 0 ok, 1 the sheet failed, 2 infrastructure.
 // Waits by state (window.__partidaPronta, __fotoPronta, the hero's texture), never a fixed long sleep: swiftshader is slow.
@@ -108,10 +110,18 @@ const HERO=()=>{
 /** The game's line under the map (the scene's hooks.message: "Por aqui não dá…" when a click has no way there). */
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
 /**
- * Out of play: the own hero is dead (the torcida's bar of UX-espectador, .spect; before it the banner "Assistindo: <ally>")
- * or the match ended (the result screen, .rh-result).
+ * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 a main sheet failed its 390×844 mouse on it), dead
+ * (the torcida's bar .spect of UX-espectador, or "Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
  */
-const DEAD=()=>!!document.querySelector('.spect:not([hidden])')||/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length);
+const OUT=()=>{
+  if(document.querySelector('.spect:not([hidden])')||/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
+  const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
+  return st?.downed||(me&&me.hp<=0)?'caido':'';
+};
+/** A down hero is often picked up by the solo bots: waited for this long before a new match. */
+const DOWN_WAIT_MS=25000;
+/** FOLHA_FORCAR_CAIDO=1: the hero counts as down before every mouse test (proves the sheet's message; the run fails). */
+const FORCE_DOWN=process.env.FOLHA_FORCAR_CAIDO==='1';
 /** A walk sheet (the 128 cells `sprite128:<id>:walk:<dir>`, the legacy `…walk…`), else rest/attack. */
 const isWalk=key=>/walk/i.test(key);
 /** Samples the hero's texture every drawn frame (in the page), n frames or ms: the keys seen in order. */
@@ -130,15 +140,18 @@ async function clearOffer(p){
 const matchPages=new WeakMap();
 /**
  * A dead hero or an ended match (the critters win a solo match in ~3 min on swiftshader) prints nothing of his own:
- * a new match on the same page (a warning on the sheet), at most twice per page.
+ * a new match on the same page (a warning on the sheet), at most 4 times per page (21/10: with the down hero counted,
+ * twice ran out mid-sheet). A down one first gets DOWN_WAIT_MS to be picked up.
  */
 async function playing(p){
   const m=matchPages.get(p);
-  if(!m||!await p.evaluate(DEAD).catch(()=>false))return;
+  let out=m?await p.evaluate(OUT).catch(()=>''):'';
+  if(out==='caido'){for(const end=Date.now()+DOWN_WAIT_MS;out==='caido'&&Date.now()<end;){await sleep(1000);out=await p.evaluate(OUT).catch(()=>'');}}
+  if(!out)return;
   const vp=p.viewportSize(),at=`${vp.width}×${vp.height}`;
-  await shot(p,'fim',`${m.label}: herói morto ou partida acabou`,{w:vp.width,h:vp.height});
+  await shot(p,'fim',`${m.label}: herói caído/morto ou partida acabou`,{w:vp.width,h:vp.height});
   if(m.left--<=0){avisos.push(`${m.label} ${at}: herói fora de jogo de novo, sem recomeçar`);return;}
-  avisos.push(`${m.label} ${at}: herói morto ou partida acabou: partida nova`);
+  avisos.push(`${m.label} ${at}: herói caído/morto ou partida acabou: partida nova`);
   await p.goto(`${m.base}/?perf=1`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   await enterMatch(p,{w:vp.width,h:vp.height},m.label);
@@ -146,6 +159,17 @@ async function playing(p){
 }
 
 const frames=[],fails=[],avisos=[],consoleErrors=[],tremor={};
+/** scripts/abertura-ci.mjs's result in <out> (it runs before this script), or null. */
+let abertura=null;
+const secs=ms=>Number.isFinite(ms)?`${(ms/1000).toFixed(1).replace('.',',')} s`:'—';
+/** The opening in one line: each number of this branch, the main's and how much worse (+) or better (−). */
+function aberturaLine(){
+  if(!abertura)return '';
+  const m=abertura.mediana??{},b=m.branch??{},a=m.main,pct=abertura.piora??{};
+  const cell=key=>`${secs(b[key])}${a?` (main ${secs(a[key])}${Number.isFinite(pct[key])?`, ${pct[key]>0?'+':''}${pct[key]} %`:''})`:''}`;
+  const head=`abertura${abertura.ok?'':' PIOROU/FALHOU'} (celular CPU ${abertura.cpu}×, ${abertura.kbps/1000} Mbps, ${abertura.rttMs} ms; mediana de ${abertura.pares})`;
+  return `${head}: frio cena ${cell('frio.cena')} · jogável ${cell('frio.jogavel')} · volta cena ${cell('volta.cena')} · jogável ${cell('volta.jogavel')}`;
+}
 async function shot(p,name,caption,vp){
   // JPEG frames (the artifact stays a few MB: PNG frames made it 48 MB); the sheet itself is a PNG.
   const file=`${String(frames.length).padStart(2,'0')}-${name}-${vp.w}x${vp.h}.jpg`;
@@ -237,10 +261,25 @@ async function walkByPress(p,vp,press,label){
     const notice=await p.evaluate(NOTICE).catch(()=>'');
     tried.push(`(${x},${y}) ${/não dá/i.test(notice)?'sem caminho':'não andou'}`);
   }
-  fails.push(`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
+  const out=await p.evaluate(OUT).catch(()=>'');
+  fails.push(out?`${vp.w}×${vp.h}: ${label}: herói ${out==='caido'?'caído':'fora de jogo'} durante o teste (não é o ${label} que falhou)`
+    :`${vp.w}×${vp.h}: ${label}: nenhum ponto andou o herói (${tried.join(', ')||'nenhum ponto livre'})`);
   return null;
 }
+/**
+ * Before the mouse: the hero up (a down one gets DOWN_WAIT_MS to be picked up, then a new match). Still out of play: the
+ * sheet says so ("herói caído antes do teste de mouse"), not "nenhum ponto andou", and the mouse test is skipped.
+ */
+async function upForMouse(p,vp){
+  await clearOffer(p);
+  const out=FORCE_DOWN?'caido':await p.evaluate(OUT).catch(()=>'');
+  if(!out)return true;
+  fails.push(`${vp.w}×${vp.h}: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste de mouse${FORCE_DOWN?' (forçado: FOLHA_FORCAR_CAIDO=1)':''}`);
+  await shot(p,'mouse-caido',`mouse: herói ${out==='caido'?'caído':'fora de jogo'} antes do teste`,vp);
+  return false;
+}
 async function mouseWalk(p,vp){
+  if(!await upForMouse(p,vp))return;
   // A click on open ground (the 20/10 sheet clicked a fixed spot that fell on a building: "Por aqui não dá", no walk).
   const got=await walkByPress(p,vp,(x,y)=>p.mouse.click(x,y),'mouse');
   await shot(p,'mouse1',got?`mouse: clique em (${got.x},${got.y})${got.tried.length?`; antes ${got.tried.join(', ')}`:''} 1/3`:'mouse: clique (não andou)',vp);
@@ -258,6 +297,35 @@ async function mouseWalk(p,vp){
   await p.mouse.up();
   if(!moved(h,end))fails.push(`${vp.w}×${vp.h}: mouse segurado não moveu o herói`);
   await sleep(1200);
+  await rightClick(p,vp);
+}
+/**
+ * The right button (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): held on open ground beside the hero it attacks (the
+ * manual combat swings toward the mouse) and never walks him; its 'contextmenu' reaches the page already cancelled (the
+ * canvas keeps the browser's menu shut).
+ */
+async function rightClick(p,vp){
+  await clearOffer(p);
+  await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
+  const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
+  const h=await p.evaluate(HERO).catch(()=>null);
+  const m=Math.min(vp.w,vp.h);
+  const spot=h&&CLICK_SPOTS.map(([fx,fy])=>[Math.round(h.sx+fx*m),Math.round(h.sy+fy*m)]).find(([x,y])=>x>=20&&y>=20&&x<=vp.w-20&&y<=vp.h-20);
+  if(!spot||!await free(...spot)){avisos.push(`${vp.w}×${vp.h}: botão direito: nenhum ponto livre perto do herói`);return;}
+  const [x,y]=spot;
+  await p.mouse.move(x,y);await p.mouse.down({button:'right'});
+  const seen=await p.evaluate(SAMPLE,[60,900]).catch(()=>[]);
+  await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
+  const end=await p.evaluate(HERO).catch(()=>null);
+  await p.mouse.up({button:'right'});
+  const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
+  if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
+  const open=menus.filter(v=>!v).length;
+  if(moved(h,end))fails.push(`${vp.w}×${vp.h}: botão direito andou com o herói (devia só atacar)`);
+  if(!seen.some(k=>/attack/i.test(k)))avisos.push(`${vp.w}×${vp.h}: botão direito segurado sem quadro de ataque (${[...new Set(seen)].join(', ')||'nada'})`);
+  if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
+  else if(open)fails.push(`${vp.w}×${vp.h}: botão direito abriu o menu do navegador em ${open}/${menus.length}`);
+  await sleep(1200);
 }
 
 async function match(browser,base){
@@ -268,17 +336,23 @@ async function match(browser,base){
   try{
     await openMenu(p,base,'desktop');
     for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(600);await shot(p,'menu','menu (personagem)',vp);}
+    // The name field only shows after SELECIONAR (an older build without the step opens the dialog: no print, back out).
+    if(await p.evaluate(()=>{document.getElementById('confirm').click();return !!document.getElementById('trocar');})){
+      for(const vp of [...VIEWPORTS].reverse()){await p.setViewportSize({width:vp.w,height:vp.h});await sleep(400);await shot(p,'menu-nome','menu (nome, depois de SELECIONAR)',vp);}
+      await p.evaluate(()=>document.getElementById('trocar').click());
+    }else await p.evaluate(()=>document.getElementById('confirmation').close());
     if(!await enterMatch(p,VIEWPORTS[0],'desktop'))return;
-    for(const vp of VIEWPORTS){
+    // The mouse first, on every screen: the match starts against a wall, where the keys walk into it and no correction
+    // ever lands; and by the time 1280×720's keys were done (~3 min) the horde had the hero down for 390×844's mouse.
+    for(const stages of [[standing,mouseWalk],[keyboardWalk,burst]])for(const vp of VIEWPORTS){
       await p.setViewportSize({width:vp.w,height:vp.h});await sleep(800);
-      // The mouse first: the match starts against a wall, where the keys walk into it and no correction ever lands.
-      for(const stage of [standing,mouseWalk,keyboardWalk,burst])await stage(p,vp);
+      for(const stage of stages)await stage(p,vp);
     }
   }finally{await ctx.close().catch(()=>{});}
 }
 /** The menu of the built site with the room's latency and the perf scene (the meter's panel hidden). */
 async function openMenu(p,base,label){
-  matchPages.set(p,{base,label,left:2});
+  matchPages.set(p,{base,label,left:4});
   await p.addInitScript(LATENCY);
   await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
@@ -286,7 +360,7 @@ async function openMenu(p,base,label){
 }
 /** Character → island: true once the solo match runs (false and a fail when it did not start in 180 s). */
 async function enterMatch(p,vp,label){
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();document.getElementById('confirm').click();});
+  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Folha';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
   await p.waitForSelector('#enter-island',{state:'visible',timeout:20000});
   await p.evaluate(()=>document.getElementById('enter-island').click());
   if(!await until(p,()=>window.__partidaPronta===true&&!!window.__perfScene?.actor,180000)){fails.push(`${label}: a partida solo não começou em 180 s`);await shot(p,'sem-partida',`sem partida (${label})`,vp);return false;}
@@ -354,10 +428,10 @@ async function sheet(browser,file){
     const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
     return `<figure><img src="${src}"><figcaption>${esc(f.caption)}${f.hero?` <small>${esc(f.hero.key)}#${esc(f.hero.frame)}</small>`:''}</figcaption></figure>`;
   }).join('');
-  const head=`folha ${sha} · ${fails.length?`FALHOU: ${fails.join(' | ')}`:'ok'}`;
+  const head=`folha ${sha} · ${fails.length?`FALHOU: ${fails.join(' | ')}`:'ok'}`,ab=aberturaLine();
   const html=`<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#111;color:#eee;font:13px system-ui}h1{font-size:15px;margin:8px;color:${fails.length?'#f66':'#6f6'}}
 main{display:flex;flex-wrap:wrap;gap:6px;padding:6px}figure{margin:0;width:320px}img{width:320px;height:240px;object-fit:contain;background:#000;display:block}
-figcaption{padding:2px 0}small{color:#999;word-break:break-all}</style><h1>${head.replace(/[&<>]/g,'')}</h1><main>${cells}</main>`;
+figcaption{padding:2px 0}small{color:#999;word-break:break-all}h2{font-size:14px;margin:0 8px 6px;color:${abertura?.ok===false?'#f66':'#9cf'}}</style><h1>${head.replace(/[&<>]/g,'')}</h1>${ab?`<h2>${ab.replace(/[&<>]/g,'')}</h2>`:''}<main>${cells}</main>`;
   const ctx=await browser.newContext({viewport:{width:1662,height:600},deviceScaleFactor:1});
   try{const p=await ctx.newPage();await p.setContent(html,{waitUntil:'load',timeout:60000});await p.screenshot({path:file,fullPage:true,timeout:60000});}
   finally{await ctx.close().catch(()=>{});}
@@ -368,6 +442,8 @@ const mpFile=join(dist,'multiplayer.json');
 const restore=()=>{if(original!==undefined){try{writeFileSync(mpFile,original);}catch{}original=undefined;}};
 process.on('exit',restore);
 mkdirSync(outDir,{recursive:true});
+try{abertura=JSON.parse(readFileSync(join(outDir,'abertura.json'),'utf8'));}catch{}
+if(abertura){frames.push(...(abertura.frames??[]));fails.push(...(abertura.fails??[]));avisos.push(...(abertura.avisos??[]));}
 try{
   if(!existsSync(mpFile))throw new Infra(`${mpFile} não existe: rode npm run build antes`);
   const {chromium}=await playwright();
@@ -393,11 +469,12 @@ try{
 }finally{
   restore();preview?.stop();await Promise.resolve(worker?.stop()).catch(()=>{});
 }
-const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames};
+const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames,
+  abertura:abertura&&{ok:abertura.ok,linha:aberturaLine(),mediana:abertura.mediana,piora:abertura.piora,desvio:abertura.desvio,baseSha:abertura.baseSha}};
 writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;
 console.log(line);
 if(process.env.GITHUB_STEP_SUMMARY){
-  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (parado; trocas idle↔walk em cada parada e na rajada): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples,paradas:v.stops,rajada:v.burst}])))}\`\n\nArtefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
+  try{appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Folha de prints ${sha}: ${code===0?'ok':code===2?'INFRA':'**FALHOU**'}\n\n${fails.map(f=>`- ${f}`).join('\n')||'- sem falhas'}${avisos.map(a=>`\n- aviso: ${a}`).join('')}\n\nTremor (parado; trocas idle↔walk em cada parada e na rajada): \`${JSON.stringify(Object.fromEntries(Object.entries(tremor).map(([k,v])=>[k,{flips:v.flips,walk:v.walkSamples,n:v.samples,paradas:v.stops,rajada:v.burst}])))}\`\n\n${abertura?`${aberturaLine()}\n\n`:''}Artefato: \`folha-${sha}\` (folha-${sha}.png + folha.json + quadros).\n`);}catch{}
 }
 process.exit(code);

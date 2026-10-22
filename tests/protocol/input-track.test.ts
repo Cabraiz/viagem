@@ -150,7 +150,7 @@ test('malformed or out-of-order batches are refused whole',()=>{
   refuse({seq:5,steps:[[6,1,0,0]]});
   refuse({seq:5,steps:[[2,1,0,0],[2,0,1,0]]});
   // Flags 0–3 since D-051 (bit 1: attack held); anything else is malformed.
-  refuse({seq:5,steps:[[1,2,0,0]]});refuse({seq:5,steps:[[1,1,0,4]]});refuse({seq:5,steps:[[1,1,0,-1]]});refuse({seq:5,steps:[[1,1,0,0,{id:'x'}]]});refuse({seq:5,steps:[[1,1,0,0,'bad id!']]});
+  refuse({seq:5,steps:[[1,2,0,0]]});refuse({seq:5,steps:[[1,1,0,132]]});refuse({seq:5,steps:[[1,1,0,-1]]});refuse({seq:5,steps:[[1,1,0,0,{id:'x'}]]});refuse({seq:5,steps:[[1,1,0,0,'bad id!']]});
   refuse({seq:9,steps:Array.from({length:MAX_SEGMENTS+1},(_,i)=>[i+1,1,0,0])});
   refuse({seq:5,steps:[[1,Infinity,0,0]]});refuse({seq:5,steps:'1,1,0,0'});
   assert.equal(s.input('p',{seq:5,steps:[[3,1,0,0]]}),true);
@@ -190,7 +190,7 @@ test('the room never walks ahead of the client clock, and the owner sees only th
 
 test('a skill press that arrives after its steps still casts once; tap targets ride the segments',()=>{
   const room=new Room(1000),a={messages:[] as any[],closes:[] as any[],send(d:any){if(typeof d==='string')this.messages.push(JSON.parse(d));},close(code:number,reason:string){this.closes.push({code,reason});}};
-  room.connect(a,1000);room.receive(a,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum'}),1000);
+  room.connect(a,1000);room.receive(a,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'clt-cansado'}),1000);
   room.receive(a,JSON.stringify({t:'ready',round:1,ready:true}),1050);
   for(let t=1100;t<=4200;t+=50)room.advance(t);
   assert.equal(room.run.snapshot().phase,'combat');

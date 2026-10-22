@@ -22,7 +22,7 @@
 import type {CellRect,Obstacle} from '../../maps/index.ts';
 import {heroSpeed} from '../../maps/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
-import {ticks} from '../../contract/index.ts';
+import {ticks,type SimPlayer} from '../../contract/index.ts';
 import {isStanding} from '../revive.ts';
 import {buy as forgeBuy,clearTowers,draw,towerStep,type BuyResult} from './forge.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
@@ -31,9 +31,10 @@ import {cityFarthestReturn,cityLoot,lootTripTicks,type CityLoot} from './loot.ts
 import {CIDADE_CRATE_LINES,CIDADE_HORN_LINES,CIDADE_LEFT_BEHIND_LINES,DEPLETED_LINES,HORN_LINES,RECIPES,returnTicks} from '../../rules/index.ts';
 import type {StonewardsState} from './state.ts';
 import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
-import {createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
+import {blockingCity,createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 import {build as buildDefense,buildFree,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type FreeBuildContext,type TowerResult} from '../towers/system.ts';
+import {coletaStep,coletar as coletarTralha,destruir as destruirTralha,placeTralha,type ColetaOutcome} from '../towers/tralha.ts';
 import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,unoAlertStep,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
@@ -113,6 +114,12 @@ export interface StonewardsOptions {
    */
   freeBuild?:FreeBuildHooks;
   /**
+   * barricada-construir part 2 (towers/tralha.ts): with the free build and a car, the map's barricadas are laid on the
+   * first step; `give` hands a collected square to the hero (a kit:barricada; false: no room), `carrying` counts the
+   * kits a hero has (CARREGA_MAX). Absent: no tralha (tests, the wall mode).
+   */
+  tralha?:{give(p:SimPlayer):boolean;carrying(p:SimPlayer):number};
+  /**
    * D-051 mode 'ninhos' (assemble.ts; card ninhos-rounds-fora): no intermission. The forge and the towers' orders open
    * through `gate` (ninhos/calma.ts: no critter awake near the player), the crates are gathered at any time and the
    * nodes refill every `refillTicks` (rules/calma.ts CALMA.refillS). Absent: the rounds mode as before.
@@ -140,6 +147,11 @@ export interface StonewardsSystem extends SimSystem {
   build(ctx:SimContext,playerId:string,order:string|FreeOrder,requestId?:string):TowerResult;
   /** Kits de torre (torre-pela-caixa): a kit's piece on a grid cell, for free (buildFree with `kit`); 'fora' off the city. */
   buildKit(ctx:SimContext,playerId:string,order:FreeOrder,requestId?:string):TowerResult;
+  /** barricada-construir part 2: DESTRUIR a barricada square (at once, R$ to the hero) or COLETAR it (towers/tralha.ts). */
+  destruir(ctx:SimContext,playerId:string,id:string):ReturnType<typeof destruirTralha>;
+  coletar(ctx:SimContext,playerId:string,id:string,req?:number):ReturnType<typeof coletarTralha>;
+  /** The coletas that ended on the last step (drained: the room answers the collectors). */
+  drainColetas():ColetaOutcome[];
   /** Tower defense: evolves a ready defense (`branch`: 'A'|'B'|'C' at the root, a child id or label like 'A4b' at a fork). */
   upgrade(ctx:SimContext,playerId:string,defenseId:string,branch?:string,requestId?:string):TowerResult;
   /** Tower defense (torres-ajustes): repairs a standing defense below its maxHp, like the forge's barricade repair. */
@@ -222,6 +234,7 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
   }
   syncBarricades(options.terrain,state);
   syncPieces(options.terrain,state);
+  let coletaOutcomes:ColetaOutcome[]=[];
   const free:FreeBuildContext|undefined=options.freeBuild&&{...options.freeBuild,...(options.onTerrainChanged?{onTerrainChanged:options.onTerrainChanged}:{})};
   /** City: drops from cityHornIdle who walked or worked (`worked`) this tick; true when someone woke. */
   function wake(worked:ReadonlySet<string>){
@@ -283,6 +296,12 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
     buildKit(ctx,playerId,order,requestId){
       return free?buildFree(ctx,state,buildPlanFor(ctx.terrain),playerId,order,requestId,free,'',true):{ok:false,reason:'fora'};
     },
+    destruir(ctx,playerId,id){return destruirTralha(ctx,ctx.terrain,state,playerId,id,free?.onTerrainChanged);},
+    coletar(ctx,playerId,id,req){
+      const p=ctx.players.get(playerId);
+      return options.tralha&&p?coletarTralha(ctx,state,playerId,id,options.tralha.carrying(p),req):{ok:false,reason:'player'};
+    },
+    drainColetas(){const out=coletaOutcomes;coletaOutcomes=[];return out;},
     upgrade(ctx,playerId,defenseId,branch,requestId){return upgradeDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,branch,requestId,options.calm?.gate);},
     repair(ctx,playerId,defenseId,requestId){return repairDefense(ctx,state,buildPlanFor(ctx.terrain),playerId,defenseId,requestId,options.calm?.gate);},
     buy(ctx,playerId,recipeId,requestId,targetId){
@@ -371,6 +390,13 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       if(!state.wallDown){towerStep(ctx,state);defensesStep(ctx,state);if(contact)siegeStep(ctx,state);}
       // NEW-20261021-ORQ-barricada-construir: the car near a barricada sounds its alert; 6 s later, still near, it falls.
       if(!state.wallDown&&free?.car)unoAlertStep(ctx,options.terrain,state,free.car(ctx.tick),free.onTerrainChanged);
+      // barricada-construir part 2: the map's barricadas (once), then the coletas.
+      if(options.tralha&&free?.car){
+        const city=blockingCity(options.terrain),car=free.car(ctx.tick);
+        if(city&&car&&!state.defenses?.tralha?.placed)placeTralha(ctx,state,{city,car,moto:free.moto?.(ctx.tick),nests:free.nests?.(ctx.tick),onTerrainChanged:free.onTerrainChanged});
+        const give=options.tralha.give;
+        coletaOutcomes.push(...coletaStep(ctx,options.terrain,state,give,free.onTerrainChanged));
+      }
       // Also catches a wall brought down by damageWall from another system (the enemy-ai, the boss).
       if(state.wallDown){state.defeatReported=true;clearTowers(ctx,state);options.onWallDestroyed?.(ctx);}
     },

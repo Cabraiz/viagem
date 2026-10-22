@@ -34,7 +34,7 @@
 .rh-round-detail .ic{width:20px;height:20px}
 .rh-round-detail b{font:400 var(--t-16)/1 var(--f-cartaz)}
 /* Urgency is the Laranja Cone (danger), with Breu text; it never depends on color alone (the pulse and the timer). */
-.rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .6s ease-in-out infinite alternate}
+.rh-round.rh-urgent{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu);text-shadow:none;animation:rh-pulse .3s ease-in-out 4 alternate}
 /* Level badge with the XP as a thin thread under it (no full-width bar). */
 .rh-xp{order:0;position:relative;flex:none;display:flex;flex-direction:column;align-items:stretch;gap:3px;margin:0}
 .rh-xp-level{flex:none;min-width:44px;padding:3px 8px;border-radius:var(--r-ficha);background:var(--c-lilas);border:2px solid var(--c-papel);font:400 var(--t-16)/1 var(--f-cartaz);text-align:center;text-shadow:var(--s-texto);box-shadow:0 0 0 2px var(--c-breu),var(--s-2)}
@@ -66,7 +66,7 @@
 .rh-boss-name{display:block;text-align:center;font:400 var(--t-16)/1.05 var(--f-cartaz);margin-bottom:3px}
 .rh-boss-track{height:10px;border-radius:var(--r-etiqueta);background:var(--c-breu);border:1px solid var(--c-papel);overflow:hidden}
 .rh-boss-fill{display:block;height:100%;transform-origin:left;background:var(--c-cone);transition:transform .2s}
-.rh-boss.rh-enraged{animation:rh-shake .35s linear infinite}
+.rh-boss.rh-enraged{animation:rh-shake .35s linear 2}
 
 /* ---------- Center stack (revive alerts) ---------- */
 .rh-stack{position:absolute;top:calc(var(--rh-t) + 112px);left:calc(var(--rh-l) + max(70px,var(--rh-coluna,54px) + 16px));right:calc(var(--rh-r) + 8px);display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -82,7 +82,7 @@
 .rh-marquee{position:relative;display:flex;align-items:baseline;justify-content:center;gap:8px;width:max-content;max-width:min(100%,560px);padding:3px 20px 4px;white-space:nowrap;transform-origin:50% 0;border-radius:var(--r-etiqueta);text-align:center;background:var(--c-papel);color:var(--c-breu);border:2px solid var(--c-breu);box-shadow:var(--s-1),inset 0 0 0 3px var(--c-papel-claro)}
 .rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:4px;bottom:4px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
 .rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
-.rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) infinite}
+.rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) 4}
 .rh-marquee-title{flex:0 0 auto;max-width:60%;min-width:0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
 .rh-marquee-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
 .rh-marquee-sub:empty{display:none}
@@ -138,7 +138,7 @@
 .rh-member-timer{position:absolute;top:28px;left:50%;transform:translateX(-50%);padding:0 4px;border-radius:var(--r-ficha);background:var(--c-cone);color:var(--c-breu);border:1px solid var(--c-breu);text-shadow:none;font:800 var(--t-13)/15px var(--f-sistema);font-variant-numeric:tabular-nums;white-space:nowrap} /* "27 s": one clock format with the arrow and the map ficha (onda 6) */
 .rh-member[data-state=low] .rh-member-hp-fill{background:var(--c-cone)}
 .rh-member[data-state=low] .rh-member-ring{background:var(--c-cone)}
-.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .7s ease-in-out infinite alternate}
+.rh-member[data-state=downed] .rh-member-ring{background:conic-gradient(var(--c-cartolina) var(--rh-rescue),var(--c-cone) 0);animation:rh-pulse .35s ease-in-out 4 alternate}
 .rh-member[data-state=downed] .rh-member-img{filter:grayscale(.8) brightness(.85)}
 .rh-member[data-state=downed] .rh-member-hp{visibility:hidden}
 .rh-member[data-state=eliminated] .rh-member-img{filter:grayscale(1) brightness(.6)}
@@ -154,7 +154,7 @@
 .rh-alert[data-kind=self] .rh-alert-text{font-size:15px}
 .rh-alert[data-kind=self] .rh-alert-track{background:var(--c-trilho)}
 .rh-alert[data-kind=self] .rh-alert-fill{background:var(--c-breu)}
-.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear infinite}
+.rh-alert.rh-alert-urgent{animation:rh-shake .35s linear 2}
 
 /* In, hold, then fade out in place (UX-zonas-tela: 1.8 s in all). Scale only, never above 1, from the top edge
    (.rh-marquee transform-origin 50% 0): every frame stays inside the banner's own slot, so the exit never crosses the
@@ -270,6 +270,7 @@
 .rh-card-icon>.ic{width:32px;height:32px}
 .rh-card-body{display:contents}
 /* The short name: under the hole and the sticker, two lines at most (the whole name is in the aria-label). */
+.rh-card-gain{display:none}
 .rh-card-name{grid-area:name;min-width:0;margin:1px 0 0 -10px;font:400 calc(14px * var(--t-escala))/1.05 var(--f-cartaz);color:var(--c-breu);
   overflow-wrap:anywhere;hyphens:auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 /* The effect: a tooltip over the tag (Papel etiqueta, Breu edge), only on hover (a mouse), focus (keyboard) or while a
@@ -751,7 +752,7 @@
 /* ---------- City round 1: the walk to the plaza (card cidade-08, hud/city/objective.ts) ----------
    A row of the announcement slot like the coach's hint (Breu body, Papel edge, no motion): the base's tent, "Vai pra
    praça!" with one short line, the walking distance (Londrina, tnum) and the "voltar" sticker turned along the route
-   (--rumo, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
+   (its inline transform, whole degrees). It waits for the banner, the notices and the kill-cam; the coach's hints wait for it.
    BUG-20261013-ORQ-oferta-e-dicas-menores: one line at half the old height (18 px stickers, "Vai pra praça!" at 13 px,
    the joke line goes) for OBJECTIVE_FULL_MS; then it folds to the distance and the arrow only (data-compact, a small
    ficha), and goes when there is no arrow to show (objective.ts). */
@@ -768,7 +769,7 @@
 .rh-objetivo[data-compact=true] :is(.rh-objetivo-mark,.rh-objetivo-body){display:none}
 .rh-objetivo[data-compact=true] .rh-objetivo-m{min-width:0}
 .rh-objetivo-m:empty{display:none}
-.rh-objetivo-arrow{transform:rotate(var(--rumo,0deg))}
+.rh-objetivo-arrow{will-change:transform} /* turned by its inline transform (city/objective.ts) */
 .rh-objetivo-arrow[hidden]{display:none}
 .rh-ended .rh-objetivo{display:none}
 /* Over the hero for a moment (camera catching up): it steps aside like the coach's hint (UX B2). */
@@ -802,7 +803,7 @@
 .rh-round-eta>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
 .rh-round-eta .ic{width:20px;height:20px}
 .rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
-.rh-round-sep{font-style:normal;margin-right:2px}
+.rh-round-sep{display:inline-block;width:6px}
 /* D-051 nests: the chip is the clock alone (no "Onda N" before it), so no separator. */
 .rh-round[data-modo="ninhos"] .rh-round-sep{display:none}
 /* Portrait: the chip's slot is 166 px at 390 (beside the camera buttons): "Onda 15 · 10:00 · 123" still fits in one line. */
@@ -826,3 +827,38 @@
 /* D-051 nests (ninhos-rounds-fora): the nests still standing after the chaveiro's clock, "[ninho] 6/8" (chip and phone bar). */
 .rh-ninhos{display:inline-flex;align-items:center;gap:2px;margin-left:8px;font-style:normal}
 .rh-ninhos :is(img,.ic){width:20px;height:20px}
+
+/* UX-resultado-revanche: the prize first, two numbers (dano, salvou), the other two with a tap on the card. */
+.rh-rcard{position:relative;cursor:pointer}
+.rh-rcard:not(.is-open) .rh-rstat-more{display:none}
+.rh-rcard:not(.is-open) .rh-rcard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rh-award-top .rh-award-title{font-size:var(--t-16)}
+/* "✓ topa": the room's rematch vote, a yellow sticker on the card's corner (Amarelo is choice/CTA: the rematch). */
+.rh-rcard-topa{position:absolute;top:-13px;right:-5px;z-index:1;padding:1px 7px;border-radius:var(--r-etiqueta);background:var(--c-amarelo);border:2px solid var(--c-breu);color:var(--c-breu);font:800 var(--t-13)/1.2 var(--f-sistema);transform:rotate(4deg);box-shadow:0 2px 0 var(--c-breu);pointer-events:none}
+/* The defeat's "O que derrubou a turma … Faltou N rounds pro síndico". */
+.rh-result-lost{margin-top:3px;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-amarelo)}
+/* "Compartilhar" (camera sticker): the icon alone in portrait (the row already has Revanche and Sair), the word in landscape. */
+.rh-result .rh-result-share{flex:0 0 auto;background:var(--c-papel);color:var(--c-breu);padding-inline:12px}
+.rh-result .rh-result-share .rh-share-long{margin-left:6px}
+@media (min-height:501px){.rh-result .rh-result-share .rh-share-long{display:none}}
+.rh-result .rh-result-rematch.rh-waiting:disabled{opacity:1}
+.rh-result .rh-result-rematch{white-space:nowrap}
+/* Landscape: the two numbers read in one line ("18,4k dano  1 salvou"), which pays for the defeat's extra line. */
+@media (max-height:500px){
+  .rh-rcard:not(.is-open) .rh-rstat{flex-direction:row;align-items:baseline;justify-content:center;column-gap:4px}
+  .rh-rcard-topa{top:-11px}
+}
+/* The first row's "✓ topa" sticks out of its card: the grid keeps room for it above (it scrolls, so it would clip). */
+.rh-result-grid{padding-top:12px}
+@media (max-height:500px){.rh-result-grid{padding-top:10px}}
+/* The owner's row has four buttons: the share is the icon alone everywhere, and in portrait the rest tighten. */
+.rh-result .rh-result-actions.has-manage .rh-result-share .rh-share-long{display:none}
+@media (min-height:501px){
+  .rh-result .rh-result-actions.has-manage{gap:6px}
+  .rh-result .rh-result-actions.has-manage .rh-result-btn{padding-inline:8px}
+  .rh-result .rh-result-actions.has-manage .rh-result-rematch{font-size:15px}
+}
+/* Last resort when the cards would scroll (fitCards): the defeat's extra line goes. */
+.rh-result.rh-result-nolost .rh-result-lost{display:none}
+/* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
+@media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}

@@ -1,7 +1,7 @@
 /** N27 · the lossy copies the game downloads (scripts/art-lite.mjs) exist for every tree, class, enemy and big city file and follow their source. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,existsSync} from 'node:fs';
+import {readFileSync,existsSync,readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {treeCatalog} from '../../src/maps/tree-catalog.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
@@ -124,8 +124,8 @@ test('every city file the city draws over 64 KB (art-plan cityLiteFiles: view sh
 
 test('the base wall and barricades (art/base-art.ts) load their city lite copies at the same cell, before the first playable frame; a failed copy falls back to the approved file (base-lite-muralha)',()=>{
   const index=JSON.parse(readFileSync('public/art/manifest.json','utf8')),base=index.groups.base;
-  // art-plan's list is base-art's 4-view pieces (kept apart so scripts/art-lite.mjs does not load the renderer).
-  assert.deepEqual([...BASE_LITE_PIECES].sort(),Object.values<string>(BASE_ART).filter(id=>(base.pieces[id]?.files.sheet.views??0)>=4).sort());
+  // art-plan's list is base-art's view pieces (2 or 4 views; kept apart so scripts/art-lite.mjs does not load the renderer).
+  assert.deepEqual([...BASE_LITE_PIECES].sort(),Object.values<string>(BASE_ART).filter(id=>(base.pieces[id]?.files.sheet.views??0)>=2).sort());
   setArtIndex(parseArtIndex(index));
   try{
     const loads=baseLoads();
@@ -142,4 +142,22 @@ test('the base wall and barricades (art/base-art.ts) load their city lite copies
     // The crate has one view (and ~50 KB): the approved file.
     assert.equal(loads.find(x=>x.key==='art:base:caixa-saque')?.url,'/art/city/base/caixa-saque.webp');
   }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
+});
+
+test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from /art/lite/menu has its copy, made from the approved file as it is now; the rest of public/art/menu (button, cut-out heroes, letreiros, mureta) is loaded as it is and has no copy (art-lite --check stays green)',()=>{
+  const menu=readdirSync('public/art/menu',{recursive:true}).map(n=>String(n).replaceAll('\\','/')).filter(n=>n.endsWith('.webp'));
+  const lite=menu.filter(n=>/^(danca\/|fundo-[^/]+\.webp$)/.test(n));
+  assert.ok(lite.length>=142,`${lite.length} menu files with a copy`);
+  for(const name of lite){
+    const key=`menu/${name}`,entry=manifest.files[key];
+    assert.ok(entry,`${key}: no copy in scripts/art-lite.json (node scripts/art-lite.mjs --kinds menu)`);
+    assert.equal(entry.source,sha(`public/art/${key}`),`${key}: the approved file changed after its copy (node scripts/art-lite.mjs --kinds menu)`);
+    assert.equal(entry.lite,sha(`public/art/lite/${key}`),`public/art/lite/${key} is not the copy the manifest measured`);
+  }
+  for(const name of menu.filter(n=>!lite.includes(n)))assert.equal(manifest.files[`menu/${name}`],undefined,`menu/${name}: loaded as it is, no copy`);
+  // Every /art/lite/menu url the page names (the dance pages come from menu-dance.ts's replace) is one of those copies.
+  const sources=['index.html',...readdirSync('src/client',{recursive:true}).map(n=>`src/client/${String(n).replaceAll('\\','/')}`).filter(n=>/\.(ts|css)$/.test(n))];
+  const urls=new Set(sources.flatMap(f=>readFileSync(f,'utf8').match(/\/art\/lite\/menu\/[\w\-/]+\.webp/g)??[]));
+  assert.ok(urls.size>=2,[...urls].join(', '));
+  for(const url of urls)assert.ok(lite.includes(url.slice('/art/lite/menu/'.length)),`${url}: the page loads a copy art-lite does not make (MENU_LITE in scripts/art-lite.mjs)`);
 });

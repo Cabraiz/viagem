@@ -6,7 +6,7 @@ import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNo
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
-import { classes, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
+import { classes, liberadoId, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
 import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
@@ -56,6 +56,11 @@ export interface RoomOptions {
   labOffset?:{x:number;y:number};
   /** Lab only (wrangler dev with ALLOW_LOCAL and LAB_ZUEIRA "apagao,boletos,promo"): those zueira events, one per round from round 2 (VGM-053B). */
   labZueira?:ZueiraLab;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_ASLEEP n): each client gets at most n sleeping bodies instead of
+   * ASLEEP_PER_VIEWER (card horda-visivel-capacidade: the same walk measured at several caps); 'sem' = no cap.
+   */
+  labAsleep?:number;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -187,10 +192,13 @@ const classIds=new Set(classes.map(c=>c.id));
  *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
  *  roster stays strict (junk is dropped; that player joins again and lands here). */
 // D-053: a hidden class (no R06 movement art yet) or one this build no longer has plays the first playable class.
-const knownClass=(id:unknown)=>playableClassId(id);
+// cadeado-so-clt-viciado (22/10): a person plays only a released hero (rules/personagens-liberados.ts); any other class,
+// locked, hidden or unknown (a console, an old tab), plays the viciado. Bots are seated apart and keep BOT_CLASSES.
+const humanClass=(id:unknown)=>liberadoId(id);
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
-/** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick. */
+/** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick.
+ *  The people's lock (humanClass) never applies here: a bot may be any of them. */
 const BOT_CLASSES=[...PLAYABLE_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
@@ -319,6 +327,7 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  private readonly labAsleep?:number;
   private readonly labOffset?:{x:number;y:number};
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
@@ -405,6 +414,7 @@ export class Room {
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    if(Number.isFinite(options.labAsleep)&&options.labAsleep!>0)this.labAsleep=Math.floor(options.labAsleep!);
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
@@ -459,7 +469,7 @@ export class Room {
       if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
-      this.sim.add(r.id,r.name,playableClassId(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
+      this.sim.add(r.id,r.name,humanClass(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);this.autopilots.add(r.id,this.autopilots.freeSlot(AUTOPILOT_SLOT,2));
       if(lost)this.lostRun.set(r.id,lost);
     }
@@ -615,14 +625,14 @@ export class Room {
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=this.newId(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
-        this.sim.add(id,m.name.trim(),knownClass(m.classId));this.sessions.set(id,session);
+        this.sim.add(id,m.name.trim(),humanClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
       session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;this.catalogs.set(session.id,maps.maps);
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
-      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
+      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY,...(this.labAsleep?{interest:{asleep:this.labAsleep}}:{})});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
         run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map),
@@ -671,6 +681,7 @@ export class Room {
     else if(m.t==='cida')this.cida(c,m);
     else if(m.t==='equip'||m.t==='use'||m.t==='drop'||m.t==='take')this.inventory(c,m);
     else if(m.t==='place')this.place(c,m);
+    else if(m.t==='destruir'||m.t==='coletar')this.tralha(c,m);
     else if(m.t==='puxar')this.puxar(c,m);
     else if(m.t==='pix')this.pix(c,m,now);
     else if(m.t==='ready'&&typeof m.ready==='boolean'){
@@ -679,7 +690,9 @@ export class Room {
     }
     else if(m.t==='rematch'){
       if(!this.canStartRun(now)){this.notice(c,ROOM_CLOSING_NOTICE);return;}
-      if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();this.pushRun();}
+      // A "topa" (UX-resultado-revanche): the new run starts when everyone online voted, else the votes go out.
+      if(this.run.rematch(c.playerId,m.round)){this.resetRun();this.syncSpectators();}
+      this.pushRun();
     }
     else if(m.t==='ping')this.sendJson(c,{t:'pong',at:m.at});
     else if(m.t==='sos')this.sos(c,m,now);
@@ -1058,6 +1071,20 @@ export class Room {
       :this.sim.place(c.playerId!,m.slot,{c:m.c,r:m.r,...(m.rot===1?{rot:1 as const}:{})},`k:${m.req}`);
     this.sendJson(c,{t:'built',req:m.req,ok:result.ok,...(result.ok?{kind:result.kind,defense:this.ids.label('structures',result.defense)}:{reason:result.reason})});
   }
+  /**
+   * barricada-construir part 2: {t:'destruir'|'coletar',round,req,id} on a barricada square (its wire id). Malformed taps
+   * are dropped; outside combat, another round or the level-up pause: 'fase'. destruir answers {t:'destruiu',req,ok,pix?|reason?};
+   * coletar answers {t:'coleta',req,ok,until?|reason?} at once and again {t:'coleta',req,ok,done:true|reason} when it ends.
+   */
+  private tralha(c:Connection,m:any){
+    if(!Number.isSafeInteger(m.req)||m.req<1||typeof m.id!=='string'||m.id.length>12)return;
+    const state=this.run.snapshot(),id=this.ids.resolve(m.id);
+    const reply=m.t==='destruir'?'destruiu':'coleta';
+    if(state.phase!=='combat'||m.round!==state.round||this.levelup.paused){this.sendJson(c,{t:reply,req:m.req,ok:false,reason:'fase'});return;}
+    if(id===undefined){this.sendJson(c,{t:reply,req:m.req,ok:false,reason:'nada'});return;}
+    const result=m.t==='destruir'?this.sim.destruir(c.playerId!,id):this.sim.coletar(c.playerId!,id,m.req);
+    this.sendJson(c,{t:reply,req:m.req,...result});
+  }
   private cida(c:Connection,m:any){
     const state=this.run.snapshot();
     if(state.phase!=='combat'||m.round!==state.round)return;
@@ -1123,7 +1150,7 @@ export class Room {
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;
     // A pause goes out once per second of its clock (and when who is waiting changes), like the countdown.
-    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
+    const key=JSON.stringify({...run,elapsed:0,remaining:run.phase==='countdown'?Math.ceil(run.remaining/RUN_HZ):0,...(run.rematchLeft!==undefined?{rematchLeft:Math.ceil(run.rematchLeft/RUN_HZ)}:{}),...(pause?{pause:{...pause,leftMs:Math.ceil(pause.leftMs/1000)}}:{})});
     if(!force&&key===this.runKey)return;
     this.runKey=key;
     this.send({t:'run',run,tick:this.sim.tick});
@@ -1230,6 +1257,9 @@ export class Room {
       this.pushElenco();
       // Skill taps: the owner hears at once whether its tap went off (the button never guesses, E7/N16).
       for(const cast of this.sim.casts)for(const c of this.connections.values())if(c.playerId===cast.id)this.sendJson(c,{t:'cast',seq:cast.seq,ok:cast.ok,readyTick:cast.readyTick});
+      // barricada-construir part 2: each ended coleta goes to its collector.
+      for(const o of this.sim.coletas)for(const c of this.connections.values())if(c.playerId===o.player&&o.req!==undefined)
+        this.sendJson(c,{t:'coleta',req:o.req,ok:o.ok,...(o.ok?{done:true}:{reason:o.reason})});
       // Every encoder gets every tick's events while their ids are still known (D-018), sent or not this tick.
       for(const c of this.connections.values())c.encoder?.pushEvents(events);
       const outcome=this.sim.outcome;
@@ -1238,6 +1268,8 @@ export class Room {
     // Paused: the run's combat clock (elapsed, the timeout) stands still with the sim.
     const transition=paused?{started:false,finished:false}:this.run.step(this.run.snapshot().phase==='combat'?this.sim.shameMoment():undefined);
     if(transition.started){this.resetRun();this.syncSpectators();}
+    // The majority's rematch after REMATCH_MAJORITY_TICKS: a new run, the ones who did not vote watch it.
+    if(transition.rematch){this.resetRun();this.syncSpectators();}
     if(transition.finished)this.announce();
     if(++this.ticks%PRUNE_EVERY===0)this.prune();
     this.pushRun();

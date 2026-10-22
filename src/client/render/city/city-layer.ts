@@ -199,7 +199,9 @@ export class CityLayer {
   private readonly fountain?:CityLot;
   /** Building cells without art shown are low mounds (moundOf): only when the plan has building art at all. */
   private readonly mounds:boolean=false;
-  private readonly still=reducedMotion();
+  /** prefers-reduced-motion, and the Leve quality level (setStill): the fountain glint holds still. */
+  private readonly motionReduced=reducedMotion();
+  private still=this.motionReduced;
   /** Relief ground (relevo/): the chunk ground is the baked relief shader instead of flat or painted quads. */
   private readonly relief?:CityRelief;
   /** Cells under a cliff block when the relief draws them (no snow specks on their rock). */
@@ -313,6 +315,12 @@ export class CityLayer {
 
   /** Economy mode (scene.setEconomy): the relief bakes with fewer shadow taps; live chunks are rebuilt to match. */
   setEconomy(on:boolean){if(this.relief?.setEconomy(on))this.refresh();}
+  /** Quality Leve (scene.setQuality): the glint and the live scenery (CityLive) hold their first frame. */
+  setStill(on:boolean){
+    const still=this.motionReduced||on;if(still===this.still)return;
+    this.still=still;this.vivo?.setStill(on);
+    if(still)for(const live of this.live.values())live.glints.setAlpha(1);
+  }
 
   /** The ground drawn is final (no albedo still on its way, no chunk waiting for its rebuild): the modo foto waits for it. */
   groundSettled(){return this.stale.size===0&&this.lateArt.size===0&&(!this.relief||this.relief.albedoSettled);}
@@ -673,8 +681,8 @@ export class CityLayer {
     const decor:DecorPrim[]=[];
     const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
     for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
-      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot,!this.relief))if(!p.shimmer)decor.push(p);
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
@@ -743,7 +751,7 @@ export class CityLayer {
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
       if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
-      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
+      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot,!this.relief);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
         else glintCells++;

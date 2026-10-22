@@ -32,6 +32,10 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.deepEqual(rules('.a{letter-spacing:2px}'),['letter-spacing']);
   assert.deepEqual(rules('.a{letter-spacing:.02em}'),['letter-spacing'],'any positive tracking, not only big ones');
   assert.deepEqual(rules('.a{letter-spacing:-.02em}'),[]);
+  // The one the user ordered (selecionar-espacamento): only that selector in that file.
+  assert.deepEqual(lintCss('src/client/estadio.css','.estadio .estadio-confirmar-texto{letter-spacing:.048em}').map(v=>v.rule),[]);
+  assert.deepEqual(lintCss('src/client/style.css','.estadio .estadio-confirmar-texto{letter-spacing:.048em}').map(v=>v.rule),['letter-spacing']);
+  assert.deepEqual(lintCss('src/client/estadio.css','.estadio .estadio-confirmar{letter-spacing:.048em}').map(v=>v.rule),['letter-spacing']);
   // Colors in any notation, not only hex.
   assert.deepEqual(rules('.a{color:rgb(10 20 30)}'),['color']);
   assert.deepEqual(rules('.a{background:hsl(200 50% 50% / .4)}'),['color']);
@@ -57,6 +61,13 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.equal(sizePx('clamp(13px,3vw,16px)'),13);assert.equal(sizePx('calc(2 * var(--t-13))'),26);
 });
 
+test('design lint: no infinite animation (it plays once or twice when it shows up, then stops)',()=>{
+  assert.deepEqual(rules('.a{animation:rh-pulse .6s ease-in-out infinite alternate}','src/client/hud/hud.css'),['infinite']);
+  assert.deepEqual(rules('.a{animation-iteration-count:INFINITE}'),['infinite']);
+  assert.deepEqual(rules('.a{animation:rh-pulse .3s ease-in-out 4 alternate}','src/client/hud/hud.css'),[]);
+  assert.deepEqual(rules('.a{animation-name:infinite-scroll}'),[]);
+});
+
 test('design lint: CSS nesting is linted at every depth',()=>{
   const css='.a{color:var(--c-breu);\n  .b{border-radius:3px;\n    &:hover{box-shadow:0 2px 8px var(--c-breu)}}\n  margin:0}';
   const v=lintCss('src/client/coop.css',css) as Violation[];
@@ -77,13 +88,13 @@ test('design lint: emoji count ignores comments (not strings), and the baseline 
 });
 
 test('fonts: served from public/fonts with the OFL, pt-BR subset within 120 KB, no Georgia/Trebuchet/monospace in src CSS',()=>{
-  const files=['londrina-solid-400','londrina-solid-900','m-plus-rounded-1c-400','m-plus-rounded-1c-700','m-plus-rounded-1c-800'];
+  const files=['londrina-solid-400','londrina-solid-900','m-plus-rounded-1c-400','m-plus-rounded-1c-700','m-plus-rounded-1c-800','lilita-one-400'];
   const total=files.reduce((n,f)=>n+fs.statSync(`public/fonts/${f}.woff2`).size,0);
   assert.ok(total<=120*1024,`pt-BR font weight ${total} B`);
-  for(const f of ['OFL-londrina-solid.txt','OFL-m-plus-rounded-1c.txt'])assert.match(fs.readFileSync(`public/fonts/${f}`,'utf8'),/SIL Open Font License/);
+  for(const f of ['OFL-londrina-solid.txt','OFL-m-plus-rounded-1c.txt','OFL-lilita-one.txt'])assert.match(fs.readFileSync(`public/fonts/${f}`,'utf8'),/SIL Open Font License/);
   const tokens=fs.readFileSync('src/client/ui/tokens.css','utf8');
   for(const f of files)assert.ok(tokens.includes(`/fonts/${f}.woff2`),`${f} declared in tokens.css`);
   assert.equal((tokens.match(/font-display:swap/g)??[]).length,(tokens.match(/@font-face/g)??[]).length,'every face swaps');
   const html=fs.readFileSync('index.html','utf8');
-  assert.equal((html.match(/rel="preload"[^>]*as="font"/g)??[]).length,2,'two preloads');
+  assert.equal((html.match(/rel="preload"[^>]*as="font"/g)??[]).length,3,'three preloads: Londrina 900, M PLUS 700 and the stadium button Lilita One');
 });

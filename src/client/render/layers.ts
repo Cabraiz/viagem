@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -20,6 +20,7 @@ import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headl
 import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
 import type {Projector} from './projector.ts';
 import {HATCH_MAX_LINES,OUTLINE_MAX_POINTS,hatchSegments,insetPolygon,telegraphOutline} from './telegraph-shape.ts';
+import {planAlert} from './telegraph-alert.ts';
 import {TELEGRAPH_EDGE_CSS,TELEGRAPH_STROKE,TelegraphEdge,type EdgeFrame} from './telegraph-edge.ts';
 import {CITY_CONTACT_SHADOW,CITY_SHADOW_KEY,CITY_SHADOW_TEXTURE,hordeShadowKey} from './city-edge-rules.ts';
 import {DECOR_ART_IDS,DECOR_STRIDE,DecorBuffer,LAYER_AIR,LAYER_ZONE,OP_CIRCLE,OP_ELLIPSE,OP_LINE,OP_POLY,OP_RING,OP_SPRITE,POLY_MAX,planDecor,telegraphLook,type DecorFrame} from './telegraph-look.ts';
@@ -32,7 +33,8 @@ import {sunlit} from './light-actors.ts';
 import {contactWidth} from './shadow-rules.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
-import {ArsenalFx} from './arsenal-fx.ts';
+import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
+import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
 type Pt={x:number;y:number};
@@ -71,6 +73,12 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /** The ground point the local hero aims at (world u): the mouse on a PC, undefined on touch (melee aim cone, render/melee-cone.ts). */
+  aim?:()=>Pt|undefined;
+  /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
+  hand?:(id:string)=>HeldHand|undefined;
+  /** The scene draws the local hero's melee cone after placing him (selfCone); omitted: the renderer draws it at locate(). */
+  coneFromScene?:boolean;
   /**
    * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
    * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
@@ -351,7 +359,8 @@ export class HordeRenderer{
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate});
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
+      ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
@@ -379,6 +388,7 @@ export class HordeRenderer{
     this.enemies.begin();this.fresh.length=0;this.woken.length=0;
     for(let i=0;i<view.enemies.length;i++)if(view.enemies[i].hp>0)this.syncEnemy(view.enemies[i]);
     this.viewTelegraphs=view.telegraphs; // a 'telegraph' event's zone, for the action cue (art v2)
+    this.playerIds.length=0;for(const p of view.players)if(!p.spectator&&!p.eliminated&&!p.downed)this.playerIds.push(p.id);
     this.arsenal.push(view);
     for(let i=0;i<view.events.length;i++){
       const event=view.events[i];
@@ -410,6 +420,7 @@ export class HordeRenderer{
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.body=this.options.actorScale?.()??1;this.enemyBody=this.body*ENEMY_DRAW_SCALE;
+    this.playerCount=0;for(const id of this.playerIds){const p=this.options.locate?.(id);if(p)this.playerAt[this.playerCount++]=p;}
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
@@ -445,6 +456,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
+  selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
   get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
@@ -624,7 +637,15 @@ export class HordeRenderer{
       this.enemies.forEach(this.nearVisit);return this.nearFound;
     },
     telegraph:id=>{const t=this.viewTelegraphs;for(let i=0;i<t.length;i++)if(t[i].id===id)return t[i];return undefined;},
+    player:id=>ENEMY_WALK.faceTarget?this.options.locate?.(id):undefined,
   };
+  /** The players standing in the run (last push), and where they are this frame: an enemy near one faces it. */
+  private playerIds:string[]=[];private playerAt:Pt[]=[];private playerCount=0;
+  private nearestPlayer(x:number,y:number):Pt|undefined{
+    let best:Pt|undefined,bd=Infinity;
+    for(let i=0;i<this.playerCount;i++){const p=this.playerAt[i],d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p;}}
+    return best;
+  }
   private playCue(cue:ActionCue){const a=this.enemies.get(cue.enemy);if(a)playEnemyAction(a.image,a.art,cue.action,this.now);}
   private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,self:boolean,priority:boolean,eventId:number){
     // Hits on the same target within DAMAGE_MERGE_MS add up into the number already flying.
@@ -757,7 +778,7 @@ export class HordeRenderer{
     if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image,a.tint);}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
-    const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines);
+    const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines,this.nearestPlayer(a.x,a.y));
     const tint=shown?undefined:a.accent;
     if(tint!==a.tint){a.tint=tint;if(!flashing){a.litFlip=a.flip;sunlit(a.image,tint);}}
     if(!shown&&outlines){
@@ -956,7 +977,8 @@ export class HordeRenderer{
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
     if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
-    const shadow=(a.kind==='chest'?34:18)*scale*(1+y/60)*body;
+    // The D-051 crate (its sheet) is 3× the old chest (rules/crate-size.ts), and so is its shadow.
+    const shadow=(a.kind==='chest'?a.arsenal?CRATE_SHADOW_PX:34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor)=>{
@@ -983,11 +1005,13 @@ export class HordeRenderer{
     // layer (never under a critter), the zone part under the danger edge and what is in the air over it.
     const css=this.css(),f=this.decorFrame;
     f.u=u;f.ticksLeft=t.fireTick-this.nowTick;f.now=this.now;f.reduced=this.reduced;f.phase=t.phase;f.css=css;
-    const ops=planDecor(t,f,this.projectTo,this.decor);
+    planDecor(t,f,this.projectTo,this.decor);
     // Outline and a light wash go on the top layer so the zone stays readable through the horde, numbers and pops.
     // Line widths follow the UI scale (≥ 1): under ~0.55 zoom (the old whole-island view) a fixed 8px world line got ~2px.
     // The stroke is drawn inset by half its width so its outer edge sits on the real zone, never outside it (D-015).
     n=this.outline(t,1);
+    // The "!" in the middle (accessibility: danger by shape, not only by color), in the air over the kind's drawing.
+    const ops=planAlert(t,f,this.pts,n,this.projectTo,this.decor);
     const top=this.top,w=this.ui;
     top.fillStyle(fill,.08+.1*u).fillPoints(this.pts,true,true,n);
     // Three hard bands on the zone's edge (Laranja Cone = danger only): Breu outside, Papel, Cone core. Breu holds on

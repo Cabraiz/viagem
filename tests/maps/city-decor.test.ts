@@ -14,7 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodeCityAsset,encodeCityAsset,cityAssetToData,type CityAsset,type CityDecor} from '../../src/maps/city-asset.ts';
-import {DECOR_REFUSED,LINK,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
+import {BIG_ROCKS,DECOR_REFUSED,LINK,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
 import {KEEP,undecorate} from '../../scripts/cenario-cidade.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint} from '../../src/maps/build-sites.ts';
 import {CityTerrain} from '../../src/maps/city/terrain.ts';
@@ -59,7 +59,12 @@ test('every piece is a delivered id inside the map; no two pieces share a cell',
 test('lines on their block cells with the links of their neighbours; lots on unwalkable cells; sidewalk pieces on walkable cells',()=>{
   const lineKind=(id:string)=>id.startsWith('penhasco')?'cliff':'wall';
   for(const d of asset.decor){
-    if(isLine(d.id)){
+    if(d.id.startsWith('penhasco3-')){
+      // The big cliff pieces (rochas-grandes): a 2×2 massif or a 2×1 wall, every cell of them a cliff cell.
+      const bloco=BIG_ROCKS.bloco.includes(d.id);
+      assert.ok(bloco?d.w===2&&d.h===2:d.id===BIG_ROCKS.reto&&d.w*d.h===2,`${d.id} ${d.w}×${d.h}`);
+      for(const [c,r] of cells(d))assert.equal(kindAt.get(r*W+c),'cliff',`${d.id} at ${c},${r}`);
+    }else if(isLine(d.id)){
       const k=lineKind(d.id),same=(c:number,r:number)=>kindAt.get(r*W+c)===k;
       assert.equal(kindAt.get(d.r*W+d.c),k,`${d.id} at ${d.c},${d.r}`);
       const links=(same(d.c,d.r-1)?LINK.N:0)|(same(d.c+1,d.r)?LINK.E:0)|(same(d.c,d.r+1)?LINK.S:0)|(same(d.c-1,d.r)?LINK.W:0);
@@ -122,4 +127,22 @@ test('undecorate gives back the grid without the places: they only took cells, a
   }
   const open=asset.decor.filter(d=>isLugar(d.id)).flatMap(cells).filter(([c,r])=>!kindAt.has(r*W+c)).length;
   assert.equal(changed,open*S*S);
+});
+
+test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells covered, nothing else moved',()=>{
+  // A 3×3 cliff square, a 3-cell line and a wall piece: one 2×2, then 2×1s, the cell left keeps its piece.
+  const one=(id:string,c:number,r:number):CityDecor=>({id,c,r,w:1,h:1,rot:0,links:0});
+  const square=[0,1,2].flatMap(r=>[0,1,2].map(c=>one('penhasco2-reto',c,r)));
+  const line=[5,6,7].map(c=>one('penhasco2-reto',c,9)),wall=one('grade-reto-intacto',4,4);
+  const out=bigCliffRocks([...square,...line,wall],BIG_ROCKS,1);
+  const big=out.filter(d=>d.id.startsWith('penhasco3-'));
+  assert.deepEqual(big.filter(d=>d.w===2&&d.h===2).map(d=>[d.c,d.r]),[[0,0]]);
+  assert.ok(out.includes(wall));
+  const covered=(list:readonly CityDecor[])=>new Set(list.filter(d=>d.id.startsWith('penhasco')).flatMap(d=>cells(d).map(([c,r])=>`${c},${r}`)));
+  assert.deepEqual([...covered(out)].sort(),[...covered([...square,...line])].sort());
+  assert.equal(out.length,1+2+1+1+1+1,'in the square one 2×2, two 2×1 and a 1×1 left; on the line a 2×1 and a 1×1; the wall');
+  // On the asset: most cliff cells are under a big piece (the rows of 1-cell walls the user saw are gone).
+  const cliff=asset.decor.filter(d=>d.id.startsWith('penhasco')),bigCells=cliff.filter(d=>d.id.startsWith('penhasco3-')).reduce((n,d)=>n+d.w*d.h,0);
+  const all=cliff.reduce((n,d)=>n+d.w*d.h,0);
+  assert.ok(bigCells/all>.9,`${bigCells} of ${all} cliff cells under a big piece`);
 });

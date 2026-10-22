@@ -1,7 +1,9 @@
 import './explore.css';
+import {putData,putHidden,putText} from './hud/dom-put.ts';
+import {firstShown,shownHolds,stickyQuery} from './hud/dom-find.ts';
 import type { HeroClass } from '../rules/index.ts';
 import {buildPlanFor,landmarks} from '../maps/index.ts';
-import type { CoopClient } from './net/client.ts';
+import {LINK_LOST,type CoopClient} from './net/client.ts';
 import './coop.css';
 import './fun/fun.css';
 import {EmoteBar} from './fun/emotes.ts';
@@ -21,11 +23,14 @@ import {mountAudioControls} from './audio/controls.ts';
 import {auditBoxes,auditBoxesFromDom,besideArea,measureZones,type Rect} from './hud/zones.ts';
 import {besideFrom,freeAround} from './framing.ts';
 import {besideSelector,mapInfoText} from './lobby.ts';
+import {formatRoomCode,shareLink} from './ui/invite.ts';
 import {TOTAL_ROUNDS} from './hud/model.ts';
 import type {MapRunResult} from './hud/result.ts';
 import {DamageTally} from './net/run-feed.ts';
 import {ROOM_CLOSING_NOTICE,KICKED_TITLE} from '../protocol/index.ts';
-import {showFatal,showSlowLink,SLOW_LINK_MS} from './net-fatal.ts';
+import {showFatal,showSlowLink,SLOW_LINK_MS,BACK_TO_ROOM} from './net-fatal.ts';
+import './hud/menu.css';
+import {BACK_ONLINE_ROW_MS,BackOnlineWatch,createGameMenu,menuBack,menuFocus,type GameMenu} from './hud/menu.ts';
 import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
@@ -39,8 +44,11 @@ import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullStat
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace} from './hud/kit-place/model.ts';
 import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
+import {TralhaPick} from './hud/tralha/model.ts';
+import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
-import {loadEconomy,saveEconomy,toggleEconomy,autoEconomy,type EconomySettings,type KeyValue} from './economy.ts';
+import type {KeyValue} from './economy.ts';
+import {QUALITY_LABEL,QUALITY_LEVELS,chooseQuality,detectQuality,deviceHints,loadQuality,qualityFromUrl,qualityProfile,saveQuality,stepDown,undoQuality,type QualityLevel,type QualitySettings} from './quality.ts';
 import {pageZoomEvent,saveZoom,startZoom} from './camera-zoom.ts';
 import {chunkFailed,leftMatch,matchEnded,setMatchSlot,UPDATE_ROW_MS,type MatchSlot} from './ui/update-toast.ts';
 import {RESUMED_ROW_MS,resumedOnce} from './ui/resumed-row.ts';
@@ -48,10 +56,8 @@ import {LayoutCache,viewportSize} from './hud/box-cache.ts';
 
 /** The shell's data attributes that change every frame (the hero's spot, the tick) are written at most this often (ms). */
 const SHELL_DATA_MS=250;
-/** Writes a data attribute only when its value changed (a write, even of the same value, invalidates the subtree's style). */
-const setData=(el:HTMLElement,key:string,value:string)=>{if(el.dataset[key]!==value)el.dataset[key]=value;};
-/** The same for a text node: a textContent write replaces the children even when the text is the same. */
-const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
+/** ?perf=1: the shell also carries the attributes only measurements read (data-tick, data-enemies), and the room's debug line. */
+const SHELL_DEBUG=perfEnabled(globalThis.location?.search??'');
 /** Economy toast (VGM-048): how long the "ligado sozinho" line stays before it leaves on its own. */
 const ECONOMY_TOAST_MS=9000;
 /** How long the "Gira fora da briga" answer to a tap on the locked camera stays (balloon or slot row). */
@@ -79,17 +85,22 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   shell.innerHTML=`<div class="explore-layout">
     <div class="explore-camera" role="group" aria-label="Girar câmera"><button data-turn="-1" aria-label="Girar câmera para a esquerda" disabled>${icon('girar',{size:32,className:'ic-espelho'})}</button><span class="explore-view">${compass(0,{size:32})}<span class="sr-only" aria-live="polite">Vista 1 de 4</span></span><i class="explore-lock" aria-hidden="true">${icon('cadeado',{size:32})}</i><button data-turn="1" aria-label="Girar câmera para a direita" disabled>${icon('girar',{size:32})}</button><span class="explore-camera-hint" role="status" hidden>${icon('cadeado',{size:24})}<span>Gira fora da briga</span></span></div>
     <button class="explore-config" aria-label="Configurações do jogo" aria-haspopup="dialog">${icon('config',{size:32})}</button>
-    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>EXPLORAÇÃO SOLO · <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
+    <header class="explore-top"><div class="explore-title"><img alt=""/><div><h2>Ilha do Começo</h2><p>Explorando sozinho como <span id="explorer-name"></span></p></div></div><button class="explore-exit">${icon('voltar')} Classes</button></header>
     <section class="explore-stage" aria-label="Mapa isométrico da Ilha do Começo">
       <div class="explore-canvas" role="application" tabindex="0" aria-label="Mapa explorável. Use as setas ou WASD, toque no chão ou arraste o direcional."></div>
-      <div class="explore-quest"><small>PRIMEIROS PASSOS</small><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
+      <div class="explore-quest"><strong>Conheça a ilha</strong><span id="explore-progress">0 de 3 lugares descobertos</span></div>
       <div class="explore-map" aria-hidden="true"><svg viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="39" ry="39" fill="#c8d795"/><path d="M50 68 35 47 69 47 50 24 35 47" fill="none" stroke="#f7e5b2" stroke-width="5"/><g fill="#a184b4"><circle cx="35" cy="47" r="3"/><circle cx="69" cy="47" r="3"/><circle cx="50" cy="24" r="3"/></g><circle id="explore-dot" cx="50" cy="68" r="4" fill="#fff7d3" stroke="#7e638f" stroke-width="2"/></svg></div>
       <div class="explore-notice" role="status">${INPUT_TEXTS.touch.soloNotice}</div>
-      <div class="explore-loading" role="status">Preparando um lugar para sua história…</div>
+      <div class="explore-loading" role="status">Arrumando a ilha pra visita…</div>
     </section>
-    <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span><br>Multiplayer e combate chegam depois.</p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
+    <footer class="explore-controls"><div class="explore-movement">${STICK_HTML}${CONTROLS_HINT_HTML}<small>Arraste para andar</small></div><div class="explore-help"><strong>Sem pressa. É só o começo.</strong><p><span class="explore-help-walk">${INPUT_TEXTS.touch.soloHelp}</span></p></div><div class="explore-actions"><button id="explore-trail">Seguir trilha</button><button class="explore-pause" aria-pressed="false">Pausar</button></div></footer>
   </div>`;
   const $=<T extends HTMLElement>(selector:string)=>shell.querySelector<T>(selector)!;
+  /** The position callback's per-frame lookups (Q6): the template's elements found once, the HUD's windows through live
+   * class lists instead of `:not([hidden])` walks over the whole page every frame (hud/dom-find.ts). */
+  const find=stickyQuery(shell);
+  const trayLists=[document.getElementsByClassName('rh-forge'),document.getElementsByClassName('rh-cida')] as HTMLCollectionOf<HTMLElement>[];
+  const obraList=document.getElementsByClassName('rh-obra') as HTMLCollectionOf<HTMLElement>;
   /** The class skill button (E7-skill-hud-wiring): one tap, one cast; cooldown and "sem alvo" on the button. */
   let skill:SkillButton|undefined;
   /** D-051 manual combat: the same #coop-attack as the attack button (press, hold, drag, reticle); idle otherwise. */
@@ -111,6 +122,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
   /** Kits de torre (torre-pela-caixa): a tap on the kit's slot puts its tower on the ground (ghost, ✓/✕). */
   let kitHud:KitPlaceHud|undefined;const kitPlace=new KitPlace();
+  let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
   /** Playtest metrics (UX-playtest-metricas): only with ?dev=1, loaded on demand; every use is `ux?.`. */
@@ -201,6 +213,15 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onTurn:()=>kitPlace.turn(),
         onAim:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p)kitPlace.point(p,cell());},
         canvas:()=>controller?.game.canvas});
+      // barricada-construir part 2: tap a barricada de tralha → COLETAR / DESTRUIR; the mouse over it → outline + hand.
+      const squares=()=>hud?.view?.structures??[];
+      tralhaHud=new TralhaHud(host.el,{
+        onTap:(x,y)=>{const p=controller?.scene.worldAt(x,y);return !!p&&tralhaPick.tap(squares(),p,cell());},
+        onHover:(x,y)=>{const p=x===undefined||y===undefined?undefined:controller?.scene.worldAt(x,y);return tralhaPick.move(squares(),p,cell());},
+        onAct:kind=>{const r=tralhaPick.act(kind,net,hud?.view?.tick??0);if(r==='offline')obraSay('Agora não dá');},
+        canvas:()=>controller?.game.canvas,
+        busy:()=>fortBuild.open||kitPlace.active});
+      net.onTralha=answer=>{const text=tralhaPick.answer(answer);if(text)obraSay(text);};
     }
     // KKKK face on the team strip (rostos-kkkk): the room relays each emote, the sender's own included.
     net.onEmote=note=>hud?.emote(note.player,note.id);
@@ -233,7 +254,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onStatus=m=>{$('#coop-network').textContent=m;};
     net.onNotice=message=>{if(message===ROOM_CLOSING_NOTICE&&resultShown!==undefined)hud?.rematchRefused(REMATCH_REFUSED);};
     $('#coop-reconnect').addEventListener('click',()=>net.reconnect());
-    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(`${location.origin}/?room=${net.code}${inviteQuery(location.search)}#personagem`);$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${net.code}`;}});
+    $('#coop-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(shareLink(location.origin,net.code,inviteQuery(location.search)));$('#coop-network').textContent='Convite copiado!';}catch{$('#coop-network').textContent=`Compartilhe o código ${formatRoomCode(net.code)}`;}});
     // Pointer down answers at once (no wait for the click); a keyboard click (detail 0) is the debug fallback (D-009).
     const attack=$<HTMLButtonElement>('#coop-attack');
     const tapSkill=castSkill=()=>{if(skill?.attackMode)return;pause(false);skill?.tap(()=>net.cast(),performance.now());};
@@ -265,6 +286,18 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   settingsContent.prepend(cameraSettings);
   const cameraNote=cameraSettings.querySelector<HTMLElement>('.explore-settings-camera-note')!;
   shell.append(settings);
+  // The match menu (NEW-20261009-UX-menu-e-conexao): in a room the gear opens Continuar / Configurações / Copiar convite /
+  // Sair da partida (with its confirmation) over today's settings, which become the menu's "Configurações" view. The room
+  // code and the connection line head the menu; "Classes" leaves the dialog (leaving the room asks first now).
+  let menu:GameMenu|undefined;
+  if(net){
+    menu=createGameMenu(settings,settings.querySelector<HTMLElement>('.explore-settings-heading h2')!,settingsContent as HTMLElement,{
+      onResume:()=>closeSettings(),onLeave:()=>close(),
+      onView:()=>{if(settings.open)menuFocus(menu!).focus();}});
+    const help=settings.querySelector('.explore-help');
+    menu.status.append($('#coop-code'),$('#coop-network'));menu.invite.append($('#coop-copy'));help?.remove();
+    $('.explore-exit').hidden=true;
+  }
   $('#explorer-name').textContent=name;
   // The settings' title picture (not the first <img> of the shell: with the imported art the view buttons' stickers are
   // <img> too, and the left one used to wear the hero's portrait, hud-mobile-minimo).
@@ -315,14 +348,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
     setMusicScene('menu');
   };
   const pause=(value:boolean)=>{paused=value;if(value){reset();attackBtn?.clear();}controller?.scene.setPaused(value);stage.classList.toggle('explore-paused',value);$('.explore-pause').textContent=value?'Continuar':net?'Pausar controles':'Pausar';$('.explore-pause').setAttribute('aria-pressed',String(value));};
-  const openSettings=()=>{pause(true);shell.classList.add('settings-open');settings.showModal();$('.explore-settings-close').focus();};
+  const openSettings=()=>{pause(true);shell.classList.add('settings-open');menu?.show('menu');settings.showModal();(menu?menuFocus(menu):$('.explore-settings-close')).focus();};
   const closeSettings=()=>{settings.close();shell.classList.remove('settings-open');pause(false);$('.explore-canvas').focus();};
   shell.dataset.cameraView='0';
   // The view turns only outside a wave (UX-camera-segue 4): the buttons go grey during it and come back in the intermission.
@@ -344,7 +377,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     net.onResumed=news=>{skill?.reset();showResumed(news);};if(net.resumedNotice)skill?.reset();showResumed(net.resumedNotice);
   }
   const syncTurn=()=>{
-    const locked=!!controller?.scene.rotationLocked();shell.dataset.cameraLocked=String(locked);
+    const locked=!!controller?.scene.rotationLocked();putData(shell,'cameraLocked',String(locked));
     if(cameraGroup.dataset.locked!==String(locked))cameraGroup.dataset.locked=String(locked);
     for(const button of shell.querySelectorAll<HTMLButtonElement>('[data-turn]')){
       if(button.disabled!==!sceneReady)button.disabled=!sceneReady;
@@ -357,6 +390,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // Portrait (pacote-bugs-ux design review): the top band has no free row under the camera buttons (the XP bar is 20 px
   // below), so the answer is a row of the announcement slot, "[cadeado] Gira fora da briga", ahead of the coach's hint;
   // the real lock keeps its beat in view. Landscape keeps the balloon under the buttons (nothing there to cover).
+  /** The "Voltou!" row once the link is back after a drop (hud/menu.ts backOnline). */
+  const backOnline=new BackOnlineWatch(),backRow=document.createElement('div');backRow.className='economy-toast back-online-toast';backRow.setAttribute('role','status');backRow.hidden=true;
+  backRow.innerHTML='<p class="economy-toast-text"><strong></strong></p>';
   const cameraRow=document.createElement('div');cameraRow.className='explore-camera-row';cameraRow.setAttribute('role','status');cameraRow.hidden=true;
   cameraRow.innerHTML=`${icon('cadeado',{size:24})}<span>Gira fora da briga</span>`;
   const portrait=typeof matchMedia==='function'?matchMedia('(min-height:501px)'):undefined;
@@ -378,7 +414,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   },{signal});
   $('.explore-config').addEventListener('click',openSettings,{signal});
   $('.explore-settings-close').addEventListener('click',closeSettings,{signal});
-  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();closeSettings();},{signal});
+  // Esc: from the menu's settings or its exit question back to the menu, from the menu (or solo's settings) to the game.
+  settings.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();const back=menu&&menuBack(menu.view);if(back)menu!.show(back);else closeSettings();},{signal});
   $('.explore-exit').addEventListener('click',close,{signal});
   shell.addEventListener('cancel',e=>{e.preventDefault();openSettings();},{signal});
   // Desktop controls (NEW-20261013-ORQ-controles-desktop, D-044): data-input="mouse" hides the joystick in every phase
@@ -415,6 +452,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // mouse button (no key stays stuck) and plays on when the focus comes back.
   const lost=()=>focusLost(inputWatch.kind,{pause:()=>pause(true),release:()=>{reset();controller?.scene.releaseInput();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)lost();},{signal});
+  // Back from the background: a drop ending soon after counts for the "Voltou!" row (hud/menu.ts BackOnlineWatch).
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)backOnline.wake(performance.now());},{signal});
   window.addEventListener('blur',lost,{signal});
   // D-051: a held attack (button or Space) never stays held without the focus, phone or desktop.
   document.addEventListener('visibilitychange',()=>{if(document.hidden)attackBtn?.clear();},{signal});
@@ -432,7 +471,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(hotkey.kind==='turn'){shell.querySelector<HTMLButtonElement>(`[data-turn="${hotkey.turn}"]:not(:disabled)`)?.click();return;}
     if(hotkey.kind==='skill'){
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill.
-      if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true);return;}
+      if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
     if(emotes&&!emotes.root.hidden)emotes.setOpen(!emotes.open);
@@ -441,7 +480,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   // focused skill button casts once (the keydown above), not twice.
   document.addEventListener('keyup',event=>{if(!closed&&hotkeyOf(event,settings.open)?.kind==='skill')event.preventDefault();},{signal});
   // D-051: letting go of Space ends the held attack (any keyup of it, even with the settings open or a modifier down).
-  document.addEventListener('keyup',event=>{if(!closed&&event.code==='Space')attackBtn?.key(false);},{signal});
+  document.addEventListener('keyup',event=>{if(!closed&&event.code==='Space')attackBtn?.key(false,'espaco');},{signal});
   $('.explore-pause').addEventListener('click',closeSettings,{signal});
   // Consent (VGM-053B, D7): whether this player's embarrassing moment may show on the result, for everyone in the room.
   if(net){
@@ -450,26 +489,37 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     sync();shame.addEventListener('click',()=>{net.setShamePref(!net.allowsShame);sync();},{signal});
     settingsContent.append(shame);
   }
-  // Economy mode (VGM-048): 30 fps and fewer effects; persisted on this phone, turned on by itself when the game chokes.
-  let economy:EconomySettings=loadEconomy(economyStore());
+  // Quality levels (Q3, NEW-20261021-E6-q3-niveis-qualidade): Leve / Normal / Alta in the gear, saved on this device. The device
+  // picks at first; the FPS watch steps it down once per match when the first 10 s of combat choke. `?qualidade=` (lab) forces one.
+  const forced=qualityFromUrl(location.search);
+  let quality:QualitySettings=loadQuality(economyStore(),detectQuality(deviceHints(globalThis.navigator as {deviceMemory?:number;hardwareConcurrency?:number}|undefined,finePointer())));
+  if(forced)quality={level:forced,chosen:true,auto:false,declined:quality.declined};
+  /** The level before the watch's step: the toast's "Desfazer" goes back to it. */
+  let stepFrom:QualityLevel|undefined;
   let zoomSave:ReturnType<typeof setTimeout>|undefined;
-  const economyButton=document.createElement('button');economyButton.type='button';economyButton.className='explore-economy';
-  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Modo econômico</span><span class="explore-economy-tag"></span></span>'
-    +'<span class="explore-economy-note">Menos efeitos, jogo mais leve: poupa bateria.</span>';
-  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!;
+  const QUALITY_NOTE:Record<QualityLevel,string>={leve:'Cenário parado e menos efeito: o celular agradece, a bateria também.',normal:'O jogo inteiro, sem fritar a mão.',alta:'Tudo no talo. Coisa de PC.'};
+  const economyButton=document.createElement('div');economyButton.className='explore-economy explore-quality';economyButton.setAttribute('role','group');economyButton.setAttribute('aria-label','Qualidade');
+  economyButton.innerHTML='<span class="explore-economy-head"><span class="explore-economy-title">Qualidade</span><span class="explore-economy-tag"></span></span>'
+    +`<span class="explore-quality-levels">${QUALITY_LEVELS.map(l=>`<button type="button" data-level="${l}" aria-pressed="false">${QUALITY_LABEL[l]}</button>`).join('')}</span>`
+    +'<span class="explore-economy-note"></span>';
+  const economyTag=economyButton.querySelector<HTMLElement>('.explore-economy-tag')!,qualityNote=economyButton.querySelector<HTMLElement>('.explore-economy-note')!;
   const economyToast=document.createElement('div');economyToast.className='economy-toast';economyToast.setAttribute('role','status');economyToast.hidden=true;
-  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Modo econômico ligado</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desligar</button>`;
+  economyToast.innerHTML=`<span class="economy-toast-icon">${icon('suor')}</span><p class="economy-toast-text"><strong>Qualidade baixou pra Leve</strong><span>Tava engasgando</span></p><button type="button" class="economy-toast-off">Desfazer</button>`;
   // Coop: the HUD's announcement slot takes it in line (one row at a time, off the hero). Solo has no HUD and no watch.
   const hideEconomyToast=()=>{if(hud)hud.dropRow(economyToast);else economyToast.hidden=true;if(economyTimer)clearTimeout(economyTimer);economyTimer=undefined;};
-  const syncEconomy=()=>{
-    economyButton.setAttribute('aria-pressed',String(economy.on));
-    economyTag.textContent=economy.on?'Ligado':'Desligado';economyTag.dataset.on=String(economy.on);
-    shell.dataset.economy=String(economy.on);
+  const syncQuality=()=>{
+    for(const b of economyButton.querySelectorAll<HTMLButtonElement>('[data-level]'))b.setAttribute('aria-pressed',String(b.dataset.level===quality.level));
+    economyTag.textContent=quality.chosen?'Sua escolha':'Automática';economyTag.dataset.on=String(!quality.chosen);
+    qualityNote.textContent=QUALITY_NOTE[quality.level];
+    shell.dataset.quality=quality.level;shell.dataset.economy=String(qualityProfile(quality.level).economy);
   };
-  const setEconomy=(next:EconomySettings)=>{economy=next;saveEconomy(economyStore(),economy);controller?.scene.setEconomy(economy.on);syncEconomy();};
-  syncEconomy();
-  economyButton.addEventListener('click',()=>{setEconomy(toggleEconomy(economy,!economy.on));hideEconomyToast();},{signal});
-  economyToast.querySelector('button')!.addEventListener('click',event=>{event.stopPropagation();setEconomy(toggleEconomy(economy,false));hideEconomyToast();},{signal});
+  const setQuality=(next:QualitySettings)=>{quality=next;saveQuality(economyStore(),quality);controller?.scene.setQuality(quality.level);syncQuality();};
+  syncQuality();
+  economyButton.addEventListener('click',event=>{
+    const level=(event.target as HTMLElement).closest<HTMLElement>('[data-level]')?.dataset.level as QualityLevel|undefined;
+    if(!level)return;setQuality(chooseQuality(quality,level));hideEconomyToast();
+  },{signal});
+  economyToast.querySelector('button')!.addEventListener('click',event=>{event.stopPropagation();setQuality(undoQuality(quality,stepFrom??quality.level));hideEconomyToast();},{signal});
   // The toast sits over the map: its taps never reach the game (like the HUD panels).
   for(const type of ['pointerdown','touchstart'])economyToast.addEventListener(type,event=>event.stopPropagation(),{signal});
   // Near the top of the settings (the panel scrolls on a phone): right under the title and the way back.
@@ -481,8 +531,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const unmountSound=mountAudioControls(sound,getAudio());
   signal.addEventListener('abort',unmountSound,{once:true});
   const slow=()=>{
-    const next=autoEconomy(economy);if(!next)return;
-    setEconomy(next);
+    const next=stepDown(quality);if(!next)return;
+    stepFrom=quality.level;setQuality(next);
+    economyToast.querySelector('strong')!.textContent=`Qualidade baixou pra ${QUALITY_LABEL[next.level]}`;
     if(hud){hud.queueRow(economyToast,ECONOMY_TOAST_MS);return;}
     economyToast.hidden=false;if(economyTimer)clearTimeout(economyTimer);economyTimer=setTimeout(hideEconomyToast,ECONOMY_TOAST_MS);
   };
@@ -516,43 +567,45 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
+      // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
+      attackHold:down=>{if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
-      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');setData(canvas,'spriteAnimation',animation);setData(canvas,'spriteFrame',frame);setData(canvas,'spriteSheets',String(sheets));},
+      visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
         // The shell's data attributes (tests, scripts, CSS) are written only when they change, and the ones that change
         // every frame (the hero's spot, the tick) at most every SHELL_DATA_MS: each write invalidates the style of the
         // whole shell, and the HUD reads layout right after (BUG-20261014-ORQ-engasgo-andando-celular).
         const now=performance.now(),slow=now-shellDataAt>=SHELL_DATA_MS;
-        if(slow){shellDataAt=now;setData(shell,'playerX',p.x.toFixed(3));setData(shell,'playerY',p.y.toFixed(3));}
-        if(!net){$('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));$('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
+        if(slow){shellDataAt=now;putData(shell,'playerX',p.x.toFixed(3));putData(shell,'playerY',p.y.toFixed(3));}
+        if(!net){find('#explore-dot').setAttribute('cx',String(50+(p.x-12)*3.8));find('#explore-dot').setAttribute('cy',String(50+(p.y-12)*3.8));}
         if(net){
           // The room may switch maps in the lobby (the scene swaps the world without calling terrain again).
           if(net.map!==mapInfoMap||net.terrain!==mapInfoTerrain)showMapInfo();
-          const self=net.players.get(net.id);setData(shell,'playerId',net.id);setData(shell,'connected',String(net.connected));if(slow)setData(shell,'tick',String(net.tick));setData(shell,'players',String(net.players.size));
-          const health=$('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
+          const self=net.players.get(net.id);putData(shell,'playerId',net.id);putData(shell,'connected',String(net.connected));if(slow&&SHELL_DEBUG)putData(shell,'tick',String(net.tick));putData(shell,'players',String(net.players.size));
+          const health=find('#coop-health'),healthText=`Sua vida: ${self?.hp??0}`;if(health.textContent!==healthText)health.textContent=healthText;
           // Long reconnection (UX onda 5): after SLOW_LINK_MS a second line and "Tentar de novo"; the stick dims while offline.
-          setData(shell,'offline',String(!net.connected&&!net.fatal));
-          showSlowLink($('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
+          putData(shell,'offline',String(!net.connected&&!net.fatal));
+          showSlowLink(find('.explore-layout'),!net.fatal&&net.offlineMs()>SLOW_LINK_MS,()=>net.retryNow());
           // Kicked (D-025): the room's text and a way back to the start; reloading would knock on the same door.
-          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal($('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
+          if(net.fatal&&fatalShown!==net.fatal){fatalShown=net.fatal;showFatal(find('.explore-layout'),net.fatal,net.kicked?{title:KICKED_TITLE,action:{label:'Voltar pro início',run:close}}:net.fatal===LINK_LOST?{action:{label:BACK_TO_ROOM,run:()=>location.assign(`/?room=${net.code}${inviteQuery(location.search)}#personagem`)}}:{});shell.dataset.fatal='true';if(net.kicked)shell.dataset.kicked='true';
             // Terminal here (another tab took the character, VGM-047): no stale offer or HUD left tappable behind the window.
             if(hud)hud.el.hidden=true;}
           // D-051: the room's combat (its welcome) picks what the action slot does; the reticle follows the button.
           const manual=net.combat==='manual';
           if(shell.dataset.combat!==net.combat){
             shell.dataset.combat=net.combat;skill?.setCombat(net.combat);attackBtn?.setOn(manual);
-            const noticeEl=$('.explore-notice'),kind=inputWatch.kind;if(noticeEl.textContent===coopNotice(kind,!manual))noticeEl.textContent=coopNotice(kind,manual);
+            const noticeEl=find('.explore-notice'),kind=inputWatch.kind;if(noticeEl.textContent===coopNotice(kind,!manual))noticeEl.textContent=coopNotice(kind,manual);
           }
           // D-050: the level-up pause zeroes the attack like the rest of the input (a press there is not kept for later).
           if(net.run?.pause)attackBtn?.clear();
           // D-052: pushing or pulling the car the hands are busy (net.handsBusy): the button dims and a held press lets go.
-          const busy=manual&&net.handsBusy,attackEl=$<HTMLButtonElement>('#coop-attack');
+          const busy=manual&&net.handsBusy,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
           const run=net.run,member=run?.members.find(p=>p.id===net.id);
           if(run){
             const previous=shell.dataset.runPhase;
-            setData(shell,'runPhase',run.phase);setData(shell,'runRound',String(run.round));
+            putData(shell,'runPhase',run.phase);putData(shell,'runRound',String(run.round));
             // The version watch reads the phase from the shell (update-toast.ts inMatchOf): out of countdown/combat, an
             // update that waited reloads now; any other change moves the notice to where it shows (HUD slot or top).
             if(previous!==run.phase){if(leftMatch(previous,run.phase))matchEnded();else if(updateSlot)setMatchSlot(updateSlot);}
@@ -563,7 +616,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               if(run.phase!=='combat'&&run.phase!=='result')hud.el.hidden=true;
               if(run.phase==='result'&&resultShown!==run.round){resultShown=run.round;hud.showResult(runResult(run.outcome==='victory',run.elapsed));}
               else if(run.phase!=='result'&&resultShown!==undefined){resultShown=undefined;hud.hideResult();damage.reset();skill?.reset();}
-              setData(shell,'hudResult',String(resultShown!==undefined));
+              putData(shell,'hudResult',String(resultShown!==undefined));
               // After showResult: the coach's end-of-run rule already ran, the metrics read what it learned.
               ux?.tick();
               // Owner, bots and who is still here on the result screen (D-025): crown, robot, "Arrumar turma".
@@ -572,8 +625,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 hud.setRoster({owner:run.owner,canManage:net.isOwner,members:ids,bots:run.members.filter(m=>m.bot).map(m=>m.id),seatsLeft:Math.max(0,6-ids.length),
                   extra:[...net.players.values()].filter(p=>ids.includes(p.id)).map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.hp,online:p.online,spectator:false,weapons:[],passives:[],
                     ...(run.members.find(m=>m.id===p.id)?.bot?{bot:true}:{})}))});
+                // The collective rematch (UX-resultado-revanche): an older room sends no votes and the first tap starts it.
+                hud.setRematch(run.rematchVotes&&{votes:run.rematchVotes,voters:run.members.filter(m=>m.online&&!m.bot).map(m=>m.id),
+                  ...(run.rematchLeft!==undefined?{leftTicks:run.rematchLeft}:{})});
               }
               hud.setNetwork(net.showReconnecting()?RECONNECTING:undefined);
+              // Back after a drop (NEW-20261009-UX-menu-e-conexao): "Voltou! O round tá no 4", a row of the announcement slot.
+              const back=backOnline.frame(net.connected,now,run);
+              if(back){backRow.querySelector('strong')!.textContent=back;hud.queueRow(backRow,BACK_ONLINE_ROW_MS);}
               hud.avoidHero(controller?.scene.heroScreenRect());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
               const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
@@ -630,6 +689,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   scene.setBuildGhost(kitPlace.ghost({cell:buildPlanFor(net.terrain).cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
               }
+              // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
+              if(tralhaHud&&controller){
+                const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id),structures=view?.structures??[];
+                const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
+                  &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0&&!fortBuild.open&&!kitPlace.active;
+                if(!available)tralhaPick.reset();else tralhaPick.sync(structures);
+                const sel=tralhaPick.selected===undefined?undefined:structures.find(s=>s.id===tralhaPick.selected),tick=view?.tick??0;
+                const progress=tralhaPick.progress(tick);
+                tralhaHud.update({available,...(sel?{at:scene.locate(sel).screen}:{}),...(progress!==undefined?{hero:scene.locate(net.predicted).screen,progress}:{})});
+                scene.setTralhaOutline(available?tralhaPick.outline(structures,tick):undefined);
+              }
               // The useful area goes to the scene for the follow camera (D-019, UX-camera-segue), only when the layout changed.
               const zones=controller?hud.zonesIfChanged():undefined;
               // Out of the round the waiting panel sits in the middle: the hero goes to the free band around it.
@@ -645,11 +715,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               // status rows down to it (framing.ts framesBeside, zones.ts besideArea; BUG-20261013-ORQ-camera-centro-heroi,
               // BUG-20261014-ORQ-forja-cobre-heroi-retrato).
               if(controller){
-                const scene=controller.scene,el=trayEl=document.querySelector<HTMLElement>('.rh-forge:not([hidden]),.rh-cida:not([hidden])');
+                const scene=controller.scene,el=trayEl=firstShown(trayLists);
                 // Its box is read after the paint (box-cache.ts), not here after the frame's writes (F3); for a frame
                 // after it opens there is none yet.
                 const box=el?trayBox.get(now,el):undefined,rect=box?.el===el?box.rect:undefined,hero=scene.heroScreenRect();
-                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:!!document.querySelector('.rh-obra:not([hidden]) .rh-obra-janela'),
+                scene.besideWindow=besideFrom({viewport:{width:screen.width,height:screen.height},waiting:!!wait,obra:shownHolds(obraList,'rh-obra-janela'),
                   tray:el&&rect?{kind:el.classList.contains('rh-cida')?'cida':'forja',rect}:undefined,hero:hero&&{width:hero.width,height:hero.height}});
                 scene.frameArea=rect&&(scene.besideWindow==='forja'||scene.besideWindow==='cida')?besideArea(z,rect):undefined;
               }
@@ -666,19 +736,21 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
             const out=controls.stick==='dimmed';
             if(shell.dataset.out!==String(out)){shell.dataset.out=String(out);if(out)reset();}
             if(applyControls(shell,controls))reset();
-            {const attack=$<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
+            {const attack=find<HTMLButtonElement>('#coop-attack'),off=controls.skill!=='live';if(attack.disabled!==off)attack.disabled=off;}
             if(controls.skill!=='live')attackBtn?.clear();
           }
-          setText($('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
+          putText(find('#coop-objective'),net.victory?'O mapa é da turma!':self?.hp===0?'Recuperando o fôlego…':'Segurem a muralha');
           // The party's tags are rebuilt only when one of them reads differently (not 60 new spans a second).
           const partyLines=[...net.players.values()].map(player=>`${player.name}: ${player.hp} de vida${player.online?'':', reconectando'}`),party=partyLines.join('|');
-          if(party!==partyKey){partyKey=party;$('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
+          if(party!==partyKey){partyKey=party;find('.coop-party').replaceChildren(...partyLines.map(line=>{const tag=document.createElement('span');tag.textContent=line;return tag;}));}
           syncTurn();
-          // The tick moves every frame: the debug line follows at the shell attributes' pace.
-          if(slow)setText($('#coop-diagnostics'),`${[...net.players.values()].filter(p=>p.online).length}/6 online · ${net.rtt} ms · tick ${net.tick} · ${net.pending.length} comandos pendentes`);
+          // The tick moves every frame: the debug line follows at the shell attributes' pace, and only while it is read
+          // (its <details> open, or ?perf=1).
+          const diagnostics=find('#coop-diagnostics');
+          if(slow&&(SHELL_DEBUG||(diagnostics.parentElement as HTMLDetailsElement|null)?.open))putText(diagnostics,`${[...net.players.values()].filter(p=>p.online).length} de 6 na sala. A sala responde em ${net.rtt} ms.`);
         }
       },
-      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name} · ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
+      discovered:i=>{visited.add(i);$('#explore-progress').textContent=`${visited.size} de 3 lugares descobertos`;notice.textContent=`${landmarks[i].name}: ${landmarks[i].detail}`;if(visited.size===3)$('#explore-trail').innerHTML=`Ilha explorada ${icon('pronto')}`;},
       runView:view=>{
         damage.add(view,id=>net!.players.has(id));
         if(net)attackBtn?.lastHit.note(view.events,net.id,view.tick,id=>net.feed.enemies.has(id));
@@ -687,15 +759,17 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
         if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
           if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
-        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);hud.el.hidden=false;}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);putHidden(hud.el,false);}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.
         ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined,phase==='combat');
-        shell.dataset.offers=String(view.offers.length);shell.dataset.enemies=String(view.enemies.length);
+        putData(shell,'offers',String(view.offers.length));
+        // The enemy count changes all wave long: on the shell's root only for ?perf=1 (no test or script reads it).
+        if(SHELL_DEBUG)putData(shell,'enemies',String(view.enemies.length));
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
-      economy:economy.on,slow,
+      quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},
       ready:()=>{sceneReady=true;ux?.ready();syncTurn();$('.explore-loading').hidden=true;$('.explore-canvas').focus();if(updateSlot)setMatchSlot(updateSlot);},

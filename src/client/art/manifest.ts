@@ -18,6 +18,10 @@ export interface ArtFile {
   loop?:boolean;
   /** R06 movement sheets: the cycle length of the clip (walk 600 ms, attack 1000 ms). */
   durationMs?:number;revision?:number;movementHands?:string;
+  /** M16 movement sheets: the column (96 px cell) the body stands on, the pivot of the mirrored E/NE/SE (movement16Plan). */
+  pivotX?:number;
+  /** M16 run: per pose the ground it covers (figure heights) and the planted foot's travel (96 px cell); movement128.ts RunPhase. */
+  phase?:{d:number[];v:[number,number][]};
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
   /**
    * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn
@@ -48,7 +52,8 @@ let index:ArtIndex=EMPTY;
 
 /** Ids and keys come from file names: plain kebab-case (with `/` for nested ids); never `__proto__` and friends. */
 const SAFE_KEY=/^[a-z0-9][a-z0-9/_.:-]*$/;
-const MOVEMENT_KEY=/^(walk|attack)128-(S|SW|W|NW|N|NE|E|SE)$/;
+/** R06 (8 drawn directions) and M16 (5 drawn: S, SW, W, NW, N; E/NE/SE are mirrored, movement128.ts movement16Plan). */
+const MOVEMENT_KEY=/^((walk|attack)128-(S|SW|W|NW|N|NE|E|SE)|(walk|attack|idle|run)16-(S|SW|W|NW|N|NE|E|SE))$/;
 /** A file path inside a group's output folder: no scheme, no `..`, no leading slash. */
 const SAFE_FILE=/^(?!.*\.\.)[a-z0-9][a-z0-9/_.-]*\.webp$/;
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);

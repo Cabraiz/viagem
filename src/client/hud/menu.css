@@ -1,0 +1,31 @@
+/* The match menu (hud/menu.ts, NEW-20261009-UX-menu-e-conexao): views of explore.ts's .explore-settings dialog. */
+.game-menu-host .explore-settings-heading{justify-content:flex-start}
+.game-menu-host .explore-settings-heading h2{margin-right:auto}
+.game-menu-host .game-menu-back{display:grid;place-items:center;min-width:48px;min-height:48px;padding:0;background:transparent}
+.game-menu-host[data-view=menu] .game-menu-back{display:none}
+.game-menu-host:not([data-view=menu]) .game-menu,
+.game-menu-host:not([data-view=confirm]) .game-menu-confirm,
+.game-menu-host:not([data-view=settings]) .explore-settings-content{display:none}
+.game-menu,.game-menu-confirm{display:grid;gap:10px}
+.game-menu-status{display:grid;gap:2px;padding:10px 12px;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-lilas-escuro)}
+.game-menu-status:empty{display:none}
+.game-menu-status strong{font:20px var(--f-cartaz)}
+.game-menu-status p{margin:0;font-size:14px}
+.game-menu-invite{display:grid}
+.game-menu-invite:empty{display:none}
+.explore-settings .game-menu-item,.explore-settings .game-menu-invite button{min-height:52px;padding:12px 16px;font-size:17px;font-weight:800;text-align:center}
+.explore-settings .game-menu-resume{background:var(--c-papel);color:var(--c-lilas);border-color:var(--c-breu)}
+.explore-settings .game-menu-leave,.explore-settings .game-menu-confirm-leave{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
+.explore-settings .game-menu-confirm-leave:disabled{opacity:.6}
+.game-menu-live{margin:2px 0 0;font-size:13px;text-align:center;opacity:.9}
+.game-menu-confirm-text{margin:4px 0 6px;font:22px/1.2 var(--f-cartaz)}
+.game-menu-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.explore-settings .game-menu-stay{background:var(--c-papel);color:var(--c-lilas);border-color:var(--c-breu)}
+/* Landscape phones (844x390): two columns of buttons so the whole menu fits without scrolling. */
+@media(max-height:500px) and (min-width:600px){
+  .game-menu-host[data-view=menu]{width:min(560px,calc(100vw - 28px))}
+  .game-menu{grid-template-columns:1fr 1fr}
+  .game-menu-status,.game-menu-live{grid-column:1/-1}
+  .explore-settings .game-menu-item,.explore-settings .game-menu-invite button{min-height:48px;padding:10px 14px}
+}
+.game-menu-host .explore-exit[hidden]{display:none}

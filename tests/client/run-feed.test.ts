@@ -15,7 +15,7 @@ function peer(){
   return {messages,frames,closes,read:0,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));else frames.push(s);},close:(code:number,reason:string)=>closes.push({code,reason})};
 }
 type TestPeer=ReturnType<typeof peer>;
-const join=(r:Room,p:Peer,n='Amigo',classId='cidadao-comum',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:n,classId}),now);};
+const join=(r:Room,p:Peer,n='Amigo',classId='clt-cansado',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:n,classId}),now);};
 const command=(room:Room,p:Peer,message:object,now=1100)=>room.receive(p,JSON.stringify(message),now);
 const idOf=(p:TestPeer)=>p.messages.find(m=>m.t==='welcome').id as string;
 let clock=1200;
@@ -79,7 +79,8 @@ test('events reach the view once each, in order, also across a reconnection',()=
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');startRun(room,[a,b]);
   const feed=new FrameRunFeed();pump(room,feed,a);
   const ids:number[]=[];
-  for(let i=0;i<500;i++){step(room);pump(room,feed,a);if(i%7===0)ids.push(...feed.take().events.map(e=>e.eventId));}
+  // 45 s: two CLTs (cadeado-so-clt-viciado: a person plays only a released hero) make fewer events than the old mendigos.
+  for(let i=0;i<900;i++){step(room);pump(room,feed,a);if(i%7===0)ids.push(...feed.take().events.map(e=>e.eventId));}
   ids.push(...feed.take().events.map(e=>e.eventId));
   assert.ok(ids.length>10,`only ${ids.length} events`);
   assert.deepEqual(ids,[...new Set(ids)].sort((x,y)=>x-y),'no repeats and ascending');
@@ -202,10 +203,11 @@ test('a rematch keeps the players on their wire ids: nobody "leaves", critters o
   for(const p of room.sim.players.values()){p.invulnerableUntil=0;room.sim.world.damagePlayer(p.id,1e6,'test');}
   for(let i=0;i<4;i++){step(room);pump(room,feed,a);}
   assert.equal(room.run.snapshot().phase,'result');
-  command(room,b,{t:'rematch',round:1},clock);
+  // Both say "topa" (UX-resultado-revanche): the new run's countdown starts.
+  command(room,b,{t:'rematch',round:1},clock);command(room,a,{t:'rematch',round:1},clock);
   const left:string[]=[];
   for(let i=0;i<4;i++){step(room);pump(room,feed,a);left.push(...feed.left);}
-  assert.equal(room.run.snapshot().phase,'lobby');
+  assert.equal(room.run.snapshot().phase,'countdown');
   assert.deepEqual(left.filter(id=>room.sim.players.has(id)),[],'players are not re-sent as new');
   assert.equal(feed.players.size,2);assert.equal(feed.enemies.size,room.sim.world.enemies.size);
   assert.ok([...feed.players.values()].every(p=>!p.downed&&p.hp>0),'the fresh run state reached the client');

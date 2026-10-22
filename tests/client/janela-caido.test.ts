@@ -8,6 +8,7 @@ import {layoutEdges,arrowHalf,pointedTargets,caidoTag,tagWidth,MUST_POINT,HEAD_R
 import {fallLine} from '../../src/client/hud/model.ts';
 import {computeZones,auditBoxes,crosses,gap,HERO_MARGIN,type Rect,type ZoneInput} from '../../src/client/hud/zones.ts';
 import {radar} from '../../src/client/hud/radar.ts';
+import {RAIL_MAX} from '../../src/rules/names.ts';
 
 const t=(key:string,kind:EdgeTarget['kind'],x:number,y:number,extra:Partial<EdgeTarget>={}):EdgeTarget=>({key,kind,screen:{x,y},distance:20,...extra});
 const fichaOf=(a:EdgeArrow,half=arrowHalf()):Rect=>({x:a.x-half.w,y:a.y-half.h,width:2*half.w,height:2*half.h});
@@ -143,9 +144,9 @@ test('caído: the first name rides under the ficha (never wider than it), the ta
   const {targets}=radar({selfId:'me',focus:{x:0,y:0},tick:0,locate:p=>({x:p.x*50,y:p.y*50}),
     players:[{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',x:30,y:0,online:true}],
     states:new Map([['cz',{id:'cz',name:'Concurseira Eterna',classId:'cidadao-comum',hp:0,maxHp:100,online:true,spectator:false,downed:{progress:0,bleedOutTick:600},weapons:[],passives:[]} as never]])});
-  const c=targets.find(x=>x.kind==='caido')!;assert.equal(c.label,'Concursei');
-  // Londrina 13 px: 9 letters stay inside the ficha (76 px at 100%), so the name never needs side room.
-  assert.ok(9*13*.46+10<=2*arrowHalf().w);
+  const c=targets.find(x=>x.kind==='caido')!;assert.equal(c.label,'Concurseira');
+  // Londrina 13 px: RAIL_MAX letters stay inside the ficha (76 px at 100%), so the name never needs side room.
+  assert.ok(RAIL_MAX*13*.46+10<=2*arrowHalf().w);
   // The name's room stays inside the field: an arrow on the bottom rim keeps NAME_ROOM under its ficha.
   const area:Rect={x:0,y:0,width:400,height:300};
   const [a]=layoutEdges([{...c,screen:{x:200,y:5000}}],area);

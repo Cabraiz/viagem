@@ -53,6 +53,8 @@ test('the weapon in the hand casts with the hero: a point above the feet falls a
   const feet=castOffset(26,0);
   assert.ok(Math.abs(Math.hypot(feet.x,feet.y)-26)<1e-9,'a point on the ground keeps its distance from the feet');
   const src=read('src/client/render/arsenal-fx.ts');
-  assert.match(src,/castOffset\(HAND_DX\*b,HAND_DY\*b/);
+  // The side sticker's offset (or the held hand's, card arma-na-mao-viciado) is what the silhouette casts.
+  assert.match(src,/dx=HAND_DX\*b,dy=HAND_DY\*b/);
+  assert.match(src,/castOffset\(dx,dy/);
   assert.match(read('src/client/render/layers.ts'),/arsenal\.begin\([^)]*this\.fx\.silhouettes\)/);
 });

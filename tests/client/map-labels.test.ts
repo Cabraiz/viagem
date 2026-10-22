@@ -21,7 +21,13 @@ test('ally fichas use one glossary word, no "A · B", and long names are cut',()
   const long=allyLabelText('Tia da Festa Junina',{downed:true},6);
   assert.ok(!long.includes('·')&&!long.includes('♥'));
   assert.equal(long,'Tia, 6 s');
-  assert.equal(railName('Concurseira Eterna'),'Concursei');
+  // NEW-20261009-N5-resultado-nomes-longos: the first word whole up to 11 letters, else 7 and a dot (never cut unmarked).
+  assert.equal(railName('Concurseira Eterna'),'Concurseira');assert.equal(railName('Washington Luís'),'Washington');
+  assert.equal(railName('Maximilianos Neto'),'Maximil.');assert.equal(railName('  Zé  do Pix'),'Zé');
+  for(const name of ['Concurseira Eterna da Silva','Maximilianos','Wwwwwwwwwwwwwwwwwwww','😀'.repeat(14)]){
+    const r=[...railName(name)],first=[...name.trim().split(/\s+/)[0]];
+    assert.ok(r.length<=11,name);assert.ok(r.join('')===first.join('')||r.at(-1)==='.',`${name}: cut without a mark`);
+  }
   assert.equal(allyLabelText('Tia da Festa Junina',{spectator:true}),'Tia da Fest…, assistindo');
   assert.equal(shortName('Maria Aparecida dos Santos'),'Maria Aparecida…');
   assert.equal([...shortName('Maria Aparecida dos Santos')].length<=16,true);

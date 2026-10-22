@@ -30,6 +30,7 @@ export type {DefenseState,TowerResult,TowerRefusal} from './towers/system.ts';
 export {BUILD_REACH,TOWER_REPAIR_COST,holdsObra} from './towers/system.ts';
 // D-052 free build: the order the rooms parse and the wall pieces they put on the wire.
 export {FREE_CELL,MURO_BLOCK_R,freeCity,type FreeOrder,type PieceState} from './towers/free-build.ts';
+export {TRALHA_OWNER,type ColetaOutcome} from './towers/tralha.ts';
 export * from './towers/bot-spots.ts';
 export * from './systems/players.ts';
 export * from './telegraphs.ts';

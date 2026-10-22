@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {readFileSync} from 'node:fs';
 import {menuDancePlan,danceFrameAt,danceCell,firstDancePage,playableFrame,MenuDance} from '../../src/client/ui/menu-dance.ts';
-import {playableClasses} from '../../src/rules/index.ts';
+import {PERSONAGEM_PADRAO,PERSONAGENS_LIBERADOS} from '../../src/rules/index.ts';
 
 const page={file:'aposentado-p1.webp',columns:5,rows:8,firstFrame:0,frameCount:40};
 const second={...page,file:'aposentado-p2.webp',firstFrame:40};
@@ -160,12 +160,12 @@ test('danca-sem-fallback: playableFrame loops over the pages that arrived; the p
   index(dance());assert.equal(menuDancePlan('aposentado')!.pages[0].url,firstDancePage('aposentado'),'the preload and the dance ask for the same file');
   setArtIndex(parseArtIndex(undefined));
   const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
-  const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../../src/client/sections.css',import.meta.url),'utf8');
-  assert.match(html,new RegExp(`DEFAULT_HERO='${playableClasses[0].id}'`),'index.html preloads the first playable class');
-  assert.match(html,/<link rel="preload" href="\/art\/ui-extra\/podio-lado-600\.webp" as="image"/,'the podium is on screen from the first frame');
-  assert.match(css,/podio-lado-600\.webp/);
+  const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8'),css=readFileSync(new URL('../../src/client/estadio.css',import.meta.url),'utf8');
+  assert.match(html,new RegExp(`DEFAULT_HERO='${PERSONAGEM_PADRAO}'`),'index.html preloads the menu\'s default hero');
+  assert.ok(html.includes(`OPEN=[${PERSONAGENS_LIBERADOS.map(id=>`'${id}'`).join(',')}]`),'index.html\'s preload list is the released one');
+  assert.match(html,/<link rel="preload" href="\/art\/ui-extra\/estadio-retrato-768\.webp" as="image"/,'the stadium is on screen from the first frame');
+  assert.match(css,/estadio-retrato-768\.webp/);
   assert.match(html,/'\/art\/lite\/menu\/danca\/'\+id\+'-p1\.webp'/);
-  assert.match(main,/id="portrait" class="portrait dance-pending"/,'the first HTML already hides the still portrait');
-  assert.match(css,/\.criacao \.portrait\.dance-pending img \{ visibility: hidden; \}/);
-  assert.match(css,/@media \(hover: hover\) and \(pointer: fine\) \{\s*\.criacao \.portrait \.menu-dance \{ --dh: calc\(min\(calc\(var\(--s\) \* 1\.62\), calc\(var\(--sole\) \/ \.715\)\) \* \.7\); \}/,'PC: 30% smaller, same soles');
+  assert.match(main,/id="portrait" class="estadio-heroi dance-pending"/,'the first HTML already hides the still portrait');
+  assert.match(css,/\.estadio-heroi\.dance-pending img \{ visibility: hidden; \}/);
 });

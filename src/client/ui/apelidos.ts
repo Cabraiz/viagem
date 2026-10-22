@@ -1,0 +1,53 @@
+/**
+ * The stadium menu's sign (NEW-20261021-ORQ-botao-selecionar): the big letreiro shows the chosen hero's name ("VICIADO
+ * EM" in Papel, "BET" big in Amarelo, like the old "BORA PRA / TORCIDA!") and the plaque under it his nickname. Heroes
+ * without a nickname yet show their classes.ts subtitle. Pure (node tests); main.ts writes it on every ‹ ›.
+ */
+import type {HeroClass} from '../../rules/index.ts';
+
+/** Nicknames by class id (the user's, 21/10). The rest show their subtitle until they get one. */
+export const APELIDOS:Readonly<Record<string,string>>=Object.freeze({
+  'viciado-em-bet':'O rei da picaretagem',
+});
+
+const upper=(s:string)=>s.toLocaleUpperCase('pt-BR');
+
+/** The plaque: the nickname, else the subtitle, in caps, without the subtitle's closing period (a sign, not a sentence). */
+export function plaqueText(hero:Pick<HeroClass,'id'|'subtitle'>):string{
+  return upper((APELIDOS[hero.id]??hero.subtitle).trim().replace(/\.$/,''));
+}
+
+/** The letreiro's two lines: every word but the last on top, the last one big below (one word: only the big line). */
+export function titleLines(name:string):[string,string]{
+  const words=upper(name).trim().split(/\s+/).filter(Boolean);
+  const last=words.pop()??'';
+  return [words.join(' '),last];
+}
+
+/**
+ * The letreiro's shrink for long names (CSS --titulo-fit): measured on the menu (21/10), the column holds a 14-letter top
+ * line and a 13-letter big one (×1.18) at 1280×720, 844×390 and 390×844 (there the two lines run inline and wrap). The
+ * longest names of today's cast ("PASSAGEIRA DO", "CAÇA-PROMOÇÃO", "UNIVERSITÁRIO") fit at full size; a longer one
+ * scales the whole sign down, never below MIN_FIT.
+ */
+export const TOP_CHARS=14,BIG_CHARS=13,MIN_FIT=.5;
+export function titleFit([top,big]:readonly [string,string]):number{
+  const fit=Math.min(1,top?TOP_CHARS/top.length:1,big?BIG_CHARS/big.length:1);
+  return Math.max(MIN_FIT,Math.floor(fit*100)/100);
+}
+
+/**
+ * The final letreiro is a picture per hero (E7 makes it with the name and the nickname in the same design): its URL by
+ * class id. Absent: the HTML letreiro above (name + plaque), until that hero's picture arrives.
+ */
+export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
+  'viciado-em-bet':'/art/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
+  'clt-cansado':'/art/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
+});
+/**
+ * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them
+ * (21/10). Empty until the first one arrives; adding an id brings that hero's face back.
+ */
+export const ARTE_NOVA:ReadonlySet<string>=new Set<string>([]);
+export const letreiroOf=(id:string):string|undefined=>LETREIROS[id];
+export const hasNewArt=(id:string)=>ARTE_NOVA.has(id);

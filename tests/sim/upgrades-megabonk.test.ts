@@ -129,3 +129,20 @@ test('cards: every tome shows a short gain line ("+1 projétil", "+10% dano", th
   assert.equal(offerGain('pistola',1),undefined);
   for(const id of MANUAL_PASSIVE_IDS)assert.ok((offerGain(id,1)??'').length<=26,id);
 });
+
+test('manual combat: each extra projectile of a straight weapon flies at the next enemy in reach; with fewer enemies, the rest fan',()=>{
+  const ctx=makeCtx(),p=hero([{id:'pente',level:2}],{build:{weapons:[{id:'pistola',level:1}],passives:[{id:'pente',level:2}],hand:0}});
+  p.stats=computeStats(p.build);ctx.players.set(p.id,p);
+  ctx.enemies.set('a',enemy('a',2,0));ctx.enemies.set('b',enemy('b',0,3));ctx.enemies.set('c',enemy('c',-4,0));
+  createWeaponSystem({manual:{attacking:()=>true}}).step(ctx);
+  const shots=[...ctx.projectiles.values()] as {vx:number;vy:number}[];
+  assert.equal(shots.length,3);
+  const dirs=shots.map(s=>Math.round(Math.atan2(s.vy,s.vx)*100)/100).sort((x,y)=>x-y);
+  assert.deepEqual(dirs,[0,1.57,3.14],'one shot at each enemy');
+  // One enemy: the three fan around it.
+  const c2=makeCtx(),q=hero([],{build:{weapons:[{id:'pistola',level:1}],passives:[{id:'pente',level:2}],hand:0}});
+  q.stats=computeStats(q.build);c2.players.set(q.id,q);c2.enemies.set('a',enemy('a',2,0));
+  createWeaponSystem({manual:{attacking:()=>true}}).step(c2);
+  const fan=[...c2.projectiles.values()].map(s=>Math.atan2((s as {vy:number}).vy,(s as {vx:number}).vx)).sort((x,y)=>x-y);
+  assert.equal(fan.length,3);assert.ok(Math.abs(fan[1])<1e-9&&fan[0]<0&&fan[2]>0);
+});

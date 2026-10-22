@@ -179,14 +179,18 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   function firePierce(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
     // Only at a live enemy the shot can really reach (BUG-20261013-ORQ-ataque-fora-do-alcance): no shot into the air and
     // no shot at one beyond the flight distance; with none, the weapon keeps its cooldown and fires at the first in reach.
-    const [target]=targets(ctx,player,Math.min(w.range,pierceReach(w)),1);
+    // Card upgrades-megabonk (manual combat): each extra projectile (the Bombinha's +1 projétil) goes to the next enemy in
+    // reach, like Megabonk's extra shots; only with fewer enemies than shots do the rest fan around the first.
+    const aimed=targets(ctx,player,Math.min(w.range,pierceReach(w)),opts.manual?w.amount:1),target=aimed[0];
     if(!target)return false;
     let dir=facingOf(player);
     const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
     const returns=!!w.def.evolved?.returns;
+    const fan=w.amount-aimed.length+1;
     let spawned=0;
     for(let i=0;i<w.amount;i++){
-      const d=rotate(dir,(i-(w.amount-1)/2)*FAN_STEP);
+      const own=i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
+      const d=own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
       const p=spawnProjectile(ctx,{
         owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,
         radius:w.area,damage:w.damage,pierce:returns?PIERCE_INFINITE:w.pierce,hostile:false,knockback:w.knockback,

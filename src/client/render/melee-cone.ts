@@ -19,7 +19,7 @@ type Pt={x:number;y:number};
  * them identical): `area` of the weapon's row (the same at every rarity), `half` its coneHalfAngle. The firearm cones
  * (escopeta, maçarico) are not melee: no aim cone.
  */
-export const MELEE_CONES:Readonly<Record<string,{area:number;half:number}>>={faca:{area:1.3,half:1}};
+export const MELEE_CONES:Readonly<Record<string,{area:number;half:number}>>={faca:{area:2.6,half:1}};
 export const FADE_IN_MS=80,FADE_OUT_MS=2000;
 /** The reference's cyan (outside the UI palette, like the XP gem's --c-gema: an aim on the map, not a system colour). */
 export const CONE_FILL=0x5ff5e6,CONE_RIM=0xc8fff9,CONE_FILL_ALPHA=.25;

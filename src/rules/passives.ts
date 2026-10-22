@@ -6,7 +6,7 @@ import type {ItemDef,PlayerStats} from '../contract/index.ts';
 
 export const PASSIVE_MAX_LEVEL=5;
 
-export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao','pente','silenciador',
+export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','oculos','cartao','pente',
   'estilingue','defumador','arruda','tampa-de-panela'] as const;
 /**
  * D-051 manual combat only (proposal §5): reinforcements of the weapon in the hand. The automatic game's offers never
@@ -18,7 +18,7 @@ export const PASSIVE_IDS=['cafe-forte','marmita','tenis','megafone','bone','ocul
  * projectile speed (Estilingue), the damage aura (Defumador, sim/weapons/system.ts aura), regeneration (Arruda) and
  * armour (Tampa de Panela). No ímã: D-054 took it out.
  */
-export const MANUAL_PASSIVE_IDS=['pente','silenciador','estilingue','defumador','arruda','tampa-de-panela'] as const;
+export const MANUAL_PASSIVE_IDS=['pente','estilingue','defumador','arruda','tampa-de-panela'] as const;
 export const AUTO_PASSIVE_IDS=PASSIVE_IDS.filter(id=>!(MANUAL_PASSIVE_IDS as readonly string[]).includes(id));
 export type PassiveId=typeof PASSIVE_IDS[number];
 
@@ -52,7 +52,7 @@ export const ARRUDA_REGEN=.5;
 /**
  * Defumador (the Megabonk aura, no equipping): every `every` seconds each awake enemy within `radius(level)` × the area
  * stat of the hero takes `damage(level)` (× might, core damageEnemy). Sleepers are never touched (walking by a nest does
- * not wake it). sim/weapons/system.ts runs it; the client draws the ring (render/aura-ring.ts).
+ * not wake it). sim/weapons/system.ts runs it; the client draws its smoke (render/aura-ring.ts).
  */
 export const AURA=Object.freeze({
   every:.5,
@@ -84,9 +84,6 @@ export const PASSIVES:Readonly<Record<PassiveId,PassiveDef>>=Object.freeze({
   pente:make('pente','Bombinha de São João','traque',{amount:1},
     level=>`+${level} ${level===1?'projétil':'projéteis'} em cada ataque`,
     ['Uma vira duas.','Duas viram três.','O vizinho ligou pra polícia.','Parece réveillon em Copacabana.'],PENTE_MAX_LEVEL),
-  silenciador:make('silenciador','Silenciador de Garagem','silenciador',{},
-    level=>`Armas fazem ${Math.round(SILENCER_PER_LEVEL*level*100)}% menos barulho`,
-    ['Feito de garrafa PET.','O vizinho nem acordou.','Silêncio de biblioteca.'],3),
   estilingue:make('estilingue','Estilingue do Moleque','estilingue',{speed:ESTILINGUE_SPEED},
     level=>`${percent(ESTILINGUE_SPEED*level)} de velocidade do projétil`,
     ['Mira no poste, acerta a janela.','Pedra de rio, a mais lisa.','O moleque é profissional.','Zuniu no ouvido.','Bateu e voltou. Bateu de novo.']),
@@ -100,8 +97,6 @@ export const PASSIVES:Readonly<Record<PassiveId,PassiveDef>>=Object.freeze({
     level=>`-${level} de dano em cada golpe que você toma`,
     ['Escudo de cozinha.','Amassou, mas segurou.','Faz "plim" quando apanha.'],3),
 });
-/** D-051 Silenciador de Garagem: noise taken off per level (sim/weapons/arsenal.ts weaponNoise). */
-export const SILENCER_PER_LEVEL=.25;
 
 export const isPassiveId=(id:string):id is PassiveId=>(PASSIVE_IDS as readonly string[]).includes(id);
 export const passiveDef=(id:string):PassiveDef|undefined=>isPassiveId(id)?PASSIVES[id]:undefined;

@@ -14,7 +14,7 @@ import {addTelegraph} from '../src/sim/index.ts';
 import {CAR_ID,CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
-import {downPlayer} from '../src/sim/index.ts';
+import {downPlayer,ITEMS} from '../src/sim/index.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId,MARK_ID,MARK_COOLDOWN_MS,relayMark} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
@@ -908,6 +908,11 @@ export class Room {
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);
+    // melee-alcance-2x proofs: the sender holds that weapon (an inventory build: it takes a slot and the hand), so a GIF
+    // shows a crate's weapon without waiting for a crate.
+    if(typeof m.give==='string'&&ITEMS.get(m.give)?.kind==='weapon'&&p.build.hand!==undefined&&p.build.weapons.length<MAX_WEAPONS){
+      p.build.weapons.push({id:m.give,level:1});p.build.hand=p.build.weapons.length-1;
+    }
     // VGM-053B proofs (design review D3): a harmless telegraph (0 damage) and a critter at a point near the base reach,
     // so the blackout is photographed with danger on screen.
     const lab=(v:unknown)=>v&&typeof v==='object'&&Number.isFinite((v as {x:number}).x)&&Number.isFinite((v as {y:number}).y)&&

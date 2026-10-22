@@ -27,7 +27,7 @@ import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
-  handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
+  SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -74,6 +74,12 @@ export interface ArsenalOptions {
   cityOutlines?:CityOutlines;
   /** The scene draws the local hero's cone itself, right after placing him (drawSelfCone): update() leaves it alone. */
   coneFromScene?:boolean;
+  /**
+   * The scene draws the hands itself (drawHands), once every hero is placed and animated this frame: update() leaves them
+   * alone. Drawn in update() (before the scene moved the heroes) the weapon kept the last frame's spot and pose and
+   * trailed the running hero by a frame's step (BUG-20261022-ORQ-arma-flutua-corrida-clt: ~4 px at 60 fps, ~8 at 30).
+   */
+  handsFromScene?:boolean;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -103,9 +109,9 @@ export class ArsenalFx{
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
   private cone:MeleeCone;
-  /** upgrades-megabonk: the Defumador's rings, and each hero's aura radius from the last view (u). */
+  /** upgrades-megabonk: the Defumador's smoke, and each hero's aura radius from the last view (u), the local one's flagged. */
   private aura:AuraRings;
-  private auraOf=new Map<string,number>();
+  private auraOf=new Map<string,{r:number;self:boolean}>();
   /** The local hero's melee cone for the weapon in hand (radius, half aperture), from the last view; undefined: none. */
   private selfCone?:{weapon:string;radius:number;half:number};
 
@@ -142,7 +148,7 @@ export class ArsenalFx{
     const car=view.objective?.car,me=this.options.selfId?.();
     for(const p of view.players){
       const aura=p.spectator||p.eliminated||p.downed?0:auraRingRadius(p);
-      if(aura>0)this.auraOf.set(p.id,aura);
+      if(aura>0)this.auraOf.set(p.id,{r:aura,self:p.id===me});
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
@@ -194,9 +200,9 @@ export class ArsenalFx{
       if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
     }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
-    const rings:{x:number;y:number;r:number}[]=[];
-    for(const [id,r] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r});}
-    this.aura.draw(rings,now,body,reduced);
+    const rings:{x:number;y:number;r:number;self:boolean}[]=[];
+    for(const [id,{r,self}] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r,self});}
+    this.aura.draw(rings,now,reduced);
   }
 
   /**
@@ -240,8 +246,20 @@ export class ArsenalFx{
     return band.setPosition(q.x,q.y).setScale(1).setVisible(true);
   }
 
-  /** End of a frame: the hands, the shots and the bursts. */
+  /** End of a frame: the hands (unless the scene draws them: handsFromScene), the shots and the bursts. */
   update(){
+    if(!this.options.handsFromScene)this.drawHands();
+    const b=this.body,now=this.now;
+    if(!this.options.coneFromScene){
+      const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
+      this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
+    }
+    this.shots.retain(this.drawShot);
+    this.slashes=this.slashes.filter(s=>this.drawSlash(s));
+    this.bursts.retain(this.drawBurst);
+  }
+  /** The weapon in each hero's hand, on the pose and spot the hero's sprite shows now. */
+  drawHands(){
     const {projector}=this.options,b=this.body,now=this.now;
     for(const [id,icon] of this.handOf){
       const at=this.options.locate?.(id);if(!at)continue;
@@ -277,13 +295,6 @@ export class ArsenalFx{
       hand.seen=now;
     }
     for(const [id,hand] of this.hands)if(hand.seen!==now||!this.handOf.has(id)){hand.image.setVisible(false);hand.sil.setVisible(false).setActive(false);hand.grip.setVisible(false).setActive(false);}
-    if(!this.options.coneFromScene){
-      const me=this.options.selfId?.(),hero=me!==undefined&&this.cone.alpha(now)>0?this.options.locate?.(me):undefined;
-      this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
-    }
-    this.shots.retain(this.drawShot);
-    this.slashes=this.slashes.filter(s=>this.drawSlash(s));
-    this.bursts.retain(this.drawBurst);
   }
 
   destroy(){
@@ -342,7 +353,7 @@ export class ArsenalFx{
     const p=this.options.projector,len=Math.hypot(dx,dy),ux=len>1e-6?dx/len:1,uy=len>1e-6?dy/len:0;
     const a=p.project(x,y,this.q),ax=a.x,ay=a.y,ahead=p.project(x+ux,y+uy,this.q2),angle=Math.atan2(ahead.y-ay,ahead.x-ax);
     if(look.kind==='slash'){
-      if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*.5,y:y+uy*.5,angle,size:look.size,ms:look.ms});
+      if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms});
       return;
     }
     const key=look.art?fxKey(look.art):'';

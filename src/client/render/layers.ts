@@ -34,6 +34,7 @@ import {contactWidth} from './shadow-rules.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
+import {shotDrawScale} from './arsenal-rules.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
@@ -79,6 +80,8 @@ export interface HordeRendererOptions{
   hand?:(id:string)=>HeldHand|undefined;
   /** The scene draws the local hero's melee cone after placing him (selfCone); omitted: the renderer draws it at locate(). */
   coneFromScene?:boolean;
+  /** The scene draws the heroes' weapons after placing and animating every hero (hands); omitted: update() draws them. */
+  handsFromScene?:boolean;
   /**
    * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
    * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
@@ -135,7 +138,9 @@ interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:bool
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number;
   /** Imported sheet (horde-art.ts projectileLook): frames > 1 loop at fps from `born`; `frame` is the one shown. */
-  born:number;frames:number;fps:number;frame:number}
+  born:number;frames:number;fps:number;frame:number;
+  /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5); the shadow keeps the hit circle's. */
+  draw:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -360,10 +365,10 @@ export class HordeRenderer{
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
-      ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{})});
+      ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
-    this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,
+    this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,draw:1,
       born:0,frames:1,fps:8,frame:0}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0,kind:undefined,phase:0}),
       (t,active)=>{if(!active){t.fillArt?.setVisible(false);t.borderArt?.setVisible(false);}});
@@ -458,6 +463,8 @@ export class HordeRenderer{
   setTarget(enemyId?:string){this.targetId=enemyId;}
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
+  /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
+  hands(){this.arsenal.drawHands();}
   /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
   get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
@@ -548,9 +555,10 @@ export class HordeRenderer{
     // Art v2: the source's own sheet (art:proj:<id>) or the shared friendly one when loaded; else today's key.
     const art=projectileLook(view.hostile,view.source),own=!!art&&this.scene.textures.exists(art.key);
     const used=this.projectiles.use(view.id),a=used.item,look=own?(art as {key:string}).key:projectileTexture(view.hostile,view.source);
-    if(used.fresh||a.look!==look||a.radius!==view.radius){
-      a.look=look;a.image.setTexture(look).setOrigin(.5,.5);
-      a.image.setScale(Math.max(.5,Math.min(3,view.radius*2*46/Math.max(1,a.image.width))));
+    const draw=shotDrawScale(view.hostile,view.source);
+    if(used.fresh||a.look!==look||a.radius!==view.radius||a.draw!==draw){
+      a.look=look;a.draw=draw;a.image.setTexture(look).setOrigin(.5,.5);
+      a.image.setScale(draw*Math.max(.5,Math.min(3,view.radius*2*46/Math.max(1,a.image.width))));
       // Frames only when the texture in use is the art's and really has them (a failed load: today's texture, still).
       a.frames=own?projectileFrames(this.scene.textures,art!):1;a.fps=own?art!.fps:8;a.frame=0;
     }

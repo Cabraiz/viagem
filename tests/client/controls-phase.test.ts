@@ -103,7 +103,8 @@ test('explore.ts: the stick and the skill come from the shared markup; the phase
   const explore=read('src/client/explore.ts');
   assert.match(explore,/\$\{STICK_HTML\}\$\{CONTROLS_HINT_HTML\}/);
   assert.match(explore,/\$\{SKILL_HTML\}<button class="explore-pause"/);
-  assert.match(explore,/shell\.dataset\.out==='true'\|\|shell\.dataset\.controls==='off'\|\|!direction\.start/);
+  // Out the stick stays live (it walks the ghost, morto-anda-pelo-mapa): only the phase's data-controls gates it.
+  assert.match(explore,/event\.button!==0\|\|shell\.dataset\.controls==='off'\|\|!direction\.start/);
   assert.match(explore,/if\(applyControls\(shell,controls\)\)reset\(\);/);
   // Written only when it changes (F3: no write of the same value every frame).
   assert.match(explore,/#coop-attack'\),off=controls\.skill!=='live';if\(attack\.disabled!==off\)attack\.disabled=off;/);

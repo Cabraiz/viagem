@@ -190,7 +190,7 @@ test('the room never walks ahead of the client clock, and the owner sees only th
 
 test('a skill press that arrives after its steps still casts once; tap targets ride the segments',()=>{
   const room=new Room(1000),a={messages:[] as any[],closes:[] as any[],send(d:any){if(typeof d==='string')this.messages.push(JSON.parse(d));},close(code:number,reason:string){this.closes.push({code,reason});}};
-  room.connect(a,1000);room.receive(a,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum'}),1000);
+  room.connect(a,1000);room.receive(a,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'clt-cansado'}),1000);
   room.receive(a,JSON.stringify({t:'ready',round:1,ready:true}),1050);
   for(let t=1100;t<=4200;t+=50)room.advance(t);
   assert.equal(room.run.snapshot().phase,'combat');

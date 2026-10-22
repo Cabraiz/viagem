@@ -18,21 +18,21 @@
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
-import {PROJECTILE_SPEED_MULT,attackTargets} from '../../rules/index.ts';
+import {AURA,HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
 
-/** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through PROJECTILE_SPEED_MULT (4 u/s for 2 s, same reach). */
-const FLING_SPEED=8*PROJECTILE_SPEED_MULT,FLING_SECONDS=1/PROJECTILE_SPEED_MULT,FLING_PIERCE=2;
+/** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through HERO_SHOT_SPEED_MULT (same reach). */
+const FLING_SPEED=8*HERO_SHOT_SPEED_MULT,FLING_SECONDS=1/HERO_SHOT_SPEED_MULT,FLING_PIERCE=2;
 /** Angle between projectiles of one straight volley. */
 const FAN_STEP=.14;
 /**
  * Initial spread of a homing volley, before steering takes over; HOMING_TURN is the most it turns per tick (rad): the
- * tuned .25 × PROJECTILE_SPEED_MULT, so the slower pigeon flies the same curves (same turn per unit flown).
+ * tuned .25 × HERO_SHOT_SPEED_MULT, so the slower pigeon flies the same curves (same turn per unit flown).
  */
-const HOMING_SPREAD=.35,HOMING_TURN=.25*PROJECTILE_SPEED_MULT;
+const HOMING_SPREAD=.35,HOMING_TURN=.25*HERO_SHOT_SPEED_MULT;
 
 interface WeaponOptions {
   cap?:number;
@@ -85,6 +85,15 @@ export function manualReach(w:ResolvedWeapon):{reach:number;pad:boolean}{
 }
 /** Slack of the spatial query for padded reaches (enemy radius); the exact test follows. */
 const PAD_QUERY=2;
+/** Weapon id of the Defumador's hits (the 'damage' events, the kill feed). */
+export const AURA_SOURCE='defumador';
+/** The Defumador's level in a build (0: none). */
+export const auraLevel=(build:PlayerBuild)=>build.passives.find(p=>p.id===AURA_SOURCE)?.level??0;
+/** Radius of a player's aura (u): AURA.radius × the area stat; 0 without the Defumador. */
+export function auraRadius(player:{build:PlayerBuild;stats:{area:number}}){
+  const level=auraLevel(player.build);
+  return level>0?AURA.radius(level)*player.stats.area:0;
+}
 
 export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   const cap=opts.cap??PROJECTILE_CAP,catalog=opts.catalog??weaponCatalog;
@@ -170,14 +179,18 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   function firePierce(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
     // Only at a live enemy the shot can really reach (BUG-20261013-ORQ-ataque-fora-do-alcance): no shot into the air and
     // no shot at one beyond the flight distance; with none, the weapon keeps its cooldown and fires at the first in reach.
-    const [target]=targets(ctx,player,Math.min(w.range,pierceReach(w)),1);
+    // Card upgrades-megabonk (manual combat): each extra projectile (the Bombinha's +1 projétil) goes to the next enemy in
+    // reach, like Megabonk's extra shots; only with fewer enemies than shots do the rest fan around the first.
+    const aimed=targets(ctx,player,Math.min(w.range,pierceReach(w)),opts.manual?w.amount:1),target=aimed[0];
     if(!target)return false;
     let dir=facingOf(player);
     const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
     const returns=!!w.def.evolved?.returns;
+    const fan=w.amount-aimed.length+1;
     let spawned=0;
     for(let i=0;i<w.amount;i++){
-      const d=rotate(dir,(i-(w.amount-1)/2)*FAN_STEP);
+      const own=i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
+      const d=own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
       const p=spawnProjectile(ctx,{
         owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,
         radius:w.area,damage:w.damage,pierce:returns?PIERCE_INFINITE:w.pierce,hostile:false,knockback:w.knockback,
@@ -307,12 +320,31 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     }
   }
 
+  /**
+   * Card upgrades-megabonk, the Defumador (Megabonk's aura, no equipping, no attack held): every AURA.every s, each
+   * AWAKE enemy within auraRadius takes AURA.damage (× might in the core). Its clock is the player's weaponReady
+   * entry of AURA_SOURCE, like a weapon's; the sleepers are never touched (a nest is not woken by walking past it).
+   */
+  function aura(ctx:SimContext,player:SimPlayer){
+    const level=auraLevel(player.build);
+    if(!level||ctx.tick<(player.weaponReady[AURA_SOURCE]??0))return;
+    const radius=auraRadius(player);
+    scratch.length=0;
+    ctx.enemyIndex.query(player.x,player.y,radius+PAD_QUERY,scratch);
+    const struck=scratch.filter(e=>isAlive(ctx,e)&&ctx.enemies.has(e.id)&&Math.hypot(e.x-player.x,e.y-player.y)<=radius+e.radius)
+      .sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+    if(!struck.length)return;
+    for(const e of struck)if(isAlive(ctx,e))hitEnemy(ctx,e,AURA.damage(level),player.id,AURA_SOURCE,{x:e.x-player.x,y:e.y-player.y,force:0});
+    player.weaponReady[AURA_SOURCE]=ctx.tick+ticks(AURA.every);
+  }
+
   return {
     id:'weapons',
     step(ctx){
       const manual=opts.manual;
       for(const player of ctx.players.values()){
         if(!canAct(player))continue;
+        aura(ctx,player);
         // D-051 manual combat: only the equipped weapon, only while the attack is held.
         if(manual&&!manual.attacking(player.id))continue;
         if(opts.busy?.(player.id))continue;

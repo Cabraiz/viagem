@@ -63,8 +63,23 @@ No combate manual, a arma da mão vai para a mão do quadro que o herói mostra.
 - **O espelho:** E, NE e SW usam a pose do par espelhada, então a arma troca de mão junto com o desenho.
 - **Na frente ou atrás:** a arma fica atrás do corpo nas vistas de costas (N, NW, NE) e nas poses marcadas; nas outras, na frente.
 - **Como segura:** cada adesivo tem cabo e ângulo do cano (`WEAPON_HOLD` em `hand-points.ts`). O cabo vai na mão e o cano aponta para onde o herói olha (`AIM_ANGLE`). Mirando para a esquerda, a arma é virada de cabeça para baixo para continuar em pé. O maçarico é carregado em pé e só espelha.
-- **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, a R06, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo.
-- **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.
+- **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo. O teste `tests/client/hand-points.test.ts` reprova uma folha do viciado ou do CLT sem medida.
+- **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&mapa=real&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.
+
+### CLT e o acabamento (card NEW-20261022-ORQ-arma-na-mao, 22/10)
+
+O usuário viu a faca do CLT "flutuando" e "parecendo um ícone por cima dele". O CLT usa as folhas R06 (128 poses, 8 direções desenhadas) e não tinha mão medida, então a arma ficava no adesivo fixo do quadril, por cima do corpo.
+
+- **A mão no R06:** a regra do M16 (a pele mais de fora do lado da arma) cai no nariz do CLT e troca de mão nas vistas de lado. Por isso `scripts/hand-track.mjs` faz assim:
+  - **Andar:** segue a mão de pose em pose. Quando ela some atrás do corpo, a pose fica marcada como escondida, preenchida entre as vizinhas e presa ao corpo.
+  - **Ataque:** o punho foi marcado a olho a cada 8 poses (`CLT_KEYS` em `hand-points.mjs`) e encaixado no punho desenhado (mean shift sobre a pele).
+  - **Parado (idle8):** uma pose por direção.
+  - A mão da arma é a que soca. No W e no E, o CLT soca com a mão do lado de lá (o relógio fica na mão de perto), então a arma vai atrás do corpo.
+- **Dedos por cima do cabo:** um recorte do próprio quadro do herói em volta da mão (`HAND_PATCH` = 3,5 px da célula, `patchCrop`) é desenhado logo acima da arma. O recorte usa a mesma textura, inclusive a cópia da cidade com o contorno, então o punho fecha sobre o cabo pixel a pixel. Com a mão atrás do corpo, não há recorte, porque o corpo já cobre a arma.
+- **Luz:** a arma na mão não é mais o ícone do HUD. É uma cópia fosca (`heldLook`: ¼ do caminho até o cinza, brilhos com gama 1,25, 88 % da luz), com o anel Breu da cidade igual ao dos heróis. Atrás do corpo, ela ganha a sombra `HELD_TINT.behind`. O chão e o HUD continuam com o ícone.
+- **Teste (CI):** cada folha que o viciado e o CLT mostram tem a mão em todo quadro, com pele a ≤ 3 px de tela do cabo e ≥ 6 px de pele sob o recorte dos dedos. A mão escondida fica sobre o corpo. A mão não salta mais de 9 px entre poses do R06. Costas e mão do lado de lá ficam atrás do corpo.
+- **Prova:** `evidence/NEW-20261022-ORQ-arma-na-mao/` (GIFs da faca e da pistola, parado → correndo → atacando em S/W/N/E a 200 %; recorte a 400 %). Sandbox: `?sandbox=cidade&mapa=real&tele=1&arsenal=1&relevo=0&hero=60,60&arma=faca&class=clt-cansado`.
+- **Falta:** as outras 13 classes R06 jogáveis ainda usam o adesivo ao lado. Elas precisam das marcações dos ataques (e, nas peles mais escuras, do tom de pele em `skin`).
 
 ## Passo sem deslizar e pés no chão
 

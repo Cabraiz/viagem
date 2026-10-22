@@ -11,7 +11,7 @@ import {walkable,worldBase,heroSpeed} from '../../src/maps/world.ts';
 const WALK=heroSpeed();
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS} from '../../src/rules/sos.ts';
 import {RECIPES} from '../../src/rules/stonewards.ts';
-import {playableClasses} from '../../src/rules/classes.ts';
+import {PERSONAGEM_PADRAO} from '../../src/rules/personagens-liberados.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
 /** Test peer: JSON control messages parsed in `messages`, protocol 4 frames in `frames` (in arrival order in `log`). */
@@ -25,11 +25,11 @@ test('six slots, seventh refused, and rooms isolated',()=>{
   assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
   const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,6);
 });
-test('a class this build no longer has (old client with tia-festa) plays as the first playable class (D-053), a non-string is refused',()=>{
+test('a class this build no longer has (old client with tia-festa) plays as the viciado (D-053, cadeado-so-clt-viciado), a non-string is refused',()=>{
   const r=new Room(1000),old=peer();r.connect(old,1000);
   r.receive(old,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Tia Cleide',classId:'tia-festa'}),1000);
   const w=old.messages.find(m=>m.t==='welcome');
-  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,playableClasses[0].id);
+  assert.ok(w,'joined without an error');assert.equal(r.sim.players.get(w.id)?.classId,PERSONAGEM_PADRAO);
   const bad=peer();r.connect(bad,1000);r.receive(bad,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:'Zé',classId:42}),1000);
   assert.equal(bad.closes[0]?.code,4003);
 });

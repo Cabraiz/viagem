@@ -87,6 +87,12 @@ const TOWERS=join(ROOT,'public/art/towers/manifest.json');
 const TOWER_LITE_FILES=['base','idle'];
 /** Downed and the silhouette still have no animation slot. The cardinals (dir4c) are used: the 8-direction rest. */
 const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
+/**
+ * Menu (BUG-20261022-ORQ-art-lite-menu): only what the page loads from /art/lite/menu gets a copy, the dance pages
+ * (ui/menu-dance.ts) and the heroes' backgrounds `fundo-*` (estadio.css, ui/stadium.ts). The button, the cut-out heroes,
+ * the letreiros and the mureta are light WebPs already (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
+ */
+const MENU_LITE=/^(danca\/|fundo-[^/]+\.webp$)/;
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){
@@ -165,7 +171,7 @@ for(const kind of kinds){
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
   if(kind==='towers'||kind==='city')continue; // joined per file / smaller per cell below
-  for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())).sort()){
+  for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())&&(kind!=='menu'||MENU_LITE.test(n))).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;
     if(!args.has('--all')&&entry?.source===sha(source)&&String(entry.liteCell)===String(liteCell)&&existsSync(out)&&sha(readFileSync(out))===entry.lite&&JSON.stringify(manifest.webp)===JSON.stringify(WEBP))continue;

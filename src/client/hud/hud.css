@@ -270,6 +270,7 @@
 .rh-card-icon>.ic{width:32px;height:32px}
 .rh-card-body{display:contents}
 /* The short name: under the hole and the sticker, two lines at most (the whole name is in the aria-label). */
+.rh-card-gain{display:none}
 .rh-card-name{grid-area:name;min-width:0;margin:1px 0 0 -10px;font:400 calc(14px * var(--t-escala))/1.05 var(--f-cartaz);color:var(--c-breu);
   overflow-wrap:anywhere;hyphens:auto;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 /* The effect: a tooltip over the tag (Papel etiqueta, Breu edge), only on hover (a mouse), focus (keyboard) or while a

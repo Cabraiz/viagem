@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import {classes} from '../../src/rules/classes.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
-import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS,HERO_ANIM_RATE} from '../../src/client/sprites/sprite-motion.ts';
-/** The on-screen swing (1000 ms drawn, played at HERO_ANIM_RATE: animacao-heroi-70). */
+import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS,ATTACK_MS,ATTACK_MIN_MS,HERO_ANIM_RATE} from '../../src/client/sprites/sprite-motion.ts';
+/** The on-screen swing (ATTACK_MS, card ataque-1s: ~1 s at most). */
 const A=ATTACK_VISUAL_MS;
 import {HERO_SPEED_MULT} from '../../src/maps/world.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
@@ -53,23 +53,31 @@ test('weapon fire events reach observers through attackTick without changing old
   const legacy=packPlayer(p);legacy.length=9;assert.equal(unpackPlayer(legacy).attackTick,0);assert.equal(unpackPlayer(legacy).spectator,false);
 });
 
-test('all classes hold one idle pose and use half-speed walk and attack clips, at HERO_ANIM_RATE (0.7)',()=>{
+test('all classes hold one idle pose and a half-speed walk at HERO_ANIM_RATE (0.7); the attack is a ~1 s swing',()=>{
   assert.deepEqual(SPRITE_CLIPS.idle.frames,[0]);
   assert.equal(SPRITE_CLIPS.walk.frameRate,10/2*HERO_SPEED_MULT*HERO_ANIM_RATE,'the walk cycle follows the 2× walk, slowed');
-  assert.equal(SPRITE_CLIPS.attack.frameRate,12/2*HERO_ANIM_RATE);
-  assert.ok(Math.abs(ATTACK_VISUAL_MS-1000/HERO_ANIM_RATE)<1e-9);
+  assert.ok(Math.abs(ATTACK_VISUAL_MS-ATTACK_MS)<1e-9);
+  assert.ok(ATTACK_MS>=800&&ATTACK_MS<=1000,'a swing takes 0.8–1 s (ataque-1s)');
   assert.equal(SPRITE_CLIPS.attack.repeat,0);
 });
 
-test('overlapping server attacks cannot restart or extend the slower visual swing',()=>{
+test('back-to-back hits restart a clean swing, squeezed into the time between them (ataque-1s)',()=>{
   const motion=new SpriteMotion();
   assert.equal(motion.update(0,false,1),'attack');
+  assert.deepEqual({...motion.swing},{start:0,ms:A},'a lone swing plays in full');
+  // Holding Atacar: the server moves attackTick at most every 12 ticks (600 ms).
   assert.equal(motion.update(600,true,13),'attack');
-  assert.equal(motion.update(A-1,true,13),'attack');
-  assert.equal(motion.update(Math.ceil(A),true,13),'walk');
-  assert.equal(motion.update(A+200,false,25),'attack');
-  assert.equal(motion.update(Math.ceil(2*A+200),false,25),'idle');
-  for(let time=Math.ceil(2*A+300);time<10000;time+=100)assert.equal(motion.update(time,false,25),'idle');
+  assert.deepEqual({...motion.swing},{start:600,ms:Math.min(A,600)},'the next hit starts over from its first frame');
+  assert.equal(motion.update(1200,true,25),'attack');
+  assert.deepEqual({...motion.swing},{start:1200,ms:Math.min(A,600)});
+  assert.equal(motion.update(1200+Math.min(A,600)-1,true,25),'attack');
+  assert.equal(motion.update(1200+Math.min(A,600),true,25),'walk','no swing outlasts the period between hits');
+  // A hit after a pause plays the full swing again; bunched hits never squeeze it below ATTACK_MIN_MS.
+  assert.equal(motion.update(5000,false,37),'attack');
+  assert.equal(motion.swing.ms,A);
+  assert.equal(motion.update(5010,false,49),'attack');
+  assert.equal(motion.swing.ms,ATTACK_MIN_MS);
+  for(let time=5010+ATTACK_MIN_MS;time<10000;time+=100)assert.equal(motion.update(time,false,49),'idle');
 });
 
 test('rematch clears old attack ticks and accepts the first swing of the new round',()=>{

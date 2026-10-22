@@ -50,8 +50,13 @@ const items:ItemDisplay[]=[
   {id:'pacoca',kind:'snack',name:'Paçoca',icon:'pacoca',blurb:'Mais dano por 30 s.',joke:'Prensada.'},
   {id:'cocada',kind:'snack',name:'Cocada',icon:'cocada',blurb:'Toma menos dano por 30 s.',joke:'Dura que dói.'},
   {id:'kit-torre',kind:'snack',name:'Kit de Torre',icon:'kit-torre',blurb:'Vira 1 ficha de torre do time.',joke:'Monte você mesmo.'},
-  {id:'pente',kind:'passive',name:'Pente Estendido',icon:'pente',blurb:'+1 projétil por disparo.',joke:'Sempre cabe mais um.'},
+  // Card upgrades-megabonk: the tomes (rules/passives.ts), global, no equipping; 'pente' is the +1 projétil now.
+  {id:'pente',kind:'passive',name:'Bombinha de São João',icon:'traque',blurb:'+1 projétil em cada ataque.',joke:'Uma vira duas.'},
   {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'silenciador',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
+  {id:'estilingue',kind:'passive',name:'Estilingue do Moleque',icon:'estilingue',blurb:'Tiros voam mais rápido.',joke:'Zuniu no ouvido.'},
+  {id:'defumador',kind:'passive',name:'Defumador da Tia',icon:'defumador',blurb:'Aura de fumaça que machuca.',joke:'Espanta bicho.'},
+  {id:'arruda',kind:'passive',name:'Arruda atrás da Orelha',icon:'arruda',blurb:'Recupera vida sozinho.',joke:'A vó jurou.'},
+  {id:'tampa-de-panela',kind:'passive',name:'Tampa de Panela',icon:'tampa-de-panela',blurb:'Toma menos dano por golpe.',joke:'Faz "plim".'},
 ];
 // Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap puts the piece on the ground (hud/kit-place.ts).
 for(const id of KIT_IDS){

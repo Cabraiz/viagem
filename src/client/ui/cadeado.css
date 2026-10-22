@@ -1,0 +1,18 @@
+/* cadeado-so-clt-viciado (the user, 22/10): only the CLT and the viciado can be picked; every other hero keeps his tile
+   in the row, darkened under a lock, and opening one turns SELECIONAR into a disabled "EM BREVE" with the lock in the
+   star's place (main.ts showLock). Only new rules here: the column's position and size stay in estadio.css. */
+.estadio .class-card[data-bloqueado] > :not(.card-cadeado) { filter: grayscale(.85) brightness(.5); }
+.estadio .class-card[data-bloqueado] .card-cadeado {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+}
+.estadio .class-card[data-bloqueado] .card-cadeado .ic {
+  width: 58%; height: auto; aspect-ratio: 1; filter: drop-shadow(0 2px 0 var(--c-breu));
+}
+.estadio .estadio-confirmar:disabled { opacity: .72; filter: grayscale(.9); cursor: not-allowed; }
+.estadio .estadio-confirmar:disabled:active { transform: none; }
+.estadio .estadio-confirmar:disabled > span[aria-hidden] { display: none; }
+.estadio .estadio-cadeado:not([hidden]) {
+  flex: none; display: grid; place-items: center; width: calc(var(--bh) * .623); height: calc(var(--bh) * .62);
+  translate: 0 calc(var(--bh) * -.04);
+}
+.estadio .estadio-cadeado .ic { width: 100%; height: 100%; }

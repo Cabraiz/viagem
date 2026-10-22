@@ -16,7 +16,7 @@ import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
 import {itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
-import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerRarity,offerValue} from './offer-card.ts';
+import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerGain,offerRarity,offerValue} from './offer-card.ts';
 import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
@@ -223,6 +223,9 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       el('b','rh-card-level',card).textContent=levelLabel(choice.level);
       const body=el('span','rh-card-body',card);
       el('strong','rh-card-name',body).textContent=item.name;
+      // Card upgrades-megabonk: the tome's gain, short and big ("+1 projétil", "+10% dano").
+      const gain=offerGain(choice.itemId,choice.level);
+      if(gain)el('b','rh-card-gain',body).textContent=gain;
       const value=offerValue(choice.itemId,choice.level),line=el('span','rh-card-value',body);
       if(value&&choice.level>1){line.append(`${value.label}: ${value.from} > `);el('b','rh-card-value-new',line).textContent=value.to;}
       else line.textContent=item.blurb;

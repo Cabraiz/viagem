@@ -54,7 +54,7 @@ const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{ver
  * The seven weapons (proposal §1). Every verde row deals about 25 a second to one target (the crowd patterns to each one
  * in their cone or blast): reach, pierce and the crowd make the difference, and the rarity scales it (a weapon that only
  * comes azul or better starts there). The CI bench tunes them. Speeds and durations are the tuned table values (travelling patterns fly
- * PROJECTILE_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
+ * HERO_SHOT_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
  */
 /** Noise of a legendary and of a weapon the arsenal does not list (the automatic game's): a pistol's. */
 export const DEFAULT_NOISE=NOISE.pistola;

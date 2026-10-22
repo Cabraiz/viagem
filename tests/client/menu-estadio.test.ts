@@ -273,7 +273,6 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh);'));
   assert.ok(Math.abs(46*.85*.85-33.2)<.05&&Math.abs(78*.85*.85-56.4)<.05);
   // The button right under the row (fileira-botao-maiores-embaixo: both low, pinned to the bottom on the PC).
-  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro)::after { display: none; }'));
   assert.ok(!/\.estadio-confirmar \{[^}]*margin-top: auto/.test(css));
   assert.ok(!css.includes('margin-bottom: 5vh'));
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
@@ -530,14 +529,13 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
   assert.ok(pc.includes('.estadio .estadio-confirmar { --bh: max(52px, 13vh); max-width: none; }'));
   const bh=vh(/--bh: max\(52px, ([.\d]+)vh\); max-width: none;/),colW=.77,gapVh=vh(/margin-top: calc\(([.\d]+)vh - clamp/);
   const tile=vh(/\.estadio \.class-card \{ width: ([.\d]+)vh; \}/),arrow=vh(/\.estadio \.round-button \{ width: ([.\d]+)vh;/);
-  const rowGap=vh(/\.estadio \.class-list \{ gap: ([.\d]+)vh; \}/),signTop=vh(/:has\(\.com-letreiro\) \{ justify-content: flex-start; padding-top: max\(([.\d]+)vh, env\(safe-area-inset-top\)\); \}/);
-  // The HTML title and its pill where they were (round 2, "por que você desceu?"): the column keeps its old width and
-  // centring; the button's negative margin gives back what the new row + button add over the old spacer.
-  assert.ok(!/\.estadio-escolha \{[^}]*width:/.test(pc)&&!/\.estadio-escolha \{[^}]*justify-content: flex-end/.test(pc),'the column as it was');
-  assert.ok(pc.includes('.estadio-escolha > .estadio-confirmar { margin-bottom: calc(2 * clamp(8px, 1.8vh, 18px) + clamp(54px, 9vh, 80px) / .82 + 14px + clamp(52px, 10vh, 120px) - 5vh - 9.63vh / .82 - 14px - max(52px, 13vh)); }'));
+  const rowGap=vh(/\.estadio \.class-list \{ gap: ([.\d]+)vh; \}/),signTop=vh(/\.estadio-escolha \{[^}]*justify-content: flex-start; padding-top: max\(([.\d]+)vh, env\(safe-area-inset-top\)\);/);
+  // The column keeps its old width; every title from the top now (titulo-mesmo-espaco: one box for every hero).
+  assert.ok(!/\.estadio-escolha \{[^}]*[ ;]width:/.test(pc)&&!/\.estadio-escolha \{[^}]*justify-content: flex-end/.test(pc),'the column as it was');
+  assert.ok(!pc.includes('margin-bottom'),'no centring trick for the HTML titles any more');
   assert.ok(css.includes('.estadio .class-card {\n  flex: none; position: relative; width: clamp(54px, 9vh, 80px); height: auto; aspect-ratio: .82;'),'the old tile');
   assert.ok(css.includes('padding: 6px 4px 8px; margin: 0;')&&css.includes('gap: clamp(8px, 1.8vh, 18px);'),'the old row padding and gap');
-  assert.ok(pc.includes('.estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }'),'2vw to the right');
+  assert.ok(pc.includes('.estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw);'),'2vw to the right');
   // 1920x1080: 30% over the old sizes (button 640x108, tiles 80, arrows 44, gaps 8), ±3%.
   const near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got/want-1)<=.03,`${what}: ${got.toFixed(1)} vs ${want}`);
   near(colW*1080,832,'button width');near(bh*1080,140.4,'button height');near(tile*1080,104,'tile width');
@@ -549,11 +547,9 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
   for(const [w,h] of [[1920,1080],[1920,1000],[1366,768],[2560,1440],[1280,720],[1280,800],[1600,521]] as const){
     const left=Math.max(.03*w,16)+.02*w,width=Math.min(colW*h,.6*w),g=Math.min(Math.max(8,.018*h),18);
     const row=tile*h/.82+14,button=Math.max(52,bh*h),gap=gapVh*h;
-    const blocks:[string,number,number][]=signs.map(([id,k])=>{const top=Math.max(signTop*h,0);return [id,top,top+Math.min(.332*w,.564*h)*k];});
-    // The HTML title (the mendigo's: name + pill, centred as before): the old block's pill bottom.
-    const oldBtn=Math.min(Math.max(52,.1*h),120),oldRow=Math.min(Math.max(54,.09*h),80)/.82+14,titleAndPill=.3*h;
-    const pillBottom=h/2+(titleAndPill-g-(oldRow+g+oldBtn))/2;
-    blocks.push(['mendigo',h/2-(titleAndPill+g+oldRow+g+oldBtn)/2,pillBottom]);
+    // titulo-mesmo-espaco: every hero (the two pictures, the HTML ones) in the viciado sign's box.
+    const top=Math.max(signTop*h,0),boxH=Math.min(.332*w,.564*h)*Math.max(...signs.map(([,k])=>k));
+    const blocks:[string,number,number][]=[...signs.map(([id])=>id),'mendigo'].map(id=>[id,top,top+boxH]);
     for(const [id,titleTop,titleBottom] of blocks){
       const screen=`${w}x${h} ${id}`,rowTop=titleBottom+gap,buttonTop=rowTop+row+gap,buttonBottom=buttonTop+button;
       assert.ok(titleTop>=.05*h-1e-9,`${screen}: air over the title (${titleTop.toFixed(0)})`);
@@ -572,4 +568,30 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
   assert.ok(shortLand.includes('.estadio .estadio-confirmar { --bh: 46px; }')&&shortLand.includes('.estadio .class-card { width: 48px; }'));
   const tall=css.slice(css.indexOf('@media (orientation: portrait) and (max-width: 820px) {')).split('\n}')[0];
   assert.ok(tall.includes('.estadio .class-card { width: 58px; }'));
+});
+
+test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as big as the viciado, the row never moves',async()=>{
+  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  // The title and the pill in one box (a plain wrapper elsewhere: the phones keep their layout).
+  assert.match(main,/<div class="estadio-caixa-titulo"><h1 id="screen-title"[^]*?<h2 id="class-name" class="estadio-classe"><\/h2><\/div>/);
+  assert.ok(css.includes('.estadio-caixa-titulo { display: contents; }'));
+  assert.ok(pc.includes('justify-content: flex-start; padding-top: max(5.5vh, env(safe-area-inset-top)); --lw: min(33.2vw, 56.4vh); }'),'every title from the top');
+  assert.ok(!pc.includes(':has(.com-letreiro)'),'no layout that depends on the hero');
+  const box=pc.match(/\.estadio-caixa-titulo \{[^}]*width: calc\(var\(--lw\) \* ([.\d]+)\); height: calc\(var\(--lw\) \* (\d+) \/ (\d+)\);/);
+  assert.ok(box&&/display: flex; flex: none; flex-direction: column; justify-content: center;/.test(pc),'a fixed box, the HTML title in its middle');
+  assert.ok(pc.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: 100%; height: 100%; object-fit: contain; object-position: 0 100%; }'),'contain, bottom left');
+  const wide=Number(box![1]),tall=Number(box![2])/Number(box![3]);
+  const sizes=Object.fromEntries(await Promise.all(Object.entries(LETREIROS).map(async([id,url])=>{const m=await sharp(publicFile(url)).metadata();return [id,m] as const;})));
+  // The box is the viciado sign's height (the tallest picture) and every picture fits it without distortion.
+  const vic=sizes['viciado-em-bet'];
+  assert.equal(tall,vic.height!/vic.width!,'the box as tall as the viciado sign');
+  for(const [id,m] of Object.entries(sizes)){
+    const k=Math.min(wide/m.width!,tall/m.height!),w=m.width!*k,h=m.height!*k;
+    assert.ok(w<=wide+1e-9&&h<=tall+1e-9,`${id} inside the box`);
+    assert.ok(h/tall>=.9,`${id}: ${(100*h/tall).toFixed(1)}% of the box's height (>= 90%)`);
+    assert.ok(Math.abs(w*h/(1*tall)-1)<=.1,`${id}: area like the viciado's (${(100*w*h/tall).toFixed(0)}%)`);
+  }
+  // Nothing under the box depends on the hero: the row and the button follow it with fixed gaps (measured in Chrome on 9
+  // PC screens, the row's Y equal to ±0.5 px for all 15 heroes: evidence/NEW-20261022-ORQ-titulo-mesmo-espaco).
+  assert.ok(!/\.estadio-escolha > [^{]*\{[^}]*margin-bottom/.test(pc));
 });

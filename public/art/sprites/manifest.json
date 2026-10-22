@@ -1323,7 +1323,7 @@
           "sha256": "bbd5e881619b2999c2f8a1051ebaebce40d957ef6af80c61d817eacb93ec0046"
         },
         "run16-N": {
-          "file": "clt-cansado.run16-n.a1301660219e.webp",
+          "file": "clt-cansado.run16-n.f2d2ddfe25ce.webp",
           "cell": [
             96,
             96
@@ -1348,15 +1348,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.run16-n.a1301660219e.webp",
+              "file": "clt-cansado.run16-n.f2d2ddfe25ce.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a1301660219ee6a1d1dd75087fec928b1360fefc34735f2910be9dced413e66a"
+              "sha256": "f2d2ddfe25cec931da0da2c5f7d5a499f278f61ddd145f2f5e82f0c9697d9ec5"
             }
           ],
-          "sha256": "a1301660219ee6a1d1dd75087fec928b1360fefc34735f2910be9dced413e66a",
+          "sha256": "f2d2ddfe25cec931da0da2c5f7d5a499f278f61ddd145f2f5e82f0c9697d9ec5",
           "phase": {
             "d": [
               0.17347,
@@ -1445,7 +1445,7 @@
           }
         },
         "run16-NW": {
-          "file": "clt-cansado.run16-nw.12ce613dafa5.webp",
+          "file": "clt-cansado.run16-nw.c183faaf9215.webp",
           "cell": [
             96,
             96
@@ -1470,15 +1470,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.run16-nw.12ce613dafa5.webp",
+              "file": "clt-cansado.run16-nw.c183faaf9215.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "12ce613dafa5c21f5005649760f04f15c568ddd4d2b52ec813745ba3edd5993f"
+              "sha256": "c183faaf921567a9f2ceb7399d018ec128eb0f5a350fff2870491612aa058753"
             }
           ],
-          "sha256": "12ce613dafa5c21f5005649760f04f15c568ddd4d2b52ec813745ba3edd5993f",
+          "sha256": "c183faaf921567a9f2ceb7399d018ec128eb0f5a350fff2870491612aa058753",
           "phase": {
             "d": [
               0.16885,
@@ -1567,7 +1567,7 @@
           }
         },
         "run16-S": {
-          "file": "clt-cansado.run16-s.d19d27b8fc40.webp",
+          "file": "clt-cansado.run16-s.58ed12354f0b.webp",
           "cell": [
             96,
             96
@@ -1592,15 +1592,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.run16-s.d19d27b8fc40.webp",
+              "file": "clt-cansado.run16-s.58ed12354f0b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "d19d27b8fc406aa721df2d31a37b65a947f95f311cc78adf16ad344113c6072f"
+              "sha256": "58ed12354f0b841328fc0fedb34616a7517d84486dbb88422d676c727d099a32"
             }
           ],
-          "sha256": "d19d27b8fc406aa721df2d31a37b65a947f95f311cc78adf16ad344113c6072f",
+          "sha256": "58ed12354f0b841328fc0fedb34616a7517d84486dbb88422d676c727d099a32",
           "phase": {
             "d": [
               0.10362,
@@ -1689,7 +1689,7 @@
           }
         },
         "run16-SE": {
-          "file": "clt-cansado.run16-se.db7ffe014316.webp",
+          "file": "clt-cansado.run16-se.c437fe145630.webp",
           "cell": [
             96,
             96
@@ -1714,15 +1714,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.run16-se.db7ffe014316.webp",
+              "file": "clt-cansado.run16-se.c437fe145630.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "db7ffe0143168f34c330ae7ced6b2a4676eb9b03e6a99d382895f3d53b740fe5"
+              "sha256": "c437fe145630526c394a12655e2ac3bcd9ee512eef5d12a8e70566f8a87f7988"
             }
           ],
-          "sha256": "db7ffe0143168f34c330ae7ced6b2a4676eb9b03e6a99d382895f3d53b740fe5",
+          "sha256": "c437fe145630526c394a12655e2ac3bcd9ee512eef5d12a8e70566f8a87f7988",
           "phase": {
             "d": [
               0.0502,
@@ -1811,7 +1811,7 @@
           }
         },
         "run16-W": {
-          "file": "clt-cansado.run16-w.968ce1b55c85.webp",
+          "file": "clt-cansado.run16-w.03aed4cd246f.webp",
           "cell": [
             96,
             96
@@ -1836,15 +1836,15 @@
           },
           "pages": [
             {
-              "file": "clt-cansado.run16-w.968ce1b55c85.webp",
+              "file": "clt-cansado.run16-w.03aed4cd246f.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "968ce1b55c85a4a0aabfe438812f95500bf8a3ed57c47b9cb7cb27463b4179af"
+              "sha256": "03aed4cd246f2eb0ae1f936a38ef85eb8a354217bb3c48716476fed344bc5528"
             }
           ],
-          "sha256": "968ce1b55c85a4a0aabfe438812f95500bf8a3ed57c47b9cb7cb27463b4179af",
+          "sha256": "03aed4cd246f2eb0ae1f936a38ef85eb8a354217bb3c48716476fed344bc5528",
           "phase": {
             "d": [
               0.09184,
@@ -2213,7 +2213,7 @@
           "sha256": "b28327639cc8e51016fe9bff54b1c105ea41175078a7178ee12eeeebd9f1255a"
         }
       },
-      "sha256": "d88a89d058462cec30c61b809a7638de89ed8f0af9895a30e5d4ad9934364db7"
+      "sha256": "0f78c73e10769b98a4c2511537d700523d526f22a312c44594daa01aea245036"
     },
     "coach": {
       "kind": "dir8",

@@ -346,7 +346,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // Grana goes to the opener's wallet (carteira-e-pix); a ficha prize to the team's tower units; the noise to the nests (E1).
   const crates:Crates|undefined=manual?createCrates({seed:world.seed,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
-    startPoints:cityLoot(world.terrain)?.aroundPlaza??[],
+    startPoints:cityLoot(world.terrain)?.aroundStart??[],
+    // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
+    ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     hooks:{addGrana:(_ctx,p,amount)=>{addGrana(p,amount);},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({

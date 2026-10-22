@@ -125,7 +125,7 @@ test('cards: every tome shows a short gain line ("+1 projétil", "+10% dano", th
   assert.match(offerGain('defumador',2)!,/^Aura: \+3 de dano, \+0,3 m$/);
   assert.equal(offerGain('arruda',1),'+0,5 de vida/s');
   assert.equal(offerGain('tampa-de-panela',1),'-1 de dano tomado');
-  assert.equal(offerGain('silenciador',1),'-25% de barulho');
+  assert.equal(offerGain('silenciador',1),undefined,'melee-alcance-2x: no Silenciador card');
   assert.equal(offerGain('pistola',1),undefined);
   for(const id of MANUAL_PASSIVE_IDS)assert.ok((offerGain(id,1)??'').length<=26,id);
 });

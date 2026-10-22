@@ -52,7 +52,6 @@ const items:ItemDisplay[]=[
   {id:'kit-torre',kind:'snack',name:'Kit de Torre',icon:'kit-torre',blurb:'Vira 1 ficha de torre do time.',joke:'Monte você mesmo.'},
   // Card upgrades-megabonk: the tomes (rules/passives.ts), global, no equipping; 'pente' is the +1 projétil now.
   {id:'pente',kind:'passive',name:'Bombinha de São João',icon:'traque',blurb:'+1 projétil em cada ataque.',joke:'Uma vira duas.'},
-  {id:'silenciador',kind:'passive',name:'Silenciador de Garagem',icon:'silenciador',blurb:'Armas fazem menos barulho.',joke:'Garrafa PET.'},
   {id:'estilingue',kind:'passive',name:'Estilingue do Moleque',icon:'estilingue',blurb:'Tiros voam mais rápido.',joke:'Zuniu no ouvido.'},
   {id:'defumador',kind:'passive',name:'Defumador da Tia',icon:'defumador',blurb:'Aura de fumaça que machuca.',joke:'Espanta bicho.'},
   {id:'arruda',kind:'passive',name:'Arruda atrás da Orelha',icon:'arruda',blurb:'Recupera vida sozinho.',joke:'A vó jurou.'},

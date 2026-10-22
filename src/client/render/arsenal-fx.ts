@@ -27,7 +27,7 @@ import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
-  handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
+  SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -342,7 +342,7 @@ export class ArsenalFx{
     const p=this.options.projector,len=Math.hypot(dx,dy),ux=len>1e-6?dx/len:1,uy=len>1e-6?dy/len:0;
     const a=p.project(x,y,this.q),ax=a.x,ay=a.y,ahead=p.project(x+ux,y+uy,this.q2),angle=Math.atan2(ahead.y-ay,ahead.x-ax);
     if(look.kind==='slash'){
-      if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*.5,y:y+uy*.5,angle,size:look.size,ms:look.ms});
+      if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms});
       return;
     }
     const key=look.art?fxKey(look.art):'';

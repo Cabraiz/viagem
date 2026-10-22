@@ -9,7 +9,7 @@
  *   the client's reach, so a weapon card shows its blurb instead.
  */
 import {BASE_STATS,type PlayerStats} from '../../contract/index.ts';
-import {AURA,SILENCER_PER_LEVEL,passiveDef} from '../../rules/index.ts';
+import {AURA,passiveDef} from '../../rules/index.ts';
 import {itemDisplay} from './items.ts';
 
 export const OFFER_WINDOW_TITLE='Ofertas de melhoria';
@@ -60,7 +60,6 @@ export function offerGain(itemId:string,level:number):string|undefined{
   if(!def)return undefined;
   const l=Math.max(1,Math.floor(level)||1);
   if(itemId==='defumador')return l<=1?`Aura: ${AURA.damage(1)} de dano`:`Aura: +${AURA.damage(l)-AURA.damage(l-1)} de dano, +${num(AURA.radius(l)-AURA.radius(l-1))} m`;
-  if(itemId==='silenciador')return `-${Math.round(SILENCER_PER_LEVEL*100)}% de barulho`;
   const p=def.perLevel,pct=(x:number)=>`${Math.round(Math.abs(x)*100)}%`;
   if(p.amount)return `+${p.amount} projétil`;
   if(p.might)return `+${pct(p.might)} dano`;

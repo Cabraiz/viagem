@@ -12,8 +12,8 @@ function peer(){
   return {messages,frames,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));else frames.push(s);},close:()=>{}};
 }
 const say=(room:Room,p:Peer,m:object,now:number)=>room.receive(p,JSON.stringify(m),now);
-function manualRoom(combat:'manual'|'auto'='manual'){
-  const room=new Room(1000,7,{world:'ilha',...(combat==='manual'?{combat}:{})}),a=peer();
+function manualRoom(combat:'manual'|'auto'='manual',lab=false){
+  const room=new Room(1000,7,{world:'ilha',...(combat==='manual'?{combat}:{}),...(lab?{lab:true}:{})}),a=peer();
   room.connect(a,1000);say(room,a,{t:'join',protocol:ROOM_PROTOCOL,name:'Ana',classId:'cidadao-comum'},1000);
   let t=1100;say(room,a,{t:'ready',round:room.run.snapshot().round,ready:true},t);
   for(;room.run.snapshot().phase!=='combat';t+=50)room.advance(t);
@@ -69,4 +69,15 @@ test('the automatic weapons have no inventory: the commands are refused',()=>{
   const {room,a,t,round}=manualRoom('auto');
   say(room,a,{t:'equip',round:round(),slot:0},t);
   assert.deepEqual(answers(a).at(-1),{t:'inv',cmd:'equip',ok:false,reason:'player'});
+});
+
+test('melee-alcance-2x: the lab {give} puts a weapon in the hand (lab rooms only; never a passive or an unknown id)',()=>{
+  const prod=manualRoom();
+  say(prod.room,prod.a,{t:'lab',give:'pistola'},prod.t);
+  assert.deepEqual(prod.me().build.weapons.map(i=>i.id),['faca'],'a real room ignores it');
+  const {room,a,t,me}=manualRoom('manual',true);
+  for(const give of ['pente','nada',7])say(room,a,{t:'lab',give},t);
+  assert.deepEqual(me().build.weapons.map(i=>i.id),['faca']);
+  say(room,a,{t:'lab',give:'pistola'},t);
+  assert.deepEqual(me().build.weapons.map(i=>i.id),['faca','pistola']);assert.equal(me().build.hand,1);
 });

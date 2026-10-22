@@ -51,13 +51,13 @@ test('passives: the automatic game keeps exactly its 7 fixed ids (D-054: no ím�
     assert.equal(passiveDef(id),p);
   }
   assert.equal(passiveDef('nope'),undefined);
-  // D-051: the hand's reinforcements, with their own caps (Pente +1 projectile a level, Silenciador only noise).
+  // D-051: the hand's reinforcements, with their own caps (Pente +1 projectile a level; the Silenciador is gone, melee-alcance-2x).
   // upgrades-megabonk: the Pente is the Bombinha de São João, +1 projétil up to PENTE_MAX_LEVEL (4).
   assert.deepEqual([PASSIVES.pente.maxLevel,PASSIVES.pente.perLevel,PASSIVES.pente.name],[4,{amount:1},'Bombinha de São João']);
   // The new tomes: projectile speed, the aura (no stat: sim/weapons/system.ts reads its level), regen, armour.
   assert.deepEqual([PASSIVES.estilingue.perLevel,PASSIVES.defumador.perLevel,PASSIVES.arruda.perLevel,PASSIVES['tampa-de-panela'].perLevel],
     [{speed:.4},{},{regen:.5},{armor:1}]);
-  assert.deepEqual([PASSIVES.silenciador.maxLevel,PASSIVES.silenciador.perLevel],[3,{}]);
+  assert.equal(passiveDef('silenciador'),undefined,'melee-alcance-2x: the user removed the Silenciador de Garagem');
   for(const id of MANUAL_PASSIVE_IDS)assert.equal(new Set([1,2,3].map(l=>PASSIVES[id].describe(l))).size,Math.min(3,PASSIVES[id].maxLevel),id);
 });
 

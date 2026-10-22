@@ -56,6 +56,11 @@ export interface RoomOptions {
   labOffset?:{x:number;y:number};
   /** Lab only (wrangler dev with ALLOW_LOCAL and LAB_ZUEIRA "apagao,boletos,promo"): those zueira events, one per round from round 2 (VGM-053B). */
   labZueira?:ZueiraLab;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_ASLEEP n): each client gets at most n sleeping bodies instead of
+   * ASLEEP_PER_VIEWER (card horda-visivel-capacidade: the same walk measured at several caps); 'sem' = no cap.
+   */
+  labAsleep?:number;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -322,6 +327,7 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  private readonly labAsleep?:number;
   private readonly labOffset?:{x:number;y:number};
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
@@ -408,6 +414,7 @@ export class Room {
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    if(Number.isFinite(options.labAsleep)&&options.labAsleep!>0)this.labAsleep=Math.floor(options.labAsleep!);
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
@@ -625,7 +632,7 @@ export class Room {
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
-      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
+      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY,...(this.labAsleep?{interest:{asleep:this.labAsleep}}:{})});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
         run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map),

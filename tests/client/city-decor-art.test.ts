@@ -11,7 +11,7 @@ import {ART_CELL,DECOR_PROP_SCALE,DECOR_WALL_FAMILIES,WALL_RETO_SPAN,buildCityAr
 import {liteOnly} from '../../src/client/art/horde-art.ts';
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
-import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
+import {cityRenderAsset,leftoverWallLines} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,buildingAnchor,frontCorner} from '../../src/client/render/city/materials.ts';
 import {TILE_X,VIEW_PIVOT,depth,project,viewPoint} from '../../src/client/render/city/projection.ts';
 import sharp from 'sharp';
@@ -49,7 +49,8 @@ test('the real asset: cityRenderAsset copies every decor piece and stays in pars
   const decoded=decodeCityAsset(raw);
   assert.ok(decoded.ok);
   const r=cityRenderAsset(decoded.asset);
-  assert.equal(r.decor?.length,decoded.asset.decor.length);
+  // Plus the lines of the wall cells the scenery left bare (trocar-procedurais-por-arte, from-maps leftoverWallLines).
+  assert.equal(r.decor?.length,decoded.asset.decor.length+leftoverWallLines(decoded.asset).length);
   assert.ok(r.decor!.length>1000);
   assert.deepEqual(parseCityAsset(r).decor,r.decor);
 });
@@ -223,5 +224,5 @@ test('grades-sem-padrao: a cover entry reaches the render asset (it covers its c
   const covers=decoded.asset.decor.filter(d=>d.cover);
   assert.ok(covers.length>0);
   const render=cityRenderAsset(decoded.asset);
-  assert.equal(render.decor!.filter(d=>d.cover).length,covers.length);
+  assert.equal(render.decor!.filter(d=>d.cover).length,covers.length+leftoverWallLines(decoded.asset).filter(d=>d.cover).length);
 });

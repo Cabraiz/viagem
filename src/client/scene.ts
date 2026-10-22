@@ -691,12 +691,13 @@ export class IslandScene extends Phaser.Scene {
   /**
    * Endless world and city: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen
    * unchanged). The city spans ±34 000 in raw keys: without it, views 1–3 would sort under the ground layers.
+   * Out and watching (UX-espectador): the origin follows the watched friend, else everything near him sorts under the ground.
    */
   private rebaseDepth(force=false){
     if(!this.field.chunks&&!this.city)return;
-    const o=this.depthOrigin;
-    if(!force&&o&&Math.max(Math.abs(o.x-this.position.x),Math.abs(o.y-this.position.y))<DEPTH_REBASE_UNITS)return;
-    this.depthOrigin={x:Math.round(this.position.x),y:Math.round(this.position.y)};
+    const o=this.depthOrigin,at=this.watchPoint??this.position;
+    if(!force&&o&&Math.max(Math.abs(o.x-at.x),Math.abs(o.y-at.y))<DEPTH_REBASE_UNITS)return;
+    this.depthOrigin={x:Math.round(at.x),y:Math.round(at.y)};
     if(this.actor)this.reproject();
   }
   /** Whether the view may turn now (UX-camera-segue 4: never during a wave; the buttons go grey). */
@@ -1599,6 +1600,14 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
     antialias:true,transparent:false,autoFocus:false,
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
+  // Phone turned: Phaser 3.90 refreshes on screen.orientation 'change' with the old parent size, then reads the new one
+  // inside that refresh, so its own size check never sees a change and the canvas stays stretched (22/10, espectador
+  // 844×390). The parent's real size wins: a mismatch with the game's size refreshes again.
+  const sizes=typeof ResizeObserver==='function'?new ResizeObserver(()=>{
+    const s=game.scale,r=parent.getBoundingClientRect();
+    if(r.width>0&&r.height>0&&(Math.round(r.width)!==Math.round(s.gameSize.width)||Math.round(r.height)!==Math.round(s.gameSize.height))){s.getParentBounds();s.refresh();}
+  }):undefined;
+  sizes?.observe(parent);game.events.once(Phaser.Core.Events.DESTROY,()=>sizes?.disconnect());
   // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
   // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
   if(import.meta.env.DEV){

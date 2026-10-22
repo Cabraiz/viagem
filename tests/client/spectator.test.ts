@@ -45,3 +45,14 @@ test('the torcida never reaches the room: the bar holds no network handle and se
   assert.ok(wiring.includes('watchStep')&&wiring.includes('watchedScreen')&&wiring.includes('close()'));
   assert.ok(!/net\./.test(wiring),'the bar wiring must not touch the room');
 });
+
+test('watching: the depth origin follows the watched friend and a turned phone resizes the game (22/10 prova)', ()=>{
+  const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  // Anchored on the dead body, everything near a far friend sorted under the ground layers (depth −10 000): invisible.
+  const rebase=scene.match(/private rebaseDepth\(force=false\)\{[\s\S]*?\n  \}/)?.[0]??'';
+  assert.match(rebase,/at=this\.watchPoint\?\?this\.position/);
+  assert.match(rebase,/this\.depthOrigin=\{x:Math\.round\(at\.x\),y:Math\.round\(at\.y\)\}/);
+  // Phaser 3.90 misses the size after screen.orientation 'change': the parent's real size refreshes the scale again.
+  assert.match(scene,/new ResizeObserver\([\s\S]{0,300}s\.getParentBounds\(\);s\.refresh\(\);/);
+  assert.match(scene,/Phaser\.Core\.Events\.DESTROY,\(\)=>sizes\?\.disconnect\(\)/);
+});

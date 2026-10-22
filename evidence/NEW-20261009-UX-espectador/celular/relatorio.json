@@ -1,0 +1,334 @@
+{
+ "errors": [],
+ "console": [],
+ "sent": [
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "sem-t:{\"type\":\"ping\"}",
+  "ack",
+  "ack",
+  "ping",
+  "ack",
+  "ack",
+  "ack",
+  "ack"
+ ],
+ "steps": [
+  "01-retrato-barra",
+  "02-retrato-proximo",
+  "03-retrato-chinelo-voando",
+  "04-retrato-chinelo-caiu",
+  "05-retrato-sair-confirma",
+  "06-paisagem-barra",
+  "07-paisagem-chinelo-voando",
+  "08-depois-de-sair"
+ ],
+ "before": {
+  "bar": "Pisca",
+  "watching": "bot-2",
+  "arrows": true,
+  "alvo": {
+   "x": 193.31040645341128,
+   "y": 440.5596381048401
+  },
+  "tela": [
+   390,
+   844
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   390,
+   844,
+   390,
+   844
+  ],
+  "cam": [
+   390,
+   844
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 1339.2578125,
+   "key": "sprite128:faxineira:walk:N:cidade:18",
+   "frame": "55",
+   "w": 45.34040677294955,
+   "h": 55.21089747504563,
+   "scr": [
+    193.8700266141606,
+    440.6537273946228
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 6925.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    390,
+    844
+   ],
+   "ps": [
+    390,
+    844
+   ],
+   "gs": [
+    390,
+    844
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 110
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 100
+   }
+  ]
+ },
+ "afterNext": {
+  "bar": "Cafeteira",
+  "watching": "bot-1",
+  "arrows": true,
+  "alvo": {
+   "x": 196.08277919258828,
+   "y": 451.6102264937672
+  },
+  "tela": [
+   390,
+   844
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   390,
+   844,
+   390,
+   844
+  ],
+  "cam": [
+   390,
+   844
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 1432.479605064058,
+   "key": "sprite128:passageira:walk:NE:cidade:12",
+   "frame": "27",
+   "w": 48.24621787510018,
+   "h": 56.064012869403854,
+   "scr": [
+    196.46944992717775,
+    451.5057644652448
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 6925.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    390,
+    844
+   ],
+   "ps": [
+    390,
+    844
+   ],
+   "gs": [
+    390,
+    844
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 110
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 100
+   }
+  ]
+ },
+ "afterPrev": {
+  "bar": "Pisca",
+  "watching": "bot-2",
+  "arrows": true,
+  "alvo": {
+   "x": 193.53436638048294,
+   "y": 440.21766938737676
+  },
+  "tela": [
+   390,
+   844
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   390,
+   844,
+   390,
+   844
+  ],
+  "cam": [
+   390,
+   844
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 333.8337546502953,
+   "key": "sprite128:faxineira:walk:N:cidade:18",
+   "frame": "54",
+   "w": 45.34040677294955,
+   "h": 55.21089747504563,
+   "scr": [
+    193.3375980696789,
+    440.0712487018239
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 6925.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    390,
+    844
+   ],
+   "ps": [
+    390,
+    844
+   ],
+   "gs": [
+    390,
+    844
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 110
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 100
+   }
+  ]
+ },
+ "leaveText": "Sai da sala? Toca de novo",
+ "leaveReset": "Voltar ao lobby",
+ "landNext": {
+  "bar": "Cafeteira",
+  "watching": "bot-1",
+  "arrows": true,
+  "alvo": {
+   "x": 526.2760994795883,
+   "y": 299.2837714949907
+  },
+  "tela": [
+   844,
+   390
+  ],
+  "stick": "hidden",
+  "banner": null,
+  "canvas": [
+   844,
+   390,
+   844,
+   390
+  ],
+  "cam": [
+   844,
+   390
+  ],
+  "feet": 2,
+  "img": {
+   "vis": true,
+   "a": 1,
+   "depth": 2146.239245950812,
+   "key": "sprite128:passageira:walk:S:cidade:19",
+   "frame": "111",
+   "w": 46.71354428703269,
+   "h": 56.064012869403854,
+   "scr": [
+    526.5622529061691,
+    299.4542269645672
+   ],
+   "active": true,
+   "parent": true,
+   "heroDepth": 6225.9765625
+  },
+  "sc": {
+   "parent": "explore-canvas",
+   "pr": [
+    844,
+    390
+   ],
+   "ps": [
+    844,
+    390
+   ],
+   "gs": [
+    844,
+    390
+   ],
+   "loop": true,
+   "hidden": false
+  },
+  "others": [
+   {
+    "id": "bot-1",
+    "online": true,
+    "spect": false,
+    "hp": 110
+   },
+   {
+    "id": "bot-2",
+    "online": true,
+    "spect": false,
+    "hp": 100
+   }
+  ]
+ },
+ "afterLeave": {
+  "shell": false,
+  "socket": 3
+ }
+}

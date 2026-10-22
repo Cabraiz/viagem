@@ -107,6 +107,8 @@ import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
+import {BIG_ROCKS,bigCliffRocks} from '../../maps/city-decor.ts';
+import type {CityDecor} from '../../maps/city-asset.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
@@ -295,6 +297,9 @@ class CitySandbox extends Phaser.Scene {
       if(!decoded.ok)throw new Error(`city asset: ${decoded.error}`);
       this.asset=cityRenderAsset(decoded.asset);
       if(params.get('relevo')==='morros')this.asset=previewHills(this.asset);
+      // rochas=a|b: the thick cliffs drawn with the big pieces of that look (rochas-grandes, the user's pick).
+      const rochas=params.get('rochas');
+      if((rochas==='a'||rochas==='b')&&this.asset.decor)this.asset.decor=bigCliffRocks(this.asset.decor as CityDecor[],BIG_ROCKS[rochas],1);
       if(tele||bancos)this.decoded=new CityTerrain(decoded.asset,'sandbox');
     }else this.asset=parseCityAsset(makeSampleCity());
     const start=heroParam?heroParam.split(',').map(Number):undefined,inicio=this.asset.points.inicio;

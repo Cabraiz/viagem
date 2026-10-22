@@ -288,3 +288,37 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   }
   return {decor,blocked};
 }
+
+/** Big cliff pieces of one look (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */
+export interface BigRocks {readonly bloco:readonly string[];readonly reto:string}
+/** The two looks generated for the user to pick (scripts/import-rochas-grandes.mjs): a columnar granite, b fused boulders. */
+export const BIG_ROCKS:Readonly<Record<'a'|'b',BigRocks>>={
+  a:{bloco:['penhasco3-a-bloco-1','penhasco3-a-bloco-2'],reto:'penhasco3-a-reto'},
+  b:{bloco:['penhasco3-b-bloco-1','penhasco3-b-bloco-2'],reto:'penhasco3-b-reto'},
+};
+/**
+ * The cliff cells drawn with bigger pieces (NEW-20261022-ORQ-rochas-grandes: a thick cliff read as rows of small parallel
+ * walls). Every 1×1 `penhasco*` piece is a cliff cell; scanning rows top-down, 4 free cells in a square become one 2×2
+ * massif (`bloco`, a variant and a turn at random), then 2 free cells side by side one 2×1 straight wall (`reto`, rot 0
+ * along c, 90 along r); the cells left keep their piece. Only the drawing changes: the pieces cover the same cliff cells
+ * (solid already), the grid and the collision stay as they are.
+ */
+export function bigCliffRocks(decor:readonly CityDecor[],rocks:BigRocks,seed:number):CityDecor[]{
+  const at=new Map<string,number>();
+  decor.forEach((e,i)=>{if(e.w===1&&e.h===1&&e.id.startsWith('penhasco'))at.set(`${e.c},${e.r}`,i);});
+  const gone=new Set<number>(),out:CityDecor[]=[],rnd=mulberry(seed);
+  const has=(c:number,r:number)=>{const i=at.get(`${c},${r}`);return i!==undefined&&!gone.has(i);};
+  const take=(cells:readonly (readonly [number,number])[])=>{for(const [c,r] of cells)gone.add(at.get(`${c},${r}`)!);};
+  const cells=[...at.keys()].map(k=>k.split(',').map(Number) as [number,number]).sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+  for(const [c,r] of cells){
+    if(!(has(c,r)&&has(c+1,r)&&has(c,r+1)&&has(c+1,r+1)))continue;
+    take([[c,r],[c+1,r],[c,r+1],[c+1,r+1]]);
+    out.push({id:rocks.bloco[Math.floor(rnd()*rocks.bloco.length)],c,r,w:2,h:2,rot:([0,90,180,270] as const)[Math.floor(rnd()*4)]});
+  }
+  for(const [c,r] of cells){
+    if(!has(c,r))continue;
+    if(has(c+1,r)){take([[c,r],[c+1,r]]);out.push({id:rocks.reto,c,r,w:2,h:1,rot:rnd()<.5?0:180});}
+    else if(has(c,r+1)){take([[c,r],[c,r+1]]);out.push({id:rocks.reto,c,r,w:1,h:2,rot:rnd()<.5?90:270});}
+  }
+  return [...decor.filter((_,i)=>!gone.has(i)),...out];
+}

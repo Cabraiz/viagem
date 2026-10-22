@@ -117,14 +117,15 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    (SELECIONAR / BORA!) stays HTML. --bh is its height; the caps keep the art's proportion at any width.
    botao-igual-gerado (the user, 22/10): the star, text and burst where the generated screen has them (tela-1080p, pill
    815x151; here .953 of --bh, the art's 3 px of air around it): the star .62 of the pill tall and whole inside it, half its
-   width from the left edge, a bit above the middle; the text and the burst higher still, over the pill's orange lip. */
+   width from the left edge, a bit above the middle; the text and the burst higher still, over the pill's orange lip.
+   fonte-botao-coerente (the user, 22/10): the text in Lilita One, the generated art's smooth fat letter (one weight). */
 .estadio .estadio-confirmar {
   --bh: clamp(52px, 8.5vh, 76px);
   display: flex; align-items: center; width: 100%; max-width: 440px; height: var(--bh); min-height: 0;
   padding: 0 calc(var(--bh) * .345) calc(var(--bh) * .048) calc(var(--bh) * .5);
   border: 0 solid transparent; border-radius: 0; background: none; box-shadow: none;
   border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch; container-type: inline-size;
-  color: color-mix(in srgb, var(--arte-roxo-sombra) 35%, var(--c-breu)); font: 900 calc(var(--bh) * .54)/1 var(--f-cartaz); white-space: nowrap;
+  color: color-mix(in srgb, var(--arte-roxo-sombra) 35%, var(--c-breu)); font: 400 calc(var(--bh) * .54)/1 var(--f-botao); white-space: nowrap;
 }
 .estadio .estadio-confirmar > span { padding: 0; }
 .estadio .estadio-confirmar > span[aria-hidden] {

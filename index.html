@@ -6,9 +6,11 @@
     <meta name="theme-color" content="#5B3F8C" />
     <meta name="description" content="Monte sua turma. Escolha entre 36 classes de uma aventura cooperativa fora do comum." />
     <link rel="icon" href="/favicon.svg" />
-    <!-- DSG-fontes: só os 2 pesos mais usados vão no preload; o resto chega com font-display:swap. -->
+    <!-- DSG-fontes: só os 2 pesos mais usados (e a fonte do botão do estádio, abaixo) vão no preload; o resto chega com font-display:swap. -->
     <link rel="preload" href="/fonts/londrina-solid-900.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/m-plus-rounded-1c-700.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- fonte-botao-coerente: the stadium's SELECIONAR (Lilita One) is on the first frame; the Londrina 900 stays for the round arrows. -->
+    <link rel="preload" href="/fonts/lilita-one-400.woff2" as="font" type="font/woff2" crossorigin />
     <!-- danca-sem-fallback: the first page of the selected hero's dance (menu-dance.ts firstDancePage) starts downloading
          with the HTML, before the bundle and the art index, so the menu's empty podium turns into the dance sooner.
          DEFAULT_HERO = playableClasses[0] (tests/client/menu-dance.test.ts checks it). -->

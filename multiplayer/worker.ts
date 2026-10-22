@@ -33,7 +33,9 @@ export {RoomIndex};
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
  * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
  * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,boletos"
- * plays those zueira events one per round from round 2 (VGM-053B proofs).
+ * plays those zueira events one per round from round 2 (VGM-053B proofs); LAB_SEED n gives every new room that seed (the
+ * same city plan in each run of a before/after); LAB_ASLEEP n caps each client's sleeping bodies at n, 'sem' = no cap
+ * (card horda-visivel-capacidade).
  */
 /** What the room needs of a server-side WebSocket (the tests pass a fake one). */
 export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
@@ -41,7 +43,7 @@ export type RoomSocket=Pick<WebSocket,'send'|'close'|'addEventListener'>;
  * BUILD_SHA: the commit this Worker was published from (scripts/deploy-rooms.mjs passes it with `--var`); /health answers
  * it, so a deploy from a stale checkout shows at once (after 4e771dc went up from the lote's worktree without it).
  */
-interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; }
+interface Env { ROOMS:DurableObjectNamespace<GameRoom>; INDEX?:DurableObjectNamespace<RoomIndex>; ALLOW_LOCAL:string; BUILD_SHA?:string; CREATE_LIMIT:RateLimit; LAB_WORLD?:string; LAB_HORDE?:string; LAB_OFFSET?:string; LAB_ZUEIRA?:string; LAB_SEED?:string; LAB_ASLEEP?:string; }
 const local=(env:Env)=>env.ALLOW_LOCAL==='true';
 /** LAB_OFFSET "x,y" (units): where the lab runs start, relative to the base. */
 const labOffset=(value?:string)=>{const [x,y]=(value??'').split(',').map(Number);return Number.isFinite(x)&&Number.isFinite(y)?{x,y}:undefined;};
@@ -160,7 +162,7 @@ export class GameRoom extends DurableObject<Env>{
   async init(code?:string,asked:RoomCreateOptions={}){
     this.city??=await loadCity();
     if(await this.ctx.storage.get('created'))return;
-    const now=Date.now(),seed=randomSeed();
+    const now=Date.now(),seed=local(this.env)&&Number.isInteger(Number(this.env.LAB_SEED))&&this.env.LAB_SEED?Number(this.env.LAB_SEED)>>>0:randomSeed();
     this.code=code;this.created=now;this.asked=createOptions(asked);
     const row:Record<string,unknown>={created:now,terrainSeed:seed};
     if(code)row.code=code;
@@ -194,7 +196,8 @@ export class GameRoom extends DurableObject<Env>{
       ...(this.asked.mode?{mode:this.asked.mode}:{})};
     if(!local(this.env))return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked});
     // LAB_WORLD 'ilha' is the endless map's slot on the island: those lab rooms stay on it whatever the default.
-    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA)});
+    return new Room(created,seed,{onRoster,onCheckpoint,log,...city,...this.defaults,...asked,lab:true,...(this.env.LAB_WORLD==='ilha'?{world:'ilha' as const,map:'infinito' as const}:{}),labHorde:Number(this.env.LAB_HORDE)||0,labOffset:labOffset(this.env.LAB_OFFSET),labZueira:parseZueiraLab(this.env.LAB_ZUEIRA),
+      labAsleep:this.env.LAB_ASLEEP==='sem'?Number.MAX_SAFE_INTEGER:Number(this.env.LAB_ASLEEP)||undefined});
   }
   /**
    * A restarted object (deploy, eviction): the same room seed, everyone seated again from the stored roster. A run that

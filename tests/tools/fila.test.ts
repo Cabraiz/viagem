@@ -5,12 +5,13 @@
 // branch that breaks the suite is found alone and sent back while the rest goes in.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt,childEnv,ownTestRun} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -44,8 +45,17 @@ function world(){
     cleanup:()=>rmSync(root,{recursive:true,force:true})};
 }
 
+/** Runs `fn` with FILA_ORQ set to `value` (undefined: unset), then puts back what the caller had: the tests never depend on
+ * who runs them (BUG-20261022-ORQ-fila-env-vaza-suite: the ORQ's FILA_ORQ=1 made the "Worker pendente" check fail). */
+function withOrq<T>(value:string|undefined,fn:()=>T):T{
+  const prev=process.env.FILA_ORQ;
+  if(value===undefined)delete process.env.FILA_ORQ;else process.env.FILA_ORQ=value;
+  try{return fn();}finally{if(prev===undefined)delete process.env.FILA_ORQ;else process.env.FILA_ORQ=prev;}
+}
 /** Runs `fn` as the Orquestrador (FILA_ORQ=1), the only one who publishes a lote that needs the Worker. */
-function orq<T>(fn:()=>T):T{process.env.FILA_ORQ='1';try{return fn();}finally{delete process.env.FILA_ORQ;}}
+const orq=<T>(fn:()=>T):T=>withOrq('1',fn);
+/** Runs `fn` as an executor (no FILA_ORQ), whatever the environment of the run. */
+const executor=<T>(fn:()=>T):T=>withOrq(undefined,fn);
 
 test('ordered: P0 first, then arrival',()=>{
   const e=(card:string,prio:string,at:string)=>({card,prio,at});
@@ -97,7 +107,7 @@ test('ACCEPTANCE: protocol + conflict + clean → 1 suite, 1 bump, the conflict 
     assert.ok(!existsSync(join(w.board,'fila/NEW-conflito.json')),'out of the queue until it is queued again');
     assert.throws(()=>main(['lote',...w.opts]),/lote aberto/,'one batch at a time');
     // An executor cannot push a lote that needs the Worker: only the Orquestrador, after his deploy (FILA_ORQ=1).
-    assert.throws(()=>main(['publicar',state.lote,...w.opts]),/Worker pendente/);
+    assert.throws(()=>executor(()=>main(['publicar',state.lote,...w.opts])),/Worker pendente/);
     // The Orquestrador published the Worker: push once.
     orq(()=>main(['publicar',state.lote,...w.opts]));
     git(w.repo,'fetch','-q','origin');
@@ -503,7 +513,7 @@ test('deploy:rooms first, then publicar, always; a map or protocol change also w
       assert.match(log,/run deploy:rooms/,'the deploy:rooms command, every time');
       assert.match(log,/depois, com FILA_ORQ=1: node tools\/fila\.mjs publicar/);
       assert.equal(/fora de passo por ~20 min/.test(log),contract);
-      assert.throws(()=>main(['publicar',state.lote,...w.opts]),/depois do deploy:rooms/);
+      assert.throws(()=>executor(()=>main(['publicar',state.lote,...w.opts])),/depois do deploy:rooms/);
       said.length=0;
       orq(()=>main(['publicar',state.lote,...w.opts]));
       assert.equal(/fora de passo por ~20 min.*confira o site em ~25 min/.test(said.join('\n')),contract,'the reminder after the push');
@@ -516,3 +526,24 @@ test('contractFiles: the maps\' manifests and bytes, the protocol and multiplaye
     'src/protocol/room.ts','public/multiplayer.json','public/maps/thumbs/a.webp','src/sim/core.ts','public/art/manifest.json','tests/protocol/x.test.ts']),
   ['public/maps/cidade-nevada.manifest.json','public/maps/cidade-nevada.json','src/protocol/protocol4.ts','src/protocol/room.ts','public/multiplayer.json']);
 });
+
+test('the suite, CI, build and smoke children get the environment without the ORQ role (FILA_ORQ), extras kept',()=>{
+  withOrq('1',()=>{
+    const env=childEnv({FILA_FILES:'a,b'});
+    assert.equal(env.FILA_ORQ,undefined);assert.equal(env.FILA_FILES,'a,b');assert.equal(env.PATH??env.Path,process.env.PATH??process.env.Path);
+    assert.equal(ownTestRun().FILA_ORQ,undefined);assert.equal(ownTestRun().NODE_TEST_CONTEXT,undefined);
+    assert.equal(process.env.FILA_ORQ,'1','the caller keeps its own');
+  });
+});
+
+test('this file passes when the run inherits FILA_ORQ=1 (an ORQ lote falling back to the local suite)',()=>{
+  // The tests that publish a lote (the ones FILA_ORQ changes, all named for the Worker) in a child run with the ORQ's role;
+  // this one's name has no "Worker", so it does not run itself.
+  const env=ownTestRun();env.FILA_ORQ='1';
+  const r=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-reporter=tap','--test-name-pattern=Worker',
+    fileURLToPath(import.meta.url)],{encoding:'utf8',env,maxBuffer:64<<20});
+  const out=`${r.stdout}${r.stderr}`;
+  assert.equal(r.status,0,out.split('\n').filter(l=>/^not ok|Error/.test(l.trim())).join('\n').slice(0,1500));
+  assert.match(r.stdout,/# fail 0\b/);assert.match(r.stdout,/# pass 3\b/,'ACCEPTANCE, the newer pronto and deploy:rooms');
+});
+

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from '../../src/client/sprites/movement128.ts';
-import {Movement128Textures,movement128Textures} from '../../src/client/sprites/movement128-textures.ts';
+import {Movement128Textures,movement128Textures,sheetWeight} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 /** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
@@ -72,6 +72,20 @@ test('shared LRU keeps eight unleased atlases, honors live leases and frees deri
   }
   assert.equal(cache.stats().ready,8);assert.equal(cache.stats().leasedTextures,1);assert.equal(disposed.length,3);assert.ok(!disposed.includes(first.key));
   cache.release(held);cache.clearUnused();assert.equal(cache.stats().ready,0);assert.equal(disposed.length,11);
+});
+
+test("M16 sheets weigh their share of an R06 one (corrida-proporcao-contorno): a hero's 10 rests and runs never evict each other",async()=>{
+  assert.equal(sheetWeight({columns:16,rows:8}),1);assert.equal(sheetWeight({columns:4,rows:4}),1/8);assert.equal(sheetWeight({columns:4,rows:2}),1/16);
+  setArtIndex(parseArtIndex(manifest()));const first=movement128Plan('aposentado','walk','S')!,disposed:string[]=[];
+  const cache=new Movement128Textures(async plan=>({dispose:()=>{disposed.push(plan.key);}}));
+  // The viciado turning: 5 rests (4×2) and 5 runs (4×4), each shown then left, plus 7 R06 sheets of the other heroes.
+  const m16=Array.from({length:10},(_,i)=>({...first,key:'m16:'+i,columns:4,rows:i<5?2:4,frameCount:i<5?8:16}));
+  for(const plan of [...m16,...Array.from({length:7},(_,i)=>({...first,key:'r06:'+i}))]){const owner={};cache.request(owner,plan);await flush();cache.bind(owner,plan.key);cache.release(owner);}
+  assert.deepEqual(disposed,[]);assert.equal(cache.stats().ready,17,'7 + 10 × (1/16 or 1/8) ≤ 8');
+  // An eighth R06 sheet passes the budget (8.94): the oldest go first, down to 8, all ten before any R06 sheet.
+  const owner={};cache.request(owner,{...first,key:'r06:7'});await flush();cache.bind(owner,'r06:7');cache.release(owner);
+  assert.deepEqual(disposed,m16.map(p=>p.key));
+  cache.clearUnused();
 });
 
 test('more than eight simultaneously visible leased atlases are never evicted; dropping a lease restores the target',async()=>{

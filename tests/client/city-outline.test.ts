@@ -8,8 +8,8 @@ import {CityOutlines,type CityOutlineHost} from '../../src/client/render/city-ou
 import {bandsRgba,outlineRgba} from '../../src/client/render/outline.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
-import {YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
-import {OUTLINE_DIRS,STICKER_CSS} from '../../src/client/render/you-rules.ts';
+import {CITY_CONTOUR,YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
+import {OUTLINE_DIRS,RING_UNDER,STICKER_CSS} from '../../src/client/render/you-rules.ts';
 import {ENEMY_KINDS,ENEMY_TEXTURES,PICKUP_KINDS,enemyTexture,pickupTexture,FX} from '../../src/client/render/keys.ts';
 import {ELITE_ART_SCALE,applyEnemyArt,enemyArtKey,enemyDrawScale} from '../../src/client/art/horde-art.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
@@ -460,14 +460,23 @@ test('city "você" sticker in YouMarkers: one baked sprite, figure px on the cop
     const {f,out,base,copy,h,v}=heroPair(flip);
     const m=markerScene(sizeIn(out)),you=new YouMarkers(m.scene as never,true,out);
     you.setCity(true);
-    // The frame that built the copy cannot build the sticker too (one build per frame): offset copies meanwhile.
+    // The frame that built the copy cannot build the sticker too (one build per frame): offset copies meanwhile, with
+    // the sticker's three bands (corrida-proporcao-contorno: Breu outermost, Papel, Breu), not the island's thin Breu.
     you.update(100,h.z,[selfMark(copy)]);
-    assert.equal(you.last.sticker,false);assert.equal(m.sprites.length,16);
+    assert.equal(you.last.sticker,false);assert.equal(m.sprites.length,24);
+    const s=1/h.z;
+    m.sprites.forEach((c,i)=>{
+      const band=CITY_CONTOUR[i>>3],dir=OUTLINE_DIRS[i%8];
+      assert.equal(c.tint,i<8||i>=16?0x1e1530:0xeeddb8);
+      assert.deepEqual([c.x,c.y,c.depth,c.visible],[copy.x+dir.x*band.r*s,copy.y+dir.y*band.r*s,copy.depth+band.depth,true]);
+    });
+    assert.deepEqual(CITY_CONTOUR.map(b=>b.r),[CITY_STICKER_CSS,CITY_RING.cssPx+2,CITY_RING.cssPx]);
+    assert.ok(CITY_CONTOUR.every((b,i)=>b.depth<0&&b.depth>-RING_UNDER&&(!i||b.depth>CITY_CONTOUR[i-1].depth)),'outermost lowest, over the ring');
     f.next();you.update(116,h.z,[selfMark(copy)]);
     assert.equal(you.last.sticker,true);
-    const sticker=m.sprites[16],st=out.copyOf(sticker.texture.key)!;
+    const sticker=m.sprites[24],st=out.copyOf(sticker.texture.key)!;
     assert.ok(isCityKey(sticker.texture.key)&&sticker.texture.key!==copy.texture.key);
-    assert.ok(m.sprites.slice(0,16).every(s=>!s.visible),'offset copies hidden');
+    assert.ok(m.sprites.slice(0,24).every(s=>!s.visible),'offset copies hidden');
     assert.ok(sticker.visible&&sticker.depth<copy.depth&&sticker.flipX===flip);
     assert.equal(st.geom.kx,v.geom.kx);assert.equal(st.geom.ky,v.geom.ky);assert.deepEqual(st.geom.crop,v.geom.crop);
     assert.ok(st.geom.pad>=Math.ceil(CITY_STICKER_CSS*st.geom.perCss)+1);

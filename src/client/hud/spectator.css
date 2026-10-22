@@ -9,6 +9,7 @@
 .spect-seta:not(:disabled):active{background:var(--c-amarelo);color:var(--c-breu)}
 .spect-quem{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
 .spect-quem::before{content:'Assistindo';font:700 var(--t-13)/1 var(--f-sistema);opacity:.8}
+.spect[data-ghost] .spect-quem::before{content:'Fantasma'}
 .spect-rosto{width:32px;height:32px;flex:none;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-retrato-a);object-fit:cover}
 .spect-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .spect-acoes{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
@@ -17,14 +18,18 @@
 .spect-sair{background:var(--c-papel);color:var(--c-lilas);font-size:var(--t-13)!important;line-height:1.1!important}
 .spect-sair.is-confirm{background:var(--c-cone);color:var(--c-breu)}
 .spect-acoes button:active{transform:translateY(2px);box-shadow:none}
-/* The out player's thumbs: the bar replaces them (no dead stick under a finger). */
-.coop-shell[data-out=true] .explore-stick,.coop-shell[data-out=true] #coop-attack,.coop-shell[data-out=true] .explore-stick-hint{visibility:hidden}
+/* Out: the stick walks the ghost (morto-anda-pelo-mapa); the attack and the etiqueta go. On the phone the bar stands
+   12 px over the stick (its 112 px + the controls' 24 px bottom padding), at its usual width. */
+.coop-shell[data-out=true] #coop-attack,.coop-shell[data-out=true] .explore-stick-hint{visibility:hidden}
+.coop-shell[data-out=true]:not([data-input=mouse]) .spect{bottom:calc(max(24px,env(safe-area-inset-bottom)) + 124px)}
 /* Landscape on a short phone: one row (‹ who › | Chinelo | Voltar), so the bar stays low and thin. */
 @media(max-height:500px) and (min-width:600px){
   .spect{width:min(620px,calc(100% - 32px));grid-template-columns:auto 1fr;align-items:center;bottom:max(10px,env(safe-area-inset-bottom))}
   .spect-alvo{grid-template-columns:44px minmax(110px,auto) 44px}
   .spect-seta{width:44px;height:44px}
   .spect-acoes button{min-height:44px}
+  /* Out on a phone: the bar stays low, between the stick's corner (96 px + 16 px + 12 px) and the right edge's twin. */
+  .coop-shell[data-out=true]:not([data-input=mouse]) .spect{bottom:max(10px,env(safe-area-inset-bottom));width:min(620px,calc(100% - 248px))}
 }
 /* The flying slipper and its line: over the field, never a finger target. */
 .spect-fx{position:fixed;inset:0;z-index:var(--z-hud);pointer-events:none;overflow:hidden}

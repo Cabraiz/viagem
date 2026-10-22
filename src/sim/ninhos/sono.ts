@@ -59,6 +59,12 @@ export const SEE_RADIUS=14;
 export const WANDER_SIGHT=10.5;
 /** The minuto de Minerva: a hero this close to a sleeper (u, a melee reach) wakes it; it stands and hits. */
 export const MINERVA_REACH=1.5;
+/**
+ * The end of the minuto de Minerva (BUG-20261022-ORQ-minerva-acordar-trava): the bodies it held stand MINERVA_REACT s
+ * more (none acts: the hero gets to react, even with one at his side), then start one by one over MINERVA_SPREAD s,
+ * the nearest to a standing hero first (plan order on ties), never all on one tick.
+ */
+export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -407,6 +413,22 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     }
   }
 
+  /** Whether the last step was in the minuto de Minerva (undefined before the first: a restore never releases). */
+  let held:boolean|undefined;
+  /** The end of the minuto de Minerva (MINERVA_REACT, MINERVA_SPREAD): the awake bodies start one by one. */
+  function release(ctx:SimContext){
+    const players=[...ctx.players.values()].filter(standing),list:{e:EnemyState;d:number}[]=[];
+    for(const e of ctx.enemies.values()){
+      if(e.boss||!(e.hp>0))continue;
+      let d=Infinity;
+      for(const p of players)d=Math.min(d,Math.hypot(p.x-e.x,p.y-e.y));
+      list.push({e,d});
+    }
+    list.sort((a,b)=>a.d-b.d||(order.get(a.e.id)??Infinity)-(order.get(b.e.id)??Infinity)||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
+    const react=ticks(MINERVA_REACT),spread=ticks(MINERVA_SPREAD);
+    list.forEach(({e},k)=>{e.readyTick=Math.max(e.readyTick,ctx.tick+react+Math.floor(k*spread/list.length));});
+  }
+
   /** The safety net (STUCK_S): awake enemies stuck far from every hero leave the world (see the constant). */
   function unstick(ctx:SimContext){
     const near=[...ctx.players.values()].filter(standing),far2=STUCK_FAR*STUCK_FAR,gone:EnemyState[]=[];
@@ -482,6 +504,8 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(options.events)hear(ctx,options.events());
       const every=ticks(NOISE_EVERY);
       const minerva=!!options.minerva?.(ctx);
+      if(held&&!minerva)release(ctx);
+      held=minerva;
       if(minerva){heard.clear();}
       else if(ctx.tick%every===0){
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);

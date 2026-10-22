@@ -3,7 +3,8 @@
  * where the thumbs were becomes the torcida's: ‹ who the camera follows › (cycles the teammates still in the run), the
  * "Chinelo" (a slipper flies to the watched friend and a line pops up: screen only, nothing reaches the room, so the
  * room's stateHash never sees it) and "Voltar ao lobby" (two taps: the first one asks again, then it leaves the room).
- * The top banner keeps "Você tá fora. Volta na revanche." (hud/model.ts OUT_TEXT). spectatorView is pure (node tests);
+ * The top banner keeps "Você tá fora. Volta na revanche." (hud/model.ts OUT_TEXT). After a fall the player walks the
+ * map as a ghost (morto-anda-pelo-mapa, scene.ts): the bar then reads "Fantasma · Pelo mapa" and ‹ › pin a friend. spectatorView is pure (node tests);
  * the bar's CSS (spectator.css) is imported by explore.ts, so node can load this module.
  */
 import {icon} from '../ui/icon.ts';
@@ -14,17 +15,23 @@ export interface SpectatorInput {
   phase?:RunPhase;eliminated?:boolean;spectator?:boolean;
   /** scene.watching(): the followed teammate and how many teammates are still in the run (the ‹ › cycle). */
   watching?:{id:string;name:string;classId?:string;choices:number};
+  /** scene.ghosting(): the ghost walks free; `choices` teammates in the run for ‹ › to pin. */
+  ghost?:{choices:number};
 }
-export interface SpectatorView {show:boolean;name:string;classId?:string;arrows:boolean}
+export interface SpectatorView {show:boolean;name:string;classId?:string;arrows:boolean;ghost?:boolean}
 
 /** First word, at most 9 letters: the same cut as the banner's "Assistindo: Tia" (hud/model.ts watchingText). */
 export const shortName=(name:string)=>name.trim().split(/\s+/)[0]?.slice(0,9)??'';
 /** No one left standing to watch (everybody out): the bar still offers the lobby and the chinelo lands in the middle. */
 export const NOBODY_TEXT='Ninguém em pé';
+/** The ghost walking free (the bar's "Fantasma" label comes from spectator.css). */
+export const GHOST_TEXT='Pelo mapa';
 
 export function spectatorView(input:SpectatorInput):SpectatorView{
   const show=input.phase==='combat'&&(!!input.eliminated||!!input.spectator);
   if(!show)return {show:false,name:'',arrows:false};
+  // Walking free: any friend still in the run is one ‹ › away.
+  if(input.ghost)return {show,name:GHOST_TEXT,arrows:input.ghost.choices>0,ghost:true};
   const w=input.watching;
   return {show,name:w?shortName(w.name):NOBODY_TEXT,...(w?.classId?{classId:w.classId}:{}),arrows:(w?.choices??0)>1};
 }
@@ -105,12 +112,13 @@ export class SpectatorBar {
   /** Per frame (cheap: writes only when what it shows changes). */
   update(input:SpectatorInput){
     const v=spectatorView(input);
-    const key=v.show?`${v.name}|${v.classId??''}|${v.arrows}`:'';
+    const key=v.show?`${v.name}|${v.classId??''}|${v.arrows}|${!!v.ghost}`:'';
     if(key===this.key)return;
     this.key=key;
     this.root.hidden=!v.show;
     if(!v.show){this.resetLeave();return;}
     this.nameEl.textContent=v.name;
+    this.root.toggleAttribute('data-ghost',!!v.ghost);
     const src=v.classId&&this.options.portrait?this.options.portrait(v.classId):'';
     if(src){if(this.face.getAttribute('src')!==src)this.face.src=src;this.face.hidden=false;}else this.face.hidden=true;
     this.prev.disabled=this.next.disabled=!v.arrows;

@@ -52,7 +52,7 @@ export const ARRUDA_REGEN=.5;
 /**
  * Defumador (the Megabonk aura, no equipping): every `every` seconds each awake enemy within `radius(level)` × the area
  * stat of the hero takes `damage(level)` (× might, core damageEnemy). Sleepers are never touched (walking by a nest does
- * not wake it). sim/weapons/system.ts runs it; the client draws the ring (render/aura-ring.ts).
+ * not wake it). sim/weapons/system.ts runs it; the client draws its smoke (render/aura-ring.ts).
  */
 export const AURA=Object.freeze({
   every:.5,

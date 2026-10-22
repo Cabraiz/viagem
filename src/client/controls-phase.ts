@@ -2,7 +2,8 @@
  * Thumb controls by run phase (BUG-20261006-ORQ-lobby-dead-controls). Outside the round the room drops every move and
  * cast (net/client.ts, room.ts), so the joystick and the skill button are not shown there: in the waiting room and the
  * countdown a small Papel etiqueta takes the joystick's corner and says what the thumbs will do once the round starts.
- * The round itself keeps its rules: the stick dims when out or watching (data-out), the skill greys when it cannot answer.
+ * The round itself keeps its rules: out or watching marks the shell (data-out: the stick walks the ghost,
+ * morto-anda-pelo-mapa), the skill greys when it cannot answer.
  * controlsFor is pure (node tests); applyControls only touches the root it is given.
  */
 import type {RunPhase} from '../contract/index.ts';
@@ -40,7 +41,7 @@ export function controlsFor(input:ControlsInput):Controls{
   const {phase}=input;
   if(phase==='lobby'||phase==='countdown')return {stick:'off',skill:'off',hint:phase};
   if(phase!=='combat')return {stick:'off',skill:'off'};
-  // The round, as before: out (bled out) or watching dims the stick; any of these greys the skill.
+  // The round: out (bled out) or watching is 'dimmed' (data-out: the stick steers the ghost); any of these greys the skill.
   const out=!!input.eliminated||!!input.spectator;
   return {stick:out?'dimmed':'live',skill:out||!!input.downed||!!input.offline?'disabled':'live'};
 }

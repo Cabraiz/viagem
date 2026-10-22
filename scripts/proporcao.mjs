@@ -9,7 +9,7 @@
 //     over that band, over the rest pose's;
 //   - area: √(opaque area ratio), the whole figure's size whatever the pose ("magro" shows here first).
 // It also measures the loop seam of every looping clip (card item D): the pose distance from the last frame to the first
-// against the distances between neighbouring frames (1 − soft IoU of the aligned figures + foot and head moves).
+// against the distances between neighbouring frames (1 − soft IoU of the figures at their best fit).
 //
 //   node scripts/proporcao.mjs [--ids viciado-em-bet] [--json out.json] [--sheet out-dir]
 //
@@ -118,15 +118,26 @@ export function torsoWidth(sh,band){
 }
 export const median=a=>{if(!a.length)return NaN;const s=[...a].sort((p,q)=>p-q),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;};
 
-/** Pose distance between two cells: 1 − soft IoU of the figures with their feet lines and body columns aligned. */
+/**
+ * Pose distance between two cells: 1 − soft IoU of the figures, their feet lines and body columns aligned and then the
+ * best fit within ±SHIFT px (the shape changes, not where the clip puts it: the foot meter checks the placement).
+ */
+const SHIFT=3;
 export function poseDistance(a,b,sa,sb,n=CELL){
-  const cxa=(sa.left+sa.right)/2,cxb=(sb.left+sb.right)/2,dx=Math.round(cxb-cxa),dy=sb.bot-sa.bot;
-  let mn=0,mx=0;
-  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
-    const p=a[y*n+x],xx=x+dx,yy=y+dy,q=xx<0||yy<0||xx>=n||yy>=n?0:b[yy*n+xx];
-    mn+=p<q?p:q;mx+=p<q?q:p;
+  const cxa=(sa.left+sa.right)/2,cxb=(sb.left+sb.right)/2,ox=Math.round(cxb-cxa),oy=sb.bot-sa.bot;
+  let best=0;
+  for(let dy=oy-SHIFT;dy<=oy+SHIFT;dy++)for(let dx=ox-SHIFT;dx<=ox+SHIFT;dx++){
+    let mn=0,mx=0;
+    for(let y=sa.top;y<=sa.bot;y++)for(let x=sa.left;x<=sa.right;x++){
+      const p=a[y*n+x],xx=x+dx,yy=y+dy,q=xx<0||yy<0||xx>=n||yy>=n?0:b[yy*n+xx];mn+=p<q?p:q;mx+=p<q?q:p;
+    }
+    // b outside a's box counts too
+    for(let y=sb.top;y<=sb.bot;y++)for(let x=sb.left;x<=sb.right;x++){
+      const xa=x-dx,ya=y-dy;if(xa>=sa.left&&xa<=sa.right&&ya>=sa.top&&ya<=sa.bot)continue;mx+=b[y*n+x];
+    }
+    const iou=mx?mn/mx:0;if(iou>best)best=iou;
   }
-  return mx?1-mn/mx:0;
+  return 1-best;
 }
 
 /** The loop seam of a looping clip: every neighbouring distance, the seam's (last → first) and its ratio to the median. */

@@ -109,9 +109,9 @@ export class ArsenalFx{
   private slashes:{born:number;x:number;y:number;angle:number;size:number;ms:number}[]=[];
   private objects:Phaser.GameObjects.GameObject[]=[];
   private cone:MeleeCone;
-  /** upgrades-megabonk: the Defumador's rings, and each hero's aura radius from the last view (u). */
+  /** upgrades-megabonk: the Defumador's smoke, and each hero's aura radius from the last view (u), the local one's flagged. */
   private aura:AuraRings;
-  private auraOf=new Map<string,number>();
+  private auraOf=new Map<string,{r:number;self:boolean}>();
   /** The local hero's melee cone for the weapon in hand (radius, half aperture), from the last view; undefined: none. */
   private selfCone?:{weapon:string;radius:number;half:number};
 
@@ -148,7 +148,7 @@ export class ArsenalFx{
     const car=view.objective?.car,me=this.options.selfId?.();
     for(const p of view.players){
       const aura=p.spectator||p.eliminated||p.downed?0:auraRingRadius(p);
-      if(aura>0)this.auraOf.set(p.id,aura);
+      if(aura>0)this.auraOf.set(p.id,{r:aura,self:p.id===me});
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
@@ -200,9 +200,9 @@ export class ArsenalFx{
       if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
     }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
-    const rings:{x:number;y:number;r:number}[]=[];
-    for(const [id,r] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r});}
-    this.aura.draw(rings,now,body,reduced);
+    const rings:{x:number;y:number;r:number;self:boolean}[]=[];
+    for(const [id,{r,self}] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r,self});}
+    this.aura.draw(rings,now,reduced);
   }
 
   /**

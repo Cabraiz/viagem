@@ -9,6 +9,7 @@ import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
+import {GHOST_ALPHA,GHOST_TINT,GhostCam,ghostBounds,ghostSpeed} from './ghost.ts';
 import {FollowCamera,StepLerp,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
@@ -184,6 +185,15 @@ export class IslandScene extends Phaser.Scene {
   private watchPoint?:Point;
   /** The teammates the spectator may watch (last frame's), for the ‹ › of hud/spectator.ts. */
   private watchList:Watchable[]=[];
+  /**
+   * Out of the run (morto-anda-pelo-mapa): 'free' while the ghost walks the map (the default after a fall, from where the
+   * hero fell), 'follow' while the camera is pinned on a friend (‹ ›, a portrait tap, or joined mid-run as a spectator).
+   * The stick, the keys or a click let go of the friend. Client only: nothing of it reaches the room.
+   */
+  private readonly ghost=new GhostCam();
+  private ghostSteer:Point={x:0,y:0};
+  private ghostFig?:Phaser.GameObjects.Sprite;
+  private ghostRing?:Phaser.GameObjects.Ellipse;
   /** City see-through (cidade-borda-e-quadras): the allies' feet drawn this frame, so walls in front of them fade too. */
   private allyFeet:Point[]=[];
   private position:Point={...SPAWN};
@@ -453,6 +463,8 @@ export class IslandScene extends Phaser.Scene {
       }
       if(this.paused||!mapButtonDown(pointer))return;
       const p=this.cameras.main.getWorldPoint(pointer.x,pointer.y);
+      // Out: a tap or click sends the ghost there (no enemy to pick, no walk to hold).
+      if(this.ghost.goTo(unprojectView(p,this.view,this.field)))return;
       const hit=this.enemyAt(p);
       this.hold.release();
       if(hit){this.attackTarget=hit;this.horde?.setTarget(hit);this.hooks.enemyPicked?.(hit);this.hooks.message(this.hooks.manual?.()?'Alvo escolhido. Segura o ataque pra bater nele.':'Alvo priorizado. A arma atira sozinha quando ele chega perto.');return;}
@@ -622,6 +634,7 @@ export class IslandScene extends Phaser.Scene {
       if(s.texture.key.startsWith('sprite:')||s.texture.key.startsWith('sprite128:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
     };
     if(this.actor)resize(this.actor,112);
+    if(this.ghostFig)resize(this.ghostFig,112);
     for(const a of this.remoteActors.values()){resize(a.image,100);a.ring.setScale(hero);}
   }
   /** Fixed zoom for this orientation and a camera snapped onto the hero (first frame, resize, rotation, map switch). */
@@ -767,6 +780,8 @@ export class IslandScene extends Phaser.Scene {
   /** `far`: an order from the minimap (minimapa-wc3): past findPath's box, a far route (maps far-path.ts). */
   goTo(target:Point,options:{markerMs?:number;far?:boolean}={}){
     if(this.paused||!this.actor)return;
+    // Out: the ghost flies there in a straight line (the minimap's click too); the dead body stays put.
+    if(this.ghost.goTo(target))return;
     this.attackTarget=undefined;
     this.route=findPath(this.position,target,this.field);
     if(!this.route.length&&options.far)this.route=farPath(this.position,target,this.field);
@@ -1145,6 +1160,9 @@ export class IslandScene extends Phaser.Scene {
     const axis=frozen?{x:0,y:0}:this.hooks.direction(),keys=frozen?{sx:0,sy:0}:this.keyAxis();
     const sx=axis.x+keys.sx,sy=axis.y+keys.sy;
     const still=frozen||!net.connected||!net.players.get(net.id)?.hp||net.run?.phase!=='combat'||!!net.players.get(net.id)?.spectator;
+    // Out: the thumbs steer the ghost (updateWatch); the room gets a standing hero, as before.
+    const out=this.isOut();
+    this.ghostSteer=out&&Math.hypot(sx,sy)>.05?screenDirection(sx,sy,this.view):{x:0,y:0};
     // No walk to follow while the hero cannot walk (no path search every 150 ms in the waiting room or while down).
     this.followHold(time,still||Math.hypot(sx,sy)>.05);
     if(still){this.attackTarget=undefined;this.route=[];}
@@ -1175,7 +1193,7 @@ export class IslandScene extends Phaser.Scene {
     const mouse=this.mouseGround();
     while(this.accumulator>=STEP){
       let direction={x:0,y:0};
-      if(Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
+      if(!out&&Math.hypot(sx,sy)>.05){this.route=[];direction=screenDirection(sx,sy,this.view);}
       if(!frozen&&Math.hypot(sx,sy)<=.05&&this.route.length){
         while(this.route.length&&Math.hypot(this.route[0].x-net.predicted.x,this.route[0].y-net.predicted.y)<.18)this.route.shift();
         if(this.route.length)direction={x:this.route[0].x-net.predicted.x,y:this.route[0].y-net.predicted.y};
@@ -1183,7 +1201,7 @@ export class IslandScene extends Phaser.Scene {
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
       const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
-      net.input(direction,false,this.attackTarget,!frozen&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
+      net.input(direction,false,this.attackTarget,!frozen&&!out&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
@@ -1256,17 +1274,32 @@ export class IslandScene extends Phaser.Scene {
     }
     // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
     this.horde?.hands();
-    this.updateWatch(view.players);
+    this.updateWatch(view.players,delta);
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}
   }
-  /** Out (eliminated) or watching mid-run: follow a teammate instead of one's own body (UX onda 4). */
-  private updateWatch(players:readonly {id:string;x:number;y:number;hp:number;online:boolean;spectator?:boolean}[]){
-    const net=this.hooks.net!,me=net.players.get(net.id),mine=net.feed.players.get(net.id);
-    const out=net.run?.phase==='combat'&&(!!mine?.eliminated||!!me?.spectator);
-    if(!out){this.watchId=undefined;this.watchPinned=false;this.watchPoint=undefined;this.watchList=[];return;}
+  /** Out of the run (bled out) or watching mid-run, in a round. */
+  private isOut(){
+    const net=this.hooks.net;if(!net)return false;
+    return net.run?.phase==='combat'&&(!!net.feed.players.get(net.id)?.eliminated||!!net.players.get(net.id)?.spectator);
+  }
+  /**
+   * Out (eliminated) or watching mid-run: the ghost walks the map (morto-anda-pelo-mapa), or the camera follows a
+   * teammate instead of one's own body (UX onda 4).
+   */
+  private updateWatch(players:readonly {id:string;x:number;y:number;hp:number;online:boolean;spectator?:boolean}[],delta:number){
+    const net=this.hooks.net!,out=this.isOut();
+    const at=this.ghost.update({out,fell:!!net.feed.players.get(net.id)?.eliminated,from:this.watchPoint??this.position,
+      steer:this.ghostSteer,seconds:delta/1000,speed:ghostSpeed(this.field),bounds:ghostBounds(this.field)});
+    if(!out){
+      // Back in (revanche, a new round): the camera glides from the ghost to the hero (FollowCamera), no jump.
+      this.watchId=undefined;this.watchPinned=false;this.watchPoint=undefined;this.watchList=[];this.hideGhost();return;
+    }
     const list:Watchable[]=this.watchList=players.filter(p=>p.id!==net.id).map(p=>{const st=net.feed.players.get(p.id);
       return {id:p.id,x:p.x,y:p.y,standing:p.online&&!p.spectator&&!st?.eliminated&&!st?.downed&&p.hp>0,inRun:!p.spectator&&!st?.eliminated};});
+    // Walking free (after a fall, or the thumbs let go of the friend): no one watched, the camera is the ghost.
+    if(at){this.watchId=undefined;this.watchPinned=false;this.watchPoint=at;this.drawGhost(at);return;}
+    this.hideGhost();
     // A teammate picked by a tap stays while still in the run (even downed: watching the rescue); else the nearest standing.
     const pinned=this.watchPinned?list.find(p=>p.id===this.watchId&&p.inRun):undefined;
     const id=pinned?.id??chooseWatched(list,this.watchPoint??this.position,this.watchId);
@@ -1276,20 +1309,36 @@ export class IslandScene extends Phaser.Scene {
     // Nobody left: the camera stays where it last was until the result.
     else this.watchPoint??={...this.position};
   }
+  /**
+   * The ghost at the camera's centre: the hero's own figure, see-through and cold, walking when it moves, on a Papel
+   * ring (found on snow and asphalt alike), over the roofs it walks through.
+   */
+  private drawGhost(at:Point){
+    const classId=this.hooks.classId,k=this.heroScale;
+    const fig=this.ghostFig??=this.add.sprite(0,0,this.classIcon(classId)).setOrigin(.5,.88).setDisplaySize(112*k,112*k).setName('fantasma');
+    const ring=this.ghostRing??=this.add.ellipse(0,0,ALLY_RING_SIZE.width,ALLY_RING_SIZE.height).setStrokeStyle(3,tokenColor('--c-papel-claro'),.9).setName('fantasma-anel');
+    this.sprites.animate(fig,classId,at.x,at.y,0,true,this.view);
+    const q=this.project(at);
+    ring.setVisible(true).setScale(k).setPosition(q.x,q.y).setDepth(SELF_DEPTH+1);
+    fig.setVisible(true).setPosition(q.x,q.y).setDepth(SELF_DEPTH+2).setAlpha(GHOST_ALPHA).setTint(GHOST_TINT);
+  }
+  private hideGhost(){this.ghostFig?.setVisible(false);this.ghostRing?.setVisible(false);}
   /** Tap on a team portrait while out: follow that teammate. False when not watching or not a teammate in the run. */
   watch(id:string){
     const net=this.hooks.net;if(!net||!this.watchPoint||id===net.id)return false;
     const p=net.players.get(id),st=net.feed.players.get(id);
     if(!p||p.spectator||st?.eliminated)return false;
-    this.watchId=id;this.watchPinned=true;return true;
+    this.watchId=id;this.watchPinned=true;this.ghost.pin();return true;
   }
   /** Who the camera follows while out or watching (for the HUD's "Assistindo: Tia"). */
-  watching(){const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name,classId:p.classId,choices:this.watchList.filter(w=>w.inRun).length}:undefined;}
+  /** The ghost walking free (spectator bar: ‹ › pick a friend; minimap: the ghost's dot). */
+  ghosting(){return this.ghost.out&&this.ghost.mode==='free'&&this.watchPoint?{at:this.watchPoint,choices:this.watchList.filter(w=>w.inRun).length}:undefined;}
+  watching(){if(this.ghost.out&&this.ghost.mode==='free')return undefined;const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name,classId:p.classId,choices:this.watchList.filter(w=>w.inRun).length}:undefined;}
   /** The spectator's ‹ › (UX-espectador): follow the next (1) or previous (-1) teammate still in the run. */
   watchStep(dir:1|-1){
     const id=cycleWatched(this.watchList,this.watchId,dir);
     if(!id||!this.watchPoint)return false;
-    this.watchId=id;this.watchPinned=true;return true;
+    this.watchId=id;this.watchPinned=true;this.ghost.pin();return true;
   }
   /** Screen point (CSS px) of the watched teammate, where the torcida's chinelo lands (hud/spectator.ts). */
   watchedScreen(){const p=this.watchPoint;return p?this.locate(p).screen:undefined;}

@@ -224,7 +224,7 @@ export class RescueBoard {
     // The city's maps asset (the HUD's cityAssetOf is a narrow view of it): the terrain image reads its cells and blocks.
     const city=cityAssetOf(net.terrain)?(net.terrain as unknown as {asset:MapsCityAsset}).asset:undefined;
     this.wcDriver.draw({minimap:wc,terrain:net.terrain,city,view:scene.cameraView,nowMs:now,
-      selfId:net.id,self:net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
+      selfId:net.id,self:scene.ghosting()?.at??net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
       corners:screenCorners(locate,focus,viewportSize()),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
       extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});

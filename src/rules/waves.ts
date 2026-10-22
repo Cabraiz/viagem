@@ -69,7 +69,8 @@ export interface RoundDef {
  * hpScale (card upgrades-megabonk, usuário 22/10: "aumentar a HP dos inimigos no início do jogo, já que nossos
  * personagens vão ficar mais fortes"): rows 1-6 were .35, .8, 1.1, 1.35, 1.55, 1.7. The bench (scripts/bench-ttk.ts, mode
  * ninhos) had the first 4 minutes' kills at ~1 hit each (the faca's 24 one-shot the 7-22 hp bodies) against ~2.2 from
- * minute 6; now the curve starts at 1.3 and climbs to the old row 7 (1.9), so the first minutes take ~2 hits too. The
+ * minute 6; now rows 1-3 are 1.3, 1.4, 1.5 and rows 4-6 just keep the curve rising (1.55, 1.6, 1.7) up to the old row 7
+ * (1.9), so the first minutes take ~2 hits too and the middle stays as it was. The
  * D-051 sleepers read row SLEEPER_ROUND (3). The number of enemies is unchanged (the user's rule).
  */
 export const ROUNDS:readonly RoundDef[]=[
@@ -78,10 +79,10 @@ export const ROUNDS:readonly RoundDef[]=[
   {index:1,budget:9,weights:{bebado:1},group:[2,3],cadence:10,maxDuration:45,hpScale:1.3},
   {index:2,budget:26,weights:{bebado:.75,pombos:.25},group:[3,5],cadence:5.5,maxDuration:50,hpScale:1.4},
   {index:3,budget:32,weights:{bebado:.54,pombos:.25,'tio-pave':.15,'anao-molotov':.03,motoboy:.03},group:[4,6],cadence:5.5,maxDuration:55,hpScale:1.5},
-  {index:4,budget:46,weights:{bebado:.43,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.6},
-  {index:5,budget:54,weights:{bebado:.35,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03,influencer:.03},group:[5,8],cadence:5,maxDuration:65,hpScale:1.7,
+  {index:4,budget:46,weights:{bebado:.43,pombos:.2,'tio-pave':.15,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03},group:[5,8],cadence:5.5,maxDuration:60,hpScale:1.55},
+  {index:5,budget:54,weights:{bebado:.35,pombos:.2,'tio-pave':.2,agiota:.12,'anao-molotov':.04,coach:.03,motoboy:.03,influencer:.03},group:[5,8],cadence:5,maxDuration:65,hpScale:1.6,
     elite:{kind:'tio-pave',at:.5},fixedNames:ELITE_ROUND_NAMES},
-  {index:6,budget:76,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05,coach:.02,motoboy:.03,influencer:.02},group:[6,10],cadence:5,maxDuration:60,hpScale:1.8,
+  {index:6,budget:76,weights:{bebado:.33,pombos:.2,'tio-pave':.2,agiota:.15,'anao-molotov':.05,coach:.02,motoboy:.03,influencer:.02},group:[6,10],cadence:5,maxDuration:60,hpScale:1.7,
     swarm:{size:[14,18],at:[.3,.7]}},
   {index:7,budget:64,weights:{bebado:.21,pombos:.2,'tio-pave':.2,agiota:.2,'anao-molotov':.07,coach:.04,motoboy:.04,influencer:.04},group:[6,9],cadence:5,maxDuration:65,hpScale:1.9},
   {index:8,budget:72,weights:{bebado:.16,pombos:.2,'tio-pave':.25,agiota:.2,'anao-molotov':.07,coach:.04,motoboy:.04,influencer:.04},group:[6,10],cadence:5,maxDuration:70,hpScale:2.1},

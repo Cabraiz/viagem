@@ -7,6 +7,7 @@ export * from './offers.ts';
 export * from './passives.ts';
 export * from './revive.ts';
 export * from './scale.ts';
+export * from './crate-size.ts';
 export * from './sos.ts';
 export * from './emotes.ts';
 export * from './stats.ts';

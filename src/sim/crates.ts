@@ -23,7 +23,7 @@
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {KIT_CHANCE,KIT_POOL,UNITS_PER_TOKEN,kitItem} from '../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,UNITS_PER_TOKEN,kitItem} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
 import {NEW_WEAPONS,isRarity,legendaryId,type ConsumableId,type Rarity} from './weapons/arsenal.ts';
@@ -48,8 +48,8 @@ export const RARITY_STAGES=4;
 export const RESPAWN_SECONDS=180;
 /** A crate never (re)appears closer than this to a player (world units), so nobody sees it pop in at their feet. */
 export const RESPAWN_MIN_DIST=8;
-/** How close (world units) a player must stand to open a crate. */
-export const OPEN_REACH=1;
+/** How close (world units) a player must stand to open a crate: touching its edge (rules/crate-size.ts; was 1 before the 3× crate). */
+export const OPEN_REACH=CRATE_OPEN_RADIUS;
 /** Seconds of standing still to open, by rarity - 1 (verde 1 s .. lendária 3 s). */
 export const OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 /** From this rarity up (roxa) starting to open makes noise, heard within OPEN_NOISE_RADIUS world units. */
@@ -289,6 +289,7 @@ export function createCrates(options:CratesOptions):Crates{
   }
 
   function openStep(ctx:SimContext){
+    const done:{p:SimPlayer;crate:PickupState;d:number}[]=[];
     for(const p of ctx.players.values()){
       const last=state.seen[p.id];
       state.seen[p.id]={x:p.x,y:p.y,hp:p.hp};
@@ -304,9 +305,12 @@ export function createCrates(options:CratesOptions):Crates{
         if(state.crates[crate.id].rarity>=NOISY_RARITY)hooks.onNoise?.(ctx,{x:crate.x,y:crate.y},OPEN_NOISE_RADIUS,crate.id);
       }
       if(++doing.ticks<openTicks(state.crates[crate.id].rarity))continue;
-      open(ctx,p,crate);
+      done.push({p,crate,d:Math.hypot(crate.x-p.x,crate.y-p.y)});
       delete state.opening[p.id];
     }
+    // Two heroes done with the same crate in one tick (the 3× crate fits a crowd): the nearest one opens it, ties by id.
+    done.sort((a,b)=>a.d-b.d||(a.p.id<b.p.id?-1:a.p.id>b.p.id?1:0));
+    for(const {p,crate} of done)if(state.crates[crate.id])open(ctx,p,crate);
     // Whoever was on a crate somebody else just opened (or a player who left) lets go.
     scratch.length=0;
     for(const id in state.opening)if(!ctx.players.has(id)||!state.crates[state.opening[id].crate])scratch.push(id);

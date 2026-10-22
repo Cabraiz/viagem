@@ -38,7 +38,7 @@ test('slow: speed × PLAYER_SLOW_MULT while tick < slowUntil, plain walk from sl
 
 test('slip: slides along `slip` at the island slip speed, the stick ignored, until slipUntil; then walking again',()=>{
   const e:MoveEffects={slipUntil:20,slip:{x:0,y:-1},slowUntil:40};
-  for(const stick of [{x:1,y:0},{x:0,y:1},{x:0,y:0}]){
+  for(const stick of [{x:1,y:0},{x:0,y:1},{x:-.6,y:.8}]){
     const q=moveStep(SPAWN,stick,10,e,T);
     assert.ok(Math.abs(q.x-SPAWN.x)<1e-12&&Math.abs(SPAWN.y-q.y-SLIP*STEP)<1e-12,'slides up whatever the stick');
   }
@@ -49,6 +49,17 @@ test('slip: slides along `slip` at the island slip speed, the stick ignored, unt
   assert.equal(slipping({slipUntil:99,slip:{x:0,y:0}},1),undefined,'a zero vector never slides');
   assert.equal(slipping({slipUntil:99,slip:{x:NaN,y:1}},1),undefined,'nor a broken one');
   assert.equal(slipping({slipUntil:99},1),undefined);
+});
+
+test('a step without a direction stands while slipping: the attack or the skill held in place never slides (BUG-20261022-ORQ-botao-direito-anda)',()=>{
+  const e:MoveEffects={slipUntil:1e9,slip:{x:1,y:0}};
+  for(const stick of [{x:0,y:0},{x:.004,y:-.003},{x:NaN,y:0}])assert.deepEqual(moveStep(SPAWN,stick,10,e,T),SPAWN);
+  // The phone's replay of a held attack (attack steps, no direction) stays put too, slipping or not.
+  const held:PlayerInput[]=Array.from({length:10},(_,i)=>({seq:i+1,x:0,y:0,attack:true}));
+  assert.deepEqual(reconcile(SPAWN,held,T,{tick:10,effects:e}),SPAWN);
+  // A walking step still slides along `slip`, whatever the stick.
+  const q=moveStep(SPAWN,{x:0,y:1},10,e,T);
+  assert.ok(Math.abs(q.x-SPAWN.x-SLIP*STEP)<1e-12&&Math.abs(q.y-SPAWN.y)<1e-12);
 });
 
 test('a slide never enters the sea, a tree or a rock (island, random spots and directions)',()=>{
@@ -70,11 +81,11 @@ test('a slide never enters the sea, a tree or a rock (island, random spots and d
   // Straight into a tree: stops at its edge.
   const tree=obstacles[0];let p={x:tree.x,y:tree.y-1.2};
   assert.ok(walkable(p,T));
-  for(let tick=0;tick<40;tick++){p=moveStep(p,{x:0,y:0},tick,{slipUntil:1e9,slip:{x:0,y:1}},T);assert.ok(walkable(p,T));}
+  for(let tick=0;tick<40;tick++){p=moveStep(p,{x:1,y:0},tick,{slipUntil:1e9,slip:{x:0,y:1}},T);assert.ok(walkable(p,T));}
   assert.ok(p.y<tree.y,'did not pass through the tree');
   // Straight to the sea from the spawn: stops on the shore.
   p={...SPAWN};
-  for(let tick=0;tick<400;tick++){p=moveStep(p,{x:0,y:0},tick,{slipUntil:1e9,slip:{x:0,y:1}},T);assert.ok(walkable(p,T));}
+  for(let tick=0;tick<400;tick++){p=moveStep(p,{x:1,y:0},tick,{slipUntil:1e9,slip:{x:0,y:1}},T);assert.ok(walkable(p,T));}
   assert.ok(T.coast(p.x,p.y)>.4,'still on land');
 });
 

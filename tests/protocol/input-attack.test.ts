@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import {DIRECTIONS,InputBatcher,InputTrack,SEGMENT_AIM_SHIFT,SEGMENT_ATTACK,SEGMENT_SKILL,segmentOf,segmentWire} from '../../src/protocol/input-track.ts';
 import type {PlayerInput,SimPlayer} from '../../src/contract/types.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
+import {movePlayer} from '../../src/sim/systems/players.ts';
+import {SPAWN} from '../../src/maps/world.ts';
+import {defaultTerrain} from '../../src/maps/terrain/field.ts';
 
 const body={x:0,y:0} as SimPlayer;
 /** Every step the track hands out over `n` ticks (clock: 50 ms a tick from `t0`). */
@@ -116,4 +119,15 @@ test('track: a late tap keeps its aim for the press even when the release segmen
   assert.equal(first?.attack,true);assert.deepEqual(first?.aim,DIRECTIONS[8]);
   assert.equal(second?.aim,undefined);
   assert.equal(t.state().pressAim,undefined,'spent with the press');
+});
+
+test('room: the attack held in place while slipping (pombo poop) never slides the hero; walking still does (BUG-20261022-ORQ-botao-direito-anda)',()=>{
+  // The 22/10 print sheet: the right button held beside a slipping hero moved him ~1 u along the slide, every time.
+  const t=new InputTrack();t.reset(0);
+  assert.ok(t.accept({seq:8,steps:[[1,0,0,SEGMENT_ATTACK],[6,1,0,0]]},0));
+  const hero={id:'h',x:SPAWN.x,y:SPAWN.y,hp:100,facing:{x:1,y:0},slipUntil:1e9,slip:{x:1,y:0}} as unknown as SimPlayer;
+  const after=new Map<number,{x:number;y:number;attack:boolean}>();
+  for(let tick=1;tick<=40;tick++){const input=t.next(hero,tick*50);if(input){movePlayer(hero,input,defaultTerrain,tick);after.set(input.seq,{x:hero.x,y:hero.y,attack:input.attack});}}
+  for(let seq=1;seq<=5;seq++)assert.deepEqual(after.get(seq),{x:SPAWN.x,y:SPAWN.y,attack:true},`attack step ${seq}, standing: no slide`);
+  assert.ok(after.get(8)!.x>SPAWN.x+.5,`the walk from step 6 slides along the poop (${after.get(8)!.x-SPAWN.x} u)`);
 });

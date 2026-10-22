@@ -24,6 +24,7 @@ import {appendFileSync,existsSync,mkdirSync,readFileSync,writeFileSync} from 'no
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {PREDICTED,SETTLE,SETTLE_MAX_MS,SETTLE_MS,rightVerdict} from './folha-direito.mjs';
 
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const outDir=resolve(process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')))??'folha-out');
@@ -297,19 +298,16 @@ async function mouseWalk(p,vp){
   await p.mouse.up();
   if(!moved(h,end))fails.push(`${vp.w}×${vp.h}: mouse segurado não moveu o herói`);
   await sleep(1200);
-  for(let i=0;i<4;i++)await rightClick(p,vp);
+  await rightClick(p,vp);
 }
 /**
  * The right button (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): held on open ground beside the hero it attacks (the
  * manual combat swings toward the mouse) and never walks him; its 'contextmenu' reaches the page already cancelled (the
- * canvas keeps the browser's menu shut).
+ * canvas keeps the browser's menu shut). Judged on the hero's prediction once he settled (scripts/folha-direito.mjs).
  */
-const TRACK_ON=()=>{window.__dirTrack=[];const t0=performance.now();const step=()=>{const s=window.__perfScene,a=s?.actor,n=s?.hooks?.net;if(a&&window.__dirTrack){const c=s.correction,r=s.route,i=s.intent;window.__dirTrack.push([Math.round(performance.now()-t0),Math.round(a.x),Math.round(a.y),n?+n.predicted.x.toFixed(2):null,n?+n.predicted.y.toFixed(2):null,c?+(+c.x).toFixed(2):null,c?+(+c.y).toFixed(2):null,r?.length??-1,i?+(Math.hypot(i.x,i.y)).toFixed(2):null,n?.pending?.length??-1,s.rightHeld?1:0,s.hold?.held?1:0,String(a.texture?.key??'').replace(/^.*?:(idle|walk|attack)/,'$1'),n?.tick??-1,n?.effects?.slipUntil??0,n?.effects?.slowUntil??0,n?.effects?.slip?`${n.effects.slip.x},${n.effects.slip.y}`:'']);requestAnimationFrame(step);}else if(window.__dirTrack)requestAnimationFrame(step);};requestAnimationFrame(step);};
-const TRACK_OFF=()=>{const t=window.__dirTrack;window.__dirTrack=undefined;return t;};
-const diag={};
 async function rightClick(p,vp){
   await clearOffer(p);
-  await p.evaluate(TRACK_ON).catch(()=>{});
+  const settled=await p.evaluate(SETTLE,[SETTLE_MS,SETTLE_MAX_MS]).catch(()=>false);
   await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
   const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
   const h=await p.evaluate(HERO).catch(()=>null);
@@ -317,17 +315,18 @@ async function rightClick(p,vp){
   const spot=h&&CLICK_SPOTS.map(([fx,fy])=>[Math.round(h.sx+fx*m),Math.round(h.sy+fy*m)]).find(([x,y])=>x>=20&&y>=20&&x<=vp.w-20&&y<=vp.h-20);
   if(!spot||!await free(...spot)){avisos.push(`${vp.w}×${vp.h}: botão direito: nenhum ponto livre perto do herói`);return;}
   const [x,y]=spot;
-  const tPress=await p.evaluate(()=>window.__dirTrack?.at(-1)?.[0]).catch(()=>null);
+  const before=await p.evaluate(PREDICTED).catch(()=>null);
   await p.mouse.move(x,y);await p.mouse.down({button:'right'});
   const seen=await p.evaluate(SAMPLE,[60,900]).catch(()=>[]);
   await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
-  const end=await p.evaluate(HERO).catch(()=>null);
+  const after=await p.evaluate(PREDICTED).catch(()=>null);
   await p.mouse.up({button:'right'});
-  (diag[`${vp.w}x${vp.h}`]??=[]).push({moved:moved(h,end),h,end,spot,tPress,cols:'ms,ax,ay,px,py,cx,cy,route,intent,pending,rightHeld,holdHeld,tex,tick,slipUntil,slowUntil,slip',track:await p.evaluate(TRACK_OFF).catch(()=>null)});
   const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
   if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;
-  if(moved(h,end))fails.push(`${vp.w}×${vp.h}: botão direito andou com o herói (devia só atacar)`);
+  const verdict=rightVerdict({settled,before,after},`${vp.w}×${vp.h}`);
+  if(verdict.fail)fails.push(verdict.fail);
+  if(verdict.aviso)avisos.push(verdict.aviso);
   if(!seen.some(k=>/attack/i.test(k)))avisos.push(`${vp.w}×${vp.h}: botão direito segurado sem quadro de ataque (${[...new Set(seen)].join(', ')||'nada'})`);
   if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
   else if(open)fails.push(`${vp.w}×${vp.h}: botão direito abriu o menu do navegador em ${open}/${menus.length}`);
@@ -475,7 +474,7 @@ try{
 }finally{
   restore();preview?.stop();await Promise.resolve(worker?.stop()).catch(()=>{});
 }
-const result={diag,sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames,
+const result={sha,ok:code===0,infra:code===2,fails,avisos,consoleErrors:consoleErrors.slice(0,50),tremor,frames,
   abertura:abertura&&{ok:abertura.ok,linha:aberturaLine(),mediana:abertura.mediana,piora:abertura.piora,desvio:abertura.desvio,baseSha:abertura.baseSha}};
 writeFileSync(join(outDir,'folha.json'),JSON.stringify(result,null,1));
 const line=`folha ${sha}: ${code===0?'ok':code===2?'INFRA':'FALHOU'}${fails.length?` · ${fails.join(' | ')}`:''}`;

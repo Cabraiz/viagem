@@ -2,7 +2,10 @@
 // pace with the ground (the clock-driven cycle drew a foot going back ~7× slower than the city's ground went by).
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {FACING_TELEPORT,HERO_GAIT,RUN_STRIDE,WALK_STRIDE,WALK_TUNE,cycleFrame,screenMotion,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {movementPlan,phaseStride,runPhase} from '../../src/client/sprites/movement128.ts';
+import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {CITY_HERO_SPEED,HERO_SPEED_MULT} from '../../src/maps/index.ts';
 import {HERO_DRAW_SCALE} from '../../src/client/render/draw-scale.ts';
 
@@ -54,10 +57,35 @@ test('cycleFrame wraps over the cycle and never leaves the clip', ()=>{
   assert.equal(cycleFrame(3.25,6),1);
 });
 
-test('the run (passo-3x-mais-lento): its longer drawn stride keeps the foot locked at ~4.6 cycles a second across the screen', ()=>{
+test('the run without a phase table (RUN_STRIDE): ~4.6 cycles a second across the screen, the foot locked', ()=>{
   const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,dt=1/60;let cycles=0;
   for(let i=0;i<60;i++)cycles+=walkCycles(speed*dt/Math.SQRT2,-speed*dt/Math.SQRT2,0,FIGURE,RUN_STRIDE,1);
   assert.ok(cycles>4.2&&cycles<5,`run cycles in 1 s: ${cycles}`);
   assert.ok(RUN_STRIDE>1.6*WALK_STRIDE,'the run is drawn with a longer stride than the walk');
   assert.equal(HERO_GAIT.run,true,'a class with a run runs by default');
+});
+
+test('runPhase: the pose by the ground walked, and the sprite shifted by the planted foot\'s travel walked in the pose', ()=>{
+  // 4 poses: two stance poses (the foot goes back 4 and 2 cell px) and two flight poses.
+  const phase={d:[.1,.05,.2,.15],v:[[4,0],[2,1],[0,0],[0,0]] as [number,number][]};
+  assert.equal(phaseStride(phase),.5);
+  assert.deepEqual(runPhase(phase,0),{frame:0,shift:[0,0]});
+  const mid=runPhase(phase,.05/.5);assert.equal(mid.frame,0);near(mid.shift[0],2);
+  const second=runPhase(phase,(.1+.025)/.5);assert.equal(second.frame,1);near(second.shift[0],1);near(second.shift[1],.5);
+  assert.deepEqual(runPhase(phase,(.1+.05+.1)/.5),{frame:2,shift:[0,0]},'flight: nothing to keep on the ground');
+  assert.equal(runPhase(phase,1.99999).frame,3);assert.equal(runPhase(phase,2).frame,0);
+});
+
+test('the viciado\'s run tables (passo-3x-mais-lento): ~3 cycles a second or less at the city speed, with stance poses', ()=>{
+  setArtIndex(parseArtIndex(JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'))));
+  const speed=CITY_HERO_SPEED*HERO_SPEED_MULT,R=Math.SQRT1_2;
+  // each drawn direction's world heading in camera view 0
+  for(const [d,[ux,uy]] of [['W',[-R,R]],['SE',[1,0]],['NW',[-1,0]],['S',[R,R]],['N',[-R,-R]]] as const){
+    const plan=movementPlan('viciado-em-bet','walk',d);assert.ok(plan?.phase,`${d}: run16 with a phase table`);
+    let cycles=0;for(let i=0;i<60;i++)cycles+=walkCycles(ux*speed/60,uy*speed/60,0,FIGURE,phaseStride(plan.phase),1);
+    // the clip holds two of the run's cycles
+    assert.ok(cycles*2<=3.2,`${d}: ${cycles*2} cycles a second`);
+    assert.ok(plan.phase.v.some(v=>v[0]||v[1]),`${d}: stance poses`);
+  }
+  setArtIndex(parseArtIndex(undefined));
 });

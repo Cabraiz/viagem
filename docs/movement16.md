@@ -76,8 +76,25 @@ Card NEW-20261021-ORQ-passo-sem-deslizar-e-sombra (21/10). Vale para todos os he
 
 ## Corrida (run16)
 
-Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o viciado. O usuário pediu a corrida como padrão, sem apagar o andar.
-- **Por quê:** o herói anda ~5,7 alturas de corpo por segundo, e o andar desenhado é um passeio (0,68 altura por ciclo). A corrida abre os pés 1,82× mais: `RUN_STRIDE` = 1,24. Com o pé travado (trava 1), dá ~4,6 ciclos/s de lado.
-- **Arte:** gerada pelo ChatGPT (codex sol), nas 5 direções desenhadas do plano B (S, N, W, NW, SE), 16 poses = 2 meios passos de 8. S e N: um meio passo e o seu espelho (de frente e de costas, o espelho troca a perna sem girar). W, NW e SE: dois meios passos, cada um com uma regra de perna e a mesma referência parada da direção. O image_gen não obedeceu à perna no SE e provavelmente no NW e no W: as duas metades levam o mesmo pé à frente. A 42 px, no jogo, isso quase não aparece. Prompts, folhas e medidas: `D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-passo-3x-mais-lento/corrida/` (`gerar.mjs`, `montar.mjs`).
-- **Importar:** `run/<dir>.png` (768×768, 4×4) ao lado de walk/attack/idle em `personagens-movimento16/<id>/`. É opcional: as 5 direções ou nenhuma. O importador alinha só o x do tronco, e cada pose fica na altura em que foi desenhada (o voo sai do chão). As chaves são `run16-*`. Depois rode `node scripts/art-lite.mjs --kinds sprites`, `node scripts/hero-feet.mjs` (na corrida, a linha do pé é a pose mais baixa) e `node scripts/hand-points.mjs --ids <id>`.
-- **No jogo:** `HERO_GAIT.run` (sprite-motion.ts) faz a classe com `run16` correr ao se mover (`movementPlan(id,'walk',…)` devolve a corrida). Ataque e repouso não mudam. Com `run:false`, volta o andar com `WALK_TUNE.lock`. No sandbox, `corrida=0` mostra o andar.
+Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o viciado. O usuário pediu a corrida como padrão, sem apagar o andar, com o pé parado no chão e no máximo uns 3 ciclos/s de lado.
+- **Por quê:** o herói anda ~5,7 alturas de corpo por segundo, e o andar desenhado é um passeio (0,68 altura por ciclo). Travado, isso dá 8 ciclos/s.
+- **Arte (ChatGPT, codex sol):** 5 direções desenhadas do plano B (S, N, W, NW, SE). Cada imagem tem 8 poses, e o prompt pinta o tênis ESQUERDO de vermelho (marcador). Com isso a regra de perna fica visual ("o vermelho lidera" / "o roxo lidera") e a alternância pode ser medida. Em 8 poses o modelo desenha o apoio do pé que lidera, o voo e o pouso do outro. A folha de 16 é A + B: o apoio vermelho, o voo, o pouso roxo (A7 ≈ B0), o apoio roxo, o voo e o pouso vermelho (B7 → A0). S e N usam B = A espelhado. O vermelho volta a roxo na montagem. Prompts, montador, medidas e tentativas ficam em `D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-passo-3x-mais-lento/corrida/` (`gerar2.mjs`, `montar2.mjs`; `MARCADOR=1` mantém o vermelho para medir no jogo).
+- **Montagem:** cada linha da imagem (um passo) fica no seu próprio chão, porque o modelo desenha as linhas em alturas diferentes. O tronco fica em x 96, a pose fica na altura em que voa, e o pé fica em y 168 (células de 192).
+- **Tabela de fase** (`run/<dir>.phase.json` → `phase` no manifest; `movement128.ts` `runPhase`): o quadro sai da distância andada, não do relógio.
+  - Numa pose de apoio, o tênis que encosta no chão do passo e recua com ele cobre o recuo medido da sola (`d`), e o sprite recua junto dentro da pose (`v`, só ao longo do chão). Assim o pé fica parado.
+  - As poses de voo ficam com o resto da passada, até 3 ciclos/s na velocidade da cidade (a folha tem 2 ciclos).
+  - Sem tabela, uma corrida usa `RUN_STRIDE`.
+- **Importar:** `run/<dir>.png` (768×768, 4×4) e o `.phase.json` ao lado das pastas walk/attack/idle em `personagens-movimento16/<id>/`. A corrida é opcional: as 5 direções ou nenhuma. O importador não mexe nas poses da corrida, porque mover a pose moveria o pé medido. Depois rode `node scripts/art-lite.mjs --kinds sprites`, `node scripts/hero-feet.mjs` (na corrida, a linha do pé é a da pose mais baixa) e `node scripts/hand-points.mjs --ids <id>`.
+- **No jogo:** `HERO_GAIT.run` (sprite-motion.ts) faz a classe com `run16` correr ao se mover (`movementPlan(id,'walk',…)` devolve a corrida). Ataque e repouso não mudam. Com `run:false` volta o andar, com `WALK_TUNE.lock` 0,5. No sandbox, `corrida=0` mostra o andar. `__cidade.fixar()` para a câmera, o que deixa o chão parado na tela para medir o pé.
+- **Medida (21/10, 1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
+
+  | direção | máximo | p90 | ciclos/s |
+  |---|---|---|---|
+  | W | 2 px | 1 px | 2,9 |
+  | SE | 2,2 px | 1,8 px | 3,0 |
+  | S | 1 px | 1 px | 2,9 |
+  | NW | 1,3 px | — | 3,0 |
+  | N | 2 px | 1 px | 2,9 |
+
+  - No NW, o herói passa atrás de um poste num trecho da medida; o pico de ~27 px ali é o poste, não o pé (excluído).
+  - Nenhum tênis arrasta na linha do chão de lado (≤ 1 px).

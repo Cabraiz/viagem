@@ -110,6 +110,15 @@ test('run (passo-3x-mais-lento): optional, all drawn directions or none; the her
     HERO_GAIT.run=false;
     assert.equal(movementPlan('aposentado','walk','SE')?.key,'sprite16:aposentado:walk:SW','the walk comes back with the gait off');
   }finally{HERO_GAIT.run=gait;}
+  // A phase table next to a run sheet goes into the manifest; a malformed one is refused.
+  const table={d:Array(16).fill(.05),v:Array.from({length:16},(_,i)=>i<3?[2,0]:[0,0])};
+  await writeFile(movement16Source(input,'aposentado','run','W').replace(/\.png$/,'.phase.json'),JSON.stringify(table));
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  assert.deepEqual(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files['run16-W'].phase,table);
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.deepEqual(movementPlan('aposentado','walk','E')?.phase,table,'the mirrored side uses the drawn table');
+  await writeFile(movement16Source(input,'aposentado','run','W').replace(/\.png$/,'.phase.json'),JSON.stringify({d:[1],v:[[0,0]]}));
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado']}),/phase.d needs 16/);
   // A run in only some directions is refused.
   await rm(movement16Source(input,'aposentado','run','N'));
   await assert.rejects(importMovement16({input,outRoot,ids:['aposentado']}),/run needs all of S N W NW SW or none/);

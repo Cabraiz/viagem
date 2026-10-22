@@ -20,6 +20,8 @@ export interface ArtFile {
   durationMs?:number;revision?:number;movementHands?:string;
   /** M16 movement sheets: the column (96 px cell) the body stands on, the pivot of the mirrored E/NE/SE (movement16Plan). */
   pivotX?:number;
+  /** M16 run: per pose the ground it covers (figure heights) and the planted foot's travel (96 px cell); movement128.ts RunPhase. */
+  phase?:{d:number[];v:[number,number][]};
   wrap?:'x'|'y'|'xy';transparent?:boolean;mask?:boolean;
   /**
    * Hero atlases (`personagens` dir4): standing height of the first idle cell of front-right and the box of the drawn

@@ -13,6 +13,32 @@ export interface Movement128Plan {
   flip?:boolean;
   /** M16: the column (96 px cell) the body stands on; the origin x, mirrored with the sheet (movement16OriginX). */
   pivotX?:number;
+  /** M16 run: the pose by the ground walked and the planted foot's travel (runPhase). */
+  phase?:RunPhase;
+}
+/**
+ * A run's phase table (card passo-3x-mais-lento): per pose, `d` the ground it covers in figure heights (the stance poses
+ * the planted foot's measured travel, the flight poses the rest of the stride) and `v` that foot's travel in 96 px cell
+ * px ([0,0] in flight). The stride is the sum of `d`.
+ */
+export interface RunPhase {d:readonly number[];v:readonly (readonly [number,number])[]}
+const validPhase=(p:unknown,frames:number):p is RunPhase=>{
+  const q=p as RunPhase;
+  return !!q&&Array.isArray(q.d)&&Array.isArray(q.v)&&q.d.length===frames&&q.v.length===frames&&
+    q.d.every(x=>Number.isFinite(x)&&x>0)&&q.v.every(v=>Array.isArray(v)&&v.length===2&&v.every(Number.isFinite));
+};
+export const phaseStride=(p:RunPhase)=>p.d.reduce((s,x)=>s+x,0);
+/**
+ * The pose after `cycles` cycles and the sprite's shift (cell px, unmirrored) that keeps the planted foot where the ground
+ * carried it: the part of the pose's foot travel already walked.
+ */
+export function runPhase(p:RunPhase,cycles:number):{frame:number;shift:[number,number]}{
+  let x=(cycles-Math.floor(cycles))*phaseStride(p);
+  for(let i=0;i<p.d.length;i++){
+    if(x<p.d[i]){const f=x/p.d[i];return {frame:i,shift:[p.v[i][0]*f,p.v[i][1]*f]};}
+    x-=p.d[i];
+  }
+  return {frame:p.d.length-1,shift:[0,0]};
 }
 let version=-1;
 const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>();
@@ -96,7 +122,8 @@ export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroD
     plans.set(lookup,null);return;
   }
   const plan:Movement128Plan={key:`sprite16:${id}:${motion}:${source}`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion,direction,
-    columns,rows,frameCount,durationMs,loop,anchor:[.5,.875],height:f.height,figure:f.figure,flip,pivotX:f.pivotX};
+    columns,rows,frameCount,durationMs,loop,anchor:[.5,.875],height:f.height,figure:f.figure,flip,pivotX:f.pivotX,
+    ...(motion==='run'&&validPhase(f.phase,frameCount)?{phase:f.phase}:{})};
   plans.set(lookup,plan);return plan;
 }
 /** True when every direction of walk, attack and idle resolves to a valid M16 sheet (its own or its pair's, mirrored). */

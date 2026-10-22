@@ -25,19 +25,9 @@ sharp.cache(false);sharp.concurrency(1);
  * the manifest, so a class or a movement sheet added later (the CLT's run16 came in without a check) fails here too.
  */
 const HELD=Object.keys(manifest.groups.personagens.pieces).filter(id=>Object.keys(filesOf(id)).some(n=>/^walk(16|128)-/.test(n)));
-/**
- * Waiting for their hands marked by eye (2nd batch of BUG-20261022-ORQ-arma-flutua-corrida-clt, scripts/hand-mark.mjs):
- * the bots' attack128, and the walk128 and idle8 of the classes the tracking gets wrong (bare arms and legs, a low hand,
- * the face). Until then they show the sticker at the side. Only these may lack a hand; the list goes as they are marked.
- */
-const DIRS=['S','SW','W','NW','N','NE','E','SE'],AUTO=['faxineira','mendigo','passageira','roqueira'];
-const BOTS=HELD.filter(id=>id!=='clt-cansado'&&id!=='viciado-em-bet');
-const PENDING=new Set([...BOTS.flatMap(id=>DIRS.map(d=>`${id}:attack128-${d}`)),
-  ...BOTS.filter(id=>!AUTO.includes(id)).flatMap(id=>[...DIRS.map(d=>`${id}:walk128-${d}`),`${id}:idle8`])]);
-const pending=(id:string,name:string)=>PENDING.has(`${id}:${name}`)&&!HAND_POINTS[filesOf(id)[name].file];
 const shown=(id:string)=>{
   const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
-  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n)).filter(([n])=>!pending(id,n));
+  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n))
 };
 /** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
 const SCREEN_PER_CELL=45/50;
@@ -49,8 +39,7 @@ test('every sheet the game shows any hero has its hand in each frame, inside the
   for(const id of HELD){
     const sheets=shown(id);
     // M16 (viciado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
-    const waiting=[...PENDING].filter(k=>k.startsWith(`${id}:`)&&pending(id,k.slice(id.length+1))).length;
-    assert.equal(sheets.length+waiting,id==='viciado-em-bet'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
+    assert.equal(sheets.length,id==='viciado-em-bet'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
     for(const [name,f] of sheets){
       const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
       assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);

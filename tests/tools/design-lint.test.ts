@@ -84,13 +84,13 @@ test('design lint: emoji count ignores comments (not strings), and the baseline 
 });
 
 test('fonts: served from public/fonts with the OFL, pt-BR subset within 120 KB, no Georgia/Trebuchet/monospace in src CSS',()=>{
-  const files=['londrina-solid-400','londrina-solid-900','m-plus-rounded-1c-400','m-plus-rounded-1c-700','m-plus-rounded-1c-800'];
+  const files=['londrina-solid-400','londrina-solid-900','m-plus-rounded-1c-400','m-plus-rounded-1c-700','m-plus-rounded-1c-800','lilita-one-400'];
   const total=files.reduce((n,f)=>n+fs.statSync(`public/fonts/${f}.woff2`).size,0);
   assert.ok(total<=120*1024,`pt-BR font weight ${total} B`);
-  for(const f of ['OFL-londrina-solid.txt','OFL-m-plus-rounded-1c.txt'])assert.match(fs.readFileSync(`public/fonts/${f}`,'utf8'),/SIL Open Font License/);
+  for(const f of ['OFL-londrina-solid.txt','OFL-m-plus-rounded-1c.txt','OFL-lilita-one.txt'])assert.match(fs.readFileSync(`public/fonts/${f}`,'utf8'),/SIL Open Font License/);
   const tokens=fs.readFileSync('src/client/ui/tokens.css','utf8');
   for(const f of files)assert.ok(tokens.includes(`/fonts/${f}.woff2`),`${f} declared in tokens.css`);
   assert.equal((tokens.match(/font-display:swap/g)??[]).length,(tokens.match(/@font-face/g)??[]).length,'every face swaps');
   const html=fs.readFileSync('index.html','utf8');
-  assert.equal((html.match(/rel="preload"[^>]*as="font"/g)??[]).length,2,'two preloads');
+  assert.equal((html.match(/rel="preload"[^>]*as="font"/g)??[]).length,3,'three preloads: Londrina 900, M PLUS 700 and the stadium button Lilita One');
 });

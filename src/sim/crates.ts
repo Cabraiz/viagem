@@ -9,14 +9,26 @@
  *    crate turns better as the rounds go by ("from comum to lendária as the match goes"). An opened placed crate comes
  *    back RESPAWN_SECONDS later on a random free point at least RESPAWN_MIN_DIST from every player (retried on later
  *    ticks while none qualifies);
- *  - start: at the first step one verde crate a player (START_CRATES_MIN..START_CRATES_MAX) on `startPoints`, spread
- *    out (the city: just outside the plaza, cityLoot.aroundPlaza), so a firearm is a short walk away in the first rounds
- *    (the loot points are 18 s and more from the plaza, the intermission 20 s). Dropped crates: they never respawn;
+ *  - start (the first minute's, BUG-20261022-ORQ-caixas-sumiram): at the first step START_CRATES_PER_PLAYER crates a
+ *    player (1..START_PLAYERS_MAX players) on `startPoints` (the city: around where the heroes spawn, cityLoot.aroundStart;
+ *    they used to sit by the plaza, ~76 u of walk from the spawn and out of the frames' interest radius, so a hero
+ *    walking the first minute met none). Spread by walk: the k-th crate of each player's set in the k-th of
+ *    START_CRATES_PER_PLAYER walk bands, the farthest candidate of its band from the crates taken. Verde and azul
+ *    alternate; their prize is the starter table (rollStarter: no item dominates). Dropped crates: they never respawn;
+ *  - trail (the first minute's, same bug): for FIRST_MINUTE_S from the first step, a hero who has passed (within
+ *    PASS_DIST, about the PC camera's half view) fewer crates than the pace (one at the start, then one more every
+ *    FIRST_MINUTE_S / (FIRST_MINUTE_CRATES + 1) s) and has none of his trail crates waiting gets one TRAIL_AHEAD u ahead of
+ *    where he walks (options.trailSpot: open ground the heroes reach), never in another hero's view; one he leaves
+ *    behind or TRAIL_MISS u away stops waiting (it stays on the map). Up to TRAIL_MAX a hero, start crates' prizes. So each
+ *    hero who walks passes FIRST_MINUTE_CRATES in the first minute, whichever way he goes (static crates cannot: the
+ *    camera shows ~8 u around the hero);
  *  - dropped: the elites' and the boss's chests (other systems add them as plain 'chest' pickups) are adopted at the
  *    next step, and dropCrate (the D-051 nests) adds one of a given rarity. They never respawn nor count to the cap;
  *  - opening: a standing player (hasInventory) within OPEN_REACH who did not move this tick fills OPEN_SECONDS of its
  *    rarity, on the nearest crate; moving or losing hp starts over. From the roxa up, starting to open makes noise
  *    (hooks.onNoise, OPEN_NOISE_RADIUS): the lock creaks and calls the enemies around;
+ *  - the prize never repeats the opener's last crate prize (the user, 22/10: "sem repetir a mesma arma em sequência"):
+ *    the same per-crate stream draws again, up to PRIZE_REDRAWS times;
  *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else the PRIZES row) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
  *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem).
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
@@ -40,8 +52,23 @@ export const CRATES_BASE=1,CRATES_PER_PLAYER=3;
 export const crateCap=(players:number)=>Math.min(MAX_CRATES,CRATES_BASE+CRATES_PER_PLAYER*Math.max(1,players));
 /** Of the initial crates, up to half sit on the near third (the rest anywhere), so the first rounds have crates close. */
 export const NEAR_SHARE=.5;
-/** Start crates: one a player, up to START_CRATES_MAX (the 16/10 bench: a solo with three of them is too easy). */
-export const START_CRATES_MIN=1,START_CRATES_MAX=6;
+/**
+ * The first minute's crates: START_CRATES_PER_PLAYER a player, for 1..START_PLAYERS_MAX players (the user, 22/10: a
+ * hero walking the first minute passes at least 4, each player his own; was one verde a player by the plaza).
+ */
+export const START_CRATES_PER_PLAYER=2,START_PLAYERS_MAX=6;
+export const START_CRATES_MIN=START_CRATES_PER_PLAYER,START_CRATES_MAX=START_CRATES_PER_PLAYER*START_PLAYERS_MAX;
+/** The first minute's pace (trail crates): FIRST_MINUTE_CRATES passed a hero in FIRST_MINUTE_S seconds. */
+export const FIRST_MINUTE_S=60,FIRST_MINUTE_CRATES=4;
+/**
+ * A hero passes a crate within PASS_DIST u (the PC camera shows ~8 u sideways, 9 up and down); a trail crate lands
+ * TRAIL_AHEAD u ahead (out of his view, a few seconds at the 4 u/s walk), stops waiting TRAIL_MISS u away; TRAIL_MAX a hero.
+ */
+export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS=30,TRAIL_MAX=8;
+/** A hero's heading follows his walk with this weight a tick (about a second's memory at 20 Hz). */
+const HEADING_KEEP=.9;
+/** A prize equal to the opener's last one is drawn again (same stream) up to this many times. */
+export const PRIZE_REDRAWS=6;
 /** The match is split in this many stages by round (10 rounds: 1-3, 4-5, 6-8, 9-10); stage s shifts a placed crate by s-1. */
 export const RARITY_STAGES=4;
 /** An opened placed crate comes back this long after (no rounds: no refill in an intermission). */
@@ -92,6 +119,8 @@ export interface CrateRecord {
   base?:Rarity;
   /** placed (a map point, respawns) or dropped (elite, boss, nest, dropCrate: never respawns). */
   origin:'placed'|'dropped';
+  /** A first-minute crate (dropped): its prize is the starter table (rollStarter). */
+  start?:true;
   /** Index of the map point a placed crate sits on. */
   point?:number;
 }
@@ -111,6 +140,12 @@ export interface CratesState {
   seen:Record<string,{x:number;y:number;hp:number}>;
   /** The placement and adoption stream (prizes have their own per-crate stream). */
   rng:number;
+  /** Per player: the key (prizeKey) of his last crate prize; absent in an older checkpoint. */
+  last?:Record<string,string>;
+  /** The first step's tick (the first minute's clock); absent in an older checkpoint: no trail. */
+  startTick?:number;
+  /** Per player, the first minute: crates passed (ids), his waiting trail crate, how many he got, his walk heading. */
+  trail?:Record<string,{passed:string[];waiting?:string;placed:number;hx:number;hy:number}>;
 }
 export const createCratesState=(seed:number):CratesState=>({placed:false,crates:{},respawns:[],opening:{},seen:{},rng:new Rng(seed).fork('caixas').state});
 
@@ -119,9 +154,17 @@ export interface CratesOptions {
   seed:number;
   /** Where placed crates sit, with the walk time from the plaza (city: cityLoot(terrain).crates). Empty: none placed. */
   points:readonly {x:number;y:number;seconds:number}[];
-  /** Where the start crates may sit (city: cityLoot(terrain).aroundPlaza). Absent or empty: no start crates. */
-  startPoints?:readonly Point[];
+  /**
+   * Where the first minute's crates may sit, with the walk (u) from the heroes' spawn (city: cityLoot(terrain).aroundStart).
+   * Absent or empty: no start crates.
+   */
+  startPoints?:readonly StartPoint[];
   hooks?:CrateHooks;
+  /**
+   * A trail crate's spot about `ahead` u from `at` along the unit `heading` (the city: open ground for the crate's body
+   * that the heroes reach, outside the base); undefined: none there. Absent: no trail crates.
+   */
+  trailSpot?(at:Point,heading:Point,ahead:number,rng:Rng):Point|undefined;
   /** A checkpoint to resume from. */
   state?:CratesState;
 }
@@ -182,6 +225,36 @@ export function rollCrate(rng:Rng,rarity:Rarity):Prize{
   return rollPrize(rng,rarity);
 }
 
+/** A first-minute crate spot: `walk` (u) from the heroes' spawn; absent, the distance from the first spot stands in. */
+export type StartPoint=Point&{walk?:number};
+/** The start points in START_CRATES_PER_PLAYER walk bands of equal width over their walk range, nearest first. */
+export function startBands(points:readonly StartPoint[]):StartPoint[][]{
+  const n=START_CRATES_PER_PLAYER,bands:StartPoint[][]=Array.from({length:n},()=>[]);
+  if(!points.length)return bands;
+  const walk=(p:StartPoint)=>p.walk??Math.hypot(p.x-points[0].x,p.y-points[0].y);
+  let lo=Infinity,hi=-Infinity;
+  for(const p of points){const w=walk(p);lo=Math.min(lo,w);hi=Math.max(hi,w);}
+  for(const p of points)bands[hi>lo?Math.min(n-1,Math.floor((walk(p)-lo)/(hi-lo)*n)):0].push(p);
+  return bands;
+}
+
+/**
+ * The first minute's prize (BUG-20261022-ORQ-caixas-sumiram, the user: "sorteio entre as armas/itens do jogo (não
+ * sempre pistola)"): one STARTER row at even odds, a weapon at the crate's rarity (never below its minimum). No row is
+ * more than 1/6 of the draws.
+ */
+export const STARTER:readonly ((rng:Rng,rarity:Rarity)=>Prize)[]=[
+  (_rng,r)=>({items:[weaponItem('pistola',r)]}),
+  (rng,r)=>({items:[weaponItem(rng.pick(['escopeta','submetralhadora']),r)]}),
+  ()=>({items:[{id:'coxinha',level:1}]}),
+  rng=>({items:[{id:rng.pick(DOCES),level:1}]}),
+  rng=>({items:[kitItem(rng.pick(KIT_POOL[1]))]}),
+  rng=>rng.next()<.5?{items:[],grana:GRANA_VERDE*2}:{items:[],towerUnits:UNITS_PER_TOKEN/2},
+];
+export function rollStarter(rng:Rng,rarity:Rarity):Prize{return rng.pick(STARTER)(rng,rarity);}
+/** What a "the same prize again" check compares: the first item's id, else the kind of the row. */
+export const prizeKey=(prize:Prize)=>prize.items[0]?.id??(prize.grana?'grana':prize.towerUnits?'fichas':prize.teamXp?'xp':'nada');
+
 export function createCrates(options:CratesOptions):Crates{
   const {seed,points,startPoints=[],hooks={}}=options;
   const state=options.state??createCratesState(seed);
@@ -205,23 +278,53 @@ export function createCrates(options:CratesOptions):Crates{
 
   /** Initial placement: a seeded shuffle of the points, NEAR_SHARE of the cap from the near third first, then the rest. */
   function placeInitial(ctx:SimContext,rng:Rng){
-    state.placed=true;
+    state.placed=true;state.startTick=ctx.tick;
     let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
     const cap=state.cap=crateCap(players);
     const order=points.map((_,i)=>i);
     for(let i=order.length-1;i>0;i--){const j=rng.int(0,i);[order[i],order[j]]=[order[j],order[i]];}
     const near=order.filter(i=>tierOf[i]===0).slice(0,Math.ceil(cap*NEAR_SHARE)),rest=order.filter(i=>!near.includes(i));
     for(const point of [...near,...rest].slice(0,cap))place(ctx,rng,point);
-    // Start crates: a random first spot, then each next the candidate farthest from those taken (ties: list order).
-    const want=Math.min(startPoints.length,Math.max(START_CRATES_MIN,Math.min(START_CRATES_MAX,players)));
-    const taken:Point[]=[];
-    if(want)taken.push(rng.pick(startPoints));
+    // Start crates: the k-th of each player's set in the k-th walk band (startBands), the first one random, each next
+    // the candidate of its band farthest from those taken (ties: list order; an empty band takes from every point).
+    const want=Math.min(startPoints.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players)));
+    const bands=startBands(startPoints),taken:StartPoint[]=[];
     while(taken.length<want){
-      let best=startPoints[0],bestD=-1;
-      for(const c of startPoints){const d=Math.min(...taken.map(t=>Math.hypot(t.x-c.x,t.y-c.y)));if(d>bestD){best=c;bestD=d;}}
+      const band=bands[taken.length%bands.length].filter(c=>!taken.includes(c)),from=band.length?band:startPoints.filter(c=>!taken.includes(c));
+      if(!taken.length){taken.push(rng.pick(from));continue;}
+      let best=from[0],bestD=-1;
+      for(const c of from){let d=Infinity;for(const t of taken)d=Math.min(d,Math.hypot(t.x-c.x,t.y-c.y));if(d>bestD){best=c;bestD=d;}}
       taken.push(best);
     }
-    for(const at of taken)addCrate(ctx,at,{rarity:1,origin:'dropped'});
+    taken.forEach((at,i)=>{addCrate(ctx,{x:at.x,y:at.y},{rarity:i%2?2:1,origin:'dropped',start:true});});
+  }
+
+  /** The first minute: who passed which crate, and a trail crate ahead of a hero behind the pace. */
+  function trailStep(ctx:SimContext,rng:Rng){
+    if(state.startTick===undefined)return;
+    const elapsed=ctx.tick-state.startTick;
+    if(elapsed>=ticks(FIRST_MINUTE_S)){if(state.trail)delete state.trail;return;}
+    const trail=state.trail??={},heroes=[...ctx.players.values()].filter(onMap);
+    const due=1+Math.floor(elapsed/ticks(FIRST_MINUTE_S/(FIRST_MINUTE_CRATES+1)));
+    for(const p of heroes){
+      const t=trail[p.id]??={passed:[],placed:0,hx:0,hy:0},last=state.seen[p.id];
+      if(last){t.hx=t.hx*HEADING_KEEP+(p.x-last.x)*(1-HEADING_KEEP);t.hy=t.hy*HEADING_KEEP+(p.y-last.y)*(1-HEADING_KEEP);}
+      for(const id in state.crates){
+        const c=ctx.pickups.get(id);
+        if(c&&!t.passed.includes(id)&&Math.hypot(c.x-p.x,c.y-p.y)<=PASS_DIST)t.passed.push(id);
+      }
+      const waiting=t.waiting&&ctx.pickups.get(t.waiting);
+      const speed=Math.hypot(t.hx,t.hy);
+      // Missed: opened by someone, passed, left TRAIL_MISS u away or behind him (he turned).
+      if(t.waiting&&(!waiting||t.passed.includes(t.waiting)||Math.hypot(waiting.x-p.x,waiting.y-p.y)>TRAIL_MISS
+        ||(speed>1e-3&&(waiting.x-p.x)*t.hx+(waiting.y-p.y)*t.hy<0)))delete t.waiting;
+      if(t.waiting||!options.trailSpot||t.placed>=TRAIL_MAX||t.passed.length>=Math.min(due,FIRST_MINUTE_CRATES)||speed<1e-3||!canOpen(p))continue;
+      const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
+      const at=options.trailSpot(p,heading,ahead,rng);
+      if(!at||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
+      t.waiting=addCrate(ctx,at,{rarity:t.placed++%2?2:1,origin:'dropped',start:true}).id;
+    }
+    for(const id in trail)if(!ctx.players.has(id))delete trail[id];
   }
 
   /** Placed crates follow the round's stage (the pickup's value is what the HUD and the bots see). */
@@ -280,7 +383,12 @@ export function createCrates(options:CratesOptions):Crates{
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
-    const prize=rollCrate(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),record.rarity);
+    // Never the opener's last prize again: the same stream draws again (up to PRIZE_REDRAWS times).
+    const stream=new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),draw=()=>record.start?rollStarter(stream,record.rarity):rollCrate(stream,record.rarity);
+    const last=(state.last??={})[p.id];
+    let prize=draw();
+    for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===last;i++)prize=draw();
+    state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
     if(prize.grana)hooks.addGrana?.(ctx,p,prize.grana);
     if(prize.towerUnits)hooks.addTowerUnits?.(ctx,prize.towerUnits);
@@ -328,6 +436,7 @@ export function createCrates(options:CratesOptions):Crates{
       sync(ctx,rng);
       respawn(ctx,rng);
       restage(ctx);
+      trailStep(ctx,rng);
       openStep(ctx);
       state.rng=rng.state;
     },

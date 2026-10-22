@@ -30,7 +30,7 @@ sharp.cache(false);
 const ROOT=process.env.SHEET_CELLS_ROOT??fileURLToPath(new URL('..',import.meta.url));
 export const RECORD='scripts/sheet-cells.json';
 /** Bump `version` when the analysis changes: the record is redone. */
-export const RULES={version:5,alpha:40,minArea:7,edge:1,fixRing:2,cutMax:.1,haloArea:300,wrap:.3,slab:250,fringe:2,crumb:60};
+export const RULES={version:6,alpha:40,minArea:7,edge:1,fixRing:2,cutMax:.15,haloArea:300,wrap:.3,slab:250,fringe:2,crumb:60};
 /** Opaque above this alpha (sprite-atlas.mjs's figure threshold is 20; 40 skips the faintest glow). */
 export const ALPHA=RULES.alpha;
 /** A loose part smaller than this (px) is anti-aliasing dust. */
@@ -104,7 +104,12 @@ export function analyzeCell(data,width,x0,y0,cw,ch,mask,cutRing=FIX_RING){
       // A big piece (a grill, a dropped prop) is drawn on purpose and only clipped: it needs a bigger cell, not --fix.
       const big=part.area>CUT_MAX*main.area;
       result.cut.push({area:part.area,box,...(big?{grande:true}:{})});
-      if(mask&&!big)for(const p of part.px)mask[p]=1;
+      if(mask&&!big)for(const p of part.px){
+        mask[p]=1;
+        // Its faint edge (alpha ≤ ALPHA, outside every part) would stay as a ghost outline.
+        const x=p%cw,y=(p-x)/cw;
+        for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const qx=x+dx,qy=y+dy;if(qx>=0&&qy>=0&&qx<cw&&qy<ch&&!label[qy*cw+qx])mask[qy*cw+qx]=1;}
+      }
     }
     else result.ilhas.push({area:part.area,box});
   }
@@ -252,6 +257,25 @@ export async function analyzeSheet(sheet,fix=false){
 
 export const readRecord=(root=ROOT)=>existsSync(join(root,RECORD))?JSON.parse(readFileSync(join(root,RECORD),'utf8')):{files:{}};
 
+/**
+ * The enemies' group manifest keeps a sha256 per page, per file entry and per piece (scripts/art-v2/convert.mjs: the
+ * importer tells a changed piece by them): a fixed sheet updates all three.
+ */
+export const ENEMY_MANIFEST='public/art/enemies/manifest.json';
+function rehash(page,hash,root=ROOT){
+  const path=join(root,ENEMY_MANIFEST),manifest=JSON.parse(readFileSync(path,'utf8'));
+  for(const piece of Object.values(manifest.pieces)){
+    let touched=false;
+    for(const f of Object.values(piece.files)){
+      const pages=f.pages??[];if(!pages.some(p=>p.file===page))continue;
+      for(const p of pages)if(p.file===page)p.sha256=hash;
+      f.sha256=pages.length===1?pages[0].sha256:sha(pages.map(p=>`${p.file} ${p.sha256}`).join('\n'));touched=true;
+    }
+    if(touched)piece.sha256=sha(Object.entries(piece.files).map(([k,f])=>`${k} ${f.sha256}`).sort().join('\n'));
+  }
+  writeFileSync(path,`${JSON.stringify(manifest,null,2)}\n`);
+}
+
 async function main(){
   const args=new Set(process.argv.slice(2)),all=sheets(),files={};
   // Other rules: every sheet again.
@@ -265,6 +289,7 @@ async function main(){
       if(r.img){
         await sharp(r.img.data,{raw:{width:r.img.width,height:r.img.height,channels:4}}).webp({lossless:true,effort:6}).toBuffer().then(b=>writeFileSync(sheet.path,b));
         hash=sha(readFileSync(sheet.path));fixed++;console.error(`corrigida ${sheet.key}: ${r.fails.length} quadros`);
+        rehash(sheet.key.slice('enemies/'.length),hash);
       }
     }
     if(entry?.sha!==hash){

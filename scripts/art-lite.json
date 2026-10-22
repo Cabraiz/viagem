@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2067,
-  "bytes": 1540462576,
-  "liteBytes": 498294812,
+  "files": 2070,
+  "bytes": 1542662702,
+  "liteBytes": 499059930,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -36,6 +36,18 @@
    ],
    "psnr": 41.7,
    "shownPsnr": 41.7
+  },
+  "city/base/moto-chaveiro.webp": {
+   "source": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728",
+   "lite": "410f4c77cb6905ef829b33fb5b92abe8ace1fbd432d5c53aacd77425c9141ad7",
+   "bytes": 597584,
+   "liteBytes": 243658,
+   "liteCell": [
+    238,
+    191
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
   },
   "city/base/muralha-acampamento.webp": {
    "source": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1",
@@ -72,6 +84,30 @@
    ],
    "psnr": 36.9,
    "shownPsnr": 36.9
+  },
+  "city/base/muro-bloco-pilar.webp": {
+   "source": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",
+   "lite": "5d441a998f447d1c732364e827c4c28091f5f9101570113008261f0cd40ede5e",
+   "bytes": 528112,
+   "liteBytes": 172888,
+   "liteCell": [
+    124,
+    217
+   ],
+   "psnr": 37.2,
+   "shownPsnr": 37.2
+  },
+  "city/base/muro-bloco.webp": {
+   "source": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e",
+   "lite": "e7d2c810d6a643152c31845aedc8f392fbfa0772c4037698c4448eb299daa111",
+   "bytes": 1099174,
+   "liteBytes": 358412,
+   "liteCell": [
+    164,
+    185
+   ],
+   "psnr": 38.9,
+   "shownPsnr": 38.9
   },
   "city/buildings/boteco-esquina-2x1-1.webp": {
    "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",
@@ -3274,10 +3310,10 @@
    "shownPsnr": 44.5
   },
   "enemies/anao-molotov/throw.webp": {
-   "source": "15c5bbd4ee770aa5a877cfb4b60da06e07706237b5940ac23778f7a819479ec9",
-   "lite": "01479580d591edf814ee7216a3e373c8c28d10e2dd880bc11f5b51d0bd43f611",
-   "bytes": 459742,
-   "liteBytes": 163550,
+   "source": "940deab1df400c5ee364e03f57fc2391c0e165cd98e874a7253725750df52bee",
+   "lite": "ef534beaaa4acb53a90db6be9a8b3e351e1ec109eba3a2ab61e4da33a4e1d614",
+   "bytes": 459428,
+   "liteBytes": 163154,
    "liteCell": [
     85,
     85
@@ -4114,10 +4150,10 @@
    "shownPsnr": 41.2
   },
   "enemies/betoneira-ambulante/shove.webp": {
-   "source": "d563e04657d9aa4b6a86d045496c6ea9136f22ee0e5d48342b6409e6ec3869b7",
-   "lite": "c263077a3ddfcc229acb81bb68e3cd22d1b36ed986ac4a59ea12c6f684d8d125",
-   "bytes": 1116160,
-   "liteBytes": 263314,
+   "source": "03f2cc97357f57ea1034833b70ff71341c752b565f935df85a6b979cb605554b",
+   "lite": "5e50462a723bf45e194a3e5ca920d47eed4d49d397d0bc334113efe208e38821",
+   "bytes": 1113690,
+   "liteBytes": 262874,
    "liteCell": [
     109,
     109
@@ -4750,10 +4786,10 @@
    "shownPsnr": 40.8
   },
   "enemies/cafeteira-burnout/crash.webp": {
-   "source": "5a3a7d193ef461ebf4d878cf6317e2b8fb8f9d4fdedd514583e12f38d9886335",
-   "lite": "6c0170c52db35ba69cd53fbf9fde0731be7b742e224849e044abce2d6c37335f",
-   "bytes": 829460,
-   "liteBytes": 147564,
+   "source": "e13e0b9748bcfc5a39cde8a5d9e000a5cd6f745b2a5a2d46ac8ecdb9fc7da57a",
+   "lite": "e3aac1cb29c6313d656c57debfa84c1fe0e135cd901c7416dd224ece14ddd96f",
+   "bytes": 826292,
+   "liteBytes": 146858,
    "liteCell": [
     84,
     84
@@ -5762,10 +5798,10 @@
    "shownPsnr": 40.7
   },
   "enemies/cobrador-fantasma/attack.webp": {
-   "source": "5d0da9d393348d8df0cf951db2a57c696a2b6a053c50fe291378acbdfd7c89a9",
-   "lite": "97c2bf20ed9a8badfcf0f64ae986271708e730ca7ddfd033f32b5bcab95c1fc2",
-   "bytes": 431618,
-   "liteBytes": 137910,
+   "source": "4210195e1a5f6ad40426115bf0f24b46a04db65bb9143101f338b1c87f2187b5",
+   "lite": "daac3ac158719ccbfb01bc2df9b178e566cf0d81ee6e30030b8929464f1bcb1f",
+   "bytes": 430272,
+   "liteBytes": 137418,
    "liteCell": [
     88,
     88
@@ -5774,10 +5810,10 @@
    "shownPsnr": 44.1
   },
   "enemies/cobrador-fantasma/death.webp": {
-   "source": "3e8eee65029f52b6d6e383af6552d038123c8ff029963b89f6162f70c2b295fd",
-   "lite": "6c1a98b052a602899f254e8d3de06d9e61e8c1476307628ff238a280b666c8c0",
-   "bytes": 734058,
-   "liteBytes": 222206,
+   "source": "34fca1f5342263e1ae36083ad22e291125b335d1a9da3344e20b1c94cf77a032",
+   "lite": "1fa7bd8ef2945385732842d62f3ae4d2313da2bd2cc25db658e2c36edf500ad5",
+   "bytes": 733562,
+   "liteBytes": 221896,
    "liteCell": [
     88,
     88
@@ -5786,10 +5822,10 @@
    "shownPsnr": 43.5
   },
   "enemies/cobrador-fantasma/hit.webp": {
-   "source": "ad1ac268dcbac15497e937baeef5fc2140884e3d1f043e4fd0aa326f3378a27f",
-   "lite": "f2a5e91ffbc23bdcc4874624945cd2d42834a72626606418cac2c7fa08cba2a0",
-   "bytes": 226512,
-   "liteBytes": 71472,
+   "source": "a9c3f20e0b1f98ef873eb86776db55e29b826e4cd751e1dcbeae0223d49acb2f",
+   "lite": "5b8bc1caf68ccfcc0aafd3b5aff1dd6d212b477c87e9b3b56c909f4490f93176",
+   "bytes": 225502,
+   "liteBytes": 71116,
    "liteCell": [
     88,
     88
@@ -5798,10 +5834,10 @@
    "shownPsnr": 42.4
   },
   "enemies/cobrador-fantasma/idle.webp": {
-   "source": "7763d02da370541ded8fa8c23bb8386358a23f4fa7a2de272c4c2aa5c6fb52f8",
-   "lite": "31842a4353297c52164dc12bb5619484c1818cbbfc76425892d285531a5aa2ea",
-   "bytes": 412702,
-   "liteBytes": 128340,
+   "source": "d31cc66313e87491a40386cb6dfa74bbce3108d625f7c2415a4ad36b69fd2506",
+   "lite": "c319a610246b501c0682496192c56bafb1841a5ab5c5771ea8943a029bb961a5",
+   "bytes": 412426,
+   "liteBytes": 128172,
    "liteCell": [
     88,
     88
@@ -5826,10 +5862,10 @@
    "shownPsnr": 46.9
   },
   "enemies/cobrador-fantasma/walk.webp": {
-   "source": "be8eb1d383690f72719fe51e482ee7339769b3c3233e4c0256b04a9525cdc8ef",
-   "lite": "f324ab7106267590a2c32c1a0a1dd7a644fe198bfa1c7d9721025128bf19f92e",
-   "bytes": 599420,
-   "liteBytes": 181020,
+   "source": "1f7c9711e9dadea69cfd879be53e1c23092e9a82ad974914731f450d970054e6",
+   "lite": "3db63dff7f3475e6b5874b377ae46a1eeeea62ba930493214986b7fc030b3b65",
+   "bytes": 598914,
+   "liteBytes": 180658,
    "liteCell": [
     88,
     88
@@ -5882,10 +5918,10 @@
    "shownPsnr": 45.3
   },
   "enemies/coco-que-vende-gente/throw.webp": {
-   "source": "ff2a96db8dc37930e82f05fead378d9c956165b2e824c5db82c14691f2b8165c",
-   "lite": "87c2899aa3b05a2b283af647509ff3437ebbbc1c46e351cd34a2401793ff1cfe",
-   "bytes": 778358,
-   "liteBytes": 196734,
+   "source": "67880245d0c713f4b7f77d1469588013ebabacce0d4cc12f9aee941bc13b67b8",
+   "lite": "defe8b025a31c1658b9769548ade5884f4b9980c7190d7a6af6b97147c629dab",
+   "bytes": 778230,
+   "liteBytes": 196608,
    "liteCell": [
     83,
     83
@@ -7998,10 +8034,10 @@
    "shownPsnr": 42.8
   },
   "enemies/engenheiro-obra-parada/shove.webp": {
-   "source": "69972ac3902611e0bc184854cf8ff5e6b69ae920c3d74fd196c2ff03d05631bd",
-   "lite": "ef2da4d5a2b94a04f6e54fa55b7d4295e01ac49a293d5955df9fb11754a6508f",
-   "bytes": 985190,
-   "liteBytes": 251234,
+   "source": "581fe8346cf057bf6d02a25a4b7d85cb67ffbc5d589022b6d7852b5c7f8da743",
+   "lite": "71d24706738fa58ad544f570518c9b5e71b2843a5cabbbf5688558f2d2ff31af",
+   "bytes": 984508,
+   "liteBytes": 250738,
    "liteCell": [
     113,
     113
@@ -9178,10 +9214,10 @@
    "shownPsnr": 44.5
   },
   "enemies/geladeira-do-feijao/death.webp": {
-   "source": "12a085fc1e0d37d47b63cc4ec135e08a1f8017c234c3c8e5d9d31ce126f54641",
-   "lite": "61ea1784f327ed8136447979135c93fcaf6f69e36df40cc94db8b5ed91f93e1b",
-   "bytes": 981872,
-   "liteBytes": 228404,
+   "source": "a4c6b07f7d25e29dae599e761685910cb7127b90d750c4adf9273ad1b80fb1c2",
+   "lite": "51b5baaa8608ce7e62e223b2453807391cbaa2e27e369a83b82b7883c6cc5663",
+   "bytes": 980668,
+   "liteBytes": 227790,
    "liteCell": [
     81,
     81
@@ -11746,10 +11782,10 @@
    "shownPsnr": 46
   },
   "enemies/o-grande-credor/death-p2.webp": {
-   "source": "f5efeb251b3ff28f68931a22c828d81e7b01a77253baf755a406a439410f7399",
-   "lite": "2389aa141f488d5b9b51abca1976a2f4b4676c7b914b7ed37b2d17319a7fe032",
-   "bytes": 1644192,
-   "liteBytes": 565072,
+   "source": "b064baa4198c1a20ad8f0c9e67352f704d6dda9a3e8615590ee1df1a9c654d01",
+   "lite": "2bdb331355980a9e95fee0eb2672d84a35f4aed7868e9c645c835287acb5cc2b",
+   "bytes": 1642352,
+   "liteBytes": 564350,
    "liteCell": [
     310,
     310
@@ -11794,10 +11830,10 @@
    "shownPsnr": 43.4
   },
   "enemies/o-grande-credor/slam.webp": {
-   "source": "334f9689832ba418889473f5dadd60472a597297898810777c88e454506d23bd",
-   "lite": "abf5f93036e37dcd21a2a3ad7d05f64551f3f2f7d505d7f1326b54950e276eb9",
-   "bytes": 5132198,
-   "liteBytes": 1613092,
+   "source": "07d82cb76189f9fbde733468efbbb2a4358c5dc9ef32a965e7a250a03710cfe3",
+   "lite": "8ce2e74b34548d65010066f3c4dc9b3f487a229c7b4935c274f734445451c1a3",
+   "bytes": 5132344,
+   "liteBytes": 1613460,
    "liteCell": [
     310,
     310
@@ -12554,10 +12590,10 @@
    "shownPsnr": 43.4
   },
   "enemies/pombo-rei/death.webp": {
-   "source": "6c8207814270240a1ce9d7273d162c1888c6217b040d8d60ccbc11a958d3623e",
-   "lite": "baa3b6f9da651b7c64894eb26398c257e24644605df3f5da1b4afbe32ba02881",
-   "bytes": 4795218,
-   "liteBytes": 1306800,
+   "source": "46fd60362ec6a9dafdde39ecd2c26195b9875a47017a9d17bf15bbc564c003e5",
+   "lite": "e28e9feeb6f0af9d27ce23d8e7cb05ad2ee5c8f52500db2daf8c32cba2c13963",
+   "bytes": 4788156,
+   "liteBytes": 1304918,
    "liteCell": [
     170,
     170
@@ -14274,10 +14310,10 @@
    "shownPsnr": 41.3
   },
   "enemies/servidor-fossilizado/shove.webp": {
-   "source": "6007bc8746c88704ead65f86af9ac4b9f2a99786524ce40a09e1c0dce2f472d1",
-   "lite": "99ea406a0ca55c051b017c77654dd94bf2e115a7287da793539ab51edebf3dd0",
-   "bytes": 802412,
-   "liteBytes": 152380,
+   "source": "dfc261571e237523c997a3ec134c56a4e7c529ebcdb86e711f4f87775736b6e1",
+   "lite": "fc7919e3869127734b7fcf8e5ca3bc874ac43e42c6f693ab551f5fa762b6c8ea",
+   "bytes": 801012,
+   "liteBytes": 151750,
    "liteCell": [
     85,
     85
@@ -14570,10 +14606,10 @@
    "shownPsnr": 49.2
   },
   "enemies/sogra-tita/summon.webp": {
-   "source": "3c5230b624fb37fb60ea211d55a7bb53b0f2dbbf787fdb6e2c9075b65293e960",
-   "lite": "d49b9495572d7b264e2c761e39c99b717193c3b7b57cd06247212408b1f21a4d",
-   "bytes": 4454280,
-   "liteBytes": 958068,
+   "source": "5bba2010af90b3aaeda0bb18d2947ba1893fe12f13f4973a411325c3575e2857",
+   "lite": "fc30c91651cd6f72c5ff5387116b4a7ff6efa0271e57fc53d9431e8c177b9a55",
+   "bytes": 4451532,
+   "liteBytes": 955648,
    "liteCell": [
     270,
     270
@@ -15062,10 +15098,10 @@
    "shownPsnr": 47.9
   },
   "enemies/tia-do-zap/throw.webp": {
-   "source": "18f3bf4f7be9d9b5f807603addcf9fd92f088c0b8bc5d62888e5faad03e3e2d9",
-   "lite": "3f09fd560bec9cb1548af37475887e91cf870b4c902f3aebd9de40b2823549c4",
-   "bytes": 365372,
-   "liteBytes": 94538,
+   "source": "a7142ae56b9375c1cf5b83cb1a9b52e55a6c938bcce779fefd238ce8302c036a",
+   "lite": "1fc3b07a6965481d342f4e713dc8ab2ce377d19aa3c4adaba25a9e59a8cb82ca",
+   "bytes": 365132,
+   "liteBytes": 94450,
    "liteCell": [
     78,
     78
@@ -21484,7 +21520,7 @@
    "drawn": 98
   },
   "cobrador-fantasma": {
-   "source": "7763d02da370541ded8fa8c23bb8386358a23f4fa7a2de272c4c2aa5c6fb52f8",
+   "source": "d31cc66313e87491a40386cb6dfa74bbce3108d625f7c2415a4ad36b69fd2506",
    "cell": [
     128,
     128

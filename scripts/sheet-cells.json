@@ -1,11 +1,11 @@
 {
  "rules": {
-  "version": 5,
+  "version": 6,
   "alpha": 40,
   "minArea": 7,
   "edge": 1,
   "fixRing": 2,
-  "cutMax": 0.1,
+  "cutMax": 0.15,
   "haloArea": 300,
   "wrap": 0.3,
   "slab": 250,
@@ -144,7 +144,7 @@
    "fails": []
   },
   "enemies/anao-molotov/throw.webp": {
-   "sha": "15c5bbd4ee770aa5a877cfb4b60da06e07706237b5940ac23778f7a819479ec9",
+   "sha": "940deab1df400c5ee364e03f57fc2391c0e165cd98e874a7253725750df52bee",
    "ilhas": 14,
    "fails": []
   },
@@ -529,7 +529,7 @@
    "fails": []
   },
   "enemies/betoneira-ambulante/shove.webp": {
-   "sha": "d563e04657d9aa4b6a86d045496c6ea9136f22ee0e5d48342b6409e6ec3869b7",
+   "sha": "03f2cc97357f57ea1034833b70ff71341c752b565f935df85a6b979cb605554b",
    "ilhas": 8,
    "fails": []
   },
@@ -824,8 +824,8 @@
    "fails": []
   },
   "enemies/cafeteira-burnout/crash.webp": {
-   "sha": "5a3a7d193ef461ebf4d878cf6317e2b8fb8f9d4fdedd514583e12f38d9886335",
-   "ilhas": 32,
+   "sha": "e13e0b9748bcfc5a39cde8a5d9e000a5cd6f745b2a5a2d46ac8ecdb9fc7da57a",
+   "ilhas": 30,
    "fails": []
   },
   "enemies/cafeteira-burnout/idle.webp": {
@@ -1289,22 +1289,22 @@
    "fails": []
   },
   "enemies/cobrador-fantasma/attack.webp": {
-   "sha": "5d0da9d393348d8df0cf951db2a57c696a2b6a053c50fe291378acbdfd7c89a9",
-   "ilhas": 24,
+   "sha": "4210195e1a5f6ad40426115bf0f24b46a04db65bb9143101f338b1c87f2187b5",
+   "ilhas": 23,
    "fails": []
   },
   "enemies/cobrador-fantasma/death.webp": {
-   "sha": "3e8eee65029f52b6d6e383af6552d038123c8ff029963b89f6162f70c2b295fd",
+   "sha": "34fca1f5342263e1ae36083ad22e291125b335d1a9da3344e20b1c94cf77a032",
    "ilhas": 61,
    "fails": []
   },
   "enemies/cobrador-fantasma/hit.webp": {
-   "sha": "ad1ac268dcbac15497e937baeef5fc2140884e3d1f043e4fd0aa326f3378a27f",
-   "ilhas": 8,
+   "sha": "a9c3f20e0b1f98ef873eb86776db55e29b826e4cd751e1dcbeae0223d49acb2f",
+   "ilhas": 7,
    "fails": []
   },
   "enemies/cobrador-fantasma/idle.webp": {
-   "sha": "7763d02da370541ded8fa8c23bb8386358a23f4fa7a2de272c4c2aa5c6fb52f8",
+   "sha": "d31cc66313e87491a40386cb6dfa74bbce3108d625f7c2415a4ad36b69fd2506",
    "ilhas": 1,
    "fails": []
   },
@@ -1319,7 +1319,7 @@
    "fails": []
   },
   "enemies/cobrador-fantasma/walk.webp": {
-   "sha": "be8eb1d383690f72719fe51e482ee7339769b3c3233e4c0256b04a9525cdc8ef",
+   "sha": "1f7c9711e9dadea69cfd879be53e1c23092e9a82ad974914731f450d970054e6",
    "ilhas": 7,
    "fails": []
   },
@@ -1344,7 +1344,7 @@
    "fails": []
   },
   "enemies/coco-que-vende-gente/throw.webp": {
-   "sha": "ff2a96db8dc37930e82f05fead378d9c956165b2e824c5db82c14691f2b8165c",
+   "sha": "67880245d0c713f4b7f77d1469588013ebabacce0d4cc12f9aee941bc13b67b8",
    "ilhas": 8,
    "fails": []
   },
@@ -2314,7 +2314,7 @@
    "fails": []
   },
   "enemies/engenheiro-obra-parada/shove.webp": {
-   "sha": "69972ac3902611e0bc184854cf8ff5e6b69ae920c3d74fd196c2ff03d05631bd",
+   "sha": "581fe8346cf057bf6d02a25a4b7d85cb67ffbc5d589022b6d7852b5c7f8da743",
    "ilhas": 3,
    "fails": []
   },
@@ -2859,7 +2859,7 @@
    "fails": []
   },
   "enemies/geladeira-do-feijao/death.webp": {
-   "sha": "12a085fc1e0d37d47b63cc4ec135e08a1f8017c234c3c8e5d9d31ce126f54641",
+   "sha": "a4c6b07f7d25e29dae599e761685910cb7127b90d750c4adf9273ad1b80fb1c2",
    "ilhas": 8,
    "fails": []
   },
@@ -4039,7 +4039,7 @@
    "fails": []
   },
   "enemies/o-grande-credor/death-p2.webp": {
-   "sha": "f5efeb251b3ff28f68931a22c828d81e7b01a77253baf755a406a439410f7399",
+   "sha": "b064baa4198c1a20ad8f0c9e67352f704d6dda9a3e8615590ee1df1a9c654d01",
    "ilhas": 52,
    "fails": []
   },
@@ -4059,7 +4059,7 @@
    "fails": []
   },
   "enemies/o-grande-credor/slam.webp": {
-   "sha": "334f9689832ba418889473f5dadd60472a597297898810777c88e454506d23bd",
+   "sha": "07d82cb76189f9fbde733468efbbb2a4358c5dc9ef32a965e7a250a03710cfe3",
    "ilhas": 64,
    "fails": []
   },
@@ -4409,7 +4409,7 @@
    "fails": []
   },
   "enemies/pombo-rei/death.webp": {
-   "sha": "6c8207814270240a1ce9d7273d162c1888c6217b040d8d60ccbc11a958d3623e",
+   "sha": "46fd60362ec6a9dafdde39ecd2c26195b9875a47017a9d17bf15bbc564c003e5",
    "ilhas": 764,
    "fails": []
   },
@@ -5204,7 +5204,7 @@
    "fails": []
   },
   "enemies/servidor-fossilizado/shove.webp": {
-   "sha": "6007bc8746c88704ead65f86af9ac4b9f2a99786524ce40a09e1c0dce2f472d1",
+   "sha": "dfc261571e237523c997a3ec134c56a4e7c529ebcdb86e711f4f87775736b6e1",
    "ilhas": 30,
    "fails": []
   },
@@ -5339,7 +5339,7 @@
    "fails": []
   },
   "enemies/sogra-tita/summon.webp": {
-   "sha": "3c5230b624fb37fb60ea211d55a7bb53b0f2dbbf787fdb6e2c9075b65293e960",
+   "sha": "5bba2010af90b3aaeda0bb18d2947ba1893fe12f13f4973a411325c3575e2857",
    "ilhas": 39,
    "fails": []
   },
@@ -5564,7 +5564,7 @@
    "fails": []
   },
   "enemies/tia-do-zap/throw.webp": {
-   "sha": "18f3bf4f7be9d9b5f807603addcf9fd92f088c0b8bc5d62888e5faad03e3e2d9",
+   "sha": "a7142ae56b9375c1cf5b83cb1a9b52e55a6c938bcce779fefd238ce8302c036a",
    "ilhas": 47,
    "fails": []
   },
@@ -6239,7 +6239,7 @@
    "fails": []
   },
   "lite/enemies/anao-molotov/throw.webp": {
-   "sha": "01479580d591edf814ee7216a3e373c8c28d10e2dd880bc11f5b51d0bd43f611",
+   "sha": "ef534beaaa4acb53a90db6be9a8b3e351e1ec109eba3a2ab61e4da33a4e1d614",
    "ilhas": 14,
    "fails": []
   },
@@ -6624,7 +6624,7 @@
    "fails": []
   },
   "lite/enemies/betoneira-ambulante/shove.webp": {
-   "sha": "c263077a3ddfcc229acb81bb68e3cd22d1b36ed986ac4a59ea12c6f684d8d125",
+   "sha": "5e50462a723bf45e194a3e5ca920d47eed4d49d397d0bc334113efe208e38821",
    "ilhas": 6,
    "fails": []
   },
@@ -6919,8 +6919,8 @@
    "fails": []
   },
   "lite/enemies/cafeteira-burnout/crash.webp": {
-   "sha": "6c0170c52db35ba69cd53fbf9fde0731be7b742e224849e044abce2d6c37335f",
-   "ilhas": 27,
+   "sha": "e3aac1cb29c6313d656c57debfa84c1fe0e135cd901c7416dd224ece14ddd96f",
+   "ilhas": 25,
    "fails": []
   },
   "lite/enemies/cafeteira-burnout/idle.webp": {
@@ -7384,22 +7384,22 @@
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/attack.webp": {
-   "sha": "97c2bf20ed9a8badfcf0f64ae986271708e730ca7ddfd033f32b5bcab95c1fc2",
-   "ilhas": 24,
+   "sha": "daac3ac158719ccbfb01bc2df9b178e566cf0d81ee6e30030b8929464f1bcb1f",
+   "ilhas": 23,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/death.webp": {
-   "sha": "6c1a98b052a602899f254e8d3de06d9e61e8c1476307628ff238a280b666c8c0",
+   "sha": "1fa7bd8ef2945385732842d62f3ae4d2313da2bd2cc25db658e2c36edf500ad5",
    "ilhas": 29,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/hit.webp": {
-   "sha": "f2a5e91ffbc23bdcc4874624945cd2d42834a72626606418cac2c7fa08cba2a0",
-   "ilhas": 8,
+   "sha": "5b8bc1caf68ccfcc0aafd3b5aff1dd6d212b477c87e9b3b56c909f4490f93176",
+   "ilhas": 7,
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/idle.webp": {
-   "sha": "31842a4353297c52164dc12bb5619484c1818cbbfc76425892d285531a5aa2ea",
+   "sha": "c319a610246b501c0682496192c56bafb1841a5ab5c5771ea8943a029bb961a5",
    "ilhas": 1,
    "fails": []
   },
@@ -7414,7 +7414,7 @@
    "fails": []
   },
   "lite/enemies/cobrador-fantasma/walk.webp": {
-   "sha": "f324ab7106267590a2c32c1a0a1dd7a644fe198bfa1c7d9721025128bf19f92e",
+   "sha": "3db63dff7f3475e6b5874b377ae46a1eeeea62ba930493214986b7fc030b3b65",
    "ilhas": 7,
    "fails": []
   },
@@ -7439,7 +7439,7 @@
    "fails": []
   },
   "lite/enemies/coco-que-vende-gente/throw.webp": {
-   "sha": "87c2899aa3b05a2b283af647509ff3437ebbbc1c46e351cd34a2401793ff1cfe",
+   "sha": "defe8b025a31c1658b9769548ade5884f4b9980c7190d7a6af6b97147c629dab",
    "ilhas": 8,
    "fails": []
   },
@@ -8409,7 +8409,7 @@
    "fails": []
   },
   "lite/enemies/engenheiro-obra-parada/shove.webp": {
-   "sha": "ef2da4d5a2b94a04f6e54fa55b7d4295e01ac49a293d5955df9fb11754a6508f",
+   "sha": "71d24706738fa58ad544f570518c9b5e71b2843a5cabbbf5688558f2d2ff31af",
    "ilhas": 3,
    "fails": []
   },
@@ -8954,7 +8954,7 @@
    "fails": []
   },
   "lite/enemies/geladeira-do-feijao/death.webp": {
-   "sha": "61ea1784f327ed8136447979135c93fcaf6f69e36df40cc94db8b5ed91f93e1b",
+   "sha": "51b5baaa8608ce7e62e223b2453807391cbaa2e27e369a83b82b7883c6cc5663",
    "ilhas": 8,
    "fails": []
   },
@@ -10134,7 +10134,7 @@
    "fails": []
   },
   "lite/enemies/o-grande-credor/death-p2.webp": {
-   "sha": "2389aa141f488d5b9b51abca1976a2f4b4676c7b914b7ed37b2d17319a7fe032",
+   "sha": "2bdb331355980a9e95fee0eb2672d84a35f4aed7868e9c645c835287acb5cc2b",
    "ilhas": 52,
    "fails": []
   },
@@ -10154,7 +10154,7 @@
    "fails": []
   },
   "lite/enemies/o-grande-credor/slam.webp": {
-   "sha": "abf5f93036e37dcd21a2a3ad7d05f64551f3f2f7d505d7f1326b54950e276eb9",
+   "sha": "8ce2e74b34548d65010066f3c4dc9b3f487a229c7b4935c274f734445451c1a3",
    "ilhas": 64,
    "fails": []
   },
@@ -10504,7 +10504,7 @@
    "fails": []
   },
   "lite/enemies/pombo-rei/death.webp": {
-   "sha": "baa3b6f9da651b7c64894eb26398c257e24644605df3f5da1b4afbe32ba02881",
+   "sha": "e28e9feeb6f0af9d27ce23d8e7cb05ad2ee5c8f52500db2daf8c32cba2c13963",
    "ilhas": 744,
    "fails": []
   },
@@ -11299,7 +11299,7 @@
    "fails": []
   },
   "lite/enemies/servidor-fossilizado/shove.webp": {
-   "sha": "99ea406a0ca55c051b017c77654dd94bf2e115a7287da793539ab51edebf3dd0",
+   "sha": "fc7919e3869127734b7fcf8e5ca3bc874ac43e42c6f693ab551f5fa762b6c8ea",
    "ilhas": 29,
    "fails": []
   },
@@ -11434,7 +11434,7 @@
    "fails": []
   },
   "lite/enemies/sogra-tita/summon.webp": {
-   "sha": "d49b9495572d7b264e2c761e39c99b717193c3b7b57cd06247212408b1f21a4d",
+   "sha": "fc30c91651cd6f72c5ff5387116b4a7ff6efa0271e57fc53d9431e8c177b9a55",
    "ilhas": 38,
    "fails": []
   },
@@ -11659,7 +11659,7 @@
    "fails": []
   },
   "lite/enemies/tia-do-zap/throw.webp": {
-   "sha": "3f09fd560bec9cb1548af37475887e91cf870b4c902f3aebd9de40b2823549c4",
+   "sha": "1fc3b07a6965481d342f4e713dc8ab2ce377d19aa3c4adaba25a9e59a8cb82ca",
    "ilhas": 38,
    "fails": []
   },

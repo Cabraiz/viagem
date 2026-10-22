@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {existsSync,readFileSync} from 'node:fs';
-import {ALPHA,RECORD,RIM,RULES,analyzeCell,clearMask,readRecord,sheets} from '../../scripts/sheet-cells.mjs';
+import {ALPHA,ENEMY_MANIFEST,RECORD,RIM,RULES,analyzeCell,clearMask,readRecord,sheets} from '../../scripts/sheet-cells.mjs';
 
 // BUG-20261022-ORQ-quadro-sangra-vizinho: no piece cut off by a cell's edge, nothing on a cell's outer ring (LINEAR
 // filtering bleeds it into the next frame) and no background left around a figure, in every character and enemy sheet.
@@ -60,6 +60,16 @@ test('every character and enemy sheet (full and lite) is in the record, fresh, a
   assert.deepEqual(stale,[],`folhas mudaram: node scripts/sheet-cells.mjs (${RECORD})`);
   assert.deepEqual(dirty,[],'quadro com corte, borda ou fundo: node scripts/sheet-cells.mjs --fix --report');
   assert.ok(ALPHA>0);
+});
+
+test('every page sha256 in the enemies manifest is the file sha (a --fix updates them; the importer reads them)', ()=>{
+  const manifest=JSON.parse(readFileSync(ENEMY_MANIFEST,'utf8')),wrong:string[]=[];
+  for(const piece of Object.values(manifest.pieces) as {files:Record<string,{pages?:{file:string;sha256:string}[]}>}[])
+    for(const f of Object.values(piece.files))for(const p of f.pages??[]){
+      const path=`public/art/enemies/${p.file}`;
+      if(existsSync(path)&&createHash('sha256').update(readFileSync(path)).digest('hex')!==p.sha256)wrong.push(p.file);
+    }
+  assert.deepEqual([...new Set(wrong)],[]);
 });
 
 /**

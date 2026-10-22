@@ -153,3 +153,27 @@ test('plano B: the drawn side is chosen per class and per pair (viciado: W, NW a
   setArtIndex(index([],['S','SW','W','NW','N','SE']));assert.deepEqual(movement16Source(ID,'SE'),{source:'SE',flip:false});assert.deepEqual(movement16Source(ID,'SW'),{source:'SW',flip:false});
   assert.equal(movementSheets(ID,'idle').length,6);
 });
+
+test('corrida-clt: an R06 class with run16 alone runs on it (S, N, W, NW, SE drawn; E, NE, SW mirrored); rest and attack stay R06',()=>{
+  const run=(d:keyof typeof PIVOT)=>{const m=m16('walk',d),file=`${ID}.run16-${d.toLowerCase()}.webp`;
+    return {...m,file,height:60,pages:[{...m.pages[0],file}],phase:{d:Array(16).fill(.1),v:Array(16).fill([0,0])}};};
+  const files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack'])for(const d of HERO_DIRECTIONS)files[`${motion}128-${d}`]=r06(motion,d);
+  for(const d of ['S','N','W','NW','SE'] as const)files[`run16-${d}`]=run(d);
+  setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  assert.equal(hasMovement16(ID),false);
+  const want={S:['S',false],N:['N',false],W:['W',false],E:['W',true],NW:['NW',false],NE:['NW',true],SE:['SE',false],SW:['SE',true]} as const;
+  for(const d of HERO_DIRECTIONS){
+    const plan=movementPlan(ID,'walk',d)!;
+    assert.equal(plan.key,`sprite16:${ID}:run:${want[d][0]}`,d);assert.equal(!!plan.flip,want[d][1],d);assert.equal(plan.height,60);assert.ok(plan.phase,d);
+    assert.equal(movementPlan(ID,'attack',d)?.key,`sprite128:${ID}:attack:${d}`);assert.equal(movementPlan(ID,'idle',d)?.key,`sprite128:${ID}:idle8`);
+  }
+  assert.deepEqual(movementSheets(ID,'walk').map(p=>p.key),['S','SE','W','NW','N'].map(d=>`sprite16:${ID}:run:${d}`));
+  assert.equal(movementSheets(ID,'idle').length,1);assert.equal(movementSheets(ID,'attack').length,8);
+  assert.equal(heroMotionUrls(ID).length,5+8,'5 runs and 8 attacks (the idle8 is the hero sheet)');
+  // the run box joins the class's figure union
+  assert.ok(movement128Figure(ID));
+  // a missing run direction: back to the R06 walk
+  delete files['run16-N'];setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  assert.equal(movementPlan(ID,'walk','W')?.key,`sprite128:${ID}:walk:W`);
+});

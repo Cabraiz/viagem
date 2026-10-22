@@ -98,7 +98,7 @@ export function parseCityAsset(raw:unknown):CityAsset{
   for(const q of Array.isArray(a.decor)?a.decor:[]){
     if(!q||typeof q.id!=='string'||!DECOR_ROTS.includes(q.rot)||!cellInt(q.c,0,a.width-1)||!cellInt(q.r,0,a.height-1))continue;
     if(!cellInt(q.w,1,a.width-q.c)||!cellInt(q.h,1,a.height-q.r))continue;
-    decor.push({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(cellInt(q.links,0,15)?{links:q.links}:{})});
+    decor.push({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(cellInt(q.links,0,15)?{links:q.links}:{}),...(q.cover===true?{cover:true}:{})});
   }
   const ids=new Set<string>();
   for(const item of [...blocks,...props]){if(ids.has(item.id))throw new Error(`city asset: duplicate id ${item.id}`);ids.add(item.id);}

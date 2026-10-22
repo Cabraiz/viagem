@@ -1,5 +1,5 @@
 // Card NEW-20261022-ORQ-corrida-proporcao-contorno: does a movement sheet draw the hero at the same size as standing?
-// For each drawn direction, the rest pose (idle16-<dir>) is the reference, and every pose of the walk (walk16) and the
+// For each drawn direction, the rest pose (idle16-<dir>, or an R06 class's idle8 column: corrida-clt) is the reference, and every pose of the walk (walk16) and the
 // run (run16) is compared at the same game scale (each clip draws its cell at 96/height):
 //   - head: the rest pose's head (cap included, top down to the neck) fitted on the pose's head over scales 0.6–1.4
 //     (soft alpha, IoU); `head` is that scale (1 = same head), robust to arms passing by and to the lean;
@@ -13,7 +13,7 @@
 //
 //   node scripts/proporcao.mjs [--ids viciado-em-bet] [--json out.json] [--sheet out-dir]
 //
-// Without arguments: the table for every class with an M16 rest pose. --sheet writes, per direction, rest × walk × run
+// Without arguments: the table for every class with an M16 rest pose or a run. --sheet writes, per direction, rest × walk × run
 // side by side at the same scale (the game's), for the eye.
 import {createRequire} from 'node:module';
 import fs from 'node:fs';
@@ -149,6 +149,18 @@ export function seam(frames,shapes){
 
 /** The sprite manifest's M16 clips of class `id`, by key. */
 export function clipsOf(manifest,id){return manifest.pieces?.[id]?.files??{};}
+/** R06's idle8: one rest pose per direction, in this column order (sprite-motion.ts HERO_DIRECTIONS). */
+const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
+/**
+ * The rest pose of direction `d`: M16's idle16-<d>, else (an R06 class that runs, card corrida-clt) its idle8 column.
+ * {clip, frames: the cell indices of the rest} or undefined.
+ */
+export function restOf(files,d){
+  if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
+  if(files.idle8&&files[`run16-${d}`])return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+}
+/** The classes the meter covers: every one with an M16 rest or a run. */
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -157,13 +169,13 @@ export function clipsOf(manifest,id){return manifest.pieces?.[id]?.files??{};}
 export async function measureClass(manifest,id,dir=SPRITES){
   const files=clipsOf(manifest,id),out={id,dirs:{}};
   for(const d of DIRS){
-    const idle=files[`idle16-${d}`];if(!idle)continue;
-    const rest=await cells(path.join(dir,idle.file),idle.frames),restShapes=rest.map(a=>shape(a));
+    const r=restOf(files,d);if(!r)continue;
+    const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
     const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
     const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
-    const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},clips:{}};
+    const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
     for(const motion of ['idle','walk','run']){
-      const clip=files[`${motion}16-${d}`];if(!clip)continue;
+      const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
       const rows=frames.map((a,i)=>{
@@ -174,7 +186,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
       });
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
       entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
-        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop?{loop:seam(frames,shapes)}:{})};
+        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{})};
     }
     out.dirs[d]=entry;
   }
@@ -201,23 +213,30 @@ export function table(m){
   const lines=[`### ${m.id}`,'','| direção | clipe | cabeça | altura (apoio) | tronco | área | emenda 16→1 |','|---|---|---|---|---|---|---|'];
   const pc=x=>`${x>=1?'+':''}${((x-1)*100).toFixed(1)} %`;
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    lines.push(`| ${d} | ${motion}16 | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
+    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
   }
   return lines.join('\n');
 }
 
 /** Rest, walk frame 0 and every run frame side by side at the game's scale (4×, nearest), one PNG per direction. */
+/** The lowest opaque row (alpha > 128) over the cells `frames` of a sheet. */
+async function feetRow(file,frames,cols){
+  const a=await cells(file,Math.max(...frames)+1);
+  return Math.max(...frames.map(f=>shape(a[f]).bot+1));
+}
 export async function sheet(manifest,id,outDir,dir=SPRITES){
-  const files=clipsOf(manifest,id),Z=3,S=CELL*Z;fs.mkdirSync(outDir,{recursive:true});
+  const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
-    const idle=files[`idle16-${d}`];if(!idle)continue;
-    const list=[['idle',0],['walk',0],...Array.from({length:files[`run16-${d}`]?.frames??0},(_,i)=>['run',i])].filter(([m])=>files[`${m}16-${d}`]);
+    const r=restOf(files,d);if(!r)continue;
+    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...Array.from({length:files[`run16-${d}`]?.frames??0},(_,i)=>['run',i])].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
     const comps=[];
     for(let k=0;k<list.length;k++){
-      const [motion,i]=list[k],clip=files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);
+      const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);
       const buf=await sharp()(path.join(dir,clip.file)).extract({left:(i%cols)*CELL,top:Math.floor(i/cols)*CELL,width:CELL,height:CELL}).resize(size,size,{kernel:'nearest'}).png().toBuffer();
-      // same feet line: the clip's anchor row (0.875) on the slot's
-      const slot=S,left=(k%6)*slot+Math.round((slot-size)/2),top=Math.floor(k/6)*slot+Math.round(slot*.875-size*.875);
+      // same feet line: the clip's feet row (its lowest opaque row; a run's lowest over its poses, as hero-feet.mjs) on
+      // the slot's 0.875 (an R06 rest stands above its anchor row)
+      const feet=(feetOf[clip.file]??=await feetRow(path.join(dir,clip.file),motion==='idle'?[i]:Array.from({length:clip.frames},(_,f)=>f),cols));
+      const slot=S,left=(k%6)*slot+Math.round((slot-size)/2),top=Math.floor(k/6)*slot+Math.round(slot*.875-feet*size/CELL);
       comps.push({input:buf,left:Math.max(0,left),top:Math.max(0,top)});
     }
     const rows=Math.ceil(list.length/6);
@@ -228,7 +247,7 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const arg=k=>{const i=process.argv.indexOf(k);return i>0?process.argv[i+1]:undefined;};
   const manifest=JSON.parse(fs.readFileSync(path.join(SPRITES,'manifest.json'),'utf8'));
-  const ids=arg('--ids')?.split(',')??Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')));
+  const ids=arg('--ids')?.split(',')??measuredClasses(manifest);
   const all=[];
   for(const id of ids){
     const m=await measureClass(manifest,id);all.push(m);

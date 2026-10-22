@@ -15,6 +15,7 @@ import {ZONE_WINDOWS} from './hud/zones.ts';
 const OPEN_WINDOWS=ZONE_WINDOWS.map(s=>`${s}:not([hidden])`).join(',');
 import {JoystickInput} from './joystick.ts';
 import {RunHud} from './hud/hud.ts';
+import {minervaOf} from './hud/minerva.ts';
 import {sceneOfPhase,setMusicScene} from './audio/menu-music.ts';
 import {getAudio} from './audio/engine.ts';
 import {mountAudioControls} from './audio/controls.ts';
@@ -751,7 +752,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         // The bar steps out while an offer, forge or obra window is open (review: its toggle sat on the window's corner).
         if(emotes){const off=phase!=='combat'||!!net?.fatal||!!net?.players.get(net.id)?.spectator||!!shell.querySelector(OPEN_WINDOWS);
           if(emotes.root.hidden!==off){emotes.root.hidden=off;if(off)emotes.setOpen(false);hud?.layoutChanged();}}
-        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);putHidden(hud.el,false);}
+        if(hud&&(phase==='combat'||phase==='result')&&!net?.fatal){hud.setMinerva(phase==='combat'&&net?.run?minervaOf(net.run):undefined);hud.setPause(phase==='combat'?net?.run?.pause:undefined);hud.update(phase==='result'?{...view,offers:[]}:view);putHidden(hud.el,false);}
         if(phase==='combat')rescue?.view(view);
         // Every phase: the metrics keep the last event id across runs (D-011), and count only combat.
         ux?.view(view,net?{x:net.predicted.x,y:net.predicted.y}:undefined,phase==='combat');

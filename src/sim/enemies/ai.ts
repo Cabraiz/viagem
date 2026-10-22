@@ -100,6 +100,11 @@ export interface EnemyAiOptions {
    * wins. Absent, or undefined for a body: the hunt as always.
    */
   goal?:(ctx:SimContext,e:EnemyState)=>(Point&{pace:number})|undefined;
+  /**
+   * The minuto de Minerva (ninhos.ts MINERVA_S): while true for a body it stands still (no walk, no push, no charge
+   * run), but its attacks go on against whoever is in its reach.
+   */
+  hold?:(ctx:SimContext,e:EnemyState)=>boolean;
 }
 /** JSON-safe limiter and rng state, for checkpoints (VGM-047). */
 export interface EnemyAiState {rng:number|null;lastBarkTick:number|null;lastLine:Record<string,string>}
@@ -607,6 +612,7 @@ export class EnemyAi implements SimSystem {
         const moved=Math.hypot(moveX,moveY),peak=this.heroSpeed*ACTION_PEAK_MAX/SIM_HZ;
         if(moved>peak){moveX*=peak/moved;moveY*=peak/moved;}
       }
+      if(this.options.hold?.(ctx,e)){moveX=0;moveY=0;}
       const fromX=e.x,fromY=e.y;
       // Enemy bodies move on the enemy view: the city barricades (cidade-06) stop them, heroes walk through.
       moveSafely(e,moveX,moveY,enemyTerrain(ctx.terrain),fit);

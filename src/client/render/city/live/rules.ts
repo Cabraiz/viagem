@@ -20,7 +20,9 @@ import {hashId} from '../chunks.ts';
 export type ArtView=0|90|180|270;
 export const ART_VIEWS:readonly ArtView[]=[0,90,180,270];
 /** A scenery piece as the city asset lists it (E1): top-left cell, footprint after rotation, art view at camera 0. */
-export interface DecorEntry {id:string;c:number;r:number;w:number;h:number;rot:number;links?:number}
+export interface DecorEntry {id:string;c:number;r:number;w:number;h:number;rot:number;links?:number;
+  /** Covers its cells, draws nothing (a wall cell beside its line: maps/city-decor.ts wallLines). */
+  cover?:boolean}
 /** Art view a decor shows under camera view `view` (0..3): the piece's own rot plus the camera's quarter turns. */
 export const artViewOf=(view:number,rot:number):ArtView=>((((Math.round(view)*90+Math.round(rot))%360)+360)%360) as ArtView;
 export const viewIndex=(v:ArtView)=>v/90;

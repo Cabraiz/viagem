@@ -6,13 +6,14 @@ import type {EnemyState,OwnedItem,PickupState,PlayerBuild,SimEvent,SimPlayer,Spa
 import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
-  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
+  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
   createCrates,rollPrize,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
 import {NEW_WEAPONS,isConsumableId,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {UNITS_PER_TOKEN} from '../../src/rules/stonewards.ts';
+import {CRATE_BODY_RADIUS,CRATE_OPEN_MARGIN,CRATE_SCALE} from '../../src/rules/crate-size.ts';
 import {KIT_POOL,isKitId,kitId} from '../../src/rules/tower-kits.ts';
 
 // ---------- Fake context (the sim-progression pattern) ----------
@@ -109,7 +110,7 @@ test('moving or taking damage starts the opening over; out of reach never opens'
     assert.equal(ctx.pickups.has(crate.id),false);
   }
   const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
-  addPlayer(ctx,'a',0,0);crates.dropCrate(ctx,{x:1.01,y:0},1);
+  addPlayer(ctx,'a',0,0);crates.dropCrate(ctx,{x:OPEN_REACH+.01,y:0},1);
   run(ctx,crates,100);
   assert.equal(opened(ctx).length,0);
   // Healing is not damage: the opening goes on.
@@ -117,6 +118,27 @@ test('moving or taking damage starts the opening over; out of reach never opens'
   healCrates.dropCrate(healCtx,{x:0,y:0},1);
   run(healCtx,healCrates,10);h.hp=60;run(healCtx,healCrates,ticks(1)-9);
   assert.equal(opened(healCtx).length,1);
+});
+
+test('coleta-3x: the crate is 3× its old size and opens when a hero touches its new edge; the nearest hero wins',()=>{
+  assert.equal(CRATE_SCALE,3);
+  assert.equal(CRATE_BODY_RADIUS,1.5,'3× the old .5 u body');
+  assert.equal(OPEN_REACH,CRATE_BODY_RADIUS+CRATE_OPEN_MARGIN,'the reach follows the edge');
+  assert.equal(OPEN_REACH,2,'the old margin (1 - .5) past the new edge');
+  for(const [d,opens] of [[1.9,true],[2.1,false]] as const){
+    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+    addPlayer(ctx,'a',0,0);crates.dropCrate(ctx,{x:d,y:0},1);
+    run(ctx,crates,ticks(1)+2);
+    assert.equal(opened(ctx).length,opens?1:0,`at ${d} u`);
+  }
+  // Two heroes at one crate since the same tick: the nearer one gets it, whatever the player order.
+  for(const order of [['far','near'],['near','far']]){
+    const ctx=makeCtx(),crates=createCrates({seed:1,points:[]});
+    for(const id of order)addPlayer(ctx,id,id==='near'?.4:-1.6,0);
+    crates.dropCrate(ctx,{x:0,y:0},1);
+    run(ctx,crates,ticks(1)+2);
+    assert.deepEqual(opened(ctx).map(e=>e.player),['near'],order.join(','));
+  }
 });
 
 test('the nearest crate, one at a time; roxa and up make noise once at the start',()=>{

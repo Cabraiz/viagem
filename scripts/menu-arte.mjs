@@ -1,7 +1,10 @@
 // The heroes' own art on the stadium menu (NEW-20261021-ORQ-menu-arte-viciado): the approved letreiro (name + plaque in
 // one picture) and the hero drawn in place over the 1920x1080 stadium, as light WebPs under public/art/menu/.
-//   - letreiro: the transparent margin trimmed, at the original's own size (1423 px wide) and q95 (menu-fundo-sangria:
-//     the 1000 px q82 copy looked pixelated; the PC shows it at most min(33.2vw, 56.4vh), 1218 px on a 4K screen);
+//   - letreiro: the transparent margin trimmed, LETREIRO_WIDTH wide (never upscaled) and q95. The PC shows it at most
+//     min(33.2vw, 56.4vh), 1218 px on a 4K screen; 2x that holds a 200 % zoom. The first one was cut out of the 1080p
+//     screen (~900 px) and enlarged: pixelated. NEW-20261021-ORQ-letreiro-na-cena (the user chose variation 2): Codex
+//     redrew the stadium with the sign inside it (the scene's light on it), the sign was cut out of that picture (mask of
+//     a green-only edit + grabCut, 1 px eaten, no halo) after Real-ESRGAN (x4plus-anime, 4x then halved): 2726 px;
 //   - heroi: only the hero's box of the 1920x1080 picture (src/client/ui/stadium.ts RECORTES keeps the same box, so the
 //     page puts it back where it was), full size and a 2/3 copy for windows under 1440 px; with an `esrgan` file (the
 //     box enlarged 2x by Real-ESRGAN, NEW-20261021-ORQ-heroi-esrgan-no-ar) every copy comes from it: 2x, 4/3, 1x, 2/3;
@@ -30,12 +33,14 @@ const ESRGAN='D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-realesrgan-herois-m
 const HEROES=[
   // box = every pixel of the hero with any alpha in the 1920x1080 file (alphaBox: the soft edge under the soles too; a
   // `trim` dropped 2 px of it), the same numbers as RECORTES in stadium.ts.
-  {id:'viciado-em-bet',letreiro:'letreiro-fiel-recorte.png',heroi:'viciado-1080p-no-lugar.png',
+  {id:'viciado-em-bet',letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-na-cena/letreiro-2-2x.png',heroi:'viciado-1080p-no-lugar.png',
     esrgan:'viciado-2x-x4plus-anime.png',box:{left:953,top:19,width:793,height:1058}},
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',heroi:'clt-cansado-1080p-no-lugar.png',
     esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
+/** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */
+const LETREIRO_WIDTH=2436;
 const HERO_WEBP={quality:95,alphaQuality:100,smartSubsample:true,effort:6};
 /** The box of every pixel with alpha > 0. */
 async function alphaBox(file){
@@ -100,9 +105,9 @@ if(part('mureta')){
 for(const hero of HEROES){
   const dir=hero.evidence??evidence;
   if(part('letreiro')&&hero.letreiro){
-    const sign=await sharp(path.join(dir,hero.letreiro)).trim().toBuffer();
+    const sign=await sharp(path.resolve(dir,hero.letreiro)).trim().toBuffer();
     const signFile=out('letreiro',`${hero.id}.webp`);
-    report(signFile,await sharp(sign).webp({quality:95,alphaQuality:100,smartSubsample:true,effort:6}).toFile(signFile));
+    report(signFile,await sharp(sign).resize({width:LETREIRO_WIDTH,kernel:'lanczos3',withoutEnlargement:true}).webp({quality:95,alphaQuality:100,smartSubsample:true,effort:6}).toFile(signFile));
   }
   if(part('fundo')&&hero.fundo){
     const source=path.join(dir,hero.fundo),{width,height}=await sharp(source).metadata();

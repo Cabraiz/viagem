@@ -362,7 +362,16 @@ export function fileFps(file:ArtFile,anim:string):number{
  * frames, never the walking speed or the sim's attack and damage timing. Projectiles keep the file's rate.
  */
 export const ENEMY_ANIM_RATE=.7;
-const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
+/**
+ * The resting and moving loops (idle, sleep, fly; the walk on the clock) play half as fast again (inimigos-animacao-2x-
+ * lenta, the user: "reduz a animação speed em 2x idle e normal, porque tá parecendo alguém tendo um treco"); one-shot
+ * actions (attack, hit, death...) and acting poses keep ENEMY_ANIM_RATE, so a swing still lands with the sim's damage.
+ * The elite and costume layers of a loop (elite/idle, elite/<variant>-idle) match their base.
+ */
+export const ENEMY_LOOP_RATE=ENEMY_ANIM_RATE/2;
+const SLOW_LOOP=/(?:^|[/-])(?:idle|sleep|fly|walk)$/;
+export const enemyRate=(anim:string)=>SLOW_LOOP.test(anim)?ENEMY_LOOP_RATE:ENEMY_ANIM_RATE;
+const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*enemyRate(anim);
 /**
  * Walk by the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
  * estivesse rápida"): the walk sheet is not clock-driven any more but follows the ground the enemy covers on screen,
@@ -373,8 +382,12 @@ const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
  * one spot, only new art does. A sheet whose feet hardly open (wheels, a blob) counts ENEMY_STRIDE_MIN, and the legs
  * never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median
  * sheet) for a piece the table does not know yet.
+ * ENEMY_WALK_CADENCE (inimigos-animacao-2x-lenta): the legs go half as fast for the same ground, as if every step
+ * were twice as long. The sheets tread almost in place, so the planted foot slides by the enemy's own ground speed
+ * whatever the cadence (scripts/desliza-inimigos.mjs: same slide a second before and after); halving the cadence
+ * is what takes the frantic look away, and the step stays tied to the ground (slow in a crowd, still when stopped).
  */
-export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_MAX_CPS=3;
+export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_CADENCE=.5,ENEMY_WALK_MAX_CPS=1.5;
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
  * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
@@ -384,10 +397,11 @@ export const ENEMY_WALK={byGround:true,faceTarget:true};
 export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
 /**
  * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
- * stepping `stride`: a cycle per stride walked on screen (walkCycles, lock 1), capped at ENEMY_WALK_MAX_CPS; 0 on a teleport.
+ * stepping `stride`: ENEMY_WALK_CADENCE of a cycle per stride walked on screen (walkCycles, lock 1), capped at
+ * ENEMY_WALK_MAX_CPS; 0 on a teleport.
  */
 export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number):number{
-  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1),ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
+  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1)*ENEMY_WALK_CADENCE,ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
 }
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}

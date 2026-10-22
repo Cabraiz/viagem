@@ -4,7 +4,7 @@ import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_STRIDE_DEFAULT,ENEMY_STRIDE_MIN,ENEMY_WALK,ENEMY_WALK_MAX_CPS,FACE_ACTING,FACE_NEAR,applyEnemyArt,enemyDrawScale,enemyStride,
+import {ENEMY_STRIDE_DEFAULT,ENEMY_STRIDE_MIN,ENEMY_WALK,ENEMY_WALK_CADENCE,ENEMY_WALK_MAX_CPS,FACE_ACTING,FACE_NEAR,applyEnemyArt,enemyDrawScale,enemyStride,
   enemyWalkCycles,facingRow,pieceAction,playEnemyAction,targetRow} from '../../src/client/art/horde-art.ts';
 import {ENEMY_STRIDES} from '../../src/client/art/enemy-strides.ts';
 import {CONTACT_REACH,eventAction,type ActionActor,type ActionWorld} from '../../src/client/art/horde-actions.ts';
@@ -38,7 +38,7 @@ const ACROSS=84;
 const figure=(kind:EnemyKind,piece:ArtPiece)=>enemyDrawScale(kind,piece.files.walk)*128*.88;
 const col=(m:Mock)=>m.frame%8;
 
-test('the walk follows the ground: still holds its frame, the clock alone never steps, one visible step a cycle',()=>{
+test('the walk follows the ground: still holds its frame, the clock alone never steps, a cycle every 1/ENEMY_WALK_CADENCE visible steps',()=>{
   useArt();
   const m=mockImage(),img=m as never as Img,a={kind:'bebado' as EnemyKind,elite:false,phase:0,x:10,y:10};
   applyEnemyArt(img,a,true,1,-1,0);
@@ -46,11 +46,12 @@ test('the walk follows the ground: still holds its frame, the clock alone never 
   const start=col(m);
   // Walking, but not moving an inch (a crowd holding it, a reconcile nudge): 3 s and the legs do not tread.
   for(let t=16;t<=3000;t+=16){applyEnemyArt(img,a,true,1,-1,t);assert.equal(col(m),start,'no ground walked, no step');}
-  // One visible step of ground (stride × figure on screen), in 60 small steps: exactly one cycle, every frame shown.
-  const L=enemyStride('bebado')*figure('bebado',bebado),seen=new Set<number>();
+  // A cycle of ground (stride × figure on screen ÷ the cadence: two visible steps), in 60 small steps: exactly one
+  // cycle, every frame shown.
+  const L=enemyStride('bebado')*figure('bebado',bebado)/ENEMY_WALK_CADENCE,seen=new Set<number>();
   for(let i=1;i<=60;i++){a.x+=L*1.0001/ACROSS/60;a.y-=L*1.0001/ACROSS/60;applyEnemyArt(img,a,true,1,-1,3000+i*100);seen.add(col(m));}
   assert.equal(seen.size,8,'the whole cycle shows');
-  assert.equal(col(m),start,'one stride walked = one cycle');
+  assert.equal(col(m),start,'a cycle of ground walked = one cycle');
   // Twice as fast or twice as slow (per frame), the same ground gives the same frame: the clock has no say.
   const frameAfter=(steps:number,dt:number)=>{const n=mockImage(),b={...a,x:10,y:10};applyEnemyArt(n as never as Img,b,true,1,-1,0);
     for(let i=1;i<=steps;i++){b.x+=L*.37/ACROSS/steps;b.y-=L*.37/ACROSS/steps;applyEnemyArt(n as never as Img,b,true,1,-1,i*dt);}return col(n);};
@@ -70,12 +71,14 @@ test('a walker without an idle loop stands still on one frame instead of treadin
   assert.ok(seen.size>1);
 });
 
-test('cadence: a cycle per visible step walked, capped at ENEMY_WALK_MAX_CPS; nothing on a teleport',()=>{
+test('cadence: half a cycle per visible step walked (inimigos-animacao-2x-lenta), capped at ENEMY_WALK_MAX_CPS; nothing on a teleport',()=>{
   const fig=90,s=.5,px=s*fig;
-  assert.ok(Math.abs(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,s,1000)-1)<1e-9);
+  assert.equal(ENEMY_WALK_CADENCE,.5,'2x slower than one cycle per visible step');
+  assert.ok(Math.abs(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,s,1000)-ENEMY_WALK_CADENCE)<1e-9);
   // Down the screen the same ground on screen counts the same (screen distance, foreshortening included).
-  assert.ok(Math.abs(enemyWalkCycles(px/42,px/42,0,fig,s,1000)-1)<1e-9);
-  assert.equal(enemyWalkCycles(2,-2,0,fig,s,1000),ENEMY_WALK_MAX_CPS,'a shove is not a sprint (3.7 cycles of ground in 1 s)');
+  assert.ok(Math.abs(enemyWalkCycles(px/42,px/42,0,fig,s,1000)-ENEMY_WALK_CADENCE)<1e-9);
+  assert.equal(enemyWalkCycles(2,-2,0,fig,s,1000),ENEMY_WALK_MAX_CPS,'a shove is not a sprint (1.9 cycles of ground in 1 s)');
+  assert.equal(ENEMY_WALK_MAX_CPS,1.5,'the cap halved with the cadence');
   assert.equal(enemyWalkCycles(4,0,0,fig,s,16),0,'teleport');
   assert.equal(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,s,0),0,'no time, no step');
 });
@@ -86,10 +89,10 @@ test('every walk sheet in the manifest has its visible step in the table (rerun 
   assert.ok(walkers.length>100);
   for(const id of walkers){assert.ok(Object.hasOwn(ENEMY_STRIDES,id),`${id}: no stride`);assert.ok(enemyStride(id)>=ENEMY_STRIDE_MIN);}
   assert.deepEqual(Object.keys(ENEMY_STRIDES).filter(id=>!walkers.includes(id)),[],'no stride of a sheet that is gone');
-  // A sample of the cast: one stride on screen is one cycle (the legs keep pace with the ground they cover).
+  // A sample of the cast: one stride on screen is half a cycle (the legs keep pace with the ground they cover).
   for(const id of ['bebado','tio-pave','agiota','rato-de-boteco','camelo-pirata','coach']){
     const fig=86,px=enemyStride(id)*fig;
-    assert.ok(Math.abs(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,enemyStride(id),2000)-1)<1e-9,id);
+    assert.ok(Math.abs(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,enemyStride(id),2000)-ENEMY_WALK_CADENCE)<1e-9,id);
   }
   assert.equal(enemyStride('peca-que-nao-existe'),ENEMY_STRIDE_DEFAULT);
 });

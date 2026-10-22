@@ -7,6 +7,8 @@
  *   chaveiro at the car's door while opening it (a 15 s bar);
  * - on the ground: the next delivery spot (marked ahead), the shadows (the speed bumps have no drawing);
  * - the end: the trunk opens and the charger comes out ("conector errado"); perda total: the car darker, still running.
+ * Card NEW-20261022-ORQ-uno-no-jogo: once its sheet is in, the car is the imported Uno (uno-art.ts, 8 views) instead of
+ * the boxes; its lost parts and the wreck only darken it and the trunk does not open (no such views yet).
  * Each figure draws at its own actor depth (the city's column occlusion through the projector) and fades while it
  * covers the hero. Pure drawing: the scene pushes each view's objective and calls update every frame.
  */
@@ -20,6 +22,7 @@ import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel
 import {ChaveiroTracker} from './tracker.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
+import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoFootY,unoFrame} from './uno-art.ts';
 
 const LIGHT=lightEnabled();
 /** Effects over the figures (waves, smoke, icons, bars), under the horde's bars (95000) and balloons. */
@@ -110,6 +113,8 @@ export class ChaveiroRenderer {
    */
   private frozenFallen:FrozenFigures;
   private delivery?:{band:TriBand;key:string};
+  /** The imported Uno (uno-art.ts), made once its sheet is in; until then (or if it fails) the boxes. */
+  private uno?:Phaser.GameObjects.Image;
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
     this.scene=scene;this.options=options;
@@ -126,6 +131,16 @@ export class ChaveiroRenderer {
     this.label=scene.add.text(0,0,'conector errado',style()).setOrigin(.5,1).setDepth(FX_DEPTH+2).setVisible(false);
     this.deliveryText=scene.add.text(0,0,'',{...style(),fontSize:'14px'}).setOrigin(.5,1).setDepth(FX_DEPTH+1).setVisible(false);
     whenFontsReady(()=>{this.label.setStyle(style());this.deliveryText.setStyle({...style(),fontSize:'14px'});});
+    if(!scene.textures.exists(UNO_KEY)){
+      scene.load.spritesheet(UNO_KEY,UNO_URL,{frameWidth:UNO_CELL,frameHeight:UNO_CELL});
+      if(!scene.load.isLoading())scene.load.start();
+    }
+  }
+
+  /** The Uno's image once its sheet is in (undefined: the provisional boxes). */
+  private unoImage():Phaser.GameObjects.Image|undefined{
+    if(!this.uno&&this.scene.textures.exists(UNO_KEY))this.uno=this.scene.add.image(0,0,UNO_KEY,0).setOrigin(.5,UNO_FOOT).setName('chaveiro-uno');
+    return this.uno;
   }
 
   /** A new view: the objective (undefined hides it all) at the server tick. */
@@ -140,7 +155,7 @@ export class ChaveiroRenderer {
     this.ground.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
-    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.delivery?.band.setVisible(false);this.carTurn=this.carHeading=0;return;}
+    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.carTurn=this.carHeading=0;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -171,7 +186,23 @@ export class ChaveiroRenderer {
     // behind its centre line goes under it (the car is long; the sim's critters hit it from all around).
     const carDepth=proj.depth(view.car.x,view.car.y),carAt=proj.project(view.car.x,view.car.y,this.q);
     const carX=carAt.x+shake.x,carY=carAt.y+shake.y;
-    if(fallingBits){
+    const uno=this.unoImage();
+    if(uno){
+      // The imported Uno (uno-art.ts): the view of its nose, wheels on the footprint's lowest corner; the parts it lost
+      // darken it (the sheet has no damaged views yet), wrecked darker still; the parts falling are drawn live over it.
+      this.frozenCar.hide();
+      const lost=bitCount(view.car.parts)/CAR_PARTS.length,tint=wrecked?0x6c6c74:mix(0xffffff,0x9a96a0,lost);
+      uno.setFrame(unoFrame(carH,proj.view)).setScale(UNO_SCALE).setPosition(carX,carY+unoFootY(carH,proj.view))
+        .setDepth(carDepth).setTint(tint).setVisible(true);
+      uno.setAlpha(this.coversBox(view.car.x,view.car.y,uno.getBounds(),carDepth)?COVER_ALPHA:1);
+      if(fallingBits){
+        const boxes:Box[]=[];
+        for(const [bit,at] of this.state.falling)if(fallingBits&bit)boxes.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
+        this.car.setDepth(carDepth+.01).setAlpha(1);
+        this.drawFaces(this.car,view.car.x,view.car.y,boxFaces(boxes,carH,proj.view),k,shake);
+      }
+      if(hazard)this.drawHazard(view.car.x,view.car.y,k);
+    }else if(fallingBits){
       // A part falling moves every frame: drawn live for its ~0.6 s.
       this.frozenCar.hide();
       const carFaces=this.carLook(view.car.parts&~fallingBits,hazard,trunk,wrecked,fallingBits,time,look);
@@ -226,7 +257,7 @@ export class ChaveiroRenderer {
   destroy(){
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
     this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
-    this.delivery?.band.destroy();this.delivery=undefined;
+    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 
@@ -259,6 +290,20 @@ export class ChaveiroRenderer {
     const p=this.options.projector.project(x,y,this.q),ax=p.x,ay=p.y,h=this.options.projector.project(hero.x,hero.y,{x:0,y:0});
     const b=faceBounds(faces);
     return h.x>ax+b.x0&&h.x<ax+b.x1&&h.y-30>ay+b.y0&&h.y-10<ay+b.y1;
+  }
+  /** The same for a figure drawn as an image: `b` its bounds on the screen (world px). */
+  private coversBox(x:number,y:number,b:{x:number;y:number;width:number;height:number},depth:number){
+    const hero=this.options.hero?.();if(!hero)return false;
+    if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
+    const h=this.options.projector.project(hero.x,hero.y,{x:0,y:0});
+    return h.x>b.x&&h.x<b.x+b.width&&h.y-30>b.y&&h.y-10<b.y+b.height;
+  }
+  /** The hazard lights on the imported Uno: a Cone lamp at each corner, lit with the alarm's blink. */
+  private drawHazard(x:number,y:number,k:number){
+    for(const [fwd,left] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const p=this.at(x,y,fwd*CAR_HALF.l*.92,left*CAR_HALF.w*.78,.62*M);
+      this.fx.fillStyle(this.c.breu,.85).fillCircle(p.x,p.y,6*k).fillStyle(this.c.cone,1).fillCircle(p.x,p.y,4.2*k);
+    }
   }
   private pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
   private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number,shift?:{x:number;y:number},alpha=1){
@@ -372,6 +417,9 @@ export class ChaveiroRenderer {
 }
 
 /** A small five-point star (Papel with a Breu edge), centre (x, y), outer radius r. */
+/** How many bits are set (the parts the car lost). */
+function bitCount(n:number){let c=0;for(;n;n&=n-1)c++;return c;}
+
 function star(g:Phaser.GameObjects.Graphics,x:number,y:number,r:number,fill:number,edge:number,k:number){
   const pts=Array.from({length:10},(_,i)=>{const a=-Math.PI/2+i*Math.PI/5,rr=i&1?r*.45:r;return {x:x+Math.cos(a)*rr,y:y+Math.sin(a)*rr};});
   g.fillStyle(fill,1).fillPoints(pts,true).lineStyle(1.2*k,edge,1).strokePoints(pts,true);

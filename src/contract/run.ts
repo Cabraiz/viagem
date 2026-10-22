@@ -43,5 +43,11 @@ export interface RunState {
   rematchVotes?:string[];
   /** Result only: ticks until the majority's rematch starts without the rest (present while the votes are a majority). */
   rematchLeft?:number;
+  /**
+   * Combat only, mode 'ninhos' (card monstros-espalhados, the user 22/10): the simulation tick the "minuto de Minerva"
+   * ends at (no critter walks nor chases before it; sim/ninhos/ninhos.ts NestsState.minervaUntil). Present while the
+   * {t:'run'} tick is before it; the HUD's clock reads (minervaAteTick − frame tick) / 20 s. Absent: no Minerva.
+   */
+  minervaAteTick?:number;
 }
 export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[];skips?:Record<string,number>;rerolls?:Record<string,number>}

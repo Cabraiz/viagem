@@ -85,7 +85,7 @@ import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
-import {FlowField,STRAIGHT_COST,UNREACHABLE,clearSegment,heroSpeed,type Point} from '../src/maps/index.ts';
+import {FlowField,SPREAD,STRAIGHT_COST,UNREACHABLE,clearSegment,heroSpeed,type Point} from '../src/maps/index.ts';
 import {cityFlowGrid,cityPlanner} from '../src/sim/city/grid.ts';
 import {cityLoot,type Crate} from '../src/sim/stonewards/loot.ts';
 import {remainingOf} from '../src/sim/stonewards/resources.ts';
@@ -376,13 +376,16 @@ export interface NestRecord {
   destroyed:number;groups:number;
   sleepers:{total:number;asleep:number;awake:number;dead:number};
   neverWoke:number;maxEnemies:number;stuck:number;stuckAt:{id:string;kind:string;x:number;y:number}[];
+  /** Card monstros-espalhados: the waves (count, summed shares: map recruits, nest-born, outside; map kills counted). */
+  waves?:{n:number;map:number;nests:number;outside:number;kills:number};
 }
 export const STUCK_ENEMY_S=60,STUCK_ENEMY_MOVE=1;
 /** D-051: one line of a nest run (nests down, groups, sleepers, stuck bodies). */
 export function nestLine(r:RunRecord):string{
   const n=r.nests;if(!n)return '';
   return `nests ${n.destroyed}/${n.list.length} down (${n.list.filter(x=>x.downS!==null).map(x=>`${x.size}@${Math.round(x.downS!)}s`).join(' ')||'-'}) | groups ${n.groups} | `+
-    `sleepers ${n.sleepers.total}: ${n.sleepers.asleep} asleep, ${n.sleepers.awake} awake, ${n.sleepers.dead} dead | never woke ${n.neverWoke} | max enemies ${n.maxEnemies} | stuck ${n.stuck}`;
+    `sleepers ${n.sleepers.total}: ${n.sleepers.asleep} asleep, ${n.sleepers.awake} awake, ${n.sleepers.dead} dead | never woke ${n.neverWoke} | max enemies ${n.maxEnemies} | stuck ${n.stuck}`+
+    (n.waves?` | waves ${n.waves.n}: map ${n.waves.map} nests ${n.waves.nests} outside ${n.waves.outside} (kills ${n.waves.kills})`:'');
 }
 /** D-047: one line of a chaveiro run's bill (outcome/cause, ETA left, car, Grana and the waves). */
 export function objectiveLine(r:RunRecord):string{
@@ -826,6 +829,7 @@ export function playRun(o:RunOptions):RunRecord{
   };
 
   // D-051: the nests and the stuck bodies (see NestRecord).
+  const waves={n:0,map:0,nests:0,outside:0,kills:0};let lastWave=-1;
   const nestSeen=new Map<string,{hit:number|null;down:number|null}>(),samples=new Map<string,{x:number;y:number;tick:number}>(),stuck=new Map<string,{id:string;kind:string;x:number;y:number}>();
   let maxEnemies=0;
   const seenEnemies=new Set<string>(),alivePerMinute:number[]=[],newPerMinute:number[]=[];
@@ -843,6 +847,7 @@ export function playRun(o:RunOptions):RunRecord{
     if(tick%(60*HZ)===0)alivePerMinute[minute]=sim.world.enemies.size;
     maxEnemies=Math.max(maxEnemies,sim.world.enemies.size);
     const ns=sim.run.nests?.state;if(!ns)return;
+    for(const l of ns.log??[])if(l.tick>lastWave){lastWave=l.tick;waves.n++;waves.map+=l.map;waves.nests+=l.nests;waves.outside+=l.outside;waves.kills+=l.kills;}
     for(const n of ns.nests){
       const s=nestSeen.get(n.id)??{hit:null,down:null};
       if(n.hit&&s.hit===null)s.hit=tick;if(n.down&&s.down===null)s.down=tick;
@@ -969,7 +974,8 @@ export function playRun(o:RunOptions):RunRecord{
     const list=ns.nests.map(n=>({id:n.id,size:n.size,groups:n.groups,hitS:sec(nestSeen.get(n.id)?.hit??null),downS:sec(nestSeen.get(n.id)?.down??null),emergency:!!n.emergency}));
     const neverWoke=ns.nests.filter(n=>!n.hit&&sono!==undefined&&sono.asleepIn(n.id)===sono.bodiesOf(n.id).length).length;
     return {list,destroyed:list.filter(x=>x.downS!==null).length,groups:list.reduce((a,x)=>a+x.groups,0),
-      sleepers:{total:life.length,asleep:count(1),awake:count(2),dead:count(0)},neverWoke,maxEnemies,stuck:stuck.size,stuckAt:[...stuck.values()].slice(0,10)};
+      sleepers:{total:life.length,asleep:count(1),awake:count(2),dead:count(0)},neverWoke,maxEnemies,stuck:stuck.size,stuckAt:[...stuck.values()].slice(0,10),
+      ...(ns.log?{waves:{...waves}}:{})};
   }
   function towerSummary(){
     const list=st().defenses?.list??[],final:Record<string,number>={};
@@ -984,7 +990,7 @@ export function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -997,7 +1003,7 @@ function args(argv:readonly string[]){
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
-    nestPace:get('--nest-pace'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
+    nestPace:get('--nest-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -1035,6 +1041,8 @@ async function main(){
   const a=args(process.argv.slice(2));
   // balanco-ninhos: --nest-pace '{"gap":[30,10]}' overrides NEST_PACE for this bench (the grid; the game never does).
   if(a.nestPace)Object.assign(NEST_PACE,JSON.parse(a.nestPace));
+  // monstros-espalhados: --spread '{"gap":6}' overrides the field (maps/nests.ts SPREAD) for this bench.
+  if(a.spread)Object.assign(SPREAD,JSON.parse(a.spread));
   // --alarm '{"r":20,"p":0.1}': the car alarm's noise (sono NOISE.alarm), for the grid only.
   if(a.nestCalm)Object.assign(NEST_CALM,JSON.parse(a.nestCalm));
   if(a.alarm)Object.assign(NOISE.alarm as {r:number;p:number},JSON.parse(a.alarm));
@@ -1059,7 +1067,7 @@ async function main(){
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
   if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){

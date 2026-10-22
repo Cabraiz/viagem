@@ -32,7 +32,7 @@ import {groupFileUrl} from '../../art/manifest.ts';
 import type {CityAsset,CityBlock,CityProp,GroundKind,PropKind} from './asset.ts';
 import {hashId,type BlockPiece} from './chunks.ts';
 import {ART_SCALE} from './materials.ts';
-import {HEIGHT_PX,TILE_Y} from './projection.ts';
+import {HEIGHT_PX,TILE_X,TILE_Y} from './projection.ts';
 
 export type CityArtHeight='a'|'b';
 /**
@@ -140,6 +140,15 @@ export function decorRule(id:string,meta?:Record<string,unknown>):DecorRule{
  * To check on the prints of the city with the delivery.
  */
 export const DECOR_PROP_SCALE=.56;
+/**
+ * Wall lines (BUG-20261022-ORQ-grades-sem-padrao): the straight piece of each family (`<family>-reto-*`) is drawn one
+ * city cell long, so the pieces of a line meet post to post. Span: width (art px) of the intact straight piece in its
+ * view 0 (alpha bbox), less a post, so neighbours share it. tests/client/city-decor-art.test.ts measures the sheets.
+ */
+export const WALL_RETO_SPAN:Readonly<Record<typeof DECOR_WALL_FAMILIES[number],number>>={
+  alambrado:176,'cerca-madeira':123,grade:166,'muro-condominio':207,'muro-pichado':195,tapume:208};
+/** Display scale (game px per art px) of a wall family's pieces with city cells of `cell` u: one cell along a line. */
+export const wallScale=(family:typeof DECOR_WALL_FAMILIES[number],cell:number)=>cell*TILE_X/WALL_RETO_SPAN[family];
 const NEST_ID=/^ninho-[a-z]+-(ativo|dormindo|destruido)$/;
 /** Ground decals (live/rules.ts isDecal; repeated here so the plan does not import the live layer). */
 const DECAL_ID=/^(bueiro|faixa-pedestre|mancha-oleo|pegadas-\d+|poca-congelada-\d+|rachadura-\d+)$/;
@@ -300,7 +309,9 @@ export function buildCityArtPlan(index:ArtIndex,options:CityArtOptions={}):CityA
       const fp=footprintOf(p)??[1,1];
       s={...footprintSheet(cenario,key,p,f,fp),rule,covers:true};
     }else{
-      const fill=rule==='prop'&&DECOR_FILL.test(id),originY=originYOf(f,rule==='wall'?16:8),scale=fill?big:small*DECOR_PROP_SCALE;
+      const fill=rule==='prop'&&DECOR_FILL.test(id),originY=originYOf(f,rule==='wall'?16:8);
+      const family=rule==='wall'?DECOR_WALL_FAMILIES.find(w=>id.startsWith(`${w}-`))!:undefined;
+      const scale=family?wallScale(family,cell):fill?big:small*DECOR_PROP_SCALE;
       s={key,...cityTexture(cenario,f,scale),originY,height:f.cell[1]*originY*scale/HEIGHT_PX,rule,covers:rule==='wall'||fill};
     }
     plan.decor[id]=s;plan.sheets.push(s);

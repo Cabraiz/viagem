@@ -292,6 +292,7 @@ export class CityLayer {
       }
       const sheet=this.art?.decor[e.id];
       if(!sheet)continue;
+      if(e.cover){if(sheet.covers)for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);continue;}
       const key=decorChunk(e,size);
       push(this.decorOf,key,e);
       const c=this.chunksByKey.get(key);

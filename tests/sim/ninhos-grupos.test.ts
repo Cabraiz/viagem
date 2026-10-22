@@ -236,7 +236,8 @@ test('assembled mode ninhos: no round from the director, a wave (map, nests, out
   assert.equal(sono.sleepers.size,plan.nests.reduce((t,n)=>t+n.sleepers.length,0)+plan.loose.reduce((t,b)=>t+b.members.length,0)+plan.nests.length);
   assert.equal(a.world.enemies.size,0);
   stepRun(a,ticks(FIRST_EXIT[0])-2);
-  assert.equal(a.world.enemies.size,0,'nothing before 45 s');
+  assert.equal(nests.state.sent+nests.state.spawned,0,'no wave before 45 s');
+  assert.ok([...a.world.enemies.keys()].every(id=>sono.bodies.some(b=>b.id===id)),'only map bodies a noise woke');
   assert.equal(a.events.filter(e=>e.type==='round').length,0,'no round');
   stepRun(a,ticks(FIRST_EXIT[1]-FIRST_EXIT[0])+2);
   assert.ok(nests.state.sent>0&&nests.state.spawned>0,'a wave came by 90 s');

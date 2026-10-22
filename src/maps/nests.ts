@@ -8,7 +8,7 @@
  * at least one per quadrant around the car), 4 training bands of 3 at 25–35 u from the car, all ×(1 + 0.15(n − 1)) players.
  * Card NEW-20261022-ORQ-monstros-espalhados (the user, 22/10: They Are Billions, "um inimigo a cada x metros, e não juntos e
  * aglomerados"): the nests' rings and the loose bands of 2–4 (×POPULATION since ninhos-perto-ataca-20x) gave way to one
- * field spread evenly over the city (SPREAD.gap apart), none inside a safe place (maps/safe-places.ts).
+ * field spread evenly over the city, as many as today (FIELD_BODIES), none inside a safe place (maps/safe-places.ts).
  */
 import {walkable,worldBase} from './world.ts';
 import {FlowField,type FlowGrid} from './flowfield.ts';
@@ -149,7 +149,8 @@ const half=(r:{w:number;h:number})=>Math.hypot(r.w,r.h)/2;
 export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOptions={}):NestPlan{
   const players=Math.max(1,Math.min(6,options.players??1)),car=worldBase(city),rng=new Rng(seed>>>0).fork('ninhos-corpos');
   const grid=cityGrid(city),reach=new FlowField(grid,[car],{wallPenalty:0}),pop=Math.max(1,options.population??POPULATION);
-  const gap=spreadGap(players,pop),drawn=drawNests(seed,car,options.start);
+  let gap=spreadGap(players,pop);
+  const drawn=drawNests(seed,car,options.start);
   const loose:LooseBand[]=[];
   // Training: from each mouth, follow the way out to its avenue end until 25–35 u from the car, then a band beside it,
   // its members a gap apart too.
@@ -162,7 +163,13 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
     training.push(...members);
     loose.push(Object.freeze({x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100,training:true,members:Object.freeze(members)}));
   }
-  const field=spreadField(city,reach,rng,gap,{car,start:options.start,routes:options.routes??[],taken:training});
+  // The user (22/10): today's horde, spread ("1p ≈ 3400, 4p ≈ 4930"): the field holds fieldTarget bodies. The gap comes
+  // from it (SPREAD.k / √target, a little under what the city holds); a city that holds fewer draws once more a bit
+  // tighter, and the bodies past the target (the last kept: the shuffle's tail, spread like the rest) are dropped.
+  const want=fieldTarget(players,pop)-training.length,keep={car,start:options.start,routes:options.routes??[],taken:training};
+  let field=spreadField(city,reach,rng,gap,keep);
+  if(!SPREAD.gap&&field.length<want){gap=Math.round(gap*Math.sqrt(field.length/want)*.97*1000)/1000;field=spreadField(city,reach,rng,gap,keep);}
+  if(!SPREAD.gap&&field.length>want)field=field.slice(0,Math.max(0,want));
   // A body in a nest's yard sleeps in the nearest such nest; the others by tile.
   const nestRadius=drawn.map(({spot,size})=>{const box=bboxOf(city,spot.block);return box?half(box):NEST_YARD_RADIUS[size];});
   const sleepers=drawn.map(()=>[] as Point[]),tiles=new Map<number,Point[]>();
@@ -185,18 +192,28 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
 /**
  * Card monstros-espalhados: the field's numbers. Mutable only for the bench and the top-view sheet (scripts/
  * mapa-bichos.ts --gap); the game never writes it.
- *  - gap: u between two sleepers (≈ "one every gap metres") at the reference POPULATION for one player;
+ *  - k: the gap is k / √(the field's target) (fieldTarget: today's horde for the room), so the field holds it;
+ *  - gap: a fixed gap for one player instead (the top-view sheet's --gap; 0: from k and the target, the game's);
+ *  - sub: candidates per cell side (sub² per cell: a field tighter than a cell still fills);
  *  - nearCar: × the gap at LOOSE_FROM_CAR from the car, back to 1 at `ramp` u (sparser near the start, denser far);
  *  - route, routeNear: × the gap within routeNear u of a moto route (the moto rides by without a crowd to wake);
  *  - yard: a body within a nest's radius + yard u is that nest's sleeper;
  *  - tile: the loose bodies' grouping square (u).
  */
-export const SPREAD={gap:4.5,nearCar:1.6,ramp:90,route:1.6,routeNear:LOOSE_NEAR_ROUTE,yard:10,tile:24};
+export const SPREAD={k:148,gap:0,sub:2,nearCar:1.6,ramp:90,route:1.6,routeNear:LOOSE_NEAR_ROUTE,yard:10,tile:24};
+/**
+ * Today's horde for one player at the reference POPULATION (the 8 nests' rings, 110, and the 60 loose, × 20: card
+ * ninhos-perto-ataca-20x), the field's size since monstros-espalhados (the user, 22/10: "mantendo o total de hoje").
+ */
+export const FIELD_BODIES=3400;
+/** The bodies of a room's plan (training bands included): FIELD_BODIES × the player scale × population / POPULATION. */
+export const fieldTarget=(players:number,population:number=POPULATION)=>Math.round(scaleSleepers(FIELD_BODIES,players)*Math.max(1,population)/POPULATION);
 /** Training band members stand within this × the gap of the band's spot. */
-export const TRAINING_SPREAD=1.6;
-/** The gap for a room (u): more players or a bigger population pack the same field tighter (count ∝ 1/gap²). */
-export const spreadGap=(players:number,population:number=POPULATION)=>
-  Math.round(SPREAD.gap*Math.sqrt(POPULATION/Math.max(1,population)/(1+.15*(Math.max(1,Math.min(6,players|0))-1)))*1000)/1000;
+export const TRAINING_SPREAD=2.5;
+/** The gap for a room (u): k / √target (or the fixed SPREAD.gap, tighter with the players the same way). */
+export const spreadGap=(players:number,population:number=POPULATION)=>Math.round((SPREAD.gap
+  ?SPREAD.gap*Math.sqrt(POPULATION/Math.max(1,population)/(1+.15*(Math.max(1,Math.min(6,players|0))-1)))
+  :SPREAD.k/Math.sqrt(fieldTarget(players,population)))*1000)/1000;
 /** The local gap at p: the field gap × its zone (the plaza ramp, the moto routes: a list, or a test of p). */
 export function localGap(p:Point,gap:number,car:Point,routes:readonly (readonly Point[])[]|((p:Point)=>boolean)):number{
   const d=dist(p,car),near=Math.max(0,Math.min(1,(SPREAD.ramp-d)/(SPREAD.ramp-LOOSE_FROM_CAR)));
@@ -216,15 +233,17 @@ function routeTest(routes:readonly (readonly Point[])[]):(p:Point)=>boolean{
   return p=>(cells.get(key(Math.floor(p.x/r),Math.floor(p.y/r)))??[]).some(([a,b])=>segmentDistance(p,a,b)<r);
 }
 
-/** The candidates: one jittered point per open cell that reaches the car; shuffled, then kept greedily when spaced. */
+/** The candidates: SPREAD.sub² jittered points per open cell; shuffled, then kept greedily when spaced and on ground that reaches the car. */
 function spreadField(city:CityTerrain,reach:FlowField,rng:Rng,gap:number,
   keep:{car:Point;start?:Point;routes:readonly (readonly Point[])[];taken:readonly Point[]}):Point[]{
   const a=city.asset,cs=a.unitsPerCell,inSafe=new Set<number>();
   for(const s of citySafePlaces(city))for(const k of s.cells)inSafe.add(k);
   const cand:Point[]=[];
+  const sub=Math.max(1,SPREAD.sub|0);
   for(let cy=0;cy<a.cells.h;cy++)for(let cx=0;cx<a.cells.w;cx++){
-    const x=Math.round((cx+rng.range(.15,.85))*cs*100)/100,y=Math.round((cy+rng.range(.15,.85))*cs*100)/100;
-    if(!inSafe.has(cy*a.cells.w+cx))cand.push({x,y});
+    if(inSafe.has(cy*a.cells.w+cx))continue;
+    for(let j=0;j<sub;j++)for(let i=0;i<sub;i++)
+      cand.push({x:Math.round((cx+(i+rng.range(.15,.85))/sub)*cs*100)/100,y:Math.round((cy+(j+rng.range(.15,.85))/sub)*cs*100)/100});
   }
   const hash=new Spaced(gap*Math.max(SPREAD.nearCar,1)*Math.max(SPREAD.route,1));
   for(const p of keep.taken)hash.add(p,gap);

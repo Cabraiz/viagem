@@ -11,7 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,decodeCityAsset,worldBase,CITY_NEST_POOL,cityNestPlan,drawNests,validateNestPlan,routeDistance,quadrantOf,
   buildingNestSize,scaleSleepers,NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_YARD_RADIUS,POPULATION,TRAINING_FROM_CAR,
-  TRAINING_MEMBERS,SPREAD,LOOSE_FROM_CAR,LOOSE_FROM_START,spreadGap,localGap,citySafePlaces,safePlaceAt,
+  TRAINING_MEMBERS,SPREAD,fieldTarget,FIELD_BODIES,LOOSE_FROM_CAR,LOOSE_FROM_START,spreadGap,localGap,citySafePlaces,safePlaceAt,
   type NestPlan,
 } from '../../src/maps/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
@@ -68,11 +68,14 @@ function closestPair(plan:NestPlan){
   return best;
 }
 
-test('card monstros-espalhados: no two bodies closer than the plan\'s gap (SPREAD.gap for one player at POPULATION), for 1 to 6 players', () => {
-  assert.equal(spreadGap(1),SPREAD.gap);
+test('card monstros-espalhados: today\'s total per room (FIELD_BODIES × the player scale), no two bodies closer than the plan\'s gap, for 1 to 6 players', () => {
+  assert.deepEqual([1,4,6].map(n=>fieldTarget(n)),[FIELD_BODIES,4930,5950]);
+  assert.equal(SPREAD.gap,0,'the game draws the gap from the target');
   for(const seed of SEEDS.slice(0,4))for(const players of [1,3,6]){
     const plan=cityNestPlan(city,seed,{players,routes:ROUTES,start});
-    assert.equal(plan.gap,spreadGap(players));
+    assert.ok(plan.gap!<=spreadGap(players)&&plan.gap!>spreadGap(players)*.8,`gap ${plan.gap}`);
+    // The user (22/10): today's horde, spread: 1p 3400, 4p 4930, 6p 5950.
+    assert.equal(sleepersOf(plan)+looseOf(plan),fieldTarget(players),`seed ${seed}, ${players}: the total of today`);
     const d=closestPair(plan);
     assert.ok(d>=plan.gap!-1e-9,`seed ${seed}, ${players}: par a ${d.toFixed(2)} u (gap ${plan.gap})`);
   }
@@ -114,7 +117,7 @@ test('more players or a bigger population pack the field tighter; population 1 i
   const one=cityNestPlan(city,seed,{routes:ROUTES,start}),six=cityNestPlan(city,seed,{players:6,routes:ROUTES,start});
   const light=cityNestPlan(city,seed,{routes:ROUTES,start,population:1});
   assert.ok(count(six)>count(one)*1.3,`6 jogadores ${count(six)} × 1 jogador ${count(one)}`);
-  assert.ok(count(light)<count(one)/8&&count(light)>=20,`população 1: ${count(light)}`);
+  assert.equal(count(light),fieldTarget(1,1),`população 1: ${count(light)}`);assert.equal(fieldTarget(1,1),170);
   assert.equal(light.population,1);assert.equal(one.population,undefined);
   assert.equal(POPULATION,20);
   // Every nest keeps some sleepers in its yard (its wake, its groups' exits).

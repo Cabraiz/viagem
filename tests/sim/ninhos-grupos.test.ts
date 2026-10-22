@@ -46,7 +46,6 @@ test('the numbers: hp by size and room, period shrinking with f, outside group b
   assert.deepEqual([0,.1,.5,.99,1,2].map(nestRound),[2,2,5,9,9,9]);
   // The user's rule (22/10): 1000 on the map → a quota of 100; no kill: 100 come; 120 killed: none, and the outside
   // group is 20 smaller (never under NEST_PACE.floor of itself).
-  assert.equal(NEST_PACE.mapShare,.1);
   assert.deepEqual(waveShares(100,0,30),{map:100,outside:30});
   assert.deepEqual(waveShares(100,40,30),{map:60,outside:30});
   assert.deepEqual(waveShares(100,120,30),{map:0,outside:10+5},'floor .5 of 30 is 15');
@@ -58,7 +57,7 @@ test('the numbers: hp by size and room, period shrinking with f, outside group b
 /** No warm start (full quota and group) and no alive cap: restored after `fn`. */
 function rawPace(fn:()=>void){
   const saved=structuredClone(NEST_PACE);
-  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,size:[1,1]});
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,size:[1,1],mapShare:[.1,.1],trickle:[1e9,1e9]});
   try{fn();}finally{Object.assign(NEST_PACE,saved);}
 }
 const PLAN:NestPlan={seed:1,players:1,nests:[
@@ -66,7 +65,7 @@ const PLAN:NestPlan={seed:1,players:1,nests:[
   {id:'g0',kind:'terreno',x:80,y:80,size:'G',radius:12,sleepers:[{x:80,y:81},{x:81,y:80}]},
   {id:'m0',kind:'terreno',x:60,y:60,size:'M',radius:9,sleepers:[{x:60,y:61}]},
 ],loose:[{x:20,y:20,training:false,members:Array.from({length:45},(_,i)=>({x:20+i%9,y:20+Math.floor(i/9)}))}]};
-/** 50 plan bodies: the quota is 5. */
+/** 50 plan bodies (the rig fixes mapShare at .1: a quota of 5). */
 const PLAN_BODIES=50;
 const DOOR:WaveEntrance={id:'N',x:10,y:0,route:[{x:10,y:0},{x:50,y:50}]};
 function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR]){
@@ -89,7 +88,7 @@ test('a wave: between 45 and 90 s, the map share recruited along the entrance\'s
   r.world.step();
   const start=r.nests.state.startTick!,first=r.nests.state.nextWave!;
   assert.ok(first>=start+ticks(FIRST_EXIT[0])&&first<=start+ticks(FIRST_EXIT[1]),`first wave ${first}`);
-  assert.equal(r.nests.state.quota,PLAN_BODIES*NEST_PACE.mapShare);
+  assert.equal(r.nests.state.quota,Math.round(PLAN_BODIES*NEST_PACE.mapShare[0]));
   for(const n of r.nests.state.nests)assert.equal(n.hp,n.maxHp);
   until(r,first+1);
   assert.equal(r.nests.state.sent,1);
@@ -131,6 +130,29 @@ test('the kills: map bodies killed since the last wave come off its quota; past 
   const fits=Array.from({length:hi-lo+1},(_,i)=>lo+i).some(b=>log.outside===Math.max(Math.ceil(b*NEST_PACE.floor),b-4));
   assert.ok(fits,`outside ${log.outside} of ${lo}-${hi}, 4 past the quota`);
 }));
+
+test('the map share trickles out (NEST_PACE.trickle a second, the first batch with the wave), and the wave bodies take the march, hp and damage of NEST_PACE once',()=>{
+  const saved=structuredClone(NEST_PACE);
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,mapShare:[.1,.1],trickle:[2,2],march:.5,hp:2,damage:.5});
+  try{
+    const r=rig();
+    r.world.step();
+    const due=r.nests.state.nextWave!;
+    until(r,due+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[2],'2 with the wave');
+    assert.equal(r.nests.state.log!.at(-1)!.map,2);
+    until(r,due+ticks(1)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[2,2],'2 a second later');
+    until(r,due+ticks(3)+1);
+    assert.deepEqual(r.recruited.map(x=>x[1]),[2,2,1],'the last one, then done');
+    assert.equal(r.nests.state.log!.at(-1)!.map,5);assert.equal(r.nests.state.drip,undefined);
+    const e=[...r.world.enemies.values()][0],fresh=createEnemy(r.world,e.kind,{x:0,y:0},1);
+    r.world.enemies.delete(fresh.id);
+    assert.equal(e.memory?.tuned,1);
+    assert.ok(Math.abs(e.speed-fresh.speed*.5)<1e-9,'march .5');assert.ok(Math.abs(e.damage-fresh.damage*.5)<1e-9,'damage .5');
+    assert.ok(e.maxHp>fresh.maxHp,'hp ×2 over the round row');
+  }finally{Object.assign(NEST_PACE,saved);}
+});
 
 test('the alive cap and the enemy cap: the wave waits RETRY_SECONDS, nobody comes; no entrance: the outside group leaves a live nest',()=>{
   const r=rig(0);

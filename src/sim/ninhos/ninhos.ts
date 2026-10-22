@@ -4,7 +4,7 @@
  * director's waves.
  * Card NEW-20261022-ORQ-monstros-espalhados (the user, 22/10: "PESSOAS PARADAS + CRIADAS NOS NINHOS + PESSOAS VINDO POR
  * FORA DO MAPA — vão tentar atacar o Uno, e a gente se estivermos no caminho"): one timer for the whole map. Each wave:
- *  - the map's share: a quota of NEST_PACE.mapShare × the plan's bodies, less the plan bodies killed since the last wave
+ *  - the map's share: a quota of NEST_PACE.mapShare (by room size) × the plan's bodies, less the plan bodies killed since the last wave
  *    (kill 120 of a quota of 100 and none come); the sleepers nearest the wave's way in (its entrance's route to the
  *    car) wake and go (options.recruit);
  *  - the nests' share: NEST_PACE.perNest (1–3) bodies born in each live nest; a fallen nest gives none, and a nest sends
@@ -30,7 +30,6 @@ import {SIEGE_FLAG} from '../stonewards/wall.ts';
 
 export const NEST_RUN_SECONDS=540;
 export const NEST_SPEEDUP=.4;
-export const FIRST_EXIT:readonly [number,number]=[45,90];
 export const NEST_HP:Readonly<Record<NestSize,number>>=Object.freeze({P:600,M:1000,G:1600});
 export const NEST_GRANA:Readonly<Record<NestSize,number>>=Object.freeze({P:30,M:50,G:80});
 export const NEST_CRATE:Readonly<Record<NestSize,'roxa'|'dourada'>>=Object.freeze({P:'roxa',M:'roxa',G:'dourada'});
@@ -41,18 +40,27 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  * The waves' pace. Pairs are for 1 player → 6 players (linear in between):
  *  - period: seconds between two waves at the start (× (1 − NEST_SPEEDUP·f));
  *  - alive: no wave while this many enemies are alive (it waits RETRY_SECONDS);
- *  - warm: for the first `warm` seconds the waves are × warmScale (quota and outside group) and play the round row
- *    `warmRow` (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
+ *  - first: [min, max] seconds from the start to the first wave;
+ *  - warm: for the first `warm` seconds the outside group is × warmScale and the waves play the round row `warmRow`
+ *    (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
  *  - size: × the outside group (over playerScale's count);
- *  - mapShare: the quota, a share of the plan's bodies (the user: 1000 on the map → 100 a wave);
+ *  - mapShare: the quota, a share of the plan's bodies (the user: 1000 on the map → 100 a wave; fixed by the user,
+ *    22/10: "calibra, mas sem diminuir número de inimigos": the quota, the population and the waves never shrink to
+ *    balance a run, the pace and the bodies' strength do);
+ *  - trickle: map recruits leaving per second (the rest of the wave's share follows, a batch a second, not all at once);
+ *  - march: × the speed of a wave's bodies (recruits, nest-born, outside);
+ *  - hp, damage: × the hp and the hit of a wave's bodies;
  *  - perNest: [min, max] bodies born in each live nest per wave;
  *  - floor: the outside group never shrinks below this share of itself, whatever the kills past the quota;
  *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, evidence/NEW-20261022-ORQ-monstros-espalhados): see the card's status.md.
-export const NEST_PACE={period:[60,45] as [number,number],alive:[8,60] as [number,number],warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,
-  size:[1,1.85] as [number,number],mapShare:.1,perNest:[1,3] as [number,number],floor:.5};
+export const NEST_PACE={period:[60,45] as [number,number],first:[45,90] as [number,number],alive:[8,60] as [number,number],
+  warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
+  trickle:[2,6] as [number,number],march:1,hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
+/** The first wave's window (s): NEST_PACE.first. */
+export const FIRST_EXIT:readonly [number,number]=NEST_PACE.first;
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
 const SIZE_RANK:Readonly<Record<NestSize,number>>={P:0,M:1,G:2};
 /** How often a role shows up in a wave (the rotation's roles; mini-chefes and the boss never come in one). */
@@ -94,12 +102,14 @@ export interface NestsState {
   spawned:number;
   /** Tick of the next wave (absent before the first step, or in a checkpoint from before the waves). */
   nextWave?:number;
-  /** The quota: NEST_PACE.mapShare × the plan's bodies, fixed on the first step. */
+  /** The quota: NEST_PACE.mapShare (by room size) × the plan's bodies, fixed on the first step. */
   quota?:number;
   /** Plan bodies dead at the last wave (options.mapDead). */
   deadAt?:number;
   /** The last LOG_WAVES waves. */
   log?:WaveLog[];
+  /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick. */
+  drip?:{door:number;left:number;tick:number};
 }
 export const LOG_WAVES=20;
 export type NestCause='hit'|'fell';
@@ -127,8 +137,11 @@ export interface NestsOptions {
   entrances?:readonly WaveEntrance[];
   /** Plan bodies dead so far (the sono). */
   mapDead?():number;
-  /** Wakes up to `count` sleeping plan bodies nearest `route`, besieging the car; returns how many woke (the sono). */
-  recruit?(ctx:SimContext,route:readonly Point[],count:number):number;
+  /**
+   * Wakes up to `count` sleeping plan bodies nearest `route`, besieging the car, each passed to `tune` (NEST_PACE's
+   * march, hp, damage); returns how many woke (the sono).
+   */
+  recruit?(ctx:SimContext,route:readonly Point[],count:number,tune:(e:EnemyState)=>void):number;
   /** A body of radius r fits at (x, y) (the outside group spreads around its entrance); default: anywhere. */
   clear?(x:number,y:number,r:number):boolean;
 }
@@ -177,9 +190,9 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     plan=options.plan(state.players);
     rng=ctx.rng.fork('ninhos');
     state.nests=plan.nests.map(n=>{const hp=nestHp(n.size,state.players);return {id:n.id,size:n.size,x:n.x,y:n.y,radius:n.radius,hp,maxHp:hp,groups:0};});
-    state.quota=Math.round(NEST_PACE.mapShare*bodiesOf(plan));
+    state.quota=Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan));
     state.deadAt=0;
-    state.nextWave=ctx.tick+ticks(random().range(FIRST_EXIT[0],FIRST_EXIT[1]));
+    state.nextWave=ctx.tick+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1]));
     save();
   }
 
@@ -213,6 +226,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
       const at=spots[(state.sent*7+out)%spots.length];
       const e=options.createEnemy(ctx,kind,{x:at.x,y:at.y},hp);
       if(!e)continue;
+      tune(e);
       e.memory={...e.memory,...memory,[WAVE_MEMORY]:state.sent,[SIEGE_FLAG]:1};
       out++;state.spawned++;
     }
@@ -228,6 +242,27 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     }
     return out.length?out:[{x:p.x,y:p.y}];
   }
+  /** NEST_PACE's march, hp and damage on a wave's body. */
+  function tune(e:EnemyState){
+    // Once per body (a recruit that slept again and comes back keeps its tune).
+    if(e.memory?.tuned===1)return;
+    (e.memory??={}).tuned=1;
+    if(NEST_PACE.march!==1)e.speed*=NEST_PACE.march;
+    if(NEST_PACE.hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*NEST_PACE.hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*NEST_PACE.hp)));}
+    if(NEST_PACE.damage!==1)e.damage*=NEST_PACE.damage;
+  }
+  /** Lets the next batch of a wave's map share out (NEST_PACE.trickle a second, from its entrance's route). */
+  function drip(ctx:SimContext){
+    const d=state.drip,door=d?options.entrances?.[d.door]:undefined;
+    if(!d||!door||!options.recruit){delete state.drip;return;}
+    const room=Math.max(0,options.maxEnemies-ctx.enemies.size);
+    const got=options.recruit(ctx,door.route,Math.min(d.left,Math.max(1,Math.round(pace(NEST_PACE.trickle,state.players))),room),tune);
+    d.left-=Math.max(got,0);
+    const entry=state.log?.find(l=>l.tick===d.tick);
+    if(entry){entry.map+=got;entry.total+=got;}
+    // Nobody left asleep to send, or the share is out: done.
+    if(d.left<=0||got<=0)delete state.drip;
+  }
   /** A nest's spots: its yard's sleeper spots (clear ground by construction, maps/nests.ts), else its centre. */
   const yardOf=(nest:NestRun)=>{const s=plan!.nests.find(p=>p.id===nest.id)?.sleepers;return s?.length?s:[{x:nest.x,y:nest.y}];};
 
@@ -236,12 +271,11 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     if(ctx.enemies.size>=pace(NEST_PACE.alive,state.players)||ctx.enemies.size>=options.maxEnemies)return retry();
     const f=elapsedF(ctx.tick),warm=warming(ctx.tick)?NEST_PACE.warmScale:1;
     const entrances=options.entrances??[],door=entrances.length?entrances[state.sent%entrances.length]:undefined;
-    const dead=options.mapDead?.()??0,kills=Math.max(0,dead-(state.deadAt??0)),quota=Math.round((state.quota??0)*warm);
+    const dead=options.mapDead?.()??0,kills=Math.max(0,dead-(state.deadAt??0)),quota=state.quota??0;
     const [lo,hi]=outsideRange(f);
     const base=Math.max(1,Math.round(random().int(lo,hi)*playerScale(state.players).count*warm*pace(NEST_PACE.size,state.players)));
     const want=waveShares(quota,kills,base);
     const born=state.nests.map(n=>n.down?0:random().int(NEST_PACE.perNest[0],NEST_PACE.perNest[1]));
-    const map=want.map>0&&door&&options.recruit?options.recruit(ctx,door.route,Math.min(want.map,Math.max(0,options.maxEnemies-ctx.enemies.size))):0;
     let nests=0;
     state.nests.forEach((nest,i)=>{
       if(!born[i])return;
@@ -250,10 +284,13 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     });
     const live=state.nests.find(n=>!n.down);
     const outside=door?spawn(ctx,around(door,want.outside),want.outside,f,{}):live?spawn(ctx,yardOf(live),want.outside,f,{}):0;
-    const total=map+nests+outside;
-    if(!total)return retry();
-    (state.log??=[]).push({tick:ctx.tick,entrance:door?.id??'-',quota,kills,map,nests,outside,total});
+    if(!nests&&!outside&&!(want.map>0&&door&&options.recruit))return retry();
+    (state.log??=[]).push({tick:ctx.tick,entrance:door?.id??'-',quota,kills,map:0,nests,outside,total:nests+outside});
     if(state.log.length>LOG_WAVES)state.log.splice(0,state.log.length-LOG_WAVES);
+    // The map share leaves a batch a second (NEST_PACE.trickle), the first batch with the wave; a drip still running
+    // from the last wave is dropped (its bodies stay asleep: the new share replaces it).
+    if(want.map>0&&door&&options.recruit){state.drip={door:entrances.indexOf(door),left:want.map,tick:ctx.tick};drip(ctx);}
+    else delete state.drip;
     state.sent++;state.deadAt=dead;
     state.nextWave=ctx.tick+ticks(wavePeriod(f,state.players));
   }
@@ -289,8 +326,9 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     step(ctx){
       if(state.startTick===null)begin(ctx);
       // A checkpoint from before the waves (nests on their own timers): the first wave now, the quota from the plan.
-      if(state.nextWave===undefined){state.nextWave=ctx.tick;state.quota??=plan?Math.round(NEST_PACE.mapShare*bodiesOf(plan)):0;state.deadAt??=options.mapDead?.()??0;}
+      if(state.nextWave===undefined){state.nextWave=ctx.tick;state.quota??=plan?Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan)):0;state.deadAt??=options.mapDead?.()??0;}
       if(ctx.tick>=state.nextWave)sendWave(ctx);
+      else if(state.drip&&(ctx.tick-state.drip.tick)%ticks(1)===0)drip(ctx);
       save();
     },
   };

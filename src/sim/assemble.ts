@@ -453,7 +453,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // the car); the map's share wakes along that route; the map's dead count the kills against the quota.
         entrances:ENTRANCES.map((e,i)=>({id:e,x:entrances[e].x,y:entrances[e].y,route:routes[i]})),
         mapDead:()=>sono?.dead()??0,
-        recruit:(ctx,route,count)=>sono?.recruit(ctx,route,count)??0,
+        recruit:(ctx,route,count,tune)=>sono?.recruit(ctx,route,count,tune)??0,
         clear:(x,y,r)=>city.clearDisc(x,y,r),
         // A fallen nest pays the team, split among the seated like the boss (carteira-e-pix).
         pay:n=>{splitAmong(seatedPlayers(world.players),n,stonewards.state);},

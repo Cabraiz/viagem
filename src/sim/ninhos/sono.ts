@@ -190,7 +190,7 @@ export interface Sono {
    * Card monstros-espalhados (a wave's map share): wakes up to `count` sleepers nearest the polyline `route` (plan order
    * on ties), caçando and besieging the car (memory.siege), up to the cap of awake bodies; one `acordou`. Returns how many.
    */
-  recruit(ctx:SimContext,route:readonly Point[],count:number):number;
+  recruit(ctx:SimContext,route:readonly Point[],count:number,tune?:(e:EnemyState)=>void):number;
   /** Puts the plan's bodies to sleep (first step of the run, or the checkpoint's life); idempotent. */
   ensure(ctx:SimContext):void;
   /** Once per tick, before the AI: the dead, the noise, the awake states, the index. */
@@ -325,7 +325,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   function sleepAgain(ctx:SimContext,i:number,e:EnemyState){
     ctx.enemies.delete(e.id);cancelTelegraphs(ctx,e.id);
     const m=e.memory;
-    if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;}
+    if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;delete m[SIEGE];}
     delete e.knock;
     asleep.set(e.id,e);missing=true;up.delete(i);
     state.life[i]=[1,e.hp];
@@ -438,13 +438,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       if(!old||louder(n,old))heard.set(key,{x:n.x,y:n.y,r:n.r,p:Math.min(1,n.p)});
     },
     dead(){let n=0;for(const [life] of state.life)if(life===0)n++;return n;},
-    recruit(ctx,route,count){
+    recruit(ctx,route,count,tune){
       const room=Math.min(count,maxAwake-ctx.enemies.size);
       if(room<=0||!asleep.size||!route.length)return 0;
       const near=[...asleep.values()].filter(e=>order.has(e.id)).map(e=>({e,d:routeDistance(e,route)}))
         .sort((a,b)=>a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
       const n=wakeAll(ctx,near,'chamado');
-      for(const id of near){const e=ctx.enemies.get(id);if(e)(e.memory??={})[SIEGE]=1;}
+      for(const id of near){const e=ctx.enemies.get(id);if(e){(e.memory??={})[SIEGE]=1;tune?.(e);}}
       return n;
     },
     bodiesOf:nestId=>byNest.get(nestId)??[],

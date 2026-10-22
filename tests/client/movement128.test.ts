@@ -5,7 +5,7 @@ import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movement128Plan,movement128Frame,movement128Figure,movementIdle8Plan,movementIdle8Frame,type Movement128Plan} from '../../src/client/sprites/movement128.ts';
 import {Movement128Textures,movement128Textures,sheetWeight} from '../../src/client/sprites/movement128-textures.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
-import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {HERO_ANIM_RATE,HERO_DIRECTIONS,ATTACK_MS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 /** Screen ms after which `ms` of the art's own timing has played (animacao-heroi-70: the clips play at HERO_ANIM_RATE). */
 const T=(ms:number)=>Math.ceil(ms/HERO_ANIM_RATE);
 /** The walk frame after `steps` steps of 0.1 u along x (passo-sem-deslizar: the walk follows the ground, not the clock). */
@@ -263,8 +263,8 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
     assert.equal(movement128Textures(scene as never).stats().leasedTextures,1,'the held pose stays leased');
     decoders.get(requests[1])!();await flush();render(10+T(450),'N');assert.equal(sprite.frame.name,W(4),'turn/late arrival keeps the walk phase');
     render(1424,'N',1);await flush();assert.equal(requests.length,3);assert.equal(sprite.texture.key,'sprite128:aposentado:walk:N','attack loading keeps the matching oblique camera');assert.equal(sprite.frame.name,W(4));
-    decoders.get(requests[2])!();await flush();render(1424+T(500),'N',1);assert.equal(sprite.frame.name,'64');
-    render(1424+T(600),'N',2);assert.equal(sprite.frame.name,'76','overlapping attack event cannot restart the1000ms swing');
+    decoders.get(requests[2])!();await flush();render(1424+ATTACK_MS/2,'N',1);assert.equal(sprite.frame.name,'64','half the swing (ATTACK_MS, ataque-1s), half the poses');
+    render(1424+600,'N',2);assert.equal(sprite.frame.name,'0','the next hit restarts the swing from its first pose');
     const cache=movement128Textures(scene as never);assert.equal(cache.stats().leasedTextures,1);
     setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const attackKey=sprite.texture.key;
     render(1424+T(1000)+1,'N',2,false);await flush();assert.equal(requests.length,4);assert.equal(sprite.texture.key,attackKey,'stopping holds the same oblique camera while rest decodes');

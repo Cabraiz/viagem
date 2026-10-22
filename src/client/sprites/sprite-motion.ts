@@ -3,17 +3,25 @@ import {HERO_SPEED_MULT} from '../../maps/index.ts';
 export type Motion='idle'|'walk'|'attack';
 /**
  * Hero animation speed (NEW-20261018-ORQ-animacao-heroi-70, the user's ask): the clock-driven hero clips play at 0.7 of
- * their drawn rate (the 1000 ms attack takes ~1429 ms, the rests and the legacy clips' frameRate × 0.7). The walk is not
- * clock-driven any more: it follows the ground walked (walkCycles, card passo-sem-deslizar).
+ * their drawn rate (the rests and the legacy clips' frameRate × 0.7). The attack is not slowed (ATTACK_MS). The walk is
+ * not clock-driven any more: it follows the ground walked (walkCycles, card passo-sem-deslizar).
  */
 export const HERO_ANIM_RATE=.7;
+/**
+ * A whole swing on screen (NEW-20261022-ORQ-ataque-1s, the user's ask: ~1 s, "extremely fast"; at 0.7 it took ~1429 ms
+ * and back-to-back swings ran together for 2–3 s). Every attack sheet (legacy, R06, M16) plays its frames in this time,
+ * or faster when the weapon swings again sooner (SpriteMotion).
+ */
+export const ATTACK_MS=800;
+/** The shortest a swing is squeezed to when hits come very fast (or bunched by the network). */
+export const ATTACK_MIN_MS=250;
 // Idle drawings vary in pose in the candidate atlases. Hold a single pose so
 // standing characters cannot appear to walk even when world coordinates stop.
 export const SPRITE_CLIPS={
   idle:{frames:[0],frameRate:3*HERO_ANIM_RATE,repeat:-1},
   // Legacy walk: its frames are set by the ground walked (walkCycles); the frameRate only matters for a clip left playing.
   walk:{frames:[6,7,8,9,10,11],frameRate:5*HERO_SPEED_MULT*HERO_ANIM_RATE,repeat:-1},
-  attack:{frames:[12,13,14,15,16,17],frameRate:6*HERO_ANIM_RATE,repeat:0},
+  attack:{frames:[12,13,14,15,16,17],frameRate:6/ATTACK_MS*1000,repeat:0},
 } as const;
 /**
  * Feet on the ground (NEW-20261021-ORQ-passo-sem-deslizar): a walk cycle advances with the distance the figure walks on
@@ -53,7 +61,7 @@ export function walkCycles(dx:number,dy:number,view:number,figurePx:number,strid
 }
 /** The frame of a looping clip of `frames` after `cycles` cycles. */
 export const cycleFrame=(cycles:number,frames:number)=>Math.min(frames-1,Math.floor((cycles-Math.floor(cycles))*frames));
-/** How long a swing shows (legacy clip and the R06 attack alike: 1000 ms drawn, /HERO_ANIM_RATE on screen). */
+/** How long a lone swing shows (legacy clip, R06 and M16 alike). */
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;
 /** A figure without an input (teammates, enemies' riders) keeps walking this long after its drawing last moved. */
 export const WALK_HOLD_MS=120;
@@ -76,15 +84,21 @@ export class WalkGate {
 export class SpriteMotion {
   private lastAttack=0;
   private attackUntil=0;
+  private lastSwingAt=-Infinity;
+  /** The current swing: when it started and how long it plays (its frames are spread over `ms`). */
+  readonly swing={start:-Infinity,ms:ATTACK_VISUAL_MS};
   update(now:number,moving:boolean,attackTick=0,alive=true):Motion{
     // A rematch resets authoritative ticks; old swings must not suppress new ones.
-    if(attackTick<this.lastAttack){this.lastAttack=attackTick;this.attackUntil=0;}
+    if(attackTick<this.lastAttack){this.lastAttack=attackTick;this.attackUntil=0;this.lastSwingAt=-Infinity;}
     if(!alive){this.lastAttack=attackTick;this.attackUntil=0;return 'idle';}
     if(attackTick>this.lastAttack){
       this.lastAttack=attackTick;
-      // Server hits may arrive faster than the slower visual cycle. Consume
-      // overlapping events without restarting or extending the current swing.
-      if(now>=this.attackUntil)this.attackUntil=now+ATTACK_VISUAL_MS;
+      // Every hit is a clean swing from its first frame (ataque-1s). One that comes before the last one ended plays in
+      // the time between them, so holding Atacar shows one swing per hit instead of one long movement over several.
+      const gap=now-this.lastSwingAt;
+      this.swing.ms=Math.max(ATTACK_MIN_MS,Math.min(ATTACK_VISUAL_MS,gap));
+      this.swing.start=now;this.lastSwingAt=now;
+      this.attackUntil=now+this.swing.ms;
     }
     return now<this.attackUntil?'attack':moving?'walk':'idle';
   }

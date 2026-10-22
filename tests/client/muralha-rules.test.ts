@@ -11,7 +11,7 @@ import {MURALHA_ALTURA,MURALHA_ESTADOS,MURALHA_PILARES,MURALHA_RETOS,cellKey,mur
 import {Projector} from '../../src/client/render/projector.ts';
 import {BARRICADA_CELLS} from '../../src/rules/towers.ts';
 import {BASE_ART} from '../../src/client/art/base-art.ts';
-import {DAMAGE,KINDS,SOURCE_CELL,sheetRows} from '../../scripts/import-muralha-tralha.mjs';
+import {DAMAGE,KINDS,SOURCE_CELL,TRALHA_RES,celulaOf,sheetRows} from '../../scripts/import-muralha-tralha.mjs';
 
 const set=(sq:MuralhaSquare[])=>new Set(sq.map(s=>cellKey(s.c,s.r)));
 /** barricada-2x: squares are N cells wide, so neighbours (and these helpers' squares) sit N cells apart. */
@@ -80,7 +80,9 @@ test('the imported sheets (base/muralha-tralha, base/muralha-tralha-pilar) have 
   for(const [kind,id,n] of [['reto',BASE_ART.muralha,MURALHA_RETOS],['pilar',BASE_ART.pilar,MURALHA_PILARES]] as const){
     const p=base[id],f=p.files.sheet,k=KINDS[kind];
     assert.equal(p.meta.pecas.length,n,id);assert.deepEqual(p.meta.pecas,k.ids);
-    assert.deepEqual(f.rows,sheetRows(k.ids));assert.equal(f.views,2);assert.deepEqual(f.cell,k.cell);
+    // barricada-2x: cut at TRALHA_RES × the template's cell (sharper for the 2×2 squares); celula follows.
+    assert.deepEqual(f.rows,sheetRows(k.ids));assert.equal(f.views,2);assert.deepEqual(f.cell,k.cell.map(v=>Math.round(v*TRALHA_RES)));
+    assert.equal(p.meta.celula,+celulaOf(k,TRALHA_RES).toFixed(4));
     assert.ok(p.meta.celula>100&&p.meta.celula<SOURCE_CELL,`${id}: ${p.meta.celula} art px per cell`);
     assert.equal(f.pages.length,1);assert.equal(f.pages[0].frameCount,f.rows.length*2);
     assert.ok(f.pages[0].columns*f.cell[0]<=4096&&f.pages[0].rows*f.cell[1]<=4096,'under 4096 px');

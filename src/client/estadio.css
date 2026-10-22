@@ -114,23 +114,30 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 .estadio #nickname::placeholder { color: color-mix(in srgb, var(--c-lilas) 70%, transparent); }
 /* The confirm button (E7's art, menu-arte-viciado, every hero): a 9-slice pill without text (scripts/menu-arte.mjs,
    742x149: caps of 130 px each side, the middle stretches), the star on the left, the burst on the right; the text
-   (SELECIONAR / BORA!) stays HTML. --bh is its height; the caps keep the art's proportion at any width. */
+   (SELECIONAR / BORA!) stays HTML. --bh is its height; the caps keep the art's proportion at any width.
+   botao-igual-gerado (the user, 22/10): the star, text and burst where the generated screen has them (tela-1080p, pill
+   815x151; here .953 of --bh, the art's 3 px of air around it): the star .62 of the pill tall and whole inside it, half its
+   width from the left edge, a bit above the middle; the text and the burst higher still, over the pill's orange lip. */
 .estadio .estadio-confirmar {
   --bh: clamp(52px, 8.5vh, 76px);
   display: flex; align-items: center; width: 100%; max-width: 440px; height: var(--bh); min-height: 0;
-  padding: 0 calc(var(--bh) * .34) calc(var(--bh) * .06) calc(var(--bh) * .16);
+  padding: 0 calc(var(--bh) * .345) calc(var(--bh) * .048) calc(var(--bh) * .5);
   border: 0 solid transparent; border-radius: 0; background: none; box-shadow: none;
-  border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch;
-  color: var(--c-lilas-escuro); font: 400 calc(var(--bh) * .48)/1 var(--f-cartaz); white-space: nowrap;
+  border-image: url('/art/menu/botao/pilula.webp') 0 130 fill / 0 calc(var(--bh) * .872) stretch; container-type: inline-size;
+  color: color-mix(in srgb, var(--arte-roxo-sombra) 35%, var(--c-breu)); font: 900 calc(var(--bh) * .54)/1 var(--f-cartaz); white-space: nowrap;
 }
 .estadio .estadio-confirmar > span { padding: 0; }
 .estadio .estadio-confirmar > span[aria-hidden] {
-  flex: none; width: calc(var(--bh) * .8); height: calc(var(--bh) * .76); overflow: hidden; color: transparent;
+  flex: none; width: calc(var(--bh) * .623); height: calc(var(--bh) * .587); overflow: hidden; color: transparent;
   background: url('/art/menu/botao/estrela.webp') 50% 50% / contain no-repeat;
 }
-.estadio .estadio-confirmar-texto { flex: 1; text-align: center; }
+/* SELECIONAR is 4.63 em wide: on a narrow phone the text shrinks before it runs into the burst (the star never moves). */
+.estadio .estadio-confirmar-texto {
+  flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.064); rotate: -2deg;
+  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));
+}
 .estadio .estadio-confirmar::after {
-  content: ''; flex: none; width: calc(var(--bh) * .26); height: calc(var(--bh) * .38);
+  content: ''; flex: none; width: calc(var(--bh) * .301); height: calc(var(--bh) * .445); translate: 0 calc(var(--bh) * -.055);
   background: url('/art/menu/botao/icone-direita.webp') 50% 50% / contain no-repeat;
 }
 .estadio .estadio-confirmar:active { transform: translateY(2px); }

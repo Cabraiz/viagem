@@ -15,6 +15,8 @@ import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
 import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
+import {ENEMY_STRIDES} from './enemy-strides.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
@@ -361,6 +363,25 @@ export function fileFps(file:ArtFile,anim:string):number{
  */
 export const ENEMY_ANIM_RATE=.7;
 const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
+/**
+ * Feet on the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
+ * estivesse rápida"): the walk sheet is not clock-driven any more but follows the ground the enemy covers on screen,
+ * like the hero's (sprites/sprite-motion.ts walkCycles): a cycle every drawn stride (art/enemy-strides.ts, measured by
+ * scripts/passada-inimigos.mjs), so the planted foot keeps pace with the ground at any speed (chasing, pushed by the
+ * crowd, slowed) and an enemy standing still never treads in place. A sheet with no measurable step (wheels, a blob
+ * gliding) counts at least ENEMY_STRIDE_MIN, and the legs never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a
+ * slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median sheet) for a piece the table does not know yet.
+ */
+export const ENEMY_STRIDE_MIN=.12,ENEMY_STRIDE_DEFAULT=.19,ENEMY_WALK_MAX_CPS=3;
+/** Drawn stride (heights of the figure per walk cycle) of art `id`. */
+export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
+/**
+ * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
+ * drawn at `stride`: the foot locked to the ground (walkCycles, lock 1), capped at ENEMY_WALK_MAX_CPS; 0 on a teleport.
+ */
+export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number):number{
+  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1),ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
+}
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}
 const fileCache=new WeakMap<ArtFile,FileInfo>();
@@ -545,10 +566,12 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
+  /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
+  cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
   ratio:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
 /**
@@ -559,6 +582,14 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
   const drawn=drawnHeight(textures,id,piece);
   return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
 }
+/**
+ * The figure's height in world px (before the scene's `body` scale) for `file`: the role's target once the drawn height
+ * is measured (pieceScale's drawnScale), else today's procedural height (enemyDrawScale's rule).
+ */
+function figurePx(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
+  const drawn=drawnHeight(textures,id,piece);
+  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*file.cell[1]*(file.anchor?.[1]??.88);
+}
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
 const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0},mid:FrameRef={key:'',frame:0};
@@ -566,14 +597,14 @@ const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0},mid:FrameRef=
  * Frame of layer `layer(anim)` (elite or costume) over the base: the action's own layer when it has one (and it
  * loaded), else the loop's layer on the action's column (so it never blinks off during an attack or a hit).
  */
-function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,layer:(anim:string)=>string,anim:string,loop:string|undefined,action:string|undefined,row:number,t:number,out:FrameRef):FrameRef|undefined{
-  let f=enemyFrame(id,piece,layer(anim),row,t,out,!!action);
+function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,layer:(anim:string)=>string,anim:string,loop:string|undefined,action:string|undefined,row:number,t:number,out:FrameRef,col=-1):FrameRef|undefined{
+  let f=col>=0?enemyFrameAt(id,piece,layer(anim),row,col,out):enemyFrame(id,piece,layer(anim),row,t,out,!!action);
   if(action&&loop&&(!f||!textures.exists(f.key)))f=enemyFrameAt(id,piece,layer(loop),row,enemyColumn(id,piece,action,t,true),out);
   return f&&textures.exists(f.key)?f:undefined;
 }
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
-export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;}}
+export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;s.lx=s.ly=s.lt=NaN;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
 export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
 /** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
@@ -623,20 +654,30 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   let action=loop?currentAction(s,now):undefined,frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
   let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
-  if(!action&&anim)frame=enemyFrame(id,piece,anim,s.row,t,base);
+  // The walk by the ground walked since the last draw (monstros-sem-deslizar); the clock for every other loop. A fresh
+  // image starts at its own phase of the cycle, so a pack never steps in unison.
+  const wx=actor.x,wy=actor.y,walkFile=piece.files.walk;
+  if(walkFile&&wx!==undefined&&wy!==undefined){
+    if(Number.isNaN(s.lx))s.cycles=actor.phase;
+    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt);
+    s.lx=wx;s.ly=wy;s.lt=now;
+  }
+  const walkCol=(a:string|undefined)=>a==='walk'&&walkFile&&wx!==undefined?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile).frames):-1;
+  let col=action?-1:walkCol(anim);
+  if(!action&&anim)frame=col>=0?enemyFrameAt(id,piece,anim,s.row,col,base):enemyFrame(id,piece,anim,s.row,t,base);
   // That loop's sheet is not there (still loading, or it failed): another loop of the piece that is, before the reserve.
   if(!action&&anim&&(!frame||!textures.exists(frame.key)))for(const alt of moving?MOVING:STILL){
     if(alt===anim||!piece.files[alt]||(actor.elite&&!piece.files[eliteFile(alt)]))continue;
-    const f=enemyFrame(id,piece,alt,s.row,t,base);
-    if(f&&textures.exists(f.key)){anim=alt;frame=f;break;}
+    const c=walkCol(alt),f=c>=0?enemyFrameAt(id,piece,alt,s.row,c,base):enemyFrame(id,piece,alt,s.row,t,base);
+    if(f&&textures.exists(f.key)){anim=alt;frame=f;col=c;break;}
   }
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
   const file=piece.files[anim],scale=pieceScale(textures,id,piece,actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
   // The elite layer and the round costume (layerFrame: the action's own, else the loop's on the action's column).
   const variant=actor.costume;
-  const eliteFrame=actor.elite?layerFrame(textures,id,piece,eliteFile,anim,loop,action,s.row,t,top):undefined;
-  const costumeFrame=variant?layerFrame(textures,id,piece,a=>costumeFile(variant,a),anim,loop,action,s.row,t,mid):undefined;
+  const eliteFrame=actor.elite?layerFrame(textures,id,piece,eliteFile,anim,loop,action,s.row,t,top,col):undefined;
+  const costumeFrame=variant?layerFrame(textures,id,piece,a=>costumeFile(variant,a),anim,loop,action,s.row,t,mid,col):undefined;
   s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.

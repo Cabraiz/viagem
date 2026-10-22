@@ -1,9 +1,9 @@
 /**
  * Rochas grandes (NEW-20261022-ORQ-rochas-grandes): the Codex pieces that draw a thick cliff as a few big massifs
- * instead of rows of 1-cell walls (maps/city-decor.ts bigCliffRocks). Two looks for the user to pick, `a` (columnar
- * granite, the current cliffs' stone) and `b` (fused boulders, colder):
- *   penhasco3-<look>-bloco-1|2   2×2 massif     frames: the piece, mirrored, the piece, mirrored
- *   penhasco3-<look>-reto        2×1 straight   drawn lower-left → upper-right (view 1); view 0 is it mirrored
+ * instead of rows of 1-cell walls (maps/city-decor.ts bigCliffRocks). Two looks were generated (`a` columnar granite,
+ * `b` fused cold boulders); the user picked `b` (22/10), the only one imported (LOOK):
+ *   penhasco3-bloco-1|2   2×2 massif     frames: the piece, mirrored, the piece, mirrored
+ *   penhasco3-reto        2×1 straight   drawn lower-left → upper-right (view 1); view 0 is it mirrored
  * Each source is 1536×1024 on flat green (#00FF00): keyed (green out, spill off the rim), cropped to the piece, scaled so
  * its width is the footprint's projected diamond (FIT × (a+b)·ART_CELL·TILE_X·ART_SCALE art px: neighbours overlap a
  * little, no gap), the lowest point PAD px above the frame's bottom (the anchor: the footprint's front corner).
@@ -23,13 +23,14 @@ const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
 const DIAMOND_PX_PER_CELL=.88*42*2;
 /** Piece width over its footprint's diamond, and the rim (px) kept around it in the frame. */
 export const FIT=1.06,PAD=8;
-export const LOOKS=['a','b'];
+/** The look imported: the sources are `<LOOK>-<piece>.png`. */
+export const LOOK='b';
 export const PIECES=[
   {name:'bloco-1',footprint:[2,2],mirror:'square'},
   {name:'bloco-2',footprint:[2,2],mirror:'square'},
   {name:'reto',footprint:[2,1],mirror:'diagonal'},
 ];
-export const rockId=(look,name)=>`penhasco3-${look}-${name}`;
+export const rockId=name=>`penhasco3-${name}`;
 
 /** Green screen → alpha, in place (RGBA): how much greener than red/blue a pixel is; the spill on the rim is cut to grey. */
 export function keyGreen(data){
@@ -59,8 +60,8 @@ async function main(){
   const SRC=srcAt>=0?args[srcAt+1]:'D:/Gits/viagem-board/arte-entrada/cenario/decor/rochas-grandes';
   const spec=GROUPS.cenario,dir=join(ROOT,spec.output),manifestFile=join(dir,'manifest.json');
   const manifest=JSON.parse(readFileSync(manifestFile,'utf8'));
-  for(const look of LOOKS)for(const piece of PIECES){
-    const id=rockId(look,piece.name);
+  for(const piece of PIECES){
+    const id=rockId(piece.name),look=LOOK;
     const src=await sharp(join(SRC,`${look}-${piece.name}.png`)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
     const {width,height}=src.info,data=keyGreen(Buffer.from(src.data));
     const box=boundsOf(data,width,height);
@@ -88,6 +89,8 @@ async function main(){
       meta:{cell:[fw,fh],footprint:piece.footprint,origem:`arte-entrada/cenario/decor/rochas-grandes/${look}-${piece.name}.png (Codex, E3, card rochas-grandes)`}};
     console.error(`${id}: ${fw}×${fh}, ${Math.round(sheet.length/1024)} KB`);
   }
+  // The trial ids of both looks (penhasco3-a-*, penhasco3-b-*) are gone.
+  for(const id of Object.keys(manifest.pieces))if(/^penhasco3-[ab]-/.test(id))delete manifest.pieces[id];
   manifest.pieces=Object.fromEntries(Object.keys(manifest.pieces).sort().map(k=>[k,manifest.pieces[k]]));
   writeFileSync(manifestFile,`${JSON.stringify(manifest,null,2)}\n`);
   await writeIndex({cenario:spec},{outRoot:ROOT});

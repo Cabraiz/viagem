@@ -286,16 +286,15 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const full=named(pick(OBJETOS_1));
     if(full){put(full,c,r,1,1,pick([0,90,180,270] as const));objects.push([c,r]);}
   }
-  return {decor,blocked};
+  // 6. The thick cliffs as a few big massifs, not rows of 1-cell walls (rochas-grandes): its own generator, so the
+  // rest of the placement does not change.
+  return {decor:bigCliffRocks(decor,BIG_ROCKS,seed),blocked};
 }
 
-/** Big cliff pieces of one look (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */
+/** The big cliff pieces (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */
 export interface BigRocks {readonly bloco:readonly string[];readonly reto:string}
-/** The two looks generated for the user to pick (scripts/import-rochas-grandes.mjs): a columnar granite, b fused boulders. */
-export const BIG_ROCKS:Readonly<Record<'a'|'b',BigRocks>>={
-  a:{bloco:['penhasco3-a-bloco-1','penhasco3-a-bloco-2'],reto:'penhasco3-a-reto'},
-  b:{bloco:['penhasco3-b-bloco-1','penhasco3-b-bloco-2'],reto:'penhasco3-b-reto'},
-};
+/** The look the user picked (22/10: the fused cold boulders, "o mais próximo da realidade"; scripts/import-rochas-grandes.mjs). */
+export const BIG_ROCKS:BigRocks={bloco:['penhasco3-bloco-1','penhasco3-bloco-2'],reto:'penhasco3-reto'};
 /**
  * The cliff cells drawn with bigger pieces (NEW-20261022-ORQ-rochas-grandes: a thick cliff read as rows of small parallel
  * walls). Every 1×1 `penhasco*` piece is a cliff cell; scanning rows top-down, 4 free cells in a square become one 2×2

@@ -1,0 +1,120 @@
+{
+ "chao_luma": 216.3,
+ "figuras": [
+  {
+   "caixa": [
+    273,
+    351,
+    136,
+    138
+   ],
+   "luma": 62.2,
+   "contraste_std": 50.4,
+   "lado_claro": 68.1,
+   "lado_escuro": 70.6,
+   "escuro/claro": 1.037,
+   "cabeca": 87.3,
+   "pes": 40.8,
+   "pes/cabeca": 0.467,
+   "figura/chao": 0.288,
+   "sat": 26.3,
+   "sombra_px": 6333,
+   "sombra/chao": 0.782,
+   "sombra_min": 0.371,
+   "contato/chao": 0.742,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    412,
+    435,
+    53,
+    88
+   ],
+   "luma": 68.2,
+   "contraste_std": 52.9,
+   "lado_claro": 77.8,
+   "lado_escuro": 64.1,
+   "escuro/claro": 0.824,
+   "cabeca": 84.9,
+   "pes": 64.8,
+   "pes/cabeca": 0.763,
+   "figura/chao": 0.315,
+   "sat": 18.5,
+   "sombra_px": 2208,
+   "sombra/chao": 0.785,
+   "sombra_min": 0.376,
+   "contato/chao": 0.754,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    455,
+    388,
+    63,
+    85
+   ],
+   "luma": 71.3,
+   "contraste_std": 53.2,
+   "lado_claro": 80.3,
+   "lado_escuro": 57.2,
+   "escuro/claro": 0.712,
+   "cabeca": 96.0,
+   "pes": 61.4,
+   "pes/cabeca": 0.639,
+   "figura/chao": 0.329,
+   "sat": 38.3,
+   "sombra_px": 2471,
+   "sombra/chao": 0.787,
+   "sombra_min": 0.376,
+   "contato/chao": 0.748,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    517,
+    466,
+    67,
+    92
+   ],
+   "luma": 79.4,
+   "contraste_std": 48.0,
+   "lado_claro": 86.9,
+   "lado_escuro": 77.1,
+   "escuro/claro": 0.886,
+   "cabeca": 99.6,
+   "pes": 60.5,
+   "pes/cabeca": 0.607,
+   "figura/chao": 0.367,
+   "sat": 31.1,
+   "sombra_px": 3311,
+   "sombra/chao": 0.769,
+   "sombra_min": 0.368,
+   "contato/chao": 0.691,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    571,
+    416,
+    69,
+    90
+   ],
+   "luma": 91.1,
+   "contraste_std": 51.0,
+   "lado_claro": 102.8,
+   "lado_escuro": 78.6,
+   "escuro/claro": 0.764,
+   "cabeca": 117.7,
+   "pes": 65.9,
+   "pes/cabeca": 0.56,
+   "figura/chao": 0.421,
+   "sat": 60.4,
+   "sombra_px": 2566,
+   "sombra/chao": 0.771,
+   "sombra_min": 0.368,
+   "contato/chao": 0.736,
+   "sombra_tocando_sola": true
+  }
+ ]
+}

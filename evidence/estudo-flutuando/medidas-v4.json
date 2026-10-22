@@ -1,0 +1,97 @@
+{
+ "chao_luma": 216.3,
+ "figuras": [
+  {
+   "caixa": [
+    274,
+    350,
+    134,
+    139
+   ],
+   "luma": 64.7,
+   "contraste_std": 49.4,
+   "lado_claro": 63.1,
+   "lado_escuro": 80.8,
+   "escuro/claro": 1.28,
+   "cabeca": 89.5,
+   "pes": 50.6,
+   "pes/cabeca": 0.566,
+   "figura/chao": 0.299,
+   "sat": 26.5,
+   "sombra_px": 6888,
+   "sombra/chao": 0.775,
+   "sombra_min": 0.159,
+   "contato/chao": 0.743,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    412,
+    434,
+    53,
+    89
+   ],
+   "luma": 76.3,
+   "contraste_std": 57.1,
+   "lado_claro": 85.1,
+   "lado_escuro": 75.1,
+   "escuro/claro": 0.882,
+   "cabeca": 95.7,
+   "pes": 80.0,
+   "pes/cabeca": 0.836,
+   "figura/chao": 0.353,
+   "sat": 18.9,
+   "sombra_px": 2385,
+   "sombra/chao": 0.783,
+   "sombra_min": 0.438,
+   "contato/chao": 0.729,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    454,
+    389,
+    66,
+    84
+   ],
+   "luma": 74.5,
+   "contraste_std": 50.8,
+   "lado_claro": 75.1,
+   "lado_escuro": 70.1,
+   "escuro/claro": 0.933,
+   "cabeca": 85.2,
+   "pes": 71.1,
+   "pes/cabeca": 0.835,
+   "figura/chao": 0.344,
+   "sat": 41.8,
+   "sombra_px": 2849,
+   "sombra/chao": 0.779,
+   "sombra_min": 0.125,
+   "contato/chao": 0.755,
+   "sombra_tocando_sola": true
+  },
+  {
+   "caixa": [
+    516,
+    416,
+    124,
+    142
+   ],
+   "luma": 94.9,
+   "contraste_std": 54.9,
+   "lado_claro": 86.7,
+   "lado_escuro": 92.1,
+   "escuro/claro": 1.063,
+   "cabeca": 101.8,
+   "pes": 72.2,
+   "pes/cabeca": 0.709,
+   "figura/chao": 0.439,
+   "sat": 44.0,
+   "sombra_px": 5471,
+   "sombra/chao": 0.757,
+   "sombra_min": 0.178,
+   "contato/chao": 0.663,
+   "sombra_tocando_sola": true
+  }
+ ]
+}

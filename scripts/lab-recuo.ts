@@ -36,6 +36,8 @@ export interface LinkOptions {
   spikeChance?:number;spikeMs?:number;
   /** The scene's step clock before the fix: Phaser's smoothed delta, capped at 200 ms. */
   phaserClock?:boolean;
+  /** Keep every drawn frame (the GIF): ms, drawn hero, the room's own position, the stick. */
+  trace?:boolean;
 }
 export const PHONE_4G:LinkOptions={latency:60,jitter:60,longFrameChance:.02,longFrameMs:120,busyChance:.01,busyMs:80,seconds:30,seed:1,legMs:0};
 
@@ -43,7 +45,10 @@ export interface LabResult {frames:number;walkingFrames:number;recuos:number;wor
   /** Backward distance summed over the run (units). */
   backTotal:number;corrections:number;worstCorrection:number;
   /** Frames whose own position came live (not confirmed) with an ack ahead of the client. */
-  aheadAcks:number}
+  aheadAcks:number;
+  trace?:{t:number;x:number;y:number;rx:number;ry:number;sx:number;sy:number;back:boolean;
+    /** How far the correction fade moved the drawing this frame (units): the network's own pull. */
+    pull:number}[]}
 
 export function runLab(o:LinkOptions):LabResult{
   let r=o.seed*7919+13;const rnd=()=>{r=(r*1103515245+12345)%2147483648;return r/2147483648;};
@@ -54,7 +59,7 @@ export function runLab(o:LinkOptions):LabResult{
   let predicted:Point={x:p.x,y:p.y},pending:PlayerInput[]=[],tick=0;
   let up:{at:number;batch:unknown}[]=[],down:{at:number;x:number;y:number;ack:number;tick:number}[]=[];
   let prevSmooth:Point|undefined,lastUp=0,lastDown=0,nextFire=50,nextFrame=0,accumulator=0,lastFrameAt=0,prevDrawn:Point|undefined,flushAt:number|undefined;
-  const res:LabResult={frames:0,walkingFrames:0,recuos:0,worstBack:0,backTotal:0,corrections:0,worstCorrection:0,aheadAcks:0};
+  const res:LabResult={frames:0,walkingFrames:0,recuos:0,worstBack:0,backTotal:0,corrections:0,worstCorrection:0,aheadAcks:0,...(o.trace?{trace:[]}:{})};
   const delay=()=>o.latency+rnd()*o.jitter+(rnd()<(o.spikeChance??0)?o.spikeMs??0:0);
   const send=(now:number)=>{
     const batch=b.take(now);flushAt=b.waitingUntil;
@@ -120,12 +125,13 @@ export function runLab(o:LinkOptions):LabResult{
     const smooth=steps.at(accumulator/STEP);
     correction.step(raw,40,prevSmooth&&{x:smooth.x-prevSmooth.x,y:smooth.y-prevSmooth.y});prevSmooth=smooth;
     const drawn={x:smooth.x+correction.x,y:smooth.y+correction.y};
-    res.frames++;
+    res.frames++;let back=false;
     if(prevDrawn&&now>1500&&now-turnedAt>150){
       res.walkingFrames++;
       const along=(drawn.x-prevDrawn.x)*dir.x+(drawn.y-prevDrawn.y)*dir.y;
-      if(along< -1e-4){res.recuos++;res.backTotal-=along;res.worstBack=Math.max(res.worstBack,-along);}
+      if(along< -1e-4){back=true;res.recuos++;res.backTotal-=along;res.worstBack=Math.max(res.worstBack,-along);}
     }
+    res.trace?.push({t:now,x:drawn.x,y:drawn.y,rx:p.x,ry:p.y,sx:dir.x,sy:dir.y,back,pull:correction.lastPx/40});
     prevDrawn=drawn;
   }
   return res;

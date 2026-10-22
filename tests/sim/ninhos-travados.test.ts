@@ -20,6 +20,7 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 import {GOAL_REACH,MODE,STUCK_FAR,STUCK_S} from '../../src/sim/ninhos/sono.ts';
+import {NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -49,18 +50,22 @@ function alerta(world:SimWorld,sys:RunSystems,x:number,y:number,gx:number,gy:num
 }
 
 test('alerta: from the plaza\'s edge (seed 1\'s stuck band) it walks the city to its noise 90 u north, instead of standing there',()=>{
-  const {world,sys}=run();
-  const e=alerta(world,sys,144.16,139.17,138.38,49.17);
-  const start={x:e.x,y:e.y};
-  let reached=false;
-  for(let i=0;i<ticks(120)&&!reached;i++){
-    world.step();
-    if(!world.enemies.has(e.id))break;
-    if(Math.hypot(e.x-138.38,e.y-49.17)<=GOAL_REACH+.5||e.memory?.sono===MODE.cacando)reached=true;
-  }
-  assert.ok(Math.hypot(e.x-start.x,e.y-start.y)>40,`it walked away from the edge (${Math.hypot(e.x-start.x,e.y-start.y).toFixed(1)} u)`);
-  assert.ok(reached,`it reached the noise (at ${e.x.toFixed(1)}, ${e.y.toFixed(1)})`);
-  sys.dispose();
+  // Card monstros-espalhados: no wave (NEST_PACE.alive 0): the first one walks in down this very avenue, against it.
+  const alive=NEST_PACE.alive;NEST_PACE.alive=[0,0];
+  try{
+    const {world,sys}=run();
+    const e=alerta(world,sys,144.16,139.17,138.38,49.17);
+    const start={x:e.x,y:e.y};
+    let reached=false;
+    for(let i=0;i<ticks(120)&&!reached;i++){
+      world.step();
+      if(!world.enemies.has(e.id))break;
+      if(Math.hypot(e.x-138.38,e.y-49.17)<=GOAL_REACH+.5||e.memory?.sono===MODE.cacando)reached=true;
+    }
+    assert.ok(Math.hypot(e.x-start.x,e.y-start.y)>40,`it walked away from the edge (${Math.hypot(e.x-start.x,e.y-start.y).toFixed(1)} u)`);
+    assert.ok(reached,`it reached the noise (at ${e.x.toFixed(1)}, ${e.y.toFixed(1)})`);
+    sys.dispose();
+  }finally{NEST_PACE.alive=alive;}
 });
 
 test('a group body walks through a nest\'s ring of sleepers (×20: the push off them stays under its walk)',()=>{

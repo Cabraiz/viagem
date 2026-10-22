@@ -1,9 +1,12 @@
 /**
- * D-051, the nests' half of E1 (NEW-20261014-ORQ-ninhos-sim, src/sim/ninhos/ninhos.ts) on the REAL Cidade Nevada:
- *  - the numbers (hp, period, group size, round row, the exact 60 % siege split);
- *  - a unit rig (createNests by hand): timers, the cap retry, the first hit, the emergency group, the fall, the boss spot;
- *  - the assembled chaveiro run in mode 'ninhos': no director round, the groups come out of the nests, the boss leaves
- *    from the biggest live nest, a checkpoint plays on with the same hash; mode 'ninhos' without the objective is ignored.
+ * D-051, the nests' half of E1 (NEW-20261014-ORQ-ninhos-sim, src/sim/ninhos/ninhos.ts) on the REAL Cidade Nevada, with the
+ * waves of card NEW-20261022-ORQ-monstros-espalhados (map share by quota − kills, 1–3 born in each live nest, the
+ * outside group from an avenue end, all besieging the car):
+ *  - the numbers (hp, period, outside group, round row, the shares);
+ *  - a unit rig (createNests by hand): the wave timer, the cap retry, the quota and the kills, the first hit, the fall,
+ *    the boss spot;
+ *  - the assembled chaveiro run in mode 'ninhos': no director round, the waves come, the boss leaves from the biggest
+ *    live nest, a checkpoint plays on with the same hash; mode 'ninhos' without the objective is ignored.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -20,8 +23,8 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,createNests,groupRange,isSiegeGroup,nestHp,nestPeriod,nestRound,
-  type NestCause} from '../../src/sim/ninhos/ninhos.ts';
+import {FIRST_EXIT,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
+  wavePeriod,waveShares,type NestCause,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -34,120 +37,139 @@ function addPlayer(world:SimWorld,id:string,p:Point){
   world.players.set(id,player);return player;
 }
 
-test('the numbers: hp by size and room, period shrinking with f, group size by f, round row 2..9, exactly 60 % siege',()=>{
+test('the numbers: hp by size and room, period shrinking with f, outside group by f, round row 2..9, the shares of a wave',()=>{
   assert.deepEqual([nestHp('P',1),nestHp('M',1),nestHp('G',1)],[600,1000,1600]);
   assert.equal(nestHp('G',6),Math.round(1600*2.5));assert.equal(nestHp('P',9),nestHp('P',6),'room clamped to 6');
-  assert.deepEqual([nestPeriod('G',0),nestPeriod('M',0),nestPeriod('P',0)],[55,70,90]);
-  assert.equal(nestPeriod('G',1),55*.6);assert.equal(nestPeriod('G',3),55*.6,'f clamped');
-  assert.deepEqual(groupRange('M',.1),[5,6]);assert.deepEqual(groupRange('M',.5),[6,8]);assert.deepEqual(groupRange('G',.9),[12,15]);
+  assert.equal(wavePeriod(0,1),NEST_PACE.period[0]);assert.equal(wavePeriod(0,6),NEST_PACE.period[1]);
+  assert.equal(wavePeriod(1,1),NEST_PACE.period[0]*.6);assert.equal(wavePeriod(3,1),NEST_PACE.period[0]*.6,'f clamped');
+  assert.deepEqual(outsideRange(.1),[5,6]);assert.deepEqual(outsideRange(.5),[6,8]);assert.deepEqual(outsideRange(.9),[8,10]);
   assert.deepEqual([0,.1,.5,.99,1,2].map(nestRound),[2,2,5,9,9,9]);
-  const first=Array.from({length:100},(_,i)=>isSiegeGroup(i));
-  assert.equal(first.filter(Boolean).length,60);
-  for(let n=5;n<=100;n+=5)assert.equal(first.slice(0,n).filter(Boolean).length,Math.floor(n*.6),`first ${n}`);
+  // The user's rule (22/10): 1000 on the map → a quota of 100; no kill: 100 come; 120 killed: none, and the outside
+  // group is 20 smaller (never under NEST_PACE.floor of itself).
+  assert.equal(NEST_PACE.mapShare,.1);
+  assert.deepEqual(waveShares(100,0,30),{map:100,outside:30});
+  assert.deepEqual(waveShares(100,40,30),{map:60,outside:30});
+  assert.deepEqual(waveShares(100,120,30),{map:0,outside:10+5},'floor .5 of 30 is 15');
+  assert.deepEqual(waveShares(100,120,60),{map:0,outside:40});
+  assert.deepEqual(waveShares(100,1000,8),{map:0,outside:4});
 });
 
 // ---------- Unit rig ----------
-/** The nests' own timers, without NEST_PACE (no gap, no alive cap, no warm start): restored after `fn`. */
+/** No warm start (full quota and group) and no alive cap: restored after `fn`. */
 function rawPace(fn:()=>void){
   const saved=structuredClone(NEST_PACE);
-  Object.assign(NEST_PACE,{gap:[0,0],alive:[1e9,1e9],warm:0,size:[1,1]});
+  Object.assign(NEST_PACE,{alive:[1e9,1e9],warm:0,size:[1,1]});
   try{fn();}finally{Object.assign(NEST_PACE,saved);}
 }
-const PLAN:NestPlan={seed:1,players:1,loose:[],nests:[
+const PLAN:NestPlan={seed:1,players:1,nests:[
   {id:'p0',kind:'terreno',x:40,y:40,size:'P',radius:6,sleepers:[{x:40,y:41},{x:41,y:40}]},
   {id:'g0',kind:'terreno',x:80,y:80,size:'G',radius:12,sleepers:[{x:80,y:81},{x:81,y:80}]},
   {id:'m0',kind:'terreno',x:60,y:60,size:'M',radius:9,sleepers:[{x:60,y:61}]},
-]};
-function rig(maxEnemies=300){
+],loose:[{x:20,y:20,training:false,members:Array.from({length:45},(_,i)=>({x:20+i%9,y:20+Math.floor(i/9)}))}]};
+/** 50 plan bodies: the quota is 5. */
+const PLAN_BODIES=50;
+const DOOR:WaveEntrance={id:'N',x:10,y:0,route:[{x:10,y:0},{x:50,y:50}]};
+function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR]){
   const world=new SimWorld({terrain:city.fork(),seed:5,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   addPlayer(world,'p1',{x:0,y:0});
-  const woke:[string,NestCause][]=[],crates:string[]=[],fell:string[]=[];let grana=0;
-  const nests=createNests({plan:()=>PLAN,maxEnemies,
+  const woke:[string,NestCause][]=[],crates:string[]=[],fell:string[]=[],recruited:[readonly Point[],number][]=[];let grana=0,dead=0;
+  const nests=createNests({plan:()=>PLAN,maxEnemies,entrances,
     createEnemy:(ctx,kind,at,scale)=>ctx.enemies.size<maxEnemies&&isEnemyKind(kind)?createEnemy(ctx,kind,at,scale):undefined,
+    mapDead:()=>dead,recruit:(_ctx,route,count)=>{recruited.push([route,count]);return count;},
     wake:(_ctx,id,cause)=>{woke.push([id,cause]);},dropCrate:(_ctx,_at,rarity)=>{crates.push(rarity);},pay:n=>{grana+=n;},
     onFall:(_ctx,n)=>{fell.push(n.id);}});
   // The nests step in the director's slot (assemble.ts), so the rig registers them under that id.
   world.register({id:'director',step:ctx=>nests.step(ctx)});
-  return {world,nests,woke,crates,fell,grana:()=>grana};
+  return {world,nests,woke,crates,fell,recruited,grana:()=>grana,kill:(n:number)=>{dead+=n;}};
 }
+const until=(r:ReturnType<typeof rig>,tick:number)=>{while(r.world.tick<tick)r.world.step();};
 
-test('timers: the first group of each nest between 45 and 90 s, the next one a period later, out of the nest\'s yard',()=>rawPace(()=>{
+test('a wave: between 45 and 90 s, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next a period later',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
-  const start=r.nests.state.startTick!;
-  for(const n of r.nests.state.nests){
-    assert.ok(n.next!>=start+ticks(FIRST_EXIT[0])&&n.next!<=start+ticks(FIRST_EXIT[1]),`${n.id} first exit ${n.next}`);
-    assert.equal(n.hp,n.maxHp);
+  const start=r.nests.state.startTick!,first=r.nests.state.nextWave!;
+  assert.ok(first>=start+ticks(FIRST_EXIT[0])&&first<=start+ticks(FIRST_EXIT[1]),`first wave ${first}`);
+  assert.equal(r.nests.state.quota,PLAN_BODIES*NEST_PACE.mapShare);
+  for(const n of r.nests.state.nests)assert.equal(n.hp,n.maxHp);
+  until(r,first+1);
+  assert.equal(r.nests.state.sent,1);
+  assert.deepEqual(r.recruited,[[DOOR.route,5]],'the whole quota, nobody killed');
+  const bodies=[...r.world.enemies.values()];
+  assert.ok(bodies.every(e=>e.memory?.[SIEGE_FLAG]===1&&e.memory?.[WAVE_MEMORY]===0),'all besiege the car, wave 0');
+  const born=bodies.filter(e=>typeof e.memory?.[NEST_MEMORY]==='number'),outside=bodies.filter(e=>e.memory?.[NEST_MEMORY]===undefined);
+  for(let i=0;i<PLAN.nests.length;i++){
+    const mine=born.filter(e=>e.memory![NEST_MEMORY]===i);
+    assert.ok(mine.length>=NEST_PACE.perNest[0]&&mine.length<=NEST_PACE.perNest[1],`${PLAN.nests[i].id}: ${mine.length}`);
+    for(const e of mine)assert.ok(PLAN.nests[i].sleepers.some(p=>p.x===e.x&&p.y===e.y),'born in its yard');
   }
-  const g=r.nests.state.nests.find(n=>n.id==='g0')!,first=g.next!;
-  while(r.world.tick<first)r.world.step();
-  assert.equal(g.groups,1);
-  const bodies=[...r.world.enemies.values()].filter(e=>e.memory?.[NEST_MEMORY]===1);
-  const [lo,hi]=groupRange('G',0);
-  assert.ok(bodies.length>=lo&&bodies.length<=hi,`G group of ${bodies.length}`);
-  for(const e of bodies)assert.ok(PLAN.nests[1].sleepers.some(p=>p.x===e.x&&p.y===e.y),'from a yard spot');
-  assert.equal(g.next,first+ticks(nestPeriod('G',(first-r.nests.state.startTick!)/ticks(540))));
-  // Siege pattern over the run's groups, in order: group 0 hunts (floor(.6)=0), group 1 besieges.
-  assert.equal(isSiegeGroup(0),false);
+  const [lo,hi]=outsideRange(0);
+  assert.ok(outside.length>=lo&&outside.length<=hi,`outside group of ${outside.length}`);
+  for(const e of outside)assert.ok(Math.hypot(e.x-DOOR.x,e.y-DOOR.y)<4,'at the avenue end');
+  const log=r.nests.state.log!.at(-1)!;
+  assert.deepEqual({...log,tick:0},{tick:0,entrance:'N',quota:5,kills:0,map:5,nests:born.length,outside:outside.length,total:5+born.length+outside.length});
+  assert.equal(r.nests.state.nextWave,first+ticks(wavePeriod((first-start)/ticks(NEST_PACE.ramp),1)));
 }));
 
-test('pace (balanco-ninhos): one group per NEST_PACE.gap from any nest, a smaller warm start, none while NEST_PACE.alive are up',()=>{
+test('the kills: map bodies killed since the last wave come off its quota; past the quota they shrink the outside group (never under the floor)',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
-  const start=r.nests.state.startTick!,due=start+ticks(50);
-  for(const n of r.nests.state.nests)n.next=due;
-  while(r.world.tick<=due)r.world.step();
-  const sent=r.nests.state.nests.filter(n=>n.groups>0);
-  assert.equal(sent.length,1,'one group, the other nests wait');
-  for(const n of r.nests.state.nests)if(!n.groups)assert.equal(n.next,due+ticks(RETRY_SECONDS));
-  assert.equal(r.nests.state.quietUntil,due+ticks(NEST_PACE.gap[0]),'1 player: the 1-player gap');
-  const [,hi]=groupRange(sent[0].size,0);
-  assert.ok(r.world.enemies.size<=Math.round(hi*NEST_PACE.warmScale),`warm group of ${r.world.enemies.size}`);
-  // The alive cap: with that many up, a due nest waits.
-  const saved=[...NEST_PACE.alive] as [number,number];
-  NEST_PACE.alive=[r.world.enemies.size,r.world.enemies.size];
-  try{
-    const quiet=r.nests.state.quietUntil!,n=r.nests.state.nests.find(x=>!x.groups)!;
-    n.next=quiet;
-    while(r.world.tick<=quiet)r.world.step();
-    assert.equal(n.groups,0);assert.equal(n.next,quiet+ticks(RETRY_SECONDS));
-  }finally{NEST_PACE.alive=saved;}
-});
+  until(r,r.nests.state.nextWave!+1);
+  r.world.enemies.clear();
+  // 3 of the quota of 5 killed: 2 come.
+  r.kill(3);
+  until(r,r.nests.state.nextWave!+1);
+  assert.equal(r.recruited.at(-1)![1],2);
+  assert.equal(r.nests.state.log!.at(-1)!.kills,3);
+  r.world.enemies.clear();
+  // 9 killed: none from the map, the outside group 4 smaller, never under half.
+  r.kill(9);
+  until(r,r.nests.state.nextWave!+1);
+  assert.equal(r.recruited.length,2,'no recruit call');
+  const log=r.nests.state.log!.at(-1)!;
+  assert.equal(log.map,0);assert.equal(log.kills,9);
+  const [lo,hi]=outsideRange((r.world.tick-1-r.nests.state.startTick!)/ticks(NEST_PACE.ramp));
+  const fits=Array.from({length:hi-lo+1},(_,i)=>lo+i).some(b=>log.outside===Math.max(Math.ceil(b*NEST_PACE.floor),b-4));
+  assert.ok(fits,`outside ${log.outside} of ${lo}-${hi}, 4 past the quota`);
+}));
 
-test('the enemy cap: no room, the timer waits a second and nobody comes out',()=>{
+test('the alive cap and the enemy cap: the wave waits RETRY_SECONDS, nobody comes; no entrance: the outside group leaves a live nest',()=>{
   const r=rig(0);
   r.world.step();
-  const n=r.nests.state.nests[0],due=n.next!;
-  while(r.world.tick<due)r.world.step();
-  assert.equal(n.groups,0);assert.equal(n.next,due+ticks(RETRY_SECONDS));assert.equal(r.world.enemies.size,0);
+  const due=r.nests.state.nextWave!;
+  until(r,due+1);
+  assert.equal(r.nests.state.sent,0);assert.equal(r.nests.state.nextWave,due+ticks(RETRY_SECONDS));assert.equal(r.world.enemies.size,0);
+  rawPace(()=>{
+    const s=rig(300,[]);
+    s.world.step();
+    until(s,s.nests.state.nextWave!+1);
+    assert.equal(s.recruited.length,0,'no route, no recruits');
+    assert.ok([...s.world.enemies.values()].every(e=>PLAN.nests.some(n=>n.sleepers.some(p=>p.x===e.x&&p.y===e.y))),'all from the yards');
+  });
 });
 
-test('hits: the first wakes the nest, half hp lets one emergency group out, 0 hp fells it: no timer, crate and Grana',()=>{
+test('hits: the first wakes the nest, 0 hp fells it: crate and Grana; a fallen nest gives no body to the waves, and a nest sends nothing between waves',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
   const g=r.nests.state.nests.find(n=>n.id==='g0')!;
   assert.equal(r.nests.hit(r.world,'g0',100),false);
   assert.deepEqual(r.woke,[['g0','hit']]);
-  r.nests.hit(r.world,'g0',100);
-  assert.equal(r.woke.length,1,'woken once');assert.equal(r.world.enemies.size,0);
-  r.nests.hit(r.world,'g0',g.maxHp/2-200);
-  const emergency=[...r.world.enemies.values()];
-  assert.ok(emergency.length>0,'the emergency group');
-  assert.ok(emergency.every(e=>e.memory?.[SIEGE_FLAG]===undefined),'it defends: hunters');
-  r.nests.hit(r.world,'g0',1);
-  assert.equal(r.world.enemies.size,emergency.length,'only once');
+  r.nests.hit(r.world,'g0',g.maxHp/2);
+  assert.equal(r.woke.length,1,'woken once');assert.equal(r.world.enemies.size,0,'no emergency group any more');
   assert.equal(r.nests.hit(r.world,'g0',1e9),true);
-  assert.equal(g.down,true);assert.equal(g.next,undefined);assert.equal(g.hp,0);
+  assert.equal(g.down,true);assert.equal(g.hp,0);
   assert.deepEqual(r.crates,['dourada']);assert.equal(r.grana(),NEST_GRANA.G);assert.deepEqual(r.fell,['g0']);
   assert.deepEqual(r.woke.at(-1),['g0','fell']);
   assert.equal(r.nests.hit(r.world,'g0',10),false,'a fallen nest takes no more hits');
   assert.equal(r.nests.alive(),2);
-  // A fallen nest never sends a group.
-  for(let i=0;i<ticks(200);i++)r.world.step();
+  until(r,r.nests.state.nextWave!+1);
   assert.equal(g.groups,0);
+  assert.equal([...r.world.enemies.values()].filter(e=>e.memory?.[NEST_MEMORY]===1).length,0,'none born in the fallen G');
+  const after=r.world.enemies.size;
+  until(r,r.nests.state.nextWave!-1);
+  assert.equal(r.world.enemies.size,after,'nothing between waves');
   r.nests.hit(r.world,'p0',1e9);
   assert.deepEqual(r.crates,['dourada','roxa']);
-});
+}));
 
 test('the boss spot: the biggest live nest (a yard spot), then the next, none when all fell',()=>{
   const r=rig();
@@ -165,14 +187,14 @@ interface Run {world:SimWorld;sys:RunSystems;events:StampedEvent[]}
 function assembled(seed:number,players:Map<string,SimPlayer>,options:{objective?:boolean;checkpoint?:ReturnType<RunSystems['state']>}={}):Run{
   const world=new SimWorld({terrain:city.fork(),seed,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const sys=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{},cityTutorial:false,mode:'ninhos',
-    // The slice-1 population: the groups' timing is the subject here (at ×20 the moto riding by wakes bands on its way).
+    // A light city (population 1): the waves' timing is the subject here (at the full field the moto riding by wakes bodies).
     nestPopulation:1,
     ...(options.objective===false?{}:{objective:'chaveiro' as const}),...(options.checkpoint?{checkpoint:options.checkpoint}:{})});
   return {world,sys,events:[]};
 }
 const stepRun=(r:Run,n=1)=>{for(let i=0;i<n;i++)r.events.push(...r.world.step());};
 
-test('assembled mode ninhos: no round from the director, groups out of the nests, 8 nests at their hp, a checkpoint plays on',()=>{
+test('assembled mode ninhos: no round from the director, a wave (map, nests, outside), 8 nests at their hp, a checkpoint plays on',()=>{
   const SEED=21,players=new Map<string,SimPlayer>();
   const a=assembled(SEED,players);
   const car=a.sys.chaveiro!.state.car;
@@ -193,18 +215,23 @@ test('assembled mode ninhos: no round from the director, groups out of the nests
   assert.equal(a.world.enemies.size,0,'nothing before 45 s');
   assert.equal(a.events.filter(e=>e.type==='round').length,0,'no round');
   stepRun(a,ticks(FIRST_EXIT[1]-FIRST_EXIT[0])+2);
-  assert.ok(nests.state.sent>0&&nests.state.spawned>0,'groups went out by 90 s');
-  const out=[...a.world.enemies.values()];
-  assert.ok(out.length>0&&out.every(e=>typeof e.memory?.[NEST_MEMORY]==='number'),'every body came out of a nest');
+  assert.ok(nests.state.sent>0&&nests.state.spawned>0,'a wave came by 90 s');
+  const out=[...a.world.enemies.values()],log=nests.state.log![0];
+  assert.ok(out.length>0&&out.every(e=>e.memory?.[SIEGE_FLAG]===1),'every body of the wave besieges the car');
+  assert.ok(log.map>0&&log.nests>=8&&log.outside>0,`map ${log.map}, nests ${log.nests}, outside ${log.outside}`);
+  assert.equal(out.filter(e=>sono.bodies.some(b=>b.id===e.id)).length,log.map,'the map share: plan bodies woken');
   assert.equal(a.world.round.remaining,a.world.enemies.size);
   assert.ok(a.sys.state().ninhos,'the nests are in the checkpoint');
   // Checkpoint (live bodies are dropped, as in every checkpoint) and play on.
   const world=a.world.checkpoint(),systems=structuredClone(a.sys.state());
   const b=assembled(SEED,new Map([...players].map(([id,p])=>[id,structuredClone(p)])),{checkpoint:systems});b.world.load(world);
   assert.equal(stateHash(b.sys.state()),stateHash(a.sys.state()));
-  for(const m of [a.world.enemies,a.world.projectiles,a.world.telegraphs])m.clear();
-  stepRun(a,ticks(60));stepRun(b,ticks(60));
-  assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}));
+  // Two rooms restored from it play the same minute (the map's recruits awake at the checkpoint sleep again at home in
+  // both; clearing a's live bodies instead would count them dead there, not here).
+  const c=assembled(SEED,new Map([...players].map(([id,p])=>[id,structuredClone(p)])),{checkpoint:structuredClone(systems)});c.world.load(world);
+  stepRun(b,ticks(60));stepRun(c,ticks(60));
+  assert.ok(nests.state.sent>=1);
+  assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:c.world.state(),systems:c.sys.state()}));
 });
 
 test('assembled mode ninhos: the first hit on a nest wakes its sleepers into the world; dispose lets the index go',()=>{

@@ -18,7 +18,7 @@
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
-import {HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
+import {AURA,HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
@@ -85,6 +85,15 @@ export function manualReach(w:ResolvedWeapon):{reach:number;pad:boolean}{
 }
 /** Slack of the spatial query for padded reaches (enemy radius); the exact test follows. */
 const PAD_QUERY=2;
+/** Weapon id of the Defumador's hits (the 'damage' events, the kill feed). */
+export const AURA_SOURCE='defumador';
+/** The Defumador's level in a build (0: none). */
+export const auraLevel=(build:PlayerBuild)=>build.passives.find(p=>p.id===AURA_SOURCE)?.level??0;
+/** Radius of a player's aura (u): AURA.radius × the area stat; 0 without the Defumador. */
+export function auraRadius(player:{build:PlayerBuild;stats:{area:number}}){
+  const level=auraLevel(player.build);
+  return level>0?AURA.radius(level)*player.stats.area:0;
+}
 
 export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   const cap=opts.cap??PROJECTILE_CAP,catalog=opts.catalog??weaponCatalog;
@@ -307,12 +316,31 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     }
   }
 
+  /**
+   * Card upgrades-megabonk, the Defumador (Megabonk's aura, no equipping, no attack held): every AURA.every s, each
+   * AWAKE enemy within auraRadius takes AURA.damage (× might in the core). Its clock is the player's weaponReady
+   * entry of AURA_SOURCE, like a weapon's; the sleepers are never touched (a nest is not woken by walking past it).
+   */
+  function aura(ctx:SimContext,player:SimPlayer){
+    const level=auraLevel(player.build);
+    if(!level||ctx.tick<(player.weaponReady[AURA_SOURCE]??0))return;
+    const radius=auraRadius(player);
+    scratch.length=0;
+    ctx.enemyIndex.query(player.x,player.y,radius+PAD_QUERY,scratch);
+    const struck=scratch.filter(e=>isAlive(ctx,e)&&ctx.enemies.has(e.id)&&Math.hypot(e.x-player.x,e.y-player.y)<=radius+e.radius)
+      .sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+    if(!struck.length)return;
+    for(const e of struck)if(isAlive(ctx,e))hitEnemy(ctx,e,AURA.damage(level),player.id,AURA_SOURCE,{x:e.x-player.x,y:e.y-player.y,force:0});
+    player.weaponReady[AURA_SOURCE]=ctx.tick+ticks(AURA.every);
+  }
+
   return {
     id:'weapons',
     step(ctx){
       const manual=opts.manual;
       for(const player of ctx.players.values()){
         if(!canAct(player))continue;
+        aura(ctx,player);
         // D-051 manual combat: only the equipped weapon, only while the attack is held.
         if(manual&&!manual.attacking(player.id))continue;
         if(opts.busy?.(player.id))continue;

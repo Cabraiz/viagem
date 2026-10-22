@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
-import {skin} from '../../scripts/hand-track.mjs';
+import {handTone} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
 import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
 import {FIRE_LOOK} from '../../src/client/render/arsenal-rules.ts';
@@ -20,20 +20,33 @@ sharp.cache(false);sharp.concurrency(1);
  * R06 walk128/attack128 and idle8) needs a hand in each frame; a reimported sheet (a new sha12 in its name) fails here
  * until scripts/hand-points.mjs measures it again.
  */
-const HELD=['viciado-em-bet','clt-cansado'];
+/**
+ * BUG-20261022-ORQ-arma-flutua-corrida-clt: every hero class (the two the player picks and the 13 the bots play), from
+ * the manifest, so a class or a movement sheet added later (the CLT's run16 came in without a check) fails here too.
+ */
+const HELD=Object.keys(manifest.groups.personagens.pieces).filter(id=>Object.keys(filesOf(id)).some(n=>/^walk(16|128)-/.test(n)));
+/**
+ * The bots' attack128 sheets still wait for their fists marked by eye (2nd batch of BUG-20261022-ORQ-arma-flutua-corrida-
+ * clt): until then they show the sticker at the side. Only these may lack a hand; the list shrinks as they are marked.
+ */
+const PENDING=new Set(HELD.filter(id=>id!=='clt-cansado'&&id!=='viciado-em-bet').flatMap(id=>['S','SW','W','NW','N','NE','E','SE'].map(d=>`${id}:attack128-${d}`)));
+const pending=(id:string,name:string)=>PENDING.has(`${id}:${name}`)&&!HAND_POINTS[filesOf(id)[name].file];
 const shown=(id:string)=>{
   const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
-  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$/.test(n));
+  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n)).filter(([n])=>!pending(id,n));
 };
 /** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
 const SCREEN_PER_CELL=45/50;
 /** Skin pixels the fingers patch must hold in a pose in front (a fist is ~5×5 cell px). */
 const MIN_FINGERS=6;
 
-test('every sheet the game shows the viciado and the CLT has its hand in each frame, inside the figure', ()=>{
+test('every sheet the game shows any hero has its hand in each frame, inside the figure', ()=>{
+  assert.equal(HELD.length,15,HELD.join());
   for(const id of HELD){
     const sheets=shown(id);
-    assert.equal(sheets.length,id==='clt-cansado'?17:20,`${id}: the sheets it shows`);
+    // M16 (viciado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
+    const waiting=[...PENDING].filter(k=>k.startsWith(`${id}:`)&&pending(id,k.slice(id.length+1))).length;
+    assert.equal(sheets.length+waiting,id==='viciado-em-bet'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
     for(const [name,f] of sheets){
       const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
       assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);
@@ -48,6 +61,7 @@ test('every sheet the game shows the viciado and the CLT has its hand in each fr
 test('the grip lands on the drawn hand: skin within 3 screen px of it in every frame, a hidden hand on the body', async ()=>{
   const reach=3/SCREEN_PER_CELL,worst:{at:string;d:number}[]=[],few:{at:string;n:number}[]=[];
   for(const id of HELD)for(const [name,f] of shown(id)){
+    const skin=handTone(id);
     const {data,info}=await sharp(fileURLToPath(new URL(`../../public/art/sprites/${f.file}`,import.meta.url))).raw().ensureAlpha().toBuffer({resolveWithObject:true});
     const cols=info.width/96;
     for(const [i,p] of HAND_POINTS[f.file].points.entries()){

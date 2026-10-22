@@ -34,7 +34,8 @@ test('SETTLE: waits for the route to end and the hold-to-follow to be off; false
   later(300,()=>s.route=[]);
   const t0=performance.now();
   assert.equal(await SETTLE([300,5000]),true);
-  assert.ok(performance.now()-t0>=300+300-50,`settled only after the route (${Math.round(performance.now()-t0)} ms)`);
+  // The check runs every 100 ms: settled at least `still` after the last busy check, which is at most 100 ms before the route ended.
+  assert.ok(performance.now()-t0>=300+300-100-20,`settled only after the route (${Math.round(performance.now()-t0)} ms)`);
   page(scene(undefined,{route:[{x:1,y:1}]}));assert.equal(await SETTLE([300,600]),false);
   delete (globalThis as {window?:{__perfScene?:unknown}}).window!.__perfScene;assert.equal(await SETTLE([300,600]),false);
 });

@@ -29,7 +29,7 @@ const px=(v:string)=>{const m=v.match(/(-?\d+(?:\.\d+)?)px/);assert.ok(m,v);retu
 /** The thumbs as the shell draws them (explore.css: 112 px stick at 24 px; landscape/≤ 370 px 96 px at 16/18; skill --botao-habilidade 94). */
 const thumbs=(v:{width:number;height:number})=>{
   const tight=v.width<=370||v.height<=500,stick=tight?96:112,pad=tight?{x:18,y:16}:{x:24,y:24},skill=94;
-  return {joystick:{x:pad.x,y:v.height-pad.y-stick,width:stick,height:stick},skill:{x:v.width-pad.x-skill,y:v.height-pad.y-skill,width:skill,height:skill}};
+  return {joystick:{x:pad.x,y:v.height-pad.y-stick,width:stick,height:stick},skill:{x:v.width-pad.x-skill,y:v.height-pad.y-Math.max(stick,skill)/2-skill/2,width:skill,height:skill}}; // one axis (hud-mobile-rodape)
 };
 const VIEWPORTS=[{width:390,height:844},{width:360,height:800},{width:412,height:915},{width:844,height:390},{width:667,height:375}];
 

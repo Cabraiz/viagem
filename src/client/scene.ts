@@ -526,6 +526,8 @@ export class IslandScene extends Phaser.Scene {
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
+        // …drawn by the scene once every hero is placed and animated (end of updateCoop): on this frame's pose and spot.
+        handsFromScene:true,
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
@@ -1270,6 +1272,8 @@ export class IslandScene extends Phaser.Scene {
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
+    // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
+    this.horde?.hands();
     this.updateWatch(view.players,delta);
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}

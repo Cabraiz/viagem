@@ -120,7 +120,7 @@ async function main(){
     const lift=Math.round(row.foot*v.h),ox=c*cw+ax-Math.ceil(v.w/2),oy=r*ch+ay-(v.h-lift);
     for(let y=0;y<v.h;y++)v.buf.copy(sheet,((oy+y)*cols*cw+ox)*4,y*v.w*4,(y+1)*v.w*4);
   }));
-  const file=`${PIECE}.webp`,webp=await sharp(sheet,{raw:{width:cols*cw,height:rows.length*ch,channels:4}}).webp({quality:90,alphaQuality:100,effort:6}).toBuffer();
+  const file=`${PIECE}.webp`,webp=await sharp(sheet,{raw:{width:cols*cw,height:rows.length*ch,channels:4}}).webp({lossless:true,effort:6}).toBuffer();
   writeFileSync(join(dir,file),webp);
   const hash=sha256(webp),states=MOTO_ROWS.map(r=>r.state);
   const entry={file,cell:[cw,ch],views:4,rows:states,anchor:[+(ax/cw).toFixed(6),+(ay/ch).toFixed(6)],

@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2067,
-  "bytes": 1540536856,
-  "liteBytes": 498310858,
+  "files": 2070,
+  "bytes": 1542761726,
+  "liteBytes": 499085816,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -36,6 +36,18 @@
    ],
    "psnr": 41.7,
    "shownPsnr": 41.7
+  },
+  "city/base/moto-chaveiro.webp": {
+   "source": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728",
+   "lite": "410f4c77cb6905ef829b33fb5b92abe8ace1fbd432d5c53aacd77425c9141ad7",
+   "bytes": 597584,
+   "liteBytes": 243658,
+   "liteCell": [
+    238,
+    191
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
   },
   "city/base/muralha-acampamento.webp": {
    "source": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1",
@@ -72,6 +84,30 @@
    ],
    "psnr": 36.9,
    "shownPsnr": 36.9
+  },
+  "city/base/muro-bloco-pilar.webp": {
+   "source": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",
+   "lite": "5d441a998f447d1c732364e827c4c28091f5f9101570113008261f0cd40ede5e",
+   "bytes": 528112,
+   "liteBytes": 172888,
+   "liteCell": [
+    124,
+    217
+   ],
+   "psnr": 37.2,
+   "shownPsnr": 37.2
+  },
+  "city/base/muro-bloco.webp": {
+   "source": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e",
+   "lite": "e7d2c810d6a643152c31845aedc8f392fbfa0772c4037698c4448eb299daa111",
+   "bytes": 1099174,
+   "liteBytes": 358412,
+   "liteCell": [
+    164,
+    185
+   ],
+   "psnr": 38.9,
+   "shownPsnr": 38.9
   },
   "city/buildings/boteco-esquina-2x1-1.webp": {
    "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",

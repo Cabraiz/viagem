@@ -303,13 +303,17 @@
               "rows": 5,
               "firstFrame": 0,
               "frameCount": 20,
-              "sha256": "20f38dd075054c9859607957a9d1d38a14219956062b04656033f15d2021cac7"
+              "sha256": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728"
             }
           ],
-          "sha256": "20f38dd075054c9859607957a9d1d38a14219956062b04656033f15d2021cac7"
+          "sha256": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728",
+          "liteCell": [
+            238,
+            191
+          ]
         }
       },
-      "sha256": "16f45c68be07f768537928ef6c191ca5596c78a0776d15b06cf04dc6e1d82df7",
+      "sha256": "3e4152845036c0f85b2d5f5bd9024f72104b7d30bd6386241445836f179a0f13",
       "meta": {
         "states": [
           "sentados",
@@ -563,7 +567,11 @@
               "sha256": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e"
             }
           ],
-          "sha256": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e"
+          "sha256": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e",
+          "liteCell": [
+            164,
+            185
+          ]
         }
       },
       "sha256": "1cd30958a994b74765ee93c88b1e402e28ae93ac77e5e8014374d8ccc4f52101",
@@ -620,7 +628,11 @@
               "sha256": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa"
             }
           ],
-          "sha256": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa"
+          "sha256": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",
+          "liteCell": [
+            124,
+            217
+          ]
         }
       },
       "sha256": "8651151a60129976aa321bfdba689e0602056a0422082c945b38cbecb2e1c5b8",

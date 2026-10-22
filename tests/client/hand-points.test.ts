@@ -1,23 +1,78 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import sharp from 'sharp';
+import {skin} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
 import {AIM_ANGLE,DEFAULT_HOLD,WEAPON_HOLD,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
-import {MOVEMENT16_GRID} from '../../src/client/sprites/movement128.ts';
 import {FIRE_LOOK} from '../../src/client/render/arsenal-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
-const viciado=manifest.groups.personagens.pieces['viciado-em-bet'].files as Record<string,{file:string;figure:{left:number;top:number;right:number;bottom:number}}>;
-const m16=Object.entries(viciado).filter(([name])=>/^(walk|attack|idle)16-/.test(name));
+type ArtFile={file:string;figure:{left:number;top:number;right:number;bottom:number};height:number};
+const filesOf=(id:string)=>manifest.groups.personagens.pieces[id].files as Record<string,ArtFile>;
+const viciado=filesOf('viciado-em-bet');
+sharp.cache(false);sharp.concurrency(1);
 
-test('every M16 sheet of the viciado has its hand in each frame, inside the figure', ()=>{
-  assert.equal(m16.length,15,'walk, attack and idle in the 5 drawn directions');
-  for(const [name,f] of m16){
-    const sheet=HAND_POINTS[f.file],motion=name.split('16-')[0] as keyof typeof MOVEMENT16_GRID,[c,r]=MOVEMENT16_GRID[motion];
-    assert.ok(sheet,`${f.file} measured (scripts/hand-points.mjs)`);
-    assert.equal(sheet.points.length,c*r,name);
-    for(const [i,p] of sheet.points.entries()){
-      assert.ok(p[0]>=f.figure.left-1&&p[0]<=f.figure.right+1&&p[1]>=f.figure.top-1&&p[1]<=f.figure.bottom+1,`${name} frame ${i} ${p} in ${JSON.stringify(f.figure)}`);
+/**
+ * Card NEW-20261022-ORQ-arma-na-mao: the classes whose weapon sits in the hand (the user saw the CLT's knife float at its
+ * hip: its R06 sheets had no hand). Every sheet the game shows them (movement128.ts movementPlan: M16 with the run, else
+ * R06 walk128/attack128 and idle8) needs a hand in each frame; a reimported sheet (a new sha12 in its name) fails here
+ * until scripts/hand-points.mjs measures it again.
+ */
+const HELD=['viciado-em-bet','clt-cansado'];
+const shown=(id:string)=>{
+  const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
+  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$/.test(n));
+};
+/** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
+const SCREEN_PER_CELL=45/50;
+
+test('every sheet the game shows the viciado and the CLT has its hand in each frame, inside the figure', ()=>{
+  for(const id of HELD){
+    const sheets=shown(id);
+    assert.equal(sheets.length,id==='clt-cansado'?17:20,`${id}: the sheets it shows`);
+    for(const [name,f] of sheets){
+      const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
+      assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);
+      assert.equal(sheet.points.length,frames,name);
+      for(const [i,p] of sheet.points.entries()){
+        assert.ok(p[0]>=f.figure.left-1&&p[0]<=f.figure.right+1&&p[1]>=f.figure.top-1&&p[1]<=f.figure.bottom+1,`${name} frame ${i} ${p} in ${JSON.stringify(f.figure)}`);
+      }
+    }
+  }
+});
+
+test('the grip lands on the drawn hand: skin within 3 screen px of it in every frame, a hidden hand on the body', async ()=>{
+  const reach=3/SCREEN_PER_CELL,worst:{at:string;d:number}[]=[];
+  for(const id of HELD)for(const [name,f] of shown(id)){
+    const {data,info}=await sharp(fileURLToPath(new URL(`../../public/art/sprites/${f.file}`,import.meta.url))).raw().ensureAlpha().toBuffer({resolveWithObject:true});
+    const cols=info.width/96;
+    for(const [i,p] of HAND_POINTS[f.file].points.entries()){
+      const ox=(i%cols)*96,oy=Math.floor(i/cols)*96,px=(x:number,y:number)=>((oy+y)*info.width+ox+x)*4;
+      if(p[2]===1){
+        // Behind the body: the weapon hangs from the body that hides the hand, never from the air beside it.
+        assert.ok(data[px(Math.round(p[0]),Math.round(p[1]))+3]>200,`${name} frame ${i}: the hidden hand ${p} is on the body`);
+        continue;
+      }
+      let d=Infinity;
+      for(let y=Math.max(0,Math.floor(p[1]-6));y<=Math.min(95,Math.ceil(p[1]+6));y++)for(let x=Math.max(0,Math.floor(p[0]-6));x<=Math.min(95,Math.ceil(p[0]+6));x++){
+        const k=px(x,y);if(skin(data[k],data[k+1],data[k+2],data[k+3]))d=Math.min(d,Math.hypot(x-p[0],y-p[1]));
+      }
+      worst.push({at:`${f.file} #${i}`,d});
+    }
+  }
+  worst.sort((a,b)=>b.d-a.d);
+  assert.ok(worst[0].d<=reach,`grip off the hand (cell px, ≤${reach.toFixed(1)}): ${worst.slice(0,5).map(w=>`${w.at} ${w.d.toFixed(1)}`).join(', ')}`);
+});
+
+test('the hand never jumps between two poses of a dense sheet (no swap to the other hand, the elbow or the face)', ()=>{
+  for(const id of HELD)for(const [name,f] of shown(id)){
+    if(!name.includes('128-'))continue;
+    const pts=HAND_POINTS[f.file].points;
+    for(let i=1;i<pts.length;i++){
+      const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);
+      assert.ok(d<=9,`${name} ${i-1}→${i}: ${d.toFixed(1)} px`);
     }
   }
 });

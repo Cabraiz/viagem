@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
+import {candidates,guided,onBody,skin,trackSheet} from './hand-track.mjs';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const sharp=createRequire(path.join(ROOT,'package.json'))('sharp');
@@ -37,7 +38,27 @@ const BEHIND=new Set(['N','NW','NE']);
  * then finds the near hand: in between its neighbours instead), and at rest it hangs hidden (the rule finds the nose).
  */
 const hidden=(a,b,t)=>[Math.round((a[0]+(b[0]-a[0])*t)*10)/10,Math.round((a[1]+(b[1]-a[1])*t)*10)/10,1];
+/**
+ * The CLT's R06 attacks (card arma-na-mao, 22/10): the fist marked every 8 poses by eye on a 96 px grid (keys; the
+ * weapon hand is the one that throws the punch), snapped to the drawn fist by hand-track.mjs guided(). Its walks are
+ * tracked (the walk E starts off the face); its idle W and E hands, which the rule takes for the nose, set by hand.
+ */
+const CLT_KEYS={
+  S:[[47,48],[47,45.6],[44,41],[43,38],[42,36],[43,46],[45,52],[45,56],[44,58],[44,60],[43,61],[44,58],[43,56],[44,49],[45,47],[45,49]],
+  SW:[[44,42],[44,43],[43,48],[43,47],[40,37],[36,46],[35,44],[34,44],[33,40],[35,44],[36,47],[36,49],[34,41],[41,41],[41,39],[42,41]],
+  W:[[46,43.6],[46,44],[45,46],[44,46],[44,43],[38,39],[36,38],[36,38],[36,38],[36,38],[36,38],[37,38],[36,38],[44,42],[46,41],[46,39]],
+  NW:[[48,41],[48,43.6],[46,43],[46,43],[48,41],[47,40],[46,35],[40,29],[37,25],[38,26],[38,26.4],[39,26],[38,25],[47,38],[48,39],[48,38]],
+  N:[[65.6,41],[65.6,42],[67.6,45],[67,43],[67,40],[67,33],[66.6,22],[66,20],[66.4,21],[69.6,23],[70.4,24],[67.6,28],[68.6,34],[67,32],[67,33],[67.6,34]],
+  NE:[[62.4,37.6],[63.4,37],[64,38],[64,37],[63.6,38],[64,34],[71,32.6],[74,29],[76,27],[77,27],[77,27],[71,29],[72.4,34],[64,34],[63.6,37],[63.6,37]],
+  E:[[63.6,39],[64,40],[65,40.4],[65.6,37.6],[65.6,39],[66,39],[73,39.6],[75,39],[74,37],[73.6,37],[74,38],[73,39],[72.4,35],[67.6,41],[64,40],[64,38]],
+  SE:[[54.4,48],[54,48],[41,47],[43,36],[42,37],[42,39],[60,56],[70,57],[73,49],[74,53],[71.6,53],[70,54],[65,56],[60,48],[57,46],[58,44]],
+};
 const OVERRIDES={
+  ...Object.fromEntries(Object.entries(CLT_KEYS).map(([d,k])=>[`clt-cansado:attack128-${d}`,{keys:Object.fromEntries(k.map((p,i)=>[i*8,p]))}])),
+  'clt-cansado:idle8':{2:[58,59],6:[50,56]},
+  // The walk E swings both hands past the body in turn, each hidden half the stride: the hand in front, pose by pose
+  // (the weapon changes hands where they cross, a few px apart).
+  'clt-cansado:walk128-E':{},
   'viciado-em-bet:walk16-W':{1:hidden([44.7,49.4],[46.6,42.4],.25),2:hidden([44.7,49.4],[46.6,42.4],.5),3:hidden([44.7,49.4],[46.6,42.4],.75),
     8:hidden([43.7,42.5],[42.9,47.9],.5)},
   'viciado-em-bet:idle16-W':Object.fromEntries(Array.from({length:8},(_,i)=>[i,[46,56,1]])),
@@ -48,7 +69,6 @@ const arg=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:undefined;};
 const ids=(arg('--ids')??'viciado-em-bet').split(',');
 const sheetDir=arg('--sheet');
 
-const skin=(r,g,b,a)=>a>40&&r>150&&g>90&&g<205&&b<140&&r-b>70&&r>g;
 
 /** The hand of one pose: outermost skin cluster on `side`, between the chin (the top for a back view: no face) and the knees. */
 export function handOf(px,side,back=false){
@@ -72,16 +92,32 @@ export function handOf(px,side,back=false){
   return [Math.round(sx/n*10)/10,Math.round(sy/n*10)/10];
 }
 
-async function measure(file,dir){
+/** idle8 (R06): one resting pose per direction, in HERO_DIRECTIONS order (sprite-motion.ts). */
+const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
+/** A sheet's poses, each an accessor {alpha(x,y), skin(x,y)} of its 96 px cell. */
+async function posesOf(file){
   const {data,info}=await sharp(file).raw().ensureAlpha().toBuffer({resolveWithObject:true});
-  const cols=info.width/CELL,rows=info.height/CELL,points=[];
-  for(let c=0;c<cols*rows;c++){
-    const ox=(c%cols)*CELL,oy=Math.floor(c/cols)*CELL;
-    const at=(x,y)=>((oy+y)*info.width+ox+x)*4;
-    const px={alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);}};
-    points.push(handOf(px,SIDE[dir],BEHIND.has(dir)));
-  }
-  return points;
+  const cols=info.width/CELL,rows=info.height/CELL;
+  return Array.from({length:cols*rows},(_,c)=>{
+    const ox=(c%cols)*CELL,oy=Math.floor(c/cols)*CELL,at=(x,y)=>((oy+y)*info.width+ox+x)*4;
+    return {alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);}};
+  });
+}
+/**
+ * The hand per pose. M16 (16 poses, the hand moves up to ~10 px a pose): the outermost skin on the weapon side, each pose
+ * on its own (handOf). R06 (128 poses): the hand tracked pose to pose (hand-track.mjs). idle8: per direction, the
+ * candidate outermost on its side, behind the body in the back views.
+ */
+async function measure(file,name,dir,fix){
+  const poses=await posesOf(file);
+  if(name==='idle8')return poses.map((px,i)=>{
+    const d=IDLE8[i],c=candidates(px).sort((a,b)=>SIDE[d]*b.point[0]-SIDE[d]*a.point[0])[0];
+    return c&&(BEHIND.has(d)?[...c.point,1]:c.point);
+  });
+  if(fix.keys)return guided(poses,fix.keys);
+  if(fix.front)return poses.map(px=>candidates(px).sort((a,b)=>SIDE[dir]*b.point[0]-SIDE[dir]*a.point[0])[0]?.point);
+  if(name.includes('128-'))return trackSheet(poses,SIDE[dir],fix.pick)?.points??poses.map(()=>undefined);
+  return poses.map(px=>handOf(px,SIDE[dir],BEHIND.has(dir)));
 }
 
 async function debugSheet(file,points,out){
@@ -103,13 +139,20 @@ const table=fs.existsSync(OUT)?JSON.parse(fs.readFileSync(OUT,'utf8').slice(HEAD
 for(const id of ids){
   const files=manifest.groups.personagens.pieces[id]?.files??{};
   for(const key of Object.keys(table))if(key.startsWith(`${id}.`))delete table[key];
+  const m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
   for(const [name,f] of Object.entries(files)){
-    const m=/^(walk|attack|idle|run)16-(\w+)$/.exec(name);if(!m)continue;
-    const dir=m[2],src=path.join(ROOT,'public/art/sprites',f.file);
-    const points=await measure(src,dir),fix=OVERRIDES[`${id}:${name}`]??{};
-    for(const [i,p] of Object.entries(fix))points[Number(i)]=p;
+    // The sheets the game shows (movement128.ts movementPlan): M16 when the class has it (5 drawn directions), else R06
+    // (walk128/attack128 in the 8 directions, idle8 one pose per direction).
+    const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:walk|attack)128-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
+    if(!m&&!idle8)continue;
+    const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
+    const points=await measure(src,name,dir,fix);
+    for(const [i,p] of Object.entries(fix))if(/^\d+$/.test(i))points[Number(i)]=p;
+    // A hidden hand (marked or filled in) hangs from the body that hides it, not from the air beside it.
+    const poses=await posesOf(src);
+    points.forEach((p,i)=>{if(p?.[2]===1){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}});
     if(points.some(p=>!p))throw new Error(`${f.file}: no hand in frame ${points.findIndex(p=>!p)}`);
-    table[f.file]={side:SIDE[dir],behind:BEHIND.has(dir),points};
+    table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:BEHIND.has(dir),points};
     if(sheetDir){fs.mkdirSync(sheetDir,{recursive:true});await debugSheet(src,points,path.join(sheetDir,`${id}.${name}.png`));}
     console.log(f.file,points.length);
   }

@@ -32,6 +32,10 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.deepEqual(rules('.a{letter-spacing:2px}'),['letter-spacing']);
   assert.deepEqual(rules('.a{letter-spacing:.02em}'),['letter-spacing'],'any positive tracking, not only big ones');
   assert.deepEqual(rules('.a{letter-spacing:-.02em}'),[]);
+  // The one the user ordered (selecionar-espacamento): only that selector in that file.
+  assert.deepEqual(lintCss('src/client/estadio.css','.estadio .estadio-confirmar-texto{letter-spacing:.048em}').map(v=>v.rule),[]);
+  assert.deepEqual(lintCss('src/client/style.css','.estadio .estadio-confirmar-texto{letter-spacing:.048em}').map(v=>v.rule),['letter-spacing']);
+  assert.deepEqual(lintCss('src/client/estadio.css','.estadio .estadio-confirmar{letter-spacing:.048em}').map(v=>v.rule),['letter-spacing']);
   // Colors in any notation, not only hex.
   assert.deepEqual(rules('.a{color:rgb(10 20 30)}'),['color']);
   assert.deepEqual(rules('.a{background:hsl(200 50% 50% / .4)}'),['color']);

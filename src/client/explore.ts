@@ -548,7 +548,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(direction.x||direction.y)ux?.stick();
   };
   stick.addEventListener('pointerdown',event=>{
-    if(event.button!==0||shell.dataset.out==='true'||shell.dataset.controls==='off'||!direction.start(event.pointerId))return;
+    if(event.button!==0||shell.dataset.controls==='off'||!direction.start(event.pointerId))return;
     event.preventDefault();pause(false);stick.setPointerCapture(event.pointerId);
     stick.classList.add('is-dragging');updateStick(event);
   },{signal});
@@ -726,7 +726,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               }
               // Out or watching: the camera follows a teammate; the torcida's bar names who (‹ › or a tap on a portrait
               // changes it) and the top banner keeps "Você tá fora. Volta na revanche." (UX-espectador).
-              spect?.update({phase:run.phase,eliminated:!!net.feed.players.get(net.id)?.eliminated,spectator:!!member?.spectator,watching:controller?.scene.watching()});
+              spect?.update({phase:run.phase,eliminated:!!net.feed.players.get(net.id)?.eliminated,spectator:!!member?.spectator,watching:controller?.scene.watching(),ghost:controller?.scene.ghosting()});
               if(zones&&import.meta.env.DEV&&zoneOverlay)void import('./hud/zones-debug.ts').then(debug=>debug.drawZoneOverlay(zones));
             }
             // Out of the run (bled out) or watching: the thumb controls go quiet; the HUD banner says why.

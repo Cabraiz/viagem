@@ -8,7 +8,7 @@
 import type Phaser from 'phaser';
 import type {StructureView} from '../../contract/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
-import {BARRICADA_CELLS} from '../../rules/towers.ts';
+import {BARRICADA_CELLS} from '../../rules/index.ts';
 import {artPiece} from '../art/manifest.ts';
 import {BASE_ART,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import type {Pt} from './projector.ts';

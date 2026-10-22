@@ -455,7 +455,9 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
   const R=151,near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got-want)<=.03,`${what}: ${got.toFixed(3)} vs ${want.toFixed(3)} (pill heights)`);
   near(rel(starBox.x0),80/R,'star left margin');near(rel(starBox.x1),174/R,'star right edge');
   near(rel(starBox.y0),26/R,'star top');near(rel(starBox.y1),120/R,'star bottom');
-  near(rel(middle+textUp-top),62.5/R,'text centre');
+  // selecionar-espacamento: the user asked the text "levemente" lower than the generated screen, .03 --bh (4 px at 1080p).
+  near(rel(middle+textUp-top),62.5/R+rel(.03),'text centre');
+  assert.ok(rel(middle+textUp-top)>62.5/R+.02,'the text lower than the generated screen');
   near(rel(bh)*191/198,70/R,'burst height (its opaque rows)');near(rel(middle+burstUp-top),64/R,'burst centre');
   near(rel(padR-3*cap),53/R,'burst right margin');
   // Whole inside the pill, on every screen (the ratios hold at any --bh: 1920x1080 … 390x844).
@@ -464,8 +466,16 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
     assert.ok(s(starBox.y0)>=0&&s(starBox.y1)<=s(H),`${screen}: the star inside the pill, top to bottom`);
     assert.ok(s(starBox.x0)>=s(.25*H),`${screen}: air left of the star`);
   }
-  // The text shrinks before it reaches the burst: SELECIONAR is 4.63 em of ink, the cap leaves 5.
-  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));'));
+  // selecionar-espacamento: twice the Lilita One's own gap (~.048 em) between the letters, the indent giving back the
+  // spacing after the R so the line stays centred (±2%).
+  const ls=num(text,/letter-spacing: ([.\d]+)em;/),indent=num(text,/text-indent: ([.\d]+)em;/);
+  assert.ok(ls>=.04&&ls<=.06,'letter-spacing doubles the gap');
+  assert.ok(Math.abs(indent-ls)<1e-9,'indent = spacing: the trailing spacing after the R is given back');
+  // The text shrinks before it reaches the burst: the line is 6.05 em with the spacing (5.57 + 10 × .048), the cap leaves
+  // the .42 em of air it had before.
+  assert.ok(Math.abs(5.57+10*ls-6.05)<.01);
+  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));'));
+  assert.ok(6.5-(5.57+10*ls)>=.4,'air before the burst');
   assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
   assert.ok(btn.includes('container-type: inline-size;'));
 });

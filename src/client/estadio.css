@@ -132,10 +132,15 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   flex: none; width: calc(var(--bh) * .623); height: calc(var(--bh) * .587); overflow: hidden; color: transparent;
   background: url('/art/menu/botao/estrela.webp') 50% 50% / contain no-repeat;
 }
-/* SELECIONAR is 4.63 em wide: on a narrow phone the text shrinks before it runs into the burst (the star never moves). */
+/* selecionar-espacamento (the user, 22/10: "aumente o espaçamento entre as letras em 2x" + "desça ele levemente"): the
+   Lilita One's own gap between the letters is ~.048 em (3.6 px of 75.8 at 1920x1080), so .048 em more doubles it; the
+   indent gives back the spacing Chrome leaves after the R, so the ink stays centred; .03 --bh lower.
+   The line is 6.05 em wide with the spacing (5.57 before): on a narrow phone the text shrinks before it runs into the burst
+   (the star never moves), with the .42 em of air it had before. */
 .estadio .estadio-confirmar-texto {
-  flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.064); rotate: -2deg;
-  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));
+  flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.034); rotate: -2deg;
+  letter-spacing: .048em; text-indent: .048em;
+  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));
 }
 .estadio .estadio-confirmar::after {
   content: ''; flex: none; width: calc(var(--bh) * .301); height: calc(var(--bh) * .445); translate: 0 calc(var(--bh) * -.055);

@@ -112,10 +112,10 @@ const HERO=()=>{
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
 /**
  * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 a main sheet failed its 390×844 mouse on it), dead
- * ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
+ * (the torcida's bar .spect of UX-espectador, or "Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
  */
 const OUT=()=>{
-  if(/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
+  if(document.querySelector('.spect:not([hidden])')||/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
   const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
   return st?.downed||(me&&me.hp<=0)?'caido':'';
 };

@@ -9,7 +9,7 @@ import {Vignette} from './render/vignette.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
-import {FollowCamera,StepLerp,chooseWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -182,6 +182,8 @@ export class IslandScene extends Phaser.Scene {
   private watchId?:string;
   private watchPinned=false;
   private watchPoint?:Point;
+  /** The teammates the spectator may watch (last frame's), for the ‹ › of hud/spectator.ts. */
+  private watchList:Watchable[]=[];
   /** City see-through (cidade-borda-e-quadras): the allies' feet drawn this frame, so walls in front of them fade too. */
   private allyFeet:Point[]=[];
   private position:Point={...SPAWN};
@@ -689,12 +691,13 @@ export class IslandScene extends Phaser.Scene {
   /**
    * Endless world and city: moves the depth origin to the hero when it walked DEPTH_REBASE_UNITS away (screen
    * unchanged). The city spans ±34 000 in raw keys: without it, views 1–3 would sort under the ground layers.
+   * Out and watching (UX-espectador): the origin follows the watched friend, else everything near him sorts under the ground.
    */
   private rebaseDepth(force=false){
     if(!this.field.chunks&&!this.city)return;
-    const o=this.depthOrigin;
-    if(!force&&o&&Math.max(Math.abs(o.x-this.position.x),Math.abs(o.y-this.position.y))<DEPTH_REBASE_UNITS)return;
-    this.depthOrigin={x:Math.round(this.position.x),y:Math.round(this.position.y)};
+    const o=this.depthOrigin,at=this.watchPoint??this.position;
+    if(!force&&o&&Math.max(Math.abs(o.x-at.x),Math.abs(o.y-at.y))<DEPTH_REBASE_UNITS)return;
+    this.depthOrigin={x:Math.round(at.x),y:Math.round(at.y)};
     if(this.actor)this.reproject();
   }
   /** Whether the view may turn now (UX-camera-segue 4: never during a wave; the buttons go grey). */
@@ -1257,8 +1260,8 @@ export class IslandScene extends Phaser.Scene {
   private updateWatch(players:readonly {id:string;x:number;y:number;hp:number;online:boolean;spectator?:boolean}[]){
     const net=this.hooks.net!,me=net.players.get(net.id),mine=net.feed.players.get(net.id);
     const out=net.run?.phase==='combat'&&(!!mine?.eliminated||!!me?.spectator);
-    if(!out){this.watchId=undefined;this.watchPinned=false;this.watchPoint=undefined;return;}
-    const list:Watchable[]=players.filter(p=>p.id!==net.id).map(p=>{const st=net.feed.players.get(p.id);
+    if(!out){this.watchId=undefined;this.watchPinned=false;this.watchPoint=undefined;this.watchList=[];return;}
+    const list:Watchable[]=this.watchList=players.filter(p=>p.id!==net.id).map(p=>{const st=net.feed.players.get(p.id);
       return {id:p.id,x:p.x,y:p.y,standing:p.online&&!p.spectator&&!st?.eliminated&&!st?.downed&&p.hp>0,inRun:!p.spectator&&!st?.eliminated};});
     // A teammate picked by a tap stays while still in the run (even downed: watching the rescue); else the nearest standing.
     const pinned=this.watchPinned?list.find(p=>p.id===this.watchId&&p.inRun):undefined;
@@ -1277,7 +1280,15 @@ export class IslandScene extends Phaser.Scene {
     this.watchId=id;this.watchPinned=true;return true;
   }
   /** Who the camera follows while out or watching (for the HUD's "Assistindo: Tia"). */
-  watching(){const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name}:undefined;}
+  watching(){const id=this.watchId,p=id?this.hooks.net?.players.get(id):undefined;return p?{id:p.id,name:p.name,classId:p.classId,choices:this.watchList.filter(w=>w.inRun).length}:undefined;}
+  /** The spectator's ‹ › (UX-espectador): follow the next (1) or previous (-1) teammate still in the run. */
+  watchStep(dir:1|-1){
+    const id=cycleWatched(this.watchList,this.watchId,dir);
+    if(!id||!this.watchPoint)return false;
+    this.watchId=id;this.watchPinned=true;return true;
+  }
+  /** Screen point (CSS px) of the watched teammate, where the torcida's chinelo lands (hud/spectator.ts). */
+  watchedScreen(){const p=this.watchPoint;return p?this.locate(p).screen:undefined;}
   /** Map labels as fichas at 13 px CSS; place names leave the screen during a round (DSG-cenario-coerencia). */
   private drawLabels(){
     const zoom=this.cameras.main.zoom,phase=this.labelPhase(),sos=this.sosScreens;
@@ -1589,6 +1600,14 @@ export function createIsland(parent:HTMLElement,hooks:SceneHooks){
     width:parent.clientWidth,height:parent.clientHeight,scale:{mode:Phaser.Scale.RESIZE},
     antialias:true,transparent:false,autoFocus:false,
     audio:{noAudio:true},fps:{target:60,limit:60},banner:false,scene:[scene]});
+  // Phone turned: Phaser 3.90 refreshes on screen.orientation 'change' with the old parent size, then reads the new one
+  // inside that refresh, so its own size check never sees a change and the canvas stays stretched (22/10, espectador
+  // 844×390). The parent's real size wins: a mismatch with the game's size refreshes again.
+  const sizes=typeof ResizeObserver==='function'?new ResizeObserver(()=>{
+    const s=game.scale,r=parent.getBoundingClientRect();
+    if(r.width>0&&r.height>0&&(Math.round(r.width)!==Math.round(s.gameSize.width)||Math.round(r.height)!==Math.round(s.gameSize.height))){s.getParentBounds();s.refresh();}
+  }):undefined;
+  sizes?.observe(parent);game.events.once(Phaser.Core.Events.DESTROY,()=>sizes?.disconnect());
   // Dev server only: Vite folds import.meta.env.DEV to false in builds and drops this whole block (probe included).
   // The local acceptance scripts read critters, players and the hero on screen through window.__island.probe().
   if(import.meta.env.DEV){

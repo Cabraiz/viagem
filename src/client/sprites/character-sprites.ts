@@ -2,12 +2,12 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,SPRITE_CLIPS,ATTACK_VISUAL_MS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
+import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -132,7 +132,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -267,6 +267,9 @@ export class CharacterSprites {
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
+    // Each hit restarts the swing from its first frame (ataque-1s), even when the last one was still showing.
+    const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
+    if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
     const seen=movement128Visible(sprite,this.scene);
@@ -286,7 +289,8 @@ export class CharacterSprites {
         // The walk by the ground walked, attack and rest by the clock. A run with a phase table picks its pose by the
         // ground and shifts the sprite back by the planted foot's travel within the pose: the foot stays on its spot.
         const run=motion==='walk'&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
-        const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+        const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
+          motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -302,7 +306,7 @@ export class CharacterSprites {
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction};
-        state.stream=detailed;state.shown=motion;state.side=direction;cache.bind(sprite,detailed.key);return;
+        state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.
       if(cache.status(detailed.key)!=='failed'){
@@ -339,15 +343,18 @@ export class CharacterSprites {
     if(anims.facing){
       // Remote allies come here with their interpolated positions, so their facing follows the interpolated velocity.
       // A turn in the middle of a clip keeps its progress: the walk cycle or the swing goes on in the new drawing.
-      const turning=state.shown===motion&&state.side!==side;
+      const turning=state.shown===motion&&state.side!==side&&!newSwing;
       const progress=turning?sprite.anims.getProgress():0;
-      sprite.play(anims.facing[motion][facing],true);
+      sprite.play(anims.facing[motion][facing],!newSwing);
       if(turning)sprite.anims.setProgress(progress);
       state.shown=motion;state.side=side;
     }else{
       sprite.setFlipX(legacyFlip(sprite.flipX,dx,dy,view));
-      sprite.play(anims.single![motion],true);
+      sprite.play(anims.single![motion],!newSwing);
     }
+    // A swing squeezed into a faster weapon's period plays its clip that much faster (ataque-1s).
+    sprite.anims.timeScale=motion==='attack'?ATTACK_VISUAL_MS/swing.ms:1;
+    if(motion==='attack')state.swingShown=swing.start;
     // The legacy walk too follows the ground walked: its 6 frames by the cycle, the clip held (passo-sem-deslizar).
     if(motion==='walk'&&alive){
       sprite.anims.pause();sprite.anims.setProgress(cycleFrame(state.cycles,SPRITE_CLIPS.walk.frames.length)/(SPRITE_CLIPS.walk.frames.length-1));

@@ -25,11 +25,22 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
 const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run'];
 const exists=file=>access(file).then(()=>true,()=>false);
 /**
+ * A run alone (card corrida-clt): an R06 class (walk128/attack128/idle8 in the manifest) with no walk/attack/idle M16
+ * folder but a run/ one. Its run16 is drawn at the idle8's scale (the rest stays R06 and is the size reference).
+ */
+async function runOnly(input,id,old){
+  const any=async m=>(await Promise.all(['S','N','W','E','NW','NE','SW','SE'].map(d=>exists(movement16Source(input,id,m,d))))).some(Boolean);
+  if(!await any('run'))return false;
+  for(const m of MOTIONS)if(await any(m))return false;
+  assert.ok(old?.files?.idle8?.revision===6&&Number.isFinite(old.files.idle8.height),`${id}: a run alone needs the class's R06 idle8 (its size reference)`);
+  return true;
+}
+/**
  * The 5 directions a class draws: S, N and, for each mirror pair, the side delivered in all three motions (the default
  * W/NW/SW when neither is complete, so the validation names what is missing). Both sides delivered: an error, one per pair.
  */
-export async function movement16Drawn(input,id){
-  const complete=async d=>(await Promise.all(MOTIONS.map(m=>exists(movement16Source(input,id,m,d))))).every(Boolean);
+export async function movement16Drawn(input,id,motions=MOTIONS){
+  const complete=async d=>(await Promise.all(motions.map(m=>exists(movement16Source(input,id,m,d))))).every(Boolean);
   const drawn=['S','N'];
   for(const [a,b] of MOVEMENT16_META.pairs){
     const [hasA,hasB]=[await complete(a),await complete(b)];
@@ -149,21 +160,22 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false}={}){
     const old=previous.pieces[id];
     if(old)assert.equal(old.kind,'dir8',`${id}: existing piece kind`);
     else assert.equal(index.groups.personagens.pieces[id],undefined,`${id}: index/group disagreement`);
-    const clips=[],drawn=await movement16Drawn(input,id);
+    const only=await runOnly(input,id,old),clips=[],drawn=await movement16Drawn(input,id,only?OPTIONAL_MOTIONS:MOTIONS);
     const optional=[];
-    for(const motion of OPTIONAL_MOTIONS){
+    for(const motion of only?[]:OPTIONAL_MOTIONS){
       const has=await Promise.all(drawn.map(d=>exists(movement16Source(input,id,motion,d))));
       assert.ok(has.every(Boolean)||!has.some(Boolean),`${id}: ${motion} needs all of ${drawn.join(' ')} or none`);
       if(has[0])optional.push(motion);
     }
-    for(const motion of [...MOTIONS,...optional])for(const direction of drawn){
+    for(const motion of only?OPTIONAL_MOTIONS:[...MOTIONS,...optional])for(const direction of drawn){
       const source=movement16Source(input,id,motion,direction),phase=motion==='run'?await readPhase(source.replace(/\.png$/,'.phase.json'),`${id}/${motion}/${direction}`):undefined;
       clips.push({...await inspectMovement16(source,motion,`${id}/${motion}/${direction}`),motion,direction,...(phase?{phase}:{})});
     }
-    // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets.
-    const height=clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
+    // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets; a run alone
+    // keeps the R06 rest's (idle8 height, 96 px cells), the run drawn at that scale.
+    const height=only?old.files.idle8.height*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
-    records.push({id,height,bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
+    records.push({id,height,runOnly:only,bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
   }
   if(write){
     assert.deepEqual(await readManifest(manifestFile),previous,'hero manifest changed during M16 validation');
@@ -217,5 +229,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   sharp.cache(false);sharp.concurrency(1);
   const {report,...options}=parseMovement16Args(process.argv.slice(2)),result=await importMovement16(options);
   if(report)await writeAtomic(path.resolve(report),JSON.stringify(result,null,2)+'\n');
-  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')})`).join(', ')}: 16 walk+attack poses and 8 rest poses x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
+  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')}${c.runOnly?'; run only, on its R06':''})`).join(', ')}: ${result.characters.every(c=>c.runOnly)?'16 run poses':'16 walk+attack poses and 8 rest poses'} x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
 }

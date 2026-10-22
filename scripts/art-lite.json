@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2062,
-  "bytes": 1540306638,
-  "liteBytes": 498173362,
+  "files": 2067,
+  "bytes": 1540536856,
+  "liteBytes": 498310858,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17712,6 +17712,46 @@
    "liteBytes": 13936,
    "psnr": 42.1,
    "shownPsnr": 47.4
+  },
+  "sprites/clt-cansado.run16-n.f2d2ddfe25ce.webp": {
+   "source": "f2d2ddfe25cec931da0da2c5f7d5a499f278f61ddd145f2f5e82f0c9697d9ec5",
+   "lite": "0b8dd0b8be20892223aa1cbd92515200f653950a247a34d833e19e9e132438a9",
+   "bytes": 42604,
+   "liteBytes": 25986,
+   "psnr": 43.4,
+   "shownPsnr": 44.2
+  },
+  "sprites/clt-cansado.run16-nw.c183faaf9215.webp": {
+   "source": "c183faaf921567a9f2ceb7399d018ec128eb0f5a350fff2870491612aa058753",
+   "lite": "0f2bc9089f334a1589a033b996759c4eecfa2038e419f1556edcfbe9e4b7e5f7",
+   "bytes": 49574,
+   "liteBytes": 28902,
+   "psnr": 42.6,
+   "shownPsnr": 44.8
+  },
+  "sprites/clt-cansado.run16-s.58ed12354f0b.webp": {
+   "source": "58ed12354f0b841328fc0fedb34616a7517d84486dbb88422d676c727d099a32",
+   "lite": "d536ada3a640113e8914f58fe70d444d8af3a50c0041ed50e699d1471094b384",
+   "bytes": 44038,
+   "liteBytes": 25708,
+   "psnr": 41.2,
+   "shownPsnr": 45.1
+  },
+  "sprites/clt-cansado.run16-se.c437fe145630.webp": {
+   "source": "c437fe145630526c394a12655e2ac3bcd9ee512eef5d12a8e70566f8a87f7988",
+   "lite": "50ee34f71a859828faa81d46e1c47756df8e4c441d8f95bc7c0e39b43101ee56",
+   "bytes": 47964,
+   "liteBytes": 28116,
+   "psnr": 41.3,
+   "shownPsnr": 44.5
+  },
+  "sprites/clt-cansado.run16-w.03aed4cd246f.webp": {
+   "source": "03aed4cd246f2eb0ae1f936a38ef85eb8a354217bb3c48716476fed344bc5528",
+   "lite": "0ddfcd6013b33ba3378e16952e833e3184b8299f2523400c3f9d0184ca7698db",
+   "bytes": 46038,
+   "liteBytes": 28784,
+   "psnr": 41.9,
+   "shownPsnr": 44.4
   },
   "sprites/clt-cansado.walk128-e.9af9af8efb4f.webp": {
    "source": "9af9af8efb4f1fd0b1ed17ee24b2f032b21f20ea233a1be0b61b3d6da3032682",

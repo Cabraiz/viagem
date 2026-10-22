@@ -171,7 +171,8 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
      viciado's sign (the biggest, 2436x1698) tall and 13% wider than it, so the row and the button never move when the
      hero changes. Each letreiro picture fills it (contain, bottom left): the viciado by its height, the CLT (2436x1368)
      grows by its width to 91% of the box's height (the viciado's area +3%). An HTML title and its pill sit in its middle. */
-  .estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); justify-content: flex-start; padding-top: max(5.5vh, env(safe-area-inset-top)); --lw: min(33.2vw, 56.4vh); }
+  .estadio-escolha { left: calc(max(3vw, 16px, env(safe-area-inset-left)) + 2vw); }
+  .estadio-escolha { justify-content: flex-start; padding-top: max(5.5vh, env(safe-area-inset-top)); --lw: min(33.2vw, 56.4vh); }
   .estadio-caixa-titulo {
     display: flex; flex: none; flex-direction: column; justify-content: center; align-items: flex-start; gap: inherit;
     width: calc(var(--lw) * 1.13); height: calc(var(--lw) * 1698 / 2436);

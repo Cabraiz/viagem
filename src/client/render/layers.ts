@@ -137,7 +137,7 @@ interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:bool
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number;
   /** Imported sheet (horde-art.ts projectileLook): frames > 1 loop at fps from `born`; `frame` is the one shown. */
   born:number;frames:number;fps:number;frame:number;
-  /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5), the shadow's too. */
+  /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5); the shadow keeps the hit circle's. */
   draw:number}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
@@ -992,7 +992,7 @@ export class HordeRenderer{
     const q=this.project(this.at),depth=this.depth(this.at);
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
     a.image.setPosition(q.x,q.y-PROJECTILE_LIFT*this.body).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
-    a.shadow.setPosition(q.x,q.y).setScale(a.draw*a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
+    a.shadow.setPosition(q.x,q.y).setScale(a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
     // An imported sheet with several frames loops at its fps (art v2); one frame (today) never touches the frame.
     if(a.frames>1){const f=projectileFrame(a,this.now-a.born);if(f!==a.frame){a.frame=f;a.image.setFrame(f);}}
   };

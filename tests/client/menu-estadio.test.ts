@@ -198,7 +198,11 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
 
 test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plateau moved with him under his feet",async()=>{
   const clt=cutoutOf('clt-cansado')!,vic=cutoutOf('viciado-em-bet')!,move=moveOf(clt);
-  assert.deepEqual(clt.lugar,{de:'viciado-em-bet',k:1.12,dy:26});
+  // clt-direita-15-maior (the user, 22/10: "e ponha ele mais para a direita e 15% maior", then lower, >= 8% over his
+  // hair): k 1.12 x ~1.11 (the most the room lets, estadio-folga-topo below), his face 100 px right of the viciado's and
+  // 33 px lower; the viciado's own rules unchanged.
+  assert.deepEqual(clt.lugar,{de:'viciado-em-bet',k:1.248,dx:100,dy:33});
+  assert.ok(clt.lugar!.k/1.12>=1.1&&clt.lugar!.k/1.12<=1.15,'10-15% bigger than the clt-mesmo-lugar one');
   assert.equal(moveOf(vic),SEM_MOVE,'the viciado stays where his picture has him');
   // The faces (eyes to chin, cheek to cheek) are faces: skin-and-features boxes inside each 1x file, not hair or cap.
   for(const cut of [vic,clt]){
@@ -206,31 +210,36 @@ test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plat
     assert.ok(r.x>cut.x&&r.y>cut.y&&r.x+r.w<cut.x+cut.w&&r.y+r.h<cut.y+cut.h*.45,`${cut.files[0][1]}: face in the top of the box`);
     assert.ok(r.w>=120&&r.w<=220&&r.h>=110&&r.h<=200);
   }
-  // On the stage's picture his face's middle is the viciado's, dy lower; scaled by k.
+  // On the stage's picture his face's middle is the viciado's, dx right and dy lower; scaled by k.
   const there=rostoNoPalco(vic),mine=rostoNoPalco(clt);
-  assert.ok(Math.abs(mine.x+mine.w/2-(there.x+there.w/2))<1e-9&&Math.abs(mine.y+mine.h/2-(there.y+there.h/2)-26)<1e-9);
-  // Every window (PC: the cutouts; the phone keeps the dance, both on the same spot of the bar): the faces' middles
-  // within 3% of the width and of the height, the faces as tall within 10%, his hair as far under the top as the cap.
+  assert.ok(Math.abs(mine.x+mine.w/2-(there.x+there.w/2)-100)<1e-9&&Math.abs(mine.y+mine.h/2-(there.y+there.h/2)-33)<1e-9);
+  // Every window (PC: the cutouts; the phone keeps the dance, both on the same spot of the bar): his face's middle
+  // where the viciado's is plus his own offset (dx, dy through the stadium's framing; dx 4-6% of the width) within 3% of
+  // the width and of the height, his face 5-20% taller (k), his whole box in the window, FEET_MARGIN under it.
+  // Windows wider than the bleed (21:9) shrink him around his feet (fitCutout) to keep his hair on screen: within 5%.
   for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1280,1024],[2560,1080],[1024,768],[3440,1440]]){
     const box={w,h},on=(cut:typeof vic)=>{
       const fit=fitCutout(box,placeCutout(box,STADIUM.bleed,cut)!),k=fit.w/cut.w,r=cut.rosto;
       return {cx:fit.x+(r.x-cut.x+r.w/2)*k,cy:fit.y+(r.y-cut.y+r.h/2)*k,h:r.h*k,top:fit.y,bottom:fit.y+fit.h};
     };
-    const a=on(vic),b=on(clt);
-    assert.ok(Math.abs(a.cx-b.cx)<=.03*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
-    assert.ok(Math.abs(a.cy-b.cy)<=.03*h,`${w}x${h}: faces ${a.cy.toFixed(0)} × ${b.cy.toFixed(0)} down`);
-    assert.ok(b.h/a.h>=.9&&b.h/a.h<=1.1,`${w}x${h}: faces as big`);
-    assert.ok(b.top>=a.top-1.5&&b.bottom<=h,`${w}x${h}: CLT whole, his hair no closer to the top than the viciado's cap`);
+    const a=on(vic),b=on(clt),{s:k}=frameArt(box,STADIUM.bleed),tol=w/h>2.2?.05:.03;
+    if(w/h<=2.2) assert.ok(100*k/w>=.04&&100*k/w<=.06,`${w}x${h}: ${(100*k/w*100).toFixed(1)}% to the right`);
+    assert.ok(Math.abs(b.cx-a.cx-100*k)<=tol*w,`${w}x${h}: faces ${a.cx.toFixed(0)} × ${b.cx.toFixed(0)} across`);
+    assert.ok(Math.abs(b.cy-a.cy-33*k)<=tol*h,`${w}x${h}: faces ${a.cy.toFixed(0)} × ${b.cy.toFixed(0)} down`);
+    assert.ok(b.h/a.h>=1.05&&b.h/a.h<=1.15,`${w}x${h}: his face ${(b.h/a.h).toFixed(2)}x the viciado's`);
+    assert.ok(b.top>=Math.min(.06*h,cutoutMargin(h))-1e-9&&b.bottom<=h-FEET_MARGIN+1e-9,`${w}x${h}: CLT whole, ${(h-b.bottom).toFixed(1)} px under him`);
     // His background where his move puts it, always covering the box; he stands in it exactly where his scene had him.
     const {s,ox,oy}=frameMoved(box,STADIUM.bleed,move),f=STADIUM.bleed.focal,e=1e-6;
     assert.ok(ox<=e&&oy<=e&&ox+STADIUM.bleed.w*s>=w-e&&oy+STADIUM.bleed.h*s>=h-e,`${w}x${h}: his background covers the box`);
     const placed=placeCutout(box,STADIUM.bleed,clt)!;
     assert.ok(Math.abs(placed.x-(ox+(f.x+clt.x)*s))<e&&Math.abs(placed.y+placed.h-(oy+(f.y+clt.y+clt.h)*s))<e,`${w}x${h}: feet on his plateau`);
   }
-  // 1920x1080: the stadium's framing moved by k, his box 12% bigger, right of where his scene had him (whole-picture px
-  // 950..970, through the stadium's framing: estadio-folga-topo stands it further back).
+  // 1920x1080: the stadium's framing moved by k, his box 24.8% bigger than his scene's, right of where it had him
+  // (whole-picture px 1015..1030, through the stadium's framing: estadio-folga-topo stands it further back), his
+  // briefcase 4-6% of the window from the right edge.
   const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!,stadium=frameArt({w:1920,h:1080},STADIUM.bleed),px=(X:number)=>stadium.ox+(STADIUM.bleed.focal!.x+X)*stadium.s;
-  assert.ok(Math.abs(at.w-635*1.12*stadium.s)<1e-9&&at.x>px(950)&&at.x<px(970),JSON.stringify(at));
+  assert.ok(Math.abs(at.w-635*1.248*stadium.s)<1e-9&&at.x>px(1015)&&at.x<px(1030),JSON.stringify(at));
+  assert.ok(1920-at.x-at.w>=.04*1920&&1920-at.x-at.w<=.06*1920,`${(1920-at.x-at.w).toFixed(0)} px to the right edge`);
   // Wired: the stage's background framed with the shown picture's move, set together with the picture.
   assert.match(main,/frame=art\.focal&&box\.w>0&&box\.h>0\?frameMoved\(box,art,stageMove\):undefined;/);
   assert.match(main,/const swap=\(image:string,m:Move\)=>\{stage\.style\.backgroundImage=image;stageMove=m;frameStage\(\{w:stage\.clientWidth,h:stage\.clientHeight\}\);\};/);
@@ -313,7 +322,9 @@ test('estadio-folga-topo: on the PC every hero has >= 6% of the window over his 
     const box={w,h};
     for(const id of Object.keys(RECORTES)){
       const placed=placeCutout(box,art,cutoutOf(id)!)!,fit=fitCutout(box,placed);
-      assert.ok(fit.y>=h*.06-e,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
+      // clt-direita-15-maior (the user, 22/10: "não curto ele ficar colado na parte de cima"): the CLT >= 8%.
+      const room=id==='clt-cansado'?.08:.06;
+      assert.ok(fit.y>=h*room-e,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
       assert.ok((['x','y','w','h'] as const).every(k=>Math.abs(fit[k]-placed[k])<1e-6),`${id} ${w}x${h}: not lifted, not shrunk (his feet where the framing puts them)`);
     }
     // The lowest sole at least FEET_MARGIN over the bottom, exactly that from 16:9 up (narrower: the bleed's floor under

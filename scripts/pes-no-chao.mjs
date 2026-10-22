@@ -16,7 +16,8 @@
 //     bottom (8, 1 for rounding: the ORQ, 21/10, the back sneaker touched the edge at 1920x1000); his box inside it.
 //   - Same place (NEW-20261021-ORQ-clt-mesmo-lugar, the user: "os rostos deles e corpo deles estejam meio que quase no
 //     mesmo lugar"): every hero's face (stadium.ts `rosto`, through his drawn <img>) within MESMO_LUGAR of the width and
-//     of the height from the first hero's, at each window. The phone held upright (PHONE: no cutout, the dance): the
+//     of the height from the first hero's, at each window, plus the offset stadium.ts gives him (clt-direita-15-maior:
+//     the CLT bigger and to the right, `lugar.dx`; tests/client/menu-estadio.test.ts bounds that offset). The phone held upright (PHONE: no cutout, the dance): the
 //     dancer's box the same for every one of them.
 // Out: <out>/pes.json ({ok, fails, rows}) and <out>/pes-<hero>-<w>x<h>.png.
 // node scripts/pes-no-chao.mjs [outDir=folha-out] [--dist dist] [--url http://127.0.0.1:5173/]: run from the checkout
@@ -120,7 +121,7 @@ const quantile=(v,q)=>{const s=[...v].sort((a,b)=>a-b);return s.length?s[Math.mi
 
 async function main(){
   mkdirSync(outDir,{recursive:true});
-  const {frameMoved,moveOf,SEM_MOVE,STADIUM,RECORTES,FEET_MARGIN,muretaTopo}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
+  const {frameMoved,moveOf,SEM_MOVE,STADIUM,RECORTES,FEET_MARGIN,muretaTopo,placeCutout,fitCutout}=await import(pathToFileURL(resolve('src/client/ui/stadium.ts')).href);
   for(const [id,cut] of Object.entries(RECORTES))
     if(!(cut.frente?id in NA_MURETA:id in PES))throw new Error(`${id}: um herói recortado sem ${cut.frente?'NA_MURETA':'PES'} em scripts/pes-no-chao.mjs`);
   const {chromium}=await playwright();
@@ -172,7 +173,10 @@ async function main(){
           if(Math.abs(toY(1000)-frameY)>ALINHA)why.push(`fundo desenhado fora do frameMoved (${toY(1000).toFixed(1)} × ${frameY.toFixed(1)})`);
           // His face through the <img> as drawn (its box is his box of the whole picture).
           const r=cut.rosto,iw=(drawn.img.r-drawn.img.l)/cut.w;
-          rostos.push({hero,cx:drawn.img.l-drawn.left+(r.x-cut.x+r.w/2)*iw,cy:drawn.img.t-drawn.top+(r.y-cut.y+r.h/2)*iw,h:r.h*iw});
+          // Where stadium.ts puts that face (the offset of a hero in another's place is his own, lugar).
+          const fit=fitCutout(drawn.box,placeCutout(drawn.box,art,cut)),fk=fit.w/cut.w;
+          rostos.push({hero,cx:drawn.img.l-drawn.left+(r.x-cut.x+r.w/2)*iw,cy:drawn.img.t-drawn.top+(r.y-cut.y+r.h/2)*iw,h:r.h*iw,
+            ex:fit.x+(r.x-cut.x+r.w/2)*fk,ey:fit.y+(r.y-cut.y+r.h/2)*fk});
           if(spec){
             // The layer's edge where the background draws the bar.
             const barTop=x=>toY(muretaTopo(fromX(x+.5)));
@@ -210,7 +214,7 @@ async function main(){
         }
         const [ref,...others]=rostos;
         for(const o of others){
-          const dx=(o.cx-ref.cx)/w,dy=(o.cy-ref.cy)/h,row=rows.find(r=>r.hero===o.hero&&r.w===w&&r.h===h);
+          const dx=(o.cx-ref.cx-(o.ex-ref.ex))/w,dy=(o.cy-ref.cy-(o.ey-ref.ey))/h,row=rows.find(r=>r.hero===o.hero&&r.w===w&&r.h===h);
           row.rosto={dx:+(dx*100).toFixed(2),dy:+(dy*100).toFixed(2),tamanho:+(o.h/ref.h).toFixed(2)};
           if(Math.abs(dx)>MESMO_LUGAR||Math.abs(dy)>MESMO_LUGAR)
             fails.push(`${o.hero} ${w}x${h}: rosto fora do lugar do ${ref.hero} (${(dx*100).toFixed(1)}% da largura, ${(dy*100).toFixed(1)}% da altura; máximo ${MESMO_LUGAR*100}%)`);

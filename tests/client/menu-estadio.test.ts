@@ -181,9 +181,10 @@ test("tela-clt-pose2: the CLT cut out of his scene, on his own background withou
     assert.deepEqual([meta.width,meta.height],[STADIUM.bleed.w,STADIUM.bleed.h],file);
   }
   assert.equal(cutoutOf('viciado-em-bet')!.fundo,undefined,'the viciado keeps the stadium');
-  // 1920x1080: where his scene had him, raised 5 px with the background (heroi-esrgan-no-ar: FEET_MARGIN under the
+  // 1920x1080: where his scene had him, framed like the stadium (estadio-folga-topo: further back), raised with the background (heroi-esrgan-no-ar: FEET_MARGIN under the
   // viciado's sneaker); every window keeps him whole (contain) with his feet on the plateau.
-  assert.deepEqual(placeCutout({w:1920,h:1080},STADIUM.bleed,cut),{x:792,y:64,w:635,h:865});
+  const placed1080=placeCutout({w:1920,h:1080},STADIUM.bleed,cut)!,{s,ox,oy}=frameArt({w:1920,h:1080},STADIUM.bleed);
+  assert.deepEqual(placed1080,{x:ox+(320+792)*s,y:oy+(313+73)*s,w:635*s,h:865*s});
   for(const [w,h] of [[1920,1080],[1920,950],[1590,903],[1366,768],[1280,720],[1024,768],[2560,1080]]){
     const box={w,h},placed=placeCutout(box,STADIUM.bleed,cut)!,fit=fitCutout(box,placed),m=cutoutMargin(h),e=1e-9;
     assert.ok(fit.y>=Math.min(m,placed.y)-e&&fit.y+fit.h<=h+e&&fit.x>=-e&&fit.x+fit.w<=w+e,`${w}x${h}: CLT whole`);
@@ -245,10 +246,12 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
     const bar=placeOnBar(box,art,w*.7)!;
     assert.ok(bar.y>0&&bar.y<h,`${w}x${h}: bar ${bar.y}`);
   }
-  // 1920x1080: the approved screen (scale 1, the bleed outside), raised 9 px: the back sneaker (4 px lower, desce) 8 px
-  // above the bottom.
-  assert.deepEqual(frameArt({w:1920,h:1080},art),{s:1,ox:-320,oy:-322});
-  assert.deepEqual(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!),{x:953,y:14,w:793,h:1058});
+  // 1920x1080: the approved screen plus 10% of the bleed above and to the left (estadio-folga-topo: scale 1/1.1), its right
+  // edge on the window's, raised 9 px: the back sneaker (4 px lower, desce) 8 px above the bottom.
+  const round=(o:Record<string,number>)=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,Math.round(v*1000)/1000]));
+  assert.deepEqual(round(frameArt({w:1920,h:1080},art)),{s:.909,ox:-116.364,oy:-195.273});
+  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1040.909,y:110.182,w:720.909,h:961.818});
+  assert.deepEqual(art.view,{x:f.x-f.w*.1,y:f.y-f.h*.1,w:f.w*1.1,h:f.h*1.1},'view: 10% more above and to the left');
   assert.equal(FEET_MARGIN,8);
   assert.equal(art.feet,Math.max(...Object.values(RECORTES).map(c=>c.y+(c.desce??0)+c.h)),'feet: the lowest sole of every hero drawn in place');
   // The plain files keep `cover` (the phone).
@@ -259,6 +262,23 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
+});
+
+test('estadio-folga-topo: on the PC every hero has >= 6% of the window over his head, his feet still on the bar',()=>{
+  // The user (22/10, 1920x946): the viciado's cap ~15 px under the top. The scene now stands ~9% further back (view).
+  const art=STADIUM.bleed,e=1e-9;
+  for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1600,900]]){
+    const box={w,h};
+    for(const id of Object.keys(RECORTES)){
+      const placed=placeCutout(box,art,cutoutOf(id)!)!,fit=fitCutout(box,placed);
+      assert.ok(fit.y>=h*.06-e,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
+      assert.ok((['x','y','w','h'] as const).every(k=>Math.abs(fit[k]-placed[k])<1e-6),`${id} ${w}x${h}: not lifted, not shrunk (his feet where the framing puts them)`);
+    }
+    // The lowest sole at least FEET_MARGIN over the bottom, exactly that from 16:9 up (narrower: the bleed's floor under
+    // the bar shows, as before); the bar's layer and scripts/pes-no-chao.mjs measure the rest.
+    const {s,oy}=frameArt(box,art),sole=oy+(art.focal!.y+art.feet!)*s;
+    assert.ok(sole<=h-FEET_MARGIN+1e-6&&(w/h<16/9-.01||sole>=h-FEET_MARGIN-1e-6),`${w}x${h}: lowest sole ${(h-sole).toFixed(1)} px over the bottom`);
+  }
 });
 
 test('menu-pes-nitidez + heroi-esrgan-no-ar: the hero file by the shown width x DPR (2/3, 1x, 4/3, 2x), q95 files',async()=>{

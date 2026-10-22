@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -388,6 +388,7 @@ export class HordeRenderer{
     this.enemies.begin();this.fresh.length=0;this.woken.length=0;
     for(let i=0;i<view.enemies.length;i++)if(view.enemies[i].hp>0)this.syncEnemy(view.enemies[i]);
     this.viewTelegraphs=view.telegraphs; // a 'telegraph' event's zone, for the action cue (art v2)
+    this.playerIds.length=0;for(const p of view.players)if(!p.spectator&&!p.eliminated&&!p.downed)this.playerIds.push(p.id);
     this.arsenal.push(view);
     for(let i=0;i<view.events.length;i++){
       const event=view.events[i];
@@ -419,6 +420,7 @@ export class HordeRenderer{
     this.nowTick=this.viewTick+Math.min(since,2);
     this.ui=Math.max(.5,Math.min(3,this.options.uiScale?.()??1));
     this.body=this.options.actorScale?.()??1;this.enemyBody=this.body*ENEMY_DRAW_SCALE;
+    this.playerCount=0;for(const id of this.playerIds){const p=this.options.locate?.(id);if(p)this.playerAt[this.playerCount++]=p;}
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
@@ -635,7 +637,15 @@ export class HordeRenderer{
       this.enemies.forEach(this.nearVisit);return this.nearFound;
     },
     telegraph:id=>{const t=this.viewTelegraphs;for(let i=0;i<t.length;i++)if(t[i].id===id)return t[i];return undefined;},
+    player:id=>ENEMY_WALK.faceTarget?this.options.locate?.(id):undefined,
   };
+  /** The players standing in the run (last push), and where they are this frame: an enemy near one faces it. */
+  private playerIds:string[]=[];private playerAt:Pt[]=[];private playerCount=0;
+  private nearestPlayer(x:number,y:number):Pt|undefined{
+    let best:Pt|undefined,bd=Infinity;
+    for(let i=0;i<this.playerCount;i++){const p=this.playerAt[i],d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p;}}
+    return best;
+  }
   private playCue(cue:ActionCue){const a=this.enemies.get(cue.enemy);if(a)playEnemyAction(a.image,a.art,cue.action,this.now);}
   private spawnNumber(target:string,x:number,y:number,lift:number,amount:number,crit:boolean,hostile:boolean,self:boolean,priority:boolean,eventId:number){
     // Hits on the same target within DAMAGE_MERGE_MS add up into the number already flying.
@@ -768,7 +778,7 @@ export class HordeRenderer{
     if(flashing!==a.flashing||!a.lit||(!flashing&&a.litFlip!==a.flip)){a.flashing=flashing;a.lit=true;a.litFlip=a.flip;if(flashing)a.image.setTintFill(0xffffff);else sunlit(a.image,a.tint);}
     // Imported art v2 (art/horde-art.ts), after the flash so the elite layer copies it; no art = the sprite above stays.
     const outlines=this.options.cityOutlines;
-    const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines);
+    const shown=applyEnemyArt(a.image,a,a.moving,a.nx-a.px,a.ny-a.py,now,this.options.projector.view,body,outlines,this.nearestPlayer(a.x,a.y));
     const tint=shown?undefined:a.accent;
     if(tint!==a.tint){a.tint=tint;if(!flashing){a.litFlip=a.flip;sunlit(a.image,tint);}}
     if(!shown&&outlines){

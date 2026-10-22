@@ -16,7 +16,7 @@ import type {SimContext} from '../../src/sim/context.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {createStonewardsSystem} from '../../src/sim/stonewards/system.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,TRALHA_GROUP_CELLS,TRALHA_GROUPS,UNO_BUILD_CELLS} from '../../src/rules/index.ts';
+import {CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,TRALHA_GROUP_CELLS,TRALHA_GROUPS,UNO_BUILD_CELLS,pieceCells} from '../../src/rules/index.ts';
 import {FREE_CELL,pieceRectOf} from '../../src/sim/towers/free-build.ts';
 import {TRALHA_OWNER} from '../../src/sim/towers/tralha.ts';
 
@@ -49,6 +49,13 @@ test('the map\'s barricadas: laid once, rows away from the car, blockers that ne
   assert.ok(laid.length>=TRALHA_GROUPS,`laid ${laid.length}`);
   assert.ok(laid.length<=TRALHA_GROUPS*TRALHA_GROUP_CELLS);
   assert.equal(g.terrain.blockers().length,laid.length,'one blocker each');
+  // barricada-2x: 2×2 squares, the ones of a row side by side (2 cells apart, never overlapping).
+  for(const p of laid)assert.deepEqual(pieceCells(p.kind),[2,2]);
+  for(let i=1;i<laid.length;i++){
+    const a=laid[i-1].cell,b=laid[i].cell,d=Math.abs(a.c-b.c)+Math.abs(a.r-b.r);
+    assert.ok(d>=2,`${laid[i-1].id} and ${laid[i].id} overlap`);
+  }
+  assert.ok(laid.some((p,i)=>i>0&&Math.abs(p.cell.c-laid[i-1].cell.c)+Math.abs(p.cell.r-laid[i-1].cell.r)===2),'a row of side-by-side squares');
   for(const p of laid){
     const r=pieceRectOf(p),gap=Math.hypot(Math.max(r.x-CAR.x,0,CAR.x-(r.x+r.w)),Math.max(r.y-CAR.y,0,CAR.y-(r.y+r.h)));
     assert.ok(gap>=CAR_R+UNO_BUILD_CELLS*FREE_CELL,`${p.id} ${gap.toFixed(2)} u from the car`);

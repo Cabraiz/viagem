@@ -8,16 +8,20 @@
 import type Phaser from 'phaser';
 import type {StructureView} from '../../contract/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
+import {BARRICADA_CELLS} from '../../rules/index.ts';
 import {artPiece} from '../art/manifest.ts';
 import {BASE_ART,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
 import type {Pt} from './projector.ts';
 import {cellKey,hashCell,muralhaColumn,muralhaEstado,muralhaHalf,muralhaPlan,muralhaScale,type MuralhaAxis,type MuralhaCounts} from './muralha-rules.ts';
 
-/** The two sheets a wall draws from: straight pieces and pillars (base ids). */
-export interface MuralhaSheets {reto:string;pilar:string}
-/** The junk wall of the free barricade squares (the default). */
-export const TRALHA_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muralha,pilar:BASE_ART.pilar});
-/** The built muro (fortify.ts, card trocar-procedurais-por-arte): cinder blocks, same template and rules. */
+/**
+ * The two sheets a wall draws from: straight pieces and pillars (base ids); `size`: the cells a square's side spans
+ * (absent: 1), its neighbours that many cells away and its pieces drawn that many times wider and taller.
+ */
+export interface MuralhaSheets {reto:string;pilar:string;size?:number}
+/** The junk wall of the free barricade squares (the default): BARRICADA_CELLS × BARRICADA_CELLS squares (barricada-2x). */
+export const TRALHA_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muralha,pilar:BASE_ART.pilar,size:BARRICADA_CELLS});
+/** The built muro (fortify.ts, card trocar-procedurais-por-arte): cinder blocks, same template and rules, 1-cell squares. */
 export const MURO_SHEETS:MuralhaSheets=Object.freeze({reto:BASE_ART.muro,pilar:BASE_ART.muroPilar});
 /** Halves sit a little over their square's depth toward the neighbour; the pillar over both (it covers the joint). */
 const PILLAR_OVER=.002;
@@ -55,7 +59,7 @@ export class MuralhaLayer {
   }
   /** Both sheets are in the manifest and their textures are loaded. */
   ready():boolean{
-    for(const id of Object.values(this.sheets)){
+    for(const id of [this.sheets.reto,this.sheets.pilar]){
       const s=sheetOf(id),f=s&&baseFrame(id,`${s.pecas[0]}:inteira`,0,0,this.ref);
       if(!f||!this.scene.textures.exists(f.key))return false;
     }
@@ -74,15 +78,16 @@ export class MuralhaLayer {
     const list=this.images.get(s.id)??[];
     if(s.c===undefined||s.r===undefined||!this.ready()){for(const i of list)i.setVisible(false);return undefined;}
     this.images.set(s.id,list);
-    const estado=muralhaEstado(s.hp,s.maxHp),plan=estado?muralhaPlan({c:s.c,r:s.r,rot:s.rot},this.cells,this.counts()):[];
+    const size=this.sheets.size??1,estado=muralhaEstado(s.hp,s.maxHp),plan=estado?muralhaPlan({c:s.c,r:s.r,rot:s.rot},this.cells,this.counts(),size):[];
     while(list.length<plan.length)list.push(this.scene.add.image(0,0,'__DEFAULT').setName(`base-${this.sheets.reto}`));
     for(let i=plan.length;i<list.length;i++)list[i].setVisible(false);
-    const pr=this.projection,cell=this.cell,cx=(s.c+.5)*cell,cy=(s.r+.5)*cell;
+    // The square's side (u) and ground centre: its pieces span the side (barricada-2x: 2 cells for the junk wall).
+    const pr=this.projection,side=this.cell*size,cx=s.c*this.cell+side/2,cy=s.r*this.cell+side/2;
     const at=pr.project(cx,cy,this.a),x=at.x,y=at.y;
     this.top=y;
     plan.forEach((d,n)=>{
       const img=list[n],id=this.sheets[d.kind],sheet=sheetOf(id)!;
-      const axis:MuralhaAxis=d.axis??'c',step=pr.project(cx+(axis==='c'?cell:0),cy+(axis==='r'?cell:0),this.b);
+      const axis:MuralhaAxis=d.axis??'c',step=pr.project(cx+(axis==='c'?side:0),cy+(axis==='r'?side:0),this.b);
       const dx=step.x-x,dy=step.y-y;
       const col=d.kind==='reto'?muralhaColumn(dx,dy):hashCell(s.c!,s.r!,7)&1;
       const f=baseFrame(id,`${sheet.pecas[d.piece]}:${estado}`,col,0,this.ref);
@@ -95,7 +100,7 @@ export class MuralhaLayer {
       // Half toward the neighbour: the frame's side of the ground centre that faces it on screen.
       const w=sheet.cell[0],h=sheet.cell[1],mid=Math.round(sheet.anchor[0]*w);
       if(muralhaHalf(d.toward,dx)>0)img.setCrop(mid,0,w-mid,h);else img.setCrop(0,0,mid,h);
-      const q=cell/4*d.toward;
+      const q=side/4*d.toward;
       img.setDepth(pr.depth(cx+(axis==='c'?q:0),cy+(axis==='r'?q:0))-(pr.depth(cx,cy)-depth));
     });
     return list.slice(0,plan.length);

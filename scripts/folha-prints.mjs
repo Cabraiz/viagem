@@ -297,7 +297,7 @@ async function mouseWalk(p,vp){
   await p.mouse.up();
   if(!moved(h,end))fails.push(`${vp.w}×${vp.h}: mouse segurado não moveu o herói`);
   await sleep(1200);
-  await rightClick(p,vp);
+  for(let i=0;i<4;i++)await rightClick(p,vp);
 }
 /**
  * The right button (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): held on open ground beside the hero it attacks (the
@@ -323,7 +323,7 @@ async function rightClick(p,vp){
   await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
   const end=await p.evaluate(HERO).catch(()=>null);
   await p.mouse.up({button:'right'});
-  diag[`${vp.w}x${vp.h}`]={h,end,spot,tPress,cols:'ms,ax,ay,px,py,cx,cy,route,intent,pending,rightHeld,holdHeld,tex,tick',track:await p.evaluate(TRACK_OFF).catch(()=>null)};
+  (diag[`${vp.w}x${vp.h}`]??=[]).push({moved:moved(h,end),h,end,spot,tPress,cols:'ms,ax,ay,px,py,cx,cy,route,intent,pending,rightHeld,holdHeld,tex,tick',track:await p.evaluate(TRACK_OFF).catch(()=>null)});
   const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
   if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;

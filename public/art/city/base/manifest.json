@@ -275,6 +275,63 @@
       },
       "sha256": "7db1e6b9d6e1d38a768a14f58aef67bd15748b20c1235a6cc0b8ad073690467a"
     },
+    "moto-chaveiro": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "moto-chaveiro.webp",
+          "cell": [
+            238,
+            191
+          ],
+          "views": 4,
+          "rows": [
+            "sentados",
+            "so-cida",
+            "tombo",
+            "em-pe-bolsa",
+            "em-pe-ferramenta"
+          ],
+          "anchor": [
+            0.5,
+            0.905759
+          ],
+          "pages": [
+            {
+              "file": "moto-chaveiro.webp",
+              "columns": 4,
+              "rows": 5,
+              "firstFrame": 0,
+              "frameCount": 20,
+              "sha256": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728"
+            }
+          ],
+          "sha256": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728",
+          "liteCell": [
+            238,
+            191
+          ]
+        }
+      },
+      "sha256": "3e4152845036c0f85b2d5f5bd9024f72104b7d30bd6386241445836f179a0f13",
+      "meta": {
+        "states": [
+          "sentados",
+          "so-cida",
+          "tombo",
+          "em-pe-bolsa",
+          "em-pe-ferramenta"
+        ],
+        "direcoes": [
+          "baixo-direita",
+          "baixo-esquerda",
+          "cima-direita",
+          "cima-esquerda"
+        ],
+        "escala": 0.4,
+        "origem": "arte-entrada/cenario/base/moto-chaveiro (Codex, E3, card trocar-procedurais-por-arte); recorte por scripts/import-moto-chaveiro.mjs"
+      }
+    },
     "muralha-acampamento": {
       "kind": "views",
       "files": {
@@ -464,6 +521,134 @@
         ],
         "celula": 127.2069,
         "origem": "arte-entrada/cenario/base/muralha-tralha-alta (pilar, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs"
+      }
+    },
+    "muro-bloco": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-bloco.webp",
+          "cell": [
+            164,
+            185
+          ],
+          "views": 2,
+          "rows": [
+            "reto-01:inteira",
+            "reto-01:avariada",
+            "reto-01:quase-caindo",
+            "reto-02:inteira",
+            "reto-02:avariada",
+            "reto-02:quase-caindo",
+            "reto-03:inteira",
+            "reto-03:avariada",
+            "reto-03:quase-caindo",
+            "reto-04:inteira",
+            "reto-04:avariada",
+            "reto-04:quase-caindo",
+            "reto-05:inteira",
+            "reto-05:avariada",
+            "reto-05:quase-caindo",
+            "reto-06:inteira",
+            "reto-06:avariada",
+            "reto-06:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.768473
+          ],
+          "pages": [
+            {
+              "file": "muro-bloco.webp",
+              "columns": 8,
+              "rows": 5,
+              "firstFrame": 0,
+              "frameCount": 36,
+              "sha256": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e"
+            }
+          ],
+          "sha256": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e",
+          "liteCell": [
+            164,
+            185
+          ]
+        }
+      },
+      "sha256": "1cd30958a994b74765ee93c88b1e402e28ae93ac77e5e8014374d8ccc4f52101",
+      "meta": {
+        "pecas": [
+          "reto-01",
+          "reto-02",
+          "reto-03",
+          "reto-04",
+          "reto-05",
+          "reto-06"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.5556,
+        "origem": "arte-entrada/cenario/base/muro-bloco (reto, E3, card trocar-procedurais-por-arte); dano assado por scripts/import-muralha-tralha.mjs"
+      }
+    },
+    "muro-bloco-pilar": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "muro-bloco-pilar.webp",
+          "cell": [
+            124,
+            217
+          ],
+          "views": 2,
+          "rows": [
+            "pilar-1:inteira",
+            "pilar-1:avariada",
+            "pilar-1:quase-caindo",
+            "pilar-2:inteira",
+            "pilar-2:avariada",
+            "pilar-2:quase-caindo",
+            "pilar-3:inteira",
+            "pilar-3:avariada",
+            "pilar-3:quase-caindo"
+          ],
+          "anchor": [
+            0.5,
+            0.847291
+          ],
+          "pages": [
+            {
+              "file": "muro-bloco-pilar.webp",
+              "columns": 6,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 18,
+              "sha256": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa"
+            }
+          ],
+          "sha256": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",
+          "liteCell": [
+            124,
+            217
+          ]
+        }
+      },
+      "sha256": "8651151a60129976aa321bfdba689e0602056a0422082c945b38cbecb2e1c5b8",
+      "meta": {
+        "pecas": [
+          "pilar-1",
+          "pilar-2",
+          "pilar-3"
+        ],
+        "estados": [
+          "inteira",
+          "avariada",
+          "quase-caindo"
+        ],
+        "celula": 127.2069,
+        "origem": "arte-entrada/cenario/base/muro-bloco (pilar, E3, card trocar-procedurais-por-arte); dano assado por scripts/import-muralha-tralha.mjs"
       }
     },
     "no-coco": {

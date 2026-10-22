@@ -57,6 +57,8 @@ export const SEE_RADIUS=14;
  * Card monstros-espalhados: was SEE_RADIUS (14), now −25 %; the chase itself keeps SEE_RADIUS.
  */
 export const WANDER_SIGHT=10.5;
+/** The minuto de Minerva: a hero this close to a sleeper (u, a melee reach) wakes it; it stands and hits. */
+export const MINERVA_REACH=1.5;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -162,6 +164,11 @@ export interface SonoOptions {
    * a hunt (caçando, it saw the player) follows him inside.
    */
   door?:(p:Point)=>Point|undefined;
+  /**
+   * The minuto de Minerva (ninhos.ts MINERVA_S): while true no noise wakes anyone (noises are dropped) and a hero wakes
+   * only the sleepers within MINERVA_REACH (it walked into their reach: they hit it, standing, the enemy-ai's hold).
+   */
+  minerva?:(ctx:SimContext)=>boolean;
 }
 
 export interface Sono {
@@ -364,13 +371,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
    * A standing hero within WAKE_SIGHT of sleepers wakes them caçando with their bands (players by id; one `acordou`
    * per hero), up to the cap of awake bodies (maxAwake, MAX_AWAKE: the tick's budget; a hit still wakes past it).
    */
-  function sight(ctx:SimContext){
+  function sight(ctx:SimContext,radius:number){
     if(!asleep.size)return;
     const near:EnemyState[]=[];
     for(const p of [...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
       const room=maxAwake-ctx.enemies.size;
       if(room<=0)return;
-      const seen=queryAsleep(p.x,p.y,WAKE_SIGHT,near);
+      const seen=queryAsleep(p.x,p.y,radius,near);
       if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)).sort((a,b)=>order.get(a)!-order.get(b)!).slice(0,room),'perto');
     }
   }
@@ -474,11 +481,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       api.ensure(ctx);
       if(options.events)hear(ctx,options.events());
       const every=ticks(NOISE_EVERY);
-      if(ctx.tick%every===0){
+      const minerva=!!options.minerva?.(ctx);
+      if(minerva){heard.clear();}
+      else if(ctx.tick%every===0){
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);
       }
-      sight(ctx);
+      sight(ctx,minerva?MINERVA_REACH:WAKE_SIGHT);
       awake(ctx);
       if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx);
       reindex(true);

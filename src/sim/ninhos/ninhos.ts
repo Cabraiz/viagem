@@ -34,13 +34,21 @@ export const NEST_HP:Readonly<Record<NestSize,number>>=Object.freeze({P:600,M:10
 export const NEST_GRANA:Readonly<Record<NestSize,number>>=Object.freeze({P:30,M:50,G:80});
 export const NEST_CRATE:Readonly<Record<NestSize,'roxa'|'dourada'>>=Object.freeze({P:'roxa',M:'roxa',G:'dourada'});
 export const RETRY_SECONDS=1;
+/**
+ * The "minuto de Minerva" (the user, 22/10): for NEST_PACE.minerva seconds from the start no critter walks nor chases
+ * (the map's, the waves', the nests'): no noise wakes anyone, a hero wakes only the sleepers in its reach (sono
+ * MINERVA_REACH), which hit him standing (the enemy-ai's hold), and the first wave is NEST_PACE.first after its end.
+ * NestsState.minervaUntil; the room shows it (RunState.minervaAteTick, the HUD's clock).
+ */
+export const MINERVA_S=60;
 /** The outside group by f: [min, max] below .3, from .3 to .7, above .7 (the old M nest's group). */
 export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([[5,6],[6,8],[8,10]]);
 /**
  * The waves' pace. Pairs are for 1 player → 6 players (linear in between):
  *  - period: seconds between two waves at the start (× (1 − NEST_SPEEDUP·f));
  *  - alive: no wave while this many enemies are alive (it waits RETRY_SECONDS);
- *  - first: [min, max] seconds from the start to the first wave;
+ *  - minerva: the minuto de Minerva (s, MINERVA_S);
+ *  - first: [min, max] seconds from the end of the minuto de Minerva to the first wave;
  *  - warm: for the first `warm` seconds the outside group is × warmScale and the waves play the round row `warmRow`
  *    (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
  *  - size: × the outside group (over playerScale's count);
@@ -56,7 +64,7 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, evidence/NEW-20261022-ORQ-monstros-espalhados): see the card's status.md.
-export const NEST_PACE={period:[60,45] as [number,number],first:[45,90] as [number,number],alive:[8,60] as [number,number],
+export const NEST_PACE={period:[60,45] as [number,number],minerva:MINERVA_S,first:[45,90] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
   trickle:[2,6] as [number,number],march:1,hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
 /** The first wave's window (s): NEST_PACE.first. */
@@ -108,6 +116,8 @@ export interface NestsState {
   deadAt?:number;
   /** The last LOG_WAVES waves. */
   log?:WaveLog[];
+  /** The end tick of the minuto de Minerva (start + NEST_PACE.minerva); absent in a checkpoint from before it. */
+  minervaUntil?:number;
   /** The map share still to leave (NEST_PACE.trickle a second): the route's entrance index, how many, the wave's log tick. */
   drip?:{door:number;left:number;tick:number};
 }
@@ -153,6 +163,8 @@ export interface NestsSystem extends SimSystem {
   bossSpot():Point|undefined;
   /** Nests standing. */
   alive():number;
+  /** Whether the minuto de Minerva still holds at `tick` (true before the first step: nothing moves before the run). */
+  minerva(tick:number):boolean;
   /** The plan the run plays (drawn on the first step); undefined before it. */
   plan():NestPlan|undefined;
 }
@@ -192,7 +204,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     state.nests=plan.nests.map(n=>{const hp=nestHp(n.size,state.players);return {id:n.id,size:n.size,x:n.x,y:n.y,radius:n.radius,hp,maxHp:hp,groups:0};});
     state.quota=Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan));
     state.deadAt=0;
-    state.nextWave=ctx.tick+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1]));
+    state.minervaUntil=ctx.tick+ticks(NEST_PACE.minerva);
+    state.nextWave=state.minervaUntil+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1]));
     save();
   }
 
@@ -307,6 +320,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     id:'ninhos',state,
     plan:()=>plan,
     alive:()=>state.nests.filter(n=>!n.down).length,
+    minerva:tick=>state.startTick===null||tick<(state.minervaUntil??0),
     bossSpot(){
       let best:NestRun|undefined;
       for(const n of state.nests)if(!n.down&&(!best||SIZE_RANK[n.size]>SIZE_RANK[best.size]))best=n;

@@ -23,13 +23,15 @@ import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
+import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
   wavePeriod,waveShares,type NestCause,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
+// The waves' timing is the subject: no minuto de Minerva here (its own test below sets it back).
+NEST_PACE.minerva=0;
 
 function addPlayer(world:SimWorld,id:string,p:Point){
   const player={id,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
@@ -292,4 +294,41 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   assert.ok(Math.hypot(boss.x-spot.x,boss.y-spot.y)<3,`boss at ${boss.x},${boss.y}, nest spot ${spot.x},${spot.y}`);
   const off=assembled(21,new Map(),{objective:false});
   assert.equal(off.sys.nests,undefined);assert.equal('ninhos' in off.sys.state(),false);
+});
+
+test('the minuto de Minerva: for 60 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
+  const saved=NEST_PACE.minerva;NEST_PACE.minerva=MINERVA_S;
+  try{
+    const a=assembled(11,new Map());
+    const car=a.sys.chaveiro!.state.car;
+    addPlayer(a.world,'far',{x:car.x+1.5,y:car.y});
+    stepRun(a);
+    const nests=a.sys.nests!,sono=a.sys.sono()!,start=nests.state.startTick!;
+    assert.equal(MINERVA_S,60);
+    assert.equal(nests.state.minervaUntil,start+ticks(60));
+    assert.ok(nests.state.nextWave!>=nests.state.minervaUntil!+ticks(NEST_PACE.first[0]),'the first wave counts from its end');
+    // A hero 3 u from a sleeper (inside WAKE_SIGHT, outside MINERVA_REACH): it sleeps on.
+    const loose=sono.bodies.find(b=>b.nest===undefined&&b.band!==undefined)!;
+    const p=addPlayer(a.world,'p1',{x:loose.home.x+3,y:loose.home.y});
+    stepRun(a,ticks(2));
+    assert.equal(a.world.enemies.has(loose.id),false,'asleep at 3 u');
+    // A hit wakes it, but it stands where it is for the rest of the minute.
+    a.world.damageEnemy(loose.id,1,'p1');
+    const e=a.world.enemies.get(loose.id)!;
+    assert.ok(e,'awake');
+    const at={x:e.x,y:e.y};
+    stepRun(a,ticks(10));
+    assert.deepEqual({x:e.x,y:e.y},at,'it never walks to the hero 3 u away');
+    // A hero in its reach takes its hits, the body still in place.
+    p.x=e.x+e.radius;p.y=e.y;const hp=p.hp;
+    stepRun(a,ticks(5));
+    assert.ok(p.hp<hp||a.world.enemies.get(loose.id)===undefined,'it hits standing');
+    assert.deepEqual({x:e.x,y:e.y},at);
+    assert.ok(a.world.enemies.size<=3,'no wave');
+    // After the minute: it walks.
+    p.x=e.x+6;
+    while(a.world.tick<nests.state.minervaUntil!+ticks(2))stepRun(a);
+    assert.ok(Math.hypot(e.x-at.x,e.y-at.y)>.5,'it walks after the minute');
+    a.sys.dispose();
+  }finally{NEST_PACE.minerva=saved;}
 });

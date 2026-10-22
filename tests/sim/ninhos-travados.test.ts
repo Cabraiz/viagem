@@ -26,6 +26,8 @@ const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
 if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
+// The walks are the subject: no minuto de Minerva (it holds every critter still for the first minute).
+NEST_PACE.minerva=0;
 
 function run(population=1,seed=1):{world:SimWorld;sys:RunSystems}{
   const world=new SimWorld({terrain:city.fork(),seed,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});

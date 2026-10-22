@@ -315,7 +315,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const inCity=<E extends EnemyState|undefined>(e:E):E=>{if(steer&&e)e.speed=citySpeed(e.speed);return e;};
   const enemyAi=createEnemyAi({projectileCap:MAX_PROJECTILES,steer,
     // D-051: where an alerta or a perdeu walks (the sleepers of a run in mode 'ninhos'; none otherwise).
-    ...(nestMode?{goal:(ctx:SimContext,e:EnemyState)=>sono?.goal(ctx,e)}:{}),
+    ...(nestMode?{goal:(ctx:SimContext,e:EnemyState)=>sono?.goal(ctx,e),
+      // The minuto de Minerva (the user, 22/10): no critter walks nor chases; it still hits whoever comes into its reach.
+      hold:(ctx:SimContext)=>!!nests?.minerva(ctx.tick)}:{}),
     // Caps every enemy-ai move (the Tio's charge included) at ACTION_PEAK_MAX × this world's hero: `steer` exists only in the city.
     // The city wiring (05c) converts enemy speeds to the city hero (1.994 u/s); this is the hero they are measured against.
     // The BASE hero walk on this terrain (maps baseHeroSpeed): the heroes walk HERO_SPEED_MULT × it, but the enemies
@@ -436,7 +438,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
             // Card bichos-travados: the safety net never empties the car's surroundings (a siege on it stands still).
             keep:()=>{const c=chaveiro!.state.car;return [{x:c.x,y:c.y}];},
             // Card monstros-espalhados: a noise inside a safe place draws the alerta to its door, never in.
-            door:at=>safePlaceAt(city,at)?.opening},cp?.sono);
+            door:at=>safePlaceAt(city,at)?.opening,
+            // The minuto de Minerva: no noise wakes anyone, the sight only within MINERVA_REACH (the AI holds them still).
+            minerva:ctx=>!!nests?.minerva(ctx.tick)},cp?.sono);
           world.sleepers=sleep.sleepers;
           // Every standing nest takes the players' hits (sono's index: shots, cones, tower blasts, a tap); a hit is
           // also a noise for the other nests. A fallen one leaves the index by itself (hit() true).

@@ -1,6 +1,6 @@
 /* The "Minuto de Minerva" clock (hud/minerva.ts): first row of the announcement slot (.rh-stack), a paper sticker with an
    analog clock (seconds hand sweeping once in 60 s, the eaten slice behind it) and "Minuto de Minerva / 42 s".
-   The last 5 s pulse in Laranja Cone; at zero the sticker turns into "Os monstros acordaram!" and leaves. */
+   The last 5 s turn Laranja Cone (one grow-and-back when they start; the urgency stays in the colour); at zero the sticker turns into "Os monstros acordaram!" and leaves. */
 .rh-minerva{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;box-sizing:border-box;
   background:var(--c-papel);color:var(--c-breu);border:3px solid var(--c-breu);border-radius:var(--r-etiqueta);box-shadow:var(--s-1);
   pointer-events:none;transform-origin:50% 0}
@@ -15,7 +15,7 @@
 .rh-minerva-text{display:flex;flex-direction:column;align-items:flex-start;line-height:1}
 .rh-minerva-title{font:400 var(--t-16)/1.05 var(--f-botao);color:var(--c-lilas);white-space:nowrap}
 .rh-minerva-count{font:400 var(--t-28)/1 var(--f-botao);color:var(--c-breu);font-variant-numeric:tabular-nums}
-.rh-minerva-urgente{animation:rh-minerva-pulso .5s ease-in-out infinite alternate}
+.rh-minerva-urgente{animation:rh-minerva-pulso .5s ease-in-out 2 alternate}
 .rh-minerva-urgente .rh-minerva-count{color:var(--c-cone);text-shadow:var(--s-texto)}
 .rh-minerva-urgente .rh-minerva-rim{fill:color-mix(in srgb,var(--c-cone) 22%,var(--c-papel-claro))}
 @keyframes rh-minerva-pulso{from{transform:scale(1)}to{transform:scale(1.08)}}

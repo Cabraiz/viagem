@@ -77,7 +77,8 @@ import {CITY_PALETTE,CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityAr
 import {artIndex,loadArtManifest} from '../art/manifest.ts';
 import {CharacterSprites} from '../sprites/character-sprites.ts';
 import {spriteCatalog} from '../sprites/sprite-catalog.ts';
-import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
+import {CITY_VIEW_SCALE as CITY_VIEW_SCALE_JOGO,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
+import {escalaEstudo,figuras} from '../render/estudo-escala.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
@@ -117,6 +118,13 @@ import {SKILL_HTML} from '../controls-phase.ts';
 import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
 
 const params=new URLSearchParams(location.search);
+/**
+ * `escala=E0..E4` (card estudo-escala-mapa, render/estudo-escala.ts): every figure (heroes, critters, shadows, the base,
+ * the towers, the ruler's hero height) at the game's city scale × figuras(estudo), and the zoom × estudo.mundo; the
+ * HUD-in-world sizes (bars, names, marks) keep the game's. With `tele=1`, the study's scene: 4 critters, no telegraphs.
+ */
+const estudo=escalaEstudo(location.search),estudoCena=params.has('escala');
+const CITY_VIEW_SCALE=CITY_VIEW_SCALE_JOGO*figuras(estudo);
 const real=params.get('mapa')==='real';
 const heroParam=params.get('hero');
 const cellsOverride=Number(params.get('cells'))||undefined;
@@ -213,6 +221,9 @@ box-shadow:0 3px 0 #1E153066}
 padding:2px 8px;border-radius:8px;background:#1E1530cc;color:#EEDDB8;font:700 13px system-ui}`;
 document.head.append(style);
 const host=document.createElement('div');host.id='cidade';document.body.append(host);
+
+/** escala=…: the study's four critters around the hero (kind, offset in u), two of them hurt (their bars show). */
+const ESTUDO_BICHOS:readonly (readonly ['bebado'|'agiota'|'tio-pave'|'coach',number,number])[]=[['bebado',-1.8,-1.4],['agiota',1.9,-.4],['tio-pave',-1.2,1.6],['coach',2.4,1.8]];
 
 /** Deterministic small PRNG for the stand-in horde (no Math.random: same run every reload). */
 function mulberry(seed:number){return ()=>{seed=(seed+0x6d2b79f5)|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
@@ -390,7 +401,7 @@ class CitySandbox extends Phaser.Scene {
     let horde:HordeRenderer|undefined;
     if(this.decoded&&fake.enemies.length){
       const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
-      horde=new HordeRenderer(this,{projector:hp,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
+      horde=new HordeRenderer(this,{projector:hp,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE_JOGO),actorScale:()=>CITY_VIEW_SCALE,
         reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines});
       horde.push({tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],pickups:[],enemies:fake.enemies});
     }
@@ -522,20 +533,21 @@ class CitySandbox extends Phaser.Scene {
     if(!this.decoded)return;
     const projector=new Projector(this.view,this.decoded);
     projector.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
-    const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),actorScale:()=>CITY_VIEW_SCALE,
+    const horde=new HordeRenderer(this,{projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE_JOGO),actorScale:()=>CITY_VIEW_SCALE,
       reduced:reducedMotion,city:()=>true,cityOutlines:this.outlines,
       ...(arsenal?{locate:(id:string)=>id===SANDBOX_SELF?this.at:id===SANDBOX_ALLY?allyAt(this.at.x,this.at.y):undefined,selfId:()=>SANDBOX_SELF,
         hand:(id:string)=>heldHand(this.sprites,id===SANDBOX_SELF?this.hero:id===SANDBOX_ALLY?this.ally:undefined),
         aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
-      telegraphs:[
+      telegraphs:estudoCena?[]:[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
         {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
       ],
       // acucar=1 (D-047): both critters bought a sweet from Dona Cida (EnemyView.sugar, protocol 15).
-      enemies:[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
+      enemies:estudoCena?ESTUDO_BICHOS.map(([kind,dx,dy],i)=>({id:`e${i+1}`,kind,x:x+dx,y:y+dy,hp:i%2?3:5,maxHp:5}))
+        :[{id:'e1',kind:'bebado',x:x-1.6,y:y-1.2,hp:5,maxHp:5,...sugar},{id:'e2',kind:'agiota',x:x+1.5,y:y-.2,hp:5,maxHp:5,...sugar}],
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     const nests=ninhos?nestLab(view,x,y):undefined;
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
@@ -637,7 +649,7 @@ class CitySandbox extends Phaser.Scene {
   private markDestination(){
     const lab=this.lab;if(!lab)return;
     const p=lab.projector.project(this.at.x-2.6,this.at.y-.4,{x:0,y:0});
-    const m=destinationMark(CITY_VIEW_SCALE,1/Math.max(.05,this.cameras.main.zoom),true),breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
+    const m=destinationMark(CITY_VIEW_SCALE_JOGO,1/Math.max(.05,this.cameras.main.zoom),true),breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
     lab.destination.clear().lineStyle(m.breu,breu,m.breuAlpha).strokeEllipse(p.x,p.y,m.width,m.height).lineStyle(m.papel,papel,1).strokeEllipse(p.x,p.y,m.width,m.height)
       .fillStyle(breu,m.breuAlpha).fillCircle(p.x,p.y,m.dotBreu).fillStyle(papel,1).fillCircle(p.x,p.y,m.dotPapel);
   }
@@ -663,7 +675,7 @@ class CitySandbox extends Phaser.Scene {
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
     const viewport={width:this.scale.width,height:this.scale.height};
-    const zoom=cellsOverride?viewport.width/(cellsOverride*this.asset.cell*TILE_X*Math.SQRT2):cityZoom(viewport,zoomK);
+    const zoom=(cellsOverride?viewport.width/(cellsOverride*this.asset.cell*TILE_X*Math.SQRT2):cityZoom(viewport,zoomK))*estudo.mundo;
     this.cameras.main.setSize(viewport.width,viewport.height).setZoom(zoom);
     this.place();
   }

@@ -17,6 +17,7 @@ import {CLIFF_LIP_HEIGHT} from '../from-maps.ts';
 import {HEIGHT_PX,TILE_X,TILE_Y} from '../projection.ts';
 import {SUN_GLSL,gradeGlsl} from '../../light.ts';
 import {ALBEDO_GRID,ALBEDO_MEANS,ALBEDO_SLOTS} from './albedo-meta.ts';
+import {escalaEstudo} from '../../estudo-escala.ts';
 
 const vec3=(c:number)=>`vec3(${[(c>>16)&255,(c>>8)&255,c&255].map(v=>(v/255).toFixed(4)).join(',')})`;
 
@@ -37,8 +38,13 @@ export const ALBEDO_STRENGTH={neve:.55,'neve-pisada':.7,calcada:.9,gelo:.6,terra
 export const ALBEDO_SPAN={lo:.72,hi:1.22} as const;
 const slot=(name:typeof ALBEDO_SLOTS[number])=>ALBEDO_SLOTS.indexOf(name).toFixed(1);
 const mean=(name:typeof ALBEDO_SLOTS[number])=>`vec3(${ALBEDO_MEANS[ALBEDO_SLOTS.indexOf(name)].map(v=>v.toFixed(4)).join(',')})`;
+/**
+ * Estudo de escala (render/estudo-escala.ts, `?escala=E1|E4`): the small detail (photo, grain, sparkles, the drawn stone
+ * bond) this many times as fine; 1 without the flag. The water keeps its span.
+ */
+const CHAO=escalaEstudo().chao;
 const albedo=(name:typeof ALBEDO_SLOTS[number])=>
-  `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${(1/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)})`;
+  `albedoDetail(${slot(name)},w,${mean(name)},${ALBEDO_CHROMA[name].toFixed(2)},${((name==='agua'?1:CHAO)/ALBEDO_SPAN_UNITS[name]).toFixed(4)},${ALBEDO_STRENGTH[name].toFixed(2)})`;
 
 /**
  * Water with the atlas (card NEW-20261022-ORQ-agua-realista): the painted tile in its own colours (chroma and strength
@@ -189,7 +195,7 @@ void main(){
  float flatLit=sun.z;
  float d=diffuse*mix(1.0,shadow,0.85)-flatLit-hollow;
 
- float macro=fbm(w*0.32),grain=n(w*9.0),fine=n(w*31.0+vec2(17.0,3.0));
+ float macro=fbm(w*0.32),grain=n(w*${(9*CHAO).toFixed(1)}),fine=n(w*${(31*CHAO).toFixed(1)}+vec2(17.0,3.0));
  // With the albedo in, the photo carries the small detail: the procedural grain and sparkles drop to a trace.
  float proc=detail*(1.0-0.75*albedoOn);
  float slope=length(g);
@@ -211,7 +217,7 @@ void main(){
  color=mix(color,trodden,pm);
 
  // Plaza stones: running bond with light joints and a dusting of snow.
- vec2 b=w*vec2(2.4,4.8);b.x+=floor(b.y)*0.5;vec2 bf=fract(b);
+ vec2 b=w*vec2(${(2.4*CHAO).toFixed(1)},${(4.8*CHAO).toFixed(1)});b.x+=floor(b.y)*0.5;vec2 bf=fract(b);
  float joint=1.0-smoothstep(0.04,0.10,min(min(bf.x,1.0-bf.x)*0.5,min(bf.y,1.0-bf.y)));
  vec3 cobble=ramp(mix(COBBLE,COBBLE_JOINT,joint*0.8),mix(COBBLE,vec3(1.0),0.12),COBBLE_JOINT,COBBLE_JOINT,d);
  // With the albedo: its own stones and joints instead of the drawn running bond.

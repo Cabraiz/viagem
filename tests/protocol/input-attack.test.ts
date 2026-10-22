@@ -122,7 +122,8 @@ test('track: a late tap keeps its aim for the press even when the release segmen
 });
 
 test('room: the attack held in place while slipping (pombo poop) never slides the hero; walking still does (BUG-20261022-ORQ-botao-direito-anda)',()=>{
-  // The 22/10 print sheet: the right button held beside a slipping hero moved him ~1 u along the slide, every time.
+  // D-036: standing still never slides; since D-051 a held attack (right button, Space, Atacar) steps the room while
+  // standing, and those steps slid a hero on poop ~0.4 u per tick (found while chasing the print sheet's right button).
   const t=new InputTrack();t.reset(0);
   assert.ok(t.accept({seq:8,steps:[[1,0,0,SEGMENT_ATTACK],[6,1,0,0]]},0));
   const hero={id:'h',x:SPAWN.x,y:SPAWN.y,hp:100,facing:{x:1,y:0},slipUntil:1e9,slip:{x:1,y:0}} as unknown as SimPlayer;

@@ -253,7 +253,7 @@ export function cityRenderAsset(asset:MapsCityAsset,terrainMinHeight?:number):Ci
   };
 
   // 7. Scenery (cenario-no-mapa): as placed by the maps sector, already on the cell grid.
-  const decor=asset.decor.map(q=>({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(q.links!==undefined?{links:q.links}:{})}));
+  const decor=asset.decor.map(q=>({id:q.id,c:q.c,r:q.r,w:q.w,h:q.h,rot:q.rot,...(q.links!==undefined?{links:q.links}:{}),...(q.cover?{cover:true}:{})}));
 
   return {version:1,name:asset.name,cell,width:W,height:H,origin:{x:0,y:0},heights,corners,ground,blocks,props,...(decor.length?{decor}:{}),points};
 }

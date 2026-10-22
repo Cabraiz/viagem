@@ -215,8 +215,9 @@ test('menu-1080-720-menino-inteiro: the whole boy on screen at 1080p and 720p, t
   // Then 15% smaller again (menu-fundo-sangria): 46vw / 78vh x .85 x .85.
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh);'));
   assert.ok(Math.abs(46*.85*.85-33.2)<.05&&Math.abs(78*.85*.85-56.4)<.05);
-  // The button right under the row, not pushed down to the bar.
-  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) .estadio-confirmar { margin-top: clamp(4px, 1vh, 12px); }'));
+  // The button right under the row (fileira-botao-maiores-embaixo: both low, the free room above the row, not between).
+  assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
+  assert.ok(!/\.estadio-confirmar \{[^}]*margin-top: auto/.test(css));
   assert.ok(!css.includes('margin-bottom: 5vh'));
   assert.ok(css.includes('.estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }'));
 });
@@ -403,4 +404,39 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
   assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 5));'));
   assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
   assert.ok(btn.includes('container-type: inline-size;'));
+});
+
+test('fileira-botao-maiores-embaixo: on the PC the row and the button 30% bigger, low like tela-1080p; phones as they were',async()=>{
+  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const vh=(re:RegExp)=>{const m=pc.match(re);assert.ok(m,String(re));return Number(m![1])/100;};
+  const colW=vh(/\.estadio-escolha \{ width: min\(([.\d]+)vh, 60vw\);/),gap=vh(/justify-content: flex-end; gap: ([.\d]+)vh;/);
+  const padB=vh(/padding-bottom: max\(([.\d]+)vh, env\(safe-area-inset-bottom\)\);/),bh=vh(/--bh: max\(52px, ([.\d]+)vh\); max-width: none;/);
+  const tile=vh(/\.estadio \.class-card \{ width: ([.\d]+)vh; \}/),arrow=vh(/\.estadio \.round-button \{ width: ([.\d]+)vh;/);
+  const rowGap=vh(/\.estadio \.class-list \{ gap: ([.\d]+)vh; \}/);
+  assert.ok(pc.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'),'with a sign on top the row stays low');
+  // 1920x1080: 30% over the old sizes (button 640x108, tiles 80, arrows 44, gaps 8), ±3%.
+  const near=(got:number,want:number,what:string)=>assert.ok(Math.abs(got/want-1)<=.03,`${what}: ${got.toFixed(1)} vs ${want}`);
+  near(colW*1080,832,'button width');near(bh*1080,140.4,'button height');near(tile*1080,104,'tile width');
+  near(arrow*1080,57.2,'arrow');near(rowGap*1080,10.4,'gap between tiles');
+  // Where tela-1080p has it: the button's bottom at 1013 (67 px of air), the row right over it.
+  near(1080-padB*1080,1013,'button bottom');
+  // Every PC screen: inside the window, the row under the letreiro picture, left of the hero (x 70%, the stadium framed by height).
+  const sign=await sharp(publicFile('/art/menu/letreiro/viciado-em-bet.webp')).metadata(),signK=sign.height!/sign.width!;
+  for(const [w,h] of [[1920,1080],[2560,1440],[1366,768],[1280,720],[1280,800]] as const){
+    const screen=`${w}x${h}`,left=Math.max(.03*w,16),width=Math.min(colW*h,.6*w);
+    const buttonTop=h-padB*h-Math.max(52,bh*h),rowTop=buttonTop-gap*h-(Math.min(tile*h,1e9)/.82+14);
+    const signBottom=Math.max(.02*h,0)+Math.min(.332*w,.564*h)*signK;
+    assert.ok(left+width<=w*.56,`${screen}: the column ends left of the hero (${(left+width).toFixed(0)})`);
+    assert.ok(rowTop>signBottom+8,`${screen}: the row (${rowTop.toFixed(0)}) under the sign (${signBottom.toFixed(0)})`);
+    assert.ok(h-padB*h>=h-.07*h&&h-padB*h<=h-.05*h,`${screen}: air under the button`);
+    const fit=Math.floor((width-2*arrow*h-2*rowGap*h-8)/(tile*h+rowGap*h));
+    assert.ok(fit>=5,`${screen}: ${fit} tiles in the row`);
+  }
+  // Phones (390x844, 360x740 upright; 844x390 on its side) keep their own rules: the new sizes only in the PC block.
+  for(const rule of ['width: 9.63vh','--bh: max(52px, 13vh)','width: 5.3vh'])assert.equal(css.split(rule).length,2,`${rule} only once (the PC)`);
+  assert.equal(css.split('gap: .96vh;').length,3,'the row gaps only in the PC block');
+  const shortLand=css.slice(css.indexOf('@media (max-height: 520px) and (orientation: landscape) {')).split('\n}')[0];
+  assert.ok(shortLand.includes('.estadio .estadio-confirmar { --bh: 46px; }')&&shortLand.includes('.estadio .class-card { width: 48px; }'));
+  const tall=css.slice(css.indexOf('@media (orientation: portrait) and (max-width: 820px) {')).split('\n}')[0];
+  assert.ok(tall.includes('.estadio .class-card { width: 58px; }'));
 });

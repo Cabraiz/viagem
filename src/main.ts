@@ -63,8 +63,8 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
-    <h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
-    <h2 id="class-name" class="estadio-classe"></h2>
+    <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
+    <h2 id="class-name" class="estadio-classe"></h2></div>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
       <button id="previous" class="round-button" aria-label="Personagem anterior">‹</button>
       <div id="class-list" class="class-list" role="group" aria-label="Personagens"></div>

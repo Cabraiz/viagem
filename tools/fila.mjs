@@ -198,9 +198,17 @@ function removeWorktree(opt,dir,branch){
 }
 
 // ---------- the suite ----------
+/**
+ * The Orquestrador's role variables: the suite, CI, build and smoke children get the environment without them, so a test
+ * never depends on who runs the queue (BUG-20261022-ORQ-fila-env-vaza-suite: the ORQ's FILA_ORQ=1 leaked into the local
+ * suite and tests/tools/fila.test.ts's "Worker pendente" check failed, aborting the lote).
+ */
+export const ROLE_VARS=['FILA_ORQ'];
+/** The caller's environment plus `extra`, minus ROLE_VARS. */
+export function childEnv(extra={}){const env={...process.env,...extra};for(const k of ROLE_VARS)delete env[k];return env;}
 /** The environment of a node --test of its own: without NODE_TEST_CONTEXT (set when the queue runs under a test runner, its
- * tests), a nested node --test reports to that parent and exits 0 on a red file. */
-const ownTestRun=()=>{const env={...process.env};delete env.NODE_TEST_CONTEXT;return env;};
+ * tests), a nested node --test reports to that parent and exits 0 on a red file; without ROLE_VARS either. */
+export const ownTestRun=()=>{const env=childEnv();delete env.NODE_TEST_CONTEXT;return env;};
 /** {ok, failedFiles, url?} for the checkout; `files` limits the run (the culprit search). */
 function runSuite(opt,dir,branch,files){
   if(opt.suite==='local'){
@@ -218,7 +226,7 @@ function runSuite(opt,dir,branch,files){
     const ci=join(dir,'tools','ci.mjs');
     if(!existsSync(ci)){log('tools/ci.mjs ainda não existe: suíte local');return runSuite({...opt,suite:'local'},dir,branch,files);}
     git(dir,'push','-f',opt.remote,`${branch}:${branch}`);
-    const r=spawnSync(process.execPath,[ci,'test',branch,'--json'],{cwd:dir,encoding:'utf8'});
+    const r=spawnSync(process.execPath,[ci,'test',branch,'--json'],{cwd:dir,encoding:'utf8',env:childEnv()});
     if(r.status===2||r.status===null){log(`tools/ci.mjs sem resposta (exit ${r.status}): suíte local`);return runSuite({...opt,suite:'local'},dir,branch,files);}
     try{const j=JSON.parse((r.stdout??'').trim());return {ok:r.status===0&&!!j.ok,failedFiles:j.failedFiles??[],url:j.url};}
     catch{return {ok:false,failedFiles:[],error:`tools/ci.mjs (exit ${r.status}): ${(r.stderr||r.stdout||'').slice(0,400)}`};}
@@ -226,7 +234,7 @@ function runSuite(opt,dir,branch,files){
   // A shell command (also the culprit runs of --suite ci, which are local and short).
   const cmd=opt.suite==='ci'?null:opt.suite;
   if(!cmd)return runSuite({...opt,suite:'local'},dir,branch,files);
-  const r=spawnSync(cmd,{cwd:dir,shell:true,encoding:'utf8',env:{...process.env,FILA_FILES:(files??[]).join(',')}});
+  const r=spawnSync(cmd,{cwd:dir,shell:true,encoding:'utf8',env:childEnv({FILA_FILES:(files??[]).join(',')})});
   const m=/FILA-FAILED: (\[.*\])/.exec(r.stdout??'');
   return {ok:r.status===0,failedFiles:m?JSON.parse(m[1]):[]};
 }
@@ -241,7 +249,7 @@ const sleep=(ms)=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function runSmoke(opt,dir,prev){
   if(opt.smoke==='off')return {ok:true,skipped:true};
   if(opt.smoke){
-    const r=spawnSync(opt.smoke,{cwd:dir,shell:true,encoding:'utf8'});
+    const r=spawnSync(opt.smoke,{cwd:dir,shell:true,encoding:'utf8',env:childEnv()});
     return r.status===0?{ok:true}:{ok:false,infra:r.status===2,linha:smokeGist(r.stdout+r.stderr),motivo:`${opt.smoke} saiu com ${r.status}: ${(r.stdout+r.stderr).trim().slice(0,300)}`};
   }
   const script=join(dir,'scripts','smoke-prod.mjs');
@@ -260,18 +268,18 @@ function runSmoke(opt,dir,prev){
     writeFileSync(join(slot,'owner.txt'),`fila ${new Date().toISOString()}`);
     const out=join(opt.board,'fila','smoke');mkdirSync(out,{recursive:true});
     // One command string (no argument array with shell:true: node's DEP0190).
-    const build=(cwd)=>spawnSync('npm run build',{cwd,encoding:'utf8',shell:true});
+    const build=(cwd)=>spawnSync('npm run build',{cwd,encoding:'utf8',shell:true,env:childEnv()});
     const b=build(dir);
     if(b.status!==0)return {ok:false,linha:`npm run build saiu com ${b.status}`,motivo:`npm run build saiu com ${b.status}: ${(b.stderr||b.stdout||'').trim().slice(-300)}`};
     log('smoke de produção…');
-    const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8'});
+    const s=spawnSync(process.execPath,[script,out],{cwd:dir,encoding:'utf8',env:childEnv()});
     if(s.status!==0)return {ok:false,infra:s.status!==1,linha:smokeGist(s.stdout+s.stderr),motivo:`${s.status===2?'infraestrutura do smoke':'smoke falhou'} (exit ${s.status}): ${smokeGist(s.stdout+s.stderr)}`,out};
     // The returning player (BUG-20261014-ORQ-mapa-cache-velho): the base built, then the batch on the same browser profile.
     if(prev){
       log('smoke de upgrade (a main de antes do lote → o lote)…');
       const pb=build(prev);
       if(pb.status!==0)return {ok:false,motivo:`npm run build da base saiu com ${pb.status}: ${(pb.stderr||pb.stdout||'').trim().slice(-300)}`,out};
-      const u=spawnSync(process.execPath,[script,out,'--upgrade-from',prev],{cwd:dir,encoding:'utf8'});
+      const u=spawnSync(process.execPath,[script,out,'--upgrade-from',prev],{cwd:dir,encoding:'utf8',env:childEnv()});
       if(u.status!==0)return {ok:false,motivo:`${u.status===2?'infraestrutura do smoke de upgrade':'smoke de upgrade falhou'} (exit ${u.status}): ${smokeGist(u.stdout+u.stderr)}`,out};
     }
     return {ok:true,out};

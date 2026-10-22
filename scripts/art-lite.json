@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2054,
-  "bytes": 1539184706,
-  "liteBytes": 497716394,
+  "files": 2059,
+  "bytes": 1539418264,
+  "liteBytes": 497865202,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -20052,6 +20052,46 @@
    "liteBytes": 15818,
    "psnr": 40.2,
    "shownPsnr": 43.6
+  },
+  "sprites/viciado-em-bet.run16-n.dd88ecca7a43.webp": {
+   "source": "dd88ecca7a43546a5b5e69c4ca175df4c16c6f2e3da46fc6b9941644482b44f7",
+   "lite": "03768810a35481ea5094fc82b35d2f02ef8c7da77656853b8c87cd45fd08d315",
+   "bytes": 36772,
+   "liteBytes": 24838,
+   "psnr": 41.1,
+   "shownPsnr": 43.3
+  },
+  "sprites/viciado-em-bet.run16-nw.d2f7a420d800.webp": {
+   "source": "d2f7a420d80000c8d2fac889254c11b0aa49b95c442dfa49742c16335f795203",
+   "lite": "33bcffa48af24dbc05219392dec996c4dd99ad5d628e2670f5f8209696595770",
+   "bytes": 44292,
+   "liteBytes": 29102,
+   "psnr": 40.6,
+   "shownPsnr": 43
+  },
+  "sprites/viciado-em-bet.run16-s.2be18b1e9c8e.webp": {
+   "source": "2be18b1e9c8ee62868534fe717d9dcf19e39b5f76730a6ca75d5856f4a36a69b",
+   "lite": "14c66dd5956c5bfcd36217bbac5747a8f63384f9e6b2048bd36ffbef9ccfda9a",
+   "bytes": 45656,
+   "liteBytes": 27674,
+   "psnr": 38.1,
+   "shownPsnr": 42.3
+  },
+  "sprites/viciado-em-bet.run16-se.3c78d3769f68.webp": {
+   "source": "3c78d3769f68f7f4c29de6f2591b28820afa28e10b32de531c1c370354d7e8eb",
+   "lite": "97eba9c5dbca8646784e7772bf61a06a50ba06e94707b1c6873667b891c32a0a",
+   "bytes": 55042,
+   "liteBytes": 34210,
+   "psnr": 38.2,
+   "shownPsnr": 41.6
+  },
+  "sprites/viciado-em-bet.run16-w.bb24508e4589.webp": {
+   "source": "bb24508e45890893068b9eb7ffb7574dfdb30357cbe250360fb78c4c3866fa2f",
+   "lite": "3cfda81222e6fa83d3b588556344c677c356ba2a2aada3d7b4690c8316f3f682",
+   "bytes": 51796,
+   "liteBytes": 32984,
+   "psnr": 39.6,
+   "shownPsnr": 41.5
   },
   "sprites/viciado-em-bet.walk128-e.af6573c0b904.webp": {
    "source": "af6573c0b9041cc898d02daa1364f9833be9bf0db64ab67e882440db0858e65b",

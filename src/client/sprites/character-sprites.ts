@@ -2,12 +2,12 @@ import type Phaser from 'phaser';
 import {spriteCatalog,type FigureBox} from './sprite-catalog.ts';
 import {directionalSheets,directionalSheet,type DirectionalSheet} from './sprite-sheets.ts';
 import {spriteUrl,originalUrl} from './art-urls.ts';
-import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,type Motion,type Facing} from './sprite-motion.ts';
+import {SpriteMotion,SPRITE_CLIPS,FACINGS,FACING_FRAMES,FacingTracker,Facing8Tracker,WalkGate,HERO_DIRECTION_PAGE,legacyFlip,walkCycles,cycleFrame,RUN_STRIDE,type Motion,type Facing} from './sprite-motion.ts';
 import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,type Movement128Plan} from './movement128.ts';
+import {movement128Figure,movementPlan,movementSheets,movementFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -267,19 +267,26 @@ export class CharacterSprites {
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
-    // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
-    // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
-    if(motion==='walk')state.cycles+=walkCycles(dx,dy,view,96*this.viewScale*HERO_DRAW_SCALE);
     state.x=x;state.y=y;
     const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
     const seen=movement128Visible(sprite,this.scene);
     const detailed=alive&&seen?movementPlan(id,motion,direction):undefined;
+    // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
+    // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
+    // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
+    // the clip has one, else RUN_STRIDE.
+    if(motion==='walk'){
+      const figurePx=96*this.viewScale*HERO_DRAW_SCALE,phase=detailed?.phase;
+      state.cycles+=phase?walkCycles(dx,dy,view,figurePx,phaseStride(phase),1):heroRuns(id)?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx);
+    }
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){
         const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE;
-        // The walk by the ground walked, attack and rest by the clock.
-        const frame=motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+        // The walk by the ground walked, attack and rest by the clock. A run with a phase table picks its pose by the
+        // ground and shifts the sprite back by the planted foot's travel within the pose: the foot stays on its spot.
+        const run=motion==='walk'&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
+        const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -288,7 +295,8 @@ export class CharacterSprites {
         // cell), so the hero floated over its ring, its contact shadow and its silhouette; its figure's bottom is the feet.
         // M16's E/NE/SE are W/NW/SW mirrored: Phaser flips inside the frame's box (city copy included, its crop is
         // symmetric), so the body's pivot column goes to 1 − x and the figure stays on the same world point.
-        const flip=!!detailed.flip,ax=movementPivotX(detailed),ay=clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed);
+        // The run's foot shift moves the origin the other way (in the unmirrored cell; the flip below mirrors it too).
+        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0),ay=(clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
         const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);

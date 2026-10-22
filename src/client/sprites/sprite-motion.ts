@@ -31,12 +31,25 @@ export const WALK_STRIDE=.68;
  * longer drawn stride brings the lock back to 1. Mutable for the sandbox's proofs.
  */
 export const WALK_TUNE={lock:.5};
-/** Walk cycles a step of (dx, dy) world units adds, for a figure drawn `figurePx` world px tall; 0 on a teleport. */
-export function walkCycles(dx:number,dy:number,view:number,figurePx:number){
+/**
+ * The hero's gait when moving (card passo-3x-mais-lento, the user's ask): a class with a drawn run (run16) runs, the foot
+ * locked to the ground, since its stride is drawn for the hero's speed; `run:false` brings the walk back (WALK_TUNE).
+ */
+export const HERO_GAIT={run:true};
+/**
+ * Drawn run stride, heights of the figure per cycle: the viciado's run16-W opens its feet 1.82× the walk's (widest minus
+ * narrowest feet span over the figure, 0.65 against 0.35), so 0.68 × 1.82. Locked, ~4.6 cycles a second across the screen.
+ */
+export const RUN_STRIDE=1.24;
+/**
+ * Walk cycles a step of (dx, dy) world units adds, for a figure drawn `figurePx` world px tall, at `stride` heights a
+ * cycle and `lock` of it (the walk's by default; a run passes RUN_STRIDE, 1); 0 on a teleport.
+ */
+export function walkCycles(dx:number,dy:number,view:number,figurePx:number,stride=WALK_STRIDE,lock=WALK_TUNE.lock){
   const step=Math.hypot(dx,dy);
-  if(!(figurePx>0)||step>FACING_TELEPORT)return 0;
+  if(!(figurePx>0)||!(stride>0)||step>FACING_TELEPORT)return 0;
   const s=screenMotion(dx,dy,view);
-  return Math.hypot(s.x,s.y)*WALK_TUNE.lock/(WALK_STRIDE*figurePx);
+  return Math.hypot(s.x,s.y)*lock/(stride*figurePx);
 }
 /** The frame of a looping clip of `frames` after `cycles` cycles. */
 export const cycleFrame=(cycles:number,frames:number)=>Math.min(frames-1,Math.floor((cycles-Math.floor(cycles))*frames));

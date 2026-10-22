@@ -73,3 +73,28 @@ Card NEW-20261021-ORQ-passo-sem-deslizar-e-sombra (21/10). Vale para todos os he
 - **Passo mais lento (passo-3x-mais-lento, 21/10):** o usuário mantém a velocidade do herói e achou 8 ciclos/s rápido demais. A medida está certa: o herói anda ~5,7 alturas de corpo por segundo, uma corrida, e a arte desenha um passeio. O jogo sai com `WALK_TUNE.lock` = 0,5 (~4 ciclos/s de lado, ~2 de frente), e o pé desliza metade do chão. A trava volta a 1 quando o viciado tiver uma corrida com passada longa (fatia 2). Opções em `evidence/NEW-20261021-ORQ-passo-3x-mais-lento/`.
 - **Pés:** cada clipe fica na sua própria linha de pé (`hero-feet-data.ts`, gerado por `node scripts/hero-feet.mjs`): a última linha opaca (alpha > 128), mediana dos quadros. A linha única por classe deixava o viciado 3–4 px acima da sombra andando. Depois de importar arte, rode o script de novo: o teste `heroi-pes` falha se faltar algum clipe.
 - **Prova:** sandbox `?sandbox=cidade&mapa=real&tele=1`. `window.__cidade.freeze()` + `step(ms)` + `move(x, y)` filmam quadro a quadro (o screenshot não roda quadro).
+
+## Corrida (run16)
+
+Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o viciado. O usuário pediu a corrida como padrão, sem apagar o andar, com o pé parado no chão e no máximo uns 3 ciclos/s de lado.
+- **Por quê:** o herói anda ~5,7 alturas de corpo por segundo, e o andar desenhado é um passeio (0,68 altura por ciclo). Travado, isso dá 8 ciclos/s.
+- **Arte (ChatGPT, codex sol):** 5 direções desenhadas do plano B (S, N, W, NW, SE). Cada imagem tem 8 poses, e o prompt pinta o tênis ESQUERDO de vermelho (marcador). Com isso a regra de perna fica visual ("o vermelho lidera" / "o roxo lidera") e a alternância pode ser medida. Em 8 poses o modelo desenha o apoio do pé que lidera, o voo e o pouso do outro. A folha de 16 é A + B: o apoio vermelho, o voo, o pouso roxo (A7 ≈ B0), o apoio roxo, o voo e o pouso vermelho (B7 → A0). S e N usam B = A espelhado. O vermelho volta a roxo na montagem. Prompts, montador, medidas e tentativas ficam em `D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-passo-3x-mais-lento/corrida/` (`gerar2.mjs`, `montar2.mjs`; `MARCADOR=1` mantém o vermelho para medir no jogo).
+- **Montagem:** cada linha da imagem (um passo) fica no seu próprio chão, porque o modelo desenha as linhas em alturas diferentes. O tronco fica em x 96, a pose fica na altura em que voa, e o pé fica em y 168 (células de 192).
+- **Tabela de fase** (`run/<dir>.phase.json` → `phase` no manifest; `movement128.ts` `runPhase`): o quadro sai da distância andada, não do relógio.
+  - Numa pose de apoio, o tênis que encosta no chão do passo e recua com ele cobre o recuo medido da sola (`d`), e o sprite recua junto dentro da pose (`v`, só ao longo do chão). Assim o pé fica parado.
+  - As poses de voo ficam com o resto da passada, até 3 ciclos/s na velocidade da cidade (a folha tem 2 ciclos).
+  - Sem tabela, uma corrida usa `RUN_STRIDE`.
+- **Importar:** `run/<dir>.png` (768×768, 4×4) e o `.phase.json` ao lado das pastas walk/attack/idle em `personagens-movimento16/<id>/`. A corrida é opcional: as 5 direções ou nenhuma. O importador não mexe nas poses da corrida, porque mover a pose moveria o pé medido. Depois rode `node scripts/art-lite.mjs --kinds sprites`, `node scripts/hero-feet.mjs` (na corrida, a linha do pé é a da pose mais baixa) e `node scripts/hand-points.mjs --ids <id>`.
+- **No jogo:** `HERO_GAIT.run` (sprite-motion.ts) faz a classe com `run16` correr ao se mover (`movementPlan(id,'walk',…)` devolve a corrida). Ataque e repouso não mudam. Com `run:false` volta o andar, com `WALK_TUNE.lock` 0,5. No sandbox, `corrida=0` mostra o andar. `__cidade.fixar()` para a câmera, o que deixa o chão parado na tela para medir o pé.
+- **Medida (21/10, 1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
+
+  | direção | máximo | p90 | ciclos/s |
+  |---|---|---|---|
+  | W | 2 px | 1 px | 2,9 |
+  | SE | 2,2 px | 1,8 px | 3,0 |
+  | S | 1 px | 1 px | 2,9 |
+  | NW | 1,3 px | — | 3,0 |
+  | N | 2 px | 1 px | 2,9 |
+
+  - No NW, o herói passa atrás de um poste num trecho da medida; o pico de ~27 px ali é o poste, não o pé (excluído).
+  - Nenhum tênis arrasta na linha do chão de lado (≤ 1 px).

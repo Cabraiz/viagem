@@ -174,8 +174,11 @@ export function frameMoved(box:{w:number;h:number},art:StadiumArt,move:Move=SEM_
 }
 /** A framing: scale `s` (box px per file px) and the file's top-left corner in the box. */
 export interface Frame {s:number;ox:number;oy:number}
-/** The room over a hero's head on the PC (heroi-grande-por-tela): 4% of the window's height, at least 28 px. */
-export const headRoom=(h:number)=>Math.max(28,h*.04);
+/**
+ * The room over a hero's head on the PC (heroi-grande-por-tela): 9% of the window's height, at least 28 px
+ * (menu-folga-topo, the user, 22/10: "o default está muito perto da borda em cima, pode aumentar o gap"; it was 4%).
+ */
+export const headRoom=(h:number)=>Math.max(28,h*.09);
 /**
  * The right edge of the menu's column on the PC (estadio.css under CUTOUT_QUERY: left max(3vw, 16px) + 2vw, width
  * min(77vh, 60vw)) plus 2% of the width: no hero grows into it.
@@ -193,7 +196,8 @@ function boxIn(f:Frame,art:StadiumArt,cut:Placeable){
  * on the floor where they were and the top of his head (his box's: its alpha fills it) lands headRoom under the window's
  * top. The same rule for every hero and window, no size per hero. Never wider than the room between the column on the
  * left and 2% of the width from the right edge: he grows about his soles' middle, then slides inside that room. Never
- * smaller (z >= 1, so the file still covers the box; fitCutout shrinks him on windows wider than the bleed).
+ * smaller (z >= 1, so the file still covers the box; fitCutout shrinks him on windows wider than the bleed): with 9%
+ * (menu-folga-topo) the CLT, whose framing already leaves him 8.0-8.4%, keeps it.
  */
 export function frameHero(box:{w:number;h:number},art:StadiumArt,cut:Placeable,pos={x:.5,y:1}):Frame{
   const base=frameMoved(box,art,moveOf(cut),pos),at=boxIn(base,art,cut),feet=at.y+at.h,lo=columnRight(box),hi=box.w*.98;

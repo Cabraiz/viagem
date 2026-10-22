@@ -30,7 +30,7 @@ Torres: atiram com os tomos de quem construiu (dano × Óculos, cadência × Caf
 
 ## 3. Vida dos inimigos no começo
 
-`rules/waves.ts` hpScale das linhas 1-6: .35 / .8 / 1,1 / 1,35 / 1,55 / 1,7 → 1,3 / 1,4 / 1,5 / 1,55 / 1,6 / 1,7 (linha 7 em diante igual). Os dormentes do mapa usam a linha 3. Quantidade de inimigos igual.
+Só no modo ninhos (o jogo no ar: grupos dos ninhos e os dormentes do mapa, que usam a linha 3): `rules/waves.ts` campo `hpNinhos` das linhas 1-5 = 1,3 / 1,4 / 1,5 / 1,55 / 1,6 (o hpScale era .35 / .8 / 1,1 / 1,35 / 1,55; linha 6 em diante igual). O modo antigo em rodadas (ilha, infinito, ondas da cidade) fica com o tutorial como estava. Quantidade de inimigos igual.
 
 Bench `scripts/bench-ttk.ts` (cidade, chaveiro, combate manual, ninhos, bots da sala), main × branch:
 

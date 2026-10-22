@@ -19,6 +19,7 @@
  * crowd now and then, and hit him in turns (a contact 'damage' event each).
  * `relogio=1` brings back the game of before (horde-art.ts ENEMY_WALK): the clock-driven walk, the facing of the last
  * step and no swing on a contact hit.
+ * `ritmo=antes` (card inimigos-animacao-2x-lenta): the enemies' loops and walk cadence of before, 2x faster (ENEMY_PACE).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -38,7 +39,7 @@ import {HordeRenderer} from '../render/layers.ts';
 import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
-import {ENEMY_ART_ID,ENEMY_WALK,artTargetHeight,queueHordeArt} from '../art/horde-art.ts';
+import {ENEMY_ANIM_RATE,ENEMY_ART_ID,ENEMY_PACE,ENEMY_WALK,artTargetHeight,queueHordeArt} from '../art/horde-art.ts';
 import {ENEMY_DRAW_SCALE} from '../render/draw-scale.ts';
 import {artPiece} from '../art/manifest.ts';
 import {enemyKind} from '../render/keys.ts';
@@ -464,6 +465,7 @@ export async function openHordeSandbox(){
   // slot, until the roster art is wired in the render. Sandbox only: the game never reads this.
   for(const pair of (params.get('arte')??'').split(',')){const [kind,id]=pair.split(':');if(kind&&id&&Object.hasOwn(ENEMY_ART_ID,kind))(ENEMY_ART_ID as Record<string,string>)[kind]=id;}
   if(params.get('relogio')==='1')ENEMY_WALK.byGround=ENEMY_WALK.faceTarget=false;
+  if(params.get('ritmo')==='antes')Object.assign(ENEMY_PACE,{loop:ENEMY_ANIM_RATE,cadence:1,maxCps:3});
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;
   const reduced=params.get('reduced')==='1';

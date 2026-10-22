@@ -4,7 +4,7 @@ import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_STRIDE_DEFAULT,ENEMY_STRIDE_MIN,ENEMY_WALK,ENEMY_WALK_CADENCE,ENEMY_WALK_MAX_CPS,FACE_ACTING,FACE_NEAR,applyEnemyArt,enemyDrawScale,enemyStride,
+import {ENEMY_STRIDE_DEFAULT,ENEMY_STRIDE_MIN,ENEMY_WALK,ENEMY_WALK_CADENCE,ENEMY_WALK_MAX_CPS,FACE_ACTING,FACE_NEAR,applyEnemyArt,enemyCadence,enemyDrawScale,enemyStride,
   enemyWalkCycles,facingRow,pieceAction,playEnemyAction,targetRow} from '../../src/client/art/horde-art.ts';
 import {ENEMY_STRIDES} from '../../src/client/art/enemy-strides.ts';
 import {CONTACT_REACH,eventAction,type ActionActor,type ActionWorld} from '../../src/client/art/horde-actions.ts';
@@ -79,6 +79,10 @@ test('cadence: half a cycle per visible step walked (inimigos-animacao-2x-lenta)
   assert.ok(Math.abs(enemyWalkCycles(px/42,px/42,0,fig,s,1000)-ENEMY_WALK_CADENCE)<1e-9);
   assert.equal(enemyWalkCycles(2,-2,0,fig,s,1000),ENEMY_WALK_MAX_CPS,'a shove is not a sprint (1.9 cycles of ground in 1 s)');
   assert.equal(ENEMY_WALK_MAX_CPS,1.5,'the cap halved with the cadence');
+  // The rato-de-boteco's foot really follows the ground (scripts/passada-inimigos.mjs volta 0.30 of 0.36): a cycle per step.
+  assert.equal(enemyCadence('rato-de-boteco'),1);assert.equal(enemyCadence('bebado'),ENEMY_WALK_CADENCE);
+  assert.ok(Math.abs(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,s,1000,enemyCadence('rato-de-boteco'))-1)<1e-9);
+  assert.equal(enemyWalkCycles(2,-2,0,fig,s,1000,1),ENEMY_WALK_MAX_CPS*2,'its cap scales with it');
   assert.equal(enemyWalkCycles(4,0,0,fig,s,16),0,'teleport');
   assert.equal(enemyWalkCycles(px/ACROSS,-px/ACROSS,0,fig,s,0),0,'no time, no step');
 });

@@ -370,7 +370,7 @@ export const ENEMY_ANIM_RATE=.7;
  */
 export const ENEMY_LOOP_RATE=ENEMY_ANIM_RATE/2;
 const SLOW_LOOP=/(?:^|[/-])(?:idle|sleep|fly|walk)$/;
-export const enemyRate=(anim:string)=>SLOW_LOOP.test(anim)?ENEMY_LOOP_RATE:ENEMY_ANIM_RATE;
+export const enemyRate=(anim:string)=>SLOW_LOOP.test(anim)?ENEMY_PACE.loop:ENEMY_ANIM_RATE;
 const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*enemyRate(anim);
 /**
  * Walk by the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
@@ -386,22 +386,33 @@ const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*enemyRate(anim);
  * were twice as long. The sheets tread almost in place, so the planted foot slides by the enemy's own ground speed
  * whatever the cadence (scripts/desliza-inimigos.mjs: same slide a second before and after); halving the cadence
  * is what takes the frantic look away, and the step stays tied to the ground (slow in a crowd, still when stopped).
+ * ENEMY_CADENCE_KEPT: the sheets whose planted foot really travels back with the ground (`volta` ≥ half the visible
+ * step in scripts/passada-inimigos.mjs: the rato-de-boteco, 0.30 of 0.36) keep a cycle per step, its foot nearly
+ * locked (15 % slide), which half the cadence would undo (57 %).
  */
 export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_CADENCE=.5,ENEMY_WALK_MAX_CPS=1.5;
+export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
+/**
+ * The pace in use: the sandbox's before/after proof (`?sandbox=horda&ritmo=antes`) brings back the loops at
+ * ENEMY_ANIM_RATE and a cycle per visible step (capped at 3 a second), before any sheet loads.
+ */
+export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
  * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
  */
 export const ENEMY_WALK={byGround:true,faceTarget:true};
+/** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
+export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
 export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
 /**
  * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
- * stepping `stride`: ENEMY_WALK_CADENCE of a cycle per stride walked on screen (walkCycles, lock 1), capped at
- * ENEMY_WALK_MAX_CPS; 0 on a teleport.
+ * stepping `stride`: `cadence` (enemyCadence) of a cycle per stride walked on screen (walkCycles, lock 1), capped at
+ * ENEMY_WALK_MAX_CPS (scaled with the cadence); 0 on a teleport.
  */
-export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number):number{
-  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1)*ENEMY_WALK_CADENCE,ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
+export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number,cadence=ENEMY_PACE.cadence):number{
+  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1)*cadence,ENEMY_PACE.maxCps*cadence/ENEMY_PACE.cadence*Math.max(0,dtMs)/1000);
 }
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}
@@ -698,7 +709,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const byGround=ENEMY_WALK.byGround&&!!walkFile&&wx!==undefined&&wy!==undefined;
   if(byGround){
     if(Number.isNaN(s.lx))s.cycles=actor.phase;
-    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt);
+    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt,enemyCadence(id));
     s.lx=wx;s.ly=wy;s.lt=now;
   }
   const walkCol=(a:string|undefined)=>a==='walk'&&byGround?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile!).frames):-1;

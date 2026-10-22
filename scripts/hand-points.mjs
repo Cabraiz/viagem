@@ -29,10 +29,14 @@ export const HAND_POINTS:Readonly<Record<string,HandSheet>>=`;
 const CELL=96;
 /** Measured and approved before the bots' classes (arma-na-mao): their tracking keeps the rules it had (no feet rule). */
 const LEGACY=new Set(['clt-cansado','viciado-em-bet']);
+/** The bots' classes whose walk128 and idle8 the tracking gets right (hands apart from bare skin elsewhere; checked by eye). */
+const AUTO=new Set(['faxineira','mendigo','passageira','roqueira']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
 const BEHIND=new Set(['N','NW','NE']);
+/** idle8 (R06): one resting pose per direction, in HERO_DIRECTIONS order (sprite-motion.ts). */
+const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
 /**
  * Manual fixes, `<id>:<sheet name>` → {frame: [x, y]} in the 96 px cell; a third element 1 puts the weapon behind
  * the body in that pose (the hand is hidden behind it). `keys`: fists marked by eye (guided), `pick`: the tracked
@@ -73,7 +77,10 @@ const OVERRIDES={
 const KEYS_DIR=path.join(ROOT,'scripts/hand-keys');
 if(fs.existsSync(KEYS_DIR))for(const f of fs.readdirSync(KEYS_DIR).filter(f=>f.endsWith('.json'))){
   for(const [name,o] of Object.entries(JSON.parse(fs.readFileSync(path.join(KEYS_DIR,f),'utf8'))))
-    if(o.keys&&Object.keys(o.keys).length)OVERRIDES[`${f.slice(0,-5)}:${name}`]={keys:o.keys,...(o.behind!==undefined?{behind:o.behind}:{})};
+    if(!o.keys||!Object.keys(o.keys).length)continue;
+    // idle8: one pose per direction, each marked (the back views' poses behind the body).
+    OVERRIDES[`${f.slice(0,-5)}:${name}`]=name==='idle8'?Object.fromEntries(Object.entries(o.keys).map(([i,p])=>[i,BEHIND.has(IDLE8[i])?[...p,1]:p])):
+      {keys:o.keys,...(o.behind!==undefined?{behind:o.behind}:{})};
 }
 
 const args=process.argv.slice(2);
@@ -104,8 +111,6 @@ export function handOf(px,side,back=false){
   return [Math.round(sx/n*10)/10,Math.round(sy/n*10)/10];
 }
 
-/** idle8 (R06): one resting pose per direction, in HERO_DIRECTIONS order (sprite-motion.ts). */
-const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
 /** A sheet's poses, each an accessor {alpha(x,y), skin(x,y)} of its 96 px cell. */
 async function posesOf(file,id){
   const skin=handTone(id),legacy=LEGACY.has(id);
@@ -137,6 +142,28 @@ async function measure(file,name,dir,fix,id){
   return poses.map(px=>handOf(px,SIDE[dir],BEHIND.has(dir)));
 }
 
+/**
+ * The bots' classes, after the measure: a pose in front whose hand barely shows (under 6 hand-tone px in the fingers
+ * patch) holds the weapon behind the body (the patch would draw the sleeve over the handle); and where the weapon
+ * changes hands in the swing (a step over 9 px between two poses) it takes the pose between them halfway.
+ */
+function settle(points,poses,behind){
+  const r=Math.round(3.5);
+  if(!behind)points.forEach((p,i)=>{
+    if(p[2]===1)return;
+    let n=0;
+    for(let y=Math.round(p[1])-r;y<=Math.round(p[1])+r;y++)for(let x=Math.round(p[0])-r;x<=Math.round(p[0])+r;x++)
+      if(x>=0&&y>=0&&x<CELL&&y<CELL&&poses[i].skin(x,y))n++;
+    if(n<6){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}
+  });
+  for(let pass=0;pass<3;pass++)for(let i=1;i<points.length-1;i++){
+    const a=points[i-1],b=points[i],c=points[i+1];
+    if(Math.hypot(b[0]-a[0],b[1]-a[1])<=9)continue;
+    const m=[Math.round((a[0]+c[0])*5)/10,Math.round((a[1]+c[1])*5)/10];
+    points[i]=b[2]===1?[...m,1]:m;
+  }
+}
+
 async function debugSheet(file,points,out){
   const meta=await sharp(file).metadata(),K=4;
   let svg=`<svg width="${meta.width*K}" height="${meta.height*K}" xmlns="http://www.w3.org/2000/svg">`;
@@ -163,8 +190,10 @@ for(const id of ids){
     // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128.
     const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:(?:walk|attack)128|run16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
     if(!m&&!idle8)continue;
-    // The bots' attacks need their fists marked by eye (CLT_KEYS' method): a later batch of the card; until then none.
-    if(!LEGACY.has(id)&&name.startsWith('attack128-')&&!OVERRIDES[`${id}:${name}`]?.keys)continue;
+    // The bots' classes: the tracking holds only for AUTO's walks and rest (reviewed pose by pose); every other sheet
+    // needs its hand marked by eye (scripts/hand-mark.mjs, CLT_KEYS' method); until then none (the sticker at the side).
+    const marked=OVERRIDES[`${id}:${name}`];
+    if(!LEGACY.has(id)&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix,id);
     for(const [i,p] of Object.entries(fix))if(/^\d+$/.test(i))points[Number(i)]=p;
@@ -172,6 +201,7 @@ for(const id of ids){
     const poses=await posesOf(src,id);
     points.forEach((p,i)=>{if(p?.[2]===1){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}});
     if(points.some(p=>!p))throw new Error(`${f.file}: no hand in frame ${points.findIndex(p=>!p)}`);
+    if(!LEGACY.has(id)&&!idle8)settle(points,poses,fix.behind??BEHIND.has(dir));
     table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:fix.behind??BEHIND.has(dir),points};
     if(sheetDir){fs.mkdirSync(sheetDir,{recursive:true});await debugSheet(src,points,path.join(sheetDir,`${id}.${name}.png`));}
     console.log(f.file,points.length);

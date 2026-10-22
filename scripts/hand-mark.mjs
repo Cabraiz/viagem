@@ -11,6 +11,8 @@
  *     32 points read on that 2000 px wide picture, in tile order (16 for A then 16 for B; "-" skips a tile): the fist
  *     of the weapon hand (the one that throws the punch) → scripts/hand-keys/<id>.json. Then run `grid` again and
  *     check the green crosses sit on the fists.
+ *     Walks (walk128-*) the same way: the weapon hand (the one on the side the attack punches with), seen or where it hides.
+ *     idle8: its 8 poses (S, SW, W, NW, N, NE, E, SE) on one row; pair it with any sheet and give '-' for its 2nd row.
  *   node scripts/hand-mark.mjs side <id> <sheet> behind|front
  *     W/E (and any sheet) whose punch is thrown by the far hand: the weapon goes behind the body (the CLT's W and E).
  *
@@ -41,15 +43,15 @@ const table=()=>{const s=fs.readFileSync(DATA,'utf8');return JSON.parse(s.slice(
 async function sheetGrid(id,name){
   const f=manifest.groups.personagens.pieces[id].files[name].file,file=path.join(ROOT,'public/art/sprites',f);
   const sheet=table()[f],keys=readKeys(id)[name]?.keys??{};
-  const {width}=await sharp(file).metadata(),cols=width/96,tiles=[];
-  for(let k=0;k<128/STEP;k++){
-    const i=k*STEP;
+  const {width,height}=await sharp(file).metadata(),cols=width/96,tiles=[],step=name==='idle8'?1:STEP,n=cols*(height/96)/step;
+  for(let k=0;k<n;k++){
+    const i=k*step;
     const cell=await sharp(file).extract({left:(i%cols)*96+X0,top:Math.floor(i/cols)*96+Y0,width:W,height:H}).resize(W*K,H*K,{kernel:'nearest'}).flatten({background:'#d8efe0'}).toBuffer();
     let g='';
     for(let x=Math.ceil(X0/4)*4;x<X0+W;x+=4)g+=`<line x1="${(x-X0)*K}" y1="0" x2="${(x-X0)*K}" y2="${H*K}" stroke="${x%8?'#0002':'#0005'}"/>`+(x%8?'':`<text x="${(x-X0)*K+1}" y="${H*K-2}" font-size="10" font-family="Arial" fill="#036">${x}</text>`);
     for(let y=Math.ceil(Y0/4)*4;y<Y0+H;y+=4)g+=`<line x1="0" y1="${(y-Y0)*K}" x2="${W*K}" y2="${(y-Y0)*K}" stroke="${y%8?'#0002':'#0005'}"/>`+(y%8?'':`<text x="1" y="${(y-Y0)*K-1}" font-size="10" font-family="Arial" fill="#036">${y}</text>`);
     const p=sheet?.points[i],q=keys[i];
-    const svg=`<svg width="${W*K}" height="${H*K}">${g}<text x="${W*K-90}" y="14" font-size="13" font-family="Arial" fill="#c00">${name.replace('attack128-','')} #${i}</text>`+
+    const svg=`<svg width="${W*K}" height="${H*K}">${g}<text x="${W*K-110}" y="14" font-size="13" font-family="Arial" fill="#c00">${name.replace('128','')} #${i}</text>`+
       (q?`<path d="M${(q[0]-X0)*K-6} ${(q[1]-Y0)*K}h12M${(q[0]-X0)*K} ${(q[1]-Y0)*K-6}v12" stroke="#0a0" stroke-width="3"/>`:'')+
       (p?`<circle cx="${(p[0]-X0)*K}" cy="${(p[1]-Y0)*K}" r="5" fill="none" stroke="#e0f" stroke-width="2"/>`:'')+'</svg>';
     tiles.push({input:await sharp(cell).composite([{input:Buffer.from(svg)}]).png().toBuffer(),left:(k%8)*TW,top:Math.floor(k/8)*TH});
@@ -69,9 +71,10 @@ if(cmd==='grid'){
   for(const [s,name] of [a,b].entries()){
     const keys={};
     xs.slice(s*16,s*16+16).forEach((xy,k)=>{
-      if(xy==='-')return;
+      // idle8 shows its 8 poses on the first row (the second row's points are '-').
+      if(xy==='-'||name==='idle8'&&k>=8)return;
       const [X,Y]=xy.split(',').map(Number),dx=X/SHOWN-(k%8)*TW,dy=Y/SHOWN-(Math.floor(k/8)+2*s)*TH;
-      keys[k*STEP]=[Math.round((X0+dx/K)*10)/10,Math.round((Y0+dy/K)*10)/10];
+      keys[k*(name==='idle8'?1:STEP)]=[Math.round((X0+dx/K)*10)/10,Math.round((Y0+dy/K)*10)/10];
     });
     all[name]={...all[name],keys};
     console.log(id,name,JSON.stringify(keys));

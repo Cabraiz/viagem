@@ -33,8 +33,8 @@ export function figureOf(px){
 }
 /** The head's rows: the top 36% of the figure (hair, face, ears). */
 export const headBottom=fig=>fig.top+fig.h*.36;
-/** The feet's rows: the bottom 15% of the figure (a sandal or a bare foot is skin too: the feirante's, never a hand). */
-export const feetTop=fig=>fig.bot-fig.h*.15;
+/** The legs' rows: the bottom quarter of the figure (bare shins and knees, sandals: skin too, never a walking hand). */
+export const feetTop=fig=>fig.bot-fig.h*.25;
 /** The feet rule per pose accessor: off for the classes measured before it (px.legacy: the CLT and the viciado, as approved). */
 const footOf=(px,fig)=>px.legacy?CELL:feetTop(fig);
 
@@ -148,8 +148,9 @@ export function track(poses,start,elbow=start){
   for(let i=0;i<poses.length;i++){
     const px=poses[i],fig=figureOf(px);
     // Lost, the search grows with the poses hidden and skips the head (the nose is skin); in sight, it follows anywhere.
-    const radius=lost?Math.min(LOST_MAX,SEARCH+lost):SEARCH,seed=fig&&nearestSkin(px,p,radius,lost?headBottom(fig):undefined,footOf(px,fig));
-    const near=seed&&blob(px,seed,seed,REACH);
+    const radius=lost?Math.min(LOST_MAX,SEARCH+lost):SEARCH,seed=fig&&nearestSkin(px,p,radius,lost||!px.legacy?headBottom(fig):undefined,footOf(px,fig));
+    // The bots' classes: a walking hand never reaches the head rows (the face is skin: caça-promoção's walk W).
+    const near=seed&&blob(px,seed,seed,REACH).filter(q=>px.legacy||q[1]>=headBottom(fig));
     if(!seed||near.some(q=>q[1]>footOf(px,fig))&&legOf(px,seed,fig)){out.push(undefined);hidden.push(i);lost++;continue;}
     arm=handEnd(endsOf(near),arm);
     out.push(arm.hand);p=arm.hand;lost=0;
@@ -179,7 +180,10 @@ export function trackSheet(poses,side,pick){
   const all=candidates(loop[0]).sort((a,b)=>side*b.point[0]-side*a.point[0]);
   const runs=all.map(c=>{const r=track(loop,c.point,c.elbow);return {...r,points:unloop(r.points)};});
   if(pick!==undefined)return runs[pick];
-  return runs.reduce((best,r)=>r.hidden<best.hidden?r:best);
+  const best=runs.reduce((best,r)=>r.hidden<best.hidden?r:best);
+  // The bots' classes: the hand on the weapon side (runs come outermost on it first) unless hidden a quarter of the clip
+  // longer, so the weapon keeps its hand when the hero turns (the coach's walk N and NW took the other one).
+  return poses[0].legacy?best:runs.find(r=>r.hidden<=best.hidden+poses.length/4)??best;
 }
 
 /**

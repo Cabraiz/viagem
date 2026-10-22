@@ -26,10 +26,14 @@ sharp.cache(false);sharp.concurrency(1);
  */
 const HELD=Object.keys(manifest.groups.personagens.pieces).filter(id=>Object.keys(filesOf(id)).some(n=>/^walk(16|128)-/.test(n)));
 /**
- * The bots' attack128 sheets still wait for their fists marked by eye (2nd batch of BUG-20261022-ORQ-arma-flutua-corrida-
- * clt): until then they show the sticker at the side. Only these may lack a hand; the list shrinks as they are marked.
+ * Waiting for their hands marked by eye (2nd batch of BUG-20261022-ORQ-arma-flutua-corrida-clt, scripts/hand-mark.mjs):
+ * the bots' attack128, and the walk128 and idle8 of the classes the tracking gets wrong (bare arms and legs, a low hand,
+ * the face). Until then they show the sticker at the side. Only these may lack a hand; the list goes as they are marked.
  */
-const PENDING=new Set(HELD.filter(id=>id!=='clt-cansado'&&id!=='viciado-em-bet').flatMap(id=>['S','SW','W','NW','N','NE','E','SE'].map(d=>`${id}:attack128-${d}`)));
+const DIRS=['S','SW','W','NW','N','NE','E','SE'],AUTO=['faxineira','mendigo','passageira','roqueira'];
+const BOTS=HELD.filter(id=>id!=='clt-cansado'&&id!=='viciado-em-bet');
+const PENDING=new Set([...BOTS.flatMap(id=>DIRS.map(d=>`${id}:attack128-${d}`)),
+  ...BOTS.filter(id=>!AUTO.includes(id)).flatMap(id=>[...DIRS.map(d=>`${id}:walk128-${d}`),`${id}:idle8`])]);
 const pending=(id:string,name:string)=>PENDING.has(`${id}:${name}`)&&!HAND_POINTS[filesOf(id)[name].file];
 const shown=(id:string)=>{
   const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
@@ -77,6 +81,8 @@ test('the grip lands on the drawn hand: skin within 3 screen px of it in every f
       }
       worst.push({at:`${f.file} #${i}`,d});
       // The fingers patch (HAND_PATCH around the point) holds the hand's pixels: they are what closes over the handle.
+      // Behind the body (a back view, the far hand) there is no patch.
+      if(HAND_POINTS[f.file].behind)continue;
       let fingers=0;
       for(let y=Math.round(p[1]-HAND_PATCH);y<=Math.round(p[1]+HAND_PATCH);y++)for(let x=Math.round(p[0]-HAND_PATCH);x<=Math.round(p[0]+HAND_PATCH);x++){
         const k=px(x,y);if(x>=0&&y>=0&&x<96&&y<96&&skin(data[k],data[k+1],data[k+2],data[k+3]))fingers++;
@@ -197,4 +203,19 @@ test('heldLook: the held weapon loses the icon\'s gloss (greyer, highlights down
   // The red is closer to its grey than before.
   assert.ok(px[4]-px[6]<(200-40)*.85,String([...px.slice(4,8)]));
   assert.ok(HELD_TINT.behind<HELD_TINT.front);
+});
+
+test('the weapons go in the hands after the scene placed and animated every hero this frame (arma-flutua-corrida-clt)', ()=>{
+  // Drawn inside horde.update() the weapon read the hero sprite before place() moved it and before the allies were
+  // animated: a frame's step behind a running hero, and from the back its stale depth put it over him.
+  const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
+  const arsenal=readFileSync(new URL('../../src/client/render/arsenal-fx.ts',import.meta.url),'utf8');
+  assert.match(scene,/handsFromScene:true/);
+  const coop=scene.slice(scene.indexOf('private updateCoop('));
+  const at=(s:string)=>{const i=coop.indexOf(s);assert.ok(i>=0,s);return i;};
+  const hands=at('this.horde?.hands();');
+  assert.ok(at('this.horde?.update(time,delta)')<hands,'after the horde update');
+  assert.ok(at('this.place();')<hands,'after the hero is placed');
+  assert.ok(at('this.sprites.animate(objects.image')<hands&&at('objects.image.setPosition(q.x,q.y)')<hands,'after the allies');
+  assert.match(arsenal,/if\(!this\.options\.handsFromScene\)this\.drawHands\(\);/);
 });

@@ -76,11 +76,12 @@ const OVERRIDES={
 // The bots' attack fists marked by eye (scripts/hand-mark.mjs): scripts/hand-keys/<id>.json, {sheet: {keys, behind?}}.
 const KEYS_DIR=path.join(ROOT,'scripts/hand-keys');
 if(fs.existsSync(KEYS_DIR))for(const f of fs.readdirSync(KEYS_DIR).filter(f=>f.endsWith('.json'))){
-  for(const [name,o] of Object.entries(JSON.parse(fs.readFileSync(path.join(KEYS_DIR,f),'utf8'))))
+  for(const [name,o] of Object.entries(JSON.parse(fs.readFileSync(path.join(KEYS_DIR,f),'utf8')))){
     if(!o.keys||!Object.keys(o.keys).length)continue;
     // idle8: one pose per direction, each marked (the back views' poses behind the body).
     OVERRIDES[`${f.slice(0,-5)}:${name}`]=name==='idle8'?Object.fromEntries(Object.entries(o.keys).map(([i,p])=>[i,BEHIND.has(IDLE8[i])?[...p,1]:p])):
       {keys:o.keys,...(o.behind!==undefined?{behind:o.behind}:{})};
+  }
 }
 
 const args=process.argv.slice(2);
@@ -148,11 +149,12 @@ async function measure(file,name,dir,fix,id){
  * changes hands in the swing (a step over 9 px between two poses) it takes the pose between them halfway.
  */
 function settle(points,poses,behind){
-  const r=Math.round(3.5);
+  const r=3.5;
   if(!behind)points.forEach((p,i)=>{
     if(p[2]===1)return;
     let n=0;
-    for(let y=Math.round(p[1])-r;y<=Math.round(p[1])+r;y++)for(let x=Math.round(p[0])-r;x<=Math.round(p[0])+r;x++)
+    // The patch's square as the test reads it (hand-points.test.ts, HAND_PATCH around the point).
+    for(let y=Math.round(p[1]-r);y<=Math.round(p[1]+r);y++)for(let x=Math.round(p[0]-r);x<=Math.round(p[0]+r);x++)
       if(x>=0&&y>=0&&x<CELL&&y<CELL&&poses[i].skin(x,y))n++;
     if(n<6){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}
   });

@@ -36,6 +36,9 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 /* A hero drawn in place on the wide picture (menu-arte-viciado): main.ts showCutout() writes its box; the dance hides. */
 .estadio-recorte { position: absolute; z-index: 1; pointer-events: none; }
 .estadio-recorte[hidden] { display: none; }
+/* mureta-camada-frente: the stadium's bar drawn over the hero (the back sneaker behind it), framed like the background. */
+.estadio-mureta { position: absolute; z-index: 1; pointer-events: none; }
+.estadio-mureta[hidden] { display: none; }
 .estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }
 
 .estadio .menu-config {

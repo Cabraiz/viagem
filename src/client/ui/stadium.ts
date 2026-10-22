@@ -10,14 +10,23 @@ export interface StadiumArt {
   crop:[number,number,number,number];
   /** A bleed file: the approved 1920x1080 inside it (file px). Framed by it (frameArt), not by `cover`. */
   focal?:{x:number;y:number;w:number;h:number};
+  /**
+   * The lowest sole of the heroes drawn on it, a row of the whole 1920x1080 picture (alpha > 0: RECORTES' box bottom,
+   * `desce` included):
+   * frameArt keeps it FEET_MARGIN px above the box's bottom (heroi-esrgan-no-ar: the viciado's back sneaker at 1077 of
+   * 1080 touched the window's edge on every window wider than 16:9).
+   */
+  feet?:number;
 }
+/** The room under the lowest sole (px of the box), so no window cuts a sneaker. */
+export const FEET_MARGIN=8;
 /** The whole picture every crop and cutout is measured on (px). */
 export const WHOLE={w:1920,h:1080};
 export const STADIUM={
   wide:{w:1920,h:1080,crop:[0,0,1,1]} satisfies StadiumArt,
   tall:{w:768,h:1080,crop:[422/1920,0,1190/1920,1]} satisfies StadiumArt,
   // E6's stadium past every edge (NEW-20261021-ORQ-fundo-estadio-sangria): the approved picture intact at 320,313.
-  bleed:{w:2560,h:1707,crop:[-320/1920,-313/1080,2240/1920,1394/1080],focal:{x:320,y:313,w:1920,h:1080}} satisfies StadiumArt,
+  bleed:{w:2560,h:1707,crop:[-320/1920,-313/1080,2240/1920,1394/1080],focal:{x:320,y:313,w:1920,h:1080},feet:1081} satisfies StadiumArt,
 };
 /**
  * Where the file lands in the box: scale `s` (box px per file px) and its top-left corner. A plain file: `cover` at
@@ -31,7 +40,8 @@ export function frameArt(box:{w:number;h:number},art:StadiumArt,pos={x:.5,y:1}){
   const s=Math.max(Math.min(box.w/f.w,box.h/f.h),box.w/art.w,box.h/art.h);
   const clamp=(v:number,lo:number,hi=0)=>Math.min(hi,Math.max(lo,v));
   // Wider than the bleed (past ~2.4:1) the approved picture can't fit: its bottom (the bar, the feet) stays on screen.
-  return {s,ox:clamp(box.w/2-(f.x+f.w/2)*s,box.w-art.w*s),oy:clamp(box.h/2-(f.y+f.h/2)*s,box.h-art.h*s,Math.min(0,box.h-(f.y+f.h)*s))};
+  const feet=art.feet===undefined?0:box.h-(f.y+art.feet)*s-FEET_MARGIN;
+  return {s,ox:clamp(box.w/2-(f.x+f.w/2)*s,box.w-art.w*s),oy:clamp(box.h/2-(f.y+f.h/2)*s,box.h-art.h*s,Math.min(0,box.h-(f.y+f.h)*s,feet))};
 }
 /** Where the CSS shows the tall crop (estadio.css uses the same media query). */
 export const STADIUM_TALL_QUERY='(orientation: portrait) and (max-width: 820px)';
@@ -61,30 +71,57 @@ export function placeOnBar(box:{w:number;h:number},art:StadiumArt,atX:number,pos
 export interface StadiumCutout {
   /** The box in the whole 1920x1080 picture, px. */
   x:number;y:number;w:number;h:number;
-  /** Width → file (the full one and a 2/3 copy). */
+  /**
+   * Width → file: the box at 2/3, 1x, 4/3 and 2x, all from the 2x Real-ESRGAN enlargement (heroi-esrgan-no-ar);
+   * cutoutFile picks one by the shown width × DPR, so a 1x screen never loads the 2x one.
+   */
   files:readonly (readonly [number,string])[];
   /**
    * The hero's own background (NEW-20261021-ORQ-tela-clt-pose2), drawn without him: a bleed with STADIUM.bleed's
    * geometry (2560x1707, his 1920x1080 picture at 320,313), so the same framing fits it. Absent: the stadium.
    */
   fundo?:string;
+  /**
+   * Px of the whole picture the hero is drawn lower than in the approved picture (mureta-camada-frente: the viciado's
+   * front sole down onto the bar's padded top, its heel a few px behind the rounded edge, no gap under the arch).
+   */
+  desce?:number;
+  /**
+   * A piece of the background drawn OVER the hero (mureta-camada-frente, the user, 21/10: "o pé de trás deveria estar
+   * escondido"): the stadium's bar under its top edge (MURETA_TOPO), so the back sneaker stands behind it. Its box in the
+   * whole 1920x1080 picture, framed like the background (placeCutout), never fitted to the hero (fitCutout).
+   */
+  frente?:{x:number;y:number;w:number;h:number;file:string};
+}
+/**
+ * The top edge of the stadium's bar (the padded top's silhouette) in the whole 1920x1080 picture: y at x, a cubic fit
+ * (scripts/menu-arte.mjs --so mureta measures it on fundo-estadio-viciado: the top of the light band over the purple
+ * pad, 0.7 px rms over x 900-1840). The bar falls to the right, ever faster.
+ */
+export const MURETA_TOPO={x0:1370,sx:470,coef:[997.463,94.02,38.785,-2.987]} as const;
+export function muretaTopo(x:number){
+  const t=(x-MURETA_TOPO.x0)/MURETA_TOPO.sx,[a,b,c,d]=MURETA_TOPO.coef;
+  return a+b*t+c*t*t+d*t*t*t;
 }
 export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
-  'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp']]},
+  'viciado-em-bet':{x:953,y:19,w:793,h:1058,files:[[529,'/art/menu/heroi/viciado-em-bet-529.webp'],[793,'/art/menu/heroi/viciado-em-bet-793.webp'],
+    [1057,'/art/menu/heroi/viciado-em-bet-1057.webp'],[1586,'/art/menu/heroi/viciado-em-bet-1586.webp']],
+    desce:4,frente:{x:940,y:940,w:820,h:170,file:'/art/menu/mureta-estadio.webp'}},
   // The user's pose 2 (21/10), cut out of its own scene (the sunset light already on him), on the paperwork mountain.
-  'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp']],
+  'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
+    [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
     fundo:'/art/lite/menu/fundo-clt-cansado.webp'},
 });
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
 export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
 export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
 /** The cutout's box in the stage (px) for the same framing the background uses (frameArt; `pos` for `cover`). */
-export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<StadiumCutout,'x'|'y'|'w'|'h'>,pos={x:.5,y:1}){
+export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>,pos={x:.5,y:1}){
   if(!(box.w>0&&box.h>0))return;
   const {s,ox,oy}=frameArt(box,art,pos);
   // The whole picture's px → the file's px: the same for the plain wide file, shifted by the bleed for E6's.
   const f=art.focal??{x:0,y:0,w:art.w,h:art.h},k=f.w/WHOLE.w;
-  return {x:ox+(f.x+cut.x*k)*s,y:oy+(f.y+cut.y*k)*s,w:cut.w*k*s,h:cut.h*k*s};
+  return {x:ox+(f.x+cut.x*k)*s,y:oy+(f.y+(cut.y+(cut.desce??0))*k)*s,w:cut.w*k*s,h:cut.h*k*s};
 }
 /** The margin a hero's head gets from the stage's top (px) when it would leave the screen: 2% of its height, at least 8. */
 export const cutoutMargin=(h:number)=>Math.max(8,h*.02);

@@ -98,6 +98,18 @@ jobs:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/game/node_modules/playwright
         run: |
           node ../scripts/abertura-ci.mjs ../folha-out --dist dist --base-dist ../base/dist --base-sha "${{ steps.base.outputs.sha }}" || echo "::warning::abertura: infra (exit $?)"
+      # The heroes drawn in place on the menu stand on the floor (NEW-20261021-ORQ-heroi-esrgan-no-ar): 7 window sizes,
+      # +-4 px; its prints and pes.json go in the same artifact. Runs before the sheet, whose own exit decides the job.
+      - name: Pés no chão do menu (1 = um herói flutua ou afunda, 2 = infra)
+        id: pes
+        working-directory: game
+        env:
+          PLAYWRIGHT_MODULE: ${{ github.workspace }}/game/node_modules/playwright
+        run: |
+          set +e
+          node ../scripts/pes-no-chao.mjs ../folha-out --dist dist; code=$?
+          if [ "$code" -eq 2 ]; then echo "::warning::pés: infra (exit 2), tentando de novo"; node ../scripts/pes-no-chao.mjs ../folha-out --dist dist; code=$?; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Folha de prints (1 = falhou, 2 = infra, tentada mais uma vez)
         working-directory: game
         env:
@@ -106,6 +118,7 @@ jobs:
           set +e
           node ../scripts/folha-prints.mjs ../folha-out --sha ${{ steps.sha.outputs.short }}; code=$?
           if [ "$code" -eq 2 ]; then echo "::warning::folha: infra (exit 2), tentando de novo"; node ../scripts/folha-prints.mjs ../folha-out --sha ${{ steps.sha.outputs.short }}; code=$?; fi
+          if [ "$code" -eq 0 ] && [ "${{ steps.pes.outputs.code }}" = "1" ]; then echo "::error::pés no chão: um herói do menu flutua ou afunda (pes.json)"; exit 1; fi
           exit $code
       - if: always()
         uses: actions/upload-artifact@v4

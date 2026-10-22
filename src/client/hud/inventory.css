@@ -45,3 +45,31 @@
 .rh-inv-trocar .ic{width:24px;height:24px}
 .rh-inv-nota{margin:0;padding:4px 8px;border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:var(--s-texto);white-space:nowrap}
 .rh-inv-nota[hidden]{display:none}
+
+/* Phone (BUG-20261022-ORQ-hud-mobile-rodape): the bar sits in the gap between the stick and the attack button, 14 px
+   clear of each (12 + the hand slot's 1.1 lift), centred on their shared axis (explore.css .explore-controls centres
+   them): the box spans that gap and is as tall as the taller control. Only the filled slots show (no dashed empties on
+   the snow), up to 3 a row, centred; a slot shrinks to fit the gap (container width), its tap area stays 44 px. The
+   numbers follow explore.css: 24 px margins and a 112 px stick; 18/16 px and 96 px on small phones and in landscape. */
+.rh[data-hud=fone] .rh-inv{
+  --inv-stick:112px;--inv-lado:min(34px,(100cqi - 2 * var(--inv-gap)) / 3 - 0.5px);
+  container-type:inline-size;
+  left:calc(max(24px,env(safe-area-inset-left)) + var(--inv-stick) + 14px);
+  right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 14px);
+  bottom:max(24px,env(safe-area-inset-bottom));
+  height:max(var(--inv-stick),var(--botao-habilidade));
+  justify-content:center;align-items:center}
+@media (max-width:370px),(max-height:500px){
+  .rh[data-hud=fone] .rh-inv{
+    --inv-stick:96px;--inv-gap:3px;--inv-lado:min(32px,(100cqi - 2 * var(--inv-gap)) / 3 - 0.5px);
+    left:calc(max(18px,env(safe-area-inset-left)) + var(--inv-stick) + 14px);
+    right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 14px);
+    bottom:max(16px,env(safe-area-inset-bottom))}
+}
+.rh[data-hud=fone] .rh-inv-slots{display:flex;flex-wrap:wrap;justify-content:center;max-width:100%}
+.rh[data-hud=fone] .rh-inv-slot{width:var(--inv-lado);height:var(--inv-lado)}
+.rh[data-hud=fone] .rh-inv-slot[data-empty=true]{display:none}
+.rh[data-hud=fone] .rh-inv-ic .ic{width:min(24px,var(--inv-lado) - 10px);height:min(24px,var(--inv-lado) - 10px)}
+.rh[data-hud=fone] .rh-inv-slot::before{content:'';position:absolute;inset:min(-3px,(var(--inv-lado) - 44px) / 2)}
+/* "Trocar" and the refusal line float over the box (they never push the slots off the axis). */
+.rh[data-hud=fone] :is(.rh-inv-trocar,.rh-inv-nota){position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%)}

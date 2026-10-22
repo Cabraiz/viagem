@@ -109,3 +109,37 @@ export function foneLayout(input:FoneLayoutInput):FoneLayout{
  * back to 54 px and fone.css starts the windows at the left edge), or the 125 % combat strip would be squeezed.
  */
 export const teamColumnVar=(phone:boolean,teamWidth:number):string|undefined=>phone?undefined:`${Math.ceil(teamWidth)}px`;
+
+/**
+ * The phone's footer (BUG-20261022-ORQ-hud-mobile-rodape) as explore.css and inventory.css draw it: the stick at the
+ * left, the attack at the right, both centred on one axis; the inventory in the gap between them, RODAPE.clear px from
+ * each, only the filled slots, centred, wrapping when a row is full (3 a row in portrait). A slot shrinks to fit a third
+ * of the gap (its tap area stays RODAPE.hit px).
+ */
+export const RODAPE={
+  /** explore.css .explore-controls padding and .explore-stick side; ≤ 370 px wide or landscape: the tight values. */
+  pad:{x:24,y:24},tightPad:{x:18,y:16},stick:112,tightStick:96,
+  /** inventory.css: the gap kept to each control (12 + the hand slot's 1.1 lift), the slot's side and gap. */
+  clear:14,slot:34,tightSlot:32,gap:4,tightGap:3,perRow:3,hit:44,handScale:1.1,
+} as const;
+export interface FoneFooter {stick:Rect;attack:Rect;box:Rect;slots:Rect[];slotSide:number}
+export function foneFooter(input:{viewport:{width:number;height:number};safe?:FoneInsets;scale?:number;items:number}):FoneFooter{
+  const {viewport}=input,safe=input.safe??NO_INSETS,k=RODAPE;
+  const tight=viewport.width<=370||viewport.height<=500;
+  const pad=tight?k.tightPad:k.pad,stickSide=tight?k.tightStick:k.stick,skillSide=14+80*(input.scale??1);
+  const left=Math.max(pad.x,safe.left),rightPad=Math.max(pad.x,safe.right),bottomPad=Math.max(pad.y,safe.bottom);
+  const axis=viewport.height-bottomPad-Math.max(stickSide,skillSide)/2;
+  const stick={x:left,y:axis-stickSide/2,width:stickSide,height:stickSide};
+  const attack={x:viewport.width-rightPad-skillSide,y:axis-skillSide/2,width:skillSide,height:skillSide};
+  const bx=right(stick)+k.clear,bw=Math.max(0,attack.x-k.clear-bx),bh=Math.max(stickSide,skillSide);
+  const box={x:bx,y:axis-bh/2,width:bw,height:bh};
+  const gap=tight?k.tightGap:k.gap,side=Math.min(tight?k.tightSlot:k.slot,(bw-2*gap)/k.perRow-0.5);
+  const n=Math.max(0,Math.min(6,Math.round(input.items))),perRow=Math.max(1,Math.floor((bw+gap)/(side+gap)));
+  const rows=Math.ceil(n/perRow),top=axis-(rows*side+(rows-1)*gap)/2,slots:Rect[]=[];
+  for(let i=0;i<n;i++){
+    const row=Math.floor(i/perRow),inRow=Math.min(perRow,n-row*perRow),col=i-row*perRow;
+    const x0=bx+(bw-(inRow*side+(inRow-1)*gap))/2;
+    slots.push({x:x0+col*(side+gap),y:top+row*(side+gap),width:side,height:side});
+  }
+  return {stick,attack,box,slots,slotSide:side};
+}

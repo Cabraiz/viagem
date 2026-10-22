@@ -167,7 +167,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     const spots=plan!.nests.find(p=>p.id===nest.id)?.sleepers??[],index=state.nests.indexOf(nest);
     // NEST_PACE.warmRow: during the warm start the groups play that round row (1: the tutorial's light bodies).
     const row=ctx.tick-state.startTick!<ticks(NEST_PACE.warm)?NEST_PACE.warmRow:nestRound(f);
-    const hp=ROUNDS[row-1].hpScale*playerScale(state.players).hp;
+    const hp=(ROUNDS[row-1].hpNinhos??ROUNDS[row-1].hpScale)*playerScale(state.players).hp;
     let out=0;
     for(const kind of pickKinds(n,row)){
       // The yard's sleeper spots are clear ground by construction (maps/nests.ts); a building nest's centre is not.

@@ -39,9 +39,11 @@ test('an art-only sticker is its WebP with the art, the "mistério" drawing with
 });
 
 test('an item id the HUD catalog does not list yet but whose art came is its own sticker, not the box',()=>{
-  for(const id of ['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador']){
+  for(const id of ['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao','brigadeiro','pacoca','cocada','kit-torre','silenciador','estilingue','defumador','arruda','tampa-de-panela']){
     assert.ok(isStickerName(id),id);
     assert.equal(itemDisplay(id).icon,id);
   }
+  // upgrades-megabonk: 'pente' is the +1 projétil now (Bombinha de São João), with the traque's sticker.
+  assert.equal(itemDisplay('pente').icon,'traque');
   assert.equal(itemDisplay('who-knows').icon,UNKNOWN_ITEM_STICKER);
 });

@@ -15,7 +15,7 @@ register('data:text/javascript,'+encodeURIComponent(hooks));
 const {default:worker,GameRoom}=await import('../../multiplayer/worker.ts');
 
 let called=0;
-const env=(local:string)=>({ALLOW_LOCAL:local,LAB_HORDE:'300',LAB_WORLD:'ilha',LAB_OFFSET:'1000,0',
+const env=(local:string,extra:Record<string,string>={})=>({ALLOW_LOCAL:local,LAB_HORDE:'300',LAB_WORLD:'ilha',LAB_OFFSET:'1000,0',LAB_ASLEEP:'120',...extra,
   ROOMS:{idFromName:(n:string)=>n,get:()=>({lab:async()=>{called++;return {secret:1};}})}}) as any;
 const lab=(origin?:string)=>new Request('https://viagem-salas.viagem.workers.dev/lab/ABCDEF0123',{headers:origin?{Origin:origin}:{}});
 
@@ -36,6 +36,13 @@ test('deployed Worker: rooms ignore LAB_HORDE and LAB_WORLD, and the lab RPC ans
   g.room=room;assert.equal(g.lab(),null);
   const local=new GameRoom({storage:{}} as any,env('true')) as any,labRoom=local.create(Date.now(),1);
   assert.equal(labRoom.labHorde,300);assert.deepEqual(labRoom.labOffset,{x:1000,y:0});assert.equal(labRoom.sampling,true);assert.equal(labRoom.sim.terrain.chunks,undefined,'LAB_WORLD=ilha: the island test world, local only');
+});
+test('LAB_ASLEEP (horda-visivel-capacidade): a local room caps each client at n sleepers (sem = none); a deployed one ignores it',()=>{
+  const deployed=(new GameRoom({storage:{}} as any,env('false')) as any).create(Date.now(),1);
+  assert.equal(deployed.labAsleep,undefined);
+  assert.equal((new GameRoom({storage:{}} as any,env('true')) as any).create(Date.now(),1).labAsleep,120);
+  assert.equal((new GameRoom({storage:{}} as any,env('true',{LAB_ASLEEP:'sem'})) as any).create(Date.now(),1).labAsleep,Number.MAX_SAFE_INTEGER);
+  assert.equal((new GameRoom({storage:{}} as any,env('true',{LAB_ASLEEP:'x'})) as any).create(Date.now(),1).labAsleep,undefined);
 });
 test('/health says the current protocol (PROTOCOL_VERSION, given out by the integration queue) to anyone',async()=>{
   const r=await worker.fetch(new Request('https://viagem-salas.viagem.workers.dev/health'),env('false'));

@@ -681,8 +681,8 @@ export class CityLayer {
     const decor:DecorPrim[]=[];
     const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
     for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
-      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot,!this.relief))if(!p.shimmer)decor.push(p);
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
@@ -751,7 +751,7 @@ export class CityLayer {
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
       if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
-      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
+      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot,!this.relief);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
         else glintCells++;

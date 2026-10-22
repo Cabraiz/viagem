@@ -644,7 +644,7 @@ class CitySandbox extends Phaser.Scene {
   private drawLab(time:number,dt:number){
     const lab=this.lab;if(!lab)return;
     lab.projector.view=this.view;
-    if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma')));}}
+    if(arsenal){const step=Math.floor(time/ARSENAL_PUSH_MS);if(step!==lab.pushed){lab.pushed=step;lab.horde.push(arsenalView(lab.view,this.at.x,this.at.y,time,params.get('arma'),Number(params.get('aura')??0)||0));}}
     if(lab.nests){
       // The band wakes (asleep → awake: layers.ts plays `wake`), again every NEST_WAKE_MS; the modo foto's clock is fixed.
       const now=fotoT??time,step=fotoT!==undefined?0:Math.floor(time/NEST_WAKE_MS);

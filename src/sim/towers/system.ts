@@ -408,6 +408,19 @@ export function radarBonus(state:StonewardsState,d:DefenseState,tick:number):num
 const reaches=(def:DefenseDef,e:EnemyState)=>def.hits==='all'||(def.hits==='air')===isFlying(e);
 const byDistance=(at:Point)=>(a:EnemyState,b:EnemyState)=>Math.hypot(a.x-at.x,a.y-at.y)-Math.hypot(b.x-at.x,b.y-at.y)||(a.id<b.id?-1:a.id>b.id?1:0);
 
+/**
+ * Card upgrades-megabonk: the towers' equivalents of the tomes. A defense built by a hero of the manual combat (an
+ * inventory: build.hand) fires with its owner's tomes: damage × might (Óculos), cooldown × cooldown (Café), blast radius
+ * × area (Megafone), +amount targets (Bombinha: +1 projétil is one more target a volley). Undefined: the tower's own
+ * numbers (an automatic-game hero, or an owner who left the run).
+ */
+export function ownerBoost(ctx:SimContext,owner:string):{might:number;cooldown:number;area:number;amount:number}|undefined{
+  const p=ctx.players.get(owner);
+  if(!p||p.build.hand===undefined)return undefined;
+  const {might,cooldown,area,amount}=p.stats;
+  return might===1&&cooldown===1&&area===1&&amount===0?undefined:{might,cooldown,area,amount};
+}
+
 /** Defenses fire in combat: ready ones (pronta/danificada) on their cooldown, at targets their kind reaches. */
 export function defensesStep(ctx:SimContext,state:StonewardsState){
   const towers=state.defenses;
@@ -417,8 +430,11 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
   let rng:ReturnType<SimContext['rng']['fork']>|undefined;
   for(const d of towers.list){
     if(d.ruined||ctx.tick<d.readyTick||ctx.tick<d.fireTick)continue;
-    const def=DEFENSES[d.kind];
-    if(def.target==='none')continue;
+    const base=DEFENSES[d.kind];
+    if(base.target==='none')continue;
+    const boost=ownerBoost(ctx,d.owner);
+    const def:DefenseDef=boost?{...base,damage:base.damage*boost.might,cooldown:Math.max(1,Math.round(base.cooldown*boost.cooldown)),
+      area:base.area*boost.area,shots:base.shots+boost.amount}:base;
     const range=def.range*(1+radarBonus(state,d,ctx.tick));
     ctx.enemyIndex.query(d.x,d.y,range,found);
     const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));

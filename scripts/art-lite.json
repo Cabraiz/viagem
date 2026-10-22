@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2059,
-  "bytes": 1539468280,
-  "liteBytes": 497884440,
+  "files": 2062,
+  "bytes": 1540306638,
+  "liteBytes": 498173362,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -2100,6 +2100,42 @@
    ],
    "psnr": 41.5,
    "shownPsnr": 41.5
+  },
+  "city/decor/penhasco3-bloco-1/sheet.webp": {
+   "source": "3443ea89263bf21f65b0b141016e7d1f3b14c538ba726840176a1b16c4b93874",
+   "lite": "3edb60db9657266d148b7190806d7130a9aa3863417f6ee4672e309a9f621368",
+   "bytes": 314020,
+   "liteBytes": 105400,
+   "liteCell": [
+    329,
+    271
+   ],
+   "psnr": 38.1,
+   "shownPsnr": 38.1
+  },
+  "city/decor/penhasco3-bloco-2/sheet.webp": {
+   "source": "b670c698d689dc623614675d745e8d9be79512f13d3b069a1e9d43eceb7fb46f",
+   "lite": "689f6dd2082cda6795646f737c63c93bf6fee585b202143f0fbf45b1518aac7b",
+   "bytes": 336680,
+   "liteBytes": 119774,
+   "liteCell": [
+    329,
+    293
+   ],
+   "psnr": 38.8,
+   "shownPsnr": 38.8
+  },
+  "city/decor/penhasco3-reto/sheet.webp": {
+   "source": "25ed9f1f765fabc1ad703d16a9fea955b0af480c6dc725a32a1e37b150c95bfb",
+   "lite": "481dacee1711f1f8225d98dd29ad11fb79154f8f26544b00d206bdc98189142d",
+   "bytes": 187658,
+   "liteBytes": 63748,
+   "liteCell": [
+    251,
+    226
+   ],
+   "psnr": 38.7,
+   "shownPsnr": 38.7
   },
   "city/decor/pneus-empilhados-1/sheet.webp": {
    "source": "e3d0227a925a783346e9c1ddcc7b5916ca73bb050513fc641c37cb0e9943dfd2",

@@ -173,7 +173,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
     const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
     const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
-    const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},clips:{}};
+    const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
     for(const motion of ['idle','walk','run']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
@@ -213,14 +213,19 @@ export function table(m){
   const lines=[`### ${m.id}`,'','| direção | clipe | cabeça | altura (apoio) | tronco | área | emenda 16→1 |','|---|---|---|---|---|---|---|'];
   const pc=x=>`${x>=1?'+':''}${((x-1)*100).toFixed(1)} %`;
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    lines.push(`| ${d} | ${motion}16 | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
+    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
   }
   return lines.join('\n');
 }
 
 /** Rest, walk frame 0 and every run frame side by side at the game's scale (4×, nearest), one PNG per direction. */
+/** The lowest opaque row (alpha > 128) over the cells `frames` of a sheet. */
+async function feetRow(file,frames,cols){
+  const a=await cells(file,Math.max(...frames)+1);
+  return Math.max(...frames.map(f=>shape(a[f]).bot+1));
+}
 export async function sheet(manifest,id,outDir,dir=SPRITES){
-  const files=clipsOf(manifest,id),Z=3,S=CELL*Z;fs.mkdirSync(outDir,{recursive:true});
+  const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
     const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...Array.from({length:files[`run16-${d}`]?.frames??0},(_,i)=>['run',i])].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
@@ -228,8 +233,10 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
     for(let k=0;k<list.length;k++){
       const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);
       const buf=await sharp()(path.join(dir,clip.file)).extract({left:(i%cols)*CELL,top:Math.floor(i/cols)*CELL,width:CELL,height:CELL}).resize(size,size,{kernel:'nearest'}).png().toBuffer();
-      // same feet line: the clip's anchor row (0.875) on the slot's
-      const slot=S,left=(k%6)*slot+Math.round((slot-size)/2),top=Math.floor(k/6)*slot+Math.round(slot*.875-size*.875);
+      // same feet line: the clip's feet row (its lowest opaque row; a run's lowest over its poses, as hero-feet.mjs) on
+      // the slot's 0.875 (an R06 rest stands above its anchor row)
+      const feet=(feetOf[clip.file]??=await feetRow(path.join(dir,clip.file),motion==='idle'?[i]:Array.from({length:clip.frames},(_,f)=>f),cols));
+      const slot=S,left=(k%6)*slot+Math.round((slot-size)/2),top=Math.floor(k/6)*slot+Math.round(slot*.875-feet*size/CELL);
       comps.push({input:buf,left:Math.max(0,left),top:Math.max(0,top)});
     }
     const rows=Math.ceil(list.length/6);

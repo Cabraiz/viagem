@@ -86,7 +86,7 @@ Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o v
   - Sem tabela, uma corrida usa `RUN_STRIDE`.
 - **Importar:** `run/<dir>.png` (768×768, 4×4) e o `.phase.json` ao lado das pastas walk/attack/idle em `personagens-movimento16/<id>/`. A corrida é opcional: as 5 direções ou nenhuma. O importador não mexe nas poses da corrida, porque mover a pose moveria o pé medido. Depois rode `node scripts/art-lite.mjs --kinds sprites`, `node scripts/hero-feet.mjs` (na corrida, a linha do pé é a da pose mais baixa) e `node scripts/hand-points.mjs --ids <id>`.
 - **No jogo:** `HERO_GAIT.run` (sprite-motion.ts) faz a classe com `run16` correr ao se mover (`movementPlan(id,'walk',…)` devolve a corrida). Ataque e repouso não mudam. Com `run:false` volta o andar, com `WALK_TUNE.lock` 0,5. No sandbox, `corrida=0` mostra o andar. `__cidade.fixar()` para a câmera, o que deixa o chão parado na tela para medir o pé.
-- **Medida (21/10, 1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
+- **Medida da 1ª versão (21/10; a arte foi trocada em 22/10, ver abaixo) (1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
 
   | direção | máximo | p90 | ciclos/s |
   |---|---|---|---|
@@ -98,3 +98,16 @@ Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o v
 
   - No NW, o herói passa atrás de um poste num trecho da medida; o pico de ~27 px ali é o poste, não o pé (excluído).
   - Nenhum tênis arrasta na linha do chão de lado (≤ 1 px).
+
+## Proporção da corrida, emenda do loop e contorno (corrida-proporcao-contorno, 22/10)
+
+O usuário viu a corrida menor que o parado (cabeça menor, corpo fino), o fim do ciclo sem casar com o início e, às vezes, o contorno preto sumindo e ficando só o branco.
+- **Medidor:** `node scripts/proporcao.mjs [--ids <id>] [--sheet <pasta>] [--json <arquivo>]`. Para cada direção desenhada, compara cada pose do andar e da corrida com o parado da mesma direção, na escala do jogo (96/height de cada clipe):
+  - **cabeça:** o boné e o cabelo do parado encaixados na pose, nas escalas de 0,6 a 1,4 (IoU > 0,9);
+  - **altura:** só nas poses de apoio da corrida (as de voo e o agachamento mudam a altura);
+  - **emenda 16→1:** distância de forma (1 − IoU no melhor encaixe a ±3 px) entre a última pose e a primeira, contra a mediana entre vizinhas;
+  - **tronco e área:** só informativos (braço cruzando o peito muda a medida).
+  - O teste `tests/tools/proporcao.test.ts` exige cabeça e altura dentro de ±4 % e a emenda até 1,2× a mediana em toda corrida e todo parado. As falhas do andar (que não aparece com a corrida ligada) estão listadas em `KNOWN_WALK`.
+- **Causa da proporção:** o montador escalava a corrida pela altura, e uma pose de corrida é mais baixa. Além disso, cada meio passo (uma imagem) vem num tamanho próprio, e S, N e NW tinham sido desenhados com a câmera na altura dos olhos, com pernas compridas. Agora cada metade é escalada para a cabeça bater com a do parado (`montar3.mjs`, com KA e KB). S, N e NW foram regerados com a proporção e a câmera do parado no prompt e com poses igualmente espaçadas (`gerar4.mjs`). W e SE ficaram com o desenho do E7, reescalados. Os scripts e as tentativas estão em `D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-corrida-proporcao-contorno/`.
+- **Pé no jogo** (câmera fixa, marcador): W máx. 1 px, NW 1,3, SE 3,1, S 0, N 0, a 2,9–3 ciclos/s. W e NW foram calibrados pelo salto medido (`calibra.mjs`). No W, o pé roxo das poses 7–9 (voo, rente ao chão) salta para o pouso na pose 10; a corrida anterior já fazia isso (19 px, agora 23 px na escala nova).
+- **Contorno:** o cache de folhas M16 (`movement128-textures.ts`) contava folhas: 8, um número pensado para a R06 de 1536×768. O herói usa 10 (5 de parado e 5 de corrida), então ao virar uma folha despejava a outra, a cópia com o anel Breu e o adesivo "você" eram refeitos, e nesse meio-tempo o contorno caía nas 16 cópias deslocadas, com só 1 px de Breu. Agora cada folha pesa a sua fração de uma R06 (`sheetWeight`). Na cidade, o fallback desenha as três faixas do adesivo (`CITY_CONTOUR` em `you.ts`): Breu, Papel e Breu por fora. Só falta o adesivo na primeira vez que cada clipe aparece (cerca de 4 quadros).

@@ -13,7 +13,7 @@ import {ARROW_MS,HP_BAR_CSS,LOW_HP,OUTLINE_DIRS,RING_CSS,RING_UNDER,STATUS_CSS,S
 import {HEART_CSS,LOW_NUMBER_CSS,crackPoints,heartPoints,lowHpText,lowMarkLayout,lowMarkOn} from './low-hp-mark.ts';
 import {HAZARD} from './telegraph-look.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame} from '../art/frames-art.ts';
-import {baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
+import {CITY_STICKER,baseDisplay,variantOrigin,type VariantGeometry} from './city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from './draw-scale.ts';
 import type {VehicleKind} from '../../contract/index.ts';
 
@@ -27,6 +27,18 @@ export interface MarkCopies {
 }
 
 type Sprite=Phaser.GameObjects.Sprite;
+
+/**
+ * The city's offset-copy contour, drawn until the baked sticker of the copy on show is built (a clip seen for the first
+ * time, or rebuilt after a zoom change): CITY_STICKER's bands at their outer distances (CSS px), outermost lowest, each
+ * 8 tint-filled copies. With the island's two (Papel 2, Breu 3) the Breu outside the Papel was 1 px and dotted, so the
+ * black looked gone for those frames (card corrida-proporcao-contorno). The first two bands share the island's tints.
+ */
+export const CITY_CONTOUR=(()=>{
+  let r=0;const out=CITY_STICKER.map(b=>r+=b.css);
+  return [out[2],out[1],out[0]].map((radius,i)=>({r:radius,depth:-.25+i*.05}));
+})();
+
 type Pt={x:number;y:number};
 
 /** Allies above every critter and comic effect (bubbles are at 96000)... */
@@ -66,7 +78,7 @@ export class YouMarkers {
   /** Hp number next to the low bar (low-hp-mark.ts): Papel with a Breu stroke. */
   private lowText:Phaser.GameObjects.Text;
   private ghosts=new Map<string,Sprite>();
-  /** Sticker contour of the local hero: 8 Breu copies (outer) and 8 Papel copies, tint-filled, under the sprite. */
+  /** Sticker contour of the local hero: 8 Breu copies (outer) and 8 Papel copies, tint-filled, under the sprite; the city adds 8 Breu (CITY_CONTOUR). */
   private contour:Sprite[]=[];
   private arrowAt=-Infinity;
   private fullSince:number|undefined;
@@ -270,7 +282,8 @@ export class YouMarkers {
    * Hard sticker contour (§2.4): tint-filled copies offset in 8 directions, Breu farther out, Papel inside, under `top`.
    * City (contorno-breu): where `top` shows its city copy and the sticker is built, ONE sprite with the bands baked as
    * true distances (CITY_STICKER: Papel 2, then a solid Breu 2 CSS px outermost), placed from the base frame like the
-   * ring (figureOf), so it hugs the figure exactly; the offset copies only before it is built and off the city.
+   * ring (figureOf), so it hugs the figure exactly; the offset copies only before it is built (CITY_CONTOUR's three
+   * bands) and off the city (the island's two).
    */
   private drawContour(top:Sprite,s:number){
     const sticker=this.city&&this.copies?.copyOf(top.texture.key)?this.copies.sticker?.(top.texture.key):undefined;
@@ -287,12 +300,15 @@ export class YouMarkers {
       return;
     }
     this.stickerSprite?.setVisible(false);
-    if(!this.contour.length)for(let i=0;i<16;i++)this.contour.push(this.scene.add.sprite(0,0,top.texture.key,top.frame.name).setTintFill(i<8?this.color.breu:this.color.papel));
+    const city=this.city,n=city?24:16;
+    while(this.contour.length<n){const i=this.contour.length;this.contour.push(this.scene.add.sprite(0,0,top.texture.key,top.frame.name).setTintFill(i<8||i>=16?this.color.breu:this.color.papel));}
     const depth=top.depth;
-    for(let i=0;i<16;i++){
-      const copy=this.contour[i],dir=OUTLINE_DIRS[i%8],r=(i<8?STICKER_CSS.breu:STICKER_CSS.papel)*s;
+    for(let i=0;i<this.contour.length;i++){
+      const copy=this.contour[i];
+      if(i>=n){copy.setVisible(false);continue;}
+      const dir=OUTLINE_DIRS[i%8],band=city?CITY_CONTOUR[i>>3]:undefined,r=(band?band.r:i<8?STICKER_CSS.breu:STICKER_CSS.papel)*s;
       copy.setTexture(top.texture.key,top.frame.name).setOrigin(top.originX,top.originY).setScale(top.scaleX,top.scaleY).setFlipX(top.flipX).setRotation(top.rotation)
-        .setPosition(top.x+dir.x*r,top.y+dir.y*r).setDepth(depth-(i<8?.2:.1)).setAlpha(top.alpha).setVisible(top.visible);
+        .setPosition(top.x+dir.x*r,top.y+dir.y*r).setDepth(depth+(band?band.depth:i<8?-.2:-.1)).setAlpha(top.alpha).setVisible(top.visible);
     }
     this.last.contour=top.visible;
   }

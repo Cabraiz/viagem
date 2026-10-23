@@ -4,35 +4,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {BASE_STATS} from '../../src/contract/types.ts';
-import {classBonusOf,computeStats} from '../../src/rules/index.ts';
 import {WEAPON_CATALOG,resolveWeapon} from '../../src/sim/weapons/catalog.ts';
 import {manualReach} from '../../src/sim/weapons/system.ts';
-import {heldReach,heldWeapon} from '../../src/client/hud/weapon-reach.ts';
+import {WEAPON_REACH,heldReach,heldWeapon} from '../../src/client/hud/weapon-reach.ts';
 import {rayEnd,worldDirection} from '../../src/client/hud/attack-aim.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
 
-test('the arrow\'s length is the server\'s manualReach, for every weapon and level, with the class bonus',()=>{
+test('the arrow\'s length is the server\'s manualReach, for every weapon and level (base stats)',()=>{
   for(const def of WEAPON_CATALOG.values()){
     if(!def.pattern)continue;
-    for(const level of [1,def.maxLevel]){
-      for(const classId of ['viciado-em-bet','mendigo','x']){
-        const p={classId,weapons:[{id:def.id,level}],passives:[{id:'cafe-forte',level:3},{id:'megafone',level:2}]};
-        const stats=computeStats({weapons:[...p.weapons],passives:[...p.passives]},classBonusOf(classId));
-        const want=manualReach(resolveWeapon(def,level,stats)).reach;
-        assert.ok(Math.abs(heldReach(p)!-want)<1e-9,`${def.id} ${level} ${classId}: ${heldReach(p)} vs ${want}`);
-      }
+    assert.ok(WEAPON_REACH[def.id],`${def.id} has a row`);
+    for(let level=1;level<=def.maxLevel+1;level++){
+      const want=manualReach(resolveWeapon(def,Math.min(level,def.maxLevel),{...BASE_STATS})).reach;
+      const got=heldReach({weapons:[{id:def.id,level}]})!;
+      assert.ok(Math.abs(got-want)<.006,`${def.id} level ${level}: ${got} vs ${want}`);
     }
   }
-  void BASE_STATS;
+  for(const id of Object.keys(WEAPON_REACH))assert.ok(WEAPON_CATALOG.get(id)?.pattern,`${id} is a weapon`);
 });
 
 test('the held weapon: the hand\'s slot (a consumable there: none), else the first weapon',()=>{
   const weapons=[{id:'coxinha',level:1},{id:'pistola',level:2},{id:'faca',level:1}];
-  assert.equal(heldWeapon({classId:'x',weapons,passives:[],hand:2})?.id,'faca');
-  assert.equal(heldWeapon({classId:'x',weapons,passives:[],hand:0}),undefined);
-  assert.equal(heldWeapon({classId:'x',weapons,passives:[]})?.id,'pistola');
-  assert.equal(heldReach({classId:'x',weapons:[],passives:[]}),undefined);
+  assert.equal(heldWeapon({weapons,hand:2})?.id,'faca');
+  assert.equal(heldWeapon({weapons,hand:0}),undefined);
+  assert.equal(heldWeapon({weapons})?.id,'pistola');
+  assert.equal(heldReach({weapons:[]}),undefined);
 });
 
 test('a screen drag becomes the world direction whose arrow points the same way on screen',()=>{

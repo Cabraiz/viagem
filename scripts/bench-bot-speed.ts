@@ -82,12 +82,12 @@ function spotNear(city:any,c:Point,r:number,a=0):Point{
 interface Row {scenario:string;bot:string;person:number;botSpeed:number;ratio:number;extra:string}
 const rows:Row[]=[];
 
-async function escort(label:string,target:(city:any,home:Point)=>Point,seconds:number){
+async function escort(label:string,target:(city:any,home:Point)=>Point,seconds:number,from=LEASH+2){
   const r=await freshRoom(),{sim,city}=r,v=heroSpeed(city);
   const roamer=r.bots.find(id=>r.slots.slotOf(id)%2===1)!;
   const view=sim.botView(),home=homeOf(view,city.asset.points.praca);
   // The person starts out of the wall's leash on the way to the target (the escort starts there), next to the bot.
-  const way=route(city,home,target(city,home)),start=along(way,LEASH+2),path=route(city,start,target(city,home)),total=Math.min(length(path),v*seconds);
+  const way=route(city,home,target(city,home)),start=along(way,from),path=route(city,start,target(city,home)),total=Math.min(length(path),v*seconds);
   const p=sim.players.get(r.ana)!,b=sim.players.get(roamer)!;
   p.x=start.x;p.y=start.y;const bs=spotNear(city,start,1.2,Math.PI);b.x=bs.x;b.y=bs.y;
   for(let i=0;i<8;i++)r.step(); // the bot sees the person out of the leash
@@ -130,6 +130,9 @@ const N=(city:any)=>city.asset.points.spawnN,S=(city:any)=>city.asset.points.spa
 await escort('to mouth N (avenue)',(c)=>c.asset.points.bocas.N,12);
 await escort('to spawn S (route)',S,20);
 await escort('to spawn L (route)',L,20);
+// Leaving the base: the person starts inside the wall's leash (2 u out) and walks out.
+await escort('from base to S',S,20,2);
+await escort('from base to L',L,20,2);
 await home('from mouth N',(c)=>c.asset.points.bocas.N);
 await home('from spawn N',N);
 const pad=(s:string,n:number)=>s.padEnd(n);

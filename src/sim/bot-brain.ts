@@ -128,6 +128,8 @@ export const ESCORT_LEASH=3;
  * the person was out of it again: stop-and-go at 81–91 % of the person's speed (scripts/bench-bot-speed.ts).
  */
 export const ESCORT_WALKING=.5,ESCORT_PACE_GAP=1;
+/** A person inside the wall's leash walking out (their heading within ~60° of straight away from home) is followed already. */
+export const ESCORT_OUTWARD_COS=.5;
 /** City: a bot pulled back to its anchor walks until this far (u) inside the leash. */
 export const HOME_SLACK=2;
 /** City: critters and pickups lure the bot only this far (u) inside its leash, and only those it can answer from there. */
@@ -697,14 +699,15 @@ export function decide(input:BrainInput):Decision{
   // City: the wave's very last critter, not at the wall, takes the guards out to the roamers' leash too (bot-caca:
   // both guards held at their short leash 6 u from it while the roamer walked with a person).
   const last=city&&guard&&!boss&&!retreating&&view.enemies.length===1;
+  // The person's walk, read from where they were at the last decision (kept up to date whether escorting or not).
+  const pace=escortPace(memory,input.escort,tick,terrain);
   // Walk with the team (room bots): a roamer goes with the nearest person who left the wall's leash, guards stay home.
-  const escorting=!guard&&!!input.escort&&dist(input.escort,home)>LEASH;
+  // bots-na-nossa-velocidade: also with one walking out of it (away from home), so it leaves with them, not 6 u behind.
+  const escorting=!guard&&!!input.escort&&(dist(input.escort,home)>LEASH||!!pace&&outward(pace,input.escort,home));
   // City: a roamer with nobody to walk with hunts the wave's last few critters when none is near the wall (one stuck
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
   let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(view.enemies,at):undefined;
   if(prey&&!way(prey,'huntGoal'))prey=undefined;
-  // The person's walk, read from where they were at the last decision (kept up to date whether escorting or not).
-  const pace=escortPace(memory,input.escort,tick,terrain);
   const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
   const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
@@ -840,6 +843,11 @@ export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainFie
 }
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}
+/** Walking away from home: the heading points away from it (from where they stand, at least ESCORT_OUTWARD_COS). */
+const outward=(pace:Point,at:Point,home:Point)=>{
+  const d=dist(at,home);
+  return d>1e-6&&(pace.x*(at.x-home.x)+pace.y*(at.y-home.y))/d>=ESCORT_OUTWARD_COS;
+};
 /**
  * The heading (unit) of the person walked with, when they are walking (ESCORT_WALKING × the hero speed or more between
  * this decision and the last one, at most ESCORT_PACE_GAP s apart), else undefined. Notes where they are now.

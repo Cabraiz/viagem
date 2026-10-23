@@ -30,6 +30,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
   'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
+  'muralha-tralha':{...chaveiro('moto=entrega','&obra=1&muralha=1'),descricao:'barricada-2x: a muralha de tralha, 2 fileiras de 5 quadrados 2×2 (inteiros atrás, avariados na frente)'},
+  'muralha-juntas':{...chaveiro('moto=entrega','&obra=1&muralha=2'),descricao:'barricada-2x: L, T e um quadrado sozinho (meias peças + pilar)'},
   'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=120,140',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},
   'carro-andando':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000'),descricao:'D-052: o carro puxado na corda, virado para o movimento, rodas girando'},

@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2077,
-  "bytes": 1546378692,
-  "liteBytes": 500575336,
+  "bytes": 1546374830,
+  "liteBytes": 500573258,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17813,13 +17813,13 @@
    "psnr": 41.9,
    "shownPsnr": 44.4
   },
-  "sprites/clt-cansado.run16-w.a0da3d1187a7.webp": {
-   "source": "a0da3d1187a7914703e03075f92df75955d3e33e176a1f2495546673daf1c6fd",
-   "lite": "fa092f583d996db04d1635d625c9ed61dea009a30c035dae55087860802870da",
-   "bytes": 45856,
-   "liteBytes": 28688,
-   "psnr": 42,
-   "shownPsnr": 44.5
+  "sprites/clt-cansado.run16-w.81aaae8b5a02.webp": {
+   "source": "81aaae8b5a022f1405c532f03edc894e46dc732ae99a73837d4b1b492db02b4f",
+   "lite": "470993e4d3c42c6e8925efaeb0a9c1830af8b037ab6e1a6786052480a9e84ce0",
+   "bytes": 41994,
+   "liteBytes": 26610,
+   "psnr": 41.7,
+   "shownPsnr": 44.6
   },
   "sprites/clt-cansado.walk128-e.9af9af8efb4f.webp": {
    "source": "9af9af8efb4f1fd0b1ed17ee24b2f032b21f20ea233a1be0b61b3d6da3032682",

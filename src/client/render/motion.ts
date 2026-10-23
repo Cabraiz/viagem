@@ -19,19 +19,24 @@ export function hashPhase(id:string){
 
 /**
  * Walking or standing, from the sim's positions (inimigos-animacao-auditoria): an enemy pressed against a player or a
- * wall is pushed back and forth by the sim (±0.05 u a tick) and read as walking, so its legs trod in place and its
- * facing flipped about once a second while it went nowhere. It walks only while it is more than MOVE_LEASH from an
- * anchor that trails it at that distance: a steady walk keeps pulling the anchor (walking every tick after the first
- * MOVE_LEASH), a jiggle inside the leash is standing.
+ * wall is pushed back and forth by the sim (up to ±0.08 u a tick) and read as walking, so its legs trod in place and
+ * its facing flipped about once a second while it went nowhere. Walking is getting away from an anchor:
+ * - standing, it starts walking past START_LEASH from the anchor, which settles towards where it jiggles (SETTLE of
+ *   the gap a tick), so a jiggle never adds up to a start;
+ * - walking, the anchor trails at MOVE_LEASH and it walks while it keeps pulling it (every tick of a steady walk);
+ *   within MOVE_LEASH it stands at once.
  */
-export const MOVE_LEASH=.12;
-export interface Anchor {ax:number;ay:number}
-/** Whether a position (x, y) is walking away from `a` (moved along, at MOVE_LEASH behind); NaN anchor: placed here, still. */
-export function leashMoving(a:Anchor,x:number,y:number,leash=MOVE_LEASH):boolean{
-  if(Number.isNaN(a.ax)){a.ax=x;a.ay=y;return false;}
+export const MOVE_LEASH=.12,START_LEASH=.25,SETTLE=.08;
+export interface Anchor {ax:number;ay:number;walking?:boolean}
+/** Whether a position (x, y) is walking away from anchor `a` (moved along); NaN anchor: placed here, standing. */
+export function leashMoving(a:Anchor,x:number,y:number):boolean{
+  if(Number.isNaN(a.ax)){a.ax=x;a.ay=y;a.walking=false;return false;}
   const dx=x-a.ax,dy=y-a.ay,d=Math.hypot(dx,dy);
-  if(d<=leash)return false;
-  const k=(d-leash)/d;a.ax+=dx*k;a.ay+=dy*k;return true;
+  if(d<=(a.walking?MOVE_LEASH+.005:START_LEASH)){ // +0.005: a step under that (or rounding) is no step
+    if(!a.walking){a.ax+=dx*SETTLE;a.ay+=dy*SETTLE;}
+    a.walking=false;return false;
+  }
+  const k=(d-MOVE_LEASH)/d;a.ax+=dx*k;a.ay+=dy*k;a.walking=true;return true;
 }
 
 /** Idle breathing ±6%, moving hop/stretch ±14%. Volume is roughly preserved. */

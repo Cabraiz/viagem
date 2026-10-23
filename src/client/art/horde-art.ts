@@ -399,9 +399,10 @@ export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
 export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
- * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
+ * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts); `leash:false`
+ * (`golpe=antes`) walking on any step, a jiggle against a player too (render/motion.ts leashMoving).
  */
-export const ENEMY_WALK={byGround:true,faceTarget:true};
+export const ENEMY_WALK={byGround:true,faceTarget:true,leash:true};
 /** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
 export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
@@ -574,6 +575,8 @@ export interface ActionState {action?:string;at:number;end:number;hitAt?:number;
  * the network's jitter); earlier, the same action is not restarted.
  */
 export const SWING_FILL=1.08,SWING_FILL_MAX_MS=1700,SWING_RESTART=.8;
+/** The sandbox's before/after proof (`?sandbox=horda&golpe=antes`): `fill:false` brings back the swing of before. */
+export const ENEMY_SWING={fill:true};
 /**
  * A hit starts at most once per hitGap(its duration): at least HIT_GAP_HITS × the hit animation and never under
  * HIT_GAP_MIN_MS. An enemy inside an aura is damaged every tick: it plays its hit now and then and walks in between,
@@ -602,11 +605,11 @@ export function startAction(s:ActionState,piece:ArtPiece,action:string,now:numbe
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
   // A hit never starts while another action plays, and the same action already playing is not restarted (but a
   // swing that comes back near its end, SWING_RESTART).
-  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&now<s.at+(s.end-s.at)*SWING_RESTART)))return false;
+  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
   const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
   if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
   const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
-  const duration=gap<=SWING_FILL_MAX_MS?Math.max(drawn,gap*SWING_FILL):drawn;
+  const duration=ENEMY_SWING.fill&&gap<=SWING_FILL_MAX_MS?Math.max(drawn,gap*SWING_FILL):drawn;
   if(action!=='hit'){s.lastAction=action;s.lastAt=now;}
   s.action=action;s.at=now;s.end=now+duration;s.pace=drawn/duration;
   return true;

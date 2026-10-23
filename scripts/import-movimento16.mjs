@@ -59,12 +59,13 @@ const SHA=bytes=>createHash('sha256').update(bytes).digest('hex');
 const safeId=id=>typeof id==='string'&&/^[a-z][a-z0-9-]*$/.test(id);
 export const movement16Source=(input,id,motion,direction)=>path.join(input,FOLDER,id,motion,direction+'.png');
 /**
- * A run's phase table (optional, next to its sheet; card passo-3x-mais-lento): per pose, `d` the ground it covers in
+ * A run's phase table (optional, next to its sheet; card passo-3x-mais-lento; required for a push, empurrar-uno): per pose, `d` the ground it covers in
  * figure heights and `v` the planted foot's travel in 96 px cell px ([0,0] in flight). The game picks the pose by the
  * ground walked and shifts the sprite by the part of `v` already walked, so the planted foot stays put.
  */
 async function readPhase(file,label,motion='run'){
-  if(!await exists(file))return undefined;
+  // a push has no other way to play (movement128 hasPush16 needs the table): required there
+  if(!await exists(file)){assert.ok(motion!=='push',`${label}: a push needs its phase table (${path.basename(file)})`);return undefined;}
   const phase=JSON.parse(await readFile(file,'utf8')),n=MOVEMENT16_META.motions[motion].frames;
   assert.ok(Array.isArray(phase.d)&&phase.d.length===n&&phase.d.every(x=>Number.isFinite(x)&&x>0&&x<1),`${label}: phase.d needs ${n} distances in (0, 1)`);
   assert.ok(Array.isArray(phase.v)&&phase.v.length===n&&phase.v.every(p=>Array.isArray(p)&&p.length===2&&p.every(x=>Number.isFinite(x)&&Math.abs(x)<24)),`${label}: phase.v needs ${n} [x, y] shifts under 24 px`);

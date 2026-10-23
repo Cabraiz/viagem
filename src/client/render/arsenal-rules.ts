@@ -10,7 +10,7 @@
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
-import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS} from './arsenal-a2-look.ts';
+import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
 export type Rarity=1|2|3|4|5;
 export const rarityOf=(value:number):Rarity=>Math.min(5,Math.max(1,Math.round(Number.isFinite(value)?value:1))) as Rarity;
@@ -79,6 +79,17 @@ export class CrateOpenings{
   }
 }
 
+/**
+ * Pack 12 fatia A1 (arsenal-completo-no-bau, sim/weapons/pack12.ts A1_PLAYABLE): the weapons on the sim's own patterns.
+ * Their shots wear their `projeteis` piece (PACK12_A1_ALIAS); the thrown ones (traque, tijolo) burst with an `efeitos`
+ * strip (FIRE_LOOK); the straight shots and the rings show no flash.
+ */
+export const PACK12_A1_ITEMS:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa',
+  'vela-esoterica','tijolo-baiano','taro-vencido'];
+/** Every Pack 12 weapon the client shows (fatia A1 and A2). */
+export const PACK12_ITEMS:readonly string[]=[...PACK12_A1_ITEMS,...A2_ITEMS];
+/** Weapon id → its `projeteis` piece (the Pack's id; the two renamed beside their tomes wear the Pack's art). */
+const PACK12_A1_ALIAS:readonly (readonly [string,string])[]=PACK12_A1_ITEMS.map(id=>[id,id==='baladeira'?'estilingue':id==='tampa-voadora'?'tampa-de-panela':id] as const);
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
   'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
@@ -86,7 +97,7 @@ export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','subme
   // Kits de torre (torre-pela-caixa): the tower's sticker on the ground.
   ...KIT_IDS,
   // Pack 12 (arsenal-completo-no-bau): the weapons the sim runs (fatia A2: render/arsenal-a2-look.ts).
-  ...A2_ITEMS];
+  ...PACK12_ITEMS];
 /** hud/items.ts by id (an id the HUD does not know has no sticker here). */
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */
@@ -120,6 +131,9 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   escopeta:{art:'clarao-espingarda',kind:'cone',size:70,ms:170,reach:1.6},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
+  // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
+  traque:{art:'fogos-estouro',kind:'blast',size:90,ms:420},
+  'tijolo-baiano':{art:'impacto-poeira',kind:'blast',size:150,ms:520},
   ...A2_FIRE_LOOK,
 };
 /** How far ahead of the hero (u, along the aim) a slash's arc is centred (melee-alcance-2x: .5 doubled with the faca's reach). */
@@ -145,10 +159,16 @@ export const ARSENAL_PROJECTILE_ALIAS:readonly (readonly [string,string])[]=[
   ['pistola','bala-revolver'],['submetralhadora','bala-metralhadora'],['rifle','bala-fuzil'],['rojao','rojao'],
   ['chinelo-lendario','chinelo-evo'],['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
   ['guarda-chuva-lendario','guarda-chuva'],['pombo-lendario','pombo'],['audio-lendario','audio'],
-  ...A2_PROJECTILE_ALIAS,
+  ...PACK12_A1_ALIAS,...A2_PROJECTILE_ALIAS,
 ];
+/**
+ * Texture key of the `ui` sticker a projectile source wears instead of its `projeteis` piece (Pack 12 fatia A2: the
+ * carro-de-som turret on the ground), or undefined. render/layers.ts uses it only once the sticker loaded.
+ */
+const STICKER_SOURCES:ReadonlyMap<string,string>=new Map(Object.entries(A2_PROJECTILE_STICKER).map(([source,icon])=>[source,iconKey(icon)]));
+export const projectileSticker=(hostile:boolean,source:string):string|undefined=>hostile?undefined:STICKER_SOURCES.get(source);
 /** `projeteis` pieces of the Pack 12 weapons (not in art/horde-art.ts WEAPON_PROJECTILE_IDS): loaded like those. */
-export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set(A2_PROJECTILE_ALIAS.map(([,art])=>art))];
+export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set([...PACK12_A1_ALIAS,...A2_PROJECTILE_ALIAS].map(([,art])=>art))];
 
 /**
  * Card melee-alcance-2x (usuário 22/10: "aumente tamanho do projétil default em 5x, eu quero ver ele visível"): the

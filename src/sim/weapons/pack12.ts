@@ -9,7 +9,7 @@
  * defumador, arruda, tampa-de-panela): those weapons take their own id (baladeira, nuvem-de-incenso, galho-de-arruda,
  * tampa-voadora) and keep the Pack's art (`icon`, the sticker and the projectile).
  */
-import type {WeaponPattern} from './catalog.ts';
+import type {WeaponDef,WeaponPattern} from './catalog.ts';
 import {A2_PLAYABLE} from './pack12-a2.ts';
 
 /** The Pack's weapon types (§1: what the world art looks like). */
@@ -29,6 +29,9 @@ export interface Pack12Weapon {
   quip:string;intro:string;
   verde:Pack12Row;
   coneHalfAngle?:number;
+  /** Behaviour switches (sim/weapons/catalog.ts WeaponDef). */
+  evolved?:WeaponDef['evolved'];
+  effect?:WeaponDef['effect'];
 }
 
 const INF=1e6,PI=Math.PI;
@@ -43,10 +46,10 @@ export const PACK12:readonly Pack12Weapon[]=[
     quip:'Linguiça e queijo coalho de brinde.',intro:'Espeto arremessado que atravessa uma fila de bichos.',
     verde:[20,1,1,.22,9,.8,3,.1,.5,7]},
   {id:'sacole',name:'Sacolé de Groselha',icon:'sacole',type:'tiro',pattern:'pierce',minRarity:1,noise:3,
-    quip:'Congela o cérebro e o bicho.',intro:'Sacolé gelado: o bicho que leva fica lento.',
+    quip:'Congela o cérebro e o bicho.',intro:'Sacolé gelado: o bicho que leva fica lento.',effect:{slowSeconds:1.5},
     verde:[10,.6,1,.25,9,.75,0,0,.5,7]},
   {id:'tampa-voadora',name:'Tampa de Panela',icon:'tampa-de-panela',type:'bumerangue',pattern:'pierce',minRarity:1,noise:10,
-    quip:'TEIN!',intro:'Tampa arremessada que vai e volta, acertando todo mundo no caminho.',
+    quip:'TEIN!',intro:'Tampa arremessada que vai e volta, acertando todo mundo no caminho.',evolved:{returns:true},
     verde:[12,1.1,1,.35,9,.6,INF,.5,.4,5.4]},
   {id:'pandeiro',name:'Pandeiro do Pagode',icon:'pandeiro',type:'orbita',pattern:'orbit',minRarity:1,noise:8,
     quip:'Ninguém fica parado no pagode.',intro:'Três pandeiros giram em volta de você.',
@@ -62,13 +65,13 @@ export const PACK12:readonly Pack12Weapon[]=[
     quip:'Remendada, mas joga.',intro:'Bola que quica de cabeça em cabeça.',
     verde:[16,.9,1,.3,9,1.2,3,.3,.5,7]},
   {id:'traque',name:'Traque de São João',icon:'traque',type:'lancado',pattern:'zone',minRarity:2,noise:16,
-    quip:'Pá-pá-pá-pá!',intro:'Punhado de traques que estouram em volta do bicho.',
+    quip:'Pá-pá-pá-pá!',intro:'Punhado de traques que estouram em volta do bicho.',effect:{scatter:1},
     verde:[14,1.4,4,1,0,.3,INF,.3,1,6]},
   {id:'buscape',name:'Buscapé',icon:'buscape',type:'teleguiado',pattern:'homing',minRarity:2,noise:18,
     quip:'Ninguém sabe pra onde ele vai. Nem ele.',intro:'Fogo que corre atrás do bicho mais perto.',
     verde:[18,1,1,.25,6,2.5,0,.3,.5,9]},
   {id:'figa',name:'Figa de Madeira',icon:'figa',type:'orbita',pattern:'orbit',minRarity:2,noise:0,
-    quip:'Isola!',intro:'Duas figas giram em volta de você e bloqueiam tiro de bicho.',
+    quip:'Isola!',intro:'Duas figas giram em volta de você e bloqueiam tiro de bicho.',effect:{blocksHostile:true},
     verde:[6,3,2,1.2,3,3.5,INF,.4,.5,0]},
   {id:'vela-esoterica',name:'Vela Aromática da Tia Esotérica',icon:'vela-esoterica',type:'orbita',pattern:'orbit',minRarity:2,noise:0,
     quip:'Lavanda pra acalmar. Não acalma.',intro:'Velas giram em volta de você, num anel largo.',
@@ -84,10 +87,10 @@ export const PACK12:readonly Pack12Weapon[]=[
     quip:'Oito furos de pura física.',intro:'Tijolo jogado longe que estoura em área onde cai.',
     verde:[45,1.6,1,1.6,0,.3,INF,.6,1,11]},
   {id:'taro-vencido',name:'Baralho de Tarô Vencido',icon:'taro-vencido',type:'leque',pattern:'pierce',minRarity:3,noise:2,
-    quip:'A carta diz: corre.',intro:'Leque de cinco cartas de uma vez.',
+    quip:'A carta diz: corre.',intro:'Leque de cinco cartas de uma vez.',effect:{fanStep:.25},
     verde:[9,1,5,.2,10,.6,1,.1,.5,6]},
   {id:'nuvem-de-incenso',name:'Nuvem de Defumador',icon:'defumador',type:'nuvem',pattern:'zone',minRarity:3,noise:0,
-    quip:'Cof, cof.',intro:'Nuvem de incenso jogada no bicho: tosse, perde vida e fica lento.',
+    quip:'Cof, cof.',intro:'Nuvem de incenso jogada no bicho: tosse, perde vida e fica lento.',evolved:{slowSeconds:1},
     verde:[5,2,1,1.8,0,4,INF,0,.4,7]},
   {id:'corneta',name:'Corneta da Torcida',icon:'corneta',type:'onda',pattern:'cone',coneHalfAngle:PI,minRarity:3,noise:26,
     quip:'É campeão!',intro:'Buzinaço em volta de você que empurra todo mundo.',
@@ -145,9 +148,10 @@ export const PACK12:readonly Pack12Weapon[]=[
 ];
 
 /**
- * Fatia A1 (E5): the Pack weapons on the patterns the sim already has, playable once their card lands. Empty in the
- * passo 0 (behaviour unchanged: the crates keep the seven firearms).
+ * Fatia A1 (E5): the Pack weapons with world art on the patterns the sim already has (the nuvem-de-incenso waits for
+ * its cloud art, fatia B: the Pack's defumador art is the tome's aura).
  */
-export const A1_PLAYABLE:readonly string[]=[];
+export const A1_PLAYABLE:readonly string[]=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa',
+  'vela-esoterica','tijolo-baiano','taro-vencido'];
 /** The Pack weapons the sim runs: in the catalog, in the inventory and in the crates. */
 export const PACK12_PLAYABLE:ReadonlySet<string>=new Set([...A1_PLAYABLE,...A2_PLAYABLE]);

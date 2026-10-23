@@ -129,7 +129,7 @@ export const HERO_FEET:Readonly<Record<string,number>>={
 "gato-nada-pra-comer.idle16-se.39c43413843d.webp":84,
 "gato-nada-pra-comer.idle16-w.96fff0d71005.webp":84,
 "gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp":84,
-"gato-nada-pra-comer.run16-nw.8c7cab098274.webp":84,
+"gato-nada-pra-comer.run16-nw.3203fd970c77.webp":84,
 "gato-nada-pra-comer.run16-s.67035aa11ade.webp":84,
 "gato-nada-pra-comer.run16-se.41da07dc107d.webp":84,
 "gato-nada-pra-comer.run16-w.ab6967f5204b.webp":84,

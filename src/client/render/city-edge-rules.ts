@@ -10,18 +10,16 @@ export const BREU=0x1e1530;
 /** Outer Breu edge of a mark on the city ground, CSS px (screen-constant at any zoom). */
 export const CITY_BREU_EDGE_CSS=2;
 
-/** Contact shadow under a figure: color and alpha. */
+/** Contact shadow under a pickup or shot: color and alpha. */
 export interface ContactShadow {color:number;alpha:number}
-/** The hero's contact shadow on the island and the endless map (scene.ts, unchanged). */
-export const ISLAND_HERO_SHADOW:ContactShadow=Object.freeze({color:0x3d756a,alpha:.2});
-/** City contact shadow (§6, luz.sombra-contato): Breu at 38%, under heroes, allies, critters and pickups. */
+/**
+ * City contact shadow (§6, luz.sombra-contato): Breu at 38%, under pickups and projectiles. Figures (heroes, allies,
+ * critters) cast their silhouette instead (render/shadow-rules.ts, card sombra-silhueta).
+ */
 export const CITY_CONTACT_SHADOW:ContactShadow=Object.freeze({color:BREU,alpha:.38});
-/** The hero's (and in the city, each ally's) shadow ellipse, world px at actor scale 1. */
-export const HERO_SHADOW_SIZE={width:42,height:17} as const;
-export const heroShadow=(city:boolean):ContactShadow=>city?CITY_CONTACT_SHADOW:ISLAND_HERO_SHADOW;
 
 /**
- * Texture of the horde's contact shadow in the city (critters, pickups, projectiles): same 48×18 frame and 46×16
+ * Texture of the horde's contact shadow in the city (pickups, projectiles): same 48×18 frame and 46×16
  * ellipse as FX.shadow, flat Breu 38%. It replaces FX.shadow (procedural, or the imported 'sombra') in the city only.
  */
 export const CITY_SHADOW_KEY='horde:fx:shadow-city';

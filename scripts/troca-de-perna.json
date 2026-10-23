@@ -1,7 +1,7 @@
 {
- "viciado-em-bet.run16-w.acee1b80e31e.webp": {
-  "alterna": "perfil",
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: no perfil a perna de perto e a de longe têm a mesma silhueta (só a faixa do short muda); padrão do CLT aceito pelo usuário em 23/10 (gerar/vic-W-run-G-s3)"
+ "viciado-em-bet.run16-w.c3c592510524.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-ORQ-troca-perna-lado-viciado-clt: gerar/vic-W-run-G-t2, pernas ampliadas (gerar/zoom-t2t3.png): pose 0 a perna direita (de longe, atrás do short), pose 8 a esquerda (de perto, por cima); manequim AMP40/KNEE28 + regra de ordem das pernas no perfil"
  },
  "viciado-em-bet.run16-nw.2f220592e914.webp": {
   "alterna": true,

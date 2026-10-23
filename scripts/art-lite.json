@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2077,
-  "bytes": 1546374964,
-  "liteBytes": 500573142,
+  "bytes": 1546378692,
+  "liteBytes": 500575336,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -20253,13 +20253,13 @@
    "psnr": 38.9,
    "shownPsnr": 40.8
   },
-  "sprites/viciado-em-bet.run16-w.acee1b80e31e.webp": {
-   "source": "acee1b80e31e6b614889af047ee1784df37a528e848ece5001aad3ce53763cff",
-   "lite": "7bde1a4b88e6fdcc1eaa907443d5f7eb9ae341380fce2604f245c2778fcf7f1e",
-   "bytes": 49410,
-   "liteBytes": 30444,
-   "psnr": 38.5,
-   "shownPsnr": 41.5
+  "sprites/viciado-em-bet.run16-w.c3c592510524.webp": {
+   "source": "c3c5925105240dbcf0c3b7d0089f315eac7f49a30d406d88fef983a773a17520",
+   "lite": "97bf63570ef106a08a4c6f7bae05b960f816a4d41ec86e79a7d3e7408b94fddc",
+   "bytes": 53138,
+   "liteBytes": 32638,
+   "psnr": 39.7,
+   "shownPsnr": 41.4
   },
   "sprites/viciado-em-bet.walk128-e.af6573c0b904.webp": {
    "source": "af6573c0b9041cc898d02daa1364f9833be9bf0db64ab67e882440db0858e65b",

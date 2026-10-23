@@ -311,6 +311,22 @@ export function freeAround(viewport:Viewport,blocker:Rect,floor=viewport.height)
 }
 
 /**
+ * Longest frame the step clock still counts in full (s). Past it (the tab was hidden, a freeze) the time is dropped:
+ * no burst of steps for a stick held through a pause.
+ */
+export const STEP_CLOCK_MAX_S=1;
+/**
+ * The scene's 50 ms step clock (BUG heroi-vai-e-volta): the seconds owed after a frame of `rawMs` (the rAF time since
+ * the last frame, not Phaser's delta). Phaser smooths its delta and swaps a frame over 200 ms for the last short one,
+ * and the old 200 ms cap dropped the rest: a phone with long frames stepped slower than the clock, the room (which
+ * walks by the clock) guessed past it and every turn came late, pulling the hero back. Now the steps keep up with
+ * the clock up to STEP_CLOCK_MAX_S.
+ */
+export function stepClock(accumulator:number,rawMs:number):number{
+  const s=Number.isFinite(rawMs)&&rawMs>0?rawMs/1000:0;
+  return s>STEP_CLOCK_MAX_S?accumulator:accumulator+s;
+}
+/**
  * The local prediction moves in 20 Hz steps (net.input every STEP). Drawing it as is makes the follow camera step
  * too (1.7-2.4 px per frame at 30 fps). The scene pushes each new predicted point and draws the point between the
  * last two at the accumulator's fraction: one step (50 ms) behind, and smooth at any frame rate.

@@ -1,7 +1,7 @@
 import {test,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
-import {ENEMY_ANIM_RATE,ENEMY_ART_ID,STATIC_ART,artLoads,enemyPieceLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
+import {ENEMY_ANIM_RATE,ENEMY_LOOP_RATE,ENEMY_ART_ID,STATIC_ART,artLoads,enemyPieceLoads,chooseAnim,enemyArtKey,enemyDrawScale,enemyFrame,facingRow,fileFps,
   groundFacingRow,screenFacingRow,eliteFile,cachedAnim,fileInfo,ELITE_ART_SCALE,ELITE_LAYER_DEPTH,
   WEAPON_PROJECTILE_IDS,WEAPON_PROJECTILE_KEY} from '../../src/client/art/horde-art.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,pickupTexture} from '../../src/client/render/keys.ts';
@@ -71,14 +71,16 @@ test('animation choice: walk when moving, idle when still, fly for the pombos, e
 
 /** On-screen time of `ms` of drawn animation: enemies play at ENEMY_ANIM_RATE (+1 ms clears float rounding at a frame edge). */
 const slow=(ms:number)=>ms/ENEMY_ANIM_RATE+1;
+/** The same for the loops (idle, walk, fly), half as fast again (inimigos-animacao-2x-lenta). */
+const slowLoop=(ms:number)=>ms/ENEMY_LOOP_RATE+1;
 
 test('enemyFrame: row-major frames at the file fps, default 8',()=>{
   assert.equal(fileFps(bebado.files.walk,'walk'),10);assert.equal(fileFps(pombos.files.fly,'fly'),8);
   assert.equal(fileFps({cell:[1,1],fps:{walk:12}},'elite/walk'),12,'elite layer uses its animation fps');
-  const f=enemyFrame('bebado',bebado,'walk',ROWS.indexOf('W'),slow(250));
+  const f=enemyFrame('bebado',bebado,'walk',ROWS.indexOf('W'),slowLoop(250));
   assert.deepEqual(f,{key:'art:enemy:bebado:walk',frame:2*8+2}); // 250 drawn ms × 10 fps = frame 2 of row W
-  assert.deepEqual(enemyFrame('bebado',bebado,'walk',7,slow(1000)),{key:'art:enemy:bebado:walk',frame:7*8+(10%8)},'loops');
-  assert.deepEqual(enemyFrame('pombos',pombos,'fly',0,slow(500)),{key:'art:enemy:pombos:fly',frame:4});
+  assert.deepEqual(enemyFrame('bebado',bebado,'walk',7,slowLoop(1000)),{key:'art:enemy:bebado:walk',frame:7*8+(10%8)},'loops');
+  assert.deepEqual(enemyFrame('pombos',pombos,'fly',0,slowLoop(500)),{key:'art:enemy:pombos:fly',frame:4});
   assert.deepEqual(enemyFrame('bebado',bebado,eliteFile('walk'),1,0),{key:'art:enemy:bebado:elite/walk',frame:8});
   assert.equal(enemyFrame('bebado',bebado,'death',0,0),undefined);
   assert.equal(enemyFrame('bebado',bebado,'idle',99,0)?.frame,7*6,'row clamped to the sheet');
@@ -173,7 +175,7 @@ test('per-frame cache: the same pages, keys and fps objects on every call; choos
   assert.equal(a,b);assert.equal(a.pages,b.pages);assert.equal(a.keys,b.keys);
   assert.deepEqual(a.keys,['art:enemy:chefe:death:p1','art:enemy:chefe:death:p2']);assert.equal(a.fps,16*ENEMY_ANIM_RATE,'played 30% slower than drawn');
   const walk=fileInfo('bebado','walk',bebado.files.walk);
-  assert.equal(fileInfo('bebado','walk',bebado.files.walk),walk);assert.deepEqual(walk.keys,['art:enemy:bebado:walk']);assert.equal(walk.fps,10*ENEMY_ANIM_RATE);
+  assert.equal(fileInfo('bebado','walk',bebado.files.walk),walk);assert.deepEqual(walk.keys,['art:enemy:bebado:walk']);assert.equal(walk.fps,10*ENEMY_LOOP_RATE);
   // The frame's key is the cached string itself (nothing built per frame).
   const out={key:'',frame:0};
   assert.equal(enemyFrame('chefe',{kind:'animations',files:{death}},'death',6,slow(250),out)?.key,a.keys[1]);

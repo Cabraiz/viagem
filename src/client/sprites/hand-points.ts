@@ -65,6 +65,17 @@ export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeo
   return [(flip?w-x:x)-rx,y-ry,2*rx,2*ry];
 }
 /**
+ * Where a mirrored patch must move (frame px, × the sprite's scaleX) to sit on the hand (BUG arma-flutua-corrida-clt,
+ * reaberto 22/10): Phaser 3.90 draws a cropped, mirrored frame with the window's texture mirrored (Frame.setCropUVs)
+ * but the quad offset by crop.x BEFORE the flip (MultiPipeline.batchSprite), so the fingers landed on the other side
+ * of the body's pivot (E, NE, SW: the handle over the fist, a stray fist on the torso). 0 unmirrored.
+ */
+export function patchShift(hand:{x:number},flip:boolean,geom?:VariantGeometry){
+  if(!flip)return 0;
+  const x=geom?geom.pad+(hand.x-geom.crop.x)/geom.kx:hand.x,w=geom?geom.slotW:96;
+  return w-2*x;
+}
+/**
  * The weapon hand of a hero sprite on screen (scene.ts and the city sandbox feed render/arsenal-fx.ts with it), when the
  * pose it shows has one measured. A downed hero lies turned (−90°): the measured hand no longer fits, none.
  */
@@ -74,7 +85,7 @@ export function heldHand<S extends HandSprite>(sprites:HandPoses<S>,sprite:S|und
   const at=handOnScreen(pose.point,sprite,pose.ox,pose.oy,pose.scale,pose.flip,{x:0,y:0});
   const held:HeldHand={x:at.x,y:at.y,aim:AIM_ANGLE[pose.direction],behind:pose.point.behind,depth:sprite.depth};
   // Behind the body the sprite already covers the weapon: no patch.
-  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
+  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x+patchShift(pose.point,pose.flip,pose.geom)*sprite.scaleX,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
     sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop:patchCrop(pose.point,pose.flip,pose.geom)};
   return held;
 }
@@ -118,6 +129,13 @@ export function heldLook(rgba:Uint8ClampedArray){
   }
   return rgba;
 }
+/**
+ * How far over (in front) or under (behind the body) its hero's sprite depth the held weapon sits (render/arsenal-fx.ts;
+ * the fingers patch halfway over it). Behind goes under the local hero's sticker contour too (render/you.ts: its bands
+ * from depth −0.25 in the city, −0.2 on the island): at −0.02 the blade crossed the Papel and Breu outline (BUG
+ * arma-flutua-corrida-clt, reaberto 22/10, NE and NW); still over the ring on the ground (you-rules.ts RING_UNDER 0.3).
+ */
+export const HELD_DEPTH={front:.02,behind:-.275};
 /** Tint on the held weapon: in front, the figure's light; behind the body, its shade. */
 export const HELD_TINT={front:0xffffff,behind:0xa49c94};
 

@@ -82,6 +82,8 @@ export interface HordeRendererOptions{
   coneFromScene?:boolean;
   /** The scene draws the heroes' weapons after placing and animating every hero (hands); omitted: update() draws them. */
   handsFromScene?:boolean;
+  /** The scene draws the Defumador's smoke at each hero's drawn spot (auras); omitted: the renderer draws it at locate(). */
+  auraFromScene?:boolean;
   /**
    * Cidade Nevada mode (framing.ts isCityWorld), read every frame (the renderer survives a world swap): the city
    * telegraph edge (Breu dashed, Cone solid, Papel dashed) and Breu 38% contact shadows. Omitted = never the city.
@@ -365,7 +367,7 @@ export class HordeRenderer{
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
-      ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{})});
+      ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,draw:1,
@@ -465,6 +467,8 @@ export class HordeRenderer{
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
   hands(){this.arsenal.drawHands();}
+  /** auraFromScene: the Defumador's smoke centred on `at(id)`, each hero's feet where the scene drew him this frame. */
+  auras(at:(id:string)=>Pt|undefined){this.arsenal.drawAuras(at);}
   /** Enemies skipped off camera in the last frame (render/cull.ts), for the dev probe and the bench. */
   get culled(){return this.culledNow;}
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */

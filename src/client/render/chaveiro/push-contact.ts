@@ -4,7 +4,7 @@
  * along its push to where its hands meet the car's footprint (CAR_HALF at the heading the renderer draws), eased so it
  * never jumps. Drawing only: the room, the prediction and the camera keep the real position. Pure (no Phaser).
  */
-import type {Point} from '../../../maps/world.ts';
+import type {Point} from '../../../maps/index.ts';
 import {CAR_HALF} from './figures.ts';
 import {HERO_DIRECTIONS,screenMotion} from '../../sprites/sprite-motion.ts';
 

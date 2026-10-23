@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2077,
-  "bytes": 1539493252,
-  "liteBytes": 500461502,
+  "files": 2078,
+  "bytes": 1540690476,
+  "liteBytes": 501360132,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17436,6 +17436,14 @@
    "liteBytes": 614994,
    "psnr": 43.6,
    "shownPsnr": 45.4
+  },
+  "menu/fundo-maromba.webp": {
+   "source": "22ff303c07b62bcca37a37c2a7cd6ffea96dc388410713b27e67368bbeb94974",
+   "lite": "cc16c338a9b831a3cd6437ad9545d0bdac64fe0f5ed4f74828804d0e159a34d7",
+   "bytes": 1197224,
+   "liteBytes": 898630,
+   "psnr": 42.4,
+   "shownPsnr": 44.4
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",

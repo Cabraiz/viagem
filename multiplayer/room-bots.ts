@@ -5,14 +5,14 @@
  * skill go straight into the simulation. No WebSocket message is ever received for a bot, so they cost nothing of
  * the free plan's request quota (only CPU, measured in done/).
  *
- * Deterministic: names and classes come from the room seed and how many bots were added; the brain has no randomness
+ * Deterministic: classes (and so names) come from the room seed and how many bots were added; the brain has no randomness
  * and decides on fixed ticks (staggered by slot), so the same seed and the same commands give the same run.
  */
 import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,towerBrainView,withBotSites,HZ,type BrainMemory,type Decision,type TowerBrainView} from '../src/sim/index.ts';
 import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
-import {railName} from '../src/rules/index.ts';
+import {getClass,railName} from '../src/rules/index.ts';
 
 /** A bot looks at the world this often (ticks): 200 ms, like a thumb (VGM-045 DECISION_MS). Slots are staggered. */
 export const BOT_THINK_EVERY=4;
@@ -35,14 +35,12 @@ export const BOT_FORGE_LEFT_WITH_PEOPLE=5*HZ;
  */
 export const BOT_BUILD_LEFT=60*HZ;
 /**
- * Funny names, all within NICK_MAX (20). The HUD rail and the caído ficha show only the first word (railName, 9
- * letters), so every first word is its own and none is "Bot": the robot sticker already says bot.
+ * NEW-20261023-ORQ-bot-nome-do-personagem: a bot is named after its character ("Viciado em Bet", "CLT"), not a funny
+ * nickname (the user, 23/10: people keep theirs). Unknown class: this name.
  */
-export const BOT_NAMES:readonly string[]=Object.freeze([
-  'Parafuso Solto','Pamonha 3000','Geladeira Fofa','Fusquinha Turbo','Trainee 2.0','Wi-Fi Fraco',
-  'Chaleira Elétrica','Robozinho Carente','Bateria 1%','Pisca Alerta','Cafeteira Mil Grau','Controle Sem Pilha',
-  'Antena de Bombril','Fujão 3000','Rodinho Turbo','Zapeiro 2.0',
-]);
+export const BOT_FALLBACK_NAME='Robô';
+/** Highest number a bot's name takes: one digit, the one railName keeps ("CLT 2"). */
+export const BOT_NUMBER_MAX=9;
 /**
  * Forge refusals about the recipe itself: not asked again this intermission (the rest may pass next tap). Not 'balance'
  * (short of Grana since D-048): pickRecipe already checks the price on the view, so such a refusal only means the view
@@ -67,16 +65,35 @@ export function botHash(seed:number,n:number){
   return (h^(h>>>16))>>>0;
 }
 /**
- * Name and class of the n-th bot of a room: a name whose short form (railName) nobody seated has, any class.
- * `taken`: the names already seated.
+ * A bot's name: its class name, or the next number of it ("CLT 2", "CLT 3") when that name, or its short form
+ * (railName keeps the number: "Viciado 2"), is already seated. `taken`: the names already seated.
  */
-export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>){
-  const h=botHash(seed,n),short=(name:string)=>railName(name).toLocaleLowerCase('pt-BR');
+export function botName(className:string,taken:ReadonlySet<string>){
+  const short=(name:string)=>railName(name).toLocaleLowerCase('pt-BR');
   const shorts=new Set([...taken].map(short)),free=(name:string)=>!taken.has(name)&&!shorts.has(short(name));
-  let name=BOT_NAMES[h%BOT_NAMES.length];
-  for(let i=1;i<=BOT_NAMES.length&&!free(name);i++)name=BOT_NAMES[(h+i)%BOT_NAMES.length];
-  if(!free(name))name=`Robô${n+1}`;
-  return {name,classId:classIds[(h>>>8)%classIds.length]};
+  if(free(className))return className;
+  for(let k=2;k<=BOT_NUMBER_MAX;k++)if(free(numberedName(className,k)))return numberedName(className,k);
+  return numberedName(className,BOT_NUMBER_MAX);
+}
+/** Longest name a room seats (room.ts join; a restored roster is cut there too). */
+export const BOT_NAME_MAX=20;
+/**
+ * "CLT 2"; a class name with its number past BOT_NAME_MAX drops its last words (and a dangling "do", "em") so the
+ * number stays: "Passageira do Busão 2" (21) is "Passageira 2" (NEW-20261009-N5-resultado-nomes-longos).
+ */
+export function numberedName(className:string,k:number){
+  const num=` ${k}`;
+  let words=className.trim().split(/\s+/);
+  while(words.length>1&&(words.join(' ')+num).length>BOT_NAME_MAX){
+    words=words.slice(0,-1);
+    while(words.length>1&&/^(d[aeo]s?|em|n[ao]s?|e)$/i.test(words.at(-1)!))words=words.slice(0,-1);
+  }
+  return `${[...words.join(' ')].slice(0,BOT_NAME_MAX-num.length).join('')}${num}`;
+}
+/** Name and class of the n-th bot of a room: any class (seed pick), named after it (botName). */
+export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>){
+  const classId=classIds[(botHash(seed,n)>>>8)%classIds.length];
+  return {name:botName(getClass(classId)?.name??BOT_FALLBACK_NAME,taken),classId};
 }
 
 /**

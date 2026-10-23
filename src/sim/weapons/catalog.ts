@@ -69,7 +69,9 @@ export interface WeaponDef extends ItemDef {
    * figa); scatter: a zone volley lands its `amount` bursts around the first target, this far (u) from it (the traque);
    * fanStep: a straight volley always fans this many radians apart around the first target (the tarô).
    */
-  effect?:{slowSeconds?:number;blocksHostile?:boolean;scatter?:number;fanStep?:number};
+  effect?:{slowSeconds?:number;blocksHostile?:boolean;scatter?:number;fanStep?:number;
+    /** A zone the hero throws (rules/thrown.ts): it flies THROW_TICKS from the hero to its spot before it bursts. */
+    thrown?:boolean};
 }
 
 export const PIERCE_INFINITE=1_000_000;

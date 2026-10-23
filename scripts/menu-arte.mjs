@@ -42,10 +42,11 @@ const HEROES=[
     esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
   // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): cut out like the cat
   // (Codex redrew him alone on green, keyed with the colour unmixed), in the viciado's box (same height, middle and sole
-  // line); 2x from Real-ESRGAN 4x of the native cutout. His sand shadow is `sombra`. Letreiro: the user's pick of 8.
+  // line); 2x from Real-ESRGAN 4x of the native cutout. His sand shadow is `sombra`. Letreiro: the user's pick of 8, the iron plate (2).
   {id:'maromba',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-maromba',
     heroi:'maromba-1080p-no-lugar.png',esrgan:'maromba-2x-x4plus-anime.png',esrganDir:'.',
-    box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png'},
+    box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png',
+    letreiro:'letreiro/letreiro-2-2x.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */

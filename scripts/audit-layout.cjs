@@ -159,6 +159,10 @@ const SCENES=[
   ['hud resultado do dono, 6p, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos','.rh',13],
   ['hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&bots=4&dev=1','.rh',13],
   ['hud resultado do dono, 6p, derrota, nomes longos','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1','.rh',13],
+  // The real room's end (BUG-20261023-ORQ-resultado-paisagem-e-125): the chaveiro's bill and the six-name vaquinha, whose
+  // two lines pushed the second row of cards out of view in landscape.
+  ['hud resultado do dono, 6p, derrota, conta e vaquinha','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&conta=time&calote=1','.rh',13],
+  ['hud resultado, 6p, conta paga e vaquinha','/?sandbox=hud&players=6&state=result&frozen=1&nomes=longos&conta=aberto','.rh',13],
   // The real room ended by the lab (DSG-adesivos-itens): ties everywhere, so most cards carry a long vice line.
   ['hud resultado do dono, 6p, derrota, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&dono=1&nomes=longos&lose=1&premios=empates','.rh',13],
   ['hud resultado, 6p, vices longos (empates)','/?sandbox=hud&players=6&state=result&frozen=1&premios=empates','.rh',13],

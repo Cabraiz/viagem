@@ -371,11 +371,14 @@ function showPix(){
   view={...view,events:[{type:'pix',...who,amount:10,memo:0,eventId:++eventId}]};hud.update(view);
 }
 if(pixScene)requestAnimationFrame(()=>requestAnimationFrame(showPix));
-/** The chaveiro bill's vaquinha (ObjectiveResult.share): equal parts, Zé do Pix (p3) with R$ 0, the rest on p1. */
+/**
+ * The chaveiro bill's vaquinha (ObjectiveResult.share): equal parts, Zé do Pix (p3) with R$ 0, the rest on p1. With
+ * `calote=1` only the last player pays, so every other name carries its R$ 0 joke (the real room's longest line).
+ */
 function withShare<T extends {objective?:{paid:number;share?:{id:string;had:number;paid:number}[]};players:{id:string}[]}>(result:T):T{
   const o=result.objective;if(!o)return result;
-  const ids=result.players.map(p=>p.id),payers=ids.filter(id=>id!=='p3'),part=Math.floor(o.paid/Math.max(1,payers.length));
-  const share=ids.map(id=>({id,had:id==='p3'?0:part+8,paid:id==='p3'?0:part+(id===payers[0]?o.paid-part*payers.length:0)}));
+  const ids=result.players.map(p=>p.id),payers=params.has('calote')?ids.slice(-1):ids.filter(id=>id!=='p3'),part=Math.floor(o.paid/Math.max(1,payers.length));
+  const share=ids.map(id=>({id,had:payers.includes(id)?part+8:0,paid:payers.includes(id)?part+(id===payers[0]?o.paid-part*payers.length:0):0}));
   return {...result,objective:{...o,share}};
 }
 /**

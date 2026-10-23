@@ -197,7 +197,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
         owner:player.id,source:w.def.id,motion:'orbit',anchor:player.id,angle,orbitRadius:w.area,spin,
         x:player.x+Math.cos(angle)*w.area,y:player.y+Math.sin(angle)*w.area,vx:0,vy:0,
         radius:orbiterRadius(w),damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
-        rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,
+        rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,blocksHostile:w.def.effect?.blocksHostile||undefined,
       },cap);
       if(p)spawned++;
     }
@@ -229,14 +229,16 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     if(!target)return false;
     let dir=facingOf(player);
     const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
-    const returns=!!w.def.evolved?.returns;
+    const returns=!!w.def.evolved?.returns,fanStep=w.def.effect?.fanStep;
+    const slowTicks=w.def.effect?.slowSeconds?ticks(w.def.effect.slowSeconds):undefined;
     const fan=w.amount-aimed.length+1;
     let spawned=0;
     for(let i=0;i<w.amount;i++){
-      const own=i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
-      const d=own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
+      // Pack 12 tarô (effect.fanStep): the whole volley fans around the first target, wider than FAN_STEP.
+      const own=!fanStep&&i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
+      const d=fanStep?rotate(dir,(i-(w.amount-1)/2)*fanStep):own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
       const p=spawnProjectile(ctx,{
-        owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,
+        owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,slowTicks,
         radius:w.area,damage:w.damage,pierce:returns?PIERCE_INFINITE:w.pierce,hostile:false,knockback:w.knockback,
         untilTick:ctx.tick+w.durationTicks*(returns?2:1),
         returnTick:returns?ctx.tick+w.durationTicks:undefined,
@@ -259,12 +261,15 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       if(p)ctx.emit({type:'fire',player:player.id,weapon:w.def.id,x:player.x,y:player.y});
       return !!p;
     }
-    const free=isFree(player)?freeAim(ctx,player,w.range,w.amount):undefined;
+    const scatter=w.def.effect?.scatter;
+    const free=isFree(player)?freeAim(ctx,player,w.range,scatter?1:w.amount):undefined;
     // A person throws even with nobody in the cone: the puddle lands at the weapon's range, straight ahead.
-    const list:{x:number;y:number}[]=free?(free.aimed.length?free.aimed:[{x:player.x+free.dir.x*w.range,y:player.y+free.dir.y*w.range}]):targets(ctx,player,w.range,w.amount);
+    const list:{x:number;y:number}[]=free?(free.aimed.length?free.aimed:[{x:player.x+free.dir.x*w.range,y:player.y+free.dir.y*w.range}]):targets(ctx,player,w.range,scatter?1:w.amount);
     if(!list.length)return false;
+    // Pack 12 traque (effect.scatter): the volley's bursts ring the first target, the ring turning with the tick.
+    const spots=scatter?Array.from({length:w.amount},(_,i)=>{const a=ctx.tick*.7+2*Math.PI*i/w.amount;return {x:list[0].x+Math.cos(a)*scatter,y:list[0].y+Math.sin(a)*scatter};}):list;
     let spawned=0;
-    for(const e of list){
+    for(const e of spots){
       const p=spawnProjectile(ctx,{
         owner:player.id,source:w.def.id,motion:'linear',x:e.x,y:e.y,vx:0,vy:0,
         radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,

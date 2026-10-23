@@ -16,6 +16,9 @@ export const WEAPON_REACH:Readonly<Record<string,readonly number[]>>={
   'chinelo-evo':[2.68],'boleto-evo':[9],'cafe-evo':[2.2],
   faca:[2.6],pistola:[7],escopeta:[4],submetralhadora:[6],rifle:[11],macarico:[3.5],rojao:[9],
   'chinelo-lendario':[2.68],'boleto-lendario':[9],'cafe-lendario':[2.2],'guarda-chuva-lendario':[1.6],'pombo-lendario':[10],'audio-lendario':[3.5],
+  // Pack 12.
+  baladeira:[8],espeto:[7],sacole:[7],'tampa-voadora':[5.4],pandeiro:[1.952],'bola-murcha':[7],traque:[6],buscape:[9],figa:[1.464],
+  'vela-esoterica':[2.44],'tijolo-baiano':[11],'taro-vencido':[6],'panela-de-pressao':[3],'carro-de-som':[8],
 };
 
 /** The weapon in the hand (equippedWeapon: the hand's slot; no hand: the first weapon), undefined for none. */

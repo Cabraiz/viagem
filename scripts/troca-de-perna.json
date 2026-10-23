@@ -30,5 +30,9 @@
  "gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
   "alterna": true,
   "prova": "evidence NEW-20261022-ORQ-gato-personagem-completo: f2/gerar/SE-run-t17/ciclo-zoom.png (MARK=2: pantufa vermelha = esquerda, ciano = direita): poses 0-2 e 10-15 a ciano à frente, 3-9 a vermelha; conferido a olho pelo E2 na integração animacoes-juntas"
+ },
+ "gato-nada-pra-comer.run16-nw.8c7cab098274.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-E3-gato-troca-perna-nw: corpo do NW-run-t10 + pantufas recompostas numa trajetória de corrida com troca (pp/compor.py, rascunho pp5), limpo pelo Codex sem mover as pantufas (limpar/NW-run-L2); pp/pp5-L2-0-8.png (poses 0/4/8/12, rascunho × Codex): a pantufa da frente troca na meia volta, lateral |i-i+8| mediana 5,1 px (provisória t10: 0,9; corrida SE com troca: 4,2)"
  }
 }

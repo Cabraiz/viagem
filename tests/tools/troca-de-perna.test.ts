@@ -50,10 +50,10 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
 });
 
 /**
- * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). The gato's NW
- * run is the provisional one the Orquestrador let in (23/10, card NEW-20261023-E3-gato-troca-perna-nw).
+ * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). Empty since the
+ * gato's NW run changes legs (23/10, card NEW-20261023-E3-gato-troca-perna-nw).
  */
-const KNOWN_SIDE=new Set(['gato-nada-pra-comer.run16-nw.3203fd970c77.webp']);
+const KNOWN_SIDE=new Set<string>([]);
 
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');

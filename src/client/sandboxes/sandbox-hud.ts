@@ -352,6 +352,9 @@ function load(next:HudScenario){
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
+  // `explora=<s>` (inicio-no-uno-caixas-120): a 120 s time to explore with s seconds left (the clock and the mission line).
+  const explora=Number(params.get('explora'));
+  hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
 load(scenario);

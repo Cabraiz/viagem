@@ -72,8 +72,23 @@ export function botName(className:string,taken:ReadonlySet<string>){
   const short=(name:string)=>railName(name).toLocaleLowerCase('pt-BR');
   const shorts=new Set([...taken].map(short)),free=(name:string)=>!taken.has(name)&&!shorts.has(short(name));
   if(free(className))return className;
-  for(let k=2;k<=BOT_NUMBER_MAX;k++)if(free(`${className} ${k}`))return `${className} ${k}`;
-  return `${className} ${BOT_NUMBER_MAX}`;
+  for(let k=2;k<=BOT_NUMBER_MAX;k++)if(free(numberedName(className,k)))return numberedName(className,k);
+  return numberedName(className,BOT_NUMBER_MAX);
+}
+/** Longest name a room seats (room.ts join; a restored roster is cut there too). */
+export const BOT_NAME_MAX=20;
+/**
+ * "CLT 2"; a class name with its number past BOT_NAME_MAX drops its last words (and a dangling "do", "em") so the
+ * number stays: "Passageira do Busão 2" (21) is "Passageira 2" (NEW-20261009-N5-resultado-nomes-longos).
+ */
+export function numberedName(className:string,k:number){
+  const num=` ${k}`;
+  let words=className.trim().split(/\s+/);
+  while(words.length>1&&(words.join(' ')+num).length>BOT_NAME_MAX){
+    words=words.slice(0,-1);
+    while(words.length>1&&/^(d[aeo]s?|em|n[ao]s?|e)$/i.test(words.at(-1)!))words=words.slice(0,-1);
+  }
+  return `${[...words.join(' ')].slice(0,BOT_NAME_MAX-num.length).join('')}${num}`;
 }
 /** Name and class of the n-th bot of a room: any class (seed pick), named after it (botName). */
 export function botIdentity(seed:number,n:number,classIds:readonly string[],taken:ReadonlySet<string>){

@@ -88,7 +88,7 @@ export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
   weapon({id:'macarico',name:'Maçarico do Tio',icon:'macarico',pattern:'cone',coneHalfAngle:.5,minRarity:3,noise:NOISE.macarico,
     quip:'Era pra soldar o portão.',intro:'Fogo contínuo bem na frente: derrete enxame.',
     verde:row(5,.2,1,3.5,0,.15,1e6,0,.2,3.5)}),
-  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:NOISE.rojao,
+  weapon({id:'rojao',name:'Rojão de Réveillon',icon:'rojao',pattern:'zone',minRarity:4,noise:NOISE.rojao,effect:{thrown:true},
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
     verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];

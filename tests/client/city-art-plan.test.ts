@@ -268,7 +268,8 @@ test('fill pass: the real city has no building cell left for the procedural colu
       for(const l of art.lots.slice(lots.length)){filled+=l.w*l.h;assert.ok(l.a*l.b<=FILL_MAX_AREA&&l.height>=b.height);}
       mounds+=exactCover(b,art);
     }
-    assert.ok(cells>1000,name);
+    // Asset v4 (mapa-175-com-viaduto): the buildings kept their size, the rubble shrank with the distances (was > 1000).
+    assert.ok(cells>600,`${name}: ${cells} building and rubble cells`);
     assert.ok(left>0,`${name}: planLots alone leaves cells (no 1×1 intact piece)`);
     assert.equal(filled,left,`${name}: every one gets a 1×1 / 1×2 piece`);
     assert.equal(mounds,0,`${name}: none left even for the mound`);

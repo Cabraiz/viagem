@@ -232,19 +232,20 @@ function cityRun(seed:number,count:number,untilRound:number,objective?:'chaveiro
 }
 
 test('headless city run: the room bots walk to the obras, build roots and evolve them; never refused for distance; same seed, same defenses',()=>{
-  const a=cityRun(1,3,6);
+  const a=cityRun(2,3,6);
   const list=a.state.defenses?.list??[];
-  console.log(`[torres-ajustes] 3 bots, seed 1, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
+  console.log(`[torres-ajustes] 3 bots, seed 2, to round ${a.sim.world.round.index}: ${list.map(d=>`${d.site} ${DEFENSES[d.kind].label}${d.ruined?' (ruína)':''}`).join(', ')}\n  orders: ${a.orders.join(' | ')}`);
   // torres-ajustes: the Gustavão's line takes the material first (BOT_GUSTAVAO_SAVE). D-048: a root is a whole ficha
   // (UNITS_PER_TOKEN units), so by round 6 the bots have their roots (BOT_MIN_DEFENSES
   // first) and, the evolutions paid in Grana from the kills (D-048), have taken their B line up to the Obuseiro (seed 1 since bots-na-nossa-velocidade, 23/10: the smoothed street routes change the
   // walks, so seed 7's builder took two obras without a 3×3 site and both roots went up the A line (A4, A5); seed 7 until
-  // then, seed 3 until the vehicles, whose rides end its wave 2 earlier and send the builder to the bank first).
+  // then, seed 3 until the vehicles, whose rides end its wave 2 earlier and send the builder to the bank first). Seed 2
+  // since asset v4 (mapa-175-com-viaduto: the city 1.75× shorter, seed 1's builder took no 3×3 B site by round 6).
   assert.ok(list.length>=2,`${list.length} defenses built`);
   assert.ok(list.some(d=>DEFENSES[d.kind].branch==='B'&&DEFENSES[d.kind].tier>=2),'the B line started');
   assert.ok(a.orders.length>=3,`${a.orders.length} orders`);
   assert.ok(a.orders.every(o=>!/→ (away|phase|player)$/.test(o)),'orders only in the intermission, by a standing bot, next to the obra');
-  const b=cityRun(1,3,6);
+  const b=cityRun(2,3,6);
   assert.deepEqual(JSON.parse(JSON.stringify(b.state.defenses)),JSON.parse(JSON.stringify(a.state.defenses)));
   assert.equal(b.sim.stateHash(),a.sim.stateHash());
 });

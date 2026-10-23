@@ -123,7 +123,9 @@ test('a root on a free cell: at any phase, centred on its cell, one ficha; the o
   const {cols}=gridSize(city);
   assert.deepEqual(order(g,'muro',cols,0),{ok:false,reason:'fora'});
   let wallCell:{c:number;r:number}|undefined;
-  for(let c=0;!wallCell&&c<cols;c++)if(!onGround(city,{c,r:Math.floor(CAR.y/FREE_CELL)},1,1)&&Math.abs((c+.5)*FREE_CELL-CAR.x)<30)wallCell={c,r:Math.floor(CAR.y/FREE_CELL)};
+  // Rows around the car's (asset v4: the car's own row runs through the plaza's O and L doors, open for 30 u).
+  for(let dr=0;!wallCell&&dr<=8;dr++)for(const r of [Math.floor(CAR.y/FREE_CELL)-dr,Math.floor(CAR.y/FREE_CELL)+dr])
+    for(let c=0;!wallCell&&c<cols;c++)if(!onGround(city,{c,r},1,1)&&Math.abs((c+.5)*FREE_CELL-CAR.x)<30)wallCell={c,r};
   assert.ok(wallCell,'a cell off the walkable ground near the plaza');
   assert.deepEqual(order(g,'muro',wallCell!.c,wallCell!.r),{ok:false,reason:'fora'});
   // Next to the car's body.

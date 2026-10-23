@@ -124,9 +124,9 @@ export class ChestPrizes{
   }
   /** The prize `player` took from the crate at world `at` (claimed once), or undefined while no view showed it yet. */
   claim(player:string,at:{x:number;y:number}|undefined,now:number):string|undefined{
+    // The newest gain: the crate's prize comes in the event's own view, an older one was something else.
     const list=this.gains.get(player);
-    const g=list?.findIndex(o=>now-o.at<=PRIZE_CLAIM_MS)??-1;
-    if(list&&g>=0)return list.splice(g,1)[0].id;
+    if(list)for(let g=list.length-1;g>=0;g--)if(now-list[g].at<=PRIZE_CLAIM_MS)return list.splice(g,1)[0].id;
     if(!at)return undefined;
     let best=-1,bestD=PRIZE_DROP_REACH;
     for(let i=0;i<this.drops.length;i++){const d=Math.hypot(this.drops[i].x-at.x,this.drops[i].y-at.y);if(d<=bestD){best=i;bestD=d;}}
@@ -140,6 +140,35 @@ export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5
 export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
   const item=itemDisplay(id);
   return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
+}
+/** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
+export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
+/** Sticker width (CSS px at body 1): the opener's own prize, and a smaller one for a crate another hero opened. */
+export const PRIZE_PX={own:76,other:46} as const;
+/**
+ * The prize at `age` ms: alpha, lift (0 inside the crate, 1 up in the air; past 1 the hop) and scale, or undefined once
+ * gone. Reduced motion: no hop, no drift.
+ */
+export function prizeMotion(age:number,reduced=false):{alpha:number;lift:number;scale:number}|undefined{
+  if(age<0||age>=PRIZE_MS)return undefined;
+  if(age<PRIZE_RISE_MS){
+    const u=age/PRIZE_RISE_MS,c=1.9,back=1+(c+1)*(u-1)**3+c*(u-1)**2; // easeOutBack: over the top, then down to rest
+    return {alpha:Math.min(1,u/.55),lift:reduced?1-(1-u)**3:back,scale:.6+.4*Math.min(1,u/.7)};
+  }
+  if(age<PRIZE_RISE_MS+PRIZE_HOLD_MS)return {alpha:1,lift:1,scale:1};
+  const v=(age-PRIZE_RISE_MS-PRIZE_HOLD_MS)/PRIZE_FADE_MS;
+  return {alpha:1-v,lift:reduced?1:1+.12*v,scale:1};
+}
+/**
+ * Where the prize may sit on screen, as fractions of the camera's view: off the HUD's corners and bottom (the Atacar
+ * button and the inventory bar on the phone, the inventory on the PC), under the top bar.
+ */
+export const PRIZE_SAFE={left:.1,right:.9,top:.12,bottom:.64} as const;
+/** A prize centre `(x,y)` (camera space) kept inside PRIZE_SAFE of the view `{x,y,width,height}`. */
+export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number;height:number},out:{x:number;y:number}){
+  out.x=Math.min(view.x+view.width*PRIZE_SAFE.right,Math.max(view.x+view.width*PRIZE_SAFE.left,x));
+  out.y=Math.min(view.y+view.height*PRIZE_SAFE.bottom,Math.max(view.y+view.height*PRIZE_SAFE.top,y));
+  return out;
 }
 
 /**

@@ -138,11 +138,12 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    Lilita One's own gap between the letters is ~.048 em (3.6 px of 75.8 at 1920x1080), so .048 em more doubles it; the
    indent gives back the spacing Chrome leaves after the R, so the ink stays centred; .03 --bh lower.
    The line is 6.05 em wide with the spacing (5.57 before): on a narrow phone the text shrinks before it runs into the burst
-   (the star never moves), with the .42 em of air it had before. */
+   (the star never moves), with the .42 em of air it had before.
+   selecionar-15-menor (the user, 23/10: "pode reduzir em 15% o size do selecionar"): the text at .85 of that size. */
 .estadio .estadio-confirmar-texto {
   flex: 1; min-width: 0; text-align: center; translate: 0 calc(var(--bh) * -.034); rotate: -2deg;
   letter-spacing: .048em; text-indent: .048em;
-  font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));
+  font-size: calc(min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5)) * .85);
 }
 .estadio .estadio-confirmar::after {
   content: ''; flex: none; width: calc(var(--bh) * .301); height: calc(var(--bh) * .445); translate: 0 calc(var(--bh) * -.055);

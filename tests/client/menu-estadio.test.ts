@@ -515,7 +515,7 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
   // The text shrinks before it reaches the burst: the line is 6.05 em with the spacing (5.57 + 10 × .048), the cap leaves
   // the .42 em of air it had before.
   assert.ok(Math.abs(5.57+10*ls-6.05)<.01);
-  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));'));
+  assert.ok(text.includes('font-size: calc(min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5)) * .85);'));
   assert.ok(6.5-(5.57+10*ls)>=.4,'air before the burst');
   assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
   assert.ok(btn.includes('container-type: inline-size;'));

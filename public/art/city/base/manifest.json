@@ -385,8 +385,8 @@
         "sheet": {
           "file": "muralha-tralha.webp",
           "cell": [
-            164,
-            185
+            246,
+            278
           ],
           "views": 2,
           "rows": [
@@ -432,17 +432,17 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 60,
-              "sha256": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7"
+              "sha256": "fe549bd20b407ed1fb3dffbad4183c40821cf841d8b4f933a13ac7369df4277a"
             }
           ],
-          "sha256": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7",
+          "sha256": "fe549bd20b407ed1fb3dffbad4183c40821cf841d8b4f933a13ac7369df4277a",
           "liteCell": [
-            164,
-            185
+            246,
+            278
           ]
         }
       },
-      "sha256": "bb153fb435a0c0ce00703220974f88b6b3d61b5212473c4c82739200dfa9c44d",
+      "sha256": "b0801fd7c13df38d8c5eaa35b2ebe066f2b5ef72490428411e1a7cd82ec6d118",
       "meta": {
         "pecas": [
           "reto-01",
@@ -461,7 +461,7 @@
           "avariada",
           "quase-caindo"
         ],
-        "celula": 127.5556,
+        "celula": 191.3333,
         "origem": "arte-entrada/cenario/base/muralha-tralha-alta (reto, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs"
       }
     },
@@ -471,8 +471,8 @@
         "sheet": {
           "file": "muralha-tralha-pilar.webp",
           "cell": [
-            124,
-            217
+            186,
+            326
           ],
           "views": 2,
           "rows": [
@@ -497,17 +497,17 @@
               "rows": 3,
               "firstFrame": 0,
               "frameCount": 18,
-              "sha256": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151"
+              "sha256": "b88b8334aecdb30c0a72ad1bbfa5c25630802272c964b8fdead8e278f626de3c"
             }
           ],
-          "sha256": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151",
+          "sha256": "b88b8334aecdb30c0a72ad1bbfa5c25630802272c964b8fdead8e278f626de3c",
           "liteCell": [
-            124,
-            217
+            186,
+            326
           ]
         }
       },
-      "sha256": "98c0d312675015810e13e3cb04f41087e9a799ce38a4c1d8bf249c1d6ef78c20",
+      "sha256": "11831f2ef5a0aafdf229b6d846e0b76d2a04a258c867292ddc5eaf217b5a1ac8",
       "meta": {
         "pecas": [
           "pilar-1",
@@ -519,7 +519,7 @@
           "avariada",
           "quase-caindo"
         ],
-        "celula": 127.2069,
+        "celula": 190.8103,
         "origem": "arte-entrada/cenario/base/muralha-tralha-alta (pilar, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs"
       }
     },

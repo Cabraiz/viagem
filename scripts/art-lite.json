@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2070,
-  "bytes": 1542662702,
-  "liteBytes": 499059930,
+  "bytes": 1545274364,
+  "liteBytes": 499796470,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -62,28 +62,28 @@
    "shownPsnr": 42.6
   },
   "city/base/muralha-tralha-pilar.webp": {
-   "source": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151",
-   "lite": "dee4a454096420890102d3a20a359d44643f46c0be61cf7cee340079c79ddcfc",
-   "bytes": 476256,
-   "liteBytes": 164072,
+   "source": "b88b8334aecdb30c0a72ad1bbfa5c25630802272c964b8fdead8e278f626de3c",
+   "lite": "eb4f65ee3e9dda4679429e926b0c585e554330485789e765ec1d14fcf0192077",
+   "bytes": 990350,
+   "liteBytes": 313536,
    "liteCell": [
-    124,
-    217
+    186,
+    326
    ],
-   "psnr": 36.1,
-   "shownPsnr": 36.1
+   "psnr": 36.7,
+   "shownPsnr": 36.7
   },
   "city/base/muralha-tralha.webp": {
-   "source": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7",
-   "lite": "89824c4bd7b93c3e4b3744cec99cb160e5eaee5bbc6e4ce27fe53162d53987bf",
-   "bytes": 1880974,
-   "liteBytes": 606750,
+   "source": "fe549bd20b407ed1fb3dffbad4183c40821cf841d8b4f933a13ac7369df4277a",
+   "lite": "eba590f7dd3f9ba256f2347c3b0fe7bfd266408a41b06b7b4b2f3934dbbde859",
+   "bytes": 3978542,
+   "liteBytes": 1193826,
    "liteCell": [
-    164,
-    185
+    246,
+    278
    ],
-   "psnr": 36.9,
-   "shownPsnr": 36.9
+   "psnr": 37.4,
+   "shownPsnr": 37.4
   },
   "city/base/muro-bloco-pilar.webp": {
    "source": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",

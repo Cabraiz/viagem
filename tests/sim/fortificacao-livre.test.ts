@@ -1,12 +1,12 @@
 /**
  * D-052, fortification anywhere (sim-fortificação, slice 2 of NEW-20261016-ORQ-carro-e-fortificacao-livre), on the REAL
  * Cidade Nevada: the free build of towers/system.ts buildFree and towers/free-build.ts.
- *  1. Rules: the pieces' numbers and footprints (both 1×1 since barricada-construir).
+ *  1. Rules: the pieces' numbers and footprints (the muro 1×1; the barricada 2×2 since barricada-2x).
  *  2. A root on a cell: any phase, its cell and centre, the ficha; the refusals in order (fora, carro, ocupado (a crate too), limite,
  *     away, balance/grana, defense, duplicate).
  *  3. Muro: a blocker to the enemies, a blocking siege target, paid in Grana, queued per hero, gone at 0 hp.
  *  4. Tranca: a ring of muros around the car is never closed (one of them is refused 'tranca').
- *  5. Barricade (barricada-construir): a 1×1 blocker, a blocking siege target, kept UNO_BUILD_CELLS off the car.
+ *  5. Barricade (barricada-construir, barricada-2x): a 2×2 blocker, a blocking siege target, kept UNO_BUILD_CELLS off the car.
  *  6. Evolution: a free root grows centred; a larger tier needs free ground ('size'); the Gustavão is out ('max').
  *  7. The site bridge (bots, today's HUD): a site id builds the root on the site's cell; the rail is refused.
  *  8. A rematch reset drops the muros' blockers; a checkpoint's state raises them again.
@@ -93,6 +93,8 @@ function ring(k:number,at:{x:number;y:number}=CAR):{c:number;r:number}[]{
 }
 /** A free walkable cell clear of the car (Chebyshev 5 cells around it). */
 const spot=(i=0)=>ring(5)[i];
+/** barricada-2x: the i-th cell of that ring whose 2×2 square (it the top-left) is all walkable. */
+const spot2=(i=0)=>ring(5).filter(o=>onGround(city,o,2,2))[i];
 
 test('rules: the muro and the barricada (D-052 numbers), footprints and rot', ()=>{
   assert.deepEqual({...FREE_PIECE_DEFS.muro,footprint:[...FREE_PIECE_DEFS.muro.footprint]},
@@ -100,7 +102,8 @@ test('rules: the muro and the barricada (D-052 numbers), footprints and rot', ()
   const b=FREE_PIECE_DEFS.barricada;
   // NEW-20261021-ORQ-barricada-construir: a square of the muralha de tralha, solid to the enemies.
   assert.deepEqual([b.price,b.hp,b.limit,b.blocks,b.drag],[5,200,40,true,1]);
-  assert.deepEqual(pieceCells('barricada'),[1,1]);assert.deepEqual(pieceCells('barricada',1),[1,1]);
+  // NEW-20261022-ORQ-barricada-2x: twice as wide and long, 2×2 cells (a square: rot changes nothing).
+  assert.deepEqual(pieceCells('barricada'),[2,2]);assert.deepEqual(pieceCells('barricada',1),[2,2]);
   assert.deepEqual(pieceCells('muro',1),[1,1]);assert.deepEqual(pieceCells(ROOT_DEFENSE),[1,1]);
   assert.deepEqual(pieceCells('ninho-de-metralhadora'),[3,3]);
 });
@@ -168,7 +171,7 @@ test('limits: DEFENSE_LIMIT roots, 40 muros, 8 barricadas', ()=>{
   assert.deepEqual(order(g,'muro',at.c,at.r),{ok:false,reason:'limite'});
   g.sys.state.defenses.pieces=[];
   for(let i=0;i<FREE_PIECE_DEFS.barricada.limit;i++)g.sys.state.defenses.pieces.push({id:`b${i}`,kind:'barricada',cell:far,owner:'x',x:0,y:0,hp:1,maxHp:1,startTick:0,readyTick:0});
-  assert.deepEqual(order(g,'barricada',at.c,at.r),{ok:false,reason:'limite'});
+  assert.deepEqual(order(g,'barricada',spot2(0).c,spot2(0).r),{ok:false,reason:'limite'});
   assert.equal(order(g,'muro',at.c,at.r).ok,true,'the muros have their own limit');
   g.sys.state.defenses.pieces=[];
   for(let i=0;i<DEFENSE_LIMIT;i++)g.sys.state.defenses.list.push({id:`d${i}`,kind:ROOT_DEFENSE,site:'',cell:far,owner:'x',x:0,y:0,hp:1,maxHp:1,r:.44,startTick:0,readyTick:0,fireTick:0});
@@ -242,17 +245,21 @@ test('tranca: the moto keeps a way to the car (a ring around the moto, far from 
   assert.ok(run({car:()=>({...CAR,radius:CAR_R})}).every(x=>x==='ok'));
 });
 
-test('barricada (barricada-construir): a 1×1 square, a blocker to the enemies, a blocking siege target; never within UNO_BUILD_CELLS of the car', ()=>{
-  const g=rig(),at=spot(0);
+test('barricada (barricada-construir, barricada-2x): a 2×2 square, a blocker to the enemies, a blocking siege target; never within UNO_BUILD_CELLS of the car', ()=>{
+  const g=rig(),at=spot2(0);
   const done=order(g,'barricada',at.c,at.r);
   assert.equal(done.ok,true,JSON.stringify(done));
   const p=g.sys.state.defenses!.pieces![0];
-  assert.deepEqual({x:p.x,y:p.y},centre(at.c,at.r));
+  assert.deepEqual({x:p.x,y:p.y},centre(at.c+.5,at.r+.5),'centred on its 2×2 square');
   assert.equal(g.terrain.blockers().length,1,'its blocker disc');
+  // barricada-2x: the disc is twice the muro's, centred on the square (its corners inside it).
+  const disc=g.terrain.blockers()[0];
+  assert.deepEqual({x:disc.x,y:disc.y,r:disc.r},{x:p.x,y:p.y,r:2*MURO_BLOCK_R});
+  assert.ok(Math.SQRT2*FREE_CELL<disc.r,"the square's corners are inside the disc");
   assert.equal(pieceDrag(g.sys.state,{x:p.x,y:p.y}),1,'no drag: they walk around it');
   assert.equal(structureTargets(g.sys.state,false).find(x=>x.id===p.id)!.blocking,true);
   // Too close to the car's body: refused 'carro' (a muro there is fine as before).
-  const near=[2,3,4,5].flatMap(k=>ring(k)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:FREE_CELL,h:FREE_CELL};
+  const near=[2,3,4,5].flatMap(k=>ring(k)).filter(o=>onGround(city,o,2,2)).find(o=>{const r={x:o.c*FREE_CELL,y:o.r*FREE_CELL,w:2*FREE_CELL,h:2*FREE_CELL};
     const gap=Math.hypot(Math.max(r.x-CAR.x,0,CAR.x-(r.x+r.w)),Math.max(r.y-CAR.y,0,CAR.y-(r.y+r.h)));
     return gap>=CAR_R+CAR_BUILD_GAP&&gap<CAR_R+UNO_BUILD_CELLS*FREE_CELL;})!;
   assert.ok(near);

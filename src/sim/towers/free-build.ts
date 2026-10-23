@@ -56,6 +56,12 @@ export const FREE_CELL=CITY_BUILD_CELL;
  * row crosses (the band a hero disc cannot enter is ≥ 1.66 u wide, wider than a flow cell).
  */
 export const MURO_BLOCK_R=.85*FREE_CELL;
+/**
+ * A blocking piece's disc for a W×H footprint (NEW-20261022-ORQ-barricada-2x: the 2×2 barricada): centred on the
+ * footprint, MURO_BLOCK_R × its longer side, so a 2×2 square's corners are inside it and a row of them, side by side,
+ * is shut as tightly as a row of 1-cell muros (the same geometry, twice the size).
+ */
+export const blockDisc=(cell:{c:number;r:number},w:number,h:number)=>({x:(cell.c+w/2)*FREE_CELL,y:(cell.r+h/2)*FREE_CELL,r:MURO_BLOCK_R*Math.max(w,h)});
 
 export const pieceRect=(cell:{c:number;r:number},w:number,h:number):Rect=>({x:cell.c*FREE_CELL,y:cell.r*FREE_CELL,w:w*FREE_CELL,h:h*FREE_CELL});
 /** The cells a piece covers. */
@@ -96,8 +102,8 @@ export const standingPieces=(state:StonewardsState,kind:FreePiece)=>piecesOf(sta
 export const blocksEnemies=(kind:FreePiece)=>FREE_PIECE_DEFS[kind].blocks;
 /** The standing blocking pieces (the moto rides around them, the tranca check counts them). */
 export const blockingPieces=(state:StonewardsState)=>piecesOf(state).filter(p=>blocksEnemies(p.kind));
-/** The muro's blocker disc (its cell's centre). */
-const muroDisc=(p:PieceState)=>({x:(p.cell.c+.5)*FREE_CELL,y:(p.cell.r+.5)*FREE_CELL,r:MURO_BLOCK_R});
+/** A blocking piece's blocker disc (blockDisc of its footprint: a muro its cell's centre, MURO_BLOCK_R). */
+const muroDisc=(p:PieceState)=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDisc(p.cell,w,h);};
 /** Flow-grid cells (asset.unitsPerCell, inclusive) a muro's blocker decides, one cell of margin. */
 function muroCells(city:CityTerrain,p:PieceState):CellRect{
   const cs=city.asset.unitsPerCell,d=muroDisc(p),reach=d.r+RADIUS;
@@ -138,7 +144,7 @@ export const isPiece=(state:StonewardsState,id:string)=>piecesOf(state).some(p=>
 
 /** Siege targets: a muro blocks (any body pressed against it bashes it), a barricade is a non-blocking target like a tower. */
 export function pieceTargets(state:StonewardsState):{id:string;x:number;y:number;radius:number;blocking?:true}[]{
-  return piecesOf(state).map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:MURO_BLOCK_R,blocking:true as const}
+  return piecesOf(state).map(p=>blocksEnemies(p.kind)?{id:p.id,x:p.x,y:p.y,radius:muroDisc(p).r,blocking:true as const}
     :{id:p.id,x:p.x,y:p.y,radius:Math.max(...pieceCells(p.kind,p.rot??0))*FREE_CELL/2});
 }
 
@@ -180,10 +186,11 @@ function seedCell(open:Uint8Array,w:number,h:number,cs:number,p:Point){
   }
   return best;
 }
-/** Whether, with these muro centres shutting cells, the car still reaches every spawn and the moto. */
-function connected(city:CityTerrain,muros:readonly Point[],car:Point,moto:Point|undefined):boolean{
-  const a=city.asset,w=a.cells.w,h=a.cells.h,cs=a.unitsPerCell,open=ground(city).slice(),reach=MURO_BLOCK_R+RADIUS;
+/** Whether, with these blocker discs shutting cells, the car still reaches every spawn and the moto. */
+function connected(city:CityTerrain,muros:readonly {x:number;y:number;r:number}[],car:Point,moto:Point|undefined):boolean{
+  const a=city.asset,w=a.cells.w,h=a.cells.h,cs=a.unitsPerCell,open=ground(city).slice();
   for(const m of muros){
+    const reach=m.r+RADIUS;
     const x0=Math.max(0,Math.floor((m.x-reach)/cs)),x1=Math.min(w-1,Math.floor((m.x+reach)/cs));
     const y0=Math.max(0,Math.floor((m.y-reach)/cs)),y1=Math.min(h-1,Math.floor((m.y+reach)/cs));
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
@@ -214,12 +221,13 @@ function connected(city:CityTerrain,muros:readonly Point[],car:Point,moto:Point|
   return false;
 }
 /**
- * True when a muro at `cell` would lock the chaveiro: the city stays open without it and is shut with it (the car's cell
- * cut off from a spawn's or the moto's). Without a car (the wall mode) the wall's spot stands in for it.
+ * True when a blocking piece of w×h cells (a muro: 1×1) at `cell` would lock the chaveiro: the city stays open without
+ * it and is shut with it (the car's cell cut off from a spawn's or the moto's). Without a car (the wall mode) the wall's
+ * spot stands in for it.
  */
-export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:number},car:Point,moto:Point|undefined):boolean{
-  const muros=blockingPieces(state).map(p=>({x:(p.cell.c+.5)*FREE_CELL,y:(p.cell.r+.5)*FREE_CELL}));
-  const extra={x:(cell.c+.5)*FREE_CELL,y:(cell.r+.5)*FREE_CELL};
+export function locks(city:CityTerrain,state:StonewardsState,cell:{c:number;r:number},car:Point,moto:Point|undefined,w=1,h=1):boolean{
+  const muros=blockingPieces(state).map(muroDisc);
+  const extra=blockDisc(cell,w,h);
   if(connected(city,[...muros,extra],car,moto))return false;
   return connected(city,muros,car,moto);
 }

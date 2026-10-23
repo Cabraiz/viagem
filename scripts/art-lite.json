@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2226,
-  "bytes": 1549967046,
-  "liteBytes": 507973006,
+  "files": 2228,
+  "bytes": 1550006950,
+  "liteBytes": 508005230,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17925,6 +17925,14 @@
    "psnr": 40.3,
    "shownPsnr": 42.6
   },
+  "menu/rosto/aposentado.webp": {
+   "source": "48bd3d879d3c7216f6ed2a079945bac6058fb9ecf5f2865430e09cc55eb3ea7c",
+   "lite": "b1146d8b62b52af8a8601654dc62bd2df96095651fa58010e7a415e74c0ddf64",
+   "bytes": 19704,
+   "liteBytes": 16050,
+   "psnr": 39.5,
+   "shownPsnr": 42.2
+  },
   "menu/rosto/clt-cansado.webp": {
    "source": "3a5321d4c0a712e8dc092c4d22501b54b8b2080f3e1d996449a9ecabb3de22b8",
    "lite": "c01eb46440291d1e5c7e848b68a9ae3b74f20a176fb33f182198c8545a8388f9",
@@ -17948,6 +17956,14 @@
    "liteBytes": 13286,
    "psnr": 39.6,
    "shownPsnr": 42.3
+  },
+  "menu/rosto/vendedor-praia.webp": {
+   "source": "172783494825a16011c6663e35388232395e7f2faaee802bbd9b3f11c472f455",
+   "lite": "f20e4b8ae402b2d012bc7bb7fdaa9591d443a41bf00b711bdb4f2813e018c5bc",
+   "bytes": 20200,
+   "liteBytes": 16174,
+   "psnr": 38.9,
+   "shownPsnr": 41.6
   },
   "menu/rosto/viciado-em-bet.webp": {
    "source": "2af7cf408ba9ed923d7f5aeae026a68d09a236a7d6c7c937d6cd043b4051dd89",

@@ -76,7 +76,7 @@ test('botao-selecionar: the letreiro is the hero name (last word big), the plaqu
 test('botao-selecionar: the row shows a "?" until a hero has new art; a letreiro picture per hero replaces the HTML sign',()=>{
   // Nobody has the new row face yet (every tile a "?"); only the viciado (menu-arte-viciado) and the CLT
   // (letreiro-clt-na-cena) have their letreiro picture.
-  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
+  assert.equal(ARTE_NOVA.size,0);assert.deepEqual(Object.keys(LETREIROS),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
   for(const hero of playableClasses){assert.equal(hasNewArt(hero.id),false);if(!(hero.id in LETREIROS))assert.equal(letreiroOf(hero.id),undefined);}
   assert.match(main,/hasNewArt\(hero\.id\)[\s\S]*card-portrait[\s\S]*card-misterio" aria-hidden="true">\?</);
   assert.match(main,/class="estadio-letreiro" alt="" hidden/);
@@ -169,7 +169,7 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));
   assert.ok(css.includes('.estadio .estadio-confirmar > span[aria-hidden] {'),'only the star is styled, not the button text');
-  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
+  assert.deepEqual(Object.keys(RECORTES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
 });
 
 test("tela-clt-pose2: the CLT cut out of his scene, on his own background without him (a bleed like the stadium's)",async()=>{
@@ -358,11 +358,12 @@ test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his
   const share=(w:number,h:number)=>placeCutout({w,h},art,cutoutOf('viciado-em-bet')!)!.h/h;
   assert.ok(Math.abs(share(1280,720)-share(1920,1080))<.01,`${share(1280,720).toFixed(3)} × ${share(1920,1080).toFixed(3)}`);
   // The window wider than the bleed and the 4:3 ones keep what they had (never smaller: the file must cover the box);
-  // only a hero narrow enough to fit right of the column grows there (the maromba at 5:4), by the same rule: about his
-  // soles, his head headRoom under the top, the picture still covering the box.
+  // only a hero narrow enough to fit right of the column grows there (the maromba at 5:4, the aposentado at 4:3), by the
+  // same rule: about his soles, his head headRoom under the top, the picture still covering the box.
+  const crescem:Record<string,string[]>={maromba:['1280x1024','1024x768'],aposentado:['1024x768']};
   for(const [w,h] of [[2560,1080],[3440,1440],[1280,1024],[1024,768]])for(const id of Object.keys(RECORTES)){
     const cut=cutoutOf(id)!,hero=frameHero({w,h},art,cut),was=frameMoved({w,h},art,moveOf(cut));
-    if(id!=='maromba'||w/h>16/9){assert.deepEqual(hero,was,`${id} ${w}x${h}`);continue;}
+    if(!crescem[id]?.includes(`${w}x${h}`)){assert.deepEqual(hero,was,`${id} ${w}x${h}`);continue;}
     const at=placeCutout({w,h},art,cut)!,feet0=was.oy+(art.focal!.y+cut.y+cut.h)*was.s;
     assert.ok(hero.s>=was.s-e&&Math.abs(at.y+at.h-feet0)<1e-6&&at.y>=headRoom(h)-1e-6,`${id} ${w}x${h}: grown about his soles`);
     assert.ok(hero.ox<=e&&hero.oy<=e&&hero.ox+art.w*hero.s>=w-e&&hero.oy+art.h*hero.s>=h-e,`${id} ${w}x${h}: covers the box`);
@@ -606,9 +607,11 @@ test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as bi
   for(const [id,m] of Object.entries(sizes)){
     const k=Math.min(wide/m.width!,tall/m.height!),w=m.width!*k,h=m.height!*k;
     assert.ok(w<=wide+1e-9&&h<=tall+1e-9,`${id} inside the box`);
-    assert.ok(h/tall>=.9,`${id}: ${(100*h/tall).toFixed(1)}% of the box's height (>= 90%)`);
-    // The maromba's iron plate is round: a disc leaves more of the box empty (86%), never more than 15% off.
-    assert.ok(Math.abs(w*h/(1*tall)-1)<=(id==='maromba'?.15:.1),`${id}: area like the viciado's (${(100*w*h/tall).toFixed(0)}%)`);
+    // The aposentado's workshop plank (tela-aposentado, the user's pick of 8) is 2:1: as wide as the box, 79% of its height.
+    const baixo=id==='aposentado'?.78:.9;
+    assert.ok(h/tall>=baixo,`${id}: ${(100*h/tall).toFixed(1)}% of the box's height (>= ${100*baixo}%)`);
+    // The maromba's iron plate is round: a disc leaves more of the box empty (86%), never more than 15% off; the plank 22%.
+    assert.ok(Math.abs(w*h/(1*tall)-1)<=(id==='maromba'?.15:id==='aposentado'?.22:.1),`${id}: area like the viciado's (${(100*w*h/tall).toFixed(0)}%)`);
   }
   // Nothing under the box depends on the hero: the row and the button follow it with fixed gaps (measured in Chrome on 9
   // PC screens, the row's Y equal to ±0.5 px for all 15 heroes: evidence/NEW-20261022-ORQ-titulo-mesmo-espaco).

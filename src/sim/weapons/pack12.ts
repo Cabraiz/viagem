@@ -65,7 +65,7 @@ export const PACK12:readonly Pack12Weapon[]=[
     quip:'Remendada, mas joga.',intro:'Bola que quica de cabeça em cabeça.',
     verde:[16,.9,1,.3,9,1.2,3,.3,.5,7]},
   {id:'traque',name:'Traque de São João',icon:'traque',type:'lancado',pattern:'zone',minRarity:2,noise:16,
-    quip:'Pá-pá-pá-pá!',intro:'Punhado de traques que estouram em volta do bicho.',effect:{scatter:1},
+    quip:'Pá-pá-pá-pá!',intro:'Punhado de traques que estouram em volta do bicho.',effect:{scatter:1,thrown:true},
     verde:[14,1.4,4,1,0,.3,INF,.3,1,6]},
   {id:'buscape',name:'Buscapé',icon:'buscape',type:'teleguiado',pattern:'homing',minRarity:2,noise:18,
     quip:'Ninguém sabe pra onde ele vai. Nem ele.',intro:'Fogo que corre atrás do bicho mais perto.',
@@ -84,7 +84,7 @@ export const PACK12:readonly Pack12Weapon[]=[
     verde:[4,4,1,2,0,4,INF,1,.3,0]},
   // ---- Roxa ----
   {id:'tijolo-baiano',name:'Tijolo Baiano',icon:'tijolo-baiano',type:'lancado',pattern:'zone',minRarity:3,noise:8,
-    quip:'Oito furos de pura física.',intro:'Tijolo jogado longe que estoura em área onde cai.',
+    quip:'Oito furos de pura física.',intro:'Tijolo jogado longe que estoura em área onde cai.',effect:{thrown:true},
     verde:[45,1.6,1,1.6,0,.3,INF,.6,1,11]},
   {id:'taro-vencido',name:'Baralho de Tarô Vencido',icon:'taro-vencido',type:'leque',pattern:'pierce',minRarity:3,noise:2,
     quip:'A carta diz: corre.',intro:'Leque de cinco cartas de uma vez.',effect:{fanStep:.25},

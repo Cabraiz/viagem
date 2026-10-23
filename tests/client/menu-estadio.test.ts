@@ -240,11 +240,11 @@ test("clt-mesmo-lugar: the CLT's face and body where the viciado's are, his plat
     const placed=placeCutout(box,STADIUM.bleed,clt)!;
     assert.ok(Math.abs(placed.x-(ox+(f.x+clt.x)*s))<e&&Math.abs(placed.y+placed.h-(oy+(f.y+clt.y+clt.h)*s))<e,`${w}x${h}: feet on his plateau`);
   }
-  // 1920x1080: the stadium's framing moved by k (his box 24.8% bigger than his scene's), then zoomed about his soles
-  // (heroi-grande-por-tela: ~5% more, his hair headRoom under the top; with k, ~17% over the clt-mesmo-lugar one), his
-  // briefcase 4-6% of the window from the right edge.
+  // 1920x1080: the stadium's framing moved by k (his box 24.8% bigger than his scene's); menu-folga-topo (9% over the
+  // heads): his framing already leaves his hair 8.4% under the top, so he is not zoomed (z = 1); his briefcase 4-6% of the
+  // window from the right edge.
   const at=placeCutout({w:1920,h:1080},STADIUM.bleed,clt)!,stadium=frameArt({w:1920,h:1080},STADIUM.bleed),z=at.w/(635*1.248*stadium.s);
-  assert.ok(z>=1.03&&z<=1.08&&Math.abs(at.y-headRoom(1080))<1e-6&&1.248*z/1.12>=1.15,JSON.stringify({...at,z}));
+  assert.ok(Math.abs(z-1)<1e-9&&at.y>=.08*1080&&at.y<headRoom(1080),JSON.stringify({...at,z}));
   assert.ok(1920-at.x-at.w>=.04*1920&&1920-at.x-at.w<=.06*1920,`${(1920-at.x-at.w).toFixed(0)} px to the right edge`);
   // Wired: the stage's background framed with the shown picture's move, set together with the picture.
   assert.match(main,/frame=art\.focal&&box\.w>0&&box\.h>0\?\(stageCut\?frameHero\(box,art,stageCut\):frameArt\(box,art\)\):undefined;/);
@@ -308,8 +308,8 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   // edge on the window's, raised 9 px: the back sneaker (4 px lower, desce) 8 px above the bottom.
   const round=(o:Record<string,number>)=>Object.fromEntries(Object.entries(o).map(([k,v])=>[k,Math.round(v*1000)/1000]));
   assert.deepEqual(round(frameArt({w:1920,h:1080},art)),{s:.909,ox:-116.364,oy:-195.273});
-  // heroi-grande-por-tela: the boy zoomed about his soles (x1.07), his cap 4% (43.2 px) under the top.
-  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1015.807,y:43.2,w:771.114,h:1028.8});
+  // heroi-grande-por-tela: the boy zoomed about his soles, his cap 9% (97.2 px, menu-folga-topo; it was 4%) under the top.
+  assert.deepEqual(round(placeCutout({w:1920,h:1080},art,cutoutOf('viciado-em-bet')!)!),{x:1036.044,y:97.2,w:730.639,h:974.8});
   assert.deepEqual(art.view,{x:f.x-f.w*.1,y:f.y-f.h*.1,w:f.w*1.1,h:f.h*1.1},'view: 10% more above and to the left');
   assert.equal(FEET_MARGIN,8);
   assert.equal(art.feet,Math.max(...Object.values(RECORTES).map(c=>c.y+(c.desce??0)+c.h)),'feet: the lowest sole of every hero drawn in place');
@@ -323,21 +323,24 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
 });
 
-test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 3-6% under the top, his feet on the bar',()=>{
+test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 9% under the top (menu-folga-topo), his feet on the bar',()=>{
   // The user (22/10): "o tamanho dos nossos personagens deve ser meio que tentar ser grande para chegar na borda de cima,
   // mas depende do tamanho da tela; 720 vai ser diferente de 1080"; before, "o chapéu não ficar tão colado". One rule
   // (frameHero) for both heroes and every window, replacing the fixed rooms (>= 6%, the CLT >= 8%) of estadio-folga-topo.
   const art=STADIUM.bleed,e=1e-9;
-  assert.equal(headRoom(1080),43.2);assert.equal(headRoom(600),28,'at least 28 px');
+  // menu-folga-topo (the user, 22/10: "pode aumentar o gap entre a parte de cima da imagem e a borda de cima?"): 4% -> 9%.
+  assert.equal(headRoom(1080),97.2);assert.equal(headRoom(300),28,'at least 28 px');
   for(const [w,h] of [[1920,1080],[1920,1000],[1920,950],[1917,948],[1590,903],[1366,768],[1280,720],[1280,800],[1600,900]]){
     const box={w,h};
     for(const id of Object.keys(RECORTES)){
       const cut=cutoutOf(id)!,placed=placeCutout(box,art,cut)!,fit=fitCutout(box,placed);
       const was=frameMoved(box,art,moveOf(cut)),s0=was.s*(art.focal!.w/1920),feet0=was.oy+(art.focal!.y+cut.y+(cut.desce??0)+cut.h)*was.s;
-      assert.ok(fit.y>=.03*h-e&&fit.y<=.06*h+e&&Math.abs(fit.y-headRoom(h))<1e-6,`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
+      // Grown: exactly headRoom; not grown (z = 1: the CLT, whose framing leaves 8.0-8.4%): what his framing leaves.
+      const grew=frameHero(box,art,cut).s>was.s+e;
+      assert.ok(fit.y>=.08*h-e&&fit.y<=.095*h+e&&(!grew||Math.abs(fit.y-headRoom(h))<1e-6),`${id} ${w}x${h}: ${fit.y.toFixed(1)} px over his head (${(fit.y/h*100).toFixed(1)}%)`);
       assert.ok((['x','y','w','h'] as const).every(k=>Math.abs(fit[k]-placed[k])<1e-6),`${id} ${w}x${h}: not lifted, not shrunk (his feet where the framing puts them)`);
-      // Bigger than the framing alone had him (estadio-folga-topo's ~10% / 8% over him), his soles where it had them.
-      assert.ok(placed.h>cut.h*s0+e&&Math.abs(placed.y+placed.h-feet0)<1e-6,`${id} ${w}x${h}: grown about his soles`);
+      // Never smaller than the framing alone had him, his soles where it had them.
+      assert.ok(placed.h>=cut.h*s0-e&&Math.abs(placed.y+placed.h-feet0)<1e-6,`${id} ${w}x${h}: grown about his soles`);
       // Whole on screen, right of the column, 2% of the width off the right edge; the lowest sole FEET_MARGIN over the bottom.
       assert.ok(placed.x>=columnRight(box)-1e-6&&placed.x+placed.w<=.98*w+1e-6,`${id} ${w}x${h}: ${placed.x.toFixed(0)}..${(placed.x+placed.w).toFixed(0)}, column ${columnRight(box).toFixed(0)}`);
       assert.ok(placed.y+placed.h<=h-FEET_MARGIN+1e-6,`${id} ${w}x${h}: ${(h-placed.y-placed.h).toFixed(1)} px under his soles`);
@@ -512,7 +515,7 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
   // The text shrinks before it reaches the burst: the line is 6.05 em with the spacing (5.57 + 10 × .048), the cap leaves
   // the .42 em of air it had before.
   assert.ok(Math.abs(5.57+10*ls-6.05)<.01);
-  assert.ok(text.includes('font-size: min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5));'));
+  assert.ok(text.includes('font-size: calc(min(calc(var(--bh) * .54), calc((100cqi - var(--bh) * .924) / 6.5)) * .85);'));
   assert.ok(6.5-(5.57+10*ls)>=.4,'air before the burst');
   assert.ok(Math.abs(sw+bw-.924)<.001,'the cap subtracts the star and the burst');
   assert.ok(btn.includes('container-type: inline-size;'));

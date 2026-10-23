@@ -6,7 +6,7 @@ import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.
 import {HEIGHT_PX} from '../../src/client/render/city/projection.ts';
 import {
   AVENUE_HALF_WIDTH_CELLS,BUILDING_HEIGHT_MAX,BUILDING_HEIGHT_MIN,CLIFF_LIP_HEIGHT,EDGE_HEIGHT,PLAZA_PAD_CELLS,PROP_DEDUP,PROP_STACK,PROP_R_MAX,PROP_R_MIN,
-  RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,
+  RUBBLE_HEIGHT,WALKABLE_MIN_SAMPLES,WALL_HEIGHT,WATER_MIN_SAMPLES,cityRenderAsset,leftoverWallLines,
 } from '../../src/client/render/city/from-maps.ts';
 import {CITY_MAP_SCALE} from '../../src/rules/index.ts';
 
@@ -256,4 +256,23 @@ test('the real asset converts in well under 300 ms (best of 3; gated by BENCH=1)
   for(let k=0;k<3;k++){const t=performance.now();cityRenderAsset(maps);best=Math.min(best,performance.now()-t);}
   console.log(`[bench] city-from-maps: cityRenderAsset best of 3 ${best.toFixed(1)} ms`);
   if(process.env.BENCH==='1')assert.ok(best<300,`${best.toFixed(1)} ms`);
+});
+
+test('trocar-procedurais-por-arte: every wall cell of Cidade Nevada stands under a painted wall piece (none left bare by the keep-outs)', ()=>{
+  const W=maps.cells.w,H=maps.cells.h,unit=maps.unitsPerCell,render=cityRenderAsset(maps),under=new Uint8Array(W*H);
+  for(const d of render.decor??[])for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(c>=0&&r>=0&&c<W&&r<H)under[r*W+c]=1;
+  let walls=0;const bare:string[]=[];
+  for(const b of maps.blocks){
+    if(b.kind!=='wall')continue;
+    for(const [x,y,w,h] of b.rects)for(let r=Math.round(y/unit);r<Math.round((y+h)/unit);r++)for(let c=Math.round(x/unit);c<Math.round((x+w)/unit);c++){
+      if(c<0||r<0||c>=W||r>=H)continue;
+      walls++;if(!under[r*W+c])bare.push(`${c},${r}`);
+    }
+  }
+  assert.ok(walls>100,'the map has walls');
+  assert.deepEqual(bare,[],'wall cells drawn as the procedural box');
+  const extra=leftoverWallLines(maps);
+  assert.ok(extra.length>0,'the plaza keep-out left wall cells for the render to line');
+  assert.ok(extra.every(e=>/-reto-intacto$/.test(e.id)),'the families\' straight intact pieces');
+  assert.deepEqual(leftoverWallLines({...maps,decor:[]}),[],'a map without scenery keeps its walls as they are');
 });

@@ -21,13 +21,14 @@
  * beyond. Value LOOT_VALUE by tier (units of the crate's kind); kinds alternate coco/pedra inside each tier (asset
  * order), so every tier pays both. A good crate (2 units) is part of a repair (rules RECIPES.reparo: 2 coco + 3 pedra).
  */
-import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,baseHeroSpeed,heroSpeed,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
+import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,baseHeroSpeed,clearSegment,heroSpeed,walkable,type CityAsset,type FlowGrid,type Point,type TerrainField} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 import {AvenuePlanner} from '../city/avenues.ts';
 import {cityLayoutFrom,cityTerrainOf} from '../city/grid.ts';
-import {CITY_MAP_SCALE,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
+import {cityRunStart} from '../city/tutorial.ts';
+import {CITY_MAP_SCALE,CRATE_BODY_RADIUS,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
 import type {NodeInfo} from './resources.ts';
 import type {ResourceKind} from './state.ts';
 
@@ -55,6 +56,14 @@ export const CRATE_PREFIX='caixa-';
  */
 /** D-051: walk distance (u) from the plaza of CityLoot.aroundPlaza, [min, max]. */
 export const AROUND_PLAZA:readonly [number,number]=[8,14];
+/**
+ * BUG-20261022-ORQ-caixas-sumiram: walk distance (u) from the run's start (sim/city/tutorial.ts cityRunStart, where the
+ * heroes spawn, ~76 u of walk from the plaza) of CityLoot.aroundStart, [min, max]: the first minute's crates. Up to
+ * 60 s at the hero's 4 u/s walk reaches far beyond; these stay where a hero who walks off in any direction passes them.
+ */
+export const AROUND_START:readonly [number,number]=[6,48];
+/** CityLoot.spotAhead: tries, and how far (rad) a try turns off the heading at most. */
+export const SPOT_TRIES=12,SPOT_SPREAD=.5;
 export function lootHeroSpeed(terrain:TerrainField|undefined):number{return baseHeroSpeed(terrain);}
 
 export interface Crate {
@@ -77,8 +86,19 @@ export interface CityLoot {
    * 20 s).
    */
   readonly aroundPlaza:readonly Point[];
+  /**
+   * The first minute's crate spots (BUG-20261022-ORQ-caixas-sumiram): hero cell centres AROUND_START u of walk from
+   * the run's start (cityRunStart), a crate's whole body on open ground, outside the base; cell order, with the walk.
+   */
+  readonly aroundStart:readonly (Point&{walk:number})[];
   /** Walking distance (u) from p to the plaza (0 inside it); undefined when p is not on the hero field. */
   distanceToPlaza(p:Point):number|undefined;
+  /**
+   * A first-minute trail crate's spot (sim/crates.ts trailSpot): about `ahead` u from `at` along the unit `heading`,
+   * turned up to SPOT_SPREAD off it (straight first), in the open line of the hero, on open ground for the crate's body, on a cell the heroes reach, outside the
+   * base; SPOT_TRIES draws; undefined when none fits.
+   */
+  spotAhead(at:Point,heading:Point,ahead:number,rng:{next():number}):Point|undefined;
   /** Plaza goal cell or a mouth line (the planner's "inside the base", static: barricades do not change it). */
   insideBase(p:Point):boolean;
 }
@@ -145,16 +165,37 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
     const d=cost/STRAIGHT_COST*cs,p={x:Math.round((cx+.5)*cs*100)/100,y:Math.round((cy+.5)*cs*100)/100};
     if(d>=AROUND_PLAZA[0]&&d<=AROUND_PLAZA[1]&&walkable(p,city)&&!planner.insideBase(p))aroundPlaza.push(Object.freeze(p));
   }
+  const aroundStart:(Point&{walk:number})[]=[],start=cityRunStart(city);
+  const fromStart=new FlowField(grid,[start],{wallPenalty:0});
+  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
+    const cost=fromStart.cellCost(cx,cy);
+    if(cost===UNREACHABLE)continue;
+    const walk=cost/STRAIGHT_COST*cs,x=Math.round((cx+.5)*cs*100)/100,y=Math.round((cy+.5)*cs*100)/100;
+    if(walk>=AROUND_START[0]&&walk<=AROUND_START[1]&&city.clearDisc(x,y,CRATE_BODY_RADIUS)&&!planner.insideBase({x,y}))
+      aroundStart.push(Object.freeze({x,y,walk:Math.round(walk*100)/100}));
+  }
   let farthestGood:Crate|undefined;
   for(const c of crates)if(c.tier==='good'&&(!farthestGood||c.seconds>farthestGood.seconds))farthestGood=c;
   return Object.freeze({
-    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,aroundPlaza:Object.freeze(aroundPlaza),
+    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,aroundPlaza:Object.freeze(aroundPlaza),aroundStart:Object.freeze(aroundStart),
     distanceToPlaza(p:Point){
       if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return undefined;
       const r=reach(p);
       return r?r.cost/STRAIGHT_COST*cs:undefined;
     },
     insideBase:(p:Point)=>planner.insideBase(p),
+    spotAhead(at:Point,heading:Point,ahead:number,rng:{next():number}){
+      const base=Math.atan2(heading.y,heading.x);
+      for(let i=0;i<SPOT_TRIES;i++){
+        // Straight ahead first, then turning off it both ways (a street that bends), a little nearer or farther.
+        const a=base+(i%2?-1:1)*Math.ceil(i/2)/Math.ceil(SPOT_TRIES/2)*SPOT_SPREAD,r=ahead*(.85+.3*rng.next());
+        const p={x:Math.round((at.x+Math.cos(a)*r)*100)/100,y:Math.round((at.y+Math.sin(a)*r)*100)/100};
+        const cx=Math.floor(p.x/cs),cy=Math.floor(p.y/cs);
+        if(cx<0||cy<0||cx>=w||cy>=h||field.cellCost(cx,cy)===UNREACHABLE)continue;
+        if(city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)&&!planner.insideBase(p)&&clearSegment(at,p,city))return p;
+      }
+      return undefined;
+    },
   });
 }
 

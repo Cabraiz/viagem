@@ -139,6 +139,8 @@ const towersDrawn=params.get('desenho')!=='0';
 const viaWire=params.get('fio')==='1',stillHorde=params.get('parado')==='1';
 /** acao=1: the attack button (D-051 step 2) over the stand-in enemies. */
 const acao=params.get('acao')==='1';
+/** dano=<ms> (animacao-receber-dano): the hero loses 1 hp every <ms> (default 1500), so its flinch plays at rest. */
+const danoMs=params.has('dano')?Math.max(200,Number(params.get('dano'))||1500):0;
 /** torres=1: the stand-in horde keeps this far (u) from the hero, outside the ring of defenses, so the shots read. */
 const HORDE_INNER=towersParam===1?4.5:0;
 const enemies=Math.max(0,Math.min(600,params.has('n')||!towersParam?Number(params.get('n'))|0:60));
@@ -367,7 +369,7 @@ class CitySandbox extends Phaser.Scene {
       push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
       this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
     }
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir);
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);

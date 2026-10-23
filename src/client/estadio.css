@@ -107,6 +107,13 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
    room for. The file (1423 px) is never shown above 1x: 56.4vh is 1218 px on a 4K screen. */
 .estadio-titulo.com-letreiro { transform: none; }
 .estadio-titulo.com-letreiro .estadio-letreiro { width: min(33.2vw, 56.4vh); max-width: none; max-height: none; height: auto; }
+/* letreiro-alto (gato-no-menu: the collar drawn far up, "caso precise descer"): --sw is the width the sign alone gets in
+   each layout below (--sinal-ar = the sign's height / width); the picture is that wide and pulled up by the collar's
+   height, so the sign sits where a plain letreiro would and the collar leaves through the top of the screen. */
+.estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto {
+  --sw: min(33.2vw, 56.4vh); width: var(--sw); max-width: none; max-height: none; height: auto;
+  margin-top: calc(var(--sw) * (var(--sinal-ar) - var(--alto-ar)));
+}
 .estadio-letreiro[hidden], .estadio-classe[hidden] { display: none; }
 .estadio .card-portrait { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; object-position: 50% 12%; }
 .estadio #nickname {
@@ -189,6 +196,12 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
      title box (above). */
   .estadio-titulo.com-letreiro { flex: none; width: 100%; height: 100%; max-width: none; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: 100%; height: 100%; object-fit: contain; object-position: 0 100%; }
+  /* The sign contained in the box, bottom left like the others; the collar over the box, out of the flow. */
+  .estadio-titulo.com-letreiro:has(.letreiro-alto) { position: relative; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto {
+    --sw: min(var(--lw) * 1.13, var(--lw) * 1698 / 2436 / var(--sinal-ar));
+    position: absolute; left: 0; bottom: 0; height: auto; margin: 0;
+  }
 }
 
 /* Short landscape (phone on its side, small windows): everything tighter, the hero keeps the bar. */
@@ -196,6 +209,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-escolha { gap: 6px; width: min(50vw, 560px); }
   .estadio-titulo { font-size: calc(clamp(30px, 11vh, 60px) * var(--titulo-fit, 1)); }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 38vh; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 38vh / var(--sinal-ar)); }
   .estadio-classe { font-size: 18px; border-width: 2px; }
   .estadio .class-card { width: 48px; }
   .estadio #nickname { min-height: 40px; }
@@ -220,6 +234,7 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-titulo { font-size: calc(clamp(30px, 10vw, 46px) * var(--titulo-fit, 1)); text-align: center; transform: rotate(-3deg); transform-origin: 50% 50%; padding-inline: 48px; }
   .estadio-titulo span { display: inline; }
   .estadio-titulo.com-letreiro .estadio-letreiro { width: auto; max-width: 100%; max-height: 16vh; margin-inline: auto; }
+  .estadio-titulo.com-letreiro .estadio-letreiro.letreiro-alto { --sw: min(100%, 16vh / var(--sinal-ar)); }
   .estadio-classe { margin-top: auto; font-size: clamp(20px, 6vw, 28px); }
   /* A letreiro picture hides the plaque: the row (or the name) takes its push down under the bar. */
   .estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }

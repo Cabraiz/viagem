@@ -41,6 +41,8 @@ export const classes: HeroClass[] = [
   {id:'conspiracionista',name:'Conspiracionista',subtitle:'Ele sabe demais. Talvez.',role:'Controle',description:'Ligou todos os pontos, inclusive os que não existiam. Pelo menos colocou sensores em volta do acampamento.',skill:'Eu Já Sabia',skillDescription:'Instala um sensor que revela inimigos e avisa a equipe quando uma ameaça se aproxima.',stats:[1,3,5,3],quote:'Isso tudo é um grande tutorial.',art:33},
   {id:'gamer-mobile',name:'Gamer de Celular',subtitle:'A culpa é sempre do ping.',role:'Dano',description:'Usa quatro dedos, duas desculpas e um aparelho com a tela rachada. Não perde um combo quando o Wi-Fi ajuda.',skill:'Modo Tryhard',skillDescription:'Ganha velocidade de ataque ao acertar alvos consecutivos, perdendo o bônus ao errar.',stats:[3,5,3,1],quote:'Tô lagado! Mas eu vi que acertou.',art:34},
   {id:'rainha-bateria',name:'Rainha da Bateria',subtitle:'O ritmo empurra a turma.',role:'Dano',description:'Chegou com um tambor e transformou o encontro numa avenida. Cada batida tem hora e endereço.',skill:'Virada de Carnaval',skillDescription:'Solta uma sequência de pulsos ao redor, causando dano e fortalecendo o movimento dos aliados.',stats:[4,3,1,4],quote:'Abre a roda que eu tô chegando!',art:35},
+  // NEW-20261022-ORQ-gato-personagem-completo: kit approved by the ORQ (23/10 00:21Z); cell 16 is the one Tia da Festa left.
+  {id:'gato-nada-pra-comer',name:'Gato da raça nada para comer em casa',subtitle:'A fome é a arma mais forte.',role:'Controle',description:'Comeu há quinze minutos e jura que está há três dias em jejum. Segue qualquer barulho de pacote até o outro lado do mapa.',skill:'Miado de Fome',skillDescription:'Solta um miado desesperado: os bichos em volta levam um susto, congelam por um instante e depois só querem saber do gato, que fica protegido.',stats:[1,5,4,2],quote:'Miau. (Tradução: cadê a ração?)',art:16},
 ];
 export const roles: Role[] = ['Linha de frente','Dano','Suporte','Controle'];
 export function getClass(id: string): HeroClass | undefined { return classes.find(hero => hero.id === id); }
@@ -50,7 +52,11 @@ export function getClass(id: string): HeroClass | undefined { return classes.fin
  * hidden: a room or link asking for one of them plays one of these (playableClassId), never an error.
  */
 export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['caca-promocao','clt-cansado','coach','concurseira','faxineira','feirante',
-  'maromba','mendigo','passageira','pedreiro','roqueira','streamer','universitario','viciado-em-bet','vizinha-fofoqueira']);
+  'gato-nada-pra-comer','maromba','mendigo','passageira','pedreiro','roqueira','streamer','universitario','viciado-em-bet','vizinha-fofoqueira']);
+/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now). */
+export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer']);
+/** The classes a room bot may get: the playable ones minus NOT_FOR_BOTS, in the roster's order. */
+export const BOT_CLASS_IDS: readonly string[] = Object.freeze(PLAYABLE_CLASS_IDS.filter(id => !NOT_FOR_BOTS.includes(id)));
 /** The playable classes, in the roster's order. */
 export const playableClasses: HeroClass[] = classes.filter(hero => PLAYABLE_CLASS_IDS.includes(hero.id));
 export const isPlayableClass = (id: unknown): id is string => typeof id === 'string' && PLAYABLE_CLASS_IDS.includes(id);

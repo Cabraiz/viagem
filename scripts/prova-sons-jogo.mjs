@@ -57,11 +57,11 @@ try{
     try{const b=await r.body();sfx.set(u.pathname.slice(11),{status:r.status(),bytes:b.length});}catch{sfx.set(u.pathname.slice(11),{status:r.status(),bytes:0});}});
   await page.goto(URL_+(URL_.includes('?')?'&':'?')+'perf=1',{waitUntil:'load',timeout:180000});
   await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
-  // Real clicks (not element.click()): the engine unlocks on the first user gesture.
-  await page.locator('#nickname').fill('Tia Cleide');await page.locator('#confirm').click();
-  if(!await page.evaluate(()=>document.getElementById('confirmation')?.open)){await page.locator('#nickname').fill('Tia Cleide');await page.locator('#confirm').click();}
+  // The form sits behind the character menu: filled from the page. The engine unlocks on the walk's real clicks (and
+  // --autoplay-policy lets the context start without a gesture).
+  await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Tia Cleide';n.dispatchEvent(new Event('input',{bubbles:true}));const c=document.getElementById('confirm');c.click();const n2=document.getElementById('nickname');n2.value='Tia Cleide';n2.dispatchEvent(new Event('input',{bubbles:true}));c.click();});
   await page.waitForFunction(()=>document.getElementById('confirmation')?.open,null,{timeout:30000});
-  await page.locator('#enter-island').click();
+  await page.evaluate(()=>document.getElementById('enter-island').click());
   await page.waitForFunction(()=>{const s=document.querySelector('dialog.explore-shell');return s&&!s.querySelector('.explore-loading:not([hidden])')&&!s.querySelector('.coop-wait:not([hidden])')&&window.__perfScene?.actor;},null,{timeout:90000});
   const clear=async()=>{for(let i=0;i<4;i++){const b=page.getByRole('button',{name:/^Pular/});if(await b.count()&&await b.first().isVisible()){await b.first().click().catch(()=>{});await sleep(400);}else break;}};
   await clear();
@@ -85,7 +85,7 @@ try{
   await page.screenshot({path:`${OUT}-tela.png`});
   // Decode one file of each format in the page (Chromium: Opus in WebM; AAC in MP4 only on builds with the codec).
   const decode=await page.evaluate(async()=>{const c=new OfflineAudioContext(1,48000,48000),r={};
-    for(const f of ['tiro-pistola.webm','tiro-pistola.m4a']){try{const b=await c.decodeAudioData(await (await fetch('/audio/sfx/'+f)).arrayBuffer());r[f]=`${b.duration.toFixed(3)} s`;}catch(e){r[f]='falhou: '+(e?.message||e);}}
+    for(const f of ['pistola.webm','pistola.m4a']){try{const b=await c.decodeAudioData(await (await fetch('/audio/sfx/'+f)).arrayBuffer());r[f]=`${b.duration.toFixed(3)} s`;}catch(e){r[f]='falhou: '+(e?.message||e);}}
     return r;});
   const rec=await page.evaluate(()=>new Promise(res=>{const R=window.__rec;if(!R)return res(null);
     R.rec.onstop=async()=>{const b=new Blob(R.chunks,{type:'audio/webm'});const buf=new Uint8Array(await b.arrayBuffer());let s='';for(let i=0;i<buf.length;i+=0x8000)s+=String.fromCharCode(...buf.subarray(i,i+0x8000));res({wall:R.wall,b64:btoa(s)});};

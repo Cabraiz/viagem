@@ -6,7 +6,7 @@ export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
 export const MOVEMENT128_DURATION={walk:600,attack:1000} as const;
 export interface Movement128Plan {
-  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push';direction?:HeroDirection;
+  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'hurt';direction?:HeroDirection;
   columns:number;rows:number;frameCount:number;
   durationMs:number;loop:boolean;anchor:[number,number];height:number;figure:FigureBox;
   /** M16: the sheet is the drawn direction's mirror (E/NE/SE show W/NW/SW with flipX; `key` is the drawn sheet's). */
@@ -41,8 +41,8 @@ export function runPhase(p:RunPhase,cycles:number):{frame:number;shift:[number,n
   return {frame:p.d.length-1,shift:[0,0]};
 }
 let version=-1;
-const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>();
-function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();}}
+const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),hurt16=new Map<string,boolean>();
+function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();hurt16.clear();}}
 const box=(v:unknown):v is FigureBox=>{
   if(!v||typeof v!=='object')return false;
   const b=v as FigureBox;
@@ -87,15 +87,16 @@ export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.index
  * read from the manifest: the side whose three sheets (walk, attack, idle) are there. A class uses M16 only when all 8
  * directions resolve to valid sheets, else R06 (or legacy).
  */
-export type Movement16Motion=DetailedMotion|'idle'|'run'|'push';
+export type Movement16Motion=DetailedMotion|'idle'|'run'|'push'|'hurt';
 /** The default drawn directions (the importer's and the doc's; a class may draw E, NE or SE instead). */
 export const MOVEMENT16_DIRECTIONS=['S','SW','W','NW','N'] as const;
 export type Movement16Direction=HeroDirection;
 /** Mirror pairs, the default drawn side first. */
 export const MOVEMENT16_PAIRS=[['W','E'],['NW','NE'],['SW','SE']] as const satisfies readonly (readonly [HeroDirection,HeroDirection])[];
 const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]])) as Partial<Record<HeroDirection,HeroDirection>>;
-export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000} as const;
-export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4]} as const;
+export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,hurt:300} as const;
+/** hurt (card animacao-receber-dano): 6 poses, the first and the last the rest pose, a flinch between. */
+export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],hurt:[3,2]} as const;
 const M16_MOTIONS=['walk','attack','idle'] as const;
 /**
  * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
@@ -103,14 +104,14 @@ const M16_MOTIONS=['walk','attack','idle'] as const;
  */
 export function movement16Source(id:string,direction:HeroDirection,motion?:Movement16Motion):{source:HeroDirection;flip:boolean}{
   const partner=PARTNER[direction],files=artPiece('personagens',id)?.files;
-  // An R06 class with a run or a push only (corrida-clt, empurrar-uno): those sheets alone say which side of each pair
-  // is drawn.
-  const only=(motion==='run'||motion==='push')&&!!files&&!M16_MOTIONS.some(m=>Object.keys(files).some(k=>k.startsWith(`${m}16-`)));
+  // An R06 class with a run, a push or a hurt only (corrida-clt, empurrar-uno, animacao-receber-dano): those sheets alone
+  // say which side of each pair is drawn.
+  const only=(motion==='run'||motion==='push'||motion==='hurt')&&!!files&&!M16_MOTIONS.some(m=>Object.keys(files).some(k=>k.startsWith(`${m}16-`)));
   const drawn=(d:HeroDirection)=>!!files&&(only?!!files[`${motion}16-${d}`]:M16_MOTIONS.every(m=>files[`${m}16-${d}`]));
   if(!partner||drawn(direction)||!drawn(partner))return {source:direction,flip:false};
   return {source:partner,flip:true};
 }
-const m16Loop=(motion:Movement16Motion)=>motion!=='attack';
+const m16Loop=(motion:Movement16Motion)=>motion!=='attack'&&motion!=='hurt';
 /** A manifest plan only (never downloads). Mirrored directions share the drawn sheet's key, texture and cache entry. */
 export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroDirection):Movement128Plan|undefined{
   current();const {source,flip}=movement16Source(id,direction,motion),lookup=`m16:${id}:${motion}:${direction}`;
@@ -155,6 +156,17 @@ export function hasPush16(id:string){
 }
 /** The push clip of a class facing `direction` (its hands on the Uno's back), undefined for a class without one. */
 export const pushPlan=(id:string,direction:HeroDirection)=>hasPush16(id)?movement16Plan(id,'push',direction):undefined;
+/**
+ * True when a class has a valid hurt (hurt16, card animacao-receber-dano) in every direction: an M16 class or an R06 one
+ * (the CLT flinches on M16 hurt sheets, its rest stays R06).
+ */
+export function hasHurt16(id:string){
+  current();let complete=hurt16.get(id);
+  if(complete===undefined)hurt16.set(id,complete=(hasMovement16(id)||!!movementIdle8Plan(id))&&HERO_DIRECTIONS.every(d=>movement16Plan(id,'hurt',d)));
+  return complete;
+}
+/** The flinch of a class facing `direction`, undefined for a class without one (it just keeps its rest). */
+export const hurtPlan=(id:string,direction:HeroDirection)=>hasHurt16(id)?movement16Plan(id,'hurt',direction):undefined;
 /** The class moves at a run (HERO_GAIT) when it has one: its 'walk' clips are the run's. */
 export const heroRuns=(id:string)=>HERO_GAIT.run&&hasRun16(id);
 /** The clip a class shows: M16 when complete, else R06 (walk128/attack128 and idle8; its run16 when it runs); undefined = legacy. */

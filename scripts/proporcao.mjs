@@ -148,6 +148,16 @@ export function seam(frames,shapes){
   return {seam:+last.toFixed(3),median:+med.toFixed(3),max:+Math.max(...inner).toFixed(3),ratio:+ratio.toFixed(2),steps:d.map(x=>+x.toFixed(3))};
 }
 
+/**
+ * A clip that leaves the rest and comes back to it (hurt16, card animacao-receber-dano): rest → its first pose and its
+ * last pose → rest against the median step inside it; the worse of the two is the ratio (≤ SEAM_MAX as a loop seam).
+ */
+export function joins(rest,restShape,frames,shapes){
+  const d=[];for(let i=0;i+1<frames.length;i++)d.push(poseDistance(frames[i],frames[i+1],shapes[i],shapes[i+1]));
+  const med=median(d),a=poseDistance(rest,frames[0],restShape,shapes[0]),b=poseDistance(frames.at(-1),rest,shapes.at(-1),restShape),worst=Math.max(a,b);
+  return {in:+a.toFixed(3),out:+b.toFixed(3),median:+med.toFixed(3),ratio:+(med>0?worst/med:worst>0?Infinity:0).toFixed(2),steps:d.map(x=>+x.toFixed(3))};
+}
+
 /** The sprite manifest's M16 clips of class `id`, by key. */
 export function clipsOf(manifest,id){return manifest.pieces?.[id]?.files??{};}
 /** R06's idle8: one rest pose per direction, in this column order (sprite-motion.ts HERO_DIRECTIONS). */
@@ -158,10 +168,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`hurt16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('hurt16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -175,7 +185,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
     const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run','push']){
+    for(const motion of ['idle','walk','run','push','hurt']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -187,7 +197,8 @@ export async function measureClass(manifest,id,dir=SPRITES){
       });
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
       entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
-        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{})};
+        torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{}),
+        ...(motion==='hurt'?{joins:joins(rest[0],r0,frames,shapes)}:{})};
     }
     out.dirs[d]=entry;
   }
@@ -220,6 +231,7 @@ export function verdict(m,keys=GATED){
       if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys)if(Math.abs(c[key]-1)>TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (±${TOL[key]*100}%)`);
+    if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);
     if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
   }
   return bad;
@@ -230,7 +242,7 @@ export function table(m){
   const lines=[`### ${m.id}`,'','| direção | clipe | cabeça | altura (apoio) | tronco | área | emenda 16→1 |','|---|---|---|---|---|---|---|'];
   const pc=x=>`${x>=1?'+':''}${((x-1)*100).toFixed(1)} %`;
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:'—'} |`);
+    lines.push(`| ${d} | ${motion==='idle'?e.restKey??'idle16':`${motion}16`} | ${motion==='idle'?'—':pc(c.head)} | ${motion==='idle'?'—':pc(c.height)} | ${motion==='idle'?'—':pc(c.torso)} | ${motion==='idle'?'—':pc(c.area)} | ${c.loop?`${c.loop.ratio}× (${c.loop.seam} / ${c.loop.median})`:c.joins?`parado ${c.joins.ratio}× (${c.joins.in}/${c.joins.out} / ${c.joins.median})`:'—'} |`);
   }
   return lines.join('\n');
 }

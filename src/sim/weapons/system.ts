@@ -23,6 +23,10 @@ import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
+import type {FireApi} from './fire-api.ts';
+import {fireRicochet,ricochetReach} from './ricochet.ts';
+import {fireMine,mineReach} from './mine.ts';
+import {fireTurret,tickTurrets,turretReach} from './turret.ts';
 
 /** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through HERO_SHOT_SPEED_MULT (same reach). */
 const FLING_SPEED=8*HERO_SHOT_SPEED_MULT,FLING_SECONDS=1/HERO_SHOT_SPEED_MULT,FLING_PIERCE=2;
@@ -81,6 +85,10 @@ export function manualReach(w:ResolvedWeapon):{reach:number;pad:boolean}{
     case 'zone':return w.def.evolved?.followsOwner?{reach:w.area,pad:true}:{reach:w.range,pad:false};
     case 'orbit':return {reach:w.area+orbiterRadius(w),pad:true};
     case 'shield':case 'cone':return {reach:w.area,pad:true};
+    // Pack 12 fatia A2: each pattern's own file says how far it looks.
+    case 'ricochet':return ricochetReach(w);
+    case 'mine':return mineReach(w);
+    case 'turret':return turretReach(w);
   }
 }
 /** Slack of the spatial query for padded reaches (enemy radius); the exact test follows. */
@@ -146,6 +154,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   }
 
   const group=(player:SimPlayer,w:ResolvedWeapon)=>`${player.id}:${w.def.id}`;
+  /** What the patterns in their own files (fire-api.ts) get: this system's target order and cap. */
+  const api:FireApi={cap,group,targets:(ctx,player,range,count,pad=false)=>opts.manual?manualTargets(ctx,player,range,count,pad):targets(ctx,player,range,count)};
 
   function fireOrbit(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
     const spin=w.speed/SIM_HZ,start=ctx.tick*spin,until=ctx.tick+w.durationTicks;
@@ -317,6 +327,9 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       case 'shield':return fireShield(ctx,player,w);
       case 'homing':return fireHoming(ctx,player,w);
       case 'cone':return fireCone(ctx,player,w);
+      case 'ricochet':return fireRicochet(ctx,player,w,api);
+      case 'mine':return fireMine(ctx,player,w,api);
+      case 'turret':return fireTurret(ctx,player,w,api);
     }
   }
 
@@ -342,6 +355,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     id:'weapons',
     step(ctx){
       const manual=opts.manual;
+      // Pack 12 fatia A2: the placed turrets shoot on their own, held attack or not.
+      tickTurrets(ctx,api);
       for(const player of ctx.players.values()){
         if(!canAct(player))continue;
         aura(ctx,player);

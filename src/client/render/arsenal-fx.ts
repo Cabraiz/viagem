@@ -80,6 +80,13 @@ export interface ArsenalOptions {
    * trailed the running hero by a frame's step (BUG-20261022-ORQ-arma-flutua-corrida-clt: ~4 px at 60 fps, ~8 at 30).
    */
   handsFromScene?:boolean;
+  /**
+   * The scene draws the Defumador's smoke itself (drawAuras), at each hero's spot as drawn this frame: begin() leaves it
+   * alone. At locate() the smoke sat on the raw prediction (20 Hz steps, a step ahead of the smoothed sprite) and on the
+   * allies' last network state (ahead of their buffered sprite): it jerked and slid off the running hero
+   * (BUG-20261022-ORQ-aura-descentralizada).
+   */
+  auraFromScene?:boolean;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -200,9 +207,13 @@ export class ArsenalFx{
       if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
     }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
+    if(!this.options.auraFromScene)this.drawAuras(id=>this.options.locate?.(id));
+  }
+  /** The Defumador's smoke around each hero who has it, centred on `at(id)`: the hero's feet as drawn now. */
+  drawAuras(at:(id:string)=>Pt|undefined){
     const rings:{x:number;y:number;r:number;self:boolean}[]=[];
-    for(const [id,{r,self}] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r,self});}
-    this.aura.draw(rings,now,reduced);
+    for(const [id,{r,self}] of this.auraOf){const p=at(id);if(p)rings.push({x:p.x,y:p.y,r,self});}
+    this.aura.draw(rings,this.now,this.reduced);
   }
 
   /**

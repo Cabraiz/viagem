@@ -43,8 +43,8 @@ test('every sheet the game shows any hero has its hand in each frame, inside the
   assert.equal(HELD.length,16,HELD.join());
   for(const id of HELD){
     const sheets=shown(id);
-    // M16 (viciado, gato): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
-    assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
+    // M16 (viciado, gato, maromba): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
+    assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'||id==='maromba'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
     for(const [name,f] of sheets){
       const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
       assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);

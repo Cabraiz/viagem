@@ -43,7 +43,7 @@ import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWo
 import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
-import {KitPlace,kitRefusalText} from './hud/kit-place/model.ts';
+import {KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
 import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
@@ -124,7 +124,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
    * Kits de torre (torre-pela-caixa, construir-no-botao): a tap on the kit's slot selects it, the ghost walks ahead of
    * the hero and the attack button says Construir (buildNow); the kit again or a weapon goes back to Atacar.
    */
-  const kitPlace=new KitPlace();let buildNow:()=>void=()=>undefined;
+  const kitPlace=new KitPlace();let buildNow:()=>void=()=>undefined,kitShown=false;
   let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
@@ -220,7 +220,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         canvas:()=>controller?.game.canvas});
       // Construir (the attack button with a kit selected): the ghost's cell to the room; a red ghost says why instead.
       buildNow=()=>{
-        if(!kitPlace.active)return;
+        if(!kitPlace.active||!kitShown)return;
         if(kitPlace.blocked){obraSay(kitRefusalText(kitPlace.blocked));return;}
         const r=kitPlace.confirm(net);if(r!=='none')send(r);
       };
@@ -699,22 +699,25 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                   scene.setBuildGhost(fortBuild.ghost(ctx),buildHints(fortBuild.piece,plan.sites,ctx));
                 }else if(!kitPlace.active)scene.setBuildGhost(null);
               }
-              // Kits de torre: the mode lives while the hero may build (not watching, not paused, standing) and the kit is there.
+              // Kits de torre: the mode lives while the hero may build (not watching, standing) and the kit is there.
               if(controller){
                 const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id);
-                const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
+                const available=run.phase==='combat'&&!net.fatal&&!member?.spectator
                   &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
-                kitPlace.hero(net.predicted);
+                // The level-up pause or the offer only hide it: the kit stays selected for after the card (construir-no-botao).
+                const shown=kitShown=!run.pause&&!hud.el.hidden&&!hud.offerShown;
+                kitPlace.hero(net.predicted,scene.heroIntent);
                 if(run.phase!=='combat')kitPlace.reset();
                 else if(!available)kitPlace.cancel();
                 kitPlace.sync(me?.weapons);
-                if(kitPlace.active){
+                if(kitPlace.active&&shown){
                   // The ghost walks KIT_AHEAD in front of the hero: that is where Construir puts it.
                   const car=view&&objectiveOf(view)?.car,cell=buildPlanFor(net.terrain).cell;
                   kitPlace.follow(net.predicted,cell);
-                  scene.setBuildGhost(kitPlace.ghost({cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
+                  scene.setBuildGhost(kitPlace.ghost({cell,...(car?{car}:{}),structures:view?.structures??[],ground:kitGround(net.terrain),
+                    bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
-                skill?.setBuild(kitPlace.kit?.id,!!kitPlace.blocked);
+                skill?.setBuild(kitPlace.kit?.id,!shown||!!kitPlace.blocked);
               }
               // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
               if(tralhaHud&&controller){

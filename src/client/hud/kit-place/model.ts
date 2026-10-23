@@ -12,6 +12,7 @@
  *   room takes it; a wall kit stays in the mode while it has charges. The kit leaving its slot (spent, dropped) ends it.
  */
 import type {BuildRot} from '../../../contract/index.ts';
+import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/index.ts';
 import {kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
@@ -28,9 +29,32 @@ export const KIT_REFUSALS:Readonly<Record<string,string>>=Object.freeze({slot:'O
   away:'Longe demais, chega mais perto',defense:'Esse kit não monta aqui'});
 export const kitRefusalText=(reason:string|undefined)=>reason!==undefined&&Object.hasOwn(KIT_REFUSALS,reason)?KIT_REFUSALS[reason]:fortRefusalText(reason);
 
+/**
+ * The room's ground check (sim/towers/free-build.ts onGround): every cell's centre walkable on the city, else 'fora'.
+ * Undefined off the city (the room refuses everything there anyway).
+ */
+export function kitGround(terrain:TerrainField|undefined):((rect:CellRect,cell:number)=>boolean)|undefined{
+  const city=(terrain as Partial<CityTerrain>|undefined)?.world==='cidade'?terrain as CityTerrain:undefined;
+  if(!city)return undefined;
+  const p={x:0,y:0};
+  return (rect,cell)=>{
+    for(let j=0;j<rect.h;j++)for(let i=0;i<rect.w;i++){p.x=(rect.c+i+.5)*cell;p.y=(rect.r+j+.5)*cell;if(!walkable(p,city))return false;}
+    return true;
+  };
+}
+/** What the ghost checks beyond the fortify rules: the city's ground and the bodies standing there (the room's 'taken'). */
+export interface KitGhostContext extends GhostContext {
+  ground?:((rect:CellRect,cell:number)=>boolean)|undefined;
+  /** The other heroes standing and the live enemies (never the builder: the room lets them build under their feet). */
+  bodies?:Iterable<{x:number;y:number}>;
+}
 export interface KitNet {place(slot:number,piece:string,c:number,r:number,rot?:BuildRot):number|undefined}
 export interface KitSlotLike {id:string}
 const CELL_REASONS:ReadonlySet<string>=new Set(['tranca','carro','ninho','ocupado','fora']);
+const bodyOn=(rect:CellRect,bodies:Iterable<{x:number;y:number}>|undefined)=>{
+  if(bodies)for(const b of bodies)if(distToRect(b.x,b.y,rect)<RADIUS)return true;
+  return false;
+};
 const keyOf=(piece:string,c:number,r:number,rot:BuildRot)=>`${piece}:${c}:${r}:${rot}`;
 
 export class KitPlace {
@@ -43,15 +67,19 @@ export class KitPlace {
   /** The hero's last walking direction (unit), for the ghost's first place. */
   private dir={x:0,y:1};
   private last:{x:number;y:number}|undefined;
-  private readonly answers=new Map<string,{ok:boolean}>();
+  private readonly answers=new Map<string,{ok:boolean;reason?:string}>();
   private readonly sent=new Map<number,{key:string;at:number;tower:boolean}>();
   private readonly now:()=>number;
   constructor(now:()=>number=()=>performance.now()){this.now=now;}
 
   get active(){return !!this.kit;}
-  /** Each frame: the hero's position (the way it walks turns the ghost's start). */
-  hero(at:{x:number;y:number}|undefined){
+  /**
+   * Each frame: the hero's position (the way it walks turns the ghost). `intent`, the walk the player asks for (the
+   * scene's heroIntent), wins over the position's change: the reconciled position may step back when the hero stops.
+   */
+  hero(at:{x:number;y:number}|undefined,intent?:{x:number;y:number}){
     if(!at)return;
+    if(intent){const d=Math.hypot(intent.x,intent.y);if(d>1e-3)this.dir={x:intent.x/d,y:intent.y/d};this.last={x:at.x,y:at.y};return;}
     if(this.last){const dx=at.x-this.last.x,dy=at.y-this.last.y,d=Math.hypot(dx,dy);if(d>.02){this.dir={x:dx/d,y:dy/d};}}
     this.last={x:at.x,y:at.y};
   }
@@ -80,13 +108,15 @@ export class KitPlace {
     return cellRect(this.cell.c,this.cell.r,w,h,cell);
   }
   /** The ghost for the scene (scene.setBuildGhost), or null when not placing. */
-  ghost(ctx:GhostContext,hero?:{x:number;y:number}):GhostInput|null{
+  ghost(ctx:KitGhostContext,hero?:{x:number;y:number}):GhostInput|null{
     const rect=this.rect(ctx.cell);
     if(!rect||!this.kit)return null;
     const answer=this.answers.get(keyOf(this.kit.piece,rect.c,rect.r,this.rot));
-    const far=!!hero&&distToRect(hero.x,hero.y,rect)>KIT_REACH,local=far?'fora':ghostRefusal(rect,ctx);
+    const far=!!hero&&distToRect(hero.x,hero.y,rect)>KIT_REACH;
+    const local=far||(ctx.ground&&!ctx.ground(rect,ctx.cell))?'fora':ghostRefusal(rect,ctx)??(bodyOn(rect,ctx.bodies)?'ocupado':undefined);
     const look=ghostLook(local,answer);
-    this.blocked=look==='bloqueado'?(far?'away':local??'ocupado'):undefined;
+    // Why it is red, in the words the room would use: the reach, the local check, else the room's own answer.
+    this.blocked=look==='bloqueado'?(far?'away':local??answer?.reason??'ocupado'):undefined;
     return {piece:this.kit.piece,c:rect.c,r:rect.r,w:rect.w,h:rect.h,...(this.rot?{rot:this.rot}:{}),look};
   }
   /** The kit's slot after an inventory change: follows the same id, or ends the mode when it is gone. */
@@ -112,8 +142,10 @@ export class KitPlace {
     const s=this.sent.get(result.req);
     if(!s)return undefined;
     this.sent.delete(result.req);
-    // Only what that very cell decides paints it (the reach, the limit or the pause do not stay on the cell).
-    if(result.ok||CELL_REASONS.has(result.reason??''))this.answers.set(s.key,{ok:result.ok});
+    // Only what that very cell decides paints it (the reach, the limit or the pause do not stay on the cell). An accepted
+    // piece now stands there: the cell is taken (red) before the frames bring the structure.
+    if(result.ok)this.answers.set(s.key,{ok:false,reason:'ocupado'});
+    else if(CELL_REASONS.has(result.reason??''))this.answers.set(s.key,{ok:false,...(result.reason?{reason:result.reason}:{})});
     if(result.ok){if(s.tower)this.cancel();return undefined;}
     return kitRefusalText(result.reason);
   }

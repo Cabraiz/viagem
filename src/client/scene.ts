@@ -761,6 +761,8 @@ export class IslandScene extends Phaser.Scene {
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
+  /** Where the local hero means to walk (world units; zero standing): the kit's ghost goes that way (construir-no-botao). */
+  get heroIntent():Point{return this.intent;}
   setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();if(paused)this.rightAttack(false);this.input.keyboard?.resetKeys();}
   /**
    * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the

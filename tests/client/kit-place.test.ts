@@ -51,6 +51,8 @@ test('confirm sends {t:place} once per cell; the answer: a tower kit ends the mo
   assert.equal(k.answer({req:2,ok:true}),undefined);assert.equal(k.active,false,'a tower kit is done');
   k.start(0,'kit:muro',{x:10,y:10},CELL);k.confirm(net);
   assert.equal(k.answer({req:3,ok:true}),undefined);assert.equal(k.active,true,'a muro kit keeps laying');
+  assert.equal(k.ghost({cell:CELL,structures:[]},{x:10,y:10})!.look,'bloqueado','the wall it just laid takes that cell');
+  assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
   assert.equal(kitRefusalText('away'),'Longe demais, chega mais perto');assert.equal(kitRefusalText('limite'),'Chegou no limite');
   assert.equal(k.answer({req:99,ok:false}),undefined,'not ours');
 });
@@ -86,5 +88,13 @@ test('construir-no-botao: the ghost walks KIT_AHEAD in front of the hero; red sa
   assert.equal(g.look,'ok');assert.equal(k.blocked,undefined);
   k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]},hero);
   assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
+  // Off walkable ground (the room's onGround, kitGround): red, 'fora'; the room's own refusal is the word after it.
+  k.ghost({cell:CELL,structures:[],ground:()=>false},hero);assert.equal(kitRefusalText(k.blocked),'Aí não dá pra construir');
+  // A friend or a critter standing on it: red, as the room's 'taken' (the builder itself never counts).
+  k.ghost({cell:CELL,structures:[],bodies:[{x:(g.c+.5)*CELL,y:(g.r+.5)*CELL}]},hero);assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
+  // The walk the player asks for wins over a reconciled step back.
+  k.hero({x:hero.x-.3,y:hero.y},{x:0,y:1});k.follow(hero,CELL);
+  const down=k.ghost({cell:CELL,structures:[]},hero)!;
+  assert.ok(Math.abs((down.r+.5)*CELL-(hero.y+KIT_AHEAD))<CELL,'the intent turned it');
   k.cancel();k.follow(hero,CELL);assert.equal(k.ghost({cell:CELL,structures:[]},hero),null,'no kit, no ghost');
 });

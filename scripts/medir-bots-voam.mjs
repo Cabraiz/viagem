@@ -2,15 +2,15 @@
 // Card BUG-20261023-ORQ-bots-ainda-mais-rapidos: how fast the bots and the hero go ON SCREEN, frame by frame, against
 // the room's own positions. A local rooms Worker (scripts/local-worker.mjs) and the vite DEV server already running
 // (`--web`, window.__island needs DEV); one page plays "Jogar sozinho" with `--bots` room bots and walks the hero with the
-// keyboard (W/A/S/D in turns). Every animation frame: the drawn feet of every hero (scene.drawnFeet: what the screen
+// keyboard (W/A/S/D in turns). Every net.view() call: its time and the position it gave every hero (what the scene
 // draws) and the room's last position of each (net.players); every frame from the room: its arrival time and tick.
 // Out: per hero, the speed in u/s on the server (tick to tick) and on screen (frame to frame: mean while walking, p95,
 // max over 100 ms windows, share of frames over 1.25× the server walk), and the bots' modes are not on the wire, so the
 // server side is split by moving / standing only.
 //   node scripts/medir-bots-voam.mjs [--web http://127.0.0.1:4210] [--port 8810] [--bots 3] [--segundos 40] [--saida <dir>]
 //     [--viewport 390x844] [--mobile] [--atraso <ms>] (WebSocket frames held by a random 0..ms each, in order: a phone link)
-//     [--gif <file.gif>] (screenshots during the walk, ffmpeg makes the GIF: the screenshots slow the page, so the numbers
-//     of a --gif run are not the measure)
+//     [--seguir] (the hero walks with the first bot) [--gif <file.gif>] (the page's video, Playwright, cut to the walk by ffmpeg; the recording costs the page frames, so
+//     the numbers of a --gif run are not the measure)
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname,join} from 'node:path';
@@ -21,7 +21,7 @@ import {startLocalWorker} from './local-worker.mjs';
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const WEB=arg('web','http://127.0.0.1:4210'),PORT=Number(arg('port','8810')),BOTS=Number(arg('bots','3')),SECONDS=Number(arg('segundos','40'));
 const [VW,VH]=arg('viewport','390x844').split('x').map(Number),MOBILE=process.argv.includes('--mobile'),OUT=arg('saida'),JITTER=Number(arg('atraso','0'));
-const GIF=arg('gif');
+const GIF=arg('gif'),FOLLOW=process.argv.includes('--seguir');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 if(OUT)mkdirSync(OUT,{recursive:true});
 
@@ -30,7 +30,8 @@ try{
   worker=await startLocalWorker({port:PORT,persist:join(tmpdir(),`viagem-voam-${PORT}`),logPath:join(tmpdir(),`viagem-voam-worker-${PORT}.log`)});
   const {chromium}=await import(pathToFileURL('D:/Gits/viagem-tools/node_modules/playwright/index.mjs').href);
   browser=await chromium.launch({args:process.argv.includes('--gpu')?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-  const ctx=await browser.newContext({viewport:{width:VW,height:VH},deviceScaleFactor:1,...(MOBILE?{isMobile:true,hasTouch:true}:{})});
+  const ctx=await browser.newContext({viewport:{width:VW,height:VH},deviceScaleFactor:1,...(MOBILE?{isMobile:true,hasTouch:true}:{}),
+    ...(GIF?{recordVideo:{dir:join(dirname(GIF),'video'),size:{width:VW,height:VH}}}:{})});
   await ctx.route('**/multiplayer.json',r=>r.fulfill({json:{endpoint:worker.endpoint,protocol:3}}));
   await ctx.addInitScript(([bots,jitter])=>{
     try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:solo-bots:v1',String(bots));}catch{}
@@ -45,7 +46,7 @@ try{
       }
     };
   },[BOTS,JITTER]);
-  const p=await ctx.newPage();
+  const p=await ctx.newPage();const videoAt=Date.now();
   const errors=[];p.on('pageerror',e=>errors.push(String(e).slice(0,200)));
   console.error('worker ok');
   await p.goto(`${WEB}/`,{waitUntil:'load',timeout:120000});
@@ -66,31 +67,58 @@ try{
     const push=net.arrivals.push.bind(net.arrivals);
     net.arrivals.push=at=>{w.__rec.arrivals.push({at,tick:net.tick,delay:net.arrivals.delay(),pos:Object.fromEntries([...net.players.values()].map(q=>[q.id,[q.x,q.y]]))});return push(at);};
     for(const q of net.players.values())w.__rec.ids[q.id]={self:q.id===net.id,name:q.name,classId:q.classId};
-    const f=t=>{
-      const drawn={};for(const [id,at] of scene.drawnFeet)drawn[id]=[at.x,at.y];
-      w.__rec.frames.push({t,tick:net.tick,drawn,pred:[net.predicted.x,net.predicted.y]});
-      if(w.__rec.on!==false)requestAnimationFrame(f);
-    };requestAnimationFrame(f);
+    // Each view() call (the scene's draw, the rescue HUD): the time it was asked for and what it gave. The rAF time is not
+    // the one the positions were computed at (a janky page runs the scene's update long after the frame started).
+    const view=net.view.bind(net);
+    net.view=(now=performance.now())=>{const v=view(now);if(w.__rec.on!==false){const drawn={};for(const q of v.players)drawn[q.id]=[q.x,q.y];w.__rec.frames.push({t:now,tick:net.tick,drawn});}return v;};
   });
   // The walk: hold one key at a time, in turns (with short stops: a person walks and stops).
-  // The GIF: screenshots as fast as they come, each with its time (ffmpeg's concat keeps the real pace).
-  const shots=[];let shooting=!!GIF;const frameDir=GIF&&join(dirname(GIF),'gif-quadros');
-  if(GIF)mkdirSync(frameDir,{recursive:true});
-  const shooter=GIF&&(async()=>{while(shooting){const path=join(frameDir,`q${String(shots.length).padStart(4,'0')}.png`);await p.screenshot({path}).catch(()=>{});shots.push({path,t:Date.now()});}})();
+  const walkAt=Date.now();
   const keys=['d','s','a','w'];const t0=Date.now();let k=0;
-  while(Date.now()-t0<SECONDS*1000){
-    const key=keys[k++%keys.length];await p.keyboard.down(key);await sleep(2500);await p.keyboard.up(key);await sleep(k%3===0?800:150);
+  // --seguir: the hero walks with the first bot (the side-by-side GIF): toward it on screen while far, then the bot's own
+  // screen motion; the keys are screen directions (desktop-input.ts keyVector).
+  if(FOLLOW){
+    const held=new Set();let last;
+    while(Date.now()-t0<SECONDS*1000){
+      const s=await p.evaluate(()=>{const sc=window.__island.scene,cam=sc.cameras.main,bot=[...sc.remoteActors.values()][0]?.image;
+        return bot&&{dx:(bot.x-sc.actor.x)*cam.zoom,dy:(bot.y-sc.actor.y)*cam.zoom,bx:bot.x*cam.zoom,by:bot.y*cam.zoom};});
+      let want=new Set();
+      if(s){const far=Math.hypot(s.dx,s.dy)>70;const vx=far?s.dx:last?s.bx-last.bx:0,vy=far?s.dy:last?s.by-last.by:0,len=Math.hypot(vx,vy);
+        if(len>(far?0:1)){if(vx/len>.38)want.add('d');if(vx/len<-.38)want.add('a');if(vy/len>.38)want.add('s');if(vy/len<-.38)want.add('w');}
+        last=s;}
+      // A level-up offer covers half the screen: take its first card (the walk goes on behind it, but the GIF needs the map).
+      await p.evaluate(()=>{const skip=document.querySelector('.rh-ofc-skip');if(!skip||!skip.offsetParent)return;
+        let root=skip;for(let i=0;i<4&&root.parentElement;i++)root=root.parentElement;
+        const card=[...root.querySelectorAll('button')].find(b=>b.offsetParent&&!b.disabled&&!b.closest('.rh-ofc-actions'));card?.click();});
+      for(const key of held)if(!want.has(key)){await p.keyboard.up(key);held.delete(key);}
+      for(const key of want)if(!held.has(key)){await p.keyboard.down(key);held.add(key);}
+      await sleep(100);
+    }
+    for(const key of held)await p.keyboard.up(key);
   }
-  shooting=false;await shooter;
-  if(GIF&&shots.length>1){
-    const fwd=s=>s.replaceAll('\\','/');
-    const list=shots.map((q,i)=>`file '${fwd(q.path)}'\nduration ${(((shots[i+1]?.t??q.t+100)-q.t)/1000).toFixed(3)}`).join('\n');
-    writeFileSync(join(frameDir,'lista.txt'),`${list}\nfile '${fwd(shots.at(-1).path)}'\n`);
-    execFileSync('ffmpeg',['-y','-loglevel','error','-f','concat','-safe','0','-i',join(frameDir,'lista.txt'),'-vf','fps=12,scale=360:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer','-loop','0',GIF]);
-    console.error(`gif: ${GIF} (${shots.length} quadros)`);
+  while(!FOLLOW&&Date.now()-t0<SECONDS*1000){
+    const key=keys[k++%keys.length];await p.keyboard.down(key);await sleep(2500);await p.keyboard.up(key);await sleep(k%3===0?800:150);
   }
   const rec=await p.evaluate(()=>{window.__rec.on=false;return window.__rec;});
   if(OUT)writeFileSync(join(OUT,`rec-${JITTER}.json`),JSON.stringify(rec));
+  // The GIF: the page's video (Playwright), the walk's last GIF_S seconds (with --seguir the hero has caught up by then),
+  // the middle of the screen (the camera keeps the hero there).
+  if(GIF){
+    const GIF_S=Math.min(SECONDS,12),origin=await p.evaluate(()=>performance.timeOrigin);
+    // With --seguir: the GIF_S window where the first bot walks the most within 4 u of the hero (page ms → video s).
+    let from=(walkAt-videoAt)/1000+SECONDS-GIF_S;
+    const self=Object.keys(rec.ids).find(id=>rec.ids[id].self),bot=Object.keys(rec.ids).find(id=>!rec.ids[id].self);
+    if(FOLLOW&&self&&bot){
+      const fr=rec.frames.filter((f,i,a)=>f.drawn[self]&&f.drawn[bot]&&(i===0||f.t>a[i-1].t)),score=[0];
+      for(let i=1;i<fr.length;i++){const a=fr[i-1],b=fr[i],near=Math.hypot(b.drawn[bot][0]-b.drawn[self][0],b.drawn[bot][1]-b.drawn[self][1])<4;
+        score.push(score[i-1]+(near?Math.hypot(b.drawn[bot][0]-a.drawn[bot][0],b.drawn[bot][1]-a.drawn[bot][1]):0));}
+      let best=-1;for(let i=0,j=0;i<fr.length;i++){while(j<fr.length-1&&fr[j].t-fr[i].t<GIF_S*1000)j++;if(score[j]-score[i]>best){best=score[j]-score[i];from=(origin+fr[i].t-videoAt)/1000;}}
+    }
+    const video=p.video();await ctx.close();const webm=await video.path();
+    execFileSync('ffmpeg',['-y','-loglevel','error','-ss',String(Math.max(0,from)),'-t',String(GIF_S),'-i',webm,
+      '-vf','fps=12,crop=iw:ih*.5,scale=330:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer','-loop','0',GIF]);
+    console.error(`gif: ${GIF}`);
+  }
   // Analysis.
   const HZ=20;
   const speeds=[];
@@ -99,7 +127,7 @@ try{
     const arr=rec.arrivals.filter(a=>a.pos[id]);
     const srv=[];for(let i=1;i<arr.length;i++){const a=arr[i-1],b=arr[i],dt=(b.tick-a.tick)/HZ;if(dt<=0)continue;const d=Math.hypot(b.pos[id][0]-a.pos[id][0],b.pos[id][1]-a.pos[id][1]);srv.push({v:d/dt,gapMs:b.at-a.at,ticks:b.tick-a.tick});}
     // Screen: drawn feet frame to frame.
-    const fr=rec.frames.filter(f=>f.drawn[id]);
+    const fr=rec.frames.filter((f,i,a)=>f.drawn[id]&&(i===0||f.t>a[i-1].t));
     const scr=[];for(let i=1;i<fr.length;i++){const a=fr[i-1],b=fr[i],dt=(b.t-a.t)/1000;if(dt<=0)continue;scr.push({t:b.t,v:Math.hypot(b.drawn[id][0]-a.drawn[id][0],b.drawn[id][1]-a.drawn[id][1])/dt,dt});}
     // 100 ms windows on screen.
     const win=[];for(let i=0,j=0;i<fr.length;i++){while(j<fr.length&&fr[j].t-fr[i].t<100)j++;if(j>=fr.length)break;const a=fr[i],b=fr[j];win.push(Math.hypot(b.drawn[id][0]-a.drawn[id][0],b.drawn[id][1]-a.drawn[id][1])/((b.t-a.t)/1000));}

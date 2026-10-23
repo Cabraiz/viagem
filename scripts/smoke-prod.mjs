@@ -220,7 +220,10 @@ async function enter(p,base,mode,errors,shot,reload=false,roomEndpoint=undefined
   }
 }
 
-const launchArgs=()=>process.platform==='win32'?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:[];
+// SMOKE_SWIFTSHADER=1: render on the CPU. 23/10/2026: with the GPU busy (TangoFlux sounds), d3d11 Chromium hung and
+// the smoke failed a good batch ("Ops, peraí", tick -1); SwiftShader entered the same match in under 10 s.
+const launchArgs=(env=process.env,platform=process.platform)=>env.SMOKE_SWIFTSHADER==='1'?['--use-angle=swiftshader','--enable-unsafe-swiftshader']
+  :platform==='win32'?['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']:[];
 
 /** One mode in a fresh browser: enters the solo match; returns enter()'s result (why '' when it passed). */
 async function smoke(chromium,base,mode,roomEndpoint){

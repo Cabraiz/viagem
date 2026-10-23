@@ -186,3 +186,44 @@
 .insta-ver-pontos i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: var(--r-circulo); background: var(--insta-linha); }
 .insta-ver-pontos i.ativo { background: var(--insta-roxo); }
 @media (prefers-reduced-motion: reduce) { .insta-ver-trilho { transition: none; } }
+
+/* The profile photo opens the hero's stories (ui/insta-stories.ts, NEW-20261023-ORQ-insta-stories-4-herois): a bare
+   button over the same look; once watched, the ring goes grey, as Instagram's. */
+.insta-foto-botao { display: block; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.insta-foto-botao:active .insta-anel { transform: scale(.97); }
+.insta-foto-botao[data-visto] .insta-anel { background: var(--insta-linha); }
+
+/* The stories viewer, over the whole page: dark, the 9:16 stage as tall as fits above the drawn reply bar (56 px), centred.
+   --sv-veu (a pull down) fades the dark out behind the stage. */
+.insta-sv {
+  --sv-h: min(calc(100dvh - 64px), calc(100vw * 16 / 9));
+  position: fixed; inset: 0; z-index: var(--z-dialogo); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overscroll-behavior: contain; touch-action: none; color: var(--insta-sv-texto);
+  user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+}
+.insta-sv::before { content: ''; position: absolute; inset: 0; background: var(--insta-sv-fundo); opacity: var(--sv-veu, 1); }
+.insta-sv-palco { position: relative; width: calc(var(--sv-h) * 9 / 16); height: var(--sv-h); overflow: hidden; border-radius: var(--r-balao); background: var(--insta-sv-fundo); touch-action: none; }
+.insta-sv-story { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .35s ease; }
+.insta-sv-story.ativo { opacity: 1; z-index: 1; }
+.insta-sv-foto { display: block; width: 100%; height: 100%; object-fit: cover; }
+.insta-sv-legenda {
+  position: absolute; left: 50%; bottom: 20%; max-width: 82%; translate: -50% 0; rotate: -2deg; padding: .35em .6em; border-radius: var(--r-ficha);
+  background: color-mix(in srgb, var(--insta-sv-fundo) 62%, transparent); font: 800 clamp(15px, calc(var(--sv-h) * .03), 24px)/1.25 var(--f-sistema);
+  text-align: center; text-wrap: balance;
+}
+.insta-sv-topo { position: absolute; inset: 0 0 auto; z-index: 2; padding: 10px 10px 28px; background: linear-gradient(color-mix(in srgb, var(--insta-sv-fundo) 45%, transparent), transparent); transition: opacity .2s; }
+.insta-sv.pausado .insta-sv-topo, .insta-sv.pausado .insta-sv-legenda { opacity: 0; transition: opacity .2s .25s; }
+.insta-sv-barras { display: flex; gap: 4px; }
+.insta-sv-barra { flex: 1; height: 2.5px; overflow: hidden; border-radius: var(--r-etiqueta); background: color-mix(in srgb, var(--insta-sv-texto) 38%, transparent); }
+.insta-sv-barra b { display: block; height: 100%; background: var(--insta-sv-texto); transform: scaleX(0); transform-origin: left; }
+.insta-sv-quem { display: flex; align-items: center; gap: 8px; margin-top: 10px; font: 400 14px/1 var(--f-sistema); }
+.insta-sv-quem b { font-weight: 800; }
+.insta-sv-avatar { width: 34px; height: 34px; border-radius: var(--r-circulo); object-fit: cover; border: 1.5px solid var(--insta-sv-texto); }
+.insta-sv-selo { width: 15px; height: auto; margin-left: -4px; }
+.insta-sv-quando { opacity: .75; }
+.insta-sv button.insta-sv-fechar { display: grid; place-items: center; width: 40px; height: 40px; min-height: 0; margin-left: auto; padding: 0; border: 0; background: none; box-shadow: none; color: inherit; cursor: pointer; }
+.insta-sv-fechar svg { display: block; width: 26px; height: 26px; }
+.insta-sv-rodape { position: relative; display: flex; align-items: center; gap: 14px; width: calc(var(--sv-h) * 9 / 16); height: 56px; padding: 0 12px; }
+.insta-sv-rodape svg { flex: none; width: 26px; height: 26px; }
+.insta-sv-responder { flex: 1; padding: 10px 16px; border: 1px solid color-mix(in srgb, var(--insta-sv-texto) 55%, transparent); border-radius: var(--r-pilula); font: 400 14px/1 var(--f-sistema); opacity: .9; }
+@media (prefers-reduced-motion: reduce) { .insta-sv-story { transition: none; } }

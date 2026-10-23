@@ -20,6 +20,7 @@ import './client/ui/cadeado.css';
 import './client/ui/insta.css';
 import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
 import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
+import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
@@ -314,6 +315,8 @@ const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perf
   logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
 let instaShown='';
+// Whose stories were watched this visit: his ring goes grey (ui/insta.ts perfilHtml).
+const instaVistos=new Set<string>();
 function renderInsta() {
   const perfil=instaPerfil(selected.id);
   if(!perfil||instaShown===selected.id) return;
@@ -321,7 +324,7 @@ function renderInsta() {
   // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
   insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
   insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
-  insta.perfil.innerHTML=perfilHtml(perfil);
+  insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
   void document.fonts.ready.then(fitHandle);
@@ -341,6 +344,12 @@ insta.stories.addEventListener('click',event=>{
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);
 });
+// The profile photo opens the hero's stories (ui/insta-stories.ts); a locked hero's is no button (a private account).
+insta.perfil.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('.insta-foto-botao'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirStories(perfil,foto,()=>{instaVistos.add(perfil.id);foto.toggleAttribute('data-visto',true);});
+});
 // A grid photo opens as a post (ui/insta-post.ts); it grows out of its thumbnail and shrinks back into it.
 insta.grade.addEventListener('click',event=>{
   const foto=(event.target as HTMLElement|null)?.closest<HTMLElement>('[data-post]'),perfil=instaPerfil(selected.id);
@@ -350,7 +359,7 @@ insta.grade.addEventListener('click',event=>{
 // The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
 let instaHold:(()=>void)|undefined;
 function syncInsta() {
-  fecharPost(true);
+  fecharPost(true);fecharStories(true);
   if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
   else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
   if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();

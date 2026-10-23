@@ -33,8 +33,12 @@ import {sunlit} from './light-actors.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
 import {projectileSticker,shotDrawScale} from './arsenal-rules.ts';
+import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
+import {THROW_MS} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
+import {UsableGlow} from './usable-glow.ts';
+import {SHOT_BANDS} from './usable-glow-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -140,7 +144,9 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   /** Imported sheet (horde-art.ts projectileLook): frames > 1 loop at fps from `born`; `frame` is the one shown. */
   born:number;frames:number;fps:number;frame:number;
   /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5); the shadow keeps the hit circle's. */
-  draw:number}
+  draw:number;
+  /** A hero's thrown weapon (render/shot-flight.ts): flies on an arc from `born` while it moves, then lands. */
+  thrown:ThrownLook|undefined}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -306,6 +312,8 @@ export class HordeRenderer{
   private ui=1;
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
   private body=1;
+  /** contorno-usavel-wc3: the Warcraft 3 gold outline on what can be picked up (crates, items, vehicles) and on the player's shot. */
+  private glow!:UsableGlow;
   /** The enemies' drawn scale: the actor scale × ENEMY_DRAW_SCALE (render/draw-scale.ts); what hangs on them follows it. */
   private enemyBody=ENEMY_DRAW_SCALE;
   /** options.city, read once per frame; the shadows' texture follows it. */
@@ -338,7 +346,7 @@ export class HordeRenderer{
   private textFrame:TextFrame={y:0,scale:1,alpha:1,done:false};
 
   constructor(scene:Phaser.Scene,options:HordeRendererOptions){
-    this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.tickMs=options.tickMs??50;this.pushMs=Math.max(1,options.pushMs??this.tickMs);
+    this.scene=scene;this.options=options;this.reduced=!!options.reduced;this.glow=new UsableGlow(scene,this.reduced);this.tickMs=options.tickMs??50;this.pushMs=Math.max(1,options.pushMs??this.tickMs);
     this.arrivals=new ArrivalJitter(this.pushMs);this.glide=this.pushMs;
     applyPalette();
     this.fx=FX_BUDGET[options.effects??'full'];this.recentHits=new RecentHits(this.fx.bars);
@@ -375,7 +383,7 @@ export class HordeRenderer{
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));
     this.projectiles=new KeyedPool<ProjectileActor>(()=>({image:image(FX.projFriendly)(),shadow:shadow(),look:FX.projFriendly,x:0,y:0,vx:0,vy:0,radius:.2,hostile:false,angle:0,draw:1,
-      born:0,frames:1,fps:8,frame:0}),showActor);
+      born:0,frames:1,fps:8,frame:0,thrown:undefined}),showActor);
     this.telegraphs=new KeyedPool<TelegraphState>(()=>({shape:'circle' as TelegraphView['shape'],x:0,y:0,radius:1,dx:1,dy:0,width:undefined,fireTick:0,start:0,kind:undefined,phase:0}),
       (t,active)=>{if(!active){t.fillArt?.setVisible(false);t.borderArt?.setVisible(false);}});
     queueTelegraphArt(scene); // imported hatch fill and dashed border when the manifest has them (nothing otherwise)
@@ -434,13 +442,14 @@ export class HordeRenderer{
     this.playerCount=0;for(const id of this.playerIds){const p=this.options.locate?.(id);if(p)this.playerAt[this.playerCount++]=p;}
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
-    this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
+    this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();this.glow.begin(timeMs);
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
+    this.glow.end();
     this.warnings.retain(this.drawWarning);
     this.poofs.retain(this.drawPoof);
     this.deaths.retain(this.drawDeath);
@@ -478,7 +487,7 @@ export class HordeRenderer{
   /** Sim tick shown now (the last push plus the time since, ≤ 2 ticks ahead): timed player states (slowUntil) compare to it. */
   get tick(){return this.nowTick;}
   /** Follows prefers-reduced-motion changes at runtime. */
-  setReduced(reduced:boolean){this.reduced=reduced;}
+  setReduced(reduced:boolean){this.reduced=reduced;this.glow.reduced=reduced;}
   /**
    * Blackout level now (0..1, VGM-053B): above 0 the critters show their eyes over the dark, and spawn warnings and
    * hostile projectiles are drawn above it (render/blackout-rules.ts; telegraphs are always on the top layer).
@@ -510,7 +519,7 @@ export class HordeRenderer{
   destroy(){
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
-    this.art.destroy();this.arsenal.destroy();
+    this.art.destroy();this.arsenal.destroy();this.glow.destroy();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -577,7 +586,7 @@ export class HordeRenderer{
       // Who threw a hostile shot plays its throw (the agiota's boleto): nearest enemy of that kind, art v2 only.
       if(view.hostile&&enemyArtActive()){const cue=projectileAction(view.source,true,view.x,view.y,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     }
-    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;
+    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);
     this.aim(a);
   }
   /** Screen-space heading, recomputed only on push and camera rotation. */
@@ -996,20 +1005,39 @@ export class HordeRenderer{
     // gem or a promo prize gets its own copy, so its ring stays 2 px); the base outside the city.
     const outlines=this.options.cityOutlines;
     if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
+    if(a.kind==='chest'||a.kind==='item'||a.kind==='vehicle')this.glow.mark(a.id,a.image,this.css());
     // The D-051 crate (its sheet) is 3× the old chest (rules/crate-size.ts), and so is its shadow.
     const shadow=(a.kind==='chest'?a.arsenal?CRATE_SHADOW_PX:34:18)*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
-  private drawProjectile=(a:ProjectileActor)=>{
+  private drawProjectile=(a:ProjectileActor,id:string)=>{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
-    const q=this.project(this.at),depth=this.depth(this.at);
+    const q=this.project(this.at),depth=this.depth(this.at),qx=q.x,qy=q.y;
+    // A thrown weapon (render/shot-flight.ts) rises on an arc while it flies (its shadow stays on the ground); landed, the
+    // rocket is gone in its burst and the brick and the firecrackers lie under theirs.
+    const t=a.thrown,flying=!!t&&(a.vx!==0||a.vy!==0),age=this.now-a.born;
+    let lift=PROJECTILE_LIFT*this.body,angle=a.angle;
+    if(t&&flying){
+      lift+=throwLift(age,t.arc)*this.body;
+      if(t.landed)angle=age*.012;
+      else{
+        // The rocket points along its arc: the ground heading plus the arc's climb, both per second of flight.
+        this.at.x+=a.vx;this.at.y+=a.vy;const ahead=this.project(this.at);
+        angle=Math.atan2(ahead.y-qy-throwLiftSlope(age,t.arc)*this.body*1000/THROW_MS,ahead.x-qx)-(t.tilt??0);
+      }
+    }
+    a.image.setVisible(!t||flying||t.landed);
     // In the blackout a critter's shot stays above the dark (danger is never hidden, VGM-053B).
-    a.image.setPosition(q.x,q.y-PROJECTILE_LIFT*this.body).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(a.angle);
-    a.shadow.setPosition(q.x,q.y).setScale(a.radius*60/SHADOW_W,a.radius*24/SHADOW_H);
+    a.image.setPosition(qx,qy-lift).setDepth(a.hostile&&this.dark>0?LIFTED_DEPTH+1:depth+2).setRotation(angle);
+    // In flight the shadow is the thrown object's, not its burst's.
+    const shade=flying?Math.min(a.radius,.35):a.radius;
+    a.shadow.setPosition(qx,qy).setScale(shade*60/SHADOW_W,shade*24/SHADOW_H);
     // An imported sheet with several frames loops at its fps (art v2); one frame (today) never touches the frame.
     if(a.frames>1){const f=projectileFrame(a,this.now-a.born);if(f!==a.frame){a.frame=f;a.image.setFrame(f);}}
+    // The player's shot wears the thin gold outline so it reads on the snow (a critter's shot keeps its danger look).
+    if(!a.hostile)this.glow.mark(`tiro:${id}`,a.image,this.css(),SHOT_BANDS);
   };
   private drawTelegraph=(t:TelegraphState)=>{
     const g=this.ground,u=telegraphPulse(this.nowTick,t.fireTick,this.reduced,t.start),blink=telegraphBlink(this.now,u,this.reduced);

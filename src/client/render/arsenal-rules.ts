@@ -8,7 +8,7 @@
  * side, square: frame size = strip height) and their `projeteis` piece (art/horde-art.ts aliases).
  */
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
-import {allItemDisplays} from '../hud/items.ts';
+import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
@@ -80,6 +80,102 @@ export class CrateOpenings{
 }
 
 /**
+ * bau-mostra-o-premio: what a crate gave, from the views alone (the 'pickup' chest event carries only the rarity). The sim
+ * (sim/crates.ts open) puts the prize in the opener's inventory in the same tick it emits the event, or, full, drops it
+ * on the ground at the crate (inventory.ts dropItem). So per view: each hero's gains (a new slot, or a stack that grew)
+ * and the new items on the ground; the event then claims its hero's latest gain, or the item that fell at its crate.
+ */
+export const PRIZE_CLAIM_MS=1500;
+/** A dropped prize lies exactly at the crate; the crate as drawn may have drifted a little. */
+export const PRIZE_DROP_REACH=.75;
+type Owned={readonly id:string;readonly level:number};
+/** The ids `after` gained over `before`: a slot more of an id (a weapon, a kit), else a stack that grew (a consumable). */
+export function inventoryGains(before:readonly Owned[]|undefined,after:readonly Owned[]):string[]{
+  if(!before)return [];
+  const count=(list:readonly Owned[])=>{const m=new Map<string,{slots:number;sum:number}>();for(const o of list){const c=m.get(o.id)??{slots:0,sum:0};c.slots++;c.sum+=o.level;m.set(o.id,c);}return m;};
+  const was=count(before),slots:string[]=[],stacks:string[]=[];
+  for(const [id,now] of count(after)){
+    const old=was.get(id);
+    if(!old||now.slots>old.slots)slots.push(id);
+    else if(now.sum>old.sum&&!isWeaponItem(id))stacks.push(id);
+  }
+  return [...slots,...stacks];
+}
+export class ChestPrizes{
+  private inv=new Map<string,Owned[]>();
+  private gains=new Map<string,{id:string;at:number}[]>();
+  private ground=new Set<string>();
+  private drops:{id:string;item:string;x:number;y:number;at:number}[]=[];
+  /** Per authoritative view: every hero's inventory and the items on the ground. */
+  observe(players:readonly {id:string;weapons:readonly Owned[]}[],pickups:readonly {id:string;kind:string;resource?:string;x:number;y:number}[],now:number){
+    for(const p of players){
+      for(const id of inventoryGains(this.inv.get(p.id),p.weapons)){const list=this.gains.get(p.id)??[];list.push({id,at:now});this.gains.set(p.id,list);}
+      this.inv.set(p.id,p.weapons.map(o=>({id:o.id,level:o.level})));
+    }
+    const ground=new Set<string>();
+    for(const k of pickups){
+      if(k.kind!=='item'||!k.resource)continue;
+      ground.add(k.id);
+      if(!this.ground.has(k.id))this.drops.push({id:k.id,item:k.resource,x:k.x,y:k.y,at:now});
+    }
+    this.ground=ground;
+    for(const [id,list] of this.gains){const fresh=list.filter(g=>now-g.at<=PRIZE_CLAIM_MS);if(fresh.length)this.gains.set(id,fresh);else this.gains.delete(id);}
+    this.drops=this.drops.filter(d=>now-d.at<=PRIZE_CLAIM_MS);
+  }
+  /** The prize `player` took from the crate at world `at` (claimed once), or undefined while no view showed it yet. */
+  claim(player:string,at:{x:number;y:number}|undefined,now:number):string|undefined{
+    // The newest gain: the crate's prize comes in the event's own view, an older one was something else.
+    const list=this.gains.get(player);
+    if(list)for(let g=list.length-1;g>=0;g--)if(now-list[g].at<=PRIZE_CLAIM_MS)return list.splice(g,1)[0].id;
+    if(!at)return undefined;
+    let best=-1,bestD=PRIZE_DROP_REACH;
+    for(let i=0;i<this.drops.length;i++){const d=Math.hypot(this.drops[i].x-at.x,this.drops[i].y-at.y);if(d<=bestD){best=i;bestD=d;}}
+    return best>=0?this.drops.splice(best,1)[0].item:undefined;
+  }
+}
+export interface PrizeLook {id:string;icon?:string;name:string;color:number;glow:number}
+/** Glow behind the sticker per rarity (stronger on the gold and the legendary ones). */
+export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5:1};
+/** The prize as the crate shows it: its inventory sticker, its name in the crate's rarity colour, the glow behind. */
+export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
+  const item=itemDisplay(id);
+  return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
+}
+/** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
+export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
+/** Sticker width (CSS px at body 1): the opener's own prize, and a smaller one for a crate another hero opened. */
+export const PRIZE_PX={own:110,other:60} as const;
+/**
+ * The prize at `age` ms: alpha, lift (0 inside the crate, 1 up in the air; past 1 the hop) and scale, or undefined once
+ * gone. Reduced motion: no hop, no drift.
+ */
+export function prizeMotion(age:number,reduced=false):{alpha:number;lift:number;scale:number}|undefined{
+  if(age<0||age>=PRIZE_MS)return undefined;
+  if(age<PRIZE_RISE_MS){
+    const u=age/PRIZE_RISE_MS,c=1.9,back=1+(c+1)*(u-1)**3+c*(u-1)**2; // easeOutBack: over the top, then down to rest
+    return {alpha:Math.min(1,u/.55),lift:reduced?1-(1-u)**3:back,scale:.6+.4*Math.min(1,u/.7)};
+  }
+  if(age<PRIZE_RISE_MS+PRIZE_HOLD_MS)return {alpha:1,lift:1,scale:1};
+  const v=(age-PRIZE_RISE_MS-PRIZE_HOLD_MS)/PRIZE_FADE_MS;
+  return {alpha:1-v,lift:reduced?1:1+.12*v,scale:1};
+}
+/**
+ * Where the prize may sit on screen, as fractions of the camera's view: off the HUD's corners and bottom (the Atacar
+ * button and the inventory bar on the phone, the inventory on the PC), under the top bar.
+ */
+export const PRIZE_SAFE={left:.1,right:.9,top:.12,bottom:.64} as const;
+/**
+ * A prize centre `(x,y)` (camera space) kept inside PRIZE_SAFE of the view `{x,y,width,height}`, and `half` wide on each
+ * side (its name) inside the view's edges.
+ */
+export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number;height:number},out:{x:number;y:number},half=0){
+  const lo=Math.max(view.x+view.width*PRIZE_SAFE.left,view.x+half),hi=Math.min(view.x+view.width*PRIZE_SAFE.right,view.x+view.width-half);
+  out.x=lo>hi?view.x+view.width/2:Math.min(hi,Math.max(lo,x));
+  out.y=Math.min(view.y+view.height*PRIZE_SAFE.bottom,Math.max(view.y+view.height*PRIZE_SAFE.top,y));
+  return out;
+}
+
+/**
  * Pack 12 fatia A1 (arsenal-completo-no-bau, sim/weapons/pack12.ts A1_PLAYABLE): the weapons on the sim's own patterns.
  * Their shots wear their `projeteis` piece (PACK12_A1_ALIAS); the thrown ones (traque, tijolo) burst with an `efeitos`
  * strip (FIRE_LOOK); the straight shots and the rings show no flash.
@@ -128,7 +224,8 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   pistola:{art:'clarao-pistola',kind:'muzzle',size:80,ms:110},
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
-  escopeta:{art:'clarao-espingarda',kind:'cone',size:70,ms:170,reach:1.6},
+  // BUG-20261023-ORQ-armas-sem-projetil: the shotgun's flash stays at the barrel; its pellets fly (render/shot-flight.ts).
+  escopeta:{art:'clarao-espingarda',kind:'muzzle',size:80,ms:130},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
   // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
@@ -177,15 +274,21 @@ export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set([...PACK12_A1_A
  * ~20 px across); ×5 its 20 px thickness is that circle, so the sim's hit area stays. Critters' shots never grow.
  */
 export const DEFAULT_SHOT_DRAW_SCALE=5;
-const DEFAULT_SHOT_SOURCES:ReadonlySet<string>=new Set(['pistola']);
+/**
+ * BUG-20261023-ORQ-armas-sem-projetil (usuário 23/10: "nem aparece o projétil indo"): the other firearms' bullets were
+ * as thin as the pistol's before ×5. The rifle ×4 and the metralhadora ×3 (a burst of many, smaller); look only.
+ */
+const DEFAULT_SHOT_SOURCES:ReadonlyMap<string,number>=new Map([['pistola',DEFAULT_SHOT_DRAW_SCALE],['rifle',4],['submetralhadora',3]]);
 /**
  * Pack 12 fatia A1: the lobbed ones (traque, tijolo) land as a zone as wide as their burst, and the zone wears the thrown
  * object's piece: drawn at the burst's size it was a giant brick. This factor brings the object back to its size (the
  * layer scales a piece by the zone's radius, up to 3×); the burst itself is FIRE_LOOK's blast.
  */
-const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35]]);
-/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, a lobbed object's, else 1. */
-export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:LOBBED_DRAW_SCALE.get(source)??1;
+const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35],
+  // BUG-20261023-ORQ-armas-sem-projetil: the rocket now flies (render/shot-flight.ts), at about a firework's size.
+  ['rojao',.35]]);
+/** Draw-scale factor of a projectile (layers.ts): a hero's firearm bullet's (DEFAULT_SHOT_SOURCES), a lobbed object's, else 1. */
+export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.get(source)??LOBBED_DRAW_SCALE.get(source)??1;
 
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}

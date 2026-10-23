@@ -97,6 +97,8 @@ test('the heroes\' default shot (the pistola\'s bullet) is drawn 5× bigger; oth
   assert.equal(DEFAULT_SHOT_DRAW_SCALE,5);
   assert.equal(shotDrawScale(false,'pistola'),5);
   assert.equal(shotDrawScale(true,'pistola'),1,'a reflected shot reads as hostile and keeps its size');
-  for(const s of ['rifle','submetralhadora','rojao','chinelo','boleto-juros'])assert.equal(shotDrawScale(false,s),1,s);
+  // BUG-20261023-ORQ-armas-sem-projetil: the rifle ×4, the metralhadora ×3.
+  assert.equal(shotDrawScale(false,'rifle'),4);assert.equal(shotDrawScale(false,'submetralhadora'),3);
+  for(const s of ['chinelo','boleto-juros'])assert.equal(shotDrawScale(false,s),1,s);
   assert.equal(shotDrawScale(true,'boleto-juros'),1);
 });

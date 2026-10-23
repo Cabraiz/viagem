@@ -104,6 +104,8 @@ export interface SceneHooks {
   enemyPicked?:(id:string)=>void;
   /** D-051: the right mouse button pressed (true) or let go (false) holds the attack like Space. Absent: no manual attack. */
   attackHold?:(down:boolean)=>void;
+  /** The phone's aim stick over the attack button (tiro-na-direcao-mobile): its world direction while it aims, else undefined. */
+  aimStick?:()=>Point|undefined;
   /** D-051: the room plays the manual combat (the target words say "ataque", not "a arma atira sozinha"). */
   manual?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
@@ -528,7 +530,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
-        aim:()=>this.mouseGround(),
+        aim:()=>this.mouseGround()??this.stickGround(),
         // …drawn by the scene right after the hero is placed: under his shadow, at his drawn depth (cone-por-cima).
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
@@ -757,6 +759,11 @@ export class IslandScene extends Phaser.Scene {
     const p=this.input.activePointer;
     return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);
   }
+  /** The ground point one unit from the hero along the phone's aim stick, or undefined while it does not aim. */
+  private stickGround():Point|undefined{
+    const d=this.hooks.aimStick?.();
+    return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -949,7 +956,8 @@ export class IslandScene extends Phaser.Scene {
     if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
+    // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,this.hooks.aimStick?.());
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1227,7 +1235,7 @@ export class IslandScene extends Phaser.Scene {
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
+      const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       net.input(direction,false,this.attackTarget,!frozen&&!out&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }

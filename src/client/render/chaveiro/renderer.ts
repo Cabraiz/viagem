@@ -25,6 +25,7 @@ import {ChaveiroTracker} from './tracker.ts';
 import {MOTO_POSE_STATE,applyMotoArt,imageBounds,motoColumn} from './moto-art.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
+import {UsableGlow} from '../usable-glow.ts';
 import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoBox,unoFootY,unoFrame} from './uno-art.ts';
 import {HEIGHT_PX} from '../city/projection.ts';
 import type {Speaker} from './lines.ts';
@@ -133,6 +134,8 @@ export class ChaveiroRenderer {
   private motoImg:Phaser.GameObjects.Image;private standImg:Phaser.GameObjects.Image;
   /** The imported Uno (uno-art.ts), made once its sheet is in; until then (or if it fails) the boxes. */
   private uno?:Phaser.GameObjects.Image;
+  /** contorno-usavel-wc3: the car is pulled on its rope: the Warcraft 3 gold outline around the imported Uno. */
+  private glow?:UsableGlow;
 
   constructor(scene:Phaser.Scene,options:ChaveiroRendererOptions){
     this.scene=scene;this.options=options;
@@ -175,7 +178,7 @@ export class ChaveiroRenderer {
     this.ground.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
-    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
+    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -216,6 +219,9 @@ export class ChaveiroRenderer {
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
       uno.setAlpha(this.coversBox(unoTop,carDepth)?COVER_ALPHA:1);
+      const glow=this.glow??=new UsableGlow(this.scene,reduced);glow.begin(time);
+      if(!view.ended)glow.mark('uno',uno,k);
+      glow.end();
       if(fallingBits){
         const boxes:Box[]=[];
         for(const [bit,at] of this.state.falling)if(fallingBits&bit)boxes.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
@@ -318,7 +324,7 @@ export class ChaveiroRenderer {
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
     this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
     this.motoImg.destroy();this.standImg.destroy();
-    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;
+    this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;this.glow?.destroy();this.glow=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
 

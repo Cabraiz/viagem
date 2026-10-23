@@ -1,0 +1,26 @@
+[
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "lobby",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "lobby",
+  "problems": []
+ }
+]

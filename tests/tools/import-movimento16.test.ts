@@ -132,3 +132,24 @@ test('run poses keep their height off the ground (only the torso x is aligned)',
   const walk=await alignMovement16(bytes,'walk'),run=await alignMovement16(bytes,'run');
   assert.equal(walk.shifts[1].dy,20);assert.equal(run.shifts[1].dy,0);
 });
+
+test('walk alone (andar-proporcao): only walk16 is replaced, at the M16 rest scale; attack, rest and run stay',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  const walkOnly=async()=>{for(const motion of ['attack','idle'])await rm(path.join(input,'personagens-movimento16','aposentado',motion),{recursive:true,force:true});};
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  await walkOnly();
+  const taller=await sheet(4,4,{x0:40,slide:2});
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','walk',d),taller);
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  assert.equal(result.characters[0].walkOnly,true);assert.equal(result.characters[0].outputs.length,5);assert.equal(result.characters[0].height,before['idle16-S'].height*2);
+  const after=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const key of Object.keys(before))if(key.startsWith('walk16-'))assert.notEqual(after[key].file,before[key].file,`${key} replaced`);
+  else assert.deepEqual(after[key],before[key],`${key} kept`);
+  assert.deepEqual(Object.keys(after).sort(),Object.keys(before).sort());
+}));
+
+test('a walk alone needs the class\'s M16 rest (its size reference)',async()=>fixture(async({input,outRoot,manifestFile,old})=>{
+  for(const motion of ['attack','idle'])await rm(path.join(input,'personagens-movimento16','aposentado',motion),{recursive:true,force:true});
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],write:true}),/a walk alone needs the class's M16 idle16-S/);
+  assert.deepEqual(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado,old);
+}));

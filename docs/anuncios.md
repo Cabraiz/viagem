@@ -3,8 +3,10 @@
 O jogo usa só a **Ad Placement API** do Google (H5 Games Ads, dentro do AdSense): `adsbygoogle.js` + `adConfig`/`adBreak`.
 Nenhuma outra rede, nada de pop-under, redirecionamento ou script de terceiro.
 
-O código já está pronto e **desligado**. Para ligar de verdade, quem faz os passos 1 a 5 é você (a IA não cria conta nem
-entra no painel do AdSense). Depois é só mandar o ID `ca-pub-…` ao Orquestrador.
+**Estado (23/10, etapa 4):** o `ca-pub-3277268601080257` está no código, em **modo teste** e só em `viagem.cyou`
+(e `www.`): no `npm run dev`, no preview local, no smoke do lote e em qualquer outro endereço o script nem carrega.
+`https://viagem.cyou/ads.txt` e a [Política de Privacidade](https://viagem.cyou/privacidade/) (link "Privacidade" no
+canto do menu) estão publicados. Os passos 1 a 5 são seus (a IA não cria conta nem entra no painel do AdSense).
 
 ## O que o jogo faz hoje
 
@@ -32,9 +34,9 @@ Prints do modo teste (PC, celular em pé e deitado, adblock): `evidence/NEW-2026
 1. No AdSense: **Sites → Novo site → `viagem.cyou`**.
 2. O Google pede para provar que o site é seu. Escolha a opção **ads.txt**: mande o `ca-pub` e a gente publica
    `public/ads.txt`, que o build copia para a raiz (vira `https://viagem.cyou/ads.txt`, como já acontece com o `CNAME`).
-   A linha é esta, com o seu número:
+   A linha publicada:
    ```
-   google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+   google.com, pub-3277268601080257, DIRECT, f08c47fec0942fa0
    ```
 3. Peça a revisão do site. Leva de alguns dias a algumas semanas. Enquanto não aprova, o modo teste continua ligado.
 
@@ -59,25 +61,31 @@ de bloqueio → Todos os sites → Gerenciar categorias de anúncios**:
 - **Estados dos EUA**: crie também a mensagem de **Regulamentações dos estados dos EUA** no mesmo lugar.
 - **Brasil (LGPD)**: o AdSense não obriga banner, mas a LGPD pede transparência. O site precisa de uma **Política de
   Privacidade** dizendo que usa cookies do Google para anúncios, com link para
-  <https://policies.google.com/technologies/partner-sites>. **O site ainda não tem essa página**: ela entra junto com a
-  etapa 4 (um `privacidade.html` no rodapé do menu), e o AdSense costuma recusar o site sem ela.
+  <https://policies.google.com/technologies/partner-sites>. Ela está em
+  <https://viagem.cyou/privacidade/> (link "Privacidade" no canto do menu); o AdSense costuma recusar site sem ela.
+
+A Política de Privacidade já diz que os anúncios de apostas e as categorias sensíveis estão bloqueados e que a Europa
+vê o aviso de consentimento do Google: faça os passos 4 e 5 antes de tirar o modo teste.
 
 ### 6. Mandar para a gente
-Mande ao Orquestrador: o `ca-pub-…` e a confirmação de que o site foi aprovado e o H5 Games Ads liberado.
+O `ca-pub` já chegou. Falta avisar ao Orquestrador quando o site for aprovado e o H5 Games Ads liberado: aí sai o modo
+teste (`test:false`).
 
-## Onde colar o ca-pub (etapa 4, a gente faz)
+## Onde está o ca-pub (etapa 4, feito)
 
 `src/client/ads/config.ts`:
 ```ts
 export const ADS_CONFIG:Readonly<AdsConfig>=Object.freeze({
-  enabled:true,                      // era false
-  client:'ca-pub-0000000000000000',  // o seu ID
-  test:false,                        // só depois do site aprovado; antes, deixe true
+  enabled:true,
+  client:'ca-pub-3277268601080257',
+  test:true,                         // false só depois do site aprovado e do H5 Games Ads liberado
   minGapMs:180_000,
+  hosts:Object.freeze(['viagem.cyou','www.viagem.cyou']),
 });
 ```
-Mais `public/ads.txt` (a linha do passo 2) e a página de privacidade. Sem o `ca-pub` válido os anúncios nunca carregam,
-mesmo com `enabled:true`. Em dev (`npm run dev`) e nos testes ficam sempre desligados.
+Mais `public/ads.txt` (vira `https://viagem.cyou/ads.txt`) e `public/privacidade/index.html` (vira
+`https://viagem.cyou/privacidade/`). Sem um `ca-pub` válido ou fora dos `hosts` os anúncios nunca carregam. Em dev
+(`npm run dev`) e nos testes ficam sempre desligados.
 
 Para desligar de novo a qualquer momento: `enabled:false` e publicar.
 

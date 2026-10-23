@@ -174,7 +174,7 @@ export async function medirFolha(dirArte,file,{mascaras}={}){
   for(const p of file.pages??[{file:file.file,columns:frames,rows:dirs,firstFrame:0,frameCount:frames*dirs}]){
     const caminho=join(dirArte,p.file);
     if(!existsSync(caminho))throw new Error(`folha ausente: ${caminho}`);
-    const {data,info}=await sharp(caminho).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const {data,info}=await sharp(readFileSync(caminho)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
     for(let k=0;k<p.frameCount;k++){
       const g=p.firstFrame+k,d=Math.floor(g/frames),q=g%frames;
       if(d>=dirs)continue;
@@ -190,6 +190,19 @@ export async function medirFolha(dirArte,file,{mascaras}={}){
 
 export const DIRECOES=['S','SW','W','NW','N','NE','E','SE'];
 
+/** Achados de uma folha (todas as direções), já classificados; sem o id do inimigo. */
+export async function achadosDaFolha(dirArte,file,anim){
+  const {medidas,mascaras}=await medirFolha(dirArte,file,{mascaras:true}),achados=[];
+  medidas.forEach((qs,d)=>{
+    const cls=new Map();
+    for(const t of acharTremores(qs,anim,file.cell[1])){
+      if(!cls.has(t.quadro))cls.set(t.quadro,classificarQuadro(mascaras[d],qs,t.quadro,ehLoop(anim)));
+      achados.push({anim,categoria:categoria(anim),direcao:medidas.length===8?DIRECOES[d]:String(d),dir:d,...t,...cls.get(t.quadro)});
+    }
+  });
+  return {achados,dirs:medidas.length,frames:medidas[0].length};
+}
+
 /** Mede o elenco inteiro (ou `ids`): lista de achados com inimigo, animação, direção e quadro, do pior ao melhor. */
 export async function medirElenco(repo,{ids}={}){
   const m=JSON.parse(readFileSync(join(repo,'public/art/manifest.json'),'utf8')).groups.inimigos;
@@ -199,15 +212,9 @@ export async function medirElenco(repo,{ids}={}){
     for(const [anim,file] of Object.entries(peca.files??{})){
       // elite/<anim> e as fantasias são camadas (coroa, aura) desenhadas sobre a base: tremem junto com ela.
       if(!Array.isArray(file.cell)||anim.includes('/'))continue;
-      const {medidas,mascaras}=await medirFolha(dirArte,file,{mascaras:true});
-      folhas.push({id,anim,dirs:medidas.length,frames:medidas[0].length});
-      medidas.forEach((qs,d)=>{
-        const cls=new Map();
-        for(const t of acharTremores(qs,anim,file.cell[1])){
-          if(!cls.has(t.quadro))cls.set(t.quadro,classificarQuadro(mascaras[d],qs,t.quadro,ehLoop(anim)));
-          achados.push({inimigo:id,anim,categoria:categoria(anim),direcao:medidas.length===8?DIRECOES[d]:String(d),dir:d,...t,...cls.get(t.quadro)});
-        }
-      });
+      const r=await achadosDaFolha(dirArte,file,anim);
+      folhas.push({id,anim,dirs:r.dirs,frames:r.frames});
+      for(const a of r.achados)achados.push({inimigo:id,...a});
     }
   }
   achados.sort((a,b)=>b.gravidade-a.gravidade);

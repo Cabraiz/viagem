@@ -52,12 +52,16 @@ test('sticker() is a decorative <use> unless labelled, with the icon sizes',()=>
  * D-051 arsenal art the user is drawing (design/proximos/10-CENARIO-WC3-E-MENU.md §6): these show the mystery sticker
  * until it arrives. Take an id off the list when its sticker lands (the test fails while it is listed with real art).
  */
-const ART_PENDING=new Set<string>();
+// arsenal-completo-no-bau: the corneta's ui/corneta sticker shares its name with the horn icon (ui/icon.ts).
+const ART_PENDING=new Set<string>(['corneta']);
 /**
  * Drawings shared on purpose: a legendary is the old weapon (or its evolution) at its best, with its art; the inventory's
  * coxinha is the heal's; the wall kits (torre-pela-caixa) wear the kit box until they get their own.
  */
-const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal','kit:muro':'kit-torre','kit:barricada':'kit-torre'};
+const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal','kit:muro':'kit-torre','kit:barricada':'kit-torre',
+  // Pack 12 (arsenal-completo-no-bau): the weapon and the tome of the same Pack drawing (rules/passives.ts; the
+  // Bombinha 'pente' tome already wore the traque's).
+  baladeira:'estilingue','tampa-voadora':'tampa-de-panela','nuvem-de-incenso':'defumador','galho-de-arruda':'arruda',traque:'pente'};
 const sharesArt=(id:string)=>id.endsWith('-lendario')?id.slice(0,-'-lendario'.length):SAME_ART[id];
 
 test('every item the run can offer has its own sticker, the same id the sim names (no emoji, no shared drawing)',()=>{

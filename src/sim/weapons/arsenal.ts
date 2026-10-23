@@ -10,6 +10,7 @@
  */
 import type {ItemDef} from '../../contract/index.ts';
 import type {WeaponDef,WeaponLevel} from './catalog.ts';
+import {PACK12,PACK12_PLAYABLE,type PackType} from './pack12.ts';
 
 export type Rarity=1|2|3|4|5;
 export const RARITIES:readonly Rarity[]=[1,2,3,4,5];
@@ -31,6 +32,8 @@ export interface ArsenalWeapon extends WeaponDef {
   minRarity:Rarity;
   /** How far one shot is heard, world units (0: silent). */
   noise:number;
+  /** Pack 12 weapons: the Pack's type (sim/weapons/pack12.ts), what the world art looks like. */
+  packType?:PackType;
 }
 
 const row=(damage:number,cooldown:number,amount:number,area:number,speed:number,duration:number,pierce:number,knockback:number,hitInterval:number,range:number):WeaponLevel=>
@@ -41,12 +44,15 @@ const row=(damage:number,cooldown:number,amount:number,area:number,speed:number,
  * city balance's, MANUAL_CITY_BALANCE).
  */
 export const ARSENAL_DAMAGE=2;
-/** Rows for rarities 1..4 from the verde row (rarity < minRarity keeps the verde numbers: never rolled anyway). */
-const byRarity=(base:WeaponLevel):WeaponLevel[]=>([1,2,3,4] as const).map(r=>({...base,damage:Math.round(base.damage*ARSENAL_DAMAGE*RARITY_DAMAGE[r]*10)/10,cooldown:Math.round(base.cooldown*RARITY_COOLDOWN[r]*1000)/1000}));
+/**
+ * Rows for rarities 1..4 (1..5 for a weapon that only comes lendária) from the verde row (rarity < minRarity keeps the
+ * verde numbers: never rolled anyway).
+ */
+const byRarity=(base:WeaponLevel,top:4|5=4):WeaponLevel[]=>RARITIES.slice(0,top).map(r=>({...base,damage:Math.round(base.damage*ARSENAL_DAMAGE*RARITY_DAMAGE[r]*10)/10,cooldown:Math.round(base.cooldown*RARITY_COOLDOWN[r]*1000)/1000}));
 const describe=(intro:string)=>(level:number)=>`${intro} (${RARITY_NAME[(isRarity(level)?level:1) as Rarity]})`;
 const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{verde:WeaponLevel;intro:string}):ArsenalWeapon=>{
-  const {verde,intro,...rest}=def;
-  return {...rest,kind:'weapon',maxLevel:4,levels:byRarity(verde),describe:describe(intro)};
+  const {verde,intro,...rest}=def,top=def.minRarity===5?5:4;
+  return {...rest,kind:'weapon',maxLevel:top,levels:byRarity(verde,top),describe:describe(intro)};
 };
 
 /**
@@ -86,6 +92,14 @@ export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
     verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];
+
+/**
+ * Pack 12 (NEW-20261022-ORQ-arsenal-completo-no-bau): the 34 Brazilian and mystical weapons (sim/weapons/pack12.ts),
+ * built like the seven above. Only PACK12_PLAYABLE (their type works in the sim) reach ARSENAL_WEAPONS.
+ */
+export const PACK12_WEAPONS:readonly ArsenalWeapon[]=PACK12.map(({verde,type,...w})=>weapon({...w,packType:type,verde:row(...verde)}));
+/** Every weapon of the manual combat's arsenal a crate or the inventory may hold (the legendaries apart). */
+export const ARSENAL_WEAPONS:readonly ArsenalWeapon[]=[...NEW_WEAPONS,...PACK12_WEAPONS.filter(w=>PACK12_PLAYABLE.has(w.id))];
 
 /** The legendaries' extra damage over the weapon (or its evolution) they come from. */
 export const LEGENDARY_DAMAGE=1.6;
@@ -133,4 +147,4 @@ export const isConsumableId=(id:string):id is ConsumableId=>(CONSUMABLE_IDS as r
 export function weaponNoise(weaponId:string){
   return (ARSENAL_BY_ID.get(weaponId)?.noise)??DEFAULT_NOISE;
 }
-const ARSENAL_BY_ID:ReadonlyMap<string,ArsenalWeapon>=new Map(NEW_WEAPONS.map(w=>[w.id,w]));
+const ARSENAL_BY_ID:ReadonlyMap<string,ArsenalWeapon>=new Map(ARSENAL_WEAPONS.map(w=>[w.id,w]));

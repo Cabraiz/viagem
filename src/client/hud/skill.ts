@@ -7,6 +7,8 @@
  * D-051 manual combat (step 2): the same slot is the action button, the class skill or the attack after the room's
  * CombatMode (setCombat): in 'manual' it says "Atacar", has no cooldown ring (the weapon's own cooldown is the server's)
  * and shows `data-held` while pressed; hud/attack-button.ts handles its press, hold and drag. Same ids, same place.
+ * construir-no-botao (the user, 23/10): with a kit de torre selected (hud/kit-place) the same button says "Construir"
+ * with the kit's sticker (setBuild); `data-build=bloqueado` greys it while the ghost is red.
  */
 import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
@@ -77,6 +79,15 @@ export function skillLabel(classId:string){
 export const SKILL_WORD='Habilidade',NOTE_COOLING='ainda não',NOTE_NO_TARGET='sem alvo';
 /** D-051 manual combat: the word and the accessible name of the attack button. */
 export const ATTACK_WORD='Atacar',ATTACK_LABEL='Atacar: toque para um ataque, segure para atacar sem parar, arraste para mirar';
+/** construir-no-botao: the word and the accessible name while a kit de torre is selected. */
+export const BUILD_WORD='Construir';
+export const buildLabel=(kitId:string)=>`Construir ${itemDisplay(kitId).name} à sua frente`;
+/** What the action button shows with a kit selected (or not): its word, its sticker ('' the attack's own) and its name. */
+export function actionFace(combat:CombatMode,classId:string,handIcon:StickerName|'',kitId?:string):{word:string;icon:StickerName|'';label:string}{
+  if(kitId)return {word:BUILD_WORD,icon:itemDisplay(kitId).icon,label:buildLabel(kitId)};
+  if(combat==='manual')return {word:ATTACK_WORD,icon:handIcon,label:ATTACK_LABEL};
+  return {word:SKILL_WORD,icon:'',label:skillLabel(classId)};
+}
 
 /** Ring circumference in the ring's own units (pathLength). */
 const RING=100;
@@ -101,6 +112,8 @@ export class SkillButton {
   private combat:CombatMode='auto';
   /** The weapon sticker on the attack button right now ('' the generic attack sticker). */
   private handIcon:StickerName|''='';
+  /** The selected kit de torre (construir-no-botao), undefined with a weapon. */
+  private kit?:string;
   private readonly classId:string;
   constructor(el:HTMLButtonElement,classId:string){
     this.el=el;this.classId=classId;
@@ -115,7 +128,7 @@ export class SkillButton {
   /** The room's CombatMode (CoopClient.combat): 'manual' turns the slot into the attack button (no-op when unchanged). */
   setCombat(combat:CombatMode){
     if(combat===this.combat)return;
-    this.combat=combat;this.taps.clear();this.answered=undefined;this.note='';this.noteUntil=0;
+    this.combat=combat;this.kit=undefined;delete this.el.dataset.build;this.taps.clear();this.answered=undefined;this.note='';this.noteUntil=0;
     this.el.dataset.action=combat==='manual'?'attack':'skill';
     this.el.setAttribute('aria-label',combat==='manual'?ATTACK_LABEL:skillLabel(this.classId));
     // Manual: the attack sticker (ui/atacar; the chinelo without that art) until update() sees the weapon in the hand.
@@ -125,6 +138,25 @@ export class SkillButton {
     this.state={mode:'ready',seconds:0,progress:1};this.el.dataset.note='';this.paint();
   }
   get attackMode(){return this.combat==='manual';}
+  /** The kit de torre selected (Construir with its sticker) or undefined (back to Atacar); `blocked` greys it (red ghost). */
+  setBuild(kitId:string|undefined,blocked=false){
+    const look=kitId?(blocked?'bloqueado':'ok'):undefined;
+    if(look!==this.el.dataset.build){if(look)this.el.dataset.build=look;else delete this.el.dataset.build;}
+    if(kitId===this.kit)return;
+    this.kit=kitId;
+    const face=actionFace(this.combat,this.classId,'',kitId);
+    this.el.setAttribute('aria-label',face.label);
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(old){
+      // Back from Construir: the weapon in the hand (or the generic sticker) comes back on the next update().
+      if(face.icon)old.outerHTML=sticker(face.icon,options);
+      else old.outerHTML=this.combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+    }
+    this.handIcon='';
+    if(!kitId&&this.combat==='manual')this.showHand(attackIconOf(this.player)??'');
+    this.paint();
+  }
+  get building(){return this.kit!==undefined;}
   /** Attack button pressed or let go (manual combat): `data-held` for the CSS. */
   setHeld(held:boolean){if(held)this.el.dataset.held='';else delete this.el.dataset.held;}
   /** A tap on the button: sends through `send` (CoopClient.cast) unless the skill is still cooling. */
@@ -144,7 +176,7 @@ export class SkillButton {
   /** Each authoritative view: the local player's cooldown. */
   update(player:PlayerRunView|undefined,tick:number,now:number){
     this.player=player;this.tick=tick;
-    if(this.combat==='manual')this.showHand(attackIconOf(player)??'');
+    if(this.combat==='manual'&&!this.kit)this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);
   }
@@ -174,6 +206,6 @@ export class SkillButton {
     this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
-    this.word.textContent=note||(this.attackMode?ATTACK_WORD:SKILL_WORD);
+    this.word.textContent=note||(this.kit?BUILD_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);
   }
 }

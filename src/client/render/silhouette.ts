@@ -20,7 +20,10 @@ export function bareFrameOf(body:Body){return bare.get(body);}
 export function silhouetteImage(scene:Phaser.Scene,key:string,depth:number){
   return scene.add.image(0,0,key).setDepth(depth).setTintFill(LIT_SHADOW.color).setAlpha(SILHOUETTE.alpha).setVisible(false).setActive(false);
 }
-/** Lays `sil` under `body` with its feet at (x, y); `on` false (economy, a flyer, a hidden body) hides it. */
+/**
+ * Lays `sil` under `body` with its feet at (x, y); `on` false (a hidden body) hides it. Its opacity follows the body's,
+ * so it fades with it (death, a downed or spectating hero).
+ */
 export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y:number,on:boolean,depth?:number){
   if(!on||!body.visible){if(sil.visible)sil.setVisible(false).setActive(false);return;}
   const b=bare.get(body),name=body.frame.name;
@@ -28,6 +31,7 @@ export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y
   const key=plain?plain.key:body.texture.key;
   if(sil.texture.key!==key||sil.frame.name!==name)sil.setTexture(key,name);
   sil.setVisible(true).setActive(true).setOrigin(plain?plain.ox:body.originX,plain?plain.oy:body.originY).setFlipX(body.flipX)
-    .setScale(plain?plain.sx:body.scaleX,-(plain?plain.sy:body.scaleY)*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION+body.rotation).setPosition(x,y);
+    .setScale(plain?plain.sx:body.scaleX,-(plain?plain.sy:body.scaleY)*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION+body.rotation).setPosition(x,y)
+    .setAlpha(SILHOUETTE.alpha*body.alpha);
   if(depth!==undefined)sil.setDepth(depth);
 }

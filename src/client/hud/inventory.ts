@@ -3,8 +3,8 @@
  * Wild Rift's items. The rarity is the slot's border, a consumable's stack a number. A tap puts a weapon in the hand or
  * eats a consumable; holding (or dragging it off the bar) drops the item. With the 6 slots full, an item on the ground
  * within reach shows "Trocar" (it takes the place of the weapon in the hand). The room's refusals become a short line.
- * A kit de torre (torre-pela-caixa) wears its tier's rarity; a tap starts putting it on the ground ({t:'kit'}: the
- * host opens hud/kit-place.ts, nothing goes to the room yet). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
+ * A kit de torre (torre-pela-caixa) wears its tier's rarity; a tap selects it ({t:'kit'}: the host's hud/kit-place,
+ * nothing goes to the room yet) and the attack button becomes Construir (construir-no-botao). Desktop: keys 1–6 (Dona Cida's open tray keeps 1–3, desktop-input.ts cidaKeyOf). Only with `hand` (manual combat):
  * the automatic weapons have no inventory and the bar stays hidden.
  *
  * inventorySlots, swapCandidate, inventoryRefusalText and inventoryKeyOf are pure (tests); createInventory paints .rh-inv.
@@ -40,20 +40,23 @@ export interface InventorySlot {
   stack?:number;
   hand:boolean;
 }
-/** The slots of the local player, in order (undefined: no inventory, the automatic weapons). */
-export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undefined):InventorySlot[]|undefined{
+/**
+ * The slots of the local player, in order (undefined: no inventory, the automatic weapons). `kitSlot`: the kit de torre
+ * selected (construir-no-botao): it is the one marked in the hand, the weapon is not.
+ */
+export function inventorySlots(player:Pick<PlayerRunView,'weapons'|'hand'>|undefined,kitSlot?:number):InventorySlot[]|undefined{
   if(!player||player.hand===undefined)return undefined;
   return player.weapons.slice(0,INVENTORY_SLOTS).map((item,index)=>{
     const display=itemDisplay(item.id),piece=kitPiece(item.id);
-    if(piece)return {index,id:item.id,name:display.name,kind:'kit',rarity:kitRarity(piece),stack:item.level,hand:false};
+    if(piece)return {index,id:item.id,name:display.name,kind:'kit',rarity:kitRarity(piece),stack:item.level,hand:index===kitSlot};
     const consumable=display.kind==='snack';
     return {index,id:item.id,name:display.name,kind:consumable?'consumable':'weapon',
-      ...(consumable?{stack:item.level}:{rarity:Math.max(1,Math.min(5,item.level))}),hand:index===player.hand};
+      ...(consumable?{stack:item.level}:{rarity:Math.max(1,Math.min(5,item.level))}),hand:kitSlot===undefined&&index===player.hand};
   });
 }
 /** The slot's accessible name: "Pistola (azul), na mão", "Coxinha, 2". */
 export function slotLabel(slot:InventorySlot):string{
-  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para pôr no chão, segurar para largar`;
+  if(slot.kind==='kit')return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${(slot.stack??1)>1?`, ${slot.stack}`:''}${slot.hand?', na mão: Construir põe à sua frente':': tocar para construir'}, segurar para largar`;
   if(slot.kind==='consumable')return `${slot.name}${(slot.stack??1)>1?`, ${slot.stack}`:''}: tocar para usar, segurar para largar`;
   return `${slot.name} (${RARITY_NAME[slot.rarity??1]})${slot.hand?', na mão':': tocar para equipar'}, segurar para largar`;
 }
@@ -121,6 +124,8 @@ export interface InventoryOptions {
   onCommand(command:InventoryCommand):boolean;
   /** Dona Cida's tray is open (her 1–3 win). */
   cidaOpen?():boolean;
+  /** The kit de torre selected (construir-no-botao): its slot shows in the hand. */
+  kitSlot?():number|undefined;
 }
 export interface InventoryPart extends HudPart {
   setHero(at:{x:number;y:number}|undefined):void;
@@ -225,7 +230,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
     get shown(){return !el.hidden;},
     update(view:RunView,ctx:HudContext){
       const me=view.players.find(p=>p.id===ctx.localId);
-      slots=inventorySlots(me);pickups=view.pickups;
+      slots=inventorySlots(me,options.kitSlot?.());pickups=view.pickups;
       live=!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
       if(!live)endPress();
       paint();

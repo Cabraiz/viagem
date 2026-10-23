@@ -58,6 +58,10 @@
 #coop-attack:active{background:var(--c-lilas);transform:translateY(2px)}
 #coop-attack:disabled{opacity:.5;cursor:default}
 #coop-attack:disabled .skillbtn-fill,#coop-attack:disabled .skillbtn-track{stroke:transparent} /* fora do combate ou caído: nada de anel "pronto" num botão que não responde */
+/* construir-no-botao: a kit selected, the ghost red (no room for it there): the button greys, the word stays. */
+#coop-attack[data-build=bloqueado] .skillbtn-face{filter:grayscale(1);opacity:.45}
+#coop-attack[data-build=bloqueado] .skillbtn-track{stroke:var(--c-lilas-escuro)}
+#coop-attack[data-build=bloqueado] .skillbtn-fill{stroke:transparent}
 /* D-051 manual combat: the same slot is "Atacar". Held (finger, mouse or Space) = pressed look while it attacks; the
    reticle is a fixed SVG over the map in viewport px (hud/attack-button.ts): yellow line from the hero, ring on the pick
    (dashed when the drag's cone is empty: letting go there chooses nothing), knob under the thumb while dragging. */

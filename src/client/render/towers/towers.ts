@@ -29,6 +29,7 @@ import {tokenColor} from '../../ui/tokens.ts';
 import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
 import {SHADOW_SOFT_PX,castHeight,softShadow,towerShadowLook} from './tower-shadow.ts';
 import {lightEnabled} from '../light.ts';
+import {getAudio} from '../../audio/engine.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
   towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
@@ -404,6 +405,8 @@ export class TowerRenderer {
   volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
     this.volleysDrawn++;
+    // Each calibre's shot (audio/sfx.ts torre-*), throttled per calibre so a battery does not stack up.
+    const audio=getAudio();if(audio.unlocked)audio.play(`torre-${t.look.calibre}`);
     const cal=t.cal,e=this.enemies,v=t.view;
     t.recoilUntil=nowMs+RECOIL_MS;
     let tx=NaN,ty=NaN;

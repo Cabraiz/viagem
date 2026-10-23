@@ -1,0 +1,548 @@
+{
+ "audio": {
+  "seconds": 0.669,
+  "gainDb": -1.3,
+  "lufs": -14.7,
+  "webm": 6533,
+  "m4a": 6583
+ },
+ "bau-comum": {
+  "seconds": 0.8,
+  "gainDb": -0.1,
+  "lufs": -17.4,
+  "webm": 5775,
+  "m4a": 7759
+ },
+ "bau-epico": {
+  "seconds": 1.4,
+  "gainDb": -0.1,
+  "lufs": -18.3,
+  "webm": 9541,
+  "m4a": 12694
+ },
+ "bau-lendario": {
+  "seconds": 1.6,
+  "gainDb": 0,
+  "lufs": -16.6,
+  "webm": 12561,
+  "m4a": 14390
+ },
+ "bau-raro": {
+  "seconds": 0.696,
+  "gainDb": -0.8,
+  "lufs": -15.2,
+  "webm": 7797,
+  "m4a": 6880
+ },
+ "bicho-acerto": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -17.3,
+  "webm": 1929,
+  "m4a": 2808
+ },
+ "bicho-morte": {
+  "seconds": 0.6,
+  "gainDb": -2,
+  "lufs": -14,
+  "webm": 4573,
+  "m4a": 6070
+ },
+ "boing": {
+  "seconds": 0.6,
+  "gainDb": 0,
+  "lufs": -17.5,
+  "webm": 5989,
+  "m4a": 5914
+ },
+ "boleto": {
+  "seconds": 0.304,
+  "gainDb": -0.1,
+  "lufs": -23.6,
+  "webm": 2530,
+  "m4a": 3677
+ },
+ "buzina": {
+  "seconds": 0.8,
+  "gainDb": -5.9,
+  "lufs": -10.1,
+  "webm": 6490,
+  "m4a": 7660
+ },
+ "cafe": {
+  "seconds": 0.794,
+  "gainDb": 0,
+  "lufs": -17,
+  "webm": 7216,
+  "m4a": 7697
+ },
+ "carimbo": {
+  "seconds": 0.4,
+  "gainDb": -1,
+  "lufs": -15,
+  "webm": 3202,
+  "m4a": 4508
+ },
+ "chefe": {
+  "seconds": 1.27,
+  "gainDb": -2.3,
+  "lufs": -13.7,
+  "webm": 9048,
+  "m4a": 11583
+ },
+ "chefe-acerto": {
+  "seconds": 0.4,
+  "gainDb": -1.1,
+  "lufs": -14.9,
+  "webm": 3250,
+  "m4a": 4412
+ },
+ "chefe-morte": {
+  "seconds": 1.49,
+  "gainDb": -5.1,
+  "lufs": -10.9,
+  "webm": 9298,
+  "m4a": 13415
+ },
+ "chefe-passo": {
+  "seconds": 0.311,
+  "gainDb": 0,
+  "lufs": -23.5,
+  "webm": 2247,
+  "m4a": 3841
+ },
+ "chinelo": {
+  "seconds": 0.177,
+  "gainDb": 0,
+  "lufs": -17.6,
+  "webm": 1926,
+  "m4a": 2555
+ },
+ "coxinha": {
+  "seconds": 0.4,
+  "gainDb": -1.9,
+  "lufs": -14.1,
+  "webm": 4459,
+  "m4a": 4440
+ },
+ "dano-heroi": {
+  "seconds": 0.3,
+  "gainDb": -1.3,
+  "lufs": -14.7,
+  "webm": 2690,
+  "m4a": 3578
+ },
+ "empurrar": {
+  "seconds": 0.8,
+  "gainDb": -4.5,
+  "lufs": -11.5,
+  "webm": 6039,
+  "m4a": 7738
+ },
+ "escopeta": {
+  "seconds": 0.7,
+  "gainDb": -6.9,
+  "lufs": -9.1,
+  "webm": 5046,
+  "m4a": 6962
+ },
+ "faca": {
+  "seconds": 0.4,
+  "gainDb": -1.7,
+  "lufs": -14.3,
+  "webm": 4944,
+  "m4a": 4521
+ },
+ "gema": {
+  "seconds": 0.166,
+  "gainDb": -0.4,
+  "lufs": -15.6,
+  "webm": 1612,
+  "m4a": 2558
+ },
+ "golpe": {
+  "seconds": 0.2,
+  "gainDb": -0.1,
+  "lufs": -15.9,
+  "webm": 1873,
+  "m4a": 2929
+ },
+ "guarda-chuva": {
+  "seconds": 0.5,
+  "gainDb": 0,
+  "lufs": -21.1,
+  "webm": 3838,
+  "m4a": 5291
+ },
+ "ima": {
+  "seconds": 0.19,
+  "gainDb": -0.5,
+  "lufs": -15.5,
+  "webm": 1887,
+  "m4a": 2724
+ },
+ "levantar": {
+  "seconds": 0.671,
+  "gainDb": -2.6,
+  "lufs": -13.4,
+  "webm": 5119,
+  "m4a": 6725
+ },
+ "macarico": {
+  "seconds": 0.998,
+  "gainDb": -5.2,
+  "lufs": -10.8,
+  "webm": 7021,
+  "m4a": 9322
+ },
+ "nivel": {
+  "seconds": 1.4,
+  "gainDb": -2.2,
+  "lufs": -13.8,
+  "webm": 8937,
+  "m4a": 13045
+ },
+ "p12-aura": {
+  "seconds": 1,
+  "gainDb": -2.2,
+  "lufs": -13.8,
+  "webm": 6935,
+  "m4a": 9317
+ },
+ "p12-bumerangue": {
+  "seconds": 0.9,
+  "gainDb": -1,
+  "lufs": -15,
+  "webm": 7039,
+  "m4a": 8517
+ },
+ "p12-lancado": {
+  "seconds": 0.6,
+  "gainDb": 0,
+  "lufs": -16.3,
+  "webm": 5119,
+  "m4a": 6088
+ },
+ "p12-leque": {
+  "seconds": 0.5,
+  "gainDb": -2.5,
+  "lufs": -13.5,
+  "webm": 5113,
+  "m4a": 5333
+ },
+ "p12-mina": {
+  "seconds": 0.643,
+  "gainDb": -0.1,
+  "lufs": -18.5,
+  "webm": 7836,
+  "m4a": 6571
+ },
+ "p12-nuvem": {
+  "seconds": 0.073,
+  "gainDb": 0,
+  "lufs": -22.8,
+  "webm": 1369,
+  "m4a": 1728
+ },
+ "p12-orbita": {
+  "seconds": 0.8,
+  "gainDb": -1.4,
+  "lufs": -14.6,
+  "webm": 5978,
+  "m4a": 7651
+ },
+ "p12-ricochete": {
+  "seconds": 0.421,
+  "gainDb": 0,
+  "lufs": -17.3,
+  "webm": 2900,
+  "m4a": 5218
+ },
+ "p12-teleguiado": {
+  "seconds": 0.8,
+  "gainDb": -6.6,
+  "lufs": -9.4,
+  "webm": 7358,
+  "m4a": 7717
+ },
+ "p12-tiro": {
+  "seconds": 0.4,
+  "gainDb": 0,
+  "lufs": -17.2,
+  "webm": 3227,
+  "m4a": 4552
+ },
+ "p12-torreta": {
+  "seconds": 0.6,
+  "gainDb": 0,
+  "lufs": -16.7,
+  "webm": 4427,
+  "m4a": 6172
+ },
+ "passo-neve-1": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -22.5,
+  "webm": 2571,
+  "m4a": 2869
+ },
+ "passo-neve-2": {
+  "seconds": 0.088,
+  "gainDb": 0,
+  "lufs": -26,
+  "webm": 1152,
+  "m4a": 1911
+ },
+ "passo-neve-3": {
+  "seconds": 0.122,
+  "gainDb": 0,
+  "lufs": -24.8,
+  "webm": 1391,
+  "m4a": 2274
+ },
+ "passo-neve-4": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -19.6,
+  "webm": 2901,
+  "m4a": 2801
+ },
+ "passo-neve-5": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -18.4,
+  "webm": 1878,
+  "m4a": 2831
+ },
+ "passo-neve-6": {
+  "seconds": 0.2,
+  "gainDb": 0,
+  "lufs": -19.6,
+  "webm": 1978,
+  "m4a": 2781
+ },
+ "pistola": {
+  "seconds": 0.5,
+  "gainDb": -1.2,
+  "lufs": -14.8,
+  "webm": 4657,
+  "m4a": 5256
+ },
+ "pombo": {
+  "seconds": 0.6,
+  "gainDb": -3,
+  "lufs": -13,
+  "webm": 4539,
+  "m4a": 6064
+ },
+ "queda": {
+  "seconds": 1,
+  "gainDb": -4.6,
+  "lufs": -11.4,
+  "webm": 9664,
+  "m4a": 9446
+ },
+ "resgate": {
+  "seconds": 1,
+  "gainDb": -2,
+  "lufs": -14,
+  "webm": 9188,
+  "m4a": 9388
+ },
+ "rifle": {
+  "seconds": 0.7,
+  "gainDb": -5.7,
+  "lufs": -10.3,
+  "webm": 5035,
+  "m4a": 7002
+ },
+ "risada": {
+  "seconds": 1.6,
+  "gainDb": -2.8,
+  "lufs": -13.2,
+  "webm": 10862,
+  "m4a": 14285
+ },
+ "rojao": {
+  "seconds": 1.141,
+  "gainDb": -0.3,
+  "lufs": -17.5,
+  "webm": 7820,
+  "m4a": 10598
+ },
+ "round-fim": {
+  "seconds": 1.4,
+  "gainDb": -2.9,
+  "lufs": -13.1,
+  "webm": 11235,
+  "m4a": 12743
+ },
+ "round-inicio": {
+  "seconds": 0.951,
+  "gainDb": -7.4,
+  "lufs": -8.6,
+  "webm": 8551,
+  "m4a": 9125
+ },
+ "submetralhadora": {
+  "seconds": 0.6,
+  "gainDb": -3.6,
+  "lufs": -12.4,
+  "webm": 4415,
+  "m4a": 6064
+ },
+ "torre-antiaerea": {
+  "seconds": 0.8,
+  "gainDb": -3.6,
+  "lufs": -12.4,
+  "webm": 5686,
+  "m4a": 7772
+ },
+ "torre-antimaterial": {
+  "seconds": 0.9,
+  "gainDb": -0.7,
+  "lufs": -15.3,
+  "webm": 6383,
+  "m4a": 8646
+ },
+ "torre-arame": {
+  "seconds": 0.8,
+  "gainDb": -5.1,
+  "lufs": -10.9,
+  "webm": 9124,
+  "m4a": 7737
+ },
+ "torre-construir": {
+  "seconds": 0.719,
+  "gainDb": -0.2,
+  "lufs": -21.3,
+  "webm": 6286,
+  "m4a": 6769
+ },
+ "torre-foguete": {
+  "seconds": 1,
+  "gainDb": -3.6,
+  "lufs": -12.4,
+  "webm": 6975,
+  "m4a": 9289
+ },
+ "torre-fuzil": {
+  "seconds": 0.5,
+  "gainDb": -2.1,
+  "lufs": -13.9,
+  "webm": 3817,
+  "m4a": 5262
+ },
+ "torre-gustavao": {
+  "seconds": 1.6,
+  "gainDb": -2.8,
+  "lufs": -13.2,
+  "webm": 11245,
+  "m4a": 14466
+ },
+ "torre-holofote": {
+  "seconds": 0.569,
+  "gainDb": -0.1,
+  "lufs": -22.9,
+  "webm": 5176,
+  "m4a": 5886
+ },
+ "torre-metralhadora": {
+  "seconds": 0.6,
+  "gainDb": -2.6,
+  "lufs": -13.4,
+  "webm": 4467,
+  "m4a": 6074
+ },
+ "torre-morteiro": {
+  "seconds": 0.998,
+  "gainDb": 0,
+  "lufs": -16.3,
+  "webm": 6307,
+  "m4a": 9397
+ },
+ "torre-obus": {
+  "seconds": 1.2,
+  "gainDb": -4.6,
+  "lufs": -11.4,
+  "webm": 8326,
+  "m4a": 11037
+ },
+ "torre-pistola": {
+  "seconds": 0.4,
+  "gainDb": -1.1,
+  "lufs": -14.9,
+  "webm": 3156,
+  "m4a": 4473
+ },
+ "torre-radar": {
+  "seconds": 0.8,
+  "gainDb": -3.9,
+  "lufs": -12.1,
+  "webm": 6145,
+  "m4a": 7758
+ },
+ "torre-rojao": {
+  "seconds": 1,
+  "gainDb": -8.1,
+  "lufs": -7.9,
+  "webm": 8904,
+  "m4a": 9367
+ },
+ "torre-rotativa": {
+  "seconds": 0.8,
+  "gainDb": -3.6,
+  "lufs": -12.4,
+  "webm": 5621,
+  "m4a": 7717
+ },
+ "torre-sniper": {
+  "seconds": 0.8,
+  "gainDb": -6.2,
+  "lufs": -9.8,
+  "webm": 5638,
+  "m4a": 7719
+ },
+ "ui-abrir": {
+  "seconds": 0.5,
+  "gainDb": 0,
+  "lufs": -18.8,
+  "webm": 3617,
+  "m4a": 5471
+ },
+ "ui-botao": {
+  "seconds": 0.2,
+  "gainDb": -0.1,
+  "lufs": -23.8,
+  "webm": 3136,
+  "m4a": 2901
+ },
+ "ui-carta": {
+  "seconds": 0.219,
+  "gainDb": -7.4,
+  "lufs": -8.6,
+  "webm": 2048,
+  "m4a": 3032
+ },
+ "ui-erro": {
+  "seconds": 0.4,
+  "gainDb": -2.6,
+  "lufs": -13.4,
+  "webm": 3571,
+  "m4a": 4496
+ },
+ "ui-fechar": {
+  "seconds": 0.4,
+  "gainDb": 0,
+  "lufs": -19.6,
+  "webm": 3021,
+  "m4a": 4606
+ },
+ "upgrade": {
+  "seconds": 0.9,
+  "gainDb": -8.3,
+  "lufs": -7.7,
+  "webm": 6423,
+  "m4a": 8570
+ }
+}

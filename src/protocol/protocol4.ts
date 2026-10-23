@@ -638,7 +638,10 @@ interface World {tick:number;tables:Record<SectionKey,Table>;objective?:Objectiv
  *   static: uvar n, (svar x*16, svar y*16)* route | uvar m, (str kind, svar x*16, svar y*16, uvar s*16)* stops
  */
 const OBJ_DYN=1,OBJ_STATIC=2,OBJ_CLEAR=4;
-const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32;
+const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32,OBJ_HEADING=64;
+/** Card puxar-uno-corda: the car's nose travels in 256 steps per turn (1.4°); step 0 (east) is left out. */
+const headingByte=(h:number)=>((Math.round(finite(h)/(Math.PI*2)*256)%256)+256)%256;
+const byteHeading=(b:number)=>(b>128?b-256:b)/256*Math.PI*2;
 /** Objective positions travel at 1/16 unit. */
 export const OBJECTIVE_POS_SCALE=16;
 const MAX_ROUTE_POINTS=512,MAX_STOPS=64,MAX_STOCK=8;
@@ -656,7 +659,8 @@ function normObjective(v:ObjectiveView):ObjectiveView{
     etaS:uint(v.etaS),alarmUntil:Math.round(finite(v.alarmUntil)),grana:uint(v.grana),budget:uint(v.budget),stock:v.stock.slice(0,MAX_STOCK).map(uint),
     ...(v.delivery?{delivery:{...pt16(v.delivery),etaS:uint(v.delivery.etaS)}}:{}),
     car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts),
-      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{})},
+      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{}),
+      ...(v.car.heading!==undefined&&headingByte(v.car.heading)?{heading:byteHeading(headingByte(v.car.heading))}:{})},
     ...(v.ended?{ended:v.ended}:{}),
   };
 }
@@ -668,13 +672,13 @@ const sameDynamic=(a:ObjectiveView,b:ObjectiveView)=>a.kind===b.kind&&a.moto.x==
   a.stock.length===b.stock.length&&a.stock.every((n,i)=>n===b.stock[i])&&a.ended===b.ended&&
   (a.delivery===undefined?b.delivery===undefined:b.delivery!==undefined&&a.delivery.x===b.delivery.x&&a.delivery.y===b.delivery.y&&a.delivery.etaS===b.delivery.etaS)&&
   a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts&&
-  a.car.rope===b.car.rope&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
+  a.car.rope===b.car.rope&&a.car.heading===b.car.heading&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
 function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
   w.u8(bits);
   if(bits&OBJ_DYN){
     w.str(v.kind);w.svar(q16(v.moto.x));w.svar(q16(v.moto.y));w.str(v.moto.mode);
     w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0)|
-      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0));
+      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0)|(v.car.heading!==undefined&&headingByte(v.car.heading)?OBJ_HEADING:0));
     w.uvar(v.etaS);w.svar(v.alarmUntil-tick);w.uvar(v.grana);w.uvar(v.budget);
     w.uvar(v.stock.length);for(const n of v.stock)w.uvar(n);
     if(v.moto.push!==undefined)w.u8(unitByte(v.moto.push));
@@ -682,6 +686,7 @@ function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
     w.svar(q16(v.car.x));w.svar(q16(v.car.y));w.uvar(v.car.hits);w.uvar(v.car.limit);w.uvar(v.car.parts);
     if(v.car.movers?.length){w.uvar(v.car.movers.length);for(const id of v.car.movers)w.str(id);}
     if(v.car.rope!==undefined)w.str(v.car.rope);
+    if(v.car.heading!==undefined&&headingByte(v.car.heading))w.u8(headingByte(v.car.heading));
   }
   if(bits&OBJ_STATIC){
     w.uvar(v.route.length);for(const p of v.route){w.svar(q16(p.x));w.svar(q16(p.y));}
@@ -698,7 +703,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const kind=r.str(),mx=pos(),my=pos(),mode=r.str();
     if(kind!=='chaveiro')throw new FrameError('unknown objective');
     if(!MOTO_MODES.has(mode))throw new FrameError('bad moto mode');
-    const has=r.u8();if(has>63||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
+    const has=r.u8();if(has>127||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
     const etaS=r.uvar(),alarmUntil=tick+r.svar(),grana=r.uvar(),budget=r.uvar();
     const stock=Array.from({length:r.count(MAX_STOCK)},()=>r.uvar());
     const push=has&OBJ_PUSH?r.u8()/255:undefined;
@@ -706,6 +711,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const car:ObjectiveView['car']={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
     if(has&OBJ_MOVERS)car.movers=Array.from({length:r.count(MAX_CAR_MOVERS)},()=>r.str());
     if(has&OBJ_ROPE)car.rope=r.str();
+    if(has&OBJ_HEADING){const b=r.u8();if(!b)throw new FrameError('bad car heading');car.heading=byteHeading(b);}
     next={kind,moto:{x:mx,y:my,mode:mode as MotoMode,...(push!==undefined?{push}:{})},route:next?.route??[],stops:next?.stops??[],
       etaS,alarmUntil,grana,budget,stock,...(delivery?{delivery}:{}),car,
       ...(has&OBJ_VICTORY?{ended:'victory' as const}:has&OBJ_DEFEAT?{ended:'defeat' as const}:{})};

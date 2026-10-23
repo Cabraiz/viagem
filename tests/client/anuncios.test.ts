@@ -7,7 +7,8 @@ import {ADS_CONFIG,activeAds,type AdsConfig} from '../../src/client/ads/config.t
 import {startAds} from '../../src/client/ui/ads-boot.ts';
 import {Ads,FALLBACK_MS,MAX_AD_MS,SCRIPT_URL,adBreakThen,soloRoom,type AdBreakPlacement,type AdsDeps,type BreakOutcome} from '../../src/client/ads/ads.ts';
 
-const ON:AdsConfig={enabled:true,client:'ca-pub-1234567890123456',test:true,minGapMs:180_000};
+const ON:AdsConfig={enabled:true,client:'ca-pub-1234567890123456',test:true,minGapMs:180_000,hosts:['viagem.cyou']};
+const SITE={dev:false,search:'',host:'viagem.cyou'};
 
 function rig(config:AdsConfig=ON){
   let t=0,nextId=0;
@@ -29,22 +30,54 @@ function rig(config:AdsConfig=ON){
   return {ads:new Ads(deps),pushes,scripts,hush,advance,breaks,timers};
 }
 
-test('off by default: the shipped config, dev and the test runner never activate ads', () => {
-  assert.equal(ADS_CONFIG.enabled,false);
-  assert.equal(ADS_CONFIG.client,'');
-  assert.equal(ADS_CONFIG.test,true);
-  assert.equal(activeAds({dev:false,search:''}),undefined);
-  assert.equal(activeAds({dev:true,search:''},ON),undefined,'dev server: off even with a real config');
-  assert.equal(activeAds({dev:false,search:''},{...ON,client:'pub-123'}),undefined,'malformed ID: off');
-  assert.equal(activeAds({dev:false,search:''},{...ON,enabled:false}),undefined);
-  assert.deepEqual(activeAds({dev:false,search:''},ON),ON);
-  assert.equal(activeAds({dev:true,search:'?anuncios=teste'})?.test,true,'?anuncios=teste forces test mode');
-  assert.equal(activeAds({dev:false,search:'?anuncios=teste'},{...ON,test:false})?.test,true);
+test('the shipped config: the ca-pub the user gave in test mode, on viagem.cyou only; dev, tests and other hosts stay off', () => {
+  assert.equal(ADS_CONFIG.enabled,true);
+  assert.equal(ADS_CONFIG.client,'ca-pub-3277268601080257');
+  assert.equal(ADS_CONFIG.test,true,'test ads until the site is approved');
+  assert.deepEqual(activeAds(SITE),ADS_CONFIG);
+  assert.equal(activeAds({...SITE,host:'www.viagem.cyou'})?.client,'ca-pub-3277268601080257');
+  for(const host of ['127.0.0.1','localhost','cabraiz.github.io','viagem.cyou.evil.com'])
+    assert.equal(activeAds({...SITE,host}),undefined,`${host}: off (vite preview, the lote's smoke, mirrors)`);
+  assert.equal(activeAds({...SITE,dev:true}),undefined,'dev server on the site host: off');
+  assert.equal(activeAds({dev:true,search:'',host:'viagem.cyou'},ON),undefined,'dev server: off even with a real config');
+  assert.equal(activeAds(SITE,{...ON,client:'pub-123'}),undefined,'malformed ID: off');
+  assert.equal(activeAds(SITE,{...ON,client:''}),undefined,'no ID: off');
+  assert.equal(activeAds(SITE,{...ON,enabled:false}),undefined);
+  assert.deepEqual(activeAds(SITE,ON),ON);
+  assert.equal(activeAds({dev:true,search:'?anuncios=teste',host:'127.0.0.1'})?.test,true,'?anuncios=teste forces test mode anywhere');
+  assert.equal(activeAds({...SITE,search:'?anuncios=teste'},{...ON,test:false})?.test,true);
+});
+
+test('ads.txt: the publisher line at the root of the site (public/ → dist/), matching the config', () => {
+  const txt=fs.readFileSync(new URL('../../public/ads.txt',import.meta.url),'utf8');
+  assert.equal(txt,'google.com, pub-3277268601080257, DIRECT, f08c47fec0942fa0\n');
+  assert.equal(`ca-${txt.split(', ')[1]}`,ADS_CONFIG.client);
+});
+
+test('privacy policy: /privacidade/ in PT-BR covers Google ads cookies, LGPD and a contact; the menu links it', () => {
+  const html=fs.readFileSync(new URL('../../public/privacidade/index.html',import.meta.url),'utf8');
+  assert.match(html,/<html lang="pt-BR">/);
+  assert.match(html,/<title>viagem · Política de Privacidade<\/title>/);
+  assert.doesNotMatch(html,/noindex/,'AdSense and search engines must read it');
+  for(const must of ['https://policies.google.com/technologies/partner-sites','https://adssettings.google.com/','LGPD','localStorage','ANPD','https://github.com/Cabraiz/viagem/issues'])
+    assert.ok(html.includes(must),must);
+  assert.doesNotMatch(html,/<script/,'a static page: no code, no tracker');
+  assert.doesNotMatch(html,/@[a-z0-9-]+\.[a-z]/i,'no e-mail address without a yes from the user');
+  const menu=fs.readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
+  assert.match(menu,/<a class="menu-privacidade" href="\/privacidade\/">Privacidade<\/a>/);
+  assert.match(fs.readFileSync(new URL('../../public/sitemap.xml',import.meta.url),'utf8'),/<loc>https:\/\/viagem\.cyou\/privacidade\/<\/loc>/);
+});
+
+test('on the site: startAds waits for the load event before scheduling anything', () => {
+  const events:string[]=[];
+  const win={location:{search:'',hostname:'viagem.cyou'},document:{readyState:'loading'},addEventListener:(type:string)=>{events.push(type);},setTimeout:()=>{throw new Error('no timer before load');}};
+  assert.equal(startAds(win as unknown as Window,false),true);
+  assert.deepEqual(events,['load']);
 });
 
 test('off: startAds schedules nothing and adBreakThen runs the action at once', () => {
   let listened=0;
-  const win={location:{search:''},document:{readyState:'complete'},addEventListener:()=>{listened++;},setTimeout:()=>{throw new Error('no timer');}};
+  const win={location:{search:'',hostname:'127.0.0.1'},document:{readyState:'complete'},addEventListener:()=>{listened++;},setTimeout:()=>{throw new Error('no timer');}};
   assert.equal(startAds(win as unknown as Window,false),false);
   assert.equal(listened,0);
   let ran=0;adBreakThen('sair',()=>{ran++;});

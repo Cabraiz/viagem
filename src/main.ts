@@ -20,8 +20,10 @@ import './client/ui/cadeado.css';
 import './client/ui/insta.css';
 import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
 import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
+import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
+import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
 // Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
@@ -69,6 +71,7 @@ app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+  <button type="button" class="menu-tela-cheia" hidden></button>
   <a class="menu-privacidade" href="/privacidade/">Privacidade</a>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
@@ -98,12 +101,27 @@ menuConfig.addEventListener('click',()=>openSettings(menuConfig));
 // The phone upright shows the hero pick as an Instagram profile (ui/insta.ts): its ≡ is the gear.
 const instaMenu=document.querySelector<HTMLButtonElement>('.insta-menu')!;
 instaMenu.addEventListener('click',()=>openSettings(instaMenu));
+// Game-style full screen (celular-deitado-tela-cheia, ui/tela-cheia.ts): the corner button, and SELECIONAR / JOGAR on a
+// touch screen; a match started on its side stays on its side until the game closes.
+const tela:TelaCheiaEnv={doc:document as unknown as TelaCheiaEnv['doc'],media:q=>matchMedia(q).matches,
+  orientation:screen.orientation as TelaCheiaEnv['orientation'],storage:storage()};
+const telaCheia=document.querySelector<HTMLButtonElement>('.menu-tela-cheia')!;
+const paintTela=()=>{telaCheia.hidden=!showButton(tela);paintButton(telaCheia,isFullscreen(tela.doc));};
+paintTela();
+document.addEventListener('fullscreenchange',paintTela);document.addEventListener('webkitfullscreenchange',paintTela);
+telaCheia.addEventListener('click',()=>void toggleFullscreen(tela));
+// The manifest's `fullscreen` makes the site installable: no install prompt pops up for it (as with `browser`).
+addEventListener('beforeinstallprompt',e=>e.preventDefault());
+const toMatch=()=>void autoFullscreen(tela).then(()=>lockMatchOrientation(tela));
+// Back at the menu (no game dialog open): the phone turns freely again.
+new MutationObserver(()=>{if(!document.querySelector('dialog.explore-shell[open]'))unlockOrientation(tela);})
+  .observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['open']});
 
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
 // point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
 const stage=document.querySelector<HTMLElement>('.estadio-palco')!;
 const tallStadium=matchMedia(STADIUM_TALL_QUERY),cutoutScreen=matchMedia(CUTOUT_QUERY);
-// The PC shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
+// Landscape (the PC, the phone on its side) shows E6's bleed (menu-fundo-sangria, estadio.css under CUTOUT_QUERY): framed here, so the approved picture,
 // the bar and the hero on it are never cut. Its size and position in px; the CSS keeps `cover` until this runs.
 const stageArt=():StadiumArt=>tallStadium.matches?STADIUM.tall:cutoutScreen.matches?STADIUM.bleed:STADIUM.wide;
 // The hero whose picture the stage shows (his own background moved with him, clt-mesmo-lugar; or the stadium he stands
@@ -182,7 +200,7 @@ addEventListener('load',()=>idle(()=>!instaScreen.matches&&document.querySelecto
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
-// the wide picture only (PC, landscape); the dance is held (its pages released) while he does.
+// every landscape screen (the PC and the phone on its side, celular-deitado-foto); the dance is held (its pages released) while he does.
 const cutoutImg=stage.querySelector<HTMLImageElement>('.estadio-recorte')!;
 // mureta-camada-frente: the piece of the background over the hero (the bar), placed by the background's own framing.
 const frontImg=stage.querySelector<HTMLImageElement>('.estadio-mureta')!;
@@ -315,6 +333,8 @@ const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perf
   logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
 let instaShown='';
+// Whose stories were watched this visit: his ring goes grey (ui/insta.ts perfilHtml).
+const instaVistos=new Set<string>();
 function renderInsta() {
   const perfil=instaPerfil(selected.id);
   if(!perfil||instaShown===selected.id) return;
@@ -322,7 +342,7 @@ function renderInsta() {
   // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
   insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
   insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
-  insta.perfil.innerHTML=perfilHtml(perfil);
+  insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
   void document.fonts.ready.then(fitHandle);
@@ -342,6 +362,12 @@ insta.stories.addEventListener('click',event=>{
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);
 });
+// The profile photo opens the hero's stories (ui/insta-stories.ts); a locked hero's is no button (a private account).
+insta.perfil.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('.insta-foto-botao'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirStories(perfil,foto,()=>{instaVistos.add(perfil.id);foto.toggleAttribute('data-visto',true);});
+});
 // A grid photo opens as a post (ui/insta-post.ts); it grows out of its thumbnail and shrinks back into it.
 insta.grade.addEventListener('click',event=>{
   const foto=(event.target as HTMLElement|null)?.closest<HTMLElement>('[data-post]'),perfil=instaPerfil(selected.id);
@@ -351,7 +377,7 @@ insta.grade.addEventListener('click',event=>{
 // The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
 let instaHold:(()=>void)|undefined;
 function syncInsta() {
-  fecharPost(true);
+  fecharPost(true);fecharStories(true);
   if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
   else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
   if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();
@@ -413,6 +439,7 @@ nameInput.addEventListener('keydown',event=>{
 const dialog=document.getElementById('confirmation') as HTMLDialogElement;
 document.getElementById('confirm')!.addEventListener('click',()=>{
   if(!isLiberado(selected.id)) return; // a locked hero never gets past here (a click, Enter or a script)
+  void autoFullscreen(tela); // inside the tap: browsers allow it only there
   if(etapaOf(etapa)==='escolher') {chooseHero();return;}
   if(!nickname.trim()) {nameInput.setCustomValidity('Escolha um nome para seu personagem.');nameInput.reportValidity();nameInput.focus();return;}
   nameInput.setCustomValidity('');
@@ -443,7 +470,7 @@ async function openCoop(options:{room?:string;autoJoin?:boolean}={}){
 let invite=inviteCode(location.search);
 if(invite)coopButton.textContent=`Entrar na sala ${formatRoomCode(invite)}`;
 const openInvite=()=>{const room=invite;invite=undefined;coopButton.textContent='Jogar com amigos';return openCoop({room,autoJoin:true});};
-coopButton.addEventListener('click',()=>void(invite?openInvite():openCoop()));
+coopButton.addEventListener('click',()=>{toMatch();void(invite?openInvite():openCoop());});
 document.getElementById('back-to-menu')!.addEventListener('click',()=>{dialog.close();backToRow();});
 // "Jogar sozinho" (BUG-20261013-ORQ-jogar-sozinho-abre-ilha): a real match in the Cidade Nevada with 0–5 room bots
 // (the stepper, remembered). The old island exploration only with ?ilha=1 (tests).
@@ -459,6 +486,7 @@ soloBots.hidden=island;showBots();
 soloBots.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.solo-bots-step');if(b&&!b.disabled){bots=saveBots(storage(),bots+Number(b.dataset.step));showBots();}});
 document.getElementById('enter-island')!.addEventListener('click',async()=>{
   const button=document.getElementById('enter-island') as HTMLButtonElement;
+  toMatch();
   button.disabled=true;text('explore-error','');
   if(island){
     const releaseDance=menuDance.hold();

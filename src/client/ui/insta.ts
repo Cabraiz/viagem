@@ -91,6 +91,7 @@ export const LINHA={
   mais:svg('<circle cx="5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="19" cy="12" r="1.2" fill="currentColor"/>'),
   comentar:svg('<path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5a8.4 8.4 0 1 1 15.4-4.4z"/>'),
   enviar:svg('<path d="M21 3.5 10.2 13.8M21 3.5l-6.6 17-4.2-6.7-6.7-4.2z"/>'),
+  fechar:svg('<path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/>'),
   salvar:svg('<path d="M18.5 20.5 12 15.6l-6.5 4.9V4.5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1z"/>'),
 } as const;
 
@@ -105,9 +106,14 @@ export function storyHtml(p:InstaPerfil,liberado:boolean):string{
     `<span class="insta-story-nome">${esc(p.nome)}</span></button>`;
 }
 
-/** The profile: photo with the badge, @handle with the badge, followers | following, the bio. */
-export function perfilHtml(p:InstaPerfil):string{
-  return `<div class="insta-foto"><span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"></span>${img('icone-verificado','insta-selo-foto')}</div>`+
+/**
+ * The profile: photo with the badge, @handle with the badge, followers | following, the bio. A released hero's photo is
+ * a button that opens his stories (ui/insta-stories.ts); `visto` greys its ring once they were watched, as Instagram.
+ */
+export function perfilHtml(p:InstaPerfil,liberado=true,visto=false):string{
+  const abre=liberado&&storiesDe(p.id).length>0;
+  const foto=abre?`<button type="button" class="insta-foto insta-foto-botao"${visto?' data-visto':''} aria-label="Ver os stories de ${esc(p.handle)}" aria-haspopup="dialog">`:'<div class="insta-foto">';
+  return `${foto}<span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"></span>${img('icone-verificado','insta-selo-foto')}${abre?'</button>':'</div>'}`+
     `<div class="insta-info"><p class="insta-arroba" style="--arroba-fit:${handleFit(p.handle).toFixed(3)}"><span>${esc(p.handle)}</span>${img('icone-verificado','insta-selo','verificado')}</p>`+
     `<div class="insta-numeros"><p><strong>${esc(p.seguidores)}</strong><span>seguidores</span></p><p><strong>${esc(p.seguindo)}</strong><span>seguindo</span></p></div>`+
     `<p class="insta-bio">${esc(p.bio)}</p></div>`;
@@ -145,6 +151,44 @@ export function postTelaHtml(p:InstaPerfil):string{
     `<span class="insta-ver-mais">${LINHA.mais}</span></header>`+
     `<div class="insta-ver-janela"><div class="insta-ver-trilho">${slides}</div></div>`+
     `<div class="insta-ver-pontos" aria-hidden="true"><i></i><i></i><i></i></div></div></div>`;
+}
+
+/** One story: its picture is story-<hero>-<k>.webp; the sticker over it and when it was posted (the bar's "2 h"). */
+export interface InstaStory {legenda:string;quando:string}
+/**
+ * The stories (NEW-20261023-ORQ-insta-stories-4-herois): the 3-4 pictures chosen of each hero's 8 (evidence/<ID>/README.md,
+ * scripts/insta-stories.mjs), in the order they play, the oldest first; the sticker's text is written here, not drawn.
+ */
+export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object.freeze({
+  'viciado-em-bet':[{legenda:'GREEN! Eu avisei.',quando:'5 h'},{legenda:'Bilionário até o próximo jogo.',quando:'4 h'},
+    {legenda:'Red. Faltou um gol. De novo.',quando:'2 h'},{legenda:'4h da manhã. Só mais uma.',quando:'20 min'}],
+  'clt-cansado':[{legenda:'Cardio diário: ônibus das 6h.',quando:'12 h'},{legenda:'Fila do micro-ondas: 40 min. Almoço: 5.',quando:'7 h'},
+    {legenda:'17h59. Ele chegou com mais papel.',quando:'3 h'},{legenda:'Só vou responder um e-mail.',quando:'1 h'}],
+  'gato-nada-pra-comer':[{legenda:'Não tem NADA pra comer.',quando:'9 h'},{legenda:'Pote vazio. Denunciem.',quando:'6 h'},
+    {legenda:'O jantar passou na janela.',quando:'2 h'},{legenda:'3h da manhã. Ainda com fome.',quando:'15 min'}],
+  'maromba':[{legenda:'Dia de braço. Todo dia é.',quando:'8 h'},{legenda:'Frango, batata-doce e foco.',quando:'5 h'},
+    {legenda:'Elevador também é academia.',quando:'2 h'},{legenda:'Domingo: 21 marmitas prontas.',quando:'30 min'}],
+});
+export const storiesDe=(id:string):readonly InstaStory[]=>INSTA_STORIES[id]??[];
+/** Story k (from 0) of a hero: requested only when the viewer opens (ui/insta-stories.ts), never with the profile. */
+export const storyUrl=(id:string,k:number)=>instaUrl(`story-${id}-${k+1}`);
+
+/**
+ * The stories viewer, over the whole page: one bar per story (it fills as the story plays), the avatar, @, when and the
+ * close button, the pictures stacked (the one on screen fades in over the last), the sticker and the drawn reply bar.
+ * The <img> have no src: ui/insta-stories.ts sets it as each story comes near.
+ */
+export function storiesTelaHtml(p:InstaPerfil):string{
+  const lista=storiesDe(p.id);
+  const barras=lista.map(()=>'<i class="insta-sv-barra"><b></b></i>').join('');
+  const fotos=lista.map((s,k)=>`<figure class="insta-sv-story" data-story="${k}" aria-hidden="true">`+
+    `<img class="insta-sv-foto" alt="Story ${k+1} de ${lista.length} de ${esc(p.handle)}" decoding="async" draggable="false">`+
+    `<figcaption class="insta-sv-legenda">${esc(s.legenda)}</figcaption></figure>`).join('');
+  return `<div class="insta-sv" role="dialog" aria-modal="true" aria-label="Stories de ${esc(p.handle)}"><div class="insta-sv-palco">${fotos}`+
+    `<div class="insta-sv-topo"><div class="insta-sv-barras">${barras}</div><div class="insta-sv-quem">`+
+    `<img class="insta-sv-avatar" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"><b>${esc(p.handle)}</b>${img('icone-verificado','insta-sv-selo')}`+
+    `<span class="insta-sv-quando"></span><button type="button" class="insta-sv-fechar" aria-label="Fechar">${LINHA.fechar}</button></div></div></div>`+
+    `<div class="insta-sv-rodape" aria-hidden="true"><span class="insta-sv-responder">Enviar mensagem</span>${LINHA.coracao}${LINHA.enviar}</div></div>`;
 }
 
 /** The tabs: grid (active), video and liked, as in the reference; only the grid exists, the others are drawn. */

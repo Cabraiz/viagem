@@ -48,6 +48,16 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   box-shadow: var(--s-1);
 }
 
+/* Full screen (celular-deitado-tela-cheia, ui/tela-cheia.ts): the gear's twin, left of it; hidden where the page can't. */
+.estadio .menu-tela-cheia {
+  position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: calc(max(10px, env(safe-area-inset-right)) + 58px);
+  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+  border: 3px solid var(--c-breu); border-radius: var(--r-circulo); background: var(--c-lilas); color: var(--c-papel-claro);
+  box-shadow: var(--s-1);
+}
+.estadio .menu-tela-cheia[hidden] { display: none; }
+.estadio .menu-tela-cheia:active { transform: translateY(2px); }
+
 /* The privacy policy (anuncios-h5-games, AdSense): a quiet link in the bottom-left corner, under
    the choice column (centred) and away from the hero's feet. */
 .estadio .menu-privacidade {
@@ -173,13 +183,18 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio .estadio-confirmar:active { transform: translateY(2px); }
 
-/* PC (stadium.ts CUTOUT_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
-   approved screen's layout (tela-1080p), the sign
-   from the top, the row and the button right under it. */
-@media (orientation: landscape) and (min-height: 521px) {
+/* Every landscape screen (stadium.ts CUTOUT_QUERY: the PC and the phone on its side, celular-deitado-foto): the hero's
+   own picture stands in for the dance, on E6's stadium. */
+@media (orientation: landscape) {
   /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
      it is never cut; `cover` around its middle until then. */
   .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
+}
+
+/* PC (stadium.ts PC_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
+   approved screen's layout (tela-1080p), the sign
+   from the top, the row and the button right under it. */
+@media (orientation: landscape) and (min-height: 521px) {
   /* fileira-botao-maiores-embaixo (the user, 22/10: "em 1080p isso deve ir para baixo (? e o selecionar) e ficar 30%
      maior"): only the row and the button grow 30% (button 640x108 → 832x140, tiles 80 → 104 px, in vh so every PC
      screen is the 1080p one scaled). The title and the pill stay where they were (round 2, "por que você desceu?"). The

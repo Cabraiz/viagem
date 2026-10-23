@@ -75,6 +75,8 @@ export interface PlayerRunView {
   fastUntil?:number;mightUntil?:number;guardUntil?:number;
   /** Veículos: the vehicle ridden while tick < rideUntil (also drives the prediction, maps/prediction.ts). */
   ride?:VehicleKind;rideUntil?:number;
+  /** stats.moveSpeed when it is not 1 (class, weapon, tênis, the offer): the phone's prediction walks with it. */
+  moveSpeed?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

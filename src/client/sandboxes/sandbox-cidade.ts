@@ -332,9 +332,12 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(objective)this.chaveiro=this.mountObjective(!start);
-    if(pipOn&&this.chaveiro){
+    // `longe` alone (pip=0) puts the hero at the same spot without the window: the FPS before × after.
+    if((pipOn||objective&&params.has('longe'))&&this.chaveiro){
       const car=this.chaveiro.fake.view(0).view.car,[dx,dy]=(params.get('longe')??'18,10').split(',').map(Number);
       this.at={x:car.x+(dx||0),y:car.y+(dy||0)};
+    }
+    if(pipOn&&this.chaveiro){
       const root=document.createElement('div');root.className='rh';root.dataset.hud=params.get('hud')??(innerWidth<768?'fone':'mesa');
       Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'5'});document.body.append(root);
       void import('../hud/hud.css');

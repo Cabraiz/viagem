@@ -5,6 +5,7 @@
 import type {EmoteId} from '../fun/emotes.ts';
 import type {ShameMoment} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
+import {waveBossById} from '../../rules/index.ts';
 import type {OfferView,PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {railName} from '../render/map-label-rules.ts';
 import {isAsleep} from '../render/wake-rules.ts';
@@ -141,7 +142,8 @@ export function bossInfo(view:RunView):BossInfo|undefined{
   const boss=view.enemies.find(enemy=>enemy.boss&&enemy.hp>0);
   if(!boss)return undefined;
   const phase=boss.phase??1;
-  return {id:boss.id,name:BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
+  // The chefão of the 1st wave (boss-fim-onda-1) has his own name; the final boss is the Síndico.
+  return {id:boss.id,name:waveBossById(boss.kind)?.bar??BOSS_NAME,fraction:clamp01(boss.maxHp>0?boss.hp/boss.maxHp:0),phase,enraged:phase>=2};
 }
 
 export const isActive=(player:PlayerRunView)=>!player.spectator&&!player.eliminated;

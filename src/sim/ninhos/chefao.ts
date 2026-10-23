@@ -49,13 +49,20 @@ export interface ChefaoSystem extends SimSystem {
   up():boolean;
   /** The arrival, on the very tick he appeared (the room opens the scene); undefined on any other tick. */
   arrival(tick:number):ChefaoArrival|undefined;
+  /** Dev labs (the room's {t:'lab',chefao:true}): he comes on the next step, wherever the wave stands. False when he already came. */
+  summon():boolean;
 }
 
-/** WAVE_BOSS's numbers over a tuning: its hp, and × damage on every hit. */
-export function waveBossTuning(base:Readonly<BossTuning>=BOSS_TUNING):BossTuning{
-  const d=WAVE_BOSS.damage,t={...base};
+/**
+ * WAVE_BOSS's numbers over a tuning: its hp, × damage on every hit, and his size (drawScale): the body and the charge's
+ * width × it, the areas on the ground (slam, stamp, sweep) × (1 + it) / 2, so a golpe reaches past his bigger body.
+ */
+export function waveBossTuning(base:Readonly<BossTuning>=BOSS_TUNING,drawScale:number=WAVE_BOSS.drawScale):BossTuning{
+  const d=WAVE_BOSS.damage,t={...base},s=drawScale,area=(1+s)/2;
   t.baseHp=WAVE_BOSS.baseHp;t.hpPerExtraPlayer=WAVE_BOSS.hpPerExtraPlayer;
   for(const k of ['slamDamage','fineDamage','chargeDamage','coneDamage'] as const)t[k]=Math.round(base[k]*d);
+  t.radius=base.radius*s;t.chargeWidth=base.chargeWidth*s;
+  t.slamRadius=base.slamRadius*area;t.fineRadius=base.fineRadius*area;t.coneRange=base.coneRange*area;
   return t;
 }
 /** His lines for the boss controller's keys: the barks in the fight, the death lines at the end. */
@@ -101,11 +108,13 @@ export function createChefao(options:ChefaoOptions,restore?:ChefaoState):ChefaoS
   // The controller's state object is the one the checkpoint stores.
   state.boss=boss.state;
 
-  function call(ctx:SimContext){
+  /** A lab's summon (not kept by a checkpoint). */
+  let forced=false;
+  function call(ctx:SimContext,now=false){
     const n=nests();
-    if(!n||n.startTick===null||n.sent<=WAVE_BOSS.waveIndex||n.drip)return;
+    if(!now&&(!n||n.startTick===null||n.sent<=WAVE_BOSS.waveIndex||n.drip))return;
     // His wave's entry in the log (the last LOG_WAVES; the newest last), its entrance's route.
-    const log=n.log??[],entry=log[log.length-(n.sent-WAVE_BOSS.waveIndex)];
+    const log=n?.log??[],entry=n?log[log.length-(n.sent-WAVE_BOSS.waveIndex)]:undefined;
     const door=entrances.find(e=>e.id===entry?.entrance)??entrances[WAVE_BOSS.waveIndex%Math.max(1,entrances.length)];
     const bodies=[...ctx.players.values()].filter(p=>!p.spectator&&!p.eliminated);
     const terrain=enemyTerrain(ctx.terrain);
@@ -119,10 +128,11 @@ export function createChefao(options:ChefaoOptions,restore?:ChefaoState):ChefaoS
   return {
     id:'chefao',state,who,boss,
     step(ctx){
-      if(state.called===undefined)call(ctx);
+      if(state.called===undefined)call(ctx,forced);
       boss.step(ctx);
     },
     up:()=>state.called!==undefined&&!state.boss.defeated,
+    summon(){if(state.called!==undefined)return false;forced=true;return true;},
     arrival(tick){
       return state.called===tick&&state.enemy!==undefined?{enemy:state.enemy,who:state.who,x:state.x??0,y:state.y??0}:undefined;
     },

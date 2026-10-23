@@ -310,11 +310,18 @@ export class Simulation {
     for(const p of this.players.values())if(isStanding(p)&&!calmAt(w,p.x,p.y,CALMA.checkpointR))return false;
     c.last=w.tick;return true;
   }
+  /** Dev labs (boss-fim-onda-1): the 1st wave's chefão comes on the next step (mode 'ninhos' only). */
+  summonChefao(){return !!this.systems.chefao?.summon();}
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}
-  /** The current run's rotation (D-040) as roster ids; [] until the director draws it on the run's first step. */
-  rotationIds():string[]{const r=this.systems.director.state.rotation;return r?rotationIds(r):[];}
+  /** The current run's rotation (D-040) as roster ids, [] until the director draws it on the run's first step; plus its chefão. */
+  rotationIds():string[]{
+    const r=this.systems.director.state.rotation,ids=r?[...rotationIds(r)]:[];
+    // boss-fim-onda-1: the run's chefão too (drawn from the seed), so every phone has his art before his arrival scene.
+    const c=this.systems.chefao;if(c&&!ids.includes(c.who.id))ids.push(c.who.id);
+    return ids;
+  }
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
   /**

@@ -16,22 +16,22 @@ import {Rng} from '../contract/index.ts';
 export interface WaveBoss {
   /** Roster id (rules/enemy-roster.ts, role 'chefe'): the enemy kind and its art. */
   id:string;
-  /** Big title of the scene (ALL CAPS) and its one-line subtitle in the game's tone. */
-  name:string;subtitle:string;
+  /** Big title of the scene (ALL CAPS) and its one-line subtitle in the game's tone; the boss bar's name. */
+  name:string;subtitle:string;bar:string;
   /** Barks (≤ 30 chars) for the fight and his death lines. */
   barks:readonly string[];deathLines:readonly string[];
 }
 export const WAVE_BOSSES:readonly WaveBoss[]=Object.freeze([
-  {id:'o-grande-credor',name:'O GRANDE CREDOR',subtitle:'Feito de todos os boletos que você esqueceu.',
+  {id:'o-grande-credor',name:'O GRANDE CREDOR',bar:'O Grande Credor',subtitle:'Feito de todos os boletos que você esqueceu.',
     barks:['Tua dívida tem filhos','Juros compostos, dor composta','Parcela um de novecentas','Eu sou o rotativo'],
     deathLines:['Quitado?! Ninguém quita!','Viro avião de papel...','Nome limpo... o meu?']},
-  {id:'dj-do-fim-do-mundo',name:'DJ DO FIM DO MUNDO',subtitle:'O drop dele derruba prédio.',
+  {id:'dj-do-fim-do-mundo',name:'DJ DO FIM DO MUNDO',bar:'DJ do Fim do Mundo',subtitle:'O drop dele derruba prédio.',
     barks:['Prepara pro drop final!','Mãos pro alto! Pro céu!','Esse set acaba com o mundo','Laser no olho é estilo'],
     deathLines:['Riscou o disco... silêncio','Fim da festa. Da Terra.','Sem bis pra mim']},
-  {id:'mapinguari-do-shopping',name:'MAPINGUARI DO SHOPPING',subtitle:'Tem uma boca na barriga e cartão sem limite.',
+  {id:'mapinguari-do-shopping',name:'MAPINGUARI DO SHOPPING',bar:'Mapinguari do Shopping',subtitle:'Tem uma boca na barriga e cartão sem limite.',
     barks:['Parcelo tua alma em 10x','A boca da barriga tá com fome','Liquidação de gente!','Passa no crédito, passa'],
     deathLines:['Cadeira de massagem... enfim','Fatura fechou... eu também','Volto na Black Friday']},
-  {id:'boitata-de-sacolinha',name:'BOITATÁ DE SACOLINHA',subtitle:'Feito de toda sacolinha que você jurou reaproveitar.',
+  {id:'boitata-de-sacolinha',name:'BOITATÁ DE SACOLINHA',bar:'Boitatá de Sacolinha',subtitle:'Feito de toda sacolinha que você jurou reaproveitar.',
     barks:['Vai uma sacolinha aí?','Queimo mais que plástico','Mil anos pra me decompor','Olha a fumaça preta!'],
     deathLines:['Reciclado... em cubinhos','Virei sacola retornável','Separa o lixo, por favor']},
 ]);
@@ -52,6 +52,11 @@ export const pickWaveBoss=(seed:number):WaveBoss=>WAVE_BOSSES[new Rng(seed).fork
 export const WAVE_BOSS=Object.freeze({
   waveIndex:0,fromCar:24,clear:12,crate:4 as const,
   baseHp:1100,hpPerExtraPlayer:.7,damage:.7,
+  /**
+   * The user, 23/10: "tamanho 2× a 3× o atual" (a roster chefe draws 3 heroes tall, client art/horde-art.ts ROLE_HEIGHT).
+   * His drawing × this; his body (radius) and his charge's width × it too, his slam, stamp and sweep × (1 + it) / 2.
+   */
+  drawScale:2,
 });
 /** The arrival scene (ms of the room's wall clock): go to him, hold on him, come back. */
 export const CENA=Object.freeze({goMs:600,holdMs:2000,backMs:600,totalMs:3200});

@@ -29,7 +29,7 @@ function arriving(){
   const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
   const t=combat(room,[a,b]);
   const at=room.sim.tick+1;
-  (room.sim.run as {chefao?:unknown}).chefao={arrival:(tick:number)=>tick===at?{enemy:'chefao-1',who:'mapinguari-do-shopping',x:10,y:12}:undefined,up:()=>true};
+  (room.sim.run as {chefao?:unknown}).chefao={who:{id:'mapinguari-do-shopping'},arrival:(tick:number)=>tick===at?{enemy:'chefao-1',who:'mapinguari-do-shopping',x:10,y:12}:undefined,up:()=>true};
   return {room,a,b,t,at};
 }
 
@@ -61,7 +61,7 @@ test('during the scene the commands are refused (the rope: pausa); it plays once
   for(let i=0;i<CENA.totalMs/50+4;i++)step(room,t+=50);
   assert.equal(room.cena.playing,false);
   // The same arrival seen again (a fake answering on every tick) opens nothing.
-  (room.sim.run as {chefao?:unknown}).chefao={arrival:()=>({enemy:'chefao-1',who:'mapinguari-do-shopping',x:10,y:12}),up:()=>true};
+  (room.sim.run as {chefao?:unknown}).chefao={who:{id:'mapinguari-do-shopping'},arrival:()=>({enemy:'chefao-1',who:'mapinguari-do-shopping',x:10,y:12}),up:()=>true};
   for(let i=0;i<5;i++){step(room,t+=50);assert.equal(room.cena.playing,false);}
 });
 
@@ -75,4 +75,20 @@ test('BossScene alone: opens on the arrival tick, holds until totalMs, a new run
   s.noteStep(sim,5000);assert.equal(s.playing,false,'played');
   s.reset();s.noteStep(sim,6000);assert.equal(s.playing,true,'a new run plays it again');
   assert.equal(CENA.goMs+CENA.holdMs+CENA.backMs,CENA.totalMs);
+});
+
+test('lab {chefao:true} (dev rooms only) asks the sim for the chefão on its next step',()=>{
+  for(const lab of [true,false]){
+    const room=new Room(1000,undefined,lab?{lab:true}:{}),a=peer();join(room,a,'Ana',1000);
+    const t=combat(room,[a]);let asked=0;
+    (room.sim.run as {chefao?:unknown}).chefao={who:{id:'mapinguari-do-shopping'},arrival:()=>undefined,up:()=>false,summon:()=>{asked++;return true;}};
+    say(room,a,{t:'lab',chefao:true},t);
+    assert.equal(asked,lab?1:0,lab?'a lab room calls him':'never outside a lab room');
+  }
+});
+
+test('the run chefão rides the {t:elenco} list, so every phone loads his art before he arrives',()=>{
+  const {room}=arriving();
+  assert.ok(room.sim.rotationIds().includes('mapinguari-do-shopping'));
+  assert.equal(room.sim.rotationIds().filter(id=>id==='mapinguari-do-shopping').length,1);
 });

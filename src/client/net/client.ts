@@ -753,7 +753,8 @@ export class CoopClient {
     this.tick=view.tick;
     // D-050: in a level-up pause the tick stands still while the frames keep coming; measured, that would read as a
     // backlog of the whole pause (N27 catch-up drawing one frame every 2.5 s).
-    if(this.run?.phase==='combat'&&!this.run.pause)this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
+    // The chefão's arrival scene (boss-fim-onda-1) holds the tick the same way.
+    if(this.run?.phase==='combat'&&!this.run.pause&&!this.run.cena)this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
     this.players.clear();
     for(const p of view.players)this.players.set(p.id,toPlayer(p as PlayerWireView));
     // In combat elapsed/remaining move one per simulation tick; the room only pushes the run when something else changes.
@@ -811,7 +812,7 @@ export class CoopClient {
   input(direction:Point,skill:boolean,target?:string,attack=false,aim?:Point){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
-    if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
+    if(this.run?.pause||this.run?.cena){direction={x:0,y:0};skill=false;target=undefined;attack=false;}
     // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
     if(this.handsBusy)attack=false;
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim);
@@ -825,7 +826,7 @@ export class CoopClient {
    * {t:'cast',seq:id,ok,readyTick} (onCast). Returns the tap id, or undefined when there is nothing to tap into.
    */
   cast(){
-    if(!this.connected||this.run?.phase!=='combat'||this.run.pause||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    if(!this.connected||this.run?.phase!=='combat'||this.run.pause||this.run.cena||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const id=++this.castId;this.out(this.socket,{t:'cast',round:this.run.round,id});return id;
   }
   /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */

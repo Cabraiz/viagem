@@ -913,6 +913,9 @@ export class Room {
     if(typeof m.hurt==='number'&&Number.isFinite(m.hurt)&&m.hurt>0){const dealt=Math.min(m.hurt,p.hp-1);if(dealt>0)this.sim.world.damagePlayer(id,dealt+p.stats.armor,'env:lab');}
     // D-025 proofs: the run ends now (a defeat), so the owner's result screen is photographed without a 15-minute wait.
     if(m.end===true){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();return;}
+    // boss-fim-onda-1 proofs: the 1st wave's chefão comes now (mode 'ninhos'), so his scene is photographed without
+    // waiting for the wave; the next step opens it like a real arrival.
+    if(m.chefao===true)this.sim.summonChefao();
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);

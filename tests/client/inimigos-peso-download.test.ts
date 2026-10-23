@@ -6,7 +6,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteOnly} from '../../src/client/art/horde-art.ts';
+import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteOnly,setWaveBossDraw} from '../../src/client/art/horde-art.ts';
+import {WAVE_BOSS,WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {ELITE_SCALE} from '../../src/client/render/keys.ts';
 import {HERO_MIN_SCREEN_PX} from '../../src/contract/offscreen.ts';
 
@@ -44,7 +45,11 @@ test('a smaller copy keeps LITE_TEXELS (0.9) texels per CSS px of its figure as 
   for(const [id,fig] of Object.entries<any>(lite.enemyFigures)){
     const piece=enemies.pieces[id],f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]);
     if(!f?.liteCell)continue;
+    // The 1st wave's chefão (boss-fim-onda-1) draws × WAVE_BOSS.drawScale past his sheet (its own 384 px cell is under
+    // that): softer by choice, the lite copy keeps his download; the check stays on his role's height.
+    if(WAVE_BOSS_IDS.includes(id))setWaveBossDraw(1);
     const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*.9;
+    setWaveBossDraw(WAVE_BOSS.drawScale);
     assert.ok(fig.drawn*f.liteCell[1]/fig.cell[1]>=need-1e-9,`${id}: ${fig.drawn} px × ${f.liteCell[1]}/${fig.cell[1]} < ${need.toFixed(1)}`);
   }
 });

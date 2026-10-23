@@ -64,6 +64,7 @@ import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
+import type {CenaClock} from './render/chefao-cena.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -96,6 +97,8 @@ export interface SceneHooks {
   /** The hero's animation for tests and scripts, at most every VISUAL_HOOK_MS (it lists every texture to count the sheets). */
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
+  /** The chefão's arrival scene (render/chefao-cena.ts): the camera goes to him, holds and comes back. Absent: none. */
+  cena?:CenaClock;
   /**
    * D-051 manual combat: one input step's attack (hud/attack-button.ts take(): held, or tapped since the last step),
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
@@ -173,6 +176,8 @@ export class IslandScene extends Phaser.Scene {
   private cityDepthOf=(key:number)=>key+viewDepth({x:0,y:0},this.view,this.depthOrigin)-viewDepth({x:0,y:0},this.view);
   /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
   private follow=new FollowCamera();
+  /** The chefão whose arrival already shook the camera (once per scene). */
+  private shookFor?:string;
   private zoom=1;
   /**
    * World px multiplier of everything drawn at the endless map's size (hero, allies, enemies, rings, shadows):
@@ -701,8 +706,16 @@ export class IslandScene extends Phaser.Scene {
     const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
     // The hero as drawn (the interpolated prediction plus the reconcile glide, coop), not the bare prediction: the camera
     // centres what the player sees, so a correction slides the world, not the hero off the centre (camera-centro-heroi).
-    const focus=this.project(this.watchPoint??this.position);
-    const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size);
+    let focus=this.project(this.watchPoint??this.position);
+    // A copy: the follow camera keeps its own centre on the hero (the scene's pull never feeds its smoothing back).
+    const c={...this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size)};
+    // The chefão's arrival (boss-fim-onda-1): the camera eases over to him and back; a light shake as it lands on him.
+    const cena=this.hooks.cena?.frame(performance.now());
+    if(cena&&cena.weight>0){
+      const at=this.project({x:cena.cena.x,y:cena.cena.y}),w=cena.weight;
+      c.x+=(at.x-c.x)*w;c.y+=(at.y-c.y)*w;focus={x:focus.x+(at.x-focus.x)*w,y:focus.y+(at.y-focus.y)*w};
+      if(cena.hold&&this.shookFor!==cena.cena.enemy){this.shookFor=cena.cena.enemy;if(!this.reduced)this.cameras.main.shake(320,.006);}
+    }
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
     this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);

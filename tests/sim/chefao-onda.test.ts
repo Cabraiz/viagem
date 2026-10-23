@@ -146,3 +146,14 @@ test('bots: a boss within BOSS_FOCUS_R of the car is their target (the nearest s
   assert.equal(bossFocus([e('far',10),e('near',4),e('x',2,false)],car)?.id,'near');
   assert.equal(bossFocus([e('a',3)],undefined),undefined);
 });
+
+test('a lab summon: he comes on the next step even before the wave left, once; arrival on that tick',()=>{
+  const {world,sys}=run({seed:3});
+  assert.equal(sys.chefao!.summon(),true);
+  world.step();
+  assert.equal(bossesOf(world).length,1);
+  assert.equal(sys.chefao!.arrival(world.tick)?.enemy,bossesOf(world)[0].id);
+  assert.equal(sys.chefao!.summon(),false,'he already came');
+  // His body follows his drawing (WAVE_BOSS.drawScale).
+  assert.equal(bossesOf(world)[0].radius,waveBossTuning().radius);
+});

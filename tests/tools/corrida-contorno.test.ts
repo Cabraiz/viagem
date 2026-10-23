@@ -50,8 +50,8 @@ function contour(sheet:{data:Buffer;width:number},frame:number,cols:number,box:{
 const runs=Object.entries(manifest.pieces as Record<string,{files:Record<string,{file:string;frames:number;figure:{left:number;top:number;right:number;bottom:number};pages:{columns:number}[]}>}>)
   .flatMap(([id,p])=>Object.entries(p.files).filter(([k])=>k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('hurt16-')).map(([k,f])=>({id,key:k,f})));
 
-test('the run, push and hurt sheets the game shows include the viciado\'s and the CLT\'s',()=>{
-  for(const id of ['viciado-em-bet','clt-cansado'])for(const m of ['run16-','push16-','hurt16-'])
+test('the run, push and hurt sheets the game shows include the viciado\'s, the CLT\'s and the gato\'s',()=>{
+  for(const id of ['viciado-em-bet','clt-cansado','gato-nada-pra-comer'])for(const m of ['run16-','push16-','hurt16-'])
     assert.equal(runs.filter(r=>r.id===id&&r.key.startsWith(m)).length,5,`${id}: 5 drawn ${m} directions`);
 });
 

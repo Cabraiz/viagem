@@ -83,7 +83,9 @@
 .rh-marquee::before,.rh-marquee::after{content:'';position:absolute;top:4px;bottom:4px;width:10px;background:radial-gradient(circle,var(--c-lilas) 3px,transparent 4px) 0 0/10px 14px repeat-y}
 .rh-marquee::before{left:6px}.rh-marquee::after{right:6px}
 .rh-marquee-in::before,.rh-marquee-in::after{animation:rh-bulbs .45s steps(2,jump-none) 4}
-.rh-marquee-title{flex:0 0 auto;max-width:60%;min-width:0;overflow:hidden;text-overflow:ellipsis;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
+/* The title is never cut (BUG-20261023-ORQ-resultado-paisagem-e-125): whole on its line, two lines when longer than the
+   banner (topbar.ts fitSubtitle then drops the subtitle, which shows whole, as the modifier's name or not at all). */
+.rh-marquee-title{flex:0 0 auto;max-width:100%;min-width:0;white-space:normal;text-wrap:balance;font:400 var(--t-16)/1.15 var(--f-cartaz);color:var(--c-lilas)}
 .rh-marquee-sub{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font:700 var(--t-13)/1.2 var(--f-sistema);color:var(--c-breu)}
 .rh-marquee-sub:empty{display:none}
 .rh-marquee[data-tone=interval]{border-color:var(--c-lilas)}
@@ -506,7 +508,8 @@
 /* 125% text with 3+ players: the award jokes go first (titles stay), so 6 cards still fit without scrolling. */
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:none}
 /* The cards would still scroll (result.ts fitCards): the jokes go, titles and stickers stay. */
-.rh-result-grid.rh-result-tight .rh-award-line{display:none}
+.rh-result-grid.rh-result-tight .rh-award-line,
+.rh-result-grid.rh-result-tight:not([data-count="1"]):not([data-count="2"]) .rh-award-line{display:none} /* beats the 3+ inline rule */
 /* (the title alone is one 19 px line: the 24 px sticker gets a 24 px column and rides 2 px over the chip's padding,
    so six cards with long names still fit without scrolling at 125%) */
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{grid-template-columns:24px minmax(0,1fr)}
@@ -515,6 +518,16 @@
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji{width:20px}
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji :is(img,svg){width:20px;height:20px}
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{margin:-2px 0}
+/* Portrait at 125%, two columns: one long word ("Exterminador de bêbado", "Colecionador de coxinha") ran 3.6 px past the
+   chip's border (BUG-20261023-ORQ-resultado-paisagem-e-125). Thinner sides, the 20 px sticker of the shame chip and a hair
+   of letter-spacing give ~12 px back. */
+@media (min-height:501px){
+  :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard{padding-inline:4px}
+  :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award{grid-template-columns:20px minmax(0,1fr);padding-inline:4px;column-gap:3px}
+  :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji{width:20px}
+  :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{width:20px;height:20px;margin:0}
+  :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-title{letter-spacing:-.015em}
+}
 /* ...and with 5-6 players only each card's first award shows (second sacrifice). The others are folded, not gone
    (N5-resultado-nomes-longos item 3): out of sight but still read aloud, and a tap on the card (is-open) shows them. */
 :root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -525,6 +538,8 @@
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-top{position:relative}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-tag{position:absolute;left:-3px;top:28px;padding:0 4px;box-shadow:0 0 0 1px var(--c-breu)}
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard{padding:5px 6px 6px;gap:4px}
+/* Landscape keeps its own tighter card at 125% too (two rows of three under the head and the vaquinha). */
+@media (max-height:500px){:root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard{padding:5px 6px;gap:2px}}
 /* Portrait at 125%: the result joke under the title goes too (jokes are the first sacrifice). */
 @media (min-height:501px){:root[data-texto="125"] .rh-result:has(.rh-result-grid:not([data-count="1"]):not([data-count="2"])) .rh-result-sub{display:none}}
 
@@ -864,5 +879,9 @@
 }
 /* Last resort when the cards would scroll (fitCards): the defeat's extra line goes. */
 .rh-result.rh-result-nolost .rh-result-lost{display:none}
+/* The rest of the result's ladder (result.ts fitCards), each step only while the cards still scroll. */
+.rh-result.rh-result-novaca .rh-vaca-joke{display:none}
+.rh-result.rh-result-nostats .rh-rcard:not(.is-open) .rh-rcard-stats{display:none}
+.rh-result.rh-result-nosub .rh-result-sub{display:none}
 /* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
 @media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}

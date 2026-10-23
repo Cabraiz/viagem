@@ -198,7 +198,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   // the stats line: a wide screen keeps one row; 390×844 wraps it to a second row and six cards still fit under it.
   const bill=el('span','rh-result-stat rh-result-conta',stats);bill.hidden=true;bill.setAttribute('role','img');
   // The vaquinha (carteira-e-pix): who put how much into the bill, the R$ 0 with its joke; one more ficha, it wraps.
-  const vaquinha=el('span','rh-result-stat rh-result-vaquinha',stats);vaquinha.hidden=true;
+  const vaquinha=el('span','rh-result-stat rh-result-vaquinha',stats);vaquinha.hidden=true;vaquinha.setAttribute('role','img');
 
   // "Momento mais vergonhoso" (VGM-053B): a notice on the condo board, from the server's moment; hidden without one.
   const shame=el('aside','rh-result-shame',root);shame.hidden=true;
@@ -417,10 +417,14 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
     if(grid.scrollHeight>grid.clientHeight+1){for(const n of names)fitCardName(n,n.dataset.full??n.textContent??'',1);fitShame();}
     // Last resort (DSG-adesivos-itens: long vice lines like "Empatou em … e perdeu no desempate."): the award jokes go,
     // titles and stickers stay; each chip keeps its whole text in its aria-label.
-    grid.classList.remove('rh-result-tight');root.classList.remove('rh-result-nolost');
+    const steps=['rh-result-nolost','rh-result-novaca','rh-result-nostats','rh-result-nosub'];
+    grid.classList.remove('rh-result-tight');root.classList.remove(...steps);
     if(grid.scrollHeight>grid.clientHeight+1)grid.classList.add('rh-result-tight');
-    // Then the defeat's "O que derrubou a turma" line (its cause is in the "Te derrubou" ficha too).
-    if(grid.scrollHeight>grid.clientHeight+1)root.classList.add('rh-result-nolost');
+    // Then, one at a time while the cards still scroll (BUG-20261023-ORQ-resultado-paisagem-e-125: six players with the
+    // chaveiro's vaquinha, landscape and 125%): the defeat's "O que derrubou a turma" line (its cause is in the "Te
+    // derrubou" ficha too), the vaquinha's R$ 0 jokes (names and values stay, the aria-label keeps them), the closed cards'
+    // numbers (a tap opens the card with all four) and the subtitle.
+    for(const step of steps){if(grid.scrollHeight<=grid.clientHeight+1)break;root.classList.add(step);}
   };
   const onTurn=()=>{if(shownResult&&!root.hidden)renderGrid(shownResult.result,shownResult.ctx);};
   landscape?.addEventListener('change',onTurn);
@@ -445,7 +449,9 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
         bill.setAttribute('aria-label',conta.aria);
       }
       const vaca=conta?vaquinhaLine(result.objective?.share,id=>{const p=result.players.find(q=>q.id===id);return id===ctx.localId?'Você':p?railName(p.name):'Alguém';}):undefined;
-      vaquinha.hidden=!vaca;vaquinha.textContent=vaca?.text??'';
+      vaquinha.hidden=!vaca;vaquinha.textContent=vaca?'Vaquinha: ':'';
+      // The R$ 0 jokes in their own spans: landscape with 5-6 cards hides them (hud.css), the aria-label keeps them.
+      vaca?.pieces.forEach((piece,i)=>{vaquinha.append(`${i?'; ':''}${piece.who}`);if(piece.joke)el('span','rh-vaca-joke',vaquinha).textContent=`, ${piece.joke}`;});
       if(vaca)vaquinha.setAttribute('aria-label',vaca.aria);else vaquinha.removeAttribute('aria-label');
       seed.textContent=resultSeedText(result);seed.hidden=!seed.textContent;
       const fell=resultCause(ctx.tally.causes,ctx.localId);

@@ -48,6 +48,13 @@ export const MOTO_RIDE_SECONDS=420;
  * Executor-6: 25 + 3/hit, so a clean run's bill is paid from the kills and a battered car still leaves a debt to joke about).
  */
 export const CAR_LIMIT=120,BUDGET_BASE=25,BUDGET_PER_HIT=3;
+/**
+ * The Uno's hit limit grows with the room like the waves' bodies (rules playerScale.count), set at the first step from
+ * the players then in the run (inimigos-querem-o-uno: most of a wave now goes for the car). CAR_REPAIR_SHARE: share of
+ * the limit given back by repair() (the 2-minute explore interval between waves, NEW-20261023-ORQ-inicio-no-uno-caixas-120).
+ */
+export const CAR_REPAIR_SHARE=.25;
+export const carLimitFor=(players:number)=>Math.round(CAR_LIMIT*playerScale(players).count);
 export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:2});
 export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
 /** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
@@ -74,6 +81,7 @@ export const CIDA_HANDLED_LIMIT=64;
 export const CIDA_STOCK=4,CIDA_REACH=3,SALE_GAP_SECONDS=20,SALE_RADIUS=3;
 /** Moved to rules/stonewards.ts (D-048: the Grana is the team's in every world); kept here for the chaveiro's readers. */
 export {GRANA_PER_KILL} from '../../rules/index.ts';
+import {playerScale} from '../../rules/index.ts';
 export const BOSS_ETA_SECONDS=60;
 /** The boss appears on the route this fraction of its length back from the car and marches to it. */
 export const BOSS_SPAWN_BACK=.3;
@@ -172,6 +180,8 @@ export interface ChaveiroSystem {
   targets():{id:string;x:number;y:number;radius:number;reach?:number}[];
   /** An enemy's (or the boss's) contact with the car. */
   hitCar(ctx:SimContext,enemy:EnemyState):void;
+  /** Gives back `share` of the car's limit in hits (not below 0); the parts that fell stay down. */
+  repair(ctx:SimContext,share?:number):void;
   /** A team purchase from Dona Cida (room command). */
   buy(ctx:SimContext,playerId:string,item:string,requestId?:string):CidaBuyResult;
   /** D-052 {t:'puxar'} past the room's checks: hook (`on`) or drop the car's rope. A resent `requestId` is 'duplicate'. */
@@ -433,7 +443,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     step(ctx){
       if(state.ended)return;
       countCrew(ctx);
-      state.startTick??=ctx.tick;
+      if(state.startTick===null){
+        state.startTick=ctx.tick;
+        // The limit follows the room the run starts with (a checkpoint keeps it).
+        if(car.hits===0){let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;car.limit=carLimitFor(n);}
+      }
       stepCar(ctx,car,carWorld,moto.task==='abrindo');
       replan(ctx);
       const before=moto.mode;
@@ -471,6 +485,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         car.parts|=1<<i;ctx.emit({type:'part',name:CAR_PARTS[i]});
       });
       if(car.hits>=car.limit)end(ctx,'defeat');
+    },
+    repair(ctx,share=CAR_REPAIR_SHARE){
+      if(state.ended||car.hits<=0)return;
+      car.hits=Math.max(0,car.hits-Math.round(share*car.limit));
+      ctx.emit({type:'structure',id:CAR_ID,hp:car.limit-car.hits,maxHp:car.limit});
     },
     buy(ctx,playerId,itemId,requestId){
       const key=requestId===undefined?undefined:`${playerId}:${requestId}`;

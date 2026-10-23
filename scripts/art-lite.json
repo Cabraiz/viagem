@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2193,
-  "bytes": 1545367636,
-  "liteBytes": 504337920,
+  "bytes": 1545364528,
+  "liteBytes": 504336504,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17438,10 +17438,10 @@
    "shownPsnr": 45.4
   },
   "menu/fundo-vendedor-praia.webp": {
-   "source": "3d362b6349986e1651828567e020cd63ba2a005e6c0b11d42164e7b3bc1e25be",
-   "lite": "8fa1f7f78a33210800c9afd137b02793c6f943481a7e7f67baf2c0b96d742df9",
-   "bytes": 1140274,
-   "liteBytes": 886908,
+   "source": "e5410009b626eb752313a7917ec8bff8222d6f07eed2b85dee2ed7c2d060f6df",
+   "lite": "b5e68cd1871c58096f7684684bbba00747db2ef10113d53edd8f72405fe14f02",
+   "bytes": 1137166,
+   "liteBytes": 885492,
    "psnr": 42.6,
    "shownPsnr": 44.7
   },

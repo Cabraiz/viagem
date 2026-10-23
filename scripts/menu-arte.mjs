@@ -55,9 +55,12 @@ const HEROES=[
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},
   // NEW-20261023-ORQ-tela-vendedor-praia (the user chose variation 2, the promenade at sunset): Codex redrew it alone
-  // at 16:9 and outpainted the bleed (lona/largo/compoe, like the maromba). Only the background for now.
+  // at 16:9 and outpainted the bleed (lona/largo/compoe, like the maromba). The hero cut out like the maromba: painted
+  // into that picture walking up with a bottle raised (cena-1), redrawn alone on green (recorte-1), keyed and enlarged by
+  // Real-ESRGAN (recorta.py, final.py), in the viciado's box; `sombra` = his flip-flops' contact shadow.
   {id:'vendedor-praia',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-vendedor-praia',
-    fundo:'fundo-vendedor-praia-2560.png'},
+    heroi:'vendedor-praia-1080p-no-lugar.png',esrgan:'vendedor-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:1034,top:19,width:632,height:1058},fundo:'fundo-vendedor-praia-2560.png',sombra:'vendedor-1-sombra-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */

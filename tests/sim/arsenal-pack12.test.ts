@@ -1,10 +1,10 @@
 // NEW-20261022-ORQ-arsenal-completo-no-bau, passo 0: the 34 Pack 12 weapons as data (sim/weapons/pack12.ts), built
-// like the firearms, none playable yet (the crates keep the seven firearms), the four ids that were tomes renamed, and
+// like the firearms, the fatia A1's eleven playable (catalog, crates), the four ids that were tomes renamed, and
 // the hooks of the fatia A2 (ricochet/mine/turret) in place and inert.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {PACK12,PACK12_PLAYABLE} from '../../src/sim/weapons/pack12.ts';
+import {A1_PLAYABLE,PACK12,PACK12_PLAYABLE} from '../../src/sim/weapons/pack12.ts';
 import {ARSENAL_DAMAGE,ARSENAL_WEAPONS,NEW_WEAPONS,PACK12_WEAPONS,RARITY_DAMAGE,weaponNoise,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_CATALOG,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {PASSIVE_IDS} from '../../src/rules/passives.ts';
@@ -48,17 +48,23 @@ test('pack12: rows like the firearms (verde × ARSENAL_DAMAGE × rarity), 4 rari
   }
 });
 
-test('pack12 passo 0: nothing playable, so the arsenal, the catalog, the noise and the crates are the firearms only', ()=>{
-  assert.equal(PACK12_PLAYABLE.size,0);
-  assert.deepEqual(ARSENAL_WEAPONS.map(w=>w.id),NEW_WEAPONS.map(w=>w.id));
-  for(const w of PACK12){assert.equal(getWeapon(w.id),undefined,w.id);assert.ok(!WEAPON_CATALOG.has(w.id));}
-  assert.deepEqual(CRATE_WEAPONS[1],['pistola']);
-  assert.deepEqual([...CRATE_WEAPONS[2]].sort(),['escopeta','pistola','submetralhadora']);
-  assert.ok(CRATE_WEAPONS[5].every(id=>id.endsWith('-lendario')));
-  // The verde is the pistol alone: one draw, every time (VERDE_PISTOL only splits a verde with more weapons).
-  assert.ok(VERDE_PISTOL>0&&VERDE_PISTOL<1);
-  const rng=new Rng(3);
-  for(let i=0;i<200;i++)assert.equal(rollPrize(rng,1).items[0].id,'pistola');
+test('pack12 A1: its eleven are playable (arsenal, catalog, noise, crates by minimum rarity); the others wait', ()=>{
+  const a1=['baladeira','espeto','sacole','tampa-voadora','pandeiro','buscape','traque','figa','vela-esoterica','tijolo-baiano','taro-vencido'];
+  assert.deepEqual([...A1_PLAYABLE].sort(),[...a1].sort());
+  assert.ok(a1.every(id=>PACK12_PLAYABLE.has(id)));
+  assert.deepEqual(ARSENAL_WEAPONS.map(w=>w.id),[...NEW_WEAPONS.map(w=>w.id),...PACK12.filter(w=>PACK12_PLAYABLE.has(w.id)).map(w=>w.id)]);
+  for(const w of PACK12){
+    const playable=PACK12_PLAYABLE.has(w.id);
+    assert.equal(WEAPON_CATALOG.has(w.id),playable,w.id);
+    if(!playable)continue;
+    assert.equal(weaponNoise(w.id),w.noise,w.id);
+    for(const r of [1,2,3,4] as Rarity[])assert.equal(CRATE_WEAPONS[r].includes(w.id),w.minRarity<=r,`${w.id} in ${r}`);
+  }
+  assert.ok(CRATE_WEAPONS[1].includes('pistola')&&VERDE_PISTOL===.4);
+  // 200 verde crates of one seed: never only the pistol now.
+  const rng=new Rng(3),got=new Set<string>();
+  for(let i=0;i<200;i++)got.add(rollPrize(rng,1).items[0].id);
+  assert.ok(got.size>1&&got.has('pistola'));
   assert.equal(weaponNoise('pistola'),12);
 });
 
@@ -73,4 +79,10 @@ test('pack12: the A2 patterns are wired in the weapon system and inert until the
   assert.equal(bounceAfterHit(none,none,none),false);
   assert.equal(mineTouched(none,none,none),true);
   assert.deepEqual(PACK12.filter(w=>w.pattern==='ricochet'||w.pattern==='mine'||w.pattern==='turret').map(w=>w.id).sort(),['bola-murcha','carro-de-som','panela-de-pressao']);
+});
+
+test('pack12 A1 render: the lobbed objects (traque, tijolo) are drawn at their own size on their burst zone, not stretched to it', async ()=>{
+  const {shotDrawScale}=await import('../../src/client/render/arsenal-rules.ts');
+  for(const id of ['traque','tijolo-baiano']){const r=getWeapon(id)!.levels[0].area;assert.ok(shotDrawScale(false,id)*Math.min(3,r*2*46/64)<=1.1,id);}
+  assert.equal(shotDrawScale(false,'baladeira'),1);
 });

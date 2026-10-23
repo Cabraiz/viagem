@@ -107,7 +107,6 @@ import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
-import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
@@ -115,6 +114,10 @@ import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
 import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
+import type {ChaveiroView} from '../render/chaveiro/view.ts';
+import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.ts';
+import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
+import {LINE_EVENTS,hash32,pickLine,talkSeed,type LineEvent} from '../render/chaveiro/lines.ts';
 import {castSilhouette,silhouetteImage} from '../render/silhouette.ts';
 
 const params=new URLSearchParams(location.search);
@@ -192,6 +195,8 @@ const tralhaShot=obra&&params.get('tralha')==='1';
  * and a lone square (the joints: halves + pillars).
  */
 const muralhaShot=obra?params.get('muralha'):null;
+/** `fala=` in the modo foto: the lines are said this long before the photo's clock (speakFoto). */
+const FOTO_TALK_AGO_MS=700;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
 const fotoT=params.has('foto')?fotoClock(location.search):undefined;
 /** `regua=1`: the ruler beside the hero (hero heights, 1× to RULER_STEPS×). */
@@ -251,7 +256,9 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
-  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean};
+  private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean;
+    /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
+    talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
@@ -366,6 +373,7 @@ class CitySandbox extends Phaser.Scene {
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
+      this.speak(_t,dt,view,tick);
     }
     this.stepBanks(_t);
     this.fortify?.update(fotoT??_t);
@@ -422,7 +430,50 @@ class CitySandbox extends Phaser.Scene {
     const fake=fakeChaveiro(params,car,p[`spawn${from}`],p[`boca${from}`],{x:this.at.x-6,y:this.at.y+4});
     if(placeHero)this.at={...fake.heroAt};
     const renderer=new ChaveiroRenderer(this,{projector:this.cityProjector(),reduced:reducedMotion,hero:()=>this.at});
-    return {renderer,fake};
+    if(!params.has('fala'))return {renderer,fake};
+    const seed=params.has('seed')?Number(params.get('seed'))>>>0:talkSeed('sandbox',0);
+    // Without tele=1 the balloons get a horde renderer of their own (the lab's one otherwise), on the city's projection.
+    const horde=tele?undefined:new HordeRenderer(this,{projector:this.cityProjector(),uiScale:()=>hordeUiScale(this.cameras.main.zoom,CITY_VIEW_SCALE),
+      actorScale:()=>CITY_VIEW_SCALE,reduced:reducedMotion,city:()=>true});
+    horde?.push({tick:0,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[]});
+    return {renderer,fake,talk:{talk:new ChaveiroTalk(seed),horde,said:[],last:-1}};
+  }
+  /** `fala=`: the fake moments' events and the fake view into the game's line timing; the due line into a balloon. */
+  private speak(time:number,dt:number,view:ChaveiroView,tick:number){
+    const t=this.chaveiro?.talk;if(!t)return;
+    if(fotoT!==undefined){this.speakFoto(t,dt);return;}
+    t.start??=time;
+    t.talk.push(view,fakeTalkEvents(params,t.last,time-t.start),tick,time);t.last=time-t.start;
+    const horde=t.horde??this.lab?.horde;
+    t.horde?.update(time,dt);
+    const said=t.talk.take(time);
+    if(!said||!horde)return;
+    t.said.push({...said,at:time});
+    const renderer=this.chaveiro!.renderer;
+    horde.speak(`chaveiro:${said.speaker}`,said.text,()=>renderer.speechAnchor(said.speaker),said.priority);
+  }
+  /**
+   * `fala=` in the modo foto (a fixed clock: the game's gap would show one balloon at a time): one line of each moment
+   * named (`fala=volta,part,…`, the line moments' own names), each from a speaker not used yet (each has its own anchor), all at once; the
+   * balloons' clock is the photo's, so they stay up for the print.
+   */
+  private speakFoto(t:NonNullable<NonNullable<typeof this.chaveiro>['talk']>,dt:number){
+    const horde=t.horde??this.lab?.horde;if(!horde)return;
+    if(t.start!==undefined){horde.update(fotoT!,dt);return;}
+    // Said FOTO_TALK_AGO_MS before the photo's clock: the balloons have popped in by then (and live 2.2 s).
+    t.start=fotoT!;horde.update(fotoT!-FOTO_TALK_AGO_MS,dt);
+    const seed=params.has('seed')?Number(params.get('seed'))>>>0:talkSeed('sandbox',0),used=new Set<string>(),renderer=this.chaveiro!.renderer;
+    for(const name of (params.get('fala')??'').split(',')){
+      if(!(LINE_EVENTS as string[]).includes(name))continue;
+      for(let k=0;k<16;k++){
+        const line=pickLine(name as LineEvent,hash32(seed,k));
+        if(used.has(line.speaker))continue;
+        used.add(line.speaker);t.said.push({...line,priority:true,at:fotoT!});
+        horde.speak(`chaveiro:${line.speaker}`,line.text,()=>renderer.speechAnchor(line.speaker),true);
+        break;
+      }
+    }
+    horde.update(fotoT!,dt);
   }
   /** anda=: the hero pulls the car by the rope from ahead of its move (the rope's slack in the swing). */
   private pullCar(car:{x:number;y:number}){
@@ -738,7 +789,8 @@ class CitySandbox extends Phaser.Scene {
       fixar:(on=true)=>{cameraFixed=on;},
       /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */
       step:(dt:number)=>{this.stepAt=(this.stepAt??performance.now())+dt;this.game.step(this.stepAt,dt);},cell:this.asset.cell,visibleCells:viewport.width/zoom/(TILE_X*Math.SQRT2)/this.asset.cell,
-      viewport,orientation:viewport.width>viewport.height?'landscape':'portrait'};
+      viewport,orientation:viewport.width>viewport.height?'landscape':'portrait',falas:()=>this.chaveiro?.talk?.said.map(s=>({...s}))??[],
+      falaBubbles:()=>(this.chaveiro?.talk?.horde??this.lab?.horde)?.stats().byLayer.bubbles,falaClock:()=>this.time.now};
   }
   /**
    * regua=1: a Breu/Papel bar standing on the ground half a hero's width left of his feet, a tick at every hero height

@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2207,
-  "bytes": 1545298086,
-  "liteBytes": 504324418,
+  "files": 2208,
+  "bytes": 1546490460,
+  "liteBytes": 505219190,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17436,6 +17436,14 @@
    "liteBytes": 613792,
    "psnr": 43.6,
    "shownPsnr": 45.4
+  },
+  "menu/fundo-maromba.webp": {
+   "source": "7cca658101f203973a2a454e7d6a112b10a8b4b1c26e1f369df7f3612131af8e",
+   "lite": "a7e8a7564aee75e82e4580a752b6b30898c12b2517eaf310c7c24dde39bfb05e",
+   "bytes": 1192374,
+   "liteBytes": 894772,
+   "psnr": 42.4,
+   "shownPsnr": 44.4
   },
   "menu/insta/grade-clt-cansado-1.webp": {
    "source": "b3b4d37fc3c9b3cd319d2a7886d0bf5a176b8230beadc3dcf3f0872defc46362",

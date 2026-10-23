@@ -47,6 +47,16 @@ async function runOnly(input,id,old,optional=OPTIONAL_MOTIONS){
   return true;
 }
 /**
+ * A walk alone (card andar-proporcao): an M16 class (idle16-S in the manifest) with a walk/ folder and no attack/ or
+ * idle/ one. Only its walk16 is replaced, drawn at the scale of the rest already imported; attack, rest and run stay.
+ */
+async function walkOnly(input,id,old){
+  const any=async m=>(await Promise.all(['S','N','W','E','NW','NE','SW','SE'].map(d=>exists(movement16Source(input,id,m,d))))).some(Boolean);
+  if(!await any('walk')||await any('attack')||await any('idle'))return false;
+  assert.ok(old?.files?.['idle16-S']?.revision===16&&Number.isFinite(old.files['idle16-S'].height),`${id}: a walk alone needs the class's M16 idle16-S (its size reference)`);
+  return true;
+}
+/**
  * The 5 directions a class draws: S, N and, for each mirror pair, the side delivered in all three motions (the default
  * W/NW/SW when neither is complete, so the validation names what is missing). Both sides delivered: an error, one per pair.
  */
@@ -174,24 +184,25 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
     if(old)assert.equal(old.kind,'dir8',`${id}: existing piece kind`);
     else assert.equal(index.groups.personagens.pieces[id],undefined,`${id}: index/group disagreement`);
     // --motions: those sheets alone, at the class's own scale (its M16 idle-S, else its R06 idle8), the others kept.
-    const alone=!!motions,only=alone||await runOnly(input,id,old),clips=[];
+    const alone=!!motions,only=alone||await runOnly(input,id,old),walk=!only&&await walkOnly(input,id,old),clips=[];
     const onlyMotions=alone?motions:(await Promise.all(OPTIONAL_MOTIONS.map(async m=>await runOnly(input,id,old,[m])&&m))).filter(Boolean);
-    const drawn=await movement16Drawn(input,id,only?onlyMotions.slice(0,1):MOTIONS);
+    const drawn=await movement16Drawn(input,id,only?onlyMotions.slice(0,1):walk?['walk']:MOTIONS);
     const optional=[];
-    for(const motion of only?onlyMotions:OPTIONAL_MOTIONS){
+    for(const motion of only?onlyMotions:walk?[]:OPTIONAL_MOTIONS){
       const has=await Promise.all(drawn.map(d=>exists(movement16Source(input,id,motion,d))));
       assert.ok(has.every(Boolean)||!has.some(Boolean),`${id}: ${motion} needs all of ${drawn.join(' ')} or none`);
       if(has[0])optional.push(motion);
     }
-    for(const motion of only?optional:[...MOTIONS,...optional])for(const direction of drawn){
+    const imported=only?optional:walk?['walk']:[...MOTIONS,...optional];
+    for(const motion of imported)for(const direction of drawn){
       const source=movement16Source(input,id,motion,direction),phase=PHASED.has(motion)?await readPhase(source.replace(/\.png$/,'.phase.json'),`${id}/${motion}/${direction}`,motion):undefined;
       clips.push({...await inspectMovement16(source,motion,`${id}/${motion}/${direction}`),motion,direction,...(phase?{phase}:{})});
     }
     // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets; a run alone
-    // keeps the R06 rest's (idle8 height, 96 px cells), the run drawn at that scale.
-    const height=only?(old?.files?.['idle16-S']?.height??old?.files?.idle8?.height)*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
+    // keeps the R06 rest's (idle8 height, 96 px cells), the run drawn at that scale; a walk alone the M16 rest's.
+    const height=only?(old?.files?.['idle16-S']?.height??old?.files?.idle8?.height)*2:walk?old.files['idle16-S'].height*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
-    records.push({id,height,runOnly:only,alone,motions:only?optional:[...MOTIONS,...optional],bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
+    records.push({id,height,runOnly:only,walkOnly:walk,alone,motions:imported,bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
   }
   if(write){
     assert.deepEqual(await readManifest(manifestFile),previous,'hero manifest changed during M16 validation');
@@ -225,7 +236,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
           if(clip.phase)files[key].phase=clip.phase;
         }
         // The other side of each pair is mirrored now: a key it had from an earlier import goes (null drops it in the merge).
-        for(const motion of record.alone?motions:[...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
+        for(const motion of record.alone?motions:record.walkOnly?record.motions:[...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
         for(const file of staged){await rename(file.tmp,file.target);record.outputs.push(file.target);}
         entries[record.id]={kind:'dir8',files,...(previous.pieces[record.id]?.meta?{meta:previous.pieces[record.id].meta}:{})};
       }finally{await Promise.all(staged.map(file=>rm(file.tmp,{force:true})));}
@@ -252,5 +263,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   sharp.cache(false);sharp.concurrency(1);
   const {report,...options}=parseMovement16Args(process.argv.slice(2)),result=await importMovement16(options);
   if(report)await writeAtomic(path.resolve(report),JSON.stringify(result,null,2)+'\n');
-  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')}${c.runOnly?`; ${c.motions.join('+')} only`:''})`).join(', ')}: ${result.characters.every(c=>c.runOnly)?`${[...new Set(result.characters.flatMap(c=>c.motions))].map(m=>`${MOVEMENT16_META.motions[m].frames} ${m}`).join(' + ')} poses`:'16 walk+attack poses and 8 rest poses'} x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
+  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')}${c.runOnly?`; ${c.motions.join('+')} only`:''}${c.walkOnly?'; walk only, on its M16 rest':''})`).join(', ')}: ${result.characters.every(c=>c.runOnly)?`${[...new Set(result.characters.flatMap(c=>c.motions))].map(m=>`${MOVEMENT16_META.motions[m].frames} ${m}`).join(' + ')} poses`:result.characters.every(c=>c.walkOnly)?'16 walk poses':'16 walk+attack poses and 8 rest poses'} x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
 }

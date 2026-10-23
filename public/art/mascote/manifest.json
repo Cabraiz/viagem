@@ -30,10 +30,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "575c5d5d2ba56b081bf4abfd8ec623e8be5aada9a7eaa4584b993194a909f3bc"
+              "sha256": "1d664423cf5364cc5fc0a37764189e29316961267557aa78d618cbefde6d582b"
             }
           ],
-          "sha256": "575c5d5d2ba56b081bf4abfd8ec623e8be5aada9a7eaa4584b993194a909f3bc"
+          "sha256": "1d664423cf5364cc5fc0a37764189e29316961267557aa78d618cbefde6d582b"
         },
         "walk": {
           "file": "papagaio/walk.webp",
@@ -60,10 +60,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 48,
-              "sha256": "a586877e7c9d89b9d51346ecd58e47afb5783f5ec17bb2906efc9b5c6c4261a9"
+              "sha256": "827fc0f2f54d585bb1e0987ed378cae3ff150db94d552d24cda7c191e64a9f0d"
             }
           ],
-          "sha256": "a586877e7c9d89b9d51346ecd58e47afb5783f5ec17bb2906efc9b5c6c4261a9"
+          "sha256": "827fc0f2f54d585bb1e0987ed378cae3ff150db94d552d24cda7c191e64a9f0d"
         },
         "attack": {
           "file": "papagaio/attack.webp",
@@ -90,13 +90,13 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 48,
-              "sha256": "fe10a17687b5f5eef3708a3c7626b723536da04be489953fd037ae4a0c519de2"
+              "sha256": "92db2476f5663ba46fe3a8180623df16a34047ad313fa5718f6521ead567e38d"
             }
           ],
-          "sha256": "fe10a17687b5f5eef3708a3c7626b723536da04be489953fd037ae4a0c519de2"
+          "sha256": "92db2476f5663ba46fe3a8180623df16a34047ad313fa5718f6521ead567e38d"
         }
       },
-      "sha256": "73649726a1fb0237b4c1e7fab053c76198a439d2a6a6844823bb2373003725ef"
+      "sha256": "fb7a6f3ea42ef282db6bc46704b17cd61ddc0c64bde5c3f38cfcc022da63f410"
     },
     "vira-lata": {
       "kind": "animations",
@@ -126,10 +126,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 32,
-              "sha256": "87a7f9338a5152b48f51d6a771ede233c91c7925e15e65ce06cba16763279577"
+              "sha256": "9a0f9b466457344d260b776a835477ca00540d48bfcb4f63bd4cc2a6e815c20a"
             }
           ],
-          "sha256": "87a7f9338a5152b48f51d6a771ede233c91c7925e15e65ce06cba16763279577"
+          "sha256": "9a0f9b466457344d260b776a835477ca00540d48bfcb4f63bd4cc2a6e815c20a"
         },
         "walk": {
           "file": "vira-lata/walk.webp",
@@ -156,10 +156,10 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 48,
-              "sha256": "5456149a03589217bc7a5d80467c08c80f8fca6eaa19b0b236f4bcc5d880d1b4"
+              "sha256": "27bce9a67ab85423b247255ec56c28354eec8cc7b4b5d5ab92d5abd55d8ee7c4"
             }
           ],
-          "sha256": "5456149a03589217bc7a5d80467c08c80f8fca6eaa19b0b236f4bcc5d880d1b4"
+          "sha256": "27bce9a67ab85423b247255ec56c28354eec8cc7b4b5d5ab92d5abd55d8ee7c4"
         },
         "attack": {
           "file": "vira-lata/attack.webp",
@@ -186,13 +186,13 @@
               "rows": 8,
               "firstFrame": 0,
               "frameCount": 48,
-              "sha256": "4c45658821c1f1b4e7ced00d97dcc69b3adf35122fb1adcdbd8a59c1b5e1eb61"
+              "sha256": "3d1d73f0678e1c0b286705adca5f0ca173635a091df0dfb1244cdf1e2bdfc464"
             }
           ],
-          "sha256": "4c45658821c1f1b4e7ced00d97dcc69b3adf35122fb1adcdbd8a59c1b5e1eb61"
+          "sha256": "3d1d73f0678e1c0b286705adca5f0ca173635a091df0dfb1244cdf1e2bdfc464"
         }
       },
-      "sha256": "7709799422bb4db1bb1ad3445c189508438d2724916e04a90f92b98cf36c9303"
+      "sha256": "4734435200bfb41cc19714396c06ee85c19f674ebc5c661fe32146f8a409b45a"
     }
   }
 }

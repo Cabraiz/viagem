@@ -5,7 +5,7 @@
  * for them (scripts/art-v2 is not touched), so this one writes them in the enemies' format, which the client already
  * reads (art/manifest.ts): public/art/mascote/<id>/<anim>.webp, 8 rows (S, SW, W, NW, N, NE, E, SE) × `frames`
  * columns, anchor 50 %/88 %, and public/art/mascote/manifest.json {version:2, group:'mascote', pieces}.
- * The dark rim of D-037 (#2A2018 at 85 %, 1.5 px, only where the source alpha is 0) is added like the enemies'.
+ * The dark rim of D-037 (spec.mjs RIM, convert.mjs applyRim: cell by cell, only outside the drawing) like the enemies'.
  *
  *   node scripts/import-mascote.mjs <pasta>   <pasta>/<id>/<anim>.png (8 rows × frames, cell from meta.json) + meta.json
  *                                             {"cell":[96,96],"fps":{"walk":10,…}}
@@ -16,28 +16,15 @@ import {readdirSync,readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+import {RIM,ANCHOR,DIRECTIONS as DIRS} from './art-v2/spec.mjs';
+import {applyRim} from './art-v2/convert.mjs';
+
 sharp.cache(false);
 const ROOT=join(dirname(fileURLToPath(import.meta.url)),'..');
 export const OUT_DIR='public/art/mascote';
-export const ANCHOR=[.5,.88],DIRECTIONS=8;
-export const RIM={color:'#2A2018',alpha:.85,width:1.5};
+export const DIRECTIONS=DIRS.length;
+export {RIM,ANCHOR};
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
-
-/** D-037 rim on an RGBA buffer, in place: transparent pixels within RIM.width of a drawn one take the rim colour. */
-export function addRim(data,w,h){
-  const src=new Uint8Array(w*h);for(let i=0;i<w*h;i++)src[i]=data[i*4+3];
-  const r=Math.ceil(RIM.width),c=[0x2A,0x20,0x18],a=Math.round(RIM.alpha*255);
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    if(src[y*w+x]!==0)continue;
-    let near=false;
-    for(let dy=-r;dy<=r&&!near;dy++)for(let dx=-r;dx<=r;dx++){
-      const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=w||Y>=h||dx*dx+dy*dy>RIM.width*RIM.width)continue;
-      if(src[Y*w+X]>20){near=true;break;}
-    }
-    if(near){const i=(y*w+x)*4;data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=a;}
-  }
-  return data;
-}
 
 export async function importMascotes(input,root=ROOT){
   const pieces={};
@@ -48,8 +35,8 @@ export async function importMascotes(input,root=ROOT){
       const {data,info}=await sharp(join(input,id,`${anim}.png`)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
       if(info.height!==ch*DIRECTIONS||info.width%cw)throw new Error(`${id}/${anim}.png: ${info.width}×${info.height}, esperado N×${cw} por ${ch*DIRECTIONS}`);
       const frames=info.width/cw;
-      addRim(data,info.width,info.height);
-      const webp=await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).webp({lossless:true,effort:6}).toBuffer();
+      const rimmed=applyRim({data,width:info.width,height:info.height},[cw,ch],RIM);
+      const webp=await sharp(rimmed,{raw:{width:info.width,height:info.height,channels:4}}).webp({lossless:true,effort:6}).toBuffer();
       const file=`${id}/${anim}.webp`,h=sha(webp);
       writeFileSync(join(root,OUT_DIR,file),webp);
       files[anim]={file,cell:[cw,ch],frames,directions:DIRECTIONS,anchor:ANCHOR,fps:meta.fps[anim],rim:RIM,

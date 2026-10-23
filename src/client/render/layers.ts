@@ -14,7 +14,7 @@ import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../a
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
 import {squash,hitFlash,flashStartOnHit,poof,popText,damageFloat,telegraphPulse,telegraphBlink,telegraphDashPhase,hashPhase,
-  POP_TEXT_MS,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
+  POP_TEXT_MS,leashMoving,projectileLeadSeconds,type Scale2,type PoofFrame,type TextFrame} from './motion.ts';
 import {isAsleep,isWakeEvent,sleepOrAct,wakeTargets} from './wake-rules.ts';
 import {LOOK_NONE,PALESTRA_RADIUS,SPARKLES,actAnim,auraPulse,groundEllipse,headlightGlow,reflectGlint,sparkleFrame,viewPhaseLook,type PhaseLook,type SparkleFrame} from './phase-look.ts';
 import {bubbleAllowed,deathLine,deathPopAllowed,kindStyle,damageLabel,sayPriority,sayTag,skillBubbleLine,styleKey} from './jokes.ts';
@@ -119,6 +119,8 @@ interface EnemyActor{
   lit:boolean;
   /** The flip the sun tint was set for (a flipped sprite needs its corners swapped). */
   litFlip:boolean;screenX:number;flip:boolean;moving:boolean;
+  /** Where it last stood (motion.ts leashMoving): walking is getting MOVE_LEASH away from it. */
+  ax:number;ay:number;
   /** Off camera (render/cull.ts): hidden, and nothing but its position runs until it comes back. */
   culled:boolean;
   /** EnemyView.phase of the chefe (his boss phase; 1 for everyone else): the imported chefe idles with 'phase2-idle' from phase 2. */
@@ -375,7 +377,7 @@ export class HordeRenderer{
     const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
-      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
+      px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
@@ -556,7 +558,9 @@ export class HordeRenderer{
     // art has its own colours, so drawEnemy drops the accent the frame the art shows (and back when it goes).
     const accent=fallbackTint(view.kind);
     if(used.fresh||a.accent!==accent){a.accent=accent;a.tint=accent;a.lit=false;}
-    a.moving=Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
+    // Walking only when it gets somewhere (motion.ts leashMoving): a jiggle against a player or a wall is standing.
+    if(used.fresh||!(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)<=SNAP_UNITS))a.ax=NaN;
+    a.moving=leashMoving(a,view.x,view.y);
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
   }
   private syncPickup(view:PickupView){

@@ -17,6 +17,23 @@ export function hashPhase(id:string){
   return (h>>>0)/4294967296;
 }
 
+/**
+ * Walking or standing, from the sim's positions (inimigos-animacao-auditoria): an enemy pressed against a player or a
+ * wall is pushed back and forth by the sim (±0.05 u a tick) and read as walking, so its legs trod in place and its
+ * facing flipped about once a second while it went nowhere. It walks only while it is more than MOVE_LEASH from an
+ * anchor that trails it at that distance: a steady walk keeps pulling the anchor (walking every tick after the first
+ * MOVE_LEASH), a jiggle inside the leash is standing.
+ */
+export const MOVE_LEASH=.12;
+export interface Anchor {ax:number;ay:number}
+/** Whether a position (x, y) is walking away from `a` (moved along, at MOVE_LEASH behind); NaN anchor: placed here, still. */
+export function leashMoving(a:Anchor,x:number,y:number,leash=MOVE_LEASH):boolean{
+  if(Number.isNaN(a.ax)){a.ax=x;a.ay=y;return false;}
+  const dx=x-a.ax,dy=y-a.ay,d=Math.hypot(dx,dy);
+  if(d<=leash)return false;
+  const k=(d-leash)/d;a.ax+=dx*k;a.ay+=dy*k;return true;
+}
+
 /** Idle breathing ±6%, moving hop/stretch ±14%. Volume is roughly preserved. */
 export function squash(timeMs:number,phase:number,moving:boolean,reduced:boolean,out:Scale2={sx:1,sy:1}):Scale2{
   if(reduced){out.sx=1;out.sy=1;return out;}

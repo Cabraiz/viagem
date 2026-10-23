@@ -48,12 +48,13 @@ test('pack12: rows like the firearms (verde × ARSENAL_DAMAGE × rarity), 4 rari
   }
 });
 
-test('pack12 passo 0: nothing playable, so the arsenal, the catalog, the noise and the crates are the firearms only', ()=>{
-  assert.equal(PACK12_PLAYABLE.size,0);
-  assert.deepEqual(ARSENAL_WEAPONS.map(w=>w.id),NEW_WEAPONS.map(w=>w.id));
-  for(const w of PACK12){assert.equal(getWeapon(w.id),undefined,w.id);assert.ok(!WEAPON_CATALOG.has(w.id));}
+test('pack12 passo 0: only the fatia A2 is playable, so the arsenal, the catalog and the crates are the firearms plus it', ()=>{
+  // Fatia A2 (E7, tests/sim/arsenal-pack12-a2.test.ts) made its three playable; the A1 ones are not yet.
+  assert.deepEqual([...PACK12_PLAYABLE].sort(),['bola-murcha','carro-de-som','panela-de-pressao']);
+  assert.deepEqual(ARSENAL_WEAPONS.map(w=>w.id),[...NEW_WEAPONS.map(w=>w.id),...PACK12.filter(w=>PACK12_PLAYABLE.has(w.id)).map(w=>w.id)]);
+  for(const w of PACK12)if(!PACK12_PLAYABLE.has(w.id)){assert.equal(getWeapon(w.id),undefined,w.id);assert.ok(!WEAPON_CATALOG.has(w.id));}
   assert.deepEqual(CRATE_WEAPONS[1],['pistola']);
-  assert.deepEqual([...CRATE_WEAPONS[2]].sort(),['escopeta','pistola','submetralhadora']);
+  assert.deepEqual([...CRATE_WEAPONS[2]].sort(),['bola-murcha','escopeta','pistola','submetralhadora']);
   assert.ok(CRATE_WEAPONS[5].every(id=>id.endsWith('-lendario')));
   // The verde is the pistol alone: one draw, every time (VERDE_PISTOL only splits a verde with more weapons).
   assert.ok(VERDE_PISTOL>0&&VERDE_PISTOL<1);
@@ -62,15 +63,6 @@ test('pack12 passo 0: nothing playable, so the arsenal, the catalog, the noise a
   assert.equal(weaponNoise('pistola'),12);
 });
 
-test('pack12: the A2 patterns are wired in the weapon system and inert until their card', async ()=>{
-  const {fireRicochet,bounceAfterHit}=await import('../../src/sim/weapons/ricochet.ts');
-  const {fireMine,mineTouched}=await import('../../src/sim/weapons/mine.ts');
-  const {fireTurret}=await import('../../src/sim/weapons/turret.ts');
-  const none=undefined as never;
-  assert.equal(fireRicochet(none,none,none,none),false);
-  assert.equal(fireMine(none,none,none,none),false);
-  assert.equal(fireTurret(none,none,none,none),false);
-  assert.equal(bounceAfterHit(none,none,none),false);
-  assert.equal(mineTouched(none,none,none),true);
+test('pack12: the A2 patterns are the three new mechanics', ()=>{
   assert.deepEqual(PACK12.filter(w=>w.pattern==='ricochet'||w.pattern==='mine'||w.pattern==='turret').map(w=>w.id).sort(),['bola-murcha','carro-de-som','panela-de-pressao']);
 });

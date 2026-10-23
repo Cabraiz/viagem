@@ -6,6 +6,7 @@ import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
+import { startAds } from './client/ui/ads-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
@@ -29,6 +30,8 @@ linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fe
 void startArt();
 // Menu music (NEW-20261014-ORQ-musica-do-menu): after load + idle, low priority, never on 2g/Save-Data; plays from the first tap.
 startMenuMusic();
+// Ads (NEW-20261023-ORQ-anuncios-h5-games): off by default; when on, the async script loads after the menu is ready.
+startAds(window,import.meta.env.DEV);
 // Art cache (NEW-20261013-ORQ-3g-precarga-partida): public/sw.js keeps /art and /assets by content version, so a second
 // match downloads no art. Production builds only: the dev server never gets a worker.
 if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});

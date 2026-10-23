@@ -54,6 +54,13 @@ const HEROES=[
     heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},
+  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): cut out like the cat
+  // (Codex redrew him alone on green, keyed with the colour unmixed), in the viciado's box (same height, middle and sole
+  // line); 2x from Real-ESRGAN 4x of the native cutout. His sand shadow is `sombra`. Letreiro: the user's pick of 8, the iron plate (2).
+  {id:'maromba',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-maromba',
+    heroi:'maromba-1080p-no-lugar.png',esrgan:'maromba-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png',
+    letreiro:'letreiro/letreiro-2-2x.png'},
   // NEW-20261023-ORQ-tela-vendedor-praia (the user chose variation 2, the promenade at sunset): Codex redrew it alone
   // at 16:9 and outpainted the bleed (lona/largo/compoe, like the maromba). The hero cut out like the maromba: painted
   // into that picture walking up with a bottle raised (cena-1), redrawn alone on green (recorte-1), keyed and enlarged by

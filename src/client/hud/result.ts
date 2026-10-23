@@ -144,13 +144,15 @@ export const MANAGE_SHORT='Arrumar';
 /**
  * The candidates for a card's name, longest first (design review of pacote-bugs-ux: "Seu", "Tia" alone lose the person,
  * and a name is never cut inside a word without "…"): the whole name, then whole words with "…", then the first word
- * cut with "…". The card writes the first that fits its lines (fitCardName).
+ * cut with "…". The card writes the first that fits its lines (fitCardName). A last word of one digit stays, as on the
+ * rail (railName): two bots of one class, "Viciado em Bet" and "Viciado em Bet 2", never both read "Viciado em…".
  */
 export function nameCandidates(name:string):string[]{
-  const full=name.trim(),words=full.split(/\s+/).filter(Boolean),out=[full];
-  for(let k=words.length-1;k>=1;k--)out.push(`${words.slice(0,k).join(' ')}…`);
+  const full=name.trim(),all=full.split(/\s+/).filter(Boolean),out=[full];
+  const num=all.length>1&&/^\d$/.test(all.at(-1)!)?` ${all.at(-1)}`:'',words=num?all.slice(0,-1):all;
+  for(let k=words.length-1;k>=1;k--)out.push(`${words.slice(0,k).join(' ')}…${num}`);
   const first=[...(words[0]??'')];
-  for(let n=first.length-1;n>=1;n--)out.push(`${first.slice(0,n).join('')}…`);
+  for(let n=first.length-1;n>=1;n--)out.push(`${first.slice(0,n).join('')}…${num}`);
   return out;
 }
 /** Writes into `el` the longest candidate of `name` that takes at most `lines` lines and has no word poking out. */
@@ -389,18 +391,19 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   };
   /**
    * The notice on top when the cards still fit under it (up to four players); otherwise it moves into the shamed
-   * player's card as its first chip (that card keeps two chips at most), so six cards never scroll (VGM-053B).
+   * player's card as its first chip (that card shows two chips at most; the others fold: read aloud, shown by a tap on
+   * the card), so six cards never scroll (VGM-053B).
    */
   const fitShame=()=>{
     if(!chipEl||!shameChip){shame.hidden=true;return;}
     const {chip,list}=chipEl,extra=[...list.querySelectorAll<HTMLElement>('.rh-award:not(.rh-award-shame)')].slice(MAX_AWARDS_PER_PLAYER-1);
-    chip.remove();for(const a of extra)a.hidden=false;list.hidden=!list.children.length;
+    chip.remove();for(const a of extra)a.classList.remove('rh-award-folded');list.hidden=!list.children.length;
     shame.hidden=false;
     // Five or six cards (four in landscape: two rows) never have room for the notice (measured at 390×844 and 844×390,
     // 100% and 125%, long names); fewer only move it when they would scroll.
     const crowded=grid.children.length>=(landscape?.matches?4:5);
     if(!crowded&&(root.hidden||grid.scrollHeight<=grid.clientHeight+1))return;
-    shame.hidden=true;list.prepend(chip);list.hidden=false;for(const a of extra)a.hidden=true;
+    shame.hidden=true;list.prepend(chip);list.hidden=false;for(const a of extra)a.classList.add('rh-award-folded');
   };
   /**
    * Names in up to two lines (whole name, else whole words with "…"); if the cards would then scroll, one line. Then the

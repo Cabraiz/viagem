@@ -31,3 +31,5 @@ export * from './veiculos.ts';
 export * from './calma.ts';
 // D-051: the manual attack's target choice, shared by the server's weapons and the client's reticle.
 export * from './attack-target.ts';
+// BUG-20261023-ORQ-armas-sem-projetil: thrown zones fly before they burst.
+export * from './thrown.ts';

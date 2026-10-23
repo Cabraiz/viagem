@@ -29,6 +29,8 @@ import {tokenColor} from '../../ui/tokens.ts';
 import {TowerAtlas,type AtlasFrame} from './tower-atlas.ts';
 import {SHADOW_SOFT_PX,castHeight,softShadow,towerShadowLook} from './tower-shadow.ts';
 import {lightEnabled} from '../light.ts';
+import {getAudio} from '../../audio/engine.ts';
+import {UsableGlow} from '../usable-glow.ts';
 import {AIM_FALLBACK,CALIBRE,CRATER,PHASE_HEIGHT,TOWER_KINDS,TOWER_LOOK,TURN_MS,aimIndex,aimedIndex,baseFrame,canFire,dir8,dirVector,firedNow,flightMs,lobHeight,shakeAt,shakeOffset,
   towerArt,towerArtScale,towerPhase,textureRatio,turnToward,weaponFrame,type CalibreLook,type Dir8,type TowerKind,type TowerLook,type TowerPhase,type TowerView} from './tower-rules.ts';
 
@@ -272,6 +274,8 @@ export class TowerRenderer {
   /** Every frame: aim and turn, fade covering defenses, move the effects, shake. `figures`: the hero and the allies. */
   update(nowMs:number,dtMs:number,figures:readonly Figure[]){
     this.now=nowMs;
+    const glow=this.glow??=new UsableGlow(this.scene,this.o.reduced),k=1/Math.max(.05,this.o.camera?.zoom||this.scene.cameras.main.zoom||1);
+    glow.begin(nowMs);
     const version=this.o.depthVersion?.()??0;
     if(version!==this.depthSeen){this.depthSeen=version;this.redepth();}
     const view=this.o.world.view(),covered=this.covered;
@@ -295,7 +299,10 @@ export class TowerRenderer {
     for(const t of this.towers.values()){
       const a=alpha.get(t.view.id)??1;
       if(a!==t.alpha){t.alpha=a;t.base.setAlpha(a);t.weapon.setAlpha(a);}
+      // contorno-usavel-wc3: a defense (and its obra) can be built on and upgraded: the Warcraft 3 gold outline.
+      glow.mark(t.view.id,t.base,k);
     }
+    glow.end();
     this.drawEffects(nowMs);
     this.atlas.flush();
     this.applyShake(nowMs);
@@ -306,6 +313,8 @@ export class TowerRenderer {
    * compared on one page under the same load.
    */
   labHidden='';
+  /** contorno-usavel-wc3: the gold outline of the defenses (render/usable-glow.ts), made on the first update. */
+  private glow?:UsableGlow;
   private hideAll(what:string){
     const all=what==='all';
     if(all||what.includes('crateras'))this.ground.setVisible(false);
@@ -338,7 +347,7 @@ export class TowerRenderer {
   }
   destroy(){
     for(const t of this.towers.values())this.drop(t);
-    this.towers.clear();this.bake.destroy();this.ground.destroy();this.shade.destroy();
+    this.towers.clear();this.glow?.destroy();this.bake.destroy();this.ground.destroy();this.shade.destroy();
     for(const img of this.fxImages)img.destroy();this.fxImages.length=0;
     const cam=this.o.camera;if(cam){cam.scrollX-=this.applied.x;cam.scrollY-=this.applied.y;}
   }
@@ -404,6 +413,8 @@ export class TowerRenderer {
   volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
     this.volleysDrawn++;
+    // Each calibre's shot (audio/sfx.ts torre-*), throttled per calibre so a battery does not stack up.
+    const audio=getAudio();if(audio.unlocked)audio.play(`torre-${t.look.calibre}`);
     const cal=t.cal,e=this.enemies,v=t.view;
     t.recoilUntil=nowMs+RECOIL_MS;
     let tx=NaN,ty=NaN;

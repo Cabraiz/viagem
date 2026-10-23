@@ -1,7 +1,9 @@
 /**
  * D-051 arsenal on screen (NEW-20261016-ORQ-armas-caixas-render): what render/layers.ts adds in the manual combat.
  *  - Crates: base `caixa-saque` (closed, then abrindo-1..6 while a hero stands still at one) over a ring in its
- *    rarity colour, that ring filling while it opens and a burst with the rarity name when it opens ('pickup' chest event).
+ *    rarity colour, that ring filling while it opens and a burst when it opens ('pickup' chest event).
+ *  - The crate's prize (bau-mostra-o-premio): its sticker rises out of the opened crate over a glow in the crate's colour,
+ *    its name under it in that colour; smaller for a crate another hero opened, kept off the HUD (arsenal-rules.ts prizeSpot).
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
  *  - The weapon in each hero's hand (PlayerRunView.hand): its sticker at the hero's side; none while moving the car (D-052).
  *    With full effects it casts its part of the hero's silhouette (render/silhouette.ts), so the shadow holds the weapon.
@@ -26,8 +28,10 @@ import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
-import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
-  SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
+import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
+import {THROW_MS} from '../../rules/index.ts';
+import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,
+  prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -47,6 +51,8 @@ const HAND_DX=26,HAND_DY=-30;
  * ground layer (layers.ts -9970: the telegraphs stay on top of it).
  */
 const RING_DEPTH=-9965,CONE_DEPTH=-9974,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
+/** The prize's glow and rays (canvas textures made once), and where it sits over the crate (fractions of the crate's width). */
+const GLOW_KEY='arsenal:premio-brilho',RAYS_KEY='arsenal:premio-raios',PRIZE_MOUTH=.28,PRIZE_REST=.62;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 /**
@@ -57,7 +63,17 @@ const PROGRESS_POINTS=40;
 const RING_BAND_DEPTH=RING_DEPTH-.001,RING_LOOK_MS=3000;
 
 interface ShotFx {image:Image;born:number;x:number;y:number;angle:number;look:FireLook;frames:number;scale:number}
-interface BurstFx {image:Image;label:Phaser.GameObjects.Text;born:number;x:number;y:number;rarity:Rarity}
+/** One shotgun pellet (render/shot-flight.ts): from the hero (x, y) along the aim (ux, uy) turned by `angle`. */
+interface PelletFx {image:Image;born:number;x:number;y:number;ux:number;uy:number;angle:number;reach:number;look:PelletLook}
+/**
+ * The pellet's texture (made once): a short hot streak (Amarelo core, Breu edge: it reads on the snow and on the grass),
+ * drawn rotated along its flight, PELLET_PX long at body 1.
+ */
+const PELLET_KEY='arsenal:chumbo',PELLET_W=26,PELLET_H=10,PELLET_PX=36;
+interface BurstFx {image:Image;born:number;x:number;y:number;rarity:Rarity}
+/** A crate's prize: pending (look undefined) until a view shows what the opener got, then `start` is when it rises. */
+interface PrizeFx {sticker:Image;glow:Image;rays:Image;label:Phaser.GameObjects.Text;born:number;start:number;x:number;y:number;
+  rarity:Rarity;player:string;own:boolean;look?:PrizeLook}
 
 export interface ArsenalOptions {
   projector:Projector;
@@ -100,9 +116,13 @@ export class ArsenalFx{
   private hands=new Map<string,{image:Image;sil:Image;grip:Image;icon:string;seen:number}>();
   private handOf=new Map<string,string>();
   private shots:Ring<ShotFx>;
+  private pellets:Ring<PelletFx>;
+  private spread:{angle:number;reach:number}[]=[];private pelletSeed=0;
   private bursts:Ring<BurstFx>;
+  private prizes:Ring<PrizeFx>;
+  private chestPrizes=new ChestPrizes();
   private colors:Record<Rarity,number>={...RARITY_COLOR};
-  private papel=0xeeddb8;private breu=0x1e1530;
+  private papel=0xeeddb8;private breu=0x1e1530;private amarelo=0xffd23f;
   private q:Pt={x:0,y:0};private q2:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:PROGRESS_POINTS},()=>({x:0,y:0}));
   private frameRef:BaseFrameRef={key:'',frame:0};
@@ -129,11 +149,15 @@ export class ArsenalFx{
     const image=()=>this.track(scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{o.image.setVisible(active).setActive(active);if(!active)o.image.setAlpha(1).setScale(1).setRotation(0);};
     this.shots=new Ring<ShotFx>(()=>({image:image(),born:0,x:0,y:0,angle:0,look:FIRE_LOOK.pistola,frames:1,scale:1}),showImage,24);
-    this.bursts=new Ring<BurstFx>(()=>({image:image(),label:this.track(scene.add.text(0,0,'',{fontFamily:'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',fontSize:'26px',fontStyle:'900',color:'#EEDDB8',stroke:'#1E1530',strokeThickness:7})
-      .setOrigin(.5,1).setDepth(FX_DEPTH+1).setVisible(false)),born:0,x:0,y:0,rarity:1}),(o,active)=>{showImage(o,active);o.label.setVisible(active);},6);
+    this.pellets=new Ring<PelletFx>(()=>({image:image(),born:0,x:0,y:0,ux:1,uy:0,angle:0,reach:1,look:PELLETS.escopeta}),showImage,42);
+    this.bursts=new Ring<BurstFx>(()=>({image:image(),born:0,x:0,y:0,rarity:1}),showImage,6);
+    this.prizes=new Ring<PrizeFx>(()=>({sticker:image().setDepth(FX_DEPTH+2),glow:image().setDepth(FX_DEPTH+1),rays:image().setDepth(FX_DEPTH+1),
+      label:this.track(scene.add.text(0,0,'',{fontFamily:'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',fontSize:'22px',fontStyle:'900',color:'#EEDDB8',stroke:'#1E1530',strokeThickness:6})
+        .setOrigin(.5,0).setDepth(FX_DEPTH+3).setVisible(false)),born:0,start:-1,x:0,y:0,rarity:1,player:'',own:false}),
+    (o,active)=>{if(!active){for(const i of [o.sticker,o.glow,o.rays])i.setVisible(false).setActive(false).setAlpha(1).setScale(1).setRotation(0);o.label.setVisible(false);o.look=undefined;}},6);
     try{
       for(const r of [1,2,3,4,5] as Rarity[]){const c=token(RARITY_TOKEN[r]);if(c)this.colors[r]=tokenColor(RARITY_TOKEN[r]);}
-      this.papel=tokenColor('--c-papel');this.breu=tokenColor('--c-breu');
+      this.papel=tokenColor('--c-papel');this.breu=tokenColor('--c-breu');this.amarelo=tokenColor('--c-amarelo');
     }catch{/* no tokens.css (tests): the fallbacks */}
   }
 
@@ -163,15 +187,19 @@ export class ArsenalFx{
     }
     this.manual=manual;
     if(manual&&!this.queued)this.queueArt();
+    if(!manual)return;
+    // bau-mostra-o-premio: what each hero got this view; a crate still waiting for its prize looks again.
+    this.chestPrizes.observe(view.players,view.pickups,this.now);
+    this.prizes.forEach(p=>{if(!p.look)this.claimPrize(p);});
   }
 
   /** Per event: a damage on a hero restarts its opening; a crate opened bursts; an arsenal weapon's shot shows. */
   event(event:SimEvent,crateAt?:Pt){
     if(!this.manual)return;
     if(event.type==='damage')this.openings.hurt(event.target,this.now);
-    else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value));
+    else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value),event.player);
     else if(event.type==='fire'){
-      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy);
+      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy,event.weapon);
       const cone=this.selfCone;
       if(cone&&cone.weapon===event.weapon&&event.player===this.options.selfId?.())this.cone.swing(this.now,cone.radius,cone.half,event.dx??0,event.dy??0);
     }
@@ -264,8 +292,10 @@ export class ArsenalFx{
       this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
     }
     this.shots.retain(this.drawShot);
+    this.pellets.retain(this.drawPellet);
     this.slashes=this.slashes.filter(s=>this.drawSlash(s));
     this.bursts.retain(this.drawBurst);
+    this.prizes.retain(this.drawPrize);
   }
   /** The weapon in each hero's hand, on the pose and spot the hero's sprite shows now. */
   drawHands(){
@@ -306,7 +336,7 @@ export class ArsenalFx{
 
   destroy(){
     this.aura.destroy();
-    this.shots.clear();this.bursts.clear();this.hands.clear();
+    this.shots.clear();this.pellets.clear();this.bursts.clear();this.prizes.clear();this.hands.clear();
     for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
     this.ringLooks.clear();
     for(const o of this.objects)o.destroy();
@@ -356,34 +386,101 @@ export class ArsenalFx{
     const src=textures.get(from).getSourceImage() as HTMLImageElement,h=src.height,n=Math.max(1,Math.floor(src.width/Math.max(1,h)));
     textures.addSpriteSheet(key,src,{frameWidth:h,frameHeight:h,endFrame:n-1});
   }
-  private fire(look:FireLook,x:number,y:number,dx=0,dy=0){
+  private fire(look:FireLook,x:number,y:number,dx=0,dy=0,weapon=''){
     const p=this.options.projector,len=Math.hypot(dx,dy),ux=len>1e-6?dx/len:1,uy=len>1e-6?dy/len:0;
     const a=p.project(x,y,this.q),ax=a.x,ay=a.y,ahead=p.project(x+ux,y+uy,this.q2),angle=Math.atan2(ahead.y-ay,ahead.x-ax);
     if(look.kind==='slash'){
       if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms});
       return;
     }
+    const pellets=PELLETS[weapon];
+    if(pellets)this.firePellets(pellets,x,y,ux,uy);
     const key=look.art?fxKey(look.art):'';
     if(!key||!this.scene.textures.exists(key))return;
     const frames=Math.max(1,this.scene.textures.get(key).frameTotal-1);
+    // A thrown weapon's burst plays when it lands (rules/thrown.ts): hidden until then (drawShot).
+    const born=look.kind==='blast'&&THROWN[weapon]?this.now+THROW_MS:this.now;
     const spawn=(wx:number,wy:number,scale:number)=>{
       const s=this.shots.spawn();
-      s.born=this.now;s.x=wx;s.y=wy;s.angle=angle;s.look=look;s.frames=frames;s.scale=scale;
+      s.born=born;s.x=wx;s.y=wy;s.angle=angle;s.look=look;s.frames=frames;s.scale=scale;
       s.image.setTexture(key,0).setOrigin(look.kind==='muzzle'?.15:.5,look.kind==='blast'?.75:.5).setDepth(FX_DEPTH);
     };
     if(look.kind==='muzzle')spawn(x+ux*.45,y+uy*.45,1);
     else if(look.kind==='blast')spawn(x+dx,y+dy,1);
     else{const n=coneSteps(look.reach??1.5);for(let i=0;i<n;i++){const d=.5+i*((look.reach??1.5)-.5)/Math.max(1,n-1);spawn(x+ux*d,y+uy*d,.75+.35*i/Math.max(1,n-1));}}
   }
-  private burst(at:Pt,rarity:Rarity){
+  /** The shotgun's pellets: a fan across the cone, flying out to its reach (render/shot-flight.ts). */
+  private firePellets(look:PelletLook,x:number,y:number,ux:number,uy:number){
+    if(!this.pelletTexture())return;
+    for(const o of pelletSpread(look.count,look.half,++this.pelletSeed,this.spread)){
+      const s=this.pellets.spawn();
+      s.born=this.now;s.x=x;s.y=y;s.ux=ux;s.uy=uy;s.angle=o.angle;s.reach=look.reach*o.reach;s.look=look;
+      s.image.setTexture(PELLET_KEY).setOrigin(.5,.5).setDepth(FX_DEPTH);
+    }
+  }
+  private pelletTexture(){
+    const textures=this.scene.textures;
+    if(textures.exists(PELLET_KEY))return true;
+    const canvas=textures.createCanvas(PELLET_KEY,PELLET_W,PELLET_H);if(!canvas)return false;
+    const g=canvas.getContext(),hex=(c:number)=>`#${c.toString(16).padStart(6,'0')}`,r=PELLET_H/2;
+    const capsule=(inset:number)=>{
+      g.beginPath();g.moveTo(r,inset);g.lineTo(PELLET_W-r,inset);g.arc(PELLET_W-r,r,r-inset,-Math.PI/2,Math.PI/2);
+      g.lineTo(r,PELLET_H-inset);g.arc(r,r,r-inset,Math.PI/2,Math.PI*1.5);g.closePath();g.fill();
+    };
+    g.fillStyle=hex(this.breu);capsule(0);g.fillStyle=hex(this.amarelo);capsule(2);
+    canvas.refresh();
+    return true;
+  }
+  private drawPellet=(s:PelletFx)=>{
+    const age=this.now-s.born,u=age/s.look.ms;if(u>=1)return false;
+    const c=Math.cos(s.angle),n=Math.sin(s.angle),dx=s.ux*c-s.uy*n,dy=s.ux*n+s.uy*c,d=pelletDistance(u,s.reach);
+    const p=this.options.projector,b=this.body,q=p.project(s.x+dx*d,s.y+dy*d,this.q),ahead=p.project(s.x+dx*(d+1),s.y+dy*(d+1),this.q2);
+    s.image.setPosition(q.x,q.y-22*b).setRotation(Math.atan2(ahead.y-q.y,ahead.x-q.x)).setScale(PELLET_PX*b/PELLET_W)
+      .setAlpha(pelletAlpha(u));
+    return true;
+  };
+  private burst(at:Pt,rarity:Rarity,player:string){
     const ref=baseFrame(CRATE_ART,'abrindo-6',0,0,this.frameRef),b=this.bursts.spawn(),file=baseFile(CRATE_ART);
     b.born=this.now;b.x=at.x;b.y=at.y;b.rarity=rarity;
     if(ref&&file&&this.scene.textures.exists(ref.key))b.image.setTexture(ref.key,ref.frame).setOrigin(.5,.88).setDepth(FX_DEPTH);
     else b.image.setVisible(false);
-    b.label.setText(`${RARITY_NAME[rarity]}!`).setColor(`#${this.colors[rarity].toString(16).padStart(6,'0')}`);
+    const p=this.prizes.spawn();
+    p.born=this.now;p.start=-1;p.x=at.x;p.y=at.y;p.rarity=rarity;p.player=player;p.own=player===this.options.selfId?.();p.look=undefined;
+    this.claimPrize(p);
+  }
+  /** The prize of a crate, once a view shows it: its look, and it starts rising now. */
+  private claimPrize(p:PrizeFx){
+    const id=this.chestPrizes.claim(p.player,p,this.now);if(!id)return;
+    p.look=prizeLook(id,p.rarity,this.colors);p.start=this.now;
+    const key=p.look.icon&&iconKey(p.look.icon);
+    if(key&&this.scene.textures.exists(key))p.sticker.setTexture(key).setOrigin(.5,.5);
+    else p.sticker.setTexture('__DEFAULT').setVisible(false);
+    p.label.setText(p.look.name).setColor(`#${p.look.color.toString(16).padStart(6,'0')}`);
+    p.glow.setTexture(this.prizeTexture(GLOW_KEY)).setTint(p.look.color).setBlendMode('ADD');
+    p.rays.setTexture(this.prizeTexture(RAYS_KEY)).setTint(p.look.color).setBlendMode('ADD');
+  }
+  /** The glow (a soft disc) and the rays (soft spokes) behind a prize, white so a tint colours them; made once. */
+  private prizeTexture(key:string){
+    const textures=this.scene.textures;
+    if(textures.exists(key))return key;
+    const n=128,tex=textures.createCanvas(key,n,n);if(!tex)return '__DEFAULT';
+    const c=tex.getContext(),h=n/2;
+    if(key===GLOW_KEY){
+      const g=c.createRadialGradient(h,h,0,h,h,h);
+      g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.35,'rgba(255,255,255,.55)');g.addColorStop(1,'rgba(255,255,255,0)');
+      c.fillStyle=g;c.fillRect(0,0,n,n);
+    }else{
+      const g=c.createRadialGradient(h,h,h*.15,h,h,h);
+      g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(1,'rgba(255,255,255,0)');
+      c.fillStyle=g;
+      for(let i=0;i<12;i++){const a=i*Math.PI/6,w=.09;c.beginPath();c.moveTo(h,h);c.arc(h,h,h,a-w,a+w);c.closePath();c.fill();}
+    }
+    tex.refresh();
+    return key;
   }
   private drawShot=(s:ShotFx)=>{
     const age=this.now-s.born;if(age>=s.look.ms)return false;
+    s.image.setVisible(age>=0);if(age<0)return true;
     const q=this.options.projector.project(s.x,s.y,this.q),b=this.body,f=shotFrame(s.look,age,s.frames);
     if(s.image.frame.name!==String(f))s.image.setFrame(f);
     const h=Math.max(1,s.image.height),k=s.look.size*b*s.scale/h;
@@ -405,7 +502,31 @@ export class ArsenalFx{
     if(file&&o.image.visible)o.image.setPosition(q.x,q.y).setScale(CRATE_PX*b/file.cell[0]).setAlpha(1-u*u);
     const color=this.colors[o.rarity],r=(30+70*u)*b;
     this.arcs.lineStyle(5*b*(1-u)+1,color,1-u).strokeEllipse(q.x,q.y-10*b,r*2,r*.9);
-    o.label.setPosition(q.x,q.y-(70+40*u)*b).setScale(b*(u<.15?.6+u/.15*.4:1)).setAlpha(u<.7?1:1-(u-.7)/.3);
+    return true;
+  };
+  /**
+   * A prize: the sticker from the crate's mouth up over it (prizeMotion), the glow and, on the gold and the legendary,
+   * the turning rays behind, the name under it; the whole kept off the HUD at its resting spot (prizeSpot).
+   */
+  private drawPrize=(p:PrizeFx)=>{
+    if(!p.look)return this.now-p.born<=PRIZE_CLAIM_MS;
+    const m=prizeMotion(this.now-p.start,this.reduced);if(!m)return false;
+    const q=this.options.projector.project(p.x,p.y,this.q),b=this.body,crate=CRATE_PX*b,px=(p.own?PRIZE_PX.own:PRIZE_PX.other)*b;
+    const mouth=q.y-crate*PRIZE_MOUTH,rest=q.y-crate*PRIZE_REST-px*.5;
+    const nameK=b*(p.own?1.25:.8),half=Math.max(px*.5,p.label.width*nameK*.5)+6*b;
+    const safe=prizeSpot(q.x,rest,this.scene.cameras.main.worldView,this.q2,half),dx=safe.x-q.x,dy=safe.y-rest;
+    const x=q.x+dx,y=mouth+(rest-mouth)*m.lift+dy,k=m.scale;
+    if(p.sticker.texture.key!=='__DEFAULT'){
+      const w=Math.max(1,p.sticker.frame.width,p.sticker.frame.height);
+      p.sticker.setPosition(x,y).setScale(px*k/w).setAlpha(m.alpha).setVisible(true).setActive(true);
+    }
+    const glow=p.look.glow;
+    p.glow.setPosition(x,y).setScale(px*(1.5+.6*glow)*k/128).setAlpha(m.alpha*(.35+.5*glow)).setVisible(true).setActive(true);
+    if(glow>=.9){
+      const turn=this.reduced?0:(this.now-p.start)*.0009;
+      p.rays.setPosition(x,y).setScale(px*2.6*k/128).setRotation(turn).setAlpha(m.alpha*.55*glow).setVisible(true).setActive(true);
+    }else if(p.rays.visible)p.rays.setVisible(false).setActive(false);
+    p.label.setPosition(x,y+px*.5*k).setScale(nameK).setAlpha(m.alpha).setVisible(true);
     return true;
   };
   private track<T extends Phaser.GameObjects.GameObject>(o:T):T{this.objects.push(o);return o;}

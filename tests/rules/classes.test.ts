@@ -1,11 +1,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { classes, filterClasses, getClass } from '../../src/rules/classes.ts';
-// 35 classes since Tia da Festa left (NEW-20261013-ORQ-classes-cartas-e-nomes); `art` is the cell in the 36-cell atlas, so
-// it keeps its gap instead of renumbering the art.
-test('35 classes have unique identity and one atlas cell each',()=>{
-  assert.equal(classes.length,35);
-  for(const key of ['id','name','skill','art'] as const) assert.equal(new Set(classes.map(hero=>hero[key])).size,35);
+// 35 classes since Tia da Festa left (NEW-20261013-ORQ-classes-cartas-e-nomes), 36 with the gato (gato-no-menu), who
+// takes her free cell 16 of the 36-cell atlas: `art` is the cell, so nobody is renumbered.
+test('36 classes have unique identity and one atlas cell each',()=>{
+  assert.equal(classes.length,36);
+  for(const key of ['id','name','skill','art'] as const) assert.equal(new Set(classes.map(hero=>hero[key])).size,36);
   assert.ok(classes.every(hero=>Number.isInteger(hero.art)&&hero.art>=0&&hero.art<36));
 });
 test('every class has a complete and balanced selectable sheet',()=>{

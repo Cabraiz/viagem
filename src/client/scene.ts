@@ -38,6 +38,8 @@ import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
+import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
+import {talkSeed} from './render/chaveiro/lines.ts';
 import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
@@ -103,6 +105,8 @@ export interface SceneHooks {
   enemyPicked?:(id:string)=>void;
   /** D-051: the right mouse button pressed (true) or let go (false) holds the attack like Space. Absent: no manual attack. */
   attackHold?:(down:boolean)=>void;
+  /** The phone's aim stick over the attack button (tiro-na-direcao-mobile): its world direction while it aims, else undefined. */
+  aimStick?:()=>Point|undefined;
   /** D-051: the room plays the manual combat (the target words say "ataque", not "a arma atira sozinha"). */
   manual?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
@@ -282,6 +286,8 @@ export class IslandScene extends Phaser.Scene {
   private selfShift={x:0,y:0};
   /** Bancos (card bancos-e-veiculos): the run's ATMs in the world; only while a run view has banks. */
   private banks?:BankRenderer;
+  /** D-047 (card chaveiro-falas): when the chaveiro's cast speaks, in the horde's balloons; made with the renderer. */
+  private talk?:ChaveiroTalk;
   /**
    * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
    * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
@@ -528,7 +534,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
-        aim:()=>this.mouseGround(),
+        aim:()=>this.mouseGround()??this.stickGround(),
         // …drawn by the scene right after the hero is placed: under his shadow, at his drawn depth (cone-por-cima).
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
@@ -550,7 +556,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -757,6 +763,11 @@ export class IslandScene extends Phaser.Scene {
     const p=this.input.activePointer;
     return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);
   }
+  /** The ground point one unit from the hero along the phone's aim stick, or undefined while it does not aim. */
+  private stickGround():Point|undefined{
+    const d=this.hooks.aimStick?.();
+    return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
@@ -953,7 +964,8 @@ export class IslandScene extends Phaser.Scene {
     // Pushing the Uno (empurrar-uno): faces it with the push clip, drawn with the palms on it (place() adds the shift).
     const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp);
+    // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1033,11 +1045,27 @@ export class IslandScene extends Phaser.Scene {
    * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
    * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.
    */
-  private pushChaveiro(view:RunView){
+  private pushChaveiro(view:RunView,time:number){
     const objective=objectiveOf(view);
     if(!objective&&!this.chaveiro)return;
     if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
     this.chaveiro?.push(objective,view.tick);
+    this.talk??=new ChaveiroTalk(talkSeed(this.hooks.net?.code??'',this.field.seed));
+    this.talk.push(objective,view.events as readonly LooseEvent[],view.tick,time);
+  }
+  /**
+   * D-047 (card chaveiro-falas): the cast's line due now, if any (talk.ts), in the zueiras' balloon: the chaveiro and
+   * Cida over the moto (or him where he stands), the Tio beside the car, the alarm over it. The end of the run
+   * comes from the result too (RunState.objective, protocol 15, read loosely).
+   */
+  private speakChaveiro(time:number){
+    const talk=this.talk,net=this.hooks.net;
+    if(!talk||!this.chaveiro||!this.horde)return;
+    talk.result((net?.run as {objective?:unknown}|undefined)?.objective,time);
+    const said=talk.take(time);
+    if(!said)return;
+    const chaveiro=this.chaveiro;
+    this.horde.speak(`chaveiro:${said.speaker}`,said.text,()=>chaveiro.speechAnchor(said.speaker),said.priority);
   }
   /**
    * D-051 (ninhos-arte-render): the snapshot's nests (structures of kind 'ninho') drawn on the city ground with their
@@ -1194,14 +1222,14 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=effectivePhase(runView,net.predicted);
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.speakChaveiro(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=stepClock(this.accumulator,this.frameMs);
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
@@ -1215,7 +1243,7 @@ export class IslandScene extends Phaser.Scene {
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
+      const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       net.input(direction,false,this.attackTarget,!frozen&&!out&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }

@@ -191,6 +191,9 @@ const ITENS=Object.freeze({
 const PROJETEIS=Object.freeze({
   'tiro-aliado':strip(32,4),'garrafa-molotov':strip(64,8),'coco-pombo':strip(48,6),'coco-pombo-poca':strip(96,6),
   'boleto-juros':strip(48,8),
+  // The Rojão de Réveillon's rocket (BUG-20261023-ORQ-armas-sem-projetil): six 64 px frames; guessed as one 384 px frame it
+  // flew as a row of six rockets.
+  rojao:strip(64,6),
   // Any other critter shot (today's hostile star, keys.ts FX.projHostile); P1: the inventory has no row for it yet.
   'tiro-inimigo':strip(32,[1,4],P1),
   ...Object.fromEntries(['chinelo','boleto','cafe','guarda-chuva','pombo','audio','chinelo-evo','boleto-evo','cafe-evo']
@@ -253,7 +256,7 @@ export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-b
   'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
   'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
   'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
-  'conspiracionista','gamer-mobile','rainha-bateria']);
+  'conspiracionista','gamer-mobile','rainha-bateria','gato-nada-pra-comer']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
 export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
 /** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */

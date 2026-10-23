@@ -17,7 +17,7 @@
 .explore-settings .game-menu-resume{background:var(--c-papel);color:var(--c-lilas);border-color:var(--c-breu)}
 .explore-settings .game-menu-leave,.explore-settings .game-menu-confirm-leave{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
 .explore-settings .game-menu-confirm-leave:disabled{opacity:.6}
-.game-menu-live{margin:2px 0 0;font-size:13px;text-align:center;opacity:.9}
+.game-menu-live{margin:2px 0 0;font-size:13px;text-align:center}
 .game-menu-confirm-text{margin:4px 0 6px;font:22px/1.2 var(--f-cartaz)}
 .game-menu-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .explore-settings .game-menu-stay{background:var(--c-papel);color:var(--c-lilas);border-color:var(--c-breu)}

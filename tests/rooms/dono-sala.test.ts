@@ -5,11 +5,11 @@ import {Room,OWNER_GAP_MS,ROSTER_BOTS_MS,nameKey,type Peer,type RoomRoster} from
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage} from '../../src/protocol/room.ts';
 import {RunLifecycle} from '../../src/sim/run.ts';
-import {RoomBots,botIdentity,BOT_NAMES,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
+import {RoomBots,botIdentity,botName,numberedName,BOT_FALLBACK_NAME,BOT_NAME_MAX,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
 import {classes} from '../../src/rules/classes.ts';
-import {NICK_MAX} from '../../src/client/lobby.ts';
 import {railName} from '../../src/client/render/map-label-rules.ts';
+import {RAIL_MAX} from '../../src/rules/names.ts';
 import {waitingRoomView,confirmText,ownerNotice,OWNER_HINT} from '../../src/client/lobby.ts';
 import {computeAwards} from '../../src/client/hud/awards.ts';
 import {emptyTally} from '../../src/client/hud/model.ts';
@@ -135,13 +135,27 @@ test('six with bots: a seventh bot is refused; a person takes the newest bot sea
   const after=peer();join(room,after,'Duda',t+100);assert.equal(welcome(after).t,'welcome');assert.equal(bots(room).length,2);
 });
 
-test('bots: funny names that fit, a class of the 36, marked as bot, ready, never holding the start alone',()=>{
-  for(const name of BOT_NAMES){assert.ok(name.length<=NICK_MAX,name);assert.doesNotMatch(name,/\p{Extended_Pictographic}/u);}
-  // The rail and the caído ficha show the first word only: each bot keeps its own there (and none is just "Bot").
-  const rails=BOT_NAMES.map(name=>railName(name));
-  assert.equal(new Set(rails).size,BOT_NAMES.length,rails.join());assert.ok(rails.every(r=>!/^(bot|robô)$/i.test(r)));
-  assert.notEqual(railName(botIdentity(1,0,['x'],new Set(['Pamonha da Silva','Parafuso','Geladeira'])).name).toLowerCase(),'pamonha');
-  for(let n=0;n<6;n++){const taken=new Set(BOT_NAMES.filter((_,i)=>i!==n));assert.equal(botIdentity(9,0,['x'],taken).name,BOT_NAMES[n],'the only free name');}
+test('bots: named after their character (numbered when repeated), a class of the 36, marked as bot, ready, never holding the start alone',()=>{
+  // NEW-20261023-ORQ-bot-nome-do-personagem: the class name, not a funny nickname; a second one gets "2".
+  assert.deepEqual(botIdentity(9,0,['clt-cansado'],new Set()),{name:'CLT',classId:'clt-cansado'});
+  assert.equal(botIdentity(9,1,['clt-cansado'],new Set(['Ana','CLT'])).name,'CLT 2');
+  assert.equal(botIdentity(9,2,['clt-cansado'],new Set(['CLT','CLT 2'])).name,'CLT 3');
+  assert.equal(botIdentity(9,0,['viciado-em-bet'],new Set()).name,'Viciado em Bet');
+  assert.equal(botName('Viciado em Bet',new Set(['Viciado em Bet'])),'Viciado em Bet 2');
+  // The rail keeps the number, so two of a class never read the same there; a seated short name counts too.
+  assert.equal(railName('Viciado em Bet 2'),'Viciado 2');assert.equal(railName('CLT 2'),'CLT 2');
+  assert.equal(botName('Rei do Arraiá',new Set(['Rei do Pastel'])),'Rei do Arraiá 2');
+  assert.equal(botName('Tio do Churrasco',new Set(['Tio'])),'Tio do Churrasco 2');
+  assert.equal(botIdentity(9,0,['x'],new Set()).name,BOT_FALLBACK_NAME,'unknown class');
+  // The person keeps their nickname: a person named like a class is untouched, the bot takes the number.
+  assert.equal(botName('Maromba',new Set(['Maromba'])),'Maromba 2');
+  for(const c of classes){const rails=[c.name,`${c.name} 2`,`${c.name} 6`].map(railName);
+    assert.ok(rails.every(r=>[...r].length<=RAIL_MAX),rails.join());assert.ok(rails[1].endsWith(' 2'),rails[1]);}
+  // N5-nomes-longos: the number never falls off the room's 20 ("Passageira do Busão 2" is 21; a restore cut it to "… Busão ").
+  assert.equal(botName('Passageira do Busão',new Set(['Passageira do Busão'])),'Passageira 2');
+  assert.equal(numberedName('Viciado em Bet',9),'Viciado em Bet 9');
+  for(const c of classes)for(const k of [2,9]){const n=numberedName(c.name,k);
+    assert.ok(n.length<=BOT_NAME_MAX&&n.endsWith(` ${k}`)&&!/ (d[aeo]s?|em) \d$/.test(n),n);}
   const ids=classes.map(c=>c.id),picked=new Set<string>();
   for(let n=0;n<40;n++){const b=botIdentity(1234,n,ids,new Set());assert.ok(ids.includes(b.classId));picked.add(b.classId);}
   assert.ok(picked.size>8,'classes spread');
@@ -199,7 +213,7 @@ test('room bots are deterministic: same seed, same seats, same run',()=>{
   const play=()=>{
     const sim=new Simulation(4242,{world:'infinito'}),rb=new RoomBots();
     sim.add('ana','Ana','cidadao-comum');
-    for(let i=0;i<5;i++){const id=`bot-${i+1}`;sim.addBot(id,BOT_NAMES[i],classes[i*7].id);rb.add(id,i);}
+    for(let i=0;i<5;i++){const id=`bot-${i+1}`;sim.addBot(id,classes[i*7].name,classes[i*7].id);rb.add(id,i);}
     sim.resetRun();
     for(let i=0;i<20*90;i++){rb.think(sim);sim.step(i*50);}
     return {hash:sim.stateHash(),at:[...sim.players.values()].map(p=>[p.x,p.y])};
@@ -342,7 +356,7 @@ test('kicked: the second sign is the name (no accents, spaces or case), for 10 m
 
 test('stateHash covers the bots minds and step counter, not only their sticks',()=>{
   const sim=new Simulation(4242,{world:'infinito'}),rb=new RoomBots();sim.botState=()=>rb.state();
-  sim.add('ana','Ana','cidadao-comum');sim.addBot('bot-1',BOT_NAMES[0],'mendigo');rb.add('bot-1',0);sim.resetRun();
+  sim.add('ana','Ana','cidadao-comum');sim.addBot('bot-1','Mendigo','mendigo');rb.add('bot-1',0);sim.resetRun();
   for(let i=0;i<40;i++){rb.think(sim);sim.step(i*50);}
   const hash=sim.stateHash();
   (rb.state()[0].memory as {lastCastTick:number}).lastCastTick=-12345;

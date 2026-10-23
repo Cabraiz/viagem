@@ -12983,8 +12983,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp": {
-   "sha": "6ae931a8e1e82d5f113ee23b0eb4c3a9e885cf794f6c4baa02030b422b800072",
+  "lite/sprites/gato-nada-pra-comer.push16-nw.ab6559769548.webp": {
+   "sha": "4d45aa5b52b7bfc2785604256c349faaf38856f342b85f9b8174b17a79ad486b",
    "ilhas": 0,
    "fails": []
   },
@@ -13008,8 +13008,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/gato-nada-pra-comer.run16-nw.3203fd970c77.webp": {
-   "sha": "76da00593b9657d250606a6c6be25c7ac599fb3b8532891b7863441d0fe1158b",
+  "lite/sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
+   "sha": "2588db84a47450c5d281ce54fe6d7b15c2320e5a3e87041f750dee9ef0bb2cda",
    "ilhas": 0,
    "fails": []
   },
@@ -13033,8 +13033,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp": {
-   "sha": "c121730d971775e992b18c5dce36fa8fa0f1633227b2513e086c1b4a1b0d0c74",
+  "lite/sprites/gato-nada-pra-comer.walk16-nw.acb4ac608344.webp": {
+   "sha": "7a6580fcea3defe5ae2439ead8138ca5ca9a24b59f40f571fde0c6ea7e51b6a5",
    "ilhas": 0,
    "fails": []
   },
@@ -13043,8 +13043,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp": {
-   "sha": "b835f09552aff31b6acf86203d531a3146f1fbda92a2ca1ad0f4b43bebeff98d",
+  "lite/sprites/gato-nada-pra-comer.walk16-se.27a50041299c.webp": {
+   "sha": "957afe3cbd06e42415c8eca10754cd17c9ee81c51a814c7901e218ce8c1f3426",
    "ilhas": 0,
    "fails": []
   },
@@ -14218,28 +14218,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-n.66524789b514.webp": {
-   "sha": "52e33886bc85beaff22ddc5f36faab79774174f06d338b6abd9dc8b35c6391a5",
+  "lite/sprites/viciado-em-bet.walk16-n.12790bb72e36.webp": {
+   "sha": "6caf29dc9eba525ac7a3170d15c44b78cd6e1dbed478932cd901865e0462ae0e",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-nw.9a4e75e40218.webp": {
-   "sha": "b0f84bc0d197276397f8b035380d99f6c827a94a7bba15728b19a97f400b2cdb",
+  "lite/sprites/viciado-em-bet.walk16-nw.2a00ab5eb8cd.webp": {
+   "sha": "ba3b7279bad9e73ccf447e09da6f7de164896e0497b95d9ba4b259926ff5da00",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-s.0db3ef27844b.webp": {
-   "sha": "b682ddb24ca936494df32ffe34354a65b4ee66e41eb1d647e7df45ce126aefda",
+  "lite/sprites/viciado-em-bet.walk16-s.ffd1151089f4.webp": {
+   "sha": "07779ff11a893291b3a227e4631b3af39e2dee0ed703b4073c9d0739f400aaf5",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-se.93fcae3c0d85.webp": {
-   "sha": "e7fb05c295f49b72fbd37faa05449c2a1d282cb0cbae6850f57746bbfa01e772",
+  "lite/sprites/viciado-em-bet.walk16-se.e13272fec8a2.webp": {
+   "sha": "1a49fcd1b8b32781e58683adbcc6c9ef26b275f8212a42fc3731273c5c8c4e00",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-w.0e8f9bc38087.webp": {
-   "sha": "c6608261a1bf7dbca663e5c8410922c98786efde6c57ecc0d2ce557f0f7d5cc4",
+  "lite/sprites/viciado-em-bet.walk16-w.d7a393898e44.webp": {
+   "sha": "c7724e668093bca2476a31cdaa5ec90ef4c21350e6b72d9ef71929eaf1fef450",
    "ilhas": 0,
    "fails": []
   },
@@ -15173,8 +15173,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp": {
-   "sha": "8b0eef2b0439bd6b069c6ace630307500f46a4bb81b5e16307e69eb9aa4b7f50",
+  "sprites/gato-nada-pra-comer.push16-nw.ab6559769548.webp": {
+   "sha": "ab6559769548c9afaf0d5c76d83d60de4a9acfe2fc92a725aeda0fe002bce373",
    "ilhas": 0,
    "fails": []
   },
@@ -15198,8 +15198,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/gato-nada-pra-comer.run16-nw.3203fd970c77.webp": {
-   "sha": "3203fd970c77bfb78a76f86398505420a3814c5b05f08774c331b9919ea88171",
+  "sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
+   "sha": "cdd9cb8851447d3f4055907a9d86b2c85bec455e826b1b71afc5edf322b549ca",
    "ilhas": 0,
    "fails": []
   },
@@ -15223,8 +15223,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp": {
-   "sha": "2b847f6e1090d92bea8cae29532230c38d114dd2550795ce124f2a800d7d3258",
+  "sprites/gato-nada-pra-comer.walk16-nw.acb4ac608344.webp": {
+   "sha": "acb4ac608344d4a3e2d15ea0049b87a8d7ab857c39640e940c4ed82ee3cd4db2",
    "ilhas": 0,
    "fails": []
   },
@@ -15233,8 +15233,8 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp": {
-   "sha": "0bdb1d04fde63d664a84482e6386dbd8390b9d7071b314a5bae42fff88640385",
+  "sprites/gato-nada-pra-comer.walk16-se.27a50041299c.webp": {
+   "sha": "27a50041299c31c371d015c82f66d132b8284c8762bfae9455f7ecdbd7e49979",
    "ilhas": 0,
    "fails": []
   },
@@ -16513,28 +16513,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-n.66524789b514.webp": {
-   "sha": "66524789b514a11c1265a2dbccec769bae7b85a67719fb68e96dac12f4b75042",
+  "sprites/viciado-em-bet.walk16-n.12790bb72e36.webp": {
+   "sha": "12790bb72e36b185fc77a487bf4c152a0f8a17112cb17874c541767ae82e7371",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-nw.9a4e75e40218.webp": {
-   "sha": "9a4e75e40218cfb6e94fe88030230a2f97481b8f63115b661baaf4ae3efecebf",
+  "sprites/viciado-em-bet.walk16-nw.2a00ab5eb8cd.webp": {
+   "sha": "2a00ab5eb8cdd09f5942bdcbe25fbba3559b415f603a4a1f80b12cf201d79a52",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-s.0db3ef27844b.webp": {
-   "sha": "0db3ef27844b3e86d160a885baaacc0da10b6fe2268eaf068f6e25e5ab3f3cc7",
+  "sprites/viciado-em-bet.walk16-s.ffd1151089f4.webp": {
+   "sha": "ffd1151089f4d71b37cf6676e320c5670a741d6891085f8bde53fa053dad827a",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-se.93fcae3c0d85.webp": {
-   "sha": "93fcae3c0d85910ef394ebb9fafb197c7990defc70af995d8c248162a15dc420",
+  "sprites/viciado-em-bet.walk16-se.e13272fec8a2.webp": {
+   "sha": "e13272fec8a213bfde8f151c88931b279506e6dbe249c536d046c68a687911db",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-w.0e8f9bc38087.webp": {
-   "sha": "0e8f9bc38087ac6608fa9d44909bc56f53c0be8a4dab7273874e186831166409",
+  "sprites/viciado-em-bet.walk16-w.d7a393898e44.webp": {
+   "sha": "d7a393898e4455b159ea081e1130088c0f1d5a6f94b6e784a5656f4ef6067a89",
    "ilhas": 0,
    "fails": []
   },

@@ -266,7 +266,9 @@ export class CharacterSprites {
    * stuck); the others keep their walk.
    * `hp` (card animacao-receber-dano): the hero's hit points; a drop while it rests plays its hurt16 flinch (HurtGate).
    */
-  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number},hp?:number){
+  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number},hp?:number,
+    /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
+    look?:{x:number;y:number}){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
@@ -278,7 +280,7 @@ export class CharacterSprites {
     const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
-    const pushing=!!push&&alive&&motion!=='attack'&&hasPush16(id),face=pushing?push:intent;
+    const pushing=!!push&&alive&&motion!=='attack'&&hasPush16(id),face=pushing?push:look??intent;
     const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
     const seen=movement128Visible(sprite,this.scene);
     // A hit while resting flinches (its first and last poses are the rest's); the rest then starts over from its pose 0.

@@ -6,7 +6,7 @@ import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNo
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
-import { classes, liberadoId, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
+import { BOT_CLASS_IDS, classes, liberadoId, playableClassId } from '../src/rules/index.ts';
 import {ROOT_DEFENSE,isKitId,kitItem,kitPiece,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
@@ -198,8 +198,8 @@ const humanClass=(id:unknown)=>liberadoId(id);
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
 /** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick.
- *  The people's lock (humanClass) never applies here: a bot may be any of them. */
-const BOT_CLASSES=[...PLAYABLE_CLASS_IDS];
+ *  The people's lock (humanClass) never applies here: a bot may be any of them but NOT_FOR_BOTS (the gato, for now). */
+const BOT_CLASSES=[...BOT_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
 /** The owner's commands (kick, bot-add, bot-remove) from one connection: at most one this often (ms). */

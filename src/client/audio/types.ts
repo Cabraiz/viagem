@@ -3,11 +3,32 @@
  * Erasable TypeScript only: tests run with --experimental-strip-types.
  */
 
+/** The procedural sounds (recipes.ts): each also has a file (sfx.ts) and falls back to its recipe when the file fails. */
 export const SOUND_IDS=[
   'golpe','gema','nivel','upgrade','queda','resgate','chefe','round-inicio','round-fim',
   'buzina','boing','risada','carimbo',
 ] as const;
-export type SoundId=typeof SOUND_IDS[number];
+/**
+ * Sounds that exist only as files (NEW-20261022-ORQ-sons-ia-ace-step: made by TangoFlux, public/audio/sfx/): UI, the
+ * hero, the arsenal (NEW_WEAPONS, the class weapons and Pack 12 by type), the towers by calibre, critters, chests and
+ * pickups. No recipe: a file that fails is silence.
+ */
+export const FILE_SOUND_IDS=[
+  'ui-botao','ui-abrir','ui-fechar','ui-carta','ui-erro',
+  'passo-neve','empurrar','levantar','dano-heroi',
+  'faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
+  'chinelo','boleto','cafe','guarda-chuva','pombo','audio',
+  'p12-tiro','p12-leque','p12-orbita','p12-ricochete','p12-bumerangue','p12-teleguiado','p12-lancado','p12-mina','p12-torreta','p12-aura','p12-nuvem',
+  'torre-construir','torre-pistola','torre-fuzil','torre-metralhadora','torre-rotativa','torre-sniper','torre-antimaterial','torre-rojao',
+  'torre-morteiro','torre-foguete','torre-obus','torre-gustavao','torre-holofote','torre-arame','torre-antiaerea','torre-radar',
+  'bicho-acerto','bicho-morte','chefe-acerto','chefe-morte','chefe-passo',
+  'bau-comum','bau-raro','bau-epico','bau-lendario',
+  'coxinha','ima',
+] as const;
+export type ProceduralId=typeof SOUND_IDS[number];
+export type SoundId=ProceduralId|typeof FILE_SOUND_IDS[number];
+/** Every sound, procedural first. */
+export const ALL_SOUND_IDS:readonly SoundId[]=[...SOUND_IDS,...FILE_SOUND_IDS];
 
 export type Wave='sine'|'square'|'sawtooth'|'triangle'|'noise';
 
@@ -27,7 +48,7 @@ export interface Tone {
 }
 
 export interface SoundRecipe {
-  id:SoundId;
+  id:ProceduralId;
   /** pt-BR button label for the sandbox and settings preview. */
   label:string;
   tones:readonly Tone[];

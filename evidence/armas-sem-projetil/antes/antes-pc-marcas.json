@@ -1,0 +1,30 @@
+[
+ {
+  "label": "escopeta",
+  "t": 25.902
+ },
+ {
+  "label": "rojao",
+  "t": 34.258
+ },
+ {
+  "label": "tijolo-baiano",
+  "t": 43.604
+ },
+ {
+  "label": "traque",
+  "t": 50.244
+ },
+ {
+  "label": "pistola",
+  "t": 56.525
+ },
+ {
+  "label": "rifle",
+  "t": 63.012
+ },
+ {
+  "label": "fim",
+  "t": 70.375
+ }
+]

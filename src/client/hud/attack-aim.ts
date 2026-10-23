@@ -128,6 +128,18 @@ export function rayEnd(hero:Point,dir:Point,range:number,toScreen:ToScreen):Poin
 }
 
 /**
+ * World direction (unit) of a screen direction from the hero (BUG-20261023-ORQ-tiro-na-direcao-mobile: the aim stick),
+ * the inverse of the projection around the hero like rayEnd; undefined for a degenerate projection or a zero direction.
+ */
+export function worldDirection(hero:Point,dir:Point,toScreen:ToScreen):Point|undefined{
+  const h=toScreen(hero),ax=toScreen({x:hero.x+1,y:hero.y}),by=toScreen({x:hero.x,y:hero.y+1});
+  const a={x:ax.x-h.x,y:ax.y-h.y},b={x:by.x-h.x,y:by.y-h.y},det=a.x*b.y-a.y*b.x;
+  if(Math.abs(det)<1e-9)return undefined;
+  const wx=(b.y*dir.x-b.x*dir.y)/det,wy=(a.x*dir.y-a.y*dir.x)/det,len=Math.hypot(wx,wy);
+  return len>1e-9?{x:wx/len,y:wy/len}:undefined;
+}
+
+/**
  * The attack button's press: down → held (every input step attacks while it stays down); a press and release between
  * two steps still attacks on the next one (`take` latches it), so a quick tap is one attack, never lost.
  */

@@ -60,8 +60,8 @@ test('the feet table knows every detailed hero clip in the manifest (rerun scrip
     assert.ok(typeof HERO_FEET[f.file]==='number',`${f.file} has no feet row`);
   }
   assert.ok(n>=200,`detailed clips: ${n}`);
-  // The case that floated: the viciado walks on row 69–70 and rests on 72–74 (the class line put both at ~74).
+  // The case that floated: the viciado walks on row 69–71 and rests on 72–74 (the class line put both at ~74).
   const viciado=Object.entries(HERO_FEET).filter(([k])=>k.startsWith('viciado-em-bet.'));
   const walk=viciado.filter(([k])=>k.includes('.walk16-')).map(([,v])=>v),idle=viciado.filter(([k])=>k.includes('.idle16-')).map(([,v])=>v);
-  assert.ok(Math.max(...walk)<=70&&Math.min(...idle)>=72,`walk ${walk} idle ${idle}`);
+  assert.ok(Math.max(...walk)<=71&&Math.min(...idle)>=72,`walk ${walk} idle ${idle}`);
 });

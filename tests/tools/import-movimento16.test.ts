@@ -7,7 +7,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {MOVEMENT16_META,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movementPlan,movementSheets,hasMovement16,hasRun16,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
+import {movementPlan,movementSheets,hasMovement16,hasRun16,hasPush16,pushPlan,hasHurt16,hurtPlan,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
 import {HERO_GAIT} from '../../src/client/sprites/sprite-motion.ts';
 
 sharp.cache(false);sharp.concurrency(1);
@@ -19,7 +19,7 @@ async function sheet(columns:number,rows:number,{x0=50,slide=3,distinct=true}={}
     return `<rect x="${x}" y="${y+60}" width="60" height="108" fill="rgb(${c*13%256},${c*29%256},${80+c*7%170})"/>`;}).join('');
   return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${columns*192}" height="${rows*192}">${rects}</svg>`)).png().toBuffer();
 }
-/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run`. */
+/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run` (never the push or the hurt). */
 async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;indexFile:string;old:any})=>Promise<void>,{run=false}={}){
   const work=await mkdtemp(path.join(tmpdir(),'viagem-movement16-')),input=path.join(work,'input'),outRoot=path.join(work,'out');
   try{
@@ -30,7 +30,7 @@ async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;in
     await write(manifestFile,{version:2,group:'personagens',pieces:{aposentado:old}});
     await write(indexFile,{version:2,groups:{personagens:{output:'public/art/sprites',pieces:{aposentado:old}}}});
     for(const [motion,m] of Object.entries(MOVEMENT16_META.motions)){
-      if(motion==='run'&&!run)continue;
+      if(motion==='run'&&!run||motion==='push'||motion==='hurt')continue;
       const bytes=await sheet(m.columns,m.rows,{distinct:motion!=='idle'});
       for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado',motion,d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
     }
@@ -55,7 +55,7 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   assert.deepEqual(Object.keys(entry.files).filter(k=>k.includes('16-')).sort(),
     ['attack','idle','walk'].flatMap(m=>MOVEMENT16_META.directions.map(d=>`${m}16-${d}`)).sort());
   for(const [motion,m] of Object.entries(MOVEMENT16_META.motions))for(const d of MOVEMENT16_META.directions){
-    if(motion==='run')continue;
+    if(motion==='run'||motion==='push'||motion==='hurt')continue;
     const f=entry.files[`${motion}16-${d}`],webp=path.join(outRoot,'public/art/sprites',f.file),meta=await sharp(webp).metadata();
     assert.deepEqual([meta.width,meta.height],[m.columns*96,m.rows*96]);assert.equal(f.frames,m.frames);assert.equal(f.durationMs,m.durationMs);assert.equal(f.loop,m.loop);
     assert.equal(f.revision,16);assert.match(f.file,new RegExp(`^aposentado\\.${motion}16-${d.toLowerCase()}\\.[0-9a-f]{12}\\.webp$`));
@@ -132,3 +132,72 @@ test('run poses keep their height off the ground (only the torso x is aligned)',
   const walk=await alignMovement16(bytes,'walk'),run=await alignMovement16(bytes,'run');
   assert.equal(walk.shifts[1].dy,20);assert.equal(run.shifts[1].dy,0);
 });
+
+test('push (empurrar-uno): --motions push imports only the push of a class, with its phase table, the other sheets kept',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  const m=MOVEMENT16_META.motions.push,bytes=await sheet(m.columns,m.rows),table={d:Array(16).fill(.03),v:Array.from({length:16},(_,i)=>i%2?[1.5,0]:[0,0])};
+  for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado','push',d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
+  // a push sheet without its phase table is refused (the game places it by the ground walked)
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],motions:['push'],write:true}),/a push needs its phase table/);
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','push',d).replace(/\.png$/,'.phase.json'),JSON.stringify(table));
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],motions:['push'],write:true});
+  assert.equal(result.characters[0].outputs.length,5);assert.deepEqual(result.characters[0].motions,['push']);
+  const files=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const [k,f] of Object.entries(before))assert.deepEqual(files[k],f,`${k} kept`);
+  for(const d of MOVEMENT16_META.directions){const f=files[`push16-${d}`];assert.equal(f.frames,16);assert.equal(f.durationMs,1000);assert.deepEqual(f.phase,table);assert.equal(f.height,before['idle16-S'].height);}
+  // the client sees it (the index keeps push16 keys) and pushes on it, mirrored like the rest of the class
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.equal(hasPush16('aposentado'),true);assert.equal(pushPlan('aposentado','SE')?.key,'sprite16:aposentado:push:SW');assert.deepEqual(pushPlan('aposentado','E')?.phase,table);
+}));
+
+test('hurt (animacao-receber-dano): --motions hurt imports the flinch, its last pose the rest again, placed as drawn on the rest pivot',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files,m=MOVEMENT16_META.motions.hurt;
+  assert.deepEqual([m.columns,m.rows,m.frames,m.durationMs,m.loop],[3,2,6,300,false]);
+  // pose 0 and pose 5 the same rest pose; 1-4 lean back (the body moves, the feet stay at 168)
+  const cell=(i:number)=>{const k=i===5?0:i,x=i%3*192+60-[0,6,10,6,3][k],y=Math.floor(i/3)*192;return `<rect x="${x}" y="${y+60}" width="60" height="108" fill="rgb(${k*40},${k*20},90)"/>`;};
+  const flinch=await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="576" height="384">${Array.from({length:6},(_,i)=>cell(i)).join('')}</svg>`)).png().toBuffer();
+  for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado','hurt',d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,flinch);}
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],motions:['hurt'],write:true});
+  assert.equal(result.characters[0].outputs.length,5);assert.deepEqual(result.characters[0].motions,['hurt']);
+  const files=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const [k,f] of Object.entries(before))assert.deepEqual(files[k],f,`${k} kept`);
+  for(const d of MOVEMENT16_META.directions){
+    const f=files[`hurt16-${d}`];assert.equal(f.frames,6);assert.equal(f.durationMs,300);assert.equal(f.loop,false);assert.equal(f.phase,undefined);
+    assert.equal(f.pivotX,before[`idle16-${d}`].pivotX,`${d}: the rest's pivot`);assert.deepEqual([f.pages[0].columns,f.pages[0].rows],[3,2]);
+    // as drawn: pose 1 still leans 6 px (192) left of pose 0 at the game's 96, not pulled back onto the torso median
+    const {data,info}=await sharp(path.join(outRoot,'public/art/sprites',f.file)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const left=(i:number)=>{for(let x=0;x<96;x++)for(let y=0;y<96;y++)if(data[((Math.floor(i/3)*96+y)*info.width+i%3*96+x)*4+3]>128)return x;return -1;};
+    assert.equal(left(0)-left(1),3);assert.equal(left(5),left(0));
+  }
+  // a flinch with every pose the same is refused (only the last may repeat the first)
+  const still=await sheet(3,2,{distinct:false,slide:0});
+  await writeFile(movement16Source(input,'aposentado','hurt','N'),still);
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],motions:['hurt']}),/poses must be distinct/);
+  // the client sees it and flinches on it, mirrored like the rest of the class
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.equal(hasHurt16('aposentado'),true);
+  const se=hurtPlan('aposentado','SE');assert.equal(se?.key,'sprite16:aposentado:hurt:SW');assert.equal(se?.flip,true);assert.equal(se?.loop,false);assert.equal(se?.frameCount,6);
+}));
+
+test('walk alone (andar-proporcao): only walk16 is replaced, at the M16 rest scale; attack, rest and run stay',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  const walkOnly=async()=>{for(const motion of ['attack','idle'])await rm(path.join(input,'personagens-movimento16','aposentado',motion),{recursive:true,force:true});};
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  await walkOnly();
+  const taller=await sheet(4,4,{x0:40,slide:2});
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','walk',d),taller);
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  assert.equal(result.characters[0].walkOnly,true);assert.equal(result.characters[0].outputs.length,5);assert.equal(result.characters[0].height,before['idle16-S'].height*2);
+  const after=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const key of Object.keys(before))if(key.startsWith('walk16-'))assert.notEqual(after[key].file,before[key].file,`${key} replaced`);
+  else assert.deepEqual(after[key],before[key],`${key} kept`);
+  assert.deepEqual(Object.keys(after).sort(),Object.keys(before).sort());
+}));
+
+test('a walk alone needs the class\'s M16 rest (its size reference)',async()=>fixture(async({input,outRoot,manifestFile,old})=>{
+  for(const motion of ['attack','idle'])await rm(path.join(input,'personagens-movimento16','aposentado',motion),{recursive:true,force:true});
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],write:true}),/a walk alone needs the class's M16 idle16-S/);
+  assert.deepEqual(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado,old);
+}));

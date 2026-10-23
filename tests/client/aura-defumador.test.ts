@@ -96,8 +96,8 @@ test('the smoke is centred on the feet the scene drew this frame, after every he
   const at=(s:string)=>{const i=coop.indexOf(s);assert.ok(i>=0,s);return i;};
   const auras=at('this.horde?.auras(id=>feet.get(id));');
   assert.ok(at('this.horde?.update(time,delta)')<auras,'after the horde update');
-  assert.ok(at('this.place();')<auras&&at('feet.set(net.id,this.position)')<auras,'the hero at his drawn spot, after place()');
-  const ally=at('feet.set(player.id,{x:player.x,y:player.y})');
+  assert.ok(at('this.place();')<auras&&at('feet.set(net.id,{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y})')<auras,'the hero at his drawn spot (with the push shift), after place()');
+  const ally=at('feet.set(player.id,{x:drawnAt.x,y:drawnAt.y})');
   assert.ok(at('objects.image.setPosition(q.x,q.y)')>ally&&ally<auras,'each ally at the spot its sprite is put');
 });
 

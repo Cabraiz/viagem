@@ -17,7 +17,8 @@ import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveR
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
-import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
@@ -306,13 +307,16 @@ function renderSelected(announce=false) {
 // (none for a locked one). Built only while the phone is upright, so the stadium never downloads its pictures.
 const instaScreen=matchMedia(INSTA_QUERY);
 const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perfil:document.querySelector<HTMLElement>('.insta-perfil')!,
-  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!};
+  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!,
+  logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
 let instaShown='';
 function renderInsta() {
   const perfil=instaPerfil(selected.id);
   if(!perfil||instaShown===selected.id) return;
   instaShown=selected.id;
+  // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
+  insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
   insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
   insta.perfil.innerHTML=perfilHtml(perfil);
   insta.chips.innerHTML=chipsHtml(perfil);
@@ -334,9 +338,16 @@ insta.stories.addEventListener('click',event=>{
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);
 });
+// A grid photo opens as a post (ui/insta-post.ts); it grows out of its thumbnail and shrinks back into it.
+insta.grade.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLElement>('[data-post]'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirPost(perfil,Number(foto.dataset.post),i=>insta.grade.querySelector<HTMLElement>(`[data-post="${i}"]`));
+});
 // The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
 let instaHold:(()=>void)|undefined;
 function syncInsta() {
+  fecharPost(true);
   if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
   else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
   if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();

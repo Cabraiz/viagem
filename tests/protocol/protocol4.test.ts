@@ -1754,3 +1754,15 @@ test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventor
   assert.deepEqual(res.view.players.find(p=>p.id==='uuid-0')!.weapons,v.players[0].weapons);
   const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit:obuseiro',1]);
 });
+
+test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.players[0]={...view.players[0],moveSpeed:1.35};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.equal(r.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,1.35);
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.players[0]={...view.players[0],moveSpeed:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,undefined);
+});

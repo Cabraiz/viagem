@@ -9,6 +9,7 @@
 // server side is split by moving / standing only.
 //   node scripts/medir-bots-voam.mjs [--web http://127.0.0.1:4210] [--port 8810] [--bots 3] [--segundos 40] [--saida <dir>]
 //     [--viewport 390x844] [--mobile] [--atraso <ms>] (WebSocket frames held by a random 0..ms each, in order: a phone link)
+//     [--classe <id>] (the hero's class card instead of the first: oferta-velocidade's with/without, e.g. motogirl +0.2 moveSpeed)
 //     [--seguir] (the hero walks with the first bot) [--gif <file.gif>] (the page's video, Playwright, cut to the walk by ffmpeg; the recording costs the page frames, so
 //     the numbers of a --gif run are not the measure)
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -21,7 +22,7 @@ import {startLocalWorker} from './local-worker.mjs';
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const WEB=arg('web','http://127.0.0.1:4210'),PORT=Number(arg('port','8810')),BOTS=Number(arg('bots','3')),SECONDS=Number(arg('segundos','40'));
 const [VW,VH]=arg('viewport','390x844').split('x').map(Number),MOBILE=process.argv.includes('--mobile'),OUT=arg('saida'),JITTER=Number(arg('atraso','0'));
-const GIF=arg('gif'),FOLLOW=process.argv.includes('--seguir');
+const GIF=arg('gif'),FOLLOW=process.argv.includes('--seguir'),CLASS=arg('classe');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 if(OUT)mkdirSync(OUT,{recursive:true});
 
@@ -52,7 +53,7 @@ try{
   await p.goto(`${WEB}/`,{waitUntil:'load',timeout:120000});
   p.on('console',m=>{if(m.type()==='error')console.error('console:',m.text().slice(0,200));});const STALL=join(OUT??tmpdir(),'stall.png');
   await p.waitForSelector('.class-card',{state:'attached',timeout:90000});
-  await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Medida';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
+  await p.evaluate(cls=>{const n=document.getElementById('nickname');n.value='Medida';n.dispatchEvent(new Event('input',{bubbles:true}));(cls?document.querySelector(`.class-card[data-hero="${cls}"]`):document.querySelector('.class-card')).click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();},CLASS);
   console.error('menu ok');
   await p.waitForSelector('#enter-island',{state:'visible',timeout:30000});
   await p.evaluate(()=>document.getElementById('enter-island').click());

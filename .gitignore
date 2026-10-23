@@ -27,4 +27,5 @@ artifacts/
 !/docs/movement128.md
 !/docs/movement16.md
 !/docs/playtest-ux.md
+!/docs/seo.md
 /scripts/check-multiplayer-artifact.mjs

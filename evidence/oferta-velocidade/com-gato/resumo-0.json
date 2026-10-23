@@ -1,0 +1,59 @@
+{
+ "bots": 1,
+ "atrasoMs": 0,
+ "quadros": 873,
+ "chegadas": 207,
+ "chegadaGapMs": {
+  "min": 1,
+  "p50": 96,
+  "max": 536,
+  "abaixo30ms": 46
+ },
+ "ticksPorQuadro": {
+  "1": 7,
+  "2": 189,
+  "3": 7,
+  "4": 3
+ },
+ "speeds": [
+  {
+   "id": "fb5d46ac-9156-4649-9216-60d03ea40b58",
+   "self": true,
+   "classId": "gato-nada-pra-comer",
+   "servidor": {
+    "mediaAndando": 12.99,
+    "p90": 37,
+    "max": 50.46
+   },
+   "tela": {
+    "mediaAndando": 306.71,
+    "p95": 1042.19,
+    "max": 1587.33,
+    "janela100msP95": 6.41,
+    "janela100msMax": 22.86,
+    "quadrosAcima125": "95.9 %",
+    "quadrosParado": "79.7 %"
+   }
+  },
+  {
+   "id": "bot-1",
+   "self": false,
+   "classId": "concurseira",
+   "servidor": {
+    "mediaAndando": 3.85,
+    "p90": 4,
+    "max": 4.01
+   },
+   "tela": {
+    "mediaAndando": 3.65,
+    "p95": 4.12,
+    "max": 5.3,
+    "janela100msP95": 4.11,
+    "janela100msMax": 4.35,
+    "quadrosAcima125": "0.3 %",
+    "quadrosParado": "29.8 %"
+   }
+  }
+ ],
+ "errors": []
+}

@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2157,
-  "bytes": 1543073104,
-  "liteBytes": 502588190,
+  "files": 2158,
+  "bytes": 1543129822,
+  "liteBytes": 502621414,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19229,13 +19229,13 @@
    "psnr": 38.2,
    "shownPsnr": 41.9
   },
-  "sprites/maromba.run16-se.361fd58dc1f0.webp": {
-   "source": "361fd58dc1f031690989f13cbfddbba8074dfde1885a1bbe61378e749ac263ca",
-   "lite": "dd06911a99f818d1e1038599cc86604fab450e7b2081cc2dddae8e0d8be55e44",
-   "bytes": 57198,
-   "liteBytes": 33990,
-   "psnr": 38.4,
-   "shownPsnr": 41.6
+  "sprites/maromba.run16-se.6f225d758e28.webp": {
+   "source": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0",
+   "lite": "e5056f9a9fcf11b351930a471bb5876d43b210c62d9084e2fce0f33cad06638d",
+   "bytes": 56826,
+   "liteBytes": 33422,
+   "psnr": 38.2,
+   "shownPsnr": 41.3
   },
   "sprites/maromba.run16-w.dc71e9155576.webp": {
    "source": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",

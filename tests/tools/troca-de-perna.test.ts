@@ -50,10 +50,10 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
 });
 
 /**
- * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). The maromba's SE
- * run: 9 generations and the drawn front foot always comes from the same hip (card NEW-20261023-E7-maromba-troca-perna-se).
+ * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). Empty: the
+ * maromba's SE run changes hip since card NEW-20261023-E7-maromba-troca-perna-se (legs transplanted from pose i+8).
  */
-const KNOWN_SIDE=new Set<string>(['maromba.run16-se.361fd58dc1f0.webp']);
+const KNOWN_SIDE=new Set<string>([]);
 
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');

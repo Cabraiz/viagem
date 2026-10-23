@@ -8,7 +8,7 @@
  * side, square: frame size = strip height) and their `projeteis` piece (art/horde-art.ts aliases).
  */
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
-import {allItemDisplays} from '../hud/items.ts';
+import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
@@ -77,6 +77,69 @@ export class CrateOpenings{
     }
     return best;
   }
+}
+
+/**
+ * bau-mostra-o-premio: what a crate gave, from the views alone (the 'pickup' chest event carries only the rarity). The sim
+ * (sim/crates.ts open) puts the prize in the opener's inventory in the same tick it emits the event, or, full, drops it
+ * on the ground at the crate (inventory.ts dropItem). So per view: each hero's gains (a new slot, or a stack that grew)
+ * and the new items on the ground; the event then claims its hero's latest gain, or the item that fell at its crate.
+ */
+export const PRIZE_CLAIM_MS=1500;
+/** A dropped prize lies exactly at the crate; the crate as drawn may have drifted a little. */
+export const PRIZE_DROP_REACH=.75;
+type Owned={readonly id:string;readonly level:number};
+/** The ids `after` gained over `before`: a slot more of an id (a weapon, a kit), else a stack that grew (a consumable). */
+export function inventoryGains(before:readonly Owned[]|undefined,after:readonly Owned[]):string[]{
+  if(!before)return [];
+  const count=(list:readonly Owned[])=>{const m=new Map<string,{slots:number;sum:number}>();for(const o of list){const c=m.get(o.id)??{slots:0,sum:0};c.slots++;c.sum+=o.level;m.set(o.id,c);}return m;};
+  const was=count(before),slots:string[]=[],stacks:string[]=[];
+  for(const [id,now] of count(after)){
+    const old=was.get(id);
+    if(!old||now.slots>old.slots)slots.push(id);
+    else if(now.sum>old.sum&&!isWeaponItem(id))stacks.push(id);
+  }
+  return [...slots,...stacks];
+}
+export class ChestPrizes{
+  private inv=new Map<string,Owned[]>();
+  private gains=new Map<string,{id:string;at:number}[]>();
+  private ground=new Set<string>();
+  private drops:{id:string;item:string;x:number;y:number;at:number}[]=[];
+  /** Per authoritative view: every hero's inventory and the items on the ground. */
+  observe(players:readonly {id:string;weapons:readonly Owned[]}[],pickups:readonly {id:string;kind:string;resource?:string;x:number;y:number}[],now:number){
+    for(const p of players){
+      for(const id of inventoryGains(this.inv.get(p.id),p.weapons)){const list=this.gains.get(p.id)??[];list.push({id,at:now});this.gains.set(p.id,list);}
+      this.inv.set(p.id,p.weapons.map(o=>({id:o.id,level:o.level})));
+    }
+    const ground=new Set<string>();
+    for(const k of pickups){
+      if(k.kind!=='item'||!k.resource)continue;
+      ground.add(k.id);
+      if(!this.ground.has(k.id))this.drops.push({id:k.id,item:k.resource,x:k.x,y:k.y,at:now});
+    }
+    this.ground=ground;
+    for(const [id,list] of this.gains){const fresh=list.filter(g=>now-g.at<=PRIZE_CLAIM_MS);if(fresh.length)this.gains.set(id,fresh);else this.gains.delete(id);}
+    this.drops=this.drops.filter(d=>now-d.at<=PRIZE_CLAIM_MS);
+  }
+  /** The prize `player` took from the crate at world `at` (claimed once), or undefined while no view showed it yet. */
+  claim(player:string,at:{x:number;y:number}|undefined,now:number):string|undefined{
+    const list=this.gains.get(player);
+    const g=list?.findIndex(o=>now-o.at<=PRIZE_CLAIM_MS)??-1;
+    if(list&&g>=0)return list.splice(g,1)[0].id;
+    if(!at)return undefined;
+    let best=-1,bestD=PRIZE_DROP_REACH;
+    for(let i=0;i<this.drops.length;i++){const d=Math.hypot(this.drops[i].x-at.x,this.drops[i].y-at.y);if(d<=bestD){best=i;bestD=d;}}
+    return best>=0?this.drops.splice(best,1)[0].item:undefined;
+  }
+}
+export interface PrizeLook {id:string;icon?:string;name:string;color:number;glow:number}
+/** Glow behind the sticker per rarity (stronger on the gold and the legendary ones). */
+export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5:1};
+/** The prize as the crate shows it: its inventory sticker, its name in the crate's rarity colour, the glow behind. */
+export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
+  const item=itemDisplay(id);
+  return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
 }
 
 /**

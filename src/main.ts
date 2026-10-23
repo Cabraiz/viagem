@@ -6,6 +6,7 @@ import { icon } from './client/ui/icon.ts';
 import { suit } from './client/ui/suit.ts';
 import { startArt } from './client/ui/art-boot.ts';
 import { startMenuMusic } from './client/ui/menu-music-boot.ts';
+import { startAds } from './client/ui/ads-boot.ts';
 import { MenuDance } from './client/ui/menu-dance.ts';
 import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, placeCutout, placeOnBar, STADIUM, STADIUM_TALL_QUERY, type StadiumArt, type StadiumCutout } from './client/ui/stadium.ts';
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
@@ -17,7 +18,8 @@ import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveR
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
-import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
@@ -32,6 +34,8 @@ linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fe
 void startArt();
 // Menu music (NEW-20261014-ORQ-musica-do-menu): after load + idle, low priority, never on 2g/Save-Data; plays from the first tap.
 startMenuMusic();
+// Ads (NEW-20261023-ORQ-anuncios-h5-games): off by default; when on, the async script loads after the menu is ready.
+startAds(window,import.meta.env.DEV);
 // Art cache (NEW-20261013-ORQ-3g-precarga-partida): public/sw.js keeps /art and /assets by content version, so a second
 // match downloads no art. Production builds only: the dev server never gets a worker.
 if(!import.meta.env.DEV&&'serviceWorker' in navigator)addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>undefined);},{once:true});
@@ -65,6 +69,7 @@ app.innerHTML = `
 <main class="world criacao estadio" data-build="viagem-island-v1">
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
+  <a class="menu-privacidade" href="/privacidade/">Privacidade</a>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
     <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
     <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
@@ -306,13 +311,16 @@ function renderSelected(announce=false) {
 // (none for a locked one). Built only while the phone is upright, so the stadium never downloads its pictures.
 const instaScreen=matchMedia(INSTA_QUERY);
 const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perfil:document.querySelector<HTMLElement>('.insta-perfil')!,
-  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!};
+  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!,
+  logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
 let instaShown='';
 function renderInsta() {
   const perfil=instaPerfil(selected.id);
   if(!perfil||instaShown===selected.id) return;
   instaShown=selected.id;
+  // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
+  insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
   insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
   insta.perfil.innerHTML=perfilHtml(perfil);
   insta.chips.innerHTML=chipsHtml(perfil);
@@ -334,9 +342,16 @@ insta.stories.addEventListener('click',event=>{
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);
 });
+// A grid photo opens as a post (ui/insta-post.ts); it grows out of its thumbnail and shrinks back into it.
+insta.grade.addEventListener('click',event=>{
+  const foto=(event.target as HTMLElement|null)?.closest<HTMLElement>('[data-post]'),perfil=instaPerfil(selected.id);
+  if(!foto||!perfil) return;
+  abrirPost(perfil,Number(foto.dataset.post),i=>insta.grade.querySelector<HTMLElement>(`[data-post="${i}"]`));
+});
 // The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
 let instaHold:(()=>void)|undefined;
 function syncInsta() {
+  fecharPost(true);
   if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
   else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
   if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();

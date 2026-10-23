@@ -48,6 +48,15 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   box-shadow: var(--s-1);
 }
 
+/* The privacy policy (anuncios-h5-games, AdSense): a quiet link in the bottom-left corner, under
+   the choice column (centred) and away from the hero's feet. */
+.estadio .menu-privacidade {
+  position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+  padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
+  text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);
+}
+.estadio .menu-privacidade:hover, .estadio .menu-privacidade:focus-visible { opacity: 1; text-decoration: underline; }
+
 /* The choice: title, class, row, name, button. Left column on a wide screen. */
 .estadio-escolha {
   position: absolute; z-index: 5; top: 0; bottom: 0; left: max(3vw, 16px, env(safe-area-inset-left)); width: min(46vw, 640px);

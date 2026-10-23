@@ -3,9 +3,11 @@
 // visible HUD piece (HUD_PARTS): its body (background), its outer edge (the outermost hard ring: a `0 0 0 Npx` box-shadow,
 // else the border) and the colour of each text inside it, read by the browser itself (a 1 px canvas fill, so color-mix
 // and rgba come out as plain pixels). The map under it: the page printed again with everything but the game's canvas
-// hidden, 8 points just outside the piece's edge. A piece fails when, at one of those points, BOTH its body and its edge
-// are under 3:1 against the map (the "borda dupla" rule: light body + Breu edge reads on any ground), or when a text is
-// under 4.5:1 against its own body (composited over the map when the body is see-through).
+// hidden, 8 points just outside the piece's edge. A piece fails when, at one of those points, its body, its edge AND
+// every inner ring of 2 px or more (a Papel ring between a Lilás body and the Breu edge, hud.css .rh-xp-level) are all
+// under 3:1 against the map (the "borda dupla" rule: one light layer and one Breu layer read on any ground), or when a
+// text is under 4.5:1 against its own body (composited over the map when the body is see-through). Text hidden for
+// sight (.rh-sr, 1 px) is not measured.
 // Used by scripts/folha-prints.mjs (the hero standing in the solo match); the math below is node-only and tested.
 
 /** The HUD pieces drawn over the map in a match: [selector, name on the sheet]. Every visible match is measured. */
@@ -23,7 +25,7 @@ export const HUD_PARTS = [
   ['.rh-minimap', 'minimapa'],
   ['.rh-offer-chip', 'ficha da oferta'],
   ['.rh-cida-btn', 'botão da cidade'],
-  ['.rh-camp-relogio', 'relógio'],
+  // .rh-camp-relogio is not here: it sits inside the camp bar (fone.css), not over the map; the bar is measured.
   ['.rh-camp-track', 'barra do acampamento'],
   ['.rh-killcam-tv', 'killcam'],
   ['.explore-stick', 'joystick'],
@@ -50,9 +52,10 @@ const hex = c => '#' + c.slice(0, 3).map(v => v.toString(16).padStart(2, '0')).j
 const fix = n => n.toFixed(1).replace('.', ',');
 
 /**
- * One piece against the map points under it. part: {name, body:[r,g,b,a], edge:[r,g,b,a]|null, texts:[{text, color,
+ * One piece against the map points under it. part: {name, body:[r,g,b,a], edge:[r,g,b,a]|null, rings?:[[r,g,b,a]…] (the
+ * inner hard layers ≥ 2 px between body and edge), texts:[{text, color,
  * layers:[[r,g,b,a]…] (the backgrounds from the piece's body down to the text's own, outermost first)}]}; bg: [[r,g,b]…].
- * → {fails:[string], worstEdge, worstText}: worstEdge is the best of body/edge at the worst point.
+ * → {fails:[string], worstEdge, worstText}: worstEdge is the best of body/rings/edge at the worst point.
  */
 export function judge(part, bg) {
   const fails = [];
@@ -60,12 +63,13 @@ export function judge(part, bg) {
   for (const p of bg) {
     const body = over(part.body, p);
     // A see-through body (alpha < 0.5) is the map itself: only its edge separates it.
-    const vs = [part.body[3] >= 128 ? ratio(body, p) : 1, part.edge && part.edge[3] >= 128 ? ratio(over(part.edge, body), p) : 1];
+    const layer = c => c && c[3] >= 128 ? ratio(over(c, body), p) : 1;
+    const vs = [part.body[3] >= 128 ? ratio(body, p) : 1, layer(part.edge), ...(part.rings ?? []).map(layer)];
     const best = Math.max(...vs);
     if (best < worstEdge) { worstEdge = best; worstAt = p; }
   }
   if (bg.length && worstEdge < MIN_EDGE)
-    fails.push(`${part.name}: corpo ${hex(part.body)} e contorno ${part.edge ? hex(part.edge) : 'nenhum'} com ${fix(worstEdge)}:1 sobre o mapa ${hex(worstAt)} (mín. ${MIN_EDGE}:1)`);
+    fails.push(`${part.name}: corpo ${hex(part.body)}${part.rings?.length ? `, aros ${part.rings.map(hex).join('/')}` : ''} e contorno ${part.edge ? hex(part.edge) : 'nenhum'} com ${fix(worstEdge)}:1 sobre o mapa ${hex(worstAt)} (mín. ${MIN_EDGE}:1)`);
   let worstText = Infinity;
   for (const t of part.texts ?? []) {
     let low = Infinity, lowBg = null;
@@ -97,7 +101,8 @@ export const COLLECT = parts => {
   const cx = cv.getContext('2d', { willReadFrequently: true });
   const px = css => { if (!css || css === 'transparent') return [0, 0, 0, 0]; cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data]; };
   const shown = el => { if (el.closest('[hidden]') || !el.getClientRects().length) return false; for (let e = el; e; e = e.parentElement) { const s = getComputedStyle(e); if (s.visibility === 'hidden' || s.display === 'none' || +s.opacity < 0.05) return false; } return true; };
-  // Hard rings: `color 0px 0px 0px Npx` parts of the computed box-shadow (not inset); the widest is the outer edge.
+  // Hard rings: `color 0px 0px 0px Npx` parts of the computed box-shadow (not inset); the widest is the outer edge, the
+  // others (and a border) count when they show 2 px or more.
   const rings = sh => (sh && sh !== 'none' ? sh.split(/,(?![^(]*\))/) : []).filter(s => !/inset/.test(s)).map(s => {
     const color = (s.match(/(rgba?\([^)]*\)|color\([^)]*\)|#[0-9a-f]+)/i) || [])[0];
     const n = (s.replace(color ?? '', '').match(/-?[\d.]+px/g) || []).map(parseFloat);
@@ -111,18 +116,23 @@ export const COLLECT = parts => {
     if (r.width < 4 || r.height < 4) continue;
     const ring = rings(s.boxShadow)[0], bw = parseFloat(s.borderTopWidth) || 0;
     const edge = ring ? px(ring.color) : bw >= 1 ? px(s.borderTopColor) : null;
+    const inner = [];
+    if (ring && bw >= 2) inner.push(px(s.borderTopColor));
+    const asc = rings(s.boxShadow).reverse();
+    asc.slice(0, -1).forEach((g, i) => { if (g.spread - (asc[i - 1]?.spread ?? 0) >= 2) inner.push(px(g.color)); });
     const texts = [];
     const walk = node => {
       for (const c of node.childNodes) {
         if (c.nodeType === 3 && c.textContent.trim()) {
-          const host = c.parentElement; if (!shown(host)) continue;
+          const host = c.parentElement, hr = host.getBoundingClientRect();
+          if (!shown(host) || hr.width <= 1 || hr.height <= 1) continue; // .rh-sr: read aloud, never seen
           const layers = []; for (let e = host; e && e !== el; e = e.parentElement) { const b = px(getComputedStyle(e).backgroundColor); if (b[3]) layers.unshift(b); }
           texts.push({ text: c.textContent.trim(), color: px(getComputedStyle(host).color), layers });
         } else if (c.nodeType === 1) walk(c);
       }
     };
     walk(el);
-    out.push({ name, sel, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }, pad: (ring?.spread ?? 0) + 3, body: px(s.backgroundColor), edge, texts: texts.slice(0, 6) });
+    out.push({ name, sel, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }, pad: (ring?.spread ?? 0) + 3, body: px(s.backgroundColor), edge, rings: inner, texts: texts.slice(0, 6) });
   }
   return out;
 };

@@ -35,6 +35,18 @@ test('a Breu chip on a dark road needs a light edge; on the snow its body alone 
   assert.deepEqual(judge({...chip,edge:PAPEL},[ROAD]).fails,[]);
 });
 
+test('an inner ring counts: Lilás body, Papel ring, Breu edge reads on the dark road through the Papel ring', ()=>{
+  const LILAS=[0x5b,0x3f,0x8c,255];
+  const level={name:'nível',body:LILAS,edge:BREU,texts:[]};
+  assert.match(judge(level,[ROAD]).fails[0],/nível: corpo #5b3f8c e contorno #1e1530/);
+  assert.deepEqual(judge({...level,rings:[PAPEL]},[SNOW,ROAD]).fails,[]);
+  // An ally's portrait: Papel body, Breu ring, emblem edge (light cyan) — the Breu ring holds it on the snow.
+  const ally={name:'retrato',body:PAPEL,edge:[0x3e,0xc1,0xd3,255],texts:[]};
+  assert.equal(judge(ally,[SNOW]).fails.length,1);
+  assert.deepEqual(judge({...ally,rings:[BREU]},[SNOW,ROAD]).fails,[]);
+  assert.match(judge({...level,rings:[LILAS]},[ROAD]).fails[0],/aros #5b3f8c e contorno/);
+});
+
 test('a see-through body is the map: only the edge counts', ()=>{
   const ghost={name:'fantasma',body:[0,0,0,40],edge:null,texts:[]};
   assert.equal(judge(ghost,[SNOW]).fails.length,1);

@@ -35,6 +35,7 @@ import {BACK_ONLINE_ROW_MS,BackOnlineWatch,createGameMenu,menuBack,menuFocus,typ
 import type {RunView} from '../contract/index.ts';
 import {SkillButton} from './hud/skill.ts';
 import {AttackButton} from './hud/attack-button.ts';
+import {heldReach} from './hud/weapon-reach.ts';
 import {icon,compass} from './ui/icon.ts';
 import {RescueBoard} from './hud/rescue.ts';
 import {ObraHud} from './hud/towers/obra.ts';
@@ -266,7 +267,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       hero:()=>controller&&sceneReady?net.predicted:undefined,toScreen:p=>controller!.scene.locate(p).screen,
       enemies:()=>net.feed.enemies.values(),tick:()=>net.tick,
       chosen:()=>controller?.scene.chosenTarget,choose:id=>controller?.scene.chooseTarget(id),
-      wake:()=>pause(false),setHeld:held=>skill?.setHeld(held)});
+      wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
+      // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
+      reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
+      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2});
     net.onCast=result=>skill?.answer(result,performance.now());
   }
   // Only controls overlay the map. All secondary information lives in a native
@@ -568,6 +572,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
+      aimStick:()=>attackBtn?.aim(),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
       attackHold:down=>{if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},

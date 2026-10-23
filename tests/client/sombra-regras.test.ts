@@ -3,25 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CONTACT_MIN,CONTACT_PAD,SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,castOffset,contactWidth} from '../../src/client/render/shadow-rules.ts';
+import {SHADOW_DIR,SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from '../../src/client/render/shadow-rules.ts';
 import {ENEMY_FEET} from '../../src/client/art/enemy-feet.ts';
-import {FX_BUDGET} from '../../src/client/render/legibility.ts';
 import {SUN_VIEW} from '../../src/client/render/light.ts';
 
 const read=(p:string)=>readFileSync(new URL(`../../${p}`,import.meta.url),'utf8');
-
-test('the contact shadow is as wide as the measured footing (asleep: the lying one), between CONTACT_MIN and the old width',()=>{
-  const feet={from:'walk' as const,feetY:.9,footW:.2,figureH:.6,sleepW:.55};
-  assert.equal(contactWidth(undefined,false,128,80),80,'no row: the old width');
-  assert.equal(contactWidth(feet,false,0,80),80,'no cell size: the old width');
-  assert.equal(contactWidth(feet,false,128,80),.2*128*CONTACT_PAD,'standing: the footing');
-  assert.equal(contactWidth(feet,true,128,200),.55*128*CONTACT_PAD,'asleep: the lying footing');
-  assert.equal(contactWidth(feet,true,128,40),40,'never wider than it was');
-  assert.equal(contactWidth({...feet,footW:.01},false,128,80),80*CONTACT_MIN,'never a dot');
-  // The wolf of the user print stands on a footing narrower than the bêbado's old ellipse; asleep it lies wider.
-  const wolf=ENEMY_FEET['furry-de-convencao'];
-  assert.ok(wolf&&wolf.sleepW!==undefined&&wolf.sleepW>wolf.footW);
-});
 
 test('the study: every walking loop has its feet on the anchor row (0.88 of the cell, ± 6 %)',()=>{
   const rows=Object.entries(ENEMY_FEET);
@@ -31,20 +17,35 @@ test('the study: every walking loop has its feet on the anchor row (0.88 of the 
   assert.match(read('evidence/BUG-sombra/sombra-estudo.md'),/Com \|desvio\| > 4 px: \*\*\d+\*\*/);
 });
 
-test('the silhouette lies away from the sun (right and down), flattened, faint; off in economy mode',()=>{
+test('the silhouette lies away from the sun (right and down), flattened 0.3–0.4, faint',()=>{
   assert.ok(SHADOW_DIR.x>0&&SHADOW_DIR.y>0,'right and down');
   assert.ok(Math.abs(Math.hypot(SHADOW_DIR.x,SHADOW_DIR.y)-1)<1e-9);
   assert.ok(Math.abs(SHADOW_DIR.x/SHADOW_DIR.y-SUN_VIEW[0]/SUN_VIEW[1])<1e-9,'opposite the sun on screen');
   // A flipped figure hangs along (0, 1) from its feet; the rotation turns that onto the shadow's direction.
   const c=Math.cos(SILHOUETTE_ROTATION),s=Math.sin(SILHOUETTE_ROTATION);
   assert.ok(Math.abs(-s-SHADOW_DIR.x)<1e-9&&Math.abs(c-SHADOW_DIR.y)<1e-9);
-  assert.ok(SILHOUETTE.flatten>0&&SILHOUETTE.flatten<1&&SILHOUETTE.alpha>=.25&&SILHOUETTE.alpha<=.4);
-  assert.equal(FX_BUDGET.full.silhouettes,true);assert.equal(FX_BUDGET.reduced.silhouettes,false);
-  // Enemies, the hero and the allies cast it through the same helper.
-  assert.match(read('src/client/render/layers.ts'),/castSilhouette\(a\.sil,a\.image,x,y,this\.fx\.silhouettes&&!flying\)/);
-  const scene=read('src/client/scene.ts');
-  assert.match(scene,/castSilhouette\(this\.heroSil,this\.actor,p\.x,p\.y,!this\.economy,depth-2\)/);
-  assert.match(scene,/castSilhouette\(objects\.sil,objects\.image,q\.x,q\.y,!this\.economy&&!down,depth-2\)/);
+  assert.ok(SILHOUETTE.flatten>=.3&&SILHOUETTE.flatten<=.4&&SILHOUETTE.alpha>=.25&&SILHOUETTE.alpha<=.4);
+});
+
+// Card NEW-20261022-ORQ-sombra-silhueta: every figure's shadow is derived from its current frame (never the ellipse
+// texture), in every quality level, and fades with the body.
+test('every figure casts its frame, never the ellipse; in every quality; it fades and dies with the body',()=>{
+  const layers=read('src/client/render/layers.ts'),scene=read('src/client/scene.ts'),sil=read('src/client/render/silhouette.ts');
+  // The silhouette copies the body's texture and frame, and its opacity.
+  assert.match(sil,/sil\.setTexture\(key,name\)/);
+  assert.match(sil,/setAlpha\(SILHOUETTE\.alpha\*body\.alpha\)/);
+  // Enemies: no contact shadow in the actor, the silhouette always on (economy, flyers), and on their death animation.
+  const enemy=layers.slice(layers.indexOf('interface EnemyActor{'),layers.indexOf('}',layers.indexOf('interface EnemyActor{')));
+  assert.doesNotMatch(enemy,/shadow:Image/);
+  assert.match(layers,/castSilhouette\(a\.sil,a\.image,q\.x,q\.y,true\)/);
+  assert.match(layers,/castSilhouette\(d\.sil,d\.image,gx,gy,alive\)/);
+  assert.doesNotMatch(layers,/fx\.silhouettes/);
+  // The hero and the allies: the frame on the ground, no ellipse, in every world and quality.
+  assert.match(scene,/castSilhouette\(this\.heroSil,this\.actor,p\.x,p\.y,true,depth-2\)/);
+  assert.match(scene,/castSilhouette\(objects\.sil,objects\.image,q\.x,q\.y,true,depth-2\)/);
+  assert.doesNotMatch(scene,/heroShadow|HERO_SHADOW_SIZE|this\.shadow\b/);
+  // The weapon in the hand casts with the hero in every quality too.
+  assert.doesNotMatch(read('src/client/render/arsenal-fx.ts'),/this\.silhouettes/);
 });
 
 test('the weapon in the hand casts with the hero: a point above the feet falls along SHADOW_DIR, flattened', ()=>{
@@ -56,5 +57,4 @@ test('the weapon in the hand casts with the hero: a point above the feet falls a
   // The side sticker's offset (or the held hand's, card arma-na-mao-viciado) is what the silhouette casts.
   assert.match(src,/dx=HAND_DX\*b,dy=HAND_DY\*b/);
   assert.match(src,/castOffset\(dx,dy/);
-  assert.match(read('src/client/render/layers.ts'),/arsenal\.begin\([^)]*this\.fx\.silhouettes\)/);
 });

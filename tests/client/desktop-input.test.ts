@@ -225,7 +225,8 @@ test('right button on the map: holds the attack toward the mouse and never walks
   // A pause lets go (unpausing does not: the press itself wakes the game, cone-por-cima-e-clique-em-loop).
   assert.match(scene,/setPaused\(paused:boolean\)\{[^\n]*if\(paused\)this\.rightAttack\(false\);/);assert.match(scene,/releaseInput\(\)\{[^\n]*this\.rightAttack\(false\);/);
   // explore: the hook is Space's own attack (AttackButton.key, its own key source), never pressed on a greyed button.
-  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(!down\)attackBtn\?\.key\(false,'direito'\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true,'direito'\);\}/);
+  // construir-no-botao: with a kit selected the right button builds (buildNow) instead, on a live button only.
+  assert.match(read('src/client/explore.ts'),/attackHold:down=>\{if\(down&&kitPlace\.active\)\{if\(!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)buildNow\(\);return;\}if\(!down\)attackBtn\?\.key\(false,'direito'\);else if\(attackBtn\?\.active&&!\$<HTMLButtonElement>\('#coop-attack'\)\.disabled\)attackBtn\.key\(true,'direito'\);\}/);
   // The hold-to-follow follows the left button only.
   const follow=scene.match(/private followHold\([\s\S]*?\n {2}\}\n/)?.[0]??'';
   assert.match(follow,/if\(this\.paused\|\|!pointer\|\|!mapButtonDown\(pointer\)\)\{/);

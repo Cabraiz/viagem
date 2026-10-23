@@ -1,0 +1,310 @@
+[
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": [
+   "texto sai da caixa: rh-award-line: \"Empatou em \"Marombeiro de up\" em rh-award"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": [
+   "texto sai da caixa: rh-award-line: \"Empatou em \"Marombeiro de up\" em rh-award"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": [
+   "resultado rola: 2 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 1p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, 4 bots, Métricas (dev)",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, vices longos (empates)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 2p, derrota, Métricas (dev)",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 1p, Métricas (dev)",
+  "problems": [
+   "resultado rola: 1 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono arrumando a sala, 6p, 2 bots",
+  "problems": []
+ }
+]

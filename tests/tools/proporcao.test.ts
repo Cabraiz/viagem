@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,PUSH_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
@@ -67,6 +67,15 @@ test('push16 (empurrar-uno): the head keeps ±4 %, the height may drop to PUSH_M
   assert.deepEqual(verdict(n(clip(1.26,.93))),[]);assert.equal(verdict(n(clip(1,1.08))).length,1);assert.equal(verdict(n(clip(1,.8))).length,1);
   // a run's height may drop RUN_HEIGHT_MIN (the bent knee), never more
   assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,1-RUN_HEIGHT_MIN-.01)}}}}).length,1);
+});
+
+test('pull16 (puxar-uno-corda): the head keeps ±4 % in every direction, the height may drop to PULL_MIN_HEIGHT',()=>{
+  const clip=(head:number,height:number)=>({scale:1,frames:[],head,height,torso:1,area:1});
+  const m=(d:string,pull:ReturnType<typeof clip>)=>({id:'x',dirs:{[d]:{rest:{},restKey:'idle8',clips:{pull}}}});
+  assert.deepEqual(verdict(m('S',clip(1.01,.8))),[]);
+  assert.deepEqual(verdict(m('S',clip(1.01,PULL_MIN_HEIGHT-.01))),[`x pull16-S height ${PULL_MIN_HEIGHT-.01} (≥ ${PULL_MIN_HEIGHT})`]);
+  // the head is read in N too (no palms beside it)
+  assert.deepEqual(verdict(m('N',clip(1.06,.95))),['x pull16-N head 1.06 (±4%)']);
 });
 
 test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gated like a loop seam, the sizes like a walk',()=>{

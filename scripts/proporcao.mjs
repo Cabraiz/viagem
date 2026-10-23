@@ -228,6 +228,12 @@ export const PUSH_MIN_HEIGHT=.88;
  * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
  */
 export const PUSH_HEAD_UNREAD=['N'];
+/**
+ * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
+ * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the
+ * sheets read 0.80–1.02); the head keeps ±4 %.
+ */
+export const PULL_MIN_HEIGHT=.78;
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
@@ -236,7 +242,8 @@ export function verdict(m,keys=GATED){
     if(motion==='push'||motion==='pull'){
       const unread=motion==='push'&&PUSH_HEAD_UNREAD.includes(d);
       if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} ${motion}16-${d} head ${c.head} (±${TOL.head*100}%)`);
-      if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
+      const min=motion==='pull'?PULL_MIN_HEIGHT:PUSH_MIN_HEIGHT;
+      if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys){
       const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];

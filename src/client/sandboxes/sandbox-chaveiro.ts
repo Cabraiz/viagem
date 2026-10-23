@@ -11,7 +11,8 @@
  *  - `anda=<graus>` (D-052, the car moves: `voce` pulls it back and forth along that heading, CAR_SWING_U each way in
  *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept),
  *  - `empurrando=<graus>` (card empurrar-uno): the car rolls straight ahead along that heading at `vel=` u/s (default
- *    CAR_SPEED's top, 3.6) over PUSH_SPAN_U and starts over, pushed by `voce` (a mover, no rope).
+ *    CAR_SPEED's top, 3.6) over PUSH_SPAN_U and starts over, pushed by `voce` (a mover, no rope); with `puxando=1`
+ *    (puxar-uno-corda) `voce` holds the rope instead and pulls it.
  *  - `fala=alarme,venda,peca,…` (card chaveiro-falas): those moments' events (fakeTalkEvents), one every FALA_EVERY_MS
  *    from FALA_AT_MS (`falaEm=ms` instead) after the first frame, through the game's line timing (render/chaveiro/talk.ts)
  *    into the zueiras' balloons; `seed=N` the room's seed.
@@ -96,7 +97,7 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
       moto:{...moto,mode:stillMode,...(stillMode==='morta'?{push:pushParam??((now%4000)/4000)}:{})},
       etaS,alarmUntil:alarm?tick+50:0,
       ...(delivery?{delivery}:{}),
-      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts,
+      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce'],...(params.get('puxando')==='1'?{rope:'voce'}:{})}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts,
         // puxar-uno-corda: the room sends the nose; here it lies along the move.
         ...((roll??swing)?{heading:roll??swing}:{})},
       route,stops,...(ended?{ended}:{}),

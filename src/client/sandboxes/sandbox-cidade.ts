@@ -80,7 +80,7 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
-import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
+import {CAR_ROPE,HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
@@ -106,7 +106,7 @@ import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
 import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
-import {PushShifts,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
+import {PushShifts,pullDirection,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
@@ -195,6 +195,8 @@ const carMoves=obra&&params.has('anda');
  * its back, drawn as the game draws a pusher (scene.ts: pushContact, the push16 clip facing the car, palms on it).
  */
 const pushing=objective&&params.has('empurrando');
+/** `puxando=1` with empurrando= (puxar-uno-corda): the hero pulls the rolling car on its rope, ahead of the nose (pull16). */
+const pulling=pushing&&params.get('puxando')==='1';
 /** `corda=livre` with obra=1 (puxar-uno-corda): nobody on the rope, it lies on the ground ahead of the front bumper. */
 const freeRope=params.get('corda')==='livre';
 /** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
@@ -373,17 +375,19 @@ class CitySandbox extends Phaser.Scene {
   update(_t:number,dt:number){
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
-    let push:ReturnType<typeof pushContact>;
+    let push:ReturnType<typeof pushContact>,pull:ReturnType<typeof pullDirection>;
     if(pushing&&this.chaveiro){
       // the hero walks with the car, just behind its back (inside the room's reach); the drawing puts its palms on it
-      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=CAR_HALF.l+.6;
+      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=pulling?-(CAR_HALF.l+CAR_ROPE):CAR_HALF.l+.6;
       this.at={x:car.x-Math.cos(h)*back,y:car.y-Math.sin(h)*back};
       const pose=this.chaveiro.renderer.carPose();
-      push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      // puxando=1: the rope taut ahead of the nose, the hero facing away from the bumper (scene.ts: pullDirection)
+      push=pose&&!pulling?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      if(pulling&&pose)pull=pullDirection(this.at,pose);
       this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
     }
     // anda= (puxar-uno-corda): the hero on the rope ahead of the car, drawn pulling (its pull16) along the swing's axis.
-    const ha=Number(params.get('anda'))*Math.PI/180||0,pull=carMoves?{x:Math.cos(ha),y:Math.sin(ha),pull:true}:undefined;
+    const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir??pull,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
@@ -515,7 +519,7 @@ class CitySandbox extends Phaser.Scene {
   /** empurrando= (puxar-uno-corda): only the fortify layer's rope, free on the ground ahead of the pushed car. */
   private mountRope(){
     const projector=this.cityProjector(),fake=this.chaveiro!.fake.view(0).view;
-    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell:CITY_BUILD_CELL,playerAt:()=>undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell:CITY_BUILD_CELL,playerAt:id=>pulling&&id==='voce'?this.at:undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
     const view={tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:fake} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;

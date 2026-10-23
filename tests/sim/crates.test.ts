@@ -11,7 +11,7 @@ import {
   createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
-import {NEW_WEAPONS,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
+import {ARSENAL_WEAPONS,NEW_WEAPONS,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS,getWeapon} from '../../src/sim/weapons/catalog.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_MARGIN,CRATE_SCALE} from '../../src/rules/crate-size.ts';
 import {KIT_CHANCE,KIT_POOL,isKitId,kitId} from '../../src/rules/tower-kits.ts';
@@ -302,17 +302,19 @@ test('prize table: one weapon of the rarity (never below its minimum), every wea
       const item=prize.items[0];
       ids.get(r)!.add(`${item.id}:${item.level}`);
       const w=getWeapon(item.id);assert.ok(w?.pattern,`${item.id} is a weapon`);
-      const min=NEW_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
+      const min=ARSENAL_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
       assert.ok(item.level>=min&&item.level===r);
     }
   }
   assert.deepEqual([...ids.get(1)!].sort(),['pistola:1']);
-  assert.deepEqual([...ids.get(2)!].sort(),['escopeta:2','pistola:2','submetralhadora:2']);
-  assert.deepEqual([...ids.get(3)!].sort(),['escopeta:3','macarico:3','pistola:3','rifle:3','submetralhadora:3']);
-  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4','macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4']);
-  assert.deepEqual([...ids.get(5)!].sort(),WEAPON_IDS.map(id=>`${legendaryId(id)}:5`).sort());
-  // Every arsenal firearm (all but the starting faca) comes from some crate.
-  assert.deepEqual([...new Set(Object.values(CRATE_WEAPONS).flat())].filter(id=>!id.endsWith('-lendario')).sort(),NEW_WEAPONS.map(w=>w.id).filter(id=>id!=='faca').sort());
+  // The firearms by their rarity, plus the playable Pack 12 weapons (arsenal-completo-no-bau) from theirs.
+  const pack=(r:number)=>ARSENAL_WEAPONS.filter(w=>!NEW_WEAPONS.includes(w)&&(w.minRarity??5)<=r&&(w.minRarity??5)<5).map(w=>`${w.id}:${r}`);
+  assert.deepEqual([...ids.get(2)!].sort(),['escopeta:2','pistola:2','submetralhadora:2',...pack(2)].sort());
+  assert.deepEqual([...ids.get(3)!].sort(),['escopeta:3','macarico:3','pistola:3','rifle:3','submetralhadora:3',...pack(3)].sort());
+  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4','macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4',...pack(4)].sort());
+  assert.deepEqual([...ids.get(5)!].sort(),[...WEAPON_IDS.map(id=>`${legendaryId(id)}:5`),...ARSENAL_WEAPONS.filter(w=>w.minRarity===5&&!NEW_WEAPONS.includes(w)).map(w=>`${w.id}:5`)].sort());
+  // Every arsenal weapon (all but the starting faca) comes from some crate.
+  assert.deepEqual([...new Set(Object.values(CRATE_WEAPONS).flat())].filter(id=>!id.endsWith('-lendario')).sort(),ARSENAL_WEAPONS.map(w=>w.id).filter(id=>id!=='faca').sort());
 });
 
 test('bau-so-arma-ou-torre: 10 mil sorteios of every rarity and of the starter give one weapon or one kit, never coxinha, doces, Grana, fichas or XP',()=>{

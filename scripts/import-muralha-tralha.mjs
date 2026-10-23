@@ -40,6 +40,13 @@ export const KINDS={
   pilar:{ids:['pilar-1','pilar-2','pilar-3'],center:[768,869],source:SOURCE_CELL*.85,
     window:{left:290,up:860,down:155},cell:[124,217],height:765,slope:0,lift:51,piece:'muralha-tralha-pilar',columns:6},
 };
+/**
+ * NEW-20261022-ORQ-barricada-2x: the junk wall's squares are 2×2 build cells and draw their pieces 2× wider and taller,
+ * so its sheets are cut at TRALHA_RES × the cells above (the sources are 1536×1024: still a reduction). 1.5: on a phone's
+ * 2× canvas a texel lands on about one screen px (1×: stretched 1.6×, soft); 2× would triple the lite download for
+ * nothing a phone shows (the base lite copy keeps the sheet's cell). The muro (--nome) keeps 1×.
+ */
+export const TRALHA_RES=1.5;
 /** Share of the full height kept, the bites taken off the top and the darkening, per damage state. */
 const BITES={inteira:{keep:1,bites:0,depth:0,jag:0,shade:1},avariada:{keep:.8,bites:2,depth:.3,jag:.035,shade:.86},'quase-caindo':{keep:.52,bites:3,depth:.2,jag:.05,shade:.72}};
 
@@ -107,8 +114,8 @@ export const idsIn=(files,kind)=>files.map(f=>f.match(new RegExp(`^(${kind}-[0-9
 
 /** Row names of a sheet: `<piece>:<state>`, pieces in order, states in DAMAGE order. */
 export const sheetRows=ids=>ids.flatMap(id=>DAMAGE.map(s=>`${id}:${s}`));
-/** Art px across one build cell along the wall in the sheet (the cell scaled with the window). */
-export const celulaOf=kind=>(kind.source??SOURCE_CELL)*kind.cell[0]/(2*kind.window.left);
+/** Art px across one build cell along the wall in the sheet (the cell, × `res`, scaled with the window). */
+export const celulaOf=(kind,res=1)=>(kind.source??SOURCE_CELL)*Math.round(kind.cell[0]*res)/(2*kind.window.left);
 
 async function main(){
   const require=createRequire(join(ROOT,'package.json')),sharp=require('sharp');
@@ -116,7 +123,7 @@ async function main(){
   const {writeIndex}=await import(pathToFileURL(join(ROOT,'scripts/art-v2/convert.mjs')).href);
   const args=process.argv.slice(2),srcAt=args.indexOf('--src'),nomeAt=args.indexOf('--nome');
   const SRC=srcAt>=0?args[srcAt+1]:'D:/Gits/viagem-board/arte-entrada/cenario/base/muralha-tralha-alta';
-  const nome=nomeAt>=0?args[nomeAt+1]:undefined,files=readdirSync(SRC);
+  const nome=nomeAt>=0?args[nomeAt+1]:undefined,files=readdirSync(SRC),res=nome?1:TRALHA_RES;
   if(nome)for(const [name,kind] of Object.entries(KINDS)){
     kind.piece=name==='reto'?nome:`${nome}-pilar`;kind.ids=idsIn(files,name);
     if(!kind.ids.length||(name==='reto'&&kind.ids.length%2))throw new Error(`${name}: ${kind.ids.length} pedaços em ${SRC} (reto pede número par)`);
@@ -124,7 +131,7 @@ async function main(){
   const spec=GROUPS.base,dir=join(ROOT,spec.output),manifestFile=join(dir,'manifest.json');
   const manifest=JSON.parse(readFileSync(manifestFile,'utf8'));
   for(const [name,kind] of Object.entries(KINDS)){
-    const {left,up,down}=kind.window,ww=2*left,wh=up+down,[cw,ch]=kind.cell,frames=[];
+    const {left,up,down}=kind.window,ww=2*left,wh=up+down,[cw,ch]=kind.cell.map(v=>Math.round(v*res)),frames=[];
     for(const id of kind.ids){
       const src=await sharp(join(SRC,`${id}-t.png`)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
       if(src.info.width!==1536||src.info.height!==1024)throw new Error(`${id}: ${src.info.width}×${src.info.height}, esperado 1536×1024 (o quadro do molde)`);
@@ -148,7 +155,7 @@ async function main(){
     const entry={file,cell:[cw,ch],views:2,rows:rowNames,anchor:[.5,+(up/wh).toFixed(6)],
       pages:[{file,columns:cols,rows,firstFrame:0,frameCount:frames.length,sha256:hash}],sha256:hash};
     manifest.pieces[kind.piece]={kind:'views',files:{sheet:entry},sha256:sha256(`sheet ${hash}`),
-      meta:{pecas:kind.ids,estados:DAMAGE,celula:+celulaOf(kind).toFixed(4),
+      meta:{pecas:kind.ids,estados:DAMAGE,celula:+celulaOf(kind,res).toFixed(4),
         origem:nome?`arte-entrada/cenario/base/${nome} (${name}, E3, card trocar-procedurais-por-arte); dano assado por scripts/import-muralha-tralha.mjs`
           :`arte-entrada/cenario/base/muralha-tralha-alta (${name}, E3, card muralha-mais-alta); dano assado por scripts/import-muralha-tralha.mjs`}};
     console.error(`${kind.piece}: ${frames.length} frames ${cw}×${ch}, ${cols}×${rows}, ${Math.round(webp.length/1024)} KB`);

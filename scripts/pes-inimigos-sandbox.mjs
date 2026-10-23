@@ -9,11 +9,12 @@
  *   node scripts/pes-inimigos-sandbox.mjs <out-prefix> --andar a,b,c [--url http://127.0.0.1:4266/] [--relogio]
  *        [--vel 0.35] [--rumo 1,0] [--quadros 240] [--cada 2] [--clip x,y,w,h]
  *   --cerco a,b,c instead of --andar: they close in on the hero and hit him (the facing and the swing).
+ *   --extra 'ritmo=antes' more query (card inimigos-animacao-2x-lenta: the pace of before); --tela 390x844 the viewport.
  */
 import {pathToFileURL} from 'node:url';import {join} from 'node:path';import {existsSync,writeFileSync,mkdirSync} from 'node:fs';
 const arg=(n,d)=>{const i=process.argv.indexOf(`--${n}`);return i>0?process.argv[i+1]:d;};
 const OUT=process.argv[2],BASE=arg('url','http://127.0.0.1:4266/'),CERCO=arg('cerco'),ANDAR=CERCO??arg('andar','bebado'),FRAMES=Number(arg('quadros',240)),EVERY=Number(arg('cada',2));
-const query=`?sandbox=horda&n=0&elenco=1&hud=0&${CERCO?'cerco':'andar'}=${ANDAR}&vel=${arg('vel','0.35')}&rumo=${arg('rumo','1,0')}${process.argv.includes('--relogio')?'&relogio=1':''}`;
+const query=`?sandbox=horda&n=0&elenco=1&hud=0&${CERCO?'cerco':'andar'}=${ANDAR}&vel=${arg('vel','0.35')}&rumo=${arg('rumo','1,0')}${process.argv.includes('--relogio')?'&relogio=1':''}${arg('extra')?'&'+arg('extra'):''}`;
 const {claimSlot}=await import(pathToFileURL('D:/Gits/viagem/tools/vaga.mjs').href);
 const pwDir='D:/Gits/viagem-tools/node_modules/playwright';
 const pw=await import(pathToFileURL(join(pwDir,existsSync(join(pwDir,'index.mjs'))?'index.mjs':'index.js')).href);
@@ -21,7 +22,7 @@ const chromium=pw.chromium??pw.default.chromium;let browser,release;
 try{
   release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:'E6 monstros-sem-deslizar sandbox'});
   browser=await chromium.launch({args:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']});
-  const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1,serviceWorkers:'block'});
+  const ctx=await browser.newContext({viewport:{width:Number(arg('tela','1280x720').split('x')[0]),height:Number(arg('tela','1280x720').split('x')[1])},deviceScaleFactor:1,serviceWorkers:'block'});
   const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(BASE+query,{waitUntil:'load',timeout:120000});
   // Ready: every walker shows its imported walk sheet.

@@ -8,8 +8,13 @@
  * per tick, in order, holding the last state between changes (InputTrack), never faster than the client's own clock
  * allows (the time since its last report, LEAD_STEPS behind), and the owner's frames carry the position at the last
  * step it reported (`confirmed`), so its prediction never sees a guess. A change that arrives after the room already
- * guessed past it takes effect from the next step: nothing is ever rewound (review onda 5: a rewind let a forged
- * client move several steps in one tick), so one tick moves a player at most one step, whatever the client sends.
+ * guessed past it (jitter, a phone whose step clock fell behind in long frames) is rewound when it is at most
+ * REWIND_MAX_STEPS late (BUG heroi-vai-e-volta: without it the phone was pulled back along the old direction after every
+ * late turn): the guessed steps are redone with the new state on the same ticks (InputTrack.rewind), only when the room
+ * can reproduce them exactly (nothing else moved the player meanwhile). Older than that it takes effect from the next
+ * step, as before. The bound keeps review onda 5's point: a forged client may rewrite at most the last
+ * REWIND_MAX_STEPS guessed steps (never a step it already reported), so one message moves a player at most
+ * 2 × REWIND_MAX_STEPS steps and every tick at most one step.
  * A skill tap is a separate one-shot message {t:'cast',round,id} (no held state, outside the 10 Hz slot), answered
  * with {t:'cast',seq:id,ok,readyTick} after the step that carried it.
  * D-051 (manual combat): the attack button rides the segments as flag bit 1 (held from that step on), like the stick,
@@ -43,6 +48,11 @@ export const MAX_LAG_STEPS=10;
  * a long frame) from walking ahead of the player.
  */
 export const LEAD_STEPS=2;
+/**
+ * A late change redoes at most this many guessed steps (300 ms: LEAD_STEPS, the 10 Hz slot and ~100 ms of jitter).
+ * Later than that, the old rule: the new state from the next step on.
+ */
+export const REWIND_MAX_STEPS=6;
 /** Applied steps remembered for rewinds and for the owner's confirmed position (past the horizon). */
 const HISTORY_STEPS=HORIZON_STEPS+16;
 export const STEP_MS=1000/SIM_HZ;
@@ -188,7 +198,7 @@ export class InputTrack {
   /** Set by next() on the step that carries a tap: Simulation reads it after the step to answer the client. */
   tapped?:number;
   /** Starts over at `ack` (join, reconnect, new run): nothing held, nothing queued. */
-  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.attackPress=false;this.pressAim=undefined;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;}
+  reset(ack=0){this.applied=this.lastFrom=this.known=ack;this.held={...STOP};this.queue=[];this.skillPress=false;this.attackPress=false;this.pressAim=undefined;this.appliedTarget=undefined;this.history=[];this.knownAt=0;this.batched=false;this.castQueue=[];this.lastCast=0;this.tapped=undefined;this.late=undefined;}
   /**
    * A batch from the client, or one legacy step `{seq,x,y,skill,target}` (protocol 4 before input-10hz, tests): the
    * whole message is refused when anything in it is malformed or out of order. A segment may only start after the
@@ -208,15 +218,52 @@ export class InputTrack {
     if(this.queue.length+segments.length>MAX_QUEUED)return false;
     if(batch.seq>this.known){this.known=batch.seq;this.knownAt=now;}
     this.batched=batched;
+    this.late=undefined;
     for(const s of segments){
       this.lastFrom=s.from;
       if(s.from>this.applied){this.queue.push(s);continue;}
-      // Late: the room already guessed past `from` with the old state. From the next step on, the new state; no rewind.
+      // Late: the room already guessed past `from` with the old state. From the next step on, the new state; the guessed
+      // steps from `from` on are redone with it when rewind() can (at most REWIND_MAX_STEPS of them).
+      if(this.late)this.late.segments.push(s);
+      else if(this.applied-s.from<REWIND_MAX_STEPS)this.late={old:{...this.held},segments:[s]};
       if(s.skill&&!this.held.skill)this.skillPress=true;
       if(s.attack&&!this.held.attack){this.attackPress=true;this.pressAim=s.aim;}
       this.queue=[];this.held={...s,from:this.applied};
     }
     return true;
+  }
+  /** The late segments of the last accept() and the state the room guessed with (rewind() consumes it). */
+  private late?:{old:InputSegment;segments:InputSegment[]};
+  /**
+   * After accept(): redoes the steps the last batch's late segments rewrote (BUG heroi-vai-e-volta). `p` is the player
+   * now; `step(at, input)` is the room's own step for client step input.seq on the tick it was taken (undefined: that tick
+   * is unknown). Only when every guessed step from the first late one on is reproduced exactly by `step` with the old
+   * state (nothing else moved the player: a push, a dash, the car, an effect that changed): then they are redone with
+   * the new segments, the history (the owner's confirmed position) follows, and the new position is returned.
+   * Undefined: nothing to redo, or it could not be (the late state just goes on from the next step, as before).
+   */
+  rewind(p:Point,step:(at:Point,input:PlayerInput)=>Point|undefined):Point|undefined{
+    const late=this.late;this.late=undefined;
+    if(!late)return undefined;
+    const from=late.segments[0].from,start=this.history.findIndex(h=>h.seq===from);
+    if(start<0||this.history.length-start!==this.applied-from+1)return undefined;
+    const entries=this.history.slice(start);
+    const inputOf=(s:InputSegment,seq:number):PlayerInput=>({seq,x:s.x,y:s.y,attack:!!s.attack,skill:s.skill});
+    for(let i=0;i<entries.length;i++){
+      const after=entries[i+1]??p,again=step(entries[i],inputOf(late.old,entries[i].seq));
+      if(!again||again.x!==after.x||again.y!==after.y)return undefined;
+    }
+    const before:Point[]=[];
+    let at:Point={x:entries[0].x,y:entries[0].y},k=0,state=late.segments[0];
+    for(const h of entries){
+      while(k+1<late.segments.length&&late.segments[k+1].from<=h.seq)state=late.segments[++k];
+      before.push(at);
+      const next=step(at,inputOf(state,h.seq));
+      if(!next)return undefined;
+      at=next;
+    }
+    entries.forEach((h,i)=>{h.x=before[i].x;h.y=before[i].y;});
+    return at;
   }
   /** A skill tap (client tap id, increasing): carried by the next step, or cast in place while standing or waiting. */
   tap(id:unknown):boolean{

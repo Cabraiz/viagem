@@ -7,6 +7,7 @@ import {readFileSync,statSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {AURA_ALLY_ALPHA,AURA_FRAME_H,AURA_FRAME_W,AURA_FRAMES,AURA_KEY,AURA_SELF_ALPHA,AURA_URL,AuraRings,auraAxes,auraFrameAlphas} from '../../src/client/render/aura-ring.ts';
 import {Projector} from '../../src/client/render/projector.ts';
+import {StepLerp} from '../../src/client/framing.ts';
 
 const sharp=createRequire(import.meta.url)('sharp');
 const FILE=`public${AURA_URL}`;
@@ -81,5 +82,40 @@ test('the strip is a light WebP of the declared frames, and the smoke dissolves 
     for(let k=0;k<64;k++){const t=k/64*2*Math.PI;band=Math.max(band,alpha(f*AURA_FRAME_W+Math.round(AURA_FRAME_W/2*(1+.75*Math.cos(t))),Math.round(AURA_FRAME_H/2*(1+.75*Math.sin(t)))));}
     assert.ok(border<=8,`frame ${f}: alpha ${border} at the frame's edge`);
     assert.ok(band>=96,`frame ${f}: the smoke band is there (alpha ${band})`);
+  }
+});
+
+test('the smoke is centred on the feet the scene drew this frame, after every hero is placed (aura-descentralizada)',()=>{
+  // At locate() (inside horde.update, before place()) the smoke sat on net.predicted, which moves in 50 ms steps a step
+  // ahead of the smoothed sprite, and on the allies' last network state, ahead of their buffered sprite.
+  const scene=readFileSync('src/client/scene.ts','utf8');
+  const arsenal=readFileSync('src/client/render/arsenal-fx.ts','utf8');
+  assert.match(scene,/auraFromScene:true/);
+  assert.match(arsenal,/if\(!this\.options\.auraFromScene\)this\.drawAuras\(/);
+  const coop=scene.slice(scene.indexOf('private updateCoop('));
+  const at=(s:string)=>{const i=coop.indexOf(s);assert.ok(i>=0,s);return i;};
+  const auras=at('this.horde?.auras(id=>feet.get(id));');
+  assert.ok(at('this.horde?.update(time,delta)')<auras,'after the horde update');
+  assert.ok(at('this.place();')<auras&&at('feet.set(net.id,this.position)')<auras,'the hero at his drawn spot, after place()');
+  const ally=at('feet.set(player.id,{x:player.x,y:player.y})');
+  assert.ok(at('objects.image.setPosition(q.x,q.y)')>ally&&ally<auras,'each ally at the spot its sprite is put');
+});
+
+test('running at 60 and at 20 fps the smoke stays on the hero\'s feet in every frame; the raw prediction did not',()=>{
+  const {scene,images}=fakeScene();
+  const projector=new Projector(),rings=new AuraRings(scene as never,projector,10),q={x:0,y:0};
+  for(const fps of [60,20]){
+    const lerp=new StepLerp(),STEP=.05,speed=6;let predicted={x:5,y:5},acc=0,worstOld=0;
+    lerp.sync(predicted);
+    for(let frame=0;frame<fps*2;frame++){
+      acc+=1/fps;
+      while(acc>=STEP){predicted={x:predicted.x+speed*STEP,y:predicted.y};acc-=STEP;lerp.push(predicted);}
+      const feet=lerp.at(acc/STEP);
+      rings.draw([{x:feet.x,y:feet.y,r:2,self:true}],frame*1000/fps,false);
+      projector.project(feet.x,feet.y,q);
+      assert.ok(Math.abs(images[0].x as number-q.x)<1e-9&&Math.abs(images[0].y as number-q.y)<1e-9,`${fps} fps frame ${frame}`);
+      const old=projector.project(predicted.x,predicted.y,{x:0,y:0});worstOld=Math.max(worstOld,Math.hypot(old.x-q.x,old.y-q.y));
+    }
+    assert.ok(worstOld>5,`${fps} fps: the prediction ran ${worstOld.toFixed(1)} px off the sprite (the bug this guards)`);
   }
 });

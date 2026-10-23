@@ -6,16 +6,15 @@ import type {EnemyState,OwnedItem,PickupState,PlayerBuild,SimEvent,SimPlayer,Spa
 import type {SimContext} from '../../src/sim/context.ts';
 import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
-  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,GRANA_DOURADA,GRANA_VERDE,LEGENDARY_TEAM_XP,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
-  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER,TRAIL_AHEAD,TRAIL_MAX,
-  createCrates,prizeKey,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
+  BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,CRATE_WEAPONS,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
+  FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
+  createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
-import {NEW_WEAPONS,isConsumableId,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
+import {NEW_WEAPONS,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
 import {WEAPON_IDS,getWeapon} from '../../src/sim/weapons/catalog.ts';
-import {UNITS_PER_TOKEN} from '../../src/rules/stonewards.ts';
 import {CRATE_BODY_RADIUS,CRATE_OPEN_MARGIN,CRATE_SCALE} from '../../src/rules/crate-size.ts';
-import {KIT_POOL,isKitId,kitId} from '../../src/rules/tower-kits.ts';
+import {KIT_CHANCE,KIT_POOL,isKitId,kitId} from '../../src/rules/tower-kits.ts';
 
 // ---------- Fake context (the sim-progression pattern) ----------
 type Mutable<T>={-readonly [K in keyof T]:T[K]};
@@ -230,13 +229,13 @@ test('trail crates (caixas-sumiram): a hero who walks the first minute passes FI
   assert.equal(chests(off).length,0);
 });
 
-test('starter prizes (caixas-sumiram): every row exists; in 100 matches no item passes 35 % of a hero\'s first four crates, never the same twice in a row',()=>{
+test('starter prizes (caixas-sumiram): every weapon and verde kit shows up; in 100 matches no item passes 35 % of a hero\'s first four crates, never the same twice in a row',()=>{
   const seen=new Set<string>();
   for(let s=0;s<600;s++)for(const r of [1,2] as Rarity[]){
     const prize=rollStarter(new Rng(s).fork('t'),r);seen.add(prizeKey(prize));
     for(const it of prize.items)if(getWeapon(it.id))assert.ok(it.level>=r&&it.level>=(NEW_WEAPONS.find(w=>w.id===it.id)?.minRarity??1));
   }
-  assert.ok(STARTER.length>=6&&['pistola','escopeta','submetralhadora','coxinha'].every(k=>seen.has(k)),[...seen].join(' '));
+  assert.deepEqual([...seen].sort(),[...STARTER_WEAPONS,...KIT_POOL[1].map(kitId)].sort());
   // 100 matches: a hero opens his first four start crates one after the other.
   const tally=new Map<string,number>();let total=0;
   for(let m=1;m<=100;m++){
@@ -293,48 +292,57 @@ test('the rarity grows along the match: rounds 1-3 shift -1, the last rounds +2,
   assert.equal(dropped.value,2);
 });
 
-test('prize table: every item exists, weapons at the rarity (never below their minimum), side prizes',()=>{
-  const ids=new Map<Rarity,Set<string>>(),grana=new Set<number>(),units=new Set<number>();
+test('prize table: one weapon of the rarity (never below its minimum), every weapon that comes in it, nothing else',()=>{
+  const ids=new Map<Rarity,Set<string>>();
   for(const r of [1,2,3,4,5] as Rarity[]){
     ids.set(r,new Set());
     for(let s=0;s<2000;s++){
       const prize=rollPrize(new Rng(s).fork('t'),r);
-      for(const item of prize.items){
-        ids.get(r)!.add(`${item.id}:${item.level}`);
-        if(isConsumableId(item.id))assert.ok(item.level===1||item.level===2);
-        else if(isKitId(item.id))assert.equal(item.level,1,'a tower kit');
-        else{
-          const w=getWeapon(item.id);assert.ok(w?.pattern,`${item.id} is a weapon`);
-          const min=NEW_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
-          assert.ok(item.level>=min&&item.level>=Math.min(r,4)||r===5&&item.level===5);
-        }
-      }
-      if(prize.grana)grana.add(prize.grana);
-      if(prize.towerUnits)units.add(prize.towerUnits);
-      if(r===5)assert.equal(prize.teamXp,LEGENDARY_TEAM_XP);
+      assert.equal(prize.items.length,1);
+      const item=prize.items[0];
+      ids.get(r)!.add(`${item.id}:${item.level}`);
+      const w=getWeapon(item.id);assert.ok(w?.pattern,`${item.id} is a weapon`);
+      const min=NEW_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
+      assert.ok(item.level>=min&&item.level===r);
     }
   }
-  assert.deepEqual([...ids.get(1)!].sort(),['coxinha:1','pistola:1']);
-  assert.deepEqual([...ids.get(2)!].sort(),['brigadeiro:1','cocada:1','escopeta:2','pacoca:1','submetralhadora:2']);
-  assert.deepEqual([...ids.get(3)!].sort(),['brigadeiro:2','cocada:2','escopeta:3','macarico:3','pacoca:2','rifle:3','submetralhadora:3']);
-  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4',...KIT_POOL[4].map(p=>`${kitId(p)}:1`),'macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4'].sort());
+  assert.deepEqual([...ids.get(1)!].sort(),['pistola:1']);
+  assert.deepEqual([...ids.get(2)!].sort(),['escopeta:2','pistola:2','submetralhadora:2']);
+  assert.deepEqual([...ids.get(3)!].sort(),['escopeta:3','macarico:3','pistola:3','rifle:3','submetralhadora:3']);
+  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4','macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4']);
   assert.deepEqual([...ids.get(5)!].sort(),WEAPON_IDS.map(id=>`${legendaryId(id)}:5`).sort());
-  assert.deepEqual([...grana].sort((a,b)=>a-b),[GRANA_VERDE,GRANA_DOURADA]);
-  assert.deepEqual([...units].sort((a,b)=>a-b),[UNITS_PER_TOKEN/2,UNITS_PER_TOKEN]);
-  // Rough odds of the verde row (75/20/5): a firearm early on.
-  let pistol=0;for(let s=0;s<4000;s++)if(rollPrize(new Rng(s).fork('o'),1).items[0]?.id==='pistola')pistol++;
-  assert.ok(pistol>2800&&pistol<3200,`${pistol}`);
+  // Every arsenal firearm (all but the starting faca) comes from some crate.
+  assert.deepEqual([...new Set(Object.values(CRATE_WEAPONS).flat())].filter(id=>!id.endsWith('-lendario')).sort(),NEW_WEAPONS.map(w=>w.id).filter(id=>id!=='faca').sort());
 });
 
-test('prizes land in the inventory, the overflow on the ground; Grana and fichas go through the hooks',()=>{
-  // Lendária: always one weapon, plus team XP.
+test('bau-so-arma-ou-torre: 10 mil sorteios of every rarity and of the starter give one weapon or one kit, never coxinha, doces, Grana, fichas or XP',()=>{
+  const draws:[string,(rng:Rng)=>{items:OwnedItem[]}][]=[
+    ...([1,2,3,4,5] as Rarity[]).map(r=>[`caixa ${r}`,(rng:Rng)=>rollCrate(rng,r)] as [string,(rng:Rng)=>{items:OwnedItem[]}]),
+    ...([1,2] as Rarity[]).map(r=>[`starter ${r}`,(rng:Rng)=>rollStarter(rng,r)] as [string,(rng:Rng)=>{items:OwnedItem[]}]),
+  ];
+  for(const [name,draw] of draws){
+    let kits=0;
+    for(let s=0;s<10000;s++){
+      const prize=draw(new Rng(s).fork('so'));
+      assert.deepEqual(Object.keys(prize),['items'],`${name}: only items`);
+      assert.equal(prize.items.length,1,name);
+      const id=prize.items[0].id;
+      if(isKitId(id)){kits++;continue;}
+      assert.ok(getWeapon(id)?.pattern&&id!=='faca',`${name}: ${id} is a weapon`);
+    }
+    assert.ok(Math.abs(kits/10000-KIT_CHANCE)<.02,`${name}: ${kits} kits`);
+  }
+});
+
+test('prizes land in the inventory, the overflow on the ground; no Grana, fichas nor team XP',()=>{
+  // Lendária: one weapon (or a kit), no team XP.
   const ctx=makeCtx(),crates=createCrates({seed:7,points:[]}),p=addPlayer(ctx,'a',0,0);
   crates.dropCrate(ctx,{x:0,y:0},5);
   run(ctx,crates,1+ticks(3));
   assert.equal(p.build.weapons.length,2);
   assert.match(p.build.weapons[1].id,/-lendario$/);
   assert.equal(p.build.weapons[1].level,5);
-  assert.equal(ctx.team.xp,LEGENDARY_TEAM_XP);
+  assert.equal(ctx.team.xp,0);
   // A full inventory: the legendary falls beside the crate as an 'item'.
   const full=makeCtx(),fullCrates=createCrates({seed:7,points:[]}),q=addPlayer(full,'a',0,0);
   q.build.weapons=Array.from({length:INVENTORY_SLOTS},():OwnedItem=>({id:'faca',level:1}));
@@ -345,16 +353,13 @@ test('prizes land in the inventory, the overflow on the ground; Grana and fichas
   assert.equal(ground.length,1);
   assert.match(ground[0].resource!,/-lendario$/);
   assert.deepEqual([ground[0].x,ground[0].y],[.4,.2]);
-  // Many verde/azul crates: Grana and tower units reach the hooks with the opener.
-  const grana:[string,number][]=[],units:number[]=[];
-  const hooks:CrateHooks={addGrana:(_c,pl,amount)=>grana.push([pl.id,amount]),addTowerUnits:(_c,u)=>units.push(u)};
-  for(let seed=1;seed<=60&&(!grana.length||!units.length);seed++){
-    const c=makeCtx(),cr=createCrates({seed,points:[],hooks});addPlayer(c,'b',0,0);
-    for(let i=0;i<4;i++){cr.dropCrate(c,{x:0,y:0},(i%2+1) as Rarity);}
-    run(c,cr,ticks(8));
+  // Many crates of every rarity: the opener's Grana and the team's XP never move.
+  for(let seed=1;seed<=20;seed++){
+    const c=makeCtx(),cr=createCrates({seed,points:[]}),b=addPlayer(c,'b',0,0),xp=c.team.xp;
+    for(let i=0;i<5;i++){cr.dropCrate(c,{x:0,y:0},(i+1) as Rarity);}
+    run(c,cr,ticks(20));
+    assert.equal(b.grana??0,0);assert.equal(c.team.xp,xp);
   }
-  assert.ok(grana.length&&grana.every(([id,amount])=>id==='b'&&amount===GRANA_VERDE));
-  assert.ok(units.length&&units.every(u=>u===UNITS_PER_TOKEN/2));
 });
 
 test('an opened placed crate respawns 180 s later on a free point away from every player',()=>{
@@ -426,7 +431,7 @@ test('elite and boss chests become dropped crates; dropped crates skip the cap a
 test('deterministic, and a JSON checkpoint resumes exactly like an uninterrupted run',()=>{
   const points=Array.from({length:30},(_,i)=>({x:(i%6)*12,y:Math.floor(i/6)*12,seconds:(i*7)%30}));
   const hooks=(log:string[]):CrateHooks=>({
-    addGrana:(c,p,a)=>log.push(`g${c.tick}:${p.id}:${a}`),addTowerUnits:(c,u)=>log.push(`u${c.tick}:${u}`),onNoise:(c,_at,r,s)=>log.push(`n${c.tick}:${s}:${r}`),
+    onNoise:(c,_at,r,s)=>log.push(`n${c.tick}:${s}:${r}`),
   });
   /** Players hop onto a crate every 3 s (the one their index picks), an elite chest drops every 7 s. */
   const script=(crates:{state:CratesState})=>(ctx:FakeCtx)=>{

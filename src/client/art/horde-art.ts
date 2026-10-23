@@ -18,7 +18,7 @@ import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
 import {allItemDisplays} from '../hud/items.ts';
-import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
+import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
@@ -128,7 +128,7 @@ export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 export const HOSTILE_SHOT_ART='tiro-inimigo';
 export const HOSTILE_PROJECTILE_IDS=['boleto-juros','coco-pombo',HOSTILE_SHOT_ART] as const;
 /** Every `projeteis` id with its own key ('tiro-aliado' is not one: it is the shared friendly look, STATIC_ART). */
-export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS];
+export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS,...PACK12_PROJECTILE_IDS];
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
 /** Built once: the per-frame path never concatenates a key. */
 const PROJECTILE_KEYS=new Map<string,string>();
@@ -362,7 +362,16 @@ export function fileFps(file:ArtFile,anim:string):number{
  * frames, never the walking speed or the sim's attack and damage timing. Projectiles keep the file's rate.
  */
 export const ENEMY_ANIM_RATE=.7;
-const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
+/**
+ * The resting and moving loops (idle, sleep, fly; the walk on the clock) play half as fast again (inimigos-animacao-2x-
+ * lenta, the user: "reduz a animação speed em 2x idle e normal, porque tá parecendo alguém tendo um treco"); one-shot
+ * actions (attack, hit, death...) and acting poses keep ENEMY_ANIM_RATE, so a swing still lands with the sim's damage.
+ * The elite and costume layers of a loop (elite/idle, elite/<variant>-idle) match their base.
+ */
+export const ENEMY_LOOP_RATE=ENEMY_ANIM_RATE/2;
+const SLOW_LOOP=/(?:^|[/-])(?:idle|sleep|fly|walk)$/;
+export const enemyRate=(anim:string)=>SLOW_LOOP.test(anim)?ENEMY_PACE.loop:ENEMY_ANIM_RATE;
+const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*enemyRate(anim);
 /**
  * Walk by the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
  * estivesse rápida"): the walk sheet is not clock-driven any more but follows the ground the enemy covers on screen,
@@ -373,21 +382,37 @@ const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
  * one spot, only new art does. A sheet whose feet hardly open (wheels, a blob) counts ENEMY_STRIDE_MIN, and the legs
  * never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median
  * sheet) for a piece the table does not know yet.
+ * ENEMY_WALK_CADENCE (inimigos-animacao-2x-lenta): the legs go half as fast for the same ground, as if every step
+ * were twice as long. The sheets tread almost in place, so the planted foot slides by the enemy's own ground speed
+ * whatever the cadence (scripts/desliza-inimigos.mjs: same slide a second before and after); halving the cadence
+ * is what takes the frantic look away, and the step stays tied to the ground (slow in a crowd, still when stopped).
+ * ENEMY_CADENCE_KEPT: the sheets whose planted foot really travels back with the ground (`volta` ≥ half the visible
+ * step in scripts/passada-inimigos.mjs: the rato-de-boteco, 0.30 of 0.36) keep a cycle per step, its foot nearly
+ * locked (15 % slide), which half the cadence would undo (57 %).
  */
-export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_MAX_CPS=3;
+export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_CADENCE=.5,ENEMY_WALK_MAX_CPS=1.5;
+export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
+/**
+ * The pace in use: the sandbox's before/after proof (`?sandbox=horda&ritmo=antes`) brings back the loops at
+ * ENEMY_ANIM_RATE and a cycle per visible step (capped at 3 a second), before any sheet loads.
+ */
+export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
  * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
  */
 export const ENEMY_WALK={byGround:true,faceTarget:true};
+/** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
+export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
 export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
 /**
  * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
- * stepping `stride`: a cycle per stride walked on screen (walkCycles, lock 1), capped at ENEMY_WALK_MAX_CPS; 0 on a teleport.
+ * stepping `stride`: `cadence` (enemyCadence) of a cycle per stride walked on screen (walkCycles, lock 1), capped at
+ * ENEMY_WALK_MAX_CPS (scaled with the cadence); 0 on a teleport.
  */
-export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number):number{
-  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1),ENEMY_WALK_MAX_CPS*Math.max(0,dtMs)/1000);
+export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number,cadence=ENEMY_PACE.cadence):number{
+  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1)*cadence,ENEMY_PACE.maxCps*cadence/ENEMY_PACE.cadence*Math.max(0,dtMs)/1000);
 }
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}
@@ -684,7 +709,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const byGround=ENEMY_WALK.byGround&&!!walkFile&&wx!==undefined&&wy!==undefined;
   if(byGround){
     if(Number.isNaN(s.lx))s.cycles=actor.phase;
-    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt);
+    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt,enemyCadence(id));
     s.lx=wx;s.ly=wy;s.lt=now;
   }
   const walkCol=(a:string|undefined)=>a==='walk'&&byGround?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile!).frames):-1;

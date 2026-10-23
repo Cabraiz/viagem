@@ -9,42 +9,51 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {MURALHA_ALTURA,MURALHA_ESTADOS,MURALHA_PILARES,MURALHA_RETOS,cellKey,muralhaColumn,muralhaEstado,muralhaHalf,muralhaPlan,muralhaScale,retoOf,type MuralhaSquare} from '../../src/client/render/muralha-rules.ts';
 import {Projector} from '../../src/client/render/projector.ts';
+import {BARRICADA_CELLS} from '../../src/rules/towers.ts';
 import {BASE_ART} from '../../src/client/art/base-art.ts';
-import {DAMAGE,KINDS,SOURCE_CELL,sheetRows} from '../../scripts/import-muralha-tralha.mjs';
+import {DAMAGE,KINDS,SOURCE_CELL,TRALHA_RES,celulaOf,sheetRows} from '../../scripts/import-muralha-tralha.mjs';
 
 const set=(sq:MuralhaSquare[])=>new Set(sq.map(s=>cellKey(s.c,s.r)));
-const row=(n:number,c0=0,r=0)=>Array.from({length:n},(_,i)=>({c:c0+i,r}));
+/** barricada-2x: squares are N cells wide, so neighbours (and these helpers' squares) sit N cells apart. */
+const N=BARRICADA_CELLS;
+const row=(n:number,c0=0,r=0)=>Array.from({length:n},(_,i)=>({c:c0+i*N,r}));
+const at=(c:number,r:number,rot?:number)=>({c:c*N,r:r*N,...(rot!==undefined?{rot}:{})});
 
 test('a row of 5: the ends draw a half toward the row + a pillar, the 3 in between one whole piece along the row',()=>{
-  const sq=row(5,10,4),cells=set(sq),plans=sq.map(s=>muralhaPlan(s,cells));
+  const sq=row(5,10,4),cells=set(sq),plans=sq.map(s=>muralhaPlan(s,cells,undefined,N));
   assert.deepEqual(plans[0].map(d=>[d.kind,d.axis,d.toward]),[['reto','c',1],['pilar',undefined,undefined]]);
   assert.deepEqual(plans[4].map(d=>[d.kind,d.axis,d.toward]),[['reto','c',-1],['pilar',undefined,undefined]]);
   for(const p of plans.slice(1,4))assert.deepEqual(p.map(d=>[d.kind,d.axis,d.toward]),[['reto','c',undefined]]);
   // Along r the same, on the other axis.
   const col=row(3).map(s=>({c:4,r:s.c})),cc=set(col);
-  assert.deepEqual(muralhaPlan(col[1],cc).map(d=>[d.kind,d.axis]),[['reto','r']]);
+  // Squares one cell apart are not neighbours (they overlap: the room never lets that stand).
+  assert.equal(N,2);
+  assert.deepEqual(muralhaPlan({c:0,r:0},set([{c:0,r:0},{c:1,r:0}]),undefined,N).map(d=>[d.kind,d.toward]),[['reto',undefined]]);
+  assert.deepEqual(muralhaPlan(col[1],cc,undefined,N).map(d=>[d.kind,d.axis]),[['reto','r']]);
 });
 
 test('corner, T, cross and a lone square',()=>{
-  const L=[{c:0,r:0},{c:1,r:0},{c:0,r:1}],cl=set(L);
-  assert.deepEqual(muralhaPlan(L[0],cl).map(d=>[d.kind,d.axis,d.toward]),[['reto','c',1],['reto','r',1],['pilar',undefined,undefined]]);
-  const T=[{c:0,r:0},{c:-1,r:0},{c:1,r:0},{c:0,r:1}];
-  assert.equal(muralhaPlan(T[0],set(T)).length,4,'3 halves + pillar');
-  const X=[...T,{c:0,r:-1}];
-  assert.equal(muralhaPlan(X[0],set(X)).length,5,'4 halves + pillar');
-  assert.deepEqual(muralhaPlan({c:7,r:7},new Set([cellKey(7,7)])).map(d=>[d.kind,d.axis]),[['reto','c']],'alone: whole, along x');
-  assert.deepEqual(muralhaPlan({c:7,r:7,rot:1},new Set([cellKey(7,7)])).map(d=>[d.kind,d.axis]),[['reto','r']],'alone, rot 1: along y');
+  const L=[at(0,0),at(1,0),at(0,1)],cl=set(L);
+  assert.deepEqual(muralhaPlan(L[0],cl,undefined,N).map(d=>[d.kind,d.axis,d.toward]),[['reto','c',1],['reto','r',1],['pilar',undefined,undefined]]);
+  const T=[at(0,0),at(-1,0),at(1,0),at(0,1)];
+  assert.equal(muralhaPlan(T[0],set(T),undefined,N).length,4,'3 halves + pillar');
+  const X=[...T,at(0,-1)];
+  assert.equal(muralhaPlan(X[0],set(X),undefined,N).length,5,'4 halves + pillar');
+  assert.deepEqual(muralhaPlan({c:7,r:7},new Set([cellKey(7,7)]),undefined,N).map(d=>[d.kind,d.axis]),[['reto','c']],'alone: whole, along x');
+  assert.deepEqual(muralhaPlan({c:7,r:7,rot:1},new Set([cellKey(7,7)]),undefined,N).map(d=>[d.kind,d.axis]),[['reto','r']],'alone, rot 1: along y');
 });
 
 test('pieces: seeded by the cell (the same on every client), all of them used, never the previous one along a run',()=>{
   const sq=row(400,-200,3),cells=set(sq);
-  const a=sq.map(s=>muralhaPlan(s,cells)),b=sq.map(s=>muralhaPlan({...s},new Set(cells)));
+  const a=sq.map(s=>muralhaPlan(s,cells,undefined,N)),b=sq.map(s=>muralhaPlan({...s},new Set(cells),undefined,N));
   assert.deepEqual(a,b,'deterministic');
   const pieces=a.slice(1,-1).map(p=>p[0].piece);
   assert.equal(new Set(pieces).size,MURALHA_RETOS,'every straight piece shows up');
   for(let i=1;i<pieces.length;i++)assert.notEqual(pieces[i],pieces[i-1],`cells ${i-1},${i}`);
   for(const p of a)for(const d of p)assert.ok(Number.isInteger(d.piece)&&d.piece>=0&&d.piece<(d.kind==='reto'?MURALHA_RETOS:MURALHA_PILARES));
-  assert.equal(retoOf(3,5,'c'),retoOf(3,5,'c'));
+  assert.equal(retoOf(3,5,'c',undefined,N),retoOf(3,5,'c',undefined,N));
+  // The junk wall's layer draws its squares BARRICADA_CELLS wide (render/muralha.ts TRALHA_SHEETS.size; Phaser: read as text).
+  assert.match(readFileSync(new URL('../../src/client/render/muralha.ts',import.meta.url),'utf8'),/TRALHA_SHEETS:MuralhaSheets=Object\.freeze\(\{[^}]*size:BARRICADA_CELLS\}/);
 });
 
 test('column and half from the projection, in the 4 camera views; scale: the cell across, the height × MURALHA_ALTURA',()=>{
@@ -71,7 +80,9 @@ test('the imported sheets (base/muralha-tralha, base/muralha-tralha-pilar) have 
   for(const [kind,id,n] of [['reto',BASE_ART.muralha,MURALHA_RETOS],['pilar',BASE_ART.pilar,MURALHA_PILARES]] as const){
     const p=base[id],f=p.files.sheet,k=KINDS[kind];
     assert.equal(p.meta.pecas.length,n,id);assert.deepEqual(p.meta.pecas,k.ids);
-    assert.deepEqual(f.rows,sheetRows(k.ids));assert.equal(f.views,2);assert.deepEqual(f.cell,k.cell);
+    // barricada-2x: cut at TRALHA_RES × the template's cell (sharper for the 2×2 squares); celula follows.
+    assert.deepEqual(f.rows,sheetRows(k.ids));assert.equal(f.views,2);assert.deepEqual(f.cell,k.cell.map(v=>Math.round(v*TRALHA_RES)));
+    assert.equal(p.meta.celula,+celulaOf(k,TRALHA_RES).toFixed(4));
     assert.ok(p.meta.celula>100&&p.meta.celula<SOURCE_CELL,`${id}: ${p.meta.celula} art px per cell`);
     assert.equal(f.pages.length,1);assert.equal(f.pages[0].frameCount,f.rows.length*2);
     assert.ok(f.pages[0].columns*f.cell[0]<=4096&&f.pages[0].rows*f.cell[1]<=4096,'under 4096 px');

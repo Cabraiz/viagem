@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView,compositionLine,COMPOSITION_LINES,memberClassName} from '../../src/client/lobby.ts';
+import {NICK_MAX,suggestNickname,WAITING_LINES,WAITING_LINE_SECONDS,waitingLine,countdownJoke,shareLink,waitingRoomView,compositionLine,COMPOSITION_LINES,memberClassName,chipNameHtml} from '../../src/client/lobby.ts';
 import {RunLifecycle,RUN_HZ,RUN_COUNTDOWN_TICKS} from '../../src/sim/run.ts';
 import type {RunMember,RunState} from '../../src/sim/run.ts';
 
@@ -180,4 +180,12 @@ test('compositionLine: 3+ with every class known names the first missing role, s
 
 test('memberClassName: the class short name under the chip, empty until known',()=>{
   assert.equal(memberClassName('clt-cansado'),'CLT');assert.equal(memberClassName(undefined),'');assert.equal(memberClassName('nao-existe'),'');
+});
+
+test('chipNameHtml: a numbered name keeps its number apart (the words before it take the reticências); others plain, escaped',()=>{
+  assert.equal(chipNameHtml('Mendigo 2'),'<b class="coop-wait-numbered"><b>Mendigo</b><b>&nbsp;2</b></b>');
+  assert.equal(chipNameHtml('Passage. 3'),'<b class="coop-wait-numbered"><b>Passage.</b><b>&nbsp;3</b></b>');
+  assert.equal(chipNameHtml('CLT'),'CLT');assert.equal(chipNameHtml('Bet 365'),'Bet 365');assert.equal(chipNameHtml('2'),'2');
+  assert.equal(chipNameHtml('<i> 2'),'<b class="coop-wait-numbered"><b>&lt;i&gt;</b><b>&nbsp;2</b></b>');
+  assert.equal(chipNameHtml('Tia & Cia'),'Tia &amp; Cia');
 });

@@ -14,7 +14,7 @@
  */
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
-import {CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
@@ -314,7 +314,7 @@ export class StonewardsRenderer {
     g.clear();
     const down=s.hp<=0,ratio=s.maxHp>0?s.hp/s.maxHp:0,stage=damageStage(ratio,down),flash=this.flashing(s.id);
     // D-052: a free-build barricade lies along its own footprint (rot), not across a plaza mouth.
-    const span=isFreeBarricade(s)?freeBarricadeSpan(s,CITY_BUILD_CELL):barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
+    const span=isFreeBarricade(s)?freeBarricadeSpan(s,CITY_BUILD_CELL*BARRICADA_CELLS):barricadeSpan(s,wall),depth=this.options.projector.depth(s.x,s.y);
     const p=this.project(s.x,s.y),x=p.x,y=p.y;
     g.setDepth(depth);
     // A free square wears the junk wall (muralha.ts) once its sheets are loaded; [] when down. Otherwise today's art.
@@ -327,12 +327,12 @@ export class StonewardsRenderer {
     const alert=isFreeBarricade(s)&&s.untilTick!==undefined&&this.tick<s.untilTick;
     if(alert){
       const left=(s.untilTick!-this.tick)/SIM_HZ,pulse=.5+.5*Math.sin(this.now/(left<2?60:140));
-      const l=this.project(s.x-CITY_BUILD_CELL*1.4,s.y),lx=l.x,ly=l.y,r=this.project(s.x+CITY_BUILD_CELL*1.4,s.y),w=Math.hypot(r.x-lx,r.y-ly);
+      const reach=CITY_BUILD_CELL*BARRICADA_CELLS*1.4,l=this.project(s.x-reach,s.y),lx=l.x,ly=l.y,r=this.project(s.x+reach,s.y),w=Math.hypot(r.x-lx,r.y-ly);
       g.fillStyle(ALERT_RED,.25+.35*pulse).fillEllipse(x,y,w,w*.55);
     }
     // barricada-construir part 2: the square under the mouse or tapped wears the gold outline (the alert's red wins).
     if(!alert&&isFreeBarricade(s)&&s.id===this.outline){
-      const c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,pts=[[c0,r0],[c0+CITY_BUILD_CELL,r0],[c0+CITY_BUILD_CELL,r0+CITY_BUILD_CELL],[c0,r0+CITY_BUILD_CELL]]
+      const c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,side=CITY_BUILD_CELL*BARRICADA_CELLS,pts=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]]
         .map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
       g.lineStyle(5*k,this.c.breu,.6).strokePoints(pts,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(pts,true);
     }

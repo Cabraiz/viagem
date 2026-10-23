@@ -10,7 +10,7 @@ import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
 import {GHOST_ALPHA,GHOST_TINT,GhostCam,ghostBounds,ghostSpeed} from './ghost.ts';
-import {FollowCamera,StepLerp,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
+import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
 import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
@@ -197,6 +197,8 @@ export class IslandScene extends Phaser.Scene {
   private ghostRing?:Phaser.GameObjects.Ellipse;
   /** City see-through (cidade-borda-e-quadras): the allies' feet drawn this frame, so walls in front of them fade too. */
   private allyFeet:Point[]=[];
+  /** Each hero's feet where this frame drew his sprite (world u): the Defumador's smoke is centred there (aura-descentralizada). */
+  private drawnFeet=new Map<string,Point>();
   private position:Point={...SPAWN};
   private route:Point[]=[];
   /** The player's zoom factor (camera-zoom.ts): wanted (wheel, pinch), on screen (eased toward it). */
@@ -257,7 +259,11 @@ export class IslandScene extends Phaser.Scene {
   private readonly fpsWatch=new FpsWatch(QUALITY_WATCH);
   /** rAF time of the last drawn frame: Phaser's own delta is smoothed and clamped at 200 ms, too kind to a slow phone. */
   private lastFrameAt?:number;
+  /** rAF ms since the previous frame (0 on the first): the step clock's time (framing.ts stepClock). */
+  private frameMs=0;
   private accumulator=0;
+  /** Where the prediction was drawn last frame (before the correction): the frame's own motion for the fade. */
+  private lastSmooth?:Point;
   private attackTarget?:string;
   private skillEffects?:Graphics;
   private displayed?:Point;
@@ -530,6 +536,10 @@ export class IslandScene extends Phaser.Scene {
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
+        // …drawn by the scene once every hero is placed and animated (end of updateCoop): on this frame's pose and spot.
+        handsFromScene:true,
+        // …and the Defumador's smoke on the feet as drawn (the smoothed hero, the buffered allies), not at locate().
+        auraFromScene:true,
         // Boletos and the sale's coxinhas behind a tree go above the canopies (pacote-bugs-ux, VGM-053B review M3).
         canopyCovers:(q,depth)=>this.treeCovers(q,depth),canopyVersion:()=>this.propsVersion,
         // City: dashed Breu/Papel telegraph edge with a solid Cone ring, Breu 38% contact shadows (card cidade-contorno-breu).
@@ -844,6 +854,8 @@ export class IslandScene extends Phaser.Scene {
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
     // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
+    // City: the same copy behind a building, wall or prop (the see-through's layers stack in a dense block).
+    if(this.city)covered=this.city.covers(this.position.x,this.position.y);
     this.selfCovered=covered;
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
@@ -913,7 +925,7 @@ export class IslandScene extends Phaser.Scene {
   /** Frames per second of the last whole watch windows (lab report and DEV probe). */
   get fpsHistory():readonly number[]{return this.fpsWatch.history;}
   private watchFrames(time:number){
-    const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;
+    const net=this.hooks.net,last=this.lastFrameAt;this.lastFrameAt=time;this.frameMs=last===undefined?0:time-last;
     if(net&&this.booted){
       const was=this.catchUp.on;
       if(this.catchUp.update(document.hidden?0:net.backlog.ms,time)!==was){this.frameGate();this.fpsWatch.taint();}
@@ -1193,7 +1205,7 @@ export class IslandScene extends Phaser.Scene {
       this.hooks.runView?.(runView);
     }
     this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
-    this.accumulator=Math.min(this.accumulator+delta/1000,.2);
+    this.accumulator=stepClock(this.accumulator,this.frameMs);
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
     const mouse=this.mouseGround();
@@ -1223,7 +1235,8 @@ export class IslandScene extends Phaser.Scene {
       effects.lineStyle(3*this.actorScale,0xffde88,1-age/10).strokePoints(points,true);
     }
     // The reconcile error fades at most CORRECTION_MAX_PX per frame on screen (one world unit's px at this zoom).
-    const unitPx=this.unitPx(smooth);this.correction.step(delta,unitPx);
+    const unitPx=this.unitPx(smooth),last=this.lastSmooth;this.lastSmooth=smooth;
+    this.correction.step(delta,unitPx,last&&{x:smooth.x-last.x,y:smooth.y-last.y});
     this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
     this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     this.horde?.selfCone(this.position,this.shadow.depth);
@@ -1239,6 +1252,7 @@ export class IslandScene extends Phaser.Scene {
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
     const carPose=this.chaveiro?.carPose();
     this.allyFeet=[];
+    const feet=this.drawnFeet;feet.clear();feet.set(net.id,{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y});
     for(const player of view.players){
       if(player.id===net.id)continue;
       if(city&&player.online&&!player.spectator)this.allyFeet.push({x:player.x,y:player.y});
@@ -1251,7 +1265,8 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir);
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
-      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.treeCovers(q,depth);
+      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(drawnAt.x,drawnAt.y):this.treeCovers(q,depth);
+      feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
@@ -1271,7 +1286,7 @@ export class IslandScene extends Phaser.Scene {
       const state=net.feed.players.get(player.id),downed=!!state?.downed&&!state.eliminated;
       // Ally fichas at 13 px CSS: names in the waiting room, and in a run only who is caído, as an SOS ficha (onda 4).
       objects.label.setSos(downed).setCity(city).setText(allyLabelText(player.name,{spectator:player.spectator,eliminated:state?.eliminated,downed,online:player.online},downed&&state?.downed?secondsLeft(state.downed.bleedOutTick,this.viewTick):undefined))
-        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*k,zoomNow):q.y+15*k,covered?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
+        .anchor(q.x,stagger?this.staggerLabel(placedLabels,q.x,q.y+15*k,zoomNow):q.y+15*k,covered&&!this.city?depth+2:ALLY_DEPTH+1).draw(this.cameras.main.zoom,mapLabelVisible('ally',this.labelPhase(),downed));
     }
     // In the blackout the caídos' rings and light columns go above the dark (VGM-053B).
     this.downedLayer?.update(marks,this.view,1/Math.max(.05,this.cameras.main.zoom),(this.zueira?.last.dark??0)>0?LIFTED_DEPTH:undefined);
@@ -1281,6 +1296,9 @@ export class IslandScene extends Phaser.Scene {
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
     }
+    // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
+    this.horde?.hands();
+    this.horde?.auras(id=>feet.get(id));
     this.updateWatch(view.players,delta);
     if(!this.route.length)this.destination.clear();
     this.stamp+=delta;if(this.stamp>100){this.stamp=0;this.hooks.position(this.position);}

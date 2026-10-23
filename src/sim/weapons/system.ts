@@ -23,6 +23,10 @@ import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
 import {isPriorityTarget,isReflecting} from '../enemies/catalog.ts';
+import type {FireApi} from './fire-api.ts';
+import {fireRicochet,ricochetReach} from './ricochet.ts';
+import {fireMine,mineReach} from './mine.ts';
+import {fireTurret,tickTurrets,turretReach} from './turret.ts';
 
 /** Speed and life of sandals flung by the evolved orbit: tuned 8 u/s for 1 s, flown through HERO_SHOT_SPEED_MULT (same reach). */
 const FLING_SPEED=8*HERO_SHOT_SPEED_MULT,FLING_SECONDS=1/HERO_SHOT_SPEED_MULT,FLING_PIERCE=2;
@@ -81,6 +85,10 @@ export function manualReach(w:ResolvedWeapon):{reach:number;pad:boolean}{
     case 'zone':return w.def.evolved?.followsOwner?{reach:w.area,pad:true}:{reach:w.range,pad:false};
     case 'orbit':return {reach:w.area+orbiterRadius(w),pad:true};
     case 'shield':case 'cone':return {reach:w.area,pad:true};
+    // Pack 12 fatia A2: each pattern's own file says how far it looks.
+    case 'ricochet':return ricochetReach(w);
+    case 'mine':return mineReach(w);
+    case 'turret':return turretReach(w);
   }
 }
 /** Slack of the spatial query for padded reaches (enemy radius); the exact test follows. */
@@ -146,6 +154,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   }
 
   const group=(player:SimPlayer,w:ResolvedWeapon)=>`${player.id}:${w.def.id}`;
+  /** What the patterns in their own files (fire-api.ts) get: this system's target order and cap. */
+  const api:FireApi={cap,group,targets:(ctx,player,range,count,pad=false)=>opts.manual?manualTargets(ctx,player,range,count,pad):targets(ctx,player,range,count)};
 
   function fireOrbit(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
     const spin=w.speed/SIM_HZ,start=ctx.tick*spin,until=ctx.tick+w.durationTicks;
@@ -156,7 +166,7 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
         owner:player.id,source:w.def.id,motion:'orbit',anchor:player.id,angle,orbitRadius:w.area,spin,
         x:player.x+Math.cos(angle)*w.area,y:player.y+Math.sin(angle)*w.area,vx:0,vy:0,
         radius:orbiterRadius(w),damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
-        rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,
+        rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,blocksHostile:w.def.effect?.blocksHostile||undefined,
       },cap);
       if(p)spawned++;
     }
@@ -185,14 +195,16 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     if(!target)return false;
     let dir=facingOf(player);
     const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
-    const returns=!!w.def.evolved?.returns;
+    const returns=!!w.def.evolved?.returns,fanStep=w.def.effect?.fanStep;
+    const slowTicks=w.def.effect?.slowSeconds?ticks(w.def.effect.slowSeconds):undefined;
     const fan=w.amount-aimed.length+1;
     let spawned=0;
     for(let i=0;i<w.amount;i++){
-      const own=i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
-      const d=own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
+      // Pack 12 tarô (effect.fanStep): the whole volley fans around the first target, wider than FAN_STEP.
+      const own=!fanStep&&i>0&&i<aimed.length?towardOr(player,aimed[i]):undefined,f=i-(aimed.length-1);
+      const d=fanStep?rotate(dir,(i-(w.amount-1)/2)*fanStep):own??rotate(dir,(i===0?-(fan-1)/2:f-(fan-1)/2)*FAN_STEP);
       const p=spawnProjectile(ctx,{
-        owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,
+        owner:player.id,source:w.def.id,motion:'linear',x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,slowTicks,
         radius:w.area,damage:w.damage,pierce:returns?PIERCE_INFINITE:w.pierce,hostile:false,knockback:w.knockback,
         untilTick:ctx.tick+w.durationTicks*(returns?2:1),
         returnTick:returns?ctx.tick+w.durationTicks:undefined,
@@ -215,10 +227,13 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       if(p)ctx.emit({type:'fire',player:player.id,weapon:w.def.id,x:player.x,y:player.y});
       return !!p;
     }
-    const list=targets(ctx,player,w.range,w.amount);
+    const scatter=w.def.effect?.scatter;
+    const list=targets(ctx,player,w.range,scatter?1:w.amount);
     if(!list.length)return false;
+    // Pack 12 traque (effect.scatter): the volley's bursts ring the first target, the ring turning with the tick.
+    const spots=scatter?Array.from({length:w.amount},(_,i)=>{const a=ctx.tick*.7+2*Math.PI*i/w.amount;return {x:list[0].x+Math.cos(a)*scatter,y:list[0].y+Math.sin(a)*scatter};}):list;
     let spawned=0;
-    for(const e of list){
+    for(const e of spots){
       const p=spawnProjectile(ctx,{
         owner:player.id,source:w.def.id,motion:'linear',x:e.x,y:e.y,vx:0,vy:0,
         radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
@@ -317,6 +332,9 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       case 'shield':return fireShield(ctx,player,w);
       case 'homing':return fireHoming(ctx,player,w);
       case 'cone':return fireCone(ctx,player,w);
+      case 'ricochet':return fireRicochet(ctx,player,w,api);
+      case 'mine':return fireMine(ctx,player,w,api);
+      case 'turret':return fireTurret(ctx,player,w,api);
     }
   }
 
@@ -342,6 +360,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     id:'weapons',
     step(ctx){
       const manual=opts.manual;
+      // Pack 12 fatia A2: the placed turrets shoot on their own, held attack or not.
+      tickTurrets(ctx,api);
       for(const player of ctx.players.values()){
         if(!canAct(player))continue;
         aura(ctx,player);

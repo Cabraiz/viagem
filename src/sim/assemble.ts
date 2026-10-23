@@ -342,12 +342,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     summon:(ctx,kind,at)=>isEnemyKind(kind)?director?.summon(ctx,kind,at):undefined,
   });
   if(cp)enemyAi.restore(cp.enemyAi);
-  // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. Its
-  // Grana goes to the opener's wallet (carteira-e-pix); a ficha prize to the team's tower units; the noise to the nests (E1).
+  // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. A crate
+  // gives only a weapon or a kit de torre (bau-so-arma-ou-torre), straight into the opener's inventory.
   const crates:Crates|undefined=manual?createCrates({seed:world.seed,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
-    startPoints:cityLoot(world.terrain)?.aroundPlaza??[],
-    hooks:{addGrana:(_ctx,p,amount)=>{addGrana(p,amount);},addTowerUnits:(_ctx,units)=>{stonewards.state.balance.units+=units;}},
+    startPoints:cityLoot(world.terrain)?.aroundStart??[],
+    // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
+    ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),

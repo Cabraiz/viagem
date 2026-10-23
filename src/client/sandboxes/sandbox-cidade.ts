@@ -81,7 +81,7 @@ import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts'
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -293,8 +293,9 @@ class CitySandbox extends Phaser.Scene {
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
     // arsenal=1: the game's horde and base art (scene.ts preload), so the bullets, the crate sheet and the rest are the match's.
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
-    // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match.
-    if(muralhaShot&&!base&&!arsenal)queueBaseArt(this);
+    // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match; objetivo=1: the chaveiro's
+    // painted moto and the built muro's sheets (BASE_ART.moto / .muro, card trocar-procedurais-por-arte).
+    if((muralhaShot||objective)&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
     if(ninhos&&!arsenal)queueHordeArt(this);
   }
@@ -486,9 +487,13 @@ class CitySandbox extends Phaser.Scene {
     this.fortify.setGhost({piece,c:at.c,r:at.r,look});
     this.fortify.setHints(buildHints(piece,sites,ctx));
   }
-  /** `muralha=1|2`: the junk wall's squares around the hero (cells of CITY_BUILD_CELL). */
-  private muralhaSquares(bar:(id:string,c:number,r:number,rot:0|1,hp:number)=>StructureView):StructureView[]{
-    const cell=CITY_BUILD_CELL,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell),row=[-2,-1,0,1,2];
+  /**
+   * `muralha=1|2`: the junk wall's squares around the hero, laid out in squares (barricada-2x: one square is
+   * BARRICADA_CELLS × BARRICADA_CELLS cells of CITY_BUILD_CELL).
+   */
+  private muralhaSquares(square:(id:string,c:number,r:number,rot:0|1,hp:number)=>StructureView):StructureView[]{
+    const cell=CITY_BUILD_CELL,n=BARRICADA_CELLS,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell),row=[-2,-1,0,1,2];
+    const bar=(id:string,c:number,r:number,rot:0|1,hp:number)=>square(id,hc+(c-hc)*n,hr+(r-hr)*n,rot,hp);
     if(muralhaShot==='2')return [
       ...[0,1,2,3].map(i=>bar(`l${i}`,hc-4+i,hr-3,0,200)),...[1,2].map(i=>bar(`m${i}`,hc-4,hr-3+i,1,200)),
       ...[0,1,2,3,4].map(i=>bar(`t${i}`,hc+1+i,hr+1,0,200)),...[1,2].map(i=>bar(`u${i}`,hc+3,hr+1-i,1,200)),
@@ -673,7 +678,7 @@ class CitySandbox extends Phaser.Scene {
     }
     lab.horde.update(time,dt);
     const feet={x:this.hero.x,y:this.hero.y},zoom=this.cameras.main.zoom;
-    lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
+    lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:this.layer?.covers(this.at.x,this.at.y)??false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
     // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
     lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
@@ -745,7 +750,7 @@ class CitySandbox extends Phaser.Scene {
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
       /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */

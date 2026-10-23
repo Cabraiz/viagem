@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {CHAVEIRO_LINES,END_EVENTS,LINE_EVENTS,MAX_LINE_CHARS,SPEAKER_SPOT,hash32,pickLine,talkSeed,type LineEvent} from '../../src/client/render/chaveiro/lines.ts';
-import {ChaveiroTalk,DEDUPE_MS,LINE_GAP_MS,PENDING_MS,eventMoment,resultMoment,viewEndMoment,type LooseEvent} from '../../src/client/render/chaveiro/talk.ts';
+import {ChaveiroTalk,DEDUPE_MS,LINE_GAP_MS,PENDING_MS,REPEAT_MS,eventMoment,resultMoment,viewEndMoment,type LooseEvent} from '../../src/client/render/chaveiro/talk.ts';
 import type {ChaveiroView,MotoMode} from '../../src/client/render/chaveiro/view.ts';
 import {fakeTalkEvents,FALA_AT_MS,FALA_EVERY_MS} from '../../src/client/sandboxes/sandbox-chaveiro.ts';
 import {TIO_SPOT,tioSpot} from '../../src/client/render/chaveiro/rules.ts';
@@ -31,7 +31,7 @@ test('falas: every line is short (≤ 60 chars) and fits the balloon at 390 px (
 });
 
 test('falas: 4 to 8 variations per moment, each moment its own (tranco-sozinha does not borrow tranco\'s)',()=>{
-  assert.deepEqual([...LINE_EVENTS].sort(),['abrindo','acordou','buy','chefe','chegou','conector','divida','entrega','lombada','morta','part','perda-total','sale','tombo','tranco','tranco-sozinha','volta'].sort());
+  assert.deepEqual([...LINE_EVENTS].sort(),['abrindo','acordou','buy','chefe','chegou','conector','divida','empurra','entrega','lombada','morta','part','perda-total','puxa','sale','tombo','tranco','tranco-sozinha','volta'].sort());
   for(const e of LINE_EVENTS)assert.ok(CHAVEIRO_LINES[e].length>=4&&CHAVEIRO_LINES[e].length<=8,`${e}: ${CHAVEIRO_LINES[e].length}`);
   assert.deepEqual([...END_EVENTS].sort(),['conector','divida','perda-total']);
 });
@@ -123,6 +123,25 @@ test('falas: the view speaks until the events arrive: mode changes, morta → an
   assert.deepEqual(run([{at:0,view:view('anda')},{at:500,view:view('volta'),events:[{type:'alarm',untilTick:9,eventId:1},{type:'moto',mode:'volta',eventId:2}]}]).map(s=>s.event),['volta']);
 });
 
+test('falas: D-052, the team moves the Quadradão: someone starts pushing → empurra, the rope hooked → puxa, not every step',()=>{
+  const car=(movers?:string[],rope?:string)=>({car:{x:5,y:5,hits:0,limit:80,parts:0,...(movers?{movers}:{}),...(rope?{rope}:{})}});
+  assert.deepEqual(run([{at:0,view:view('anda')},{at:500,view:view('anda',car(['p1']))}]).map(s=>s.event),['empurra']);
+  assert.deepEqual(run([{at:0,view:view('anda')},{at:500,view:view('anda',car(['p1'],'p1'))}]).map(s=>s.event),['puxa']);
+  // The rope holder is on the movers list: alone, it is a pull, not a push; a second hero pushing too is the push.
+  assert.deepEqual(run([{at:0,view:view('anda',car(['p1'],'p1'))},{at:500,view:view('anda',car(['p1','p2'],'p1'))}]).map(s=>s.event),['empurra']);
+  // Joining with the car already moving says nothing (the state, not a change).
+  assert.deepEqual(run([{at:0,view:view('anda',car(['p1','p2'],'p2'))}]).map(s=>s.event),[]);
+  // The push comes and goes (a hero steps off to fight and back): once per REPEAT_MS, then again with another line.
+  const repeat=REPEAT_MS.empurra??0;
+  assert.ok(repeat>=4*LINE_GAP_MS);
+  const flicker=[{at:0,view:view('anda')},...Array.from({length:40},(_,i)=>({at:500+i*1000,view:view('anda',i%2?{}:car(['p1']))}))];
+  const said=run(flicker,500+40*1000+repeat);
+  assert.equal(said.length,Math.ceil(40*1000/repeat));
+  for(let i=1;i<said.length;i++){assert.ok(said[i].at-said[i-1].at>=repeat);assert.notEqual(said[i].text,said[i-1].text);}
+  // Pushing does not mute the moto's own moments (the view still tells them).
+  assert.deepEqual(run([{at:0,view:view('anda')},{at:500,view:view('anda',car(['p1']))},{at:6000,view:view('lombada',car(['p1']))}]).map(s=>s.event),['empurra','lombada']);
+});
+
 test('falas: the end: conector, divida (Grana short of the budget), perda-total; from the view or the result, once',()=>{
   assert.equal(viewEndMoment(view('abrindo',{ended:'victory'})),'conector');
   assert.equal(viewEndMoment(view('abrindo',{ended:'victory',grana:50,budget:80})),'divida');
@@ -204,4 +223,15 @@ test('falas: the Tio speaks from a fixed point beside the car, off its body and 
     const tio=isoOffset(dx,dy,TIO_SPOT.top,view),roof=isoOffset(0,0,CAR_TOP,view);
     assert.ok(Math.hypot(tio.x-roof.x,tio.y-roof.y)>40,`view ${view}: ${Math.hypot(tio.x-roof.x,tio.y-roof.y)}`);
   }
+  // D-052: the car turns as it moves; the Tio keeps to one of its corners, still off its turned body.
+  for(let view=0;view<4;view++)for(let k=0;k<16;k++){
+    const h=k/16*Math.PI*2,p=tioSpot(car,view,h),dx=p.x-car.x,dy=p.y-car.y;
+    const fwd=dx*Math.cos(h)+dy*Math.sin(h),left=-dx*Math.sin(h)+dy*Math.cos(h);
+    assert.ok(Math.abs(Math.abs(fwd)-TIO_SPOT.fwd)<1e-9&&Math.abs(Math.abs(left)-TIO_SPOT.left)<1e-9,`view ${view} heading ${k}`);
+    for(const [cx,cy] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const f=cx*TIO_SPOT.fwd,l=cy*TIO_SPOT.left;
+      assert.ok(isoOffset(dx,dy,0,view).y>=isoOffset(f*Math.cos(h)-l*Math.sin(h),f*Math.sin(h)+l*Math.cos(h),0,view).y-1e-9);
+    }
+  }
+  assert.deepEqual(tioSpot(car,2,0),tioSpot(car,2));
 });

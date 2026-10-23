@@ -9,6 +9,8 @@
  * - the objective view's changes (view.ts), until the events arrive: the moto's mode (morta → anda = tranco), a part's
  *   bit, the end (victory: conector, or divida when the Grana did not cover the budget; defeat with the car at its limit:
  *   perda-total). Once a chaveiro event arrived in a run, the view stops speaking for those moments.
+ *   D-052's car moves have no event: the view's car tells them (nobody pushing → someone pushing: empurra; the rope
+ *   hooked: puxa), at most once every REPEAT_MS[moment] (the push comes and goes as the heroes stop to fight).
  * The end comes from the run's result too (ObjectiveResult: opened with debt 0 → conector, debt > 0 → divida, cause
  * 'car' → perda-total), whichever arrives first, once per run.
  * Spam: one line every LINE_GAP_MS; a moment that comes during the gap waits for its end (the most important waiting
@@ -27,6 +29,8 @@ export const LINE_GAP_MS=4500;
 export const PENDING_MS=LINE_GAP_MS;
 /** The same moment again within this window is the same moment (two sources, or the alarm and its lap). */
 export const DEDUPE_MS=3000;
+/** Moments that come and go (a hero steps off the car and back): spoken again only after this long (ms). */
+export const REPEAT_MS:Readonly<Partial<Record<LineEvent,number>>>={empurra:25000,puxa:25000};
 /** Which waiting moment goes first when the gap ends (higher first; equal: the newest). */
 const WEIGHT:Partial<Record<LineEvent,number>>={chefe:4,part:3,volta:2,tombo:2,morta:2,chegou:2};
 /** The moto's modes that speak when the view enters them (anda never does; leaving morta for anda is the tranco). */
@@ -75,6 +79,12 @@ export function viewEndMoment(view:ChaveiroView):LineEvent|undefined{
   return undefined;
 }
 
+/** Whether someone other than the rope holder moves the car (D-052 ObjectiveView.car.movers): they push it. */
+function pushers(view:ChaveiroView):boolean{
+  const {movers,rope}=view.car;
+  return !!movers?.some(id=>id!==rope);
+}
+
 export class ChaveiroTalk {
   private readonly seed:number;
   /** Per moment: how many times it spoke (the picker's counter) and the line it said last. */
@@ -87,6 +97,9 @@ export class ChaveiroTalk {
   private endSaid=false;
   private mode?:MotoMode;
   private parts=0;
+  /** The car's movers apart from the rope holder, and whether the rope was hooked, at the last view (D-052). */
+  private pushing=false;
+  private roped=false;
   private hadView=false;
   private eventsLive=false;
   private cursor=-1;
@@ -122,9 +135,11 @@ export class ChaveiroTalk {
         if(moment&&viewTells(moment))this.hear(moment,now);
       }
       if(view.car.parts&~this.parts&&viewTells('part'))this.hear('part',now);
+      if(pushers(view)&&!this.pushing)this.hear('empurra',now);
+      if(view.car.rope&&!this.roped)this.hear('puxa',now);
     }
     if(view.ended){const end=viewEndMoment(view);if(end)this.hear(end,now);}
-    this.mode=view.moto.mode;this.parts=view.car.parts;this.hadView=true;
+    this.mode=view.moto.mode;this.parts=view.car.parts;this.pushing=pushers(view);this.roped=!!view.car.rope;this.hadView=true;
   }
   /** The run's result (RunState.objective, protocol 15), read loosely: its end line, if none was said yet. */
   result(result:unknown,now:number){
@@ -145,7 +160,7 @@ export class ChaveiroTalk {
   }
   /** Forget the run (a new one, or the objective is gone); the counters stay, so the next run goes on varying. */
   newRun(){
-    this.heardAt.clear();this.waiting=this.end=undefined;this.endSaid=false;this.mode=undefined;this.parts=0;this.hadView=false;
+    this.heardAt.clear();this.waiting=this.end=undefined;this.endSaid=false;this.mode=undefined;this.parts=0;this.pushing=this.roped=false;this.hadView=false;
     this.eventsLive=false;this.cursor=-1;this.tick=-1;this.bosses.clear();this.saidAt=-Infinity;
   }
 
@@ -153,7 +168,7 @@ export class ChaveiroTalk {
     if(this.endSaid||this.end)return; // after the end, nothing else
     if(END_EVENTS.has(event)){this.end=event;this.waiting=undefined;return;}
     const at=this.heardAt.get(event);
-    if(at!==undefined&&now-at<DEDUPE_MS)return;
+    if(at!==undefined&&now-at<Math.max(DEDUPE_MS,REPEAT_MS[event]??0))return;
     this.heardAt.set(event,now);
     const w=this.waiting;
     if(w&&now-w.at<=PENDING_MS&&(WEIGHT[w.event]??1)>(WEIGHT[event]??1))return;

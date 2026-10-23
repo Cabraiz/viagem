@@ -23,7 +23,8 @@ export const MAX_LINE_CHARS=60;
  * The moments with lines: volta (the alarm: he rides around the block), morta, tranco (the team pushed it),
  * tranco-sozinha (it started by itself), lombada, entrega, tombo (a critter touched the moto), buy (Cida sold to the
  * team), sale (Cida sold to a critter), part (a part fell off the car), chefe (the boss was called), acordou (D-051:
- * a nest's band woke up; the game is the nests now, no waves), chegou, abrindo,
+ * a nest's band woke up; the game is the nests now, no waves), empurra and puxa (D-052: the team started pushing the
+ * Quadradão, or hooked its rope), chegou, abrindo,
  * and the end: conector (opened, paid), divida (opened, the wheel as a guarantee), perda-total (the car is gone).
  */
 export const CHAVEIRO_LINES={
@@ -107,6 +108,20 @@ export const CHAVEIRO_LINES={
     ['tio','O ninho acordou. Eu ainda não achei a chave.'],
     ['cida','Bom dia, flor do lixão. Brigadeiro pra abrir o dia?'],
     ['chaveiro','Acordou a vizinhança. Visita noturna é taxa extra.'],
+  ],
+  empurra:[
+    ['tio','Empurra com jeito, que a lataria é original.'],
+    ['tio','Pode empurrar. O freio de mão é decorativo.'],
+    ['chaveiro','Empurrando o carro? Aí o orçamento é outro.'],
+    ['tio','Três dias ligado e agora vai no braço. Progresso.'],
+    ['cida','Empurra pra cá, que aqui tem freguês.'],
+  ],
+  puxa:[
+    ['tio','Puxa devagar, o para-choque é de chiclete.'],
+    ['tio','Na corda! O Quadradão nunca teve tanta atenção.'],
+    ['chaveiro','Reboque é cinquenta o quilômetro. Tô só falando.'],
+    ['tio','Cuidado com a corda, era o varal da minha mãe.'],
+    ['cida','Puxa que eu empurro. Mentira, tô vendendo.'],
   ],
   chegou:[
     ['chaveiro','Cheguei! A visita técnica é cinquenta, viu?'],

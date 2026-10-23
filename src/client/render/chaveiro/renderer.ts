@@ -258,7 +258,7 @@ export class ChaveiroRenderer {
     const d=this.drawn;d.shown=true;
     d.moto.x=d.chaveiro.x=mx;d.moto.y=d.chaveiro.y=my;d.moto.lift=d.chaveiro.lift=RIDERS_TOP*HEIGHT_PX;
     d.car.x=view.car.x;d.car.y=view.car.y;d.car.lift=CAR_TOP*HEIGHT_PX;
-    const tio=tioSpot(view.car,proj.view);d.tio.x=tio.x;d.tio.y=tio.y;d.tio.lift=TIO_SPOT.top*HEIGHT_PX;
+    const tio=tioSpot(view.car,proj.view,this.carHeading);d.tio.x=tio.x;d.tio.y=tio.y;d.tio.lift=TIO_SPOT.top*HEIGHT_PX;
     const standing=mode==='entrega'||mode==='abrindo'||view.ended==='victory';
     if(!standing){this.frozenOpener.hide();this.standImg.setVisible(false);}
     if(mode==='entrega'){

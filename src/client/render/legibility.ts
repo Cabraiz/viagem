@@ -10,8 +10,6 @@ export const BAR_RECENT_MS=2500;
 
 export type EffectsProfile='full'|'reduced';
 export interface FxBudget {
-  /** BUG sombra-longe: each body also casts its silhouette (one more sprite per body); off in economy mode. */
-  silhouettes:boolean;
   /** Damage numbers on screen at once. */
   numbers:number;
   /** New low-priority numbers per authoritative frame (priority ones always pass). */
@@ -23,8 +21,8 @@ export interface FxBudget {
   bars:number;
 }
 export const FX_BUDGET:Readonly<Record<EffectsProfile,Readonly<FxBudget>>>=Object.freeze({
-  full:Object.freeze({silhouettes:true,numbers:25,numbersPerPush:8,pops:4,starsPerKill:5,bubbles:2,bars:30}),
-  reduced:Object.freeze({silhouettes:false,numbers:10,numbersPerPush:3,pops:2,starsPerKill:2,bubbles:1,bars:12}),
+  full:Object.freeze({numbers:25,numbersPerPush:8,pops:4,starsPerKill:5,bubbles:2,bars:30}),
+  reduced:Object.freeze({numbers:10,numbersPerPush:3,pops:2,starsPerKill:2,bubbles:1,bars:12}),
 });
 
 export interface BarSubject {hp:number;maxHp:number;elite:boolean;boss:boolean;hitAt:number}

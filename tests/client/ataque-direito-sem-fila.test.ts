@@ -1,5 +1,5 @@
 // NEW-20261021-ORQ-cone-por-cima-e-clique-em-loop: the right mouse button and Space never leave the attack held after
-// they let go (fast clicks attacked forever on the live game), and no yellow reticle nor its line shows (desktop and phone).
+// they let go (fast clicks attacked forever on the live game), and no yellow reticle shows (desktop and phone).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -41,18 +41,15 @@ test('a press that wakes the game (pause(false)) stays releasable: the scene let
   assert.match(explore,/attackBtn\.key\(true,'espaco'\);return;\}/);assert.match(explore,/event\.code==='Space'\)attackBtn\?\.key\(false,'espaco'\);/);
 });
 
-test('no yellow reticle nor line anywhere, the phone too (21/10): the drag still picks the target and shows only the knob',()=>{
+test('no yellow reticle anywhere (21/10); the phone\'s aim stick (23/10) shows its ring, knob and arrow only under a finger',()=>{
   const button=read('src/client/hud/attack-button.ts'),css=read('src/client/coop.css');
-  // The svg only holds the thumb's knob: no ring, no line, nor their yellow CSS.
-  assert.doesNotMatch(button,/atk-aim-ring|atk-aim-line|touchAim/);
-  assert.doesNotMatch(css,/atk-aim-ring|atk-aim-line|\.atk-aim[^{]*\{[^}]*amarelo/);
-  assert.match(button,/this\.svg\.append\(this\.knob\);/);
-  // The drag still picks (dragAim every frame while held) and a release out of the dead zone chooses it.
-  assert.match(button,/const d=dragAim\(this\.centre,this\.drag,hero,enemies,/);
-  assert.match(button,/if\(this\.dragging\)this\.dragPick=d\.pick\?\.id;else this\.track\(hero,enemies\);/);
-  assert.match(button,/if\(!cancel&&this\.dragging&&this\.dragPick\)deps\.choose\(this\.dragPick\);/);
-  // Shown only while dragging (the knob); the auto aim and the keys never show anything.
-  assert.match(button,/this\.hide\(!this\.dragging\);/);
+  // BUG-20261023-ORQ-tiro-na-direcao-mobile: the user asked for the aim stick over Atacar and the arrow on the ground.
+  // Still nothing yellow, and the drag no longer picks a target (it aims; the server's assist does the rest).
+  assert.doesNotMatch(css,/\.atk-aim[^{]*\{[^}]*amarelo/);
+  assert.match(button,/this\.svg\.append\(this\.arrow,this\.ring,this\.knob\);/);
+  assert.doesNotMatch(button,/dragAim|dragPick|deps\.choose\(/);
+  // Shown only while a finger holds the button (the pointer); the keys never show anything.
+  assert.match(button,/if\(!this\.on\|\|!hero\|\|!this\.press\.held\|\|!this\.centre\|\|this\.pointer===undefined\)\{this\.hide\(true\);return;\}/);
   assert.match(button,/key\(down:boolean,source='espaco'\)\{\n\s*if\(!this\.on\)return;\n\s*if\(down\)this\.deps\.wake\(\);\n\s*this\.press\.key\(source,down\);/);
 });
 

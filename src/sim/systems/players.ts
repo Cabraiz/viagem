@@ -80,6 +80,10 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         if(input.aim)p.aim=input.aim;else delete p.aim;
         // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
         if(manual&&input.attack)manual.attacking.add(p.id);
+        // BUG-20261023-ORQ-tiro-na-direcao-mobile: attacking with an aim (the phone's aim stick, the mouse) turns the hero
+        // to it, so a later tap without one fires where the body last looked.
+        const al=input.aim?Math.hypot(input.aim.x,input.aim.y):0;
+        if(manual&&input.attack&&input.aim&&al>1e-6)p.facing={x:input.aim.x/al,y:input.aim.y/al};
       }
       if(!auto&&p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
       // D-051: no class skill in the manual combat (the classes stay as looks and stats).

@@ -1265,7 +1265,7 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir);
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
-      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(drawnAt.x,drawnAt.y):this.treeCovers(q,depth);
+      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);

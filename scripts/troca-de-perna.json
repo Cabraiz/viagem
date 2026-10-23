@@ -1,0 +1,26 @@
+{
+ "viciado-em-bet.run16-w.c3c592510524.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-ORQ-troca-perna-lado-viciado-clt: gerar/vic-W-run-G-t2, pernas ampliadas (gerar/zoom-t2t3.png): pose 0 a perna direita (de longe, atrás do short), pose 8 a esquerda (de perto, por cima); manequim AMP40/KNEE28 + regra de ordem das pernas no perfil"
+ },
+ "viciado-em-bet.run16-nw.2f220592e914.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/vic-NW-run-G-c1, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ },
+ "viciado-em-bet.run16-se.5dc5e884eb2e.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/vic-SE-run-G-w1, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ },
+ "clt-cansado.run16-w.81aaae8b5a02.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-ORQ-troca-perna-lado-viciado-clt: gerar/clt-W-run-G-t15, pernas ampliadas (gerar/clt-W-run-G-t15/zoom.png): pose 0 a perna direita (de longe) e o braço do relógio atrás, pose 8 a esquerda (de perto, por cima) e o relógio à frente; manequim AMP40/KNEE28, regra de ordem das pernas e BUILD (corpo da corrida do E2)"
+ },
+ "clt-cansado.run16-se.65e518df23c8.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-SE-run-G-w2, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ },
+ "clt-cansado.run16-nw.14f4fd36e26a.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-NW-run-G-r3p, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ }
+}

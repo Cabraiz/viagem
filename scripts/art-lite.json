@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2152,
-  "bytes": 1542781332,
-  "liteBytes": 502416472,
+  "files": 2157,
+  "bytes": 1543073104,
+  "liteBytes": 502588190,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19165,6 +19165,46 @@
    "psnr": 39.9,
    "shownPsnr": 43.5
   },
+  "sprites/maromba.push16-n.d8725566eb99.webp": {
+   "source": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+   "lite": "5004058644d932b9f83749aedc5fe3dd4d37bae0f89e0f2f19a94b9f7cbe39c4",
+   "bytes": 54972,
+   "liteBytes": 33440,
+   "psnr": 39.6,
+   "shownPsnr": 41.9
+  },
+  "sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "source": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+   "lite": "9f79c2cde7e7c5496d56ea385196bfa025c827d877c586160e70466ca5ff455e",
+   "bytes": 66960,
+   "liteBytes": 39008,
+   "psnr": 38.7,
+   "shownPsnr": 40.8
+  },
+  "sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "source": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+   "lite": "0a176b0d6244b110fad96b2b9c2a8a6122e893dc7c958e4f9aea7749e28c0d51",
+   "bytes": 58842,
+   "liteBytes": 34288,
+   "psnr": 38.2,
+   "shownPsnr": 41.3
+  },
+  "sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "source": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+   "lite": "67c43a23741601a5528e2373f50c5e225f11cc2de0570912838df3213b400adc",
+   "bytes": 56544,
+   "liteBytes": 33834,
+   "psnr": 39.4,
+   "shownPsnr": 42
+  },
+  "sprites/maromba.push16-w.197425478ad3.webp": {
+   "source": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+   "lite": "a15633c648e6746ef0cbc8769644a1de3460dd0872c6abd06f9b7bef56bdbce0",
+   "bytes": 59022,
+   "liteBytes": 33624,
+   "psnr": 39.1,
+   "shownPsnr": 41.8
+  },
   "sprites/maromba.run16-n.12858ddc378f.webp": {
    "source": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
    "lite": "4fc46627769790836aeb0a480dea3e04db6889f746601cefdd078f1df27d9049",
@@ -19293,13 +19333,13 @@
    "psnr": 38.4,
    "shownPsnr": 41.4
   },
-  "sprites/maromba.walk16-se.5b9396ca3979.webp": {
-   "source": "5b9396ca39799f6937528bb0d76f66db07a904be6ad7e1060f1a8aa8491274eb",
-   "lite": "fad63ad5a67e78b6f4af9e1d8eb42a9265cb53a33af3fa1b25b31c781f66a26f",
-   "bytes": 56722,
-   "liteBytes": 33010,
-   "psnr": 39.2,
-   "shownPsnr": 42.5
+  "sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "source": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0",
+   "lite": "c2af00656f6be75c2a208c3f763c238570a404efac845b75100b0fb9e8efc978",
+   "bytes": 52154,
+   "liteBytes": 30534,
+   "psnr": 39.8,
+   "shownPsnr": 43.5
   },
   "sprites/maromba.walk16-w.a77ac0004cd3.webp": {
    "source": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395",

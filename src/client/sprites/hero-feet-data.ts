@@ -178,7 +178,7 @@ export const HERO_FEET:Readonly<Record<string,number>>={
 "maromba.walk16-n.2064a9e3a3ce.webp":84,
 "maromba.walk16-nw.d19eb025bd84.webp":84,
 "maromba.walk16-s.b6994bfb245d.webp":84,
-"maromba.walk16-se.5b9396ca3979.webp":83,
+"maromba.walk16-se.a15dd2319ab3.webp":83,
 "maromba.walk16-w.a77ac0004cd3.webp":84,
 "mendigo.attack128-e.cb828d6683c9.webp":69,
 "mendigo.attack128-n.bbc1172efa42.webp":71,

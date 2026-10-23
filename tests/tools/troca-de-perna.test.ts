@@ -49,6 +49,12 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
   assert.ok(mirrorTest(changes,24,12).ratio<mirrorTest(limp,24,12).ratio);
 });
 
+/**
+ * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). The maromba's SE
+ * run: 9 generations and the drawn front foot always comes from the same hip (card NEW-20261023-E7-maromba-troca-perna-se).
+ */
+const KNOWN_SIDE=new Set<string>(['maromba.run16-se.361fd58dc1f0.webp']);
+
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');
 test('every S/N looping gait changes legs (mirror ≤ '+MIRROR_MAX+' × same), but the known ones of the list',async()=>{
@@ -64,8 +70,11 @@ test('every run the heroes show (run16) changes legs: S/N by the mirror test, th
   assert.ok(runs.some((c:{id:string})=>c.id==='viciado-em-bet')&&runs.some((c:{id:string})=>c.id==='clt-cansado'),'the viciado and the CLT run');
   for(const c of runs){
     if(c.direction==='S'||c.direction==='N'){assert.ok((await measureClip(c)).ratio<=MIRROR_MAX,`${c.id} ${c.key}`);continue;}
+    if(KNOWN_SIDE.has(c.file))continue;
     const r=reviewed[c.file];
     assert.ok(r,`${c.id} ${c.key}: ${c.file} not reviewed (scripts/troca-de-perna.json: check its marked source by eye)`);
     assert.ok(r.alterna===true,`${c.id} ${c.key}: one leg always in front (${r.prova})`);
   }
+  const shown=new Set(runs.map((c:{file:string})=>c.file));
+  assert.deepEqual([...KNOWN_SIDE].filter(f=>!shown.has(f)),[],'KNOWN_SIDE: a sheet no longer in the game leaves the list');
 });

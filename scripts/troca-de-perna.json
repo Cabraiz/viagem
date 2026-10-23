@@ -22,5 +22,13 @@
  "clt-cansado.run16-nw.14f4fd36e26a.webp": {
   "alterna": true,
   "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-NW-run-G-r3p, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ },
+ "maromba.run16-w.dc71e9155576.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-W-run-G-t7, pernas ampliadas (f2/W-t7-zoom.png): pose 0 o tênis ciano (direita, de longe) à frente e o braço da munhequeira de perto à frente, pose 8 o vermelho (esquerda, de perto) à frente e o braço de perto atrás; manequim AMP40/KNEE28 com a constituição do maromba (BUILD_M), regra de ordem das pernas, faixa do short, BUILD"
+ },
+ "maromba.run16-nw.6d2ea649fe99.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-NW-run-G-t2, contato ampliado (f2/NW-t2-zoom.png): na pose 4 o pé da frente (vermelho) sai do quadril da esquerda, na 12 o da frente (ciano) do quadril da direita; lateral |i-i+8| mediana 11 px (f2/lateral.py)"
  }
 }

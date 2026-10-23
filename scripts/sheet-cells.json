@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 3264,
+  "sheets": 3324,
   "failing": 0,
   "frames": 0
  },
@@ -13113,6 +13113,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/maromba.attack16-n.579800de41b5.webp": {
+   "sha": "8f314e78be46da00bcd193d5d301531b009586af041f26825c1d6e23cee1048d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-nw.e1a1efc886e5.webp": {
+   "sha": "6adda92abf6248b65f0b2304537db690c7a94c4cbcc5c7ba91b09f717db40ed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-s.7e3df22fec11.webp": {
+   "sha": "ae1f1529519dcd269ade74955e650f3defb3ba3813847bbc15fc6836d5aafc91",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-se.e39e2a9588ec.webp": {
+   "sha": "a3d290d44930817f8f4998b6adfe524d3d523af5719d24779e063927ffee19ee",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-w.f2811360776b.webp": {
+   "sha": "a16f8ac9870b974b603db1e98af333b74941aef1d3a7145ecfaa75cfafa492bf",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/maromba.dir4.webp": {
    "sha": "b0a919d1d9f816e0c6dfe030db84e933824af0a21febf5f60578235d57e73189",
    "ilhas": 0,
@@ -13123,8 +13148,108 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/maromba.hurt16-n.4d2142762c9f.webp": {
+   "sha": "81689ccf7940e5a3ac97dd93c2faac22f68bbdc86eacab79a357dd6973d7b4b5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-nw.d7b8baf86dbd.webp": {
+   "sha": "65bf2c46a5650577a8503302d84b780c30adbc69e32355cc3294a5535d3fe40e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-s.cfabf768ea8c.webp": {
+   "sha": "df29d703528ba52619eff6cdca4804619b61b0694f0fcd89ec5e8942388ccc41",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-se.7b72721c4f50.webp": {
+   "sha": "92dab6933f7aecb8493bc66ccb0c1fa25dfc306fa5cccffa9e239afbd1c22d3e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-w.7b70bb99d302.webp": {
+   "sha": "37a0b9d25da3ab6222352b25f29f0b8083aaaed5a92d2c890d0314beee73107c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-n.f24cd648ed40.webp": {
+   "sha": "5e01b0902f8675c9ee02069a9e3ae7578d158b14e7b432b21bd8f5ea561d2939",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-nw.5864e1ae74fc.webp": {
+   "sha": "8313b692f13a0249e31b9b97217302dc444ddd00b80fe2e874c86b4ab8ac5d4c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-s.891ba88573ea.webp": {
+   "sha": "cffe85e7ba5b9ae9b76585a2fe8740457923acfee3c5cc820a15079b05f334d0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-se.c49298a25375.webp": {
+   "sha": "37907f805fb9a8ca4603339189dbb5862b6e86691a94042428d339193e269e75",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-w.8887992091be.webp": {
+   "sha": "69e076325855168bfddb36172e10a1dbdd887a834805f803a5bde051659a2513",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "629b30a9d3ea56c363fe4aa2c50fc16f2aeea043777c828dcb35fa80db8c6d44",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-n.d8725566eb99.webp": {
+   "sha": "5004058644d932b9f83749aedc5fe3dd4d37bae0f89e0f2f19a94b9f7cbe39c4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "sha": "9f79c2cde7e7c5496d56ea385196bfa025c827d877c586160e70466ca5ff455e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "sha": "0a176b0d6244b110fad96b2b9c2a8a6122e893dc7c958e4f9aea7749e28c0d51",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "sha": "67c43a23741601a5528e2373f50c5e225f11cc2de0570912838df3213b400adc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-w.197425478ad3.webp": {
+   "sha": "a15633c648e6746ef0cbc8769644a1de3460dd0872c6abd06f9b7bef56bdbce0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-n.12858ddc378f.webp": {
+   "sha": "4fc46627769790836aeb0a480dea3e04db6889f746601cefdd078f1df27d9049",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-nw.6d2ea649fe99.webp": {
+   "sha": "ef0e842db0c0334faf9c42d7da816f68c77f8f61731379c31822afca1596cfc3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-s.225e468b2c87.webp": {
+   "sha": "322010dd7ff93c01be7efcee93a0fb0f590b3f0c84058d87bf34368dfbe49386",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-se.361fd58dc1f0.webp": {
+   "sha": "dd06911a99f818d1e1038599cc86604fab450e7b2081cc2dddae8e0d8be55e44",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-w.dc71e9155576.webp": {
+   "sha": "669dceeb4a88ea219c83e812078cc684f867e529c91d3a47dfd1ffd0667fc51d",
    "ilhas": 0,
    "fails": []
   },
@@ -13165,6 +13290,31 @@
   },
   "lite/sprites/maromba.walk128-w.01b7d9ebc794.webp": {
    "sha": "ac41036582de3e2140da0e66940af18621921dd15977884d34d91362d6b6d6fd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-n.2064a9e3a3ce.webp": {
+   "sha": "a978765c4408cb33b5be85e348ca92b54d39e76941bf84b79cfb2d7ce8a2d8f8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-nw.d19eb025bd84.webp": {
+   "sha": "d4d76965b34c60d2e67ea064540fbd653d5e9da377bc1eeffb9dadc76f2d0374",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-s.b6994bfb245d.webp": {
+   "sha": "baa0740e765b123eb1eccfea506b9620e2fcf78c0ecb91bb8f2f1ac2825ecfbe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "sha": "c2af00656f6be75c2a208c3f763c238570a404efac845b75100b0fb9e8efc978",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-w.a77ac0004cd3.webp": {
+   "sha": "47006521e2ab90a14faa4d382ae0a392f828fbaadb869959b6764e5c867f46eb",
    "ilhas": 0,
    "fails": []
   },
@@ -15163,6 +15313,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.attack16-n.579800de41b5.webp": {
+   "sha": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-nw.e1a1efc886e5.webp": {
+   "sha": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-s.7e3df22fec11.webp": {
+   "sha": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-se.e39e2a9588ec.webp": {
+   "sha": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-w.f2811360776b.webp": {
+   "sha": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/maromba.dir4.webp": {
    "sha": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c",
    "ilhas": 0,
@@ -15178,8 +15353,108 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.hurt16-n.4d2142762c9f.webp": {
+   "sha": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-nw.d7b8baf86dbd.webp": {
+   "sha": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-s.cfabf768ea8c.webp": {
+   "sha": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-se.7b72721c4f50.webp": {
+   "sha": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-w.7b70bb99d302.webp": {
+   "sha": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-n.f24cd648ed40.webp": {
+   "sha": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-nw.5864e1ae74fc.webp": {
+   "sha": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-s.891ba88573ea.webp": {
+   "sha": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-se.c49298a25375.webp": {
+   "sha": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-w.8887992091be.webp": {
+   "sha": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-n.d8725566eb99.webp": {
+   "sha": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "sha": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "sha": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "sha": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-w.197425478ad3.webp": {
+   "sha": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-n.12858ddc378f.webp": {
+   "sha": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-nw.6d2ea649fe99.webp": {
+   "sha": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-s.225e468b2c87.webp": {
+   "sha": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-se.361fd58dc1f0.webp": {
+   "sha": "361fd58dc1f031690989f13cbfddbba8074dfde1885a1bbe61378e749ac263ca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-w.dc71e9155576.webp": {
+   "sha": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",
    "ilhas": 0,
    "fails": []
   },
@@ -15220,6 +15495,31 @@
   },
   "sprites/maromba.walk128-w.01b7d9ebc794.webp": {
    "sha": "01b7d9ebc7949eaf2ecd10c406d38c08fb7495750d777848689fbbdae28b83d2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-n.2064a9e3a3ce.webp": {
+   "sha": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-nw.d19eb025bd84.webp": {
+   "sha": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-s.b6994bfb245d.webp": {
+   "sha": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "sha": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-w.a77ac0004cd3.webp": {
+   "sha": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395",
    "ilhas": 0,
    "fails": []
   },

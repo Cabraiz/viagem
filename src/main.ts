@@ -18,6 +18,7 @@ import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
 import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -171,7 +172,8 @@ function lazySrc(img: HTMLImageElement, url: string) {
   img.dataset.src=url; lazyArt.observe(img);
 }
 // After the first screen is up, the rest of the row comes in idle time, so scrolling it never shows empty frames.
-addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
+// Not on the profile (phone upright), where the row is hidden: its faces come in when it shows (the observer above).
+addEventListener('load',()=>idle(()=>!instaScreen.matches&&document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
@@ -258,10 +260,14 @@ function setArt(id: string,hero: HeroClass) {
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
 // The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
+// selecao-miniatura-rosto: a released hero shows his face over his own background (ui/miniatura.ts), loaded lazily too.
 // cadeado-so-clt-viciado: a locked hero (rules/personagens-liberados.ts) keeps his tile, darkened under a lock.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${hasNewArt(hero.id)
-  ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
-  :'<span class="card-misterio" aria-hidden="true">?</span>'}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
+const cardFace=(hero:HeroClass)=>{
+  const rosto=miniaturaOf(hero.id,isLiberado(hero.id)),url=rosto??(hasNewArt(hero.id)?thumbUrl(hero):undefined);
+  return url?`<img class="card-portrait${rosto?' card-rosto':''}" draggable="false" data-src="${url}" alt="" width="192" height="192" decoding="async" aria-hidden="true" />`
+    :'<span class="card-misterio" aria-hidden="true">?</span>';
+};
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${cardFace(hero)}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);

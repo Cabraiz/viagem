@@ -16,6 +16,8 @@ import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etap
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
+import './client/ui/insta.css';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -63,6 +65,8 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
+    <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
+    <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
     <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2></div>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
@@ -83,7 +87,11 @@ app.innerHTML = `
 
 // The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
 const menuConfig=document.querySelector<HTMLButtonElement>('.menu-config')!;
-menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(menuConfig)).catch(e=>console.error('settings failed to load',e));});
+const openSettings=(from:HTMLElement)=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(from)).catch(e=>console.error('settings failed to load',e));};
+menuConfig.addEventListener('click',()=>openSettings(menuConfig));
+// The phone upright shows the hero pick as an Instagram profile (ui/insta.ts): its ≡ is the gear.
+const instaMenu=document.querySelector<HTMLButtonElement>('.insta-menu')!;
+instaMenu.addEventListener('click',()=>openSettings(instaMenu));
 
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
 // point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
@@ -278,7 +286,8 @@ function renderSelected(announce=false) {
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
   showCutout(); // first: a hero standing in place never starts his dance
-  showPortrait(selected,announce);
+  // The profile (phone upright) shows no dancer and no portrait: neither downloads until the stadium comes back.
+  if(instaScreen.matches) renderInsta(); else showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
@@ -287,6 +296,48 @@ function renderSelected(announce=false) {
   showLock();
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}${isLiberado(selected.id)?'':'. Em breve.'}`);
 }
+// The profile screen (selecao-mobile-instagram): the other heroes as stories, the chosen one's profile and his 3 photos
+// (none for a locked one). Built only while the phone is upright, so the stadium never downloads its pictures.
+const instaScreen=matchMedia(INSTA_QUERY);
+const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perfil:document.querySelector<HTMLElement>('.insta-perfil')!,
+  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!};
+const instaIds=classes.map(hero=>hero.id);
+let instaShown='';
+function renderInsta() {
+  const perfil=instaPerfil(selected.id);
+  if(!perfil||instaShown===selected.id) return;
+  instaShown=selected.id;
+  insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
+  insta.perfil.innerHTML=perfilHtml(perfil);
+  insta.chips.innerHTML=chipsHtml(perfil);
+  insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
+  void document.fonts.ready.then(fitHandle);
+}
+// The @handle's size was a guess from its letters (insta.ts handleFit): measured once the font is in, a handle wider than
+// its column shrinks until it and the badge fit (its share in card px, so any screen size keeps it).
+function fitHandle() {
+  const line=insta.perfil.querySelector<HTMLElement>('.insta-arroba'),text=line?.firstElementChild as HTMLElement|null;
+  if(!line||!text||line.scrollWidth<=line.clientWidth) return;
+  const fit=parseFloat(line.style.getPropertyValue('--arroba-fit'))||1,room=line.clientWidth-(line.scrollWidth-text.offsetWidth);
+  line.style.setProperty('--arroba-fit',(fit*room/text.offsetWidth*.98).toFixed(3));
+}
+insta.stories.addEventListener('click',event=>{
+  const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
+  if(!story) return;
+  if(etapaOf(etapa)==='nome') showEtapa(etapa,'escolher');
+  selected=getClass(story.dataset.hero!)!;
+  renderSelected(true);
+});
+// The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
+let instaHold:(()=>void)|undefined;
+function syncInsta() {
+  if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
+  else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
+  if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();
+  instaShown='';
+  renderSelected();
+}
+instaScreen.addEventListener('change',syncInsta);
 // A locked hero can be looked at, never chosen: SELECIONAR turns into a disabled "EM BREVE" with the lock in the star's place.
 function showLock() {
   const button=document.getElementById('confirm') as HTMLButtonElement,locked=!isLiberado(selected.id);
@@ -405,7 +456,7 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
   finally {releaseDance();button.disabled=false;button.textContent=label;}
 });
-renderSelected();
+syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());

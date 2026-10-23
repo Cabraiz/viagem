@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2133,
-  "bytes": 1542132046,
-  "liteBytes": 501966786,
+  "files": 2158,
+  "bytes": 1542788828,
+  "liteBytes": 502539052,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17437,6 +17437,222 @@
    "psnr": 43.6,
    "shownPsnr": 45.4
   },
+  "menu/insta/grade-clt-cansado-1.webp": {
+   "source": "b3b4d37fc3c9b3cd319d2a7886d0bf5a176b8230beadc3dcf3f0872defc46362",
+   "lite": "efbac2ee9666e1455fbce927a1fa0d4f9727c78a3023820c0892f538c57c46d2",
+   "bytes": 37928,
+   "liteBytes": 30990,
+   "psnr": 39.8,
+   "shownPsnr": 42.1
+  },
+  "menu/insta/grade-clt-cansado-2.webp": {
+   "source": "a58d9feb832e0815ae3431e703dfffb3f4381e455d50f3eb508d6be46aa3b376",
+   "lite": "e48687198b6a4ab28a44393868e564c46fa0b08888766a67681862a6e7a4e2d3",
+   "bytes": 39116,
+   "liteBytes": 31962,
+   "psnr": 40.1,
+   "shownPsnr": 42.5
+  },
+  "menu/insta/grade-clt-cansado-3.webp": {
+   "source": "211bd570d5266cf80f49d8dcfbccd1cfa42b6ca2a2973a4b97032f681e75d6ce",
+   "lite": "ef028f10d2cad435983b97c5e72c2a5d650ebd8559815c9c018768e0ba0999a7",
+   "bytes": 41712,
+   "liteBytes": 34174,
+   "psnr": 39.8,
+   "shownPsnr": 42.4
+  },
+  "menu/insta/grade-gato-nada-pra-comer-1.webp": {
+   "source": "eaced3b8545afb54795edc9c6b151a218298f941c1a3eb3c43e3dc8db59d9642",
+   "lite": "e31f910bc86d388404183be0bd02ae0dbb3ec621f22e15b1268f291143e14917",
+   "bytes": 50554,
+   "liteBytes": 41476,
+   "psnr": 38.9,
+   "shownPsnr": 41.7
+  },
+  "menu/insta/grade-gato-nada-pra-comer-2.webp": {
+   "source": "85a93efa5dcb09545ee0a8f582996eca15e86b2bdafcca388234ffdb1fb66563",
+   "lite": "1a7ab891c846f5cdda42a3128e8140fbca1b92ce988ae0b01de77304ca446939",
+   "bytes": 45062,
+   "liteBytes": 36410,
+   "psnr": 39.5,
+   "shownPsnr": 42.5
+  },
+  "menu/insta/grade-gato-nada-pra-comer-3.webp": {
+   "source": "406b486015c0c951867b20cb6be38de8f889ff51016d5ba981efb652b74d9b2e",
+   "lite": "653d20bbc42ce412dc5c4d81739eded5e616ec465f82f620627106489339da2d",
+   "bytes": 37396,
+   "liteBytes": 30030,
+   "psnr": 39.6,
+   "shownPsnr": 42.3
+  },
+  "menu/insta/grade-maromba-1.webp": {
+   "source": "3f22f45d5981066910cf9500f18d2216b9b02e6b7bf58f6245d42276ca80ecee",
+   "lite": "81cd5c6a5d98a558f841775e86c8be5d680fcf3e3f13dc5cadf087f600628a39",
+   "bytes": 30030,
+   "liteBytes": 24544,
+   "psnr": 41.4,
+   "shownPsnr": 43.9
+  },
+  "menu/insta/grade-maromba-2.webp": {
+   "source": "22b9f359849542d0e810d5a00db8243c0c1f5cb32b73ff9b35c4835c689c84d1",
+   "lite": "9843a77eefb90c5156cf5432f7c15c029f3bbad37bbe0b5da0b3b64390090eb0",
+   "bytes": 46418,
+   "liteBytes": 37116,
+   "psnr": 39.1,
+   "shownPsnr": 41.7
+  },
+  "menu/insta/grade-maromba-3.webp": {
+   "source": "7ec2f2634e172949ef615c240212dddede8a2497d644027b7d3e70b0032075ef",
+   "lite": "cea341d5167b557def74fb917694fe9891c8db631fbe41efc38e586b06fd791c",
+   "bytes": 38782,
+   "liteBytes": 31266,
+   "psnr": 39.8,
+   "shownPsnr": 42.4
+  },
+  "menu/insta/grade-viciado-em-bet-1.webp": {
+   "source": "e599b80d8fd0a1e3d798f16a717599a53680fcec4a240a1efc6b009b9b19ce6f",
+   "lite": "daf46d838c29633485c2dc417dffbcae03928f9da73852f56fb7f0a800d1ce8e",
+   "bytes": 42714,
+   "liteBytes": 34484,
+   "psnr": 39,
+   "shownPsnr": 41.7
+  },
+  "menu/insta/grade-viciado-em-bet-2.webp": {
+   "source": "52ced4a52f303a2ba005759d2a11c1d4ce7ac57512b803c356eaba6282f7adef",
+   "lite": "7e5ba1fedab6172d8b0eda829d688d2c64723c04510d662caa986d58cb52d0b7",
+   "bytes": 38380,
+   "liteBytes": 31558,
+   "psnr": 39.7,
+   "shownPsnr": 42.2
+  },
+  "menu/insta/grade-viciado-em-bet-3.webp": {
+   "source": "c2b7f5c0c79d42b92b5f55779a71e4a00466d7924901776314bf5af805bf0e3c",
+   "lite": "7872a853cc2c258326350a09bf54636ee4df4a92b186539c16cb48a0120e6c1d",
+   "bytes": 45722,
+   "liteBytes": 37792,
+   "psnr": 39.2,
+   "shownPsnr": 41.8
+  },
+  "menu/insta/icone-cadeado.webp": {
+   "source": "23b35f95d28b738830bc3ba1e0c1339d912bac16592f346f29c01ad0603203ef",
+   "lite": "f5ade333414394d760bf769ea0a0befa030b5cc0c93728d1312b26b39f5de50e",
+   "bytes": 4820,
+   "liteBytes": 4214,
+   "psnr": 40.1,
+   "shownPsnr": 43.9
+  },
+  "menu/insta/icone-coracao.webp": {
+   "source": "306525ab64845b6d36629ed8dda6a8187a87bd54e99b44d26b4ca82275129024",
+   "lite": "ac514b055ab60cc338f9b150b552d6d757dc2f87071b834d8c4df56249f26251",
+   "bytes": 4940,
+   "liteBytes": 4314,
+   "psnr": 38.7,
+   "shownPsnr": 43.1
+  },
+  "menu/insta/icone-coroa.webp": {
+   "source": "f4641e706abd8239cb288592151f95ceca3986f17a462471e170826a6aec0f7a",
+   "lite": "f8a37150307e7d6041bbcc9b4df398a2980a927ce0824ba97683964b323c3380",
+   "bytes": 6604,
+   "liteBytes": 5714,
+   "psnr": 38.2,
+   "shownPsnr": 40.7
+  },
+  "menu/insta/icone-grade.webp": {
+   "source": "7735f35c7ce8e856da160d941bdcc5f05e7c161f2bff6d5dab65513a24d531be",
+   "lite": "c31b97bb9033321417c5d7ae71089a8acfd09c0f109f22895783642f8a7a3630",
+   "bytes": 7166,
+   "liteBytes": 6310,
+   "psnr": 36.3,
+   "shownPsnr": 37.5
+  },
+  "menu/insta/icone-menu.webp": {
+   "source": "a704655b1b5880a42082b450ed81f70bc3216f06fd74085543288879f3df06f5",
+   "lite": "63f7fbbc4901a3ce444a2d66f18c1bbe9c71fe640a89ed68be5be4210f33e2dc",
+   "bytes": 4978,
+   "liteBytes": 4616,
+   "psnr": 38.1,
+   "shownPsnr": 41
+  },
+  "menu/insta/icone-oculos.webp": {
+   "source": "71441c7e31d753f5dc967fe17a0d4b56c8305c1ad0d954e16bfc8e4ca1947daf",
+   "lite": "7fed2020458e445a865339d286b87a988573dc4748c5145a0958c6a511b4c860",
+   "bytes": 4218,
+   "liteBytes": 3724,
+   "psnr": 38.3,
+   "shownPsnr": 41.3
+  },
+  "menu/insta/icone-pata.webp": {
+   "source": "36d1587a3c2fca2b2add7b46ab3a4261c150bd0ea8fd559492562b71f692b5ed",
+   "lite": "ac7cde2c728864f654372b5bd6a9b591718c859b2b6434fcbdf6b3b88b78a12a",
+   "bytes": 6612,
+   "liteBytes": 5688,
+   "psnr": 37.1,
+   "shownPsnr": 39.2
+  },
+  "menu/insta/icone-sino.webp": {
+   "source": "877397370bc4e4143515ba1e4079bd27199ef937485ac95ea748f2be3230f21f",
+   "lite": "af1f172f24ed0a731ffbe4c54f6a42adfd33442777dba52bb263b399b612ca54",
+   "bytes": 5226,
+   "liteBytes": 4528,
+   "psnr": 39.6,
+   "shownPsnr": 42.2
+  },
+  "menu/insta/icone-verificado.webp": {
+   "source": "7b6411be3b6cb33431a8e2966f7cb588552fbcf87c5c091450cd257a6154fd60",
+   "lite": "8854604f724004617c77bb4709cca21a3cc59bd755eea6840e3258abf6c51d75",
+   "bytes": 6030,
+   "liteBytes": 5204,
+   "psnr": 37.8,
+   "shownPsnr": 40.5
+  },
+  "menu/insta/icone-video.webp": {
+   "source": "071313496211a5dedd6ba4cf47a348a17a8303f4bc635f1603fa79ba785a4c6a",
+   "lite": "2498207637eb5f78d5fd1468e625689af996ce8acf8697490cfd56af1df1b88f",
+   "bytes": 4060,
+   "liteBytes": 3480,
+   "psnr": 38.6,
+   "shownPsnr": 41.5
+  },
+  "menu/insta/logo.webp": {
+   "source": "623e475b5ad12c10a0835c08e859cb48c60b19a45c5d00449f4324945acbcc5f",
+   "lite": "69e1b9c3cd28b9039d5e97631552b102bbd0ad028e078cfdf2d31881861686ea",
+   "bytes": 28956,
+   "liteBytes": 24940,
+   "psnr": 37.4,
+   "shownPsnr": 39.9
+  },
+  "menu/insta/perfil-clt-cansado.webp": {
+   "source": "f222157e953c12eb08abfdc2dbb4c348b472e536da5981090a42b793d2cc32b5",
+   "lite": "900eb5d9e73d5eb306466da49e7e6ba4016780a3d5b8aff9ec1e6fc9044b5f7f",
+   "bytes": 48326,
+   "liteBytes": 39154,
+   "psnr": 40.2,
+   "shownPsnr": 42.5
+  },
+  "menu/insta/perfil-gato-nada-pra-comer.webp": {
+   "source": "a9552e5b2180d89a3a87bf72c729023f88cc88a440ec6311142d82dcdb211272",
+   "lite": "c8507523b01922c8aafa80b6f9fa78ff2fcc3e249e2f17415d7717aee4ad9a75",
+   "bytes": 61952,
+   "liteBytes": 50626,
+   "psnr": 39.4,
+   "shownPsnr": 42.2
+  },
+  "menu/insta/perfil-maromba.webp": {
+   "source": "a8d6167cd41ef343058d9b39652f32a9d670a59d84fd3d95dae8f52e3295ae69",
+   "lite": "7f967a6e70c5e20fcdd6ad544472ca4af1c1f7096dba2434d68632519b1a9f77",
+   "bytes": 43040,
+   "liteBytes": 34574,
+   "psnr": 41.4,
+   "shownPsnr": 43.9
+  },
+  "menu/insta/perfil-viciado-em-bet.webp": {
+   "source": "57b0e9c44f4ae8d9963d016f4d2aa810297b0b71078669743fc23269e0a8aba0",
+   "lite": "2643a4129a6d1ebe3a63ae7da0aadb689def8201ad52bc0f8892b45a7e685eee",
+   "bytes": 54830,
+   "liteBytes": 44400,
+   "psnr": 39.8,
+   "shownPsnr": 41.9
+  },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",
    "lite": "340a88465f120851d8e719d09aee71f3eaf190897c9491cd45a566967e0eb80a",
@@ -18797,14 +19013,6 @@
    "psnr": 41.9,
    "shownPsnr": 39.4
   },
-  "sprites/gato-nada-pra-comer.push16-nw.13b5da9aed13.webp": {
-   "source": "13b5da9aed13c02e59121d8ace1605e6e6744554ef8004e1547ff345557451b2",
-   "lite": "8ba4ce5f1f3593e2dd15490ea93f4bfc5315706e31ea531f20844a0360beb327",
-   "bytes": 61108,
-   "liteBytes": 34704,
-   "psnr": 41.6,
-   "shownPsnr": 40.2
-  },
   "sprites/gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp": {
    "source": "8b0eef2b0439bd6b069c6ace630307500f46a4bb81b5e16307e69eb9aa4b7f50",
    "lite": "6ae931a8e1e82d5f113ee23b0eb4c3a9e885cf794f6c4baa02030b422b800072",
@@ -18860,14 +19068,6 @@
    "liteBytes": 35724,
    "psnr": 41.6,
    "shownPsnr": 40.7
-  },
-  "sprites/gato-nada-pra-comer.run16-nw.8c7cab098274.webp": {
-   "source": "8c7cab0982743f468743ae6557c33c6343f4e983683178ff225d32a832f0e584",
-   "lite": "496bf6389728f38a507d3357d0e123897934a30eb29adc4e58a80b71b6eb34d2",
-   "bytes": 67682,
-   "liteBytes": 36318,
-   "psnr": 40.9,
-   "shownPsnr": 40.8
   },
   "sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
    "source": "cdd9cb8851447d3f4055907a9d86b2c85bec455e826b1b71afc5edf322b549ca",

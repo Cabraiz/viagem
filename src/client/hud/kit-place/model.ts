@@ -1,12 +1,13 @@
 /**
  * Kits de torre (card NEW-20261020-ORQ-torre-pela-caixa), pure rules kept apart from the DOM so node tests import them.
- * No Construir button: a tap on the kit's slot (hud/inventory.ts {t:'kit'}) starts putting it on the ground.
- * - The ghost starts KIT_AHEAD u in front of the hero (the way it last walked; at first towards the camera) with the
- *   room's own footprint (rules pieceCells: the root takes 1 cell, a 3×2 tower its 3×3 square).
+ * construir-no-botao (the user, 23/10): no window. A tap on the kit's slot (hud/inventory.ts {t:'kit'}) selects it, the
+ * attack button turns into Construir with the kit's sticker (hud/skill.ts), and pressing it builds.
+ * - The ghost stays KIT_AHEAD u in front of the hero (the way it last walked; at first towards the camera) and walks
+ *   with it (follow, every frame), with the room's own footprint (rules pieceCells: the root takes 1 cell, a 3×2 tower
+ *   its 3×3 square).
  * - Its colour: the room's answer for that very cell wins, else the local check (render/fortify-rules ghostRefusal:
  *   the car, a nest, a standing piece) plus the reach (KIT_REACH from the hero, the room's BUILD_REACH).
- * - The phone: a tap on the map moves the ghost, ✓ sends it, ✕ cancels. The PC: the mouse moves it, a click sends it,
- *   Esc or the right button cancels (kit-place.ts).
+ * - Tapping the kit again, or a weapon, puts the weapon back in the button (Atacar); Esc does it on the PC.
  * - One {t:'place',slot,c,r,rot?} per confirm (net.place); the room answers {t:'built'}. A tower kit is done when the
  *   room takes it; a wall kit stays in the mode while it has charges. The kit leaving its slot (spent, dropped) ends it.
  */
@@ -37,6 +38,8 @@ export class KitPlace {
   kit:{slot:number;id:string;piece:KitPiece}|undefined;
   rot:BuildRot=0;
   cell:{c:number;r:number}|undefined;
+  /** Why the last ghost (ghost()) is red, a refusal reason for kitRefusalText; undefined when it is green. */
+  blocked:string|undefined;
   /** The hero's last walking direction (unit), for the ghost's first place. */
   private dir={x:0,y:1};
   private last:{x:number;y:number}|undefined;
@@ -52,6 +55,10 @@ export class KitPlace {
     if(this.last){const dx=at.x-this.last.x,dy=at.y-this.last.y,d=Math.hypot(dx,dy);if(d>.02){this.dir={x:dx/d,y:dy/d};}}
     this.last={x:at.x,y:at.y};
   }
+  /** Each frame while placing: the ghost KIT_AHEAD u in front of the hero, the way it faces. */
+  follow(at:{x:number;y:number}|undefined,cell:number){
+    if(this.kit&&at)this.point({x:at.x+this.dir.x*KIT_AHEAD,y:at.y+this.dir.y*KIT_AHEAD},cell);
+  }
   footprint():[number,number]{return this.kit?pieceCells(this.kit.piece,this.rot) as [number,number]:[1,1];}
   /** A tap on the kit's slot: the mode for that kit, the ghost ahead of the hero. Undefined when the id is no kit. */
   start(slot:number,id:string,hero:{x:number;y:number}|undefined,cell:number):boolean{
@@ -61,7 +68,7 @@ export class KitPlace {
     if(hero)this.point({x:hero.x+this.dir.x*KIT_AHEAD,y:hero.y+this.dir.y*KIT_AHEAD},cell);
     return true;
   }
-  cancel(){this.kit=undefined;this.cell=undefined;}
+  cancel(){this.kit=undefined;this.cell=undefined;this.blocked=undefined;}
   /** Only a barricade turns (the towers are squares, the muro one cell). */
   canTurn(){return this.kit?.piece==='barricada';}
   turn(){if(this.canTurn())this.rot=this.rot===1?0:1;}
@@ -77,9 +84,10 @@ export class KitPlace {
     const rect=this.rect(ctx.cell);
     if(!rect||!this.kit)return null;
     const answer=this.answers.get(keyOf(this.kit.piece,rect.c,rect.r,this.rot));
-    const far=!!hero&&distToRect(hero.x,hero.y,rect)>KIT_REACH;
-    return {piece:this.kit.piece,c:rect.c,r:rect.r,w:rect.w,h:rect.h,...(this.rot?{rot:this.rot}:{}),
-      look:ghostLook(far?'fora':ghostRefusal(rect,ctx),answer)};
+    const far=!!hero&&distToRect(hero.x,hero.y,rect)>KIT_REACH,local=far?'fora':ghostRefusal(rect,ctx);
+    const look=ghostLook(local,answer);
+    this.blocked=look==='bloqueado'?(far?'away':local??'ocupado'):undefined;
+    return {piece:this.kit.piece,c:rect.c,r:rect.r,w:rect.w,h:rect.h,...(this.rot?{rot:this.rot}:{}),look};
   }
   /** The kit's slot after an inventory change: follows the same id, or ends the mode when it is gone. */
   sync(slots:readonly (KitSlotLike|undefined)[]|undefined){

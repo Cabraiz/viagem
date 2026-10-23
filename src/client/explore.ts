@@ -43,8 +43,7 @@ import {OBRA_NO_ANSWER,OBRA_TOAST_MS,ObraRequests,obraViewFrom,siteOf,towersInWo
 import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
-import {KitPlace} from './hud/kit-place/model.ts';
-import {KitPlaceHud} from './hud/kit-place/kit-place.ts';
+import {KitPlace,kitRefusalText} from './hud/kit-place/model.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
 import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
@@ -121,8 +120,11 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const obraRequests=new ObraRequests();
   /** D-052 slice 3: the car's rope (Puxar) and the free build (Construir, the ghost, the wall counter). */
   let fort:FortifyHud|undefined;const fortBuild=new FortBuild();
-  /** Kits de torre (torre-pela-caixa): a tap on the kit's slot puts its tower on the ground (ghost, ✓/✕). */
-  let kitHud:KitPlaceHud|undefined;const kitPlace=new KitPlace();
+  /**
+   * Kits de torre (torre-pela-caixa, construir-no-botao): a tap on the kit's slot selects it, the ghost walks ahead of
+   * the hero and the attack button says Construir (buildNow); the kit again or a weapon goes back to Atacar.
+   */
+  const kitPlace=new KitPlace();let buildNow:()=>void=()=>undefined;
   let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
@@ -164,12 +166,20 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // PIX to a friend (carteira-e-pix): a tap on a portrait opens the balloon (hud/pix.ts); the room answers the promise.
       onPix:(to,amount)=>net.pix(to,amount),
       // D-051 inventory (manual combat): equip/use/drop/take; the room answers {t:'inv'} (net.onInventory below).
-      // A kit de torre's tap ({t:'kit'}) stays here: it opens the "pôr torre" mode (hud/kit-place).
+      // A kit de torre's tap ({t:'kit'}) stays here: it selects the kit (hud/kit-place), the same kit again lets it go.
+      // With a kit selected, a weapon's tap puts the weapon back in the button (the one already in the hand sends nothing).
       onInventory:command=>{
-        if(command.t!=='kit')return net.inventory(command);
-        const id=hud?.view?.players.find(p=>p.id===net.id)?.weapons[command.slot]?.id;
+        const me=hud?.view?.players.find(p=>p.id===net.id);
+        if(command.t!=='kit'){
+          const held=kitPlace.active&&command.t==='equip'&&command.slot===me?.hand;
+          if(command.t==='equip')kitPlace.cancel();
+          return held||net.inventory(command);
+        }
+        if(kitPlace.active&&kitPlace.kit?.slot===command.slot){kitPlace.cancel();return true;}
+        const id=me?.weapons[command.slot]?.id;
         return !!id&&kitPlace.start(command.slot,id,net.predicted,buildPlanFor(net.terrain).cell);
       },
+      kitSlot:()=>kitPlace.kit?.slot,
       // The owner's commands from the result screen (D-025); the room checks owner, phase and round.
       onKick:id=>net.kick(id),onAddBot:()=>net.addBot(),onRemoveBot:id=>net.removeBot(id),
       // First-run coach (VGM-056): the hint steps aside from the hero at view rate.
@@ -208,12 +218,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
         onAim:(x,y,drag)=>{const p=controller?.scene.worldAt(x,y);if(!p)return;fortBuild.point(p,cell());if(drag)send(fortBuild.drag(net));},
         onAimEnd:()=>fortBuild.endDrag(),
         canvas:()=>controller?.game.canvas});
-      kitHud=new KitPlaceHud(host.el,{
-        onConfirm:()=>{const r=kitPlace.confirm(net);if(r==='none')obraSay('Toque no chão primeiro');else send(r);},
-        onCancel:()=>{kitPlace.cancel();controller?.scene.setBuildGhost(null);},
-        onTurn:()=>kitPlace.turn(),
-        onAim:(x,y)=>{const p=controller?.scene.worldAt(x,y);if(p)kitPlace.point(p,cell());},
-        canvas:()=>controller?.game.canvas});
+      // Construir (the attack button with a kit selected): the ghost's cell to the room; a red ghost says why instead.
+      buildNow=()=>{
+        if(!kitPlace.active)return;
+        if(kitPlace.blocked){obraSay(kitRefusalText(kitPlace.blocked));return;}
+        const r=kitPlace.confirm(net);if(r!=='none')send(r);
+      };
       // barricada-construir part 2: tap a barricada de tralha → COLETAR / DESTRUIR; the mouse over it → outline + hand.
       const squares=()=>hud?.view?.structures??[];
       tralhaHud=new TralhaHud(host.el,{
@@ -349,7 +359,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   const close=()=>{
     if(closed)return;closed=true;active=false;abort.abort();reset();if(economyTimer)clearTimeout(economyTimer);
     if(updateSlot)setMatchSlot(undefined);
-    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();kitHud?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
+    ux?.destroy();attackBtn?.destroy();net?.leave();rescue?.destroy();spect?.destroy();obra?.destroy();fort?.destroy();tralhaHud?.destroy();emotes?.destroy();hud?.destroy();controller?.game.destroy(true);settings.close();shell.close();shell.remove();returnFocus?.focus();
     // Out of the island or the room: a version update that waited for the end of the match reloads now.
     matchEnded();
     // Back on the creation screens: the menu music returns.
@@ -471,12 +481,27 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(event.repeat)return;
     if(hotkey.kind==='turn'){shell.querySelector<HTMLButtonElement>(`[data-turn="${hotkey.turn}"]:not(:disabled)`)?.click();return;}
     if(hotkey.kind==='skill'){
-      // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill.
+      // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill. A kit selected: Construir.
+      if(kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}
       if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
     }
     if(emotes&&!emotes.root.hidden)emotes.setOpen(!emotes.open);
   },{signal});
+  // construir-no-botao: with a kit selected the attack button builds (before AttackButton's own listeners see the press);
+  // Esc lets the kit go (back to Atacar).
+  if(net){
+    const onBuild=(e:Event)=>{
+      const button=(e.target as Element|null)?.closest?.('#coop-attack') as HTMLButtonElement|null;
+      if(!kitPlace.active||!button||button.disabled)return;
+      if(e.type==='pointerdown'&&(e as PointerEvent).button!==0)return;
+      if(e.type==='click'&&(e as MouseEvent).detail!==0){e.stopImmediatePropagation();return;}
+      e.stopImmediatePropagation();e.preventDefault();pause(false);buildNow();
+    };
+    window.addEventListener('pointerdown',onBuild,{capture:true,signal});
+    window.addEventListener('click',onBuild,{capture:true,signal});
+    document.addEventListener('keydown',e=>{if(!closed&&kitPlace.active&&e.key==='Escape'&&!settings.open){e.preventDefault();kitPlace.cancel();}},{signal});
+  }
   // A focused button is pressed by Space on its keyup: never, when Space is the skill hotkey (Phaser does the same), so a
   // focused skill button casts once (the keydown above), not twice.
   document.addEventListener('keyup',event=>{if(!closed&&hotkeyOf(event,settings.open)?.kind==='skill')event.preventDefault();},{signal});
@@ -569,7 +594,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
@@ -675,7 +700,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 }else if(!kitPlace.active)scene.setBuildGhost(null);
               }
               // Kits de torre: the mode lives while the hero may build (not watching, not paused, standing) and the kit is there.
-              if(kitHud&&controller){
+              if(controller){
                 const view=hud.view,scene=controller.scene,me=view?.players.find(p=>p.id===net.id);
                 const available=run.phase==='combat'&&!run.pause&&!net.fatal&&!hud.el.hidden&&!hud.offerShown&&!member?.spectator
                   &&!!me&&!me.spectator&&!me.downed&&!me.eliminated&&me.hp>0;
@@ -683,12 +708,13 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                 if(run.phase!=='combat')kitPlace.reset();
                 else if(!available)kitPlace.cancel();
                 kitPlace.sync(me?.weapons);
-                const kit=kitPlace.kit,charges=kit?me?.weapons[kit.slot]?.level:undefined;
-                kitHud.update({open:kitPlace.active,...(kit?{id:kit.id}:{}),canTurn:kitPlace.canTurn(),rot:kitPlace.rot,...(charges!==undefined?{charges}:{})});
                 if(kitPlace.active){
-                  const car=view&&objectiveOf(view)?.car;
-                  scene.setBuildGhost(kitPlace.ghost({cell:buildPlanFor(net.terrain).cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
+                  // The ghost walks KIT_AHEAD in front of the hero: that is where Construir puts it.
+                  const car=view&&objectiveOf(view)?.car,cell=buildPlanFor(net.terrain).cell;
+                  kitPlace.follow(net.predicted,cell);
+                  scene.setBuildGhost(kitPlace.ghost({cell,...(car?{car}:{}),structures:view?.structures??[]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
+                skill?.setBuild(kitPlace.kit?.id,!!kitPlace.blocked);
               }
               // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
               if(tralhaHud&&controller){

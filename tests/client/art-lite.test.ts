@@ -146,7 +146,7 @@ test('the base wall and barricades (art/base-art.ts) load their city lite copies
 
 test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from /art/lite/menu has its copy, made from the approved file as it is now; the rest of public/art/menu (button, cut-out heroes, letreiros, mureta) is loaded as it is and has no copy (art-lite --check stays green)',()=>{
   const menu=readdirSync('public/art/menu',{recursive:true}).map(n=>String(n).replaceAll('\\','/')).filter(n=>n.endsWith('.webp'));
-  const lite=menu.filter(n=>/^(danca\/|fundo-[^/]+\.webp$)/.test(n));
+  const lite=menu.filter(n=>/^(danca\/|insta\/|fundo-[^/]+\.webp$)/.test(n)); // insta/: the phone's profile screen (selecao-mobile-instagram)
   assert.ok(lite.length>=142,`${lite.length} menu files with a copy`);
   for(const name of lite){
     const key=`menu/${name}`,entry=manifest.files[key];

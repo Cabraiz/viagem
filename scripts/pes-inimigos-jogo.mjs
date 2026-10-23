@@ -8,6 +8,9 @@
  *   node scripts/pes-inimigos-jogo.mjs <out-prefix> [--url https://viagem.cyou/] [--segundos 8] [--fotos 60]
  *   --video: also a real-time video of the whole page (<out>-video/), the log's start printed in seconds;
  *   --tela 390x844: a phone viewport (touch, mobile) instead of 1280x720 (card inimigos-animacao-2x-lenta).
+ *   --acordar: walk only once the Minuto de Minerva is over (the first wave awake);
+ *   --andando: the log starts at the wake-up and runs while the hero walks to them;
+ *   --ficar: no walk, no wait: the log starts as the match opens (card inimigos-animacao-auditoria: the whole wake-up).
  */
 import {pathToFileURL} from 'node:url';import {join} from 'node:path';import {existsSync,writeFileSync} from 'node:fs';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -52,7 +55,21 @@ try{
     for(const e of net?.feed.enemies.values()??[]){if(e.hp<=0)continue;const d=Math.hypot(e.x-p.x,e.y-p.y);if(d<bd){bd=d;best=e;}}
     if(!best)return undefined;const a=s.project(p),b=s.project(best);const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;
     const hx=(a.x-cam.worldView.x)*cam.zoom,hy=(a.y-cam.worldView.y)*cam.zoom;return {x:hx+dx/l*220,y:hy+dy/l*220,hx,hy,d:bd};});
-  let stuck=0,last=1e9;for(let i=0;i<90;i++){const t=await aim();if(!t){await sleep(1000);continue;}if(t.d<Number(arg('perto',5)))break;if(i%5===0)console.log('alvo a',t.d.toFixed(1),'u');
+  const startLog=()=>page.evaluate(secs=>{window.__auditLog=new Promise(res=>{
+    const s=window.__perfScene,h=s.horde,cam=s.cameras.main,rows=[];const t0=performance.now();
+    const tick=()=>{
+      const t=performance.now()-t0;
+      for(const [id,e] of h.enemies.entries){const a=e.item;if(a.culled||!a.image.visible)continue;const im=a.image;
+        rows.push([Math.round(t*10)/10,id,a.art,a.kind,+a.x.toFixed(4),+a.y.toFixed(4),+((im.x-cam.worldView.x)*cam.zoom).toFixed(2),+((im.y-cam.worldView.y)*cam.zoom).toFixed(2),im.texture.key,Number(im.frame.name),+(im.scaleY*cam.zoom).toFixed(4),a.moving?1:0,a.elite?1:0]);}
+      if(t<secs*1000)requestAnimationFrame(tick);else res({zoom:cam.zoom,view:s.view,rows});
+    };requestAnimationFrame(tick);
+  });},SECS);
+  const STAY=process.argv.includes('--ficar');
+  // --acordar: wait out the Minuto de Minerva (the monsters asleep) before walking to them.
+  if(process.argv.includes('--acordar')){await page.waitForFunction(()=>document.querySelector('.rh-minerva')?.hidden===false,null,{timeout:60000,polling:500});await page.waitForFunction(()=>{const m=document.querySelector('.rh-minerva');return m&&m.hidden;},null,{timeout:150000,polling:500});await sleep(1500);console.log('monstros acordados');}
+  // --andando: the log runs from here on, while the hero walks to the enemies (they swing, chase, die).
+  const LOGGING=process.argv.includes('--andando');if(LOGGING)await startLog();
+  let stuck=0,last=1e9;for(let i=0;i<(STAY?0:90);i++){const t=await aim();if(!t){await sleep(1000);continue;}if(t.d<Number(arg('perto',5)))break;if(i%5===0)console.log('alvo a',t.d.toFixed(1),'u');
     // Stuck against a wall (the distance did not drop): turn the click by ±50°, ±90° around the hero.
     const turn=[0,0,50,-50,90,-90][Math.floor(stuck/2)%6]*Math.PI/180,cx=640,cy=360;
     const hx=t.x-(t.x-cx)*0,vx=t.x-t.hx,vy=t.y-t.hy,x=t.hx+vx*Math.cos(turn)-vy*Math.sin(turn),y=t.hy+vx*Math.sin(turn)+vy*Math.cos(turn);
@@ -61,21 +78,14 @@ try{
   {const h=await page.evaluate(()=>{const s=window.__perfScene,cam=s.cameras.main,a=s.project(s.position);return {x:(a.x-cam.worldView.x)*cam.zoom,y:(a.y-cam.worldView.y)*cam.zoom};});await page.mouse.click(h.x,h.y+2);}
   await sleep(1500);console.log('andou; inimigos na tela',await count());
   const t0=Date.now();
-  while(Date.now()-t0<WAIT*1000){
+  while(!STAY&&Date.now()-t0<WAIT*1000){
     const n=await page.evaluate(()=>{const h=window.__perfScene.horde;if(!h)return 0;let n=0;for(const [,e] of h.enemies.entries)if(!e.item.culled&&e.item.image.visible)n++;return n;});
     if(n>=6)break;if((Date.now()-t0)%10000<1100)console.log('inimigos na tela',n,Math.round((Date.now()-t0)/1000)+'s');await sleep(1000);await clear();
   }
   await page.screenshot({path:`${OUT}-tela.png`});
   console.log('log começa em',((Date.now()-born)/1000).toFixed(2),'s do vídeo');
-  const log=await page.evaluate(secs=>new Promise(res=>{
-    const s=window.__perfScene,h=s.horde,cam=s.cameras.main,rows=[];const t0=performance.now();
-    const tick=()=>{
-      const t=performance.now()-t0;
-      for(const [id,e] of h.enemies.entries){const a=e.item;if(a.culled||!a.image.visible)continue;const im=a.image;
-        rows.push([Math.round(t*10)/10,id,a.art,a.kind,+a.x.toFixed(4),+a.y.toFixed(4),+((im.x-cam.worldView.x)*cam.zoom).toFixed(2),+((im.y-cam.worldView.y)*cam.zoom).toFixed(2),im.texture.key,Number(im.frame.name),+(im.scaleY*cam.zoom).toFixed(4),a.moving?1:0,a.elite?1:0]);}
-      if(t<secs*1000)requestAnimationFrame(tick);else res({zoom:cam.zoom,view:s.view,rows});
-    };requestAnimationFrame(tick);
-  }),SECS);
+  if(!LOGGING)await startLog();
+  const log=await page.evaluate(()=>window.__auditLog);
   writeFileSync(`${OUT}.json`,JSON.stringify(log));
   console.log('linhas',log.rows.length,'zoom',log.zoom,'view',log.view);
   // Burst of screenshots around the hero for the GIF.

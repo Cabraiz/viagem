@@ -184,8 +184,16 @@ export const RING_INNER=9.4,RING_OUTER=10.4,RING_SLACK=1;
 export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SLACK+1);
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */
 export const INTEREST_HYSTERESIS=4;
-/** D-051: at most this many sleeping bodies (EnemyView.asleep) per client, the nearest ones. */
-export const ASLEEP_PER_VIEWER=48;
+/**
+ * D-051: at most this many sleeping bodies (EnemyView.asleep) per client, the nearest ones.
+ * Card horda-visivel-capacidade (scripts/bench-horda-visivel.ts, seed 4242, 4 players, 4930 asleep; real screens: a
+ * PC at 1920×1080 shows 954×537 world px, ±11 u around the hero; a phone in portrait at the default zoom 434×939): with
+ * 48 the cap hid sleepers on screen at 19.7% of the city's walkable points on the PC and 31.6% on the phone (inside the
+ * nests' rings, where a fight happens); with 300 at 0% and 1.5% (≤ 12 bodies). The phone pays for every body it holds,
+ * drawn or culled (scripts/prova-horda-visivel.mjs, CPU 4×, the same walk: 48 → 55.5 fps, 300 → 53, no cap (≤ 1300
+ * held) → 26); the room pays little (+0.1 KB/s and +0.2 ms of encode per client at 10 Hz).
+ */
+export const ASLEEP_PER_VIEWER=300;
 /**
  * Card ninhos-perto-ataca-20x: at most this many awake enemies per client, the nearest ones (the boss always on top).
  * The phone draws and animates every body it holds (~30 µs each a frame, E1's measure 18/10: 300 on screen → 41 fps

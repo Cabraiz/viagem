@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/manifest.ts';
 import {eventAction,projectileAction,actionDuration,onceColumn,deathAlpha,DEATH_FADE_MS,TELEGRAPH_ACTIONS,
   type ActionActor,type ActionCue,type ActionWorld} from '../../src/client/art/horde-actions.ts';
-import {ENEMY_ANIM_RATE,applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
+import {ENEMY_ANIM_RATE,ENEMY_LOOP_RATE,applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
   playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
 import {FX,projectileTexture,type EnemyKind} from '../../src/client/render/keys.ts';
 import {Ring} from '../../src/client/render/pool.ts';
@@ -99,6 +99,8 @@ test('hostile projectile spawn → the nearest agiota throws; friendly shots and
 // ---------------------------------------------------------------- 2. timing
 /** On-screen time of `ms` of drawn animation: enemies play at ENEMY_ANIM_RATE (+1 ms clears float rounding at a frame edge). */
 const slow=(ms:number)=>ms/ENEMY_ANIM_RATE+1;
+/** The same for the loops (idle, walk, fly), half as fast again (inimigos-animacao-2x-lenta). */
+const slowLoop=(ms:number)=>ms/ENEMY_LOOP_RATE+1;
 
 test('an action plays once at its fps, then the loop comes back; hit never interrupts, the same action never restarts',()=>{
   const s:ActionState={at:0,end:0};
@@ -120,7 +122,7 @@ test('an action plays once at its fps, then the loop comes back; hit never inter
   assert.equal(onceColumn(0,6,12),0);assert.equal(onceColumn(250,6,12),3);assert.equal(onceColumn(499,6,12),5);assert.equal(onceColumn(9999,6,12),5);
   assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(250),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+3});
   assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(5000),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+5});
-  assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,slow(1000)),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
+  assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,slowLoop(1000)),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
 });
 
 test('phase 2: the still chefe idles with phase2-idle; walking, phase 1 or no such sheet keep today\'s choice',()=>{

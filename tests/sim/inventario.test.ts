@@ -114,20 +114,20 @@ test('drop: the item goes to the ground for anyone; the last weapon stays in the
 test('the level cards of the manual combat are passives (the reinforcements included); the automatic ones never see the arsenal',()=>{
   const ids=MANUAL_ITEMS.all().map(d=>d.id);
   assert.ok(ids.every(id=>MANUAL_ITEMS.get(id)!.kind==='passive'),'no weapon card');
-  assert.ok(ids.includes('pente')&&ids.includes('silenciador'));
+  assert.ok(ids.includes('pente'));
+  assert.equal(ids.includes('silenciador'),false,'melee-alcance-2x: the user removed the Silenciador de Garagem');
   const auto=ITEMS.all().map(d=>d.id);
   for(const id of ['faca','rojao','pente','silenciador',legendaryId('chinelo'),'coxinha'])assert.equal(auto.includes(id),false,id);
   assert.ok(ITEMS.get('rojao')&&ITEMS.get('coxinha'),'the HUD still finds their names');
 });
 
-test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries are the old weapons at their best; the silenciador quiets',()=>{
+test('rarity is the weapon level: the dourada hits 1.5× the verde; legendaries are the old weapons at their best; each weapon has its noise',()=>{
   const verde=resolveWeapon(getWeapon('pistola')!,1,BASE_STATS),dourada=resolveWeapon(getWeapon('pistola')!,4,BASE_STATS);
   assert.equal(dourada.damage,Math.round(verde.damage*RARITY_DAMAGE[4]*10)/10);
   assert.ok(dourada.cooldownTicks<verde.cooldownTicks);
   assert.equal(getWeapon(legendaryId('chinelo'))!.evolved?.flingOnCycle,true,'the Havaianas do Caos');
   for(const w of NEW_WEAPONS)assert.ok(w.minRarity>=1&&w.levels.length===4,w.id);
   assert.equal(weaponNoise('faca'),6);assert.equal(weaponNoise('rojao'),28);
-  assert.equal(weaponNoise('rojao',[{id:'silenciador',level:2}]),14);
 });
 
 test('city, manual combat: the crates stand on the loot points; standing by one fills the inventory; the view carries the hand',async()=>{
@@ -140,10 +140,10 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   s.add('p0','Ana','cidadao-comum');s.resetRun();
   let now=1000;s.step(now+=50);
   const crates=s.view('p0').pickups.filter(k=>k.kind==='chest');
-  assert.equal(crates.length,crateCap(1)+START_CRATES_MIN,'the solo’s crates on the loot points and its start crate by the plaza');
+  assert.equal(crates.length,crateCap(1)+START_CRATES_MIN,'the solo’s crates on the loot points and its start crates around the spawn');
   assert.ok(crates.every(k=>k.value>=1&&k.value<=3),'round 1: verde..roxa (the stage shift takes one off)');
   const loot=cityLoot(loaded.terrain)!;
-  assert.equal(crates.filter(k=>loot.aroundPlaza.some(a=>a.x===k.x&&a.y===k.y)&&k.value===1).length,START_CRATES_MIN,'the start crates are verde, just outside the plaza');
+  assert.equal(crates.filter(k=>loot.aroundStart.some(a=>a.x===k.x&&a.y===k.y)&&k.value<=2).length,START_CRATES_MIN,'the start crates are verde/azul, around the spawn (caixas-sumiram)');
   const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
   for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
   assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');

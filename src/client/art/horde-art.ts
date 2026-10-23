@@ -15,8 +15,10 @@ import {queueFramesArt} from './frames-art.ts';
 import {POOF_MS} from '../render/motion.ts';
 import {CIDADE_MODIFIERS,cidadeModifierLabel,roleOf,type EnemyRole} from '../../rules/index.ts';
 import {queueTelegraphArt} from '../render/telegraph-art.ts';
+import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
+import {ENEMY_STRIDES} from './enemy-strides.ts';
 import {allItemDisplays} from '../hud/items.ts';
-import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
+import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
@@ -126,7 +128,7 @@ export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 export const HOSTILE_SHOT_ART='tiro-inimigo';
 export const HOSTILE_PROJECTILE_IDS=['boleto-juros','coco-pombo',HOSTILE_SHOT_ART] as const;
 /** Every `projeteis` id with its own key ('tiro-aliado' is not one: it is the shared friendly look, STATIC_ART). */
-export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS];
+export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS,...PACK12_PROJECTILE_IDS];
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
 /** Built once: the per-frame path never concatenates a key. */
 const PROJECTILE_KEYS=new Map<string,string>();
@@ -360,7 +362,58 @@ export function fileFps(file:ArtFile,anim:string):number{
  * frames, never the walking speed or the sim's attack and damage timing. Projectiles keep the file's rate.
  */
 export const ENEMY_ANIM_RATE=.7;
-const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*ENEMY_ANIM_RATE;
+/**
+ * The resting and moving loops (idle, sleep, fly; the walk on the clock) play half as fast again (inimigos-animacao-2x-
+ * lenta, the user: "reduz a animação speed em 2x idle e normal, porque tá parecendo alguém tendo um treco"); one-shot
+ * actions (attack, hit, death...) and acting poses keep ENEMY_ANIM_RATE, so a swing still lands with the sim's damage.
+ * The elite and costume layers of a loop (elite/idle, elite/<variant>-idle) match their base.
+ */
+export const ENEMY_LOOP_RATE=ENEMY_ANIM_RATE/2;
+const SLOW_LOOP=/(?:^|[/-])(?:idle|sleep|fly|walk)$/;
+export const enemyRate=(anim:string)=>SLOW_LOOP.test(anim)?ENEMY_PACE.loop:ENEMY_ANIM_RATE;
+const enemyFps=(file:ArtFile,anim:string)=>fileFps(file,anim)*enemyRate(anim);
+/**
+ * Walk by the ground (NEW-20261022-ORQ-monstros-sem-deslizar, the user: "todos estão deslizando", "é como se a animação
+ * estivesse rápida"): the walk sheet is not clock-driven any more but follows the ground the enemy covers on screen,
+ * like the hero's (sprites/sprite-motion.ts walkCycles): a cycle every visible step of the sheet (art/enemy-strides.ts,
+ * how far the feet open, scripts/passada-inimigos.mjs), so the legs go as fast as the enemy goes (slow in a crowd,
+ * faster on a chase) and an enemy standing still never treads in place. The generated walks are drawn almost in place
+ * (the planted foot travels back ~0.01 of the figure a cycle, `volta` in that script): no timing keeps their foot on
+ * one spot, only new art does. A sheet whose feet hardly open (wheels, a blob) counts ENEMY_STRIDE_MIN, and the legs
+ * never go past ENEMY_WALK_MAX_CPS (a shove or a dash is a slide, not a sprint). ENEMY_STRIDE_DEFAULT (the median
+ * sheet) for a piece the table does not know yet.
+ * ENEMY_WALK_CADENCE (inimigos-animacao-2x-lenta): the legs go half as fast for the same ground, as if every step
+ * were twice as long. The sheets tread almost in place, so the planted foot slides by the enemy's own ground speed
+ * whatever the cadence (scripts/desliza-inimigos.mjs: same slide a second before and after); halving the cadence
+ * is what takes the frantic look away, and the step stays tied to the ground (slow in a crowd, still when stopped).
+ * ENEMY_CADENCE_KEPT: the sheets whose planted foot really travels back with the ground (`volta` ≥ half the visible
+ * step in scripts/passada-inimigos.mjs: the rato-de-boteco, 0.30 of 0.36) keep a cycle per step, its foot nearly
+ * locked (15 % slide), which half the cadence would undo (57 %).
+ */
+export const ENEMY_STRIDE_MIN=.3,ENEMY_STRIDE_DEFAULT=.46,ENEMY_WALK_CADENCE=.5,ENEMY_WALK_MAX_CPS=1.5;
+export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
+/**
+ * The pace in use: the sandbox's before/after proof (`?sandbox=horda&ritmo=antes`) brings back the loops at
+ * ENEMY_ANIM_RATE and a cycle per visible step (capped at 3 a second), before any sheet loads.
+ */
+export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
+/**
+ * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
+ * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
+ */
+export const ENEMY_WALK={byGround:true,faceTarget:true};
+/** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
+export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
+/** Visible step (heights of the figure per walk cycle) of art `id`. */
+export const enemyStride=(id:string)=>Math.max(ENEMY_STRIDE_MIN,ENEMY_STRIDES[id]??ENEMY_STRIDE_DEFAULT);
+/**
+ * Walk cycles a step of (dx, dy) world units adds `dtMs` after the last one, for a figure `figurePx` world px tall
+ * stepping `stride`: `cadence` (enemyCadence) of a cycle per stride walked on screen (walkCycles, lock 1), capped at
+ * ENEMY_WALK_MAX_CPS (scaled with the cadence); 0 on a teleport.
+ */
+export function enemyWalkCycles(dx:number,dy:number,view:number,figurePx:number,stride:number,dtMs:number,cadence=ENEMY_PACE.cadence):number{
+  return Math.min(walkCycles(dx,dy,view,figurePx,stride,1)*cadence,ENEMY_PACE.maxCps*cadence/ENEMY_PACE.cadence*Math.max(0,dtMs)/1000);
+}
 /** What enemyFrame needs of a file, computed once per file (pages, texture keys, fps): nothing is built per frame. */
 export interface FileInfo {id:string;anim:string;pages:readonly ArtPage[];keys:readonly string[];fps:number;frames:number;dirs:number}
 const fileCache=new WeakMap<ArtFile,FileInfo>();
@@ -519,6 +572,9 @@ export const hitGap=(hitMs:number)=>Math.max(HIT_GAP_MIN_MS,HIT_GAP_HITS*hitMs);
  */
 export const ACTION_ALIASES:Readonly<Record<string,readonly string[]>>={
   poop:['attack'],throw:['attack'],joke:['shove','attack'],shove:['attack'],slam:['shove','attack'],charge:['crash','attack'],
+  // A contact hit (horde-actions.ts CONTACT_REACH) is a swing of whatever arm the piece has (monstros-sem-deslizar):
+  // half the roster has no 'attack' sheet, only its role's move.
+  attack:['shove','slam','throw','lecture','pose','summon','poop'],
 };
 const NO_ALIAS:readonly string[]=Object.freeze([]);
 export function pieceAction(piece:ArtPiece,action:string):string|undefined{
@@ -545,10 +601,12 @@ export function currentAction(s:ActionState,now:number):string|undefined{
 interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.GameObjects.Image;eliteOn:boolean;
   /** The round costume layer (ROUND_COSTUMES), between the base and the elite layer. */
   costume?:Phaser.GameObjects.Image;costumeOn:boolean;
+  /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
+  cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
   ratio:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
 /**
@@ -559,6 +617,14 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
   const drawn=drawnHeight(textures,id,piece);
   return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
 }
+/**
+ * The figure's height in world px (before the scene's `body` scale) for `file`: the role's target once the drawn height
+ * is measured (pieceScale's drawnScale), else today's procedural height (enemyDrawScale's rule).
+ */
+function figurePx(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
+  const drawn=drawnHeight(textures,id,piece);
+  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*file.cell[1]*(file.anchor?.[1]??.88);
+}
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};
 const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0},mid:FrameRef={key:'',frame:0};
@@ -566,14 +632,14 @@ const base:FrameRef={key:'',frame:0},top:FrameRef={key:'',frame:0},mid:FrameRef=
  * Frame of layer `layer(anim)` (elite or costume) over the base: the action's own layer when it has one (and it
  * loaded), else the loop's layer on the action's column (so it never blinks off during an attack or a hit).
  */
-function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,layer:(anim:string)=>string,anim:string,loop:string|undefined,action:string|undefined,row:number,t:number,out:FrameRef):FrameRef|undefined{
-  let f=enemyFrame(id,piece,layer(anim),row,t,out,!!action);
+function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,layer:(anim:string)=>string,anim:string,loop:string|undefined,action:string|undefined,row:number,t:number,out:FrameRef,col=-1):FrameRef|undefined{
+  let f=col>=0?enemyFrameAt(id,piece,layer(anim),row,col,out):enemyFrame(id,piece,layer(anim),row,t,out,!!action);
   if(action&&loop&&(!f||!textures.exists(f.key)))f=enemyFrameAt(id,piece,layer(loop),row,enemyColumn(id,piece,action,t,true),out);
   return f&&textures.exists(f.key)?f:undefined;
 }
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
-export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;}}
+export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;s.lx=s.ly=s.lt=NaN;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
 export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
 /** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
@@ -610,7 +676,19 @@ export function enemyArtFlies(id:string|undefined):boolean|undefined{
   const piece=id?artPiece('inimigos',id):undefined;
   return piece?Object.hasOwn(piece.files,'fly'):undefined;
 }
-export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines):boolean{
+/**
+ * Facing the target (card monstros-sem-deslizar, the user: "e os inimigos me atacam de costas?"): an enemy within
+ * FACE_NEAR of its nearest player, or swinging at one within FACE_ACTING, shows the 8-direction row towards that player
+ * instead of the one of its last step (a crowd shoving it sideways, or a step back, turned its back on the hero).
+ */
+export const FACE_NEAR=1.6,FACE_ACTING=3;
+/** The row an enemy at (x, y) shows: towards `target` when near (or acting and within reach), else `row`. */
+export function targetRow(x:number,y:number,target:{x:number;y:number}|undefined,acting:boolean,view:number,row:number):number{
+  if(!target)return row;
+  const tx=target.x-x,ty=target.y-y,d=Math.hypot(tx,ty);
+  return d>1e-6&&d<=(acting?FACE_ACTING:FACE_NEAR)?facingRow(tx,ty,view,row):row;
+}
+export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKind;art?:string;act?:string;tex?:string;elite:boolean;phase:number;bossPhase?:number;x?:number;y?:number;costume?:string},moving:boolean,dx:number,dy:number,now:number,view=0,body=1,city?:CityOutlines,target?:{x:number;y:number}):boolean{
   // art: the roster id (enemyArtId) when the renderer knows it; the legacy kind's art otherwise.
   const id=actor.art??ENEMY_ART_ID[actor.kind],piece=artPiece('inimigos',id);
   // No art for this kind (always, with an empty manifest): nothing to do unless the art was on before.
@@ -620,23 +698,36 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   // An action (attack, throw, hit...) plays once over the loop; only while the art is on (the loop has a sheet).
   // A sheet that did not load drops the action and keeps the loop.
   const textures=image.scene.textures;
-  let action=loop?currentAction(s,now):undefined,frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
+  let action=loop?currentAction(s,now):undefined;
+  if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
+  let frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
   let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
-  if(!action&&anim)frame=enemyFrame(id,piece,anim,s.row,t,base);
+  // The walk by the ground walked since the last draw (monstros-sem-deslizar); the clock for every other loop. A fresh
+  // image starts at its own phase of the cycle, so a pack never steps in unison.
+  const wx=actor.x,wy=actor.y,walkFile=piece.files.walk;
+  const byGround=ENEMY_WALK.byGround&&!!walkFile&&wx!==undefined&&wy!==undefined;
+  if(byGround){
+    if(Number.isNaN(s.lx))s.cycles=actor.phase;
+    else if(!action&&(anim==='walk'||(!anim&&moving)))s.cycles+=enemyWalkCycles(wx-s.lx,wy-s.ly,view,figurePx(textures,id,piece,actor.kind,walkFile,actor.elite)*body,enemyStride(id),now-s.lt,enemyCadence(id));
+    s.lx=wx;s.ly=wy;s.lt=now;
+  }
+  const walkCol=(a:string|undefined)=>a==='walk'&&byGround?cycleFrame(s.cycles,fileInfo(id,'walk',walkFile!).frames):-1;
+  let col=action?-1:walkCol(anim);
+  if(!action&&anim)frame=col>=0?enemyFrameAt(id,piece,anim,s.row,col,base):enemyFrame(id,piece,anim,s.row,t,base);
   // That loop's sheet is not there (still loading, or it failed): another loop of the piece that is, before the reserve.
   if(!action&&anim&&(!frame||!textures.exists(frame.key)))for(const alt of moving?MOVING:STILL){
     if(alt===anim||!piece.files[alt]||(actor.elite&&!piece.files[eliteFile(alt)]))continue;
-    const f=enemyFrame(id,piece,alt,s.row,t,base);
-    if(f&&textures.exists(f.key)){anim=alt;frame=f;break;}
+    const c=walkCol(alt),f=c>=0?enemyFrameAt(id,piece,alt,s.row,c,base):enemyFrame(id,piece,alt,s.row,t,base);
+    if(f&&textures.exists(f.key)){anim=alt;frame=f;col=c;break;}
   }
   if(!anim||!frame||!textures.exists(frame.key))return off(image,actor,s);
   // body: the scene's actor scale (cidade-04 actorScale), like every procedural actor.
   const file=piece.files[anim],scale=pieceScale(textures,id,piece,actor.kind,file,actor.elite)*body,ox=file.anchor?.[0]??.5,oy=file.anchor?.[1]??.88;
   // The elite layer and the round costume (layerFrame: the action's own, else the loop's on the action's column).
   const variant=actor.costume;
-  const eliteFrame=actor.elite?layerFrame(textures,id,piece,eliteFile,anim,loop,action,s.row,t,top):undefined;
-  const costumeFrame=variant?layerFrame(textures,id,piece,a=>costumeFile(variant,a),anim,loop,action,s.row,t,mid):undefined;
+  const eliteFrame=actor.elite?layerFrame(textures,id,piece,eliteFile,anim,loop,action,s.row,t,top,col):undefined;
+  const costumeFrame=variant?layerFrame(textures,id,piece,a=>costumeFile(variant,a),anim,loop,action,s.row,t,mid,col):undefined;
   s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.

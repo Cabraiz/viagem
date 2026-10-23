@@ -49,7 +49,9 @@ export interface CityProp {readonly x:number; readonly y:number; readonly r:numb
  * changes the walkable grid: pieces on blocks stand on unwalkable cells, the ones on sidewalks are walked through.
  */
 export interface CityDecor {readonly id:string; readonly c:number; readonly r:number; readonly w:number; readonly h:number;
-  readonly rot:typeof DECOR_ROTS[number]; readonly links?:number}
+  readonly rot:typeof DECOR_ROTS[number]; readonly links?:number;
+  /** Covers its cells and draws nothing: a wall cell beside its line (city-decor.ts wallLines), not a procedural box. */
+  readonly cover?:true}
 /** L = east (leste), O = west (oeste). All of them must be walkable. */
 export interface CityPoints {
   readonly inicio:CityPoint; readonly praca:CityPoint;
@@ -237,7 +239,7 @@ export function encodeCityAsset(data:CityAssetData):string{
   const decor=d.decor===undefined?undefined:list(d.decor,'decor').map((v,i)=>{
     const q=obj(v,`decor[${i}]`),at=`decor[${i}]`;
     return {id:text(q.id,`${at}.id`),c:int(q.c,`${at}.c`),r:int(q.r,`${at}.r`),w:int(q.w,`${at}.w`),h:int(q.h,`${at}.h`),rot:int(q.rot,`${at}.rot`),
-      ...(q.links!==undefined?{links:int(q.links,`${at}.links`)}:{})};
+      ...(q.links!==undefined?{links:int(q.links,`${at}.links`)}:{}),...(q.cover===true?{cover:true as const}:{})};
   });
   const lines=[
     `"format":${J(CITY_FORMAT)}`,
@@ -412,7 +414,8 @@ function decodeRoot(root:unknown):CityAsset{
     const w=cellInt(q.w,`${at}.w`,cellsW-c,1),h=cellInt(q.h,`${at}.h`,cellsH-r,1);
     if(!(DECOR_ROTS as readonly unknown[]).includes(q.rot))bad(`${at}.rot must be one of ${DECOR_ROTS.join(', ')}`);
     const links=q.links===undefined?undefined:cellInt(q.links,`${at}.links`,15);
-    return Object.freeze({id:str(q.id,`${at}.id`,MAX_ID),c,r,w,h,rot:q.rot as CityDecor['rot'],...(links!==undefined?{links}:{})});
+    if(q.cover!==undefined&&q.cover!==true)bad(`${at}.cover must be true when given`);
+    return Object.freeze({id:str(q.id,`${at}.id`,MAX_ID),c,r,w,h,rot:q.rot as CityDecor['rot'],...(links!==undefined?{links}:{}),...(q.cover===true?{cover:true as const}:{})});
   }));
   let source:CitySource|undefined;
   if(o.source!==undefined){

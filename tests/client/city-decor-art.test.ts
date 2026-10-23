@@ -7,13 +7,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
-import {ART_CELL,DECOR_PROP_SCALE,buildCityArtPlan,cityLiteFile,cityLiteFiles,cityLiteScale,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
+import {ART_CELL,DECOR_PROP_SCALE,DECOR_WALL_FAMILIES,WALL_RETO_SPAN,buildCityArtPlan,wallScale,cityLiteFile,cityLiteFiles,cityLiteScale,decorRule,texelOf,type DecorSheet} from '../../src/client/render/city/art-plan.ts';
 import {liteOnly} from '../../src/client/art/horde-art.ts';
 import {parseCityAsset,type CityAsset} from '../../src/client/render/city/asset.ts';
 import {decorChunk,decorFootprint,decorSprite} from '../../src/client/render/city/decor-art.ts';
-import {cityRenderAsset} from '../../src/client/render/city/from-maps.ts';
+import {cityRenderAsset,leftoverWallLines} from '../../src/client/render/city/from-maps.ts';
 import {ART_SCALE,buildingAnchor,frontCorner} from '../../src/client/render/city/materials.ts';
-import {VIEW_PIVOT,depth,project,viewPoint} from '../../src/client/render/city/projection.ts';
+import {TILE_X,VIEW_PIVOT,depth,project,viewPoint} from '../../src/client/render/city/projection.ts';
+import sharp from 'sharp';
 import {decodeCityAsset} from '../../src/maps/index.ts';
 import {DECOR_REFUSED} from '../../src/maps/city-decor.ts';
 
@@ -48,7 +49,8 @@ test('the real asset: cityRenderAsset copies every decor piece and stays in pars
   const decoded=decodeCityAsset(raw);
   assert.ok(decoded.ok);
   const r=cityRenderAsset(decoded.asset);
-  assert.equal(r.decor?.length,decoded.asset.decor.length);
+  // Plus the lines of the wall cells the scenery left bare (trocar-procedurais-por-arte, from-maps leftoverWallLines).
+  assert.equal(r.decor?.length,decoded.asset.decor.length+leftoverWallLines(decoded.asset).length);
   assert.ok(r.decor!.length>1000);
   assert.deepEqual(parseCityAsset(r).decor,r.decor);
 });
@@ -149,7 +151,7 @@ test('decorChunk: the chunk holding the piece\'s centre cell', ()=>{
   assert.equal(decorChunk({c:17,r:26,w:1,h:1},9),'1,2');
 });
 
-test('the real asset places no refused piece, and its walls sit on 1×1 cells', ()=>{
+test('the real asset places no refused piece, and its walls are straight pieces centred on their line (grades-sem-padrao)', ()=>{
   const raw=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
   const decoded=decodeCityAsset(raw);
   assert.ok(decoded.ok);
@@ -157,7 +159,7 @@ test('the real asset places no refused piece, and its walls sit on 1×1 cells', 
     // The pieces E8's import refused are never placed (no invisible wall waiting for art).
     assert.ok(!DECOR_REFUSED.has(e.id),e.id);
     const rule=decorRule(e.id);
-    if(rule==='wall')assert.ok(e.w===1&&e.h===1,e.id);
+    if(rule==='wall')assert.ok(/-reto-(intacto|quebrado)$/.test(e.id)&&e.w<=2&&e.h<=2&&(!e.cover||e.w*e.h===1),e.id);
   }
 });
 
@@ -199,4 +201,28 @@ test('a lite copy (liteCell, decor-lite-arte-perto) draws the same piece: lite u
   assert.equal(cityLiteFile('cenario','bueiro',{kind:'decor',files:{sheet:{file:'bueiro/sheet.webp',cell:[256,256],frames:1}}} as never),undefined,'decals are no view sheet');
   assert.equal(cityLiteFile('base','forja',{kind:'views',files:{sheet:{file:'forja.webp',cell:[256,256],views:4}}} as never),undefined,'base pieces other than the fountain load elsewhere');
   assert.equal(cityLiteFile('predios','arena-1',{kind:'views',files:{sheet:{file:'arena-1.webp',cell:[256,256],views:4}}} as never),undefined,'unused building families');
+});
+
+test('grades-sem-padrao: the straight piece of a wall is drawn one city cell long (the pieces of a line meet post to post)', async ()=>{
+  for(const family of DECOR_WALL_FAMILIES){
+    // The span is the intact piece's view 0 alpha width less about a post (shared by the neighbours).
+    const {data,info}=await sharp(`public/art/city/decor/${family}-reto-intacto/sheet.webp`).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    const fw=info.width/4;let x0=fw,x1=0;
+    for(let y=0;y<info.height;y++)for(let x=0;x<fw;x++)if(data[(y*info.width+x)*4+3]>40){x0=Math.min(x0,x);x1=Math.max(x1,x);}
+    const width=x1-x0,span=WALL_RETO_SPAN[family];
+    assert.ok(span<width&&span>width*.9,`${family}: span ${span} vs art width ${width}`);
+    assert.ok(Math.abs(wallScale(family,1.496)*span-1.496*TILE_X)<1e-9);
+  }
+  const plan=buildCityArtPlan(cenarioIndex(),{cell:1.496,decor:['muro-pichado-reto-intacto']});
+  assert.ok(Math.abs(plan.decor['muro-pichado-reto-intacto'].scale-wallScale('muro-pichado',1.496))<1e-9);
+});
+
+test('grades-sem-padrao: a cover entry reaches the render asset (it covers its cell, draws nothing)', ()=>{
+  const raw=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'));
+  const decoded=decodeCityAsset(JSON.stringify(raw));
+  assert.ok(decoded.ok);
+  const covers=decoded.asset.decor.filter(d=>d.cover);
+  assert.ok(covers.length>0);
+  const render=cityRenderAsset(decoded.asset);
+  assert.equal(render.decor!.filter(d=>d.cover).length,covers.length+leftoverWallLines(decoded.asset).filter(d=>d.cover).length);
 });

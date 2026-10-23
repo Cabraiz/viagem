@@ -17,13 +17,13 @@
  * Awake states (proposal §2), in the body's memory (JSON-safe, so the state hash sees them): `sono` 1 alerta (stands
  * ALERT_PAUSE s, the "hã?", then walks to the noise at ALERT_PACE: Sono.goal, the enemy-ai's goal option), 2 caçando
  * (the AI's hunt), 3 perdeu (no player within SEE_RADIUS for LOST_AFTER s: walks home and sleeps there, or where it
- * stands after SLEEP_ANYWHERE s). A player within SEE_RADIUS turns alerta and perdeu into caçando. A siege body (the
+ * stands after SLEEP_ANYWHERE s). A player within WANDER_SIGHT turns alerta and perdeu into caçando. A siege body (the
  * nests' groups, memory.siege) is never lost.
  *
  * Ids: `z-<index>`, the body's place in the plan order (nests first, in plan order, then the loose bands), never from
  * ctx.nextId: a checkpoint rebuilds the same bodies from the seed without moving the world's counters.
  */
-import type {NestPlan,Point} from '../../maps/index.ts';
+import {routeDistance,type NestPlan,type Point} from '../../maps/index.ts';
 import type {EnemyState,SimEvent,SimPlayer} from '../../contract/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {SimContext,Sleepers} from '../context.ts';
@@ -44,12 +44,27 @@ export const BAND_RADIUS=4;
 /**
  * A standing hero (a person or a bot) this close to a sleeper wakes it caçando, with its band (card
  * ninhos-perto-ataca-20x): it saw you. Under SEE_RADIUS (the awake ones' sight) and the knife's noise (6).
+ * Card monstros-espalhados (the user, 22/10: "diminuir um pouco a visão deles, de quando passamos perto"): 5 → 3.75
+ * (−25 %), so a walk between bodies a field gap apart (maps/nests.ts SPREAD.gap) can slip past.
  */
-export const WAKE_SIGHT=5;
+export const WAKE_SIGHT=3.75;
 /** The noise window (s): one roll per source per window, with its loudest noise. */
 export const NOISE_EVERY=.5;
-/** Awake bodies see a player within this distance (u). */
+/** A hunting body (caçando) keeps seeing a player within this distance (u): the chase as it was. */
 export const SEE_RADIUS=14;
+/**
+ * A body walking to a noise (alerta) or back home (perdeu) spots a player within this distance (u) and hunts him.
+ * Card monstros-espalhados: was SEE_RADIUS (14), now −25 %; the chase itself keeps SEE_RADIUS.
+ */
+export const WANDER_SIGHT=10.5;
+/** The minuto de Minerva: a hero this close to a sleeper (u, a melee reach) wakes it; it stands and hits. */
+export const MINERVA_REACH=1.5;
+/**
+ * The end of the minuto de Minerva (BUG-20261022-ORQ-minerva-acordar-trava): the bodies it held stand MINERVA_REACT s
+ * more (none acts: the hero gets to react, even with one at his side), then start one by one over MINERVA_SPREAD s,
+ * the nearest to a standing hero first (plan order on ties), never all on one tick.
+ */
+export const MINERVA_REACT=1,MINERVA_SPREAD=1.5;
 /** Caçando with no player within SEE_RADIUS for this long (s): perdeu. */
 export const LOST_AFTER=8;
 /** Perdeu for this long (s) without reaching home: sleeps where it stands. */
@@ -149,6 +164,17 @@ export interface SonoOptions {
   keep?:(ctx:SimContext)=>readonly Point[];
   /** The noise and the sight wake nobody once ctx.enemies holds this many (proposal §7). Default MAX_AWAKE. */
   maxAwake?:number;
+  /**
+   * Card monstros-espalhados: where a wanderer stops instead of `p` when p lies in a safe place (maps/safe-places.ts:
+   * its opening), undefined when p is outside every one. An alerta walks to the door of a safe place, never in; only
+   * a hunt (caçando, it saw the player) follows him inside.
+   */
+  door?:(p:Point)=>Point|undefined;
+  /**
+   * The minuto de Minerva (ninhos.ts MINERVA_S): while true no noise wakes anyone (noises are dropped) and a hero wakes
+   * only the sleepers within MINERVA_REACH (it walked into their reach: they hit it, standing, the enemy-ai's hold).
+   */
+  minerva?:(ctx:SimContext)=>boolean;
 }
 
 export interface Sono {
@@ -171,6 +197,13 @@ export interface Sono {
   asleepIn(nestId:string):number;
   /** The enemy-ai's goal option: where an alerta or a perdeu walks, and how fast. */
   goal(ctx:SimContext,e:EnemyState):(Point&{pace:number})|undefined;
+  /** Card monstros-espalhados: plan bodies dead so far (the waves' kill count). */
+  dead():number;
+  /**
+   * Card monstros-espalhados (a wave's map share): wakes up to `count` sleepers nearest the polyline `route` (plan order
+   * on ties), caçando and besieging the car (memory.siege), up to the cap of awake bodies; one `acordou`. Returns how many.
+   */
+  recruit(ctx:SimContext,route:readonly Point[],count:number,tune?:(e:EnemyState)=>void):number;
   /** Puts the plan's bodies to sleep (first step of the run, or the checkpoint's life); idempotent. */
   ensure(ctx:SimContext):void;
   /** Once per tick, before the AI: the dead, the noise, the awake states, the index. */
@@ -280,7 +313,10 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
     if(!e)return undefined;
     asleep.delete(id);stale=true;
     const m=e.memory??={};
-    if(heardAt){m.sono=MODE.alerta;m.gx=heardAt.x;m.gy=heardAt.y;e.readyTick=Math.max(e.readyTick,ctx.tick+pause);}
+    if(heardAt){
+      const at=options.door?.(heardAt)??heardAt;
+      m.sono=MODE.alerta;m.gx=at.x;m.gy=at.y;e.readyTick=Math.max(e.readyTick,ctx.tick+pause);
+    }
     else{m.sono=MODE.cacando;e.readyTick=Math.max(e.readyTick,ctx.tick);}
     m.seen=ctx.tick;
     ctx.enemies.set(id,e);
@@ -302,7 +338,7 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
   function sleepAgain(ctx:SimContext,i:number,e:EnemyState){
     ctx.enemies.delete(e.id);cancelTelegraphs(ctx,e.id);
     const m=e.memory;
-    if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;}
+    if(m){delete m.sono;delete m.gx;delete m.gy;delete m.seen;delete m.lost;delete m[SIEGE];}
     delete e.knock;
     asleep.set(e.id,e);missing=true;up.delete(i);
     state.life[i]=[1,e.hp];
@@ -341,13 +377,13 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
    * A standing hero within WAKE_SIGHT of sleepers wakes them caçando with their bands (players by id; one `acordou`
    * per hero), up to the cap of awake bodies (maxAwake, MAX_AWAKE: the tick's budget; a hit still wakes past it).
    */
-  function sight(ctx:SimContext){
+  function sight(ctx:SimContext,radius:number){
     if(!asleep.size)return;
     const near:EnemyState[]=[];
     for(const p of [...ctx.players.values()].filter(standing).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)){
       const room=maxAwake-ctx.enemies.size;
       if(room<=0)return;
-      const seen=queryAsleep(p.x,p.y,WAKE_SIGHT,near);
+      const seen=queryAsleep(p.x,p.y,radius,near);
       if(seen.length)wakeAll(ctx,withBands(seen.map(e=>e.id)).sort((a,b)=>order.get(a)!-order.get(b)!).slice(0,room),'perto');
     }
   }
@@ -363,7 +399,8 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       const m=e.memory??={},mode=m.sono;
       if(mode===undefined)continue;
       let see=false;
-      for(const p of players)if(Math.hypot(p.x-e.x,p.y-e.y)<=SEE_RADIUS){see=true;break;}
+      const sightR=mode===MODE.cacando?SEE_RADIUS:WANDER_SIGHT;
+      for(const p of players)if(Math.hypot(p.x-e.x,p.y-e.y)<=sightR){see=true;break;}
       if(see){m.seen=ctx.tick;if(mode!==MODE.cacando){m.sono=MODE.cacando;delete m.lost;}continue;}
       if(mode===MODE.alerta){
         if(Math.hypot((m.gx??e.x)-e.x,(m.gy??e.y)-e.y)<=GOAL_REACH){m.sono=MODE.cacando;m.seen=ctx.tick;}
@@ -374,6 +411,22 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
         if(Math.hypot(home.x-e.x,home.y-e.y)<=HOME_REACH||ctx.tick-(m.lost??ctx.tick)>=ticks(SLEEP_ANYWHERE))sleepAgain(ctx,i,e);
       }
     }
+  }
+
+  /** Whether the last step was in the minuto de Minerva (undefined before the first: a restore never releases). */
+  let held:boolean|undefined;
+  /** The end of the minuto de Minerva (MINERVA_REACT, MINERVA_SPREAD): the awake bodies start one by one. */
+  function release(ctx:SimContext){
+    const players=[...ctx.players.values()].filter(standing),list:{e:EnemyState;d:number}[]=[];
+    for(const e of ctx.enemies.values()){
+      if(e.boss||!(e.hp>0))continue;
+      let d=Infinity;
+      for(const p of players)d=Math.min(d,Math.hypot(p.x-e.x,p.y-e.y));
+      list.push({e,d});
+    }
+    list.sort((a,b)=>a.d-b.d||(order.get(a.e.id)??Infinity)-(order.get(b.e.id)??Infinity)||(a.e.id<b.e.id?-1:a.e.id>b.e.id?1:0));
+    const react=ticks(MINERVA_REACT),spread=ticks(MINERVA_SPREAD);
+    list.forEach(({e},k)=>{e.readyTick=Math.max(e.readyTick,ctx.tick+react+Math.floor(k*spread/list.length));});
   }
 
   /** The safety net (STUCK_S): awake enemies stuck far from every hero leave the world (see the constant). */
@@ -413,6 +466,16 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       const old=heard.get(key);
       if(!old||louder(n,old))heard.set(key,{x:n.x,y:n.y,r:n.r,p:Math.min(1,n.p)});
     },
+    dead(){let n=0;for(const [life] of state.life)if(life===0)n++;return n;},
+    recruit(ctx,route,count,tune){
+      const room=Math.min(count,maxAwake-ctx.enemies.size);
+      if(room<=0||!asleep.size||!route.length)return 0;
+      const near=[...asleep.values()].filter(e=>order.has(e.id)).map(e=>({e,d:routeDistance(e,route)}))
+        .sort((a,b)=>a.d-b.d||order.get(a.e.id)!-order.get(b.e.id)!).slice(0,room).map(x=>x.e.id);
+      const n=wakeAll(ctx,near,'chamado');
+      for(const id of near){const e=ctx.enemies.get(id);if(e){(e.memory??={})[SIEGE]=1;tune?.(e);}}
+      return n;
+    },
     bodiesOf:nestId=>byNest.get(nestId)??[],
     asleepIn(nestId){let n=0;for(const id of byNest.get(nestId)??[])if(asleep.has(id))n++;return n;},
     goal(ctx,e){
@@ -440,11 +503,15 @@ export function createSono(options:SonoOptions,saved?:SonoState):Sono{
       api.ensure(ctx);
       if(options.events)hear(ctx,options.events());
       const every=ticks(NOISE_EVERY);
-      if(ctx.tick%every===0){
+      const minerva=!!options.minerva?.(ctx);
+      if(held&&!minerva)release(ctx);
+      held=minerva;
+      if(minerva){heard.clear();}
+      else if(ctx.tick%every===0){
         for(const a of options.ambient?.(ctx)??[])if(ctx.tick%Math.max(every,ticks(a.every))===0)api.noise(a.key,a);
         resolve(ctx);
       }
-      sight(ctx);
+      sight(ctx,minerva?MINERVA_REACH:WAKE_SIGHT);
       awake(ctx);
       if(ctx.tick%ticks(STUCK_EVERY)===0)unstick(ctx);
       reindex(true);

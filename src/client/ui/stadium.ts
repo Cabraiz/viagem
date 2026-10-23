@@ -33,7 +33,8 @@ export const STADIUM={
   // E6's stadium past every edge (NEW-20261021-ORQ-fundo-estadio-sangria): the approved picture intact at 320,313.
   // Framed by `view` (estadio-folga-topo, the user, 22/10: the viciado's cap ~15 px under the window's top): the approved
   // picture plus 10% of its size of the bleed above and to its left, so the scene stands ~9% further back and his cap gets
-  // ~10% of the window over it. Bottom and right: the approved picture's (the bar, the feet).
+  // ~10% of the window over it. Bottom and right: the approved picture's (the bar, the feet). The hero then grows back to
+  // headRoom under the top (heroi-grande-por-tela, frameHero): the view is where the zoom starts from.
   bleed:{w:2560,h:1707,crop:[-320/1920,-313/1080,2240/1920,1394/1080],focal:{x:320,y:313,w:1920,h:1080},
     view:{x:128,y:205,w:2112,h:1188},feet:1081} satisfies StadiumArt,
 };
@@ -136,7 +137,8 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   // the most the room lets with >= 8% of the window over his hair and FEET_MARGIN under his soles (1280x720; 15% would
   // leave ~5%), his face 100 px right of the viciado's (~4.7% of the window) and 33 px lower, so his box's bottom lands on
   // the viciado's lowest sole (1081) and his briefcase keeps ~5% of the window to the right edge. His own plateau moves
-  // with him (frameMoved).
+  // with him (frameMoved). Then both heroes grow to the window by the same rule (heroi-grande-por-tela, frameHero): the CLT
+  // ~17% over the clt-mesmo-lugar one at 1080p, his hair 4% under the top.
   'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
     [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
     fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.248,dx:100,dy:33}},
@@ -165,19 +167,51 @@ export function frameMoved(box:{w:number;h:number},art:StadiumArt,move:Move=SEM_
   const clamp=(v:number,lo:number)=>Math.min(0,Math.max(lo,v));
   return {s:S,ox:clamp(ox+(f.x*(1-move.k)+kf*move.dx)*s,box.w-art.w*S),oy:clamp(oy+(f.y*(1-move.k)+kf*move.dy)*s,box.h-art.h*S)};
 }
+/** A framing: scale `s` (box px per file px) and the file's top-left corner in the box. */
+export interface Frame {s:number;ox:number;oy:number}
+/**
+ * The room over a hero's head on the PC (heroi-grande-por-tela): 9% of the window's height, at least 28 px
+ * (menu-folga-topo, the user, 22/10: "o default está muito perto da borda em cima, pode aumentar o gap"; it was 4%).
+ */
+export const headRoom=(h:number)=>Math.max(28,h*.09);
+/**
+ * The right edge of the menu's column on the PC (estadio.css under CUTOUT_QUERY: left max(3vw, 16px) + 2vw, width
+ * min(77vh, 60vw)) plus 2% of the width: no hero grows into it.
+ */
+export const columnRight=(box:{w:number;h:number})=>Math.max(.03*box.w,16)+.02*box.w+Math.min(.77*box.h,.6*box.w)+.02*box.w;
+/** The cutout's box (px) for a framing of his own picture (frameMoved/frameHero). */
+function boxIn(f:Frame,art:StadiumArt,cut:Placeable){
+  const {s,ox,oy}=f,focal=art.focal??{x:0,y:0,w:art.w,h:art.h},k=focal.w/WHOLE.w;
+  return {x:ox+(focal.x+cut.x*k)*s,y:oy+(focal.y+(cut.y+(cut.desce??0))*k)*s,w:cut.w*k*s,h:cut.h*k*s};
+}
+/**
+ * The hero as big as the window lets (heroi-grande-por-tela, the user, 22/10: "tentar ser grande para chegar na borda de
+ * cima, mas depende do tamanho da tela; 720 vai ser diferente de 1080"; before, "o chapéu não ficar tão colado"): his
+ * picture's framing (frameMoved: the stadium, or his own background moved with him) zoomed about his soles, so they stay
+ * on the floor where they were and the top of his head (his box's: its alpha fills it) lands headRoom under the window's
+ * top. The same rule for every hero and window, no size per hero. Never wider than the room between the column on the
+ * left and 2% of the width from the right edge: he grows about his soles' middle, then slides inside that room. Never
+ * smaller (z >= 1, so the file still covers the box; fitCutout shrinks him on windows wider than the bleed): with 9%
+ * (menu-folga-topo) the CLT, whose framing already leaves him 8.0-8.4%, keeps it.
+ */
+export function frameHero(box:{w:number;h:number},art:StadiumArt,cut:Placeable,pos={x:.5,y:1}):Frame{
+  const base=frameMoved(box,art,moveOf(cut),pos),at=boxIn(base,art,cut),feet=at.y+at.h,lo=columnRight(box),hi=box.w*.98;
+  const z=Math.max(1,Math.min((feet-headRoom(box.h))/at.h,(hi-lo)/at.w));
+  if(z===1)return base;
+  const ax=at.x+at.w/2,w=at.w*z,slide=Math.min(Math.max(ax-w/2,lo),hi-w)-(ax-w/2),s=base.s*z;
+  return {s,ox:Math.min(0,Math.max(box.w-art.w*s,ax-(ax-base.ox)*z+slide)),oy:feet-(feet-base.oy)*z};
+}
 /** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
 export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
 export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
 /**
- * The cutout's box in the stage (px) for the same framing the background uses (frameArt; `pos` for `cover`); a hero in
- * another's place (lugar) by his own background's (frameMoved), so he and his floor never part.
+ * The cutout's box in the stage (px) for the same framing the background uses (frameHero: frameArt, `pos` for `cover`,
+ * zoomed to the window); a hero in another's place (lugar) by his own background's (frameMoved), so he and his floor
+ * never part. The whole picture's px → the file's px: the same for the plain wide file, shifted by the bleed for E6's.
  */
 export function placeCutout(box:{w:number;h:number},art:StadiumArt,cut:Placeable,pos={x:.5,y:1}){
   if(!(box.w>0&&box.h>0))return;
-  const {s,ox,oy}=frameMoved(box,art,moveOf(cut),pos);
-  // The whole picture's px → the file's px: the same for the plain wide file, shifted by the bleed for E6's.
-  const f=art.focal??{x:0,y:0,w:art.w,h:art.h},k=f.w/WHOLE.w;
-  return {x:ox+(f.x+cut.x*k)*s,y:oy+(f.y+(cut.y+(cut.desce??0))*k)*s,w:cut.w*k*s,h:cut.h*k*s};
+  return boxIn(frameHero(box,art,cut,pos),art,cut);
 }
 /** The margin a hero's head gets from the stage's top (px) when it would leave the screen: 2% of its height, at least 8. */
 export const cutoutMargin=(h:number)=>Math.max(8,h*.02);

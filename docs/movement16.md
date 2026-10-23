@@ -63,8 +63,23 @@ No combate manual, a arma da mão vai para a mão do quadro que o herói mostra.
 - **O espelho:** E, NE e SW usam a pose do par espelhada, então a arma troca de mão junto com o desenho.
 - **Na frente ou atrás:** a arma fica atrás do corpo nas vistas de costas (N, NW, NE) e nas poses marcadas; nas outras, na frente.
 - **Como segura:** cada adesivo tem cabo e ângulo do cano (`WEAPON_HOLD` em `hand-points.ts`). O cabo vai na mão e o cano aponta para onde o herói olha (`AIM_ANGLE`). Mirando para a esquerda, a arma é virada de cabeça para baixo para continuar em pé. O maçarico é carregado em pé e só espelha.
-- **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, a R06, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo.
-- **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.
+- **Sem medida:** a tabela usa o nome do arquivo, que tem o sha12. Uma folha reimportada, o legado e um herói caído ficam com o adesivo antigo ao lado até alguém rodar o script de novo. O teste `tests/client/hand-points.test.ts` reprova uma folha do viciado ou do CLT sem medida.
+- **Prova:** `evidence/NEW-20261021-ORQ-arma-na-mao-viciado/` (folhas das 8 direções × andando, parado e atacando; GIF; celular). No sandbox, `?sandbox=cidade&mapa=real&tele=1&arsenal=1&arma=<id>&class=viciado-em-bet`, e `window.__cidade.golpe()` dispara um ataque.
+
+### CLT e o acabamento (card NEW-20261022-ORQ-arma-na-mao, 22/10)
+
+O usuário viu a faca do CLT "flutuando" e "parecendo um ícone por cima dele". O CLT usa as folhas R06 (128 poses, 8 direções desenhadas) e não tinha mão medida, então a arma ficava no adesivo fixo do quadril, por cima do corpo.
+
+- **A mão no R06:** a regra do M16 (a pele mais de fora do lado da arma) cai no nariz do CLT e troca de mão nas vistas de lado. Por isso `scripts/hand-track.mjs` faz assim:
+  - **Andar:** segue a mão de pose em pose. Quando ela some atrás do corpo, a pose fica marcada como escondida, preenchida entre as vizinhas e presa ao corpo.
+  - **Ataque:** o punho foi marcado a olho a cada 8 poses (`CLT_KEYS` em `hand-points.mjs`) e encaixado no punho desenhado (mean shift sobre a pele).
+  - **Parado (idle8):** uma pose por direção.
+  - A mão da arma é a que soca. No W e no E, o CLT soca com a mão do lado de lá (o relógio fica na mão de perto), então a arma vai atrás do corpo.
+- **Dedos por cima do cabo:** um recorte do próprio quadro do herói em volta da mão (`HAND_PATCH` = 3,5 px da célula, `patchCrop`) é desenhado logo acima da arma. O recorte usa a mesma textura, inclusive a cópia da cidade com o contorno, então o punho fecha sobre o cabo pixel a pixel. Com a mão atrás do corpo, não há recorte, porque o corpo já cobre a arma.
+- **Luz:** a arma na mão não é mais o ícone do HUD. É uma cópia fosca (`heldLook`: ¼ do caminho até o cinza, brilhos com gama 1,25, 88 % da luz), com o anel Breu da cidade igual ao dos heróis. Atrás do corpo, ela ganha a sombra `HELD_TINT.behind`. O chão e o HUD continuam com o ícone.
+- **Teste (CI):** cada folha que o viciado e o CLT mostram tem a mão em todo quadro, com pele a ≤ 3 px de tela do cabo e ≥ 6 px de pele sob o recorte dos dedos. A mão escondida fica sobre o corpo. A mão não salta mais de 9 px entre poses do R06. Costas e mão do lado de lá ficam atrás do corpo.
+- **Prova:** `evidence/NEW-20261022-ORQ-arma-na-mao/` (GIFs da faca e da pistola, parado → correndo → atacando em S/W/N/E a 200 %; recorte a 400 %). Sandbox: `?sandbox=cidade&mapa=real&tele=1&arsenal=1&relevo=0&hero=60,60&arma=faca&class=clt-cansado`.
+- **Falta:** as outras 13 classes R06 jogáveis ainda usam o adesivo ao lado. Elas precisam das marcações dos ataques (e, nas peles mais escuras, do tom de pele em `skin`).
 
 ## Passo sem deslizar e pés no chão
 
@@ -86,7 +101,7 @@ Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o v
   - Sem tabela, uma corrida usa `RUN_STRIDE`.
 - **Importar:** `run/<dir>.png` (768×768, 4×4) e o `.phase.json` ao lado das pastas walk/attack/idle em `personagens-movimento16/<id>/`. A corrida é opcional: as 5 direções ou nenhuma. O importador não mexe nas poses da corrida, porque mover a pose moveria o pé medido. Depois rode `node scripts/art-lite.mjs --kinds sprites`, `node scripts/hero-feet.mjs` (na corrida, a linha do pé é a da pose mais baixa) e `node scripts/hand-points.mjs --ids <id>`.
 - **No jogo:** `HERO_GAIT.run` (sprite-motion.ts) faz a classe com `run16` correr ao se mover (`movementPlan(id,'walk',…)` devolve a corrida). Ataque e repouso não mudam. Com `run:false` volta o andar, com `WALK_TUNE.lock` 0,5. No sandbox, `corrida=0` mostra o andar. `__cidade.fixar()` para a câmera, o que deixa o chão parado na tela para medir o pé.
-- **Medida (21/10, 1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
+- **Medida da 1ª versão (21/10; a arte foi trocada em 22/10, ver abaixo) (1280×720, câmera fixa, sola do tênis plantado pela cor do marcador, deslocamento ao longo do chão por quadro de jogo):**
 
   | direção | máximo | p90 | ciclos/s |
   |---|---|---|---|
@@ -98,3 +113,28 @@ Card NEW-20261021-ORQ-passo-3x-mais-lento, fatia 2 (21/10). Por enquanto só o v
 
   - No NW, o herói passa atrás de um poste num trecho da medida; o pico de ~27 px ali é o poste, não o pé (excluído).
   - Nenhum tênis arrasta na linha do chão de lado (≤ 1 px).
+
+## Proporção da corrida, emenda do loop e contorno (corrida-proporcao-contorno, 22/10)
+
+O usuário viu a corrida menor que o parado (cabeça menor, corpo fino), o fim do ciclo sem casar com o início e, às vezes, o contorno preto sumindo e ficando só o branco.
+- **Medidor:** `node scripts/proporcao.mjs [--ids <id>] [--sheet <pasta>] [--json <arquivo>]`. Para cada direção desenhada, compara cada pose do andar e da corrida com o parado da mesma direção, na escala do jogo (96/height de cada clipe):
+  - **cabeça:** o boné e o cabelo do parado encaixados na pose, nas escalas de 0,6 a 1,4 (IoU > 0,9);
+  - **altura:** só nas poses de apoio da corrida (as de voo e o agachamento mudam a altura);
+  - **emenda 16→1:** distância de forma (1 − IoU no melhor encaixe a ±3 px) entre a última pose e a primeira, contra a mediana entre vizinhas;
+  - **tronco e área:** só informativos (braço cruzando o peito muda a medida).
+  - O teste `tests/tools/proporcao.test.ts` exige cabeça e altura dentro de ±4 % e a emenda até 1,2× a mediana em toda corrida e todo parado. As falhas do andar (que não aparece com a corrida ligada) estão listadas em `KNOWN_WALK`.
+- **Causa da proporção:** o montador escalava a corrida pela altura, e uma pose de corrida é mais baixa. Além disso, cada meio passo (uma imagem) vem num tamanho próprio, e S, N e NW tinham sido desenhados com a câmera na altura dos olhos, com pernas compridas. Agora cada metade é escalada para a cabeça bater com a do parado (`montar3.mjs`, com KA e KB). S, N e NW foram regerados com a proporção e a câmera do parado no prompt e com poses igualmente espaçadas (`gerar4.mjs`). W e SE ficaram com o desenho do E7, reescalados. Os scripts e as tentativas estão em `D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-corrida-proporcao-contorno/`.
+- **Pé no jogo** (câmera fixa, marcador): W máx. 1 px, NW 1,3, SE 3,1, S 0, N 0, a 2,9–3 ciclos/s. W e NW foram calibrados pelo salto medido (`calibra.mjs`). No W, o pé roxo das poses 7–9 (voo, rente ao chão) salta para o pouso na pose 10; a corrida anterior já fazia isso (19 px, agora 23 px na escala nova).
+- **Contorno:** o cache de folhas M16 (`movement128-textures.ts`) contava folhas: 8, um número pensado para a R06 de 1536×768. O herói usa 10 (5 de parado e 5 de corrida), então ao virar uma folha despejava a outra, a cópia com o anel Breu e o adesivo "você" eram refeitos, e nesse meio-tempo o contorno caía nas 16 cópias deslocadas, com só 1 px de Breu. Agora cada folha pesa a sua fração de uma R06 (`sheetWeight`). Na cidade, o fallback desenha as três faixas do adesivo (`CITY_CONTOUR` em `you.ts`): Breu, Papel e Breu por fora. Só falta o adesivo na primeira vez que cada clipe aparece (cerca de 4 quadros).
+
+## Corrida do CLT (corrida-clt, 22/10)
+
+O usuário gostou da corrida do viciado (proporção, loop) e pediu a mesma no CLT, com as mesmas regras. O CLT é R06 (walk128, attack128 e idle8, 8 direções desenhadas) e não tem M16.
+- **Corrida sobre a R06:** uma classe R06 com `run16` nas 5 direções desenhadas corre nela (`hasRun16` não exige mais o M16; `movementPlan(id,'walk',…)` devolve a corrida). O parado (idle8) e o ataque (attack128) continuam R06. O lado desenhado de cada par sai das próprias folhas de corrida (`movement16Source(id,d,'run')`): o CLT desenha S, N, W, NW e SE, como o viciado, e espelha E, NE e SW.
+- **Importar só a corrida:** `import-movimento16.mjs` aceita `personagens-movimento16/<id>/run/` sozinho quando a classe tem o idle8 R06. A altura de referência é a do idle8 (49), e a corrida é montada nessa escala.
+- **Medidor:** `proporcao.mjs` usa a coluna do idle8 como parado quando não há idle16. O teste exige o CLT na lista.
+- **Contorno:** `tests/tools/corrida-contorno.test.ts` assa o adesivo "você" da cidade (`bandsRgba` com `CITY_STICKER`, recorte pela caixa da figura) em cada pose de toda corrida, cheia e lite, e anda pela borda de fora: ≥ 95 % tem Breu por fora com Papel logo dentro. Uma franja clara semitransparente em volta do boneco (sobra do recorte do fundo) reprova.
+- **Arte (ChatGPT/Codex):** `D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-corrida-clt/` (`gerar/gerar.mjs`, `remontar/montar.mjs`, `final.sh`). É o pipeline do viciado com dois marcadores: o sapato esquerdo vermelho e o direito ciano, porque o sapato marrom se confunde com a calça. Os dois voltam ao marrom na montagem.
+  - O prompt que pedia "pernas CURTAS" fez o modelo encolher o corpo: a cabeça batia e a altura ficava 6–16 % baixa. O que funcionou foi dar as proporções medidas no idle8 (cabeça ~40 % da altura, pernas ~70 % da cabeça, "não mais curtas") e pedir a cabeça "do mesmo tamanho, não maior".
+  - No N, a pose 7 da metade A sempre deixava o pé que pousa atrás. Por isso o N usa a metade B, com as cores dos marcadores trocadas, mais o espelho dela.
+  - No W, a linha de voo (poses 4–7) se apoiava no pé que vai pousar, que então raspava o chão junto com o corpo, o mesmo defeito do W do viciado. `LIFT_A=6` ergue essa linha 6 px (a 192), e o pé pousa de cima na pose 8.

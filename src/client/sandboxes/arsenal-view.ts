@@ -19,7 +19,8 @@ const CYCLE=Object.keys(FIRE_LOOK);
 /** The weapon shown at `timeMs`: `arma` when it is one of the arsenal's shots, else the cycle. */
 export const sandboxWeapon=(arma:string|null,timeMs:number)=>arma&&FIRE_LOOK[arma]?arma:CYCLE[Math.floor(timeMs/(FIRE_EVERY_MS*3))%CYCLE.length];
 
-export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:string|null):RunView{
+/** `aura=N` (upgrades-megabonk): the hero and the ally carry the Defumador at level N (its smoke on the ground; the ally's fainter). */
+export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:string|null,aura=0):RunView{
   const tick=100+Math.floor(timeMs/50),step=Math.floor(timeMs/ARSENAL_PUSH_MS),weapon=sandboxWeapon(arma,timeMs);
   const target={x:x+1.5,y:y-.2}; // the agiota of the lab's view
   const crates:PickupView[]=[1,2,3,4,5].map((rarity,i)=>({id:`bau-${rarity}`,kind:'chest',value:rarity,x:x-2.4+i*1.2,y:y+2.6-Math.abs(i-2)*.35}));
@@ -51,8 +52,8 @@ export function arsenalView(base:RunView,x:number,y:number,timeMs:number,arma:st
   if(weapon==='rojao')projectiles.push({id:`p-${fired}`,source:'rojao',x:target.x,y:target.y,vx:0,vy:0,radius:.6,hostile:false});
   else if(FIRE_LOOK[weapon].kind==='muzzle')projectiles.push({id:`p-${fired}`,source:weapon,x:x+(target.x-x)*t,y:y+(target.y-y)*t,vx:(target.x-x)*2,vy:(target.y-y)*2,radius:.22,hostile:false});
   const self:PlayerRunView={id:SANDBOX_SELF,name:'Você',classId:'concursado',hp:80,maxHp:100,online:true,spectator:false,
-    weapons:[{id:'faca',level:1},{id:weapon,level:3},{id:'coxinha',level:2}],passives:[],hand:1};
+    weapons:[{id:'faca',level:1},{id:weapon,level:3},{id:'coxinha',level:2}],passives:aura>0?[{id:'defumador',level:aura}]:[],hand:1};
   const parca:PlayerRunView={id:SANDBOX_ALLY,name:'Parça',classId:'merendeira',hp:100,maxHp:100,online:true,spectator:false,
-    weapons:[{id:'escopeta',level:2},{id:'pacoca',level:1}],passives:[],hand:0};
+    weapons:[{id:'escopeta',level:2},{id:'pacoca',level:1}],passives:aura>0?[{id:'defumador',level:aura}]:[],hand:0};
   return {...base,tick,players:[self,parca],pickups:[...base.pickups,...crates,...items],projectiles,events};
 }

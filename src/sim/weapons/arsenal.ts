@@ -10,7 +10,7 @@
  */
 import type {ItemDef} from '../../contract/index.ts';
 import type {WeaponDef,WeaponLevel} from './catalog.ts';
-import {SILENCER_PER_LEVEL} from '../../rules/index.ts';
+import {PACK12,PACK12_PLAYABLE,type PackType} from './pack12.ts';
 
 export type Rarity=1|2|3|4|5;
 export const RARITIES:readonly Rarity[]=[1,2,3,4,5];
@@ -32,6 +32,8 @@ export interface ArsenalWeapon extends WeaponDef {
   minRarity:Rarity;
   /** How far one shot is heard, world units (0: silent). */
   noise:number;
+  /** Pack 12 weapons: the Pack's type (sim/weapons/pack12.ts), what the world art looks like. */
+  packType?:PackType;
 }
 
 const row=(damage:number,cooldown:number,amount:number,area:number,speed:number,duration:number,pierce:number,knockback:number,hitInterval:number,range:number):WeaponLevel=>
@@ -42,27 +44,35 @@ const row=(damage:number,cooldown:number,amount:number,area:number,speed:number,
  * city balance's, MANUAL_CITY_BALANCE).
  */
 export const ARSENAL_DAMAGE=2;
-/** Rows for rarities 1..4 from the verde row (rarity < minRarity keeps the verde numbers: never rolled anyway). */
-const byRarity=(base:WeaponLevel):WeaponLevel[]=>([1,2,3,4] as const).map(r=>({...base,damage:Math.round(base.damage*ARSENAL_DAMAGE*RARITY_DAMAGE[r]*10)/10,cooldown:Math.round(base.cooldown*RARITY_COOLDOWN[r]*1000)/1000}));
+/**
+ * Rows for rarities 1..4 (1..5 for a weapon that only comes lendária) from the verde row (rarity < minRarity keeps the
+ * verde numbers: never rolled anyway).
+ */
+const byRarity=(base:WeaponLevel,top:4|5=4):WeaponLevel[]=>RARITIES.slice(0,top).map(r=>({...base,damage:Math.round(base.damage*ARSENAL_DAMAGE*RARITY_DAMAGE[r]*10)/10,cooldown:Math.round(base.cooldown*RARITY_COOLDOWN[r]*1000)/1000}));
 const describe=(intro:string)=>(level:number)=>`${intro} (${RARITY_NAME[(isRarity(level)?level:1) as Rarity]})`;
 const weapon=(def:Omit<ArsenalWeapon,'kind'|'maxLevel'|'levels'|'describe'>&{verde:WeaponLevel;intro:string}):ArsenalWeapon=>{
-  const {verde,intro,...rest}=def;
-  return {...rest,kind:'weapon',maxLevel:4,levels:byRarity(verde),describe:describe(intro)};
+  const {verde,intro,...rest}=def,top=def.minRarity===5?5:4;
+  return {...rest,kind:'weapon',maxLevel:top,levels:byRarity(verde,top),describe:describe(intro)};
 };
 
 /**
  * The seven weapons (proposal §1). Every verde row deals about 25 a second to one target (the crowd patterns to each one
  * in their cone or blast): reach, pierce and the crowd make the difference, and the rarity scales it (a weapon that only
  * comes azul or better starts there). The CI bench tunes them. Speeds and durations are the tuned table values (travelling patterns fly
- * PROJECTILE_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
+ * HERO_SHOT_SPEED_MULT × faster for 1 / it the time: the same reach, speed × duration).
  */
 /** Noise of a legendary and of a weapon the arsenal does not list (the automatic game's): a pistol's. */
 export const DEFAULT_NOISE=NOISE.pistola;
+/**
+ * The faca's reach (u, its row's area and range): 1.3 doubled (card melee-alcance-2x, usuário 22/10: "duplique o
+ * alcance do ataque melee"). Only the heroes' melee; the critters' bites keep theirs.
+ */
+export const FACA_REACH=1.3*2;
 export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
   weapon({id:'faca',name:'Faca de Pão',icon:'faca',pattern:'cone',coneHalfAngle:1,minRarity:1,noise:NOISE.faca,
     quip:'Corta pão, corta bicho.',intro:'Golpe em arco bem de perto. Não faz barulho nenhum.',
     //           dmg  cd  amt area spd dur pierce kb  hit  range
-    verde:row(12,.5,1,1.3,0,.15,1e6,.3,.2,1.3)}),
+    verde:row(12,.5,1,FACA_REACH,0,.15,1e6,.3,.2,FACA_REACH)}),
   weapon({id:'pistola',name:'Trinta-e-Oitão do Vô',icon:'pistola',pattern:'pierce',minRarity:1,noise:NOISE.pistola,
     quip:'Tava guardada no armário desde 1987.',intro:'Um tiro certeiro no bicho mais perto.',
     verde:row(15,.6,1,.22,10,.7,0,.2,.5,7)}),
@@ -82,6 +92,14 @@ export const NEW_WEAPONS:readonly ArsenalWeapon[]=[
     quip:'Feliz ano novo, bicharada!',intro:'Explode em área onde cair. Demora pra recarregar e todo mundo escuta.',
     verde:row(80,2.8,1,2,0,.3,1e6,1,1,9)}),
 ];
+
+/**
+ * Pack 12 (NEW-20261022-ORQ-arsenal-completo-no-bau): the 34 Brazilian and mystical weapons (sim/weapons/pack12.ts),
+ * built like the seven above. Only PACK12_PLAYABLE (their type works in the sim) reach ARSENAL_WEAPONS.
+ */
+export const PACK12_WEAPONS:readonly ArsenalWeapon[]=PACK12.map(({verde,type,...w})=>weapon({...w,packType:type,verde:row(...verde)}));
+/** Every weapon of the manual combat's arsenal a crate or the inventory may hold (the legendaries apart). */
+export const ARSENAL_WEAPONS:readonly ArsenalWeapon[]=[...NEW_WEAPONS,...PACK12_WEAPONS.filter(w=>PACK12_PLAYABLE.has(w.id))];
 
 /** The legendaries' extra damage over the weapon (or its evolution) they come from. */
 export const LEGENDARY_DAMAGE=1.6;
@@ -123,12 +141,10 @@ export const isConsumableId=(id:string):id is ConsumableId=>(CONSUMABLE_IDS as r
 
 
 /**
- * D-051: how far a shot of `weaponId` is heard (world units), after the Silenciador de Garagem (SILENCER_PER_LEVEL a
- * level, never below 0). The D-051 nests (E1) read it on the 'fire' event's weapon.
+ * D-051: how far a shot of `weaponId` is heard (world units). The D-051 nests (E1) read it on the 'fire' event's weapon.
+ * (The Silenciador de Garagem that took noise off is gone: melee-alcance-2x, usuário 22/10 "remova esse poder".)
  */
-export function weaponNoise(weaponId:string,passives:readonly {id:string;level:number}[]=[]){
-  const base=(ARSENAL_BY_ID.get(weaponId)?.noise)??DEFAULT_NOISE;
-  const silencer=passives.find(p=>p.id==='silenciador')?.level??0;
-  return Math.max(0,base*(1-SILENCER_PER_LEVEL*silencer));
+export function weaponNoise(weaponId:string){
+  return (ARSENAL_BY_ID.get(weaponId)?.noise)??DEFAULT_NOISE;
 }
-const ARSENAL_BY_ID:ReadonlyMap<string,ArsenalWeapon>=new Map(NEW_WEAPONS.map(w=>[w.id,w]));
+const ARSENAL_BY_ID:ReadonlyMap<string,ArsenalWeapon>=new Map(ARSENAL_WEAPONS.map(w=>[w.id,w]));

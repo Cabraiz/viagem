@@ -292,6 +292,7 @@ export class CityLayer {
       }
       const sheet=this.art?.decor[e.id];
       if(!sheet)continue;
+      if(e.cover){if(sheet.covers)for(let j=e.r;j<e.r+e.h;j++)for(let i=e.c;i<e.c+e.w;i++)this.decorAt.set(j*width+i,e);continue;}
       const key=decorChunk(e,size);
       push(this.decorOf,key,e);
       const c=this.chunksByKey.get(key);
@@ -681,8 +682,8 @@ export class CityLayer {
     const decor:DecorPrim[]=[];
     const bare=(cx:number,cy:number)=>!!this.cliffs?.[cy*asset.width+cx];
     for(const q of quads)if(!own(q)&&this.materials.decorOver(q.kind)&&!bare(q.cx,q.cy))
-      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot))if(!p.shimmer)decor.push(p);
-    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot)));
+      for(const p of groundDecor({...chunk,x0:q.cx,y0:q.cy,x1:q.cx+1,y1:q.cy+1},asset,view,pivot,!this.relief))if(!p.shimmer)decor.push(p);
+    decor.push(...(painted.size||this.cliffs?this.decorOverFlat(chunk,view,quads.filter(own)):groundDecor(chunk,asset,view,pivot,!this.relief)));
     // Shadows of this chunk's and its neighbours' columns that land here, as one disjoint union (no stacking).
     const casters:BlockPiece[]=[];
     // A mound (moundOf) casts its own low shadow, not the building's.
@@ -751,7 +752,7 @@ export class CityLayer {
     for(let cy=chunk.y0;cy<chunk.y1;cy++)for(let cx=chunk.x0;cx<chunk.x1;cx++){
       const kind=groundAt(this.asset,cx,cy);
       if(!this.materials.decorOver(kind)||this.cliffs?.[cy*this.asset.width+cx])continue;
-      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot);
+      let prims=groundDecor({...chunk,x0:cx,y0:cy,x1:cx+1,y1:cy+1},this.asset,view,this.pivot,!this.relief);
       if(prims.some(p=>p.shimmer)){
         if(glintCells>=GLINT.perChunk)prims=prims.filter(p=>!p.shimmer);
         else glintCells++;
@@ -886,6 +887,18 @@ export class CityLayer {
     for(const id of this.faded)if(!alphas.has(id))this.setFade(id,1);
     this.faded.clear();
     for(const [id,a] of alphas){this.setFade(id,a);this.faded.add(id);}
+  }
+  private readonly coverScratch=new Set<string>();
+  /**
+   * Whether some drawn piece covers a figure standing at world (x, y): the see-through's own test (applyOcclusion).
+   * Faded pieces stack (a dense block in front leaves 3-4 layers at FADE_ALPHA and the figure is gone), so the scene
+   * also draws the figure's copy on top, as behind a canopy (BUG-20261022-ORQ-heroi-some-atras-predio).
+   */
+  covers(x:number,y:number,z=groundZ(this.asset,x,y)):boolean{
+    if(this.view<0)return false;
+    const out=this.coverScratch;out.clear();
+    this.collectCovering({x,y,z},this.view,out);
+    return out.size>0;
   }
   private collectCovering(f:Figure,view:number,out:Set<string>){
     const {cx,cy}=cellOf(this.asset,f.x,f.y);

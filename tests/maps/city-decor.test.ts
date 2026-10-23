@@ -14,8 +14,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {decodeCityAsset,encodeCityAsset,cityAssetToData,type CityAsset,type CityDecor} from '../../src/maps/city-asset.ts';
-import {DECOR_REFUSED,LINK,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
+import {BIG_ROCKS,DECOR_REFUSED,LINK,wallLines,LUGARES,LUGAR_SPACING,MORADIAS,MOUNTAINS,OBJETOS_1,OBJETOS_2,POLE_SPACING,POSTES,WALL_FAMILIES,bigCliffRocks,lineShape,turnLinks} from '../../src/maps/city-decor.ts';
 import {KEEP,undecorate} from '../../scripts/cenario-cidade.ts';
+import {pieceRect,wallPieces,wallRuns,type WallRun} from '../../src/maps/wall-lines.ts';
 import {CITY_SITE_CELL,buildPlanFor,footprint} from '../../src/maps/build-sites.ts';
 import {CityTerrain} from '../../src/maps/city/terrain.ts';
 
@@ -45,21 +46,38 @@ test('the decor decodes, round-trips through the encoder, and is one extra top-l
   assert.ok(old.ok&&old.asset.decor.length===0);
 });
 
-test('every piece is a delivered id inside the map; no two pieces share a cell',()=>{
+test('every piece is a delivered id inside the map; no two pieces share a cell (but the pieces of one wall line)',()=>{
   const known=(id:string)=>isLugar(id)||isLine(id)||isPole(id)||isObject(id)||MORADIAS.some(([m])=>id.startsWith(`${m}-`))
     ||MOUNTAINS.some(([m])=>id===m||id.startsWith(`${m}-`))||/^pedregulho-[123]$/.test(id);
-  const taken=new Set<number>();
+  const taken=new Map<number,string>();
   for(const d of asset.decor){
     assert.ok(known(d.id),d.id);
     assert.ok(/-(1|2|3|intacto|quebrado|reto|externa|ponta|3x3)$/.test(d.id),`variant in ${d.id}`);
-    for(const [c,r] of cells(d)){assert.ok(!taken.has(r*W+c),`${d.id} overlaps at ${c},${r}`);taken.add(r*W+c);}
+    const wallLine=WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`));
+    for(const [c,r] of cells(d)){
+      const other=taken.get(r*W+c);
+      // The straight pieces of a wall line overlap their neighbours' cells (each is centred on the line, grade-sem-padrao).
+      assert.ok(other===undefined||(wallLine&&other==='wall'),`${d.id} overlaps at ${c},${r}`);
+      taken.set(r*W+c,wallLine?'wall':d.id);
+    }
   }
 });
 
 test('lines on their block cells with the links of their neighbours; lots on unwalkable cells; sidewalk pieces on walkable cells',()=>{
   const lineKind=(id:string)=>id.startsWith('penhasco')?'cliff':'wall';
   for(const d of asset.decor){
-    if(isLine(d.id)){
+    if(d.id.startsWith('penhasco3-')){
+      // The big cliff pieces (rochas-grandes): a 2×2 massif or a 2×1 wall, every cell of them a cliff cell.
+      const bloco=BIG_ROCKS.bloco.includes(d.id);
+      assert.ok(bloco?d.w===2&&d.h===2:d.id===BIG_ROCKS.reto&&d.w*d.h===2,`${d.id} ${d.w}×${d.h}`);
+      for(const [c,r] of cells(d))assert.equal(kindAt.get(r*W+c),'cliff',`${d.id} at ${c},${r}`);
+    }else if(WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`))){
+      // Wall lines (grade-sem-padrao): straight pieces only, turned along their axis, on wall cells.
+      assert.match(d.id,/-reto-(intacto|quebrado)$/);
+      for(const [c,r] of cells(d))assert.equal(kindAt.get(r*W+c),'wall',`${d.id} at ${c},${r}`);
+      if(d.cover)assert.ok(d.w===1&&d.h===1&&d.id.endsWith('-intacto'));
+      else assert.equal(d.links,d.rot===90?LINK.E|LINK.W:LINK.N|LINK.S);
+    }else if(isLine(d.id)){
       const k=lineKind(d.id),same=(c:number,r:number)=>kindAt.get(r*W+c)===k;
       assert.equal(kindAt.get(d.r*W+d.c),k,`${d.id} at ${d.c},${d.r}`);
       const links=(same(d.c,d.r-1)?LINK.N:0)|(same(d.c+1,d.r)?LINK.E:0)|(same(d.c,d.r+1)?LINK.S:0)|(same(d.c-1,d.r)?LINK.W:0);
@@ -122,4 +140,83 @@ test('undecorate gives back the grid without the places: they only took cells, a
   }
   const open=asset.decor.filter(d=>isLugar(d.id)).flatMap(cells).filter(([c,r])=>!kindAt.has(r*W+c)).length;
   assert.equal(changed,open*S*S);
+});
+
+test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells covered, nothing else moved',()=>{
+  // A 3×3 cliff square, a 3-cell line and a wall piece: one 2×2, then 2×1s, the cell left keeps its piece.
+  const one=(id:string,c:number,r:number):CityDecor=>({id,c,r,w:1,h:1,rot:0,links:0});
+  const square=[0,1,2].flatMap(r=>[0,1,2].map(c=>one('penhasco2-reto',c,r)));
+  const line=[5,6,7].map(c=>one('penhasco2-reto',c,9)),wall=one('grade-reto-intacto',4,4);
+  const out=bigCliffRocks([...square,...line,wall],BIG_ROCKS,1);
+  const big=out.filter(d=>d.id.startsWith('penhasco3-'));
+  assert.deepEqual(big.filter(d=>d.w===2&&d.h===2).map(d=>[d.c,d.r]),[[0,0]]);
+  assert.ok(out.includes(wall));
+  const covered=(list:readonly CityDecor[])=>new Set(list.filter(d=>d.id.startsWith('penhasco')).flatMap(d=>cells(d).map(([c,r])=>`${c},${r}`)));
+  assert.deepEqual([...covered(out)].sort(),[...covered([...square,...line])].sort());
+  assert.equal(out.length,1+2+1+1+1+1,'in the square one 2×2, two 2×1 and a 1×1 left; on the line a 2×1 and a 1×1; the wall');
+  // On the asset: most cliff cells are under a big piece (the rows of 1-cell walls the user saw are gone).
+  const cliff=asset.decor.filter(d=>d.id.startsWith('penhasco')),bigCells=cliff.filter(d=>d.id.startsWith('penhasco3-')).reduce((n,d)=>n+d.w*d.h,0);
+  const all=cliff.reduce((n,d)=>n+d.w*d.h,0);
+  assert.ok(bigCells/all>.9,`${bigCells} of ${all} cliff cells under a big piece`);
+});
+
+/**
+ * BUG-20261022-ORQ-grades-sem-padrao: the walls and fences were one piece per cell shaped by its neighbours, so a band
+ * 2 cells thick was two rows of T pieces (the grade's T art is an X): crosses scattered over the street. Now one line.
+ */
+test('grades-sem-padrao: each wall is one line of straight pieces along it, back to back, never crossed or stacked',()=>{
+  const walls=asset.decor.filter(d=>WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)));
+  const pieces=walls.filter(d=>!d.cover);
+  assert.ok(pieces.length>800,`${pieces.length} pieces`);
+  // Centre (sub units, half cells) and axis: rot 0 along y (rows), rot 90 along x; the rect is centred on the line.
+  const key=(x:number,y:number)=>`${x},${y}`,centre=new Map<string,string>(),posts=new Map<string,number>();
+  for(const d of pieces){
+    assert.ok(d.rot===0||d.rot===90,`${d.id} rot ${d.rot}`);
+    assert.ok(d.w<=2&&d.h<=2,`${d.id} ${d.w}×${d.h}`);
+    const cx=2*d.c+d.w,cy=2*d.r+d.h,k=key(cx,cy);
+    // No two pieces on one point: no stacked duplicate, no X of two axes.
+    assert.ok(!centre.has(k),`${d.id} at ${d.c},${d.r} on another piece's centre`);
+    centre.set(k,d.id);
+    for(const s of [-1,1]){const p=d.rot===90?key(cx+s,cy):key(cx,cy+s);posts.set(p,(posts.get(p)??0)+1);}
+  }
+  // Back to back: most posts are shared by two pieces (the ends of a line are the only lone posts).
+  const lone=[...posts.values()].filter(n=>n===1).length;
+  assert.ok(lone<posts.size*.35,`${lone} lone posts of ${posts.size}`);
+});
+
+test('wallLines: every wall cell is drawn by its line (a piece or a cover), nothing off the wall; a lone bit gets a piece',()=>{
+  const rows=['##########......','##########......','........##......','........##...#..','........##......','..###...........'];
+  const W0=rows[0].length,H0=rows.length,isWall=(i:number)=>rows[Math.floor(i/W0)][i%W0]==='#';
+  const out=wallLines(W0,H0,isWall,()=>'grade',new Uint8Array(W0*H0));
+  const seen=new Set<number>();
+  for(const d of out)for(const [c,r] of cells(d)){assert.ok(isWall(r*W0+c),`${d.id} off the wall at ${c},${r}`);seen.add(r*W0+c);}
+  for(let i=0;i<W0*H0;i++)if(isWall(i))assert.ok(seen.has(i),`wall cell ${i%W0},${Math.floor(i/W0)} not drawn`);
+  // The lone cell (13, 3) and the 3×1 bit both have a visible piece, along their longer side.
+  assert.ok(out.some(d=>!d.cover&&d.c===13&&d.r===3));
+  assert.ok(out.some(d=>!d.cover&&d.r===5&&d.rot===90));
+  assert.ok(out.every(d=>d.id==='grade-reto-intacto'));
+});
+
+const grid=(rows:string[])=>({W:rows[0].length,H:rows.length,wall:(c:number,r:number)=>rows[r]?.[c]==='#'});
+const runsOf=(rows:string[])=>{const g=grid(rows);return wallRuns(g.W,g.H,g.wall).map(r=>`${r.o}${r.k}:${r.a}-${r.b}`).sort();};
+
+test('wallRuns: a band 2 cells thick is one line between its rows; 1 thick, through its cells',()=>{
+  assert.deepEqual(runsOf(['......','######','######','......']),['h4:0-12']);
+  assert.deepEqual(runsOf(['......','######','......']),['h3:0-12']);
+  assert.deepEqual(runsOf(['.##.','.##.','.##.','.##.','.##.']),['v4:0-10']);
+});
+
+test('wallRuns: L corners and T junctions meet on one post, no X',()=>{
+  // L: a 2-thick band along x turning down along y.
+  assert.deepEqual(runsOf(['######','######','....##','....##','....##']),['h2:0-10','v10:2-10']);
+  // T: a 2-thick stem under the middle of a bar.
+  const t=runsOf(['########','########','...##...','...##...','...##...']);
+  assert.deepEqual(t,['h2:0-8','h2:8-16','v8:2-10']);
+});
+
+test('wallPieces: one cell long each, centred on the line, the odd half overlapping the last; rects centred on them',()=>{
+  const runs:WallRun[]=[{o:'h',k:4,a:0,b:6},{o:'v',k:3,a:1,b:4}];
+  const pieces=wallPieces(runs);
+  assert.deepEqual(pieces,[{cx:1,cy:4,o:'h'},{cx:3,cy:4,o:'h'},{cx:5,cy:4,o:'h'},{cx:3,cy:2,o:'v'},{cx:3,cy:3,o:'v'}]);
+  for(const p of pieces){const q=pieceRect(p);assert.equal(2*q.c+q.w,p.cx);assert.equal(2*q.r+q.h,p.cy);}
 });

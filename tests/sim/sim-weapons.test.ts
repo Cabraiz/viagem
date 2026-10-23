@@ -11,7 +11,9 @@ import {createWeaponSystem,pierceReach} from '../../src/sim/weapons/system.ts';
 import {PROJECTILE_CAP,spawnProjectile,createProjectileSystem,takeAreaHit} from '../../src/sim/projectiles.ts';
 import {EVOLUTIONS,WEAPON_IDS as EVO_WEAPON_IDS,itemMaxLevel} from '../../src/sim/evolutions.ts';
 import type {ProjectileInit,WeaponProjectile} from '../../src/sim/projectiles.ts';
-import {PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
+import {HERO_SHOT_SLOWDOWN,HERO_SHOT_SPEED_MULT,PROJECTILE_SPEED_MULT} from '../../src/rules/budget.ts';
+/** The heroes' shot speed factor (card upgrades-megabonk: PROJECTILE_SPEED_MULT / HERO_SHOT_SLOWDOWN). */
+const M=HERO_SHOT_SPEED_MULT;
 
 // ---------- Fake SimContext ----------
 type Hit={tick:number;enemy:string;amount:number;source?:string;weapon?:string;alive:boolean};
@@ -163,7 +165,8 @@ function buildRun(weapons:[string,number][]){
   addEnemy(ctx,'f0',12,12-far);
   p.target='f0';
   const motions=new Set<string>(),sources=new Set<string>();
-  run(ctx,systems(),100,c=>{for(const q of projs(c)){sources.add(q.source);motions.add(q.motion==='linear'&&q.vx===0&&q.vy===0&&q.rehit!==undefined?'zone':q.motion??'linear');}});
+  // The slower heroes' shots (HERO_SHOT_SPEED_MULT) need longer to reach the far target: the same flight, more ticks.
+  run(ctx,systems(),Math.round(100*PROJECTILE_SPEED_MULT/M),c=>{for(const q of projs(c)){sources.add(q.source);motions.add(q.motion==='linear'&&q.vx===0&&q.vy===0&&q.rehit!==undefined?'zone':q.motion??'linear');}});
   noDeadHits(ctx);
   const dmg:Record<string,number>={};for(const h of ctx.hits)dmg[h.enemy]=(dmg[h.enemy]??0)+h.amount;
   const ringHit=Object.keys(dmg).filter(k=>k.startsWith('r')).length;
@@ -732,15 +735,16 @@ test('cone: a tapped target in reach but outside the facing cone is the one the 
 });
 
 // ---------- velocidade-heroi-e-projetil: slower shots, same reach ----------
-test('velocidade: pierce and homing shots resolve to PROJECTILE_SPEED_MULT × the table speed for 1 / it × the time (same reach); lasting patterns keep theirs',()=>{
+test('velocidade: pierce and homing shots resolve to HERO_SHOT_SPEED_MULT × the table speed for 1 / it × the time (same reach); lasting patterns keep theirs',()=>{
   assert.equal(PROJECTILE_SPEED_MULT,.5);
+  assert.equal(M,PROJECTILE_SPEED_MULT/HERO_SHOT_SLOWDOWN);
   let travelling=0;
   for(const d of weaponCatalog.all())for(let level=1;level<=d.maxLevel;level++){
     const row=weaponLevel(d,level),w=resolveWeapon(d,level,BASE_STATS),at=`${d.id} lv${level}`;
     if(d.pattern==='pierce'||d.pattern==='homing'){
       travelling++;
-      assert.ok(Math.abs(w.speed-row.speed*.5)<1e-12,`${at}: speed ${w.speed} = half of ${row.speed}`);
-      assert.equal(w.durationTicks,Math.round(row.duration*2*SIM_HZ),`${at}: twice the flight time`);
+      assert.ok(Math.abs(w.speed-row.speed*M)<1e-12,`${at}: speed ${w.speed} = ${M} × ${row.speed}`);
+      assert.equal(w.durationTicks,Math.round(row.duration/M*SIM_HZ),`${at}: 1 / ${M} × the flight time`);
       // Reach: the tuned speed × time, within one tick of flight (rounding of the ticks).
       assert.ok(Math.abs(w.speed*w.durationTicks/SIM_HZ-row.speed*row.duration)<=w.speed/SIM_HZ+1e-9,`${at}: same reach`);
       assert.equal(w.cooldownTicks,Math.max(MIN_COOLDOWN_TICKS,Math.round(row.cooldown*SIM_HZ)),`${at}: cooldown untouched`);
@@ -751,17 +755,17 @@ test('velocidade: pierce and homing shots resolve to PROJECTILE_SPEED_MULT × th
   }
   assert.ok(travelling>=17,`boleto, pombo and boleto-evo levels checked (${travelling})`);
   // Player stats still multiply on top.
-  assert.ok(Math.abs(R('boleto',1,{speed:1.5}).speed-9*1.5*.5)<1e-12);
-  assert.equal(R('pombo',1,{duration:1.5}).durationTicks,Math.round(3*1.5*2*SIM_HZ));
+  assert.ok(Math.abs(R('boleto',1,{speed:1.5}).speed-9*1.5*M)<1e-12);
+  assert.equal(R('pombo',1,{duration:1.5}).durationTicks,Math.round(3*1.5/M*SIM_HZ));
 });
 
-test('velocidade: a fired boleto flies at half speed and still covers its tuned reach before it expires',()=>{
+test('velocidade: a fired boleto flies at the heroes shot speed and still covers its tuned reach before it expires',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto',1]]);
   const w=R('boleto',1),row=weaponLevel(def('boleto'),1);
   addEnemy(ctx,'ahead',14,12);run(ctx,systems(),1);ctx.enemies.delete('ahead');
   const [b]=projs(ctx,'boleto');
   assert.ok(b,'fired at the enemy ahead');
-  assert.ok(Math.abs(Math.hypot(b.vx,b.vy)-row.speed/2)<1e-9,`speed ${Math.hypot(b.vx,b.vy)}`);
+  assert.ok(Math.abs(Math.hypot(b.vx,b.vy)-row.speed*M)<1e-9,`speed ${Math.hypot(b.vx,b.vy)}`);
   assert.equal(b.untilTick-ctx.tick,w.durationTicks);
   const from={x:b.x,y:b.y};let last={...from},ticksAlive=0;
   run(ctx,systems(),w.durationTicks+5,c=>{const q=c.projectiles.get(b.id);if(q){last={x:q.x,y:q.y};ticksAlive++;}});
@@ -770,25 +774,26 @@ test('velocidade: a fired boleto flies at half speed and still covers its tuned 
   assert.ok(ticksAlive>=w.durationTicks-1,`alive ${ticksAlive} ticks`);
 });
 
-test('velocidade: the pombo homes at half speed with half the turn per tick (same curve per unit flown); flung sandals 4 u/s for 2 s',()=>{
+test('velocidade: the pombo homes at the heroes shot speed with the same factor on the turn per tick (same curve per unit flown); flung sandals 8 × M u/s for 1 / M s',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['pombo',1]]);addEnemy(ctx,'e',17,12);
   run(ctx,systems(),1);
   const [q]=projs(ctx,'pombo');
   assert.ok(q&&q.motion==='homing','a homing pigeon');
-  assert.ok(Math.abs(Math.hypot(q.vx,q.vy)-weaponLevel(def('pombo'),1).speed/2)<1e-9);
-  assert.ok(Math.abs(q.turn!-.125)<1e-12,`turn ${q.turn}`);
+  assert.ok(Math.abs(Math.hypot(q.vx,q.vy)-weaponLevel(def('pombo'),1).speed*M)<1e-9);
+  assert.ok(Math.abs(q.turn!-.25*M)<1e-12,`turn ${q.turn}`);
   assert.equal(q.untilTick-ctx.tick,R('pombo',1).durationTicks);
-  // chinelo-evo: the flung sandals (tuned 8 u/s for 1 s) fly 4 u/s for 2 s.
+  // chinelo-evo: the flung sandals (tuned 8 u/s for 1 s) fly 8 × M u/s for 1 / M s.
   const c2=makeCtx();addPlayer(c2,'p1',12,12,[['chinelo-evo',1]]);
   const evo=R('chinelo-evo',1),flung:{v:number;life:number}[]=[];const seen=new Set<string>();
   run(c2,systems(),2*(evo.durationTicks+evo.cooldownTicks)+3,c=>{for(const p of projs(c,'chinelo-evo'))if(p.motion==='linear'&&!seen.has(p.id)){seen.add(p.id);flung.push({v:Math.hypot(p.vx,p.vy),life:p.untilTick-c.tick});}});
   assert.ok(flung.length>0,'sandals flung');
-  for(const f of flung){assert.ok(Math.abs(f.v-4)<1e-9,`fling speed ${f.v}`);assert.equal(f.life,2*SIM_HZ,'fling life 2 s');}
+  for(const f of flung){assert.ok(Math.abs(f.v-8*M)<1e-9,`fling speed ${f.v}`);assert.equal(f.life,Math.round(SIM_HZ/M),'fling life 1 / M s');}
 });
 
-test('velocidade: the offer text shows the real flight seconds of a travelling weapon (boleto lv2: +0,2 s)',()=>{
+test('velocidade: the offer text shows the real flight seconds of a travelling weapon (boleto lv2: +0,1 s of table, 1 / M × that)',()=>{
   const lines=def('boleto').describe(2);
-  assert.ok(lines.includes('Duração +0,2 s'),lines);
+  const real=`Duração +${String(Number((.1/M).toFixed(2))).replace('.',',')} s`;
+  assert.ok(lines.includes(real),`${lines} (${real})`);
   assert.ok(!lines.includes('Duração +0,1 s'),lines);
   // Speed reads as a percentage: the same either way.
   assert.ok(lines.includes('Velocidade +11%'),lines);

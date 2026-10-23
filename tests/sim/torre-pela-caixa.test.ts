@@ -73,7 +73,7 @@ test('rules: rarity = tier, the wall pieces are verde, no Gustavão; every kit i
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
 
-test('crate draw: a kit of the crate\'s tier about KIT_CHANCE of the time, else its row (pure: same stream, same prize)', ()=>{
+test('crate draw: a kit of the crate\'s tier about KIT_CHANCE of the time, else a weapon (pure: same stream, same prize)', ()=>{
   for(const r of [1,2,3,4,5] as Rarity[]){
     let kits=0;const seen=new Set<string>();
     for(let s=0;s<2000;s++){
@@ -84,8 +84,8 @@ test('crate draw: a kit of the crate\'s tier about KIT_CHANCE of the time, else 
       kits++;seen.add(kit.id);
       assert.equal(kitRarity(kitPiece(kit.id)!),r,`${kit.id} from a ${r}`);
     }
-    // The dourada row's 20 % kit-torre is a dourada kit now: 25 % + 75 % × 20 %.
-    const want=r===4?KIT_CHANCE+(1-KIT_CHANCE)*.2:KIT_CHANCE;
+    // bau-so-arma-ou-torre: KIT_CHANCE is the whole kit share (the dourada's own kit row is gone).
+    const want=KIT_CHANCE;
     assert.ok(Math.abs(kits/2000-want)<.04,`${r}: ${kits}/2000`);
     assert.deepEqual([...seen].sort(),KIT_POOL[r].map(kitId).sort(),`every kit of tier ${r} shows up`);
   }

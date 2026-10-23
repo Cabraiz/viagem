@@ -3,13 +3,18 @@
  * (hand-points-data.ts, measured offline by scripts/hand-points.mjs) and how each arsenal sticker is held (its grip and
  * barrel). render/arsenal-fx.ts puts the sticker's grip on the hand of the pose the hero shows, the barrel towards where
  * the hero faces, mirrored with the drawing: E/NE/SW are W/NW/SE flipped, so the weapon changes hands with them.
- * Only sheets in the table (the viciado's M16 today); any other clip keeps the sticker at the hero's side.
+ * Only sheets in the table (the viciado's M16 and, card NEW-20261022-ORQ-arma-na-mao, the CLT's R06); any other clip
+ * keeps the sticker at the hero's side.
  */
 import type {HeroDirection} from './sprite-motion.ts';
+import type {VariantGeometry} from '../render/city-outline-rules.ts';
 import {HAND_POINTS} from './hand-points-data.ts';
 
-/** One measured sheet: the weapon hand's side, whether the weapon goes behind the body, the hand per frame (96 px cell; a third element 1: behind in that pose). */
-export interface HandSheet {side:1|-1;behind:boolean;points:readonly (readonly number[])[]}
+/**
+ * One measured sheet: the weapon hand's side (none for idle8, a direction per frame), whether the weapon goes behind the
+ * body, the hand per frame (96 px cell; a third element 1: behind in that pose).
+ */
+export interface HandSheet {side?:1|-1;behind:boolean;points:readonly (readonly number[])[]}
 /** The hand of one pose, in the drawn (unmirrored) 96 px cell. */
 export interface HandPoint {x:number;y:number;behind:boolean}
 
@@ -35,10 +40,41 @@ export function handOnScreen(hand:HandPoint,at:{x:number;y:number},ox:number,oy:
  * A hero's weapon hand this frame: screen point, the barrel's screen angle, whether the hand is behind the body, and the
  * hero sprite's depth (render/arsenal-fx.ts puts the weapon just over or under it).
  */
-export interface HeldHand {x:number;y:number;aim:number;behind:boolean;depth:number}
+export interface HeldHand {x:number;y:number;aim:number;behind:boolean;depth:number;patch?:HandPatch}
+/**
+ * The fingers over the handle (card NEW-20261022-ORQ-arma-na-mao, 22/10: "a mão fica POR CIMA do cabo"): the hero
+ * sprite's own frame, cropped to a square of HAND_PATCH cell px around the hand, drawn again just over the weapon. It
+ * shows what the sprite shows (its texture, frame, origin, scale and mirror: the city copy with its ring included), so
+ * the fist and its outline close over the handle pixel for pixel. `crop` is in the shown frame's px, mirrored with it.
+ */
+export interface HandPatch {key:string;frame:string|number;x:number;y:number;ox:number;oy:number;sx:number;sy:number;flip:boolean;crop:[number,number,number,number]}
+/** Half the side of the hand's patch, in 96 px cell px: the fist (~5 px) and a pixel of its rim. */
+export const HAND_PATCH=3.5;
 /** What heldHand reads of a hero sprite and of CharacterSprites (structural: no Phaser here). */
-interface HandSprite {x:number;y:number;depth:number;rotation:number;visible:boolean}
-interface HandPoses<S> {handPose(sprite:S):{point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection}|undefined}
+interface HandSprite {x:number;y:number;depth:number;rotation:number;visible:boolean;
+  texture:{key:string};frame:{name:string|number};originX:number;originY:number;scaleX:number;scaleY:number;flipX:boolean}
+interface HandPoses<S> {handPose(sprite:S):{point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}|undefined}
+/**
+ * The patch's crop for the hand at `hand` (cell px, unmirrored) in the frame the sprite shows: the cell itself, or a
+ * city copy (`geom`: the cell's crop resampled by kx/ky and padded). Phaser crops a mirrored sprite in its shown
+ * (mirrored) coordinates, so the square goes to the frame's width − x.
+ */
+export function patchCrop(hand:{x:number;y:number},flip:boolean,geom?:VariantGeometry):[number,number,number,number]{
+  const x=geom?geom.pad+(hand.x-geom.crop.x)/geom.kx:hand.x,y=geom?geom.pad+(hand.y-geom.crop.y)/geom.ky:hand.y;
+  const rx=HAND_PATCH/(geom?.kx??1),ry=HAND_PATCH/(geom?.ky??1),w=geom?geom.slotW:96;
+  return [(flip?w-x:x)-rx,y-ry,2*rx,2*ry];
+}
+/**
+ * Where a mirrored patch must move (frame px, × the sprite's scaleX) to sit on the hand (BUG arma-flutua-corrida-clt,
+ * reaberto 22/10): Phaser 3.90 draws a cropped, mirrored frame with the window's texture mirrored (Frame.setCropUVs)
+ * but the quad offset by crop.x BEFORE the flip (MultiPipeline.batchSprite), so the fingers landed on the other side
+ * of the body's pivot (E, NE, SW: the handle over the fist, a stray fist on the torso). 0 unmirrored.
+ */
+export function patchShift(hand:{x:number},flip:boolean,geom?:VariantGeometry){
+  if(!flip)return 0;
+  const x=geom?geom.pad+(hand.x-geom.crop.x)/geom.kx:hand.x,w=geom?geom.slotW:96;
+  return w-2*x;
+}
 /**
  * The weapon hand of a hero sprite on screen (scene.ts and the city sandbox feed render/arsenal-fx.ts with it), when the
  * pose it shows has one measured. A downed hero lies turned (−90°): the measured hand no longer fits, none.
@@ -47,7 +83,11 @@ export function heldHand<S extends HandSprite>(sprites:HandPoses<S>,sprite:S|und
   const pose=sprite?.visible&&sprite.rotation===0?sprites.handPose(sprite):undefined;
   if(!sprite||!pose)return undefined;
   const at=handOnScreen(pose.point,sprite,pose.ox,pose.oy,pose.scale,pose.flip,{x:0,y:0});
-  return {x:at.x,y:at.y,aim:AIM_ANGLE[pose.direction],behind:pose.point.behind,depth:sprite.depth};
+  const held:HeldHand={x:at.x,y:at.y,aim:AIM_ANGLE[pose.direction],behind:pose.point.behind,depth:sprite.depth};
+  // Behind the body the sprite already covers the weapon: no patch.
+  if(!held.behind)held.patch={key:sprite.texture.key,frame:sprite.frame.name,x:sprite.x+patchShift(pose.point,pose.flip,pose.geom)*sprite.scaleX,y:sprite.y,ox:sprite.originX,oy:sprite.originY,
+    sx:sprite.scaleX,sy:sprite.scaleY,flip:sprite.flipX,crop:patchCrop(pose.point,pose.flip,pose.geom)};
+  return held;
 }
 
 /** Screen angle (radians, y down) the barrel points to for each facing: the oblique camera flattens the diagonals. */
@@ -73,6 +113,31 @@ export const WEAPON_HOLD:Readonly<Record<string,WeaponHold>>={
 };
 /** A sticker without a hold (a legendary, a tool): held by its lower-left corner, pointing up-right. */
 export const DEFAULT_HOLD:WeaponHold={grip:[.25,.8],barrel:deg(-45),px:36};
+
+/**
+ * The held weapon's look (card arma-na-mao item 4, 22/10: "a arma não deveria estar tão brilhosa, já que ela pega
+ * sombra"): the HUD sticker is a lit, glossy icon; in the hand it takes the figure's matte light. Per pixel: a quarter
+ * of the way to its grey, the highlights pressed down (a gamma), a little darker overall. render/arsenal-fx.ts bakes
+ * it once per weapon (the ground pickup and the HUD keep the icon) and adds the city ring the heroes wear.
+ */
+export const HELD_LOOK={desaturate:.25,gamma:1.25,gain:.88};
+export function heldLook(rgba:Uint8ClampedArray){
+  const {desaturate,gamma,gain}=HELD_LOOK;
+  for(let i=0;i<rgba.length;i+=4){
+    const r=rgba[i],g=rgba[i+1],b=rgba[i+2],grey=.299*r+.587*g+.114*b;
+    for(let c=0;c<3;c++){const v=rgba[i+c]+(grey-rgba[i+c])*desaturate;rgba[i+c]=255*Math.pow(v/255,gamma)*gain;}
+  }
+  return rgba;
+}
+/**
+ * How far over (in front) or under (behind the body) its hero's sprite depth the held weapon sits (render/arsenal-fx.ts;
+ * the fingers patch halfway over it). Behind goes under the local hero's sticker contour too (render/you.ts: its bands
+ * from depth −0.25 in the city, −0.2 on the island): at −0.02 the blade crossed the Papel and Breu outline (BUG
+ * arma-flutua-corrida-clt, reaberto 22/10, NE and NW); still over the ring on the ground (you-rules.ts RING_UNDER 0.3).
+ */
+export const HELD_DEPTH={front:.02,behind:-.275};
+/** Tint on the held weapon: in front, the figure's light; behind the body, its shade. */
+export const HELD_TINT={front:0xffffff,behind:0xa49c94};
 
 /**
  * The sticker's placement for an aim: rotation, mirror and origin (the grip, mirrored with the image: Phaser mirrors a

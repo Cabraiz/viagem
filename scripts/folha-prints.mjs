@@ -24,6 +24,7 @@ import {appendFileSync,existsSync,mkdirSync,readFileSync,writeFileSync} from 'no
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {HOLD_BASE,HOLD_SAMPLE,PREDICTED,SETTLE,SETTLE_MAX_MS,SETTLE_MS,rightVerdict} from './folha-direito.mjs';
 
 const arg=(name,fallback)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:fallback;};
 const outDir=resolve(process.argv.slice(2).find((a,i,all)=>!a.startsWith('--')&&!(i>0&&all[i-1].startsWith('--')))??'folha-out');
@@ -111,10 +112,10 @@ const HERO=()=>{
 const NOTICE=()=>document.querySelector('.explore-notice')?.textContent??'';
 /**
  * Out of play: the own hero is down ("Me salva": he walks no more; 21/10 a main sheet failed its 390×844 mouse on it), dead
- * ("Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
+ * (the torcida's bar .spect of UX-espectador, or "Assistindo: <ally>") or the match ended (the result screen, .rh-result). Down = the scene's own rule (scene.ts marks).
  */
 const OUT=()=>{
-  if(/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
+  if(document.querySelector('.spect:not([hidden])')||/Assistindo:/.test(document.body.innerText)||[...document.querySelectorAll('.rh-result')].some(e=>e.getClientRects().length))return 'fora';
   const n=window.__perfScene?.hooks?.net,id=n?.id??'',st=n?.feed?.players?.get?.(id),me=n?.players?.get?.(id);
   return st?.downed||(me&&me.hp<=0)?'caido':'';
 };
@@ -302,10 +303,11 @@ async function mouseWalk(p,vp){
 /**
  * The right button (NEW-20261021-ORQ-direito-ataca-e-cone-no-ar): held on open ground beside the hero it attacks (the
  * manual combat swings toward the mouse) and never walks him; its 'contextmenu' reaches the page already cancelled (the
- * canvas keeps the browser's menu shut).
+ * canvas keeps the browser's menu shut). Judged on the hero's own input from just before the press (scripts/folha-direito.mjs).
  */
 async function rightClick(p,vp){
   await clearOffer(p);
+  const settled=await p.evaluate(SETTLE,[SETTLE_MS,SETTLE_MAX_MS]).catch(()=>false);
   await p.evaluate(()=>{window.__menus=[];if(!window.__menuWatch){window.__menuWatch=true;addEventListener('contextmenu',e=>window.__menus.push(e.defaultPrevented));}});
   const free=(x,y)=>p.evaluate(([x,y])=>document.elementFromPoint(x,y)===window.__perfScene?.game?.canvas,[x,y]).catch(()=>false);
   const h=await p.evaluate(HERO).catch(()=>null);
@@ -313,15 +315,19 @@ async function rightClick(p,vp){
   const spot=h&&CLICK_SPOTS.map(([fx,fy])=>[Math.round(h.sx+fx*m),Math.round(h.sy+fy*m)]).find(([x,y])=>x>=20&&y>=20&&x<=vp.w-20&&y<=vp.h-20);
   if(!spot||!await free(...spot)){avisos.push(`${vp.w}×${vp.h}: botão direito: nenhum ponto livre perto do herói`);return;}
   const [x,y]=spot;
-  await p.mouse.move(x,y);await p.mouse.down({button:'right'});
-  const seen=await p.evaluate(SAMPLE,[60,900]).catch(()=>[]);
+  await p.mouse.move(x,y);
+  const before=await p.evaluate(PREDICTED).catch(()=>null);await p.evaluate(HOLD_BASE).catch(()=>null);
+  await p.mouse.down({button:'right'});
+  const {keys:seen,own}=await p.evaluate(HOLD_SAMPLE,[60,900]).catch(()=>({keys:[],own:null}));
   await shot(p,'direito',`botão direito segurado em (${x},${y})`,vp);
-  const end=await p.evaluate(HERO).catch(()=>null);
+  const after=await p.evaluate(PREDICTED).catch(()=>null);
   await p.mouse.up({button:'right'});
   const menus=(await p.evaluate(()=>window.__menus).catch(()=>undefined))??null;
   if(!menus){avisos.push(`${vp.w}×${vp.h}: botão direito: a página recarregou no meio (partida nova), contextmenu não contado`);await sleep(1200);return;}
   const open=menus.filter(v=>!v).length;
-  if(moved(h,end))fails.push(`${vp.w}×${vp.h}: botão direito andou com o herói (devia só atacar)`);
+  const verdict=rightVerdict({settled,own,before,after},`${vp.w}×${vp.h}`);
+  if(verdict.fail)fails.push(verdict.fail);
+  if(verdict.aviso)avisos.push(...verdict.aviso.split(' | '));
   if(!seen.some(k=>/attack/i.test(k)))avisos.push(`${vp.w}×${vp.h}: botão direito segurado sem quadro de ataque (${[...new Set(seen)].join(', ')||'nada'})`);
   if(!menus.length)fails.push(`${vp.w}×${vp.h}: botão direito sem evento contextmenu`);
   else if(open)fails.push(`${vp.w}×${vp.h}: botão direito abriu o menu do navegador em ${open}/${menus.length}`);

@@ -19,8 +19,11 @@ import {damageStage} from '../render/stonewards-rules.ts';
 /**
  * The `base` ids the renderer draws today (ART-IDS.md). The rest of the group (fountain, forge, helicopter…) has no world anchor yet.
  * `muralha`/`pilar`: the junk wall the free barricade squares wear (render/muralha-rules.ts; 2 views = the two diagonals).
+ * `muro`/`muroPilar`: the cinder-block wall the built 'muro' segments wear (render/fortify.ts, card trocar-procedurais-por-arte).
+ * `moto`: the chaveiro's moto with its riders and the chaveiro standing (render/chaveiro/moto-art.ts, same card).
  */
-export const BASE_ART={wall:'muralha-acampamento',barricade:'barricada',crate:'caixa-saque',muralha:'muralha-tralha',pilar:'muralha-tralha-pilar'} as const;
+export const BASE_ART={wall:'muralha-acampamento',barricade:'barricada',crate:'caixa-saque',muralha:'muralha-tralha',pilar:'muralha-tralha-pilar',
+  muro:'muro-bloco',muroPilar:'muro-bloco-pilar',moto:'moto-chaveiro'} as const;
 export type BaseArtId=typeof BASE_ART[keyof typeof BASE_ART];
 const USED:readonly string[]=Object.values(BASE_ART);
 

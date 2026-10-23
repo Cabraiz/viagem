@@ -101,16 +101,18 @@ const M16_MOTIONS=['walk','attack','idle'] as const;
  * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
  * manifest (S and N always), else its pair's other side mirrored. Both sides drawn: each shows its own.
  */
-export function movement16Source(id:string,direction:HeroDirection):{source:HeroDirection;flip:boolean}{
+export function movement16Source(id:string,direction:HeroDirection,motion?:Movement16Motion):{source:HeroDirection;flip:boolean}{
   const partner=PARTNER[direction],files=artPiece('personagens',id)?.files;
-  const drawn=(d:HeroDirection)=>!!files&&M16_MOTIONS.every(m=>files[`${m}16-${d}`]);
+  // An R06 class with a run only (corrida-clt): its run sheets alone say which side of each pair is drawn.
+  const only=motion==='run'&&!!files&&!M16_MOTIONS.some(m=>Object.keys(files).some(k=>k.startsWith(`${m}16-`)));
+  const drawn=(d:HeroDirection)=>!!files&&(only?!!files[`run16-${d}`]:M16_MOTIONS.every(m=>files[`${m}16-${d}`]));
   if(!partner||drawn(direction)||!drawn(partner))return {source:direction,flip:false};
   return {source:partner,flip:true};
 }
 const m16Loop=(motion:Movement16Motion)=>motion!=='attack';
 /** A manifest plan only (never downloads). Mirrored directions share the drawn sheet's key, texture and cache entry. */
 export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroDirection):Movement128Plan|undefined{
-  current();const {source,flip}=movement16Source(id,direction),lookup=`m16:${id}:${motion}:${direction}`;
+  current();const {source,flip}=movement16Source(id,direction,motion),lookup=`m16:${id}:${motion}:${direction}`;
   if(plans.has(lookup))return plans.get(lookup)??undefined;
   const f=artPiece('personagens',id)?.files[`${motion}16-${source}`],p=f?.pages?.[0],original=f?.file&&artUrl('personagens',f.file);
   const [columns,rows]=MOVEMENT16_GRID[motion],frameCount=columns*rows,durationMs=MOVEMENT16_DURATION[motion],loop=m16Loop(motion);
@@ -132,15 +134,18 @@ export function hasMovement16(id:string){
   if(complete===undefined)m16.set(id,complete=M16_MOTIONS.every(m=>HERO_DIRECTIONS.every(d=>movement16Plan(id,m,d))));
   return complete;
 }
-/** True when an M16 class also has a valid run (run16) in every direction (optional, card passo-3x-mais-lento). */
+/**
+ * True when a class has a valid run (run16) in every direction (optional, card passo-3x-mais-lento): an M16 class, or an
+ * R06 one (corrida-clt: the CLT runs on M16 run sheets while its rest and attack stay R06).
+ */
 export function hasRun16(id:string){
   current();let complete=run16.get(id);
-  if(complete===undefined)run16.set(id,complete=hasMovement16(id)&&HERO_DIRECTIONS.every(d=>movement16Plan(id,'run',d)));
+  if(complete===undefined)run16.set(id,complete=(hasMovement16(id)||!!movementIdle8Plan(id))&&HERO_DIRECTIONS.every(d=>movement16Plan(id,'run',d)));
   return complete;
 }
 /** The class moves at a run (HERO_GAIT) when it has one: its 'walk' clips are the run's. */
 export const heroRuns=(id:string)=>HERO_GAIT.run&&hasRun16(id);
-/** The clip a class shows: M16 when complete, else R06 (walk128/attack128 and idle8); undefined = legacy. */
+/** The clip a class shows: M16 when complete, else R06 (walk128/attack128 and idle8; its run16 when it runs); undefined = legacy. */
 export function movementPlan(id:string,motion:DetailedMotion|'idle',direction:HeroDirection):Movement128Plan|undefined{
   if(motion==='walk'&&heroRuns(id))return movement16Plan(id,'run',direction);
   if(hasMovement16(id))return movement16Plan(id,motion,direction);
@@ -148,12 +153,17 @@ export function movementPlan(id:string,motion:DetailedMotion|'idle',direction:He
 }
 /** Every distinct sheet (by texture key) of one motion, the drawn directions only for M16. */
 export function movementSheets(id:string,motion:DetailedMotion|'idle'):Movement128Plan[]{
-  if(!hasMovement16(id)){
+  if(!hasMovement16(id)&&!(motion==='walk'&&heroRuns(id))){
     if(motion==='idle'){const idle=movementIdle8Plan(id);return idle?[idle]:[];}
     return HERO_DIRECTIONS.flatMap(d=>{const p=movement128Plan(id,motion,d);return p?[p]:[];});
   }
   const seen=new Set<string>(),shown=motion==='walk'&&heroRuns(id)?'run':motion;
   return HERO_DIRECTIONS.flatMap(d=>{const p=movement16Plan(id,shown,d);if(!p||seen.has(p.key))return [];seen.add(p.key);return [p];});
+}
+/** The frame of a swing `progress` (0..1) of the way through: its frames spread over the swing's time (ataque-1s). */
+export function swingFrame(plan:Pick<Movement128Plan,'frameCount'>,progress:number):number{
+  const n=plan.frameCount??MOVEMENT128_FRAMES;
+  return Math.max(0,Math.min(n-1,Math.floor(progress*n)));
 }
 /** The frame a clip shows now: idle8 picks its direction's column; every other clip follows the clock. */
 export function movementFrame(plan:Movement128Plan,direction:HeroDirection,elapsedMs:number){
@@ -168,8 +178,9 @@ export const movementPivotX=(plan:Pick<Movement128Plan,'anchor'|'pivotX'>)=>plan
 export function movement128Figure(id:string):FigureBox|undefined{
   current();if(figures.has(id))return figures.get(id);
   let result:FigureBox|undefined;
-  const all=hasMovement16(id)?(['walk','attack','idle',...(hasRun16(id)?['run'] as const:[])] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement16Plan(id,motion,direction))):
-    [movementIdle8Plan(id),...(['walk','attack'] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement128Plan(id,motion,direction)))];
+  const run=hasRun16(id)?HERO_DIRECTIONS.map(direction=>movement16Plan(id,'run',direction)):[];
+  const all=hasMovement16(id)?[...(['walk','attack','idle'] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement16Plan(id,motion,direction))),...run]:
+    [movementIdle8Plan(id),...(['walk','attack'] as const).flatMap(motion=>HERO_DIRECTIONS.map(direction=>movement128Plan(id,motion,direction))),...run];
   for(const p of all){
     if(!p)continue;
     // A mirrored clip's box is the drawn one mirrored inside the cell.
@@ -180,7 +191,8 @@ export function movement128Figure(id:string):FigureBox|undefined{
 }
 /**
  * All source poses stay available; the display samples the cycle at the actual render cadence, played at
- * HERO_ANIM_RATE of the drawn duration (the manifest keeps 600/1000 ms, the art's own timing).
+ * HERO_ANIM_RATE of the drawn duration (the manifest keeps 600/1000 ms, the art's own timing). The hero's attack plays by
+ * swingFrame instead (ATTACK_MS).
  */
 export function movement128Frame(plan:Pick<Movement128Plan,'durationMs'|'loop'>&{frameCount?:number},elapsedMs:number):number{
   if(!(plan.durationMs>0))return 0;

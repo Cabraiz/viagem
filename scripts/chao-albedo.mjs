@@ -4,7 +4,8 @@
 // TILE by mirroring its edges (the shader reads it with mirrored UVs, so a coarse mip level never bleeds the next
 // material in). Also writes src/client/render/city/relevo/albedo-meta.ts: slot order, the atlas size and each
 // material's mean colour (the shader divides by it: the albedo brings detail, the palette keeps the colour).
-// The asfalto photo is not used (no city ground kind is asphalt): left out, 5 slots.
+// The asfalto photo is not used (no city ground kind is asphalt): left out. agua (card NEW-20261022-ORQ-agua-realista) is
+// the painted winter water the ChatGPT made (viagem-board/evidence/NEW-20261022-ORQ-agua-realista), 6 slots.
 //   node scripts/chao-albedo.mjs --entrada <arte-entrada/chao> [--tile 512] [--qualidade 80] [--saida public/art/chao/cidade-albedo.webp]
 import sharp from 'sharp';
 import {mkdirSync,writeFileSync,statSync} from 'node:fs';
@@ -20,7 +21,7 @@ const TILE=Number(opt('tile','512')),PAD=Math.round(TILE/32),Q=Number(opt('quali
 // Not under art/lite/: the scene's art fallback swaps /art/lite/ for /art/ on a failed load, and there is no original.
 const saida=resolve(ROOT,opt('saida','public/art/chao/cidade-albedo.webp'));
 /** Slot order (the shader's ALBEDO_* constants follow it). */
-export const SLOTS=['neve','neve-pisada','calcada','gelo','terra'];
+export const SLOTS=['neve','neve-pisada','calcada','gelo','terra','agua'];
 const COLS=4,ROWS=2;
 
 const tiles=[],means=[];

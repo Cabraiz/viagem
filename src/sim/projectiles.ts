@@ -9,6 +9,8 @@ import {SIM_HZ} from '../contract/index.ts';
 import {RADIUS as PLAYER_RADIUS} from '../maps/index.ts';
 import {getWeapon} from './weapons/catalog.ts';
 import {REFLECT,coachMult,isReflecting,markDevendo} from './enemies/catalog.ts';
+import {bounceAfterHit} from './weapons/ricochet.ts';
+import {mineTouched} from './weapons/mine.ts';
 
 /** Local projectile ceiling until the shared budget (VGM-032) is wired in by integration. */
 export const PROJECTILE_CAP=400;
@@ -40,6 +42,13 @@ export interface WeaponProjectile extends ProjectileState {
   returnTick?:number;
   /** Hostile only: status the hit applies to the player it hurts (agiota's boleto-juros, enemies/catalog.ts DEVENDO). */
   marks?:'devendo';
+  /**
+   * Pack 12 fatia A2 (sim/weapons/ricochet.ts, mine.ts, turret.ts): the module that owns this projectile's behaviour.
+   * ricochet: bounceAfterHit after each hit; mine: mineTouched instead of the contact hit; turret: never hits by contact.
+   */
+  mechanic?:'ricochet'|'mine'|'turret';
+  /** The mechanic's own JSON-safe numbers (bounces left, next shot tick...): only its module reads them. */
+  data?:Record<string,number>;
 }
 export type ProjectileInit=Omit<WeaponProjectile,'id'|'hit'>&{hit?:string[]};
 
@@ -128,7 +137,7 @@ export function reflectShot(p:WeaponProjectile,enemy:EnemyState,tick:number){
   p.hostile=true;p.owner=enemy.id;p.vx=-p.vx;p.vy=-p.vy;
   p.damage*=REFLECT.mult*coachMult(enemy,tick);p.pierce=0;p.hit=[];p.motion='linear';
   p.untilTick=Math.max(p.untilTick,tick+REFLECT.minLife);
-  delete p.homing;delete p.seek;delete p.turn;delete p.returnTick;delete p.knockback;delete p.slowTicks;delete p.blocksHostile;delete p.anchor;
+  delete p.homing;delete p.seek;delete p.turn;delete p.returnTick;delete p.knockback;delete p.slowTicks;delete p.blocksHostile;delete p.anchor;delete p.mechanic;delete p.data;
   (enemy.memory??={}).reflectSay=1;
 }
 
@@ -190,6 +199,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
   }
 
   function collideFriendly(ctx:SimContext,p:WeaponProjectile,from:{x:number;y:number}):boolean{
+    if(p.mechanic==='turret')return true;
     const half=Math.hypot(p.x-from.x,p.y-from.y)/2;
     const mx=(p.x+from.x)/2,my=(p.y+from.y)/2;
     candidates.length=0;
@@ -223,6 +233,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     const area=p.rehit!==undefined;
     for(const {e} of hits){
       if(!isAlive(ctx,e))continue;
+      if(p.mechanic==='mine'){if(!mineTouched(ctx,p,e))return false;continue;}
       if(area){
         if(!takeAreaHit(e,p.group??p.id,ctx.tick,p.rehit??1))continue;
       }else{
@@ -236,6 +247,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       const from=owner??p;
       const push={x:moving?p.vx:e.x-from.x,y:moving?p.vy:e.y-from.y,force:p.knockback??0};
       hitEnemy(ctx,e,p.damage,p.owner,p.source,push,p.slowTicks);
+      if(p.mechanic==='ricochet'&&bounceAfterHit(ctx,p,e))return true;
       if(!area){
         if(p.pierce<=0)return false;
         p.pierce--;

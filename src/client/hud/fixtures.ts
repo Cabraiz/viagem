@@ -19,8 +19,8 @@ import type {RunResult} from './model.ts';
  * 6 units, 0 fichas de torre); the other scenarios hold 156 units (3 fichas, the ring at 90%: the "falta pouco" look);
  * camp-horn: the horn with the hero far away (last 4 s); camp-wave: a wave with the wall at 22% (low bar, notice).
  */
-export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave';
-export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave'];
+export type HudScenario='wave'|'prepare'|'offer'|'offer-open'|'offer-prepare'|'offer-round'|'offer-heal'|'offer-new'|'offer-downed'|'offer-open-downed'|'downed'|'boss'|'result'|'camp-forge'|'camp-horn'|'camp-wave'|'offer-tomos';
+export const HUD_SCENARIOS:readonly HudScenario[]=['wave','prepare','offer','offer-open','offer-prepare','offer-round','offer-heal','offer-new','offer-downed','offer-open-downed','downed','boss','result','camp-forge','camp-horn','camp-wave','offer-tomos'];
 /** Where the fixtures put the wall, and the hero spots the sandbox hands the HUD (in the camp / far away). */
 export const FIXTURE_WALL={x:12,y:12};
 export const FIXTURE_HERO:Partial<Record<HudScenario,{x:number;y:number;bearing?:number}>>={
@@ -100,7 +100,9 @@ export function fakeView(scenario:HudScenario,playerCount:number,tick=1000):RunV
       :scenario==='offer-round'?[fakeOffer('round',ends)]
       :scenario==='offer-new'?[{id:'lvl-3-p1',source:'level',level:3,choices:[{itemId:'guarda-chuva',level:1},{itemId:'bone',level:1},{itemId:'pombo',level:1}],deadlineTick:ends,defaultIndex:0},fakeOffer('round',ends)]
       // Full build: the server's only choice is the coxinha (HEAL_CHOICE in sim/offers.ts).
-      :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]:[],
+      :scenario==='offer-heal'?[{id:'lvl-31-p1',source:'level',level:31,choices:[{itemId:'heal',level:1}],deadlineTick:ends,defaultIndex:0}]
+      // upgrades-megabonk: the manual combat's tomes (+1 projétil, the aura, the shot speed, damage), in the pause.
+      :scenario==='offer-tomos'?[{id:'lvl-12-p1',source:'level',level:12,choices:[{itemId:'pente',level:2},{itemId:'defumador',level:1},{itemId:'estilingue',level:1},{itemId:'oculos',level:3}],deadlineTick:HELD_DEADLINE,defaultIndex:0}]:[],
     events:[],
   };
   return view;

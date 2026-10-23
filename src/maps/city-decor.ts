@@ -2,7 +2,8 @@
  * The new scenery on Cidade Nevada (NEW-20261016-ORQ-cenario-no-mapa): where each delivered piece stands (CityDecor).
  * Pure and deterministic (asset + seed + keep-outs); scripts/cenario-cidade.ts writes the result into the asset.
  * The map's quarters are compounds closed by 1-cell lines of wall and cliff, with open ground inside:
- *  - wall cells → a wall/fence piece each, its shape from the wall neighbours (`links`), one family per block, ~20 % broken;
+ *  - wall cells → one continuous line along the wall's middle, straight pieces back to back (wallLines), one family per
+ *    block, ~20 % broken;
  *  - cliff cells → `penhasco2` pieces the same way; the border band (edge block) → mountains (6×6, 4×4, morro 3×3) where
  *    they fit whole and a boulder on every edge cell left (the render draws it over the cell instead of the box);
  *  - building blocks → packed lots: one place with life (lugar) per block while any is left, then houses and flats,
@@ -15,6 +16,7 @@
  * Nothing stands in a keep-out (the base and the plaza, the start, spawns and mouths, build sites, nests, loot, props).
  */
 import type {CityAsset,CityBlockKind,CityDecor} from './city-asset.ts';
+import {pieceRect,wallPieces,wallRuns,type WallPiece} from './wall-lines.ts';
 
 export type DecorFace='S'|'E'|'N'|'W';
 /** The art view that shows a front facing that way with the camera at view 0 (CityDecor.rot). */
@@ -156,6 +158,7 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
   const FACES:readonly DecorFace[]=['S','E','N','W'];
 
   // 1. Wall and cliff lines.
+  const broken=new Uint8Array(N);
   for(let r=0;r<H;r++)for(let c=0;c<W;c++){
     const i=r*W+c,k=kind[i];
     if((k!=='wall'&&k!=='cliff')||fixed[i])continue;
@@ -163,13 +166,15 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const links=(same(c,r-1)?LINK.N:0)|(same(c+1,r)?LINK.E:0)|(same(c,r+1)?LINK.S:0)|(same(c-1,r)?LINK.W:0);
     const {shape,rot}=lineShape(links);
     if(k==='wall'){
-      const family=WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length];
-      put(`${family}-${shape}-${rnd()<BROKEN_SHARE?'quebrado':'intacto'}`,c,r,1,1,rot,links);
+      // The line is drawn below, along the wall's middle (wallLines); the draw stays here so the rest keeps its own.
+      broken[i]=rnd()<BROKEN_SHARE?1:0;used[i]=1;
     }else{
       const id=shape==='quina'?'penhasco2-quina-externa':shape==='ponta'?'penhasco-ponta':'penhasco2-reto';
       put(id,c,r,1,1,rot,links);
     }
   }
+
+  decor.push(...wallLines(W,H,i=>kind[i]==='wall'&&!fixed[i],i=>WALL_FAMILIES[hashText(block[i]!)%WALL_FAMILIES.length],broken));
 
   // 2. The border band: mountains where they fit whole, boulders here and there.
   const edge=(i:number)=>kind[i]==='edge'&&solid[i]===1;
@@ -286,5 +291,77 @@ export function placeCityDecor(asset:CityAsset,seed:number,options:DecorOptions=
     const full=named(pick(OBJETOS_1));
     if(full){put(full,c,r,1,1,pick([0,90,180,270] as const));objects.push([c,r]);}
   }
-  return {decor,blocked};
+  // 6. The thick cliffs as a few big massifs, not rows of 1-cell walls (rochas-grandes): its own generator, so the
+  // rest of the placement does not change.
+  return {decor:bigCliffRocks(decor,BIG_ROCKS,seed),blocked};
+}
+
+/**
+ * The wall and fence pieces (BUG-20261022-ORQ-grades-sem-padrao): one continuous line along each wall's middle
+ * (maps/wall-lines.ts), straight pieces one cell long turned along it, posts shared at corners and junctions; the
+ * family of the block, intact or broken by the cell's draw. A bit of wall too small for a line (a lone cell or two)
+ * gets one piece along its longer side. The wall cells no piece stands on get a `cover` entry (drawn by the line next
+ * to them, never by the procedural box), so every wall cell reads as part of its line.
+ */
+export function wallLines(W:number,H:number,isWall:(i:number)=>boolean,familyOf:(i:number)=>string,broken:Uint8Array):CityDecor[]{
+  const pieces=wallPieces(wallRuns(W,H,(c,r)=>isWall(r*W+c)));
+  const covered=new Uint8Array(W*H),out:CityDecor[]=[];
+  const add=(p:WallPiece)=>{
+    const {c,r,w,h}=pieceRect(p),i=r*W+c;
+    for(let y=r;y<r+h;y++)for(let x=c;x<c+w;x++)covered[y*W+x]=1;
+    out.push({id:`${familyOf(i)}-reto-${broken[i]?'quebrado':'intacto'}`,c,r,w,h,
+      rot:p.o==='h'?90:0,links:p.o==='h'?LINK.E|LINK.W:LINK.N|LINK.S});
+  };
+  for(const p of pieces)add(p);
+  // Bits with no piece at all: one piece on their first cell, along their longer side.
+  const seen=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++){
+    if(!isWall(i)||seen[i])continue;
+    const cells=[i],stack=[i];seen[i]=1;
+    while(stack.length){
+      const j=stack.pop()!,c=j%W,r=(j-c)/W;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const x=c+dx,y=r+dy,k=y*W+x;
+        if(x>=0&&y>=0&&x<W&&y<H&&isWall(k)&&!seen[k]){seen[k]=1;stack.push(k);cells.push(k);}
+      }
+    }
+    if(cells.some(j=>covered[j]))continue;
+    const cs=cells.map(j=>j%W),rs=cells.map(j=>Math.floor(j/W));
+    const wide=Math.max(...cs)-Math.min(...cs)>=Math.max(...rs)-Math.min(...rs);
+    add({cx:2*(i%W)+1,cy:2*Math.floor(i/W)+1,o:wide?'h':'v'});
+  }
+  for(let i=0;i<W*H;i++)if(isWall(i)&&!covered[i])
+    out.push({id:`${familyOf(i)}-reto-intacto`,c:i%W,r:Math.floor(i/W),w:1,h:1,rot:0,cover:true});
+  return out;
+}
+
+/** The big cliff pieces (NEW-20261022-ORQ-rochas-grandes): 2×2 massifs and a 2×1 straight wall. */
+export interface BigRocks {readonly bloco:readonly string[];readonly reto:string}
+/** The look the user picked (22/10: the fused cold boulders, "o mais próximo da realidade"; scripts/import-rochas-grandes.mjs). */
+export const BIG_ROCKS:BigRocks={bloco:['penhasco3-bloco-1','penhasco3-bloco-2'],reto:'penhasco3-reto'};
+/**
+ * The cliff cells drawn with bigger pieces (NEW-20261022-ORQ-rochas-grandes: a thick cliff read as rows of small parallel
+ * walls). Every 1×1 `penhasco*` piece is a cliff cell; scanning rows top-down, 4 free cells in a square become one 2×2
+ * massif (`bloco`, a variant and a turn at random), then 2 free cells side by side one 2×1 straight wall (`reto`, rot 0
+ * along c, 90 along r); the cells left keep their piece. Only the drawing changes: the pieces cover the same cliff cells
+ * (solid already), the grid and the collision stay as they are.
+ */
+export function bigCliffRocks(decor:readonly CityDecor[],rocks:BigRocks,seed:number):CityDecor[]{
+  const at=new Map<string,number>();
+  decor.forEach((e,i)=>{if(e.w===1&&e.h===1&&e.id.startsWith('penhasco'))at.set(`${e.c},${e.r}`,i);});
+  const gone=new Set<number>(),out:CityDecor[]=[],rnd=mulberry(seed);
+  const has=(c:number,r:number)=>{const i=at.get(`${c},${r}`);return i!==undefined&&!gone.has(i);};
+  const take=(cells:readonly (readonly [number,number])[])=>{for(const [c,r] of cells)gone.add(at.get(`${c},${r}`)!);};
+  const cells=[...at.keys()].map(k=>k.split(',').map(Number) as [number,number]).sort((a,b)=>a[1]-b[1]||a[0]-b[0]);
+  for(const [c,r] of cells){
+    if(!(has(c,r)&&has(c+1,r)&&has(c,r+1)&&has(c+1,r+1)))continue;
+    take([[c,r],[c+1,r],[c,r+1],[c+1,r+1]]);
+    out.push({id:rocks.bloco[Math.floor(rnd()*rocks.bloco.length)],c,r,w:2,h:2,rot:([0,90,180,270] as const)[Math.floor(rnd()*4)]});
+  }
+  for(const [c,r] of cells){
+    if(!has(c,r))continue;
+    if(has(c+1,r)){take([[c,r],[c+1,r]]);out.push({id:rocks.reto,c,r,w:2,h:1,rot:rnd()<.5?0:180});}
+    else if(has(c,r+1)){take([[c,r],[c,r+1]]);out.push({id:rocks.reto,c,r,w:1,h:2,rot:rnd()<.5?90:270});}
+  }
+  return [...decor.filter((_,i)=>!gone.has(i)),...out];
 }

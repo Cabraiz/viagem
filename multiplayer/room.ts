@@ -6,7 +6,7 @@ import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNo
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
-import { classes, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
+import { classes, liberadoId, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
 import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
@@ -14,7 +14,7 @@ import {addTelegraph} from '../src/sim/index.ts';
 import {CAR_ID,CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
 import {walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
-import {downPlayer} from '../src/sim/index.ts';
+import {downPlayer,ITEMS} from '../src/sim/index.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId,MARK_ID,MARK_COOLDOWN_MS,relayMark} from '../src/rules/index.ts';
 
 /** Lab moves ({t:'lab',to}) stay this close to the lab's base (the base plus labOffset), in world units. */
@@ -56,6 +56,11 @@ export interface RoomOptions {
   labOffset?:{x:number;y:number};
   /** Lab only (wrangler dev with ALLOW_LOCAL and LAB_ZUEIRA "apagao,boletos,promo"): those zueira events, one per round from round 2 (VGM-053B). */
   labZueira?:ZueiraLab;
+  /**
+   * Lab only (wrangler dev with ALLOW_LOCAL and LAB_ASLEEP n): each client gets at most n sleeping bodies instead of
+   * ASLEEP_PER_VIEWER (card horda-visivel-capacidade: the same walk measured at several caps); 'sem' = no cap.
+   */
+  labAsleep?:number;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -187,10 +192,13 @@ const classIds=new Set(classes.map(c=>c.id));
  *  joins with it plays as the default class instead of being refused. Not a string is still invalid, and a restored
  *  roster stays strict (junk is dropped; that player joins again and lands here). */
 // D-053: a hidden class (no R06 movement art yet) or one this build no longer has plays the first playable class.
-const knownClass=(id:unknown)=>playableClassId(id);
+// cadeado-so-clt-viciado (22/10): a person plays only a released hero (rules/personagens-liberados.ts); any other class,
+// locked, hidden or unknown (a console, an old tab), plays the viciado. Bots are seated apart and keep BOT_CLASSES.
+const humanClass=(id:unknown)=>liberadoId(id);
 /** The roster without what the owner churns (bots, map): what has to reach storage at once when it changes. */
 const rosterCore=(r:RoomRoster)=>JSON.stringify({...r,bots:undefined,botsAdded:undefined,map:undefined});
-/** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick. */
+/** Classes a room bot may get (D-053: only the playable ones, of the 35 of D-025), in a fixed order for the seed pick.
+ *  The people's lock (humanClass) never applies here: a bot may be any of them. */
 const BOT_CLASSES=[...PLAYABLE_CLASS_IDS];
 /** A command from the owner arrives with a bot's or a person's id (wire ids are the players' own). */
 const PLAYER_ID=/^[\w-]{1,64}$/;
@@ -319,6 +327,7 @@ export class Room {
   /** Room ticks (advance calls), also while the simulation is frozen in the lobby: the broadcast slots follow it. */
   private ticks=0;
   private readonly labHorde:number;
+  private readonly labAsleep?:number;
   private readonly labOffset?:{x:number;y:number};
   /** Time samples (lab only): the deployed room keeps the running totals, never the arrays. */
   private readonly sampling:boolean;
@@ -405,6 +414,7 @@ export class Room {
     this.baseWorld=options.world??DEFAULT_WORLD;this.cityText=options.cityText;this.cityRef=options.cityRef;this.cityPlayable=options.cityPlayable??CITY_PLAYABLE;
     this.createdAt=createdAt;this.sim=new Simulation(seed,{world:this.baseWorld,...this.combatOption()});this.sim.botState=()=>this.minds();
     this.labHorde=Math.max(0,Math.min(600,Math.floor(options.labHorde??0)));
+    if(Number.isFinite(options.labAsleep)&&options.labAsleep!>0)this.labAsleep=Math.floor(options.labAsleep!);
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
     this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
@@ -459,7 +469,7 @@ export class Room {
       if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
-      this.sim.add(r.id,r.name,playableClassId(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
+      this.sim.add(r.id,r.name,humanClass(r.classId));this.sessions.set(r.id,{id:r.id,hash:r.tokenHash,until});
       this.run.join(r.id);this.run.setOnline(r.id,false);this.sim.setOnline(r.id,false);this.autopilots.add(r.id,this.autopilots.freeSlot(AUTOPILOT_SLOT,2));
       if(lost)this.lostRun.set(r.id,lost);
     }
@@ -615,14 +625,14 @@ export class Room {
         if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
         if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
         const id=this.newId(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
-        this.sim.add(id,m.name.trim(),knownClass(m.classId));this.sessions.set(id,session);
+        this.sim.add(id,m.name.trim(),humanClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
       }
       session.until=Infinity;c.playerId=session.id;this.rosterDirty=true;this.catalogs.set(session.id,maps.maps);
       this.run.join(session.id);
       this.syncSpectators();
       // A fresh encoder per connection (the client's decoder.reset() on welcome matches it), in the emptier slot.
-      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY});
+      c.encoder=new FrameEncoder(this.ids,{viewer:session.id,slot:this.freeSlot(c),chain:true,farEvery:FAR_EVERY,...(this.labAsleep?{interest:{asleep:this.labAsleep}}:{})});
       const player=this.sim.players.get(session.id)!;
       this.sendJson(c,{t:'welcome',protocol:ROOM_PROTOCOL,id:session.id,token:session.token,ack:player.ack,tick:this.sim.tick,
         run:this.runForClients(),world:worldDescriptor(this.sim.terrain),map:welcomeMap(this.map),
@@ -898,6 +908,11 @@ export class Room {
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill
     // (and its kill-cam) without waiting for stragglers on the endless map.
     if(m.wipe===true)for(const e of [...this.sim.world.enemies.values()])if(!e.boss)this.sim.world.damageEnemy(e.id,1e9,id);
+    // melee-alcance-2x proofs: the sender holds that weapon (an inventory build: it takes a slot and the hand), so a GIF
+    // shows a crate's weapon without waiting for a crate.
+    if(typeof m.give==='string'&&ITEMS.get(m.give)?.kind==='weapon'&&p.build.hand!==undefined&&p.build.weapons.length<MAX_WEAPONS){
+      p.build.weapons.push({id:m.give,level:1});p.build.hand=p.build.weapons.length-1;
+    }
     // VGM-053B proofs (design review D3): a harmless telegraph (0 damage) and a critter at a point near the base reach,
     // so the blackout is photographed with danger on screen.
     const lab=(v:unknown)=>v&&typeof v==='object'&&Number.isFinite((v as {x:number}).x)&&Number.isFinite((v as {y:number}).y)&&
@@ -1135,7 +1150,10 @@ export class Room {
   /** The run as clients see it: RunState plus, in a level-up pause (D-050), its clock and who is still picking. */
   private runForClients(){
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
-    return pause?{...snap,pause:{...pause,...this.sim.offerCharges()}}:snap;
+    // The minuto de Minerva (mode 'ninhos'): its end tick while it lasts; one push when it shows, one when it goes.
+    const until=snap.phase==='combat'?this.sim.run.nests?.state.minervaUntil:undefined;
+    const minerva=until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{};
+    return pause?{...snap,...minerva,pause:{...pause,...this.sim.offerCharges()}}:{...snap,...minerva};
   }
   private pushRun(force=false){
     const run=this.runForClients(),pause=run.pause;

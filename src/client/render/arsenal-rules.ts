@@ -7,9 +7,10 @@
  * the items and the hand wear their `ui` sticker (hud/items.ts icon), the shots their `efeitos` strip (frames side by
  * side, square: frame size = strip height) and their `projeteis` piece (art/horde-art.ts aliases).
  */
-import {KIT_IDS} from '../../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
+import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS} from './arsenal-a2-look.ts';
 
 export type Rarity=1|2|3|4|5;
 export const rarityOf=(value:number):Rarity=>Math.min(5,Math.max(1,Math.round(Number.isFinite(value)?value:1))) as Rarity;
@@ -23,7 +24,7 @@ export const RARITY_NAME:Readonly<Record<Rarity,string>>={1:'Verde',2:'Azul',3:'
  * The sim's crate numbers, mirrored (the client never imports src/sim; tests/client/arsenal-render.test.ts checks them
  * against sim/crates.ts): reach to open and seconds to open by rarity.
  */
-export const CRATE_OPEN_REACH=1;
+export const CRATE_OPEN_REACH=CRATE_OPEN_RADIUS;
 export const CRATE_OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 export const crateOpenSeconds=(rarity:number)=>CRATE_OPEN_SECONDS[rarityOf(rarity)-1];
 /** The crate's art (art/base-art.ts BASE_ART.crate) and its opening rows. */
@@ -81,9 +82,11 @@ export class CrateOpenings{
 /** The arsenal's items (sim/weapons/arsenal.ts, sim/inventory.ts): hud/items.ts entries the D-051 card added. */
 export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','submetralhadora','rifle','macarico','rojao',
   'chinelo-lendario','boleto-lendario','cafe-lendario','guarda-chuva-lendario','pombo-lendario','audio-lendario',
-  'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente','silenciador',
+  'coxinha','brigadeiro','pacoca','cocada','kit-torre','pente',
   // Kits de torre (torre-pela-caixa): the tower's sticker on the ground.
-  ...KIT_IDS];
+  ...KIT_IDS,
+  // Pack 12 (arsenal-completo-no-bau): the weapons the sim runs (fatia A2: render/arsenal-a2-look.ts).
+  ...A2_ITEMS];
 /** hud/items.ts by id (an id the HUD does not know has no sticker here). */
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */
@@ -109,14 +112,18 @@ export const handsOnCar=(car:{movers?:readonly string[];rope?:string}|undefined,
  */
 export interface FireLook {art?:string;kind:'muzzle'|'cone'|'blast'|'slash';size:number;ms:number;reach?:number}
 export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
-  faca:{kind:'slash',size:70,ms:160},
+  // melee-alcance-2x: the faca reaches twice as far, so its arc is twice as big (and SLASH_AHEAD twice as far out).
+  faca:{kind:'slash',size:140,ms:160},
   pistola:{art:'clarao-pistola',kind:'muzzle',size:80,ms:110},
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
   escopeta:{art:'clarao-espingarda',kind:'cone',size:70,ms:170,reach:1.6},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
+  ...A2_FIRE_LOOK,
 };
+/** How far ahead of the hero (u, along the aim) a slash's arc is centred (melee-alcance-2x: .5 doubled with the faca's reach). */
+export const SLASH_AHEAD=1;
 /** Texture key of an `efeitos` strip loaded for the arsenal. */
 export const fxKey=(art:string)=>`arsenal:fx:${art}`;
 /** Frame of a strip of `frames` frames `ageMs` into an effect of `ms` (the last one holds). */
@@ -138,7 +145,21 @@ export const ARSENAL_PROJECTILE_ALIAS:readonly (readonly [string,string])[]=[
   ['pistola','bala-revolver'],['submetralhadora','bala-metralhadora'],['rifle','bala-fuzil'],['rojao','rojao'],
   ['chinelo-lendario','chinelo-evo'],['boleto-lendario','boleto-evo'],['cafe-lendario','cafe-evo'],
   ['guarda-chuva-lendario','guarda-chuva'],['pombo-lendario','pombo'],['audio-lendario','audio'],
+  ...A2_PROJECTILE_ALIAS,
 ];
+/** `projeteis` pieces of the Pack 12 weapons (not in art/horde-art.ts WEAPON_PROJECTILE_IDS): loaded like those. */
+export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set(A2_PROJECTILE_ALIAS.map(([,art])=>art))];
+
+/**
+ * Card melee-alcance-2x (usuário 22/10: "aumente tamanho do projétil default em 5x, eu quero ver ele visível"): the
+ * heroes' default shot, the pistola's bullet (the first firearm a crate gives), is drawn this many times bigger.
+ * Look only: at the old size (the 0.5 floor of a 64×8 sheet: 32×4 px) it was thinner than its hit circle (radius .22 u,
+ * ~20 px across); ×5 its 20 px thickness is that circle, so the sim's hit area stays. Critters' shots never grow.
+ */
+export const DEFAULT_SHOT_DRAW_SCALE=5;
+const DEFAULT_SHOT_SOURCES:ReadonlySet<string>=new Set(['pistola']);
+/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, else 1. */
+export const shotDrawScale=(hostile:boolean,source:string)=>!hostile&&DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:1;
 
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}

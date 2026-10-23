@@ -1,0 +1,3039 @@
+{
+ "root": "D:\\Gits\\viagem-wt\\ttk-main",
+ "seeds": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12
+ ],
+ "players": [
+  1,
+  4
+ ],
+ "minutes": 10,
+ "legacy": false,
+ "summary": {
+  "1p": [
+   {
+    "min": 1,
+    "hitsMedian": 1,
+    "hitsMean": 1,
+    "kills": 1.8,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 1.1,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 32
+    }
+   },
+   {
+    "min": 2,
+    "hitsMedian": 1,
+    "hitsMean": 1,
+    "kills": 1.7,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 1.3,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 22,
+     "pistola": 17
+    }
+   },
+   {
+    "min": 3,
+    "hitsMedian": 1,
+    "hitsMean": 1,
+    "kills": 2.5,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 1.6,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 5,
+     "pistola": 7,
+     "vigia-do-predio": 1
+    }
+   },
+   {
+    "min": 4,
+    "hitsMedian": 1,
+    "hitsMean": 1.06,
+    "kills": 2.7,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 1.9,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 5,
+     "pistola": 12
+    }
+   },
+   {
+    "min": 5,
+    "hitsMedian": 1,
+    "hitsMean": 1.26,
+    "kills": 5.1,
+    "ttkMedian": 0,
+    "ttkP75": 0.4,
+    "level": 2.3,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 29,
+     "pistola": 73
+    }
+   },
+   {
+    "min": 6,
+    "hitsMedian": 2,
+    "hitsMean": 2.01,
+    "kills": 5.9,
+    "ttkMedian": 0.5,
+    "ttkP75": 0.6,
+    "level": 3,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 124,
+     "env:explosion": 8,
+     "pistola": 101
+    }
+   },
+   {
+    "min": 7,
+    "hitsMedian": 2,
+    "hitsMean": 2.18,
+    "kills": 4.3,
+    "ttkMedian": 0.55,
+    "ttkP75": 1,
+    "level": 3.2,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 47,
+     "env:explosion": 8,
+     "pistola": 132
+    }
+   },
+   {
+    "min": 8,
+    "hitsMedian": 2,
+    "hitsMean": 2.22,
+    "kills": 5,
+    "ttkMedian": 0.5,
+    "ttkP75": 1.1,
+    "level": 3.5,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 65,
+     "env:marmita": 6,
+     "pistola": 160,
+     "env:explosion": 3
+    }
+   },
+   {
+    "min": 9,
+    "hitsMedian": 2,
+    "hitsMean": 2.56,
+    "kills": 3.4,
+    "ttkMedian": 0.6,
+    "ttkP75": 1.9,
+    "level": 3.7,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 37,
+     "pistola": 164,
+     "env:marmita": 1,
+     "env:explosion": 4
+    }
+   },
+   {
+    "min": 10,
+    "hitsMedian": 3,
+    "hitsMean": 2.56,
+    "kills": 1.5,
+    "ttkMedian": 1.15,
+    "ttkP75": 1.85,
+    "level": 3.8,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 95
+    }
+   }
+  ],
+  "4p": [
+   {
+    "min": 1,
+    "hitsMedian": 2,
+    "hitsMean": 1.74,
+    "kills": 11.8,
+    "ttkMedian": 0.05,
+    "ttkP75": 0.5,
+    "level": 2.3,
+    "downs": 0,
+    "damageByWeapon": {
+     "faca": 305,
+     "pistola": 70
+    }
+   },
+   {
+    "min": 2,
+    "hitsMedian": 1,
+    "hitsMean": 1.63,
+    "kills": 5.9,
+    "ttkMedian": 0,
+    "ttkP75": 1,
+    "level": 2.5,
+    "downs": 0,
+    "damageByWeapon": {
+     "vigia-do-predio": 16,
+     "pistola": 59,
+     "faca": 39
+    }
+   },
+   {
+    "min": 3,
+    "hitsMedian": 1,
+    "hitsMean": 1.17,
+    "kills": 26.4,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 3.8,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 186,
+     "faca": 123,
+     "vigia-do-predio": 4,
+     "torre-chinelo": 1
+    }
+   },
+   {
+    "min": 4,
+    "hitsMedian": 1,
+    "hitsMean": 1.19,
+    "kills": 22.4,
+    "ttkMedian": 0,
+    "ttkP75": 0,
+    "level": 4.5,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 187,
+     "vigias-armados": 8,
+     "morteiro": 2,
+     "faca": 18,
+     "vigia-do-predio": 18
+    }
+   },
+   {
+    "min": 5,
+    "hitsMedian": 1,
+    "hitsMean": 1.69,
+    "kills": 37.7,
+    "ttkMedian": 0,
+    "ttkP75": 0.55,
+    "level": 6,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 1080,
+     "vigias-armados": 15,
+     "faca": 77,
+     "env:explosion": 41,
+     "torre-chinelo": 2,
+     "vigia-do-predio": 6
+    }
+   },
+   {
+    "min": 6,
+    "hitsMedian": 2,
+    "hitsMean": 2.16,
+    "kills": 25.3,
+    "ttkMedian": 0.45,
+    "ttkP75": 1.05,
+    "level": 6.9,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 1065,
+     "faca": 183,
+     "morteiro": 22,
+     "env:explosion": 53,
+     "vigia-do-predio": 2
+    }
+   },
+   {
+    "min": 7,
+    "hitsMedian": 2,
+    "hitsMean": 2.32,
+    "kills": 35.9,
+    "ttkMedian": 0.5,
+    "ttkP75": 1.15,
+    "level": 7.8,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 1623,
+     "morteiro": 15,
+     "faca": 328,
+     "env:explosion": 78,
+     "vigia-do-predio": 15,
+     "torre-chinelo": 10
+    }
+   },
+   {
+    "min": 8,
+    "hitsMedian": 2,
+    "hitsMean": 2.62,
+    "kills": 25.5,
+    "ttkMedian": 0.5,
+    "ttkP75": 1.5,
+    "level": 8.7,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 1333,
+     "faca": 223,
+     "env:explosion": 93,
+     "env:marmita": 40,
+     "vigia-do-predio": 19,
+     "torre-chinelo": 16
+    }
+   },
+   {
+    "min": 9,
+    "hitsMedian": 3,
+    "hitsMean": 3.15,
+    "kills": 35.7,
+    "ttkMedian": 0.75,
+    "ttkP75": 2.1,
+    "level": 9.6,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 2080,
+     "env:marmita": 44,
+     "faca": 467,
+     "env:explosion": 270,
+     "torre-chinelo": 11
+    }
+   },
+   {
+    "min": 10,
+    "hitsMedian": 3,
+    "hitsMean": 3.35,
+    "kills": 36.8,
+    "ttkMedian": 0.55,
+    "ttkP75": 1.85,
+    "level": 10.6,
+    "downs": 0,
+    "damageByWeapon": {
+     "pistola": 2829,
+     "env:explosion": 245,
+     "faca": 494,
+     "env:marmita": 57
+    }
+   }
+  ]
+ },
+ "runs": [
+  {
+   "seed": 1,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 51
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "faca": 17
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 76
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "faca": 375,
+      "env:explosion": 30
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 132
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 114
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 11
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 9.2
+  },
+  {
+   "seed": 1,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 8,
+     "damage": {
+      "faca": 104,
+      "pistola": 42
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "vigia-do-predio": 116,
+      "pistola": 74
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 3,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 14,
+     "damage": {
+      "pistola": 70
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 32,
+     "damage": {
+      "pistola": 139,
+      "vigias-armados": 93,
+      "morteiro": 20
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 40,
+     "damage": {
+      "pistola": 1746,
+      "vigias-armados": 181,
+      "faca": 28,
+      "env:explosion": 78
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0.9,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 30,
+     "damage": {
+      "pistola": 1329,
+      "faca": 15,
+      "morteiro": 262
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 22,
+     "damage": {
+      "pistola": 800,
+      "morteiro": 179,
+      "faca": 170
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 57,
+     "damage": {
+      "pistola": 2703.5,
+      "faca": 364.5,
+      "env:explosion": 255
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 48,
+     "damage": {
+      "pistola": 3575.5,
+      "env:marmita": 110,
+      "faca": 78.5
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 0.85,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 29,
+     "damage": {
+      "pistola": 1928.5
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 0.3,
+     "hitsMedian": 2
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 2,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 36
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 104
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "faca": 4
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 35
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 2
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 171
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.7,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "faca": 164,
+      "env:explosion": 30
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.8,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "env:marmita": 34,
+      "faca": 87
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 7.4
+  },
+  {
+   "seed": 2,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 8,
+     "damage": {
+      "faca": 164,
+      "pistola": 70
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.3,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 62
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 14,
+     "damage": {
+      "pistola": 88,
+      "faca": 3
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 17,
+     "damage": {
+      "faca": 40,
+      "pistola": 115
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 30,
+     "damage": {
+      "pistola": 888,
+      "torre-chinelo": 22,
+      "faca": 44,
+      "env:explosion": 18
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0.25,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 37,
+     "damage": {
+      "pistola": 1307.2,
+      "faca": 187.8,
+      "env:explosion": 150
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0.3,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 32,
+     "damage": {
+      "pistola": 1116.2,
+      "faca": 476.19999999999993,
+      "env:explosion": 126.6
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.85,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 18,
+     "damage": {
+      "pistola": 787.6,
+      "env:explosion": 165,
+      "faca": 192.4,
+      "env:marmita": 50
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.95,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 33,
+     "damage": {
+      "pistola": 1694,
+      "faca": 473,
+      "env:explosion": 120
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 1.35,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 34,
+     "damage": {
+      "pistola": 2575,
+      "env:explosion": 602,
+      "faca": 1063.9999999999998,
+      "env:marmita": 122
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 2.2,
+     "hitsMedian": 4
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 3,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 14
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "pistola": 65
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 13,
+     "damage": {
+      "pistola": 283
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "pistola": 270,
+      "env:explosion": 54
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.6,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 258
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 12,
+     "damage": {
+      "pistola": 817
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "pistola": 398,
+      "env:marmita": 8
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 1.05,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {
+      "pistola": 90
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 3,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 12,
+     "damage": {
+      "faca": 126,
+      "pistola": 254
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.05,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 15,
+     "damage": {
+      "pistola": 392
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 20,
+     "damage": {
+      "pistola": 192
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 30,
+     "damage": {
+      "pistola": 316,
+      "faca": 57
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 25,
+     "damage": {
+      "pistola": 593
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 25,
+     "damage": {
+      "pistola": 1721,
+      "env:explosion": 12
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 38,
+     "damage": {
+      "pistola": 2155,
+      "faca": 74,
+      "env:explosion": 30
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "pistola": 507,
+      "env:marmita": 50
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 47,
+     "damage": {
+      "pistola": 3509.8500000000004,
+      "env:marmita": 128,
+      "env:explosion": 324.15
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 61,
+     "damage": {
+      "pistola": 5135.900000000001,
+      "faca": 653.3,
+      "env:explosion": 265
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 4,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 36
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 16
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 11
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 62
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 232
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 179
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/car",
+   "endMin": 6.8
+  },
+  {
+   "seed": 4,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 362
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 34.8,
+     "hitsMedian": 7
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "faca": 62,
+      "pistola": 84
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 28,
+     "damage": {
+      "pistola": 204,
+      "faca": 19
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 36,
+     "damage": {
+      "pistola": 249,
+      "faca": 19
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 54,
+     "damage": {
+      "pistola": 1838,
+      "env:explosion": 192,
+      "faca": 24
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 10,
+     "damage": {
+      "pistola": 708.9,
+      "env:explosion": 31.099999999999994,
+      "faca": 24
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.7,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 43,
+     "damage": {
+      "pistola": 1862.9,
+      "env:explosion": 14.099999999999994,
+      "faca": 26
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 22,
+     "damage": {
+      "pistola": 1666.200000000001,
+      "env:explosion": 362.6
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.85,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 358.2
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 3,
+     "hitsMedian": 8
+    },
+    {
+     "kills": 41,
+     "damage": {
+      "pistola": 3151.199999999997,
+      "env:explosion": 1287.8
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 0.6,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 5,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 36
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 7
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 7
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 49
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 265
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 1,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {
+      "faca": 26.400000000000002
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 6.1
+  },
+  {
+   "seed": 5,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 7,
+     "damage": {
+      "faca": 338
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 11,
+     "damage": {
+      "vigia-do-predio": 16,
+      "faca": 138,
+      "pistola": 86
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.1,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 22,
+     "damage": {
+      "faca": 154,
+      "vigia-do-predio": 13,
+      "pistola": 68
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 14,
+     "damage": {
+      "faca": 23,
+      "vigia-do-predio": 40,
+      "pistola": 49
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 37,
+     "damage": {
+      "pistola": 672,
+      "faca": 266
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 35,
+     "damage": {
+      "faca": 871,
+      "pistola": 581,
+      "env:explosion": 120
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 36,
+     "damage": {
+      "pistola": 902,
+      "faca": 573,
+      "env:explosion": 90
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.35,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 288.79999999999995,
+      "faca": 247.20000000000002,
+      "vigia-do-predio": 114
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 3.15,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 58,
+     "damage": {
+      "pistola": 1570.1999999999998,
+      "env:marmita": 20,
+      "faca": 1697.4000000000005,
+      "env:explosion": 514
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.8,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 48,
+     "damage": {
+      "pistola": 2399.2,
+      "faca": 2307.0000000000005,
+      "env:explosion": 225.2,
+      "env:marmita": 122
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 0.9,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 6,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 51
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 39
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "pistola": 215
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 141
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 11,
+     "damage": {
+      "pistola": 351,
+      "env:marmita": 34
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 249
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 1.1,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "pistola": 300
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 1.75,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 6,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 22,
+     "damage": {
+      "faca": 416,
+      "pistola": 134
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.75,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 13,
+     "damage": {
+      "pistola": 120,
+      "vigia-do-predio": 23
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 33,
+     "damage": {
+      "pistola": 156,
+      "faca": 19,
+      "vigia-do-predio": 91
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 27,
+     "damage": {
+      "pistola": 693,
+      "vigia-do-predio": 74,
+      "faca": 18
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 31,
+     "damage": {
+      "pistola": 1397,
+      "vigia-do-predio": 24,
+      "faca": 48,
+      "env:explosion": 210
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.6,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 40,
+     "damage": {
+      "pistola": 2174,
+      "env:explosion": 30,
+      "vigia-do-predio": 175
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 23,
+     "damage": {
+      "pistola": 860,
+      "vigia-do-predio": 110,
+      "env:explosion": 1,
+      "faca": 33
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.3,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 55,
+     "damage": {
+      "torre-chinelo": 137.6,
+      "pistola": 2644.4,
+      "faca": 875,
+      "env:marmita": 102,
+      "env:explosion": 499
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 0.75,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 19,
+     "damage": {
+      "pistola": 2660,
+      "faca": 215,
+      "env:explosion": 203
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 2.45,
+     "hitsMedian": 4
+    }
+   ],
+   "outcome": "victory/opened",
+   "endMin": 9.7
+  },
+  {
+   "seed": 7,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 6,
+     "damage": {
+      "faca": 102
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "vigia-do-predio": 7,
+      "faca": 11
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 6
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 9,
+     "damage": {
+      "faca": 212
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 54
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 6.6,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 54
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 7.8
+  },
+  {
+   "seed": 7,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 15,
+     "damage": {
+      "faca": 220,
+      "pistola": 278
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 28,
+     "damage": {
+      "faca": 10,
+      "pistola": 221,
+      "torre-chinelo": 6
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 10,
+     "damage": {
+      "pistola": 100
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 47,
+     "damage": {
+      "pistola": 1331
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 19,
+     "damage": {
+      "pistola": 762
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 29,
+     "damage": {
+      "pistola": 1692
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 29,
+     "damage": {
+      "pistola": 1496,
+      "env:explosion": 132,
+      "env:marmita": 11
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.35,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 19,
+     "damage": {
+      "pistola": 1219,
+      "env:explosion": 65
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 41,
+     "damage": {
+      "env:explosion": 76,
+      "pistola": 2758,
+      "env:marmita": 215
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.35,
+     "hitsMedian": 2
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 8,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 44,
+      "pistola": 44
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 33
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 4
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 12,
+     "damage": {
+      "pistola": 248
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 148
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 13,
+     "damage": {
+      "pistola": 593
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 102
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 1.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 101
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.65,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 517
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 1.2,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 8,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 12,
+     "damage": {
+      "faca": 358
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "faca": 10,
+      "pistola": 10
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 48,
+     "damage": {
+      "faca": 408.6,
+      "pistola": 624.4
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 23,
+     "damage": {
+      "pistola": 215
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 26,
+     "damage": {
+      "pistola": 741,
+      "env:explosion": 12
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 26,
+     "damage": {
+      "pistola": 1582.5,
+      "env:explosion": 90,
+      "faca": 25.5
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 34,
+     "damage": {
+      "pistola": 2033,
+      "env:explosion": 151
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 401
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.9,
+     "hitsMedian": 8
+    },
+    {
+     "kills": 50,
+     "damage": {
+      "pistola": 2473,
+      "env:marmita": 100,
+      "env:explosion": 673
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 9,
+     "damage": {
+      "pistola": 694,
+      "env:explosion": 30
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 1.1,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 9,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 2,
+     "damage": {
+      "faca": 92
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "pistola": 155
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "pistola": 7
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "pistola": 16
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "pistola": 139
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 123
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.3,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 8,
+     "damage": {
+      "pistola": 375,
+      "env:explosion": 60
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.75,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 295
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 378
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "pistola": 226
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 9,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 22,
+     "damage": {
+      "faca": 774.3999999999999
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 13,
+     "damage": {
+      "faca": 156.79999999999998
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 35,
+     "damage": {
+      "faca": 377.12,
+      "pistola": 154
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 12,
+     "damage": {
+      "pistola": 144,
+      "faca": 16
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 39,
+     "damage": {
+      "pistola": 628.88,
+      "faca": 215.12
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 27,
+     "damage": {
+      "pistola": 1085,
+      "faca": 261
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 41,
+     "damage": {
+      "torre-chinelo": 115.52000000000001,
+      "faca": 1301.3600000000001,
+      "env:explosion": 170.12,
+      "pistola": 872
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 21,
+     "damage": {
+      "pistola": 1110.3600000000001,
+      "env:explosion": 30,
+      "faca": 341.64
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 34,
+     "damage": {
+      "pistola": 2427.8,
+      "faca": 789.1999999999999,
+      "env:explosion": 167
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 1.15,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 28,
+     "damage": {
+      "pistola": 1741.1599999999999,
+      "faca": 841.84,
+      "env:marmita": 61
+     },
+     "level": 11,
+     "downs": 0,
+     "ttkMedian": 1,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "victory/opened",
+   "endMin": 9.8
+  },
+  {
+   "seed": 10,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 1,
+     "damage": {
+      "faca": 7
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "faca": 9
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "faca": 150
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 108
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 1,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {
+      "faca": 24
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 6.3
+  },
+  {
+   "seed": 10,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 10,
+     "damage": {
+      "faca": 178,
+      "pistola": 32
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "vigia-do-predio": 62,
+      "pistola": 3
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 1,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 31,
+     "damage": {
+      "pistola": 253,
+      "vigia-do-predio": 13,
+      "faca": 10
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 27,
+     "damage": {
+      "pistola": 530,
+      "vigia-do-predio": 81,
+      "faca": 10
+     },
+     "level": 5,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 33,
+     "damage": {
+      "pistola": 1197,
+      "faca": 13,
+      "env:explosion": 12
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 18,
+     "damage": {
+      "pistola": 877
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.65,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 44,
+     "damage": {
+      "faca": 394,
+      "pistola": 1935,
+      "env:explosion": 164
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 49,
+     "damage": {
+      "pistola": 3029,
+      "faca": 568,
+      "env:marmita": 220
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 40,
+     "damage": {
+      "pistola": 2871,
+      "env:explosion": 432,
+      "faca": 647
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 1,
+     "hitsMedian": 4
+    },
+    {
+     "kills": 64,
+     "damage": {
+      "pistola": 5219,
+      "env:explosion": 210,
+      "faca": 274,
+      "env:marmita": 61
+     },
+     "level": 12,
+     "downs": 0,
+     "ttkMedian": 0.65,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 11,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 11
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "faca": 4
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 70
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "faca": 359
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 156
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "faca": 513
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 5.4,
+     "hitsMedian": 8
+    },
+    {
+     "kills": 11,
+     "damage": {
+      "faca": 431,
+      "env:explosion": 9
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.5,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "timeout/timeout",
+   "endMin": 10
+  },
+  {
+   "seed": 11,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 7,
+     "damage": {
+      "faca": 258
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 5,
+     "damage": {
+      "faca": 100
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.35,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 26,
+     "damage": {
+      "faca": 327
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 18,
+     "damage": {
+      "pistola": 94,
+      "faca": 9
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 44,
+     "damage": {
+      "pistola": 1246,
+      "faca": 76,
+      "env:explosion": 60
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 26,
+     "damage": {
+      "pistola": 826.6,
+      "faca": 476.4
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.35,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 27,
+     "damage": {
+      "pistola": 1766.4,
+      "faca": 300.59999999999997,
+      "env:explosion": 30
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.7,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 40,
+     "damage": {
+      "faca": 447.20000000000005,
+      "torre-chinelo": 190.4,
+      "pistola": 2188.4,
+      "env:explosion": 60
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 54,
+     "damage": {
+      "env:marmita": 110,
+      "faca": 404.20000000000005,
+      "pistola": 5110.799999999999,
+      "env:explosion": 30
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 0.05,
+     "hitsMedian": 2
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 9.9
+  },
+  {
+   "seed": 12,
+   "players": 1,
+   "minutes": [
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 3,
+     "damage": {
+      "faca": 66
+     },
+     "level": 1,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 2,
+     "damage": {
+      "pistola": 9
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 4,
+     "damage": {
+      "pistola": 23
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 6,
+     "damage": {
+      "pistola": 127
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 7,
+     "damage": {
+      "pistola": 228
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 1,
+     "damage": {
+      "pistola": 34
+     },
+     "level": 3,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 12,
+     "damage": {
+      "pistola": 346,
+      "env:explosion": 30
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0.05,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 11,
+     "damage": {
+      "pistola": 843,
+      "env:explosion": 30
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 1.05,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    }
+   ],
+   "outcome": "defeat/team",
+   "endMin": 8.7
+  },
+  {
+   "seed": 12,
+   "players": 4,
+   "minutes": [
+    {
+     "kills": 14,
+     "damage": {
+      "faca": 334,
+      "pistola": 28
+     },
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": 0.45,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 0,
+     "damage": {},
+     "level": 2,
+     "downs": 0,
+     "ttkMedian": null,
+     "hitsMedian": null
+    },
+    {
+     "kills": 38,
+     "damage": {
+      "pistola": 236.6,
+      "faca": 167.4
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 17,
+     "damage": {
+      "pistola": 134,
+      "faca": 16
+     },
+     "level": 4,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 50,
+     "damage": {
+      "pistola": 1384,
+      "faca": 240,
+      "env:explosion": 108
+     },
+     "level": 6,
+     "downs": 0,
+     "ttkMedian": 0,
+     "hitsMedian": 1
+    },
+    {
+     "kills": 19,
+     "damage": {
+      "faca": 280,
+      "pistola": 608
+     },
+     "level": 7,
+     "downs": 0,
+     "ttkMedian": 0.15,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 45,
+     "damage": {
+      "pistola": 2173.4,
+      "faca": 628.6,
+      "env:explosion": 90
+     },
+     "level": 8,
+     "downs": 0,
+     "ttkMedian": 0.85,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 30,
+     "damage": {
+      "pistola": 956.2,
+      "env:explosion": 113,
+      "faca": 493,
+      "env:marmita": 150
+     },
+     "level": 9,
+     "downs": 0,
+     "ttkMedian": 0.4,
+     "hitsMedian": 2
+    },
+    {
+     "kills": 41,
+     "damage": {
+      "faca": 1043.2,
+      "pistola": 2625.3999999999996,
+      "env:explosion": 449.20000000000005,
+      "env:marmita": 61
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 1.1,
+     "hitsMedian": 3
+    },
+    {
+     "kills": 13,
+     "damage": {
+      "pistola": 549.2,
+      "faca": 162.8
+     },
+     "level": 10,
+     "downs": 0,
+     "ttkMedian": 0.55,
+     "hitsMedian": 3
+    }
+   ],
+   "outcome": "victory/opened",
+   "endMin": 9.4
+  }
+ ]
+}

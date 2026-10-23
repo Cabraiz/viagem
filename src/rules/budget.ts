@@ -22,6 +22,16 @@ export const MAX_PROJECTILES=400;
  * Longer lives mean more shots alive at once; MAX_PROJECTILES is unchanged.
  */
 export const PROJECTILE_SPEED_MULT=.5;
+/**
+ * Card upgrades-megabonk (usuário 22/10: "nossos projéteis 5x mais lentos, ou 4"; after the GIFs of 4× and 5× he chose
+ * 3×, via the Orquestrador at 04:25Z): the HEROES' travelling shots (pierce
+ * and homing weapons, the flung sandals) fly HERO_SHOT_SLOWDOWN × slower than PROJECTILE_SPEED_MULT made them and live
+ * HERO_SHOT_SLOWDOWN × longer, so they still reach as far; the "velocidade do projétil" upgrade buys the speed back. The
+ * enemies' shots (the agiota's boleto, a reflected shot) keep PROJECTILE_SPEED_MULT.
+ */
+export const HERO_SHOT_SLOWDOWN=3;
+/** The heroes' travelling shots: PROJECTILE_SPEED_MULT / HERO_SHOT_SLOWDOWN × the tuned speed, for the inverse × the time. */
+export const HERO_SHOT_SPEED_MULT=PROJECTILE_SPEED_MULT/HERO_SHOT_SLOWDOWN;
 /** All pickups (heal, chests, resources, items, the zueira's boletos). */
 export const MAX_PICKUPS=250;
 export const MAX_TELEGRAPHS=24;

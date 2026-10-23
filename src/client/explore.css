@@ -8,7 +8,8 @@ html:has(.explore-shell[open]){scrollbar-width:none}
 .explore-canvas canvas{display:block!important;width:100%!important;height:100%!important}
 .explore-config{position:absolute;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));z-index:3;display:grid;place-items:center;width:48px;height:48px;padding:0;border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);color:var(--c-papel);box-shadow:var(--s-2);cursor:pointer}
 /* The entire bottom strip stays transparent and passes clicks to the map. */
-.explore-controls{position:absolute;inset:auto 0 0;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:transparent;border:0;pointer-events:none}
+/* The stick and the attack share one horizontal axis (BUG-20261022-ORQ-hud-mobile-rodape): centred, not bottom-aligned. */
+.explore-controls{position:absolute;inset:auto 0 0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));background:transparent;border:0;pointer-events:none}
 .explore-movement,.explore-actions{pointer-events:none}
 .explore-stick{position:relative;width:112px;height:112px;box-sizing:border-box;border:2px solid var(--c-papel);border-radius:50%;background:color-mix(in srgb,var(--c-breu) 22%,transparent);box-shadow:0 0 0 1px var(--c-breu),inset 0 0 0 1px var(--c-breu);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab;pointer-events:auto}
 .explore-stick::before{content:'';position:absolute;inset:17px;border:1px solid color-mix(in srgb,var(--c-papel-claro) 29%,transparent);border-radius:50%;pointer-events:none}

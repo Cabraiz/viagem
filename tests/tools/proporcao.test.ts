@@ -18,17 +18,7 @@ assert.ok(classes.includes('clt-cansado'),'the CLT runs (corrida-clt): its run i
  * Walks drawn before this gate (movimento16-espelho, 21/10) that miss it. The walk only shows with HERO_GAIT.run off: the
  * viciado runs. A fixed one leaves the list (the test asks for that), a new miss fails.
  */
-const KNOWN_WALK:Record<string,readonly string[]>={'viciado-em-bet':[
-  'viciado-em-bet walk16-S loop seam 0.196 = 1.3× the median step 0.151 (≤ 1.2×)',
-  'viciado-em-bet walk16-N head 0.93 (±4%)',
-  'viciado-em-bet walk16-N height 0.94 (±4%)',
-  'viciado-em-bet walk16-N loop seam 0.185 = 1.38× the median step 0.135 (≤ 1.2×)',
-  'viciado-em-bet walk16-W height 0.922 (±4%)',
-  'viciado-em-bet walk16-NW head 0.87 (±4%)',
-  'viciado-em-bet walk16-NW height 0.94 (±4%)',
-  'viciado-em-bet walk16-SE head 0.94 (±4%)',
-  'viciado-em-bet walk16-SE loop seam 0.232 = 1.32× the median step 0.176 (≤ 1.2×)',
-]};
+const KNOWN_WALK:Record<string,readonly string[]>={};
 
 test('the meter finds a known scale: the rest pose shrunk to 80 % reads a head of 0.8 (±2.5 %)',async()=>{
   const files=manifest.pieces['viciado-em-bet'].files,idle=files['idle16-S'];

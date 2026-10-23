@@ -228,7 +228,8 @@ async function main(){
       await page.waitForSelector('[data-hero="clt-cansado"]',{timeout:60000});
       const boxes=[];
       for(const hero of Object.keys(RECORTES)){
-        await page.click(`[data-hero="${hero}"]`);
+        // The upright row pages its faces (4+ heroes: the first one can be off the page): the click the row itself takes.
+        await page.evaluate(id=>document.querySelector(`[data-hero="${id}"]`).click(),hero);
         await page.waitForFunction(id=>document.querySelector(`[data-hero="${id}"]`)?.getAttribute('aria-pressed')==='true',hero,{timeout:60000});
         await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
         boxes.push(await page.evaluate(()=>{const r=document.querySelector('#portrait').getBoundingClientRect();return {hidden:!!document.querySelector('.estadio-recorte')?.hidden,x:r.x,y:r.y,w:r.width,h:r.height};}));

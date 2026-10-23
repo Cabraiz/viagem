@@ -54,6 +54,10 @@ const HEROES=[
     heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},
+  // NEW-20261023-ORQ-tela-vendedor-praia (the user chose variation 2, the promenade at sunset): Codex redrew it alone
+  // at 16:9 and outpainted the bleed (lona/largo/compoe, like the maromba). Only the background for now.
+  {id:'vendedor-praia',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-vendedor-praia',
+    fundo:'fundo-vendedor-praia-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */
@@ -133,7 +137,7 @@ for(const hero of HEROES){
     const layered=hero.sombra?sharp(source).composite([{input:path.join(dir,hero.sombra)}]):sharp(source);
     report(file,await layered.webp({quality:95,effort:6}).toFile(file));
   }
-  if(!part('heroi'))continue;
+  if(!part('heroi')||!hero.heroi)continue;
   const source=path.join(dir,hero.heroi);
   const {width,height}=await sharp(source).metadata();
   if(width!==1920||height!==1080)throw new Error(`${hero.heroi}: expected 1920x1080, got ${width}x${height}`);

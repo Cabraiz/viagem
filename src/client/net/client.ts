@@ -764,7 +764,8 @@ export class CoopClient {
     }
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
-    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil}:{};
+    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil,
+      ...(wire.moveSpeed!==undefined?{stats:{moveSpeed:wire.moveSpeed}}:{})}:{};
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).
     const car=view.objective?.car;

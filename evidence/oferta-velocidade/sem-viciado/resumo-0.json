@@ -1,0 +1,59 @@
+{
+ "bots": 1,
+ "atrasoMs": 0,
+ "quadros": 979,
+ "chegadas": 203,
+ "chegadaGapMs": {
+  "min": 1,
+  "p50": 95,
+  "max": 528,
+  "abaixo30ms": 34
+ },
+ "ticksPorQuadro": {
+  "1": 8,
+  "2": 183,
+  "3": 8,
+  "4": 3
+ },
+ "speeds": [
+  {
+   "id": "ba67a490-fad2-491e-a277-fb420538569e",
+   "self": true,
+   "classId": "viciado-em-bet",
+   "servidor": {
+    "mediaAndando": 13.13,
+    "p90": 37.88,
+    "max": 45.85
+   },
+   "tela": {
+    "mediaAndando": 199.55,
+    "p95": 712.05,
+    "max": 1993.75,
+    "janela100msP95": 5.44,
+    "janela100msMax": 17.48,
+    "quadrosAcima125": "91.5 %",
+    "quadrosParado": "80.2 %"
+   }
+  },
+  {
+   "id": "bot-1",
+   "self": false,
+   "classId": "caca-promocao",
+   "servidor": {
+    "mediaAndando": 3.97,
+    "p90": 4,
+    "max": 4.02
+   },
+   "tela": {
+    "mediaAndando": 4.01,
+    "p95": 4.12,
+    "max": 5.71,
+    "janela100msP95": 4.11,
+    "janela100msMax": 5.71,
+    "quadrosAcima125": "0.3 %",
+    "quadrosParado": "21.2 %"
+   }
+  }
+ ],
+ "errors": []
+}

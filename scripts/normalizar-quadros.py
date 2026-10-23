@@ -9,7 +9,7 @@ diferentes): o personagem "encolhe e cresce" ao andar. Este script mede, em cada
 encaixando o molde do PARADO da mesma direção em cada quadro (escala 0,6–1,4, IoU de alfa suave, como o proporcao.mjs),
 e compara com a mediana da própria folha.
 Fator do quadro = mediana(1/cabeça, 1/cabeça, 1/tronco), ou 1/cabeça quando o tronco não encaixa.
-Piso: ¾ de pixel da cabeça (a 96 px a cabeça tem ~15 px: 1 px = 7 %); variação de vizinho até 2 pisos.
+Piso: 1 pixel da cabeça, o menor passo que o jogo mostra (a 96 px a cabeça tem ~15 px: 1 px = 7 %); variação de vizinho até 2 pisos.
 
   --checar   só o relatório; sai com código 1 se algum quadro passar de cabeça ±3 % da MEDIANA da folha (ou tronco ±4 %,
              onde encaixa), se a cabeça mediana da folha passar de ±4 % do parado, se o
@@ -37,13 +37,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITES = os.path.join(ROOT, 'public', 'art', 'sprites')
 IDLE8 = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE']
 MIRROR = {'E': 'W', 'NE': 'NW', 'SW': 'SE'}
-TOL = {'cabeca_folha': .04, 'cabeca': .03, 'tronco': .04, 'altura': .04, 'vizinho': .02}
+TOL = {'altura_corrida_min': .10, 'cabeca_folha': .04, 'cabeca': .03, 'tronco': .04, 'altura': .04, 'vizinho': .02}
 SOLID = 128
 # the torso enters the factor only when the rest pose's torso fits the frame this well (soft IoU)
 TORSO_IOU = .85
 # the meter's floor, in px of the head template (a 96 px cell's head is ~15 px tall)
-PISO_PX = .75
+PISO_PX = 1.
 MARGIN = 2
+# set by main(): the sheet is a run (run16 key or a phase table), whose height may go down to −10 %
+CORRIDA = False
 
 
 def cells(img, cell, count):
@@ -236,9 +238,11 @@ def check(frames, ratios, ground, stance=None):
     if hs:
         hm = float(np.median(hs))
         floor = 1 / float(np.median([m['H'] for m in frames if m]))
-        good = abs(hm - 1) <= max(TOL['altura'], floor) + 1e-6
+        # a run may stand lower (knees bent, user 23/10): −10 %; never taller than +4 %
+        lo = TOL['altura_corrida_min'] if CORRIDA else TOL['altura']
+        good = 1 - max(lo, floor) - 1e-6 <= hm <= 1 + max(TOL['altura'], floor) + 1e-6
         ok &= good
-        lines.append(f"altura mediana no apoio {hm:.3f} {'OK' if good else 'FALHA (±4 %)'}")
+        lines.append(f"altura mediana no apoio {hm:.3f} {'OK' if good else f'FALHA (−{lo * 100:.0f}/+4 %)'}")
     return lines, ok
 
 
@@ -274,6 +278,8 @@ def main():
     p.add_argument('--corrigir', metavar='SAIDA')
     p.add_argument('--antes-depois', metavar='PNG')
     p.add_argument('--json', metavar='SAIDA')
+    p.add_argument('--limiar', type=float, help='--corrigir mexe nos quadros a mais disto da mediana (padrão: metade da tolerância)')
+    p.add_argument('--corrida', action='store_true', help='a folha é uma corrida: altura no apoio até −10 %%')
     p.add_argument('--fase', metavar='JSON', help='tabela de fase da folha (phase.json do montar): apoio = v ≠ 0')
     a = p.parse_args()
     stance = None
@@ -284,6 +290,8 @@ def main():
             stance = [any(v) for v in f['phase']['v']]
         a.folha, a.celula, a.quadros = os.path.join(SPRITES, f['pages'][0]['file']), f['cell'][0], f['frames']
         a.dir = a.dir or a.chave.split('-')[-1]
+    global CORRIDA
+    CORRIDA = bool(a.fase) or bool(a.chave and a.chave.startswith('run16')) or a.corrida
     if a.fase:
         with open(a.fase, encoding='utf8') as ff:
             stance = [any(v) for v in json.load(ff)['v']]
@@ -310,7 +318,7 @@ def main():
         # every frame to the sheet's median scale (the sheet's scale against the rest pose is the montage's KA/KB)
         med = float(np.median([r['fator'] for r in ratios if r]))
         # only the frames off the median (beyond half the tolerance): the others stay as drawn
-        off = lambda r: r is not None and abs(r['fator'] / med - 1) > max(TOL['cabeca'], r['piso']) / 2
+        off = lambda r: r is not None and abs(r['fator'] / med - 1) > (a.limiar if a.limiar is not None else max(TOL['cabeca'], r['piso']) / 2)
         k = [r['fator'] / med if off(r) else 1. for r in ratios]
         for _ in range(4):
             fixed = [rescale(c, m, kk, a.celula) if m else c for c, m, kk in zip(cs, frames, k)]

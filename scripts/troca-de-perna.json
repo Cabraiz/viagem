@@ -1,26 +1,26 @@
 {
- "viciado-em-bet.run16-nw.a0bad6729a9b.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "viciado-em-bet.run16-w.acee1b80e31e.webp": {
+  "alterna": "perfil",
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: no perfil a perna de perto e a de longe têm a mesma silhueta (só a faixa do short muda); padrão do CLT aceito pelo usuário em 23/10 (gerar/vic-W-run-G-s3)"
  },
- "viciado-em-bet.run16-se.9635f4dcda54.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "viciado-em-bet.run16-nw.2f220592e914.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/vic-NW-run-G-c1, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
  },
- "viciado-em-bet.run16-w.660b10af3791.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "viciado-em-bet.run16-se.5dc5e884eb2e.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/vic-SE-run-G-w1, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
  },
- "clt-cansado.run16-nw.c183faaf9215.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "clt-cansado.run16-w.a0da3d1187a7.webp": {
+  "alterna": "perfil",
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: no perfil a perna de perto e a de longe têm a mesma silhueta (só a faixa do short muda); padrão do CLT aceito pelo usuário em 23/10 (NEW-20261022-ORQ-corrida-clt W-A-t3/W-B-t3 (E2))"
  },
- "clt-cansado.run16-se.c437fe145630.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "clt-cansado.run16-se.65e518df23c8.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-SE-run-G-w2, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
  },
- "clt-cansado.run16-w.03aed4cd246f.webp": {
-  "alterna": false,
-  "prova": "evidence BUG-20261022-ORQ-troca-de-perna/antes: a metade B é a A com as cores-marcador trocadas"
+ "clt-cansado.run16-nw.14f4fd36e26a.webp": {
+  "alterna": true,
+  "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-NW-run-G-r3p, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
  }
 }

@@ -8,8 +8,12 @@ import {readFileSync} from 'node:fs';
 import {MIRROR_MAX,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
-/** Side and diagonal sheets checked by eye on their marked sources (no 2D test): file → verdict and proof. */
-const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFileSync('scripts/troca-de-perna.json','utf8'));
+/**
+ * Side and diagonal sheets checked by eye on their marked sources (no 2D test): file → verdict and proof. A side view (W,
+ * mirrored to E) may be 'perfil': there the near and the far leg draw the same silhouette and the change only shows in a
+ * shorts stripe; the user accepted it (23/10).
+ */
+const reviewed:Record<string,{alterna:boolean|'perfil',prova:string}>=JSON.parse(readFileSync('scripts/troca-de-perna.json','utf8'));
 /**
  * S/N gaits that keep one leg in front, drawn before this gate. None is shown in a run: the heroes that run (viciado,
  * CLT) show run16; the walks are the bots' (R06, card of the bots) and the heroes' walk with HERO_GAIT.run off. A
@@ -62,6 +66,6 @@ test('every run the heroes show (run16) changes legs: S/N by the mirror test, th
     if(c.direction==='S'||c.direction==='N'){assert.ok((await measureClip(c)).ratio<=MIRROR_MAX,`${c.id} ${c.key}`);continue;}
     const r=reviewed[c.file];
     assert.ok(r,`${c.id} ${c.key}: ${c.file} not reviewed (scripts/troca-de-perna.json: check its marked source by eye)`);
-    assert.equal(r.alterna,true,`${c.id} ${c.key}: one leg always in front (${r.prova})`);
+    assert.ok(r.alterna===true||(r.alterna==='perfil'&&c.direction==='W'),`${c.id} ${c.key}: one leg always in front (${r.prova})`);
   }
 });

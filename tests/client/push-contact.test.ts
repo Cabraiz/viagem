@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PUSH_REACH,PUSH_SHIFT_MAX,PushShifts,pushContact} from '../../src/client/render/chaveiro/push-contact.ts';
+import {PUSH_REACH,PUSH_REACH_SCREEN,PUSH_SHIFT_MAX,PushShifts,pushContact,pushReach} from '../../src/client/render/chaveiro/push-contact.ts';
 import {CAR_HALF} from '../../src/client/render/chaveiro/figures.ts';
 
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
@@ -63,4 +63,18 @@ test('PushShifts: eases toward the target (no jump), holds it, and eases back to
   for(let i=0;i<120;i++)now=s.step('a',undefined,16);
   assert.deepEqual(now,{x:0,y:0});
   assert.deepEqual(s.step('b',undefined,16),{x:0,y:0},'never pushed: none');
+});
+
+test('the reach goes by the screen direction of the push and turns with the camera', ()=>{
+  const R=Math.SQRT1_2;
+  // world +x+y is screen S; −x+y screen W; −x−y N; +x−y E (projection.ts screenDirection)
+  assert.equal(pushReach({x:R,y:R}),PUSH_REACH_SCREEN.S);assert.equal(pushReach({x:-R,y:R}),PUSH_REACH_SCREEN.W);
+  assert.equal(pushReach({x:-R,y:-R}),PUSH_REACH_SCREEN.N);assert.equal(pushReach({x:R,y:-R}),PUSH_REACH_SCREEN.E);
+  // a quarter turn of the camera: the same world push is drawn one quarter round
+  const turned=[pushReach({x:R,y:R},1),pushReach({x:-R,y:R},1),pushReach({x:-R,y:-R},1),pushReach({x:R,y:-R},1)];
+  const ring=['S','W','N','E'] as const,shifted=ring.map(d=>PUSH_REACH_SCREEN[d]);
+  assert.ok([1,3].some(k=>turned.every((v,i)=>v===shifted[(i+k)%4])),`turned ${turned}`);
+  // a reach function: the palms land on the car with it
+  const car={x:0,y:0,heading:0},hero={x:-(CAR_HALF.l+1),y:0},c=pushContact(hero,car,{x:1,y:0},()=>.3)!;
+  assert.ok(near(hero.x+c.shift.x+.3,-CAR_HALF.l));
 });

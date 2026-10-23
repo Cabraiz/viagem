@@ -106,6 +106,7 @@ import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
 import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
+import {PushShifts,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {fakeChaveiro,type FakeChaveiro} from './sandbox-chaveiro.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
@@ -183,6 +184,11 @@ const bancos=real&&params.get('bancos')==='1';
 const obra=objective&&params.get('obra')==='1';
 /** `anda=<graus>` with obra=1 (D-052): the car swings back and forth (sandbox-chaveiro.ts carSwing), pulled by the hero's rope. */
 const carMoves=obra&&params.has('anda');
+/**
+ * `empurrando=<graus>` with objetivo=1 (card empurrar-uno): the hero pushes the rolling car (sandbox-chaveiro.ts) from
+ * its back, drawn as the game draws a pusher (scene.ts: pushContact, the push16 clip facing the car, palms on it).
+ */
+const pushing=objective&&params.has('empurrando');
 /** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
 const tralhaShot=obra&&params.get('tralha')==='1';
 /**
@@ -232,6 +238,9 @@ class CitySandbox extends Phaser.Scene {
   private hero!:Phaser.GameObjects.Sprite;
   private ally?:Phaser.GameObjects.Sprite;
   private shadow!:Phaser.GameObjects.Ellipse;
+  /** empurrando=: the hero's drawn shift onto the car (the game's PushShifts). */
+  private pushShifts=new PushShifts();
+  private pushShift={x:0,y:0};
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
@@ -349,7 +358,17 @@ class CitySandbox extends Phaser.Scene {
   update(_t:number,dt:number){
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view);
+    let push:ReturnType<typeof pushContact>;
+    if(pushing&&this.chaveiro){
+      // the hero walks with the car, just behind its back (inside the room's reach); the drawing puts its palms on it
+      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=CAR_HALF.l+.6;
+      this.at={x:car.x-Math.cos(h)*back,y:car.y-Math.sin(h)*back};
+      const pose=this.chaveiro.renderer.carPose();
+      push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
+    }
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir);
+    if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
@@ -357,8 +376,8 @@ class CitySandbox extends Phaser.Scene {
     this.stone?.update(_t);
     if(this.chaveiro){
       const now=fotoT??_t,t0=performance.now();
-      // anda= in the modo foto (a fixed clock): the second before, so the car has turned to its move.
-      if(carMoves&&fotoT!==undefined&&!this.chaveiro.warmed){for(let i=10;i>0;i--){const w=this.chaveiro.fake.view(now-i*100);this.chaveiro.renderer.push(w.view,w.tick);this.chaveiro.renderer.update(now-i*100);}}
+      // anda= or empurrando= in the modo foto (a fixed clock): the second before, so the car has turned to its move.
+      if((carMoves||pushing)&&fotoT!==undefined&&!this.chaveiro.warmed){for(let i=10;i>0;i--){const w=this.chaveiro.fake.view(now-i*100);this.chaveiro.renderer.push(w.view,w.tick);this.chaveiro.renderer.update(now-i*100);}}
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
@@ -717,7 +736,9 @@ class CitySandbox extends Phaser.Scene {
   /** Hero at the layer's actor depth (city mode: no fixed SELF_DEPTH), camera snapped like the game's follow camera. */
   private place(){
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view),cam=this.cameras.main,zoom=cam.zoom;
-    this.hero.setPosition(feet.x,feet.y);this.shadow.setPosition(feet.x,feet.y);
+    // empurrando=: the figure drawn on the car (its shift), the camera on the real spot, as the game
+    const s=this.pushShift,drawn=s.x||s.y?project(this.at.x+s.x,this.at.y+s.y,groundZ(this.asset,this.at.x,this.at.y),this.view):feet;
+    this.hero.setPosition(drawn.x,drawn.y);this.shadow.setPosition(drawn.x,drawn.y);
     const viewport={width:this.scale.width,height:this.scale.height};
     const c=this.camera.snap(feet,viewport,zoom);
     if(!cameraFixed)cam.centerOn(c.x,c.y);

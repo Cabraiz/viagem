@@ -6,9 +6,21 @@
  */
 import type {Point} from '../../../maps/world.ts';
 import {CAR_HALF} from './figures.ts';
+import {HERO_DIRECTIONS,screenMotion} from '../../sprites/sprite-motion.ts';
 
 /** World u from a pusher's feet to its palms (the push16 art: the palms ~0.4 of the figure's height ahead of the body). */
 export const PUSH_REACH=.5;
+/**
+ * The reach by the push's direction on the screen (the sheet the hero shows): the arms drawn and the Uno drawn differ per
+ * view (the side views draw the car shorter than its footprint), measured in the game with the hands on the car
+ * (evidence/NEW-20261022-ORQ-empurrar-uno/jogo/mede-maos.mjs: the gap between the palms and the car's px).
+ */
+export const PUSH_REACH_SCREEN={S:.5,SW:.5,W:.35,NW:.5,N:.5,NE:.5,E:.39,SE:.5} as const;
+/** The reach of a push along world `dir` for camera `view`: the screen octant its sheet faces (as Facing8Tracker). */
+export function pushReach(dir:Point,view=0):number{
+  const q=screenMotion(dir.x,dir.y,view);
+  return PUSH_REACH_SCREEN[HERO_DIRECTIONS[((Math.round((Math.atan2(q.y,q.x)-Math.PI/2)/(Math.PI/4))%8)+8)%8]];
+}
 /** The drawing never moves a pusher farther than this (u) from where the room has it. */
 export const PUSH_SHIFT_MAX=1.5;
 /** How fast the drawn shift follows its target (1/s): ~90 % in a quarter second. */
@@ -30,9 +42,10 @@ function rayBox(px:number,py:number,dx:number,dy:number,l:number,w:number):numbe
 /**
  * The push of a hero at `hero` on the car at `car`: the direction it faces (unit, world) and the shift (world u) that
  * puts its palms `reach` ahead of it on the car's footprint. `along` (optional): the way the hero is walking (its stick);
- * used when its ray meets the car, else the hero faces the car's centre. Undefined when the hero stands on the centre.
+ * used when its ray meets the car, else the hero faces the car's centre. `reach`: a number, or by the direction found
+ * (pushReach for the camera's view). Undefined when the hero stands on the centre.
  */
-export function pushContact(hero:Point,car:CarPose,along?:Point,reach=PUSH_REACH):{dir:Point;shift:Point}|undefined{
+export function pushContact(hero:Point,car:CarPose,along?:Point,reach:number|((dir:Point)=>number)=PUSH_REACH):{dir:Point;shift:Point}|undefined{
   const c=Math.cos(car.heading),s=Math.sin(car.heading),rx=hero.x-car.x,ry=hero.y-car.y;
   const lx=rx*c+ry*s,ly=-rx*s+ry*c;
   const meets=(d:Point)=>rayBox(lx,ly,d.x*c+d.y*s,-d.x*s+d.y*c,CAR_HALF.l,CAR_HALF.w);
@@ -41,7 +54,7 @@ export function pushContact(hero:Point,car:CarPose,along?:Point,reach=PUSH_REACH
   const len=along?Math.hypot(along.x,along.y):0;
   let dir=len>1e-6?{x:along!.x/len,y:along!.y/len}:undefined,t=dir&&meets(dir);
   if(t===undefined){dir={x:-rx/toCentre,y:-ry/toCentre};t=meets(dir)??toCentre;}
-  const k=Math.max(-PUSH_SHIFT_MAX,Math.min(PUSH_SHIFT_MAX,t-reach));
+  const k=Math.max(-PUSH_SHIFT_MAX,Math.min(PUSH_SHIFT_MAX,t-(typeof reach==='number'?reach:reach(dir!))));
   return {dir:dir!,shift:{x:dir!.x*k,y:dir!.y*k}};
 }
 

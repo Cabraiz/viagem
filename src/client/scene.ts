@@ -33,7 +33,7 @@ import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
-import {PushShifts,pushContact} from './render/chaveiro/push-contact.ts';
+import {PushShifts,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
 import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
@@ -942,7 +942,7 @@ export class IslandScene extends Phaser.Scene {
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
     // Pushing the Uno (empurrar-uno): faces it with the push clip, drawn with the palms on it (place() adds the shift).
-    const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent):undefined;
+    const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir);
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
@@ -1248,7 +1248,7 @@ export class IslandScene extends Phaser.Scene {
       if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,ALLY_RING_SIZE.width,ALLY_RING_SIZE.height).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
-      const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
+      const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir);
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
       const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.treeCovers(q,depth);

@@ -184,7 +184,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
     // keeps the R06 rest's (idle8 height, 96 px cells), the run drawn at that scale.
     const height=only?(old?.files?.['idle16-S']?.height??old?.files?.idle8?.height)*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
-    records.push({id,height,runOnly:only,motions:only?optional:[...MOTIONS,...optional],bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
+    records.push({id,height,runOnly:only,alone,motions:only?optional:[...MOTIONS,...optional],bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
   }
   if(write){
     assert.deepEqual(await readManifest(manifestFile),previous,'hero manifest changed during M16 validation');
@@ -211,7 +211,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
           if(clip.phase)files[key].phase=clip.phase;
         }
         // The other side of each pair is mirrored now: a key it had from an earlier import goes (null drops it in the merge).
-        for(const motion of alone?motions:[...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
+        for(const motion of record.alone?motions:[...MOTIONS,...OPTIONAL_MOTIONS])for(const d of Object.keys(record.mirrored))if(previous.pieces[record.id]?.files?.[`${motion}16-${d}`])files[`${motion}16-${d}`]=null;
         for(const file of staged){await rename(file.tmp,file.target);record.outputs.push(file.target);}
         entries[record.id]={kind:'dir8',files,...(previous.pieces[record.id]?.meta?{meta:previous.pieces[record.id].meta}:{})};
       }finally{await Promise.all(staged.map(file=>rm(file.tmp,{force:true})));}

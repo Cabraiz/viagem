@@ -9,7 +9,9 @@
  *  - `empurra=0..1` (the push with mode morta; default it fills in a 4 s loop),
  *  - `fim=vitoria|derrota` (the end: he opened it, or perda total),
  *  - `anda=<graus>` (D-052, the car moves: `voce` pulls it back and forth along that heading, CAR_SWING_U each way in
- *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept).
+ *    a CAR_SWING_MS loop; it reverses at the ends, the nose kept),
+ *  - `empurrando=<graus>` (card empurrar-uno): the car rolls straight ahead along that heading at `vel=` u/s (default
+ *    CAR_SPEED's top, 3.6) over PUSH_SPAN_U and starts over, pushed by `voce` (a mover, no rope).
  * The car stands at the plaza (asset point `praca`). Without `hero`, the hero stands next to the moto (or the car).
  * Deterministic from the clock only; nothing talks to the server.
  */
@@ -21,6 +23,10 @@ type Pt={x:number;y:number};
 export const CAR_SWING_U=1.5,CAR_SWING_MS=6000;
 /** anda=: the car's offset from its spot at `now` (units) along `heading` (radians). */
 export const carSwing=(now:number,heading:number)=>{const s=CAR_SWING_U*Math.sin(now/CAR_SWING_MS*Math.PI*2);return {x:Math.cos(heading)*s,y:Math.sin(heading)*s};};
+/** empurrando=: the stretch the car rolls before it starts over (units). */
+export const PUSH_SPAN_U=8;
+/** empurrando=: the car's offset from its spot at `now` (units), rolling ahead along `heading` at `speed` u/s. */
+export const carRoll=(now:number,heading:number,speed:number)=>{const s=(now/1000*speed)%PUSH_SPAN_U-PUSH_SPAN_U/2;return {x:Math.cos(heading)*s,y:Math.sin(heading)*s};};
 const MODES:readonly MotoMode[]=['anda','lombada','volta','morta','entrega','tombo','abrindo'];
 /** The moto parks this far behind the car's back (units) when he arrives. */
 const CAR_STOP=3.2*M;
@@ -65,6 +71,7 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
   const alarm=params.get('alarme')==='1';
   const ended=params.get('fim')==='vitoria'?'victory':params.get('fim')==='derrota'?'defeat':undefined;
   const swing=params.has('anda')?(Number(params.get('anda'))||0)*Math.PI/180:undefined;
+  const roll=params.has('empurrando')?(Number(params.get('empurrando'))||0)*Math.PI/180:undefined,rollSpeed=Number(params.get('vel'))||3.6;
   const pushParam=params.has('empurra')?Math.max(0,Math.min(1,Number(params.get('empurra')))):undefined;
   const stillMode:MotoMode=ended==='victory'?'abrindo':mode;
   const stillAt=stillMode==='anda'?.15:stillMode==='abrindo'?1:MODE_AT[stillMode];
@@ -85,7 +92,7 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
       moto:{...moto,mode:stillMode,...(stillMode==='morta'?{push:pushParam??((now%4000)/4000)}:{})},
       etaS,alarmUntil:alarm?tick+50:0,
       ...(delivery?{delivery}:{}),
-      car:{...(swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts},
+      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts},
       route,stops,...(ended?{ended}:{}),
     };
     return {view,tick};

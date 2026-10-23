@@ -35,6 +35,13 @@ const AUTO=new Set(['faxineira','mendigo','passageira','roqueira']);
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
 const BEHIND=new Set(['N','NW','NE']);
+/**
+ * Where the weapon goes behind the body (BUG arma-flutua-corrida-clt, reaberto 22/10: drawn over the body W, NW, SW,
+ * NE): the back views and the side views. Side on, the weapon hand is the one out in front, the far one half the
+ * stride: behind the body its blade still shows out past the figure, and the near fist, drawn by the sprite, closes
+ * over the handle; in front, the far hand's weapon crossed the torso. The measure keeps BEHIND (the points do not move).
+ */
+const HIDDEN=new Set([...BEHIND,'W','E']);
 /** idle8 (R06): one resting pose per direction, in HERO_DIRECTIONS order (sprite-motion.ts). */
 const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
 /**
@@ -209,7 +216,9 @@ for(const id of ids){
     points.forEach((p,i)=>{if(p?.[2]===1){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}});
     if(points.some(p=>!p))throw new Error(`${f.file}: no hand in frame ${points.findIndex(p=>!p)}`);
     if(!LEGACY.has(id)&&!idle8)settle(points,poses,fix.behind??BEHIND.has(dir));
-    table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:fix.behind??BEHIND.has(dir),points};
+    // idle8: the side views' poses behind too (the back views' already are), hanging from the body like them.
+    if(idle8)points.forEach((p,i)=>{if(HIDDEN.has(IDLE8[i])&&p[2]!==1){const q=onBody(poses[i],p);points[i]=[q[0],q[1],1];}});
+    table[f.file]=idle8?{behind:false,points}:{side:SIDE[dir],behind:fix.behind??HIDDEN.has(dir),points};
     if(sheetDir){fs.mkdirSync(sheetDir,{recursive:true});await debugSheet(src,points,path.join(sheetDir,`${id}.${name}.png`));}
     console.log(f.file,points.length);
   }

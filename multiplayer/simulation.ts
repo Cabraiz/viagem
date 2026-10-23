@@ -2,7 +2,7 @@ import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,CityTerrain,type WorldKind} fr
 import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
-import { worldSpawn, type Point } from '../src/maps/index.ts';
+import { worldSpawn,moveStep, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,cityRunStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
@@ -593,7 +593,25 @@ export class Simulation {
   input(id:string,value:unknown,now=this.tick*STEP_MS){
     const p=this.players.get(id),t=this.tracks.get(id);
     if(!p?.online||p.spectator||!t)return false;
-    return t.accept(value,now);
+    if(!t.accept(value,now))return false;
+    this.rewind(p,t);
+    return true;
+  }
+  /**
+   * BUG heroi-vai-e-volta: a change that came after the room guessed past it redoes those steps (InputTrack.rewind),
+   * each on the tick it was taken (stepTicks) with the player's effects, like the players system's step. A player who
+   * cannot walk now (down, out, played by the room) is left as is; a step cut by the car's cap or the obra (D-052) does
+   * not reproduce uncut, so InputTrack.rewind leaves those too.
+   */
+  private rewind(p:SimPlayer,t:InputTrack){
+    const ticks=this.stepTicks.get(p.id);
+    const free=!p.downed&&!p.eliminated&&p.hp>0&&!this.autopilot.has(p.id)&&!this.botInputs.has(p.id);
+    const to=t.rewind(p,(at,input)=>{
+      const tick=free?ticks?.find(s=>s.seq===input.seq)?.tick:undefined;
+      return tick===undefined?undefined:moveStep(at,{x:input.x,y:input.y},tick,p,this.terrain);
+    });
+    if(!to)return;
+    p.x=to.x;p.y=to.y;
   }
   /**
    * Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id, or

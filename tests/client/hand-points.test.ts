@@ -5,8 +5,13 @@ import {fileURLToPath} from 'node:url';
 import sharp from 'sharp';
 import {handTone} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
-import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
+import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,patchShift,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
 import {FIRE_LOOK,PACK12_ITEMS} from '../../src/client/render/arsenal-rules.ts';
+import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {movementIdle8Frame,movementPlan} from '../../src/client/sprites/movement128.ts';
+import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
+import {CITY_CONTOUR} from '../../src/client/render/you.ts';
+import {RING_UNDER} from '../../src/client/render/you-rules.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8'));
 type ArtFile={file:string;figure:{left:number;top:number;right:number;bottom:number};height:number};
@@ -98,11 +103,77 @@ test('drawing order: from the back (N, NW, NE) and with the far hand, the weapon
   // The CLT throws its punches W and E with the far hand (the watch is on the near one).
   const clt=filesOf('clt-cansado');
   for(const d of ['W','E'])assert.equal(HAND_POINTS[clt[`attack128-${d}`].file].behind,true,d);
-  // Behind → under the hero's depth; in front → over it (render/arsenal-fx.ts HELD_DEPTH_STEP).
+  // Behind → under the hero's depth; in front → over it (render/arsenal-fx.ts HELD_DEPTH).
   const sprites={handPose:()=>({point:{x:30,y:50,behind:true},ox:.5,oy:.75,scale:.5,flip:false,direction:'N' as const})};
   const sprite={x:0,y:0,depth:100,rotation:0,visible:true,texture:{key:'k'},frame:{name:0},originX:.5,originY:.75,scaleX:.5,scaleY:.5,flipX:false};
   const held=heldHand(sprites,sprite)!;
   assert.equal(held.behind,true);assert.equal(held.patch,undefined,'behind: the body covers it, no fingers patch');
+});
+
+/**
+ * BUG arma-flutua-corrida-clt, reaberto 22/10 (site 37146d4, the viciado running): W, NW, SW and NE drew the knife over
+ * the body. Per class, motion, facing (the mirrored ones as the game resolves them: movementPlan) and frame shown: from
+ * the back (N, NW, NE) and side on (W, E) the weapon hand is on the hidden side of the body, so the weapon goes behind
+ * it; facing the camera (S, SW, SE) in front, unless that pose's hand is hidden behind the body (marked per frame).
+ */
+const HIDDEN_SIDE=new Set(['N','NW','NE','W','E']);
+test('per facing and frame shown, mirrors included: the weapon behind the body on the hidden side, in front on the visible one', ()=>{
+  setArtIndex(parseArtIndex(manifest));
+  try{
+    const wrong:string[]=[];let front=0,behind=0;
+    for(const id of HELD)for(const motion of ['walk','attack','idle'] as const)for(const d of HERO_DIRECTIONS){
+      const plan=movementPlan(id,motion,d);
+      assert.ok(plan,`${id} ${motion} ${d}: a sheet`);
+      const sheet=HAND_POINTS[handSheetKey(plan.original)];
+      assert.ok(sheet,`${plan.original} measured`);
+      const idle8=plan.original.includes('.idle8.'),frames=idle8?[movementIdle8Frame(d)]:sheet.points.map((_,i)=>i);
+      for(const i of frames){
+        const hand=handPoint(plan.original,i)!,p=sheet.points[i];
+        if(HIDDEN_SIDE.has(d)?!hand.behind:hand.behind!==(p[2]===1))wrong.push(`${id} ${motion} ${d}${plan.flip?' (mirrored)':''} #${i}`);
+        if(hand.behind)behind++;else front++;
+      }
+    }
+    assert.deepEqual(wrong.slice(0,12),[],`${wrong.length} poses on the wrong side of the body`);
+    assert.ok(front>1000&&behind>2000,`${front} in front, ${behind} behind`);
+  }finally{setArtIndex(parseArtIndex(undefined));}
+});
+
+test('behind the body the weapon also goes under the local hero\'s Papel/Breu contour, over its ring on the ground', ()=>{
+  // At −0.02 the knife lay between the sprite and its sticker contour (−0.25…−0.15 in the city, −0.2/−0.1 on the
+  // island): the blade crossed the outline in NE and NW.
+  assert.ok(HELD_DEPTH.behind<Math.min(...CITY_CONTOUR.map(b=>b.depth),-.2),String(HELD_DEPTH.behind));
+  assert.ok(HELD_DEPTH.behind>-RING_UNDER,'over the ring on the ground');
+  assert.ok(HELD_DEPTH.front>0&&HELD_DEPTH.front<.1,'in front: just over the sprite, under the hit numbers');
+  const sprites={handPose:()=>({point:{x:30,y:50,behind:true},ox:.5,oy:.75,scale:.5,flip:true,direction:'NE' as const})};
+  const sprite={x:0,y:0,depth:100,rotation:0,visible:true,texture:{key:'k'},frame:{name:0},originX:.5,originY:.75,scaleX:.5,scaleY:.5,flipX:true};
+  assert.equal(heldHand(sprites,sprite)!.behind,true,'NE (NW mirrored): behind');
+  const arsenal=readFileSync(new URL('../../src/client/render/arsenal-fx.ts',import.meta.url),'utf8');
+  assert.match(arsenal,/depth=held\.depth\+\(held\.behind\?HELD_DEPTH\.behind:HELD_DEPTH\.front\)/);
+});
+
+/**
+ * Phaser 3.90's cropped frame on screen (Frame.setCropUVs + MultiPipeline.batchSprite, no trim, no custom pivot): the
+ * screen x (from the sprite's x, unscaled) of texture column `tx` inside a crop [cx, cx + cw) of a frame `w` wide with
+ * display origin `dox`. Unmirrored the quad starts at crop.x; mirrored the UV window is mirrored (w − cx − cw) but the
+ * quad is still offset by crop.x before the −1 scale.
+ */
+function phaserCropX(tx:number,cx:number,cw:number,w:number,dox:number,flip:boolean){
+  if(!flip)return -dox+tx;
+  const u0=w-cx-cw,x0=-dox+cx+(-w+2*dox);
+  return -(x0+(tx-u0));
+}
+test('the fingers patch lands on the drawn hand, mirrored frames included (E, NE, SW showed the handle over the fist)', ()=>{
+  const geom={cellW:96,cellH:96,crop:{x:20,y:10,w:56,h:80},cw:28,ch:40,pad:4,ring:2,perCss:1,slotW:36,slotH:48,kx:2,ky:2};
+  for(const g of [undefined,geom])for(const flip of [false,true])for(const hx of [30,44,61]){
+    const w=g?g.slotW:96,x=g?g.pad+(hx-g.crop.x)/g.kx:hx,dox=.42*w,[cx,,cw]=patchCrop({x:hx,y:50},flip,g);
+    // Where the sprite itself draws that hand (Phaser mirrors inside the frame's box), and where the patch draws it.
+    const sprite=flip?w-dox-x:x-dox,patch=phaserCropX(x,cx,cw,w,dox,flip)+patchShift({x:hx},flip,g);
+    assert.ok(Math.abs(patch-sprite)<1e-9,`${g?'city':'cell'} flip=${flip} hand ${hx}: patch ${patch} vs hand ${sprite}`);
+  }
+  assert.equal(patchShift({x:30},false),0);
+  const sprites={handPose:()=>({point:{x:30,y:50,behind:false},ox:.5,oy:.75,scale:.5,flip:true,direction:'E' as const})};
+  const sprite={x:100,y:0,depth:1,rotation:0,visible:true,texture:{key:'k'},frame:{name:0},originX:.5,originY:.75,scaleX:.5,scaleY:.5,flipX:true};
+  assert.equal(heldHand(sprites,sprite)!.patch!.x,100+(96-60)*.5);
 });
 
 test('the hand never jumps between two poses of a dense sheet (no swap to the other hand, the elbow or the face)', ()=>{

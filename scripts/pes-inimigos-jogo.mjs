@@ -6,6 +6,8 @@
  * Also takes a burst of screenshots around the hero for the GIF.
  *
  *   node scripts/pes-inimigos-jogo.mjs <out-prefix> [--url https://viagem.cyou/] [--segundos 8] [--fotos 60]
+ *   --video: also a real-time video of the whole page (<out>-video/), the log's start printed in seconds;
+ *   --tela 390x844: a phone viewport (touch, mobile) instead of 1280x720 (card inimigos-animacao-2x-lenta).
  */
 import {pathToFileURL} from 'node:url';import {join} from 'node:path';import {existsSync,writeFileSync} from 'node:fs';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -18,7 +20,9 @@ const chromium=pw.chromium??pw.default.chromium;let browser,release;
 try{
   release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:'E6 monstros-sem-deslizar'});
   browser=await chromium.launch({args:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']});
-  const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1,serviceWorkers:'block'});
+  const [VW,VH]=arg('tela','1280x720').split('x').map(Number),phone=VW<VH||VW<900;
+  const ctx=await browser.newContext({viewport:{width:VW,height:VH},deviceScaleFactor:1,serviceWorkers:'block',isMobile:phone,hasTouch:phone,
+    ...(process.argv.includes('--video')?{recordVideo:{dir:`${OUT}-video`,size:{width:VW,height:VH}}}:{})});
   await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:solo-bots:v1','0');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
   // --dist <dir>: the site under test served from a local build at the production origin (the rooms worker only
   // accepts https://viagem.cyou), so the page plays a real match on the real worker with this branch's client.
@@ -32,7 +36,7 @@ try{
       catch{await route.fulfill({status:404,body:'not found'});}
     });
   }
-  const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});globalThis.__page=page;globalThis.__errors=errors;
+  const page=await ctx.newPage();const born=Date.now();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});globalThis.__page=page;globalThis.__errors=errors;
   await page.goto(URL_+(URL_.includes('?')?'&':'?')+'perf=1',{waitUntil:'load',timeout:180000});
   await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
   await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Tia Cleide';n.dispatchEvent(new Event('input',{bubbles:true}));const c=document.getElementById('confirm');c.click();const n2=document.getElementById('nickname');n2.value='Tia Cleide';n2.dispatchEvent(new Event('input',{bubbles:true}));c.click();});
@@ -62,6 +66,7 @@ try{
     if(n>=6)break;if((Date.now()-t0)%10000<1100)console.log('inimigos na tela',n,Math.round((Date.now()-t0)/1000)+'s');await sleep(1000);await clear();
   }
   await page.screenshot({path:`${OUT}-tela.png`});
+  console.log('log começa em',((Date.now()-born)/1000).toFixed(2),'s do vídeo');
   const log=await page.evaluate(secs=>new Promise(res=>{
     const s=window.__perfScene,h=s.horde,cam=s.cameras.main,rows=[];const t0=performance.now();
     const tick=()=>{
@@ -75,7 +80,7 @@ try{
   console.log('linhas',log.rows.length,'zoom',log.zoom,'view',log.view);
   // Burst of screenshots around the hero for the GIF.
   const hero=await page.evaluate(()=>{const s=window.__perfScene,cam=s.cameras.main,a=s.actor;return {x:(a.x-cam.worldView.x)*cam.zoom,y:(a.y-cam.worldView.y)*cam.zoom};});
-  const W=640,H=400,clip={x:Math.max(0,Math.min(1280-W,Math.round(hero.x-W/2))),y:Math.max(0,Math.min(720-H,Math.round(hero.y-H/2))),width:W,height:H};
+  const W=Math.min(640,VW),H=Math.min(400,VH),clip={x:Math.max(0,Math.min(VW-W,Math.round(hero.x-W/2))),y:Math.max(0,Math.min(VH-H,Math.round(hero.y-H/2))),width:W,height:H};
   const stamps=[];const s0=Date.now();
   for(let i=0;i<SHOTS;i++){await page.screenshot({path:`${OUT}-f${String(i).padStart(3,'0')}.png`,clip});stamps.push(Date.now()-s0);}
   writeFileSync(`${OUT}-fotos.json`,JSON.stringify({clip,stamps}));

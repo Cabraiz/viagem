@@ -81,7 +81,7 @@ import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts'
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -468,9 +468,13 @@ class CitySandbox extends Phaser.Scene {
     this.fortify.setGhost({piece,c:at.c,r:at.r,look});
     this.fortify.setHints(buildHints(piece,sites,ctx));
   }
-  /** `muralha=1|2`: the junk wall's squares around the hero (cells of CITY_BUILD_CELL). */
-  private muralhaSquares(bar:(id:string,c:number,r:number,rot:0|1,hp:number)=>StructureView):StructureView[]{
-    const cell=CITY_BUILD_CELL,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell),row=[-2,-1,0,1,2];
+  /**
+   * `muralha=1|2`: the junk wall's squares around the hero, laid out in squares (barricada-2x: one square is
+   * BARRICADA_CELLS × BARRICADA_CELLS cells of CITY_BUILD_CELL).
+   */
+  private muralhaSquares(square:(id:string,c:number,r:number,rot:0|1,hp:number)=>StructureView):StructureView[]{
+    const cell=CITY_BUILD_CELL,n=BARRICADA_CELLS,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell),row=[-2,-1,0,1,2];
+    const bar=(id:string,c:number,r:number,rot:0|1,hp:number)=>square(id,hc+(c-hc)*n,hr+(r-hr)*n,rot,hp);
     if(muralhaShot==='2')return [
       ...[0,1,2,3].map(i=>bar(`l${i}`,hc-4+i,hr-3,0,200)),...[1,2].map(i=>bar(`m${i}`,hc-4,hr-3+i,1,200)),
       ...[0,1,2,3,4].map(i=>bar(`t${i}`,hc+1+i,hr+1,0,200)),...[1,2].map(i=>bar(`u${i}`,hc+3,hr+1-i,1,200)),

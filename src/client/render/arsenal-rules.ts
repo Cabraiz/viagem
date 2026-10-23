@@ -144,7 +144,7 @@ export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,
 /** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
 export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
 /** Sticker width (CSS px at body 1): the opener's own prize, and a smaller one for a crate another hero opened. */
-export const PRIZE_PX={own:76,other:46} as const;
+export const PRIZE_PX={own:110,other:60} as const;
 /**
  * The prize at `age` ms: alpha, lift (0 inside the crate, 1 up in the air; past 1 the hop) and scale, or undefined once
  * gone. Reduced motion: no hop, no drift.
@@ -164,9 +164,13 @@ export function prizeMotion(age:number,reduced=false):{alpha:number;lift:number;
  * button and the inventory bar on the phone, the inventory on the PC), under the top bar.
  */
 export const PRIZE_SAFE={left:.1,right:.9,top:.12,bottom:.64} as const;
-/** A prize centre `(x,y)` (camera space) kept inside PRIZE_SAFE of the view `{x,y,width,height}`. */
-export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number;height:number},out:{x:number;y:number}){
-  out.x=Math.min(view.x+view.width*PRIZE_SAFE.right,Math.max(view.x+view.width*PRIZE_SAFE.left,x));
+/**
+ * A prize centre `(x,y)` (camera space) kept inside PRIZE_SAFE of the view `{x,y,width,height}`, and `half` wide on each
+ * side (its name) inside the view's edges.
+ */
+export function prizeSpot(x:number,y:number,view:{x:number;y:number;width:number;height:number},out:{x:number;y:number},half=0){
+  const lo=Math.max(view.x+view.width*PRIZE_SAFE.left,view.x+half),hi=Math.min(view.x+view.width*PRIZE_SAFE.right,view.x+view.width-half);
+  out.x=lo>hi?view.x+view.width/2:Math.min(hi,Math.max(lo,x));
   out.y=Math.min(view.y+view.height*PRIZE_SAFE.bottom,Math.max(view.y+view.height*PRIZE_SAFE.top,y));
   return out;
 }

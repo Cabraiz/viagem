@@ -467,7 +467,8 @@ export class ArsenalFx{
     const m=prizeMotion(this.now-p.start,this.reduced);if(!m)return false;
     const q=this.options.projector.project(p.x,p.y,this.q),b=this.body,crate=CRATE_PX*b,px=(p.own?PRIZE_PX.own:PRIZE_PX.other)*b;
     const mouth=q.y-crate*PRIZE_MOUTH,rest=q.y-crate*PRIZE_REST-px*.5;
-    const safe=prizeSpot(q.x,rest,this.scene.cameras.main.worldView,this.q2),dx=safe.x-q.x,dy=safe.y-rest;
+    const nameK=b*(p.own?1.25:.8),half=Math.max(px*.5,p.label.width*nameK*.5)+6*b;
+    const safe=prizeSpot(q.x,rest,this.scene.cameras.main.worldView,this.q2,half),dx=safe.x-q.x,dy=safe.y-rest;
     const x=q.x+dx,y=mouth+(rest-mouth)*m.lift+dy,k=m.scale;
     if(p.sticker.texture.key!=='__DEFAULT'){
       const w=Math.max(1,p.sticker.frame.width,p.sticker.frame.height);
@@ -479,7 +480,7 @@ export class ArsenalFx{
       const turn=this.reduced?0:(this.now-p.start)*.0009;
       p.rays.setPosition(x,y).setScale(px*2.6*k/128).setRotation(turn).setAlpha(m.alpha*.55*glow).setVisible(true).setActive(true);
     }else if(p.rays.visible)p.rays.setVisible(false).setActive(false);
-    p.label.setPosition(x,y+px*.55*k).setScale(b*(p.own?1:.7)).setAlpha(m.alpha).setVisible(true);
+    p.label.setPosition(x,y+px*.5*k).setScale(nameK).setAlpha(m.alpha).setVisible(true);
     return true;
   };
   private track<T extends Phaser.GameObjects.GameObject>(o:T):T{this.objects.push(o);return o;}

@@ -91,3 +91,10 @@ test('sandbox arsenal-view: every crate opened gives its prize as the sim does',
   assert.deepEqual(mine.map(g=>[g.rarity,g.item]),SELF_PRIZES.map(p=>[p.rarity,p.item]));
   assert.ok(got.filter(g=>g.player===SANDBOX_ALLY).every(g=>g.item===ALLY_PRIZE));
 });
+
+test('prizeSpot: a long name stays inside the screen edges', () => {
+  const view={x:0,y:0,width:412,height:915};
+  assert.equal(prizeSpot(10,400,view,{x:0,y:0},120).x,120);
+  assert.equal(prizeSpot(400,400,view,{x:0,y:0},120).x,292);
+  assert.equal(prizeSpot(400,400,view,{x:0,y:0},300).x,206,'wider than the view: centred');
+});

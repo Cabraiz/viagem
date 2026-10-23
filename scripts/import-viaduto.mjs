@@ -5,8 +5,10 @@
  * columns like the kombi's sheet (city views 0..3). Per view: keyed (green out, spill off the rim), cropped, scaled so
  * its drawn height is the piece's world height (HEIGHT u × HEIGHT_PX × ART_SCALE art px, the rule of the scenery
  * importer for loose objects), centred, its lowest point PROP_BOTTOM px above the frame's bottom (the anchor).
- * The faces (round 3, option C picked: more snow): t2-asfalto (top-down road, tiling along it) and t2-concreto (tiling
- * both ways), packed side by side into public/art/city/viaduto/faces.webp for the layer's meshes.
+ * The faces (round 3, option C picked: more snow): t2-asfalto (top-down road, tiling along it); etapa 5, option B (old
+ * Brazilian concrete): tb-parede (the ramp's wall, tiling both ways), tb-mureta and tb-viga (the barrier blocks and the
+ * edge beam, bands on green: cropped and made seamless along) and tb-pilar (a pillar's face on green), packed into
+ * public/art/city/viaduto/faces.webp for the layer's meshes (viaduct.ts FACES_*).
  * Written as group `cenario` pieces (public/art/city/decor/<id>/sheet.webp + manifest); then
  * `node scripts/art-lite.mjs --kinds city` makes the lite copies.
  *   node scripts/import-viaduto.mjs [--src <folder>]
@@ -22,8 +24,38 @@ const ROOT=join(dirname(fileURLToPath(import.meta.url)),'..');
 const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
 /** render/city: HEIGHT_PX game px per world unit up, ART_SCALE art px per game px; props' feet PROP_BOTTOM px up. */
 const PX_PER_UNIT=42*2,PROP_BOTTOM=8,PAD=4;
-/** The faces' atlas regions (px): the road tile and the concrete tile, side by side (viaduct.ts FACES_ROAD/CONCRETE). */
-export const FACES_ROAD=[512,768],FACES_CONCRETE=[512,512];
+/** The faces' atlas and its regions (px, [x, y, w, h]: viaduct.ts FACES_*). */
+export const FACES_SIZE=[1152,768],FACES_ROAD=[0,0,512,768],FACES_CONCRETE=[512,0,512,512],FACES_BARRIER=[512,512,512,128],
+  FACES_BEAM=[512,640,512,128],FACES_PILLAR=[1024,0,128,512];
+/** Texels a band's crossfade takes at its ends (of its width), so it tiles along. */
+const SEAM=.06;
+
+/** The box of a source's art on flat green: the rows more than 15 % not green and, in them, the columns more than half, `inset` px inside. */
+async function artBox(sharp,file,inset=3){
+  const {data,info}=await sharp(file).removeAlpha().raw().toBuffer({resolveWithObject:true}),{width:w,height:h}=info;
+  const art=i=>!(data[i+1]>170&&data[i]<130&&data[i+2]<130);
+  const rows=[];for(let y=0;y<h;y++){let n=0;for(let x=0;x<w;x++)if(art((y*w+x)*3))n++;if(n>w*.15)rows.push(y);}
+  const y0=rows[0],y1=rows.at(-1),cols=[];
+  for(let x=0;x<w;x++){let n=0;for(let y=y0;y<=y1;y++)if(art((y*w+x)*3))n++;if(n>(y1-y0+1)/2)cols.push(x);}
+  const x0=cols[0],x1=cols.at(-1);
+  return {left:x0+inset,top:y0+inset,width:x1-x0+1-2*inset,height:y1-y0+1-2*inset};
+}
+/** RGB raw `w`×`h` crossfaded at its ends into a band `w − k` wide that tiles along (its last column meets its first). */
+function seamless(data,w,h,k){
+  const out=Buffer.alloc((w-k)*h*3);
+  for(let y=0;y<h;y++)for(let x=0;x<w-k;x++)for(let c=0;c<3;c++){
+    const v=x<k?data[(y*w+x)*3+c]*(x/k)+data[(y*w+w-k+x)*3+c]*(1-x/k):data[(y*w+x)*3+c];
+    out[(y*(w-k)+x)*3+c]=Math.round(v);
+  }
+  return out;
+}
+/** A band on green (tb-mureta, tb-viga): its art cropped, made seamless along, resized to region `r`. */
+async function band(sharp,file,r){
+  const box=await artBox(sharp,file),{data,info}=await sharp(file).removeAlpha().extract(box).raw().toBuffer({resolveWithObject:true});
+  const k=Math.round(info.width*SEAM);
+  return sharp(seamless(data,info.width,info.height,k),{raw:{width:info.width-k,height:info.height,channels:3}})
+    .resize(r[2],r[3],{fit:'fill',kernel:'lanczos3'}).png().toBuffer();
+}
 
 /**
  * The pieces: source file, its row (several pieces share the signs' sheet), world height (u, hero ≈ 2.3) and footprint.
@@ -90,16 +122,22 @@ async function main(){
       meta:{cell:[fw,fh],footprint:piece.footprint,origem:`arte-entrada/cenario/decor/viaduto/${piece.src} (Codex, E6, card mapa-175-com-viaduto)`}};
     console.error(`${piece.id}: ${fw}×${fh}, ×${scale.toFixed(3)}, ${Math.round(sheet.length/1024)} KB`);
   }
-  // The faces' atlas (render/city/viaduct.ts FACES_*): the deck's road (top-down, the road along v, tiling along it) on
-  // the left, the concrete (sides, barriers, pillars; tiling both ways) on the right.
-  const [rw,rh]=FACES_ROAD,[cw,ch]=FACES_CONCRETE;
-  const road=await sharp(join(SRC,'t2-asfalto.png')).resize(rw,rh,{fit:'fill',kernel:'lanczos3'}).png().toBuffer();
-  const concrete=await sharp(join(SRC,'t2-concreto.png')).resize(cw,ch,{fit:'fill',kernel:'lanczos3'}).png().toBuffer();
-  const faces=await sharp({create:{width:rw+cw,height:Math.max(rh,ch),channels:4,background:{r:0,g:0,b:0,alpha:0}}})
-    .composite([{input:road,left:0,top:0},{input:concrete,left:rw,top:0}]).webp({quality:88,effort:6}).toBuffer();
+  // The faces' atlas (render/city/viaduct.ts FACES_*): the deck's road (top-down, the road along v, tiling along it),
+  // the ramp's wall (tiling both ways), the barrier's and the beam's bands (tiling along), a pillar's face.
+  const fill=(file,r)=>sharp(file).resize(r[2],r[3],{fit:'fill',kernel:'lanczos3'}).png().toBuffer();
+  const pillarBox=await artBox(sharp,join(SRC,'tb-pilar.png'));
+  const parts=[
+    [await fill(join(SRC,'t2-asfalto.png'),FACES_ROAD),FACES_ROAD],
+    [await fill(join(SRC,'tb-parede.png'),FACES_CONCRETE),FACES_CONCRETE],
+    [await band(sharp,join(SRC,'tb-mureta.png'),FACES_BARRIER),FACES_BARRIER],
+    [await band(sharp,join(SRC,'tb-viga.png'),FACES_BEAM),FACES_BEAM],
+    [await sharp(join(SRC,'tb-pilar.png')).extract(pillarBox).resize(FACES_PILLAR[2],FACES_PILLAR[3],{fit:'fill',kernel:'lanczos3'}).png().toBuffer(),FACES_PILLAR],
+  ];
+  const faces=await sharp({create:{width:FACES_SIZE[0],height:FACES_SIZE[1],channels:4,background:{r:0,g:0,b:0,alpha:0}}})
+    .composite(parts.map(([input,r])=>({input,left:r[0],top:r[1]}))).webp({quality:88,effort:6}).toBuffer();
   mkdirSync(join(ROOT,'public/art/city/viaduto'),{recursive:true});
   writeFileSync(join(ROOT,'public/art/city/viaduto/faces.webp'),faces);
-  console.error(`viaduto/faces.webp: ${rw+cw}×${Math.max(rh,ch)}, ${Math.round(faces.length/1024)} KB`);
+  console.error(`viaduto/faces.webp: ${FACES_SIZE.join('×')}, ${Math.round(faces.length/1024)} KB`);
   manifest.pieces=Object.fromEntries(Object.keys(manifest.pieces).sort().map(k=>[k,manifest.pieces[k]]));
   writeFileSync(manifestFile,`${JSON.stringify(manifest,null,2)}\n`);
   await writeIndex({cenario:spec},{outRoot:ROOT});

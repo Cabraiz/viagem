@@ -22,6 +22,8 @@ import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoFootY,unoFrame} from '../
 export const DECK_SLAB=.6,PARAPET=.6;
 /** Parapet thickness (u) and pillar side (u). */
 export const PARAPET_WIDTH=.22,PILLAR_SIDE=.8;
+/** The pier cap on each pillar, under the slab (etapa 5, option B): its side and height (u). */
+export const CAP_SIDE=1.3,CAP_HEIGHT=.45;
 /** While the local hero is under the deck, the strips within this radius (u) draw at this alpha (plan §4: ~35 %). */
 export const UNDER_RADIUS=4,UNDER_ALPHA=.35;
 /** Depth keys a body on a deck strip sits above the strip (under the next strip in front: a strip is ~300 keys deep). */
@@ -36,8 +38,8 @@ export const DECK_OVER=.5;
 
 /** A box of the viaduct in world units: its footprint and its top/bottom height at the footprint's 4 corners. */
 export interface ViaductPiece {
-  kind:'deck'|'ramp'|'pillar'|'parapet'|'shadow'|'car';
-  /** Which strip it belongs to (deck and ramp pieces and their parapets share their strip's index; pillars their own). */
+  kind:'deck'|'ramp'|'pillar'|'cap'|'parapet'|'shadow'|'car';
+  /** Which strip it belongs to (deck and ramp pieces and their parapets share their strip's index; a pillar and its cap theirs). */
   strip:number;
   x0:number;y0:number;x1:number;y1:number;
   /** Heights (u) at the corners (x0,y0), (x1,y0), (x1,y1), (x0,y1). */
@@ -80,10 +82,11 @@ export function viaductPieces(v:CityViaduct,unit:number):ViaductPiece[]{
     out.push({kind:'ramp',strip,x0,y0,x1,y1,top,bottom:flat(0)});
     parapets(x0,y0,x1,y1,top,along?c===rc:r===rr,along?c===rc+rw-1:r===rr+rh-1);
   }
-  // Pillars, each its own strip.
+  // Pillars, each its own strip with its cap on top.
   for(const [c,r] of v.pillars){
-    const cx=(c+.5)*unit,cy=(r+.5)*unit,s=PILLAR_SIDE/2;
-    out.push({kind:'pillar',strip:strip++,x0:cx-s,y0:cy-s,x1:cx+s,y1:cy+s,top:flat(h-DECK_SLAB),bottom:flat(0)});
+    const cx=(c+.5)*unit,cy=(r+.5)*unit,s=PILLAR_SIDE/2,k=CAP_SIDE/2,under=h-DECK_SLAB;
+    out.push({kind:'pillar',strip,x0:cx-s,y0:cy-s,x1:cx+s,y1:cy+s,top:flat(under-CAP_HEIGHT),bottom:flat(0)});
+    out.push({kind:'cap',strip:strip++,x0:cx-k,y0:cy-k,x1:cx+k,y1:cy+k,top:flat(under),bottom:flat(under-CAP_HEIGHT)});
   }
   // The deck's shadow on the street (a flat decal, drawn on the ground).
   out.push({kind:'shadow',strip:-1,x0:dc*unit,y0:dr*unit,x1:(dc+dw)*unit,y1:(dr+dh)*unit,top:flat(0),bottom:flat(0)});
@@ -113,13 +116,17 @@ const CAR_RED=0xc0473a,PILE=[0x5b7fa8,0x8f8a7a,0xd6a23c] as const;
 /**
  * The faces' art (etapa 4, scripts/import-viaduto.mjs; round 3 option C, picked by the user): one atlas with the deck's
  * road on the left (top-down, the road along v, both edges snow, the double yellow line in the middle; it tiles along
- * the road) and the concrete on the right (tiles both ways). Under WebGL each strip draws its faces as one Mesh of it
- * (as the city's painted ground, city-layer groundMesh); under Canvas, or until it loads, the flat colours stay.
+ * the road), the concrete wall of the ramp's embankment (tiles both ways), and (etapa 5, option B, old Brazilian
+ * concrete: the user found the plain concrete flat) the barrier's New Jersey blocks and the slab's edge beam (bands
+ * that tile along a side, one block a cell) and a pillar's face (its hazard stripes at the foot). Under WebGL each strip
+ * draws its faces as one Mesh of it (as the city's painted ground, city-layer groundMesh); under Canvas, or until it
+ * loads, the flat colours stay.
  */
 export const FACES_KEY='city:viaduct:faces',FACES_URL='/art/city/viaduto/faces.webp';
-/** The atlas (px) and its two regions: the road tile, the concrete tile. */
-export const FACES_SIZE=[1024,768] as const,FACES_ROAD=[0,0,512,768] as const,FACES_CONCRETE=[512,0,512,512] as const;
-/** Cells of road one road tile covers along the road; cells one concrete tile covers (along a side and up). */
+/** The atlas (px) and its regions: the road tile, the wall tile, the barrier band, the beam band, the pillar's face. */
+export const FACES_SIZE=[1152,768] as const,FACES_ROAD=[0,0,512,768] as const,FACES_CONCRETE=[512,0,512,512] as const,
+  FACES_BARRIER=[512,512,512,128] as const,FACES_BEAM=[512,640,512,128] as const,FACES_PILLAR=[1024,0,128,512] as const;
+/** Cells of road one road tile covers along the road; cells one concrete tile (and one band: 4 blocks) covers along a side (and up). */
 export const ROAD_TILE_CELLS=6,CONCRETE_TILE_CELLS=4;
 /** Texels kept off each region's rim, so linear filtering never reads the region beside it. */
 const FACES_INSET=2;
@@ -153,6 +160,16 @@ export function concreteST(p:ViaductPiece,side:'n'|'e'|'s'|'w',unit:number):[num
   if(s0+(m1-m0)/T>1+1e-6)s0=1-(m1-m0)/T;
   const s=(c:Pt)=>s0+(m(c)-m0)/T,t=(z:number)=>Math.min(1,Math.max(0,1-z/T));
   return [[s(cs[a]),t(p.top[a])],[s(cs[b]),t(p.top[b])],[s(cs[b]),t(p.bottom[b])],[s(cs[a]),t(p.bottom[a])]];
+}
+
+/**
+ * A band's (s, t) at a side's 4 corners (as concreteST): s along the side as the concrete tile's, t from the piece's own
+ * top (0) to its bottom (1), so the band follows a sloped ramp. With `whole`, s runs across the face 0..1 (a pillar's face).
+ */
+export function bandST(p:ViaductPiece,side:'n'|'e'|'s'|'w',unit:number,whole=false):[number,number][]{
+  const st=concreteST(p,side,unit);
+  const s=whole?(st[0][0]<=st[1][0]?[0,1]:[1,0]):[st[0][0],st[1][0]];
+  return [[s[0],0],[s[1],0],[s[1],1],[s[0],1]];
 }
 
 /**
@@ -425,8 +442,9 @@ export class ViaductLayer {
       const i=art?.startsWith('pile')?+art.slice(4):-1,s=this.props.filter(a=>a.prop.floor===1&&a.prop.id.startsWith('carro-batido'))[i]?.sheet;
       return !!s&&this.has(s.key);
     };
-    // Pieces in back-to-front order inside a strip: the slab and the ramp first, then their parapets, then the cars.
-    const rank=(p:ViaductPiece)=>p.kind==='car'?2:p.kind==='parapet'?1:0;
+    // Pieces in back-to-front order inside a strip: the slab and the ramp first, then their parapets, then the cars (a
+    // pillar, then its cap).
+    const rank=(p:ViaductPiece)=>p.kind==='car'?2:p.kind==='parapet'||p.kind==='cap'?1:0;
     const order=[...this.pieces].sort((a,b)=>rank(a)-rank(b));
     for(const p of order){
       const corners=cornersOf(p);
@@ -449,9 +467,19 @@ export class ViaductLayer {
       for(const side of front){
         const [a,b]=SIDE_CORNERS[side],dark=side==='e'||side==='s'?view%2===0:view%2===1,face=[tops[a],tops[b],bottoms[b],bottoms[a]];
         if(textured&&car===undefined){
-          quad(p.strip,face,concreteST(p,side,this.unit),FACES_CONCRETE,dark?TINT_DARK:TINT_LIGHT);
-          // Outlines: the pillar's whole side; the slab's and the parapet's lower edge (the faces carry their own detail).
-          if(p.kind==='pillar')g.lineStyle(1.5,BREU,.55).strokePoints(face,true);
+          const tint=dark?TINT_DARK:TINT_LIGHT;
+          if(p.kind==='ramp'){
+            // The ramp's side: the beam along its top (DECK_SLAB, less at the foot), the embankment's wall under it.
+            const z=(k:number)=>Math.max(0,p.top[k]-DECK_SLAB),mid=[at(corners[a],z(a)),at(corners[b],z(b))];
+            const st=concreteST(p,side,this.unit),band=(k:number)=>Math.min(1,(p.top[k]-z(k))/DECK_SLAB);
+            quad(p.strip,[tops[a],tops[b],mid[1],mid[0]],[[st[0][0],0],[st[1][0],0],[st[1][0],band(b)],[st[0][0],band(a)]],FACES_BEAM,tint);
+            const wall=concreteST({...p,top:[z(0),z(1),z(2),z(3)]},side,this.unit);
+            quad(p.strip,[mid[0],mid[1],bottoms[b],bottoms[a]],wall,FACES_CONCRETE,tint);
+          }else if(p.kind==='pillar')quad(p.strip,face,bandST(p,side,this.unit,true),FACES_PILLAR,tint);
+          else quad(p.strip,face,bandST(p,side,this.unit),p.kind==='parapet'?FACES_BARRIER:FACES_BEAM,tint);
+          // Outlines: the pillar's and the cap's whole side; the slab's and the parapet's lower edge (the faces carry
+          // their own detail).
+          if(p.kind==='pillar'||p.kind==='cap')g.lineStyle(1.5,BREU,.55).strokePoints(face,true);
           else g.lineStyle(1.5,BREU,.55).lineBetween(bottoms[a].x,bottoms[a].y,bottoms[b].x,bottoms[b].y);
           continue;
         }

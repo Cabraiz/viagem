@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {CONCRETE_TILE_CELLS,FACES_CONCRETE,FACES_ROAD,FACES_SIZE,ROAD_TILE_CELLS,VIADUCT_PROP_IDS,concreteST,crosswalkTiles,
+import {CONCRETE_TILE_CELLS,FACES_BARRIER,FACES_BEAM,FACES_CONCRETE,FACES_PILLAR,FACES_ROAD,FACES_SIZE,bandST,ROAD_TILE_CELLS,VIADUCT_PROP_IDS,concreteST,crosswalkTiles,
   regionUv,roadST,viaductPieces,viaductProps} from '../../src/client/render/city/viaduct.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {overDeck,onRamp,type CityViaduct} from '../../src/maps/index.ts';
@@ -45,8 +45,23 @@ test('the concrete tile lines up with the cells, keeps narrow pieces inside one 
   assert.ok(Math.abs(Math.min(st[0][0],st[1][0])-(11%CONCRETE_TILE_CELLS)/CONCRETE_TILE_CELLS)<1e-9);
 });
 
-test('atlas coordinates stay inside their region',()=>{
-  for(const r of [FACES_ROAD,FACES_CONCRETE])for(const [s,t] of [[0,0],[1,1]]){
+test('a band (barrier, beam, pillar face) runs from the top of its piece to the bottom, along the side as the concrete tile',()=>{
+  const p=viaductPieces(V,U);
+  for(const q of p.filter(r=>r.kind==='parapet'||r.kind==='deck'||r.kind==='pillar'||r.kind==='cap'))for(const side of ['n','e','s','w'] as const){
+    const st=bandST(q,side,U,q.kind==='pillar'),c=concreteST(q,side,U);
+    assert.deepEqual(st.map(x=>x[1]),[0,0,1,1],`${q.kind} ${side}: t from the top`);
+    if(q.kind==='pillar')assert.deepEqual([st[0][0],st[1][0]].sort(),[0,1],'a pillar face shows the whole texture across');
+    else assert.deepEqual([st[0][0],st[1][0]],[c[0][0],c[1][0]],'s as the concrete tile (one block a cell)');
+  }
+});
+
+test('the atlas regions do not overlap and fit the atlas; coordinates stay inside their region',()=>{
+  const regions=[FACES_ROAD,FACES_CONCRETE,FACES_BARRIER,FACES_BEAM,FACES_PILLAR];
+  for(const [i,a] of regions.entries()){
+    assert.ok(a[0]+a[2]<=FACES_SIZE[0]&&a[1]+a[3]<=FACES_SIZE[1]);
+    for(const b of regions.slice(i+1))assert.ok(a[0]+a[2]<=b[0]||b[0]+b[2]<=a[0]||a[1]+a[3]<=b[1]||b[1]+b[3]<=a[1],`${a} × ${b}`);
+  }
+  for(const r of regions)for(const [s,t] of [[0,0],[1,1]]){
     const [u,v]=regionUv(r,s,t);
     assert.ok(u*FACES_SIZE[0]>r[0]&&u*FACES_SIZE[0]<r[0]+r[2]&&v*FACES_SIZE[1]>r[1]&&v*FACES_SIZE[1]<r[1]+r[3]);
   }

@@ -5,7 +5,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {DECK_SLAB,PARAPET,frontSides,viaductPieces} from '../../src/client/render/city/viaduct.ts';
+import {CAP_HEIGHT,CAP_SIDE,DECK_SLAB,PARAPET,frontSides,viaductPieces} from '../../src/client/render/city/viaduct.ts';
 import type {CityViaduct} from '../../src/maps/index.ts';
 
 const V:CityViaduct={id:'v',deck:[10,4,4,8],ramp:{rect:[10,12,4,6],up:'N'},pillars:[[10,6],[13,6]],height:3.5};
@@ -25,7 +25,15 @@ test('a viaduct is drawn cell by cell (deck and ramp), parapets on both outer si
   for(const q of ramp)assert.ok(q.top[0]>q.top[3],'each strip is higher on its north edge');
   const parapet=p.find(q=>q.kind==='parapet'&&q.strip===deck[0].strip)!;
   assert.ok(Math.abs(parapet.top[0]-(3.5+PARAPET))<1e-9);
-  for(const q of p.filter(q=>q.kind==='pillar'))assert.ok(Math.abs(q.top[0]-(3.5-DECK_SLAB))<1e-9&&q.bottom[0]===0);
+  // Etapa 5 (option B): each pillar carries a pier cap under the slab, wider than it, in the pillar's strip.
+  const caps=p.filter(q=>q.kind==='cap');
+  assert.equal(caps.length,2);
+  for(const q of p.filter(q=>q.kind==='pillar')){
+    assert.ok(Math.abs(q.top[0]-(3.5-DECK_SLAB-CAP_HEIGHT))<1e-9&&q.bottom[0]===0);
+    const cap=caps.find(c=>c.strip===q.strip)!;
+    assert.ok(Math.abs(cap.top[0]-(3.5-DECK_SLAB))<1e-9&&Math.abs(cap.bottom[0]-q.top[0])<1e-9,'the cap sits on the pillar, under the slab');
+    assert.ok(Math.abs(cap.x1-cap.x0-CAP_SIDE)<1e-9&&cap.x0<q.x0&&cap.x1>q.x1);
+  }
 });
 
 test('the camera sees two sides of a box in every view, opposite ones after half a turn',()=>{

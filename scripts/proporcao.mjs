@@ -200,10 +200,18 @@ export async function measureClass(manifest,id,dir=SPRITES){
  * chest, legs folded) and are reported, not gated.
  */
 export const GATED=['head','height'];
+/**
+ * The push (empurrar-uno, ORQ 23/10): leaning 15° on the car with the knees bent, the figure is lower by design; the head
+ * never changes. Its height only has to stay at least PUSH_MIN_HEIGHT of the rest's (the same rule as a crouched run).
+ */
+export const PUSH_MIN_HEIGHT=.88;
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    if(motion!=='idle')for(const key of keys)if(Math.abs(c[key]-1)>TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (±${TOL[key]*100}%)`);
+    if(motion==='push'){
+      if(keys.includes('head')&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
+      if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
+    }else if(motion!=='idle')for(const key of keys)if(Math.abs(c[key]-1)>TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (±${TOL[key]*100}%)`);
     if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
   }
   return bad;

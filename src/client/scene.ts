@@ -1447,7 +1447,8 @@ export class IslandScene extends Phaser.Scene {
       const art=this.cityArt();
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
       const field=this.field,viaduct=this.viaduct=field.asset.viaducts.length?new ViaductLayer(this,field.asset.viaducts,field.asset.unitsPerCell,
-        {depthOf:this.cityDepthOf,groundPx:(x,y)=>elevation(x,y,field),sheet:id=>art.decor[id]},CITY_GROUND_DEPTH+3,field.asset.points.inicio):undefined;
+        {depthOf:this.cityDepthOf,groundPx:(x,y)=>elevation(x,y,field),sheet:id=>art.decor[id],
+          blocks:field.asset.blocks.flatMap(b=>b.rects)},CITY_GROUND_DEPTH+3,field.asset.points.inicio):undefined;
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);city.setStill(qualityProfile(this.quality).still);
       // A map switch into the city: its ground arrives after the first chunks, which are rebuilt with it.

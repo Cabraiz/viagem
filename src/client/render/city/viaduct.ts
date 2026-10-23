@@ -26,6 +26,13 @@ export const PARAPET_WIDTH=.22,PILLAR_SIDE=.8;
 export const UNDER_RADIUS=4,UNDER_ALPHA=.35;
 /** Depth keys a body on a deck strip sits above the strip (under the next strip in front: a strip is ~300 keys deep). */
 export const ON_STRIP=1;
+/**
+ * Scene depth a strip draws above its key. The city's block bands sort by the same cells' front corners, so a cliff or
+ * wall cell by (or under) the deck tied a deck cell exactly, and the tie went to whichever was added last: a chunk
+ * rebuilt when its art arrived drew its bands over the deck's back cells (prints of etapa 4, about one start in two).
+ * Above the city's own offsets (outline +0.01, props +0.25), under a body on the strip (+ON_STRIP).
+ */
+export const DECK_OVER=.5;
 
 /** A box of the viaduct in world units: its footprint and its top/bottom height at the footprint's 4 corners. */
 export interface ViaductPiece {
@@ -156,7 +163,11 @@ export function concreteST(p:ViaductPiece,side:'n'|'e'|'s'|'w',unit:number):[num
  * north only, the map's): the toll plaza and the bus stop beside the ramp's foot, the stop sign by the crosswalk.
  * `rot`: the art view at camera view 0 (CityDecor.rot: 0 faces south).
  */
-export interface ViaductProp {id:string;x:number;y:number;floor:0|1;rot:0|90|180|270}
+export interface ViaductProp {id:string;x:number;y:number;floor:0|1;rot:0|90|180|270;
+  /** Times the sheet's scale (the gantry: its art is drawn narrower than the deck it spans). */
+  scale?:number}
+/** The gantry over its sheet scale, so its posts stand by the parapets (prints of etapa 4: it spanned ~70 % of the deck). */
+export const GANTRY_SCALE=1.3;
 export const VIADUCT_PROP_IDS=['carro-batido-1','carro-batido-2','portico-placa','placa-60','radar-lombada','pedagio','ponto-onibus','placa-pare'] as const;
 export function viaductProps(v:CityViaduct,unit:number):ViaductProp[]{
   const out:ViaductProp[]=[],[dc,dr,dw,dh]=v.deck,along=v.ramp.up==='N'||v.ramp.up==='S';
@@ -167,7 +178,7 @@ export function viaductProps(v:CityViaduct,unit:number):ViaductProp[]{
   // Near the ramp's top, facing the drivers coming up it (south): the gantry across the deck, the 60 sign on the west
   // parapet, the speed camera on the east one further along.
   const top=(dr+dh)*unit,west=dc*unit,east=(dc+dw)*unit,mid=(west+east)/2;
-  out.push({id:'portico-placa',x:mid,y:top-3*unit,floor:1,rot:0});
+  out.push({id:'portico-placa',x:mid,y:top-3*unit,floor:1,rot:0,scale:GANTRY_SCALE});
   out.push({id:'placa-60',x:west+.55,y:top-1.5*unit,floor:1,rot:0});
   out.push({id:'radar-lombada',x:east-.55,y:top-8*unit,floor:1,rot:0});
   // The street at the ramp's foot: the toll plaza west of the avenue, the bus stop east of the ramp facing it, the stop
@@ -180,8 +191,10 @@ export function viaductProps(v:CityViaduct,unit:number):ViaductProp[]{
 }
 /**
  * The crosswalk across the avenue past the ramp's foot (a ramp going up north): the `faixa-pedestre` decal (top-down,
- * stripes along v) laid in tiles of CROSSWALK_TILE_CELLS cells, from the avenue's west lane to the ramp's east side.
+ * stripes along v) laid in tiles of CROSSWALK_TILE_CELLS cells, from the avenue's west lane to the ramp's east side. Each
+ * tile reads only CROSSWALK_UV of the decal across (its stripes, not its margin), so the tiles join stripe to stripe.
  */
+export const CROSSWALK_UV=[.12,.88] as const;
 export const CROSSWALK_KEY='city:viaduct:faixa-pedestre',CROSSWALK_URL='/art/city/decor/faixa-pedestre/sheet.webp',CROSSWALK_TILE_CELLS=2;
 export function crosswalkTiles(v:CityViaduct,unit:number):{x0:number;y0:number;x1:number;y1:number}[]{
   if(v.ramp.up!=='N')return [];
@@ -216,6 +229,12 @@ export interface ViaductHooks {
   groundPx:(x:number,y:number)=>number;
   /** The sheet of a piece of art (VIADUCT_PROP_IDS) when the art plan has it; without one the piece is not drawn. */
   sheet?:(id:string)=>ViaductSheet|undefined;
+  /**
+   * The city's block rects (u, CityBlock.rects). A deck or ramp cell over one draws above it: the deck's north end
+   * crosses the map's edge cliff, whose band sorts by its own front corner and, before its art streamed in (a low
+   * procedural top), covered the deck's first rows at the start (prints of etapa 4).
+   */
+  blocks?:readonly (readonly [number,number,number,number])[];
 }
 
 /** A colour darkened to `k` of itself (the cars' sides). */
@@ -301,7 +320,7 @@ export class ViaductLayer {
     const under=hero&&hero.andar!==1&&this.under(hero.x,hero.y);
     for(let i=0;i<this.strips.length;i++){
       const g=this.strips[i],d=this.hooks.depthOf(this.keys[i]),m=this.meshes[i];
-      g.setDepth(d+OUTLINE_OVER);m?.setDepth(d);
+      g.setDepth(d+DECK_OVER+OUTLINE_OVER);m?.setDepth(d+DECK_OVER);
       let alpha=1;
       if(under){
         const p=this.bodyOf[i];
@@ -341,6 +360,15 @@ export class ViaductLayer {
   private deckKey(x0:number,y0:number,x1:number,y1:number):number{
     let key=-Infinity;
     for(const p of this.pieces)if((p.kind==='deck'||p.kind==='ramp')&&p.x0<x1&&p.x1>x0&&p.y0<y1&&p.y1>y0)key=Math.max(key,this.keys[p.strip]);
+    return key;
+  }
+  /** The highest front-corner key of the city's blocks under piece `p` (their parts inside its footprint), or −∞. */
+  private blockKeyUnder(p:ViaductPiece,view:number):number{
+    let key=-Infinity;
+    for(const [x,y,w,h] of this.hooks.blocks??[]){
+      const x0=Math.max(x,p.x0),y0=Math.max(y,p.y0),x1=Math.min(x+w,p.x1),y1=Math.min(y+h,p.y1);
+      if(x1-x0>1e-6&&y1-y0>1e-6)key=Math.max(key,pieceKey({...p,x0,y0,x1,y1},view));
+    }
     return key;
   }
   /** The deck strip over a pillar (the one holding its centre). */
@@ -407,7 +435,7 @@ export class ViaductLayer {
         continue;
       }
       const g=this.strips[p.strip];
-      if(p.kind==='deck'||p.kind==='ramp')this.keys[p.strip]=Math.max(this.keys[p.strip],pieceKey(p,view));
+      if(p.kind==='deck'||p.kind==='ramp')this.keys[p.strip]=Math.max(this.keys[p.strip],pieceKey(p,view),this.blockKeyUnder(p,view)+ON_STRIP);
       // A pillar stands under its strip: drawn just before it (its own front corner can be the strip's, which then put
       // it over the slab), and after the street behind it.
       else if(p.kind==='pillar'){const over=this.stripOver(p);this.keys[p.strip]=Math.min(pieceKey(p,view),over===undefined?Infinity:this.stripKey(over,view))-ON_STRIP;}
@@ -457,7 +485,7 @@ export class ViaductLayer {
     const b={verts:[] as number[],uvs:[] as number[],idx:[] as number[],colors:[] as number[],alphas:[] as number[]};
     for(const v of this.viaducts)for(const t of crosswalkTiles(v,this.unit)){
       const n=b.verts.length/2,pts:Pt[]=[{x:t.x0,y:t.y0},{x:t.x1,y:t.y0},{x:t.x1,y:t.y1},{x:t.x0,y:t.y1}];
-      pts.forEach((c,k)=>{const q=project(c.x,c.y,0,view);b.verts.push(q.x,-(q.y-this.hooks.groundPx(c.x,c.y)));b.uvs.push(k===1||k===2?1:0,k>=2?1:0);b.colors.push(0xffffff);b.alphas.push(.9);});
+      pts.forEach((c,k)=>{const q=project(c.x,c.y,0,view);b.verts.push(q.x,-(q.y-this.hooks.groundPx(c.x,c.y)));b.uvs.push(CROSSWALK_UV[k===1||k===2?1:0],k>=2?1:0);b.colors.push(0xffffff);b.alphas.push(.9);});
       b.idx.push(n,n+1,n+2,n,n+2,n+3);
     }
     if(b.idx.length)this.crosswalk=this.mesh(CROSSWALK_KEY,b).setDepth(this.shadowDepth-1);
@@ -468,7 +496,7 @@ export class ViaductLayer {
       const s=a.sheet;
       if(!s||!this.has(s.key))continue;
       const {x,y,floor,rot}=a.prop,frame=artViewOf(view,rot)/90,q=at({x,y},floor===1?a.v.height:0);
-      a.img??=this.scene.add.image(0,0,s.key,frame).setOrigin(.5,s.originY).setScale(s.scale);
+      a.img??=this.scene.add.image(0,0,s.key,frame).setOrigin(.5,s.originY).setScale(s.scale*(a.prop.scale??1));
       a.img.setFrame(frame).setPosition(q.x,q.y);
       // Floor 1: above the deck cells under its middle (a gantry: across the deck); the street: its own point.
       const hx=a.prop.id==='portico-placa'?(a.v.deck[2]*this.unit)/2:.6;

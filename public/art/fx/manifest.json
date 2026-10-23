@@ -307,6 +307,72 @@
       },
       "sha256": "104015d246cb91571db0db664cab4038afe3f3604da2ef35732fed2db1983c59"
     },
+    "bola-de-cristal-impacto": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "bola-de-cristal-impacto.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "bola-de-cristal-impacto.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "50cf8fd12bdfe87d91f5dbf2d096be762e70f639b2fcf6259e11f26b3ee7d2c7"
+            }
+          ],
+          "sha256": "50cf8fd12bdfe87d91f5dbf2d096be762e70f639b2fcf6259e11f26b3ee7d2c7"
+        }
+      },
+      "sha256": "a01e6a7308eea29518bdc14b4bd204ee083d240edb278359ff64881f2370da26",
+      "meta": {
+        "loop": false
+      }
+    },
+    "bola-de-cristal-queda": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "bola-de-cristal-queda.webp",
+          "cell": [
+            128,
+            384
+          ],
+          "frames": 6,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 16,
+          "pages": [
+            {
+              "file": "bola-de-cristal-queda.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "680cd50cd99de31220058b28f14165015f0acefe791e5752eeb8ab1ed2d5c04a"
+            }
+          ],
+          "sha256": "680cd50cd99de31220058b28f14165015f0acefe791e5752eeb8ab1ed2d5c04a"
+        }
+      },
+      "sha256": "d80df96244b2867daf549a35a696461ea216c2eeb93ab3610101a81b9d0b58e3",
+      "meta": {
+        "loop": false
+      }
+    },
     "caido-resgate": {
       "kind": "frames",
       "files": {
@@ -516,6 +582,39 @@
         }
       },
       "sha256": "7df16a6716ddb9145cb8c016100747345584a43c6ec70923e32aa17b4987b1a4"
+    },
+    "colher-de-pau-golpe": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "colher-de-pau-golpe.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 6,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "colher-de-pau-golpe.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "ee59ec860fc5eb98efcf8ee854e35f804b4b02a5a435fa97357530c1396c6d66"
+            }
+          ],
+          "sha256": "ee59ec860fc5eb98efcf8ee854e35f804b4b02a5a435fa97357530c1396c6d66"
+        }
+      },
+      "sha256": "d8622c5aa972877bcebfbd79e86cec42fad52169063cecbaf9be5050c91984de",
+      "meta": {
+        "loop": false
+      }
     },
     "cone-holofote": {
       "kind": "frames",
@@ -773,6 +872,72 @@
       },
       "sha256": "dc13003c54d2d59cdcf4129dcb2cc0128d78d84e75d413ce051b5ed1b3f6c5c7"
     },
+    "fogo-boitata-acerto": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "fogo-boitata-acerto.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 5,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "fogo-boitata-acerto.webp",
+              "columns": 5,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 5,
+              "sha256": "0974299f15f3de22ad2f5229e14f59c55a4927680a6eddf92959ba0fff8c99cc"
+            }
+          ],
+          "sha256": "0974299f15f3de22ad2f5229e14f59c55a4927680a6eddf92959ba0fff8c99cc"
+        }
+      },
+      "sha256": "24de96e80f57ffb07a0fda2d9b5efedbecf3ba48ced349bf7db9b78bf634f52e",
+      "meta": {
+        "loop": false
+      }
+    },
+    "fogo-boitata-elo": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "fogo-boitata-elo.webp",
+          "cell": [
+            256,
+            32
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "fogo-boitata-elo.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2d1e47a60c8ee0d109dbb12f91c02a7063cdb87b22945400621b57bbf1b4a3a2"
+            }
+          ],
+          "sha256": "2d1e47a60c8ee0d109dbb12f91c02a7063cdb87b22945400621b57bbf1b4a3a2"
+        }
+      },
+      "sha256": "4fb6fee30b724857ab149141f6c86a842c516e0abb5c9a768cd3690e827dc33e",
+      "meta": {
+        "loop": true
+      }
+    },
     "fogo-chao": {
       "kind": "frames",
       "files": {
@@ -877,6 +1042,39 @@
         }
       },
       "sha256": "9d749a28df67052a2d2516976b7cc574c42d746159cf82865c2d32f5859e564a"
+    },
+    "gorro-do-saci-vortice": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "gorro-do-saci-vortice.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "gorro-do-saci-vortice.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "f1334a9717ef03a0943e55166e19df90a69bd1786dceba1f2abfae1a769e049f"
+            }
+          ],
+          "sha256": "f1334a9717ef03a0943e55166e19df90a69bd1786dceba1f2abfae1a769e049f"
+        }
+      },
+      "sha256": "7c82d1e8d5c75d2e312d99d7a5ab8a70e69707f45024df07aede8c3e50c33ea2",
+      "meta": {
+        "loop": true
+      }
     },
     "heroi-voce": {
       "kind": "frames",
@@ -1177,6 +1375,109 @@
         }
       },
       "sha256": "a25aa4242923a81b0f33d17d35211581829f659c4663156b7d63ff11bf1b5ee0"
+    },
+    "olho-grego-boca": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "olho-grego-boca.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "olho-grego-boca.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "84a65bdf270736e2d9f24d7b4d85ad62e51f245bf200b52a81c238bb338b4084"
+            }
+          ],
+          "sha256": "84a65bdf270736e2d9f24d7b4d85ad62e51f245bf200b52a81c238bb338b4084"
+        }
+      },
+      "sha256": "6fe804380d536358bf25f574822fcb4bbe36b4a43ba593cdf202bcbbe6275b98",
+      "meta": {
+        "loop": true
+      }
+    },
+    "olho-grego-feixe": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "olho-grego-feixe.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "wrap": "x",
+          "transparent": true,
+          "pages": [
+            {
+              "file": "olho-grego-feixe.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "184cb8658fc87e693c36b6ef4c4039acc5d8f5b16bd173c179b1b45dfe9f0e27"
+            }
+          ],
+          "sha256": "184cb8658fc87e693c36b6ef4c4039acc5d8f5b16bd173c179b1b45dfe9f0e27"
+        }
+      },
+      "sha256": "049fae05f9fda7ba58996f9aa8d2718b91ee9c9c5aae53d9c571a4c12ca10822",
+      "meta": {
+        "frames": 4,
+        "frameCell": [
+          256,
+          64
+        ],
+        "layout": "rows",
+        "fps": 12,
+        "loop": true
+      }
+    },
+    "olho-grego-ponta": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "olho-grego-ponta.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "olho-grego-ponta.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "7c3874e61a3d778d4e5c8ff0fe2001ef4f79c38ba6ad77397f4d4cbc05904cc4"
+            }
+          ],
+          "sha256": "7c3874e61a3d778d4e5c8ff0fe2001ef4f79c38ba6ad77397f4d4cbc05904cc4"
+        }
+      },
+      "sha256": "f3d3ebc61c96c786c66fa581aad8128dea68e0342fbdb73dc51de33ce37ba514",
+      "meta": {
+        "loop": true
+      }
     },
     "olhos-escuro": {
       "kind": "frames",

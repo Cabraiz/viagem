@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "group": "mascote",
+  "pieces": {
+    "vira-lata": {
+      "kind": "animations",
+      "files": {
+        "idle": {
+          "file": "vira-lata/idle.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "87a7f9338a5152b48f51d6a771ede233c91c7925e15e65ce06cba16763279577"
+            }
+          ],
+          "sha256": "87a7f9338a5152b48f51d6a771ede233c91c7925e15e65ce06cba16763279577"
+        },
+        "walk": {
+          "file": "vira-lata/walk.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "5456149a03589217bc7a5d80467c08c80f8fca6eaa19b0b236f4bcc5d880d1b4"
+            }
+          ],
+          "sha256": "5456149a03589217bc7a5d80467c08c80f8fca6eaa19b0b236f4bcc5d880d1b4"
+        },
+        "attack": {
+          "file": "vira-lata/attack.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "4c45658821c1f1b4e7ced00d97dcc69b3adf35122fb1adcdbd8a59c1b5e1eb61"
+            }
+          ],
+          "sha256": "4c45658821c1f1b4e7ced00d97dcc69b3adf35122fb1adcdbd8a59c1b5e1eb61"
+        }
+      },
+      "sha256": "7709799422bb4db1bb1ad3445c189508438d2724916e04a90f92b98cf36c9303"
+    }
+  }
+}

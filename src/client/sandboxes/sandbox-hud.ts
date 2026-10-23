@@ -280,7 +280,7 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));

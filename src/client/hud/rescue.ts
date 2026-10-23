@@ -321,8 +321,8 @@ export class RescueBoard {
     const phase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
-    const banks=last.banks;
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
+    const banks=last.banks,car=objective?.car,point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),...(uno?{uno}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;

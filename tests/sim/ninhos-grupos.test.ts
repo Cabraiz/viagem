@@ -24,7 +24,7 @@ import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
-  wavePeriod,waveShares,type NestCause,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
+  wavePeriod,waveShares,type NestCause,type NestsOptions,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -70,11 +70,11 @@ const PLAN:NestPlan={seed:1,players:1,nests:[
 /** 50 plan bodies (the rig fixes mapShare at .1: a quota of 5). */
 const PLAN_BODIES=50;
 const DOOR:WaveEntrance={id:'N',x:10,y:0,route:[{x:10,y:0},{x:50,y:50}]};
-function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR]){
+function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR],extra:Pick<NestsOptions,'calm'|'onWave'>={}){
   const world=new SimWorld({terrain:city.fork(),seed:5,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   addPlayer(world,'p1',{x:0,y:0});
   const woke:[string,NestCause][]=[],crates:string[]=[],fell:string[]=[],recruited:[readonly Point[],number][]=[];let grana=0,dead=0;
-  const nests=createNests({plan:()=>PLAN,maxEnemies,entrances,
+  const nests=createNests({plan:()=>PLAN,maxEnemies,entrances,...extra,
     createEnemy:(ctx,kind,at,scale)=>ctx.enemies.size<maxEnemies&&isEnemyKind(kind)?createEnemy(ctx,kind,at,scale):undefined,
     mapDead:()=>dead,recruit:(_ctx,route,count)=>{recruited.push([route,count]);return count;},
     wake:(_ctx,id,cause)=>{woke.push([id,cause]);},dropCrate:(_ctx,_at,rarity)=>{crates.push(rarity);},pay:n=>{grana+=n;},
@@ -85,7 +85,7 @@ function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR]){
 }
 const until=(r:ReturnType<typeof rig>,tick:number)=>{while(r.world.tick<tick)r.world.step();};
 
-test('a wave: between 45 and 90 s, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next a period later',()=>rawPace(()=>{
+test('a wave: FIRST_EXIT s after the Minerva, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
   const start=r.nests.state.startTick!,first=r.nests.state.nextWave!;
@@ -108,7 +108,52 @@ test('a wave: between 45 and 90 s, the map share recruited along the entrance\'s
   for(const e of outside)assert.ok(Math.hypot(e.x-DOOR.x,e.y-DOOR.y)<4,'at the avenue end');
   const log=r.nests.state.log!.at(-1)!;
   assert.deepEqual({...log,tick:0},{tick:0,entrance:'N',quota:5,kills:0,map:5,nests:born.length,outside:outside.length,total:5+born.length+outside.length});
-  assert.equal(r.nests.state.nextWave,first+ticks(wavePeriod((first-start)/ticks(NEST_PACE.ramp),1)));
+  // inicio-no-uno-caixas-120: open until it is over; the next wave only after the time to explore (the backstop here).
+  assert.equal(r.nests.state.waveOpen,first);
+  assert.equal(r.nests.state.nextWave,first+ticks(NEST_PACE.waveCap+NEST_PACE.explore));
+}));
+
+test('the time to explore (inicio-no-uno-caixas-120): a wave over (no besieger up) opens NEST_PACE.explore s, at least waveMin s after it left, and the next wave leaves at its end; a wave never holds it past waveCap',()=>rawPace(()=>{
+  assert.deepEqual([NEST_PACE.explore,NEST_PACE.waveMin,NEST_PACE.waveCap],[120,20,150]);
+  const r=rig();
+  r.world.step();
+  const first=r.nests.state.nextWave!;
+  until(r,first+1);
+  assert.equal(r.nests.exploring(r.world.tick),undefined,'a wave is on');
+  // The besiegers die at once: still nothing before waveMin.
+  r.world.enemies.clear();
+  until(r,first+ticks(NEST_PACE.waveMin)-1);
+  assert.equal(r.nests.state.waveOpen,first);
+  until(r,first+ticks(NEST_PACE.waveMin)+1);
+  const open=first+ticks(NEST_PACE.waveMin);
+  assert.equal(r.nests.state.waveOpen,undefined);
+  assert.deepEqual(r.nests.exploring(r.world.tick),{from:open,until:open+ticks(NEST_PACE.explore)});
+  assert.equal(r.nests.state.nextWave,open+ticks(NEST_PACE.explore));
+  // The next wave leaves at its end; this time its besiegers stay up: the time to explore waits for waveCap.
+  until(r,open+ticks(NEST_PACE.explore)+1);
+  assert.equal(r.nests.state.sent,2);
+  const second=r.nests.state.waveOpen!;
+  assert.equal(second,open+ticks(NEST_PACE.explore));
+  assert.ok([...r.world.enemies.values()].some(e=>e.memory?.[SIEGE_FLAG]===1));
+  until(r,second+ticks(NEST_PACE.waveCap)-1);
+  assert.equal(r.nests.exploring(r.world.tick),undefined,'besiegers up: no time to explore');
+  until(r,second+ticks(NEST_PACE.waveCap)+1);
+  assert.deepEqual(r.nests.exploring(r.world.tick),{from:second+ticks(NEST_PACE.waveCap),until:second+ticks(NEST_PACE.waveCap+NEST_PACE.explore)},'the cap');
+}));
+
+test('the time to explore waits for options.calm (the boss up, a fight at the car); onWave says when a wave left and ran out',()=>rawPace(()=>{
+  let calm=false;const said:string[]=[];
+  const r=rig(300,[DOOR],{calm:()=>calm,onWave:(_ctx,i,phase)=>{said.push(`${i}:${phase}`);}});
+  r.world.step();
+  const first=r.nests.state.nextWave!;
+  until(r,first+1);
+  r.world.enemies.clear();
+  until(r,first+ticks(NEST_PACE.waveMin+5));
+  assert.equal(r.nests.exploring(r.world.tick),undefined,'not calm');
+  calm=true;
+  until(r,r.world.tick+ticks(1)+1);
+  assert.ok(r.nests.exploring(r.world.tick),'calm: the time to explore');
+  assert.deepEqual(said.slice(0,2),['0:saiu','0:escoou']);
 }));
 
 test('the kills: map bodies killed since the last wave come off its quota; past the quota they shrink the outside group (never under the floor)',()=>rawPace(()=>{
@@ -297,7 +342,7 @@ test('assembled mode ninhos: the chaveiro\'s boss leaves from the biggest live n
   assert.equal(off.sys.nests,undefined);assert.equal('ninhos' in off.sys.state(),false);
 });
 
-test('the minuto de Minerva: for 60 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
+test('the minuto de Minerva: for 120 s no critter walks (a woken one stands and hits whoever is in its reach), the sight wakes only within reach, no wave; then they walk',()=>{
   const saved=NEST_PACE.minerva;NEST_PACE.minerva=MINERVA_S;
   try{
     const a=assembled(11,new Map());
@@ -305,8 +350,8 @@ test('the minuto de Minerva: for 60 s no critter walks (a woken one stands and h
     addPlayer(a.world,'far',{x:car.x+1.5,y:car.y});
     stepRun(a);
     const nests=a.sys.nests!,sono=a.sys.sono()!,start=nests.state.startTick!;
-    assert.equal(MINERVA_S,60);
-    assert.equal(nests.state.minervaUntil,start+ticks(60));
+    assert.equal(MINERVA_S,120,'inicio-no-uno-caixas-120');
+    assert.equal(nests.state.minervaUntil,start+ticks(120));
     assert.ok(nests.state.nextWave!>=nests.state.minervaUntil!+ticks(NEST_PACE.first[0]),'the first wave counts from its end');
     // A hero 3 u from a sleeper (inside WAKE_SIGHT, outside MINERVA_REACH): it sleeps on.
     const loose=sono.bodies.find(b=>b.nest===undefined&&b.band!==undefined)!;

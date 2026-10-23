@@ -90,10 +90,10 @@ const UNUSED=/\.downed\.webp$|^_silhueta\.webp$/;
 /**
  * Menu (BUG-20261022-ORQ-art-lite-menu): only what the page loads from /art/lite/menu gets a copy, the dance pages
  * (ui/menu-dance.ts), the heroes' backgrounds `fundo-*` (estadio.css, ui/stadium.ts) and the phone's profile screen `insta/`
- * (ui/insta.ts, scripts/insta-arte.mjs). The button, the cut-out heroes,
+ * (ui/insta.ts, scripts/insta-arte.mjs) and the row's faces `rosto/` (ui/miniatura.ts, scripts/miniatura-rosto.mjs). The button, the cut-out heroes,
  * the letreiros and the mureta are light WebPs already (scripts/menu-arte.mjs, q95 at the size shown), loaded as they are.
  */
-const MENU_LITE=/^(danca\/|insta\/|fundo-[^/]+\.webp$)/;
+const MENU_LITE=/^(danca\/|insta\/|rosto\/|fundo-[^/]+\.webp$)/;
 
 const sha=buf=>createHash('sha256').update(buf).digest('hex');
 async function rgba(input,w,h){

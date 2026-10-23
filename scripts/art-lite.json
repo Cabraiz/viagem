@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2154,
-  "bytes": 1542514576,
-  "liteBytes": 502391764,
+  "files": 2158,
+  "bytes": 1542590870,
+  "liteBytes": 502454252,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17652,6 +17652,38 @@
    "liteBytes": 44400,
    "psnr": 39.8,
    "shownPsnr": 41.9
+  },
+  "menu/rosto/clt-cansado.webp": {
+   "source": "3a5321d4c0a712e8dc092c4d22501b54b8b2080f3e1d996449a9ecabb3de22b8",
+   "lite": "c01eb46440291d1e5c7e848b68a9ae3b74f20a176fb33f182198c8545a8388f9",
+   "bytes": 17848,
+   "liteBytes": 14810,
+   "psnr": 39.3,
+   "shownPsnr": 41.8
+  },
+  "menu/rosto/gato-nada-pra-comer.webp": {
+   "source": "620dd2f7534edbb2598d8d72a064d5f4e713ca3acdd77cefdd736106dc52d5d0",
+   "lite": "6625ae6eeed3009ed9fc0ee5c5ab0b2ab222ee7e4103ddbe4ee51b61a81279e3",
+   "bytes": 21426,
+   "liteBytes": 17640,
+   "psnr": 38.8,
+   "shownPsnr": 41.9
+  },
+  "menu/rosto/maromba.webp": {
+   "source": "65e004101d738d4cd11c6f6836cd1c4ffb6b255929dc1a6dc516bcd55d2ef5b0",
+   "lite": "94a65ed966123c3bf91861ae2e0e4d213a8fe1cb0665f241eefe04757a712fe5",
+   "bytes": 16342,
+   "liteBytes": 13286,
+   "psnr": 39.6,
+   "shownPsnr": 42.3
+  },
+  "menu/rosto/viciado-em-bet.webp": {
+   "source": "2af7cf408ba9ed923d7f5aeae026a68d09a236a7d6c7c937d6cd043b4051dd89",
+   "lite": "ac3c428ba5c00724f490c22f932478cfd4a85e300436eecd9b03546874d17d71",
+   "bytes": 20678,
+   "liteBytes": 16752,
+   "psnr": 38.3,
+   "shownPsnr": 40.9
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",

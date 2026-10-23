@@ -382,7 +382,9 @@ class CitySandbox extends Phaser.Scene {
       push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
       this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
     }
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
+    // anda= (puxar-uno-corda): the hero on the rope ahead of the car, drawn pulling (its pull16) along the swing's axis.
+    const ha=Number(params.get('anda'))*Math.PI/180||0,pull=carMoves?{x:Math.cos(ha),y:Math.sin(ha),pull:true}:undefined;
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir??pull,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);

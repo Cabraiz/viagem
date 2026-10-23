@@ -3,7 +3,7 @@
 // the game mirrors it into the other side (src/client/sprites/movement128.ts movement16Source). Never replaces
 // R06, dance or legacy files: a class without the 15 sheets keeps them. Dry-run is the default.
 //   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--motions push] [--write] [--report x.json]
-// --motions (card empurrar-uno): only these optional motions (run, push, hurt) of each class, the rest of its sheets untouched.
+// --motions (card empurrar-uno): only these optional motions (run, push, pull, hurt) of each class, the rest of its sheets untouched.
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile,rename,rm,access} from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
@@ -24,12 +24,14 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
     run:{columns:4,rows:4,frames:16,durationMs:600,loop:true},
     // Optional (card empurrar-uno): pushing the Uno, two steps with the hands on its back; placed by the ground walked.
     push:{columns:4,rows:4,frames:16,durationMs:1000,loop:true},
+    // Optional (card puxar-uno-corda): pulling the Uno on its rope, two steps, the fists behind the hips; as the push.
+    pull:{columns:4,rows:4,frames:16,durationMs:1000,loop:true},
     // Optional (card animacao-receber-dano): a flinch when hit, the rest pose first and last (those two may be equal).
     hurt:{columns:3,rows:2,frames:6,durationMs:300,loop:false}}});
-/** The motions every M16 class draws; `run`, `push` and `hurt` are optional, all 5 drawn directions or none. */
-const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push','hurt'];
+/** The motions every M16 class draws; `run`, `push`, `pull` and `hurt` are optional, all 5 drawn directions or none. */
+const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push','pull','hurt'];
 /** The optional motions placed by their assembler and the ground walked (a phase table next to the sheet). */
-const PHASED=new Set(['run','push']);
+const PHASED=new Set(['run','push','pull']);
 /** The motions placed by their assembler (no pose moved here): the phased ones, and the hurt (its feet where the rest's are). */
 const AS_DRAWN=new Set([...PHASED,'hurt']);
 /** A hurt starts and ends on the rest pose: its last cell may repeat its first. */
@@ -81,7 +83,7 @@ export const movement16Source=(input,id,motion,direction)=>path.join(input,FOLDE
  */
 async function readPhase(file,label,motion='run'){
   // a push has no other way to play (movement128 hasPush16 needs the table): required there
-  if(!await exists(file)){assert.ok(motion!=='push',`${label}: a push needs its phase table (${path.basename(file)})`);return undefined;}
+  if(!await exists(file)){assert.ok(motion!=='push'&&motion!=='pull',`${label}: a ${motion} needs its phase table (${path.basename(file)})`);return undefined;}
   const phase=JSON.parse(await readFile(file,'utf8')),n=MOVEMENT16_META.motions[motion].frames;
   assert.ok(Array.isArray(phase.d)&&phase.d.length===n&&phase.d.every(x=>Number.isFinite(x)&&x>0&&x<1),`${label}: phase.d needs ${n} distances in (0, 1)`);
   assert.ok(Array.isArray(phase.v)&&phase.v.length===n&&phase.v.every(p=>Array.isArray(p)&&p.length===2&&p.every(x=>Number.isFinite(x)&&Math.abs(x)<24)),`${label}: phase.v needs ${n} [x, y] shifts under 24 px`);

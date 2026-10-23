@@ -518,8 +518,9 @@
 /* ...and with 5-6 players only each card's first award shows (second sacrifice). The others are folded, not gone
    (N5-resultado-nomes-longos item 3): out of sight but still read aloud, and a tap on the card (is-open) shows them. */
 :root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* The shamed player's card (result.ts fitShame): the prizes after the shame chip's first fold the same way. */
-.rh-rcard:not(.is-open) .rh-award-folded{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* The shamed player's card (result.ts fitShame): the prizes after the shame chip's first fold the same way (as specific
+   as the 3+ cards' padding rule below the grid, or that padding kept a 10x2 box). */
+.rh-result-grid .rh-rcard:not(.is-open) .rh-award.rh-award-folded{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* 3+ players: the "Você" tag sits on the portrait's lower edge (a badge), so the name keeps the whole row. */
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-top{position:relative}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-tag{position:absolute;left:-3px;top:28px;padding:0 4px;box-shadow:0 0 0 1px var(--c-breu)}

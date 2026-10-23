@@ -85,7 +85,8 @@ function walk(seed:number,patterns:readonly Pattern[]){
 
 test('the start crates sit around the spawn: in the frames from the first one, on open ground, not piled up',async()=>{
   const loot=cityLoot(field)!;
-  assert.ok(loot.aroundStart.length>=50,`${loot.aroundStart.length} start spots`);
+  // Asset v4 (mapa-175-com-viaduto): the streets are narrower, fewer cells hold the 3× crate's disc (was ≥ 50).
+  assert.ok(loot.aroundStart.length>=30,`${loot.aroundStart.length} start spots`);
   assert.ok(loot.aroundStart.every(p=>p.walk>=AROUND_START[0]&&p.walk<=AROUND_START[1]&&city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)));
   for(const seed of [1,2,3]){
     const m=match(seed,1);m.step();

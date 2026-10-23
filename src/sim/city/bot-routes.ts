@@ -33,7 +33,7 @@ export const BOT_ROUTE_FIELDS=8;
 export const BOT_ROUTE_BYTES_PER_CELL=27;
 /**
  * Within this (u) of the target with a clear straight segment, the bot walks straight (no field). A stretch of street
- * (12 u on the .w3x-sized city), so it grows with the map (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter), 20.4 u).
+ * (12 u on the .w3x-sized city), so it grows with the map (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto), 20.4 u).
  */
 export const BOT_ROUTE_DIRECT=12*CITY_DISTANCE_SCALE;
 /** Closer than this (u) the bot always walks straight (it is there; a field would point at a cell centre). */

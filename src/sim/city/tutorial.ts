@@ -27,7 +27,7 @@
  * director's TutorialState is JSON-safe.
  */
 import {DIRS,FlowField,HERO_SPEED_MULT,RADIUS,STRAIGHT_COST,UNREACHABLE,type CityTerrain,type FlowPoint,type Point} from '../../maps/index.ts';
-import {CITY_DISTANCE_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
 
@@ -41,7 +41,7 @@ export const TUTORIAL_PLAN=Object.freeze({
    * Wave seconds when the plaza group reaches the plaza, before a novice's walk ends: tuned 40 s for the base walk
    * (slow novice in the plaza at ~62 s, the group holding it from ~41 s), divided by maps HERO_SPEED_MULT so it keeps
    * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s). The 1.7× city
-   * made it × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (34 s) for its longer walk; since the run starts down the road (cityRunStart) the walk is
+   * made it × CITY_MAP_SCALE (34 s) for its longer walk; since the run starts down the road (cityRunStart) the walk is
    * the tuned one again, and so is this (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro: 20 s).
    */
   welcomeArrival:40/HERO_SPEED_MULT,
@@ -62,7 +62,8 @@ const startMemo=new WeakMap<object,Point>();
  * tutorial was tuned for on the .w3x-sized city (≈ 76 of 129 u, ≈ 19 s at the city hero's walk). The 1.7× city made
  * the walk 1.7× longer (the tutorial went from 22 to 35 s and round 1, with the group behind chasing the team the whole
  * way, ran into its 90 s cap); the asset's points stay where they are: the wreck is still `inicio` (the minimap's start
- * mark, the search centre of the group behind), the team starts down the road from it.
+ * mark, the search centre of the group behind), the team starts down the road from it. On asset v4 (the distances 1.75×
+ * shorter, mapa-175-com-viaduto) the whole route (~83 u) is about that walk already, so the team starts by the wreck.
  * Route: a flow field to the plaza point on one cell per asset cell, walkable by the hero rule at the cell centre
  * (clearDisc, which the barricades never block for heroes). From the first route cell within that walk, the first one
  * where all six spawn slots (START_SLOT_SPREAD) stand on open ground. Once per asset; `inicio` when no route exists.
@@ -103,10 +104,12 @@ export const TUTORIAL_MOUTHS:readonly Mouth[]=Object.freeze(['N','L','O'] as Mou
  */
 export const BEHIND_MARGIN=2;
 /**
- * Spots behind the team are searched within this radius (u) of the wreck (a map length: 40 u on the .w3x-sized city, ×
- * CITY_DISTANCE_SCALE, NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept).
+ * Spots behind the team are searched within this radius (u) of the wreck (40 u on the .w3x-sized city, × CITY_MAP_SCALE,
+ * NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept). Not shortened with the city's
+ * distances (mapa-175-com-viaduto): the spots must stay out of the camera, which kept its size, and at 39 u the wreck
+ * by the south edge had almost none (round 1's first contact went from ~22 to ~43 s).
  */
-export const BEHIND_RADIUS=40*CITY_DISTANCE_SCALE,BEHIND_GAP=.8;
+export const BEHIND_RADIUS=40*CITY_MAP_SCALE,BEHIND_GAP=.8;
 /**
  * Searches (one a second, from behindAt) for hidden spots behind the team before the members still without one are
  * dropped, so a team that keeps every candidate cell in sight does not hold the round to its cap.

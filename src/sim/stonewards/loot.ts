@@ -36,7 +36,7 @@ export type LootTier='near'|'good'|'far';
 /**
  * Walk-time bounds (s) of the tiers: near below the first, good up to the second, far beyond. They describe where the
  * crates sit on the map (10 / 15 s at the base walk on the .w3x-sized city), so they grow with the map
- * (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter), 17 / 25.5 s): the same candidates keep their tiers and values.
+ * (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto), 9.7 / 14.6 s): the same candidates keep their tiers and values.
  */
 export const LOOT_NEAR_SECONDS=10*CITY_DISTANCE_SCALE,LOOT_FAR_SECONDS=15*CITY_DISTANCE_SCALE;
 /**

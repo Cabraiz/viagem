@@ -38,12 +38,12 @@ export function cityMapInfo(asset:CityAssetLike):CityMapInfo{
 
 /**
  * A spawn warning this close (world units) to an avenue (its gate → its end) comes in through that avenue's mouth. A map
- * length: 10 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (NEW-20261013-ORQ-cidade-escala-1-7).
+ * length: 10 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7).
  */
 export const AVENUE_MATCH=10*CITY_DISTANCE_SCALE;
 /**
  * A warning this close (world units) to a mouth's gate is at the plaza's entrance, not on the avenue: the planner's mouth
- * line radius (src/sim/city/avenues.ts mouthHalfWidth, 2.6 u × CITY_DISTANCE_SCALE = 4.42 u), whose groups stand past it; a
+ * line radius (src/sim/city/avenues.ts mouthHalfWidth, 2.6 u × CITY_DISTANCE_SCALE = 2.53 u), whose groups stand past it; a
  * boss minion summoned 2.5 u from a boss at the gate is not a mouth.
  */
 export const GATE_RADIUS=2.6*CITY_DISTANCE_SCALE;

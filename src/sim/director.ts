@@ -286,7 +286,7 @@ const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
  * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
  * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
- * CITY_EXIT_REACH is a map length: 2 u on the .w3x-sized city, × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (NEW-20261013-ORQ-cidade-escala-1-7).
+ * CITY_EXIT_REACH is a map length: 2 u on the .w3x-sized city, × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7).
  * CITY_GONE_DISTANCE is not (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): it only has to put the body out of the
  * plaza block (its mouths are 18.7–21.5 u from the plaza point on the 1.7× city) and off the screens, which the hidden
  * check already asks (the widest camera reaches 16.7 u along an avenue from a hero at the wall, which did not grow).

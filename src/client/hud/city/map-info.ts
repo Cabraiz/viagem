@@ -20,7 +20,7 @@ export interface CityMapInfo {size:number;plaza:{x:number;y:number;radius:number
 const C=CITY_SIZE/2;
 /**
  * Until the importer's asset exists: plaza in the centre, the 4 avenue ends, the start in the south district. Plaza
- * radius and start offset are map lengths (10 and 14 u on the .w3x map) × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter).
+ * radius and start offset are map lengths (10 and 14 u on the .w3x map) × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto).
  */
 export const DEFAULT_CITY:CityMapInfo={size:CITY_SIZE,plaza:{x:C,y:C,radius:10*CITY_DISTANCE_SCALE},
   mouths:[{id:'N',x:C,y:0},{id:'S',x:C,y:CITY_SIZE},{id:'L',x:CITY_SIZE,y:C},{id:'O',x:0,y:C}],start:{x:C,y:CITY_SIZE-14*CITY_DISTANCE_SCALE}};

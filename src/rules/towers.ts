@@ -123,7 +123,7 @@ export const DEFENSES:Readonly<Record<DefenseId,DefenseDef>>=Object.freeze({
   'obuseiro':def({id:'obuseiro',name:'Obuseiro Pesado',label:'B5',tier:5,branch:'B',from:'lanca-foguetes',footprint:[3,3],hp:1000,
     range:12,minRange:3,cooldown:s(3.5),damage:90,area:2.4,hits:'ground',target:'cluster'}),
   // B6: fires once in a long while, with a huge area, from the rail; reaches most of the map. City only (the rail): its
-  // range is a map length, 60 u × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
+  // range is a map length, 60 u × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) since the city grew 1.7× (NEW-20261013-ORQ-cidade-escala-1-7).
   'gustavao':def({id:'gustavao',name:'Gustavão',label:'B6',tier:6,branch:'B',from:'obuseiro',footprint:[12,4],hp:3000,rail:true,
     range:60*CITY_DISTANCE_SCALE,minRange:6,cooldown:s(20),damage:600,area:6,hits:'ground',target:'cluster'}),
   // C: control and support.

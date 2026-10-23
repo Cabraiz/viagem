@@ -23,7 +23,7 @@ export const BARRICADE_MOUTHS:readonly BarricadeMouth[]=Object.freeze(['N','S','
 export const BARRICADE_MAX_HP=300;
 /**
  * Search range of the seal radius (u). The range spans the mouths, a map length: [1, 4] u on the .w3x-sized city, ×
- * CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (NEW-20261013-ORQ-cidade-escala-1-7) → [1.7, 6.8]. The step stays .25 u: it is how finely the disc
+ * CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7) → [0.97, 3.89]. The step stays .25 u: it is how finely the disc
  * fits its mouth, and the slack a sealing disc may leave is a person's (the hero walk rule), which did not grow.
  */
 export const BARRICADE_MIN_R=1*CITY_DISTANCE_SCALE,BARRICADE_MAX_R=4*CITY_DISTANCE_SCALE,BARRICADE_R_STEP=.25;

@@ -14,7 +14,7 @@ export interface EnemyGroup {
   x:number;y:number;count:number;ids:string[]}
 /**
  * GROUP_CELL (u) is a crowd's size, people-scale (the critters did not grow); GROUP_RANGE (u, how far a group still gets an
- * arrow) is a map length: 60 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (NEW-20261013-ORQ-cidade-escala-1-7).
+ * arrow) is a map length: 60 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7).
  */
 export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60*CITY_DISTANCE_SCALE,GROUP_ARROWS=2;
 /** A shown arrow stays while its group keeps this many critters (hysteresis). */

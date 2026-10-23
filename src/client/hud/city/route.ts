@@ -18,7 +18,7 @@ import {CITY_DISTANCE_SCALE,FlowField,DIRS,UNREACHABLE,walkable,rotateVector,typ
 
 /**
  * The planner's mouth line half width (avenues.ts AvenuePlannerOptions.mouthHalfWidth default, 2.6 u × layout.mapScale:
- * rules CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) on the city, 4.42 u; NEW-20261013-ORQ-cidade-escala-1-7).
+ * rules CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) on the city, 2.53 u; NEW-20261013-ORQ-cidade-escala-1-7).
  */
 export const MOUTH_HALF_WIDTH=2.6*CITY_DISTANCE_SCALE;
 const MOUTH_LINE=1,PLAZA_CELL=2;

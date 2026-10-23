@@ -48,7 +48,7 @@ import {PLAZA_HOLD_FLAG,PLAZA_HOLD_RADIUS,cityFlowGrid,cityPlanner} from '../../
 import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,START_SLOT_SPREAD,TUTORIAL_PLAN,behindCandidates,cityRunStart} from '../../src/sim/city/tutorial.ts';
 import {BARK_MAX,CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY} from '../../src/rules/zueira-cidade.ts';
 import {ROUNDS,ROUND_NAMES,countMult} from '../../src/rules/waves.ts';
-import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
+import {CITY_DISTANCE_SCALE,SCALE_PROFILES,enemySpeed} from '../../src/rules/scale.ts';
 import {BOSS_TUNING} from '../../src/sim/boss.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 // A deterministic run script: the whole roster (ROSTER_ONLY_WITH_ART off); tests/rules/enemy-art-ids.test.ts plays art only.
@@ -256,14 +256,16 @@ test('ACCEPTANCE: one novice per seed (5 seeds) walks from the wreck to the plaz
 /*
  * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro (part A): the 1.7× city made the wreck → plaza walk 1.7× longer (round 1's
  * arrival 22 → 35 s; the group behind chased the team into the 90 s cap). The run now starts down the road
- * (cityRunStart): on the route, with the walk the tutorial was tuned for (route ÷ CITY_MAP_SCALE) left.
+ * (cityRunStart): on the route, with the walk the tutorial was tuned for (route ÷ the map's distance scale) left.
  */
 test('the city run starts down the road from the wreck: the tuned walk left, every spawn slot open; the room spawns the heroes there',()=>{
   const start=cityRunStart(city),wreck=POINTS.inicio;
   const walkLeft=(p:Point)=>ROUTE.costAt(p.x,p.y)/STRAIGHT_COST*ROUTE.cellSize;
-  assert.ok(Math.hypot(start.x-wreck.x,start.y-wreck.y)>20,`the start ${fmt(start)} is down the road from the wreck ${fmt(wreck)}`);
-  const whole=walkLeft(wreck),left=walkLeft(start);
-  assert.ok(left<=whole/CITY_MAP_SCALE+1e-6&&left>=whole/CITY_MAP_SCALE-4*city.asset.unitsPerCell,`${left.toFixed(1)} u left of ${whole.toFixed(1)}`);
+  // Asset v4 (mapa-175-com-viaduto): the whole route is the tuned walk already (route ÷ CITY_DISTANCE_SCALE ≥ route), so
+  // the start is the first spot by the wreck where the six slots fit (was > 20 u down the road on the 1.7× city).
+  const whole=walkLeft(wreck),left=walkLeft(start),tuned=Math.min(whole,whole/CITY_DISTANCE_SCALE);
+  assert.ok(Math.hypot(start.x-wreck.x,start.y-wreck.y)<6,`the start ${fmt(start)} is by the wreck ${fmt(wreck)}`);
+  assert.ok(left<=tuned+1e-6&&left>=tuned-4*city.asset.unitsPerCell,`${left.toFixed(1)} u left of ${whole.toFixed(1)}`);
   for(let row=0;row<2;row++)for(let col=-1;col<=1;col++)assert.ok(walkable({x:start.x+col*START_SLOT_SPREAD,y:start.y+row*START_SLOT_SPREAD},city),`slot ${row},${col}`);
   assert.deepEqual(cityRunStart(city),start,'once per asset');
   const sim=new Simulation(1,{world:'cidade',terrain:city});

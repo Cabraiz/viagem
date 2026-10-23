@@ -47,6 +47,11 @@ export const KEEP_REGION=6;
 export const POCKET_KEEP=40;
 /** A building may cut off at most this many cells of a region (beyond its own footprint). */
 export const CUT_MAX=6;
+/**
+ * Nor lengthen the walk from the plaza to a spawn or the start by more than this (cells): a building that closes an
+ * avenue keeps the city connected the long way round, and the moto, the enemies and the heroes would take it.
+ */
+export const DETOUR_MAX=4;
 /** Loot: minimum distance between two points (u), and the cell of the coverage grid every open district must fill. */
 export const LOOT_SPACING=11,LOOT_DISTRICT=22;
 /** No loot point within this of the plaza centre (u): the plaza has its own crates (cityLoot.aroundPlaza). */
@@ -199,8 +204,25 @@ export function compactCity(src:CityAsset,k=CITY_COMPACT):Compacted{
     }
   }
   log.widened=widened;
+  // 4b. Avenues: the source's shortest walk (4-neighbour) from the plaza to each spawn and to the start, mapped, stays
+  //     open. Rocks a cell or two apart on the source (an open yard between cliff pieces) can meet on the shorter grid
+  //     and close a street the city still reaches the long way round, which the region repair does not see.
+  {
+    const srcCell=(p:CityPoint)=>Math.floor(p.x/u)+Math.floor(p.y/u)*n;
+    const from=srcCell(src.points.praca),prev=new Int32Array(n*n).fill(-2),queue=[from];prev[from]=-1;
+    for(let h=0;h<queue.length;h++){const t=queue[h],x=t%n,y=(t-x)/n;for(const [dx,dy] of N4){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=n||Y>=n)continue;const q=X+Y*n;if(prev[q]===-2&&sc[q]<0){prev[q]=t;queue.push(q);}}}
+    let opened=0,blocked=0;
+    const P=src.points;
+    for(const k of [P.spawnN,P.spawnS,P.spawnL,P.spawnO,P.inicio]){
+      for(let c=srcCell(k);c>=0&&prev[c]!==-2;c=prev[c]){
+        const t=tc(c%n)+tc(Math.floor(c/n))*m;if(cell[t]<0)continue;
+        if(carvable(t,sr.L[c])){cell[t]=-1;opened++;}else blocked++;
+      }
+    }
+    log.avenueOpened=opened;log.avenueBlocked=blocked;
+  }
   // 5. Buildings, biggest first, at the largest scale (today's size first; the big ones from 1/BIG_SHRINK) that overlaps
-  //    no other building and leaves every region as connected as it was.
+  //    no other building, leaves every region as connected as it was and closes no avenue (DETOUR_MAX).
   const order=src.blocks.map((b,bi)=>[b,bi] as const).filter(([b])=>b.kind==='building').sort((p,q)=>q[0].bbox[2]*q[0].bbox[3]-p[0].bbox[2]*p[0].bbox[3]||p[1]-q[1]);
   const scales:string[]=[];
   /** Per kept region, the cells of it in its biggest real component (all open cells, 4-neighbour). */
@@ -208,6 +230,16 @@ export function compactCity(src:CityAsset,k=CITY_COMPACT):Compacted{
     for(let t=0;t<m*m;t++)if(cell[t]<0)for(const r of regionsAt[t])count.set(`${r}:${tl.L[t]}`,(count.get(`${r}:${tl.L[t]}`)??0)+1);
     const out=new Map<number,number>();for(const [key,c] of count){const r=+key.split(':')[0];if(c>(out.get(r)??0))out.set(r,c);}return out;};
   let before=mainSizes();
+  // The walk (cells, 4-neighbour) from the plaza's mapped cell to the mapped spawns and start.
+  const keyCells=[src.points.praca,src.points.spawnN,src.points.spawnS,src.points.spawnL,src.points.spawnO,src.points.inicio]
+    .map(p=>tc(Math.floor(p.x/u))+tc(Math.floor(p.y/u))*m);
+  const walks=()=>{
+    const d=new Int32Array(m*m).fill(-1),queue=[keyCells[0]];d[keyCells[0]]=0;
+    for(let h=0;h<queue.length;h++){const t=queue[h],x=t%m,y=(t-x)/m;for(const [dx,dy] of N4){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=m||Y>=m)continue;const q=X+Y*m;if(d[q]<0&&cell[q]<0){d[q]=d[t]+1;queue.push(q);}}}
+    // A key cell on a solid cell (a point the snap moves later) reads its nearest open neighbour.
+    return keyCells.slice(1).map(t=>{if(d[t]>=0)return d[t];let best=Infinity;for(const [dx,dy] of [...N4,[1,1],[-1,1],[1,-1],[-1,-1]]){const q=t+dx+dy*m;if(q>=0&&q<m*m&&d[q]>=0)best=Math.min(best,d[q]+1);}return best;});
+  };
+  let walk=walks();
   for(const [b,bi] of order){
     const big=Math.min(b.bbox[2],b.bbox[3])/u>=BIG_MIN_CELLS;
     const tries=[1,1/1.15,1/1.3,1/1.5,1/K].filter(s=>!big||s<=1/BIG_SHRINK+1e-9);
@@ -222,7 +254,8 @@ export function compactCity(src:CityAsset,k=CITY_COMPACT):Compacted{
       // A building may take its own cells from a region, and cut off at most CUT_MAX more (slivers step 6 closes).
       const now=mainSizes(),cover=new Map<number,number>();for(const t of cells)if(saved[cells.indexOf(t)]<0)for(const r of regionsAt[t])cover.set(r,(cover.get(r)??0)+1);
       const bad=kept.filter(r=>(before.get(r)??0)-(now.get(r)??0)-(cover.get(r)??0)>CUT_MAX);
-      if(!bad.length){for(const t of cells)bcell[t]=bi;placed=s;before=now;if(ox||oy)shift=`(${ox},${oy})`;break tryAll;}
+      const nowWalk=bad.length?walk:walks();
+      if(!bad.length&&nowWalk.every((w,i)=>w<=walk[i]+DETOUR_MAX)){for(const t of cells)bcell[t]=bi;placed=s;before=now;walk=nowWalk;if(ox||oy)shift=`(${ox},${oy})`;break tryAll;}
       cells.forEach((t,i)=>{cell[t]=saved[i];});
     }
     if(!placed){

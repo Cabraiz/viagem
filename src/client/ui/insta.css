@@ -17,18 +17,23 @@
   }
   .estadio .estadio-escolha > * { flex: none; width: calc(var(--u) * 734); max-width: none; }
 
+  /* The privacy link (estadio.css) on the light profile: dark text, centred in the air under the card. */
+  .estadio .menu-privacidade { left: 50%; transform: translateX(-50%); color: var(--insta-texto); text-shadow: none; opacity: .6; }
+
   .insta-topo { display: block; }
   .insta-grade-area { display: block; margin-top: calc(var(--u) * 28); }
   .estadio-escolha[data-etapa="nome"] .insta-grade-area { display: none; }
 
   /* Top bar (17..135): the logo 118 tall at x 52; the bell 36x41 at x 573, ≡ 43 wide at x 650, both from y 46. */
   .insta-barra { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--u) * 118); margin-top: calc(var(--u) * 17); padding-left: calc(var(--u) * 52); }
-  /* The logo is the letreiro of the profile on screen (main.ts renderInsta, BUG-20261023-ORQ-instagram-letreiro-do-perfil):
-     every hero's at the same 140 tall from y 9 (the viciado's crown and confetti made it taller than the reference's,
-     so its letters are as big); the widest, the CLT's plaque, ends at x 287, far from the bell. No src yet: no box. */
-  .insta-logo { display: block; height: calc(var(--u) * 140); width: auto; max-width: calc(var(--u) * 480); margin: calc(var(--u) * -8) 0 0 calc(var(--u) * -14); }
+  /* The logo is the letreiro of the profile on screen (main.ts renderInsta, BUG-20261023-ORQ-instagram-letreiro-do-perfil),
+     in its own colours. Every hero's file is one 280x200 canvas with the drawing's visual centre in its middle, sized by
+     visual weight (scripts/insta-logo-medida.mjs, BUG-20261023-ORQ-insta-letreiros-mesma-cor-tamanho): the lightest's
+     168 rows show 112 tall (20 % under the 140 before, the user's ask), so the canvas is 112·200/168; its middle sits on
+     the bar's 62, the bell's and ≡'s axis, so all four share one centre. No src yet: no box. */
+  .insta-logo { display: block; height: calc(var(--u) * 112 * 200 / 168); width: auto; margin: calc(var(--u) * (62 - 112 * 100 / 168)) 0 0 calc(var(--u) * -14); }
   .insta-logo:not([src]) { visibility: hidden; }
-  .insta-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 24) calc(var(--u) * 32) 0 0; }
+  .insta-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 34) calc(var(--u) * 32) 0 0; }
   .insta-sino, .insta-menu { display: grid; place-items: center; color: var(--insta-texto); }
   .insta-sino svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
   .estadio .insta-menu { width: calc(var(--u) * 56); height: calc(var(--u) * 56); min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }

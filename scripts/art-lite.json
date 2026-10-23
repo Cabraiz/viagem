@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2226,
-  "bytes": 1549996972,
-  "liteBytes": 507997378,
+  "bytes": 1549967046,
+  "liteBytes": 507973006,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17686,52 +17686,52 @@
    "shownPsnr": 41.5
   },
   "menu/insta/logo-aposentado.webp": {
-   "source": "e3b0e90d15fb91a538343b547fd616da09ac8d360b5abb9b06b73e41e73f8d57",
-   "lite": "eae68ce6fcd420cc6cd5259decdfa299fbc83b951bc82c2a03b9384762c68b5c",
-   "bytes": 37418,
-   "liteBytes": 32026,
-   "psnr": 40,
-   "shownPsnr": 44.5
+   "source": "f7e9db75b27e385eb55abcaf4cb5ebcae03393053abb43d1ebb1cffc7aa4731b",
+   "lite": "96a61cffed4438c035039e91b2f2fe69d243faa9542a7d1bebca173fd337af65",
+   "bytes": 21602,
+   "liteBytes": 18634,
+   "psnr": 42.2,
+   "shownPsnr": 45.1
   },
   "menu/insta/logo-clt-cansado.webp": {
-   "source": "0031e0cbfedad5727d87440a5c373018b16691593ec666db5dd782706203fc00",
-   "lite": "ab8acf953c8f58b5339bf8bc9a93a86091ebebcf0f9bcd76ea9175aed92b3f68",
-   "bytes": 23176,
-   "liteBytes": 20242,
-   "psnr": 41.6,
-   "shownPsnr": 43.9
+   "source": "fcb3b06d2033c7682e43a59ddb805d89716898439018e633e6df7487d241db2c",
+   "lite": "8ad88521717c31458a13ae73ab6ba82e58e7d413bba321089736bee5777a8474",
+   "bytes": 16882,
+   "liteBytes": 14452,
+   "psnr": 43.5,
+   "shownPsnr": 46.2
   },
   "menu/insta/logo-gato-nada-pra-comer.webp": {
-   "source": "7aec09ccc988881532f7991eb2617e598481888924894c5347365d8967bf9869",
-   "lite": "7cd2e99616ba3b29fff9c75807f60e871f2eeba10a35a1797f0c2cd30c8b2d52",
-   "bytes": 25674,
-   "liteBytes": 21516,
-   "psnr": 38.7,
-   "shownPsnr": 41.1
+   "source": "e9c265a3ab51fa41002c53b09ead9609cb1d046e651e977878fae2918775d6ba",
+   "lite": "57c1028825d59200592df77c7fc42e98f31e1cb60246112776801024bdef8d4a",
+   "bytes": 25112,
+   "liteBytes": 21624,
+   "psnr": 39.8,
+   "shownPsnr": 42
   },
   "menu/insta/logo-maromba.webp": {
-   "source": "bcbfa10e31c53859a6885cef1452c4fdba13729e2ddd3ceb76de41e4be4ffaaf",
-   "lite": "644ca05eed80cee45ba936cb7a7b0913f0d1212d76a3d97b74bfe9c3bee3fa87",
-   "bytes": 22044,
-   "liteBytes": 18396,
-   "psnr": 38.8,
-   "shownPsnr": 41
+   "source": "68e02cf9af3029e791f20189d7d892337f6606ec44b8cbb0a8b34353f6fefa69",
+   "lite": "889b92b3e1f7b92ce1853ee2cd167046c619fe159f4f2b2fe7a90dc417f6f5bf",
+   "bytes": 18194,
+   "liteBytes": 15534,
+   "psnr": 42,
+   "shownPsnr": 44.3
   },
   "menu/insta/logo-vendedor-praia.webp": {
-   "source": "a5cf3637ea0403e72e38a27362af2f25f7ec70d20c616d333fb79c896745a048",
-   "lite": "1f753fb62e59c17205ea9a57b835997c12f69f6759c2fbc89e8919234a4efbe8",
-   "bytes": 27544,
-   "liteBytes": 23572,
-   "psnr": 38.5,
-   "shownPsnr": 42.2
+   "source": "31d4bcaae18f06ce37991ac8ee9128d458f8e3971e1d0c6dbb5eb987a6df8270",
+   "lite": "5abcd2accabaad8b3fce9f00a2c42c23517f15905adcbef0c92a964e96830ef9",
+   "bytes": 23042,
+   "liteBytes": 19976,
+   "psnr": 40.2,
+   "shownPsnr": 42.4
   },
   "menu/insta/logo-viciado-em-bet.webp": {
-   "source": "0486dd661bd5b7475765fbf8f9b91842d30263af7cc3ade9d50410be38f79cc4",
-   "lite": "b93e1b440a9c55fd4b2e5016d11c564d592464e8b9cff18fb8e1927e7b11b992",
-   "bytes": 29228,
-   "liteBytes": 25168,
-   "psnr": 37.4,
-   "shownPsnr": 41.7
+   "source": "7cb5b04a0dd6b65baee2c0c6ba357d83105c2cbec7389baf9af2644786981aeb",
+   "lite": "709c954e14d27443ef22fc15a948f5fbc80997f568c16f6a843b7c00f4c41227",
+   "bytes": 30326,
+   "liteBytes": 26328,
+   "psnr": 38.4,
+   "shownPsnr": 40.8
   },
   "menu/insta/perfil-aposentado.webp": {
    "source": "65f31955be71a6cab4d046a3ae133485dca6d5e87312fbe64f604b49162156fa",

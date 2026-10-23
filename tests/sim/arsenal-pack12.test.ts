@@ -68,16 +68,7 @@ test('pack12 A1: its eleven are playable (arsenal, catalog, noise, crates by min
   assert.equal(weaponNoise('pistola'),12);
 });
 
-test('pack12: the A2 patterns are wired in the weapon system and inert until their card', async ()=>{
-  const {fireRicochet,bounceAfterHit}=await import('../../src/sim/weapons/ricochet.ts');
-  const {fireMine,mineTouched}=await import('../../src/sim/weapons/mine.ts');
-  const {fireTurret}=await import('../../src/sim/weapons/turret.ts');
-  const none=undefined as never;
-  assert.equal(fireRicochet(none,none,none,none),false);
-  assert.equal(fireMine(none,none,none,none),false);
-  assert.equal(fireTurret(none,none,none,none),false);
-  assert.equal(bounceAfterHit(none,none,none),false);
-  assert.equal(mineTouched(none,none,none),true);
+test('pack12: the A2 patterns are the three new mechanics (fatia A2: tests/sim/arsenal-pack12-a2.test.ts)', ()=>{
   assert.deepEqual(PACK12.filter(w=>w.pattern==='ricochet'||w.pattern==='mine'||w.pattern==='turret').map(w=>w.id).sort(),['bola-murcha','carro-de-som','panela-de-pressao']);
 });
 

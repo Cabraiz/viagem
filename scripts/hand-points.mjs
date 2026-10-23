@@ -59,6 +59,14 @@ const OVERRIDES={
     // W and E punch with the far hand (the near one wears the watch): the weapon goes behind the body, out past it.
     ...(d==='W'||d==='E'?{behind:true}:{})}])),
   'clt-cansado:idle8':{2:[58,59],6:[50,56]},
+  // The flinch (animacao-receber-dano): W keeps the near hand (the watch) of its rest, also while the far one flies up in
+  // front (the rule takes the face or that far hand); N hides the right hand on the chest at the strongest recoil.
+  'clt-cansado:hurt16-W':{0:[58,75],1:[58,68],2:[55,62],3:[57,72],4:[58,73],5:[58,74]},
+  'clt-cansado:hurt16-N':{2:[58,62,1]},
+  // The viciado's W rest hides the weapon hand behind the body (idle16-W); the flinch throws it out in front (1-4), the
+  // rule finds it there, and at the rest poses it takes the face: hidden on the body as in idle16-W, 10 px lower (the
+  // hurt sheet stands on 84, the rest on 74).
+  'viciado-em-bet:hurt16-W':{0:[46,66,1],5:[46,66,1]},
   // The walk E swings both hands past the body in turn, each hidden half the stride: the hand in front, pose by pose
   // (the weapon changes hands where they cross, a few px apart).
   'clt-cansado:walk128-E':{},
@@ -146,8 +154,9 @@ for(const id of ids){
   for(const [name,f] of Object.entries(files)){
     // The sheets the game shows (movement128.ts movementPlan): M16 when the class has it (5 drawn directions), else R06
     // (walk128/attack128 in the 8 directions, idle8 one pose per direction, and run16 when it runs).
-    // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128.
-    const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:(?:walk|attack)128|run16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
+    // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128; hurt16 (animacao-
+    // receber-dano) is the flinch either kind shows when hit at rest.
+    const m=(m16?/^(?:walk|attack|idle|run|hurt)16-(\w+)$/:/^(?:(?:walk|attack)128|run16|hurt16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
     if(!m&&!idle8)continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix);

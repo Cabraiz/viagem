@@ -29,7 +29,10 @@
 .rh-inv-slot[data-empty=true]{border:2px dashed var(--c-sombra);background:var(--c-trilho);box-shadow:none;cursor:default}
 .rh-inv-slot[data-hand=true]{transform:translateY(-3px) scale(1.1);box-shadow:0 0 0 3px var(--c-papel),var(--s-2)}
 .rh-inv-ic .ic{width:24px;height:24px;display:block}
-.rh-inv-pilha{position:absolute;right:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 11px/14px var(--f-sistema);text-align:center}
+/* The seal (hud.css .rh-selo) in the top-right corner; the stack moves to the bottom-left so a seal on the row below
+   never lands on it. */
+.rh-inv-selo{display:contents}
+.rh-inv-pilha{position:absolute;left:-3px;bottom:-4px;min-width:14px;padding:0 2px;border-radius:var(--r-ficha);background:var(--c-breu);color:var(--c-papel);font:800 11px/14px var(--f-sistema);text-align:center}
 .rh-inv-pilha:empty{display:none}
 .rh-inv-tecla{display:none;position:absolute;left:1px;top:-1px;color:var(--c-papel);font:800 10px/1 var(--f-sistema);text-shadow:var(--s-texto)}
 .rh[data-hud=mesa] .rh-inv-tecla{display:block}

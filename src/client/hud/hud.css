@@ -266,8 +266,12 @@
 .rh-card::before{content:'';position:absolute;left:3px;top:5px;width:8px;height:8px;border-radius:var(--r-circulo);background:var(--c-lilas);box-shadow:inset 0 0 0 2px var(--c-breu)}
 .rh-card:active{transform:rotate(var(--tilt)) translateY(2px);box-shadow:0 1px 0 var(--c-breu)}
 /* The item's sticker (src/client/ui/stickers.svg), drawn at 20 px. */
-.rh-card-icon{grid-area:icon;display:grid;place-items:center;width:32px;height:32px}
+.rh-card-icon{grid-area:icon;position:relative;display:grid;place-items:center;width:32px;height:32px}
 .rh-card-icon>.ic{width:32px;height:32px}
+/* The seal of an item square (caixa-icone-torre-arma, items.ts familySeal): the tower or the sword sticker riding the
+   square's top-right corner, half outside it, so the item's own sticker stays clear; ≥ 18 px on the smallest phone. */
+.rh-selo{position:absolute;z-index:2;top:-7px;right:-7px;width:18px;height:18px;line-height:0;pointer-events:none}
+.rh-selo>.ic{display:block;width:100%;height:100%}
 .rh-card-body{display:contents}
 /* The short name: under the hole and the sticker, two lines at most (the whole name is in the aria-label). */
 .rh-card-gain{display:none}

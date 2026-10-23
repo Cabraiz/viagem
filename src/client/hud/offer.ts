@@ -14,7 +14,7 @@ import {putAttr,putData,putHidden,putText} from './dom-put.ts';
 import {SIM_HZ,type OfferSource} from '../../contract/index.ts';
 import type {OfferView,RunView} from '../../contract/index.ts';
 import {isHeldOffer} from '../../rules/index.ts';
-import {itemDisplay,priceTag} from './items.ts';
+import {familySeal,itemDisplay,priceTag} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {OFFER_WINDOW_TITLE,RARITY_LABEL,REROLL_LABEL,SKIP_LABEL,WAIT_LINE,levelLabel,offerGain,offerRarity,offerValue} from './offer-card.ts';
 import {fallLine,offerDeadlineFraction,offerMode,secondsLeft,type HudContext,type HudPart,type OfferMode} from './model.ts';
@@ -216,7 +216,7 @@ export function createOfferPanel(options:OfferPanelOptions):HudPart&{chip:HTMLBu
       const item=itemDisplay(choice.itemId),price=priceTag(choice.itemId,choice.level),flags=choiceFlags(offer,index);
       const card=el('button','rh-card');card.type='button';card.dataset.index=String(index);card.dataset.kind=price.kind;
       card.classList.toggle('rh-card-default',flags.isDefault);
-      el('span','rh-card-icon',card).innerHTML=sticker(item.icon);
+      el('span','rh-card-icon',card).innerHTML=sticker(item.icon)+familySeal(choice.itemId);
       // D-052: the rarity in the corner, "Niv N" at the right, the value line "atual > novo" (offer-card.ts).
       const rarity=offerRarity(choice.itemId,choice.level);card.dataset.rarity=rarity;
       el('small','rh-card-rarity',card).textContent=RARITY_LABEL[rarity];

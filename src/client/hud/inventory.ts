@@ -12,7 +12,7 @@
 import {putHidden} from './dom-put.ts';
 import type {PlayerRunView,PickupView,RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';
-import {itemDisplay} from './items.ts';
+import {familySeal,itemDisplay} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {SHELL_DIALOG} from '../desktop-input.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
@@ -144,7 +144,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
   const buttons:HTMLButtonElement[]=[];
   for(let i=0;i<INVENTORY_SLOTS;i++){
     const b=doc.createElement('button');b.type='button';b.className='rh-inv-slot';b.dataset.slot=String(i);
-    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
+    b.innerHTML=`<span class="rh-inv-ic"></span><span class="rh-inv-selo"></span><span class="rh-inv-pilha" aria-hidden="true"></span><span class="rh-inv-tecla" aria-hidden="true">${i+1}</span>`;
     grid.append(b);buttons.push(b);
   }
   let slots:InventorySlot[]|undefined,hero:{x:number;y:number}|undefined,pickups:readonly PickupView[]=[],candidate:PickupView|undefined;
@@ -174,6 +174,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       if(s?.rarity)b.dataset.rarity=String(s.rarity);else delete b.dataset.rarity;
       b.dataset.kind=s?.kind??'';
       b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemDisplay(s.id).icon,{size:24}):'';
+      b.querySelector('.rh-inv-selo')!.innerHTML=s?familySeal(s.id):'';
       b.querySelector('.rh-inv-pilha')!.textContent=s&&s.kind!=='weapon'&&(s.stack??1)>1?String(s.stack):'';
       b.setAttribute('aria-label',s?slotLabel(s):`Espaço ${i+1} vazio`);
       b.setAttribute('aria-pressed',String(!!s?.hand));

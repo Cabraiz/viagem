@@ -24,6 +24,8 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   'moto',
   // Ficha de torre (D-048): the team's one material pile shows as fichas (torre) and a price in material (material, a crate).
   'torre','material',
+  // Selo de arma (caixa-icone-torre-arma): the sword in the item square's top-right corner; a tower kit wears 'torre'.
+  'espada',
   // Bancos (card bancos-e-veiculos): o Caixa 24 h com a nota de 2, na seta de borda e no minimapa (provisório; 'caixa-eletronico', o adesivo de arte 'banco' é da UI).
   'caixa-eletronico'] as const;
 export type IconName=typeof ICON_NAMES[number];

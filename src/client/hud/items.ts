@@ -4,6 +4,7 @@
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
 import {isStickerName,type StickerName} from '../ui/sticker.ts';
+import {icon} from '../ui/icon.ts';
 import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
@@ -102,6 +103,22 @@ for(const id of KIT_IDS){
     blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));
+
+/**
+ * What an item square is at a glance (caixa-icone-torre-arma): a kit de torre (walls too) is 'torre', a weapon (or an evolution)
+ * 'arma'; a passive, a consumable or the coxinha wears no seal. An id the catalog does not know is a weapon (itemDisplay).
+ */
+export type ItemFamily='arma'|'torre';
+export function itemFamily(id:string):ItemFamily|undefined{
+  if(kitPiece(id)||id==='kit-torre')return 'torre';
+  const kind=itemDisplay(id).kind;
+  return kind==='weapon'||kind==='evolution'?'arma':undefined;
+}
+/** The seal in the item square's top-right corner (.rh-selo, hud.css): the tower or the sword sticker, or "". */
+export function familySeal(id:string):string{
+  const family=itemFamily(id);
+  return family?`<span class="rh-selo" data-selo="${family}" aria-hidden="true">${icon(family==='torre'?'torre':'espada')}</span>`:'';
+}
 
 /** Sticker of an id the client catalog does not know (the "who even picked that?" box). */
 export const UNKNOWN_ITEM_STICKER:StickerName='misterio';

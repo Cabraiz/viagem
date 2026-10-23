@@ -8,14 +8,16 @@
 //   - post-<hero>-<1..3>.webp: the same 3 photos opened as a post (BUG-20261023-ORQ-instagram-letreiro-do-perfil), the
 //     square in the middle of the cut-out at 480 px (the cut-outs are ~490 wide: never enlarged);
 //   - logo-<hero>.webp: the top bar's logo is the letreiro of the profile on screen (same bug; public/art/menu/letreiro),
-//     trimmed to its drawing, 168 px tall (140 card px, DPR 2). The gato's is only his fish tag with its ring and bell:
-//     the collar stays out (SO_A_PLACA). A hero whose letreiro is not in public/ yet is skipped (the maromba's
+//     trimmed to its drawing, 168 px tall (140 card px, DPR 2), in one ink and sized by visual weight (insta-tinta.mjs,
+//     BUG-20261023-ORQ-insta-letreiros-mesma-cor-tamanho). The gato's is only his fish tag with its ring and bell: the
+//     collar stays out (SO_A_PLACA). A hero whose letreiro is not in public/ yet is skipped (the maromba's
 //     came from vgm/fundo-maromba, copied in for the run).
-//   node scripts/insta-arte.mjs [--evidence D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-selecao-mobile-instagram/gerar]
+//   node scripts/insta-arte.mjs [--logos] [--tinta a|b] [--evidence D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-selecao-mobile-instagram/gerar]
 import sharp from 'sharp';
 import {existsSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {pesoVisual,TINTA,TINTAS,tingir} from './insta-tinta.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const flag=process.argv.indexOf('--evidence');
@@ -29,6 +31,8 @@ const WEBP={quality:95,alphaQuality:100,effort:6,smartSubsample:true};
 const PERFIL={'viciado-em-bet':['viciado',1],'clt-cansado':['clt',1],'gato-nada-pra-comer':['gato',1],'maromba':['maromba',4]};
 const PERFIL_PX=360,GRADE=[272,312],POST_PX=480,LOGO_H=168;
 
+// --logos: only the top bar's logos (their source is public/art/menu/letreiro, not the evidence).
+if(!process.argv.includes('--logos')){
 for(const [id,[name,option]] of Object.entries(PERFIL)){
   const src=path.join(gerar,'recorte',`perfil-${name}-${option}.png`),{width,height}=await sharp(src).metadata(),side=Math.min(width,height);
   await sharp(src).extract({left:Math.floor((width-side)/2),top:Math.floor((height-side)/2),width:side,height:side})
@@ -59,6 +63,7 @@ for(const [name,[x,y,w,h]] of Object.entries(ICONES)){
   await sharp(px,{raw:{width:W,height:H,channels:4}}).trim({threshold:1}).resize(Math.round(W*scale),Math.round(H*scale),{fit:'inside',kernel:'lanczos3'})
     .webp(WEBP).toFile(out(`icone-${name}.webp`));
 }
+}
 
 // The letreiros' transparent margins are not one colour (sharp's trim keeps them): cut to the opaque pixels instead.
 async function alphaBox(img){
@@ -74,6 +79,8 @@ async function alphaBox(img){
 const SO_A_PLACA={'gato-nada-pra-comer':{top:2530,colar:2850,argola:[1170,1680]}};
 // Pink (its highlights too): more blue than green, unlike the gold (whose blue is below its green).
 const rosa=(r,g,b)=>r-g>40&&b>g&&r>=b;
+const tinta=TINTAS[process.argv.includes('--tinta')?process.argv[process.argv.indexOf('--tinta')+1]:TINTA];
+const logos=[];
 for(const id of Object.keys(PERFIL)){
   const src=path.join(root,`public/art/menu/letreiro/${id}.webp`);
   if(!existsSync(src)){console.error(`insta-arte: ${id} sem letreiro em public/art/menu/letreiro, logo pulado`);continue;}
@@ -85,6 +92,16 @@ for(const id of Object.keys(PERFIL)){
     img=sharp(await sharp(data,{raw:info}).extract({left:0,top:placa.top,width:info.width,height:info.height-placa.top}).png().toBuffer());
   }
   const box=await alphaBox(img);
-  await sharp(await img.extract(box).png().toBuffer()).resize({height:LOGO_H,kernel:'lanczos3'}).webp(WEBP).toFile(out(`logo-${id}.webp`));
+  const {data,info}=await sharp(await img.extract(box).png().toBuffer()).resize({height:LOGO_H,kernel:'lanczos3'}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  tingir(data,tinta);
+  logos.push({id,data,info,peso:pesoVisual(data,tinta)});
+}
+// The lightest keeps the whole height; the others shrink to its weight (weight grows with the square of the size),
+// centred in the same 168 rows: CSS shows every logo at one height, so they share the bell's axis with no per-hero rule.
+const leve=Math.min(...logos.map(l=>l.peso));
+for(const {id,data,info,peso} of logos){
+  const h=Math.round(LOGO_H*Math.sqrt(leve/peso)),top=Math.floor((LOGO_H-h)/2);
+  await sharp(await sharp(data,{raw:info}).resize({height:h,kernel:'lanczos3'}).png().toBuffer())
+    .extend({top,bottom:LOGO_H-h-top,background:{r:0,g:0,b:0,alpha:0}}).webp(WEBP).toFile(out(`logo-${id}.webp`));
 }
 console.error('insta-arte: public/art/menu/insta/ pronto');

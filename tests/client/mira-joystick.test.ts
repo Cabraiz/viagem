@@ -56,7 +56,7 @@ test('wiring: a small dead zone, the drag aims every step with the attack held, 
   assert.match(button,/export const AIM_DEAD_ZONE_PX=12;/);
   // The scene sends the stick's direction as PlayerInput.aim when there is no mouse, and the body looks there.
   assert.match(scene,/const aim=mouse\?\{x:mouse\.x-net\.predicted\.x,y:mouse\.y-net\.predicted\.y\}:this\.hooks\.aimStick\?\.\(\);/);
-  assert.match(scene,/this\.view,this\.intent,this\.hooks\.aimStick\?\.\(\)\);/);
+  assert.match(scene,/this\.view,this\.intent,push\?\.dir,self\?\.hp,this\.hooks\.aimStick\?\.\(\)\);/);
   assert.match(explore,/aimStick:\(\)=>attackBtn\?\.aim\(\),/);
   assert.match(explore,/reach:\(\)=>\{const me=net\.feed\.players\.get\(net\.id\);return me\?heldReach\(me\):undefined;\},/);
   // Letting go ends the hold (no more shots) and hides the ring.

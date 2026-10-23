@@ -65,8 +65,8 @@ test('push16 (empurrar-uno): the head keeps ±4 %, the height may drop to PUSH_M
   // push16-N: the head is not read (the palms beside it), the height bounds it both ways
   const n=(c:ReturnType<typeof clip>)=>({id:'x',dirs:{N:{rest:{},restKey:'idle8',clips:{push:c}}}});
   assert.deepEqual(verdict(n(clip(1.26,.93))),[]);assert.equal(verdict(n(clip(1,1.08))).length,1);assert.equal(verdict(n(clip(1,.8))).length,1);
-  // a run keeps the plain ±4 % height
-  assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,.9)}}}}).length,1);
+  // a run keeps its own floor (RUN_HEIGHT_MIN), not the push's
+  assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,1-RUN_HEIGHT_MIN-.01)}}}}).length,1);
 });
 
 test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gated like a loop seam, the sizes like a walk',()=>{

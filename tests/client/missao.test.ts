@@ -79,9 +79,9 @@ test('a spectator or someone out sees no mission; a rematch (the tick back to 0)
   assert.equal(m.step({tick:START,minervaAte:MINERVA_END,towerKit:false,playing:true}).line?.key,'minerva');
 });
 
-test('the HUD mounts the band over the field and the row under the clock; the Uno arrow is shown by key',()=>{
+test('the HUD mounts the band and the row right under the clock; the Uno arrow is shown by key',()=>{
   const hud=readFileSync(new URL('../../src/client/hud/hud.ts',import.meta.url),'utf8');
-  assert.match(hud,/stack\.append\(minerva\.el,mission\.row,/);
+  assert.match(hud,/stack\.append\(minerva\.el,mission\.band,mission\.row,/);
   assert.match(hud,/import '\.\/missao\.css';/);
   const css=readFileSync(new URL('../../src/client/hud/missao.css',import.meta.url),'utf8');
   assert.match(css,/\.rh-missao-grande\{[^}]*pointer-events:none/);

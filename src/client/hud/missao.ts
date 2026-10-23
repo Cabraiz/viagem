@@ -1,7 +1,7 @@
 /**
  * The mission line (card NEW-20261023-ORQ-inicio-no-uno-caixas-120, the user 23/10: "começa o jogo, a pessoa não sabe
- * o que fazer"): one short sentence at a time, in a big band in the middle of the screen for MISSION_BIG_MS when it
- * changes, then small and fixed at the top (the announcement slot, under the clock) while it holds.
+ * o que fazer"): one short sentence at a time, in a big band for MISSION_BIG_MS when it changes, then small and fixed
+ * while it holds; both are rows of the announcement slot right under the clock (never over it, whatever the slot's top).
  *  - The minuto de Minerva: "Busque o máximo de caixas e volte ao Uno antes do tempo acabar.";
  *  - each time to explore after a wave: "Você tem 2 minutos para buscar mais caixas." (the window's real length);
  *  - the last RETURN_SECONDS of either: "Volte ao Uno." (urgent; the Uno's edge arrow too, hud/rescue.ts);
@@ -104,7 +104,7 @@ export class MissionTracker {
 export interface MissionPart {
   /** The small row (in the announcement slot). */
   readonly row:HTMLElement;
-  /** The big band (over the field, in the middle). */
+  /** The big band (the same slot, right under the clock). */
   readonly band:HTMLElement;
   render(line:MissionLine|undefined):void;
 }

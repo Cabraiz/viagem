@@ -220,11 +220,11 @@ export class RunHud {
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(minerva.el,mission.row,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,mission.band,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
+    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
@@ -295,11 +295,14 @@ export class RunHud {
     this.music.update(musicCue(view,this.el.classList.contains('rh-ended')));
     // On the result the run is over: no damage edge (it would frame the result screen).
     for(const part of this.parts)if(part!==this.hurt||!this.el.classList.contains('rh-ended'))part.update(view,this.ctx);
+    this.stepMission(view);
     // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
+    // The mission's big band (inicio-no-uno-caixas-120) too: one big line under the clock, the hero kept in view.
+    if(marquee&&!marquee.hidden&&!this.mission.band.hidden)marquee.hidden=true;
     // The kill-cam (VGM-053B) gives way to any notice (danger over the joke) and takes the round banner's turn
     // ("Intervalo!": the round chip already says it).
     const notice=!!this.stack.querySelector('.rh-alert:not([hidden])');
@@ -310,7 +313,6 @@ export class RunHud {
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.stepReason(view);
     this.stepBanks(view);
-    this.stepMission(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);

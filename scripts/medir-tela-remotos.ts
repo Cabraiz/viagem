@@ -8,14 +8,16 @@
  *
  * Out per link: the remote's speed on screen frame to frame (mean while walking, p95, max), over 100 ms windows (p95,
  * max), the share of frames over 1.25× the hero, and the share of frames standing still.
- *   node --experimental-strip-types scripts/medir-tela-remotos.ts [--json out.json] [--modo atual|tick]
+ *   node --experimental-strip-types scripts/medir-tela-remotos.ts [--json out.json] [--modo atual|chegada]
  */
 import {writeFileSync} from 'node:fs';
 import {SEND_EVERY} from '../src/protocol/protocol4.ts';
-import {ArrivalJitter,remoteAt,type RemoteSample} from '../src/client/net/smoothing.ts';
+import {ArrivalJitter,RemoteClock,remoteAt,tickTime,type RemoteSample} from '../src/client/net/smoothing.ts';
 
 const arg=(name:string)=>{const i=process.argv.indexOf(`--${name}`);return i>0?process.argv[i+1]:undefined;};
 const TICK_MS=50,FRAME_MS=1000/60,SECONDS=60;
+/** atual: the client as shipped (room time by tick, RemoteClock); chegada: the old one (arrival time, ArrivalJitter). */
+const MODE=arg('modo')??'atual';
 const speed=3.99; // the city's hero walk (maps/world.ts heroSpeed, cidade-nevada)
 
 /** Deterministic random (mulberry32). */
@@ -50,10 +52,10 @@ function run(link:Link,seed=7){
   const arrivals=sent.map(s=>{const at=Math.max(free,s.at+link.delay(r,s.at));free=at;return {...s,arrival:at};});
   // The phone: 60 Hz frames, the render buffer as the client keeps it.
   const samples:RemoteSample[]=[];let k=0;const drawn:{t:number;x:number}[]=[];
-  const jitter=new ArrivalJitter();
+  const jitter=new ArrivalJitter(),clock=new RemoteClock();
   for(let t=500;t<SECONDS*1000;t+=FRAME_MS){
-    while(k<arrivals.length&&arrivals[k].arrival<=t){const a=arrivals[k++];jitter.push(a.arrival);samples.push({at:a.arrival,tick:a.tick,players:new Map([['bot',{x:speed*a.tick/20,y:0}]])});if(samples.length>12)samples.shift();}
-    const p=remoteAt(samples,t-jitter.delay(),'bot');
+    while(k<arrivals.length&&arrivals[k].arrival<=t){const a=arrivals[k++];jitter.push(a.arrival);clock.push(a.arrival,a.tick);samples.push({at:a.arrival,tick:a.tick,players:new Map([['bot',{x:speed*a.tick/20,y:0}]])});if(samples.length>12)samples.shift();}
+    const p=MODE==='chegada'?remoteAt(samples,t-jitter.delay(),'bot'):remoteAt(samples,clock.time(t)??-Infinity,'bot',tickTime);
     if(p)drawn.push({t,x:p.x});
   }
   const v:number[]=[];for(let i=1;i<drawn.length;i++)v.push((drawn[i].x-drawn[i-1].x)/((drawn[i].t-drawn[i-1].t)/1000));

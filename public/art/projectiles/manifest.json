@@ -906,17 +906,18 @@
         "sheet": {
           "file": "rojao.webp",
           "cell": [
-            384,
+            64,
             64
           ],
-          "frames": 1,
+          "frames": 6,
+          "fps": 10,
           "pages": [
             {
               "file": "rojao.webp",
-              "columns": 1,
+              "columns": 6,
               "rows": 1,
               "firstFrame": 0,
-              "frameCount": 1,
+              "frameCount": 6,
               "sha256": "8ad4aa50f4310c12ea414eac7363f48e008956dfd82b303c9f884b836906aaf2"
             }
           ],

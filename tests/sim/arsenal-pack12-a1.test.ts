@@ -13,6 +13,7 @@ import {createWeaponSystem,manualReach} from '../../src/sim/weapons/system.ts';
 import {createProjectileSystem,type WeaponProjectile} from '../../src/sim/projectiles.ts';
 import {getWeapon,resolveWeapon} from '../../src/sim/weapons/catalog.ts';
 import {A1_PLAYABLE} from '../../src/sim/weapons/pack12.ts';
+import {THROW_TICKS} from '../../src/rules/index.ts';
 
 interface Fake extends SimContext {tick:number;players:Map<string,SimPlayer>;events:{tick:number;event:SimEvent}[]}
 function naiveIndex():SpatialIndex<EnemyState>{
@@ -92,7 +93,8 @@ test('A1 figa: its two charms circle the hero and block hostile shots; the pande
 
 test('A1 traque: four small bursts ring the target at the scatter distance',()=>{
   const a=arena('traque',2,[{x:4,y:0}]);
-  a.run(2);
+  // Thrown (rules/thrown.ts): they fly THROW_TICKS from the hero, then land around the target.
+  a.run(THROW_TICKS+1);
   const pops=a.seen.filter(p=>p.source==='traque');
   assert.equal(pops.length,4);
   for(const p of pops)assert.ok(Math.abs(Math.hypot(p.x-14,p.y-10)-1)<1e-6,'1 u from the target');
@@ -122,7 +124,7 @@ test('A1 buscapé: a homing firework; the tijolo lands where the enemy stands, f
   a.run(2);
   assert.ok(a.seen.some(p=>p.source==='buscape'&&p.motion==='homing'));
   const b=arena('tijolo-baiano',1,[{x:10,y:0}]);
-  b.run(2);
+  b.run(THROW_TICKS+1);
   const brick=b.seen.find(p=>p.source==='tijolo-baiano')!;
   assert.ok(brick);assert.ok(Math.hypot(brick.x-20,brick.y-10)<1e-6);assert.ok(b.hurt()>0);
 });

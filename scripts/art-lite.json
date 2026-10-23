@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2071,
-  "bytes": 1546110968,
-  "liteBytes": 500411464,
+  "files": 2091,
+  "bytes": 1547225562,
+  "liteBytes": 501054120,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -18564,6 +18564,166 @@
    "liteBytes": 176190,
    "psnr": 39.4,
    "shownPsnr": 43.9
+  },
+  "sprites/gato-nada-pra-comer.attack16-n.015dba4b1272.webp": {
+   "source": "015dba4b12726fab04a2f1d44b960d9e7b187bf5bbec36cfe320534507b913f7",
+   "lite": "90a44fb0ab61d4df79ba13c61bfcef99c2a807128cd3c744a430889c9c895839",
+   "bytes": 78754,
+   "liteBytes": 40212,
+   "psnr": 40,
+   "shownPsnr": 39.8
+  },
+  "sprites/gato-nada-pra-comer.attack16-nw.25064cb39c74.webp": {
+   "source": "25064cb39c744b03ec4629bd38610bb8b322bdc13cd2049bc749d65eedde4931",
+   "lite": "4c085da6ea217f4d54ac461226bbc2b9fdc243d98b77dad0ed8213576d3a6ca4",
+   "bytes": 72066,
+   "liteBytes": 37836,
+   "psnr": 40.6,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.attack16-s.b66f4965bba8.webp": {
+   "source": "b66f4965bba80481f09c7f93569381e49ecff4484222f1b441a5ebaaf84e0986",
+   "lite": "24f8f99d067423eb0939e6a7b0c14373de2d5d742988c9e13c0e147ecb98bf50",
+   "bytes": 88760,
+   "liteBytes": 45554,
+   "psnr": 38.6,
+   "shownPsnr": 39.4
+  },
+  "sprites/gato-nada-pra-comer.attack16-se.d642ac09c511.webp": {
+   "source": "d642ac09c511ff29d031afb5a8e573ed40e1327a49028543bd6a78f9d2a66f30",
+   "lite": "71244bef339e82ea39190767ac1a189572395e411c90580d5d4b62d8abe0b7fe",
+   "bytes": 82752,
+   "liteBytes": 42078,
+   "psnr": 38.9,
+   "shownPsnr": 39.7
+  },
+  "sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
+   "source": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4",
+   "lite": "562e047ae6dfa720783ab7241effc46892a05660c2aa056b230a96e43225be7f",
+   "bytes": 72842,
+   "liteBytes": 38040,
+   "psnr": 39.6,
+   "shownPsnr": 40.7
+  },
+  "sprites/gato-nada-pra-comer.idle16-n.5aaede5db316.webp": {
+   "source": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c",
+   "lite": "b57f8bf5fd1ba15128e1fb280ad7b18e2434718063adefc3e4e65efc0789cafc",
+   "bytes": 7102,
+   "liteBytes": 14680,
+   "psnr": 41.2,
+   "shownPsnr": 40.6
+  },
+  "sprites/gato-nada-pra-comer.idle16-nw.651957abad67.webp": {
+   "source": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5",
+   "lite": "5d812e0267e48ff325421337c2b85ce8299b58da18b04747997bfaac5f73ee78",
+   "bytes": 6490,
+   "liteBytes": 14014,
+   "psnr": 41.4,
+   "shownPsnr": 41
+  },
+  "sprites/gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp": {
+   "source": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6",
+   "lite": "750ab07eacd2bc13aaefdda560ca8c5c31b49ab03c9c0faf57f2baea1649dead",
+   "bytes": 6510,
+   "liteBytes": 17160,
+   "psnr": 40.2,
+   "shownPsnr": 39.8
+  },
+  "sprites/gato-nada-pra-comer.idle16-se.39c43413843d.webp": {
+   "source": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da",
+   "lite": "98fee72618c190c45cb44f2730c115af3af57f09241e4dd4a263719729d9ace4",
+   "bytes": 6718,
+   "liteBytes": 15730,
+   "psnr": 40.6,
+   "shownPsnr": 40.4
+  },
+  "sprites/gato-nada-pra-comer.idle16-w.96fff0d71005.webp": {
+   "source": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22",
+   "lite": "9e0f624e81842da33bbd840630bfc48b8597ca04dc0d8ef4929ee9cb6a699bb3",
+   "bytes": 5500,
+   "liteBytes": 13466,
+   "psnr": 41.4,
+   "shownPsnr": 42.3
+  },
+  "sprites/gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp": {
+   "source": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b",
+   "lite": "9ff8e84d6ae23bcce9494e3c26847b68f3ad1df07de8d1e4232685531b139ac8",
+   "bytes": 66370,
+   "liteBytes": 35794,
+   "psnr": 41.2,
+   "shownPsnr": 41
+  },
+  "sprites/gato-nada-pra-comer.run16-nw.3203fd970c77.webp": {
+   "source": "3203fd970c77bfb78a76f86398505420a3814c5b05f08774c331b9919ea88171",
+   "lite": "76da00593b9657d250606a6c6be25c7ac599fb3b8532891b7863441d0fe1158b",
+   "bytes": 66296,
+   "liteBytes": 35724,
+   "psnr": 41.6,
+   "shownPsnr": 40.7
+  },
+  "sprites/gato-nada-pra-comer.run16-s.256f51f08f0a.webp": {
+   "source": "256f51f08f0acf0ecd94b87225c23d8e38883460e1c3e8a9ffce9cdbaf78e7eb",
+   "lite": "becc195e275f2842f64b62542d2e137f7536d6ab3a3668ff0a9143cb3bac0b9d",
+   "bytes": 71560,
+   "liteBytes": 37162,
+   "psnr": 40.2,
+   "shownPsnr": 40.3
+  },
+  "sprites/gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+   "source": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03",
+   "lite": "b00b07dd92fddffd363b95adcdb01b3edd16a9566e80bbd5a828f92ac2b9b43b",
+   "bytes": 72800,
+   "liteBytes": 38662,
+   "psnr": 40,
+   "shownPsnr": 39.3
+  },
+  "sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+   "source": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
+   "lite": "5badbb47af9fdfef607fc78e6ff6eaafcba0c9a8eb06a74b8dec4dd1b089b36d",
+   "bytes": 63994,
+   "liteBytes": 34010,
+   "psnr": 40.8,
+   "shownPsnr": 39.5
+  },
+  "sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
+   "source": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac",
+   "lite": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
+   "bytes": 71230,
+   "liteBytes": 37164,
+   "psnr": 41,
+   "shownPsnr": 40.4
+  },
+  "sprites/gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp": {
+   "source": "2b847f6e1090d92bea8cae29532230c38d114dd2550795ce124f2a800d7d3258",
+   "lite": "c121730d971775e992b18c5dce36fa8fa0f1633227b2513e086c1b4a1b0d0c74",
+   "bytes": 63202,
+   "liteBytes": 34494,
+   "psnr": 41.1,
+   "shownPsnr": 40.6
+  },
+  "sprites/gato-nada-pra-comer.walk16-s.8a66abe998b9.webp": {
+   "source": "8a66abe998b9c638ac22c0be1483bf088bf75477e41add84ead2f32c6774c853",
+   "lite": "3f63a9ab2cd3814fe194ad19a3d9d3e5757a68165fe27b5477c96a525f3c3c81",
+   "bytes": 72196,
+   "liteBytes": 37158,
+   "psnr": 40.2,
+   "shownPsnr": 40.4
+  },
+  "sprites/gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp": {
+   "source": "0bdb1d04fde63d664a84482e6386dbd8390b9d7071b314a5bae42fff88640385",
+   "lite": "b835f09552aff31b6acf86203d531a3146f1fbda92a2ca1ad0f4b43bebeff98d",
+   "bytes": 73068,
+   "liteBytes": 37868,
+   "psnr": 39.9,
+   "shownPsnr": 40.1
+  },
+  "sprites/gato-nada-pra-comer.walk16-w.0539b709da31.webp": {
+   "source": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc",
+   "lite": "72acdf101397ca5d11698f31de8838ae229e1e3af305a8ff44eedb9d21ba5702",
+   "bytes": 66384,
+   "liteBytes": 35850,
+   "psnr": 40.7,
+   "shownPsnr": 39.7
   },
   "sprites/goleira.dir4.webp": {
    "source": "d7a4eede4a35a3018fb2d83b0a461ec131114fdb5ae839d59f14a89ee2ec3242",

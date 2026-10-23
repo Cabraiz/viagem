@@ -81,6 +81,8 @@ export interface RunHudOptions {
   onPix?(to:string,amount:number):Promise<PixResult>|undefined;
   /** D-051 inventory tap (hud/inventory.ts): net.inventory; false when nothing could be sent. */
   onInventory?(command:InventoryCommand):boolean;
+  /** The kit de torre selected (construir-no-botao): the inventory marks its slot. */
+  kitSlot?():number|undefined;
   /** Where the first-run coach remembers what this phone learned (VGM-056); defaults to localStorage. The sandbox passes a fresh one. */
   coachStorage?:Pick<Storage,'getItem'|'setItem'>;
   /** The hero's box on screen now (scene.heroScreenRect): the hint steps aside at view rate, not only at avoidHero's 10 Hz. */
@@ -204,7 +206,7 @@ export class RunHud {
     // The Minuto de Minerva clock (relogio-minerva): the slot's first row while the monsters sleep.
     const minerva=createMinerva();
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
-    const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open},parent.ownerDocument);
+    const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open,kitSlot:()=>options.kitSlot?.()},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.

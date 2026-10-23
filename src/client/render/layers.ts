@@ -30,9 +30,7 @@ import {EYES_DEPTH,LIFTED_DEPTH,eyesFrame,eyesOpen} from './blackout-rules.ts';
 import {ArrivalJitter,glideCeiling} from '../net/smoothing.ts';
 import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIndex,numberPriority,type EffectsProfile,type FxBudget} from './legibility.ts';
 import {sunlit} from './light-actors.ts';
-import {contactWidth} from './shadow-rules.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
-import {ENEMY_FEET} from '../art/enemy-feet.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
 import {projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
@@ -97,8 +95,8 @@ export interface HordeRendererOptions{
 }
 
 interface EnemyActor{
-  image:Image;shadow:Image;
-  /** BUG sombra-longe: the body's frame laid on the ground as its cast shadow (shadow-rules.ts); hidden in economy. */
+  image:Image;
+  /** The body's frame laid on the ground as its only shadow (shadow-rules.ts; card sombra-silhueta: no contact ellipse). */
   sil:Image;
   barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
@@ -160,7 +158,7 @@ interface BubbleFx{text:Text;born:number;player:string;x:number;y:number;lift:nu
   tag:boolean}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 /** Imported death animation (art v2) at the enemy's last spot and facing; `top` is its elite layer. Only with death art. */
-interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number;
+interface DeathFx{image:Image;top:Image;sil:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number;
   /** The round costume layer of the death (`costume.variant` undefined: none). */
   costume:{image:Image;variant?:string}}
 
@@ -358,11 +356,11 @@ export class HordeRenderer{
       showImage(o,active);o.shadow.setVisible(active).setActive(active);
       if(active)this.shadowLook(o.shadow); // an idle one may come back after a world swap
     };
-    const showEnemy=(o:EnemyActor,active:boolean)=>{showActor(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);}};
-    // The silhouette: just over the contact shadows (-9980), under every body; one flat dark tint, set once.
+    const showEnemy=(o:EnemyActor,active:boolean)=>{showImage(o,active);if(!active){o.barBg.setVisible(false);o.barFill.setVisible(false);o.lit=false;o.culled=false;o.sil.setVisible(false).setActive(false);}};
+    // The silhouette: just over the pickups' and shots' contact shadows (-9980), under every body; one flat dark tint, set once.
     const silhouette=()=>this.track(silhouetteImage(scene,enemyTexture('bebado'),-9979));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),shadow:shadow(),sil:silhouette(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
@@ -382,8 +380,8 @@ export class HordeRenderer{
     this.bubbles=new Ring<BubbleFx>(()=>({text:text(BUBBLE_STYLE,96000)(),born:0,player:'',x:0,y:0,lift:0,tag:false}),showText,CAPS.bubbles);
     this.warnings=new Ring(()=>({image:image(FX.warning)(),born:0,x:0,y:0,atTick:0,size:1}),showImage,CAPS.warnings);
     // Made on the first kill with imported death art only (empty manifest: never), then reused.
-    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),born:0,kind:'bebado',art:'bebado',elite:false,row:0,x:0,y:0,lift:0,costume:{image:image(FX.puff)()}}),
-      (o,active)=>{showImage(o,active);if(!active){o.top.setVisible(false).setAlpha(1);o.costume.image.setVisible(false).setAlpha(1);}},CAPS.deaths);
+    this.deaths=new Ring<DeathFx>(()=>({image:image(FX.puff)(),top:image(FX.puff)(),sil:silhouette(),born:0,kind:'bebado',art:'bebado',elite:false,row:0,x:0,y:0,lift:0,costume:{image:image(FX.puff)()}}),
+      (o,active)=>{showImage(o,active);if(!active){o.top.setVisible(false).setAlpha(1);o.sil.setVisible(false).setActive(false);o.costume.image.setVisible(false).setAlpha(1);}},CAPS.deaths);
   }
 
   /** Feed a new authoritative view (≈20 Hz). Processes view.events once each by eventId. */
@@ -431,7 +429,7 @@ export class HordeRenderer{
     const city=!!this.options.city?.();
     if(city!==this.cityOn){this.cityOn=city;this.swapShadows();}
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();
-    this.arsenal.begin(timeMs,this.body,this.reduced,this.fx.silhouettes);
+    this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);
@@ -459,7 +457,7 @@ export class HordeRenderer{
   /** City on/off: every live shadow takes the city's Breu 38% texture, or FX.shadow back (idle ones on reuse). */
   private swapShadows(){
     const swap=(a:{shadow:Image})=>this.shadowLook(a.shadow);
-    this.enemies.forEach(swap);this.pickups.forEach(swap);this.projectiles.forEach(swap);
+    this.pickups.forEach(swap);this.projectiles.forEach(swap);
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
@@ -768,10 +766,10 @@ export class HordeRenderer{
     // a coach's lecture ring (wider than the body) are always drawn.
     const k=size*a.fit*body;
     if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
-      if(!a.culled){a.culled=true;a.image.setVisible(false);a.shadow.setVisible(false);a.sil.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
+      if(!a.culled){a.culled=true;a.image.setVisible(false);a.sil.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
       a.screenX=NaN;this.culledNow++;return;
     }
-    if(a.culled){a.culled=false;a.image.setVisible(true);a.shadow.setVisible(true);a.lit=false;}
+    if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
     const depth=this.depth(this.at);
     // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
     const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
@@ -802,12 +800,9 @@ export class HordeRenderer{
     }
     // The imported figure is sized by its drawn height (horde-art.ts): what hangs on the body follows it.
     const fit=a.fit=enemyArtRatio(a.image);
-    // BUG sombra-longe: the contact shadow is as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one),
-    // capped by the kind's old width; the silhouette (full effects only) is the frame on screen, laid on the ground.
-    const old=art.width*size*fit*(flying?.45:.66)*body,feet=ENEMY_FEET[a.art];
-    const cellW=feet?Math.abs(a.image.frame.width*a.image.scaleX):0,shadow=flying?old:contactWidth(feet,a.asleep,cellW,old);
-    a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
-    this.drawSilhouette(a,q.x,q.y,flying);
+    // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
+    // ground point under it, so the gap shows the height.
+    castSilhouette(a.sil,a.image,q.x,q.y,true);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
@@ -921,8 +916,6 @@ export class HordeRenderer{
   private ringPts:Pt[]=Array.from({length:PHASE_RING_POINTS},()=>({x:0,y:0}));
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
-  /** The silhouette: the body's frame as drawn (texture, frame, origin, flip, scale), flipped at the feet onto the ground. */
-  private drawSilhouette(a:EnemyActor,x:number,y:number,flying:boolean){castSilhouette(a.sil,a.image,x,y,this.fx.silhouettes&&!flying);}
   private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.enemyBody;}
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
@@ -1181,9 +1174,12 @@ export class HordeRenderer{
   };
   /** Imported death (art v2): placed like the enemy was (feet, hover lift, depth); horde-art.ts plays and fades it. */
   private drawDeath=(d:DeathFx)=>{
-    this.place(d.image,d.x,d.y,d.lift);
+    const q=this.place(d.image,d.x,d.y,d.lift),gx=q.x,gy=q.y;
     this.at.x=d.x;this.at.y=d.y;d.image.setDepth(this.depth(this.at)+1);
-    return drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art,d.costume);
+    const alive=drawDeathArt(d.image,d.top,d.kind,d.elite,d.row,this.now-d.born,this.enemyBody,d.art,d.costume);
+    // The shadow falls and fades with the body (card sombra-silhueta: it never outlives or skips the death).
+    castSilhouette(d.sil,d.image,gx,gy,alive);
+    return alive;
   };
   private drawStar=(s:StarFx)=>{
     const age=this.now-s.born;if(age>=STAR_MS)return false;

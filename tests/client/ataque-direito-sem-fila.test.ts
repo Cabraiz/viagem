@@ -62,7 +62,7 @@ test('the cone lies under the hero\'s shadow at the depth he is drawn at, in the
   assert.equal(coneDepth(true,-9974,undefined,()=>100),100-CITY_UNDER);assert.ok(CITY_UNDER>2,'under the shadow at −2');
   // The scene draws it every coop frame right after place(), from the drawn hero and his shadow's depth.
   const scene=read('src/client/scene.ts');
-  assert.match(scene,/this\.place\(\);\n\s*this\.horde\?\.selfCone\(this\.position,this\.shadow\.depth\);/);
+  assert.match(scene,/this\.place\(\);\n\s*this\.horde\?\.selfCone\(this\.position,this\.heroGroundDepth\);/);
   assert.match(scene,/coneFromScene:true,/);
-  assert.match(read('src/client/scene.ts'),/this\.shadow\.setPosition\(p\.x,p\.y\)\.setDepth\(depth-2\);/,'the shadow rule the cone counts on');
+  assert.match(read('src/client/scene.ts'),/this\.heroGroundDepth=depth-2;/,'the ground layer (silhouette) the cone counts on');
 });

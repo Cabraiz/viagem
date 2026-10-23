@@ -54,7 +54,7 @@ test('wiring: one place per factor (hero sheets, enemy body), the hero\'s marks 
   assert.match(layers,/drawDeathArt\([^)]*this\.enemyBody,d\.art[,)]/,'the death plays at the enemy\'s size');
   const scene=source('src/client/scene.ts');
   assert.match(scene,/private get heroScale\(\)\{return this\.actorScale\*HERO_DRAW_SCALE;\}/);
-  assert.match(scene,/this\.shadow\?\.setScale\(hero\);this\.ring\?\.setScale\(hero\);/,'the hero\'s shadow follows the sprite');
+  assert.match(scene,/this\.ring\?\.setScale\(hero\);/,'the hero\'s ring follows the sprite (its shadow is the silhouette)');
   assert.match(scene,/const k=this\.heroScale;\n\s+if\(!objects\)/,'ally icon, ring, shadow and ficha offset follow the sprite');
   assert.match(scene,/size=\(enemy\.elite&&kind!=='chefe'\?ELITE_SCALE:1\)\*this\.actorScale\*ENEMY_DRAW_SCALE/,'a tap finds the bigger enemy where it is drawn');
 });

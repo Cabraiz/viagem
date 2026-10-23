@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {EDGE_KINDS_SHOWN,FORT_BUILD_BUTTON,shownTargets} from '../../src/client/hud/arrows.ts';
 
-test('only the caído is pointed at: nests\' obra sites, banks, the moto, the boss, groups, mouths and the base are off',()=>{
-  assert.deepEqual([...EDGE_KINDS_SHOWN],['caido']);
-  const kinds=['caido','chefe','grupo','spawn','base','aliado','bau','obra','moto','banco'] as const;
-  assert.deepEqual(shownTargets(kinds.map(kind=>({kind}))).map(t=>t.kind),['caido']);
+test('only the caído (and the Uno taking hits, card inimigos-querem-o-uno) is pointed at: nests\' obra sites, banks, the moto, the boss, groups, mouths and the base are off',()=>{
+  assert.deepEqual([...EDGE_KINDS_SHOWN],['caido','uno']);
+  const kinds=['caido','chefe','grupo','spawn','base','aliado','bau','obra','moto','banco','uno'] as const;
+  assert.deepEqual(shownTargets(kinds.map(kind=>({kind}))).map(t=>t.kind),['caido','uno']);
 });
 
 test('Construir is off the HUD (and with it the wall counter and the tray); the room code stays',()=>{

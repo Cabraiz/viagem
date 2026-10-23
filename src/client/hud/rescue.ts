@@ -39,7 +39,7 @@ import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
 import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
-import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 import {shownTargets} from './arrows.ts';
 
@@ -98,6 +98,8 @@ export class RescueBoard {
   private mouths=new Map<MouthId,number>();private groupKeys=new Set<string>();
   /** When the wall last lost life (performance.now ms), from the views. */
   private wallHitAt=-Infinity;private wallHp?:number;
+  /** Card inimigos-querem-o-uno: when the car last took a hit (its hits went up), for its edge arrow. */
+  private carHitAt=-Infinity;private carHits?:number;
   /**
    * The city's world picture, rebuilt every CITY_TARGETS_MS (cityRefresh): the people and the live critters (buffers
    * reused) and the arrows' targets. Each frame only re-locates the few
@@ -154,6 +156,9 @@ export class RescueBoard {
       const wall=wallOf(view.structures);
       if(wall&&this.wallHp!==undefined&&wall.hp<this.wallHp)this.wallHitAt=performance.now();
       this.wallHp=wall?.hp;
+      const car=objectiveOf(view)?.car;
+      if(car&&this.carHits!==undefined&&car.hits>this.carHits)this.carHitAt=performance.now();
+      this.carHits=car?.hits;
     }
     for(const e of view.events){
       // Veículos: the vehicle's line over the rider (rules/veiculos.ts), at the take and at the end of the ride.
@@ -220,7 +225,7 @@ export class RescueBoard {
     }
     // Out of the wave the run's leftovers go (an old view, spawn warnings, lit pings, "Segura aí" already said).
     if(run?.phase!=='combat'&&this.last){this.last=undefined;this.states.clear();this.warnings.length=0;this.pings.clear();this.said.clear();
-      this.mouths.clear();this.groupKeys.clear();this.wallHp=undefined;this.wallHitAt=-Infinity;this.cityAt=-Infinity;}
+      this.mouths.clear();this.groupKeys.clear();this.wallHp=undefined;this.wallHitAt=-Infinity;this.carHits=undefined;this.carHitAt=-Infinity;this.cityAt=-Infinity;}
     if(!scene||!combat||!this.last){hud.edges?.clear();return;}
     const view=net.view(now),focus=scene.focusPoint(),zones=hud.zones();
     const self=view.players.find(p=>p.id===net.id);
@@ -321,8 +326,8 @@ export class RescueBoard {
     const phase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
-    const banks=last.banks;
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
+    const banks=last.banks,car=objective&&!objective.ended?{x:objective.car.x,y:objective.car.y,hit:now-this.carHitAt<=UNO_HIT_MS}:undefined;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),...(car?{car}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;

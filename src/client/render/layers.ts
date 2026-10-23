@@ -80,6 +80,8 @@ export interface HordeRendererOptions{
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
   hand?:(id:string)=>HeldHand|undefined;
+  /** The hero has put the weapon away (dancing, card danca-no-jogo): render/arsenal-fx.ts draws no sticker. */
+  away?:(id:string)=>boolean;
   /** The scene draws the local hero's melee cone after placing him (selfCone); omitted: the renderer draws it at locate(). */
   coneFromScene?:boolean;
   /** The scene draws the heroes' weapons after placing and animating every hero (hands); omitted: update() draws them. */
@@ -378,7 +380,7 @@ export class HordeRenderer{
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:''}),showActor);
-    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
+    this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,away:options.away,
       ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
     this.lifted=this.track(scene.add.graphics().setDepth(LIFTED_DEPTH).setName('horda-erguidos'));

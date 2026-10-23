@@ -18,6 +18,7 @@ import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
+import {danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites} from './sprites/character-sprites.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
@@ -325,6 +326,8 @@ export class IslandScene extends Phaser.Scene {
   private facing=Math.PI/2;
   /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
   private intent:Point={x:0,y:0};
+  /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
+  private inputAt=-Infinity;
   /** Caídos in the world: rescue ring, progress and light column (UX-resgate-e-ping). */
   private downedLayer?:DownedLayer;
   private downedMarks:DownedMark[]=[];
@@ -507,6 +510,11 @@ export class IslandScene extends Phaser.Scene {
         globalThis.removeEventListener?.('blur',forget);document.removeEventListener?.('visibilitychange',forget);this.pinch.reset();};
       this.events.once('shutdown',off);this.events.once('destroy',off);
     }
+    // Any touch, click or key, on the map or on the HUD, cuts the hero's dance and restarts its wait (danca-no-jogo).
+    const poke=()=>{this.inputAt=this.time.now;};
+    globalThis.addEventListener?.('pointerdown',poke,true);globalThis.addEventListener?.('keydown',poke,true);
+    const unpoke=()=>{globalThis.removeEventListener?.('pointerdown',poke,true);globalThis.removeEventListener?.('keydown',poke,true);};
+    this.events.once('shutdown',unpoke);this.events.once('destroy',unpoke);
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
@@ -539,6 +547,7 @@ export class IslandScene extends Phaser.Scene {
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
+        away:id=>{const s=id===net.id?this.actor:this.remoteActors.get(id)?.image;return !!s&&this.sprites.dancing(s);},
         // …drawn by the scene once every hero is placed and animated (end of updateCoop): on this frame's pose and spot.
         handsFromScene:true,
         // …and the Defumador's smoke on the feet as drawn (the smoothed hero, the buffered allies), not at locate().
@@ -965,7 +974,11 @@ export class IslandScene extends Phaser.Scene {
     const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
+    // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
+    const aimStick=this.hooks.aimStick?.();
+    if(this.intent.x||this.intent.y||aimStick||this.hooks.attacking?.())this.inputAt=this.time.now;
+    const dance={allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt};
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,aimStick,dance);
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1288,7 +1301,9 @@ export class IslandScene extends Phaser.Scene {
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir,player.hp);
+      // An ally dances too when it has stood still for a while (danca-no-jogo): its moves and swings show it.
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir,player.hp,undefined,
+        {allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0)});
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
       const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});

@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2158,
-  "bytes": 1542590870,
-  "liteBytes": 502454252,
+  "files": 2190,
+  "bytes": 1565670534,
+  "liteBytes": 515203780,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17685,6 +17685,14 @@
    "psnr": 38.3,
    "shownPsnr": 40.9
   },
+  "sprites/aposentado.dance128.b2d18b849abb.webp": {
+   "source": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
+   "lite": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
+   "bytes": 778774,
+   "liteBytes": 448970,
+   "psnr": 38.2,
+   "shownPsnr": 41.9
+  },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",
    "lite": "340a88465f120851d8e719d09aee71f3eaf190897c9491cd45a566967e0eb80a",
@@ -17708,6 +17716,14 @@
    "liteBytes": 155470,
    "psnr": 39.5,
    "shownPsnr": 44
+  },
+  "sprites/astrologa.dance128.7b131d77fb3f.webp": {
+   "source": "7b131d77fb3f189099214d6f63c4f36ef524d21bfa6ea692b7effc1fad791663",
+   "lite": "3e7b4d1410d39d3b3ad88c214f5cd017ae1c087612551ffd0484a4e04fa7b92a",
+   "bytes": 865228,
+   "liteBytes": 419658,
+   "psnr": 32.7,
+   "shownPsnr": 39.6
   },
   "sprites/astrologa.dir4.webp": {
    "source": "77d07f974741bc9215f889888ab44e7e43f7a3c2f2835ffbd4e1eeb28e013d13",
@@ -17796,6 +17812,14 @@
    "liteBytes": 270332,
    "psnr": 38.9,
    "shownPsnr": 44.1
+  },
+  "sprites/caca-promocao.dance128.a0852d91fbc2.webp": {
+   "source": "a0852d91fbc21447d6553d2ae3837ea8fe342efeeddef98bccf6164e0016009d",
+   "lite": "079ab65d5de85c8c145c81e9e4e499b610c01d1f4a3374ad947d16fb28a99ed1",
+   "bytes": 714634,
+   "liteBytes": 385700,
+   "psnr": 37.9,
+   "shownPsnr": 42.1
   },
   "sprites/caca-promocao.dir4.webp": {
    "source": "92049047ea274869bbf102143d69f6f3e000a58303a0541a6dd1bf2687e6cca1",
@@ -17893,6 +17917,14 @@
    "psnr": 38.3,
    "shownPsnr": 43.2
   },
+  "sprites/cidadao-comum.dance128.11d721e0d626.webp": {
+   "source": "11d721e0d626aa6be3c47920923e533b495c40aec0c62db39fc8695d0d223147",
+   "lite": "db66fdab3cb1d643bdc95bf7abadce65bafa5d71d109967c461ec3f9e7da6dda",
+   "bytes": 690898,
+   "liteBytes": 395616,
+   "psnr": 39.4,
+   "shownPsnr": 42.1
+  },
   "sprites/cidadao-comum.dir4.webp": {
    "source": "7712cb3bb3ba21670999fe695dbb7251178c6487ecf5c4b51f5bb74c617e1294",
    "lite": "3bd4d75c2b70c093562561ea873a8fed2d8df35d5cc123f3237ccc162753036f",
@@ -17980,6 +18012,14 @@
    "liteBytes": 226840,
    "psnr": 42.3,
    "shownPsnr": 46
+  },
+  "sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
+   "source": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308",
+   "lite": "b14197907d40324243daf0718c9ca5fc46d39f796c9442816d69ba5e34655352",
+   "bytes": 644246,
+   "liteBytes": 352426,
+   "psnr": 38.2,
+   "shownPsnr": 43
   },
   "sprites/clt-cansado.dir4.webp": {
    "source": "61c68aed2dfd936ff5b4e01ec6bbb464e20f8c77893b3e1a0aaafbfba76eb1cc",
@@ -18285,6 +18325,14 @@
    "psnr": 38.9,
    "shownPsnr": 43.2
   },
+  "sprites/coach.dance128.b25bbf2b1dac.webp": {
+   "source": "b25bbf2b1dac9e5e44ae3291b7726e781786364d69b0d9f1191a0095c428f5c5",
+   "lite": "00c2790732900b5b02ea43beb715a463d5241f4717c9e8b0ad2fc8cae0e0a736",
+   "bytes": 859294,
+   "liteBytes": 475992,
+   "psnr": 35,
+   "shownPsnr": 39.8
+  },
   "sprites/coach.dir4.webp": {
    "source": "df0a2ab2c7e549f31f2b01ad6fb8c67daec773482f7e6764f627609cc2697c60",
    "lite": "d96a92ab433553a5dd8521366c5eaad95a24534f91fd7267712eb284b8790e5e",
@@ -18444,6 +18492,14 @@
    "liteBytes": 266508,
    "psnr": 41.4,
    "shownPsnr": 44.4
+  },
+  "sprites/concurseira.dance128.30322bc89af2.webp": {
+   "source": "30322bc89af28e52287cd92ab0d3d8e3be6f77fb2fb9f33c2914f583b25ec4ac",
+   "lite": "85fd9a46f46c6e722840298fbcb482bd1b7e52627374c99549525159c98b551f",
+   "bytes": 696638,
+   "liteBytes": 383142,
+   "psnr": 38.4,
+   "shownPsnr": 42.2
   },
   "sprites/concurseira.dir4.webp": {
    "source": "89d6893d2a7b8da00635aeac69831f6becf78936bf9f17b683b770ec6c4eb40e",
@@ -18613,6 +18669,14 @@
    "psnr": 36.8,
    "shownPsnr": 41.4
   },
+  "sprites/faxineira.dance128.a5741b8b0b33.webp": {
+   "source": "a5741b8b0b338f8dba8dd526a4dd9ea837909ec116e7c7916b3cd3d04c99fe59",
+   "lite": "0d0d468b0d305e77d9eabc95cfc99ef35dfe37384a9d1e9e48098f263a83cbe6",
+   "bytes": 682830,
+   "liteBytes": 389234,
+   "psnr": 37,
+   "shownPsnr": 40.7
+  },
   "sprites/faxineira.dir4.webp": {
    "source": "26e91e36b72e38015df3ea1b9f948663286f4f24a3e4f237df99604bd4d6fe84",
    "lite": "0ea0ed1ea024ae333759c093b67802625b1847d1ed73fe392155d005bc7214a8",
@@ -18773,6 +18837,14 @@
    "psnr": 36.2,
    "shownPsnr": 41.5
   },
+  "sprites/feirante.dance128.1e82816fd1cc.webp": {
+   "source": "1e82816fd1ccaf02113261acd713e0bfbe5db35848ea44e122a62f70491e4664",
+   "lite": "9abfef1cab93ab5445b08b9df559f84e4d59024ea96505ad879f317a748bd232",
+   "bytes": 794238,
+   "liteBytes": 417742,
+   "psnr": 35.2,
+   "shownPsnr": 40.2
+  },
   "sprites/feirante.dir4.webp": {
    "source": "e1ee3d74d96e1389441f1363957aeed41d86ba0b410e3d38cf627038972fb5ad",
    "lite": "e18facfebf7b9e13116d5afd8d1254367363a17567341d3b78a51340c4f39d70",
@@ -18869,6 +18941,14 @@
    "psnr": 36.8,
    "shownPsnr": 42.1
   },
+  "sprites/gambiarreiro.dance128.02f53c8b7791.webp": {
+   "source": "02f53c8b77917df77ef13de9b139b3bfd1125007c85d5aeb69116421dec742bc",
+   "lite": "f6efad4de2c1bd7b0bff21d8591ade4f0a78434e627ea3b76c521338c683af8e",
+   "bytes": 775428,
+   "liteBytes": 407734,
+   "psnr": 35.3,
+   "shownPsnr": 40.1
+  },
   "sprites/gambiarreiro.dir4.webp": {
    "source": "2ddbfd6d9e8486492375744cbc625efa94452ef0e32662cf786d540f7383ea17",
    "lite": "7b38a8f14a0abcbac302c331d9ee2ff521d3ec997c1ed6aae397caa52f320f00",
@@ -18892,6 +18972,14 @@
    "liteBytes": 160350,
    "psnr": 37.5,
    "shownPsnr": 43.2
+  },
+  "sprites/gamer-mobile.dance128.975c931b5c2b.webp": {
+   "source": "975c931b5c2b95bd8abc9891ea7f3e3e8f769a628ca7035b5e341e33f89a3ab9",
+   "lite": "5f67bd1247819aaa6980b3e6eac7e83e1b97df6feea999426cb5c22f983411b4",
+   "bytes": 680900,
+   "liteBytes": 404680,
+   "psnr": 36.1,
+   "shownPsnr": 40.3
   },
   "sprites/gamer-mobile.dir4.webp": {
    "source": "c6ad7ba07a9526f72cadd4b50d96bb47cd34fb96b655f6d804789f17b650a95d",
@@ -19157,6 +19245,14 @@
    "psnr": 40.7,
    "shownPsnr": 39.7
   },
+  "sprites/goleira.dance128.6250ff3d370b.webp": {
+   "source": "6250ff3d370b7cfd134ca388aaeeaacf1245910ce22adedf5b2fffb99663901d",
+   "lite": "b2df3fed15e0dd0bc06d3aba6979955c1ea26dfdcf20bbf3f13f286fabb78848",
+   "bytes": 774498,
+   "liteBytes": 425710,
+   "psnr": 36.3,
+   "shownPsnr": 41.3
+  },
   "sprites/goleira.dir4.webp": {
    "source": "d7a4eede4a35a3018fb2d83b0a461ec131114fdb5ae839d59f14a89ee2ec3242",
    "lite": "8358f47f8d9f4fbcb477081915186cc6305ffa27e59037a5e584d3bd9c9a7cf1",
@@ -19180,6 +19276,14 @@
    "liteBytes": 115808,
    "psnr": 41.2,
    "shownPsnr": 46.6
+  },
+  "sprites/mae-pet.dance128.8f0b47e68a7d.webp": {
+   "source": "8f0b47e68a7d30144b341cabab0a44143dba571a8d059a1ecbcb6c77922f702f",
+   "lite": "d353fe0943fb3b00fb4f08f2f56d1dd43af7b795d8b1b29166092f9386169879",
+   "bytes": 674592,
+   "liteBytes": 385140,
+   "psnr": 36.8,
+   "shownPsnr": 40.7
   },
   "sprites/mae-pet.dir4.webp": {
    "source": "1579ac822b2f6a17bc010ca5d4553373d93aa91d90520248201bf0a941cd1a74",
@@ -19429,6 +19533,14 @@
    "psnr": 42.8,
    "shownPsnr": 45.5
   },
+  "sprites/mendigo.dance128.12335d584beb.webp": {
+   "source": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8",
+   "lite": "c8de779b15a7786c25e4d88f770cd16b24e403ffdad8f2028a866dc7558c0a2a",
+   "bytes": 731464,
+   "liteBytes": 373066,
+   "psnr": 37.7,
+   "shownPsnr": 42.6
+  },
   "sprites/mendigo.dir4.webp": {
    "source": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8",
    "lite": "807d51f79847f92ee8c693fb3d214331f5f97030114b9652a9f2128a02ba0c5b",
@@ -19525,6 +19637,14 @@
    "psnr": 41,
    "shownPsnr": 45.9
   },
+  "sprites/merendeira.dance128.02d33efdf5dd.webp": {
+   "source": "02d33efdf5ddf88fea80e32ad6ce06765f96a0025ffaef323c7f63fb112fce2b",
+   "lite": "3e22e9156ccca76bc96da0e4da5d1ef9f627fe5ff8c5344e61b5c163a20fb433",
+   "bytes": 710602,
+   "liteBytes": 395074,
+   "psnr": 36.8,
+   "shownPsnr": 41.8
+  },
   "sprites/merendeira.dir4.webp": {
    "source": "7d8a78e5b6cc2b3cb357ee2a43810b90f1d0d519a5efa249cfd61badd3d917b4",
    "lite": "460dc14704a69b986de16209b5cc025a585b7c1b7329ea4aee9f16db65f346f6",
@@ -19549,6 +19669,14 @@
    "psnr": 40.6,
    "shownPsnr": 43.6
   },
+  "sprites/motogirl.dance128.ec6b9b91da79.webp": {
+   "source": "ec6b9b91da7987f1392d5fa79717e0ad1928b05047ec5d311d075c55ef6d380e",
+   "lite": "7b2c250b0151a1625ee1b57678c2375e8ff876245d0eccf6c5121d148da7fb87",
+   "bytes": 659266,
+   "liteBytes": 341020,
+   "psnr": 35.7,
+   "shownPsnr": 41.6
+  },
   "sprites/motogirl.dir4.webp": {
    "source": "ab213077c7418a2f6d58de79b5fc0039968e029ecb9ac72235f077f550e49efb",
    "lite": "70653ba1dce9ea21d8422ec3231a917c8788c3ab480c4cfce3a006cf04e996a3",
@@ -19572,6 +19700,14 @@
    "liteBytes": 152406,
    "psnr": 39.9,
    "shownPsnr": 46
+  },
+  "sprites/pagodeiro.dance128.3d629f0b7e96.webp": {
+   "source": "3d629f0b7e96aa2397bb150ac2fc1c0be962d504c95b1317a2b330ae44a72599",
+   "lite": "a89dc1355741da6ae9be0300a23bc212079ae1095b6b8c745f737eb7b69dbd28",
+   "bytes": 701020,
+   "liteBytes": 400190,
+   "psnr": 35.2,
+   "shownPsnr": 39.8
   },
   "sprites/pagodeiro.dir4.webp": {
    "source": "ca5e7e30ed5f0553b9481b46c4ce0c4bcc946b10195e88e64c266dfcd21de7bb",
@@ -19660,6 +19796,14 @@
    "liteBytes": 287476,
    "psnr": 41.4,
    "shownPsnr": 44.2
+  },
+  "sprites/passageira.dance128.e35ba50d81fa.webp": {
+   "source": "e35ba50d81fa766925dc8460563d5df1e5e5289541b5aca503d131c583d7d721",
+   "lite": "0daaeded01ae1800db70fef95decb16bd77c1d385592bf9f954267e08d5e22bb",
+   "bytes": 666298,
+   "liteBytes": 367540,
+   "psnr": 38.4,
+   "shownPsnr": 42.5
   },
   "sprites/passageira.dir4.webp": {
    "source": "74a991c0322db11f6432614351767846f407d49413dc38412839053200ea83f8",
@@ -19821,6 +19965,14 @@
    "psnr": 38.5,
    "shownPsnr": 43.4
   },
+  "sprites/pedreiro.dance128.d2c2ed7b8098.webp": {
+   "source": "d2c2ed7b8098b505d3293b8ccd1056ea147ab2a218274ecf2e6cb7c61c4dfb71",
+   "lite": "74230c623789bab8b40857b604753f6e0e9a35e5406c5e7bc203aeb04b11c38b",
+   "bytes": 735660,
+   "liteBytes": 420314,
+   "psnr": 36.7,
+   "shownPsnr": 41.4
+  },
   "sprites/pedreiro.dir4.webp": {
    "source": "1e7efdff45196e89ab2001a3412bc7cf868c6e382ee10e3e9fb0160d6b241f43",
    "lite": "3c42c8950d716c1f4c31a8e4e7a3afcb57a370b8836c2363a7f7562d28db7cbe",
@@ -19917,6 +20069,14 @@
    "psnr": 38.1,
    "shownPsnr": 43
   },
+  "sprites/porteiro.dance128.234e5c16cf6c.webp": {
+   "source": "234e5c16cf6ccbece7cb8713a6c82b9058626af119bafb4f88b69af50f3915f6",
+   "lite": "c3ecce94da2d5537dbe1446c4d9b8298817b0bdfb891d640e68fb4fa91145dce",
+   "bytes": 653054,
+   "liteBytes": 349794,
+   "psnr": 38.6,
+   "shownPsnr": 43.3
+  },
   "sprites/porteiro.dir4.webp": {
    "source": "3c084d8f1d34ddc3c5de5c5b8515e8b7e8cb6e26c7f2a023d0687f9415ba76a3",
    "lite": "5e6977ce94f0095ada50cfc9eb48d2ba6e9e66540823f79581e23e40e5b4c25d",
@@ -19940,6 +20100,14 @@
    "liteBytes": 131392,
    "psnr": 39.2,
    "shownPsnr": 45.4
+  },
+  "sprites/rainha-bateria.dance128.9d52d13fb997.webp": {
+   "source": "9d52d13fb997508fd8a645bda9eba810ebbbb6a2874df3418dd9d88e20a084f1",
+   "lite": "9e83de0b2c678de39c671837fd0f338af0511d55b2866380f9450ffdf743d52f",
+   "bytes": 708334,
+   "liteBytes": 409868,
+   "psnr": 31.5,
+   "shownPsnr": 38.5
   },
   "sprites/rainha-bateria.dir4.webp": {
    "source": "862267c1952347f172a6d23fb07f307aec1367c609f965349df359a26053c612",
@@ -19965,6 +20133,14 @@
    "psnr": 34.9,
    "shownPsnr": 41.3
   },
+  "sprites/rei-arraia.dance128.8e37f6a9d1c7.webp": {
+   "source": "8e37f6a9d1c74da97b98188c2a1ce5314456c8df5974dd5b5df7a9af056422d6",
+   "lite": "a08368b71883f3cee1a16776005a8a39526235c0707bac6bc8a7ac40f59d3020",
+   "bytes": 747332,
+   "liteBytes": 412442,
+   "psnr": 35.8,
+   "shownPsnr": 40.7
+  },
   "sprites/rei-arraia.dir4.webp": {
    "source": "1e2fcc6bf92a135fad529a31669d7b04a5cb2912b38b985fdc826f14b286c00c",
    "lite": "034e8251edca0783b21b1b5a508ace6d737f8231bb13bb5d47d8e2710eaa02b7",
@@ -19988,6 +20164,14 @@
    "liteBytes": 124234,
    "psnr": 39.2,
    "shownPsnr": 45.2
+  },
+  "sprites/rei-pastel.dance128.d423ab31a80d.webp": {
+   "source": "d423ab31a80d0d05eb5fb5f70b59a0274e00c91b0d19d4c12d100aaca7025e34",
+   "lite": "a92dbc7f7fb973c7782b37d775921b5e15ce45fc3f89cf53a5ad5b4304f112f5",
+   "bytes": 714798,
+   "liteBytes": 399894,
+   "psnr": 35.9,
+   "shownPsnr": 40.6
   },
   "sprites/rei-pastel.dir4.webp": {
    "source": "cd9222279e92af600796a64498afb2f7d32f82ace8d9815590ca2a9c69107e22",
@@ -20076,6 +20260,14 @@
    "liteBytes": 215726,
    "psnr": 40.7,
    "shownPsnr": 44.9
+  },
+  "sprites/roqueira.dance128.2a5b35d8ae96.webp": {
+   "source": "2a5b35d8ae96bcefbe159c2b494200665d668a936db71684590a4aa90b173e23",
+   "lite": "f00c18489ab4cd1928b40febf1141ea9a7df7d14e604301932c9f2b219714be4",
+   "bytes": 609786,
+   "liteBytes": 327156,
+   "psnr": 38.2,
+   "shownPsnr": 43.4
   },
   "sprites/roqueira.dir4.webp": {
    "source": "4f49e81532a7c1ca23e39573c50a134990e3ce66b16d5aaee258fac4036ee167",
@@ -20173,6 +20365,14 @@
    "psnr": 41,
    "shownPsnr": 45.9
   },
+  "sprites/salva-vidas.dance128.0270ec26701b.webp": {
+   "source": "0270ec26701b336123eecd192b725e5a37d6702ade9cb4e60523cfce5176a248",
+   "lite": "0e9a79ea28303fbdba49be35e5005dfd3b1bc9c0b27c0b739a94fbdc1183994e",
+   "bytes": 665652,
+   "liteBytes": 396720,
+   "psnr": 38.1,
+   "shownPsnr": 42.3
+  },
   "sprites/salva-vidas.dir4.webp": {
    "source": "6400aeffb9e1063f243a6355c4356452da47410f7a7b88697b2a52714dd606a6",
    "lite": "af568ba9d9c9e365c72170bf450e7b08e24d5921654f121e8ca8ab09bc4fa884",
@@ -20196,6 +20396,14 @@
    "liteBytes": 145402,
    "psnr": 39.1,
    "shownPsnr": 43.7
+  },
+  "sprites/sensei.dance128.c9aae1293242.webp": {
+   "source": "c9aae129324287f08a5b7178e44dda0341a0fb092d6c06aef9428a5d19bbacfd",
+   "lite": "ae0483e87ae240897de895065497ae6074d75b0fdb58d40734f97935d4464711",
+   "bytes": 778458,
+   "liteBytes": 488462,
+   "psnr": 38,
+   "shownPsnr": 41.8
   },
   "sprites/sensei.dir4.webp": {
    "source": "2fee373a3b7e332722bce0df05aa8edc0c37cbf152bc57ed43c56ae0a75d450f",
@@ -20284,6 +20492,14 @@
    "liteBytes": 273328,
    "psnr": 39.7,
    "shownPsnr": 43
+  },
+  "sprites/streamer.dance128.7701e50a59af.webp": {
+   "source": "7701e50a59af09ad7ee950efa6134d5ca70a6cbd72a5bd0244fbc082a1e3b297",
+   "lite": "593e71e2b1f99ef029112b200a0682929f06bcfa566dc25b4ff79cccb826fc40",
+   "bytes": 877830,
+   "liteBytes": 495322,
+   "psnr": 36.3,
+   "shownPsnr": 40.4
   },
   "sprites/streamer.dir4.webp": {
    "source": "cc513b949d0fbc5e70afa60c505bcaaa60db6dee10b72df9c0d12ebf720ffdf6",
@@ -20381,6 +20597,14 @@
    "psnr": 38.8,
    "shownPsnr": 44.4
   },
+  "sprites/tecnico-ti.dance128.4401986a6d09.webp": {
+   "source": "4401986a6d0980585b7d3ea8847150615327091e90350893621243438ee3907e",
+   "lite": "1ad0f232f2e6363505d1dbbd3430e36040cebb7b460d48d25d0639af5b726566",
+   "bytes": 585114,
+   "liteBytes": 326746,
+   "psnr": 40.4,
+   "shownPsnr": 43.1
+  },
   "sprites/tecnico-ti.dir4.webp": {
    "source": "b16100b023ee6361905a5325f531076807f34accff43563f50bf3b25c855285e",
    "lite": "44c90f6df7ddb57abdba859ea0a12c912c3b90232f622dcd6bbad14a2a62f279",
@@ -20477,6 +20701,14 @@
    "psnr": 43.1,
    "shownPsnr": 45.2
   },
+  "sprites/universitario.dance128.8e598f1f1c1f.webp": {
+   "source": "8e598f1f1c1ffa15640e745fc72a6d65811349d18ea27c88e061214411e75398",
+   "lite": "802c67ce357e159787fc3192563224e60c74810b5aa1d8bb59860226d106fd32",
+   "bytes": 625100,
+   "liteBytes": 337342,
+   "psnr": 40.6,
+   "shownPsnr": 43.5
+  },
   "sprites/universitario.dir4.webp": {
    "source": "efeb86b299dd67ff47ead0b009c14c06b22b9a5861e1985cb638b294978899fd",
    "lite": "e6280c141787d855559a37be5210cf9b365d37e8c5b9be785a04fcb8b71341ab",
@@ -20572,6 +20804,14 @@
    "liteBytes": 161980,
    "psnr": 41.5,
    "shownPsnr": 45.9
+  },
+  "sprites/vendedor-praia.dance128.932b5398d729.webp": {
+   "source": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",
+   "lite": "704c8541ed7162b3f0c057dc40b2c2b2182a13e8e2b53298ee65241632c35a0e",
+   "bytes": 788922,
+   "liteBytes": 417894,
+   "psnr": 34.6,
+   "shownPsnr": 39.5
   },
   "sprites/vendedor-praia.dir4.webp": {
    "source": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926",
@@ -20700,6 +20940,14 @@
    "liteBytes": 32112,
    "psnr": 40.3,
    "shownPsnr": 43.6
+  },
+  "sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
+   "source": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d",
+   "lite": "e2b6696b93dcec65e0d8e3c8c0b30fea5e32c85ae0116ef02669f4e025fadcb6",
+   "bytes": 722494,
+   "liteBytes": 396260,
+   "psnr": 37,
+   "shownPsnr": 40.7
   },
   "sprites/viciado-em-bet.dir4.webp": {
    "source": "00775f0c3cc6ae158750ca679d0db34a9617af68544aa5e0bfb735dd39461a78",
@@ -21084,6 +21332,14 @@
    "liteBytes": 248174,
    "psnr": 40.6,
    "shownPsnr": 44.1
+  },
+  "sprites/vizinha-fofoqueira.dance128.af9b1237c34c.webp": {
+   "source": "af9b1237c34cbe6957b70896d8c9398be8cf64bf1d6c2be4c1dbe334a757085b",
+   "lite": "b596fd7dd23a728a6dca0bfc6694930750f4705a6c53e0eabed190a90c90a2bd",
+   "bytes": 766282,
+   "liteBytes": 402680,
+   "psnr": 37.3,
+   "shownPsnr": 41.4
   },
   "sprites/vizinha-fofoqueira.dir4.webp": {
    "source": "b017144a72935231fd9247d0943145decf41129cab88d73ada7f661f4f32bfcc",

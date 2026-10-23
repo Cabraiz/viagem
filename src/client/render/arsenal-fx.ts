@@ -84,6 +84,8 @@ export interface ArsenalOptions {
   aim?:()=>Pt|undefined;
   /** The hero's weapon hand on screen, when its pose has one measured; undefined: the sticker at the side. */
   hand?:(id:string)=>HeldHand|undefined;
+  /** The hero has put the weapon away this frame (dancing, card danca-no-jogo: the dance holds its own prop): no sticker. */
+  away?:(id:string)=>boolean;
   /** City mode: the held weapon wears the heroes' Breu ring (render/city-outline.ts), at its drawn size. */
   cityOutlines?:CityOutlines;
   /** The scene draws the local hero's cone itself, right after placing him (drawSelfCone): update() leaves it alone. */
@@ -301,7 +303,7 @@ export class ArsenalFx{
   drawHands(){
     const {projector}=this.options,b=this.body,now=this.now;
     for(const [id,icon] of this.handOf){
-      const at=this.options.locate?.(id);if(!at)continue;
+      const at=this.options.locate?.(id);if(!at||this.options.away?.(id))continue;
       const key=iconKey(icon);if(!this.scene.textures.exists(key))continue;
       let hand=this.hands.get(id);
       if(!hand){

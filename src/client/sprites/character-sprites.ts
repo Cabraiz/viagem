@@ -7,13 +7,14 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,hasPush16,pushPlan,hurtPlan,type Movement128Plan} from './movement128.ts';
+import {dancePlan,movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,hasPush16,pushPlan,hurtPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
 import {watchOrphans} from './texture-orphans.ts';
 import {handPoint,type HandPoint} from './hand-points.ts';
 import {HERO_DIRECTIONS,type HeroDirection} from './sprite-motion.ts';
+import {DanceGate,DANCE_RATE,type DanceCue} from './hero-dance.ts';
 
 export type {FigureBox};
 /** The frame a detailed clip drew last: the sheet, its frame, origin (unmirrored), scale, mirror and facing. */
@@ -132,7 +133,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame;dance:DanceGate;danceStart?:number;fetcher?:Phaser.GameObjects.Sprite}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -258,6 +259,21 @@ export class CharacterSprites {
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
     return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
   }
+  /** True while `sprite` shows its dance (render/arsenal-fx.ts puts the weapon away: the dance holds its own prop). */
+  dancing(sprite:Phaser.GameObjects.Sprite){return this.states.get(sprite)?.stream?.motion==='dance';}
+  /**
+   * The dance clip to show now (card danca-no-jogo), once its sheet is decoded; undefined while it is not time yet, the
+   * class has none, or the sheet is still coming (the rest goes on meanwhile). The sheet is asked for DANCE_PREFETCH_MS
+   * before the dance by a stand-in owner that lives and dies with the sprite (the cache keeps one wanted clip per owner:
+   * the sprite's own is its rest).
+   */
+  private danceClip(sprite:Phaser.GameObjects.Sprite,state:{dance:DanceGate;fetcher?:Phaser.GameObjects.Sprite},id:string,start:number|undefined){
+    const plan=state.dance.prefetch?dancePlan(id):undefined,cache=this.detailed??=movement128Textures(this.scene,this.city);
+    if(!plan){if(state.fetcher){cache.release(state.fetcher);state.fetcher=undefined;}return;}
+    state.fetcher??=danceFetcher(sprite);
+    cache.request(state.fetcher,plan);
+    return start!==undefined&&cache.status(plan.key)==='ready'?plan:undefined;
+  }
   /**
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
@@ -268,11 +284,13 @@ export class CharacterSprites {
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number}){
+    look?:{x:number;y:number},
+    /** Whether and since when this figure may dance (card danca-no-jogo, hero-dance.ts); absent: it never dances. */
+    dance?:DanceCue){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
-    if(!state){state={motion:new SpriteMotion(),hurt:new HurtGate(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0};this.states.set(sprite,state);}
+    if(!state){state={motion:new SpriteMotion(),hurt:new HurtGate(),walk:new WalkGate(),facing:new FacingTracker(),eight:new Facing8Tracker(),x,y,cycles:0,dance:new DanceGate()};this.states.set(sprite,state);}
     const dx=x-state.x,dy=y-state.y,moving=state.walk.update(this.scene.time.now,Math.hypot(dx,dy)>.001,intent);
     const motion=state.motion.update(this.scene.time.now,moving,attackTick,alive);
     if(state.phaseMotion!==motion||state.phaseStarted===undefined||this.scene.time.now<state.phaseStarted){state.phaseMotion=motion;state.phaseStarted=this.scene.time.now;state.cycles=0;}
@@ -286,7 +304,10 @@ export class CharacterSprites {
     // A hit while resting flinches (its first and last poses are the rest's); the rest then starts over from its pose 0.
     const hurt=state.hurt.update(this.scene.time.now,hp,alive&&motion==='idle'&&!pushing),flinch=hurt!==undefined&&seen?hurtPlan(id,direction):undefined;
     if(flinch)state.phaseStarted=this.scene.time.now;
-    const detailed=alive&&seen?flinch??(pushing?pushPlan(id,direction):movementPlan(id,motion,direction)):undefined;
+    // Resting long enough, it dances (danca-no-jogo) once its sheet is in; meanwhile the rest goes on.
+    const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&hurt===undefined,dance);
+    const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
+    const detailed=alive&&seen?dancing??flinch??(pushing?pushPlan(id,direction):movementPlan(id,motion,direction)):undefined;
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -304,7 +325,7 @@ export class CharacterSprites {
         // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move.
         const run=(motion==='walk'||pushing)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
-          flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
+          dancing?danceFrame(dancing,this.scene.time.now-danceStart!):flinch?swingFrame(detailed,hurt!):motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
         const key=copy?.key??detailed.key;
         if(!state.stream||sprite.anims.isPlaying)sprite.anims.stop();
@@ -314,7 +335,7 @@ export class CharacterSprites {
         // M16's E/NE/SE are W/NW/SW mirrored: Phaser flips inside the frame's box (city copy included, its crop is
         // symmetric), so the body's pivot column goes to 1 − x and the figure stays on the same world point.
         // The run's foot shift moves the origin the other way (in the unmirrored cell; the flip below mirrors it too).
-        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0),ay=(clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
+        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0),ay=(dancing?dancing.anchor[1]:clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
         const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
@@ -378,4 +399,13 @@ export class CharacterSprites {
     state.hand=undefined;
     if(state.stream||this.detailed){state.stream=undefined;if(detailed)this.detailed?.unbind(sprite);else this.detailed?.release(sprite);}
   }
+}
+
+/** The pose of a dance `ms` after it started: the menu's poses DANCE_RATE times faster, looping. */
+export const danceFrame=(plan:Pick<Movement128Plan,'durationMs'|'frameCount'>,ms:number)=>
+  Math.floor(Math.max(0,ms)*DANCE_RATE/plan.durationMs*plan.frameCount)%plan.frameCount;
+/** A cache owner standing for `sprite` (its scene, visibility and destroy event), to fetch the dance sheet ahead. */
+function danceFetcher(sprite:Phaser.GameObjects.Sprite):Phaser.GameObjects.Sprite{
+  return {get scene(){return sprite.scene;},get active(){return sprite.active;},get visible(){return sprite.visible;},
+    once:(event:string,fn:()=>void)=>sprite.once(event,fn)} as unknown as Phaser.GameObjects.Sprite;
 }

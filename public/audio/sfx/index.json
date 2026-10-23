@@ -238,11 +238,11 @@
   "m4a": 6571
  },
  "p12-nuvem": {
-  "seconds": 0.073,
-  "gainDb": 0,
-  "lufs": -22.8,
-  "webm": 1369,
-  "m4a": 1728
+  "seconds": 0.777,
+  "gainDb": -3,
+  "lufs": -13,
+  "webm": 5860,
+  "m4a": 7548
  },
  "p12-orbita": {
   "seconds": 0.8,

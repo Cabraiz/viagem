@@ -104,25 +104,25 @@ test('in the match: still 5 s → the dance sheet, facing the camera whatever th
     const renderer=new CharacterSprites(scene as never);renderer.queue('tio');
     const still={x:0,y:0},west=screenDirection(-1,0,0);
     // Looking west, standing: rest pose until 2 s, then the dance sheet is fetched; at 5 s it dances.
-    renderer.animate(sprite as never,'tio',0,0,0,true,0,west,undefined,undefined,undefined,on);
-    for(let t=100;t<=DANCE_IDLE_MS-DANCE_PREFETCH_MS-100;t+=100){scene.time.now=t;renderer.animate(sprite as never,'tio',0,0,0,true,0,still,undefined,undefined,undefined,on);}
+    renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',0,0,0,true,0,west);
+    for(let t=100;t<=DANCE_IDLE_MS-DANCE_PREFETCH_MS-100;t+=100){scene.time.now=t;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',0,0,0,true,0,still);}
     await flush();assert.equal(requests.filter(u=>u.includes('dance')).length,0,'nothing asked before the prefetch mark');
-    for(let t=DANCE_IDLE_MS-DANCE_PREFETCH_MS;t<DANCE_IDLE_MS;t+=100){scene.time.now=t;renderer.animate(sprite as never,'tio',0,0,0,true,0,still,undefined,undefined,undefined,on);await flush();}
+    for(let t=DANCE_IDLE_MS-DANCE_PREFETCH_MS;t<DANCE_IDLE_MS;t+=100){scene.time.now=t;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',0,0,0,true,0,still);await flush();}
     assert.deepEqual(requests.filter(u=>u.includes('dance')),['/art/lite/sprites/tio.dance128.webp'],'the lite sheet, once');
     assert.equal(sprite.texture.key,'sprite128:tio:idle8');assert.equal(renderer.dancing(sprite as never),false);
-    scene.time.now=DANCE_IDLE_MS;renderer.animate(sprite as never,'tio',0,0,0,true,0,still,undefined,undefined,undefined,on);
+    scene.time.now=DANCE_IDLE_MS;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',0,0,0,true,0,still);
     assert.equal(sprite.texture.key,'sprite128:tio:dance');assert.equal(sprite.frame.name,'0');assert.equal(sprite.flipX,false);
     assert.equal(sprite.originY,.875,'its ground on the anchor');assert.equal(renderer.dancing(sprite as never),true);
-    scene.time.now=DANCE_IDLE_MS+36000/128/DANCE_RATE*10;renderer.animate(sprite as never,'tio',0,0,0,true,0,still,undefined,undefined,undefined,on);
+    scene.time.now=DANCE_IDLE_MS+36000/128/DANCE_RATE*10;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',0,0,0,true,0,still);
     assert.equal(sprite.frame.name,'10');
     // A step: the walk at once.
-    scene.time.now+=16;renderer.animate(sprite as never,'tio',.1,0,0,true,0,screenDirection(1,0,0),undefined,undefined,undefined,on);await flush();
-    scene.time.now+=16;renderer.animate(sprite as never,'tio',.2,0,0,true,0,screenDirection(1,0,0),undefined,undefined,undefined,on);
+    scene.time.now+=16;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',.1,0,0,true,0,screenDirection(1,0,0));await flush();
+    scene.time.now+=16;renderer.danceCue(sprite as never,on);renderer.animate(sprite as never,'tio',.2,0,0,true,0,screenDirection(1,0,0));
     assert.notEqual(sprite.texture.key,'sprite128:tio:dance');assert.equal(renderer.dancing(sprite as never),false);
     // A swing cuts it as well; a hero that dies standing never dances; no cue (sandboxes, the ghost), never.
     const quiet=(cue:{allowed:boolean}|undefined,alive=true,attackTick=0)=>{
       const s=new (sprite.constructor as new()=>typeof sprite)();
-      for(let t=0;t<=DANCE_IDLE_MS+500;t+=250){scene.time.now=100000+t;renderer.animate(s as never,'tio',5,5,attackTick&&t>=DANCE_IDLE_MS?attackTick:0,alive,0,still,undefined,undefined,undefined,cue as never);}
+      for(let t=0;t<=DANCE_IDLE_MS+500;t+=250){scene.time.now=100000+t;renderer.danceCue(s as never,cue as never);renderer.animate(s as never,'tio',5,5,attackTick&&t>=DANCE_IDLE_MS?attackTick:0,alive,0,still);}
       return renderer.dancing(s as never);
     };
     assert.equal(quiet(on),true);assert.equal(quiet(undefined),false);assert.equal(quiet({allowed:false}),false);assert.equal(quiet(on,false),false);

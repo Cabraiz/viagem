@@ -259,6 +259,12 @@ export class CharacterSprites {
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
     return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
   }
+  private cues=new WeakMap<Phaser.GameObjects.Sprite,DanceCue>();
+  /**
+   * Whether and since when `sprite` may dance (card danca-no-jogo, hero-dance.ts), read by its next animate(); a sprite
+   * never given a cue (the sandboxes, the ghost) never dances.
+   */
+  danceCue(sprite:Phaser.GameObjects.Sprite,cue:DanceCue){this.cues.set(sprite,cue);}
   /** True while `sprite` shows its dance (render/arsenal-fx.ts puts the weapon away: the dance holds its own prop). */
   dancing(sprite:Phaser.GameObjects.Sprite){return this.states.get(sprite)?.stream?.motion==='dance';}
   /**
@@ -284,9 +290,7 @@ export class CharacterSprites {
    */
   animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number},hp?:number,
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
-    look?:{x:number;y:number},
-    /** Whether and since when this figure may dance (card danca-no-jogo, hero-dance.ts); absent: it never dances. */
-    dance?:DanceCue){
+    look?:{x:number;y:number}){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
@@ -305,7 +309,7 @@ export class CharacterSprites {
     const hurt=state.hurt.update(this.scene.time.now,hp,alive&&motion==='idle'&&!pushing),flinch=hurt!==undefined&&seen?hurtPlan(id,direction):undefined;
     if(flinch)state.phaseStarted=this.scene.time.now;
     // Resting long enough, it dances (danca-no-jogo) once its sheet is in; meanwhile the rest goes on.
-    const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&hurt===undefined,dance);
+    const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&hurt===undefined,this.cues.get(sprite));
     const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
     const detailed=alive&&seen?dancing??flinch??(pushing?pushPlan(id,direction):movementPlan(id,motion,direction)):undefined;
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
@@ -335,7 +339,10 @@ export class CharacterSprites {
         // M16's E/NE/SE are W/NW/SW mirrored: Phaser flips inside the frame's box (city copy included, its crop is
         // symmetric), so the body's pivot column goes to 1 − x and the figure stays on the same world point.
         // The run's foot shift moves the origin the other way (in the unmirrored cell; the flip below mirrors it too).
-        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0),ay=(dancing?dancing.anchor[1]:clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
+        const flip=!!detailed.flip,ax=movementPivotX(detailed)-(run?run.shift[0]/96:0);
+        // The dance's ground is its anchor (scripts/import-danca-jogo.mjs puts the median feet row there).
+        let ay=(clipFeetY(detailed.original)??this.feetY(id)??detailedFeetY(detailed))-(run?run.shift[1]/96:0);
+        if(dancing)ay=dancing.anchor[1];
         const origin=copy?variantOrigin(copy.geom,ax,ay):{x:ax,y:ay};
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);

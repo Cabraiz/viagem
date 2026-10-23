@@ -26,6 +26,7 @@ import {TriBand} from './city/tri-band.ts';
 import {MURO_SHEETS,MuralhaLayer} from './muralha.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {HEIGHT_PX} from './city/projection.ts';
+import {UsableGlow,glowPieces} from './usable-glow.ts';
 
 /** Wall segment height (u) when whole; each damage stage takes a share off. */
 const WALL_H=.95;
@@ -48,6 +49,8 @@ export class FortifyRenderer {
   private walls=new Map<string,{band:TriBand;key:string}>();
   /** The painted cinder-block wall the segments wear once its sheets are loaded. */
   private muro:MuralhaLayer;
+  /** contorno-usavel-wc3: the Warcraft 3 gold outline on the painted wall segments (built and repaired by the player). */
+  private glow:UsableGlow;
   private wallViews:StructureView[]=[];
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -70,6 +73,7 @@ export class FortifyRenderer {
     const c=this.c;c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cartolina=tokenColor('--c-cartolina');
     c.cone=tokenColor('--c-cone');
     this.muro=new MuralhaLayer(scene,options.projector,MURO_SHEETS,options.cell);
+    this.glow=new UsableGlow(scene,!!options.reduced);
   }
 
   push(view:RunView){
@@ -89,12 +93,14 @@ export class FortifyRenderer {
   update(time:number){
     this.now=time;
     const k=1/Math.max(.05,this.scene.cameras.main.zoom);
+    this.glow.begin(time);
     for(const s of this.wallViews)this.drawWall(s,k);
+    this.glow.end();
     this.drawGhost(k);this.drawHints(k);this.drawRope(k);
   }
 
   destroy(){
-    for(const w of this.walls.values())w.band.destroy();this.walls.clear();this.muro.destroy();
+    for(const w of this.walls.values())w.band.destroy();this.walls.clear();this.muro.destroy();this.glow.destroy();
     this.ghostG.destroy();this.hintG.destroy();this.ropeG.destroy();
   }
 
@@ -122,6 +128,7 @@ export class FortifyRenderer {
     const bar=wallBar(s.hp,s.maxHp),showBar=!down&&bar.fraction<1,depth=this.options.projector.depth(s.x,s.y);
     // The painted wall when its sheets are loaded ([] when down: nothing), the band then holds only the bar over it.
     const art=this.muro.draw(s,depth);
+    if(art&&!down)glowPieces(this.glow,s.id,art,k);
     const key=`${art?'arte|':''}${wallKey(stage,flash&&!art,view,showBar?bar:undefined,k)}`;
     let w=this.walls.get(s.id);
     if(w?.key!==key&&art){

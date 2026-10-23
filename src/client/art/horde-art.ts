@@ -567,11 +567,13 @@ export interface ActionState {action?:string;at:number;end:number;hitAt?:number;
  * hits every contactCooldown (1 s; the swarm 0.6 s) and its 'attack' lasted ~0.7 s, so between two swings it snapped to
  * its idle for 0.3 s at a random column (attack, idle flash, attack, every second). When the same action comes back
  * within SWING_FILL_MAX_MS, it plays over the whole gap (SWING_FILL of it, slower, never faster than drawn): the swings
- * follow each other with no idle in between. A first or a lone swing keeps its own length.
+ * follow each other with no idle in between. SWING_FILL is a bit over the gap: the next hit comes a few ms late with
+ * the network's jitter, and a frame of the loop between two swings still showed (real match, swarm every 0.6 s); the
+ * next swing cuts the tail (SWING_RESTART). A first or a lone swing keeps its own length.
  * SWING_RESTART: a repeat may restart the swing once this share of it played (the next hit arrives a bit early with
  * the network's jitter); earlier, the same action is not restarted.
  */
-export const SWING_FILL=.97,SWING_FILL_MAX_MS=1700,SWING_RESTART=.8;
+export const SWING_FILL=1.08,SWING_FILL_MAX_MS=1700,SWING_RESTART=.8;
 /**
  * A hit starts at most once per hitGap(its duration): at least HIT_GAP_HITS × the hit animation and never under
  * HIT_GAP_MIN_MS. An enemy inside an aura is damaged every tick: it plays its hit now and then and walks in between,

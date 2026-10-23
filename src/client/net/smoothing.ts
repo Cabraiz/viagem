@@ -126,3 +126,21 @@ export function along(a:Point,b:Point,t:number):Point{
 }
 /** Largest extrapolation of an enemy glide, as a share of the glide (and never past EXTRAPOLATE_MAX_MS). */
 export function glideCeiling(glideMs:number){return 1+Math.min(.5,EXTRAPOLATE_MAX_MS/Math.max(1,glideMs));}
+
+/** One frame of the room as the render buffer keeps it: its arrival time (ms), its tick and each remote's position. */
+export type RemoteSample={at:number;tick?:number;players:ReadonlyMap<string,Point>};
+/**
+ * Where remote `id` is drawn at `target` (ms, the arrival clock): between the two samples around it; before the oldest,
+ * the oldest; past the newest, along the last two (blendFactor and along cap it). Undefined when no sample has it.
+ */
+export function remoteAt(samples:readonly RemoteSample[],target:number,id:string):Point|undefined{
+  const s=samples,n=s.length;
+  let i=0;while(i<n&&s[i].at<=target)i++;
+  const a=s[Math.max(0,Math.min(i,n)-1)]??s[0],b=i<n?s[i]:s[n-1],prev=i>=n&&n>1?s[n-2]:undefined;
+  if(!a||!b)return undefined;
+  const t=i>=n&&prev?blendFactor(b.at,b.at,target,prev.at):i===0?1:blendFactor(a.at,b.at,target);
+  const q=(i>=n&&prev?prev:a).players.get(id),r=b.players.get(id);
+  if(i>=n&&prev)return q&&r?along(q,r,t):r;
+  if(!q||!r)return r??q;
+  const k=Math.max(0,Math.min(1,t));return {x:q.x+(r.x-q.x)*k,y:q.y+(r.y-q.y)*k};
+}

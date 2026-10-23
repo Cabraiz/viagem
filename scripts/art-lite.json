@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2177,
-  "bytes": 1543935846,
-  "liteBytes": 503474946,
+  "files": 2207,
+  "bytes": 1545298086,
+  "liteBytes": 504324418,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19421,6 +19421,46 @@
    "psnr": 38.9,
    "shownPsnr": 42.2
   },
+  "sprites/maromba.attack16-n.579800de41b5.webp": {
+   "source": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64",
+   "lite": "8f314e78be46da00bcd193d5d301531b009586af041f26825c1d6e23cee1048d",
+   "bytes": 74390,
+   "liteBytes": 42158,
+   "psnr": 38.5,
+   "shownPsnr": 40.1
+  },
+  "sprites/maromba.attack16-nw.e1a1efc886e5.webp": {
+   "source": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726",
+   "lite": "6adda92abf6248b65f0b2304537db690c7a94c4cbcc5c7ba91b09f717db40ed6",
+   "bytes": 69250,
+   "liteBytes": 39266,
+   "psnr": 38.7,
+   "shownPsnr": 40.3
+  },
+  "sprites/maromba.attack16-s.7e3df22fec11.webp": {
+   "source": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183",
+   "lite": "ae1f1529519dcd269ade74955e650f3defb3ba3813847bbc15fc6836d5aafc91",
+   "bytes": 70454,
+   "liteBytes": 39676,
+   "psnr": 37.8,
+   "shownPsnr": 41.2
+  },
+  "sprites/maromba.attack16-se.e39e2a9588ec.webp": {
+   "source": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b",
+   "lite": "a3d290d44930817f8f4998b6adfe524d3d523af5719d24779e063927ffee19ee",
+   "bytes": 68106,
+   "liteBytes": 38896,
+   "psnr": 37.5,
+   "shownPsnr": 40.8
+  },
+  "sprites/maromba.attack16-w.f2811360776b.webp": {
+   "source": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34",
+   "lite": "a16f8ac9870b974b603db1e98af333b74941aef1d3a7145ecfaa75cfafa492bf",
+   "bytes": 64322,
+   "liteBytes": 37028,
+   "psnr": 38.2,
+   "shownPsnr": 41
+  },
   "sprites/maromba.dir4.webp": {
    "source": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c",
    "lite": "b0a919d1d9f816e0c6dfe030db84e933824af0a21febf5f60578235d57e73189",
@@ -19437,6 +19477,86 @@
    "psnr": 43.6,
    "shownPsnr": 45.6
   },
+  "sprites/maromba.hurt16-n.4d2142762c9f.webp": {
+   "source": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261",
+   "lite": "81689ccf7940e5a3ac97dd93c2faac22f68bbdc86eacab79a357dd6973d7b4b5",
+   "bytes": 27472,
+   "liteBytes": 15868,
+   "psnr": 38.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/maromba.hurt16-nw.d7b8baf86dbd.webp": {
+   "source": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931",
+   "lite": "65bf2c46a5650577a8503302d84b780c30adbc69e32355cc3294a5535d3fe40e",
+   "bytes": 26176,
+   "liteBytes": 15040,
+   "psnr": 38.4,
+   "shownPsnr": 40
+  },
+  "sprites/maromba.hurt16-s.cfabf768ea8c.webp": {
+   "source": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd",
+   "lite": "df29d703528ba52619eff6cdca4804619b61b0694f0fcd89ec5e8942388ccc41",
+   "bytes": 29156,
+   "liteBytes": 16560,
+   "psnr": 37.7,
+   "shownPsnr": 40.3
+  },
+  "sprites/maromba.hurt16-se.7b72721c4f50.webp": {
+   "source": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721",
+   "lite": "92dab6933f7aecb8493bc66ccb0c1fa25dfc306fa5cccffa9e239afbd1c22d3e",
+   "bytes": 25796,
+   "liteBytes": 14552,
+   "psnr": 38,
+   "shownPsnr": 41.1
+  },
+  "sprites/maromba.hurt16-w.7b70bb99d302.webp": {
+   "source": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e",
+   "lite": "37a0b9d25da3ab6222352b25f29f0b8083aaaed5a92d2c890d0314beee73107c",
+   "bytes": 22130,
+   "liteBytes": 12442,
+   "psnr": 39.1,
+   "shownPsnr": 41.8
+  },
+  "sprites/maromba.idle16-n.f24cd648ed40.webp": {
+   "source": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07",
+   "lite": "5e01b0902f8675c9ee02069a9e3ae7578d158b14e7b432b21bd8f5ea561d2939",
+   "bytes": 5004,
+   "liteBytes": 15522,
+   "psnr": 38.7,
+   "shownPsnr": 42
+  },
+  "sprites/maromba.idle16-nw.5864e1ae74fc.webp": {
+   "source": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069",
+   "lite": "8313b692f13a0249e31b9b97217302dc444ddd00b80fe2e874c86b4ab8ac5d4c",
+   "bytes": 4746,
+   "liteBytes": 14156,
+   "psnr": 39.3,
+   "shownPsnr": 41.9
+  },
+  "sprites/maromba.idle16-s.891ba88573ea.webp": {
+   "source": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98",
+   "lite": "cffe85e7ba5b9ae9b76585a2fe8740457923acfee3c5cc820a15079b05f334d0",
+   "bytes": 5282,
+   "liteBytes": 15976,
+   "psnr": 38.8,
+   "shownPsnr": 42.1
+  },
+  "sprites/maromba.idle16-se.c49298a25375.webp": {
+   "source": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866",
+   "lite": "37907f805fb9a8ca4603339189dbb5862b6e86691a94042428d339193e269e75",
+   "bytes": 4746,
+   "liteBytes": 14316,
+   "psnr": 38.9,
+   "shownPsnr": 42.5
+  },
+  "sprites/maromba.idle16-w.8887992091be.webp": {
+   "source": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd",
+   "lite": "69e076325855168bfddb36172e10a1dbdd887a834805f803a5bde051659a2513",
+   "bytes": 3926,
+   "liteBytes": 12042,
+   "psnr": 39.6,
+   "shownPsnr": 42.5
+  },
   "sprites/maromba.idle8.e728a4403de7.webp": {
    "source": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5",
    "lite": "629b30a9d3ea56c363fe4aa2c50fc16f2aeea043777c828dcb35fa80db8c6d44",
@@ -19444,6 +19564,86 @@
    "liteBytes": 20426,
    "psnr": 39.9,
    "shownPsnr": 43.5
+  },
+  "sprites/maromba.push16-n.d8725566eb99.webp": {
+   "source": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+   "lite": "5004058644d932b9f83749aedc5fe3dd4d37bae0f89e0f2f19a94b9f7cbe39c4",
+   "bytes": 54972,
+   "liteBytes": 33440,
+   "psnr": 39.6,
+   "shownPsnr": 41.9
+  },
+  "sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "source": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+   "lite": "9f79c2cde7e7c5496d56ea385196bfa025c827d877c586160e70466ca5ff455e",
+   "bytes": 66960,
+   "liteBytes": 39008,
+   "psnr": 38.7,
+   "shownPsnr": 40.8
+  },
+  "sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "source": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+   "lite": "0a176b0d6244b110fad96b2b9c2a8a6122e893dc7c958e4f9aea7749e28c0d51",
+   "bytes": 58842,
+   "liteBytes": 34288,
+   "psnr": 38.2,
+   "shownPsnr": 41.3
+  },
+  "sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "source": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+   "lite": "67c43a23741601a5528e2373f50c5e225f11cc2de0570912838df3213b400adc",
+   "bytes": 56544,
+   "liteBytes": 33834,
+   "psnr": 39.4,
+   "shownPsnr": 42
+  },
+  "sprites/maromba.push16-w.197425478ad3.webp": {
+   "source": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+   "lite": "a15633c648e6746ef0cbc8769644a1de3460dd0872c6abd06f9b7bef56bdbce0",
+   "bytes": 59022,
+   "liteBytes": 33624,
+   "psnr": 39.1,
+   "shownPsnr": 41.8
+  },
+  "sprites/maromba.run16-n.12858ddc378f.webp": {
+   "source": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
+   "lite": "4fc46627769790836aeb0a480dea3e04db6889f746601cefdd078f1df27d9049",
+   "bytes": 56454,
+   "liteBytes": 32760,
+   "psnr": 39.6,
+   "shownPsnr": 42.2
+  },
+  "sprites/maromba.run16-nw.6d2ea649fe99.webp": {
+   "source": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664",
+   "lite": "ef0e842db0c0334faf9c42d7da816f68c77f8f61731379c31822afca1596cfc3",
+   "bytes": 48552,
+   "liteBytes": 29794,
+   "psnr": 40.4,
+   "shownPsnr": 43.1
+  },
+  "sprites/maromba.run16-s.225e468b2c87.webp": {
+   "source": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392",
+   "lite": "322010dd7ff93c01be7efcee93a0fb0f590b3f0c84058d87bf34368dfbe49386",
+   "bytes": 59266,
+   "liteBytes": 33782,
+   "psnr": 38.2,
+   "shownPsnr": 41.9
+  },
+  "sprites/maromba.run16-se.6f225d758e28.webp": {
+   "source": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0",
+   "lite": "e5056f9a9fcf11b351930a471bb5876d43b210c62d9084e2fce0f33cad06638d",
+   "bytes": 56826,
+   "liteBytes": 33422,
+   "psnr": 38.2,
+   "shownPsnr": 41.3
+  },
+  "sprites/maromba.run16-w.dc71e9155576.webp": {
+   "source": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",
+   "lite": "669dceeb4a88ea219c83e812078cc684f867e529c91d3a47dfd1ffd0667fc51d",
+   "bytes": 56014,
+   "liteBytes": 33696,
+   "psnr": 39.4,
+   "shownPsnr": 41.9
   },
   "sprites/maromba.walk128-e.daed1993b619.webp": {
    "source": "daed1993b6196db80b6ebef00b9278e148fcd1ae19d367cbe43adbfb825dd11a",
@@ -19508,6 +19708,46 @@
    "liteBytes": 319132,
    "psnr": 39.1,
    "shownPsnr": 42.1
+  },
+  "sprites/maromba.walk16-n.2064a9e3a3ce.webp": {
+   "source": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b",
+   "lite": "a978765c4408cb33b5be85e348ca92b54d39e76941bf84b79cfb2d7ce8a2d8f8",
+   "bytes": 61296,
+   "liteBytes": 35570,
+   "psnr": 39.4,
+   "shownPsnr": 41.4
+  },
+  "sprites/maromba.walk16-nw.d19eb025bd84.webp": {
+   "source": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2",
+   "lite": "d4d76965b34c60d2e67ea064540fbd653d5e9da377bc1eeffb9dadc76f2d0374",
+   "bytes": 53390,
+   "liteBytes": 31636,
+   "psnr": 39.9,
+   "shownPsnr": 42.8
+  },
+  "sprites/maromba.walk16-s.b6994bfb245d.webp": {
+   "source": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98",
+   "lite": "baa0740e765b123eb1eccfea506b9620e2fcf78c0ecb91bb8f2f1ac2825ecfbe",
+   "bytes": 62060,
+   "liteBytes": 35686,
+   "psnr": 38.4,
+   "shownPsnr": 41.4
+  },
+  "sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "source": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0",
+   "lite": "c2af00656f6be75c2a208c3f763c238570a404efac845b75100b0fb9e8efc978",
+   "bytes": 52154,
+   "liteBytes": 30534,
+   "psnr": 39.8,
+   "shownPsnr": 43.5
+  },
+  "sprites/maromba.walk16-w.a77ac0004cd3.webp": {
+   "source": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395",
+   "lite": "47006521e2ab90a14faa4d382ae0a392f828fbaadb869959b6764e5c867f46eb",
+   "bytes": 58932,
+   "liteBytes": 34900,
+   "psnr": 39.1,
+   "shownPsnr": 41.4
   },
   "sprites/maromba.webp": {
    "source": "b73a71e895f8fdbcc56120e8566d6d01af2f1c9cf278fcd82712b28faf48bd05",

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {ENEMY_ANIM_RATE,fileFps,fileInfo} from '../../src/client/art/horde-art.ts';
+import {ENEMY_ANIM_RATE,ENEMY_LOOP_RATE,enemyRate,fileFps,fileInfo} from '../../src/client/art/horde-art.ts';
 import {HERO_ANIM_RATE} from '../../src/client/sprites/sprite-motion.ts';
 import {DEATH_POP_CHANCE,DEATH_POP_GAP_MS,deathPopAllowed} from '../../src/client/render/jokes.ts';
 
@@ -30,9 +30,15 @@ test('death jokes are rare: ~1 kill in 10, never two inside DEATH_POP_GAP_MS, th
   assert.match(layers,/if\(!deathPopAllowed\(id,this\.now,this\.lastDeathPopAt,k==='chefe'\)\)return;/,'spawnDeath goes through the rule');
 });
 
-test('enemy art plays at ×0.7 like the hero; the file fps (and projectiles) keep the drawn rate',()=>{
+test('enemy actions play at ×0.7 like the hero, the loops half as fast again; the file fps (and projectiles) keep the drawn rate',()=>{
   assert.equal(ENEMY_ANIM_RATE,.7);assert.equal(ENEMY_ANIM_RATE,HERO_ANIM_RATE);
+  const attack={cell:[128,128] as [number,number],frames:6,directions:8,fps:{attack:10}};
+  assert.equal(fileFps(attack,'attack'),10,'the drawn rate');
+  assert.equal(fileInfo('bebado','attack',attack).fps,7,'played 30% slower');
+  // inimigos-animacao-2x-lenta ("tá parecendo alguém tendo um treco"): idle, sleep, fly and the clock walk at ×0.35.
+  assert.equal(ENEMY_LOOP_RATE,ENEMY_ANIM_RATE/2);
+  for(const anim of ['idle','sleep','fly','walk','phase2-idle','elite/idle','elite/natal-walk'])assert.equal(enemyRate(anim),ENEMY_LOOP_RATE,anim);
+  for(const anim of ['attack','hit','death','throw','shove','wake','aim','lecture','elite/attack','elite/natal-hit'])assert.equal(enemyRate(anim),ENEMY_ANIM_RATE,anim);
   const walk={cell:[128,128] as [number,number],frames:8,directions:8,fps:{walk:10}};
-  assert.equal(fileFps(walk,'walk'),10,'the drawn rate');
-  assert.equal(fileInfo('bebado','walk',walk).fps,7,'played 30% slower');
+  assert.equal(fileInfo('bebado','walk',walk).fps,3.5,'the walk on the clock: 2x slower than before');
 });

@@ -72,7 +72,8 @@ test('bashes gate: a body pressed against a built barricade never bashes it whil
 });
 
 function alertRig(){
-  const piece:PieceState={id:'pc-1',kind:'barricada',cell:{c:10,r:10},owner:'ana',x:10.5*FREE_CELL,y:10.5*FREE_CELL,hp:200,maxHp:200,startTick:0,readyTick:0};
+  // barricada-2x: the square covers cells 10..11 × 10..11, centred at 11.
+  const piece:PieceState={id:'pc-1',kind:'barricada',cell:{c:10,r:10},owner:'ana',x:11*FREE_CELL,y:11*FREE_CELL,hp:200,maxHp:200,startTick:0,readyTick:0};
   const state={defenses:{list:[],pieces:[piece]}} as unknown as StonewardsState;
   const events:SimEvent[]=[];
   const ctx={tick:0,emit:(e:SimEvent)=>{events.push(e);}} as unknown as SimContext&{tick:number};
@@ -81,7 +82,7 @@ function alertRig(){
 
 test('car near a barricada: alert for 6 s, called off when the car leaves, destroyed when it stays', ()=>{
   const {piece,state,events,ctx}=alertRig(),radius=1;
-  const edge=(11)*FREE_CELL;// the square's right edge
+  const edge=(12)*FREE_CELL;// the 2×2 square's right edge
   const near={x:edge+radius+(UNO_ALERT_CELLS-.5)*FREE_CELL,y:piece.y,radius},far={x:edge+radius+(UNO_ALERT_CELLS+.5)*FREE_CELL,y:piece.y,radius};
   assert.deepEqual(unoAlertStep(ctx,undefined,state,far),[]);
   assert.equal(piece.alertUntil,undefined,'out of range: no alert');

@@ -195,6 +195,8 @@ const carMoves=obra&&params.has('anda');
  * its back, drawn as the game draws a pusher (scene.ts: pushContact, the push16 clip facing the car, palms on it).
  */
 const pushing=objective&&params.has('empurrando');
+/** `corda=livre` with obra=1 (puxar-uno-corda): nobody on the rope, it lies on the ground ahead of the front bumper. */
+const freeRope=params.get('corda')==='livre';
 /** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
 const tralhaShot=obra&&params.get('tralha')==='1';
 /**
@@ -351,6 +353,7 @@ class CitySandbox extends Phaser.Scene {
     if(kitParam)this.mountKit();
     if(bancos)this.mountBanks();
     if(obra&&this.chaveiro)this.mountObra();
+    else if(pushing&&this.chaveiro)this.mountRope();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -393,6 +396,7 @@ class CitySandbox extends Phaser.Scene {
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
+      else if(pushing&&this.fortify&&this.obraView)this.fortify.push({...this.obraView,objective:{...this.obraView.objective!,car:view.car}});
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
       this.speak(_t,dt,view,tick);
     }
@@ -506,6 +510,14 @@ class CitySandbox extends Phaser.Scene {
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view);
     this.hero.setPosition(feet.x,feet.y);
   }
+  /** empurrando= (puxar-uno-corda): only the fortify layer's rope, free on the ground ahead of the pushed car. */
+  private mountRope(){
+    const projector=this.cityProjector(),fake=this.chaveiro!.fake.view(0).view;
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell:CITY_BUILD_CELL,playerAt:()=>undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
+    const view={tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
+      objective:fake} as unknown as RunView;
+    this.fortify.push(view);this.obraView=view;
+  }
   /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
   private mountObra(){
     const projector=this.cityProjector(),cell=CITY_BUILD_CELL,car=this.chaveiro!.fake.view(0).view.car;
@@ -524,7 +536,7 @@ class CitySandbox extends Phaser.Scene {
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
     const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
-    const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
+    const objectiveView={...this.chaveiro!.fake.view(0).view,car:freeRope?{...car}:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;

@@ -96,7 +96,9 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
       moto:{...moto,mode:stillMode,...(stillMode==='morta'?{push:pushParam??((now%4000)/4000)}:{})},
       etaS,alarmUntil:alarm?tick+50:0,
       ...(delivery?{delivery}:{}),
-      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts},
+      car:{...(roll!==undefined?(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carRoll(now,roll,rollSpeed)):swing===undefined?{x:car.x,y:car.y}:(o=>({x:car.x+o.x,y:car.y+o.y,movers:['voce']}))(carSwing(now,swing))),hits:Math.min(80,hits),limit:80,parts,
+        // puxar-uno-corda: the room sends the nose; here it lies along the move.
+        ...((roll??swing)?{heading:roll??swing}:{})},
       route,stops,...(ended?{ended}:{}),
     };
     return {view,tick};

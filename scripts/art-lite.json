@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2208,
-  "bytes": 1546490460,
-  "liteBytes": 505219190,
+  "files": 2209,
+  "bytes": 1547627626,
+  "liteBytes": 506104682,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17444,6 +17444,14 @@
    "liteBytes": 894772,
    "psnr": 42.4,
    "shownPsnr": 44.4
+  },
+  "menu/fundo-vendedor-praia.webp": {
+   "source": "e5410009b626eb752313a7917ec8bff8222d6f07eed2b85dee2ed7c2d060f6df",
+   "lite": "b5e68cd1871c58096f7684684bbba00747db2ef10113d53edd8f72405fe14f02",
+   "bytes": 1137166,
+   "liteBytes": 885492,
+   "psnr": 42.6,
+   "shownPsnr": 44.7
   },
   "menu/insta/grade-clt-cansado-1.webp": {
    "source": "b3b4d37fc3c9b3cd319d2a7886d0bf5a176b8230beadc3dcf3f0872defc46362",

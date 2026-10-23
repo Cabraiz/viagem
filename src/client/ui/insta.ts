@@ -56,6 +56,11 @@ export const INSTA_PERFIS:readonly InstaPerfil[]=Object.freeze([
     chips:chips('Regata 365','Só mais uma','No pump'),
     posts:posts('creatina_pura',['Registro do bíceps. Dia 412.','7.704','há 4 horas'],
       ['O pneu não ia se puxar sozinho.','6.091','há 8 horas'],['Shake: meu único relacionamento sério.','9.338','há 3 dias'])},
+  {id:'vendedor-praia',nome:'VENDEDOR',handle:'@VENDEDOR',letreiro:'Vendedor de Praia, reforço geladinho',seguidores:'47,3 mil',seguindo:'2.318',bio:'Olha a água, olha o mate!
+Aceito Pix.',
+    chips:chips('Chapéu de palha','Água gelada','Na areia quente'),
+    posts:posts('quiosque_do_ze',['Selfie com o isopor. Gelo novinho.','2.214','há 1 hora'],
+      ['Areia a 60 graus. O chinelo resiste.','3.870','há 5 horas'],['Vai uma geladinha, aventureiro?','5.402','há 1 dia'])},
 ]);
 export const instaPerfil=(id:string):InstaPerfil|undefined=>INSTA_PERFIS.find(p=>p.id===id);
 

@@ -1,0 +1,5 @@
+Gere UMA imagem com a ferramenta de imagem (image_gen), paisagem 1536x1024, fundo verde-chroma liso #00FF00, com 10 ícones de interface de jogo mobile numa grade 5x2, bem separados, cada um centralizado na sua célula, todos com o MESMO traço: ícones cartoon 3D brilhantes do jogo "Viciado em Bet" (roxo #6B2BD9 com detalhes dourados, contorno roxo-escuro, leve brilho), sem sombra no chão, sem texto.
+Linha 1: 1) sino de notificação; 2) menu hambúrguer de três linhas arredondadas; 3) selo de verificado (roseta azul com check branco); 4) cadeado dourado fechado; 5) ícone de grade 3x3 de fotos.
+Linha 2: 6) ícone de vídeo (retângulo arredondado com triângulo de play); 7) coração; 8) "estilo": óculos escuros; 9) "especialidade": coroa dourada; 10) "status": pegada de pata.
+A imagem anexa é só para LER o estilo: não copie, não edite e não reaproveite nenhum pedaço dela.
+Salve como icones.png nesta pasta. Não inspecione, não rode código, não confira com PIL. Responda só "ok".

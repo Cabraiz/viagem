@@ -22,7 +22,13 @@ export const skin=(r,g,b,a)=>a>40&&r>150&&g>90&&g<205&&b<140&&r-b>70&&r>g;
  */
 const warmSkin=(r,g,b,a)=>skin(r,g,b,a)&&g<r*.74&&b<g;
 const glove=(r,g,b,a)=>a>40&&r>=112&&r<=175&&Math.abs(r-g)<16&&Math.abs(g-b)<16&&Math.abs(r-b)<20;
-export const HAND_TONE={'clt-cansado':skin,'viciado-em-bet':skin,pedreiro:glove};
+/**
+ * The gato's paws (gato-personagem-completo, 23/10): warm grey fur with cream tips, out of a PINK bathrobe sleeve. Fur
+ * tone: r a little over g (8–55), b near g; the robe and the inner ears (r ≫ g, b over g), the white slippers (r ≈ g)
+ * and the yellow eyes (b ≪ g) fall out. The cream belly fits too, but sits in the middle, never the outermost on a side.
+ */
+const catPaw=(r,g,b,a)=>a>40&&r>=115&&r-g>=8&&r-g<=55&&b<=g+10&&g-b<=40;
+export const HAND_TONE={'clt-cansado':skin,'viciado-em-bet':skin,pedreiro:glove,'gato-nada-pra-comer':catPaw};
 export const handTone=id=>HAND_TONE[id]??warmSkin;
 
 /** The opaque figure's box, rows and columns (alpha > 40). */

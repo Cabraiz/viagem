@@ -449,6 +449,16 @@ test('lab commands (down, move) only work in a lab room and only in combat',()=>
   command(lab,b,{t:'lab',to:{x:1e6,y:0}},4000);assert.ok(q.x<100,'never into the void');
   command(lab,b,{t:'lab',down:true},4000);assert.ok(q.downed);
 });
+test('lab hurt (animacao-receber-dano): the sender takes the hit, never its last hp; a deployed room ignores it',()=>{
+  const prod=new Room(1000),a=peer();join(prod,a);startRun(prod,[a]);
+  const p=prod.sim.players.get(idOf(a))!,hp=p.hp;
+  command(prod,a,{t:'lab',hurt:5},4000);assert.equal(p.hp,hp);
+  const lab=new Room(1000,undefined,{lab:true}),b=peer();join(lab,b);startRun(lab,[b]);
+  const q=lab.sim.players.get(idOf(b))!,full=q.hp;
+  command(lab,b,{t:'lab',hurt:5},4000);assert.equal(q.hp,full-5);
+  command(lab,b,{t:'lab',hurt:1e9},4000);assert.equal(q.hp,1,'never the last hp');
+  for(const hurt of [-3,0,Number.NaN,'5'])command(lab,b,{t:'lab',hurt},4000);assert.equal(q.hp,1);
+});
 
 test('VGM-046B: forge taps through the room respect the balance, the camp and a resent request; frames carry the camp',()=>{
   const room=new Room(1000),a=peer(),b=peer();join(room,a);join(room,b,'B');

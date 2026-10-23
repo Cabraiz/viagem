@@ -31,6 +31,10 @@ const CELL=96;
 const LEGACY=new Set(['clt-cansado','viciado-em-bet']);
 /** The bots' classes whose walk128 and idle8 the tracking gets right (hands apart from bare skin elsewhere; checked by eye). */
 const AUTO=new Set(['faxineira','mendigo','passageira','roqueira']);
+/** M16 heroes measured by the rule (the outermost paw on the weapon side, per pose) and reviewed on the debug sheets. */
+const M16_AUTO=new Set(['gato-nada-pra-comer']);
+/** M16 heroes found by their navy WRISTBAND (wristOf): the maromba's bulky biceps is the outermost skin, not the fist. */
+const M16_SKIN=new Set(['maromba']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
@@ -72,6 +76,14 @@ const OVERRIDES={
     // W and E punch with the far hand (the near one wears the watch): the weapon goes behind the body, out past it.
     ...(d==='W'||d==='E'?{behind:true}:{})}])),
   'clt-cansado:idle8':{2:[58,59],6:[50,56]},
+  // The flinch (animacao-receber-dano): W keeps the near hand (the watch) of its rest, also while the far one flies up in
+  // front (the rule takes the face or that far hand); N hides the right hand on the chest at the strongest recoil.
+  'clt-cansado:hurt16-W':{0:[58,75],1:[58,68],2:[55,62],3:[57,72],4:[58,73],5:[58,74]},
+  'clt-cansado:hurt16-N':{2:[58,62,1]},
+  // The viciado's W rest hides the weapon hand behind the body (idle16-W); the flinch throws it out in front (1-4), the
+  // rule finds it there, and at the rest poses it takes the face: hidden on the body as in idle16-W, 10 px lower (the
+  // hurt sheet stands on 84, the rest on 74).
+  'viciado-em-bet:hurt16-W':{0:[46,66,1],5:[46,66,1]},
   // The walk E swings both hands past the body in turn, each hidden half the stride: the hand in front, pose by pose
   // (the weapon changes hands where they cross, a few px apart).
   'clt-cansado:walk128-E':{},
@@ -119,6 +131,66 @@ export function handOf(px,side,back=false){
   return [Math.round(sx/n*10)/10,Math.round(sy/n*10)/10];
 }
 
+/**
+ * The maromba's fist in one pose (M16_SKIN): the navy wristband just above it, a small navy patch (3–45 px, 4-connected,
+ * not the tank top or the shorts) between the chin and the knees, the outermost on `side`; the point is pushed 2.5 px
+ * from the patch's centre away from the figure's middle (the fist is past the band); skin on at least 35 % of its rim
+ * (the shorts' patches between the stripes are not). None: hidden (undefined).
+ */
+const navyTone=(r,g,b)=>b>r+15&&b>g+5&&b<150&&r<90;
+export function wristOf(px,side){
+  let top=CELL,bot=-1,l=CELL,r=-1;
+  for(let y=0;y<CELL;y++)for(let x=0;x<CELL;x++)if(px.alpha(x,y)>40){top=Math.min(top,y);bot=Math.max(bot,y);l=Math.min(l,x);r=Math.max(r,x);}
+  if(bot<0)return undefined;
+  const h=bot-top,y0=Math.round(top+h*.12),y1=Math.round(bot-h*.22),seen=new Uint8Array(CELL*CELL),mid=[(l+r)/2,top+h*.45];
+  const isNavy=(x,y)=>x>=0&&y>=0&&x<CELL&&y<CELL&&y>=y0&&y<=y1&&px.alpha(x,y)>40&&navyTone(...px.rgb(x,y));
+  let best;
+  for(let y=y0;y<=y1;y++)for(let x=0;x<CELL;x++){
+    if(seen[y*CELL+x]||!isNavy(x,y))continue;
+    const stack=[[x,y]],pts=[];seen[y*CELL+x]=1;
+    while(stack.length){const [a,b]=stack.pop();pts.push([a,b]);
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=a+dx,yy=b+dy;if(isNavy(xx,yy)&&!seen[yy*CELL+xx]){seen[yy*CELL+xx]=1;stack.push([xx,yy]);}}}
+    if(pts.length<3||pts.length>45)continue;
+    // a wristband sits between the forearm and the fist: skin on a good part of its rim (the shorts' patches between
+    // the white stripes touch skin only at the thigh)
+    const own=new Set(pts.map(([a,b])=>b*CELL+a));let rim=0,skin=0;
+    for(const [a,b] of pts)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const xx=a+dx,yy=b+dy;if(xx<0||yy<0||xx>=CELL||yy>=CELL||own.has(yy*CELL+xx))continue;rim++;if(px.skin(xx,yy))skin++;}
+    if(skin<rim*.35)continue;
+    const c=[pts.reduce((t,q)=>t+q[0],0)/pts.length,pts.reduce((t,q)=>t+q[1],0)/pts.length];
+    if(side*(c[0]-mid[0])<-2)continue;  // the other arm's band (the weapon hand hidden)
+    if(!best||side*c[0]>side*best[0])best=c;
+  }
+  if(!best)return undefined;
+  const v=[best[0]-mid[0],best[1]-mid[1]],n=Math.hypot(...v)||1;
+  return [Math.round((best[0]+2.5*v[0]/n)*10)/10,Math.round((best[1]+2.5*v[1]/n)*10)/10];
+}
+
+/**
+ * The gato's paw in one pose (M16_AUTO): the paw tone in small patches (4–70 px, 8-connected) that touch the PINK sleeve
+ * (within 2 px), below the head (30 % of the figure down: a back view's ears are fur too) and above the knees; the outermost on `side`. The striped tail (long), the face and the
+ * cream belly (large) are not patches of that size, and only a paw comes out of a sleeve. None: hidden (undefined).
+ */
+const pink=(r,g,b)=>r>150&&r-g>60&&b>g;
+export function pawOf(px,side){
+  let top=CELL,bot=-1;
+  for(let y=0;y<CELL;y++)for(let x=0;x<CELL;x++)if(px.alpha(x,y)>40){top=Math.min(top,y);bot=Math.max(bot,y);}
+  if(bot<0)return undefined;
+  const h=bot-top,y0=Math.round(top+h*.3),y1=Math.round(bot-h*.2),seen=new Uint8Array(CELL*CELL);
+  const isPaw=(x,y)=>x>=0&&y>=0&&x<CELL&&y<CELL&&y>=y0&&y<=y1&&px.skin(x,y);
+  const nearPink=(x,y)=>{for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<CELL&&yy<CELL&&px.alpha(xx,yy)>40&&pink(...px.rgb(xx,yy)))return true;}return false;};
+  let best;
+  for(let y=y0;y<=y1;y++)for(let x=0;x<CELL;x++){
+    if(seen[y*CELL+x]||!isPaw(x,y))continue;
+    const stack=[[x,y]],pts=[];seen[y*CELL+x]=1;
+    while(stack.length){const [a,b]=stack.pop();pts.push([a,b]);
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=a+dx,yy=b+dy;if(isPaw(xx,yy)&&!seen[yy*CELL+xx]){seen[yy*CELL+xx]=1;stack.push([xx,yy]);}}}
+    if(pts.length<4||pts.length>70||!pts.some(([a,b])=>nearPink(a,b)))continue;
+    const c=[pts.reduce((t,q)=>t+q[0],0)/pts.length,pts.reduce((t,q)=>t+q[1],0)/pts.length];
+    if(!best||side*c[0]>side*best[0])best=c;
+  }
+  return best&&[Math.round(best[0]*10)/10,Math.round(best[1]*10)/10];
+}
+
 /** A sheet's poses, each an accessor {alpha(x,y), skin(x,y)} of its 96 px cell. */
 async function posesOf(file,id){
   const skin=handTone(id),legacy=LEGACY.has(id);
@@ -126,7 +198,8 @@ async function posesOf(file,id){
   const cols=info.width/CELL,rows=info.height/CELL;
   return Array.from({length:cols*rows},(_,c)=>{
     const ox=(c%cols)*CELL,oy=Math.floor(c/cols)*CELL,at=(x,y)=>((oy+y)*info.width+ox+x)*4;
-    return {legacy,alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);}};
+    return {legacy,alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);},
+      rgb:(x,y)=>{const i=at(x,y);return [data[i],data[i+1],data[i+2]];}};
   });
 }
 /**
@@ -145,6 +218,18 @@ async function measure(file,name,dir,fix,id){
     return BEHIND.has(d)?[...c.point,1]:c.point;
   });
   if(fix.keys)return guided(poses,fix.keys);
+  if(M16_SKIN.has(id)){
+    // a pose with no wristband in sight: the hand is hidden; between the neighbours' hands, on the body (behind)
+    const pts=poses.map(px=>wristOf(px,SIDE[dir]));
+    return pts.map((p,i)=>{if(p)return p;const a=pts.slice(0,i).reverse().find(Boolean)??pts.find(Boolean),b=pts.slice(i+1).find(Boolean)??a;
+      return a?[...onBody(poses[i],[(a[0]+b[0])/2,(a[1]+b[1])/2]),1]:[...onBody(poses[i],[CELL/2,CELL*.6]),1];});
+  }
+  if(M16_AUTO.has(id)){
+    // a pose with no paw out of a sleeve: the paw is hidden; between the neighbours' paws, on the body (behind)
+    const pts=poses.map(px=>pawOf(px,SIDE[dir]));
+    return pts.map((p,i)=>{if(p)return p;const a=pts.slice(0,i).reverse().find(Boolean)??pts.find(Boolean),b=pts.slice(i+1).find(Boolean)??a;
+      return a?[...onBody(poses[i],[(a[0]+b[0])/2,(a[1]+b[1])/2]),1]:[...onBody(poses[i],[CELL/2,CELL*.6]),1];});
+  }
   if(fix.front)return poses.map(px=>candidates(px).sort((a,b)=>SIDE[dir]*b.point[0]-SIDE[dir]*a.point[0])[0]?.point);
   if(name.includes('128-'))return trackSheet(poses,SIDE[dir],fix.pick)?.points??poses.map(()=>undefined);
   return poses.map(px=>handOf(px,SIDE[dir],BEHIND.has(dir)));
@@ -201,13 +286,14 @@ for(const id of ids){
   for(const [name,f] of Object.entries(files)){
     // The sheets the game shows (movement128.ts movementPlan): M16 when the class has it (5 drawn directions), else R06
     // (walk128/attack128 in the 8 directions, idle8 one pose per direction, and run16 when it runs).
-    // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128.
-    const m=(m16?/^(?:walk|attack|idle|run)16-(\w+)$/:/^(?:(?:walk|attack)128|run16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
+    // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128; hurt16 (animacao-
+    // receber-dano) is the flinch either kind shows when hit at rest.
+    const m=(m16?/^(?:walk|attack|idle|run|hurt)16-(\w+)$/:/^(?:(?:walk|attack)128|run16|hurt16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
     if(!m&&!idle8)continue;
     // The bots' classes: the tracking holds only for AUTO's walks and rest (reviewed pose by pose); every other sheet
     // needs its hand marked by eye (scripts/hand-mark.mjs, CLT_KEYS' method); until then none (the sticker at the side).
     const marked=OVERRIDES[`${id}:${name}`];
-    if(!LEGACY.has(id)&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
+    if(!LEGACY.has(id)&&!M16_AUTO.has(id)&&!(m16&&M16_SKIN.has(id))&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix,id);
     for(const [i,p] of Object.entries(fix))if(/^\d+$/.test(i))points[Number(i)]=p;

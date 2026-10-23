@@ -5,7 +5,7 @@ import {Room,OWNER_GAP_MS,ROSTER_BOTS_MS,nameKey,type Peer,type RoomRoster} from
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage} from '../../src/protocol/room.ts';
 import {RunLifecycle} from '../../src/sim/run.ts';
-import {RoomBots,botIdentity,botName,BOT_FALLBACK_NAME,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
+import {RoomBots,botIdentity,botName,numberedName,BOT_FALLBACK_NAME,BOT_NAME_MAX,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
 import {classes} from '../../src/rules/classes.ts';
 import {railName} from '../../src/client/render/map-label-rules.ts';
@@ -151,6 +151,11 @@ test('bots: named after their character (numbered when repeated), a class of the
   assert.equal(botName('Maromba',new Set(['Maromba'])),'Maromba 2');
   for(const c of classes){const rails=[c.name,`${c.name} 2`,`${c.name} 6`].map(railName);
     assert.ok(rails.every(r=>[...r].length<=RAIL_MAX),rails.join());assert.ok(rails[1].endsWith(' 2'),rails[1]);}
+  // N5-nomes-longos: the number never falls off the room's 20 ("Passageira do Busão 2" is 21; a restore cut it to "… Busão ").
+  assert.equal(botName('Passageira do Busão',new Set(['Passageira do Busão'])),'Passageira 2');
+  assert.equal(numberedName('Viciado em Bet',9),'Viciado em Bet 9');
+  for(const c of classes)for(const k of [2,9]){const n=numberedName(c.name,k);
+    assert.ok(n.length<=BOT_NAME_MAX&&n.endsWith(` ${k}`)&&!/ (d[aeo]s?|em) \d$/.test(n),n);}
   const ids=classes.map(c=>c.id),picked=new Set<string>();
   for(let n=0;n<40;n++){const b=botIdentity(1234,n,ids,new Set());assert.ok(ids.includes(b.classId));picked.add(b.classId);}
   assert.ok(picked.size>8,'classes spread');

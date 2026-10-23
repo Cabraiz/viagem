@@ -1,0 +1,7 @@
+Gere UMA imagem com a ferramenta de imagem (image_gen), paisagem 1536x1024, fundo branco liso, com TRÊS fotos QUADRADAS iguais lado a lado numa linha, centralizadas, separadas por uma faixa branca fina e reta (como a grade de fotos de um perfil de rede social). Cada foto é uma cena engraçada diferente do mesmo personagem, corpo inteiro ou meio corpo, bem enquadrado no quadrado:
+1) dormindo sentado na mesa do escritório, cara grudada no teclado, garrafa térmica tombada, pôr do sol na janela; 2) espremido de pé no ônibus lotado segurando a maleta acima da cabeça, cara de sofrimento; 3) selfie cansada na frente de uma pilha gigante de papéis que vai até o teto, sorriso amarelo e polegar pra cima
+Cenário de referência (use onde fizer sentido em cada cena): escritório de cidade grande no pôr do sol laranja, janelas com prédios.
+Personagem: o CLT: homem jovem cansado, cabelo preto bagunçado, óculos, olheiras fundas, camisa social azul-clara amassada, crachá, maleta preta e garrafa térmica.
+Estilo: o cartoon 3D brilhante do NOSSO jogo "Viciado em Bet" (o mesmo da imagem anexa): cores vivas, contorno suave, luz quente, acabamento de jogo mobile. NADA de estilo novo. A imagem anexa é só para LER o personagem e o estilo: não copie, não edite e não reaproveite nenhum pedaço dela; desenhe de novo.
+Sem nenhum texto, letra, número, logo ou marca d'água na imagem.
+Salve como grade-clt.png nesta pasta. Não inspecione, não rode código, não confira com PIL. Responda só "ok".

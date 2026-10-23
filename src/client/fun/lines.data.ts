@@ -281,4 +281,12 @@ export const CLASS_LINES:Readonly<Record<string,Readonly<Record<Situation,readon
     win:['Nota dez em todos os quesitos!','Campeã do carnaval da dungeon!'],
     lose:['Estourou o tempo do desfile...','Quarta-feira de cinzas chegou.'],
   },
+  'gato-nada-pra-comer':{
+    levelUp:['Subi de nível. Cadê o petisco?','Upei com fome. Imagina cheio.'],
+    down:['Caí de fome. Alguém traz sachê!','Me levanta, abriram um pacote!'],
+    revive:['Levanta! Divido a ração. Mentira.','De pé! Agora me deve um patê.'],
+    upgrade:['Isso dá pra comer? Então quero.','Pego esse se vier com ração.'],
+    win:['Vitória! Agora enche a tigela.','Ganhei. Mereço o atum inteiro.'],
+    lose:['Perdi por falta de alimentação.','Ninguém luta com a tigela vazia.'],
+  },
 };

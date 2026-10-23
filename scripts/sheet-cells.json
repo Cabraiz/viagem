@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 3164,
+  "sheets": 3324,
   "failing": 0,
   "frames": 0
  },
@@ -12383,8 +12383,58 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/clt-cansado.hurt16-n.cec006d096fc.webp": {
+   "sha": "9216b38ff2f65de15d79054378c3df5db09ddbf2128a81fb10ac7698536c49e4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.hurt16-nw.bd8e82036d97.webp": {
+   "sha": "2ae11605f2c4ddbb8858d254f3d4f3aaa0a7977a583daa588077fe2d78ed41fb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.hurt16-s.b59d30da2aab.webp": {
+   "sha": "b4fa0b7fdbc70bbf154a11cf35a7a8c6c06f48976a7169e8cc7affde7af2efd7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.hurt16-se.674017e54761.webp": {
+   "sha": "91c9104040314bec70ea8eb4a7a552bd64aa31f894a86079a62258b7bbbc619e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.hurt16-w.3c12efcc5ab1.webp": {
+   "sha": "5a7b7d169172777057275f4b359811ace26a19a89f48147fc5fe2d842fadb214",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/clt-cansado.idle8.15cf38519b49.webp": {
    "sha": "48d0206d9169602c5993e47a0b8f91d4d9ce1e38106db9831de19623a9021237",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
+   "sha": "11b3d399e964c36364a1d7464ea34f057c1cc5f6ee40ae3033db1dbd92368b85",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-nw.0ff126f5cf94.webp": {
+   "sha": "6bd0cf6607f368af634de29269c45fb820d623750a122b3b0764d4d9e73f145b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-s.2dca8df2dca6.webp": {
+   "sha": "d3d7435bea81ec783ee0d4b7d821c4f638aba45f376095704643b72fb819ef7c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-se.e11b3c283ade.webp": {
+   "sha": "3a27f07b541943d69b189613b9b816980aad24da1be442afc62b9577a9c2ae97",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-w.a3b3ef618532.webp": {
+   "sha": "a094e1b33fc565da3bbfc0926a4288446b1033f534d2c08f3476aadb20d73cc7",
    "ilhas": 0,
    "fails": []
   },
@@ -12853,6 +12903,156 @@
    "ilhas": 4,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.attack16-n.015dba4b1272.webp": {
+   "sha": "90a44fb0ab61d4df79ba13c61bfcef99c2a807128cd3c744a430889c9c895839",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-nw.25064cb39c74.webp": {
+   "sha": "4c085da6ea217f4d54ac461226bbc2b9fdc243d98b77dad0ed8213576d3a6ca4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-s.b66f4965bba8.webp": {
+   "sha": "24f8f99d067423eb0939e6a7b0c14373de2d5d742988c9e13c0e147ecb98bf50",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-se.d642ac09c511.webp": {
+   "sha": "71244bef339e82ea39190767ac1a189572395e411c90580d5d4b62d8abe0b7fe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
+   "sha": "562e047ae6dfa720783ab7241effc46892a05660c2aa056b230a96e43225be7f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
+   "sha": "b85f4a0af6ce0e7896175d17c7514e9f190b2784bc4bc0f46e0c34ee8c1d45f8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp": {
+   "sha": "c016923de7b0d25aa839ee031ed0cb82ce6ccffa1a41093718146b8f534ad908",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-s.62e20d434214.webp": {
+   "sha": "7cee6249f6fb815f536a51cbfebd54bbcf90371e8de19150740202bb9f387467",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-se.2477472508be.webp": {
+   "sha": "4828159f333185592edc30a3960203bd055c15ce5664ab5f54810a5b25745d71",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-w.45b0734d0223.webp": {
+   "sha": "1f16478d03b60fbf09f23e702413c00a1d1d66315a94906e3f18d383cba54935",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-n.5aaede5db316.webp": {
+   "sha": "b57f8bf5fd1ba15128e1fb280ad7b18e2434718063adefc3e4e65efc0789cafc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-nw.651957abad67.webp": {
+   "sha": "5d812e0267e48ff325421337c2b85ce8299b58da18b04747997bfaac5f73ee78",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp": {
+   "sha": "750ab07eacd2bc13aaefdda560ca8c5c31b49ab03c9c0faf57f2baea1649dead",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-se.39c43413843d.webp": {
+   "sha": "98fee72618c190c45cb44f2730c115af3af57f09241e4dd4a263719729d9ace4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-w.96fff0d71005.webp": {
+   "sha": "9e0f624e81842da33bbd840630bfc48b8597ca04dc0d8ef4929ee9cb6a699bb3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
+   "sha": "882656ac81c1be9074ceeef1bc8e6475b11dc3bbc2476692790a71f0bf27864b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-nw.ab6559769548.webp": {
+   "sha": "4d45aa5b52b7bfc2785604256c349faaf38856f342b85f9b8174b17a79ad486b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-s.956222cb25d1.webp": {
+   "sha": "3df0e0ca059e8d6664df6c583a667f16709fff9142794d558da3adf619696ed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-se.497ecf61c520.webp": {
+   "sha": "0b4d220bbd0f1ed4a4323780b8e7de8709e071f98f2df612926d5a1c4b6139ea",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-w.50ea709bd678.webp": {
+   "sha": "4eb89b2f3115543b2b8d77192ce78aff9c361cdebc32e00fe48a7f53b9fd60e6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp": {
+   "sha": "9ff8e84d6ae23bcce9494e3c26847b68f3ad1df07de8d1e4232685531b139ac8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
+   "sha": "2588db84a47450c5d281ce54fe6d7b15c2320e5a3e87041f750dee9ef0bb2cda",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-s.67035aa11ade.webp": {
+   "sha": "9865e52197208cadb667c8a2bf09312c033460777e440108c02073ac8ef871b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+   "sha": "b00b07dd92fddffd363b95adcdb01b3edd16a9566e80bbd5a828f92ac2b9b43b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+   "sha": "5badbb47af9fdfef607fc78e6ff6eaafcba0c9a8eb06a74b8dec4dd1b089b36d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
+   "sha": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-nw.acb4ac608344.webp": {
+   "sha": "7a6580fcea3defe5ae2439ead8138ca5ca9a24b59f40f571fde0c6ea7e51b6a5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-s.8a66abe998b9.webp": {
+   "sha": "3f63a9ab2cd3814fe194ad19a3d9d3e5757a68165fe27b5477c96a525f3c3c81",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-se.27a50041299c.webp": {
+   "sha": "957afe3cbd06e42415c8eca10754cd17c9ee81c51a814c7901e218ce8c1f3426",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-w.0539b709da31.webp": {
+   "sha": "72acdf101397ca5d11698f31de8838ae229e1e3af305a8ff44eedb9d21ba5702",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/goleira.dir4.webp": {
    "sha": "8358f47f8d9f4fbcb477081915186cc6305ffa27e59037a5e584d3bd9c9a7cf1",
    "ilhas": 16,
@@ -12913,6 +13113,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/maromba.attack16-n.579800de41b5.webp": {
+   "sha": "8f314e78be46da00bcd193d5d301531b009586af041f26825c1d6e23cee1048d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-nw.e1a1efc886e5.webp": {
+   "sha": "6adda92abf6248b65f0b2304537db690c7a94c4cbcc5c7ba91b09f717db40ed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-s.7e3df22fec11.webp": {
+   "sha": "ae1f1529519dcd269ade74955e650f3defb3ba3813847bbc15fc6836d5aafc91",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-se.e39e2a9588ec.webp": {
+   "sha": "a3d290d44930817f8f4998b6adfe524d3d523af5719d24779e063927ffee19ee",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.attack16-w.f2811360776b.webp": {
+   "sha": "a16f8ac9870b974b603db1e98af333b74941aef1d3a7145ecfaa75cfafa492bf",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/maromba.dir4.webp": {
    "sha": "b0a919d1d9f816e0c6dfe030db84e933824af0a21febf5f60578235d57e73189",
    "ilhas": 0,
@@ -12923,8 +13148,108 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/maromba.hurt16-n.4d2142762c9f.webp": {
+   "sha": "81689ccf7940e5a3ac97dd93c2faac22f68bbdc86eacab79a357dd6973d7b4b5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-nw.d7b8baf86dbd.webp": {
+   "sha": "65bf2c46a5650577a8503302d84b780c30adbc69e32355cc3294a5535d3fe40e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-s.cfabf768ea8c.webp": {
+   "sha": "df29d703528ba52619eff6cdca4804619b61b0694f0fcd89ec5e8942388ccc41",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-se.7b72721c4f50.webp": {
+   "sha": "92dab6933f7aecb8493bc66ccb0c1fa25dfc306fa5cccffa9e239afbd1c22d3e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.hurt16-w.7b70bb99d302.webp": {
+   "sha": "37a0b9d25da3ab6222352b25f29f0b8083aaaed5a92d2c890d0314beee73107c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-n.f24cd648ed40.webp": {
+   "sha": "5e01b0902f8675c9ee02069a9e3ae7578d158b14e7b432b21bd8f5ea561d2939",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-nw.5864e1ae74fc.webp": {
+   "sha": "8313b692f13a0249e31b9b97217302dc444ddd00b80fe2e874c86b4ab8ac5d4c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-s.891ba88573ea.webp": {
+   "sha": "cffe85e7ba5b9ae9b76585a2fe8740457923acfee3c5cc820a15079b05f334d0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-se.c49298a25375.webp": {
+   "sha": "37907f805fb9a8ca4603339189dbb5862b6e86691a94042428d339193e269e75",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.idle16-w.8887992091be.webp": {
+   "sha": "69e076325855168bfddb36172e10a1dbdd887a834805f803a5bde051659a2513",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "629b30a9d3ea56c363fe4aa2c50fc16f2aeea043777c828dcb35fa80db8c6d44",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-n.d8725566eb99.webp": {
+   "sha": "5004058644d932b9f83749aedc5fe3dd4d37bae0f89e0f2f19a94b9f7cbe39c4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "sha": "9f79c2cde7e7c5496d56ea385196bfa025c827d877c586160e70466ca5ff455e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "sha": "0a176b0d6244b110fad96b2b9c2a8a6122e893dc7c958e4f9aea7749e28c0d51",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "sha": "67c43a23741601a5528e2373f50c5e225f11cc2de0570912838df3213b400adc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.push16-w.197425478ad3.webp": {
+   "sha": "a15633c648e6746ef0cbc8769644a1de3460dd0872c6abd06f9b7bef56bdbce0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-n.12858ddc378f.webp": {
+   "sha": "4fc46627769790836aeb0a480dea3e04db6889f746601cefdd078f1df27d9049",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-nw.6d2ea649fe99.webp": {
+   "sha": "ef0e842db0c0334faf9c42d7da816f68c77f8f61731379c31822afca1596cfc3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-s.225e468b2c87.webp": {
+   "sha": "322010dd7ff93c01be7efcee93a0fb0f590b3f0c84058d87bf34368dfbe49386",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-se.6f225d758e28.webp": {
+   "sha": "e5056f9a9fcf11b351930a471bb5876d43b210c62d9084e2fce0f33cad06638d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.run16-w.dc71e9155576.webp": {
+   "sha": "669dceeb4a88ea219c83e812078cc684f867e529c91d3a47dfd1ffd0667fc51d",
    "ilhas": 0,
    "fails": []
   },
@@ -12965,6 +13290,31 @@
   },
   "lite/sprites/maromba.walk128-w.01b7d9ebc794.webp": {
    "sha": "ac41036582de3e2140da0e66940af18621921dd15977884d34d91362d6b6d6fd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-n.2064a9e3a3ce.webp": {
+   "sha": "a978765c4408cb33b5be85e348ca92b54d39e76941bf84b79cfb2d7ce8a2d8f8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-nw.d19eb025bd84.webp": {
+   "sha": "d4d76965b34c60d2e67ea064540fbd653d5e9da377bc1eeffb9dadc76f2d0374",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-s.b6994bfb245d.webp": {
+   "sha": "baa0740e765b123eb1eccfea506b9620e2fcf78c0ecb91bb8f2f1ac2825ecfbe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "sha": "c2af00656f6be75c2a208c3f763c238570a404efac845b75100b0fb9e8efc978",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.walk16-w.a77ac0004cd3.webp": {
+   "sha": "47006521e2ab90a14faa4d382ae0a392f828fbaadb869959b6764e5c867f46eb",
    "ilhas": 0,
    "fails": []
   },
@@ -13723,6 +14073,31 @@
    "ilhas": 6,
    "fails": []
   },
+  "lite/sprites/viciado-em-bet.hurt16-n.68e01f7bdb20.webp": {
+   "sha": "b6cbba4abdf05a9fd1eb68074e628a54e59e7107455a0730a2178b61abb9a7c5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.hurt16-nw.58867fd5efac.webp": {
+   "sha": "f83da3642796838df6e9efe184145ff618de3bf207412c8e069640fec150a031",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.hurt16-s.927635c1496b.webp": {
+   "sha": "8a4adad1e907dd72fe7545c6ff47070f3836588c2c8c824235494f0f35d47ba6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.hurt16-se.d1e18eb03adc.webp": {
+   "sha": "35f2a391040e0e8b7f319bf527d50a2398a9f9ba9197e1a15cab542f640e53cf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.hurt16-w.956ef6be5818.webp": {
+   "sha": "a2745f04fda799be9908754cae9f476aea0e0c94b7c9e0078ce5caacb4dcd34c",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/viciado-em-bet.idle16-n.f3225cfb6309.webp": {
    "sha": "f87989ace4dad6c01fa58e95c6041f384b7bf8f568e51d223722e3d65d425624",
    "ilhas": 0,
@@ -13750,6 +14125,31 @@
   },
   "lite/sprites/viciado-em-bet.idle8.f8c45d75d0f1.webp": {
    "sha": "bf574d1ad862d91c0ad9c8017bc5df5a1cb84d5c09fdbc462407d50032d18ad4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-n.e8e3c05b5850.webp": {
+   "sha": "e78bac997701fac627ef6586538efdb6470a6dc2750c85423a10fbeef7ae4267",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-nw.04a8db15903e.webp": {
+   "sha": "9d23ea3ea83edaeee74eb646146a695f039bd004fd5f22c944008a16a1381ce0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-s.59f96857a28a.webp": {
+   "sha": "f9d5b0ca3027c3c5d71479c1f271b8dcc3056e6284db1a61d658ae16bd9a2bf5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-se.31f480582294.webp": {
+   "sha": "e04266e571d493cb424fae7255d4b2574b7ae299a53986b37f0c90101d97cfcd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-w.77248b872e71.webp": {
+   "sha": "b204366d573dc5e2085fb0cb3a09d6bb46a76a84565589d2a9327b8522432ddb",
    "ilhas": 0,
    "fails": []
   },
@@ -13818,28 +14218,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-n.66524789b514.webp": {
-   "sha": "52e33886bc85beaff22ddc5f36faab79774174f06d338b6abd9dc8b35c6391a5",
+  "lite/sprites/viciado-em-bet.walk16-n.12790bb72e36.webp": {
+   "sha": "6caf29dc9eba525ac7a3170d15c44b78cd6e1dbed478932cd901865e0462ae0e",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-nw.9a4e75e40218.webp": {
-   "sha": "b0f84bc0d197276397f8b035380d99f6c827a94a7bba15728b19a97f400b2cdb",
+  "lite/sprites/viciado-em-bet.walk16-nw.2a00ab5eb8cd.webp": {
+   "sha": "ba3b7279bad9e73ccf447e09da6f7de164896e0497b95d9ba4b259926ff5da00",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-s.0db3ef27844b.webp": {
-   "sha": "b682ddb24ca936494df32ffe34354a65b4ee66e41eb1d647e7df45ce126aefda",
+  "lite/sprites/viciado-em-bet.walk16-s.ffd1151089f4.webp": {
+   "sha": "07779ff11a893291b3a227e4631b3af39e2dee0ed703b4073c9d0739f400aaf5",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-se.93fcae3c0d85.webp": {
-   "sha": "e7fb05c295f49b72fbd37faa05449c2a1d282cb0cbae6850f57746bbfa01e772",
+  "lite/sprites/viciado-em-bet.walk16-se.e13272fec8a2.webp": {
+   "sha": "1a49fcd1b8b32781e58683adbcc6c9ef26b275f8212a42fc3731273c5c8c4e00",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.walk16-w.0e8f9bc38087.webp": {
-   "sha": "c6608261a1bf7dbca663e5c8410922c98786efde6c57ecc0d2ce557f0f7d5cc4",
+  "lite/sprites/viciado-em-bet.walk16-w.d7a393898e44.webp": {
+   "sha": "c7724e668093bca2476a31cdaa5ec90ef4c21350e6b72d9ef71929eaf1fef450",
    "ilhas": 0,
    "fails": []
   },
@@ -14143,8 +14543,58 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/clt-cansado.hurt16-n.cec006d096fc.webp": {
+   "sha": "cec006d096fc77a5022f82b815e8ef1fb59bc608a7ffa0ec30b126f6e74e0785",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.hurt16-nw.bd8e82036d97.webp": {
+   "sha": "bd8e82036d97e635aa51c9c2abdf2971c5a2e07d8a58556683fcc4bdf0d99462",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.hurt16-s.b59d30da2aab.webp": {
+   "sha": "b59d30da2aab2aa38f0814385c8dc201c9dc58eb0ab1e33f6f09a44adb87095b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.hurt16-se.674017e54761.webp": {
+   "sha": "674017e547616ca917018c83b629f61baafdebbf0481bcad8b04d7da55414827",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.hurt16-w.3c12efcc5ab1.webp": {
+   "sha": "3c12efcc5ab18ca96f0d5c348f9c940f1f72788af4b8bd37f58fd6ed809ff799",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/clt-cansado.idle8.15cf38519b49.webp": {
    "sha": "bbd5e881619b2999c2f8a1051ebaebce40d957ef6af80c61d817eacb93ec0046",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
+   "sha": "c1273e2bf5da3ee91bb3ecc84ea2b79b5c3dfcc8bf24dad1ac6812717a31b31d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-nw.0ff126f5cf94.webp": {
+   "sha": "0ff126f5cf94847f72f3243c8d0bb7a8e209f63ca2cb4130a8213dd91fd8d4a0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-s.2dca8df2dca6.webp": {
+   "sha": "2dca8df2dca67970849d42a99961f604bfd87531475a42ff23abc7de9608400b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-se.e11b3c283ade.webp": {
+   "sha": "e11b3c283aded4034355645a3090c565797e9f16ebc7c62cac424616785d2297",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-w.a3b3ef618532.webp": {
+   "sha": "a3b3ef618532f1bc69b1c82b51c26d1a8cb216737da3d96dd8ddf7c2ed178446",
    "ilhas": 0,
    "fails": []
   },
@@ -14643,6 +15093,156 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gato-nada-pra-comer.attack16-n.015dba4b1272.webp": {
+   "sha": "015dba4b12726fab04a2f1d44b960d9e7b187bf5bbec36cfe320534507b913f7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-nw.25064cb39c74.webp": {
+   "sha": "25064cb39c744b03ec4629bd38610bb8b322bdc13cd2049bc749d65eedde4931",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-s.b66f4965bba8.webp": {
+   "sha": "b66f4965bba80481f09c7f93569381e49ecff4484222f1b441a5ebaaf84e0986",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-se.d642ac09c511.webp": {
+   "sha": "d642ac09c511ff29d031afb5a8e573ed40e1327a49028543bd6a78f9d2a66f30",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
+   "sha": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
+   "sha": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp": {
+   "sha": "c34cb8ea812f5e4253c2aed4ff5cb01a807c6efe45198d13ae7366d66194a075",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-s.62e20d434214.webp": {
+   "sha": "62e20d434214c5d54d354cd8507c68fd9d14f9a05781eb5f046ed11a7e6e4d6a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-se.2477472508be.webp": {
+   "sha": "2477472508be01d5a47f208de807feb0e44907fda2fb2b90c11f3c5922becac9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-w.45b0734d0223.webp": {
+   "sha": "45b0734d0223baca4bd189529c21990d43ae8f23a19ea0484ee4df46208626d6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-n.5aaede5db316.webp": {
+   "sha": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-nw.651957abad67.webp": {
+   "sha": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp": {
+   "sha": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-se.39c43413843d.webp": {
+   "sha": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-w.96fff0d71005.webp": {
+   "sha": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
+   "sha": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-nw.ab6559769548.webp": {
+   "sha": "ab6559769548c9afaf0d5c76d83d60de4a9acfe2fc92a725aeda0fe002bce373",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-s.956222cb25d1.webp": {
+   "sha": "956222cb25d16299680c465445810595262b6a4964689e01ec5efed8999231ab",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-se.497ecf61c520.webp": {
+   "sha": "497ecf61c520ad0126a845a38f59167640bb55bc7393ac2330998c8a34052451",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-w.50ea709bd678.webp": {
+   "sha": "50ea709bd678b24614f1b86af0c4b5a5ec6565e2a26089c3c0fdeab15314cd38",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp": {
+   "sha": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
+   "sha": "cdd9cb8851447d3f4055907a9d86b2c85bec455e826b1b71afc5edf322b549ca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-s.67035aa11ade.webp": {
+   "sha": "67035aa11ade725a854ff04b140cc22efff74f09b7d28d70240157d868f1fce1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+   "sha": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+   "sha": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
+   "sha": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-nw.acb4ac608344.webp": {
+   "sha": "acb4ac608344d4a3e2d15ea0049b87a8d7ab857c39640e940c4ed82ee3cd4db2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-s.8a66abe998b9.webp": {
+   "sha": "8a66abe998b9c638ac22c0be1483bf088bf75477e41add84ead2f32c6774c853",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-se.27a50041299c.webp": {
+   "sha": "27a50041299c31c371d015c82f66d132b8284c8762bfae9455f7ecdbd7e49979",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-w.0539b709da31.webp": {
+   "sha": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/goleira.dir4.webp": {
    "sha": "d7a4eede4a35a3018fb2d83b0a461ec131114fdb5ae839d59f14a89ee2ec3242",
    "ilhas": 16,
@@ -14713,6 +15313,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.attack16-n.579800de41b5.webp": {
+   "sha": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-nw.e1a1efc886e5.webp": {
+   "sha": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-s.7e3df22fec11.webp": {
+   "sha": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-se.e39e2a9588ec.webp": {
+   "sha": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.attack16-w.f2811360776b.webp": {
+   "sha": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/maromba.dir4.webp": {
    "sha": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c",
    "ilhas": 0,
@@ -14728,8 +15353,108 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/maromba.hurt16-n.4d2142762c9f.webp": {
+   "sha": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-nw.d7b8baf86dbd.webp": {
+   "sha": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-s.cfabf768ea8c.webp": {
+   "sha": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-se.7b72721c4f50.webp": {
+   "sha": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.hurt16-w.7b70bb99d302.webp": {
+   "sha": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-n.f24cd648ed40.webp": {
+   "sha": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-nw.5864e1ae74fc.webp": {
+   "sha": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-s.891ba88573ea.webp": {
+   "sha": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-se.c49298a25375.webp": {
+   "sha": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.idle16-w.8887992091be.webp": {
+   "sha": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-n.d8725566eb99.webp": {
+   "sha": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-nw.0f77e22201ae.webp": {
+   "sha": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-s.2b213760a6a4.webp": {
+   "sha": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-se.a58b009d8f03.webp": {
+   "sha": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.push16-w.197425478ad3.webp": {
+   "sha": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-n.12858ddc378f.webp": {
+   "sha": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-nw.6d2ea649fe99.webp": {
+   "sha": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-s.225e468b2c87.webp": {
+   "sha": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-se.6f225d758e28.webp": {
+   "sha": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.run16-w.dc71e9155576.webp": {
+   "sha": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",
    "ilhas": 0,
    "fails": []
   },
@@ -14770,6 +15495,31 @@
   },
   "sprites/maromba.walk128-w.01b7d9ebc794.webp": {
    "sha": "01b7d9ebc7949eaf2ecd10c406d38c08fb7495750d777848689fbbdae28b83d2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-n.2064a9e3a3ce.webp": {
+   "sha": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-nw.d19eb025bd84.webp": {
+   "sha": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-s.b6994bfb245d.webp": {
+   "sha": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-se.a15dd2319ab3.webp": {
+   "sha": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.walk16-w.a77ac0004cd3.webp": {
+   "sha": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395",
    "ilhas": 0,
    "fails": []
   },
@@ -15618,6 +16368,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/viciado-em-bet.hurt16-n.68e01f7bdb20.webp": {
+   "sha": "68e01f7bdb20be623fbf0e2bd468d3bbd1714eead362672f559d186a0779ff29",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.hurt16-nw.58867fd5efac.webp": {
+   "sha": "58867fd5efacdb4ad862960beb5967d6649429485c6564db20a05b229e49e838",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.hurt16-s.927635c1496b.webp": {
+   "sha": "927635c1496bf3ab6939d7a3da858d40845b1a9c461ef0d414faca651fccc913",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.hurt16-se.d1e18eb03adc.webp": {
+   "sha": "d1e18eb03adce33fe396d1b968a3091e5f08e3537a362dbc46eb844540152ba7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.hurt16-w.956ef6be5818.webp": {
+   "sha": "956ef6be581856d155b1de4e8d8ec378b21034efad82c48c61a1b592589e0b45",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/viciado-em-bet.idle16-n.f3225cfb6309.webp": {
    "sha": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7",
    "ilhas": 0,
@@ -15645,6 +16420,31 @@
   },
   "sprites/viciado-em-bet.idle8.f8c45d75d0f1.webp": {
    "sha": "2f40d164bcf21c691dcbff20911646a4c6026a7d4d5e10d7c40763ffcae97a8f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-n.e8e3c05b5850.webp": {
+   "sha": "e8e3c05b5850c39cb86effce41833a2b216d99675e3722b5d6589fe462770b3a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-nw.04a8db15903e.webp": {
+   "sha": "04a8db15903e88d04d1fc64721f9e9f1db4f331067d03b19d4945335d12ec38d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-s.59f96857a28a.webp": {
+   "sha": "59f96857a28a6a965d9190212526bd0439d08276afd111f417900fe5f684dbcf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-se.31f480582294.webp": {
+   "sha": "31f48058229468338acf946e6273ffee8ce6583775ad04c340849a3eace990af",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-w.77248b872e71.webp": {
+   "sha": "77248b872e7168c582bcb6b9ca38f2fba002ff5d1565afd554a677f6221d107a",
    "ilhas": 0,
    "fails": []
   },
@@ -15713,28 +16513,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-n.66524789b514.webp": {
-   "sha": "66524789b514a11c1265a2dbccec769bae7b85a67719fb68e96dac12f4b75042",
+  "sprites/viciado-em-bet.walk16-n.12790bb72e36.webp": {
+   "sha": "12790bb72e36b185fc77a487bf4c152a0f8a17112cb17874c541767ae82e7371",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-nw.9a4e75e40218.webp": {
-   "sha": "9a4e75e40218cfb6e94fe88030230a2f97481b8f63115b661baaf4ae3efecebf",
+  "sprites/viciado-em-bet.walk16-nw.2a00ab5eb8cd.webp": {
+   "sha": "2a00ab5eb8cdd09f5942bdcbe25fbba3559b415f603a4a1f80b12cf201d79a52",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-s.0db3ef27844b.webp": {
-   "sha": "0db3ef27844b3e86d160a885baaacc0da10b6fe2268eaf068f6e25e5ab3f3cc7",
+  "sprites/viciado-em-bet.walk16-s.ffd1151089f4.webp": {
+   "sha": "ffd1151089f4d71b37cf6676e320c5670a741d6891085f8bde53fa053dad827a",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-se.93fcae3c0d85.webp": {
-   "sha": "93fcae3c0d85910ef394ebb9fafb197c7990defc70af995d8c248162a15dc420",
+  "sprites/viciado-em-bet.walk16-se.e13272fec8a2.webp": {
+   "sha": "e13272fec8a213bfde8f151c88931b279506e6dbe249c536d046c68a687911db",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.walk16-w.0e8f9bc38087.webp": {
-   "sha": "0e8f9bc38087ac6608fa9d44909bc56f53c0be8a4dab7273874e186831166409",
+  "sprites/viciado-em-bet.walk16-w.d7a393898e44.webp": {
+   "sha": "d7a393898e4455b159ea081e1130088c0f1d5a6f94b6e784a5656f4ef6067a89",
    "ilhas": 0,
    "fails": []
   },

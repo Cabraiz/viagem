@@ -1,0 +1,262 @@
+[
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 188x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 118x16)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 188x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 118x16)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 110x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 66x16)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "100",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 188x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 118x20)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 188x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 118x20)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 105x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 62x20)"
+  ]
+ },
+ {
+  "view": "390x844",
+  "texto": "125",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 209x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 131x16)"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 209x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 131x16)",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (219x18 > 209x18)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (293x16 > 131x16)"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "100",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado do dono, 6p, derrota, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud resultado, 6p, nomes longos",
+  "problems": [
+   "resultado rola: 3 card(s) fora da vista"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate, 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 209x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 131x20)"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud caído, 6p, nomes longos",
+  "problems": []
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud setas na borda, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 209x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 131x20)",
+   "sem seta: chefe"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud combate no PC (coluna), 6p, nomes longos",
+  "problems": [
+   "reticência: rh-marquee-title: \"Carvão Acabou no Meio do Chu\"",
+   "overflow escondendo texto: rh-marquee-title: \"Carvão Acabou no Meio do Chu\" (274x23 > 209x23)",
+   "reticência: rh-marquee-sub: \"Agiota de Folga: Tá na praia\"",
+   "overflow escondendo texto: rh-marquee-sub: \"Agiota de Folga: Tá na praia\" (366x20 > 131x20)"
+  ]
+ },
+ {
+  "view": "844x390",
+  "texto": "125",
+  "name": "hud caído no PC (coluna), 6p, nomes longos",
+  "problems": []
+ }
+]

@@ -1843,6 +1843,39 @@
         "loop": false
       }
     },
+    "pes-do-curupira-chao": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "pes-do-curupira-chao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 6,
+          "pages": [
+            {
+              "file": "pes-do-curupira-chao.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "58585237ed93d4fa503d7289e7a98879e98d0c82e8e8c5603488e3838c28c8d6"
+            }
+          ],
+          "sha256": "58585237ed93d4fa503d7289e7a98879e98d0c82e8e8c5603488e3838c28c8d6"
+        }
+      },
+      "sha256": "8f13d70209f485a90f3278d666a54ba47fff44a5d4afde4d020dc0568f586269",
+      "meta": {
+        "loop": true
+      }
+    },
     "poeira-dano": {
       "kind": "frames",
       "files": {

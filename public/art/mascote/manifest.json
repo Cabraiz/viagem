@@ -2,6 +2,102 @@
   "version": 2,
   "group": "mascote",
   "pieces": {
+    "papagaio": {
+      "kind": "animations",
+      "files": {
+        "idle": {
+          "file": "papagaio/idle.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "575c5d5d2ba56b081bf4abfd8ec623e8be5aada9a7eaa4584b993194a909f3bc"
+            }
+          ],
+          "sha256": "575c5d5d2ba56b081bf4abfd8ec623e8be5aada9a7eaa4584b993194a909f3bc"
+        },
+        "walk": {
+          "file": "papagaio/walk.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "a586877e7c9d89b9d51346ecd58e47afb5783f5ec17bb2906efc9b5c6c4261a9"
+            }
+          ],
+          "sha256": "a586877e7c9d89b9d51346ecd58e47afb5783f5ec17bb2906efc9b5c6c4261a9"
+        },
+        "attack": {
+          "file": "papagaio/attack.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "fe10a17687b5f5eef3708a3c7626b723536da04be489953fd037ae4a0c519de2"
+            }
+          ],
+          "sha256": "fe10a17687b5f5eef3708a3c7626b723536da04be489953fd037ae4a0c519de2"
+        }
+      },
+      "sha256": "73649726a1fb0237b4c1e7fab053c76198a439d2a6a6844823bb2373003725ef"
+    },
     "vira-lata": {
       "kind": "animations",
       "files": {

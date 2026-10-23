@@ -7,7 +7,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {MOVEMENT16_META,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movementPlan,movementSheets,hasMovement16,hasRun16,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
+import {movementPlan,movementSheets,hasMovement16,hasRun16,hasPush16,pushPlan,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
 import {HERO_GAIT} from '../../src/client/sprites/sprite-motion.ts';
 
 sharp.cache(false);sharp.concurrency(1);
@@ -19,7 +19,7 @@ async function sheet(columns:number,rows:number,{x0=50,slide=3,distinct=true}={}
     return `<rect x="${x}" y="${y+60}" width="60" height="108" fill="rgb(${c*13%256},${c*29%256},${80+c*7%170})"/>`;}).join('');
   return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${columns*192}" height="${rows*192}">${rects}</svg>`)).png().toBuffer();
 }
-/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run`. */
+/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run` (never the push). */
 async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;indexFile:string;old:any})=>Promise<void>,{run=false}={}){
   const work=await mkdtemp(path.join(tmpdir(),'viagem-movement16-')),input=path.join(work,'input'),outRoot=path.join(work,'out');
   try{
@@ -30,7 +30,7 @@ async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;in
     await write(manifestFile,{version:2,group:'personagens',pieces:{aposentado:old}});
     await write(indexFile,{version:2,groups:{personagens:{output:'public/art/sprites',pieces:{aposentado:old}}}});
     for(const [motion,m] of Object.entries(MOVEMENT16_META.motions)){
-      if(motion==='run'&&!run)continue;
+      if(motion==='run'&&!run||motion==='push')continue;
       const bytes=await sheet(m.columns,m.rows,{distinct:motion!=='idle'});
       for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado',motion,d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
     }
@@ -55,7 +55,7 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   assert.deepEqual(Object.keys(entry.files).filter(k=>k.includes('16-')).sort(),
     ['attack','idle','walk'].flatMap(m=>MOVEMENT16_META.directions.map(d=>`${m}16-${d}`)).sort());
   for(const [motion,m] of Object.entries(MOVEMENT16_META.motions))for(const d of MOVEMENT16_META.directions){
-    if(motion==='run')continue;
+    if(motion==='run'||motion==='push')continue;
     const f=entry.files[`${motion}16-${d}`],webp=path.join(outRoot,'public/art/sprites',f.file),meta=await sharp(webp).metadata();
     assert.deepEqual([meta.width,meta.height],[m.columns*96,m.rows*96]);assert.equal(f.frames,m.frames);assert.equal(f.durationMs,m.durationMs);assert.equal(f.loop,m.loop);
     assert.equal(f.revision,16);assert.match(f.file,new RegExp(`^aposentado\\.${motion}16-${d.toLowerCase()}\\.[0-9a-f]{12}\\.webp$`));
@@ -132,3 +132,21 @@ test('run poses keep their height off the ground (only the torso x is aligned)',
   const walk=await alignMovement16(bytes,'walk'),run=await alignMovement16(bytes,'run');
   assert.equal(walk.shifts[1].dy,20);assert.equal(run.shifts[1].dy,0);
 });
+
+test('push (empurrar-uno): --motions push imports only the push of a class, with its phase table, the other sheets kept',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  const m=MOVEMENT16_META.motions.push,bytes=await sheet(m.columns,m.rows),table={d:Array(16).fill(.03),v:Array.from({length:16},(_,i)=>i%2?[1.5,0]:[0,0])};
+  for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado','push',d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
+  // a push sheet without its phase table is refused (the game places it by the ground walked)
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],motions:['push'],write:true}),/a push needs its phase table/);
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','push',d).replace(/\.png$/,'.phase.json'),JSON.stringify(table));
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],motions:['push'],write:true});
+  assert.equal(result.characters[0].outputs.length,5);assert.deepEqual(result.characters[0].motions,['push']);
+  const files=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const [k,f] of Object.entries(before))assert.deepEqual(files[k],f,`${k} kept`);
+  for(const d of MOVEMENT16_META.directions){const f=files[`push16-${d}`];assert.equal(f.frames,16);assert.equal(f.durationMs,1000);assert.deepEqual(f.phase,table);assert.equal(f.height,before['idle16-S'].height);}
+  // the client sees it (the index keeps push16 keys) and pushes on it, mirrored like the rest of the class
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.equal(hasPush16('aposentado'),true);assert.equal(pushPlan('aposentado','SE')?.key,'sprite16:aposentado:push:SW');assert.deepEqual(pushPlan('aposentado','E')?.phase,table);
+}));

@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,PUSH_MIN_HEIGHT,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
@@ -64,4 +64,17 @@ for(const id of classes)test(`${id}: every run pose at the rest pose's head and 
     for(const [motion,c] of Object.entries(e.clips))if(motion!=='idle')
       assert.ok(c.frames.every(f=>f.headIou>.8),`${id} ${motion}16-${d}: the head fit holds (IoU > 0.8)`);
   assert.deepEqual(GATED,['head','height']);
+});
+
+test('push16 (empurrar-uno): the head keeps ±4 %, the height may drop to PUSH_MIN_HEIGHT (leaning on the car), never under',()=>{
+  const clip=(head:number,height:number)=>({scale:1,frames:[],head,height,torso:1,area:1});
+  const m=(push:ReturnType<typeof clip>)=>({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{push}}}});
+  assert.deepEqual(verdict(m(clip(1.02,.9))),[]);
+  assert.deepEqual(verdict(m(clip(1.02,PUSH_MIN_HEIGHT-.01))),[`x push16-W height ${PUSH_MIN_HEIGHT-.01} (≥ ${PUSH_MIN_HEIGHT})`]);
+  assert.deepEqual(verdict(m(clip(.95,.95))),['x push16-W head 0.95 (±4%)']);
+  // push16-N: the head is not read (the palms beside it), the height bounds it both ways
+  const n=(c:ReturnType<typeof clip>)=>({id:'x',dirs:{N:{rest:{},restKey:'idle8',clips:{push:c}}}});
+  assert.deepEqual(verdict(n(clip(1.26,.93))),[]);assert.equal(verdict(n(clip(1,1.08))).length,1);assert.equal(verdict(n(clip(1,.8))).length,1);
+  // a run keeps the plain ±4 % height
+  assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,.9)}}}}).length,1);
 });

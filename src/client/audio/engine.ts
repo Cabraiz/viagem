@@ -88,6 +88,7 @@ export class AudioEngine {
   private detachers=new Set<()=>void>();
   private state:AudioSettings;
   private isUnlocked=false;
+  private hushed=false;
   private resumeAskedAt=-Infinity;
   private cleanups:(()=>void)[]=[];
   private readonly recipes:Readonly<Partial<Record<SoundId,SoundRecipe>>>;
@@ -152,7 +153,7 @@ export class AudioEngine {
     try{
       const ctx=this.ctx=this.createContext();
       this.master=ctx.createGain();
-      this.master.gain.value=1;
+      this.master.gain.value=this.hushed?0:1;
       // A limiter keeps a boss roar plus a fall plus hits from hard-clipping on phone speakers.
       const limiter=ctx.createDynamicsCompressor?.();
       if(limiter){
@@ -190,6 +191,15 @@ export class AudioEngine {
     this.update({[bus]:{...this.state[bus],volume:clampVolume(volume)}},opts.persist??true);
   }
   setMuted(bus:Bus,muted:boolean){this.update({[bus]:{...this.state[bus],muted}});}
+  /** Silences everything for an ad break (ads/ads.ts) without touching the saved settings; false restores. */
+  setHushed(on:boolean){
+    this.hushed=on;
+    const ctx=this.ctx,master=this.master;
+    if(!ctx||!master)return;
+    master.gain.cancelScheduledValues?.(ctx.currentTime);
+    master.gain.setValueAtTime?.(on?0:1,ctx.currentTime);
+    master.gain.value=on?0:1;
+  }
   setVibration(vibration:boolean){this.update({vibration});}
 
   activeVoices(){this.prune();return this.voices.length;}

@@ -54,6 +54,13 @@ const HEROES=[
     heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},
+  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): cut out like the cat
+  // (Codex redrew him alone on green, keyed with the colour unmixed), in the viciado's box (same height, middle and sole
+  // line); 2x from Real-ESRGAN 4x of the native cutout. His sand shadow is `sombra`. Letreiro: the user's pick of 8, the iron plate (2).
+  {id:'maromba',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-maromba',
+    heroi:'maromba-1080p-no-lugar.png',esrgan:'maromba-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png',
+    letreiro:'letreiro/letreiro-2-2x.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */
@@ -133,7 +140,7 @@ for(const hero of HEROES){
     const layered=hero.sombra?sharp(source).composite([{input:path.join(dir,hero.sombra)}]):sharp(source);
     report(file,await layered.webp({quality:95,effort:6}).toFile(file));
   }
-  if(!part('heroi'))continue;
+  if(!part('heroi')||!hero.heroi)continue;
   const source=path.join(dir,hero.heroi);
   const {width,height}=await sharp(source).metadata();
   if(width!==1920||height!==1080)throw new Error(`${hero.heroi}: expected 1920x1080, got ${width}x${height}`);

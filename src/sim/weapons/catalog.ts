@@ -22,8 +22,8 @@ export type WeaponId=typeof WEAPON_IDS[number]|typeof EVOLUTION_IDS[number];
  * Pack 12 (NEW-20261022-ORQ-arsenal-completo-no-bau, fatia A2: sim/weapons/ricochet.ts, mine.ts, turret.ts):
  * ricochet: a straight shot that, on a hit, turns to the nearest enemy it has not hit yet (`pierce` = bounces).
  * mine: dropped at the owner's feet, lives `duration`, bursts (`area`, `damage`) when an enemy comes within `range`.
- * turret: placed at the owner's feet, lives `duration`, shoots its own straight shots (`speed`, `area`, `pierce`) at the
- *   nearest enemy within `range` every `hitInterval`; `cooldown` is the time between placements.
+ * turret: placed at the owner's feet, lives `cooldown` (one at a time), shoots its own straight shots (`speed`,
+ *   `duration` = their flight, `area`, `pierce`) at the nearest enemy within `range` every `hitInterval`.
  */
 export type WeaponPattern='orbit'|'pierce'|'zone'|'shield'|'homing'|'cone'|'ricochet'|'mine'|'turret';
 
@@ -61,8 +61,15 @@ export interface WeaponDef extends ItemDef {
   quip:string;
   /** Cone half-angle in radians (cone pattern only). */
   coneHalfAngle?:number;
-  /** Evolution-only behavior switches read by the systems. */
+  /** Evolution-only behavior switches read by the systems (a Pack 12 weapon may use them too: the tampa's `returns`). */
   evolved?:{flingOnCycle?:boolean;returns?:boolean;followsOwner?:boolean;slowSeconds?:number};
+  /**
+   * Pack 12 behaviour switches (arsenal-completo-no-bau, fatia A1), read by sim/weapons/system.ts:
+   * slowSeconds: a straight shot slows what it hits (the sacolé); blocksHostile: the orbiters destroy hostile shots (the
+   * figa); scatter: a zone volley lands its `amount` bursts around the first target, this far (u) from it (the traque);
+   * fanStep: a straight volley always fans this many radians apart around the first target (the tarô).
+   */
+  effect?:{slowSeconds?:number;blocksHostile?:boolean;scatter?:number;fanStep?:number};
 }
 
 export const PIERCE_INFINITE=1_000_000;

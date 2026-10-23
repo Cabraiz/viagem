@@ -100,9 +100,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 30 given by the integration queue (tools/fila.mjs, lote 20261022-125548) to: NEW-20261022-ORQ-monstros-espalhados-they-are-billions.
  * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
+ * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=30;
+export const PROTOCOL_VERSION=31;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

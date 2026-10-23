@@ -164,6 +164,8 @@ const outlinesOn=params.get('contorno')!=='0';
 // elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
 const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
 const cast=tele&&params.has('elenco');
+/** `limpo=1` (studies inimigos-flutuando and fortes-x-fracos, debug): no telegraphs, labels or destination; the cast stands in a loose group beside the hero. */
+const limpo=tele&&params.get('limpo')==='1';
 /** veiculos=1 (bancos-e-veiculos, part 2): the three parked vehicles by the hero, and the hero riding the cart (its chip). */
 const veiculos=tele&&params.get('veiculos')==='1';
 /**
@@ -618,6 +620,7 @@ class CitySandbox extends Phaser.Scene {
       pickups:[{id:'g1',kind:'xp',x:x-.7,y:y-2.1,value:5}]};
     const nests=ninhos?nestLab(view,x,y):undefined;
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
+    if(limpo){view.telegraphs=[];view.pickups=[];}
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
     const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
@@ -714,7 +717,7 @@ class CitySandbox extends Phaser.Scene {
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
   private markDestination(){
-    const lab=this.lab;if(!lab)return;
+    const lab=this.lab;if(!lab||limpo)return;
     const p=lab.projector.project(this.at.x-2.6,this.at.y-.4,{x:0,y:0});
     const m=destinationMark(CITY_VIEW_SCALE,1/Math.max(.05,this.cameras.main.zoom),true),breu=tokenColor('--c-breu'),papel=tokenColor('--c-papel');
     lab.destination.clear().lineStyle(m.breu,breu,m.breuAlpha).strokeEllipse(p.x,p.y,m.width,m.height).lineStyle(m.papel,papel,1).strokeEllipse(p.x,p.y,m.width,m.height)
@@ -736,6 +739,7 @@ class CitySandbox extends Phaser.Scene {
     lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:this.layer?.covers(this.at.x,this.at.y)??false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
     // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
+    if(limpo)return;
     lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
     lab.labels[1].anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
   }
@@ -854,7 +858,8 @@ if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start(
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{
   const kinds:string[]=castIds.length?castIds:[...ENEMY_KINDS.filter(k=>k!=='chefe'),'bebado'],n=kinds.length+PICKUP_KINDS.length;
-  const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
+  const at=(i:number,r:number)=>limpo?{x:x-1.2+(i%3)*1.25+(i/3|0)*.55,y:y+2.6+(i%3)*-.35+(i/3|0)*1.25}:{x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r};
+  if(limpo)return {...view,enemies:kinds.filter(k=>k!=='0').map((kind,i)=>({id:`c${i}`,kind,elite:false,...at(i,0),hp:5,maxHp:5})),pickups:[]};
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
     enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],

@@ -487,7 +487,10 @@ export const HERO_FIGURE_PX=96;
 export const ROLE_HEIGHT:Readonly<Partial<Record<EnemyRole,number>>>={enxame:.5,voador:.6,brutamontes:1.3,'mini-chefe':2,chefe:3};
 export const DEFAULT_HEIGHT=.9;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
-export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT);
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*(STUDY_SCALE.get(id)??1);
+/** Study fortes-x-fracos (debug only, never queued): `?escala=id:1.15,id2:1.2` grows those enemies. */
+const STUDY_SCALE=new Map<string,number>(typeof location==='undefined'?[]:(new URLSearchParams(location.search).get('escala')??'').split(',')
+  .map(p=>p.split(':')).filter(([id,k])=>id&&Number(k)>0).map(([id,k])=>[id,Number(k)] as [string,number]));
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
 export const MASS_ALPHA=128;
 /**

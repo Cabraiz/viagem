@@ -1,18 +1,15 @@
-// Pseudo-sombra V6b3 (cards NEW-20261022-ORQ-estudo-inimigos-flutuando, NEW-20261023-ORQ-sombra-v6b3-sem-circulo): bakes a
-// Myth-like self-shading into the enemy sheets that already exist, with no new art. Per cell: a normal guessed from the
-// silhouette (distance to the alpha edge, smoothed, read as a dome), the map's fixed sun (render/light.ts SUN_VIEW: upper
-// left) → the far side darker and the near side a touch lighter, and an occlusion gradient over the feet. Alpha is never
-// changed (contour and islands stay as approved); the outer edge (the rim) keeps its colour. Deterministic.
+// Pseudo-sombra (card NEW-20261022-ORQ-estudo-inimigos-flutuando, V6b): bakes the Myth-like self-shading into the enemy
+// sheets that already exist, with no new art. Per cell: a normal guessed from the silhouette (distance to the alpha edge,
+// smoothed, read as a dome), the map's fixed sun (render/light.ts SUN_VIEW: upper left) → the far side darker and the
+// near side a touch lighter, and an occlusion gradient over the feet. Alpha is never changed; the outer edge (the rim)
+// keeps its colour. Deterministic: same input, same output.
 //
-//   node scripts/pseudo-sombra.mjs --forca 1|2|3 [--ids a,b,c | --todos]
-//   node scripts/art-lite.mjs --kinds enemies      (then: the lite copies come from the shaded sheets)
+//   node scripts/pseudo-sombra.mjs --forca 1|2|3 [--ids a,b,c | --todos] [--fonte lite|cheia] [--saida public/art/estudo/<dir>]
 //
-// Shades public/art/enemies/<page> in place (lossless WebP, as the art-v2 import writes them) and updates the sha256 of
-// page, file and piece in public/art/enemies/manifest.json. public/art/enemies/pseudo-sombra.json stamps every shaded
-// page with its new sha256, so running it again skips them (shading twice would darken twice).
-import {readFileSync,writeFileSync,existsSync} from 'node:fs';
-import {createHash} from 'node:crypto';
-import {join} from 'node:path';
+// Reads public/art/manifest.json (group inimigos) for the cells; writes <saida>/<id>/<file> with the same names, so
+// `?estudo=folha=<dir>` (render/estudo-flutuando.ts) draws them in place of the lite copies.
+import {readFileSync,mkdirSync,existsSync} from 'node:fs';
+import {dirname,join} from 'node:path';
 import sharp from 'sharp';
 
 /** Per strength: side shading (share of the light/flat difference kept), feet occlusion (darkest at the soles), top lift. */
@@ -66,46 +63,31 @@ export function shadeCell(px,stride,cx,cy,cw,ch,forca){
   }
 }
 
-/** The art-v2 import's encoding for approved sheets (scripts/art-v2/convert.mjs WEBP). */
-const LOSSLESS=Object.freeze({lossless:true,effort:6});
-const sha256=buffer=>createHash('sha256').update(buffer).digest('hex');
-const DIR='public/art/enemies',MANIFEST=join(DIR,'manifest.json'),STAMP=join(DIR,'pseudo-sombra.json');
-
-/** Shades a whole sheet (cells of `cell` px) and returns the lossless WebP. */
-export async function shadeSheet(src,cell,forca){
-  const {data,info}=await sharp(readFileSync(src)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+export async function shadeSheet(src,dst,cell,forca){
+  const {data,info}=await sharp(src).ensureAlpha().raw().toBuffer({resolveWithObject:true});
   const [cw,ch]=cell,cols=Math.floor(info.width/cw),rows=Math.floor(info.height/ch);
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)shadeCell(data,info.width,c*cw,r*ch,cw,ch,forca);
-  return sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).webp(LOSSLESS).toBuffer();
+  mkdirSync(dirname(dst),{recursive:true});
+  await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).webp({lossless:true}).toFile(dst);
 }
 
 async function main(){
   const args=process.argv.slice(2),opt=(k,d)=>{const i=args.indexOf(`--${k}`);return i>=0?args[i+1]:d;};
-  const forca=Number(opt('forca','3'));if(!FORCAS[forca])throw new Error('--forca 1|2|3');
-  const manifest=JSON.parse(readFileSync(MANIFEST,'utf8')),pieces=manifest.pieces;
-  const stamp=existsSync(STAMP)?JSON.parse(readFileSync(STAMP,'utf8')):{forca,files:{}};
-  if(Object.keys(stamp.files).length&&stamp.forca!==forca)throw new Error(`as folhas já têm a força ${stamp.forca}; reimporte a arte antes de trocar`);
+  const forca=Number(opt('forca','2'));if(!FORCAS[forca])throw new Error('--forca 1|2|3');
+  const fonte=opt('fonte','lite'),saida=opt('saida',`public/art/estudo/pseudo-b${forca}`);
+  const manifest=JSON.parse(readFileSync('public/art/manifest.json','utf8')),pieces=manifest.groups.inimigos.pieces;
   const ids=args.includes('--todos')?Object.keys(pieces):(opt('ids','')||'').split(',').filter(Boolean);
   if(!ids.length)throw new Error('--ids a,b,c ou --todos');
-  let n=0,skipped=0;const t0=Date.now();
+  let n=0;const t0=Date.now();
   for(const id of ids){
     const piece=pieces[id];if(!piece){console.warn('sem peça',id);continue;}
-    for(const file of Object.values(piece.files)){
-      const pages=file.pages??[{file:file.file}];
-      for(const page of pages){
-        const src=join(DIR,page.file);if(!existsSync(src))continue;
-        // Already shaded: the manifest takes the stamp's hash back (a merge may have brought the unshaded one).
-        if(stamp.files[page.file]===sha256(readFileSync(src))){page.sha256=stamp.files[page.file];skipped++;continue;}
-        const out=await shadeSheet(src,file.cell,forca);
-        writeFileSync(src,out);page.sha256=stamp.files[page.file]=sha256(out);n++;
-      }
-      // Same rules as scripts/art-v2/convert.mjs: one page → its hash; more → the hash of "<file> <sha256>" lines.
-      if(pages.every(p=>p.sha256))file.sha256=pages.length===1?pages[0].sha256:sha256(pages.map(p=>`${p.file} ${p.sha256}`).join('\n'));
+    for(const file of Object.values(piece.files))for(const page of file.pages??[{file:file.file}]){
+      const lite=fonte==='lite'&&Array.isArray(file.liteCell);
+      const src=join(lite?'public/art/lite/enemies':'public/art/enemies',page.file);
+      if(!existsSync(src))continue;
+      await shadeSheet(src,join(saida,page.file),lite?file.liteCell:file.cell,forca);n++;
     }
-    piece.sha256=sha256(Object.entries(piece.files).map(([k,f])=>`${k} ${f.sha256}`).sort().join('\n'));
-    writeFileSync(MANIFEST,`${JSON.stringify(manifest,null,2)}\n`);
-    writeFileSync(STAMP,`${JSON.stringify({forca,files:Object.fromEntries(Object.entries(stamp.files).sort())},null,1)}\n`);
   }
-  console.log(`pseudo-sombra força ${forca}: ${n} folhas sombreadas, ${skipped} já estavam, ${ids.length} inimigos em ${((Date.now()-t0)/1000).toFixed(1)} s`);
+  console.log(`pseudo-sombra força ${forca} (${fonte}): ${n} folhas de ${ids.length} inimigos em ${((Date.now()-t0)/1000).toFixed(1)} s → ${saida}`);
 }
 if(import.meta.url===`file:///${process.argv[1].replace(/\\/g,'/')}`||process.argv[1]?.endsWith('pseudo-sombra.mjs'))await main();

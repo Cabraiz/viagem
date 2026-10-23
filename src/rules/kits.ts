@@ -273,6 +273,14 @@ export const KITS:readonly ClassKit[]=Object.freeze([
       effect:'Sensor de longo alcance: os 6 bichos mais perto ficam lentos e levam um dano leve.'},
     lines:['Coincidência? Acho que não.','Eles não querem que você saiba.','O chefe é um robô. Repara.','Tá tudo conectado, olha o mapa!'],
   },
+  // NEW-20261022-ORQ-gato-personagem-completo (ORQ 23/10 00:21Z). The approved magnet:0.3 has no stat since D-054.
+  {
+    classId:'gato-nada-pra-comer',role:'Controle',weapon:'pombo',
+    classBonus:{moveSpeed:0.15,maxHp:-10},
+    skill:{name:'Miado de Fome',cooldown:16,
+      effect:'Mia de fome: dano leve e congela os bichos em volta, que depois só perseguem o gato; ele fica protegido por um instante.'},
+    lines:['Miau. (Tradução: cadê a ração?)','Faz 15 minutos que eu não como. Estou morrendo.','A tigela está vazia. DE NOVO.','Eu vi você abrir a geladeira.'],
+  },
 ] as ClassKit[]);
 
 /** Plain fallback for unknown class ids: chinelo, no bonus, no skill. */

@@ -62,8 +62,8 @@ const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
 
 // ---------- 1. Kit data ----------
-test('kits: 35 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
-  assert.equal(KITS.length,35);
+test('kits: 36 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
+  assert.equal(KITS.length,36);
   assert.deepEqual([...WEAPON_IDS].sort(),[...FIXED_WEAPONS].sort());
   for(const kit of KITS){
     assert.ok(getClass(kit.classId),`class ${kit.classId} exists`);
@@ -75,7 +75,7 @@ test('kits: 35 valid kits, one per class, fixed weapons, 6-30 s cooldowns',()=>{
     assert.equal(kitFor(kit.classId),kit);
     assert.ok(hasSkill(kit.classId),kit.classId);
   }
-  assert.equal(new Set(KITS.map(k=>k.classId)).size,35);
+  assert.equal(new Set(KITS.map(k=>k.classId)).size,36);
   assert.deepEqual(KITS.map(k=>k.classId).sort(),classes.map(c=>c.id).sort());
   for(const id of SKILL_IDS)assert.ok(kitFor(id),id);
 });
@@ -92,7 +92,7 @@ test('kits: >=3 distinct pt-BR lines and skill name equals the class card',()=>{
     assert.equal(kit.skill.name,getClass(kit.classId)!.skill,kit.classId);
   }
   // Every card class with the same skill name maps 1:1.
-  assert.equal(classes.filter(c=>kitFor(c.id)).length,35);
+  assert.equal(classes.filter(c=>kitFor(c.id)).length,36);
   // Lines fit the phone balloon and never repeat across classes.
   const all=KITS.flatMap(k=>k.lines.map(l=>l.trim().toLocaleLowerCase('pt-BR')));
   assert.equal(new Set(all).size,all.length,'no line repeated across classes');
@@ -360,6 +360,30 @@ test('clt-cansado: 2.5 s invulnerable and taunts enemies within 5 for 4 s',()=>{
   assert.equal((c as TauntedEnemy).taunt,undefined);assert.equal((d as TauntedEnemy).taunt,undefined);
   assert.deepEqual(res.hits,['a','b']);assert.deepEqual(res.helped,['p1']);
   assert.equal(hits.length,0);
+});
+
+// gato-no-menu: 'Miado de Fome' = burst (4 damage, 1.2 s freeze, radius 5) then taunt (1.5 s shield, 3.5 s, radius 5).
+test('gato-nada-pra-comer: hits and freezes the enemies within 5, then they chase the cat; shielded 1.5 s; alone it still shields',()=>{
+  const {fake,ctx,hits}=makeCtx(7,200);
+  const p=addPlayer(fake,'p1','gato-nada-pra-comer',10,10);
+  const a=addEnemy(fake,'a',12,10),b=addEnemy(fake,'b',10,15),c=addEnemy(fake,'c',15.1,10),weak=addEnemy(fake,'w',11,10,3);
+  const res=cast(ctx,p);
+  assert.ok(res);
+  assert.equal(p.invulnerableUntil,200+ticks(1.5));
+  for(const e of [a,b]){
+    assert.equal(e.hp,96,e.id);
+    assert.ok((e.frozenUntil??0)>=200+ticks(1.2),`${e.id} frozen`);
+    assert.deepEqual((e as TauntedEnemy).taunt,{player:'p1',untilTick:200+ticks(3.5)},e.id);
+  }
+  assert.ok(!fake.enemies.has(weak.id),'the 4 damage killed the weak one: nothing left to taunt');
+  assert.equal(c.hp,100);assert.equal((c as TauntedEnemy).taunt,undefined);
+  assert.deepEqual([...res.hits].sort(),['a','b','w']);assert.deepEqual(res.helped,['p1']);
+  assert.equal(hits.length,3);
+  assert.equal(kitFor('gato-nada-pra-comer')!.skill.cooldown,16);
+  assert.deepEqual(classBonusOf('gato-nada-pra-comer'),{moveSpeed:0.15,maxHp:-10});
+  const alone=makeCtx(7,200),q=addPlayer(alone.fake,'q','gato-nada-pra-comer',10,10);
+  const solo=cast(alone.ctx,q);
+  assert.ok(solo);assert.deepEqual(solo.hits,[]);assert.equal(q.invulnerableUntil,200+ticks(1.5));
 });
 
 // ---------- 6. motogirl ----------

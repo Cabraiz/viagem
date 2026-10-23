@@ -253,7 +253,7 @@ export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-b
   'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
   'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
   'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
-  'conspiracionista','gamer-mobile','rainha-bateria']);
+  'conspiracionista','gamer-mobile','rainha-bateria','gato-nada-pra-comer']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
 export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
 /** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */

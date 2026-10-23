@@ -22,9 +22,9 @@ function assertCovers(classId:string){
   assert.ok(f.left+side>=100-1e-3&&f.top+side>=100-1e-3,`${classId}: image ends at or after the circle`);
 }
 
-test('FACE_CROP: one entry per playable class (all 35), sorted by id, every value a sane crop',()=>{
+test('FACE_CROP: one entry per class (all 36), sorted by id, every value a sane crop',()=>{
   const ids=classes.map(c=>c.id);
-  assert.equal(ids.length,35);
+  assert.equal(ids.length,36);
   assert.deepEqual(Object.keys(FACE_CROP).sort(),[...ids].sort(),'same ids as src/rules/classes.ts');
   assert.deepEqual(Object.keys(FACE_CROP),[...Object.keys(FACE_CROP)].sort(),'the table is kept sorted by id');
   for(const id of ids){

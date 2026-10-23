@@ -5,24 +5,28 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,OWNER_GAP_MS,type Peer} from '../../multiplayer/room.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
-import {PLAYABLE_CLASS_IDS,classes,filterClasses,playableClassId,playableClasses,roles} from '../../src/rules/classes.ts';
+import {BOT_CLASS_IDS,PLAYABLE_CLASS_IDS,classes,filterClasses,playableClassId,playableClasses,roles} from '../../src/rules/classes.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 setRosterOnlyWithArt(false);
 
 const R06=['caca-promocao','clt-cansado','coach','concurseira','faxineira','feirante','maromba','mendigo','passageira','pedreiro',
   'roqueira','streamer','universitario','viciado-em-bet','vizinha-fofoqueira'];
+/** gato-no-menu (23/10): the 36th class, playable with its own movement art (16 poses), never a bot for now. */
+const GATO='gato-nada-pra-comer';
+const PLAYABLE=[...R06,GATO];
 
 function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};}
 type TestPeer=ReturnType<typeof peer>;
 const say=(room:Room,p:Peer,m:object,now:number)=>room.receive(p,JSON.stringify(m),now);
 const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.connect(p,now);say(room,p,{t:'join',protocol:ROOM_PROTOCOL,name,classId},now);return p.messages.findLast(m=>m.t==='welcome').id as string;};
 
-test('the menu\'s list is the 15 with R06 art, in the roster\'s order; the 20 others stay in the data',()=>{
-  assert.deepEqual([...PLAYABLE_CLASS_IDS].sort(),[...R06].sort());
-  assert.deepEqual(playableClasses.map(c=>c.id),classes.map(c=>c.id).filter(id=>R06.includes(id)));
-  assert.equal(classes.length,35,'nobody was deleted');
-  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 15 only');
-  for(const role of roles)for(const c of filterClasses('',role))assert.ok(R06.includes(c.id),`${role}: ${c.id}`);
+test('the menu\'s list is the 15 with R06 art and the gato, in the roster\'s order; the 20 others stay in the data',()=>{
+  assert.deepEqual([...PLAYABLE_CLASS_IDS].sort(),[...PLAYABLE].sort());
+  assert.deepEqual(playableClasses.map(c=>c.id),classes.map(c=>c.id).filter(id=>PLAYABLE.includes(id)));
+  assert.equal(classes.length,36,'nobody was deleted');
+  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 16 only');
+  for(const role of roles)for(const c of filterClasses('',role))assert.ok(PLAYABLE.includes(c.id),`${role}: ${c.id}`);
+  assert.deepEqual([...BOT_CLASS_IDS].sort(),[...R06].sort(),'the gato is never a bot');
   assert.equal(playableClassId('aposentado'),playableClasses[0].id);assert.equal(playableClassId('coach'),'coach');
   assert.equal(playableClassId(42),playableClasses[0].id);
 });

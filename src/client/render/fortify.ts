@@ -38,7 +38,7 @@ const GHOST_ALPHA=.5,HINT_ALPHA=.35;
 /** Rope hand and bumper heights (u). */
 const HAND_Z=.62,BUMPER_Z=.38;
 /** The loop at the free rope's end (u, its half width on the ground). */
-const ROPE_LOOP=.13;
+const ROPE_LOOP=.16;
 
 export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number;
   /** Where a player is now (the scene's smoothed actor), or undefined when not drawn. */
@@ -216,15 +216,15 @@ export class FortifyRenderer {
       depth=proj.depth(rest[0].x,rest[0].y)+.5;
     }
     // The Uno's contour (Breu) around a Papel strand, every other stretch a shade darker: it reads as a twisted rope.
-    g.lineStyle(3.6*k,this.c.breu,1).strokePoints(pts,false);
-    g.lineStyle(1.8*k,this.c.papel,1).strokePoints(pts,false);
-    g.lineStyle(1.8*k,this.c.corda,1);
+    g.lineStyle(4.8*k,this.c.breu,1).strokePoints(pts,false);
+    g.lineStyle(2.6*k,this.c.papel,1).strokePoints(pts,false);
+    g.lineStyle(2.6*k,this.c.corda,1);
     for(let i=1;i<pts.length;i+=2)g.lineBetween(pts[i-1].x+(pts[i].x-pts[i-1].x)*.35,pts[i-1].y+(pts[i].y-pts[i-1].y)*.35,pts[i].x,pts[i].y);
     if(!holder){
       // The loop a hero takes: a small ring on the ground, the iso squash (half as tall as wide).
       const end=pts[pts.length-1],r=ROPE_LOOP*HEIGHT_PX;
-      g.lineStyle(3.6*k,this.c.breu,1).strokeEllipse(end.x,end.y,r*2,r);
-      g.lineStyle(1.8*k,this.c.papel,1).strokeEllipse(end.x,end.y,r*2,r);
+      g.lineStyle(4.8*k,this.c.breu,1).strokeEllipse(end.x,end.y,r*2,r);
+      g.lineStyle(2.6*k,this.c.papel,1).strokeEllipse(end.x,end.y,r*2,r);
     }
     g.setDepth(depth);
   }

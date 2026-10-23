@@ -104,6 +104,8 @@ export interface SimPlayer extends Point {
   lastHitBy?:{id:string;tick:number};
   /** D-051, manual combat only (server-side): the auto aim's current target, kept by its hysteresis (rules/attack-target.ts). */
   autoTarget?:string;
+  /** The floor (maps city/viaduct.ts): 1 on a viaduct's deck, absent on the ground. Shared with the client's prediction. */
+  andar?:1;
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
@@ -119,6 +121,8 @@ export interface EnemyState extends Point {
   knock?:Point; phase?:number;
   /** Small numeric scratch for behaviors; keep JSON-safe. */
   memory?:Record<string,number>;
+  /** The floor (maps city/viaduct.ts): 1 on a viaduct's deck, absent on the ground. */
+  andar?:1;
 }
 
 /**
@@ -145,6 +149,8 @@ export interface ProjectileState extends Point {
   damage:number; pierce:number; untilTick:number; hostile:boolean;
   /** Enemy (or player) ids already hit, prevents double damage per pass. */
   hit:string[];
+  /** The floor it flies on (its shooter's, maps city/viaduct.ts): it only hits bodies on the same floor. Absent: the ground. */
+  andar?:1;
 }
 
 /** Telegraphed danger zone; damage applies at fireTick on the server. */
@@ -153,7 +159,10 @@ export interface Telegraph {
   dx?:number; dy?:number; width?:number; fireTick:number; damage:number; owner:string;
   /** D-036: hazard kind for the client's look (absent = generic). */
   kind?:TelegraphKind;
+  /** The floor it lands on (its owner's, maps city/viaduct.ts): it only hurts bodies on the same floor. Absent: the ground. */
+  andar?:1;
 }
+
 
 // ---------- Team progression ----------
 export interface TeamProgress {xp:number;level:number;nextXp:number}

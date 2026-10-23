@@ -7,7 +7,7 @@
  */
 import {ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
-import {baseHeroSpeed,clearSegment,moveDirection,type Point} from '../maps/index.ts';
+import {baseHeroSpeed,clearSegment,floorOf,moveDirection,onFloor,settleFloor,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';
 import {BLEED_OUT_TICKS,REVIVE_RADIUS} from './revive.ts';
@@ -47,9 +47,10 @@ const canAct=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 /** Living enemies within radius, nearest first, ties by id (deterministic, D-004 death filter). */
-function enemiesNear(ctx:SimContext,at:Point,radius:number):EnemyState[]{
+function enemiesNear(ctx:SimContext,at:Point&{andar?:1},radius:number,floor=floorOf(at)):EnemyState[]{
+  // Only on `floor` (a viaduct's deck or the street: maps city/viaduct.ts), the caster's.
   return ctx.enemyIndex.query(at.x,at.y,radius,[])
-    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&dist(e,at)<=radius)
+    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&floorOf(e)===floor&&dist(e,at)<=radius)
     .sort((a,b)=>dist(a,at)-dist(b,at)||(a.id<b.id?-1:a.id>b.id?1:0));
 }
 /** Standing players within radius (the caster included), sorted by id. */
@@ -75,7 +76,7 @@ type SkillFn=(ctx:SimContext,player:SimPlayer,source:string,rng:Rng)=>Effect|nul
 /** Tapped enemy if alive and within range, else the nearest living enemy in range. */
 function targetOf(ctx:SimContext,player:SimPlayer,range:number):EnemyState|undefined{
   const preferred=player.target?ctx.enemies.get(player.target):undefined;
-  return preferred&&preferred.hp>0&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
+  return preferred&&preferred.hp>0&&floorOf(preferred)===floorOf(player)&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
 }
 /** Pushes an enemy away from `from` (or along `fallback` when on top). knock is a per-tick displacement that enemy-ai decays. */
 function knockAway(enemy:EnemyState,from:Point,fallback:Point,strength:number){
@@ -109,10 +110,11 @@ interface AdvanceSpec {steps:number;pushRadius:number;damage:number;knock:number
  * Each step is 0.1 s at the BASE hero walk (maps baseHeroSpeed), so the 2× walk (HERO_SPEED_MULT) leaves the dash length as tuned.
  */
 const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
-  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain);
-  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ctx.terrain,speed);if(next===at)break;at=next;}
+  // On the player's own floor (a viaduct's deck keeps a dash on it), settled after.
+  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain),ground=onFloor(ctx.terrain,player.andar);
+  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ground,speed);if(next===at)break;at=next;}
   const moved=at.x!==player.x||at.y!==player.y;
-  player.x=at.x;player.y=at.y;
+  player.x=at.x;player.y=at.y;settleFloor(ctx.terrain,player);
   const enemies=enemiesNear(ctx,player,area(player,spec.pushRadius)),hits:string[]=[];
   for(const enemy of enemies){
     hits.push(enemy.id);
@@ -218,7 +220,7 @@ const burst=(spec:BurstSpec):SkillFn=>(ctx,player,source)=>{
     if(!target)return null;
     center={x:target.x,y:target.y};
   }
-  let candidates=enemiesNear(ctx,center,area(player,spec.radius));
+  let candidates=enemiesNear(ctx,center,area(player,spec.radius),floorOf(player));
   // Bosses ignore freezes (boss.ts), so freeze traps spend their limited targets on the others first.
   if(spec.freeze&&spec.maxTargets)candidates=[...candidates.filter(e=>!e.boss),...candidates.filter(e=>e.boss)];
   const enemies=candidates.slice(0,spec.maxTargets??Infinity);
@@ -288,7 +290,7 @@ interface RescueSpec {range:number;pull:number;heal:number;shield:number}
  */
 const rescue=(spec:RescueSpec):SkillFn=>(ctx,player)=>{
   const ally=[...ctx.players.values()]
-    .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=spec.range)
+    .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=spec.range&&floorOf(p)===floorOf(player))
     .sort((a,b)=>hpRatio(a)-hpRatio(b)||dist(b,player)-dist(a,player)||byId(a,b))[0];
   if(!ally)return null;
   const rescuing=[...ctx.players.values()].some(p=>p.downed&&!p.eliminated&&dist(p,ally)<=REVIVE_RADIUS);
@@ -297,9 +299,10 @@ const rescue=(spec:RescueSpec):SkillFn=>(ctx,player)=>{
     const ux=(player.x-ally.x)/d,uy=(player.y-ally.y)/d;
     for(let moved=0;moved+0.1<=pull+1e-9;moved+=0.1){
       const next={x:ally.x+ux*0.1,y:ally.y+uy*0.1};
-      if(!clearSegment(ally,next,ctx.terrain))break;
+      if(!clearSegment(ally,next,onFloor(ctx.terrain,ally.andar)))break;
       ally.x=next.x;ally.y=next.y;
     }
+    settleFloor(ctx.terrain,ally);
   }
   heal(ally,spec.heal);shield(ctx,ally,spec.shield);
   return {hits:[],helped:[ally.id],pulled:{player:ally.id,x:ally.x,y:ally.y}};
@@ -339,7 +342,7 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   // Range 8 and hit width 0.8 are travel, not area, so they ignore stats.area on purpose.
   motogirl(ctx,player,source){
     const ally=[...ctx.players.values()]
-      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8)
+      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8&&floorOf(p)===floorOf(player))
       .sort((a,b)=>a.hp/a.stats.maxHp-b.hp/b.stats.maxHp||(a.id<b.id?-1:1))[0];
     if(!ally){
       if(player.hp>=player.stats.maxHp)return null;
@@ -350,16 +353,16 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
     // Land just short of the ally (not on top of them) when that spot is clear; the ally's own spot is the fallback.
     const back=Math.min(0.5,length);
     const landing=length>1e-6?{x:to.x-(to.x-from.x)/length*back,y:to.y-(to.y-from.y)/length*back}:to;
-    const end=clearSegment(to,landing,ctx.terrain)?landing:to;
+    const end=clearSegment(to,landing,onFloor(ctx.terrain,ally.andar))?landing:to;
     const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
-    for(const enemy of enemiesNear(ctx,mid,length/2+0.8)){
+    for(const enemy of enemiesNear(ctx,mid,length/2+0.8,floorOf(player))){
       // Distance from the enemy to the dash segment.
       const t=length?Math.max(0,Math.min(1,((enemy.x-from.x)*(to.x-from.x)+(enemy.y-from.y)*(to.y-from.y))/(length*length))):0;
       if(dist(enemy,{x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t})>0.8)continue;
       hits.push(enemy.id);
       ctx.damageEnemy(enemy.id,12,player.id,source);
     }
-    player.x=end.x;player.y=end.y;
+    player.x=end.x;player.y=end.y;settleFloor(ctx.terrain,player);
     if(length>1e-6)player.facing={x:(to.x-from.x)/length,y:(to.y-from.y)/length};
     heal(ally,25);
     return {hits,helped:[ally.id],movedTo:{...end}};

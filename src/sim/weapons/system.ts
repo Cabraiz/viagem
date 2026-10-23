@@ -18,6 +18,7 @@
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
+import {floorOf} from '../../maps/index.ts';
 import {AURA,HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
@@ -116,7 +117,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   function targets(ctx:SimContext,player:SimPlayer,range:number,count:number):EnemyState[]{
     if(opts.manual)return manualTargets(ctx,player,range,count);
     const out:EnemyState[]=[];
-    const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range;
+    // The viaduct (maps city/viaduct.ts): only bodies on the hero's own floor.
+    const inRange=(e:EnemyState)=>isAlive(ctx,e)&&floorOf(e)===floorOf(player)&&Math.hypot(e.x-player.x,e.y-player.y)<=range;
     // D-051: a tap may pick a sleeper or a nest (ctx.sleepers): the player opens that fight; nothing else aims there.
     const preferred=player.target?ctx.enemies.get(player.target)??ctx.sleepers?.get(player.target):undefined;
     if(preferred&&inRange(preferred))out.push(preferred);
@@ -135,7 +137,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
    * rules/attack-target.ts; remembers the auto pick on the player (SimPlayer.autoTarget, the hysteresis' memory).
    */
   function manualTargets(ctx:SimContext,player:SimPlayer,range:number,count:number,pad=false):EnemyState[]{
-    const inRange=(e:EnemyState)=>isAlive(ctx,e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range+(pad?e.radius:0);
+    const inRange=(e:EnemyState)=>isAlive(ctx,e)&&floorOf(e)===floorOf(player)&&Math.hypot(e.x-player.x,e.y-player.y)<=range+(pad?e.radius:0);
+
     const seen=new Set<EnemyState>(),candidates:{id:string;x:number;y:number;boss:boolean;reflecting:boolean;e:EnemyState}[]=[];
     const add=(e:EnemyState|undefined)=>{
       if(!e||seen.has(e)||!inRange(e))return;

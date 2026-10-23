@@ -79,11 +79,13 @@ export const POPULATION=20;
  * now), a yard's the open point of most clearance near its mapped point. The moto's routes run elsewhere on the
  * shorter streets: b-0146, b-0140 and three yards (SE, SO) fell within NEST_FROM_ROUTE and left the pool; one SO yard
  * (42.5, 147.5) joined it; the SO yard at (18, 134.5) left too, 13 u from the only G (always drawn), so never drawn.
- * 12 spots, every quadrant beyond NEST_FROM_START of the start.
+ * The viaduct (etapa 3): the N avenue runs beside the ramp now, nearer the NO yard at (58.3, 21), which left too (it was
+ * 21 u from the new start, the Uno on the deck, under NEST_FROM_START: never drawn).
+ * 11 spots, every quadrant beyond NEST_FROM_START of the start.
  */
 const POOL_ROWS:readonly (readonly [NestKind,number,number,NestSize,string?])[]=[
   // NO
-  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',58.3,21,'P'],['terreno',47,53.1,'P'],
+  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',47,53.1,'P'],
   // NE
   ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',100.7,52.9,'P'],['terreno',147.9,34.2,'P'],
   // SE

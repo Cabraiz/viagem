@@ -294,7 +294,8 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const cells=l.scratch, built=l.built;
     let n=0;
     for(const p of ctx.players.values()){
-      if(!chased(p))continue;
+      // A hero on a viaduct's deck is not on this ground: the bodies that hunt it walk to the ramp (enemies/ai.ts).
+      if(!chased(p)||p.andar===1)continue;
       const cx=Math.floor((p.x-ox)/cs), cy=Math.floor((p.y-oy)/cs);
       if(cx>=0&&cy>=0&&cx<field.width&&cy<field.height)cells[n++]=cx+cy*field.width;
     }
@@ -435,7 +436,9 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
   };
   const run=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut,hero:boolean)=>{
     out.fit=0;
-    if(e.memory?.retreat===1)return false;
+    // The fields are the ground's: a body on a deck walks its straight line (enemies/ai.ts).
+    if(e.memory?.retreat===1||e.andar===1)return false;
+
     if(e.memory?.[PLAZA_HOLD_FLAG]===1){
       if(!holdReleased(ctx,e))return hold(e,target,out);
       e.memory[PLAZA_HOLD_FLAG]=0;

@@ -37,6 +37,9 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
   const keepOutRects=[
     ...plan.sites.map(s=>footprint(s,s.maxSize,CITY_SITE_CELL)),
     ...(plan.rail?[railRect(plan.rail,CITY_SITE_CELL)]:[]),
+    // The viaducts (deck and ramp, a cell around): the street under the deck keeps its sidewalk, no place stands there.
+    ...asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>({x:(c-1)*asset.unitsPerCell,y:(r-1)*asset.unitsPerCell,w:(w+2)*asset.unitsPerCell,h:(h+2)*asset.unitsPerCell})),
+
     // A nest in a building keeps its whole block (and a margin) for the nest's own art.
     ...CITY_NEST_POOL.filter(n=>n.block).map(n=>{
       const b=asset.blocks.find(x=>x.id===n.block)!.bbox,m=KEEP.nestBlock;

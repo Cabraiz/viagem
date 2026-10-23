@@ -6,7 +6,7 @@
 import type {EnemyState,ProjectileState,SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {SIM_HZ} from '../contract/index.ts';
-import {RADIUS as PLAYER_RADIUS} from '../maps/index.ts';
+import {RADIUS as PLAYER_RADIUS,floorOf} from '../maps/index.ts';
 import {getWeapon} from './weapons/catalog.ts';
 import {REFLECT,coachMult,isReflecting,markDevendo} from './enemies/catalog.ts';
 import {bounceAfterHit} from './weapons/ricochet.ts';
@@ -99,6 +99,8 @@ export function queryHittable(ctx:SimContext,x:number,y:number,radius:number,out
 export function spawnProjectile(ctx:SimContext,init:ProjectileInit,cap=PROJECTILE_CAP):WeaponProjectile|undefined{
   if(ctx.projectiles.size>=cap)return undefined;
   const p:WeaponProjectile={...init,id:ctx.nextId('p'),hit:init.hit?[...init.hit]:[]};
+  // The viaduct (maps city/viaduct.ts): it flies on its shooter's floor and only hits bodies there.
+  if(init.andar===undefined&&floorOf(ctx.players.get(init.owner)??{})===1)p.andar=1;
   ctx.projectiles.set(p.id,p);
   return p;
 }
@@ -109,7 +111,11 @@ export function spawnProjectile(ctx:SimContext,init:ProjectileInit,cap=PROJECTIL
  */
 export function hitEnemy(ctx:SimContext,enemy:EnemyState,damage:number,owner:string,source:string,
   push?:{x:number;y:number;force:number},slowTicks?:number):boolean{
+  // The viaduct (maps city/viaduct.ts): no damage, push nor slow across floors (core damageEnemy refuses the damage).
+  const by=ctx.players.get(owner);
+  if(by&&floorOf(by)!==floorOf(enemy))return false;
   const killed=ctx.damageEnemy(enemy.id,damage,owner,source);
+
   if(killed||!isAlive(ctx,enemy))return true;
   if(push&&push.force>0&&!enemy.boss){
     const len=Math.hypot(push.x,push.y);
@@ -186,7 +192,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     // (isReflecting) is skipped, so the shot does not seek its own reflection, unless the owner tapped him.
     if(!target||target.hp<=0||p.hit.includes(target.id)){
       const tapped=ctx.players.get(p.owner)?.target;
-      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&!p.hit.includes(e.id)&&(e.id===tapped||!isReflecting(e,ctx.tick)));
+      target=ctx.enemyIndex.nearest(p.x,p.y,p.seek??6,e=>isAlive(ctx,e)&&floorOf(e)===floorOf(p)&&!p.hit.includes(e.id)&&(e.id===tapped||!isReflecting(e,ctx.tick)));
       p.homing=target?.id;
     }
     if(!target)return;
@@ -206,7 +212,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
     queryHittable(ctx,mx,my,half+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
     const hits:{e:EnemyState;t:number}[]=[];
     for(const e of candidates){
-      if(!isAlive(ctx,e))continue;
+      if(!isAlive(ctx,e)||floorOf(e)!==floorOf(p))continue;
       const {d2,t}=segmentDistance(from.x,from.y,p.x,p.y,e.x,e.y),reach=p.radius+e.radius;
       if(d2<=reach*reach)hits.push({e,t});
     }
@@ -221,7 +227,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       queryHittable(ctx,owner.x,owner.y,(p.orbitRadius??1)+p.radius+MAX_ENEMY_RADIUS+INDEX_SLACK,candidates);
       const bearing=Math.atan2(p.y-owner.y,p.x-owner.x);
       for(const e of candidates){
-        if(!isAlive(ctx,e)||hits.some(h=>h.e===e))continue;
+        if(!isAlive(ctx,e)||floorOf(e)!==floorOf(p)||hits.some(h=>h.e===e))continue;
         const reach=p.radius+e.radius,arc=Math.asin(Math.min(1,reach/Math.max(1e-6,p.orbitRadius??1)));
         if(Math.abs(wrapAngle(Math.atan2(e.y-owner.y,e.x-owner.x)-bearing))>arc)continue;
         const {d2}=segmentDistance(owner.x,owner.y,p.x,p.y,e.x,e.y);
@@ -260,12 +266,14 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
   function collideHostile(ctx:SimContext,p:WeaponProjectile,from:{x:number;y:number}):boolean{
     let block=Infinity;
     for(const s of shields){
+      if(floorOf(s)!==floorOf(p))continue;
       const reach=s.radius+p.radius,{d2,t}=segmentDistance(from.x,from.y,p.x,p.y,s.x,s.y);
       if(d2<=reach*reach)block=Math.min(block,t);
     }
     const victims:{player:SimPlayer;t:number}[]=[];
     for(const player of ctx.players.values()){
-      if(!canAct(player)||p.hit.includes(player.id))continue;
+      if(!canAct(player)||floorOf(player)!==floorOf(p)||p.hit.includes(player.id))continue;
+
       const reach=p.radius+PLAYER_RADIUS,{d2,t}=segmentDistance(from.x,from.y,p.x,p.y,player.x,player.y);
       if(d2<=reach*reach&&t<block)victims.push({player,t});
     }

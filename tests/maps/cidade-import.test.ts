@@ -86,7 +86,8 @@ test('spawns and mouths point the right way from the plaza; mouths sit between p
     assert.ok(along(spawn)>50,`spawn ${k} far along its avenue (${along(spawn)})`);
     assert.ok(along(boca)>0&&along(boca)<along(spawn)/3,`boca ${k} near the plaza (${along(boca)})`);
   }
-  assert.ok(points.inicio.y>c.y+40,'start (crashed helicopter) is south of the plaza');
+  // mapa-175-com-viaduto: the run starts at the Uno on the viaduct's deck, north of the plaza (the ramp leads to its N avenue).
+  assert.ok(points.inicio.y<c.y-40,'start (the Uno on the viaduct) is north of the plaza');
 });
 
 test('paths exist start→plaza→every spawn and plaza→every mouth, with plausible street lengths',()=>{

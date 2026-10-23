@@ -5,6 +5,7 @@
  */
 import type {TerrainField} from '../maps/index.ts';
 import type {Point} from '../maps/index.ts';
+import {floorOf} from '../maps/index.ts';
 import {Rng} from '../contract/index.ts';
 import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts';
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
@@ -215,6 +216,9 @@ export class SimWorld implements SimContext {
     if(!Number.isFinite(amount)||amount<=0)return false;
     // D-051: a nest (a hit target of the sleepers' index) takes the hit through its own path, after the might.
     if(!this.enemies.has(enemyId)&&this.sleepers?.isTarget(enemyId))return this.sleepers.strike(this,enemyId,amount*this.mightOf(sourcePlayer),sourcePlayer,weapon);
+    // The viaduct (maps city/viaduct.ts): a hero only hurts bodies on its own floor (before waking a sleeper).
+    const src=sourcePlayer!==undefined?this.players.get(sourcePlayer):undefined;
+    if(src){const body=this.enemies.get(enemyId)??this.sleepers?.get(enemyId);if(body&&floorOf(body)!==floorOf(src))return false;}
     // D-051: a hit on a sleeper wakes it and its band first (ninhos/sono.ts), then lands like any other.
     const enemy=this.enemies.get(enemyId)??this.sleepers?.wake(this,enemyId,'dano');
     if(!enemy||!(enemy.hp>0))return false;
@@ -251,6 +255,10 @@ export class SimWorld implements SimContext {
     const player=this.players.get(playerId);
     if(!player||player.spectator||player.eliminated||player.downed||!(player.hp>0))return;
     if(!Number.isFinite(amount)||amount<=0||this.tick<(player.invulnerableUntil??0))return;
+    // The viaduct (maps city/viaduct.ts): a body only hurts heroes on its own floor.
+    const by=source!==undefined?this.enemies.get(source):undefined;
+    if(by&&floorOf(by)!==floorOf(player))return;
+
     // D-051: who is hitting me (an enemy; hazards that outlive their thrower are not anyone to shoot back at), even when
     // the armor takes the whole hit.
     if(this.recordLastHit&&source!==undefined&&this.enemies.has(source))player.lastHitBy={id:source,tick:this.tick};

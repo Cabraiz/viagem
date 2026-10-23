@@ -98,6 +98,9 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * carry the aim's bucket in bits 2+ (protocol/input-track.ts); an older room refuses those segments.
  * 29 given by the integration queue (tools/fila.mjs, lote 20261021-071918) to: NEW-20261021-ORQ-cone-ataque-melee.
  * 30 given by the integration queue (tools/fila.mjs, lote 20261022-125548) to: NEW-20261022-ORQ-monstros-espalhados-they-are-billions.
+ * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
+ * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
+ * would refuse the masks.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=30;
@@ -314,6 +317,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 /** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
 const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
+/** The viaduct's floor (andar): only ever 1 or absent, like trueFlag (optional(deckFlag) is its presence byte). */
+const deckFlag:Codec<1>={write:()=>{},read:()=>1,norm:()=>1,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -405,6 +410,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     hand:c(optional(count)),
     // Veículos: the vehicle ridden and until when (they drive the phone's prediction, like fastUntil).
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
+    andar:c(optional(deckFlag)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -414,9 +421,13 @@ const SCHEMAS:Record<SectionKey,Schema>={
     asleep:c(optional(trueFlag)),
     // Bancos: it robbed an ATM into a Cliente Prime (the crown).
     prime:c(optional(trueFlag)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
+    andar:c(optional(deckFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),
+    // The viaduct (mapa-175-com-viaduto): flying on a deck, floor 1.
+    andar:c(optional(deckFlag))},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),

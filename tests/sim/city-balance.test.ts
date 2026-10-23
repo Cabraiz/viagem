@@ -213,10 +213,12 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block), and for cenario-no-mapa
  * (the city asset v3: the places with life put on open ground stop those cells being walkable, so routes and spawn spots
  * move; with main's asset v2 the old digests still come out), and for mapa-175-com-viaduto (asset v4: the distances
- * 1.75× shorter, the map lengths × CITY_DISTANCE_SCALE, the nests and the field to it).
+ * 1.75× shorter, the map lengths × CITY_DISTANCE_SCALE, the nests and the field to it), and for its viaduct (etapa 3: the
+ * pillars and the ramp's embankment are solid on the ground, the run starts on the deck, the group behind the team comes
+ * on it and the plaza group never takes the N avenue, the team's now).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'e28fc84cd25138b6','tutorial seed 8 r4':'b1af0255010d1ddc','plain seed 21 r10':'98176b0e31939631',
+  'tutorial seed 3 r4':'70cfb007d26b54a3','tutorial seed 8 r4':'81b032fc3ab13260','plain seed 21 r10':'c5de8d73936922d8',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -315,7 +317,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
 // cidade again for mapa-175-com-viaduto (asset v4, the city 1.75× shorter, many more crates); ilha and infinito unchanged.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'299f110e39b22bae',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// cidade again for its viaduct (etapa 3: the start on the deck, pillars and embankment solid); ilha and infinito unchanged.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'9bcca7fe4a663d04',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

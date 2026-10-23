@@ -2,7 +2,7 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,interpolate} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,interpolate,type FloorPoint} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
@@ -134,7 +134,7 @@ function frameBase(bytes:Uint8Array){
   return uvar()<0?-1:uvar();
 }
 const toPlayer=(p:PlayerWireView):Player=>({id:p.id,name:p.name,classId:p.classId,x:p.x??0,y:p.y??0,hp:p.hp,ack:p.ack??0,online:p.online,score:0,
-  spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0});
+  spectator:p.spectator,attackTick:p.attackTick??0,skillTick:p.skillTick??0,skillReadyTick:p.skillReadyTick??0,...(p.andar===1?{andar:1 as const}:{})});
 /**
  * A map switch (welcome or {t:'map'}) waiting for the city download: what arrives meanwhile is replayed after it, in
  * order. `welcome`: the held message is a welcome (first join or reconnection), so the seat is not applied yet.
@@ -177,7 +177,8 @@ export class CoopClient {
   run?:RunState;
   id='';token='';tick=0;rtt=0;connected=false;victory=false;
   players=new Map<string,Player>();
-  predicted:Point={x:12,y:17};
+  /** The hero's predicted position and floor (maps prediction.ts FloorPoint: andar 1 on a viaduct's deck). */
+  predicted:FloorPoint={x:12,y:17};
   /**
    * The prediction moved outside a step (a frame reconciled it with the room): from → to. The scene keeps the drawing
    * where it was and fades the difference (smoothing.ts SelfCorrection); the bot lab measures it.
@@ -769,7 +770,7 @@ export class CoopClient {
     this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -909,7 +910,7 @@ export class CoopClient {
     const a=s[Math.max(0,Math.min(i,n)-1)]??s[0],b=i<n?s[i]:s[n-1],prev=i>=n&&n>1?s[n-2]:undefined;
     const t=a&&b?(i>=n&&prev?blendFactor(b.at,b.at,target,prev.at):i===0?1:blendFactor(a.at,b.at,target)):1;
     return {players:[...this.players.values()].map(p=>{
-      if(p.id===this.id)return {...p,...this.predicted};
+      if(p.id===this.id)return {...p,...this.predicted,andar:this.predicted.andar};
       if(i>=n&&prev){const q=prev.players.get(p.id),r=b.players.get(p.id);return {...p,...(q&&r?along(q,r,t):r??p)};}
       return {...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)};
     })};

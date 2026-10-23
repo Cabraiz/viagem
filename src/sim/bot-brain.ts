@@ -60,7 +60,7 @@ import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
-import {heroSpeed,walkable,type Point} from '../maps/index.ts';
+import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import type {StonewardsState} from './stonewards/state.ts';
@@ -190,8 +190,11 @@ export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,l
 
 export interface BrainInput {
   view:RunView;selfId:string;
-  /** Where the client predicts it is (CoopClient.predicted), like the scene's camera. */
-  at:Point;
+  /**
+   * Where the client predicts it is (CoopClient.predicted), like the scene's camera; `andar` 1 on a viaduct's deck
+   * (maps city/viaduct.ts): the bot walks the deck straight and leaves it by the ramp.
+   */
+  at:Point&{andar?:1};
   /** Bot index in the room (spreads the gather nodes and the orbit). */
   index:number;
   terrain?:TerrainField;
@@ -528,7 +531,21 @@ export function decide(input:BrainInput):Decision{
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
-  const way=(to:Point,chase?:Chase):Point|undefined=>{
+  const way=(to:Point&{andar?:number},chase?:Chase):Point|undefined=>{
+    // The viaduct (mapa-175-com-viaduto): the streets' fields are the ground's. On the deck the bot walks straight (a
+    // corridor with one ramp); to the other floor it goes to the ramp first (straight down it, along the streets up).
+    const decks=city?.asset.viaducts;
+    if(city&&decks?.length){
+      const from=at.andar===1?1:0,goalFloor=to.andar===1?1:0;
+      if(goalFloor!==from){
+        const u=city.asset.unitsPerCell,v=decks.reduce((a,b)=>dist(floorPortal(a,u,goalFloor),at)<=dist(floorPortal(b,u,goalFloor),at)?a:b);
+        const portal=floorPortal(v,u,goalFloor);
+        if(from===1)return toward(at,portal);
+        const out={x:0,y:0},goal=botRoute(city,at,portal,out);
+        return goal===-2?undefined:goal<0?toward(at,portal):out;
+      }
+      if(from===1)return toward(at,to);
+    }
     const out={x:0,y:0},goal=city?botRoute(city,at,to,out,chase?memory[chase]??-1:-1):-1;
     if(goal===-2)return undefined;
     if(goal<0)return toward(at,to);
@@ -887,7 +904,7 @@ function finish(decision:Decision,input:BrainInput):Decision{
     memory.unstickUntil=tick+.8*HZ;memory.lastMoveTick=tick;memory.lastPos=at;
     decision.direction=memory.unstick;decision.mode='unstick';return decision;
   }
-  decision.direction=clearPath(at,decision.direction,terrain);
+  decision.direction=clearPath(at,decision.direction,onFloor(terrain,at.andar));
   return decision;
 }
 

@@ -180,7 +180,7 @@ export class RoomBots {
       }
       // Each bot sees its own wallet as the camp's Grana (NEW-20261014-ORQ-carteira-e-pix), like a phone sees its own.
       const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
-      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         // Bancos: so are the ATMs (bankTask), in both city modes.
         ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),

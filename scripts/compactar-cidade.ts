@@ -26,6 +26,8 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {SAMPLES_PER_CELL,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityPoint,type CityRect} from '../src/maps/city-asset.ts';
 import {CITY_COMPACT} from '../src/rules/scale.ts';
+import {RAMP_FOOT_CELLS,groundSolidCells,overDeck,onRamp,type CityViaduct} from '../src/maps/city/viaduct.ts';
+
 
 const root=(path:string)=>fileURLToPath(new URL(`../${path}`,import.meta.url));
 const JSON_PATH=root('public/maps/cidade-nevada.json'),MANIFEST_PATH=root('public/maps/cidade-nevada.manifest.json');
@@ -380,6 +382,9 @@ export function spreadLoot(a:CityAsset,seed=LOOT_SEED):CityPoint[]{
     const p={x:r3((x+.5)*u),y:r3((y+.5)*u)};
     if(p.x<pl.x||p.y<pl.y||p.x>pl.x+pl.w||p.y>pl.y+pl.h||Math.hypot(p.x-P.x,p.y-P.y)<LOOT_FROM_PLAZA)continue;
     if(keys.some(k=>Math.hypot(p.x-k.x,p.y-k.y)<LOOT_FROM_KEY))continue;
+    // Nor on or beside a viaduct: a crate is a ground pickup, the deck's floor has none (its start keeps LOOT_FROM_KEY).
+    if(nearViaduct(a,p.x,p.y,u))continue;
+
     cands.push(p);}
   const rnd=mulberry(seed),order=cands.map(c=>[rnd(),c] as const).sort((p,q)=>p[0]-q[0]).map(([,c])=>c);
   const out:CityPoint[]=[],far=(p:CityPoint,d:number)=>out.every(q=>Math.hypot(q.x-p.x,q.y-p.y)>=d);
@@ -394,9 +399,69 @@ export function spreadLoot(a:CityAsset,seed=LOOT_SEED):CityPoint[]{
   return out.sort((p,q)=>p.y-q.y||p.x-q.x);
 }
 
-/** The compacted asset text without decor (version SOURCE + 1), its loot spread anew. */
+/**
+ * The main viaduct (etapa 3, plans/mapa-175-viaduto.md §4): North–South over the centre-north street (columns 51–54 of
+ * the 110² grid), from the map's north edge (row 5) down a ramp toward the plaza's N mouth. Deck 4 cells wide (6 u)
+ * and 19 long, over the pocket at the edge and the street along it; ramp 12 cells (18 u, ~11°) in the street's wide stretch (rows
+ * 24–35), whose 2 columns west of it (49–50) stay open ground (column 55 has the cliff stubs): the N avenue still runs from spawn N to its mouth beside
+ * the ramp (the ramp in the 4-cell stretch of rows 39–45 closed it, and the N route, its build sites and a nest went with
+ * it). 3.5 u over the street; pillars on both sides at rows 14 and 21, clear of the street it crosses (rows 10–13); none
+ * in the pocket at the edge (rows 5–9), where a pillar left a corner that wide bodies chasing a team there stuck in.
+ * The north end, at the edge, is closed (the pile-up of cars, art only): the ramp is the deck's only way up or down.
+ */
+export const VIADUCT:CityViaduct=Object.freeze({
+  id:'viaduto-principal',deck:Object.freeze([51,5,4,19] as const),
+  ramp:Object.freeze({rect:Object.freeze([51,24,4,12] as const),up:'N' as const}),
+  pillars:Object.freeze([14,21].flatMap(r=>[Object.freeze([51,r] as const),Object.freeze([54,r] as const)])),
+  height:3.5,
+});
+/**
+ * The Uno where the run starts, on the deck (cells): its middle, by the closed north end, so the walk down the deck and
+ * the ramp to the plaza is about the one the tutorial was tuned for (~73 u; cityRunStart).
+ */
+export const VIADUCT_START={c:53,r:7.5} as const;
+
+/**
+ * The viaduct on the compacted layout: its block in the asset, its pillars and the ramp's embankment solid on the
+ * ground, the start on the deck, and no prop on the ramp (the street under the deck keeps its props). A block that lies
+ * wholly on the ramp, beside it or within RAMP_FOOT_CELLS of its foot goes (a wall stub of 4 cells stood where it lands, in
+
+ * front of the N mouth), its cells open ground again. Throws when a
+ * ramp cell or the start's is not open ground (the layout changed under it); the deck may pass over anything (the
+ * cliff stubs beside the street), a pillar may stand on a solid cell.
+ */
+export function addViaduct(data:CityAssetData,v:CityViaduct=VIADUCT):void{
+  const m=data.cells.w,u=data.unitsPerCell!,S=SAMPLES_PER_CELL,sw=m*S;
+  const open=(c:number,r:number)=>{for(let j=0;j<S;j++)for(let i=0;i<S;i++)if(!data.walkable[(r*S+j)*sw+c*S+i])return false;return true;};
+  const [rc,rr,rw,rh]=v.ramp.rect,F=RAMP_FOOT_CELLS;
+  // The ramp, RAMP_FOOT_CELLS past its foot and a cell on each side.
+  const landing=v.ramp.up==='N'?[rc-1,rr,rw+2,rh+F]:v.ramp.up==='S'?[rc-1,rr-F,rw+2,rh+F]:v.ramp.up==='W'?[rc,rr-1,rw+F,rh+2]:[rc-F,rr-1,rw+F,rh+2];
+  const within=([x,y,w,h]:CityRect)=>x>=landing[0]*u-1e-3&&y>=landing[1]*u-1e-3&&x+w<=(landing[0]+landing[2])*u+1e-3&&y+h<=(landing[1]+landing[3])*u+1e-3;
+  data.blocks=data.blocks.filter(b=>{
+    if(!b.rects.every(within))return true;
+    for(const [x,y,w,h] of b.rects)for(let r=Math.round(y/u);r<Math.round((y+h)/u);r++)for(let c=Math.round(x/u);c<Math.round((x+w)/u);c++)
+      for(let j=0;j<S;j++)for(let i=0;i<S;i++)data.walkable[(r*S+j)*sw+c*S+i]=1;
+    return false;
+  });
+  for(let r=rr;r<rr+rh;r++)for(let c=rc;c<rc+rw;c++)if(!open(c,r))throw new Error(`viaduct ${v.id}: ramp cell (${c},${r}) is not open ground`);
+  if(!open(Math.floor(VIADUCT_START.c),Math.floor(VIADUCT_START.r))||!open(Math.floor(VIADUCT_START.c)-1,Math.floor(VIADUCT_START.r)))throw new Error(`viaduct ${v.id}: the start is not over open ground`);
+
+  for(const [c,r] of groundSolidCells(v))for(let j=0;j<S;j++)for(let i=0;i<S;i++)data.walkable[(r*S+j)*sw+c*S+i]=0;
+  data.viaducts=[v];
+  data.points={...data.points,inicio:{x:r3(VIADUCT_START.c*u),y:r3(VIADUCT_START.r*u)}};
+  data.props=data.props.filter(p=>!onRamp(v,u,p.x,p.y));
+}
+/** True when (x, y) (u) is on a viaduct of `a` or within `margin` u of one (deck or ramp). */
+export const nearViaduct=(a:CityAsset,x:number,y:number,margin=0)=>a.viaducts.some(v=>{
+  const u=a.unitsPerCell;
+  for(const dx of [-margin,0,margin])for(const dy of [-margin,0,margin])if(overDeck(v,u,x+dx,y+dy)||onRamp(v,u,x+dx,y+dy))return true;
+  return false;
+});
+
+/** The compacted asset text without decor (version SOURCE + 1), its viaduct added and its loot spread anew. */
 export async function compactText():Promise<{text:string;log:Record<string,number|string>}>{
   const out=compactCity(await sourceAsset());
+  addViaduct(out.data);
   const first=decodeCityAsset(encodeCityAsset(out.data));
   if(!first.ok)throw new Error(first.error);
   out.data.loot=spreadLoot(first.asset);

@@ -2,6 +2,42 @@
   "version": 2,
   "group": "mascote",
   "pieces": {
+    "mula-sem-cabeca": {
+      "kind": "animations",
+      "files": {
+        "run": {
+          "file": "mula-sem-cabeca/run.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 14,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "mula-sem-cabeca/run.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "76e0c3c81e22a9144a7d5dc8212b929677bb38fe4fa243745fc8d23c31df93f8"
+            }
+          ],
+          "sha256": "76e0c3c81e22a9144a7d5dc8212b929677bb38fe4fa243745fc8d23c31df93f8"
+        }
+      },
+      "sha256": "2d4417ef62a0c1e554cfbeda996e994048428df576f64219c3405d2175ee5bbc"
+    },
     "papagaio": {
       "kind": "animations",
       "files": {

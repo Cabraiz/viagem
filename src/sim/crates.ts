@@ -40,7 +40,7 @@ import {Rng,ticks} from '../contract/index.ts';
 import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
-import {NEW_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
+import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
 /** Placed crates alive at once (proposal: "para o mapa não virar supermercado"). Dropped crates do not count. */
@@ -188,29 +188,36 @@ const roll=(rng:Rng,odds:readonly (readonly [Rarity,number])[]):Rarity=>{
   return odds[odds.length-1][0];
 };
 /** A weapon item at a crate's rarity, never below the weapon's own minimum. */
-const weaponItem=(id:string,rarity:Rarity):OwnedItem=>({id,level:Math.max(rarity,NEW_WEAPONS.find(w=>w.id===id)?.minRarity??1)});
+const weaponItem=(id:string,rarity:Rarity):OwnedItem=>({id,level:Math.max(rarity,ARSENAL_WEAPONS.find(w=>w.id===id)?.minRarity??1)});
 
 /** What a crate gives: one weapon or one kit de torre, for the inventory. */
 export interface Prize {items:OwnedItem[]}
 /**
- * The weapons a crate of each rarity draws, even odds (bau-so-arma-ou-torre, the user: "tem várias torres e armas, ponha
- * elas"): verde..dourada every arsenal firearm that comes in that rarity (minRarity, so the verde is the pistol, the
- * user's 16/10 "a firearm early on", and the rojão only from the dourada), never the starting faca; the lendária every
- * legendary (the six weapons of the automatic game).
+ * The weapons a crate of each rarity draws (bau-so-arma-ou-torre, the user: "tem várias torres e armas, ponha elas"):
+ * verde..dourada every arsenal weapon that comes in that rarity (minRarity: the rojão only from the dourada), the
+ * playable Pack 12 ones too (arsenal-completo-no-bau), never the starting faca; the lendária every legendary (the six
+ * weapons of the automatic game) and the Pack 12 weapons that only come lendária. Even odds, but the verde's pistol
+ * (VERDE_PISTOL).
  */
+/**
+ * The verde crate's share of the pistol among its weapons (arsenal-completo-no-bau, ORQ 23/10: the user's 16/10 "a
+ * firearm early on", but "não sempre pistola"); the other verde weapons split the rest evenly.
+ */
+export const VERDE_PISTOL=.4;
+const inCrates=(r:Rarity)=>ARSENAL_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=r).map(w=>w.id);
 export const CRATE_WEAPONS:Readonly<Record<Rarity,readonly string[]>>=Object.freeze({
-  1:NEW_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=1).map(w=>w.id),
-  2:NEW_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=2).map(w=>w.id),
-  3:NEW_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=3).map(w=>w.id),
-  4:NEW_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=4).map(w=>w.id),
-  5:WEAPON_IDS.map(legendaryId),
+  1:inCrates(1),2:inCrates(2),3:inCrates(3),4:inCrates(4),
+  5:[...WEAPON_IDS.map(legendaryId),...inCrates(5).filter(id=>ARSENAL_WEAPONS.find(w=>w.id===id)?.minRarity===5)],
 });
 /**
  * A crate's weapon: one of CRATE_WEAPONS[rarity] at that rarity (since bau-so-arma-ou-torre the coxinha, doces, Grana,
  * fichas and the lendária's team XP rows are gone). Pure: same stream, same prize.
  */
 export function rollPrize(rng:Rng,rarity:Rarity):Prize{
-  return {items:[weaponItem(rng.pick(CRATE_WEAPONS[rarity]),rarity)]};
+  const pool=CRATE_WEAPONS[rarity];
+  // The pistol keeps VERDE_PISTOL of the verde once other weapons come verde (the only one, it is the only draw).
+  if(rarity===1&&pool.length>1)return {items:[weaponItem(rng.next()<VERDE_PISTOL?'pistola':rng.pick(pool.filter(id=>id!=='pistola')),1)]};
+  return {items:[weaponItem(rng.pick(pool),rarity)]};
 }
 
 /**

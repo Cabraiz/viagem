@@ -18,7 +18,7 @@ import {queueTelegraphArt} from '../render/telegraph-art.ts';
 import {cycleFrame,walkCycles} from '../sprites/sprite-motion.ts';
 import {ENEMY_STRIDES} from './enemy-strides.ts';
 import {allItemDisplays} from '../hud/items.ts';
-import {ARSENAL_PROJECTILE_ALIAS} from '../render/arsenal-rules.ts';
+import {ARSENAL_PROJECTILE_ALIAS,PACK12_PROJECTILE_IDS} from '../render/arsenal-rules.ts';
 import {backgroundHeld,onBackgroundFree} from '../preload/background-hold.ts';
 import type {CityOutlines,CityVariant} from '../render/city-outline.ts';
 
@@ -128,7 +128,7 @@ export type WeaponProjectileId=typeof WEAPON_PROJECTILE_IDS[number];
 export const HOSTILE_SHOT_ART='tiro-inimigo';
 export const HOSTILE_PROJECTILE_IDS=['boleto-juros','coco-pombo',HOSTILE_SHOT_ART] as const;
 /** Every `projeteis` id with its own key ('tiro-aliado' is not one: it is the shared friendly look, STATIC_ART). */
-export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS];
+export const PROJECTILE_ART_IDS:readonly string[]=[...WEAPON_PROJECTILE_IDS,...HOSTILE_PROJECTILE_IDS,...PACK12_PROJECTILE_IDS];
 const PROJECTILE_ART_SET=new Set(PROJECTILE_ART_IDS);
 /** Built once: the per-frame path never concatenates a key. */
 const PROJECTILE_KEYS=new Map<string,string>();

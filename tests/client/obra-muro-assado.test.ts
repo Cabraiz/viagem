@@ -41,8 +41,8 @@ test('wall segment key: whole and fallen carry no bar; a low bar is its own look
 });
 
 test('the renderer freezes each wall segment (TriBand) behind wallKey and only moves it per frame',()=>{
-  assert.match(src,/key=wallKey\(stage,flash,view,showBar\?bar:undefined,k\)/);
+  assert.ok(src.includes("key=`${art?'arte|':''}${wallKey(stage,flash&&!art,view,showBar?bar:undefined,k)}`"));
   assert.match(src,/if\(w\?\.key!==key\)\{\s*w\?\.band\.destroy\(\);[^]*?TriBand\.make\(this\.scene,[^]*?\.setName\('obra-muro'\)/);
-  assert.match(src,/w\.band\.setPosition\(p\.x,p\.y\)\.setDepth\(/);
+  assert.match(src,/w!?\.band\.setPosition\(p\.x,p\.y\)\.setDepth\(/);
   assert.doesNotMatch(src,/add\.graphics\(\)\.setName\('obra-muro'\)/,'no per-frame Graphics for the walls');
 });

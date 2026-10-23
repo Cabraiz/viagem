@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2067,
-  "bytes": 1540536856,
-  "liteBytes": 498310858,
+  "files": 2071,
+  "bytes": 1546209992,
+  "liteBytes": 500437350,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -37,6 +37,18 @@
    "psnr": 41.7,
    "shownPsnr": 41.7
   },
+  "city/base/moto-chaveiro.webp": {
+   "source": "598b9025526838fa9b5eb7707c90e3da61e242c1c065a8bdfdccbbeeabd60728",
+   "lite": "410f4c77cb6905ef829b33fb5b92abe8ace1fbd432d5c53aacd77425c9141ad7",
+   "bytes": 597584,
+   "liteBytes": 243658,
+   "liteCell": [
+    238,
+    191
+   ],
+   "psnr": 38.2,
+   "shownPsnr": 38.2
+  },
   "city/base/muralha-acampamento.webp": {
    "source": "fe9d1592e031ee946d810c526ab5f42670face772082870d513909587de82ca1",
    "lite": "4284d7d64b3171bc36bda58129a7504cb6041051122a479d90fe042c69920bbf",
@@ -50,28 +62,52 @@
    "shownPsnr": 42.6
   },
   "city/base/muralha-tralha-pilar.webp": {
-   "source": "da2147821e0a10d4618790e0fc5ee3015c06168a49e0b50a0d631f64e5fd2151",
-   "lite": "dee4a454096420890102d3a20a359d44643f46c0be61cf7cee340079c79ddcfc",
-   "bytes": 476256,
-   "liteBytes": 164072,
+   "source": "b88b8334aecdb30c0a72ad1bbfa5c25630802272c964b8fdead8e278f626de3c",
+   "lite": "eb4f65ee3e9dda4679429e926b0c585e554330485789e765ec1d14fcf0192077",
+   "bytes": 990350,
+   "liteBytes": 313536,
+   "liteCell": [
+    186,
+    326
+   ],
+   "psnr": 36.7,
+   "shownPsnr": 36.7
+  },
+  "city/base/muralha-tralha.webp": {
+   "source": "fe549bd20b407ed1fb3dffbad4183c40821cf841d8b4f933a13ac7369df4277a",
+   "lite": "eba590f7dd3f9ba256f2347c3b0fe7bfd266408a41b06b7b4b2f3934dbbde859",
+   "bytes": 3978542,
+   "liteBytes": 1193826,
+   "liteCell": [
+    246,
+    278
+   ],
+   "psnr": 37.4,
+   "shownPsnr": 37.4
+  },
+  "city/base/muro-bloco-pilar.webp": {
+   "source": "d5c905753c7895f53b03605aba39ddc6c98f5b6fd4d174689383e0484e818eaa",
+   "lite": "5d441a998f447d1c732364e827c4c28091f5f9101570113008261f0cd40ede5e",
+   "bytes": 528112,
+   "liteBytes": 172888,
    "liteCell": [
     124,
     217
    ],
-   "psnr": 36.1,
-   "shownPsnr": 36.1
+   "psnr": 37.2,
+   "shownPsnr": 37.2
   },
-  "city/base/muralha-tralha.webp": {
-   "source": "c5f3393131eeae28e1ed833aa3778801980612f719f486522aa62f5540f4f9f7",
-   "lite": "89824c4bd7b93c3e4b3744cec99cb160e5eaee5bbc6e4ce27fe53162d53987bf",
-   "bytes": 1880974,
-   "liteBytes": 606750,
+  "city/base/muro-bloco.webp": {
+   "source": "69c5fcdb5b3d09bb0d1ec0a83d2d2355908db38389f5dc3c36093cd592001a8e",
+   "lite": "e7d2c810d6a643152c31845aedc8f392fbfa0772c4037698c4448eb299daa111",
+   "bytes": 1099174,
+   "liteBytes": 358412,
    "liteCell": [
     164,
     185
    ],
-   "psnr": 36.9,
-   "shownPsnr": 36.9
+   "psnr": 38.9,
+   "shownPsnr": 38.9
   },
   "city/buildings/boteco-esquina-2x1-1.webp": {
    "source": "7521a5f1eca4a61a350c2c83bb945425fd5715500346c5291d679cd021fac615",
@@ -17392,6 +17428,14 @@
    "liteBytes": 470902,
    "psnr": 44.5,
    "shownPsnr": 46
+  },
+  "menu/fundo-gato-nada-pra-comer.webp": {
+   "source": "93f88b17dd548bf53aa15d96c11d7eb76f5748bca92ff566a174972575070675",
+   "lite": "b0b511496d57346907bd7bde53a50bf7800c9c8b44872158ceb16e74fd340609",
+   "bytes": 836604,
+   "liteBytes": 614994,
+   "psnr": 43.6,
+   "shownPsnr": 45.4
   },
   "sprites/aposentado.dir4.webp": {
    "source": "eea7b72e115343313b813fc47197dafb6cdab8ee09b480825bb3949abaf43df6",

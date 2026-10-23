@@ -163,7 +163,8 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`),'the CSS and main.ts agree on what a PC is');
   assert.match(main,/const cut=cutoutScreen\.matches\?cutoutOf\(selected\.id\):undefined;/);
   assert.match(main,/if\(spot&&!cutoutHold\) cutoutHold=menuDance\.hold\(\);/);
-  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n\s*showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
+  // selecao-mobile-instagram: the phone upright shows the profile instead of the portrait (tests/client/insta.test.ts).
+  assert.match(main,/showCutout\(\); \/\/ first[^\n]*\n[^\n]*\n\s*if\(instaScreen\.matches\) renderInsta\(\); else showPortrait\(selected,announce\);/,'the cutout before the portrait: no dance started for nothing');
   assert.ok(css.includes('.estadio-palco.com-recorte .estadio-heroi { visibility: hidden; }'));
   // With the picture the plaque hides: on the phone held upright the row takes its push under the bar.
   assert.ok(css.includes('.estadio-escolha:has(.com-letreiro) :is(.estadio-fileira, .estadio-nome) { margin-top: auto; }'));

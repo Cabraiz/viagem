@@ -311,6 +311,15 @@ function renderInsta() {
   insta.perfil.innerHTML=perfilHtml(perfil);
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
+  void document.fonts.ready.then(fitHandle);
+}
+// The @handle's size was a guess from its letters (insta.ts handleFit): measured once the font is in, a handle wider than
+// its column shrinks until it and the badge fit (its share in card px, so any screen size keeps it).
+function fitHandle() {
+  const line=insta.perfil.querySelector<HTMLElement>('.insta-arroba'),text=line?.firstElementChild as HTMLElement|null;
+  if(!line||!text||line.scrollWidth<=line.clientWidth) return;
+  const fit=parseFloat(line.style.getPropertyValue('--arroba-fit'))||1,room=line.clientWidth-(line.scrollWidth-text.offsetWidth);
+  line.style.setProperty('--arroba-fit',(fit*room/text.offsetWidth*.98).toFixed(3));
 }
 insta.stories.addEventListener('click',event=>{
   const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');

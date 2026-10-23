@@ -2,7 +2,7 @@
 // card width and top, with guide lines at the reference's bands (card px of 734x1415).
 //   node print.cjs <url> <saida-prefixo> [WxH ...] [--hero id] [--locked] [--nome]
 // Takes the browser slot (viagem-board/locks/browser-1 or -2) and frees it at the end.
-const { chromium } = require('playwright');
+const { chromium } = require('D:/Gits/viagem-tools/node_modules/playwright');
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
@@ -37,6 +37,15 @@ function slot() {
         return { top: col.top, left: col.left, width: col.width, scroll: document.scrollingElement.scrollHeight - innerHeight,
           u: parseFloat(getComputedStyle(document.querySelector('.estadio-escolha')).getPropertyValue('--u')) };
       });
+      // Each band's top..bottom in the reference's card px (734 wide), next to the reference's own (BANDS).
+      const bands = await page.evaluate(() => {
+        const col = document.querySelector('.insta-topo').getBoundingClientRect(), u = col.width / 734;
+        const at = sel => { const e = document.querySelector(sel); if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return [Math.round((r.top - col.top) / u), Math.round((r.bottom - col.top) / u)]; };
+        return { barra: at('.insta-barra'), logo: at('.insta-logo'), story: at('.insta-story .insta-anel'), nome: at('.insta-story-nome'), trocar: at('.insta-trocar'),
+          foto: at('.insta-foto .insta-anel'), arroba: at('.insta-arroba'), numeros: at('.insta-numeros'), bio: at('.insta-bio'), chips: at('.insta-chip'),
+          abas: at('.insta-abas'), grade: at('.insta-grade'), nomeRow: at('.estadio-nome'), botao: at('#confirm'), fim: Math.round((innerHeight - col.top) / u) };
+      });
+      console.log(JSON.stringify(bands));
       const shot = `${prefix}-${w}x${h}.png`;
       await page.screenshot({ path: shot });
       await page.close();

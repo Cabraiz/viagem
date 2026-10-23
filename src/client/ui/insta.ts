@@ -48,13 +48,13 @@ export const gradeUrls=(id:string,liberado:boolean):string[]=>liberado?[1,2,3].m
 export const storiesOf=(selectedId:string,ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>p.id!==selectedId&&ids.includes(p.id));
 
 /**
- * The handle's size: the reference's @GATO is 72 card px (of 734) and the column beside the photo holds ~335; a longer
- * handle shrinks so it never wraps (Lilita One averages ~0.62 em per capital).
+ * The handle's size (insta.css: 64 card px of 734): the column beside the photo holds 335, 275 of them for the text
+ * beside the badge; a longer handle shrinks so it never wraps nor pushes the badge out (Lilita One: ~.615 em a capital).
  */
-export const handleFit=(handle:string)=>Math.min(1,335/(handle.length*.62*72));
+export const handleFit=(handle:string)=>Math.min(1,275/(handle.length*.615*64));
 
 const esc=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]!);
-const img=(file:string,cls:string,alt='')=>`<img class="${cls}" src="${instaUrl(file)}" alt="${esc(alt)}"${alt?'':' aria-hidden="true"'} decoding="async" draggable="false">`;
+const img=(file:string,cls:string,alt='',lazy=false)=>`<img class="${cls}" src="${instaUrl(file)}" alt="${esc(alt)}"${alt?'':' aria-hidden="true"'}${lazy?' loading="lazy"':''} decoding="async" draggable="false">`;
 // The reference's thin line icons (bell, ≡ and the tabs); the chips, the badge and the lock are the Codex art.
 const svg=(body:string)=>`<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 export const LINHA={
@@ -66,7 +66,8 @@ export const LINHA={
 } as const;
 
 /** The top bar: the game's logo, the bell (decorative) and ≡ (the sound settings, like the stadium's gear). */
-export const barraHtml=()=>`<header class="insta-barra">${img('logo','insta-logo','Viciado em Bet')}<span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
+// The bar is in the page from the start: its logo is lazy, so the stadium (where it is display:none) never downloads it.
+export const barraHtml=()=>`<header class="insta-barra">${img('logo','insta-logo','Viciado em Bet',true)}<span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
 
 /** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. */
 export function storyHtml(p:InstaPerfil,liberado:boolean):string{

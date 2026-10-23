@@ -11,6 +11,8 @@
  * the boxes; its lost parts and the wreck only darken it and the trunk does not open (no such views yet).
  * Each figure draws at its own actor depth (the city's column occlusion through the projector) and fades while it
  * covers the hero. Pure drawing: the scene pushes each view's objective and calls update every frame.
+ * Card trocar-procedurais-por-arte: the moto with its riders and the chaveiro standing are the painted sheet
+ * (moto-art.ts) once it is loaded; the boxes stay only while it is missing or loading.
  */
 import Phaser from 'phaser';
 import type {Projector,Pt} from '../projector.ts';
@@ -20,6 +22,7 @@ import {boxFaces,faceBounds,isoOffset,mix,M,viewTurn,type Box,type Face} from '.
 import {CAR_HALF,CAR_TOP,carBoxes,fallenParts,fallingPart,motoBoxes,standingChaveiro} from './figures.ts';
 import {CAR_LOW,PART_FALL_MS,alarmOn,easeAngle,wheelStep,alarmWaves,chargerLabel,engineShake,hazardLit,motoLift,motoPose,openProgress,trunkOpen,voltaCentre,voltaLap,deliveryKey,deliveryPulse,fallenKey} from './rules.ts';
 import {ChaveiroTracker} from './tracker.ts';
+import {MOTO_POSE_STATE,applyMotoArt,imageBounds,motoColumn} from './moto-art.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
 import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoBox,unoFootY,unoFrame} from './uno-art.ts';
@@ -113,6 +116,11 @@ export class ChaveiroRenderer {
    */
   private frozenFallen:FrozenFigures;
   private delivery?:{band:TriBand;key:string};
+  /**
+   * The painted moto (moto-art.ts, card trocar-procedurais-por-arte): the moto with its riders and the chaveiro standing,
+   * shown instead of their frozen boxes once the sheet is loaded.
+   */
+  private motoImg:Phaser.GameObjects.Image;private standImg:Phaser.GameObjects.Image;
   /** The imported Uno (uno-art.ts), made once its sheet is in; until then (or if it fails) the boxes. */
   private uno?:Phaser.GameObjects.Image;
 
@@ -124,6 +132,8 @@ export class ChaveiroRenderer {
     this.ground=scene.add.graphics().setDepth(-9979).setName('chaveiro-chao');
     this.car=scene.add.graphics().setName('chaveiro-carro');this.moto=scene.add.graphics().setName('chaveiro-moto');this.opener=scene.add.graphics().setName('chaveiro-abrindo');
     this.fx=scene.add.graphics().setDepth(FX_DEPTH).setName('chaveiro-fx');
+    this.motoImg=scene.add.image(0,0,'__DEFAULT').setName('chaveiro-moto-arte').setVisible(false);
+    this.standImg=scene.add.image(0,0,'__DEFAULT').setName('chaveiro-em-pe-arte').setVisible(false);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cone=tokenColor('--c-cone');
     c.cartolina=tokenColor('--c-cartolina');c.lilas=tokenColor('--c-lilas');c.claro=mix(c.papel,0xffffff,.35);
@@ -155,7 +165,7 @@ export class ChaveiroRenderer {
     this.ground.clear();this.car.clear();this.moto.clear();this.opener.clear();this.fx.clear();
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
-    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.carTurn=this.carHeading=0;return;}
+    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.carTurn=this.carHeading=0;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -225,21 +235,42 @@ export class ChaveiroRenderer {
     const motoAt=proj.project(mx,my,this.q),lift=isoOffset(0,0,motoLift(mode,time,reduced),proj.view).y;
     const motoX=motoAt.x,motoY=motoAt.y+lift,motoKey=`${pose}|${((turn%HEADING_STEPS)+HEADING_STEPS)%HEADING_STEPS}|${proj.view}|${Math.round(k*10)}`;
     const motoFace=()=>boxFaces(motoBoxes(pose,0),turn/HEADING_STEPS*Math.PI*2,proj.view);
-    const motoFaces=this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,1);
-    if(this.covers(mx,my,motoFaces,motoDepth))this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,COVER_ALPHA);
+    // The painted moto when its sheet is loaded (the boxes stay hidden), else the frozen boxes.
+    const motoArt=applyMotoArt(this.motoImg,MOTO_POSE_STATE[pose],motoColumn(heading,proj.view));
+    if(motoArt){
+      this.frozenMoto.hide();
+      this.motoImg.setPosition(motoX,motoY).setDepth(motoDepth).setAlpha(this.coversImage(mx,my,this.motoImg,motoDepth)?COVER_ALPHA:1).setVisible(true);
+    }else{
+      this.motoImg.setVisible(false);
+      const motoFaces=this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,1);
+      if(this.covers(mx,my,motoFaces,motoDepth))this.frozenMoto.show(motoKey,motoFace,k,motoX,motoY,motoDepth,COVER_ALPHA);
+    }
     const standing=mode==='entrega'||mode==='abrindo'||view.ended==='victory';
-    if(!standing)this.frozenOpener.hide();
+    if(!standing){this.frozenOpener.hide();this.standImg.setVisible(false);}
     if(mode==='entrega'){
       // He stands beside the moto with the bag.
       const side=this.local(mx,my,heading,0,1.0*M),at=proj.project(side.x,side.y,this.q);
-      this.frozenOpener.show(`bag|${motoKey}`,()=>boxFaces(standingChaveiro(0,0,true),turn/HEADING_STEPS*Math.PI*2,proj.view),k,at.x,at.y,proj.depth(side.x,side.y),1);
+      if(applyMotoArt(this.standImg,'em-pe-bolsa',motoColumn(heading,proj.view))){
+        this.frozenOpener.hide();
+        this.standImg.setPosition(at.x,at.y).setDepth(proj.depth(side.x,side.y)).setAlpha(1).setVisible(true);
+      }else{
+        this.standImg.setVisible(false);
+        this.frozenOpener.show(`bag|${motoKey}`,()=>boxFaces(standingChaveiro(0,0,true),turn/HEADING_STEPS*Math.PI*2,proj.view),k,at.x,at.y,proj.depth(side.x,side.y),1);
+      }
     }else if(mode==='abrindo'||view.ended==='victory'){
       // At the car's door (its left side, toward +y), facing it, the tool jiggling at the lock: just in front of the
       // car when that side faces the screen, just behind it otherwise (one figure against a big one: no column split).
       const at=this.local(view.car.x,view.car.y,carH,.2*M,(CAR_HALF.w+.45*M));
       const front=near>0;
       const tool=reduced?0:Math.round(Math.abs(Math.sin(time*.012))*3)/3,door=this.options.projector.project(at.x,at.y,{x:0,y:0});
-      this.frozenOpener.show(`door|${tool}|${carStep}|${proj.view}|${Math.round(k*10)}`,()=>boxFaces(standingChaveiro(0,0,false,tool),carH-Math.PI/2,proj.view),k,door.x,door.y,carDepth+(front?.5:-.5),1);
+      if(applyMotoArt(this.standImg,'em-pe-ferramenta',motoColumn(carH-Math.PI/2,proj.view))){
+        // The painted chaveiro at the door: the whole figure bobs a pixel with the lock work.
+        this.frozenOpener.hide();
+        this.standImg.setPosition(door.x,door.y-tool*k).setDepth(carDepth+(front?.5:-.5)).setAlpha(1).setVisible(true);
+      }else{
+        this.standImg.setVisible(false);
+        this.frozenOpener.show(`door|${tool}|${carStep}|${proj.view}|${Math.round(k*10)}`,()=>boxFaces(standingChaveiro(0,0,false,tool),carH-Math.PI/2,proj.view),k,door.x,door.y,carDepth+(front?.5:-.5),1);
+      }
       if(mode==='abrindo'&&!view.ended)this.drawOpening(at.x,at.y,openProgress(view.etaS),k);
     }
 
@@ -247,7 +278,8 @@ export class ChaveiroRenderer {
     this.smoke(view,mx,my,heading,alarm,time,reduced,k);
     if(alarm)this.drawWaves(view.car.x,view.car.y,k,time,st.alarmSince);
     if(mode==='morta')this.drawPush(mx,my,view.moto.push??0,k,time);
-    if(mode==='tombo')this.drawDizzy(mx,my,heading,k,time);
+    // The painted fall has its own stars over the chaveiro's head.
+    if(mode==='tombo'&&!motoArt)this.drawDizzy(mx,my,heading,k,time);
     if(!view.ended)this.drawCarBar(view.car,k,unoTop?.y);
     if(view.ended==='victory'&&chargerLabel(ended)){
       const p=this.at(view.car.x,view.car.y,-1.7*M,0,CAR_TOP+.9*M);
@@ -258,6 +290,7 @@ export class ChaveiroRenderer {
   destroy(){
     this.ground.destroy();this.car.destroy();this.moto.destroy();this.opener.destroy();this.fx.destroy();
     this.frozenCar.destroy();this.frozenMoto.destroy();this.frozenOpener.destroy();this.frozenFallen.destroy();
+    this.motoImg.destroy();this.standImg.destroy();
     this.delivery?.band.destroy();this.delivery=undefined;this.uno?.destroy();this.uno=undefined;
     this.label.destroy();this.deliveryText.destroy();this.puffs=[];
   }
@@ -298,6 +331,11 @@ export class ChaveiroRenderer {
     if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
     const h=this.options.projector.project(hero.x,hero.y,{x:0,y:0});
     return h.x>b.x&&h.x<b.x+b.width&&h.y-30>b.y&&h.y-10<b.y+b.height;
+  }
+  /** covers() for a painted figure (moto-art.ts): its image's box around its ground point (x, y). */
+  private coversImage(x:number,y:number,image:Phaser.GameObjects.Image,depth:number){
+    const p=this.options.projector.project(x,y,this.q),b=imageBounds(image);
+    return this.coversBox({x:p.x+b.x0,y:p.y+b.y0,width:b.x1-b.x0,height:b.y1-b.y0},depth);
   }
   /** The hazard lights on the imported Uno: a Cone lamp at each corner, lit with the alarm's blink. */
   private drawHazard(x:number,y:number,k:number){

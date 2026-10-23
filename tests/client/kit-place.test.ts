@@ -34,7 +34,7 @@ test('the ghost starts ahead of the hero with the room\'s footprint; green, red 
   assert.equal(k.ghost({cell:CELL,structures:[]},hero)!.look,'bloqueado');
   // A 3×2 tower takes its 3×3 square.
   k.start(1,'kit:lanca-foguetes',hero,CELL);assert.deepEqual(k.footprint(),[3,3]);assert.equal(k.canTurn(),false);
-  k.start(1,'kit:barricada',hero,CELL);k.turn();assert.deepEqual(k.footprint(),[1,1],'a barricade square (barricada-construir)');
+  k.start(1,'kit:barricada',hero,CELL);k.turn();assert.deepEqual(k.footprint(),[2,2],'a barricade square, 2×2 since barricada-2x (turning changes nothing)');
 });
 
 test('confirm sends {t:place} once per cell; the answer: a tower kit ends the mode, a wall kit stays; refusals in words',()=>{

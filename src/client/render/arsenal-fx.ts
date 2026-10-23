@@ -24,7 +24,7 @@ import {AuraRings,auraRingRadius} from './aura-ring.ts';
 import {TriBand} from './city/tri-band.ts';
 import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
-import {DEFAULT_HOLD,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
+import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
@@ -47,8 +47,6 @@ const HAND_DX=26,HAND_DY=-30;
  * ground layer (layers.ts -9970: the telegraphs stay on top of it).
  */
 const RING_DEPTH=-9965,CONE_DEPTH=-9974,HAND_SIL_DEPTH=-9978,HAND_DEPTH=96520,FX_DEPTH=96530,BURST_MS=900;
-/** A held weapon sits this much over (or, behind the body, under) its hero's sprite depth. */
-const HELD_DEPTH_STEP=.02;
 /** Points of the opening arc around a crate (a full turn). */
 const PROGRESS_POINTS=40;
 /**
@@ -80,6 +78,13 @@ export interface ArsenalOptions {
    * trailed the running hero by a frame's step (BUG-20261022-ORQ-arma-flutua-corrida-clt: ~4 px at 60 fps, ~8 at 30).
    */
   handsFromScene?:boolean;
+  /**
+   * The scene draws the Defumador's smoke itself (drawAuras), at each hero's spot as drawn this frame: begin() leaves it
+   * alone. At locate() the smoke sat on the raw prediction (20 Hz steps, a step ahead of the smoothed sprite) and on the
+   * allies' last network state (ahead of their buffered sprite): it jerked and slid off the running hero
+   * (BUG-20261022-ORQ-aura-descentralizada).
+   */
+  auraFromScene?:boolean;
 }
 /** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
 export interface ArsenalLook {key:string;frame?:string|number;k:number}
@@ -200,9 +205,13 @@ export class ArsenalFx{
       if(now-look.seen>RING_LOOK_MS){for(const band of look.bands)band.destroy();this.ringLooks.delete(key);}
     }
     this.openings.begin(now,this.canOpen,id=>this.options.locate?.(id));
+    if(!this.options.auraFromScene)this.drawAuras(id=>this.options.locate?.(id));
+  }
+  /** The Defumador's smoke around each hero who has it, centred on `at(id)`: the hero's feet as drawn now. */
+  drawAuras(at:(id:string)=>Pt|undefined){
     const rings:{x:number;y:number;r:number;self:boolean}[]=[];
-    for(const [id,{r,self}] of this.auraOf){const at=this.options.locate?.(id);if(at)rings.push({x:at.x,y:at.y,r,self});}
-    this.aura.draw(rings,now,reduced);
+    for(const [id,{r,self}] of this.auraOf){const p=at(id);if(p)rings.push({x:p.x,y:p.y,r,self});}
+    this.aura.draw(rings,this.now,this.reduced);
   }
 
   /**
@@ -276,7 +285,7 @@ export class ArsenalFx{
       if(held){
         const hold=WEAPON_HOLD[icon]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
         dx=held.x-q.x;dy=held.y-q.y;k=hold.px*b/w;rotation=pose.rotation;flipX=pose.flipX;flipY=pose.flipY;ox=pose.ox;oy=pose.oy;
-        depth=held.depth+(held.behind?-HELD_DEPTH_STEP:HELD_DEPTH_STEP);
+        depth=held.depth+(held.behind?HELD_DEPTH.behind:HELD_DEPTH.front);
       }
       hand.image.setPosition(q.x+dx,q.y+dy).setRotation(rotation).setFlip(flipX,flipY).setDepth(depth).setVisible(true);
       // Held (card arma-na-mao): the matte copy in the figure's light and, in the city, the heroes' ring; the side
@@ -316,7 +325,7 @@ export class ArsenalFx{
     if(!p||!this.scene.textures.exists(p.key)){if(image.visible)image.setVisible(false).setActive(false);return;}
     if(image.texture.key!==p.key||image.frame.name!==String(p.frame))image.setTexture(p.key,p.frame);
     image.setPosition(p.x,p.y).setOrigin(p.ox,p.oy).setScale(p.sx,p.sy).setFlipX(p.flip).setCrop(...p.crop)
-      .setDepth(depth+HELD_DEPTH_STEP/2).setVisible(true).setActive(true);
+      .setDepth(depth+HELD_DEPTH.front/2).setVisible(true).setActive(true);
   }
   /** The held look of an icon texture (hand-points.ts heldLook), baked once into `<key>:mao`; the icon until it can be. */
   private heldTexture(key:string){

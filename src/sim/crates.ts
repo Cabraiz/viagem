@@ -28,17 +28,19 @@
  *    rarity, on the nearest crate; moving or losing hp starts over. From the roxa up, starting to open makes noise
  *    (hooks.onNoise, OPEN_NOISE_RADIUS): the lock creaks and calls the enemies around;
  *  - the prize never repeats the opener's last crate prize (the user, 22/10: "sem repetir a mesma arma em sequência"):
- *    the same per-crate stream draws again, up to PRIZE_REDRAWS times;
- *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else the PRIZES row) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
- *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem).
+ *    the same per-crate stream draws again, up to PRIZE_REDRAWS times, then the other kind (otherPrize);
+ *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else a weapon of its rarity, rollPrize) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
+ *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem). A crate gives only a
+ *    weapon or a kit (BUG-20261022-ORQ-bau-so-arma-ou-torre, the user: "os baús não deveriam dropar algo sem ser arma
+ *    ou torre"): coxinha, doces and the ímã come from the critters (progression dropLoot), Grana from kills and banks.
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,UNITS_PER_TOKEN,kitItem} from '../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
-import {NEW_WEAPONS,isRarity,legendaryId,type ConsumableId,type Rarity} from './weapons/arsenal.ts';
+import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
 /** Placed crates alive at once (proposal: "para o mapa não virar supermercado"). Dropped crates do not count. */
@@ -81,8 +83,6 @@ export const OPEN_REACH=CRATE_OPEN_RADIUS;
 export const OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 /** From this rarity up (roxa) starting to open makes noise, heard within OPEN_NOISE_RADIUS world units. */
 export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=10;
-/** Grana prizes (R$) and the team XP a lendária adds. */
-export const GRANA_VERDE=5,GRANA_DOURADA=50,LEGENDARY_TEAM_XP=50;
 /** Pickup id prefix of the crates this module places or drops (not CRATE_PREFIX 'caixa-': those are the gather nodes). */
 export const CRATE_ID_PREFIX='bau';
 /**
@@ -101,13 +101,8 @@ export const BOSS_CHEST_PREFIX='pickup-';
 export const TIER_ODDS:readonly (readonly (readonly [Rarity,number])[])[]=[[[1,.7],[2,.3]],[[2,.6],[3,.4]],[[3,.65],[4,.35]]];
 /** An elite's chest: azul or roxa. */
 export const ELITE_ODDS:readonly (readonly [Rarity,number])[]=[[2,.6],[3,.4]];
-const DOCES:readonly ConsumableId[]=['brigadeiro','pacoca','cocada'];
 
 export interface CrateHooks {
-  /** Grana of a crate, to the opener's wallet (carteira-e-pix). Absent: the Grana is lost. */
-  addGrana?(ctx:SimContext,player:SimPlayer,amount:number):void;
-  /** Tower units (fichas × UNITS_PER_TOKEN) for the team's balance. */
-  addTowerUnits?(ctx:SimContext,units:number):void;
   /** A roxa+ crate starts to open: enemies and nests within radius hear it (E1). source = the crate id. */
   onNoise?(ctx:SimContext,at:Point,radius:number,source:string):void;
 }
@@ -193,32 +188,41 @@ const roll=(rng:Rng,odds:readonly (readonly [Rarity,number])[]):Rarity=>{
   return odds[odds.length-1][0];
 };
 /** A weapon item at a crate's rarity, never below the weapon's own minimum. */
-const weaponItem=(id:string,rarity:Rarity):OwnedItem=>({id,level:Math.max(rarity,NEW_WEAPONS.find(w=>w.id===id)?.minRarity??1)});
+const weaponItem=(id:string,rarity:Rarity):OwnedItem=>({id,level:Math.max(rarity,ARSENAL_WEAPONS.find(w=>w.id===id)?.minRarity??1)});
 
-/** What a crate gives: items for the inventory plus side effects (Grana, fichas, team XP) through the hooks. */
-export interface Prize {items:OwnedItem[];grana?:number;towerUnits?:number;teamXp?:number}
-/** The prize table (proposal §2), one draw decides the row, the next ones the item. Pure: same stream, same prize. */
+/** What a crate gives: one weapon or one kit de torre, for the inventory. */
+export interface Prize {items:OwnedItem[]}
+/**
+ * The weapons a crate of each rarity draws (bau-so-arma-ou-torre, the user: "tem várias torres e armas, ponha elas"):
+ * verde..dourada every arsenal weapon that comes in that rarity (minRarity: the rojão only from the dourada), the
+ * playable Pack 12 ones too (arsenal-completo-no-bau), never the starting faca; the lendária every legendary (the six
+ * weapons of the automatic game) and the Pack 12 weapons that only come lendária. Even odds, but the verde's pistol
+ * (VERDE_PISTOL).
+ */
+/**
+ * The verde crate's share of the pistol among its weapons (arsenal-completo-no-bau, ORQ 23/10: the user's 16/10 "a
+ * firearm early on", but "não sempre pistola"); the other verde weapons split the rest evenly.
+ */
+export const VERDE_PISTOL=.4;
+const inCrates=(r:Rarity)=>ARSENAL_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=r).map(w=>w.id);
+export const CRATE_WEAPONS:Readonly<Record<Rarity,readonly string[]>>=Object.freeze({
+  1:inCrates(1),2:inCrates(2),3:inCrates(3),4:inCrates(4),
+  5:[...WEAPON_IDS.map(legendaryId),...inCrates(5).filter(id=>ARSENAL_WEAPONS.find(w=>w.id===id)?.minRarity===5)],
+});
+/**
+ * A crate's weapon: one of CRATE_WEAPONS[rarity] at that rarity (since bau-so-arma-ou-torre the coxinha, doces, Grana,
+ * fichas and the lendária's team XP rows are gone). Pure: same stream, same prize.
+ */
 export function rollPrize(rng:Rng,rarity:Rarity):Prize{
-  const u=rng.next();
-  switch(rarity){
-    // The user (16/10): a firearm early on, so the verde is mostly the pistol.
-    case 1:return u<.75?{items:[weaponItem('pistola',1)]}:u<.95?{items:[{id:'coxinha',level:1}]}:{items:[],grana:GRANA_VERDE};
-    case 2:return u<.65?{items:[weaponItem(rng.pick(['escopeta','submetralhadora']),2)]}
-      :u<.85?{items:[{id:rng.pick(DOCES),level:1}]}:{items:[],towerUnits:UNITS_PER_TOKEN/2};
-    // "rifle ou maçarico, roxo, ou uma azul virando roxa": the four weapons a roxa can hold, even odds.
-    case 3:return u<.6?{items:[weaponItem(rng.pick(['rifle','macarico','escopeta','submetralhadora']),3)]}
-      :u<.85?{items:[{id:rng.pick(DOCES),level:2}]}:{items:[],towerUnits:UNITS_PER_TOKEN};
-    // "bazuca ou qualquer arma dourada": every new weapon but the starting faca, even odds (the dourada is the only
-    // source of the rojão, whose minimum is dourada).
-    case 4:return u<.7?{items:[weaponItem(rng.pick(NEW_WEAPONS.filter(w=>w.id!=='faca').map(w=>w.id)),4)]}
-      :u<.9?{items:[kitItem(rng.pick(KIT_POOL[4]))]}:{items:[],grana:GRANA_DOURADA};
-    case 5:return {items:[{id:legendaryId(rng.pick(WEAPON_IDS)),level:5}],teamXp:LEGENDARY_TEAM_XP};
-  }
+  const pool=CRATE_WEAPONS[rarity];
+  // The pistol keeps VERDE_PISTOL of the verde once other weapons come verde (the only one, it is the only draw).
+  if(rarity===1&&pool.length>1)return {items:[weaponItem(rng.next()<VERDE_PISTOL?'pistola':rng.pick(pool.filter(id=>id!=='pistola')),1)]};
+  return {items:[weaponItem(rng.pick(pool),rarity)]};
 }
 
 /**
- * What a crate gives (torre-pela-caixa): a kit de torre of its rarity's tier (rules KIT_POOL) with KIT_CHANCE, else its
- * row of the prize table. Pure: same stream, same prize.
+ * What a crate gives (torre-pela-caixa): a kit de torre of its rarity's tier (rules KIT_POOL) with KIT_CHANCE, else a
+ * weapon of its rarity (rollPrize). Nothing else. Pure: same stream, same prize.
  */
 export function rollCrate(rng:Rng,rarity:Rarity):Prize{
   if(rng.next()<KIT_CHANCE)return {items:[kitItem(rng.pick(KIT_POOL[rarity]))]};
@@ -239,21 +243,31 @@ export function startBands(points:readonly StartPoint[]):StartPoint[][]{
 }
 
 /**
- * The first minute's prize (BUG-20261022-ORQ-caixas-sumiram, the user: "sorteio entre as armas/itens do jogo (não
- * sempre pistola)"): one STARTER row at even odds, a weapon at the crate's rarity (never below its minimum). No row is
- * more than 1/6 of the draws.
+ * The first minute's weapons (BUG-20261022-ORQ-caixas-sumiram, the user: "sorteio entre as armas/itens do jogo (não
+ * sempre pistola)"): an azul crate's (pistola, escopeta, submetralhadora), even odds, at the crate's rarity (never below
+ * the weapon's minimum).
  */
-export const STARTER:readonly ((rng:Rng,rarity:Rarity)=>Prize)[]=[
-  (_rng,r)=>({items:[weaponItem('pistola',r)]}),
-  (rng,r)=>({items:[weaponItem(rng.pick(['escopeta','submetralhadora']),r)]}),
-  ()=>({items:[{id:'coxinha',level:1}]}),
-  rng=>({items:[{id:rng.pick(DOCES),level:1}]}),
-  rng=>({items:[kitItem(rng.pick(KIT_POOL[1]))]}),
-  rng=>rng.next()<.5?{items:[],grana:GRANA_VERDE*2}:{items:[],towerUnits:UNITS_PER_TOKEN/2},
-];
-export function rollStarter(rng:Rng,rarity:Rarity):Prize{return rng.pick(STARTER)(rng,rarity);}
-/** What a "the same prize again" check compares: the first item's id, else the kind of the row. */
-export const prizeKey=(prize:Prize)=>prize.items[0]?.id??(prize.grana?'grana':prize.towerUnits?'fichas':prize.teamXp?'xp':'nada');
+export const STARTER_WEAPONS:readonly string[]=CRATE_WEAPONS[2];
+/**
+ * The first minute's prize: a verde kit (KIT_POOL[1], even odds) with KIT_CHANCE, else one of STARTER_WEAPONS. With only
+ * weapons and kits left (bau-so-arma-ou-torre: the coxinha, doce and Grana/fichas rows are gone) the old "no row above
+ * 1/6" becomes "no prize above 1/4": each weapon (1-KIT_CHANCE)/3 = 1/4, each kit KIT_CHANCE/|KIT_POOL[1]|; with the
+ * never-twice-in-a-row redraw the pistol is never the prize every time.
+ */
+export function rollStarter(rng:Rng,rarity:Rarity):Prize{
+  if(rng.next()<KIT_CHANCE)return {items:[kitItem(rng.pick(KIT_POOL[1]))]};
+  return {items:[weaponItem(rng.pick(STARTER_WEAPONS),rarity)]};
+}
+/**
+ * The same prize still after PRIZE_REDRAWS (a verde is only the pistol or a kit, so redraws alone miss often): the other
+ * kind, a weapon after a kit and a kit after a weapon, never equal to `last`.
+ */
+export function otherPrize(rng:Rng,rarity:Rarity,start:boolean,last:string):Prize{
+  if(isKitId(last))return start?{items:[weaponItem(rng.pick(STARTER_WEAPONS),rarity)]}:rollPrize(rng,rarity);
+  return {items:[kitItem(rng.pick(KIT_POOL[start?1:rarity]))]};
+}
+/** What a "the same prize again" check compares: the item's id. */
+export const prizeKey=(prize:Prize)=>prize.items[0]?.id??'nada';
 
 export function createCrates(options:CratesOptions):Crates{
   const {seed,points,startPoints=[],hooks={}}=options;
@@ -383,16 +397,14 @@ export function createCrates(options:CratesOptions):Crates{
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
-    // Never the opener's last prize again: the same stream draws again (up to PRIZE_REDRAWS times).
+    // Never the opener's last prize again: the same stream draws again (up to PRIZE_REDRAWS times), then the other kind.
     const stream=new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),draw=()=>record.start?rollStarter(stream,record.rarity):rollCrate(stream,record.rarity);
     const last=(state.last??={})[p.id];
     let prize=draw();
     for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===last;i++)prize=draw();
+    if(prizeKey(prize)===last)prize=otherPrize(stream,record.rarity,!!record.start,last);
     state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
-    if(prize.grana)hooks.addGrana?.(ctx,p,prize.grana);
-    if(prize.towerUnits)hooks.addTowerUnits?.(ctx,prize.towerUnits);
-    if(prize.teamXp)ctx.team.xp+=prize.teamXp;
     ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:record.rarity});
   }
 

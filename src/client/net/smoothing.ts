@@ -22,6 +22,11 @@ export const CORRECTION_MAX_PX=4;
  * the base walk, × HERO_SPEED_MULT (velocidade-heroi-e-projetil): the same walking time of error.
  */
 export const CORRECTION_HIDE_UNITS=3*HERO_SPEED_MULT;
+/**
+ * BUG heroi-vai-e-volta: while the hero walks, the fade may slow the drawing down but never turn it back: it keeps at
+ * least this share of the frame's own motion along it (a correction behind the hero is walked into, not snapped back to).
+ */
+export const CORRECTION_MIN_FORWARD=.3;
 /** Below this the offset is gone (units). */
 const CORRECTION_EPS=1e-3;
 
@@ -46,14 +51,23 @@ export class SelfCorrection {
   clear(){this.x=0;this.y=0;}
   /**
    * One frame of `dtMs`: the offset fades by the time constant, at most CORRECTION_MAX_PX on screen. `unitPx`: screen
-   * px of one world unit (the largest over directions), so the cap holds at any zoom. Returns the px moved.
+   * px of one world unit (the largest over directions), so the cap holds at any zoom. `motion`: how far the prediction
+   * itself drew the hero this frame (units); against it the fade goes no faster than CORRECTION_MIN_FORWARD allows.
+   * Returns the px moved.
    */
-  step(dtMs:number,unitPx:number):number{
+  step(dtMs:number,unitPx:number,motion?:Point):number{
     const size=Math.hypot(this.x,this.y);
     if(size<CORRECTION_EPS){this.clear();return this.lastPx=0;}
     const fade=size*(1-Math.exp(-Math.max(0,dtMs)/CORRECTION_TAU_MS));
     const cap=unitPx>0?CORRECTION_MAX_PX/unitPx:fade;
-    const move=Math.min(fade,cap),k=size-move<CORRECTION_EPS?0:(size-move)/size;
+    let move=Math.min(fade,cap);
+    const walked=motion?Math.hypot(motion.x,motion.y):0;
+    if(walked>1e-6&&Number.isFinite(walked)){
+      // The fade moves the drawing by -offset/size × move; its part along the motion may not undo more than allowed.
+      const back=-(this.x*motion!.x+this.y*motion!.y)/(size*walked),limit=(1-CORRECTION_MIN_FORWARD)*walked;
+      if(back<0&&-back*move>limit)move=limit/-back;
+    }
+    const k=size-move<CORRECTION_EPS?0:(size-move)/size;
     this.x*=k;this.y*=k;
     return this.lastPx=(k===0?size:move)*Math.max(0,unitPx);
   }

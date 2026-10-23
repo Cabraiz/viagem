@@ -12,7 +12,8 @@ import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
 import type {CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
-import {stickerOrIcon} from '../ui/sticker.ts';
+import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
+import {itemDisplay} from './items.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -80,6 +81,15 @@ export const ATTACK_WORD='Atacar',ATTACK_LABEL='Atacar: toque para um ataque, se
 /** Ring circumference in the ring's own units (pathLength). */
 const RING=100;
 /** Paints #coop-attack: sticker + "Habilidade", cooldown ring and seconds, and the short notes. */
+/**
+ * The sticker of the weapon in the hand (atacar-arma-na-mao, the user, 23/10: "a arma selecionada deve ficar no atacar"):
+ * the inventory's slot `hand` (hud/inventory.ts inventorySlots); undefined without a hand or with an empty one.
+ */
+export function attackIconOf(player:Pick<PlayerRunView,'weapons'|'hand'>|undefined){
+  const item=player&&player.hand!==undefined?player.weapons?.[player.hand]:undefined;
+  return item?itemDisplay(item.id).icon:undefined;
+}
+
 export class SkillButton {
   readonly taps=new SkillTaps();
   readonly el:HTMLButtonElement;
@@ -89,6 +99,8 @@ export class SkillButton {
   private state:SkillState={mode:'ready',seconds:0,progress:1};
   private fill:SVGCircleElement;private time:HTMLElement;private word:HTMLElement;
   private combat:CombatMode='auto';
+  /** The weapon sticker on the attack button right now ('' the generic attack sticker). */
+  private handIcon:StickerName|''='';
   private readonly classId:string;
   constructor(el:HTMLButtonElement,classId:string){
     this.el=el;this.classId=classId;
@@ -106,9 +118,10 @@ export class SkillButton {
     this.combat=combat;this.taps.clear();this.answered=undefined;this.note='';this.noteUntil=0;
     this.el.dataset.action=combat==='manual'?'attack':'skill';
     this.el.setAttribute('aria-label',combat==='manual'?ATTACK_LABEL:skillLabel(this.classId));
-    // Manual: the attack sticker (ui/atacar; the chinelo without that art) until the inventory shows the equipped weapon.
+    // Manual: the attack sticker (ui/atacar; the chinelo without that art) until update() sees the weapon in the hand.
     const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
     if(old)old.outerHTML=combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+    this.handIcon='';
     this.state={mode:'ready',seconds:0,progress:1};this.el.dataset.note='';this.paint();
   }
   get attackMode(){return this.combat==='manual';}
@@ -131,8 +144,17 @@ export class SkillButton {
   /** Each authoritative view: the local player's cooldown. */
   update(player:PlayerRunView|undefined,tick:number,now:number){
     this.player=player;this.tick=tick;
+    if(this.combat==='manual')this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);
+  }
+  /** Manual combat: the button shows the weapon in the hand; with none, the generic attack sticker. */
+  private showHand(name:StickerName|''){
+    if(name===this.handIcon)return;
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(!old)return;
+    this.handIcon=name;
+    old.outerHTML=name?sticker(name,options):stickerOrIcon('atacar','chinelo',options);
   }
   /** Run reset (rematch): ready, nothing pending. */
   reset(){this.taps.clear();this.answered=undefined;this.player=undefined;this.note='';this.noteUntil=0;this.state={mode:'ready',seconds:0,progress:1};this.setHeld(false);this.paint();}

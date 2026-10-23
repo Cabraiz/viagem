@@ -72,6 +72,9 @@ test('push16 (empurrar-uno): the head keeps ±4 %, the height may drop to PUSH_M
   assert.deepEqual(verdict(m(clip(1.02,.9))),[]);
   assert.deepEqual(verdict(m(clip(1.02,PUSH_MIN_HEIGHT-.01))),[`x push16-W height ${PUSH_MIN_HEIGHT-.01} (≥ ${PUSH_MIN_HEIGHT})`]);
   assert.deepEqual(verdict(m(clip(.95,.95))),['x push16-W head 0.95 (±4%)']);
+  // push16-N: the head is not read (the palms beside it), the height bounds it both ways
+  const n=(c:ReturnType<typeof clip>)=>({id:'x',dirs:{N:{rest:{},restKey:'idle8',clips:{push:c}}}});
+  assert.deepEqual(verdict(n(clip(1.26,.93))),[]);assert.equal(verdict(n(clip(1,1.08))).length,1);assert.equal(verdict(n(clip(1,.8))).length,1);
   // a run keeps the plain ±4 % height
   assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,.9)}}}}).length,1);
 });

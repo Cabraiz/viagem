@@ -205,12 +205,20 @@ export const GATED=['head','height'];
  * never changes. Its height only has to stay at least PUSH_MIN_HEIGHT of the rest's (the same rule as a crouched run).
  */
 export const PUSH_MIN_HEIGHT=.88;
+/**
+ * Pushing away from the camera (push16-N) the palms rise beside the head on the screen and the head template locks on
+ * hands and hair together (it reads 1.24–1.26 on heads drawn the rest's size: evidence/NEW-20261022-ORQ-empurrar-uno/
+ * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
+ */
+export const PUSH_HEAD_UNREAD=['N'];
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
     if(motion==='push'){
-      if(keys.includes('head')&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
+      const unread=PUSH_HEAD_UNREAD.includes(d);
+      if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
       if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
+      if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys)if(Math.abs(c[key]-1)>TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (±${TOL[key]*100}%)`);
     if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
   }

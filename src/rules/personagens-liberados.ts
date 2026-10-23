@@ -6,7 +6,7 @@
  */
 import { getClass, type HeroClass } from './classes.ts';
 
-export const PERSONAGENS_LIBERADOS: readonly string[] = Object.freeze(['viciado-em-bet','clt-cansado']);
+export const PERSONAGENS_LIBERADOS: readonly string[] = Object.freeze(['viciado-em-bet','clt-cansado','gato-nada-pra-comer']);
 /** Where the menu opens, and what a locked, hidden or unknown class becomes for a person. */
 export const PERSONAGEM_PADRAO = PERSONAGENS_LIBERADOS[0];
 export const isLiberado = (id: unknown): id is string => typeof id === 'string' && PERSONAGENS_LIBERADOS.includes(id);

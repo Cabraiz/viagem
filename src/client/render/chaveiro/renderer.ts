@@ -166,6 +166,15 @@ export class ChaveiroRenderer {
     return this.uno;
   }
 
+  /**
+   * Card empurrar-uno: where the car is drawn (its centre and the heading of this frame) and who pushes it (the movers
+   * but the rope's holder), for the pushers' hands on it (push-contact.ts); undefined without a car.
+   */
+  carPose():{x:number;y:number;heading:number;pushers:readonly string[]}|undefined{
+    const car=this.state.view?.car;
+    return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope)};
+  }
+
   /** A new view: the objective (undefined hides it all) at the server tick. */
   push(view:ChaveiroView|undefined,tick:number){this.state.push(view,tick,this.now,this.options.reduced);}
 

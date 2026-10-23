@@ -11,7 +11,7 @@ import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, pla
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
-import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
@@ -279,6 +279,10 @@ function renderSelected(announce=false) {
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
   if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
   sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
+  // A letreiro taller than its sign (the gato's collar): laid out by the sign's own shape, the rest over the top.
+  const tall=picture?letreiroAltoOf(selected.id):undefined;sign.classList.toggle('letreiro-alto',!!tall);
+  if(tall){sign.style.setProperty('--sinal-ar',String(tall.sinal/tall.w));sign.style.setProperty('--alto-ar',String(tall.h/tall.w));}
+  else{sign.style.removeProperty('--sinal-ar');sign.style.removeProperty('--alto-ar');}
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
   showCutout(); // first: a hero standing in place never starts his dance

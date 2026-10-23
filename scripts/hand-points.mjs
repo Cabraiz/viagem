@@ -31,6 +31,8 @@ const CELL=96;
 const LEGACY=new Set(['clt-cansado','viciado-em-bet']);
 /** The bots' classes whose walk128 and idle8 the tracking gets right (hands apart from bare skin elsewhere; checked by eye). */
 const AUTO=new Set(['faxineira','mendigo','passageira','roqueira']);
+/** M16 heroes measured by the rule (the outermost paw on the weapon side, per pose) and reviewed on the debug sheets. */
+const M16_AUTO=new Set(['gato-nada-pra-comer']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
@@ -127,6 +129,32 @@ export function handOf(px,side,back=false){
   return [Math.round(sx/n*10)/10,Math.round(sy/n*10)/10];
 }
 
+/**
+ * The gato's paw in one pose (M16_AUTO): the paw tone in small patches (4–70 px, 8-connected) that touch the PINK sleeve
+ * (within 2 px), below the head (30 % of the figure down: a back view's ears are fur too) and above the knees; the outermost on `side`. The striped tail (long), the face and the
+ * cream belly (large) are not patches of that size, and only a paw comes out of a sleeve. None: hidden (undefined).
+ */
+const pink=(r,g,b)=>r>150&&r-g>60&&b>g;
+export function pawOf(px,side){
+  let top=CELL,bot=-1;
+  for(let y=0;y<CELL;y++)for(let x=0;x<CELL;x++)if(px.alpha(x,y)>40){top=Math.min(top,y);bot=Math.max(bot,y);}
+  if(bot<0)return undefined;
+  const h=bot-top,y0=Math.round(top+h*.3),y1=Math.round(bot-h*.2),seen=new Uint8Array(CELL*CELL);
+  const isPaw=(x,y)=>x>=0&&y>=0&&x<CELL&&y<CELL&&y>=y0&&y<=y1&&px.skin(x,y);
+  const nearPink=(x,y)=>{for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<CELL&&yy<CELL&&px.alpha(xx,yy)>40&&pink(...px.rgb(xx,yy)))return true;}return false;};
+  let best;
+  for(let y=y0;y<=y1;y++)for(let x=0;x<CELL;x++){
+    if(seen[y*CELL+x]||!isPaw(x,y))continue;
+    const stack=[[x,y]],pts=[];seen[y*CELL+x]=1;
+    while(stack.length){const [a,b]=stack.pop();pts.push([a,b]);
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=a+dx,yy=b+dy;if(isPaw(xx,yy)&&!seen[yy*CELL+xx]){seen[yy*CELL+xx]=1;stack.push([xx,yy]);}}}
+    if(pts.length<4||pts.length>70||!pts.some(([a,b])=>nearPink(a,b)))continue;
+    const c=[pts.reduce((t,q)=>t+q[0],0)/pts.length,pts.reduce((t,q)=>t+q[1],0)/pts.length];
+    if(!best||side*c[0]>side*best[0])best=c;
+  }
+  return best&&[Math.round(best[0]*10)/10,Math.round(best[1]*10)/10];
+}
+
 /** A sheet's poses, each an accessor {alpha(x,y), skin(x,y)} of its 96 px cell. */
 async function posesOf(file,id){
   const skin=handTone(id),legacy=LEGACY.has(id);
@@ -134,7 +162,8 @@ async function posesOf(file,id){
   const cols=info.width/CELL,rows=info.height/CELL;
   return Array.from({length:cols*rows},(_,c)=>{
     const ox=(c%cols)*CELL,oy=Math.floor(c/cols)*CELL,at=(x,y)=>((oy+y)*info.width+ox+x)*4;
-    return {legacy,alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);}};
+    return {legacy,alpha:(x,y)=>data[at(x,y)+3],skin:(x,y)=>{const i=at(x,y);return skin(data[i],data[i+1],data[i+2],data[i+3]);},
+      rgb:(x,y)=>{const i=at(x,y);return [data[i],data[i+1],data[i+2]];}};
   });
 }
 /**
@@ -153,6 +182,12 @@ async function measure(file,name,dir,fix,id){
     return BEHIND.has(d)?[...c.point,1]:c.point;
   });
   if(fix.keys)return guided(poses,fix.keys);
+  if(M16_AUTO.has(id)){
+    // a pose with no paw out of a sleeve: the paw is hidden; between the neighbours' paws, on the body (behind)
+    const pts=poses.map(px=>pawOf(px,SIDE[dir]));
+    return pts.map((p,i)=>{if(p)return p;const a=pts.slice(0,i).reverse().find(Boolean)??pts.find(Boolean),b=pts.slice(i+1).find(Boolean)??a;
+      return a?[...onBody(poses[i],[(a[0]+b[0])/2,(a[1]+b[1])/2]),1]:[...onBody(poses[i],[CELL/2,CELL*.6]),1];});
+  }
   if(fix.front)return poses.map(px=>candidates(px).sort((a,b)=>SIDE[dir]*b.point[0]-SIDE[dir]*a.point[0])[0]?.point);
   if(name.includes('128-'))return trackSheet(poses,SIDE[dir],fix.pick)?.points??poses.map(()=>undefined);
   return poses.map(px=>handOf(px,SIDE[dir],BEHIND.has(dir)));
@@ -216,7 +251,7 @@ for(const id of ids){
     // The bots' classes: the tracking holds only for AUTO's walks and rest (reviewed pose by pose); every other sheet
     // needs its hand marked by eye (scripts/hand-mark.mjs, CLT_KEYS' method); until then none (the sticker at the side).
     const marked=OVERRIDES[`${id}:${name}`];
-    if(!LEGACY.has(id)&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
+    if(!LEGACY.has(id)&&!M16_AUTO.has(id)&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix,id);
     for(const [i,p] of Object.entries(fix))if(/^\d+$/.test(i))points[Number(i)]=p;

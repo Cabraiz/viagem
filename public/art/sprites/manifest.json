@@ -5843,6 +5843,1952 @@
       },
       "sha256": "ad3da73cc797d75d46f63713cde1da8f8f6abc1819a460f88b80854d5f59300b"
     },
+    "gato-nada-pra-comer": {
+      "kind": "dir8",
+      "files": {
+        "attack16-N": {
+          "file": "gato-nada-pra-comer.attack16-n.015dba4b1272.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.87,
+          "figure": {
+            "left": 20,
+            "top": 24,
+            "right": 78,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.attack16-n.015dba4b1272.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "015dba4b12726fab04a2f1d44b960d9e7b187bf5bbec36cfe320534507b913f7"
+            }
+          ],
+          "sha256": "015dba4b12726fab04a2f1d44b960d9e7b187bf5bbec36cfe320534507b913f7"
+        },
+        "attack16-NW": {
+          "file": "gato-nada-pra-comer.attack16-nw.25064cb39c74.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.63,
+          "figure": {
+            "left": 17,
+            "top": 29,
+            "right": 74,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.attack16-nw.25064cb39c74.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "25064cb39c744b03ec4629bd38610bb8b322bdc13cd2049bc749d65eedde4931"
+            }
+          ],
+          "sha256": "25064cb39c744b03ec4629bd38610bb8b322bdc13cd2049bc749d65eedde4931"
+        },
+        "attack16-S": {
+          "file": "gato-nada-pra-comer.attack16-s.b66f4965bba8.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.89,
+          "figure": {
+            "left": 19,
+            "top": 28,
+            "right": 78,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.attack16-s.b66f4965bba8.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b66f4965bba80481f09c7f93569381e49ecff4484222f1b441a5ebaaf84e0986"
+            }
+          ],
+          "sha256": "b66f4965bba80481f09c7f93569381e49ecff4484222f1b441a5ebaaf84e0986"
+        },
+        "attack16-SE": {
+          "file": "gato-nada-pra-comer.attack16-se.d642ac09c511.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.86,
+          "figure": {
+            "left": 15,
+            "top": 27,
+            "right": 80,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.attack16-se.d642ac09c511.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d642ac09c511ff29d031afb5a8e573ed40e1327a49028543bd6a78f9d2a66f30"
+            }
+          ],
+          "sha256": "d642ac09c511ff29d031afb5a8e573ed40e1327a49028543bd6a78f9d2a66f30"
+        },
+        "attack16-W": {
+          "file": "gato-nada-pra-comer.attack16-w.d257808b7163.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 22,
+            "top": 29,
+            "right": 85,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.attack16-w.d257808b7163.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4"
+            }
+          ],
+          "sha256": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4"
+        },
+        "hurt16-N": {
+          "file": "gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 19,
+            "top": 30,
+            "right": 76,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a"
+            }
+          ],
+          "sha256": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a"
+        },
+        "hurt16-NW": {
+          "file": "gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.01,
+          "figure": {
+            "left": 23,
+            "top": 29,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "c34cb8ea812f5e4253c2aed4ff5cb01a807c6efe45198d13ae7366d66194a075"
+            }
+          ],
+          "sha256": "c34cb8ea812f5e4253c2aed4ff5cb01a807c6efe45198d13ae7366d66194a075"
+        },
+        "hurt16-S": {
+          "file": "gato-nada-pra-comer.hurt16-s.62e20d434214.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.1,
+          "figure": {
+            "left": 25,
+            "top": 28,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.hurt16-s.62e20d434214.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "62e20d434214c5d54d354cd8507c68fd9d14f9a05781eb5f046ed11a7e6e4d6a"
+            }
+          ],
+          "sha256": "62e20d434214c5d54d354cd8507c68fd9d14f9a05781eb5f046ed11a7e6e4d6a"
+        },
+        "hurt16-SE": {
+          "file": "gato-nada-pra-comer.hurt16-se.2477472508be.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.89,
+          "figure": {
+            "left": 23,
+            "top": 29,
+            "right": 71,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.hurt16-se.2477472508be.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "2477472508be01d5a47f208de807feb0e44907fda2fb2b90c11f3c5922becac9"
+            }
+          ],
+          "sha256": "2477472508be01d5a47f208de807feb0e44907fda2fb2b90c11f3c5922becac9"
+        },
+        "hurt16-W": {
+          "file": "gato-nada-pra-comer.hurt16-w.45b0734d0223.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 28,
+            "top": 29,
+            "right": 77,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.hurt16-w.45b0734d0223.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "45b0734d0223baca4bd189529c21990d43ae8f23a19ea0484ee4df46208626d6"
+            }
+          ],
+          "sha256": "45b0734d0223baca4bd189529c21990d43ae8f23a19ea0484ee4df46208626d6"
+        },
+        "idle16-N": {
+          "file": "gato-nada-pra-comer.idle16-n.5aaede5db316.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 23,
+            "top": 31,
+            "right": 74,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-n.5aaede5db316.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c"
+            }
+          ],
+          "sha256": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c"
+        },
+        "idle16-NW": {
+          "file": "gato-nada-pra-comer.idle16-nw.651957abad67.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.01,
+          "figure": {
+            "left": 24,
+            "top": 30,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-nw.651957abad67.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5"
+            }
+          ],
+          "sha256": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5"
+        },
+        "idle16-S": {
+          "file": "gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.1,
+          "figure": {
+            "left": 23,
+            "top": 30,
+            "right": 74,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6"
+            }
+          ],
+          "sha256": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6"
+        },
+        "idle16-SE": {
+          "file": "gato-nada-pra-comer.idle16-se.39c43413843d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.89,
+          "figure": {
+            "left": 25,
+            "top": 29,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-se.39c43413843d.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da"
+            }
+          ],
+          "sha256": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da"
+        },
+        "idle16-W": {
+          "file": "gato-nada-pra-comer.idle16-w.96fff0d71005.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 28,
+            "top": 29,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-w.96fff0d71005.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22"
+            }
+          ],
+          "sha256": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22"
+        },
+        "push16-N": {
+          "file": "gato-nada-pra-comer.push16-n.11a332597dc4.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 27,
+            "top": 30,
+            "right": 69,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.push16-n.11a332597dc4.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3"
+            }
+          ],
+          "sha256": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
+          "phase": {
+            "d": [
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-NW": {
+          "file": "gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 42.14,
+          "figure": {
+            "left": 15,
+            "top": 33,
+            "right": 78,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "8b0eef2b0439bd6b069c6ace630307500f46a4bb81b5e16307e69eb9aa4b7f50"
+            }
+          ],
+          "sha256": "8b0eef2b0439bd6b069c6ace630307500f46a4bb81b5e16307e69eb9aa4b7f50",
+          "phase": {
+            "d": [
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816,
+              0.03816
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-S": {
+          "file": "gato-nada-pra-comer.push16-s.956222cb25d1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.73,
+          "figure": {
+            "left": 26,
+            "top": 33,
+            "right": 70,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.push16-s.956222cb25d1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "956222cb25d16299680c465445810595262b6a4964689e01ec5efed8999231ab"
+            }
+          ],
+          "sha256": "956222cb25d16299680c465445810595262b6a4964689e01ec5efed8999231ab",
+          "phase": {
+            "d": [
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975,
+              0.01975
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-SE": {
+          "file": "gato-nada-pra-comer.push16-se.497ecf61c520.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 52.08,
+          "figure": {
+            "left": 24,
+            "top": 31,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.push16-se.497ecf61c520.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "497ecf61c520ad0126a845a38f59167640bb55bc7393ac2330998c8a34052451"
+            }
+          ],
+          "sha256": "497ecf61c520ad0126a845a38f59167640bb55bc7393ac2330998c8a34052451",
+          "phase": {
+            "d": [
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901,
+              0.02901
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-W": {
+          "file": "gato-nada-pra-comer.push16-w.50ea709bd678.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 41.14,
+          "figure": {
+            "left": 20,
+            "top": 32,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.push16-w.50ea709bd678.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "50ea709bd678b24614f1b86af0c4b5a5ec6565e2a26089c3c0fdeab15314cd38"
+            }
+          ],
+          "sha256": "50ea709bd678b24614f1b86af0c4b5a5ec6565e2a26089c3c0fdeab15314cd38",
+          "phase": {
+            "d": [
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395,
+              0.0395
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-N": {
+          "file": "gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.8,
+          "figure": {
+            "left": 23,
+            "top": 29,
+            "right": 73,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b"
+            }
+          ],
+          "sha256": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b",
+          "phase": {
+            "d": [
+              0.02,
+              0.27899,
+              0.0297,
+              0.02,
+              0.02,
+              0.27899,
+              0.27899,
+              0.02,
+              0.02,
+              0.27899,
+              0.0297,
+              0.02,
+              0.02,
+              0.27899,
+              0.27899,
+              0.02
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-NW": {
+          "file": "gato-nada-pra-comer.run16-nw.3203fd970c77.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.9,
+          "figure": {
+            "left": 23,
+            "top": 25,
+            "right": 74,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.run16-nw.3203fd970c77.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3203fd970c77bfb78a76f86398505420a3814c5b05f08774c331b9919ea88171"
+            }
+          ],
+          "sha256": "3203fd970c77bfb78a76f86398505420a3814c5b05f08774c331b9919ea88171",
+          "phase": {
+            "d": [
+              0.02,
+              0.48505,
+              0.02,
+              0.1505,
+              0.48505,
+              0.48505,
+              0.0602,
+              0.02,
+              0.48505,
+              0.02,
+              0.1548,
+              0.02,
+              0.48505,
+              0.0559,
+              0.02,
+              0.02
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                7,
+                3.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                2.8,
+                1.4
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                7.2,
+                3.6
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                2.6,
+                1.3
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-S": {
+          "file": "gato-nada-pra-comer.run16-s.67035aa11ade.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.78,
+          "figure": {
+            "left": 24,
+            "top": 29,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.run16-s.67035aa11ade.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "67035aa11ade725a854ff04b140cc22efff74f09b7d28d70240157d868f1fce1"
+            }
+          ],
+          "sha256": "67035aa11ade725a854ff04b140cc22efff74f09b7d28d70240157d868f1fce1",
+          "phase": {
+            "d": [
+              0.02,
+              0.02,
+              0.02,
+              0.04808,
+              0.39929,
+              0.39929,
+              0.02,
+              0.02,
+              0.02,
+              0.02,
+              0.02,
+              0.04808,
+              0.39929,
+              0.39929,
+              0.02,
+              0.02
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -2.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -2.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-SE": {
+          "file": "gato-nada-pra-comer.run16-se.41da07dc107d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.77,
+          "figure": {
+            "left": 21,
+            "top": 25,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.run16-se.41da07dc107d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03"
+            }
+          ],
+          "sha256": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03",
+          "phase": {
+            "d": [
+              0.02,
+              0.03797,
+              0.33356,
+              0.33356,
+              0.33356,
+              0.33356,
+              0.13079,
+              0.02,
+              0.05485,
+              0.13079,
+              0.33356,
+              0.33356,
+              0.33356,
+              0.02953,
+              0.18564,
+              0.04219
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                -1.8,
+                -0.9
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -6.2,
+                -3.1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -2.6,
+                -1.3
+              ],
+              [
+                -6.2,
+                -3.1
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -1.4,
+                -0.7
+              ],
+              [
+                -8.8,
+                -4.4
+              ],
+              [
+                -2,
+                -1
+              ]
+            ]
+          }
+        },
+        "run16-W": {
+          "file": "gato-nada-pra-comer.run16-w.ab6967f5204b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 28,
+            "top": 27,
+            "right": 77,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.run16-w.ab6967f5204b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1"
+            }
+          ],
+          "sha256": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
+          "phase": {
+            "d": [
+              0.57226,
+              0.57226,
+              0.57226,
+              0.04717,
+              0.02,
+              0.0566,
+              0.02,
+              0.57226,
+              0.57226,
+              0.02,
+              0.02,
+              0.09434,
+              0.02,
+              0.0283,
+              0.02,
+              0.57226
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                2.5,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                5,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                1.5,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "walk16-N": {
+          "file": "gato-nada-pra-comer.walk16-n.17a75a5e2089.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.86,
+          "figure": {
+            "left": 21,
+            "top": 29,
+            "right": 75,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.walk16-n.17a75a5e2089.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac"
+            }
+          ],
+          "sha256": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac"
+        },
+        "walk16-NW": {
+          "file": "gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.88,
+          "figure": {
+            "left": 25,
+            "top": 29,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2b847f6e1090d92bea8cae29532230c38d114dd2550795ce124f2a800d7d3258"
+            }
+          ],
+          "sha256": "2b847f6e1090d92bea8cae29532230c38d114dd2550795ce124f2a800d7d3258"
+        },
+        "walk16-S": {
+          "file": "gato-nada-pra-comer.walk16-s.8a66abe998b9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.73,
+          "figure": {
+            "left": 24,
+            "top": 30,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.walk16-s.8a66abe998b9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "8a66abe998b9c638ac22c0be1483bf088bf75477e41add84ead2f32c6774c853"
+            }
+          ],
+          "sha256": "8a66abe998b9c638ac22c0be1483bf088bf75477e41add84ead2f32c6774c853"
+        },
+        "walk16-SE": {
+          "file": "gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 23,
+            "top": 28,
+            "right": 72,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0bdb1d04fde63d664a84482e6386dbd8390b9d7071b314a5bae42fff88640385"
+            }
+          ],
+          "sha256": "0bdb1d04fde63d664a84482e6386dbd8390b9d7071b314a5bae42fff88640385"
+        },
+        "walk16-W": {
+          "file": "gato-nada-pra-comer.walk16-w.0539b709da31.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.73,
+          "figure": {
+            "left": 28,
+            "top": 28,
+            "right": 80,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.walk16-w.0539b709da31.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc"
+            }
+          ],
+          "sha256": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc"
+        }
+      },
+      "sha256": "820c6b364690df4baef1af3c242c044fd6f656c37e69839917587f3135d12d74"
+    },
     "goleira": {
       "kind": "dir8",
       "files": {

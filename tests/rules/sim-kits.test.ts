@@ -380,7 +380,7 @@ test('gato-nada-pra-comer: hits and freezes the enemies within 5, then they chas
   assert.deepEqual([...res.hits].sort(),['a','b','w']);assert.deepEqual(res.helped,['p1']);
   assert.equal(hits.length,3);
   assert.equal(kitFor('gato-nada-pra-comer')!.skill.cooldown,16);
-  assert.deepEqual(classBonusOf('gato-nada-pra-comer'),{moveSpeed:0.15,maxHp:-10});
+  assert.deepEqual(classBonusOf('gato-nada-pra-comer'),{moveSpeed:0.15,luck:0.15,maxHp:-10});
   const alone=makeCtx(7,200),q=addPlayer(alone.fake,'q','gato-nada-pra-comer',10,10);
   const solo=cast(alone.ctx,q);
   assert.ok(solo);assert.deepEqual(solo.hits,[]);assert.equal(q.invulnerableUntil,200+ticks(1.5));

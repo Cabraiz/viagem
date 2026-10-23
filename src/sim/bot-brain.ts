@@ -276,7 +276,8 @@ export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;
  * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
  * (nearest to the point among the standing bots that do not push and do not forge); 'carro' (D-052): a person moves
- * the car and this is one of the CAR_HELP_BOTS free bots nearest to it. `at`: where to go.
+ * the car and this is one of the CAR_HELP_BOTS free bots nearest to it (those already leaning behind it first). `at`:
+ * where to go.
  */
 export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField,nests?:boolean):ObjectiveTask|undefined{
   const o=view.objective;
@@ -314,8 +315,11 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   const heading=carHeading(view,bots);
   if(heading){
     const car={x:o.car.x,y:o.car.y};
-    const helpers=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE))
-      .slice(0,CAR_HELP_BOTS).map(p=>p.id);
+    // A bot already leaning behind the car (carHelp's push zone) keeps its place before one nearer to the body: the car
+    // rolling toward a free bot ahead made it the nearer one, and the helper pushing went off while it circled to the back.
+    const behind=(p:PlayerRunView)=>{const at=positionOf(p)!,d=dist(at,car);return d<=CAR_HELP_NEAR&&d>1e-6&&-((at.x-car.x)*heading.x+(at.y-car.y)*heading.y)/d>=CAR_LEAN_DOT;};
+    const free=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE));
+    const helpers=[...free.filter(behind),...free.filter(p=>!behind(p))].slice(0,CAR_HELP_BOTS).map(p=>p.id);
     const i=helpers.indexOf(selfId);
     if(i>=0)return {kind:'carro',at:car,heading,side:i===0?1:-1};
   }

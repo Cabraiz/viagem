@@ -51,6 +51,14 @@ test('brain: the heading is the people\'s pull (the rope toward its holder, the 
   assert.ok(Math.abs(two.x-Math.SQRT1_2)<1e-9&&Math.abs(two.y+Math.SQRT1_2)<1e-9,JSON.stringify(two));
 });
 
+test('brain: the helpers leaning behind the car keep their place when the car rolls up to a free bot ahead',()=>{
+  // Ana pushes east with b1 and b2 leaning behind; b3, ahead and off the line, is now the nearest to the body.
+  const rolling=view([player('ana',-1.3),player('b1',-2.3),player('b2',-3.5),player('b3',1.2,1.2)],{movers:['ana','b1','b2']});
+  assert.equal(objectiveTask(rolling,'b1',BOTS)?.kind,'carro');
+  assert.equal(objectiveTask(rolling,'b2',BOTS)?.kind,'carro');
+  assert.equal(objectiveTask(rolling,'b3',BOTS),undefined,'it would circle to the back while b2 walked off');
+});
+
 test('brain: the moto\'s pushers and far bots stay out; the next nearest bot helps instead',()=>{
   // A dead moto 40 u east with a crew: b1 and b2 (nearest to it) push the moto; only b3 is free for the car.
   const moto=view([player('ana',-1.3),player('b1',38),player('b2',36),player('b3',-4)],{movers:['ana']},'morta');
@@ -81,6 +89,9 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   // Ana leans on its west side and walks east; the bots stand around the car (3 to 6 u, where they fight). Asset v4
   // (mapa-175-com-viaduto): the two nearest behind it and the third ahead (the plaza is 1.75× smaller: a helper that
   // starts ahead circles a rolling car while Ana and the other helper hold its back).
+  // The street east of the car is ~9 u long in v4 (a block at x ≈ 92): the car starts 5 u west, where it stands clear
+  // to x ≈ 73, so the 3 s and the second at full crew fit before it.
+  const start=sim.run.chaveiro!.state.car;start.x-=5;
   ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[-3,-4,6][i];b.y=c.y;});
   let seq=0;
   const lean=(push:boolean)=>{

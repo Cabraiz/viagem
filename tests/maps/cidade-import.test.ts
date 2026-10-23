@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {CITY_COMPACT,CITY_DISTANCE_SCALE,CITY_MAP_SCALE} from '../../src/rules/scale.ts';
 import {decorate} from '../../scripts/cenario-cidade.ts';
 import {scaleCity} from '../../scripts/escalar-cidade.ts';
 
@@ -53,15 +53,17 @@ const fromPraca=bfs(points.praca);
 const units=(px:number)=>px*STEP;
 
 // NEW-20261013-ORQ-cidade-escala-1-7: version 2 is the .w3x import (version 1: 0.88 u cells, 169 u) × CITY_MAP_SCALE 1.7
-// (scripts/escalar-cidade.ts): same 192 cells and 768 samples per side, each 1.7× wider.
-test('asset header uses the D-026 scale × CITY_MAP_SCALE: 1 cell = 1.496 u, whole 192-cell city ≈ 287 u',()=>{
-  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,3);assert.equal(asset.id,'cidade-nevada');
-  assert.equal(CITY_MAP_SCALE,1.7);
-  assert.equal(asset.unitsPerCell,1.496);assert.equal(asset.cells.w,192);assert.equal(asset.cells.h,192);
-  assert.ok(Math.abs(asset.size.w-287.232)<1e-6&&Math.abs(asset.size.h-287.232)<1e-6);
-  assert.equal(PW,768);assert.ok(Math.abs(STEP-.374)<1e-9);
-  assert.equal(asset.heights.w,193);assert.equal(asset.heights.encoding,'i16le-centi-base64');
-  assert.equal(Buffer.from(asset.heights.data,'base64').length,193*193*2);
+// (scripts/escalar-cidade.ts): same 192 cells and 768 samples per side, each 1.7× wider. Version 3 placed the scenery.
+// NEW-20261023-ORQ-mapa-175-com-viaduto: version 4 has the distances ÷ CITY_COMPACT on the same cell (scripts/
+// compactar-cidade.ts): 110 cells and 440 samples per side, 164.56 u.
+test('asset header: 1 cell = 1.496 u (the D-026 scale × CITY_MAP_SCALE), the 192-cell city ÷ CITY_COMPACT = 110 cells ≈ 165 u',()=>{
+  assert.equal(asset.format,'viagem-city');assert.equal(asset.formatVersion,1);assert.equal(asset.version,4);assert.equal(asset.id,'cidade-nevada');
+  assert.equal(CITY_MAP_SCALE,1.7);assert.equal(CITY_COMPACT,1.75);
+  assert.equal(asset.unitsPerCell,1.496);assert.equal(asset.cells.w,Math.round(192/CITY_COMPACT));assert.equal(asset.cells.h,110);
+  assert.ok(Math.abs(asset.size.w-164.56)<1e-6&&Math.abs(asset.size.h-164.56)<1e-6);
+  assert.equal(PW,440);assert.ok(Math.abs(STEP-.374)<1e-9);
+  assert.equal(asset.heights.w,111);assert.equal(asset.heights.encoding,'i16le-centi-base64');
+  assert.equal(Buffer.from(asset.heights.data,'base64').length,111*111*2);
   const blocked=walk.reduce((n,c)=>n+(c?0:1),0)/walk.length;
   assert.ok(blocked>.2&&blocked<.6,`blocked fraction ${blocked}`);
 });
@@ -98,7 +100,9 @@ test('paths exist start→plaza→every spawn and plaza→every mouth, with plau
 });
 
 test('loot candidates are reachable, spread out and away from spawns, start and plaza',()=>{
-  assert.ok(asset.loot.length>=30&&asset.loot.length<=60,`${asset.loot.length} loot spots`);
+  // v4 (the user 23/10: "bem mais caixas pelo mapa e mais espalhadas"): ~100 spread points (was 48); tests/maps/caixas-
+  // espalhadas.test.ts checks the spacing and the coverage.
+  assert.ok(asset.loot.length>=80&&asset.loot.length<=130,`${asset.loot.length} loot spots`);
   const keep=[points.inicio,points.praca,...SPAWNS.map(s=>points[s])];
   for(const [i,l] of (asset.loot as P[]).entries()){
     assert.ok(isWalk(pix(l))&&fromPraca[pix(l)]>0,`loot ${i} reachable`);
@@ -130,17 +134,17 @@ test('asset stays small and carries no names or texts from the source map (D-026
 test('manifest carries id, version and the sha256 of the exact asset bytes',async()=>{
   const manifest=JSON.parse(readFileSync('public/maps/cidade-nevada.manifest.json','utf8'));
   const bytes=readFileSync(ASSET);
-  assert.deepEqual(manifest,{id:'cidade-nevada',version:3,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
+  assert.deepEqual(manifest,{id:'cidade-nevada',version:4,hash:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length});
 });
 
 test('heights keep the source orientation: the hill is east, the flooded pit centre-north',()=>{
   const b=Buffer.from(asset.heights.data,'base64'),h=new Int16Array(b.buffer.slice(b.byteOffset,b.byteOffset+b.length));
   let hi=0,lo=0;for(let i=1;i<h.length;i++){if(h[i]>h[hi])hi=i;if(h[i]<h[lo])lo=i;}
-  // Positions and heights in .w3x-import lengths (version 1) × CITY_MAP_SCALE.
-  const K=CITY_MAP_SCALE,at=(i:number)=>({x:(i%193)*asset.unitsPerCell,y:Math.floor(i/193)*asset.unitsPerCell});
+  // Positions in .w3x-import lengths (version 1) × CITY_DISTANCE_SCALE (v4), heights × CITY_MAP_SCALE (a cliff keeps its height).
+  const K=CITY_MAP_SCALE,D=CITY_DISTANCE_SCALE,at=(i:number)=>({x:(i%111)*asset.unitsPerCell,y:Math.floor(i/111)*asset.unitsPerCell});
   const top=at(hi),pit=at(lo);
-  assert.ok(top.x>120*K&&top.y<84*K,`highest corner east/north (${top.x},${top.y})`);
-  assert.ok(pit.x>84*K&&pit.x<120*K&&pit.y<60*K,`lowest corner centre-north (${pit.x},${pit.y})`);
+  assert.ok(top.x>120*D&&top.y<84*D,`highest corner east/north (${top.x},${top.y})`);
+  assert.ok(pit.x>84*D&&pit.x<120*D&&pit.y<60*D,`lowest corner centre-north (${pit.x},${pit.y})`);
   assert.ok(h[hi]/100>5*K&&h[lo]/100<-1*K,'height range in u');
 });
 

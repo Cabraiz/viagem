@@ -28,7 +28,7 @@ import {isStanding} from '../revive.ts';
 import {AvenuePlanner} from '../city/avenues.ts';
 import {cityLayoutFrom,cityTerrainOf} from '../city/grid.ts';
 import {cityRunStart} from '../city/tutorial.ts';
-import {CITY_MAP_SCALE,CRATE_BODY_RADIUS,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,CRATE_BODY_RADIUS,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
 import type {NodeInfo} from './resources.ts';
 import type {ResourceKind} from './state.ts';
 
@@ -36,9 +36,9 @@ export type LootTier='near'|'good'|'far';
 /**
  * Walk-time bounds (s) of the tiers: near below the first, good up to the second, far beyond. They describe where the
  * crates sit on the map (10 / 15 s at the base walk on the .w3x-sized city), so they grow with the map
- * (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_MAP_SCALE, 17 / 25.5 s): the same candidates keep their tiers and values.
+ * (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter), 17 / 25.5 s): the same candidates keep their tiers and values.
  */
-export const LOOT_NEAR_SECONDS=10*CITY_MAP_SCALE,LOOT_FAR_SECONDS=15*CITY_MAP_SCALE;
+export const LOOT_NEAR_SECONDS=10*CITY_DISTANCE_SCALE,LOOT_FAR_SECONDS=15*CITY_DISTANCE_SCALE;
 /**
  * Units a crate gives, by tier (farther pays more). Sized against the forge (recipes cost 5–7 units) and the island
  * economy (~70 units per intermission for a team): with the city's walking distances a solo hero brings back ~18
@@ -54,8 +54,8 @@ export const CRATE_PREFIX='caixa-';
  * `baseHeroSpeed`, cidade-04: ~1.99 u/s in the city), not the 2× walk (HERO_SPEED_MULT) the heroes now have, so the
  * crate tiers and the intermission length stay as tuned. The horn (cityFarthestReturn) times the real walk back.
  */
-/** D-051: walk distance (u) from the plaza of CityLoot.aroundPlaza, [min, max]. */
-export const AROUND_PLAZA:readonly [number,number]=[8,14];
+/** D-051: walk distance (u) from the plaza of CityLoot.aroundPlaza, [min, max] ([8, 14] on the 1.7× city; ÷ CITY_COMPACT since mapa-175-com-viaduto). */
+export const AROUND_PLAZA:readonly [number,number]=[5,8];
 /**
  * BUG-20261022-ORQ-caixas-sumiram: walk distance (u) from the run's start (sim/city/tutorial.ts cityRunStart, where the
  * heroes spawn, ~76 u of walk from the plaza) of CityLoot.aroundStart, [min, max]: the first minute's crates. Up to

@@ -12,7 +12,7 @@
  * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
 import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
-import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
@@ -84,16 +84,16 @@ export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
 
 /**
  * Planner layout from the asset's points: spawns ← spawnN/S/L/O, mouths ← bocas, plaza (fallback seed) ← praca; mapScale
- * ← rules CITY_MAP_SCALE (the asset is the .w3x city × that scale since its version 2, NEW-20261013-ORQ-cidade-escala-1-7).
+ * ← rules CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (the asset is the .w3x city × that scale since its version 2, NEW-20261013-ORQ-cidade-escala-1-7).
  * mouthRadius (the barricade goals) ← the widest barricade disc (stonewards sealRadii) + a hero radius + half a cell:
  * the first walkable cells past the disc. The discs grew more than the map (2.2 / 1.95 u, not 1.7 / 1.7: the slack a
- * seal may leave is a hero's), so MOUTH_RADIUS × CITY_MAP_SCALE (2.55 u) missed the N/S avenue cells (2.81 u out).
+ * seal may leave is a hero's), so MOUTH_RADIUS × CITY_DISTANCE_SCALE (2.55 u) missed the N/S avenue cells (2.81 u out).
  */
 export function cityLayoutFrom(terrain:CityTerrain,grid:FlowGrid=cityFlowGrid(terrain)):CityLayout{
   const p=terrain.asset.points, pt=(q:{x:number;y:number}):FlowPoint=>({x:q.x,y:q.y});
   const seals=blockingCity(terrain)?Object.values(sealRadii(terrain)).filter((r):r is number=>r!==null):[];
   return {
-    grid,plaza:pt(p.praca),mapScale:CITY_MAP_SCALE,
+    grid,plaza:pt(p.praca),mapScale:CITY_DISTANCE_SCALE,
     ...(seals.length?{mouthRadius:Math.max(...seals)+RADIUS+terrain.asset.unitsPerCell/2}:{}),
     mouths:{N:pt(p.bocas.N),S:pt(p.bocas.S),L:pt(p.bocas.L),O:pt(p.bocas.O)},
     spawns:{N:pt(p.spawnN),S:pt(p.spawnS),L:pt(p.spawnL),O:pt(p.spawnO)},

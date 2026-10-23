@@ -4,7 +4,7 @@
  * make the edge arrows (≥ GROUP_MIN, near, off screen, at most GROUP_ARROWS).
  * Pure and deterministic: the result does not depend on the input order.
  */
-import {CITY_MAP_SCALE} from './deps.ts';
+import {CITY_DISTANCE_SCALE} from './deps.ts';
 
 export interface EnemyPoint {id:string;x:number;y:number;boss?:boolean}
 export interface EnemyGroup {
@@ -14,9 +14,9 @@ export interface EnemyGroup {
   x:number;y:number;count:number;ids:string[]}
 /**
  * GROUP_CELL (u) is a crowd's size, people-scale (the critters did not grow); GROUP_RANGE (u, how far a group still gets an
- * arrow) is a map length: 60 u on the .w3x map × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * arrow) is a map length: 60 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (NEW-20261013-ORQ-cidade-escala-1-7).
  */
-export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60*CITY_MAP_SCALE,GROUP_ARROWS=2;
+export const GROUP_CELL=8,GROUP_MIN=5,GROUP_RANGE=60*CITY_DISTANCE_SCALE,GROUP_ARROWS=2;
 /** A shown arrow stays while its group keeps this many critters (hysteresis). */
 export const GROUP_SHOW=3;
 /** Hysteresis: a shown arrow stays while its group is among this many nearest. */

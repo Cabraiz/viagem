@@ -248,9 +248,10 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
 /**
  * D-051 runner: with at least RUNNER_TEAM standing, the bot of index RUNNER_INDEX (a roamer) fetches crates within
  * LOOT_RADIUS_RUN during the wave too, like a person whose friends hold the wall (the 16/10 bench: the far dourada and
- * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs.
+ * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs. 60 u on the 1.7× city, 34 since
+ * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
-export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=60;
+export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;

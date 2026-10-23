@@ -27,7 +27,7 @@
  * director's TutorialState is JSON-safe.
  */
 import {DIRS,FlowField,HERO_SPEED_MULT,RADIUS,STRAIGHT_COST,UNREACHABLE,type CityTerrain,type FlowPoint,type Point} from '../../maps/index.ts';
-import {CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
 
@@ -41,7 +41,7 @@ export const TUTORIAL_PLAN=Object.freeze({
    * Wave seconds when the plaza group reaches the plaza, before a novice's walk ends: tuned 40 s for the base walk
    * (slow novice in the plaza at ~62 s, the group holding it from ~41 s), divided by maps HERO_SPEED_MULT so it keeps
    * the same share of the walk at the 2× walk (velocidade-heroi-e-projetil: 20 s; slow novice ~32 s). The 1.7× city
-   * made it × CITY_MAP_SCALE (34 s) for its longer walk; since the run starts down the road (cityRunStart) the walk is
+   * made it × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT since NEW-20261023-ORQ-mapa-175-com-viaduto: the map's distances are 1.75× shorter) (34 s) for its longer walk; since the run starts down the road (cityRunStart) the walk is
    * the tuned one again, and so is this (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro: 20 s).
    */
   welcomeArrival:40/HERO_SPEED_MULT,
@@ -58,7 +58,7 @@ export const START_SLOT_SPREAD=.7;
 const startMemo=new WeakMap<object,Point>();
 /**
  * Where a city run starts (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): on the heroes' street route from the
- * wreck (asset `inicio`) to the plaza, at the point whose walk left is the whole route ÷ CITY_MAP_SCALE, the walk this
+ * wreck (asset `inicio`) to the plaza, at the point whose walk left is the whole route ÷ CITY_DISTANCE_SCALE, the walk this
  * tutorial was tuned for on the .w3x-sized city (≈ 76 of 129 u, ≈ 19 s at the city hero's walk). The 1.7× city made
  * the walk 1.7× longer (the tutorial went from 22 to 35 s and round 1, with the group behind chasing the team the whole
  * way, ran into its 90 s cap); the asset's points stay where they are: the wreck is still `inicio` (the minimap's start
@@ -79,7 +79,7 @@ export function cityRunStart(city:CityTerrain):Point{
   let start:Point={x:inicio.x,y:inicio.y};
   const total=field.costAt(inicio.x,inicio.y);
   if(total!==UNREACHABLE){
-    const walk=total/CITY_MAP_SCALE;
+    const walk=total/CITY_DISTANCE_SCALE;
     let cx=Math.floor(inicio.x/cs),cy=Math.floor(inicio.y/cs);
     for(let i=0;i<a.cells.w*a.cells.h;i++){
       const cost=field.cellCost(cx,cy),x=(cx+.5)*cs,y=(cy+.5)*cs;
@@ -104,9 +104,9 @@ export const TUTORIAL_MOUTHS:readonly Mouth[]=Object.freeze(['N','L','O'] as Mou
 export const BEHIND_MARGIN=2;
 /**
  * Spots behind the team are searched within this radius (u) of the wreck (a map length: 40 u on the .w3x-sized city, ×
- * CITY_MAP_SCALE, NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept).
+ * CITY_DISTANCE_SCALE, NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept).
  */
-export const BEHIND_RADIUS=40*CITY_MAP_SCALE,BEHIND_GAP=.8;
+export const BEHIND_RADIUS=40*CITY_DISTANCE_SCALE,BEHIND_GAP=.8;
 /**
  * Searches (one a second, from behindAt) for hidden spots behind the team before the members still without one are
  * dropped, so a team that keeps every candidate cell in sight does not hold the round to its cap.

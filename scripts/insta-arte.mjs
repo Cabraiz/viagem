@@ -5,10 +5,15 @@
 //     the stories' circles show the same file;
 //   - grade-<hero>-<1..3>.webp: the 3 grid photos, cut in the middle to the reference's cell (228x262, folha-8), 272x312;
 //   - icone-<name>.webp: the icons on the chroma green, keyed out (despilled edge), 96 px on their longer side;
-//   - logo.webp: the viciado's letreiro (public/art/menu/letreiro) trimmed, 240 px wide (103 CSS px in the top bar).
+//   - post-<hero>-<1..3>.webp: the same 3 photos opened as a post (BUG-20261023-ORQ-instagram-letreiro-do-perfil), the
+//     square in the middle of the cut-out at 480 px (the cut-outs are ~490 wide: never enlarged);
+//   - logo-<hero>.webp: the top bar's logo is the letreiro of the profile on screen (same bug; public/art/menu/letreiro),
+//     trimmed to its drawing, 168 px tall (140 card px, DPR 2). The gato's is only his fish tag with its ring and bell:
+//     the collar stays out (SO_A_PLACA). A hero whose letreiro is not in public/ yet is skipped (the maromba's
+//     came from vgm/fundo-maromba, copied in for the run).
 //   node scripts/insta-arte.mjs [--evidence D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-selecao-mobile-instagram/gerar]
 import sharp from 'sharp';
-import {mkdirSync} from 'node:fs';
+import {existsSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -22,7 +27,7 @@ const WEBP={quality:95,alphaQuality:100,effort:6,smartSubsample:true};
 
 /** The README's choices (E5): the option number of each hero's profile sheet. */
 const PERFIL={'viciado-em-bet':['viciado',1],'clt-cansado':['clt',1],'gato-nada-pra-comer':['gato',1],'maromba':['maromba',4]};
-const PERFIL_PX=360,GRADE=[272,312];
+const PERFIL_PX=360,GRADE=[272,312],POST_PX=480,LOGO_H=168;
 
 for(const [id,[name,option]] of Object.entries(PERFIL)){
   const src=path.join(gerar,'recorte',`perfil-${name}-${option}.png`),{width,height}=await sharp(src).metadata(),side=Math.min(width,height);
@@ -31,6 +36,7 @@ for(const [id,[name,option]] of Object.entries(PERFIL)){
   for(let i=1;i<=3;i++){
     const g=path.join(gerar,'recorte',`grade-${name}-${i}.png`);
     await sharp(g).resize(GRADE[0],GRADE[1],{fit:'cover',position:'centre',kernel:'lanczos3'}).webp(WEBP).toFile(out(`grade-${id}-${i}.webp`));
+    await sharp(g).resize(POST_PX,POST_PX,{fit:'cover',position:'centre',kernel:'lanczos3'}).webp(WEBP).toFile(out(`post-${id}-${i}.webp`));
   }
 }
 
@@ -54,5 +60,31 @@ for(const [name,[x,y,w,h]] of Object.entries(ICONES)){
     .webp(WEBP).toFile(out(`icone-${name}.webp`));
 }
 
-await sharp(path.join(root,'public/art/menu/letreiro/viciado-em-bet.webp')).trim({threshold:1}).resize({width:240,kernel:'lanczos3'}).webp(WEBP).toFile(out('logo.webp'));
+// The letreiros' transparent margins are not one colour (sharp's trim keeps them): cut to the opaque pixels instead.
+async function alphaBox(img){
+  const {data,info}=await img.clone().ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  let x0=info.width,y0=info.height,x1=-1,y1=-1;
+  for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>8){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  return {left:x0,top:y0,width:x1-x0+1,height:y1-y0+1};
+}
+/**
+ * The gato's tag: his letreiro's rows from the top of the tag's ring (2530 of 4163) down, and the pink collar the ring
+ * and the bell hang on taken out of the rows above the fish (2850): the gold ring and bell stay, no cut-off collar.
+ */
+const SO_A_PLACA={'gato-nada-pra-comer':{top:2530,colar:2850,argola:[1170,1680]}};
+// Pink (its highlights too): more blue than green, unlike the gold (whose blue is below its green).
+const rosa=(r,g,b)=>r-g>40&&b>g&&r>=b;
+for(const id of Object.keys(PERFIL)){
+  const src=path.join(root,`public/art/menu/letreiro/${id}.webp`);
+  if(!existsSync(src)){console.error(`insta-arte: ${id} sem letreiro em public/art/menu/letreiro, logo pulado`);continue;}
+  let img=sharp(src);
+  const placa=SO_A_PLACA[id];
+  if(placa){
+    const {data,info}=await img.ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    for(let y=placa.top;y<placa.colar;y++)for(let x=0;x<info.width;x++){const i=(y*info.width+x)*4;if(x<placa.argola[0]||x>placa.argola[1]||rosa(data[i],data[i+1],data[i+2]))data[i+3]=0;}
+    img=sharp(await sharp(data,{raw:info}).extract({left:0,top:placa.top,width:info.width,height:info.height-placa.top}).png().toBuffer());
+  }
+  const box=await alphaBox(img);
+  await sharp(await img.extract(box).png().toBuffer()).resize({height:LOGO_H,kernel:'lanczos3'}).webp(WEBP).toFile(out(`logo-${id}.webp`));
+}
 console.error('insta-arte: public/art/menu/insta/ pronto');

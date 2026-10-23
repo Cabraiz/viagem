@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2158,
-  "bytes": 1542590870,
-  "liteBytes": 502454252,
+  "files": 2173,
+  "bytes": 1543661594,
+  "liteBytes": 503327658,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17613,13 +17613,37 @@
    "psnr": 38.6,
    "shownPsnr": 41.5
   },
-  "menu/insta/logo.webp": {
-   "source": "623e475b5ad12c10a0835c08e859cb48c60b19a45c5d00449f4324945acbcc5f",
-   "lite": "69e1b9c3cd28b9039d5e97631552b102bbd0ad028e078cfdf2d31881861686ea",
-   "bytes": 28956,
-   "liteBytes": 24940,
+  "menu/insta/logo-clt-cansado.webp": {
+   "source": "0031e0cbfedad5727d87440a5c373018b16691593ec666db5dd782706203fc00",
+   "lite": "ab8acf953c8f58b5339bf8bc9a93a86091ebebcf0f9bcd76ea9175aed92b3f68",
+   "bytes": 23176,
+   "liteBytes": 20242,
+   "psnr": 41.6,
+   "shownPsnr": 43.9
+  },
+  "menu/insta/logo-gato-nada-pra-comer.webp": {
+   "source": "7aec09ccc988881532f7991eb2617e598481888924894c5347365d8967bf9869",
+   "lite": "7cd2e99616ba3b29fff9c75807f60e871f2eeba10a35a1797f0c2cd30c8b2d52",
+   "bytes": 25674,
+   "liteBytes": 21516,
+   "psnr": 38.7,
+   "shownPsnr": 41.1
+  },
+  "menu/insta/logo-maromba.webp": {
+   "source": "bcbfa10e31c53859a6885cef1452c4fdba13729e2ddd3ceb76de41e4be4ffaaf",
+   "lite": "644ca05eed80cee45ba936cb7a7b0913f0d1212d76a3d97b74bfe9c3bee3fa87",
+   "bytes": 22044,
+   "liteBytes": 18396,
+   "psnr": 38.8,
+   "shownPsnr": 41
+  },
+  "menu/insta/logo-viciado-em-bet.webp": {
+   "source": "0486dd661bd5b7475765fbf8f9b91842d30263af7cc3ade9d50410be38f79cc4",
+   "lite": "b93e1b440a9c55fd4b2e5016d11c564d592464e8b9cff18fb8e1927e7b11b992",
+   "bytes": 29228,
+   "liteBytes": 25168,
    "psnr": 37.4,
-   "shownPsnr": 39.9
+   "shownPsnr": 41.7
   },
   "menu/insta/perfil-clt-cansado.webp": {
    "source": "f222157e953c12eb08abfdc2dbb4c348b472e536da5981090a42b793d2cc32b5",
@@ -17652,6 +17676,102 @@
    "liteBytes": 44400,
    "psnr": 39.8,
    "shownPsnr": 41.9
+  },
+  "menu/insta/post-clt-cansado-1.webp": {
+   "source": "8a4dcc908705053bd33ff174edc524f8dc991c8d68a26a1967e54ed2ab3f709a",
+   "lite": "fd552f5d09ff84c00a62cd997d7474f81416226b9d744f327d491b4de55f00d6",
+   "bytes": 75456,
+   "liteBytes": 63130,
+   "psnr": 41.7,
+   "shownPsnr": 44
+  },
+  "menu/insta/post-clt-cansado-2.webp": {
+   "source": "75d92005098ed93a95f29b1740f203f02a83ced7f51a9228d1d7d12fd7d27d53",
+   "lite": "a7c3885f1f108ba25ef4e3019107ca174dbcaa9b514765ae853ce856a16ccf43",
+   "bytes": 74878,
+   "liteBytes": 61956,
+   "psnr": 41.8,
+   "shownPsnr": 44
+  },
+  "menu/insta/post-clt-cansado-3.webp": {
+   "source": "c56d594a11403bac088c11939ea4886d986ae70bb02e96991e92d7d61d4a43e4",
+   "lite": "c6c34b10354948bdf72596e88edca9c4e06cd3fe9367485027b61934661317fc",
+   "bytes": 81486,
+   "liteBytes": 66550,
+   "psnr": 41.3,
+   "shownPsnr": 43.7
+  },
+  "menu/insta/post-gato-nada-pra-comer-1.webp": {
+   "source": "52fe8765fb68dcaf5e017dc57833d81367427619e643e5d47d055782db4e2b40",
+   "lite": "d5dcb54c5f570dfe62756dbfd60f2f706386420f5fdb9eb8f0bb549edd95f841",
+   "bytes": 107268,
+   "liteBytes": 87084,
+   "psnr": 39.9,
+   "shownPsnr": 42.6
+  },
+  "menu/insta/post-gato-nada-pra-comer-2.webp": {
+   "source": "c473214b585662e9520a21bca98ebe442c5fe05d98db0dd6ea48273e9b7cba55",
+   "lite": "ed52c3301d9717a0581da160f69967e6fcfc748d1a2acb9648f73f335d9820d4",
+   "bytes": 96778,
+   "liteBytes": 75698,
+   "psnr": 40.5,
+   "shownPsnr": 43.3
+  },
+  "menu/insta/post-gato-nada-pra-comer-3.webp": {
+   "source": "97b1cb9e7d5e956e61836c69f4f2e54a50353610d0fa3f1660d595982195e31e",
+   "lite": "2895d1f9a0197c7482ae5158528db0cc66c506a67543d7575290c071f3a16e41",
+   "bytes": 80760,
+   "liteBytes": 65538,
+   "psnr": 41.2,
+   "shownPsnr": 43.8
+  },
+  "menu/insta/post-maromba-1.webp": {
+   "source": "b05d626f9d455e28af2930325347c9e0c795b3623e19e9d265f36e55f45253d7",
+   "lite": "911b543ca959397bbf467cf6e6d389d4ede2e6c929ebaa3624f9063fcb33ff36",
+   "bytes": 62470,
+   "liteBytes": 49134,
+   "psnr": 42.3,
+   "shownPsnr": 44.5
+  },
+  "menu/insta/post-maromba-2.webp": {
+   "source": "2b45c09c6acaec1031594f55f67a0257688bf78e4e5984cffdac1f55e97302da",
+   "lite": "5098547100e23924c9713782ab24e796821e3245283d8b30772913dfb0ed6fe3",
+   "bytes": 102068,
+   "liteBytes": 82162,
+   "psnr": 40,
+   "shownPsnr": 42.4
+  },
+  "menu/insta/post-maromba-3.webp": {
+   "source": "13f2c706a09339e360e446fadefe4e1e81627a73623c18d00a22cf6b9f0b55cf",
+   "lite": "8e4383a6a82aed73f670c762d78372678af6e00df27698ef9839e4e4e9cc6591",
+   "bytes": 78858,
+   "liteBytes": 63594,
+   "psnr": 41.3,
+   "shownPsnr": 43.8
+  },
+  "menu/insta/post-viciado-em-bet-1.webp": {
+   "source": "f33007c7e7ed93499aaf3571bc22ac672d0b3a1cdfeb87861b778f31105b4a69",
+   "lite": "f4e7c442a78c2c8d61924db9863a0c56d7e682cbdcdec0e2c4b10b82ef3836af",
+   "bytes": 79828,
+   "liteBytes": 66604,
+   "psnr": 40.9,
+   "shownPsnr": 43.1
+  },
+  "menu/insta/post-viciado-em-bet-2.webp": {
+   "source": "aaa4826067ae9f5b6cd0c450b775a4e9e2b6a35a868291c50019e38a15951c12",
+   "lite": "d81066848a85abdf63859f72499ea6117b5632400be5a79f30243b782289629d",
+   "bytes": 70716,
+   "liteBytes": 59652,
+   "psnr": 42.1,
+   "shownPsnr": 44.3
+  },
+  "menu/insta/post-viciado-em-bet-3.webp": {
+   "source": "3b52ef79fe63f3d994795691aaddaf9447f153911e4fda8661ee9afbad729657",
+   "lite": "c215d772c78f7ad963fcdbb138f80c45e6d40de618ebb6b0c3ffdf626314f9f9",
+   "bytes": 88992,
+   "liteBytes": 71922,
+   "psnr": 40.3,
+   "shownPsnr": 42.6
   },
   "menu/rosto/clt-cansado.webp": {
    "source": "3a5321d4c0a712e8dc092c4d22501b54b8b2080f3e1d996449a9ecabb3de22b8",

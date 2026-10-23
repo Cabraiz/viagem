@@ -15,6 +15,8 @@ import type {CityViaduct} from '../../../maps/index.ts';
 import {overDeck,onRamp,rampCells,rampRun,surfaceHeight} from '../../../maps/index.ts';
 import {CITY_PALETTE} from './palette.ts';
 import {HEIGHT_PX,VIEW_PIVOT,depth as depthKey,project,rotate,type Pt} from './projection.ts';
+import {artViewOf} from './live/rules.ts';
+import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoFootY,unoFrame} from '../chaveiro/uno-art.ts';
 
 /** Slab thickness and parapet height (u), plan §4. */
 export const DECK_SLAB=.6,PARAPET=.6;
@@ -101,6 +103,93 @@ export function deckCars(v:CityViaduct,unit:number,start?:Pt):DeckCar[]{
 }
 const CAR_RED=0xc0473a,PILE=[0x5b7fa8,0x8f8a7a,0xd6a23c] as const;
 
+/**
+ * The faces' art (etapa 4, scripts/import-viaduto.mjs; round 3 option C, picked by the user): one atlas with the deck's
+ * road on the left (top-down, the road along v, both edges snow, the double yellow line in the middle; it tiles along
+ * the road) and the concrete on the right (tiles both ways). Under WebGL each strip draws its faces as one Mesh of it
+ * (as the city's painted ground, city-layer groundMesh); under Canvas, or until it loads, the flat colours stay.
+ */
+export const FACES_KEY='city:viaduct:faces',FACES_URL='/art/city/viaduto/faces.webp';
+/** The atlas (px) and its two regions: the road tile, the concrete tile. */
+export const FACES_SIZE=[1024,768] as const,FACES_ROAD=[0,0,512,768] as const,FACES_CONCRETE=[512,0,512,512] as const;
+/** Cells of road one road tile covers along the road; cells one concrete tile covers (along a side and up). */
+export const ROAD_TILE_CELLS=6,CONCRETE_TILE_CELLS=4;
+/** Texels kept off each region's rim, so linear filtering never reads the region beside it. */
+const FACES_INSET=2;
+/** Texture coordinates (0..1 of the atlas) of point (s, t) (0..1) of region `r`. */
+export function regionUv(r:readonly [number,number,number,number],s:number,t:number):[number,number]{
+  const [x,y,w,h]=r,i=FACES_INSET;
+  return [(x+i+s*(w-2*i))/FACES_SIZE[0],(y+i+t*(h-2*i))/FACES_SIZE[1]];
+}
+/**
+ * The road tile's (s, t) at the 4 footprint corners of a deck or ramp cell of `v`: s across the viaduct (0 on its west,
+ * or north, side, 1 on the other), t along it, ROAD_TILE_CELLS cells a tile from the deck's first row (or column).
+ */
+export function roadST(p:ViaductPiece,v:CityViaduct,unit:number):[number,number][]{
+  const along=v.ramp.up==='N'||v.ramp.up==='S',[dc,dr,dw,dh]=v.deck;
+  const a0=(along?dr:dc)*unit,c0=(along?dc:dr)*unit,width=(along?dw:dh)*unit,R=ROAD_TILE_CELLS;
+  const k=((Math.floor(((along?p.y0:p.x0)-a0)/unit+1e-6)%R)+R)%R;
+  return cornersOf(p).map(c=>{
+    const across=((along?c.x:c.y)-c0)/width,len=((along?c.y:c.x)-(along?p.y0:p.x0))/unit;
+    return [Math.min(1,Math.max(0,across)),(k+len)/R];
+  });
+}
+/**
+ * The concrete tile's (s, t) at a side's 4 corners (tops a, b, then bottoms b, a: the order the side is drawn): s along
+ * the side from the tile's edge before it (cells line up with the tiles; a piece narrower than a cell that would cross
+ * a tile's edge is shifted inside it), t down from the tile's top at CONCRETE_TILE_CELLS cells over the ground.
+ */
+export function concreteST(p:ViaductPiece,side:'n'|'e'|'s'|'w',unit:number):[number,number][]{
+  const [a,b]=SIDE_CORNERS[side],cs=cornersOf(p),T=CONCRETE_TILE_CELLS*unit,ns=side==='n'||side==='s';
+  const m=(c:Pt)=>ns?c.x:c.y,m0=Math.min(m(cs[a]),m(cs[b])),m1=Math.max(m(cs[a]),m(cs[b]));
+  let s0=(m0-Math.floor(m0/T+1e-6)*T)/T;
+  if(s0+(m1-m0)/T>1+1e-6)s0=1-(m1-m0)/T;
+  const s=(c:Pt)=>s0+(m(c)-m0)/T,t=(z:number)=>Math.min(1,Math.max(0,1-z/T));
+  return [[s(cs[a]),t(p.top[a])],[s(cs[b]),t(p.top[b])],[s(cs[b]),t(p.bottom[b])],[s(cs[a]),t(p.bottom[a])]];
+}
+
+/**
+ * The viaduct's pieces of art (etapa 4, the Brazilian viaduct the user asked for): `cenario` sheets (decor ids,
+ * scripts/import-viaduto.mjs) drawn by this layer, not by the city's chunks (they stand on the deck, or by the ramp's
+ * foot, where no chunk decor is). On the deck (floor 1): the pile-up at the closed end, the green gantry across the
+ * deck near the ramp's top, the 60 sign and the speed camera by the parapets. On the street (floor 0, a ramp going up
+ * north only, the map's): the toll plaza and the bus stop beside the ramp's foot, the stop sign by the crosswalk.
+ * `rot`: the art view at camera view 0 (CityDecor.rot: 0 faces south).
+ */
+export interface ViaductProp {id:string;x:number;y:number;floor:0|1;rot:0|90|180|270}
+export const VIADUCT_PROP_IDS=['carro-batido-1','carro-batido-2','portico-placa','placa-60','radar-lombada','pedagio','ponto-onibus','placa-pare'] as const;
+export function viaductProps(v:CityViaduct,unit:number):ViaductProp[]{
+  const out:ViaductProp[]=[],[dc,dr,dw,dh]=v.deck,along=v.ramp.up==='N'||v.ramp.up==='S';
+  // The pile-up: deckCars' three spots at the closed end (a box each until the sheets are in).
+  const pile=deckCars(v,unit).slice(-3),ids=['carro-batido-1','carro-batido-2','carro-batido-1'],rots=along?[90,0,270]:[0,90,180];
+  pile.forEach((c,i)=>out.push({id:ids[i],x:c.x+c.w/2,y:c.y+c.h/2,floor:1,rot:rots[i] as ViaductProp['rot']}));
+  if(v.ramp.up!=='N')return out;
+  // Near the ramp's top, facing the drivers coming up it (south): the gantry across the deck, the 60 sign on the west
+  // parapet, the speed camera on the east one further along.
+  const top=(dr+dh)*unit,west=dc*unit,east=(dc+dw)*unit,mid=(west+east)/2;
+  out.push({id:'portico-placa',x:mid,y:top-3*unit,floor:1,rot:0});
+  out.push({id:'placa-60',x:west+.55,y:top-1.5*unit,floor:1,rot:0});
+  out.push({id:'radar-lombada',x:east-.55,y:top-8*unit,floor:1,rot:0});
+  // The street at the ramp's foot: the toll plaza west of the avenue, the bus stop east of the ramp facing it, the stop
+  // sign on the west sidewalk at the crosswalk.
+  const [rc,rr,rw,rh]=v.ramp.rect,foot=rr+rh;
+  out.push({id:'pedagio',x:(rc-4.5)*unit,y:(foot-3)*unit,floor:0,rot:0});
+  out.push({id:'ponto-onibus',x:(rc+rw+1)*unit,y:(foot-2)*unit,floor:0,rot:270});
+  out.push({id:'placa-pare',x:(rc-2.5)*unit,y:(foot+.5)*unit,floor:0,rot:0});
+  return out;
+}
+/**
+ * The crosswalk across the avenue past the ramp's foot (a ramp going up north): the `faixa-pedestre` decal (top-down,
+ * stripes along v) laid in tiles of CROSSWALK_TILE_CELLS cells, from the avenue's west lane to the ramp's east side.
+ */
+export const CROSSWALK_KEY='city:viaduct:faixa-pedestre',CROSSWALK_URL='/art/city/decor/faixa-pedestre/sheet.webp',CROSSWALK_TILE_CELLS=2;
+export function crosswalkTiles(v:CityViaduct,unit:number):{x0:number;y0:number;x1:number;y1:number}[]{
+  if(v.ramp.up!=='N')return [];
+  const [rc,rr,rw,rh]=v.ramp.rect,T=CROSSWALK_TILE_CELLS,out=[];
+  for(let c=rc-2;c<rc+rw;c+=T)out.push({x0:c*unit,y0:(rr+rh)*unit,x1:(c+T)*unit,y1:(rr+rh+T)*unit});
+  return out;
+}
+
 /** The faces of a box seen from the camera at `view`: each outward side normal that points toward the viewer. */
 export function frontSides(view:number):('n'|'e'|'s'|'w')[]{
   const sides:[('n'|'e'|'s'|'w'),number,number][]=[['n',0,-1],['e',1,0],['s',0,1],['w',-1,0]];
@@ -117,32 +206,53 @@ export function pieceKey(p:ViaductPiece,view:number,pivot:Pt=VIEW_PIVOT):number{
   return best;
 }
 
+/** A sheet of the viaduct's pieces as the city's art plan gives it (art-plan.ts DecorSheet: url, frame, scale, anchor). */
+export interface ViaductSheet {key:string;url:string;frameWidth:number;frameHeight:number;scale:number;originY:number}
 /** Drawing hooks from the scene: its depth space and the ground height under a point (px). */
 export interface ViaductHooks {
   /** Maps a projection depth key to the scene's depth space (the city layer's depthOf). */
   depthOf:(key:number)=>number;
   /** The ground's screen lift at (x, y) in px (the relief: elevation), the same the actors stand on. */
   groundPx:(x:number,y:number)=>number;
+  /** The sheet of a piece of art (VIADUCT_PROP_IDS) when the art plan has it; without one the piece is not drawn. */
+  sheet?:(id:string)=>ViaductSheet|undefined;
 }
 
 /** A colour darkened to `k` of itself (the cars' sides). */
 const shade=(c:number,k:number)=>(Math.round((c>>16&255)*k)<<16)|(Math.round((c>>8&255)*k)<<8)|Math.round((c&255)*k);
 const TOP=CITY_PALETTE['neve-pisada'],SIDE_LIGHT=CITY_PALETTE['muro-clara'],SIDE_DARK=CITY_PALETTE['muro-escura'],
   CAP=CITY_PALETTE['muro-tampa'],BREU=CITY_PALETTE.breu;
+/** Tints of the textured faces: the road on top, the concrete's lit and shaded sides. */
+const TINT_TOP=0xffffff,TINT_LIGHT=0xd6d8e2,TINT_DARK=0x9a9eb0;
+/** Depth (scene space) a strip's outlines sit above its textured faces. */
+const OUTLINE_OVER=1e-3;
+/** The Uno's heading on the deck (radians, world plane): broken down facing the closed end, north for a ramp going up north. */
+const unoHeading=(v:CityViaduct)=>({N:-Math.PI/2,S:Math.PI/2,W:Math.PI,E:0} as const)[v.ramp.up];
+/** A drawn piece of art: a ViaductProp (or the Uno) with its image once its sheet is in. */
+interface PropArt {prop:ViaductProp;v:CityViaduct;sheet?:ViaductSheet;img?:Phaser.GameObjects.Image;key:number}
 
 /**
  * The Phaser side: one Graphics per strip (and pillar), redrawn when the view turns, re-sorted every frame (the scene's
- * depth origin moves with the hero). `bodyLift`/`bodyDepth` place a body of floor 1; `under` says the ground at (x, y)
- * is under a deck (the hero there gets its see-through copy, like behind a building).
+ * depth origin moves with the hero). With the faces' atlas in (WebGL), each strip's faces are a Mesh under its
+ * Graphics, which then keeps only the outlines and the parapets' snow caps. The pieces of art (viaductProps, the Uno at
+ * the start) are images over their strips; the deck's car boxes stay only until their sheets are in.
+ * `bodyLift`/`bodyDepth` place a body of floor 1; `under` says the ground at (x, y) is under a deck (the hero there gets
+ * its see-through copy, like behind a building).
  */
 export class ViaductLayer {
   private readonly pieces:ViaductPiece[];
   private readonly strips:Phaser.GameObjects.Graphics[]=[];
+  private meshes:(Phaser.GameObjects.Mesh|undefined)[]=[];
   private shadow?:Phaser.GameObjects.Graphics;
+  private crosswalk?:Phaser.GameObjects.Mesh;
   private view=-1;
+  /** Which art was in at the last draw (FACES, Uno, sheets): a change redraws. */
+  private artState='';
   private readonly keys:number[]=[];
   /** Per strip, its main piece (the cell, the pillar or the car; not a parapet). */
   private bodyOf:ViaductPiece[]=[];
+  private readonly props:PropArt[];
+  private uno?:{x:number;y:number;v:CityViaduct;img?:Phaser.GameObjects.Image;key:number};
   private readonly scene:Phaser.Scene;
   private readonly viaducts:readonly CityViaduct[];
   private readonly unit:number;
@@ -152,18 +262,46 @@ export class ViaductLayer {
   constructor(scene:Phaser.Scene,viaducts:readonly CityViaduct[],unit:number,hooks:ViaductHooks,shadowDepth:number,start?:Pt){
     this.scene=scene;this.viaducts=viaducts;this.unit=unit;this.hooks=hooks;this.shadowDepth=shadowDepth;
     this.pieces=viaducts.flatMap(v=>viaductPieces(v,unit));
-    // The cars: each its own piece, drawn above every deck cell under it (draw).
+    // The cars: each its own piece, drawn above every deck cell under it (draw). `art`: the image that replaces it.
     let next=1+Math.max(-1,...this.pieces.map(q=>q.strip));
-    for(const v of viaducts)for(const c of deckCars(v,unit,start))
-      this.pieces.push({kind:'car',strip:next++,x0:c.x,y0:c.y,x1:c.x+c.w,y1:c.y+c.h,top:flat(v.height+c.tall),bottom:flat(v.height),color:c.color} as ViaductPiece&{color:number});
+    for(const v of viaducts){
+      const cars=deckCars(v,unit,start),uno=cars.length===4;
+      cars.forEach((c,i)=>this.pieces.push({kind:'car',strip:next++,x0:c.x,y0:c.y,x1:c.x+c.w,y1:c.y+c.h,top:flat(v.height+c.tall),bottom:flat(v.height),color:c.color,
+        art:uno&&i===0?'uno':`pile${i-(uno?1:0)}`} as ViaductPiece&{color:number;art:string}));
+      // The Uno where its box stood (beside the start, not on it: the hero spawns next to the car).
+      if(uno)this.uno={x:cars[0].x+cars[0].w/2,y:cars[0].y+cars[0].h/2,v,key:-Infinity};
+    }
     for(const p of this.pieces)if(p.kind!=='parapet'&&p.strip>=0)this.bodyOf[p.strip]=p;
+    this.props=viaducts.flatMap(v=>viaductProps(v,unit).map(prop=>({prop,v,sheet:hooks.sheet?.(prop.id),key:-Infinity})));
+    this.loadArt();
   }
-  /** Redraws the pieces for `view` (once per turn), re-sorts them, and fades the strips around a hero under a deck. */
+  /** Queues the faces' atlas, the crosswalk, the Uno and the pieces' sheets not in yet (a stand-in scene has no loader). */
+  private loadArt(){
+    const load=this.scene.load,tex=this.scene.textures;
+    if(!load||!tex)return;
+    let queued=false;
+    const image=(key:string,url:string)=>{if(!tex.exists(key)){load.image(key,url);queued=true;}};
+    const sheet=(key:string,url:string,frameWidth:number,frameHeight:number)=>{if(!tex.exists(key)){load.spritesheet(key,url,{frameWidth,frameHeight});queued=true;}};
+    if(this.webgl())image(FACES_KEY,FACES_URL);
+    if(this.webgl()&&this.viaducts.some(v=>crosswalkTiles(v,this.unit).length))image(CROSSWALK_KEY,CROSSWALK_URL);
+    if(this.uno)sheet(UNO_KEY,UNO_URL,UNO_CELL,UNO_CELL);
+    const seen=new Set<string>();
+    for(const {sheet:s} of this.props)if(s&&!seen.has(s.key)){seen.add(s.key);sheet(s.key,s.url,s.frameWidth,s.frameHeight);}
+    if(queued&&!load.isLoading())load.start();
+  }
+  private webgl(){return !!(this.scene.renderer as {gl?:unknown}|undefined)?.gl;}
+  private has(key:string){return !!this.scene.textures?.exists(key);}
+  /** The faces' atlas is in and can be drawn (WebGL). */
+  private textured(){return this.webgl()&&this.has(FACES_KEY)&&typeof this.scene.add.mesh==='function';}
+  private state(){return [this.textured(),this.uno&&this.has(UNO_KEY),this.has(CROSSWALK_KEY),...this.props.map(a=>a.sheet&&this.has(a.sheet.key))].map(Number).join('');}
+  /** Redraws the pieces for `view` (once per turn, or when art arrives), re-sorts them, and fades around a hero under a deck. */
   update(view:number,hero?:Pt&{andar?:number}){
-    if(view!==this.view)this.draw(view);
+    const state=this.state();
+    if(view!==this.view||state!==this.artState){this.artState=state;this.draw(view);}
     const under=hero&&hero.andar!==1&&this.under(hero.x,hero.y);
     for(let i=0;i<this.strips.length;i++){
-      const g=this.strips[i];g.setDepth(this.hooks.depthOf(this.keys[i]));
+      const g=this.strips[i],d=this.hooks.depthOf(this.keys[i]),m=this.meshes[i];
+      g.setDepth(d+OUTLINE_OVER);m?.setDepth(d);
       let alpha=1;
       if(under){
         const p=this.bodyOf[i];
@@ -172,8 +310,10 @@ export class ViaductLayer {
           if(dx*dx+dy*dy<UNDER_RADIUS*UNDER_RADIUS)alpha=UNDER_ALPHA;
         }
       }
-      if(g.alpha!==alpha)g.setAlpha(alpha);
+      if(g.alpha!==alpha){g.setAlpha(alpha);m?.setAlpha(alpha);}
     }
+    for(const a of this.props)a.img?.setDepth(this.hooks.depthOf(a.key)+(a.prop.floor===1?ON_STRIP:0));
+    if(this.uno?.img)this.uno.img.setDepth(this.hooks.depthOf(this.uno.key)+ON_STRIP);
   }
   /** Screen lift (px) of a body of floor `floor` standing at (x, y): the deck's surface height, 0 on the ground. */
   bodyLift(x:number,y:number,floor:number|undefined):number{
@@ -182,19 +322,27 @@ export class ViaductLayer {
   /** Draw depth of a body of floor 1 at (x, y): just above the strip under it; undefined when it is on no strip. */
   bodyDepth(x:number,y:number):number|undefined{
     if(this.stripAt(x,y)===undefined)return undefined;
-    // Above every deck or ramp cell its body may overlap (a cell around): the cells in front of those draw lower on
-    // screen than its feet, so nothing of the deck in front ever covers it.
-    let key=-Infinity;
-    for(const p of this.pieces){
-      if(p.kind!=='deck'&&p.kind!=='ramp')continue;
-      if(x>=p.x0-this.unit&&x<p.x1+this.unit&&y>=p.y0-this.unit&&y<p.y1+this.unit)key=Math.max(key,this.keys[p.strip]);
-    }
-    return this.hooks.depthOf(key)+ON_STRIP;
+    return this.hooks.depthOf(this.deckKey(x-this.unit,y-this.unit,x+this.unit,y+this.unit))+ON_STRIP;
   }
   /** True when the ground at (x, y) is under a deck (or the ramp's foot, where its strips hang over). */
   under(x:number,y:number){return this.viaducts.some(v=>overDeck(v,this.unit,x,y));}
-  destroy(){for(const g of this.strips)g.destroy();this.strips.length=0;this.shadow?.destroy();this.shadow=undefined;}
+  destroy(){
+    for(const g of this.strips)g.destroy();this.strips.length=0;
+    for(const m of this.meshes)m?.destroy();this.meshes=[];
+    this.shadow?.destroy();this.shadow=undefined;this.crosswalk?.destroy();this.crosswalk=undefined;
+    for(const a of this.props){a.img?.destroy();a.img=undefined;}
+    this.uno?.img?.destroy();if(this.uno)this.uno.img=undefined;
+  }
 
+  /**
+   * The highest key of the deck and ramp cells overlapping the box (u): a body or a piece there draws above them all,
+   * so the cells in front of those (lower on screen than its feet) never cover it.
+   */
+  private deckKey(x0:number,y0:number,x1:number,y1:number):number{
+    let key=-Infinity;
+    for(const p of this.pieces)if((p.kind==='deck'||p.kind==='ramp')&&p.x0<x1&&p.x1>x0&&p.y0<y1&&p.y1>y0)key=Math.max(key,this.keys[p.strip]);
+    return key;
+  }
   /** The deck strip over a pillar (the one holding its centre). */
   private stripOver(p:ViaductPiece):number|undefined{
     const x=(p.x0+p.x1)/2,y=(p.y0+p.y1)/2;
@@ -215,21 +363,44 @@ export class ViaductLayer {
     }
     return undefined;
   }
+  /** The viaduct a piece belongs to (the one whose deck or ramp holds its centre, else the first). */
+  private viaductOf(p:ViaductPiece):CityViaduct{
+    const x=(p.x0+p.x1)/2,y=(p.y0+p.y1)/2;
+    return this.viaducts.find(v=>overDeck(v,this.unit,x,y)||onRamp(v,this.unit,x,y))??this.viaducts[0];
+  }
   private draw(view:number){
     this.view=view;
     const strips=1+Math.max(-1,...this.pieces.map(p=>p.strip));
     while(this.strips.length<strips)this.strips.push(this.scene.add.graphics());
     for(const g of this.strips)g.clear();
+    for(const m of this.meshes)m?.destroy();this.meshes=[];
     this.shadow??=this.scene.add.graphics().setDepth(this.shadowDepth);
     this.shadow.clear();
     this.keys.length=0;
     for(let i=0;i<strips;i++)this.keys.push(-Infinity);
-    const front=frontSides(view);
+    const front=frontSides(view),textured=this.textured();
+    const at=(c:Pt,z:number)=>{const q=project(c.x,c.y,z,view);return {x:q.x,y:q.y-this.hooks.groundPx(c.x,c.y)};};
+    /** Per strip, the faces' mesh buffers (textured only). */
+    const buf=new Map<number,{verts:number[];uvs:number[];idx:number[];colors:number[];alphas:number[]}>();
+    const quad=(strip:number,pts:readonly Pt[],st:readonly [number,number][],region:readonly [number,number,number,number],tint:number)=>{
+      let b=buf.get(strip);
+      if(!b)buf.set(strip,b={verts:[],uvs:[],idx:[],colors:[],alphas:[]});
+      const n=b.verts.length/2;
+      // Mesh vertices are y-up (Phaser's mesh space): negate y to stay in screen px (as city-layer groundMesh).
+      for(let k=0;k<4;k++){b.verts.push(pts[k].x,-pts[k].y);b.uvs.push(...regionUv(region,st[k][0],st[k][1]));b.colors.push(tint);b.alphas.push(1);}
+      b.idx.push(n,n+1,n+2,n,n+2,n+3);
+    };
+    // A car box gives way to its image once the image's sheet is in.
+    const artIn=(p:ViaductPiece)=>{
+      const art=(p as ViaductPiece&{art?:string}).art;
+      if(art==='uno')return this.has(UNO_KEY);
+      const i=art?.startsWith('pile')?+art.slice(4):-1,s=this.props.filter(a=>a.prop.floor===1&&a.prop.id.startsWith('carro-batido'))[i]?.sheet;
+      return !!s&&this.has(s.key);
+    };
     // Pieces in back-to-front order inside a strip: the slab and the ramp first, then their parapets, then the cars.
     const rank=(p:ViaductPiece)=>p.kind==='car'?2:p.kind==='parapet'?1:0;
     const order=[...this.pieces].sort((a,b)=>rank(a)-rank(b));
     for(const p of order){
-      const at=(c:Pt,z:number)=>{const q=project(c.x,c.y,z,view);return {x:q.x,y:q.y-this.hooks.groundPx(c.x,c.y)};};
       const corners=cornersOf(p);
       if(p.kind==='shadow'){
         this.shadow.fillStyle(BREU,.16).fillPoints(corners.map(c=>at(c,0)),true);
@@ -242,19 +413,73 @@ export class ViaductLayer {
       else if(p.kind==='pillar'){const over=this.stripOver(p);this.keys[p.strip]=Math.min(pieceKey(p,view),over===undefined?Infinity:this.stripKey(over,view))-ON_STRIP;}
       // A car on the deck: above every cell under it (the cells were keyed first: the cars come last in `order`).
       else if(p.kind==='car'){
-        let key=-Infinity;
-        for(const q of this.pieces)if((q.kind==='deck'||q.kind==='ramp')&&q.x0<p.x1&&q.x1>p.x0&&q.y0<p.y1&&q.y1>p.y0)key=Math.max(key,this.keys[q.strip]);
-        this.keys[p.strip]=key+ON_STRIP;
+        this.keys[p.strip]=this.deckKey(p.x0,p.y0,p.x1,p.y1)+ON_STRIP;
+        if(artIn(p))continue;
       }
       const tops=corners.map((c,k)=>at(c,p.top[k])),bottoms=corners.map((c,k)=>at(c,p.bottom[k]));
       const car=p.kind==='car'?(p as ViaductPiece&{color:number}).color:undefined;
       for(const side of front){
-        const [a,b]=SIDE_CORNERS[side],dark=side==='e'||side==='s'?view%2===0:view%2===1;
-        g.fillStyle(car!==undefined?shade(car,dark?.62:.8):dark?SIDE_DARK:SIDE_LIGHT,1).fillPoints([tops[a],tops[b],bottoms[b],bottoms[a]],true);
-        g.lineStyle(1.5,BREU,.55).strokePoints([tops[a],tops[b],bottoms[b],bottoms[a]],true);
+        const [a,b]=SIDE_CORNERS[side],dark=side==='e'||side==='s'?view%2===0:view%2===1,face=[tops[a],tops[b],bottoms[b],bottoms[a]];
+        if(textured&&car===undefined){
+          quad(p.strip,face,concreteST(p,side,this.unit),FACES_CONCRETE,dark?TINT_DARK:TINT_LIGHT);
+          // Outlines: the pillar's whole side; the slab's and the parapet's lower edge (the faces carry their own detail).
+          if(p.kind==='pillar')g.lineStyle(1.5,BREU,.55).strokePoints(face,true);
+          else g.lineStyle(1.5,BREU,.55).lineBetween(bottoms[a].x,bottoms[a].y,bottoms[b].x,bottoms[b].y);
+          continue;
+        }
+        g.fillStyle(car!==undefined?shade(car,dark?.62:.8):dark?SIDE_DARK:SIDE_LIGHT,1).fillPoints(face,true);
+        g.lineStyle(1.5,BREU,.55).strokePoints(face,true);
+      }
+      if(textured&&(p.kind==='deck'||p.kind==='ramp')){
+        quad(p.strip,tops,roadST(p,this.viaductOf(p),this.unit),FACES_ROAD,TINT_TOP);
+        continue;
       }
       g.fillStyle(car??(p.kind==='parapet'?CAP:TOP),1).fillPoints(tops,true);
       g.lineStyle(p.kind==='parapet'?1.5:2,BREU,.7).strokePoints(tops,true);
+    }
+    if(textured)for(const [strip,b] of buf)this.meshes[strip]=this.mesh(FACES_KEY,b);
+    this.drawCrosswalk(view);
+    this.placeArt(view,at);
+  }
+  /** A Mesh of `key` from the buffers (screen px), computed now (not on the update list, like city-layer groundMesh). */
+  private mesh(key:string,b:{verts:number[];uvs:number[];idx:number[];colors:number[];alphas:number[]}):Phaser.GameObjects.Mesh{
+    const m=this.scene.add.mesh(0,0,key);
+    m.hideCCW=false;
+    m.setOrtho(m.width,m.height);
+    m.addVertices(b.verts,b.uvs,b.idx,false,undefined,b.colors,b.alphas);
+    (m as unknown as {preUpdate(time:number,delta:number):void}).preUpdate(0,0);
+    return m;
+  }
+  /** The crosswalk's tiles on the ground (under the deck's shadow), once its decal is in. */
+  private drawCrosswalk(view:number){
+    this.crosswalk?.destroy();this.crosswalk=undefined;
+    if(!this.webgl()||!this.has(CROSSWALK_KEY)||typeof this.scene.add.mesh!=='function')return;
+    const b={verts:[] as number[],uvs:[] as number[],idx:[] as number[],colors:[] as number[],alphas:[] as number[]};
+    for(const v of this.viaducts)for(const t of crosswalkTiles(v,this.unit)){
+      const n=b.verts.length/2,pts:Pt[]=[{x:t.x0,y:t.y0},{x:t.x1,y:t.y0},{x:t.x1,y:t.y1},{x:t.x0,y:t.y1}];
+      pts.forEach((c,k)=>{const q=project(c.x,c.y,0,view);b.verts.push(q.x,-(q.y-this.hooks.groundPx(c.x,c.y)));b.uvs.push(k===1||k===2?1:0,k>=2?1:0);b.colors.push(0xffffff);b.alphas.push(.9);});
+      b.idx.push(n,n+1,n+2,n,n+2,n+3);
+    }
+    if(b.idx.length)this.crosswalk=this.mesh(CROSSWALK_KEY,b).setDepth(this.shadowDepth-1);
+  }
+  /** Places the pieces' images (and the Uno) for `view`, each keyed above the deck cells under it (floor 1). */
+  private placeArt(view:number,at:(c:Pt,z:number)=>Pt){
+    for(const a of this.props){
+      const s=a.sheet;
+      if(!s||!this.has(s.key))continue;
+      const {x,y,floor,rot}=a.prop,frame=artViewOf(view,rot)/90,q=at({x,y},floor===1?a.v.height:0);
+      a.img??=this.scene.add.image(0,0,s.key,frame).setOrigin(.5,s.originY).setScale(s.scale);
+      a.img.setFrame(frame).setPosition(q.x,q.y);
+      // Floor 1: above the deck cells under its middle (a gantry: across the deck); the street: its own point.
+      const hx=a.prop.id==='portico-placa'?(a.v.deck[2]*this.unit)/2:.6;
+      a.key=floor===1?this.deckKey(x-hx,y-.3,x+hx,y+.3):depthKey(x,y,view);
+    }
+    const u=this.uno;
+    if(u&&this.has(UNO_KEY)){
+      const h=unoHeading(u.v),q=at(u,u.v.height);
+      u.img??=this.scene.add.image(0,0,UNO_KEY,0).setOrigin(.5,UNO_FOOT).setScale(UNO_SCALE);
+      u.img.setFrame(unoFrame(h,view)).setPosition(q.x,q.y+unoFootY(h,view));
+      u.key=this.deckKey(u.x-1.2,u.y-1.2,u.x+1.2,u.y+1.2);
     }
   }
 }

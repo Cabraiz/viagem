@@ -515,8 +515,11 @@
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji{width:20px}
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-shame .rh-award-emoji :is(img,svg){width:20px;height:20px}
 :root[data-texto="125"] .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-award-emoji .ic-adesivo{margin:-2px 0}
-/* ...and with 5-6 players only each card's first award stays (second sacrifice). */
-:root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}
+/* ...and with 5-6 players only each card's first award shows (second sacrifice). The others are folded, not gone
+   (N5-resultado-nomes-longos item 3): out of sight but still read aloud, and a tap on the card (is-open) shows them. */
+:root[data-texto="125"] .rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* The shamed player's card (result.ts fitShame): the prizes after the shame chip's first fold the same way. */
+.rh-rcard:not(.is-open) .rh-award-folded{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* 3+ players: the "Você" tag sits on the portrait's lower edge (a badge), so the name keeps the whole row. */
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-top{position:relative}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard-tag{position:absolute;left:-3px;top:28px;padding:0 4px;box-shadow:0 0 0 1px var(--c-breu)}
@@ -615,7 +618,7 @@
 .rh-result-stat .ic{margin:-6px 2px -6px 0}
 /* Resultado de 5-6 na paisagem a 100%: com 2 prêmios por card a grade 3×2 passava 4 px e rolava (audit-layout, também na
    main 5d94f26). Mesma regra que o DSG-tokens já usa a 125%: fica o 1º prêmio. */
-@media(max-height:500px){.rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-award:nth-child(n+2){display:none}}
+@media(max-height:500px){.rh-result-grid:is([data-count="5"],[data-count="6"]) .rh-rcard:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
 
 /* ---------- Minimapa: the slot (ORQ-minimapa) ----------
    Where the minimap sits (the WC3 one, .rh-mm below, draws itself): portrait under the gear, landscape under the gear
@@ -708,8 +711,8 @@
 @media (max-height:500px){.rh-result .rh-result-actions.has-manage .rh-result-exit{flex:0 0 auto}.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:1 1 auto;min-width:132px}}
 .rh-result.is-managing .rh-rcard-awards{display:none}
 /* A room bot's card (D-025) is shorter with 3+ cards: one prize, title only (bots take no person prizes, and its joke
-   line is the one a reader skips first). BUG-resultado-dono-6p-rola. */
-.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true] .rh-award:nth-child(n+2),
+   line is the one a reader skips first). BUG-resultado-dono-6p-rola. The other prizes fold like the 5-6 ones above. */
+.rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true]:not(.is-open) .rh-award:nth-child(n+2){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .rh-result-grid:not([data-count="1"]):not([data-count="2"]) .rh-rcard[data-bot=true] .rh-award-line{display:none}
 .rh-rcard-manage{display:flex;align-items:center;justify-content:center;gap:4px;min-height:48px;padding:4px 8px;border-radius:var(--r-ficha);border:2px solid var(--c-breu);background:var(--c-papel-claro);color:var(--c-breu);font:800 var(--t-13)/1.15 var(--f-sistema);cursor:pointer;box-shadow:var(--s-1)}
 .rh-rcard-manage:active{transform:translateY(2px);box-shadow:0 1px 0 var(--c-breu)}

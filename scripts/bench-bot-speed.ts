@@ -101,7 +101,14 @@ async function escort(label:string,target:(city:any,home:Point)=>Point,seconds:n
     if(tracing)trace.push([p.x,p.y,b.x,b.y]);
     const m=dist(last,b);botWalk+=m;if(m>1e-6)moving++;last={x:b.x,y:b.y};gaps.push(dist(p,b));const md=String((r.room as any).bots.modes.get(roamer));modes.set(md,(modes.get(md)??0)+1);phases.add(String(sim.botView().round?.phase));
   }
-  if(tracing)writeFileSync(process.argv[process.argv.indexOf('--trace')+2],JSON.stringify({home,trace}));
+  if(tracing){
+    // The streets around the walk (walkable for a hero, every 0.25 u), the GIF's background.
+    const xs=trace.flatMap(q=>[q[0],q[2]]),ys=trace.flatMap(q=>[q[1],q[3]]),pad=6,step=.25;
+    const box={x0:Math.min(...xs,home.x)-pad,y0:Math.min(...ys,home.y)-pad,x1:Math.max(...xs,home.x)+pad,y1:Math.max(...ys,home.y)+pad,step};
+    const w=Math.ceil((box.x1-box.x0)/step),h=Math.ceil((box.y1-box.y0)/step),open:number[]=[];
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++)open.push(walkable({x:box.x0+(i+.5)*step,y:box.y0+(j+.5)*step},city)?1:0);
+    writeFileSync(process.argv[process.argv.indexOf('--trace')+2],JSON.stringify({home,trace,box,w,h,open}));
+  }
   const gapEnd=dist(p,b),walkPhase=botWalk;let catchTicks=0;
   while(dist(p,b)>ESCORT_LEASH&&catchTicks<SIM_HZ*30){r.step();catchTicks++;botWalk+=dist(last,b);last={x:b.x,y:b.y};}
   const person=total/(ticksWalk/SIM_HZ),botSpeed=walkPhase/(ticksWalk/SIM_HZ),catchSpeed=(botWalk-walkPhase)/Math.max(1e-9,catchTicks/SIM_HZ);

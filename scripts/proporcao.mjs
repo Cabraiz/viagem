@@ -1,10 +1,11 @@
 // Card NEW-20261022-ORQ-corrida-proporcao-contorno: does a movement sheet draw the hero at the same size as standing?
 // For each drawn direction, the rest pose (idle16-<dir>, or an R06 class's idle8 column: corrida-clt) is the reference, and every pose of the walk (walk16) and the
-// run (run16) is compared at the same game scale (each clip draws its cell at 96/height):
+// run (run16) and the push of the Uno (push16, card empurrar-uno) is compared at the same game scale (each clip draws its
+// cell at 96/height):
 //   - head: the rest pose's head (cap included, top down to the neck) fitted on the pose's head over scales 0.6–1.4
 //     (soft alpha, IoU); `head` is that scale (1 = same head), robust to arms passing by and to the lean;
 //   - height: the figure's height (alpha > 128) over the rest pose's; only the stance poses of a run (its phase table
-//     moves the sprite: v ≠ 0) and all of a walk, since the flight and the crouch change it;
+//     moves the sprite: v ≠ 0) and all of a walk and a push (one foot always down), since the flight and the crouch change it;
 //   - torso: the widest solid stretch of the rows under the neck (shoulders and chest, arms touching included), median
 //     over that band, over the rest pose's;
 //   - area: √(opaque area ratio), the whole figure's size whatever the pose ("magro" shows here first).
@@ -163,10 +164,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&files[`run16-${d}`])return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -180,7 +181,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
     const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run']){
+    for(const motion of ['idle','walk','run','push']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -205,10 +206,26 @@ export async function measureClass(manifest,id,dir=SPRITES){
  * chest, legs folded) and are reported, not gated.
  */
 export const GATED=['head','height'];
+/**
+ * The push (empurrar-uno, ORQ 23/10): leaning 15° on the car with the knees bent, the figure is lower by design; the head
+ * never changes. Its height only has to stay at least PUSH_MIN_HEIGHT of the rest's (the same rule as a crouched run).
+ */
+export const PUSH_MIN_HEIGHT=.88;
+/**
+ * Pushing away from the camera (push16-N) the palms rise beside the head on the screen and the head template locks on
+ * hands and hair together (it reads 1.24–1.26 on heads drawn the rest's size: evidence/NEW-20261022-ORQ-empurrar-uno/
+ * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
+ */
+export const PUSH_HEAD_UNREAD=['N'];
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    if(motion!=='idle')for(const key of keys){
+    if(motion==='push'){
+      const unread=PUSH_HEAD_UNREAD.includes(d);
+      if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
+      if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
+      if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
+    }else if(motion!=='idle')for(const key of keys){
       const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
     }
@@ -237,7 +254,7 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
   const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
-    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...Array.from({length:files[`run16-${d}`]?.frames??0},(_,i)=>['run',i])].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
+    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...['run','push'].flatMap(m=>Array.from({length:files[`${m}16-${d}`]?.frames??0},(_,i)=>[m,i]))].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
     const comps=[];
     for(let k=0;k<list.length;k++){
       const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);

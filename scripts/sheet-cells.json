@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 3164,
+  "sheets": 3184,
   "failing": 0,
   "frames": 0
  },
@@ -12388,6 +12388,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
+   "sha": "11b3d399e964c36364a1d7464ea34f057c1cc5f6ee40ae3033db1dbd92368b85",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-nw.0ff126f5cf94.webp": {
+   "sha": "6bd0cf6607f368af634de29269c45fb820d623750a122b3b0764d4d9e73f145b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-s.2dca8df2dca6.webp": {
+   "sha": "d3d7435bea81ec783ee0d4b7d821c4f638aba45f376095704643b72fb819ef7c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-se.e11b3c283ade.webp": {
+   "sha": "3a27f07b541943d69b189613b9b816980aad24da1be442afc62b9577a9c2ae97",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.push16-w.a3b3ef618532.webp": {
+   "sha": "a094e1b33fc565da3bbfc0926a4288446b1033f534d2c08f3476aadb20d73cc7",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/clt-cansado.run16-n.f2d2ddfe25ce.webp": {
    "sha": "0b8dd0b8be20892223aa1cbd92515200f653950a247a34d833e19e9e132438a9",
    "ilhas": 0,
@@ -13753,6 +13778,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/viciado-em-bet.push16-n.e8e3c05b5850.webp": {
+   "sha": "e78bac997701fac627ef6586538efdb6470a6dc2750c85423a10fbeef7ae4267",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-nw.04a8db15903e.webp": {
+   "sha": "9d23ea3ea83edaeee74eb646146a695f039bd004fd5f22c944008a16a1381ce0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-s.59f96857a28a.webp": {
+   "sha": "f9d5b0ca3027c3c5d71479c1f271b8dcc3056e6284db1a61d658ae16bd9a2bf5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-se.31f480582294.webp": {
+   "sha": "e04266e571d493cb424fae7255d4b2574b7ae299a53986b37f0c90101d97cfcd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.push16-w.77248b872e71.webp": {
+   "sha": "b204366d573dc5e2085fb0cb3a09d6bb46a76a84565589d2a9327b8522432ddb",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/viciado-em-bet.run16-n.fe66bbc0a4dd.webp": {
    "sha": "24b3177c4f85e0c07727854cc3caa3e4160e56ad638b8d2c1e451c264a43cdc6",
    "ilhas": 0,
@@ -14145,6 +14195,31 @@
   },
   "sprites/clt-cansado.idle8.15cf38519b49.webp": {
    "sha": "bbd5e881619b2999c2f8a1051ebaebce40d957ef6af80c61d817eacb93ec0046",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
+   "sha": "c1273e2bf5da3ee91bb3ecc84ea2b79b5c3dfcc8bf24dad1ac6812717a31b31d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-nw.0ff126f5cf94.webp": {
+   "sha": "0ff126f5cf94847f72f3243c8d0bb7a8e209f63ca2cb4130a8213dd91fd8d4a0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-s.2dca8df2dca6.webp": {
+   "sha": "2dca8df2dca67970849d42a99961f604bfd87531475a42ff23abc7de9608400b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-se.e11b3c283ade.webp": {
+   "sha": "e11b3c283aded4034355645a3090c565797e9f16ebc7c62cac424616785d2297",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.push16-w.a3b3ef618532.webp": {
+   "sha": "a3b3ef618532f1bc69b1c82b51c26d1a8cb216737da3d96dd8ddf7c2ed178446",
    "ilhas": 0,
    "fails": []
   },
@@ -15645,6 +15720,31 @@
   },
   "sprites/viciado-em-bet.idle8.f8c45d75d0f1.webp": {
    "sha": "2f40d164bcf21c691dcbff20911646a4c6026a7d4d5e10d7c40763ffcae97a8f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-n.e8e3c05b5850.webp": {
+   "sha": "e8e3c05b5850c39cb86effce41833a2b216d99675e3722b5d6589fe462770b3a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-nw.04a8db15903e.webp": {
+   "sha": "04a8db15903e88d04d1fc64721f9e9f1db4f331067d03b19d4945335d12ec38d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-s.59f96857a28a.webp": {
+   "sha": "59f96857a28a6a965d9190212526bd0439d08276afd111f417900fe5f684dbcf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-se.31f480582294.webp": {
+   "sha": "31f48058229468338acf946e6273ffee8ce6583775ad04c340849a3eace990af",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.push16-w.77248b872e71.webp": {
+   "sha": "77248b872e7168c582bcb6b9ca38f2fba002ff5d1565afd554a677f6221d107a",
    "ilhas": 0,
    "fails": []
   },

@@ -1,4 +1,4 @@
-// Card NEW-20261022-ORQ-corrida-clt (and corrida-proporcao-contorno, item C): every run pose keeps the city's "você"
+// Card NEW-20261022-ORQ-corrida-clt (and corrida-proporcao-contorno, item C; empurrar-uno: the push too): every run pose keeps the city's "você"
 // contour, white (Papel) inside black (Breu), all the way round, in the full sheet and in its lite copy. Each frame is
 // baked the way the game bakes the hero's city copy (the figure box crop, padded for the sticker, render/outline.ts
 // bandsRgba with CITY_STICKER's bands) and the rendered outline is walked: every px on its outside edge must be Breu,
@@ -48,10 +48,11 @@ function contour(sheet:{data:Buffer;width:number},frame:number,cols:number,box:{
 }
 
 const runs=Object.entries(manifest.pieces as Record<string,{files:Record<string,{file:string;frames:number;figure:{left:number;top:number;right:number;bottom:number};pages:{columns:number}[]}>}>)
-  .flatMap(([id,p])=>Object.entries(p.files).filter(([k])=>k.startsWith('run16-')).map(([k,f])=>({id,key:k,f})));
+  .flatMap(([id,p])=>Object.entries(p.files).filter(([k])=>k.startsWith('run16-')||k.startsWith('push16-')).map(([k,f])=>({id,key:k,f})));
 
-test('the run sheets the game shows include the viciado\'s and the CLT\'s',()=>{
-  for(const id of ['viciado-em-bet','clt-cansado'])assert.equal(runs.filter(r=>r.id===id).length,5,`${id}: 5 drawn run directions`);
+test('the run and push sheets the game shows include the viciado\'s and the CLT\'s',()=>{
+  for(const id of ['viciado-em-bet','clt-cansado'])for(const m of ['run16-','push16-'])
+    assert.equal(runs.filter(r=>r.id===id&&r.key.startsWith(m)).length,5,`${id}: 5 drawn ${m} directions`);
 });
 
 for(const {id,key,f} of runs)test(`${id} ${key}: Breu outside Papel on ≥ ${CONTOUR_MIN*100} % of every pose's contour, full and lite`,async()=>{

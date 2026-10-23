@@ -7,7 +7,7 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,type Movement128Plan} from './movement128.ts';
+import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,hasPush16,pushPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -258,8 +258,11 @@ export class CharacterSprites {
   /**
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
+   * `push` (card empurrar-uno): the world direction to the Uno while this hero pushes it (ObjectiveView.car.movers, not
+   * the rope): a class with a push16 faces it and plays the push by the ground walked (its pose held while the car is
+   * stuck); the others keep their walk.
    */
-  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},
+  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},push?:{x:number;y:number},
     /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
     look?:{x:number;y:number}){
     watchOrphans(this.scene);
@@ -273,9 +276,10 @@ export class CharacterSprites {
     const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
-    const face=look??intent,legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
+    const pushing=!!push&&alive&&motion!=='attack'&&hasPush16(id),face=pushing?push:look??intent;
+    const legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
     const seen=movement128Visible(sprite,this.scene);
-    const detailed=alive&&seen?movementPlan(id,motion,direction):undefined;
+    const detailed=alive&&seen?pushing?pushPlan(id,direction):movementPlan(id,motion,direction):undefined;
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -290,7 +294,8 @@ export class CharacterSprites {
         const scale=96/detailed.height*this.viewScale*HERO_DRAW_SCALE;
         // The walk by the ground walked, attack and rest by the clock. A run with a phase table picks its pose by the
         // ground and shifts the sprite back by the planted foot's travel within the pose: the foot stays on its spot.
-        const run=motion==='walk'&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
+        // The push likewise (empurrar-uno): its pose by the ground walked, held while the car does not move.
+        const run=(motion==='walk'||pushing)&&detailed.phase?runPhase(detailed.phase,state.cycles):undefined;
         const frame=run?run.frame:motion==='walk'&&detailed.loop?cycleFrame(state.cycles,detailed.frameCount):
           motion==='attack'?swingFrame(detailed,(this.scene.time.now-swing.start)/swing.ms):movementFrame(detailed,direction,this.scene.time.now-state.phaseStarted);
         const copy=this.city?.variant(detailed.key,scale,cropOf(detailed.figure,96,96));
@@ -307,7 +312,8 @@ export class CharacterSprites {
         if(flip)origin.x=1-origin.x;
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
-        state.hand={url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
+        // Both hands on the Uno (empurrar-uno): the weapon is put away at the hero's side (arsenal-fx), measured or not.
+        state.hand=pushing?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.

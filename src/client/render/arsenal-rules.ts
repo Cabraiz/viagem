@@ -44,6 +44,13 @@ export function crateRow(progress:number):string{
  * FLOAT_BOB_MS, one turn in FLOAT_TURN_MS, FLOAT_TURN_OPEN× faster when a hero has it all but open.
  */
 export const FLOAT_PX=120,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
+/**
+ * On a phone (the user, 23/10: "aumentar o item flutuando no celular até ficar legível") the floating item grows with the
+ * square of the horde's legibility multiplier over the body scale (framing.ts hordeUiScale: 1 on the PC, ~1.25 at a
+ * phone's zoom, so ~1.55×: the plain multiplier read too small), capped at FLOAT_PHONE_MAX; its lift and shadow grow with it.
+ */
+export const FLOAT_PHONE_MAX=1.8;
+export const floatLegible=(ui:number,body:number)=>Math.max(1,Math.min(FLOAT_PHONE_MAX,(ui/Math.max(1e-6,body))**2));
 /** The thinnest the coin gets (edge on): a sliver, never gone (its glow and its shadow stay). */
 export const FLOAT_EDGE=.08;
 /** The turn after `dt` ms at opening `progress` (0..1): the angle advances, faster as the opening fills. */

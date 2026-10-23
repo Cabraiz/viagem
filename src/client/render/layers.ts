@@ -32,7 +32,7 @@ import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIn
 import {sunlit} from './light-actors.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
-import {FLOAT_PX,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
+import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
 import {THROW_MS} from '../../rules/index.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
@@ -1008,7 +1008,7 @@ export class HordeRenderer{
         const progress=this.arsenal.floatingCrate(a.id,a.x,a.y,a.value,q);
         a.spin=floatSpin(a.spin,Math.min(100,now-a.spunAt),progress);a.spunAt=now;
         const pose=floatPose(now,a.phase,a.spin,reduced);
-        y=-pose.lift;turn=pose.turn;scale=1+.15*progress;floatShadow=pose.shadow;
+        const k=floatLegible(this.ui,body);y=-pose.lift*k;turn=pose.turn;scale=(1+.15*progress)*k;floatShadow=pose.shadow*k;
       }
       else if(a.kind==='chest'){const ref=this.arsenal.crate(a.id,a.x,a.y,a.value,q);if(ref&&a.image.texture.key===ref.key&&a.image.frame.name!==String(ref.frame))a.image.setFrame(ref.frame);}
       else this.arsenal.item(a.resource,a.value,q);

@@ -19,5 +19,6 @@ As versões pt-BR e es ficam prontas aqui para quando o jogo tiver tradução e 
 ## Arquivos
 
 - `index.html`: título, descrição, canonical, Open Graph, Twitter card e JSON-LD `VideoGame` (sem nota nem avaliação).
-- `public/og.jpg`: 1200x630, o estádio do menu com os três personagens, sem texto.
+- `public/og.jpg`: 1200x630, o logo 2B (o Uno na rua nevada em V, 16 bits) no centro, sobre roxo com neve em blocos; cabe no recorte quadrado do WhatsApp. O head aponta para `og.jpg?v=2b` (o WhatsApp guarda o preview pela URL; trocar o `v` quando a imagem mudar). Até 23/10 era o estádio com os três personagens.
+- Ícones (NEW-20261023-ORQ-icone-uno-2b): `favicon.ico` (16 desenhado à mão, 32 e 48 reduzidos), `icon-48/96/192.png` (o Google usa o 48 ou múltiplo na busca), `apple-touch-icon.png` (180, fundo roxo), `manifest.webmanifest` com `icon-192/512.png` e as `maskable` (logo a 62 % para o círculo seguro). `display: browser`: o atalho da tela inicial abre o site como hoje, sem pedido de instalação. `favicon.svg` continua (o `public/conexao.html` testa o HTTPS por ele) com a 64 px dentro. Fonte e scripts: `viagem-board/evidence/NEW-20261023-ORQ-icone-uno-2b/` (`limpar.py`, `favicon16.py`, `gerar.py`, `og.py`).
 - `public/robots.txt` e `public/sitemap.xml`: vão para a raiz do Pages pelo `dist/`. O `public/ads.txt` do card de anúncios convive com eles.

@@ -10,25 +10,32 @@
          tests/tools/seo-head.test.ts keeps the tone rules (no superlatives, no "!", description <= 155). -->
     <meta name="description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
     <link rel="canonical" href="https://viagem.cyou/" />
-    <link rel="icon" href="/favicon.svg" />
+    <!-- icone-uno-2b (NEW-20261023-ORQ-icone-uno-2b, docs/seo.md): the 2B logo (the Uno on a snowy V street, 16-bit). The
+         .ico carries a hand-drawn 16 px (the reduced one is a smudge); Google's search icon uses the 48/96/192 PNGs. -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" href="/icon-48.png" sizes="48x48" />
+    <link rel="icon" type="image/png" href="/icon-96.png" sizes="96x96" />
+    <link rel="icon" type="image/png" href="/icon-192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="viagem" />
     <meta property="og:url" content="https://viagem.cyou/" />
     <meta property="og:title" content="viagem: co-op survival in the browser" />
     <meta property="og:description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
-    <meta property="og:image" content="https://viagem.cyou/og.jpg" />
+    <meta property="og:image" content="https://viagem.cyou/og.jpg?v=2b" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="The gambler, the office worker and the cat in a stadium full of confetti." />
+    <meta property="og:image:alt" content="The viagem logo: a snowy city street shaped like a V, with a small boxy car." />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="pt_BR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="viagem: co-op survival in the browser" />
     <meta name="twitter:description" content="A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat." />
-    <meta name="twitter:image" content="https://viagem.cyou/og.jpg" />
-    <meta name="twitter:image:alt" content="The gambler, the office worker and the cat in a stadium full of confetti." />
+    <meta name="twitter:image" content="https://viagem.cyou/og.jpg?v=2b" />
+    <meta name="twitter:image:alt" content="The viagem logo: a snowy city street shaped like a V, with a small boxy car." />
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"VideoGame","name":"viagem","url":"https://viagem.cyou/","image":"https://viagem.cyou/og.jpg",
+      {"@context":"https://schema.org","@type":"VideoGame","name":"viagem","url":"https://viagem.cyou/","image":"https://viagem.cyou/og.jpg?v=2b",
        "description":"A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat.",
        "genre":"Survival","gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","inLanguage":"pt-BR",
        "playMode":["SinglePlayer","CoOp"],"numberOfPlayers":{"@type":"QuantitativeValue","minValue":1,"maxValue":6},

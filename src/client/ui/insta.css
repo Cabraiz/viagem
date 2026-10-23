@@ -1,0 +1,188 @@
+/* The hero pick on the phone held upright as an Instagram profile (NEW-20261023-ORQ-selecao-mobile-instagram, ui/insta.ts).
+   Every size is the user's reference (evidence/<ID>/referencia-usuario.jpg: the light card, 734x1415 px) measured in its
+   pixels times --u, the card px that fits the screen: the full width, or the full height on a short one. The card is
+   centred, so a taller screen only gets air above and below; nothing scrolls. Desktop and the phone on its side never
+   see it (the stadium, estadio.css). The stadium's own parts are hidden here; its button, name row and lock stay
+   (main.ts): only their look changes. */
+.insta-topo, .insta-grade-area { display: none; }
+
+@media (orientation: portrait) and (max-width: 820px) {
+  .world.estadio { background: var(--insta-fundo); }
+  .estadio .estadio-palco, .estadio .menu-config, .estadio .estadio-caixa-titulo, .estadio .estadio-fileira { display: none; }
+
+  .estadio .estadio-escolha {
+    --u: calc(min(100vw, 51.873dvh) / 734); /* 734 / 1415 */
+    inset: 0; width: auto; height: 100%; gap: 0; padding: 0; align-items: center; justify-content: center;
+    color: var(--insta-texto);
+  }
+  .estadio .estadio-escolha > * { flex: none; width: calc(var(--u) * 734); max-width: none; }
+
+  .insta-topo { display: block; }
+  .insta-grade-area { display: block; margin-top: calc(var(--u) * 28); }
+  .estadio-escolha[data-etapa="nome"] .insta-grade-area { display: none; }
+
+  /* Top bar (17..135): the logo 118 tall at x 52; the bell 36x41 at x 573, ≡ 43 wide at x 650, both from y 46. */
+  .insta-barra { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--u) * 118); margin-top: calc(var(--u) * 17); padding-left: calc(var(--u) * 52); }
+  /* The logo is the letreiro of the profile on screen (main.ts renderInsta, BUG-20261023-ORQ-instagram-letreiro-do-perfil):
+     every hero's at the same 140 tall from y 9 (the viciado's crown and confetti made it taller than the reference's,
+     so its letters are as big); the widest, the CLT's plaque, ends at x 287, far from the bell. No src yet: no box. */
+  .insta-logo { display: block; height: calc(var(--u) * 140); width: auto; max-width: calc(var(--u) * 480); margin: calc(var(--u) * -8) 0 0 calc(var(--u) * -14); }
+  .insta-logo:not([src]) { visibility: hidden; }
+  .insta-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 24) calc(var(--u) * 32) 0 0; }
+  .insta-sino, .insta-menu { display: grid; place-items: center; color: var(--insta-texto); }
+  .insta-sino svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
+  .estadio .insta-menu { width: calc(var(--u) * 56); height: calc(var(--u) * 56); min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
+  .insta-menu svg { width: calc(var(--u) * 54); height: calc(var(--u) * 54); }
+
+  /* Stories (151..397): rings of 214 every 234 from x 14 (centres 131, 365, 599), the name 11 under the ring. */
+  .insta-stories { display: grid; grid-template-columns: repeat(3, calc(var(--u) * 234)); justify-content: center; margin-top: calc(var(--u) * 16); }
+  .estadio .insta-story {
+    display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 9); width: 100%; min-height: 0; padding: 0;
+    border: 0; background: none; box-shadow: none; color: var(--insta-texto); cursor: pointer;
+  }
+  .insta-story:active .insta-anel { transform: scale(.96); }
+  /* The gradient ring, a sliver of the page's colour, then the face: 9 + 3 of 214 (the profile: 9 + 4 of 320). */
+  .insta-anel {
+    position: relative; display: block; flex: none; width: calc(var(--u) * 214); height: calc(var(--u) * 214); padding: calc(var(--u) * 9);
+    border-radius: var(--r-circulo); background: linear-gradient(45deg, var(--insta-anel-a) 12%, var(--insta-anel-b) 52%, var(--insta-anel-c) 88%);
+  }
+  .insta-rosto { display: block; width: 100%; height: 100%; border: calc(var(--u) * 3) solid var(--insta-fundo); border-radius: var(--r-circulo); object-fit: cover; }
+  .insta-cadeado { position: absolute; right: calc(var(--u) * 42); bottom: calc(var(--u) * 36); width: calc(var(--u) * 50); height: auto; }
+  .insta-story-nome { font: 400 max(10px, calc(var(--u) * 28))/1 var(--f-botao); }
+
+  /* "Toque para trocar" (418..441) between two lines of 120 (x 125..245 and 490..610). */
+  .insta-trocar {
+    display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 25); margin: calc(var(--u) * 15) 0 0;
+    font: 400 max(10px, calc(var(--u) * 25))/1 var(--f-sistema); color: var(--insta-texto);
+  }
+  .insta-trocar::before, .insta-trocar::after { content: ''; width: calc(var(--u) * 120); height: max(1px, calc(var(--u) * 2)); background: var(--insta-linha); }
+
+  /* Profile (458..778): the photo 320 at x 22, the badge 50 at its 4 o'clock; the text column from x 377 to 712. */
+  .insta-perfil { display: flex; align-items: flex-start; gap: calc(var(--u) * 35); margin-top: calc(var(--u) * 16); padding-left: calc(var(--u) * 22); }
+  .insta-foto { position: relative; flex: none; }
+  .insta-foto .insta-anel { width: calc(var(--u) * 320); height: calc(var(--u) * 320); }
+  .insta-foto .insta-rosto { border-width: calc(var(--u) * 4); }
+  .insta-selo-foto { position: absolute; left: calc(var(--u) * 240); top: calc(var(--u) * 240); width: calc(var(--u) * 52); height: auto; }
+  .insta-info { flex: 1; min-width: 0; padding-top: calc(var(--u) * 50); padding-right: calc(var(--u) * 22); }
+  .insta-arroba {
+    display: flex; align-items: center; gap: calc(var(--u) * 14); margin: 0;
+    font: 400 max(10px, calc(var(--u) * 64 * var(--arroba-fit, 1)))/1 var(--f-botao); white-space: nowrap;
+  }
+  .insta-selo { flex: none; width: calc(var(--u) * 46); height: auto; }
+  .insta-numeros { display: grid; grid-template-columns: 1fr 1fr; margin-top: calc(var(--u) * 26); }
+  .insta-numeros p { display: flex; flex-direction: column; align-items: center; margin: 0; padding-block: calc(var(--u) * 4); }
+  .insta-numeros p + p { border-left: max(1px, calc(var(--u) * 2)) solid var(--insta-linha); }
+  .insta-numeros strong { font: 800 max(10px, calc(var(--u) * 37))/1.05 var(--f-sistema); }
+  .insta-numeros span { margin-top: calc(var(--u) * 6); font: 400 max(10px, calc(var(--u) * 24))/1.1 var(--f-sistema); color: var(--insta-cinza); }
+  .insta-bio { margin: calc(var(--u) * 26) 0 0; font: 400 max(10px, calc(var(--u) * 25))/1.2 var(--f-sistema); text-align: center; text-wrap: balance; white-space: pre-line; }
+
+  /* Chips (782..852, x 25..709 with 18 between): the icon, then the label and the value. The game's letter is wider than
+     the reference's, so each chip is as wide as its text (the longest trio, the viciado's, takes 670 of the 684) and the
+     rest of the row is shared: never an ellipsis. */
+  .insta-chips { display: grid; grid-template-columns: repeat(3, auto); gap: calc(var(--u) * 14); margin: calc(var(--u) * 4) 0 0; padding: 0 calc(var(--u) * 25); list-style: none; }
+  .insta-chip {
+    display: flex; align-items: center; gap: calc(var(--u) * 8); min-width: 0; height: calc(var(--u) * 70); padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 10);
+    border-radius: var(--r-ficha); background: var(--insta-chip);
+  }
+  /* The icons in the reference's dark grey, one flat colour like its own (the user, 23/10): the Codex drawing as a mask. */
+  .insta-chip-icone { flex: none; width: calc(var(--u) * 38); height: calc(var(--u) * 38); background: var(--insta-icone); mask: var(--icone) 50% 50% / contain no-repeat; }
+  .insta-chip-icone[data-icone="oculos"] { --icone: url('/art/lite/menu/insta/icone-oculos.webp'); }
+  .insta-chip-icone[data-icone="coroa"] { --icone: url('/art/lite/menu/insta/icone-coroa.webp'); }
+  .insta-chip-icone[data-icone="pata"] { --icone: url('/art/lite/menu/insta/icone-pata.webp'); }
+  .insta-chip span { display: flex; flex-direction: column; min-width: 0; }
+  .insta-chip small { font: 400 max(10px, calc(var(--u) * 19))/1.15 var(--f-sistema); color: var(--insta-cinza); }
+  .insta-chip b { font: 800 max(10px, calc(var(--u) * 20))/1.2 var(--f-sistema); white-space: nowrap; }
+
+  /* Tabs (880..955): the line over them, three icons of 37 centred in thirds, the active one underlined (8) in purple. */
+  .insta-abas { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 calc(var(--u) * 22); border-top: max(1px, calc(var(--u) * 3)) solid var(--insta-linha); border-bottom: max(1px, calc(var(--u) * 3)) solid var(--insta-linha); }
+  .insta-aba { display: grid; place-items: center; height: calc(var(--u) * 67); padding-top: calc(var(--u) * 6); color: var(--insta-texto); }
+  .insta-aba svg { width: calc(var(--u) * 42); height: calc(var(--u) * 42); }
+  .insta-aba.ativa { box-shadow: inset 0 calc(var(--u) * -8) 0 var(--insta-roxo); margin: 0 calc(var(--u) * 14); }
+  /* The grid (967..1231): three photos 231x265 with 8 between, x 17..715; exactly three, no second row. */
+  .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 265); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
+  .estadio .insta-post-botao { display: block; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: var(--r-ficha); background: none; box-shadow: none; cursor: zoom-in; }
+  .insta-post-botao:active .insta-post { transform: scale(.97); }
+  .insta-post { display: block; width: 100%; height: 100%; border-radius: var(--r-ficha); object-fit: cover; }
+  .insta-privada {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 24);
+    border: max(1px, calc(var(--u) * 3)) dashed var(--insta-linha); border-radius: var(--r-ficha);
+  }
+  .insta-privada-cadeado { width: calc(var(--u) * 84); height: auto; }
+  .insta-privada p { display: flex; flex-direction: column; gap: calc(var(--u) * 6); margin: 0; }
+  .insta-privada b { font: 800 max(10px, calc(var(--u) * 30))/1.1 var(--f-sistema); }
+  .insta-privada span { font: 400 max(10px, calc(var(--u) * 24))/1.2 var(--f-sistema); color: var(--insta-cinza); }
+
+  /* Step 2: the name row takes the tabs and the grid's place (880..1234; the stadium's margin-top:auto does not apply). */
+  .estadio .estadio-escolha:has(.insta-topo) > .estadio-nome { height: calc(var(--u) * 354); margin-top: calc(var(--u) * 28); padding: 0 calc(var(--u) * 22); align-items: center; gap: calc(var(--u) * 16); }
+  .estadio .estadio-nome[hidden] { display: none; }
+  .estadio .estadio-nome .estadio-escolhido { display: none; }
+  .estadio .estadio-nome .round-button { width: calc(var(--u) * 84); height: calc(var(--u) * 84); border-color: var(--insta-fundo); background: var(--insta-texto); color: var(--insta-fundo); font-size: max(10px, calc(var(--u) * 52)); }
+  .estadio .estadio-nome #nickname {
+    max-width: none; min-height: calc(var(--u) * 92); border: max(2px, calc(var(--u) * 4)) solid var(--insta-texto); border-radius: var(--r-ficha);
+    background: var(--insta-chip); color: var(--insta-texto); box-shadow: none; font-size: max(16px, calc(var(--u) * 30));
+  }
+  .estadio .estadio-nome #nickname::placeholder { color: var(--insta-cinza); }
+
+  /* SELECIONAR (1251..1373, x 22..708): the wide purple button with a crown at each end, white condensed letters. */
+  .estadio .estadio-escolha > .estadio-confirmar {
+    --bh: calc(var(--u) * 123);
+    width: calc(var(--u) * 686); height: var(--bh); margin: calc(var(--u) * 19) 0 calc(var(--u) * 39); padding: 0 calc(var(--u) * 56);
+    border: max(2px, calc(var(--u) * 5)) solid var(--insta-botao-borda); border-image: none; border-radius: var(--r-insta);
+    background: linear-gradient(var(--insta-botao-a), var(--insta-botao-b) 55%, var(--insta-botao-c));
+    box-shadow: inset 0 calc(var(--u) * 5) 0 color-mix(in srgb, var(--insta-botao-coroa) 70%, transparent);
+    color: var(--insta-fundo); font: 400 calc(var(--u) * 54)/1 var(--f-botao); justify-content: space-between;
+  }
+  .estadio .estadio-escolha > .estadio-confirmar > span[aria-hidden],
+  .estadio .estadio-escolha > .estadio-confirmar::after {
+    content: ''; flex: none; width: calc(var(--u) * 52); height: calc(var(--u) * 46); translate: none; color: transparent; overflow: hidden;
+    background: var(--insta-botao-coroa);
+    mask: url('/art/lite/menu/insta/icone-coroa.webp') 50% 50% / contain no-repeat;
+  }
+  .estadio .estadio-escolha > .estadio-confirmar .estadio-confirmar-texto { translate: none; rotate: none; font-size: calc(var(--u) * 54); }
+  .estadio .estadio-escolha > .estadio-confirmar .estadio-cadeado:not([hidden]) { width: calc(var(--u) * 52); height: calc(var(--u) * 52); translate: none; }
+}
+
+/* A grid photo opened as a post (ui/insta-post.ts, BUG-20261023-ORQ-instagram-letreiro-do-perfil), over the whole page:
+   the veil, then the card at the profile's width (--u as above), centred. Its sizes are card px too. */
+.insta-ver {
+  --u: calc(min(100vw, 51.873dvh) / 734);
+  position: fixed; inset: 0; z-index: var(--z-dialogo); display: grid; place-items: center; overscroll-behavior: contain; touch-action: none;
+  color: var(--insta-texto); user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.insta-ver-veu { position: absolute; inset: 0; background: var(--insta-veu); }
+.insta-ver-cartao { position: relative; width: calc(var(--u) * 734); overflow: hidden; border-radius: var(--r-janela); background: var(--insta-fundo); touch-action: none; }
+.insta-ver button { display: grid; place-items: center; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: inherit; cursor: pointer; }
+.insta-ver svg { display: block; }
+.insta-ver-topo { display: flex; align-items: center; gap: calc(var(--u) * 16); height: calc(var(--u) * 104); padding: 0 calc(var(--u) * 24) 0 calc(var(--u) * 12); }
+.insta-ver-voltar { width: calc(var(--u) * 64); height: calc(var(--u) * 64); }
+.insta-ver-voltar svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
+.insta-ver-avatar {
+  width: calc(var(--u) * 66); height: calc(var(--u) * 66); padding: calc(var(--u) * 4); border-radius: var(--r-circulo); object-fit: cover;
+  background: linear-gradient(45deg, var(--insta-anel-a) 12%, var(--insta-anel-b) 52%, var(--insta-anel-c) 88%);
+}
+.insta-ver-topo b { font: 800 max(10px, calc(var(--u) * 30))/1 var(--f-sistema); }
+.insta-ver-selo { width: calc(var(--u) * 32); height: auto; margin-left: calc(var(--u) * -8); }
+.insta-ver-mais { margin-left: auto; }
+.insta-ver-mais svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
+.insta-ver-janela { overflow: hidden; }
+.insta-ver-trilho { display: flex; transition: transform .26s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.insta-ver-slide { flex: none; width: 100%; }
+.insta-ver-midia { position: relative; aspect-ratio: 1; background: var(--insta-chip); }
+.insta-ver-foto { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The double tap's big heart, in the page's colour over the photo. */
+.insta-ver-pop { position: absolute; inset: 0; display: grid; place-items: center; color: var(--insta-fundo); opacity: 0; pointer-events: none; }
+.insta-ver-pop svg { width: calc(var(--u) * 240); height: calc(var(--u) * 240); fill: currentColor; stroke: none; }
+.insta-ver-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 20) calc(var(--u) * 26) calc(var(--u) * 10); }
+.insta-ver-acoes svg { width: calc(var(--u) * 54); height: calc(var(--u) * 54); }
+.insta-ver-curtir[aria-pressed="true"] { color: var(--insta-curtir); }
+.insta-ver-curtir[aria-pressed="true"] svg { fill: currentColor; }
+.insta-ver-salvar { margin-left: auto; }
+.insta-ver-curtidas, .insta-ver-legenda, .insta-ver-quando { margin: 0 calc(var(--u) * 28); }
+.insta-ver-curtidas { font: 400 max(10px, calc(var(--u) * 26))/1.3 var(--f-sistema); }
+.insta-ver-curtidas b, .insta-ver-legenda b { font-weight: 800; }
+.insta-ver-legenda { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 27))/1.3 var(--f-sistema); }
+.insta-ver-quando { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 22))/1.2 var(--f-sistema); color: var(--insta-cinza); }
+.insta-ver-pontos { display: flex; justify-content: center; gap: calc(var(--u) * 10); padding: calc(var(--u) * 20) 0 calc(var(--u) * 24); }
+.insta-ver-pontos i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: var(--r-circulo); background: var(--insta-linha); }
+.insta-ver-pontos i.ativo { background: var(--insta-roxo); }
+@media (prefers-reduced-motion: reduce) { .insta-ver-trilho { transition: none; } }

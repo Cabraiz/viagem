@@ -98,12 +98,15 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * carry the aim's bucket in bits 2+ (protocol/input-track.ts); an older room refuses those segments.
  * 29 given by the integration queue (tools/fila.mjs, lote 20261021-071918) to: NEW-20261021-ORQ-cone-ataque-melee.
  * 30 given by the integration queue (tools/fila.mjs, lote 20261022-125548) to: NEW-20261022-ORQ-monstros-espalhados-they-are-billions.
+ * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
+ * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
+ * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
  * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
  * would refuse the masks.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=30;
+export const PROTOCOL_VERSION=31;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -310,6 +313,9 @@ const tickRel:Codec<number>={write:(w,v,f)=>w.svar(v-f.tick),read:(r,f)=>f.tick+
 /** 0..1 as a byte. */
 const unitByte=(v:number)=>Math.round(Math.max(0,Math.min(1,finite(v)))*255);
 const unit:Codec<number>={write:(w,v)=>w.u8(unitByte(v)),read:r=>r.u8()/255,norm:v=>unitByte(v)/255,eq:same};
+/** A positive ratio in thousandths (stats.moveSpeed, 0.5..2: maps/prediction statMoveSpeed). */
+const milliOf=(v:number)=>Math.max(0,Math.round(finite(v)*1000));
+const milli:Codec<number>={write:(w,v)=>w.uvar(milliOf(v)),read:r=>r.uvar()/1000,norm:v=>milliOf(v)/1000,eq:same};
 /** A counter mod 256 in one byte (a defense's volleys, torre-contador-de-tiros). */
 const byteCount=(v:number)=>((Math.round(finite(v))%256)+256)%256;
 const u8:Codec<number>={write:(w,v)=>w.u8(byteCount(v)),read:r=>r.u8(),norm:byteCount,eq:same};
@@ -410,6 +416,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     hand:c(optional(count)),
     // Veículos: the vehicle ridden and until when (they drive the phone's prediction, like fastUntil).
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
+    // oferta-velocidade: stats.moveSpeed when not 1, in thousandths (it drives the phone's prediction too).
+    moveSpeed:c(optional(milli)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
     andar:c(optional(deckFlag)),
   }},

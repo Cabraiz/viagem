@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
-import type {Point} from '../../src/maps/world.ts';
+import {heroSpeed,type Point} from '../../src/maps/world.ts';
 import {BASE_STATS,CAR_NEST_KEEP_OUT,CAR_RADIUS,CAR_ROPE,SIM_HZ,carSpeed,ticks,type EnemyState,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
@@ -70,12 +70,16 @@ test('push: one hero leaning on the car and walking at it moves it at carSpeed(1
   assert.equal(r.sys.busy('p0'),false);
 });
 
-test('speeds: 1, 2, 3 and 4 movers give 0.8, 1.4, 1.8 and 1.8 u/s (3 is the cap)',()=>{
-  for(const [n,v] of [[1,.8],[2,1.4],[3,1.8],[4,1.8]]){
+test('speeds: 1, 2, 3 and 4 movers give 1.6, 2.8, 3.6 and 3.6 u/s (3 is the cap; empurrar-uno: 2x)',()=>{
+  for(const [n,v] of [[1,1.6],[2,2.8],[3,3.6],[4,3.6]]){
     const r=rig(),c=r.sys.state.car,x0=c.x;
     pushers(r,n,WEST).run(SIM_HZ);
     assert.ok(Math.abs(x0-c.x-v)<1e-9,`${n} movers: ${x0-c.x}`);
   }
+});
+
+test('empurrar-uno: the fastest car (2x) stays under the city hero walk, so a mover keeps up with it',()=>{
+  assert.ok(carSpeed(9)<heroSpeed(city),`car ${carSpeed(9)} u/s, hero ${heroSpeed(city)} u/s`);
 });
 
 test('push needs reach, aim and a real stick: far, sideways, away, a light touch or a downed hero move nothing',()=>{

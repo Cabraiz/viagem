@@ -82,6 +82,16 @@
   --arte-gema-clara:#C2F5F2;--arte-gema:#6FE0DC;--arte-gema-sombra:#2F9EA5;--arte-rosa-claro:#FCCADA;--arte-rosa:#F49BB4;--arte-rosa-sombra:#C9668A;
   --arte-vidro:#CDEFE2;--arte-vidro-sombra:#8FC6B2;--arte-roxo:#8E4FB8;--arte-roxo-sombra:#5E2F86;
 
+  /* Perfil do celular em pé (NEW-20261023-ORQ-selecao-mobile-instagram): a tela clara estilo Instagram da referência do
+     usuário (folha-8), cores medidas nela. Só ui/insta.css. */
+  --insta-fundo:#FBFAF8;--insta-chip:#F0EFED;--insta-linha:#E2DDDA;
+  --insta-texto:#170D36;--insta-cinza:#7E7C87;
+  --insta-roxo:#8623CC;--insta-botao-a:#9440F2;--insta-botao-b:#680DCC;--insta-botao-c:#7A1EDB;--insta-botao-borda:#4F1696;--insta-botao-coroa:#C9A2FF;
+  --insta-anel-a:#F2B347;--insta-anel-b:#D45FB0;--insta-anel-c:#9A1DD3;
+  /* BUG-20261023-ORQ-instagram-letreiro-do-perfil: os ícones dos chips em cinza-escuro como na referência; o coração
+     curtido e o véu atrás do post aberto. */
+  --insta-icone:#4B4853;--insta-curtir:#ED4956;--insta-veu:color-mix(in srgb,var(--insta-texto) 78%,transparent);
+
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
   --f-botao:'Lilita One',var(--f-cartaz);     /* o botão SELECIONAR do estádio (fonte-botao-coerente) */
@@ -106,6 +116,7 @@
   --r-janela:12px;   /* sistema persistente */
   --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
   --r-pilula:999px;  /* só o menu do estádio (menu-estadio): classe, nome e "Selecionar", como na referência aprovada */
+  --r-insta:16px;    /* só o SELECIONAR do perfil no celular em pé (selecao-mobile-instagram), como na referência */
 
   /* ---------- Sombras duras e contorno ---------- */
   --s-1:0 3px 0 var(--c-breu);

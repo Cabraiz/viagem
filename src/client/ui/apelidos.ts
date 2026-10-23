@@ -43,6 +43,18 @@ export function titleFit([top,big]:readonly [string,string]):number{
 export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
   'viciado-em-bet':'/art/menu/letreiro/viciado-em-bet.webp', // the approved art (21/10, scripts/menu-arte.mjs)
   'clt-cansado':'/art/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
+  'gato-nada-pra-comer':'/art/menu/letreiro/gato-nada-pra-comer.webp', // the fish collar tag (gato-no-menu, variation 3 of 8)
+  'maromba':'/art/menu/letreiro/maromba.webp', // the iron plate (tela-maromba, variation 2 of 8)
+});
+/**
+ * Letreiros taller than their sign (gato-no-menu, the user: "ampliar bem muito para cima caso precise descer"): the
+ * picture's size and, from its bottom, the height of the sign itself (the cutout the user chose); the rest is the
+ * collar, which runs up off the top of the screen. The menu lays the sign out like any other letreiro and lets the
+ * collar overflow (estadio.css .letreiro-alto, main.ts --sinal-ar/--alto-ar).
+ */
+export const LETREIRO_ALTO:Readonly<Record<string,Readonly<{w:number,h:number,sinal:number}>>>=Object.freeze({
+  // letreiro-gato-na-cena: 915 of the 2195 rows of the cutout are variation 3's own picture (juntar-ext.py).
+  'gato-nada-pra-comer':Object.freeze({w:2436,h:4163,sinal:Math.round(4163*915/2195)}),
 });
 /**
  * The heroes whose new art (the row's face) is in: the others show a "?" in the row while the user redraws them
@@ -50,4 +62,5 @@ export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
  */
 export const ARTE_NOVA:ReadonlySet<string>=new Set<string>([]);
 export const letreiroOf=(id:string):string|undefined=>LETREIROS[id];
+export const letreiroAltoOf=(id:string)=>LETREIRO_ALTO[id];
 export const hasNewArt=(id:string)=>ARTE_NOVA.has(id);

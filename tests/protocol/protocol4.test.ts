@@ -1662,9 +1662,9 @@ test('D-052: who moves the car and who holds the rope round-trip; dropping them 
   assert.deepEqual(r.view.objective?.car.movers,crowd.slice(0,MAX_CAR_MOVERS));
 });
 
-test('D-052: the car\'s speed by movers is the approved table (0.8 / 1.4 / 1.8 u/s, capped at 3)',()=>{
-  assert.deepEqual([...CAR_SPEED],[0,.8,1.4,1.8]);
-  assert.deepEqual([0,1,2,3,4,9].map(carSpeed),[0,.8,1.4,1.8,1.8,1.8]);
+test('D-052: the car\'s speed by movers is the approved table 2x (empurrar-uno: 1.6 / 2.8 / 3.6 u/s, capped at 3)',()=>{
+  assert.deepEqual([...CAR_SPEED],[0,1.6,2.8,3.6]);
+  assert.deepEqual([0,1,2,3,4,9].map(carSpeed),[0,1.6,2.8,3.6,3.6,3.6]);
 });
 
 test('D-052: a built piece\'s cell and rot round-trip in the structures, the wall and the barricade by their dictionary byte',()=>{
@@ -1770,4 +1770,16 @@ test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, 
     projectiles:view.projectiles.map(({andar:_,...p})=>p)};
   const d=dec.decode(enc.encode(down));assert.ok(d.ok,!d.ok?d.error:'');
   assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
+});
+
+test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.players[0]={...view.players[0],moveSpeed:1.35};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.equal(r.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,1.35);
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.players[0]={...view.players[0],moveSpeed:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,undefined);
 });

@@ -31,6 +31,7 @@ import {barricadeAt,type BarricadeSpot,type CityBocas} from './city/index.ts';
 import {carBar} from './chaveiro.ts';
 import {effectivePhase,nestsRun} from '../calm-phase.ts';
 import {HUD_SWITCH} from './arrows.ts';
+import {getAudio} from '../audio/engine.ts';
 
 /** Forge answers slower than this are given up (the tag comes back, the note says so). */
 export const FORGE_TIMEOUT_MS=3000;
@@ -425,7 +426,12 @@ export function createCamp(options:CampOptions):CampPart{
         button.classList.add('rh-forge-done');clearTimeout(stampTimer);
         stampTimer=setTimeout(()=>button.classList.remove('rh-forge-done'),FORGE_STAMP_MS);
         say(done);
-      }else say(refusal(answer.reason??'',recipe));
+        // The forge's hammering: a tower, a gambiarra or a repair stands (audio/sfx.ts torre-construir).
+        const audio=getAudio();if(audio.unlocked)audio.play('torre-construir');
+      }else{
+        say(refusal(answer.reason??'',recipe));
+        const audio=getAudio();if(audio.unlocked)audio.play('ui-erro');
+      }
     },
     destroy(){overflow.destroy();clearTimeout(stampTimer);clearTimeout(noteTimer);clearTimeout(warnTimer);if(pending)clearTimeout(pending.timer);readout.remove();notice.remove();forge.remove();},
   };

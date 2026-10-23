@@ -81,6 +81,8 @@ export interface PlayerRunView {
   ride?:VehicleKind;rideUntil?:number;
   /** The viaduct (maps city/viaduct.ts): on a deck (floor 1), absent on the ground; the phone's prediction starts from it. */
   andar?:1;
+  /** stats.moveSpeed when it is not 1 (class, weapon, tênis, the offer): the phone's prediction walks with it. */
+  moveSpeed?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

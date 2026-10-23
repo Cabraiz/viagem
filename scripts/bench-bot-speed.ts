@@ -92,12 +92,16 @@ async function escort(label:string,target:(city:any,home:Point)=>Point,seconds:n
   p.x=start.x;p.y=start.y;const bs=spotNear(city,start,1.2,Math.PI);b.x=bs.x;b.y=bs.y;
   for(let i=0;i<8;i++)r.step(); // the bot sees the person out of the leash
   let s=0,botWalk=0,last={x:b.x,y:b.y},ticksWalk=0,moving=0;
+  // --trace <label> <file>: this scenario's positions per tick (person, bot), for the GIF.
+  const trace:number[][]=[],tracing=process.argv.includes('--trace')&&process.argv[process.argv.indexOf('--trace')+1]===label;
   const gaps:number[]=[],modes=new Map<string,number>(),phases=new Set<string>();
   while(s<total){
     s=Math.min(total,s+v/SIM_HZ);const q=along(path,s);p.x=q.x;p.y=q.y;
     r.step();ticksWalk++;
+    if(tracing)trace.push([p.x,p.y,b.x,b.y]);
     const m=dist(last,b);botWalk+=m;if(m>1e-6)moving++;last={x:b.x,y:b.y};gaps.push(dist(p,b));const md=String((r.room as any).bots.modes.get(roamer));modes.set(md,(modes.get(md)??0)+1);phases.add(String(sim.botView().round?.phase));
   }
+  if(tracing)writeFileSync(process.argv[process.argv.indexOf('--trace')+2],JSON.stringify({home,trace}));
   const gapEnd=dist(p,b),walkPhase=botWalk;let catchTicks=0;
   while(dist(p,b)>ESCORT_LEASH&&catchTicks<SIM_HZ*30){r.step();catchTicks++;botWalk+=dist(last,b);last={x:b.x,y:b.y};}
   const person=total/(ticksWalk/SIM_HZ),botSpeed=walkPhase/(ticksWalk/SIM_HZ),catchSpeed=(botWalk-walkPhase)/Math.max(1e-9,catchTicks/SIM_HZ);

@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,PUSH_MIN_HEIGHT,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,PUSH_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
@@ -55,7 +55,7 @@ test('the loop seam: a clip played in order closes, a clip cut in the middle sho
   assert.ok(cut.seam>ok.seam,`cut ${cut.seam} > whole ${ok.seam}`);
 });
 
-for(const id of classes)test(`${id}: every run pose at the rest pose's head and height (±${TOL.head*100} %), every loop closed (≤ ${SEAM_MAX}× the median step)`,async()=>{
+for(const id of classes)test(`${id}: every run pose at the rest pose's head (±${TOL.head*100} %) and height (−${RUN_HEIGHT_MIN*100}/+${TOL.height*100} %), every loop closed (≤ ${SEAM_MAX}× the median step)`,async()=>{
   const m=await measureClass(manifest,id),bad=verdict(m);
   const walk=bad.filter((b:string)=>b.includes(' walk16-')),rest=bad.filter((b:string)=>!b.includes(' walk16-'));
   assert.deepEqual(rest,[],`${id}:\n${rest.join('\n')}`);

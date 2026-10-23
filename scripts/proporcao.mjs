@@ -28,6 +28,12 @@ export const DIRS=['S','N','W','NW','SE','E','NE','SW'];
 /** Tolerances of the card: head ±4 %, torso ±6 %, height ±4 % (out of flight), and the area like the torso. */
 export const TOL={head:.04,height:.04,torso:.06,area:.06};
 /**
+ * The run may stand lower than the rest pose (card troca-de-perna, user 23/10: "a perna do viciado deveria seguir o leve
+ * padrão do CLT": short strides, knees bent): its planted-foot height goes down to −10 %; the head and torso keep ±4 %
+ * (they catch a hero that really shrinks).
+ */
+export const RUN_HEIGHT_MIN=.10;
+/**
  * The loop seam may be at most this many times the median distance between neighbouring frames, or SEAM_FLOOR (a rest
  * that barely moves has tiny steps: a seam under it is no jump on screen).
  */
@@ -230,7 +236,10 @@ export function verdict(m,keys=GATED){
       if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
       if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
-    }else if(motion!=='idle')for(const key of keys)if(Math.abs(c[key]-1)>TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (±${TOL[key]*100}%)`);
+    }else if(motion!=='idle')for(const key of keys){
+      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
+      if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
+    }
     if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);
     if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
   }

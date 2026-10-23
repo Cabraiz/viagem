@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2121,
-  "bytes": 1541446630,
-  "liteBytes": 501576356,
+  "files": 2127,
+  "bytes": 1541710492,
+  "liteBytes": 501738150,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17845,6 +17845,14 @@
    "psnr": 43.4,
    "shownPsnr": 44.2
   },
+  "sprites/clt-cansado.run16-nw.14f4fd36e26a.webp": {
+   "source": "14f4fd36e26aa8b904c49568bd0ef846cddc60baf9353dbbbc3b9544db68919d",
+   "lite": "42459ae3a54fa64bc1948dc47f82739103a18b42554335e6e9dcb7ec62126b76",
+   "bytes": 41300,
+   "liteBytes": 25010,
+   "psnr": 42.7,
+   "shownPsnr": 46
+  },
   "sprites/clt-cansado.run16-nw.c183faaf9215.webp": {
    "source": "c183faaf921567a9f2ceb7399d018ec128eb0f5a350fff2870491612aa058753",
    "lite": "0f2bc9089f334a1589a033b996759c4eecfa2038e419f1556edcfbe9e4b7e5f7",
@@ -17861,6 +17869,14 @@
    "psnr": 41.2,
    "shownPsnr": 45.1
   },
+  "sprites/clt-cansado.run16-se.65e518df23c8.webp": {
+   "source": "65e518df23c83b09551d3f0d2407e093e5333ae1b1ded321d50595fd5e7ffe62",
+   "lite": "e92d4c4f09f2d97619d1b4de7324bf6fc0c294e1a07f51e7ed449efaabbe3797",
+   "bytes": 37422,
+   "liteBytes": 23496,
+   "psnr": 42.2,
+   "shownPsnr": 46.4
+  },
   "sprites/clt-cansado.run16-se.c437fe145630.webp": {
    "source": "c437fe145630526c394a12655e2ac3bcd9ee512eef5d12a8e70566f8a87f7988",
    "lite": "50ee34f71a859828faa81d46e1c47756df8e4c441d8f95bc7c0e39b43101ee56",
@@ -17876,6 +17892,14 @@
    "liteBytes": 28784,
    "psnr": 41.9,
    "shownPsnr": 44.4
+  },
+  "sprites/clt-cansado.run16-w.81aaae8b5a02.webp": {
+   "source": "81aaae8b5a022f1405c532f03edc894e46dc732ae99a73837d4b1b492db02b4f",
+   "lite": "470993e4d3c42c6e8925efaeb0a9c1830af8b037ab6e1a6786052480a9e84ce0",
+   "bytes": 41994,
+   "liteBytes": 26610,
+   "psnr": 41.7,
+   "shownPsnr": 44.6
   },
   "sprites/clt-cansado.walk128-e.9af9af8efb4f.webp": {
    "source": "9af9af8efb4f1fd0b1ed17ee24b2f032b21f20ea233a1be0b61b3d6da3032682",
@@ -20581,6 +20605,14 @@
    "psnr": 39.9,
    "shownPsnr": 41.9
   },
+  "sprites/viciado-em-bet.run16-nw.2f220592e914.webp": {
+   "source": "2f220592e9140877dc61f720ec34e69db10d76b480a834b937eb1fa845aba7d6",
+   "lite": "f7c1b7232273df6ef1a8cbd8ab0618774ea797a27d34674ee43a2a35516c5660",
+   "bytes": 42842,
+   "liteBytes": 25718,
+   "psnr": 41.1,
+   "shownPsnr": 43.9
+  },
   "sprites/viciado-em-bet.run16-nw.a0bad6729a9b.webp": {
    "source": "a0bad6729a9b84c1e738b8d82b8b70a620e36db970d650214d46fb467a083116",
    "lite": "52310b1e363b1a39110a900428929fadb0dd08dc7012ecb757e3d82d8ba1a5ae",
@@ -20595,6 +20627,14 @@
    "bytes": 49686,
    "liteBytes": 28244,
    "psnr": 37.7,
+   "shownPsnr": 42.5
+  },
+  "sprites/viciado-em-bet.run16-se.5dc5e884eb2e.webp": {
+   "source": "5dc5e884eb2e7e8952515d4cb15f24f87ed80f4c193e5541ea0470689bbb9347",
+   "lite": "d3651ff90499ec2f8272110ce31580cebd7406ea5ffa7f8e33a38edddd547a8a",
+   "bytes": 47166,
+   "liteBytes": 28322,
+   "psnr": 39,
    "shownPsnr": 42.5
   },
   "sprites/viciado-em-bet.run16-se.9635f4dcda54.webp": {
@@ -20612,6 +20652,14 @@
    "liteBytes": 38144,
    "psnr": 38.9,
    "shownPsnr": 40.8
+  },
+  "sprites/viciado-em-bet.run16-w.c3c592510524.webp": {
+   "source": "c3c5925105240dbcf0c3b7d0089f315eac7f49a30d406d88fef983a773a17520",
+   "lite": "97bf63570ef106a08a4c6f7bae05b960f816a4d41ec86e79a7d3e7408b94fddc",
+   "bytes": 53138,
+   "liteBytes": 32638,
+   "psnr": 39.7,
+   "shownPsnr": 41.4
   },
   "sprites/viciado-em-bet.walk128-e.af6573c0b904.webp": {
    "source": "af6573c0b9041cc898d02daa1364f9833be9bf0db64ab67e882440db0858e65b",

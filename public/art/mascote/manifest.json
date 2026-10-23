@@ -1,0 +1,234 @@
+{
+  "version": 2,
+  "group": "mascote",
+  "pieces": {
+    "mula-sem-cabeca": {
+      "kind": "animations",
+      "files": {
+        "run": {
+          "file": "mula-sem-cabeca/run.webp",
+          "cell": [
+            192,
+            192
+          ],
+          "frames": 8,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 14,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "mula-sem-cabeca/run.webp",
+              "columns": 8,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 64,
+              "sha256": "76e0c3c81e22a9144a7d5dc8212b929677bb38fe4fa243745fc8d23c31df93f8"
+            }
+          ],
+          "sha256": "76e0c3c81e22a9144a7d5dc8212b929677bb38fe4fa243745fc8d23c31df93f8"
+        }
+      },
+      "sha256": "2d4417ef62a0c1e554cfbeda996e994048428df576f64219c3405d2175ee5bbc"
+    },
+    "papagaio": {
+      "kind": "animations",
+      "files": {
+        "idle": {
+          "file": "papagaio/idle.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "1d664423cf5364cc5fc0a37764189e29316961267557aa78d618cbefde6d582b"
+            }
+          ],
+          "sha256": "1d664423cf5364cc5fc0a37764189e29316961267557aa78d618cbefde6d582b"
+        },
+        "walk": {
+          "file": "papagaio/walk.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "827fc0f2f54d585bb1e0987ed378cae3ff150db94d552d24cda7c191e64a9f0d"
+            }
+          ],
+          "sha256": "827fc0f2f54d585bb1e0987ed378cae3ff150db94d552d24cda7c191e64a9f0d"
+        },
+        "attack": {
+          "file": "papagaio/attack.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "papagaio/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "92db2476f5663ba46fe3a8180623df16a34047ad313fa5718f6521ead567e38d"
+            }
+          ],
+          "sha256": "92db2476f5663ba46fe3a8180623df16a34047ad313fa5718f6521ead567e38d"
+        }
+      },
+      "sha256": "fb7a6f3ea42ef282db6bc46704b17cd61ddc0c64bde5c3f38cfcc022da63f410"
+    },
+    "vira-lata": {
+      "kind": "animations",
+      "files": {
+        "idle": {
+          "file": "vira-lata/idle.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 4,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 6,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/idle.webp",
+              "columns": 4,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 32,
+              "sha256": "9a0f9b466457344d260b776a835477ca00540d48bfcb4f63bd4cc2a6e815c20a"
+            }
+          ],
+          "sha256": "9a0f9b466457344d260b776a835477ca00540d48bfcb4f63bd4cc2a6e815c20a"
+        },
+        "walk": {
+          "file": "vira-lata/walk.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 10,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/walk.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "27bce9a67ab85423b247255ec56c28354eec8cc7b4b5d5ab92d5abd55d8ee7c4"
+            }
+          ],
+          "sha256": "27bce9a67ab85423b247255ec56c28354eec8cc7b4b5d5ab92d5abd55d8ee7c4"
+        },
+        "attack": {
+          "file": "vira-lata/attack.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "directions": 8,
+          "anchor": [
+            0.5,
+            0.88
+          ],
+          "fps": 12,
+          "rim": {
+            "color": "#2A2018",
+            "alpha": 0.85,
+            "width": 1.5
+          },
+          "pages": [
+            {
+              "file": "vira-lata/attack.webp",
+              "columns": 6,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 48,
+              "sha256": "3d1d73f0678e1c0b286705adca5f0ca173635a091df0dfb1244cdf1e2bdfc464"
+            }
+          ],
+          "sha256": "3d1d73f0678e1c0b286705adca5f0ca173635a091df0dfb1244cdf1e2bdfc464"
+        }
+      },
+      "sha256": "4734435200bfb41cc19714396c06ee85c19f674ebc5c661fe32146f8a409b45a"
+    }
+  }
+}

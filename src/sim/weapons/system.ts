@@ -18,7 +18,7 @@
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
-import {AURA,HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
+import {AURA,HERO_SHOT_SPEED_MULT,THROW_TICKS,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
@@ -232,11 +232,14 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     if(!list.length)return false;
     // Pack 12 traque (effect.scatter): the volley's bursts ring the first target, the ring turning with the tick.
     const spots=scatter?Array.from({length:w.amount},(_,i)=>{const a=ctx.tick*.7+2*Math.PI*i/w.amount;return {x:list[0].x+Math.cos(a)*scatter,y:list[0].y+Math.sin(a)*scatter};}):list;
+    // Thrown (rules/thrown.ts): leaves the hero, flies THROW_TICKS hitting nothing, then bursts there for its duration.
+    const land=w.def.effect?.thrown?ctx.tick+THROW_TICKS:undefined;
     let spawned=0;
     for(const e of spots){
+      const fly=land!==undefined?{x:player.x,y:player.y,vx:(e.x-player.x)*SIM_HZ/THROW_TICKS,vy:(e.y-player.y)*SIM_HZ/THROW_TICKS,landTick:land,landX:e.x,landY:e.y}:{x:e.x,y:e.y,vx:0,vy:0};
       const p=spawnProjectile(ctx,{
-        owner:player.id,source:w.def.id,motion:'linear',x:e.x,y:e.y,vx:0,vy:0,
-        radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
+        owner:player.id,source:w.def.id,motion:'linear',...fly,
+        radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:land!==undefined?land+w.durationTicks:until,hostile:false,
         rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,slowTicks,
       },cap);
       if(p)spawned++;

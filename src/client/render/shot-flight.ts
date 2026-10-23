@@ -12,7 +12,7 @@ import {THROW_MS} from '../../rules/index.ts';
 /** A weapon whose cone is drawn as pellets: how many, how far (u, the sim's cone reach), how long (ms), the fan (rad). */
 export interface PelletLook {count:number;reach:number;ms:number;half:number}
 /** The Espalha-Chumbo (sim/weapons/arsenal.ts: area 4 u, coneHalfAngle .45 at every rarity). */
-export const PELLETS:Readonly<Record<string,PelletLook>>={escopeta:{count:7,reach:4,ms:190,half:.45}};
+export const PELLETS:Readonly<Record<string,PelletLook>>={escopeta:{count:7,reach:4,ms:240,half:.45}};
 /** Where the pellets leave from (u along the aim): the barrel, like the muzzle flash (arsenal-fx.ts). */
 export const PELLET_START=.45;
 
@@ -35,11 +35,13 @@ export const pelletAlpha=(u:number)=>u<2/3?1:Math.max(0,1-(clamp01(u)-2/3)*3);
 
 /**
  * A thrown weapon's look in flight: `arc` the height of its arc at mid flight (CSS px at body 1), `landed` whether its
- * piece stays on the ground under the burst once it lands (the rocket is gone in its own explosion).
+ * piece stays on the ground under the burst once it lands (the rocket is gone in its own explosion; one that stays
+ * tumbles in flight, the rocket points along its arc), `tilt` the screen angle its art points at (radians, 0 = +x).
  */
-export interface ThrownLook {arc:number;landed:boolean}
+export interface ThrownLook {arc:number;landed:boolean;tilt?:number}
 export const THROWN:Readonly<Record<string,ThrownLook>>={
-  rojao:{arc:40,landed:false},
+  // The rocket's art (projeteis/rojao) is drawn flying up and right, 45°.
+  rojao:{arc:70,landed:false,tilt:-Math.PI/4},
   'tijolo-baiano':{arc:110,landed:true},
   traque:{arc:80,landed:true},
 };

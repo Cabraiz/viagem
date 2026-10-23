@@ -128,7 +128,8 @@ export const FIRE_LOOK:Readonly<Record<string,FireLook>>={
   pistola:{art:'clarao-pistola',kind:'muzzle',size:80,ms:110},
   submetralhadora:{art:'clarao-metralhadora',kind:'muzzle',size:70,ms:80},
   rifle:{art:'clarao-fuzil',kind:'muzzle',size:96,ms:130},
-  escopeta:{art:'clarao-espingarda',kind:'cone',size:70,ms:170,reach:1.6},
+  // BUG-20261023-ORQ-armas-sem-projetil: the shotgun's flash stays at the barrel; its pellets fly (render/shot-flight.ts).
+  escopeta:{art:'clarao-espingarda',kind:'muzzle',size:80,ms:130},
   macarico:{art:'fogo-pequeno',kind:'cone',size:62,ms:260,reach:2.2},
   rojao:{art:'explosao-m',kind:'blast',size:170,ms:620},
   // Pack 12 fatia A1: the festa-junina firecrackers pop in confetti sparks, the brick lands in a dust cloud.
@@ -177,15 +178,21 @@ export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set([...PACK12_A1_A
  * ~20 px across); ×5 its 20 px thickness is that circle, so the sim's hit area stays. Critters' shots never grow.
  */
 export const DEFAULT_SHOT_DRAW_SCALE=5;
-const DEFAULT_SHOT_SOURCES:ReadonlySet<string>=new Set(['pistola']);
+/**
+ * BUG-20261023-ORQ-armas-sem-projetil (usuário 23/10: "nem aparece o projétil indo"): the other firearms' bullets were
+ * as thin as the pistol's before ×5. The rifle ×4 and the metralhadora ×3 (a burst of many, smaller); look only.
+ */
+const DEFAULT_SHOT_SOURCES:ReadonlyMap<string,number>=new Map([['pistola',DEFAULT_SHOT_DRAW_SCALE],['rifle',4],['submetralhadora',3]]);
 /**
  * Pack 12 fatia A1: the lobbed ones (traque, tijolo) land as a zone as wide as their burst, and the zone wears the thrown
  * object's piece: drawn at the burst's size it was a giant brick. This factor brings the object back to its size (the
  * layer scales a piece by the zone's radius, up to 3×); the burst itself is FIRE_LOOK's blast.
  */
-const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35]]);
-/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, a lobbed object's, else 1. */
-export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:LOBBED_DRAW_SCALE.get(source)??1;
+const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35],
+  // BUG-20261023-ORQ-armas-sem-projetil: the rocket now flies (render/shot-flight.ts), at about a firework's size.
+  ['rojao',.35]]);
+/** Draw-scale factor of a projectile (layers.ts): a hero's firearm bullet's (DEFAULT_SHOT_SOURCES), a lobbed object's, else 1. */
+export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.get(source)??LOBBED_DRAW_SCALE.get(source)??1;
 
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}

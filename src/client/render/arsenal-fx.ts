@@ -26,6 +26,8 @@ import {CRATE_SCALE,kitPiece,kitRarity} from '../../rules/index.ts';
 import {SILHOUETTE,SILHOUETTE_ROTATION,castOffset} from './shadow-rules.ts';
 import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type HeldHand} from '../sprites/hand-points.ts';
 import type {CityOutlines} from './city-outline.ts';
+import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
+import {THROW_MS} from '../../rules/index.ts';
 import {CRATE_ART,CrateOpenings,FIRE_LOOK,RARITY_COLOR,RARITY_NAME,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,shotFrame,
   SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type Rarity} from './arsenal-rules.ts';
 
@@ -57,6 +59,13 @@ const PROGRESS_POINTS=40;
 const RING_BAND_DEPTH=RING_DEPTH-.001,RING_LOOK_MS=3000;
 
 interface ShotFx {image:Image;born:number;x:number;y:number;angle:number;look:FireLook;frames:number;scale:number}
+/** One shotgun pellet (render/shot-flight.ts): from the hero (x, y) along the aim (ux, uy) turned by `angle`. */
+interface PelletFx {image:Image;born:number;x:number;y:number;ux:number;uy:number;angle:number;reach:number;look:PelletLook}
+/**
+ * The pellet's texture (made once): a short hot streak (Amarelo core, Breu edge: it reads on the snow and on the grass),
+ * drawn rotated along its flight, PELLET_PX long at body 1.
+ */
+const PELLET_KEY='arsenal:chumbo',PELLET_W=26,PELLET_H=10,PELLET_PX=36;
 interface BurstFx {image:Image;label:Phaser.GameObjects.Text;born:number;x:number;y:number;rarity:Rarity}
 
 export interface ArsenalOptions {
@@ -100,9 +109,11 @@ export class ArsenalFx{
   private hands=new Map<string,{image:Image;sil:Image;grip:Image;icon:string;seen:number}>();
   private handOf=new Map<string,string>();
   private shots:Ring<ShotFx>;
+  private pellets:Ring<PelletFx>;
+  private spread:{angle:number;reach:number}[]=[];private pelletSeed=0;
   private bursts:Ring<BurstFx>;
   private colors:Record<Rarity,number>={...RARITY_COLOR};
-  private papel=0xeeddb8;private breu=0x1e1530;
+  private papel=0xeeddb8;private breu=0x1e1530;private amarelo=0xffd23f;
   private q:Pt={x:0,y:0};private q2:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:PROGRESS_POINTS},()=>({x:0,y:0}));
   private frameRef:BaseFrameRef={key:'',frame:0};
@@ -129,11 +140,12 @@ export class ArsenalFx{
     const image=()=>this.track(scene.add.image(0,0,'__DEFAULT').setVisible(false).setActive(false));
     const showImage=(o:{image:Image},active:boolean)=>{o.image.setVisible(active).setActive(active);if(!active)o.image.setAlpha(1).setScale(1).setRotation(0);};
     this.shots=new Ring<ShotFx>(()=>({image:image(),born:0,x:0,y:0,angle:0,look:FIRE_LOOK.pistola,frames:1,scale:1}),showImage,24);
+    this.pellets=new Ring<PelletFx>(()=>({image:image(),born:0,x:0,y:0,ux:1,uy:0,angle:0,reach:1,look:PELLETS.escopeta}),showImage,42);
     this.bursts=new Ring<BurstFx>(()=>({image:image(),label:this.track(scene.add.text(0,0,'',{fontFamily:'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',fontSize:'26px',fontStyle:'900',color:'#EEDDB8',stroke:'#1E1530',strokeThickness:7})
       .setOrigin(.5,1).setDepth(FX_DEPTH+1).setVisible(false)),born:0,x:0,y:0,rarity:1}),(o,active)=>{showImage(o,active);o.label.setVisible(active);},6);
     try{
       for(const r of [1,2,3,4,5] as Rarity[]){const c=token(RARITY_TOKEN[r]);if(c)this.colors[r]=tokenColor(RARITY_TOKEN[r]);}
-      this.papel=tokenColor('--c-papel');this.breu=tokenColor('--c-breu');
+      this.papel=tokenColor('--c-papel');this.breu=tokenColor('--c-breu');this.amarelo=tokenColor('--c-amarelo');
     }catch{/* no tokens.css (tests): the fallbacks */}
   }
 
@@ -171,7 +183,7 @@ export class ArsenalFx{
     if(event.type==='damage')this.openings.hurt(event.target,this.now);
     else if(event.type==='pickup'&&event.kind==='chest'&&crateAt)this.burst(crateAt,rarityOf(event.value));
     else if(event.type==='fire'){
-      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy);
+      const look=FIRE_LOOK[event.weapon];if(look)this.fire(look,event.x,event.y,event.dx,event.dy,event.weapon);
       const cone=this.selfCone;
       if(cone&&cone.weapon===event.weapon&&event.player===this.options.selfId?.())this.cone.swing(this.now,cone.radius,cone.half,event.dx??0,event.dy??0);
     }
@@ -264,6 +276,7 @@ export class ArsenalFx{
       this.cone.draw(now,b,hero,hero?this.options.aim?.():undefined);
     }
     this.shots.retain(this.drawShot);
+    this.pellets.retain(this.drawPellet);
     this.slashes=this.slashes.filter(s=>this.drawSlash(s));
     this.bursts.retain(this.drawBurst);
   }
@@ -308,7 +321,7 @@ export class ArsenalFx{
 
   destroy(){
     this.aura.destroy();
-    this.shots.clear();this.bursts.clear();this.hands.clear();
+    this.shots.clear();this.pellets.clear();this.bursts.clear();this.hands.clear();
     for(const look of this.ringLooks.values())for(const band of look.bands)band.destroy();
     this.ringLooks.clear();
     for(const o of this.objects)o.destroy();
@@ -358,25 +371,59 @@ export class ArsenalFx{
     const src=textures.get(from).getSourceImage() as HTMLImageElement,h=src.height,n=Math.max(1,Math.floor(src.width/Math.max(1,h)));
     textures.addSpriteSheet(key,src,{frameWidth:h,frameHeight:h,endFrame:n-1});
   }
-  private fire(look:FireLook,x:number,y:number,dx=0,dy=0){
+  private fire(look:FireLook,x:number,y:number,dx=0,dy=0,weapon=''){
     const p=this.options.projector,len=Math.hypot(dx,dy),ux=len>1e-6?dx/len:1,uy=len>1e-6?dy/len:0;
     const a=p.project(x,y,this.q),ax=a.x,ay=a.y,ahead=p.project(x+ux,y+uy,this.q2),angle=Math.atan2(ahead.y-ay,ahead.x-ax);
     if(look.kind==='slash'){
       if(this.slashes.length<8)this.slashes.push({born:this.now,x:x+ux*SLASH_AHEAD,y:y+uy*SLASH_AHEAD,angle,size:look.size,ms:look.ms});
       return;
     }
+    const pellets=PELLETS[weapon];
+    if(pellets)this.firePellets(pellets,x,y,ux,uy);
     const key=look.art?fxKey(look.art):'';
     if(!key||!this.scene.textures.exists(key))return;
     const frames=Math.max(1,this.scene.textures.get(key).frameTotal-1);
+    // A thrown weapon's burst plays when it lands (rules/thrown.ts): hidden until then (drawShot).
+    const born=look.kind==='blast'&&THROWN[weapon]?this.now+THROW_MS:this.now;
     const spawn=(wx:number,wy:number,scale:number)=>{
       const s=this.shots.spawn();
-      s.born=this.now;s.x=wx;s.y=wy;s.angle=angle;s.look=look;s.frames=frames;s.scale=scale;
+      s.born=born;s.x=wx;s.y=wy;s.angle=angle;s.look=look;s.frames=frames;s.scale=scale;
       s.image.setTexture(key,0).setOrigin(look.kind==='muzzle'?.15:.5,look.kind==='blast'?.75:.5).setDepth(FX_DEPTH);
     };
     if(look.kind==='muzzle')spawn(x+ux*.45,y+uy*.45,1);
     else if(look.kind==='blast')spawn(x+dx,y+dy,1);
     else{const n=coneSteps(look.reach??1.5);for(let i=0;i<n;i++){const d=.5+i*((look.reach??1.5)-.5)/Math.max(1,n-1);spawn(x+ux*d,y+uy*d,.75+.35*i/Math.max(1,n-1));}}
   }
+  /** The shotgun's pellets: a fan across the cone, flying out to its reach (render/shot-flight.ts). */
+  private firePellets(look:PelletLook,x:number,y:number,ux:number,uy:number){
+    if(!this.pelletTexture())return;
+    for(const o of pelletSpread(look.count,look.half,++this.pelletSeed,this.spread)){
+      const s=this.pellets.spawn();
+      s.born=this.now;s.x=x;s.y=y;s.ux=ux;s.uy=uy;s.angle=o.angle;s.reach=look.reach*o.reach;s.look=look;
+      s.image.setTexture(PELLET_KEY).setOrigin(.5,.5).setDepth(FX_DEPTH);
+    }
+  }
+  private pelletTexture(){
+    const textures=this.scene.textures;
+    if(textures.exists(PELLET_KEY))return true;
+    const canvas=textures.createCanvas(PELLET_KEY,PELLET_W,PELLET_H);if(!canvas)return false;
+    const g=canvas.getContext(),hex=(c:number)=>`#${c.toString(16).padStart(6,'0')}`,r=PELLET_H/2;
+    const capsule=(inset:number)=>{
+      g.beginPath();g.moveTo(r,inset);g.lineTo(PELLET_W-r,inset);g.arc(PELLET_W-r,r,r-inset,-Math.PI/2,Math.PI/2);
+      g.lineTo(r,PELLET_H-inset);g.arc(r,r,r-inset,Math.PI/2,Math.PI*1.5);g.closePath();g.fill();
+    };
+    g.fillStyle=hex(this.breu);capsule(0);g.fillStyle=hex(this.amarelo);capsule(2);
+    canvas.refresh();
+    return true;
+  }
+  private drawPellet=(s:PelletFx)=>{
+    const age=this.now-s.born,u=age/s.look.ms;if(u>=1)return false;
+    const c=Math.cos(s.angle),n=Math.sin(s.angle),dx=s.ux*c-s.uy*n,dy=s.ux*n+s.uy*c,d=pelletDistance(u,s.reach);
+    const p=this.options.projector,b=this.body,q=p.project(s.x+dx*d,s.y+dy*d,this.q),ahead=p.project(s.x+dx*(d+1),s.y+dy*(d+1),this.q2);
+    s.image.setPosition(q.x,q.y-22*b).setRotation(Math.atan2(ahead.y-q.y,ahead.x-q.x)).setScale(PELLET_PX*b/PELLET_W)
+      .setAlpha(pelletAlpha(u));
+    return true;
+  };
   private burst(at:Pt,rarity:Rarity){
     const ref=baseFrame(CRATE_ART,'abrindo-6',0,0,this.frameRef),b=this.bursts.spawn(),file=baseFile(CRATE_ART);
     b.born=this.now;b.x=at.x;b.y=at.y;b.rarity=rarity;
@@ -386,6 +433,7 @@ export class ArsenalFx{
   }
   private drawShot=(s:ShotFx)=>{
     const age=this.now-s.born;if(age>=s.look.ms)return false;
+    s.image.setVisible(age>=0);if(age<0)return true;
     const q=this.options.projector.project(s.x,s.y,this.q),b=this.body,f=shotFrame(s.look,age,s.frames);
     if(s.image.frame.name!==String(f))s.image.setFrame(f);
     const h=Math.max(1,s.image.height),k=s.look.size*b*s.scale/h;

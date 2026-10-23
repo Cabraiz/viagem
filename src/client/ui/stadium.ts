@@ -148,6 +148,11 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'gato-nada-pra-comer':{x:944,y:19,w:812,h:1058,files:[[541,'/art/menu/heroi/gato-nada-pra-comer-541.webp'],[812,'/art/menu/heroi/gato-nada-pra-comer-812.webp'],
     [1083,'/art/menu/heroi/gato-nada-pra-comer-1083.webp'],[1624,'/art/menu/heroi/gato-nada-pra-comer-1624.webp']],
     fundo:'/art/lite/menu/fundo-gato-nada-pra-comer.webp',rosto:{x:1080,y:100,w:400,h:220}},
+  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): like the cat, in the
+  // viciado's box (same height, middle and sole line), on the beach without him; his sand shadow is in his fundo.
+  'maromba':{x:1056,y:19,w:588,h:1058,files:[[392,'/art/menu/heroi/maromba-392.webp'],[588,'/art/menu/heroi/maromba-588.webp'],
+    [784,'/art/menu/heroi/maromba-784.webp'],[1176,'/art/menu/heroi/maromba-1176.webp']],
+    fundo:'/art/lite/menu/fundo-maromba.webp',rosto:{x:1195,y:105,w:210,h:140}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
 /** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */

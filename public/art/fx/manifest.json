@@ -92,6 +92,39 @@
       },
       "sha256": "862ecd15b4e64d18db60e85068d6e4f8dd68a4b5feb9cac0b0c3b07e9290f9a9"
     },
+    "arruda-aura": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "arruda-aura.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "arruda-aura.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "d9bf75a521d6971aa514257a874a5d1cc79ad2b546e90084fe0cca32ea763942"
+            }
+          ],
+          "sha256": "d9bf75a521d6971aa514257a874a5d1cc79ad2b546e90084fe0cca32ea763942"
+        }
+      },
+      "sha256": "da6c4746e31d26f62f874e717f9ae349333d4a13f14fe3c17adafab88efb67c7",
+      "meta": {
+        "loop": true
+      }
+    },
     "aviso-explosao": {
       "kind": "frames",
       "files": {
@@ -403,6 +436,39 @@
       },
       "sha256": "bda6a96858317a3bcff6e48a5059fe291d73e48d73a130a1744c2270fa8f5ec3"
     },
+    "canto-da-iara-aura": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "canto-da-iara-aura.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 10,
+          "pages": [
+            {
+              "file": "canto-da-iara-aura.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "8ea9571c73dbcc68db00396bcc7b58f40c618706bf8068521ad29f022f016bf9"
+            }
+          ],
+          "sha256": "8ea9571c73dbcc68db00396bcc7b58f40c618706bf8068521ad29f022f016bf9"
+        }
+      },
+      "sha256": "487a340361f20458f95b87a1040b47ba61dd682cf9a9e73ca6877a05da683029",
+      "meta": {
+        "loop": true
+      }
+    },
     "carimbo-chefe": {
       "kind": "frames",
       "files": {
@@ -605,13 +671,13 @@
               "rows": 1,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "ee59ec860fc5eb98efcf8ee854e35f804b4b02a5a435fa97357530c1396c6d66"
+              "sha256": "2a404acb2d9e2194cbd15a0e2667a7028995cff58f8256b35314caa7511a37a4"
             }
           ],
-          "sha256": "ee59ec860fc5eb98efcf8ee854e35f804b4b02a5a435fa97357530c1396c6d66"
+          "sha256": "2a404acb2d9e2194cbd15a0e2667a7028995cff58f8256b35314caa7511a37a4"
         }
       },
-      "sha256": "d8622c5aa972877bcebfbd79e86cec42fad52169063cecbaf9be5050c91984de",
+      "sha256": "ccb0f8146bbf70367546a05379bb7661d89839bd92a7d50864f1c70c7c3f9c46",
       "meta": {
         "loop": false
       }
@@ -640,6 +706,39 @@
         }
       },
       "sha256": "72c4788b4e06de363a4cd3439ba1b3905663708e4dd10a9058eb458bd71b5136"
+    },
+    "corneta-onda": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "corneta-onda.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "corneta-onda.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "d9d5b09f2b93340f8baa5e0765df201238c02c4e642fc92b24108b6c21bb9851"
+            }
+          ],
+          "sha256": "d9d5b09f2b93340f8baa5e0765df201238c02c4e642fc92b24108b6c21bb9851"
+        }
+      },
+      "sha256": "714e19e1e0a413d3b0b8a08ee90d69466fba6c54f4bbb1de3ea60fb4807baa71",
+      "meta": {
+        "loop": false
+      }
     },
     "cratera-g": {
       "kind": "frames",
@@ -740,6 +839,72 @@
         }
       },
       "sha256": "1bffaf6f8133ab6560dc54931a7c6a59593f8a8b087f3680dd2fa78597efa58a"
+    },
+    "cristal-quantico-acerto": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "cristal-quantico-acerto.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 5,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "cristal-quantico-acerto.webp",
+              "columns": 5,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 5,
+              "sha256": "1747c4fdd6b0c7d4421825e44272c89f2059d05b7af2009f2f65d5548e800191"
+            }
+          ],
+          "sha256": "1747c4fdd6b0c7d4421825e44272c89f2059d05b7af2009f2f65d5548e800191"
+        }
+      },
+      "sha256": "be153485c56286ac844f1687528af8ae36e40f0cf3b1067c505cc27be4c2d254",
+      "meta": {
+        "loop": false
+      }
+    },
+    "cristal-quantico-elo": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "cristal-quantico-elo.webp",
+          "cell": [
+            256,
+            32
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "cristal-quantico-elo.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2c637970a55d53147526d67f093f59247682a834735f29ee89cda2319ca482dc"
+            }
+          ],
+          "sha256": "2c637970a55d53147526d67f093f59247682a834735f29ee89cda2319ca482dc"
+        }
+      },
+      "sha256": "7d71dd8e03312cdca929834365b1fb3ccd86cbef1e2eda633b997593c926a441",
+      "meta": {
+        "loop": true
+      }
     },
     "detritos": {
       "kind": "frames",
@@ -846,6 +1011,39 @@
         }
       },
       "sha256": "f59aa03cc0ce80311ef7b77671416f7a87b2c4e44c49cc771b63dbb3f7d46727"
+    },
+    "facao-golpe": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "facao-golpe.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 6,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 14,
+          "pages": [
+            {
+              "file": "facao-golpe.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "f8faade7104d6a26c2ade8d20bed6a097bb6a1d461bf9dca2bcda352fb9fe1a4"
+            }
+          ],
+          "sha256": "f8faade7104d6a26c2ade8d20bed6a097bb6a1d461bf9dca2bcda352fb9fe1a4"
+        }
+      },
+      "sha256": "f3f69373565b948f1709e43b1637b978beb11d0ea5e08d2bcdc8215261112771",
+      "meta": {
+        "loop": false
+      }
     },
     "faisca-arame": {
       "kind": "frames",
@@ -1196,6 +1394,109 @@
       },
       "sha256": "73f403c4cee742e72c68cfc3f30849a3fb3ece2513bedbb206f878e5db25b2f1"
     },
+    "mangueira-boca": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "mangueira-boca.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "mangueira-boca.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "e192b5cffd7a1f59d4c08cc54fd52c8f64727926f88146075db9b7605395bbd3"
+            }
+          ],
+          "sha256": "e192b5cffd7a1f59d4c08cc54fd52c8f64727926f88146075db9b7605395bbd3"
+        }
+      },
+      "sha256": "ba7f1454e97d80b10a0c912cf6c9542b58ce3c421a6b891c234704d7bc35d1c0",
+      "meta": {
+        "loop": true
+      }
+    },
+    "mangueira-feixe": {
+      "kind": "seamless",
+      "files": {
+        "sheet": {
+          "file": "mangueira-feixe.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 1,
+          "wrap": "x",
+          "transparent": true,
+          "pages": [
+            {
+              "file": "mangueira-feixe.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "52ea7023a7b366cbaa0ea63500858c5be586252e455a106774e8b62011f21cf5"
+            }
+          ],
+          "sha256": "52ea7023a7b366cbaa0ea63500858c5be586252e455a106774e8b62011f21cf5"
+        }
+      },
+      "sha256": "bf4a636d792643b2e1beeb1e3a5c908a0429dddfcd80c5588c9cbc8e4ff00fb4",
+      "meta": {
+        "frames": 4,
+        "frameCell": [
+          256,
+          64
+        ],
+        "layout": "rows",
+        "fps": 12,
+        "loop": true
+      }
+    },
+    "mangueira-ponta": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "mangueira-ponta.webp",
+          "cell": [
+            64,
+            64
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "mangueira-ponta.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "4f27cfebbc56df63bc86290d182869c23e848ce5f1f2f162e74420189f5390d0"
+            }
+          ],
+          "sha256": "4f27cfebbc56df63bc86290d182869c23e848ce5f1f2f162e74420189f5390d0"
+        }
+      },
+      "sha256": "7974e349f96153ab010d74debe7b4e0ca8b6295ae11ddc373317b74414e74e69",
+      "meta": {
+        "loop": true
+      }
+    },
     "marcador-destino": {
       "kind": "frames",
       "files": {
@@ -1509,6 +1810,39 @@
       },
       "sha256": "d9c58efba1d5b06ca2eec4ddeb479325702d88dc48635553ed3a7cd7b3c62b5e"
     },
+    "peixeira-golpe": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "peixeira-golpe.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 6,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 16,
+          "pages": [
+            {
+              "file": "peixeira-golpe.webp",
+              "columns": 6,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "276f3f3279755cd3e1a59258b82267aadfd1f2ab9cdade8787a2d473dba3e997"
+            }
+          ],
+          "sha256": "276f3f3279755cd3e1a59258b82267aadfd1f2ab9cdade8787a2d473dba3e997"
+        }
+      },
+      "sha256": "c91c37d83c58240b57b8e9a5c06ebdd4ac661b1d50945151f3c1e499823a4d5e",
+      "meta": {
+        "loop": false
+      }
+    },
     "poeira-dano": {
       "kind": "frames",
       "files": {
@@ -1608,6 +1942,39 @@
         }
       },
       "sha256": "b3220734a3b178e742ea6ab52101e0ab67760b326a0155a5bd7503c9121ccccc"
+    },
+    "sal-grosso-chao": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "sal-grosso-chao.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 4,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 6,
+          "pages": [
+            {
+              "file": "sal-grosso-chao.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "2e0642023f96b766ec8beec662b4624aa4bd53c4f737a5a9b989a6774e64ffb0"
+            }
+          ],
+          "sha256": "2e0642023f96b766ec8beec662b4624aa4bd53c4f737a5a9b989a6774e64ffb0"
+        }
+      },
+      "sha256": "e089092fd7020ed4e64a9d1326ee491b2acd01bbb5446c8457f6545771167103",
+      "meta": {
+        "loop": true
+      }
     },
     "seta-investida": {
       "kind": "frames",
@@ -1721,6 +2088,39 @@
         }
       },
       "sha256": "679b3e33d0f6674aa78950fa74befdc141b6955708366734277f3d5a8886797c"
+    },
+    "uivo-do-lobisomem-onda": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "uivo-do-lobisomem-onda.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "uivo-do-lobisomem-onda.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "aa4881fc23e91383d856554c6f1ea27711e7bd7d18885bb76c91ad2c15b6fcd8"
+            }
+          ],
+          "sha256": "aa4881fc23e91383d856554c6f1ea27711e7bd7d18885bb76c91ad2c15b6fcd8"
+        }
+      },
+      "sha256": "6fc1a678c3536c97ca7baaae81315a0dd49d7deb2581d034851b41a582cde9bb",
+      "meta": {
+        "loop": false
+      }
     },
     "veu-apagao": {
       "kind": "frames",

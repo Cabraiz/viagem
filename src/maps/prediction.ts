@@ -13,6 +13,9 @@
  * - D-047: while tick < fastUntil (Dona Cida's brigadeiro) the walk above goes × CIDA_FAST_MULT.
  * - Veículos: while tick < rideUntil the walk goes × RIDE_MULT[ride] instead (the larger of it and the brigadeiro);
  *   the cart turns the stick by CART_TURN; the crossfiteiro's last BURPEE_TICKS stand still (contract vehicles.ts).
+ * - The player's stats.moveSpeed (class, weapon, the tênis, the "+velocidade" offer) scales every walk above, on
+ *   top of the rest (BUG oferta-velocidade-nao-faz-nada); the slide is the poop's, not the legs', so it does not.
+ *   The room passes the SimPlayer (its `stats`), the phone the wire's moveSpeed (PlayerRunView.moveSpeed).
  * Tick mapping of the replay: a frame of tick T carries the position after the player's step `ack` (applied on tick
  * T while walking: the room applies one step per tick), so the k-th unacknowledged input (k = 0, 1, …) is applied on
  * tick T+1+k (while an effect touches the steps behind a confirmed position, the room sends the live one instead:
@@ -29,7 +32,9 @@ export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
   /** D-047 Dona Cida's brigadeiro: walking × CIDA_FAST_MULT while tick < fastUntil (on top of a slow; not the slide). */
   fastUntil?:number;
   /** Veículos: the vehicle ridden while tick < rideUntil (contract vehicles.ts). */
-  ride?:VehicleKind;rideUntil?:number}
+  ride?:VehicleKind;rideUntil?:number;
+  /** The player's stats (SimPlayer.stats): moveSpeed multiplies the walk (statMoveSpeed); absent, 1. */
+  stats?:{readonly moveSpeed?:number}}
 /**
  * Where the replay stands: the frame's tick and the player's effects in it. Absent: no effects (plain walking).
  * `cap` (D-052, the car): the most this player may walk per tick while moving the car (carSpeed(movers)/SIM_HZ).
@@ -53,6 +58,15 @@ export function walkMult(effects:MoveEffects|undefined,tick:number):number{
   if(ride==='crossfiteiro'&&tick>=effects!.rideUntil!-BURPEE_TICKS)return 0;
   return Math.max(fast,RIDE_MULT[ride]);
 }
+/**
+ * The walk's stat multiplier: stats.moveSpeed in thousandths (what the wire carries, so the room and the phone take
+ * the very same number), within STAT_LIMITS' 0.5..2; absent or unusable, 1.
+ */
+export function statMoveSpeed(effects:MoveEffects|undefined):number{
+  const v=effects?.stats?.moveSpeed;
+  if(v===undefined||!Number.isFinite(v))return 1;
+  return Math.round(Math.min(2,Math.max(.5,v))*1000)/1000;
+}
 const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
 /**
  * One movement tick of a player at server tick `tick` (the room's players system and the phone's replay): a slide
@@ -66,7 +80,7 @@ export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects
   // The world's hero speed (city 1.99 u/s, D-026); slip keeps its ratio to walking so the city stays in proportion.
   const walk=heroSpeed(terrain);
   if(slide)return moveDirection(p,slide,STEP,terrain,PLAYER_SLIP_SPEED*walk/SPEED);
-  const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick);
+  const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects);
   const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
   return moveDirection(p,turned,STEP,terrain,speed);
 }

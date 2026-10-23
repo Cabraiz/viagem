@@ -2,7 +2,7 @@ import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,CityTerrain,type WorldKind} fr
 import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
-import { worldSpawn,moveStep, type Point } from '../src/maps/index.ts';
+import { worldSpawn,moveStep,statMoveSpeed, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,cityRunStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
@@ -453,7 +453,7 @@ export class Simulation {
     this.world.load(cp.world);this.runs=cp.runs;
     // A state this build cannot run (a system throws on it): a fresh run instead, and the room falls back to the lobby.
     try{this.systems=this.assemble(cp.systems);}catch{this.resetRun();return false;}
-    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.shame.reset();this.botInputs.clear();this.effectEnd.clear();
+    this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.shame.reset();this.botInputs.clear();this.effectEnd.clear();this.walkStat.clear();
     this.counters.clear();for(const [id,stats] of cp.stats)if(this.players.has(id))this.counters.set(id,{...emptyStats(),...stats});
     coastalSpawnPoints(this.terrain);
     let slot=0;
@@ -483,7 +483,7 @@ export class Simulation {
     this.systems=this.assemble();
     this.result=undefined;this.alive.clear();this.tombs.clear();this.recent=[];this.counters.clear();this.shame.reset();this.botInputs.clear();
     // D-036: the new run's clock starts over; an old effect end would hold the owner's frames live.
-    this.effectEnd.clear();
+    this.effectEnd.clear();this.walkStat.clear();
     // Spawn points are cached per terrain; computing them now avoids a 60–120 ms hitch at round 1 (D-010).
     coastalSpawnPoints(this.terrain); // [] at once in the endless world
     let slot=0;
@@ -518,7 +518,7 @@ export class Simulation {
    * Out of the room for good. The opt-out goes too (a later seat is a new id), and so do their moments: someone who
    * said no and left mid-run must not become the "momento mais vergonhoso" once the opt-out is gone.
    */
-  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
+  remove(id:string){this.inherit(id);this.autopilot.delete(id);this.players.delete(id);this.tracks.delete(id);this.trackReset(id);this.effectEnd.delete(id);this.walkStat.delete(id);this.bots.delete(id);this.botInputs.delete(id);this.shameOptOut.delete(id);this.shame.forget(id);}
   /**
    * The inheritance (NEW-20261014-ORQ-carteira-e-pix): the wallet of a player who leaves for good (remove) is split
    * among the seated players who stay (sim/wallet.ts splitAmong: equal parts, the remainder from the run's cursor).
@@ -645,6 +645,8 @@ export class Simulation {
   private liveAck=new Map<string,number>();
   /** Per player: the latest tick a slow or slip of this run ran until (kept after the players system drops it). */
   private effectEnd=new Map<string,number>();
+  /** Per player: the moveSpeed stat the last step walked with (statMoveSpeed; a change is an effect, see step). */
+  private walkStat=new Map<string,number>();
   /** The input track starts over (join, reconnect, rematch): acks restart, so does the monotone guard. */
   private trackReset(id:string){this.liveAck.delete(id);this.stepTicks.delete(id);}
   /** Per player: the tick each recent client step was taken on (D-036 confirmed check); a seq going back starts it over. */
@@ -892,6 +894,10 @@ export class Simulation {
     for(const p of this.players.values()){
       const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
       if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
+      // The moveSpeed stat changed (an offer, a weapon): the steps before now walked at the old one, so it counts as an
+      // effect up to now (the phone's replay of them would take the new one).
+      const walk=statMoveSpeed(p);
+      if(walk!==(this.walkStat.get(p.id)??1)){this.walkStat.set(p.id,walk);this.effectEnd.set(p.id,Math.max(this.effectEnd.get(p.id)??-Infinity,this.world.tick));}
     }
     // Skill taps carried by this step (input-10hz `cast`): the room tells each client whether it went off.
     this.casts=[];
@@ -998,7 +1004,7 @@ export class Simulation {
         weapons:p.build.weapons.map(i=>({...i})),passives:p.build.passives.map(i=>({...i})),...handOf(p),
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
-        ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...(p.grana!==undefined?{grana:p.grana}:{}),
+        ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...(p.grana!==undefined?{grana:p.grana}:{}),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
@@ -1028,7 +1034,7 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
-          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),
+          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),
           // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).
           ...(p.grana!==undefined?{grana:p.grana}:{}),
         };
@@ -1056,6 +1062,11 @@ export class Simulation {
 export type {SimEvent};
 
 /** D-047 Dona Cida's sweets still running on `tick` (a finished one costs no bytes). */
+/** The wire's moveSpeed (PlayerRunView.moveSpeed): stats.moveSpeed as the walk takes it, absent when 1. */
+export function moveSpeedOf(p:SimPlayer):{moveSpeed?:number}{
+  const v=statMoveSpeed(p);
+  return v===1?{}:{moveSpeed:v};
+}
 export function activeBuffs(p:SimPlayer,tick:number):{fastUntil?:number;mightUntil?:number;guardUntil?:number}{
   const out:{fastUntil?:number;mightUntil?:number;guardUntil?:number}={};
   if(tick<(p.fastUntil??-Infinity))out.fastUntil=p.fastUntil;

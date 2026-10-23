@@ -423,7 +423,7 @@ export const VIADUCT_START={c:53,r:7.5} as const;
 
 /**
  * The viaduct on the compacted layout: its block in the asset, its pillars and the ramp's embankment solid on the
- * ground, the start on the deck, and no prop on the ramp (the street under the deck keeps its props). A block that lies
+ * ground, the start on the deck, and no prop on the viaduct's footprint or beside it. A block that lies
  * wholly on the ramp, beside it or within RAMP_FOOT_CELLS of its foot goes (a wall stub of 4 cells stood where it lands, in
 
  * front of the N mouth), its cells open ground again. Throws when a
@@ -449,7 +449,8 @@ export function addViaduct(data:CityAssetData,v:CityViaduct=VIADUCT):void{
   for(const [c,r] of groundSolidCells(v))for(let j=0;j<S;j++)for(let i=0;i<S;i++)data.walkable[(r*S+j)*sw+c*S+i]=0;
   data.viaducts=[v];
   data.points={...data.points,inicio:{x:r3(VIADUCT_START.c*u),y:r3(VIADUCT_START.r*u)}};
-  data.props=data.props.filter(p=>!onRamp(v,u,p.x,p.y));
+  // No prop on the ramp, under the deck or beside them (a parked car there stood through the deck on screen).
+  data.props=data.props.filter(p=>![-u,0,u].some(dx=>[-u,0,u].some(dy=>onRamp(v,u,p.x+dx,p.y+dy)||overDeck(v,u,p.x+dx,p.y+dy))));
 }
 /** True when (x, y) (u) is on a viaduct of `a` or within `margin` u of one (deck or ramp). */
 export const nearViaduct=(a:CityAsset,x:number,y:number,margin=0)=>a.viaducts.some(v=>{

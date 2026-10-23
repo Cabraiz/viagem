@@ -49,7 +49,10 @@ export function decorate(baseText:string,seed=DECOR_SEED):string{
   const {decor,blocked}=placeCityDecor(asset,seed,{keepOut,keepOutRects});
   const data=cityAssetToData(asset),sw=asset.samples.w;
   for(const [c,r] of blocked)for(let j=0;j<SAMPLES_PER_CELL;j++)for(let i=0;i<SAMPLES_PER_CELL;i++)data.walkable[(r*SAMPLES_PER_CELL+j)*sw+c*SAMPLES_PER_CELL+i]=0;
-  data.decor=decor;data.version=asset.version+1;
+  // Nothing of the ground's scenery under or beside a viaduct (deck and ramp, a cell around): a lamp, a wire or a car
+  // there stood through the deck on screen (the deck is drawn over the ground, the scenery by its own cells).
+  const near=asset.viaducts.flatMap(v=>[v.deck,v.ramp.rect]).map(([c,r,w,h])=>[c-1,r-1,c+w+1,r+h+1] as const);
+  data.decor=decor.filter(q=>!near.some(([c0,r0,c1,r1])=>q.c<c1&&q.c+q.w>c0&&q.r<r1&&q.r+q.h>r0));data.version=asset.version+1;
   return encodeCityAsset(data);
 }
 

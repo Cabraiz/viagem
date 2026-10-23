@@ -10,11 +10,12 @@ import type {CityViaduct} from '../../src/maps/index.ts';
 
 const V:CityViaduct={id:'v',deck:[10,4,4,8],ramp:{rect:[10,12,4,6],up:'N'},pillars:[[10,6],[13,6]],height:3.5};
 
-test('a viaduct is drawn as deck strips, ramp strips, parapets on both sides, pillars and its shadow',()=>{
+test('a viaduct is drawn cell by cell (deck and ramp), parapets on both outer sides, pillars and its shadow',()=>{
   const p=viaductPieces(V,1.5);
   const deck=p.filter(q=>q.kind==='deck'),ramp=p.filter(q=>q.kind==='ramp');
-  assert.equal(deck.length,8,'one strip per deck row');assert.equal(ramp.length,6,'one strip per ramp row');
-  assert.equal(p.filter(q=>q.kind==='parapet').length,2*(8+6),'two parapets a strip');
+  assert.equal(deck.length,8*4,'one piece per deck cell');assert.equal(ramp.length,6*4,'one piece per ramp cell');
+  assert.equal(p.filter(q=>q.kind==='parapet').length,2*(8+6),'a parapet on each outer cell of every row');
+  assert.equal(new Set([...deck,...ramp].map(q=>q.strip)).size,deck.length+ramp.length,'each cell draws on its own');
   assert.equal(p.filter(q=>q.kind==='pillar').length,2);assert.equal(p.filter(q=>q.kind==='shadow').length,1);
   for(const q of deck){assert.deepEqual([...q.top],[3.5,3.5,3.5,3.5]);assert.deepEqual([...q.bottom],[3.5-DECK_SLAB,3.5-DECK_SLAB,3.5-DECK_SLAB,3.5-DECK_SLAB]);}
   // The ramp goes up toward the deck (north): its foot strip touches the ground, its top strip the deck.

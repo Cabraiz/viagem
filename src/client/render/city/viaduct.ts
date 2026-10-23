@@ -3,10 +3,10 @@
  * palette colours until the Codex art (etapa 4): the deck's slab and its parapets, the ramp on its embankment, the
  * pillars, and the deck's shadow on the street. Same camera, no new zoom.
  *
- * Draw order: the deck and the ramp go in strips one cell deep across the deck (40 or so pieces), each at the depth of
- * its front corner, so a body on the street under a strip is drawn before it (covered) and a body on the strip in
- * front after it. A body on the deck (floor 1) is lifted by the surface's height (HEIGHT_PX a unit, like the blocks) and
- * drawn just above the strip it stands on (bodyDepth). While the local hero is under the deck, the strips around it go
+ * Draw order: the deck and the ramp go cell by cell (~120 pieces), each at the depth of its front corner, so a body on
+ * the street under a cell is drawn before it (covered) and one beside it in front after it. A body on the deck (floor 1)
+ * is lifted by the surface's height (HEIGHT_PX a unit, like the blocks) and drawn just above the cells it stands on
+ * (bodyDepth). While the local hero is under the deck, the strips around it go
  * see-through (UNDER_ALPHA within UNDER_RADIUS) so the hero and the fight stay readable.
  *
  * The geometry (viaductPieces) is pure and tested; ViaductLayer is the Phaser side.
@@ -37,40 +37,39 @@ export interface ViaductPiece {
 const flat=(z:number)=>[z,z,z,z] as const;
 
 /**
- * Every piece of viaduct `v` (cell `unit` u): deck strips (slab DECK_SLAB thick under the deck's height) with their two
- * parapets, ramp strips (an embankment from the ground to the sloped surface) with theirs, the pillars (from the ground
- * to the slab's underside) and the deck's shadow on the street. Strips run across the deck, one cell deep along it.
+ * Every piece of viaduct `v` (cell `unit` u), one cell each so each sorts by its own front corner (a piece across the
+ * deck's width sorted by its front corner covered what stood beside its back end): deck cells (slab DECK_SLAB thick under
+ * the deck's height) and ramp cells (an embankment from the ground to the sloped surface), each with its parapet on the
+ * viaduct's outer sides; the pillars (from the ground to the slab's underside); and the deck's shadow on the street.
+ * `strip` numbers the pieces that draw together (a cell and its parapet; a pillar alone).
  */
 export function viaductPieces(v:CityViaduct,unit:number):ViaductPiece[]{
   const out:ViaductPiece[]=[],h=v.height,along=v.ramp.up==='N'||v.ramp.up==='S';
   const [dc,dr,dw,dh]=v.deck,[rc,rr,rw,rh]=v.ramp.rect;
   let strip=0;
-  const parapets=(x0:number,y0:number,x1:number,y1:number,top:readonly [number,number,number,number])=>{
-    const raise=(t:readonly [number,number,number,number])=>t.map(z=>z+PARAPET) as unknown as [number,number,number,number];
+  const raise=(t:readonly number[])=>t.map(z=>z+PARAPET) as unknown as [number,number,number,number];
+  /** The parapets of a cell on the viaduct's outer sides (c0/c1: the first and last column, or row, across it). */
+  const parapets=(x0:number,y0:number,x1:number,y1:number,top:readonly [number,number,number,number],first:boolean,last:boolean)=>{
     if(along){
-      // Along x0 and x1 (the strip's long sides run north–south): thin boxes on the outer edges.
-      out.push({kind:'parapet',strip,x0,y0,x1:x0+PARAPET_WIDTH,y1,top:raise([top[0],top[0],top[3],top[3]]),bottom:[top[0],top[0],top[3],top[3]]});
-      out.push({kind:'parapet',strip,x0:x1-PARAPET_WIDTH,y0,x1,y1,top:raise([top[1],top[1],top[2],top[2]]),bottom:[top[1],top[1],top[2],top[2]]});
+      if(first)out.push({kind:'parapet',strip,x0,y0,x1:x0+PARAPET_WIDTH,y1,top:raise([top[0],top[0],top[3],top[3]]),bottom:[top[0],top[0],top[3],top[3]]});
+      if(last)out.push({kind:'parapet',strip,x0:x1-PARAPET_WIDTH,y0,x1,y1,top:raise([top[1],top[1],top[2],top[2]]),bottom:[top[1],top[1],top[2],top[2]]});
     }else{
-      out.push({kind:'parapet',strip,x0,y0,x1,y1:y0+PARAPET_WIDTH,top:raise([top[0],top[1],top[1],top[0]]),bottom:[top[0],top[1],top[1],top[0]]});
-      out.push({kind:'parapet',strip,x0,y0:y1-PARAPET_WIDTH,x1,y1,top:raise([top[3],top[2],top[2],top[3]]),bottom:[top[3],top[2],top[2],top[3]]});
+      if(first)out.push({kind:'parapet',strip,x0,y0,x1,y1:y0+PARAPET_WIDTH,top:raise([top[0],top[1],top[1],top[0]]),bottom:[top[0],top[1],top[1],top[0]]});
+      if(last)out.push({kind:'parapet',strip,x0,y0:y1-PARAPET_WIDTH,x1,y1,top:raise([top[3],top[2],top[2],top[3]]),bottom:[top[3],top[2],top[2],top[3]]});
     }
   };
-  // Deck strips.
-  const deckStrips=along?dh:dw;
-  for(let i=0;i<deckStrips;i++,strip++){
-    const x0=(along?dc:dc+i)*unit,y0=(along?dr+i:dr)*unit,x1=x0+(along?dw:1)*unit,y1=y0+(along?1:dh)*unit;
+  for(let r=dr;r<dr+dh;r++)for(let c=dc;c<dc+dw;c++,strip++){
+    const x0=c*unit,y0=r*unit,x1=x0+unit,y1=y0+unit;
     out.push({kind:'deck',strip,x0,y0,x1,y1,top:flat(h),bottom:flat(h-DECK_SLAB)});
-    parapets(x0,y0,x1,y1,flat(h));
+    parapets(x0,y0,x1,y1,flat(h),along?c===dc:r===dr,along?c===dc+dw-1:r===dr+dh-1);
   }
-  // Ramp strips: the surface rises from the foot (0) to the top (h); an embankment down to the ground.
+  // Ramp cells: the surface rises from the foot (0) to the top (h); an embankment down to the ground.
   const len=rampCells(v)*unit,zAt=(x:number,y:number)=>h*Math.max(0,Math.min(1,(rampRun(v,unit,Math.min(Math.max(x,rc*unit+1e-6),(rc+rw)*unit-1e-6),Math.min(Math.max(y,rr*unit+1e-6),(rr+rh)*unit-1e-6))??0)/len));
-  const rampStrips=along?rh:rw;
-  for(let i=0;i<rampStrips;i++,strip++){
-    const x0=(along?rc:rc+i)*unit,y0=(along?rr+i:rr)*unit,x1=x0+(along?rw:1)*unit,y1=y0+(along?1:rh)*unit;
+  for(let r=rr;r<rr+rh;r++)for(let c=rc;c<rc+rw;c++,strip++){
+    const x0=c*unit,y0=r*unit,x1=x0+unit,y1=y0+unit;
     const top=[zAt(x0,y0),zAt(x1,y0),zAt(x1,y1),zAt(x0,y1)] as const;
     out.push({kind:'ramp',strip,x0,y0,x1,y1,top,bottom:flat(0)});
-    parapets(x0,y0,x1,y1,top);
+    parapets(x0,y0,x1,y1,top,along?c===rc:r===rr,along?c===rc+rw-1:r===rr+rh-1);
   }
   // Pillars, each its own strip.
   for(const [c,r] of v.pillars){
@@ -142,6 +141,8 @@ export class ViaductLayer {
   private shadow?:Phaser.GameObjects.Graphics;
   private view=-1;
   private readonly keys:number[]=[];
+  /** Per strip, its main piece (the cell, the pillar or the car; not a parapet). */
+  private bodyOf:ViaductPiece[]=[];
   private readonly scene:Phaser.Scene;
   private readonly viaducts:readonly CityViaduct[];
   private readonly unit:number;
@@ -151,11 +152,11 @@ export class ViaductLayer {
   constructor(scene:Phaser.Scene,viaducts:readonly CityViaduct[],unit:number,hooks:ViaductHooks,shadowDepth:number,start?:Pt){
     this.scene=scene;this.viaducts=viaducts;this.unit=unit;this.hooks=hooks;this.shadowDepth=shadowDepth;
     this.pieces=viaducts.flatMap(v=>viaductPieces(v,unit));
-    // The cars stand on the strip under their centre, drawn after its slab and parapets.
-    for(const v of viaducts)for(const c of deckCars(v,unit,start)){
-      const strip=this.stripAt(c.x+c.w/2,c.y+c.h/2);
-      if(strip!==undefined)this.pieces.push({kind:'car',strip,x0:c.x,y0:c.y,x1:c.x+c.w,y1:c.y+c.h,top:flat(v.height+c.tall),bottom:flat(v.height),color:c.color} as ViaductPiece&{color:number});
-    }
+    // The cars: each its own piece, drawn above every deck cell under it (draw).
+    let next=1+Math.max(-1,...this.pieces.map(q=>q.strip));
+    for(const v of viaducts)for(const c of deckCars(v,unit,start))
+      this.pieces.push({kind:'car',strip:next++,x0:c.x,y0:c.y,x1:c.x+c.w,y1:c.y+c.h,top:flat(v.height+c.tall),bottom:flat(v.height),color:c.color} as ViaductPiece&{color:number});
+    for(const p of this.pieces)if(p.kind!=='parapet'&&p.strip>=0)this.bodyOf[p.strip]=p;
   }
   /** Redraws the pieces for `view` (once per turn), re-sorts them, and fades the strips around a hero under a deck. */
   update(view:number,hero?:Pt&{andar?:number}){
@@ -165,7 +166,7 @@ export class ViaductLayer {
       const g=this.strips[i];g.setDepth(this.hooks.depthOf(this.keys[i]));
       let alpha=1;
       if(under){
-        const p=this.pieces.find(q=>q.strip===i&&q.kind!=='parapet');
+        const p=this.bodyOf[i];
         if(p&&p.kind!=='pillar'){
           const dx=Math.max(p.x0-hero.x,0,hero.x-p.x1),dy=Math.max(p.y0-hero.y,0,hero.y-p.y1);
           if(dx*dx+dy*dy<UNDER_RADIUS*UNDER_RADIUS)alpha=UNDER_ALPHA;
@@ -180,13 +181,30 @@ export class ViaductLayer {
   }
   /** Draw depth of a body of floor 1 at (x, y): just above the strip under it; undefined when it is on no strip. */
   bodyDepth(x:number,y:number):number|undefined{
-    const i=this.stripAt(x,y);
-    return i===undefined?undefined:this.hooks.depthOf(this.keys[i])+ON_STRIP;
+    if(this.stripAt(x,y)===undefined)return undefined;
+    // Above every deck or ramp cell its body may overlap (a cell around): the cells in front of those draw lower on
+    // screen than its feet, so nothing of the deck in front ever covers it.
+    let key=-Infinity;
+    for(const p of this.pieces){
+      if(p.kind!=='deck'&&p.kind!=='ramp')continue;
+      if(x>=p.x0-this.unit&&x<p.x1+this.unit&&y>=p.y0-this.unit&&y<p.y1+this.unit)key=Math.max(key,this.keys[p.strip]);
+    }
+    return this.hooks.depthOf(key)+ON_STRIP;
   }
   /** True when the ground at (x, y) is under a deck (or the ramp's foot, where its strips hang over). */
   under(x:number,y:number){return this.viaducts.some(v=>overDeck(v,this.unit,x,y));}
   destroy(){for(const g of this.strips)g.destroy();this.strips.length=0;this.shadow?.destroy();this.shadow=undefined;}
 
+  /** The deck strip over a pillar (the one holding its centre). */
+  private stripOver(p:ViaductPiece):number|undefined{
+    const x=(p.x0+p.x1)/2,y=(p.y0+p.y1)/2;
+    return this.pieces.find(q=>q.kind==='deck'&&x>=q.x0&&x<q.x1&&y>=q.y0&&y<q.y1)?.strip;
+  }
+  /** Depth key of strip `i` at `view`: its deck or ramp piece's front corner. */
+  private stripKey(i:number,view:number):number{
+    const q=this.pieces.find(r=>r.strip===i&&(r.kind==='deck'||r.kind==='ramp'));
+    return q?pieceKey(q,view):Infinity;
+  }
   private stripAt(x:number,y:number):number|undefined{
     for(const p of this.pieces)if((p.kind==='deck'||p.kind==='ramp')&&x>=p.x0&&x<p.x1&&y>=p.y0&&y<p.y1)return p.strip;
     for(const v of this.viaducts)if(overDeck(v,this.unit,x,y)||onRamp(v,this.unit,x,y)){
@@ -218,7 +236,16 @@ export class ViaductLayer {
         continue;
       }
       const g=this.strips[p.strip];
-      if(p.kind==='deck'||p.kind==='ramp'||p.kind==='pillar')this.keys[p.strip]=Math.max(this.keys[p.strip],pieceKey(p,view));
+      if(p.kind==='deck'||p.kind==='ramp')this.keys[p.strip]=Math.max(this.keys[p.strip],pieceKey(p,view));
+      // A pillar stands under its strip: drawn just before it (its own front corner can be the strip's, which then put
+      // it over the slab), and after the street behind it.
+      else if(p.kind==='pillar'){const over=this.stripOver(p);this.keys[p.strip]=Math.min(pieceKey(p,view),over===undefined?Infinity:this.stripKey(over,view))-ON_STRIP;}
+      // A car on the deck: above every cell under it (the cells were keyed first: the cars come last in `order`).
+      else if(p.kind==='car'){
+        let key=-Infinity;
+        for(const q of this.pieces)if((q.kind==='deck'||q.kind==='ramp')&&q.x0<p.x1&&q.x1>p.x0&&q.y0<p.y1&&q.y1>p.y0)key=Math.max(key,this.keys[q.strip]);
+        this.keys[p.strip]=key+ON_STRIP;
+      }
       const tops=corners.map((c,k)=>at(c,p.top[k])),bottoms=corners.map((c,k)=>at(c,p.bottom[k]));
       const car=p.kind==='car'?(p as ViaductPiece&{color:number}).color:undefined;
       for(const side of front){

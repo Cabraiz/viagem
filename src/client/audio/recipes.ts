@@ -2,13 +2,13 @@
  * Procedural sound recipes (VGM-050). Pure data: no WebAudio here, so tests can inspect them.
  * Budget: each sound <= 1.6 s (golpe/gema <= 0.15 s), <= 8 tones, 30..8000 Hz, gain <= 0.6.
  */
-import { SOUND_IDS, type SoundId, type SoundRecipe, type Tone } from './types.ts';
+import { SOUND_IDS, type ProceduralId, type SoundRecipe, type Tone } from './types.ts';
 import type { IconName } from '../ui/icon.ts';
 import type { StickerName } from '../ui/sticker.ts';
 
 const LOW={type:'lowpass',freq:2600,q:0.7} as const;
 
-function recipe(id:SoundId,label:string,throttleMs:number,priority:number,tones:Tone[],vibrate?:number[]):SoundRecipe{
+function recipe(id:ProceduralId,label:string,throttleMs:number,priority:number,tones:Tone[],vibrate?:number[]):SoundRecipe{
   const out:SoundRecipe={id,label,throttleMs,priority,tones:Object.freeze(tones.map(t=>Object.freeze({...t})))};
   if(vibrate)out.vibrate=Object.freeze([...vibrate]);
   return Object.freeze(out);
@@ -112,16 +112,16 @@ const list:SoundRecipe[]=[
   ],[15]),
 ];
 
-export const RECIPES:Readonly<Record<SoundId,SoundRecipe>>=Object.freeze(
+export const RECIPES:Readonly<Record<ProceduralId,SoundRecipe>>=Object.freeze(
   Object.fromEntries(SOUND_IDS.map(id=>{
     const found=list.find(r=>r.id===id);
     if(!found)throw new Error(`missing recipe ${id}`);
     return [id,found];
-  })) as Record<SoundId,SoundRecipe>,
+  })) as Record<ProceduralId,SoundRecipe>,
 );
 
-export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
-  Object.fromEntries(SOUND_IDS.map(id=>[id,RECIPES[id].label])) as Record<SoundId,string>,
+export const SOUND_LABELS:Readonly<Record<ProceduralId,string>>=Object.freeze(
+  Object.fromEntries(SOUND_IDS.map(id=>[id,RECIPES[id].label])) as Record<ProceduralId,string>,
 );
 
 /**
@@ -129,7 +129,7 @@ export const SOUND_LABELS:Readonly<Record<SoundId,string>>=Object.freeze(
  * illustrated sticker (stickers.svg) or, for the stamp, its own word.
  */
 export type SoundArt={icon:IconName}|{sticker:StickerName}|{word:string};
-export const SOUND_ART:Readonly<Record<SoundId,SoundArt>>=Object.freeze({
+export const SOUND_ART:Readonly<Record<ProceduralId,SoundArt>>=Object.freeze({
   golpe:{sticker:'chinelo'},gema:{icon:'gota'},nivel:{sticker:'podio-2'},upgrade:{sticker:'bau-aberto'},queda:{sticker:'banana'},
   resgate:{icon:'boia'},chefe:{icon:'chefe'},'round-inicio':{sticker:'megafone'},'round-fim':{icon:'pronto'},buzina:{icon:'corneta'},
   boing:{sticker:'galo'},risada:{icon:'risada'},

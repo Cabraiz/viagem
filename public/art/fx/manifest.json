@@ -2122,6 +2122,39 @@
         "loop": false
       }
     },
+    "ventilador-aura": {
+      "kind": "frames",
+      "files": {
+        "sheet": {
+          "file": "ventilador-aura.webp",
+          "cell": [
+            256,
+            256
+          ],
+          "frames": 8,
+          "anchor": [
+            0.5,
+            0.5
+          ],
+          "fps": 12,
+          "pages": [
+            {
+              "file": "ventilador-aura.webp",
+              "columns": 8,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "8559e2ec2c748f6faf055081d1eaac4e692aa4047cc53e5694312641d7679891"
+            }
+          ],
+          "sha256": "8559e2ec2c748f6faf055081d1eaac4e692aa4047cc53e5694312641d7679891"
+        }
+      },
+      "sha256": "6cae5571803ef678289f6017e40363bafa3d912df317faa3c1d487e057d7eb04",
+      "meta": {
+        "loop": true
+      }
+    },
     "veu-apagao": {
       "kind": "frames",
       "files": {

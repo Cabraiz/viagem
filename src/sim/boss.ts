@@ -81,6 +81,12 @@ const ACT_IDLE=0,ACT_WINDUP=1,ACT_DASH=2,ACT_SWEEP=3;
 const ATTACK_SLAM=1,ATTACK_CHARGE=2,ATTACK_SWEEP=3;
 
 export interface BossOptions {
+  /**
+   * The enemy kind (its art) and its lines: BOSS_KIND and BOSS_LINES by default (the Síndico). Card boss-fim-onda-1: the
+   * chefão of the 1st wave is a roster chefe (sim/ninhos/chefao.ts), with this same fight.
+   */
+  kind?:string;
+  lines?:Readonly<Record<BossLineKey,readonly string[]>>;
   /** Creates one minion, adds it to ctx.enemies and returns it; undefined when refused (e.g. entity cap). Default: summonFromCatalog. */
   summon?:(ctx:SimContext,kind:string,at:Point)=>EnemyState|undefined;
   /** Who the summons are (art only: the run's enemies with art, director bossMinionKinds); MINION_KINDS when it gives none. */
@@ -180,6 +186,7 @@ const minDistance=(p:Point,players:readonly Point[])=>players.reduce((m,q)=>Math
 
 export function createBoss(options:BossOptions={}):BossController {
   const siegeOf=options.siege,hitSiege=options.hitSiege;
+  const kind=options.kind??BOSS_KIND,lines=options.lines??BOSS_LINES;
   const tuning:Readonly<BossTuning>=Object.freeze({...BOSS_TUNING,...options.tuning});
   /** Ticks of a dash: tuning.dashTicks, or with speedMap the time the full charge takes at its mapped speed. */
   const dashTicks=(()=>{
@@ -202,19 +209,19 @@ export function createBoss(options:BossOptions={}):BossController {
   const say=(ctx:SimContext,boss:EnemyState,key:BossLineKey,force=false)=>{
     const m=boss.memory;
     if(!options.say||(!force&&m&&ctx.tick<m.barkAt))return;
-    if(options.say(ctx,boss,BOSS_LINES[key],`${BOSS_KIND}:${key}`)){
+    if(options.say(ctx,boss,lines[key],`${kind}:${key}`)){
       if(m)m.barkAt=ctx.tick+tuning.barkEvery;
       if(state.queued?.key===key)delete state.queued;
     }else if(force)state.queued={key,until:ctx.tick+KEY_LINE_RETRY_TICKS};
   };
   /** The bark only needs an id and a position, so a gone corpse is stood in for by a stub. */
-  const speaker=(ctx:SimContext):EnemyState=>current(ctx)??{id:state.bossId!,kind:BOSS_KIND,x:state.lastX,y:state.lastY,
+  const speaker=(ctx:SimContext):EnemyState=>current(ctx)??{id:state.bossId!,kind,x:state.lastX,y:state.lastY,
     hp:0,maxHp:1,speed:0,damage:0,radius:tuning.radius,xp:0,spawnTick:0,readyTick:0};
   function retryLine(ctx:SimContext){
     const queued=state.queued;
     if(!queued||!options.say)return;
     if(ctx.tick>queued.until){delete state.queued;return;}
-    if(options.say(ctx,speaker(ctx),BOSS_LINES[queued.key],`${BOSS_KIND}:${queued.key}`))delete state.queued;
+    if(options.say(ctx,speaker(ctx),lines[queued.key],`${kind}:${queued.key}`))delete state.queued;
   }
   const current=(ctx:SimContext)=>state.bossId?ctx.enemies.get(state.bossId):undefined;
   const alive=(ctx:SimContext)=>{const b=current(ctx);return b&&b.hp>0?b:undefined;};
@@ -246,7 +253,7 @@ export function createBoss(options:BossOptions={}):BossController {
     // Spots for enemy bodies use the enemy view (cidade-06): never inside a barricade disc.
     const spot=at&&walkable(at,enemyTerrain(ctx.terrain))?{x:at.x,y:at.y}:spawnPoint(ctx,bodies);
     const boss:EnemyState={
-      id:ctx.nextId('boss'),kind:BOSS_KIND,x:spot.x,y:spot.y,hp:maxHp,maxHp,
+      id:ctx.nextId('boss'),kind,x:spot.x,y:spot.y,hp:maxHp,maxHp,
       speed:tuning.speed,damage:0,radius:tuning.radius,xp:tuning.xp,boss:true,
       spawnTick:ctx.tick,readyTick:ctx.tick+tuning.entranceTicks,phase:PHASE_NORMAL,
       memory:{act:ACT_IDLE,actUntil:0,next:ctx.tick+tuning.entranceTicks,last:0,barkAt:0,summonAt:0,

@@ -306,7 +306,7 @@ export class Simulation {
     if(down>c.down){c.down=down;c.last=w.tick;return true;}
     if(w.tick-c.last<ticks(CALMA.checkpointEveryS))return false;
     const boss=this.systems.boss.state;
-    if(boss.bossId&&!boss.defeated)return false;
+    if(boss.bossId&&!boss.defeated||this.systems.chefao?.up())return false;
     for(const p of this.players.values())if(isStanding(p)&&!calmAt(w,p.x,p.y,CALMA.checkpointR))return false;
     c.last=w.tick;return true;
   }
@@ -573,10 +573,10 @@ export class Simulation {
    * The bot's stick for the next steps (held until changed), a one-shot skill tap and (D-051, manual combat) the attack
    * button, held until changed like the stick.
    */
-  setBotInput(id:string,direction:Point,skill=false,attack=false){
+  setBotInput(id:string,direction:Point,skill=false,attack=false,target?:string){
     if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
-    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill});
+    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill,...(target!==undefined?{target}:{})});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */

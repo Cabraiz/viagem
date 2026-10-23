@@ -105,10 +105,72 @@ export function acharTremores(quadros,anim,celula=128){
   return out.sort((a,b)=>a.quadro-b.quadro||b.gravidade-a.gravidade);
 }
 
+/** Silhueta de um quadro (1 = alfa ≥ ALFA), reduzida por `f` (um pixel reduzido = cheio se algum do bloco é). */
+export function mascaraQuadro(rgba,stride,x0,y0,w,h,f=1,alfa=ALFA){
+  const mw=Math.ceil(w/f),mh=Math.ceil(h/f),m=new Uint8Array(mw*mh);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(rgba[((y0+y)*stride+x0+x)*4+3]>=alfa)m[(y/f|0)*mw+(x/f|0)]=1;
+  return {w:mw,h:mh,f,m};
+}
+/** IoU de duas silhuetas do mesmo tamanho. */
+export function iou(a,b){
+  let i=0,u=0;
+  for(let k=0;k<a.m.length;k++){const p=a.m[k],q=b.m[k];if(p&&q)i++;if(p||q)u++;}
+  return u?i/u:1;
+}
+/** A silhueta `a` escalada por `s` em torno da âncora (ax,ay) e levada até (bx,by) (coordenadas da máscara). */
+export function transformar(a,ax,ay,bx,by,s){
+  const m=new Uint8Array(a.w*a.h);
+  for(let y=0;y<a.h;y++){
+    const sy=Math.round(ay+(y-by)/s);if(sy<0||sy>=a.h)continue;
+    for(let x=0;x<a.w;x++){const sx=Math.round(ax+(x-bx)/s);if(sx>=0&&sx<a.w&&a.m[sy*a.w+sx])m[y*a.w+x]=1;}
+  }
+  return {...a,m};
+}
+
+/** Alinhado ≥ ALINHA × o IoU típico de dois quadros seguidos da sequência: o quadro é o mesmo desenho, só fora do lugar. */
+export const ALINHA=.8,BUSCA=2;
+/**
+ * Classifica o quadro `i` de uma sequência com achado: 'desalinhamento' (transladado/escalado sobre um vizinho — pé,
+ * centroide, altura dele — fica tão parecido com ele quanto dois quadros seguidos costumam ser; o pipeline corrige) ou
+ * 'arte-nova' (mesmo alinhado destoa dos dois vizinhos: o desenho é outro). Cada vizinho é tentado sozinho: um vizinho
+ * também fora do lugar não estraga o alinhamento com o outro. Devolve os IoU e a correção em px da célula (dx, dy,
+ * escala em torno do pé) até o lugar de consenso: a mediana da sequência nos loops, a média dos vizinhos nas ações.
+ */
+export function classificarQuadro(mascaras,medidas,i,loop){
+  const n=mascaras.length,q=medidas[i];
+  if(!q)return {tipo:'arte-nova',motivo:'vazio'};
+  const viz=[i>0?i-1:loop?n-1:-1,i<n-1?i+1:loop?0:-1].filter(j=>j>=0&&j!==i&&medidas[j]);
+  if(!viz.length)return {tipo:'arte-nova',motivo:'sem vizinhos'};
+  const f=mascaras[i].f,ax=q.cx/f,ay=q.base/f;
+  const cru=viz.reduce((t,j)=>t+iou(mascaras[i],mascaras[j]),0)/viz.length;
+  let melhor={v:-1,s:1};
+  for(const j of new Set(viz)){
+    const v=medidas[j],sAlt=Math.min(1.4,Math.max(.7,v.altura/q.altura));
+    // Escala pela altura do vizinho, metade dela ou nenhuma (a altura engana quando o quadro levanta um braço).
+    for(const s of new Set([1,(1+sAlt)/2,sAlt]))for(let dy=-BUSCA;dy<=BUSCA;dy++)for(let dx=-BUSCA;dx<=BUSCA;dx++){
+      const t=iou(transformar(mascaras[i],ax,ay,v.cx/f+dx,v.base/f+dy,s),mascaras[j]);
+      if(t>melhor.v+1e-9)melhor={v:t,s};
+    }
+  }
+  // IoU típico de dois quadros seguidos, sem os pares que tocam o quadro.
+  const pares=[];
+  for(let j=0;j<(loop?n:n-1);j++){const k=(j+1)%n;if(j!==i&&k!==i&&medidas[j]&&medidas[k])pares.push(iou(mascaras[j],mascaras[k]));}
+  const tipico=pares.length?mediana(pares):cru;
+  const ref=loop?medidas.filter((m,j)=>m&&j!==i):viz.map(j=>medidas[j]);
+  const alvo=c=>loop?mediana(ref.map(m=>m[c])):ref.reduce((s,m)=>s+m[c],0)/ref.length;
+  const r=v=>+v.toFixed(3);
+  return {tipo:melhor.v>=ALINHA*tipico?'desalinhamento':'arte-nova',iouCru:r(cru),iouAlinhado:r(melhor.v),iouTipico:r(tipico),
+    correcao:{dx:+(alvo('cx')-q.cx).toFixed(1),dy:+(alvo('base')-q.base),escala:+melhor.s.toFixed(3)}};
+}
+
+/** Redução das silhuetas para a classificação: ~64 linhas por célula. */
+export const reducao=h=>Math.max(1,Math.round(h/64));
+
 /** Lê uma folha do manifest (todas as páginas) e devolve as medidas por direção: medidas[dir][quadro]. */
-export async function medirFolha(dirArte,file){
+export async function medirFolha(dirArte,file,{mascaras}={}){
   const [w,h]=file.cell,frames=Math.max(1,file.frames??1),dirs=Math.max(1,file.directions??1);
   const medidas=Array.from({length:dirs},()=>Array(frames).fill(null));
+  const ms=Array.from({length:dirs},()=>Array(frames).fill(null)),f=reducao(h);
   for(const p of file.pages??[{file:file.file,columns:frames,rows:dirs,firstFrame:0,frameCount:frames*dirs}]){
     const caminho=join(dirArte,p.file);
     if(!existsSync(caminho))throw new Error(`folha ausente: ${caminho}`);
@@ -119,8 +181,10 @@ export async function medirFolha(dirArte,file){
       const c=k%p.columns,r=Math.floor(k/p.columns);
       if((c+1)*w>info.width||(r+1)*h>info.height)continue;
       medidas[d][q]=medirQuadro(data,info.width,c*w,r*h,w,h);
+      if(mascaras)ms[d][q]=mascaraQuadro(data,info.width,c*w,r*h,w,h,f);
     }
   }
+  if(mascaras){for(const linha of ms)for(let q=0;q<frames;q++)linha[q]??=mascaraQuadro(new Uint8Array(w*h*4),w,0,0,w,h,f);return {medidas,mascaras:ms};}
   return medidas;
 }
 
@@ -135,11 +199,14 @@ export async function medirElenco(repo,{ids}={}){
     for(const [anim,file] of Object.entries(peca.files??{})){
       // elite/<anim> e as fantasias são camadas (coroa, aura) desenhadas sobre a base: tremem junto com ela.
       if(!Array.isArray(file.cell)||anim.includes('/'))continue;
-      const medidas=await medirFolha(dirArte,file);
+      const {medidas,mascaras}=await medirFolha(dirArte,file,{mascaras:true});
       folhas.push({id,anim,dirs:medidas.length,frames:medidas[0].length});
       medidas.forEach((qs,d)=>{
-        for(const t of acharTremores(qs,anim,file.cell[1]))
-          achados.push({inimigo:id,anim,categoria:categoria(anim),direcao:medidas.length===8?DIRECOES[d]:String(d),dir:d,...t});
+        const cls=new Map();
+        for(const t of acharTremores(qs,anim,file.cell[1])){
+          if(!cls.has(t.quadro))cls.set(t.quadro,classificarQuadro(mascaras[d],qs,t.quadro,ehLoop(anim)));
+          achados.push({inimigo:id,anim,categoria:categoria(anim),direcao:medidas.length===8?DIRECOES[d]:String(d),dir:d,...t,...cls.get(t.quadro)});
+        }
       });
     }
   }
@@ -148,16 +215,30 @@ export async function medirElenco(repo,{ids}={}){
 }
 
 function markdown({folhas,achados},top){
+  const conta=f=>achados.filter(f).length,loops=achados.filter(a=>a.categoria==='loop');
+  // Um quadro com várias medidas fora conta uma vez: chave inimigo/animação/direção/quadro, gravidade = a pior.
+  const quadros=new Map();
+  for(const a of achados){const k=`${a.inimigo}|${a.anim}|${a.direcao}|${a.quadro}`,q=quadros.get(k);
+    if(!q)quadros.set(k,{...a,medidas:[a.medida]});else{q.medidas.push(a.medida);if(a.gravidade>q.gravidade)Object.assign(q,{...a,medidas:q.medidas});}}
+  const qs=[...quadros.values()].sort((a,b)=>b.gravidade-a.gravidade);
   const porInimigo=new Map();
-  for(const a of achados)if(a.categoria==='loop')porInimigo.set(a.inimigo,(porInimigo.get(a.inimigo)??0)+a.gravidade);
-  const rank=[...porInimigo].sort((a,b)=>b[1]-a[1]),conta=c=>achados.filter(a=>a.categoria===c).length;
-  const tabela=lista=>['| inimigo | animação | direção | quadro | medida | valor | limite | gravidade |','|---|---|---|---|---|---|---|---|',
-    ...lista.slice(0,top).map(a=>`| ${a.inimigo} | ${a.anim} | ${a.direcao} | ${a.quadro} | ${a.medida} | ${a.valor} | ${a.limite} | ${a.gravidade} |`)];
-  return [`# Tremor por quadro — ${folhas.length} folhas, ${achados.length} achados (loop ${conta('loop')}, dano ${conta('dano')}, ação ${conta('acao')})`,'',
-    'Loops (parado, andar, voo, sono) tocam o tempo todo: é onde o tremor aparece. Ações têm limite × 2.','',
-    '## Inimigos — soma das gravidades nos loops','','| inimigo | soma |','|---|---|',...rank.slice(0,top).map(([i,g])=>`| ${i} | ${g.toFixed(1)} |`),'',
-    `## Loops — ${top} piores`,'',...tabela(achados.filter(a=>a.categoria==='loop')),'',
-    `## Dano e ações — ${top} piores`,'',...tabela(achados.filter(a=>a.categoria!=='loop')),''].join('\n');
+  for(const q of qs){if(q.categoria!=='loop')continue;const r=porInimigo.get(q.inimigo)??{soma:0,des:0,nova:0};
+    r.soma+=q.gravidade;q.tipo==='desalinhamento'?r.des++:r.nova++;porInimigo.set(q.inimigo,r);}
+  const rank=[...porInimigo].sort((a,b)=>b[1].soma-a[1].soma);
+  const tabela=lista=>['| inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |','|---|---|---|---|---|---|---|---|',
+    ...lista.slice(0,top).map(a=>`| ${a.inimigo} | ${a.anim} | ${a.direcao} | ${a.quadro} | ${a.medidas.join(', ')} | ${a.gravidade} | ${a.iouCru??'–'} → ${a.iouAlinhado??'–'} / ${a.iouTipico??'–'} | ${a.correcao?`${a.correcao.dx}, ${a.correcao.dy}, ${a.correcao.escala}`:a.motivo??'–'} |`)];
+  const sel=(cat,tipo)=>qs.filter(q=>(cat==='loop'?q.categoria==='loop':q.categoria!=='loop')&&q.tipo===tipo);
+  return [`# Tremor por quadro — ${folhas.length} folhas, ${achados.length} achados em ${qs.length} quadros`,'',
+    `Loops: ${conta(a=>a.categoria==='loop')} achados (${sel('loop','desalinhamento').length} quadros desalinhados, ${sel('loop','arte-nova').length} de arte nova). `+
+    `Dano e ações: ${conta(a=>a.categoria!=='loop')} achados (${sel('acao','desalinhamento').length} desalinhados, ${sel('acao','arte-nova').length} de arte nova).`,'',
+    'Mede o desenho dentro da célula, não a posição no mundo: o "andar no lugar" (76bffa9) não entra aqui.',
+    `Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé, centroide, altura), fica com IoU ≥ ${ALINHA} × o IoU típico de dois quadros seguidos: o pipeline corrige com a correção da tabela (px da célula). Arte nova = mesmo alinhado destoa: precisa redesenhar o quadro.`,'',
+    '## Inimigos — soma das gravidades nos loops (um quadro conta uma vez)','','| inimigo | soma | desalinhados | arte nova |','|---|---|---|---|',
+    ...rank.slice(0,top).map(([i,r])=>`| ${i} | ${r.soma.toFixed(1)} | ${r.des} | ${r.nova} |`),'',
+    `## Loops, desalinhamento (corrigível) — ${top} piores`,'',...tabela(sel('loop','desalinhamento')),'',
+    `## Loops, arte nova — ${top} piores`,'',...tabela(sel('loop','arte-nova')),'',
+    `## Dano e ações, desalinhamento — ${top} piores`,'',...tabela(sel('acao','desalinhamento')),'',
+    `## Dano e ações, arte nova — ${top} piores`,'',...tabela(sel('acao','arte-nova')),''].join('\n');
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
@@ -166,7 +247,8 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const r=await medirElenco(repo,{ids:opt('--ids')?.split(',')});
   const top=+(opt('--top')??40);
   const salvar=(f,t)=>{mkdirSync(dirname(resolve(f)),{recursive:true});writeFileSync(f,t);};
-  if(opt('--json'))salvar(opt('--json'),JSON.stringify(r,null,1)+'\n');
+  // Um achado por linha: o diff entre rodadas fica legível.
+  if(opt('--json'))salvar(opt('--json'),`{"folhas":[\n${r.folhas.map(f=>JSON.stringify(f)).join(',\n')}\n],"achados":[\n${r.achados.map(a=>JSON.stringify(a)).join(',\n')}\n]}\n`);
   const md=markdown(r,top);
   if(opt('--md'))salvar(opt('--md'),md);else console.log(md);
 }

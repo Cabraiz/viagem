@@ -63,6 +63,30 @@ export function walkCycles(dx:number,dy:number,view:number,figurePx:number,strid
 export const cycleFrame=(cycles:number,frames:number)=>Math.min(frames-1,Math.floor((cycles-Math.floor(cycles))*frames));
 /** How long a lone swing shows (legacy clip, R06 and M16 alike). */
 export const ATTACK_VISUAL_MS=SPRITE_CLIPS.attack.frames.length/SPRITE_CLIPS.attack.frameRate*1000;
+/** How long a flinch shows (card animacao-receber-dano: the hurt16 clip, ~0.3 s). */
+export const HURT_MS=300;
+/** The least time between two flinches: a damage over time (gás, fogo) ticking every few frames shows one, not a stutter. */
+export const HURT_GAP_MS=600;
+/**
+ * When a hit shows a flinch (card animacao-receber-dano): the hp went down while the hero rests. It never holds the
+ * controls: a hero walking, running, swinging or pushing keeps that clip (the hit shows only on the HUD and the numbers),
+ * and one that starts to move in the middle of a flinch drops it at once. Two flinches are HURT_GAP_MS apart at least.
+ */
+export class HurtGate {
+  private hp?:number;
+  private start=-Infinity;
+  private shown=false;
+  /** The flinch's progress (0..1) now, undefined when none shows. */
+  update(now:number,hp:number|undefined,resting:boolean):number|undefined{
+    const hit=hp!==undefined&&this.hp!==undefined&&hp<this.hp;this.hp=hp;
+    if(now<this.start)this.start=-Infinity;
+    if(hit&&resting&&now-this.start>=HURT_GAP_MS){this.start=now;this.shown=true;}
+    if(!resting)this.shown=false;
+    const t=(now-this.start)/HURT_MS;
+    if(!this.shown||t>=1){this.shown=false;return undefined;}
+    return t;
+  }
+}
 /** A figure without an input (teammates, enemies' riders) keeps walking this long after its drawing last moved. */
 export const WALK_HOLD_MS=120;
 /**

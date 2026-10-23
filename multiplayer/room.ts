@@ -903,6 +903,9 @@ export class Room {
   private labCommand(id:string,m:any){
     const p=this.sim.players.get(id);if(!p)return;
     if(m.down===true)downPlayer(this.sim.world,p);
+    // animacao-receber-dano proofs: the sender takes a hit of m.hurt (never the last hp), so a GIF shows the flinch
+    // standing and walking without waiting for a critter's bite.
+    if(typeof m.hurt==='number'&&Number.isFinite(m.hurt)&&m.hurt>0){const dealt=Math.min(m.hurt,p.hp-1);if(dealt>0)this.sim.world.damagePlayer(id,dealt+p.stats.armor,'env:lab');}
     // D-025 proofs: the run ends now (a defeat), so the owner's result screen is photographed without a 15-minute wait.
     if(m.end===true){if(this.run.finish('defeat',this.sim.shameMoment()))this.announce();return;}
     // VGM-053B proofs: the sender knocks out every critter left (not the boss), so a round ends by its last kill

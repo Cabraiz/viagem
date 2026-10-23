@@ -42,8 +42,8 @@ test('a released hero shows exactly 3 photos; a locked one shows none (a private
     assert.ok(!locked.includes('grade-')&&!locked.includes('insta-post'),`${p.id}: the locked grid leaked a photo`);
     assert.match(locked,/Esta conta é privada/);
   }
-  // The game's own lock decides: the maromba is still locked, the other three are released.
-  assert.deepEqual(INSTA_PERFIS.filter(p=>isLiberado(p.id)).map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer']);
+  // The game's own lock decides: all four are released (the maromba since 23/10, for the play test).
+  assert.deepEqual(INSTA_PERFIS.filter(p=>isLiberado(p.id)).map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
   assert.match(main,/gradeHtml\(perfil,isLiberado\(perfil\.id\)\)/);
 });
 

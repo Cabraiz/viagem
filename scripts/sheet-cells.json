@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 3204,
+  "sheets": 3264,
   "failing": 0,
   "frames": 0
  },
@@ -12903,6 +12903,156 @@
    "ilhas": 4,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.attack16-n.015dba4b1272.webp": {
+   "sha": "90a44fb0ab61d4df79ba13c61bfcef99c2a807128cd3c744a430889c9c895839",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-nw.25064cb39c74.webp": {
+   "sha": "4c085da6ea217f4d54ac461226bbc2b9fdc243d98b77dad0ed8213576d3a6ca4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-s.b66f4965bba8.webp": {
+   "sha": "24f8f99d067423eb0939e6a7b0c14373de2d5d742988c9e13c0e147ecb98bf50",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-se.d642ac09c511.webp": {
+   "sha": "71244bef339e82ea39190767ac1a189572395e411c90580d5d4b62d8abe0b7fe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
+   "sha": "562e047ae6dfa720783ab7241effc46892a05660c2aa056b230a96e43225be7f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
+   "sha": "b85f4a0af6ce0e7896175d17c7514e9f190b2784bc4bc0f46e0c34ee8c1d45f8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp": {
+   "sha": "c016923de7b0d25aa839ee031ed0cb82ce6ccffa1a41093718146b8f534ad908",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-s.62e20d434214.webp": {
+   "sha": "7cee6249f6fb815f536a51cbfebd54bbcf90371e8de19150740202bb9f387467",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-se.2477472508be.webp": {
+   "sha": "4828159f333185592edc30a3960203bd055c15ce5664ab5f54810a5b25745d71",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.hurt16-w.45b0734d0223.webp": {
+   "sha": "1f16478d03b60fbf09f23e702413c00a1d1d66315a94906e3f18d383cba54935",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-n.5aaede5db316.webp": {
+   "sha": "b57f8bf5fd1ba15128e1fb280ad7b18e2434718063adefc3e4e65efc0789cafc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-nw.651957abad67.webp": {
+   "sha": "5d812e0267e48ff325421337c2b85ce8299b58da18b04747997bfaac5f73ee78",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp": {
+   "sha": "750ab07eacd2bc13aaefdda560ca8c5c31b49ab03c9c0faf57f2baea1649dead",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-se.39c43413843d.webp": {
+   "sha": "98fee72618c190c45cb44f2730c115af3af57f09241e4dd4a263719729d9ace4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.idle16-w.96fff0d71005.webp": {
+   "sha": "9e0f624e81842da33bbd840630bfc48b8597ca04dc0d8ef4929ee9cb6a699bb3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
+   "sha": "882656ac81c1be9074ceeef1bc8e6475b11dc3bbc2476692790a71f0bf27864b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp": {
+   "sha": "6ae931a8e1e82d5f113ee23b0eb4c3a9e885cf794f6c4baa02030b422b800072",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-s.956222cb25d1.webp": {
+   "sha": "3df0e0ca059e8d6664df6c583a667f16709fff9142794d558da3adf619696ed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-se.497ecf61c520.webp": {
+   "sha": "0b4d220bbd0f1ed4a4323780b8e7de8709e071f98f2df612926d5a1c4b6139ea",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.push16-w.50ea709bd678.webp": {
+   "sha": "4eb89b2f3115543b2b8d77192ce78aff9c361cdebc32e00fe48a7f53b9fd60e6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp": {
+   "sha": "9ff8e84d6ae23bcce9494e3c26847b68f3ad1df07de8d1e4232685531b139ac8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-nw.3203fd970c77.webp": {
+   "sha": "76da00593b9657d250606a6c6be25c7ac599fb3b8532891b7863441d0fe1158b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-s.67035aa11ade.webp": {
+   "sha": "9865e52197208cadb667c8a2bf09312c033460777e440108c02073ac8ef871b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+   "sha": "b00b07dd92fddffd363b95adcdb01b3edd16a9566e80bbd5a828f92ac2b9b43b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+   "sha": "5badbb47af9fdfef607fc78e6ff6eaafcba0c9a8eb06a74b8dec4dd1b089b36d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
+   "sha": "59b656194518d98a293a3a4330bd211c5f3992114bf77874070a7cab517f4496",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp": {
+   "sha": "c121730d971775e992b18c5dce36fa8fa0f1633227b2513e086c1b4a1b0d0c74",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-s.8a66abe998b9.webp": {
+   "sha": "3f63a9ab2cd3814fe194ad19a3d9d3e5757a68165fe27b5477c96a525f3c3c81",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp": {
+   "sha": "b835f09552aff31b6acf86203d531a3146f1fbda92a2ca1ad0f4b43bebeff98d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.walk16-w.0539b709da31.webp": {
+   "sha": "72acdf101397ca5d11698f31de8838ae229e1e3af305a8ff44eedb9d21ba5702",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/goleira.dir4.webp": {
    "sha": "8358f47f8d9f4fbcb477081915186cc6305ffa27e59037a5e584d3bd9c9a7cf1",
    "ilhas": 16,
@@ -14790,6 +14940,156 @@
   },
   "sprites/gamer-mobile.downed.webp": {
    "sha": "a14859591b4b83665101f42db8b0aa67ce6a3573656956854cd9f0b5657e2c4b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-n.015dba4b1272.webp": {
+   "sha": "015dba4b12726fab04a2f1d44b960d9e7b187bf5bbec36cfe320534507b913f7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-nw.25064cb39c74.webp": {
+   "sha": "25064cb39c744b03ec4629bd38610bb8b322bdc13cd2049bc749d65eedde4931",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-s.b66f4965bba8.webp": {
+   "sha": "b66f4965bba80481f09c7f93569381e49ecff4484222f1b441a5ebaaf84e0986",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-se.d642ac09c511.webp": {
+   "sha": "d642ac09c511ff29d031afb5a8e573ed40e1327a49028543bd6a78f9d2a66f30",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
+   "sha": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
+   "sha": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-nw.c34cb8ea812f.webp": {
+   "sha": "c34cb8ea812f5e4253c2aed4ff5cb01a807c6efe45198d13ae7366d66194a075",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-s.62e20d434214.webp": {
+   "sha": "62e20d434214c5d54d354cd8507c68fd9d14f9a05781eb5f046ed11a7e6e4d6a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-se.2477472508be.webp": {
+   "sha": "2477472508be01d5a47f208de807feb0e44907fda2fb2b90c11f3c5922becac9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.hurt16-w.45b0734d0223.webp": {
+   "sha": "45b0734d0223baca4bd189529c21990d43ae8f23a19ea0484ee4df46208626d6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-n.5aaede5db316.webp": {
+   "sha": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-nw.651957abad67.webp": {
+   "sha": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp": {
+   "sha": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-se.39c43413843d.webp": {
+   "sha": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.idle16-w.96fff0d71005.webp": {
+   "sha": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
+   "sha": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-nw.8b0eef2b0439.webp": {
+   "sha": "8b0eef2b0439bd6b069c6ace630307500f46a4bb81b5e16307e69eb9aa4b7f50",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-s.956222cb25d1.webp": {
+   "sha": "956222cb25d16299680c465445810595262b6a4964689e01ec5efed8999231ab",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-se.497ecf61c520.webp": {
+   "sha": "497ecf61c520ad0126a845a38f59167640bb55bc7393ac2330998c8a34052451",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.push16-w.50ea709bd678.webp": {
+   "sha": "50ea709bd678b24614f1b86af0c4b5a5ec6565e2a26089c3c0fdeab15314cd38",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-n.c6e4bd971aaa.webp": {
+   "sha": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-nw.3203fd970c77.webp": {
+   "sha": "3203fd970c77bfb78a76f86398505420a3814c5b05f08774c331b9919ea88171",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-s.67035aa11ade.webp": {
+   "sha": "67035aa11ade725a854ff04b140cc22efff74f09b7d28d70240157d868f1fce1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+   "sha": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+   "sha": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-n.17a75a5e2089.webp": {
+   "sha": "17a75a5e2089485c5fad178394befcf9c1d3d039ee739ad29cba0aa1404adeac",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-nw.2b847f6e1090.webp": {
+   "sha": "2b847f6e1090d92bea8cae29532230c38d114dd2550795ce124f2a800d7d3258",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-s.8a66abe998b9.webp": {
+   "sha": "8a66abe998b9c638ac22c0be1483bf088bf75477e41add84ead2f32c6774c853",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-se.0bdb1d04fde6.webp": {
+   "sha": "0bdb1d04fde63d664a84482e6386dbd8390b9d7071b314a5bae42fff88640385",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.walk16-w.0539b709da31.webp": {
+   "sha": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc",
    "ilhas": 0,
    "fails": []
   },

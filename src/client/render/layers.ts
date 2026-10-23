@@ -32,7 +32,7 @@ import {FX_BUDGET,RecentHits,admitNumber,admitPop,barVisible,canMerge,evictionIn
 import {sunlit} from './light-actors.ts';
 import {castSilhouette,silhouetteImage} from './silhouette.ts';
 import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
-import {shotDrawScale} from './arsenal-rules.ts';
+import {projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 
@@ -555,8 +555,10 @@ export class HordeRenderer{
   }
   private syncProjectile(view:ProjectileView){
     // Art v2: the source's own sheet (art:proj:<id>) or the shared friendly one when loaded; else today's key.
-    const art=projectileLook(view.hostile,view.source),own=!!art&&this.scene.textures.exists(art.key);
-    const used=this.projectiles.use(view.id),a=used.item,look=own?(art as {key:string}).key:projectileTexture(view.hostile,view.source);
+    // Pack 12 (arsenal-rules.ts projectileSticker): a source that wears its loaded `ui` sticker, still (one frame).
+    const sticker=projectileSticker(view.hostile,view.source),worn=!!sticker&&this.scene.textures.exists(sticker);
+    const art=worn?undefined:projectileLook(view.hostile,view.source),own=!!art&&this.scene.textures.exists(art.key);
+    const used=this.projectiles.use(view.id),a=used.item,look=worn?sticker as string:own?(art as {key:string}).key:projectileTexture(view.hostile,view.source);
     const draw=shotDrawScale(view.hostile,view.source);
     if(used.fresh||a.look!==look||a.radius!==view.radius||a.draw!==draw){
       a.look=look;a.draw=draw;a.image.setTexture(look).setOrigin(.5,.5);

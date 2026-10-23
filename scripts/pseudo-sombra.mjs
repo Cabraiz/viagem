@@ -94,7 +94,8 @@ async function main(){
       const pages=file.pages??[{file:file.file}];
       for(const page of pages){
         const src=join(DIR,page.file);if(!existsSync(src))continue;
-        if(stamp.files[page.file]===sha256(readFileSync(src))){skipped++;continue;}
+        // Already shaded: the manifest takes the stamp's hash back (a merge may have brought the unshaded one).
+        if(stamp.files[page.file]===sha256(readFileSync(src))){page.sha256=stamp.files[page.file];skipped++;continue;}
         const out=await shadeSheet(src,file.cell,forca);
         writeFileSync(src,out);page.sha256=stamp.files[page.file]=sha256(out);n++;
       }

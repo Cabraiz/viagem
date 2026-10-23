@@ -121,12 +121,17 @@ function tallest({data,width,height},[cw,ch],anchorY){
   }
   return best;
 }
-/** The sheet with every cell resized on its own (no texel bleeds into the next frame), as raw RGBA. */
+/**
+ * The sheet with every cell resized on its own (no texel bleeds into the next frame), as raw RGBA. The cell's outer px
+ * stays transparent (BUG-20261022-ORQ-quadro-sangra-vizinho): the lanczos pulls a figure drawn near the edge onto it,
+ * and the game's LINEAR filtering would bleed it into the next frame (scripts/sheet-cells.mjs checks it).
+ */
 async function shrink({data,width,height},[cw,ch],[lw,lh]){
   const cols=Math.floor(width/cw),rows=Math.floor(height/ch),W=cols*lw,out=Buffer.alloc(W*rows*lh*4);
   const src=sharp(data,{raw:{width,height,channels:4}});
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
     const cell=await src.clone().extract({left:c*cw,top:r*ch,width:cw,height:ch}).resize(lw,lh,{kernel:'lanczos3',fit:'fill'}).raw().toBuffer();
+    for(let y=0;y<lh;y++)for(let x=0;x<lw;x++)if(x===0||y===0||x===lw-1||y===lh-1)cell[(y*lw+x)*4+3]=0;
     for(let y=0;y<lh;y++)cell.copy(out,((r*lh+y)*W+c*lw)*4,y*lw*4,(y+1)*lw*4);
   }
   return {data:out,width:W,height:rows*lh};

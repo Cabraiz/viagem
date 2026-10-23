@@ -116,6 +116,7 @@ import {SkillButton} from '../hud/skill.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
 import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
+import {castSilhouette,silhouetteImage} from '../render/silhouette.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -239,7 +240,8 @@ class CitySandbox extends Phaser.Scene {
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
   private ally?:Phaser.GameObjects.Sprite;
-  private shadow!:Phaser.GameObjects.Ellipse;
+  /** The hero's cast silhouette, as in the game (render/silhouette.ts, card sombra-silhueta). */
+  private shadow!:Phaser.GameObjects.Image;
   /** empurrando=: the hero's drawn shift onto the car (the game's PushShifts). */
   private pushShifts=new PushShifts();
   private pushShift={x:0,y:0};
@@ -326,10 +328,10 @@ class CitySandbox extends Phaser.Scene {
     }
     this.layer=new CityLayer(this,this.asset,{art:this.art});
     this.layer.setActorScale(CITY_VIEW_SCALE);
-    // The game scene's city figures: the sheet and its contact shadow (Breu 38%) scaled by CITY_VIEW_SCALE.
+    // The game scene's city figures: the sheet and its cast silhouette scaled by CITY_VIEW_SCALE.
     this.sprites.viewScale=CITY_VIEW_SCALE;
     this.camera.world={scale:CITY_VIEW_SCALE,speed:CITY_HERO_SPEED*HERO_SPEED_MULT}; // the game's city walk (maps heroSpeed)
-    this.shadow=this.add.ellipse(0,0,42,17,CITY_PALETTE.breu,.38).setScale(CITY_VIEW_SCALE);
+    this.shadow=silhouetteImage(this,'__DEFAULT',0);
     this.hero=this.add.sprite(0,0,'__DEFAULT');
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
@@ -451,7 +453,7 @@ class CitySandbox extends Phaser.Scene {
     this.fortify.push({...view,objective:{...view.objective!,car:{...view.objective!.car,x:car.x,y:car.y}}});
     // Only the hero moves: the camera stays on the car (fit placed it there).
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view);
-    this.hero.setPosition(feet.x,feet.y);this.shadow.setPosition(feet.x,feet.y);
+    this.hero.setPosition(feet.x,feet.y);
   }
   /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
   private mountObra(){
@@ -743,9 +745,10 @@ class CitySandbox extends Phaser.Scene {
   /** Hero at the layer's actor depth (city mode: no fixed SELF_DEPTH), camera snapped like the game's follow camera. */
   private place(){
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view),cam=this.cameras.main,zoom=cam.zoom;
-    // empurrando=: the figure drawn on the car (its shift), the camera on the real spot, as the game
+    // empurrando=: the figure drawn on the car (its shift), the camera on the real spot, as the game; the silhouette
+    // follows the drawn hero (castSilhouette at hero.x/y)
     const s=this.pushShift,drawn=s.x||s.y?project(this.at.x+s.x,this.at.y+s.y,groundZ(this.asset,this.at.x,this.at.y),this.view):feet;
-    this.hero.setPosition(drawn.x,drawn.y);this.shadow.setPosition(drawn.x,drawn.y);
+    this.hero.setPosition(drawn.x,drawn.y);
     const viewport={width:this.scale.width,height:this.scale.height};
     const c=this.camera.snap(feet,viewport,zoom);
     if(!cameraFixed)cam.centerOn(c.x,c.y);
@@ -782,7 +785,7 @@ class CitySandbox extends Phaser.Scene {
     if(!layer)return;
     const z=groundZ(this.asset,this.at.x,this.at.y);
     layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
-    const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);this.shadow.setDepth(d-1);
+    const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);castSilhouette(this.shadow,this.hero,this.hero.x,this.hero.y,true,d-1);
     if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
     for(const w of this.horde){
       const wz=groundZ(this.asset,w.x,w.y),p=project(w.x,w.y,wz,this.view);

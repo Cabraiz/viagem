@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2078,
-  "bytes": 1540690476,
-  "liteBytes": 501360132,
+  "bytes": 1540685626,
+  "liteBytes": 501356274,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17438,10 +17438,10 @@
    "shownPsnr": 45.4
   },
   "menu/fundo-maromba.webp": {
-   "source": "22ff303c07b62bcca37a37c2a7cd6ffea96dc388410713b27e67368bbeb94974",
-   "lite": "cc16c338a9b831a3cd6437ad9545d0bdac64fe0f5ed4f74828804d0e159a34d7",
-   "bytes": 1197224,
-   "liteBytes": 898630,
+   "source": "7cca658101f203973a2a454e7d6a112b10a8b4b1c26e1f369df7f3612131af8e",
+   "lite": "a7e8a7564aee75e82e4580a752b6b30898c12b2517eaf310c7c24dde39bfb05e",
+   "bytes": 1192374,
+   "liteBytes": 894772,
    "psnr": 42.4,
    "shownPsnr": 44.4
   },

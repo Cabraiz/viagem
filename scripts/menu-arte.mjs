@@ -40,9 +40,12 @@ const HEROES=[
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',
     letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-clt-na-cena/letreiro-2-2x.png',heroi:'clt-cansado-1080p-no-lugar.png',
     esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
-  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2): only the background for now; the hero's box
-  // and letreiro come when the new maromba is in the game (maromba-animacoes-completas).
-  {id:'maromba',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-maromba',fundo:'fundo-maromba-2560.png'},
+  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): cut out like the cat
+  // (Codex redrew him alone on green, keyed with the colour unmixed), in the viciado's box (same height, middle and sole
+  // line); 2x from Real-ESRGAN 4x of the native cutout. His sand shadow is `sombra`. Letreiro: the user's pick of 8.
+  {id:'maromba',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-maromba',
+    heroi:'maromba-1080p-no-lugar.png',esrgan:'maromba-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */
@@ -119,7 +122,8 @@ for(const hero of HEROES){
     const source=path.join(dir,hero.fundo),{width,height}=await sharp(source).metadata();
     if(width!==2560||height!==1707)throw new Error(`${hero.fundo}: expected 2560x1707, got ${width}x${height}`);
     const file=out('',`fundo-${hero.id}.webp`);
-    report(file,await sharp(source).webp({quality:95,effort:6}).toFile(file));
+    const layered=hero.sombra?sharp(source).composite([{input:path.join(dir,hero.sombra)}]):sharp(source);
+    report(file,await layered.webp({quality:95,effort:6}).toFile(file));
   }
   if(!part('heroi')||!hero.heroi)continue;
   const source=path.join(dir,hero.heroi);
@@ -128,7 +132,7 @@ for(const hero of HEROES){
   const found=await alphaBox(source);
   if(JSON.stringify(found)!==JSON.stringify(hero.box))throw new Error(`${hero.id}: the hero's box is ${JSON.stringify(found)}, update box and RECORTES`);
   // The 2x file is the same box twice as big: the page keeps the 1x box (RECORTES) and the feet stay on the bar.
-  const big=hero.esrgan?path.join(ESRGAN,hero.esrgan):undefined,base=big?2:1;
+  const big=hero.esrgan?path.resolve(hero.esrganDir?path.resolve(dir,hero.esrganDir):ESRGAN,hero.esrgan):undefined,base=big?2:1;
   if(big){
     const meta=await sharp(big).metadata();
     if(meta.width!==hero.box.width*2||meta.height!==hero.box.height*2)throw new Error(`${hero.esrgan}: expected the box at 2x, got ${meta.width}x${meta.height}`);

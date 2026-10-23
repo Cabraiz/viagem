@@ -120,6 +120,14 @@ export function siegeStand(weapons:readonly {id:string;level:number}[]):number{
 export const GUARD_LEASH=3.5;
 /** A roamer walking with a person (room bots) stays this close to them. */
 export const ESCORT_LEASH=3;
+/**
+ * BUG-20261023-ORQ-bots-na-nossa-velocidade: a person whose last decisions apart (at most ESCORT_PACE_GAP s) show them
+ * walking at ESCORT_WALKING × the hero speed or more is walking, and the roamer with them walks too, at the full speed:
+ * out of the leash straight along the way to them (no circling: its 0.35 sideways cost the walk ~18 %), inside it along
+ * their heading, nudged toward them. Before, inside the leash it circled or stood (lures, pulls that cancel out) until
+ * the person was out of it again: stop-and-go at 81–91 % of the person's speed (scripts/bench-bot-speed.ts).
+ */
+export const ESCORT_WALKING=.5,ESCORT_PACE_GAP=1;
 /** City: a bot pulled back to its anchor walks until this far (u) inside the leash. */
 export const HOME_SLACK=2;
 /** City: critters and pickups lure the bot only this far (u) inside its leash, and only those it can answer from there. */
@@ -173,6 +181,8 @@ export interface BrainMemory {
   rescueGoal?:number;escortGoal?:number;huntGoal?:number;motoGoal?:number;carGoal?:number;
   /** City only: walking back to the anchor until HOME_SLACK inside the leash. */
   homing?:boolean;
+  /** Where the person walked with was at the last decision (escortPace): their walk is read from it. */
+  escortSeen?:{x:number;y:number;tick:number};
 }
 export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,lastCastTick:-1e9,lastSosTick:-1e9,lastForgeTick:-1e9,orbit:index%2?-1:1,refused:{}});
 
@@ -693,6 +703,8 @@ export function decide(input:BrainInput):Decision{
   // between the plaza's planters or far down an avenue would hold the round until its cap), if the streets lead there.
   let prey=city&&!guard&&!escorting&&!boss&&!retreating&&view.enemies.length<=HUNT_LEFT&&!view.enemies.some(e=>dist(e,home)<LURE_REACH)?nearest(view.enemies,at):undefined;
   if(prey&&!way(prey,'huntGoal'))prey=undefined;
+  // The person's walk, read from where they were at the last decision (kept up to date whether escorting or not).
+  const pace=escortPace(memory,input.escort,tick,terrain);
   const anchor=escorting?input.escort!:prey?{x:prey.x,y:prey.y}:home,chase:Chase|undefined=escorting?'escortGoal':prey?'huntGoal':undefined;
   const leash=escorting?ESCORT_LEASH:prey?HUNT_LEASH:boss?BOSS_LEASH:guard&&!last?GUARD_LEASH:LEASH;
   // City: the way to the anchor along the streets (undefined elsewhere: the straight line below).
@@ -718,9 +730,15 @@ export function decide(input:BrainInput):Decision{
     const side=Math.sign(rx*s.vy-ry*s.vx)||1;
     want=add(want,{x:-s.vy/speed*side*1.2,y:s.vx/speed*side*1.2});
   }
+  const walking=escorting&&!!pace&&!task;
   if(fallen?.at&&close.length<4){
     decision.mode='rescue';
     if(dist(fallen.at,at)>.7)want=add(want,go(fallen.at,2.2,'rescueGoal'));
+  }else if(walking){
+    // Walk with the person at their speed (ESCORT_WALKING): the way to them out of the leash, their heading inside it.
+    decision.mode='escort';
+    const r=dist(at,anchor),w=b??toward(at,anchor);
+    want=add(want,r>leash?{x:w.x*3,y:w.y*3}:add({x:pace!.x*2,y:pace!.y*2},{x:w.x*r/leash,y:w.y*r/leash}));
   }else{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
@@ -747,7 +765,7 @@ export function decide(input:BrainInput):Decision{
     else want=add(want,{x:.3*memory.orbit,y:0});
   }
   // Home pulls harder the farther out we are (not on the way to a fallen friend: it held the rescuer back).
-  if(decision.mode!=='rescue'&&(out>0||homing)){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
+  if(decision.mode!=='rescue'&&!walking&&(out>0||homing)){const pull=Math.min(3,.5+Math.max(0,out)*.6);want=add(want,b?{x:b.x*pull,y:b.y*pull}:toward(at,anchor,pull));}
   if(decision.mode==='fight'&&task?.kind==='clear')decision.mode='clear';
   else if(decision.mode==='fight'&&escorting)decision.mode='escort';
   else if(decision.mode==='fight'&&!prey&&dist(at,home)>leash+2)decision.mode='home';
@@ -822,6 +840,18 @@ export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainFie
 }
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}
+/**
+ * The heading (unit) of the person walked with, when they are walking (ESCORT_WALKING × the hero speed or more between
+ * this decision and the last one, at most ESCORT_PACE_GAP s apart), else undefined. Notes where they are now.
+ */
+function escortPace(memory:BrainMemory,escort:Point|undefined,tick:number,terrain?:TerrainField):Point|undefined{
+  const seen=memory.escortSeen;
+  if(!escort){delete memory.escortSeen;return undefined;}
+  memory.escortSeen={x:escort.x,y:escort.y,tick};
+  if(!seen||!(tick>seen.tick)||tick-seen.tick>ESCORT_PACE_GAP*HZ)return undefined;
+  const dx=escort.x-seen.x,dy=escort.y-seen.y,d=Math.hypot(dx,dy);
+  return d>=ESCORT_WALKING*heroSpeed(terrain)*(tick-seen.tick)/HZ?{x:dx/d,y:dy/d}:undefined;
+}
 function nearest<T extends Point>(list:readonly T[],at:Point):T|undefined{let best:T|undefined,d=Infinity;for(const e of list){const x=dist(e,at);if(x<d){d=x;best=e;}}return best;}
 function repel(enemies:readonly EnemyView[],at:Point,weight:number):Point{
   let x=0,y=0;

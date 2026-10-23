@@ -24,6 +24,7 @@
  * the grid, routes are per asset: every room (each on its own fork of the city) shares one grid and the LRU.
  */
 import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type Point} from '../../maps/index.ts';
+import {DIRS} from '../../maps/flowfield.ts';
 import {CITY_MAP_SCALE} from '../../rules/index.ts';
 import {cityFlowGrid,type CityFlowGrid} from './grid.ts';
 
@@ -45,6 +46,13 @@ export const BOT_ROUTE_SNAP=4;
  * (Chebyshev) of it: a person walking does not cost a field per cell.
  */
 export const BOT_ROUTE_KEEP=3;
+/**
+ * BUG-20261023-ORQ-bots-na-nossa-velocidade: the bot aims at the farthest of the next BOT_ROUTE_LOOK cells of its field
+ * chain it sees in a straight line (the hero rule), instead of the next cell's centre: the field steps in 8 directions,
+ * and a diagonal street walked as staircase steps or a corner cut square cost the bot up to 14 % more walk than a
+ * person's straight line (scripts/bench-bot-speed.ts, home from the mouth N: 29 u walked for 25.6 u).
+ */
+export const BOT_ROUTE_LOOK=16;
 /** Sampling step (u) of the straight-segment check (the hero rule, like maps clearSegment, a little coarser). */
 const SEGMENT_STEP=.2;
 
@@ -132,7 +140,18 @@ export function botRoute(city:CityTerrain,at:Point,to:Point,out:Point,keep=-1):n
   if(goal<0)return -1;
   const field=fieldFor(routes,goal);
   field.directionAt(at.x,at.y,out);
-  return out.x||out.y?goal:field.costAt(at.x,at.y)===UNREACHABLE?-2:-1;
+  if(!(out.x||out.y))return field.costAt(at.x,at.y)===UNREACHABLE?-2:-1;
+  // Smoothed: the farthest cell ahead on the chain with a clear straight line from here.
+  let cx=Math.floor(at.x/cs),cy=Math.floor(at.y/cs),aim=-1,ax=0,ay=0;
+  for(let k=0;k<BOT_ROUTE_LOOK;k++){
+    const d=field.nextCell(cx,cy);
+    if(d<0)break;
+    cx+=DIRS[d].dx;cy+=DIRS[d].dy;
+    const p={x:(cx+.5)*cs,y:(cy+.5)*cs};
+    if(straightClear(city,at,p)){aim=k;ax=p.x;ay=p.y;}
+  }
+  if(aim>=1){const l=Math.hypot(ax-at.x,ay-at.y);if(l>1e-6){out.x=(ax-at.x)/l;out.y=(ay-at.y)/l;}}
+  return goal;
 }
 
 /**

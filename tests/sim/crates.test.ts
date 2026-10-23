@@ -8,7 +8,7 @@ import {createTeamProgress} from '../../src/sim/progression.ts';
 import {
   BOSS_CHEST_PREFIX,CRATE_ID_PREFIX,CRATE_WEAPONS,MAX_CRATES,NEAR_SHARE,crateCap,START_CRATES_MAX,START_CRATES_MIN,OPEN_NOISE_RADIUS,OPEN_REACH,stageShift,OPEN_SECONDS,RESPAWN_MIN_DIST,RESPAWN_SECONDS,
   FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER,START_PLAYERS_MAX,STARTER_WEAPONS,TRAIL_AHEAD,TRAIL_MAX,
-  createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
+  VERDE_PISTOL,createCrates,prizeKey,rollCrate,rollPrize,rollStarter,startBands,type CrateHooks,type CratesState,
 } from '../../src/sim/crates.ts';
 import {INVENTORY_SLOTS} from '../../src/sim/inventory.ts';
 import {ARSENAL_WEAPONS,NEW_WEAPONS,legendaryId,type Rarity} from '../../src/sim/weapons/arsenal.ts';
@@ -293,26 +293,30 @@ test('the rarity grows along the match: rounds 1-3 shift -1, the last rounds +2,
 });
 
 test('prize table: one weapon of the rarity (never below its minimum), every weapon that comes in it, nothing else',()=>{
-  const ids=new Map<Rarity,Set<string>>();
+  // arsenal-completo-no-bau: the firearms and the playable Pack 12 weapons by their minimum rarity, 10 mil sorteios each.
+  const N=10_000,ids=new Map<Rarity,Map<string,number>>();
   for(const r of [1,2,3,4,5] as Rarity[]){
-    ids.set(r,new Set());
-    for(let s=0;s<2000;s++){
+    const seen=new Map<string,number>();ids.set(r,seen);
+    for(let s=0;s<N;s++){
       const prize=rollPrize(new Rng(s).fork('t'),r);
       assert.equal(prize.items.length,1);
       const item=prize.items[0];
-      ids.get(r)!.add(`${item.id}:${item.level}`);
+      seen.set(item.id,(seen.get(item.id)??0)+1);
       const w=getWeapon(item.id);assert.ok(w?.pattern,`${item.id} is a weapon`);
       const min=ARSENAL_WEAPONS.find(n=>n.id===item.id)?.minRarity??5;
-      assert.ok(item.level>=min&&item.level===r);
+      assert.ok(item.level>=min&&item.level===r,`${item.id}:${item.level} from ${r}`);
     }
   }
-  assert.deepEqual([...ids.get(1)!].sort(),['pistola:1']);
-  // The firearms by their rarity, plus the playable Pack 12 weapons (arsenal-completo-no-bau) from theirs.
-  const pack=(r:number)=>ARSENAL_WEAPONS.filter(w=>!NEW_WEAPONS.includes(w)&&(w.minRarity??5)<=r&&(w.minRarity??5)<5).map(w=>`${w.id}:${r}`);
-  assert.deepEqual([...ids.get(2)!].sort(),['escopeta:2','pistola:2','submetralhadora:2',...pack(2)].sort());
-  assert.deepEqual([...ids.get(3)!].sort(),['escopeta:3','macarico:3','pistola:3','rifle:3','submetralhadora:3',...pack(3)].sort());
-  assert.deepEqual([...ids.get(4)!].sort(),['escopeta:4','macarico:4','pistola:4','rifle:4','rojao:4','submetralhadora:4',...pack(4)].sort());
-  assert.deepEqual([...ids.get(5)!].sort(),[...WEAPON_IDS.map(id=>`${legendaryId(id)}:5`),...ARSENAL_WEAPONS.filter(w=>w.minRarity===5&&!NEW_WEAPONS.includes(w)).map(w=>`${w.id}:5`)].sort());
+  const comes=(r:Rarity)=>ARSENAL_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=r).map(w=>w.id).sort();
+  for(const r of [1,2,3,4] as Rarity[])assert.deepEqual([...ids.get(r)!.keys()].sort(),comes(r),`rarity ${r}`);
+  assert.deepEqual([...ids.get(5)!.keys()].sort(),[...WEAPON_IDS.map(legendaryId),...ARSENAL_WEAPONS.filter(w=>w.minRarity===5).map(w=>w.id)].sort());
+  assert.ok(comes(1).includes('pistola')&&comes(2).includes('escopeta')&&comes(4).includes('rojao')&&!comes(3).includes('rojao'));
+  // The verde keeps the pistol at VERDE_PISTOL, the rest share the remainder evenly; from the azul up, even odds.
+  const verde=ids.get(1)!,others=comes(1).filter(id=>id!=='pistola');
+  assert.ok(others.length>0);
+  assert.ok(Math.abs(verde.get('pistola')!/N-VERDE_PISTOL)<.02,`pistola ${verde.get('pistola')}`);
+  for(const id of others)assert.ok(Math.abs(verde.get(id)!/N-(1-VERDE_PISTOL)/others.length)<.02,`${id} ${verde.get(id)}`);
+  for(const r of [2,3,4] as Rarity[]){const each=1/comes(r).length;for(const [id,n] of ids.get(r)!)assert.ok(Math.abs(n/N-each)<.02,`${r} ${id} ${n}`);}
   // Every arsenal weapon (all but the starting faca) comes from some crate.
   assert.deepEqual([...new Set(Object.values(CRATE_WEAPONS).flat())].filter(id=>!id.endsWith('-lendario')).sort(),ARSENAL_WEAPONS.map(w=>w.id).filter(id=>id!=='faca').sort());
 });

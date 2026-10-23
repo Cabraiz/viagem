@@ -15,6 +15,11 @@ export const A2_FIRE_LOOK:Readonly<Record<string,FireLook>>={
   'panela-de-pressao':{art:'explosao-m',kind:'blast',size:190,ms:620},
 };
 /**
+ * Projectile source → `ui` sticker it wears instead of a `projeteis` piece (render/arsenal-rules.ts projectileSticker:
+ * the carro-de-som on the ground). The sticker must be one ARSENAL_ITEMS loads (an item's icon).
+ */
+export const A2_PROJECTILE_STICKER:Readonly<Record<string,string>>={'carro-de-som':'carro-de-som'};
+/**
  * Weapon id → `projeteis` piece its projectiles wear (art/horde-art.ts PROJECTILE_ALIAS), and those pieces to load.
  * The car on the ground keeps the weapon id; its shots (sim/weapons/turret.ts TURRET_SHOT) are the sound wave.
  */

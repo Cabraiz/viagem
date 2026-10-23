@@ -78,6 +78,8 @@ async function scene(){
   const joined=await page.evaluate(async([code,rooms])=>{
     const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
     const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
+    // The room plays on the city: the client brings its manifest, as "Jogar sozinho" does (lobby.ts openSolo).
+    const city=await import('/src/client/net/city-asset-loader.ts');c.cityRef=await city.loadCityManifest();c.cityManifest=()=>city.loadCityManifest();
     try{await c.join();}catch(e){return String(e.message);}
     const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');
     void openExploration(classes.find(k=>k.id==='cidadao-comum'),'Tia Cleide Aparecida',c);
@@ -207,6 +209,8 @@ async function entry(){
   const joined=await page.evaluate(async([code,rooms])=>{
     const {CoopClient}=await import('/src/client/net/client.ts');const {classes}=await import('/src/rules/classes.ts');
     const c=new CoopClient(rooms,code,'Tia Cleide Aparecida','cidadao-comum');window.__net=c;
+    // The room plays on the city: the client brings its manifest, as "Jogar sozinho" does (lobby.ts openSolo).
+    const city=await import('/src/client/net/city-asset-loader.ts');c.cityRef=await city.loadCityManifest();c.cityManifest=()=>city.loadCityManifest();
     try{await c.join();}catch(e){return String(e.message);}
     window.__t0=performance.now();
     const {openExploration}=await import('/src/client/explore.ts');const {mountWaitingRoom}=await import('/src/client/lobby.ts');

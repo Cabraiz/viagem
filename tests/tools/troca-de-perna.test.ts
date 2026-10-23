@@ -51,7 +51,8 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
 
 /**
  * Side/diagonal runs in the game without the change, each tied to its open card (the fix takes it out). Empty since the
- * gato's NW run changes legs with a flight (23/10, card NEW-20261023-E3-gato-troca-perna-nw).
+ * gato's NW run changes legs with a flight (23/10, card NEW-20261023-E3-gato-troca-perna-nw) and the maromba's SE run
+ * changes hip (card NEW-20261023-E7-maromba-troca-perna-se, legs transplanted from pose i+8).
  */
 const KNOWN_SIDE=new Set<string>([]);
 

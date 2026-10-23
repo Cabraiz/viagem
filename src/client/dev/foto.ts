@@ -29,6 +29,9 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-abrindo':{...chaveiro('moto=abrindo','&pecas=3&alarme=1'),descricao:'chaveiro: abrindo o carro (15 s) com o alarme'},
   'chaveiro-vitoria':{...chaveiro('fim=vitoria','&pecas=7'),descricao:'chaveiro: o porta-malas abre, "conector errado"'},
   'chaveiro-derrota':{...chaveiro('fim=derrota'),descricao:'chaveiro: perda total'},
+  // The game shows 2 balloons at once at most (legibility.ts): the cast's lines take two scenes.
+  'chaveiro-falas':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=part,acordou'),descricao:'falas do chaveiro: o Tio ao lado do carro (peça caiu) e a Cida na moto (ninho acordou)'},
+  'chaveiro-falas-2':{...chaveiro('moto=abrindo','&alarme=1&pecas=3&fala=abrindo,volta&seed=7'),descricao:'falas do chaveiro: ele na porta (abrindo) e o alarme do Quadradão'},
   'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
   'muralha-tralha':{...chaveiro('moto=entrega','&obra=1&muralha=1'),descricao:'barricada-2x: a muralha de tralha, 2 fileiras de 5 quadrados 2×2 (inteiros atrás, avariados na frente)'},
   'muralha-juntas':{...chaveiro('moto=entrega','&obra=1&muralha=2'),descricao:'barricada-2x: L, T e um quadrado sozinho (meias peças + pilar)'},

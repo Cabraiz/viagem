@@ -37,6 +37,8 @@ import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
+import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
+import {talkSeed} from './render/chaveiro/lines.ts';
 import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
@@ -279,6 +281,8 @@ export class IslandScene extends Phaser.Scene {
   private chaveiro?:ChaveiroRenderer;
   /** Bancos (card bancos-e-veiculos): the run's ATMs in the world; only while a run view has banks. */
   private banks?:BankRenderer;
+  /** D-047 (card chaveiro-falas): when the chaveiro's cast speaks, in the horde's balloons; made with the renderer. */
+  private talk?:ChaveiroTalk;
   /**
    * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
    * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
@@ -549,7 +553,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -1028,11 +1032,27 @@ export class IslandScene extends Phaser.Scene {
    * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
    * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.
    */
-  private pushChaveiro(view:RunView){
+  private pushChaveiro(view:RunView,time:number){
     const objective=objectiveOf(view);
     if(!objective&&!this.chaveiro)return;
     if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
     this.chaveiro?.push(objective,view.tick);
+    this.talk??=new ChaveiroTalk(talkSeed(this.hooks.net?.code??'',this.field.seed));
+    this.talk.push(objective,view.events as readonly LooseEvent[],view.tick,time);
+  }
+  /**
+   * D-047 (card chaveiro-falas): the cast's line due now, if any (talk.ts), in the zueiras' balloon: the chaveiro and
+   * Cida over the moto (or him where he stands), the Tio beside the car, the alarm over it. The end of the run
+   * comes from the result too (RunState.objective, protocol 15, read loosely).
+   */
+  private speakChaveiro(time:number){
+    const talk=this.talk,net=this.hooks.net;
+    if(!talk||!this.chaveiro||!this.horde)return;
+    talk.result((net?.run as {objective?:unknown}|undefined)?.objective,time);
+    const said=talk.take(time);
+    if(!said)return;
+    const chaveiro=this.chaveiro;
+    this.horde.speak(`chaveiro:${said.speaker}`,said.text,()=>chaveiro.speechAnchor(said.speaker),said.priority);
   }
   /**
    * D-051 (ninhos-arte-render): the snapshot's nests (structures of kind 'ninho') drawn on the city ground with their
@@ -1189,14 +1209,14 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=effectivePhase(runView,net.predicted);
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.speakChaveiro(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=stepClock(this.accumulator,this.frameMs);
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).

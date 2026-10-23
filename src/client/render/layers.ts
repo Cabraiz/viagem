@@ -157,7 +157,11 @@ interface StarFx{image:Image;born:number;x:number;y:number;lift:number;vx:number
 /** player: the skill caster (E7-skill-hud-wiring), followed through options.locate. */
 interface BubbleFx{text:Text;born:number;player:string;x:number;y:number;lift:number;
   /** A status tag (the agiota's "DEVENDO", D-033): red body, Papel text. */
-  tag:boolean}
+  tag:boolean;
+  /** A speaker that is not a player (the chaveiro's cast, D-047): where it stands and its head's height (world px). */
+  follow?:()=>SpeakerSpot|undefined}
+/** Where a non-player speaker stands (world units) and how high its head is over the ground (world px). */
+export interface SpeakerSpot {x:number;y:number;lift:number}
 interface WarningFx{image:Image;born:number;x:number;y:number;atTick:number;size:number}
 /** Imported death animation (art v2) at the enemy's last spot and facing; `top` is its elite layer. Only with death art. */
 interface DeathFx{image:Image;top:Image;born:number;kind:EnemyKind;art:string;elite:boolean;row:number;x:number;y:number;lift:number;
@@ -171,6 +175,8 @@ const SNAP_UNITS=3;
 const BUBBLE_MS=2200;
 /** Lift of a player's balloon over their feet, in world px at ui scale 1: above the head of the 100 px hero sprite. */
 const PLAYER_BUBBLE_LIFT=116;
+/** A non-player speaker's balloon tail stands this far over its head (world px at ui scale 1). */
+const SPEAKER_BUBBLE_GAP=14;
 const STAR_MS=640;
 const PROJECTILE_LIFT=18;
 /** Eyes in the dark, CSS px at the follow zoom: 9×12 Papel with a 2 px Breu edge, 4 px pupils looking at the hero. */
@@ -740,18 +746,24 @@ export class HordeRenderer{
   private lastDeathPopAt=-Infinity;
   /** A player's own line over the head (falls, rescues, "Segura aí", UX-resgate-e-ping): same rules as a skill line. */
   say(player:string,line:string){this.spawnSkillBubble(player,line);}
-  private spawnSkillBubble(player:string,line:string,tag=false,priority=false){
+  /**
+   * D-047 (card chaveiro-falas): a line of the chaveiro's cast over something that is not a player (the moto, the
+   * car), followed through `follow`; or over a player when `follow` is omitted. Same balloon, budget and per-source gap
+   * as a player's line (`source`: the key a newer line of the same speaker replaces); `priority` skips the gap (the end).
+   */
+  speak(source:string,line:string,follow?:()=>SpeakerSpot|undefined,priority=false){this.spawnSkillBubble(source,line,false,priority,follow);}
+  private spawnSkillBubble(player:string,line:string,tag=false,priority=false,follow?:()=>SpeakerSpot|undefined){
     // A status tag is game information (the mark makes the player take more damage) and a priority line must be seen
     // (sayPriority): neither waits for the gap.
     if(!bubbleAllowed(this.now,this.skillBubbleAt.get(player)??-Infinity,{tag,priority}))return;
-    const p=this.options.locate?.(player);if(!p)return;
+    const p=follow?follow():this.options.locate?.(player);if(!p)return;
     this.skillBubbleAt.set(player,this.now);
     let own:BubbleFx|undefined;this.bubbles.forEach(b=>{if(b.player===player)own=b;});
     if(own)this.bubbles.release(own);
     while(this.bubbles.active>=this.fx.bubbles){const oldest=this.bubbles.at(0);if(!oldest)break;this.bubbles.release(oldest);}
     const b=this.bubbles.spawn();
     b.text.setDepth(HERO_BALLOON_DEPTH+1);
-    b.born=this.now;b.player=player;b.tag=tag;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
+    b.born=this.now;b.player=player;b.tag=tag;b.follow=follow;b.x=p.x;b.y=p.y;b.lift=PLAYER_BUBBLE_LIFT;
     paint(b.text,tag?TAG_STYLE:BUBBLE_STYLE,line);
   }
 
@@ -1212,7 +1224,8 @@ export class HordeRenderer{
   };
   private drawBubble=(b:BubbleFx)=>{
     const age=this.now-b.born;if(age>=BUBBLE_MS)return false;
-    const p=this.options.locate?.(b.player);if(p){b.x=p.x;b.y=p.y;}b.lift=PLAYER_BUBBLE_LIFT*this.ui;
+    if(b.follow){const p=b.follow();if(p){b.x=p.x;b.y=p.y;b.lift=p.lift+SPEAKER_BUBBLE_GAP*this.ui;}}
+    else{const p=this.options.locate?.(b.player);if(p){b.x=p.x;b.y=p.y;}b.lift=PLAYER_BUBBLE_LIFT*this.ui;}
     if(Number.isNaN(b.x)){b.text.setVisible(false);return true;}
     const q=this.place(b.text,b.x,b.y,b.lift);
     const alpha=age<120?age/120:age>BUBBLE_MS-250?(BUBBLE_MS-age)/250:1;

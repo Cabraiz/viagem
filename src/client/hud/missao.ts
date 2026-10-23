@@ -6,7 +6,7 @@
  *  - each time to explore after a wave: "Você tem 2 minutos para buscar mais caixas." (the window's real length);
  *  - the last RETURN_SECONDS of either: "Volte ao Uno." (urgent; the Uno's edge arrow too, hud/rescue.ts);
  *  - after the Minerva, once a run, only while the player has not done it: "Ponha as torres perto do Uno." while a kit
- *    de torre is in the inventory (at most TOWERS_MAX_S), then "Defenda o Uno." (big, DEFEND_MS, then gone).
+ *    de torre is in the inventory (at most TOWERS_MAX_S), then "Eles vão atrás do Uno. Defenda." (big, DEFEND_MS, then gone).
  * Time comes from the sim tick (the clock's), so a phone and a PC agree. The tracker is pure (tests); createMission
  * paints the two elements.
  */
@@ -17,14 +17,14 @@ export const MISSION_BIG_MS=4000;
 export const RETURN_SECONDS=20;
 /** "Ponha as torres perto do Uno." holds at most this long. */
 export const TOWERS_MAX_S=30;
-/** "Defenda o Uno." shows this long (big all the time). */
+/** "Eles vão atrás do Uno. Defenda." shows this long (big all the time). */
 export const DEFEND_MS=4000;
 
 export const MISSION_TEXT=Object.freeze({
   minerva:'Busque o máximo de caixas e volte ao Uno antes do tempo acabar.',
   volta:'Volte ao Uno.',
   torres:'Ponha as torres perto do Uno.',
-  defenda:'Defenda o Uno.',
+  defenda:'Eles vão atrás do Uno. Defenda.',
 });
 /** "2 minutos", "1 minuto", "1 minuto e meio", "45 segundos": a window's length as people say it. */
 export function durationText(seconds:number):string{
@@ -84,7 +84,7 @@ export class MissionTracker {
       const back=(explora.until-tick)/SIM_HZ<=RETURN_SECONDS;
       return this.show(back?'volta':'explora',tick,back,explora.until,exploreText((explora.until-explora.from)/SIM_HZ));
     }
-    // After the Minerva, once: the towers (only with a kit in hand), then "Defenda o Uno".
+    // After the Minerva, once: the towers (only with a kit in hand), then "Eles vão atrás do Uno. Defenda.".
     if(this.sawMinerva&&this.after==='antes'){this.after=input.towerKit?'torres':'defenda';this.afterSince=tick;}
     if(this.after==='torres'&&(!input.towerKit||tick-this.afterSince>=ms(TOWERS_MAX_S*1000))){this.after='defenda';this.afterSince=tick;}
     if(this.after==='defenda'&&tick-this.afterSince>=ms(DEFEND_MS))this.after='feito';

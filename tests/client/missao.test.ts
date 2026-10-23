@@ -1,7 +1,7 @@
 /**
  * The mission line (card NEW-20261023-ORQ-inicio-no-uno-caixas-120, src/client/hud/missao.ts): big in the middle for
  * MISSION_BIG_MS, then small at the top; "Volte ao Uno." in the last RETURN_SECONDS of the Minerva and of each time to
- * explore (with the Uno's arrow); after the Minerva, once a run: the towers (only with a kit) then "Defenda o Uno.".
+ * explore (with the Uno's arrow); after the Minerva, once a run: the towers (only with a kit) then "Eles vão atrás do Uno. Defenda.".
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,22 +33,22 @@ test('the Minerva: big for MISSION_BIG_MS, then small; "Volte ao Uno." (urgent, 
   assert.equal(at(MINERVA_END-1).line?.big,false);
 });
 
-test('after the Minerva, once: the towers while a kit is in the inventory, then "Defenda o Uno." (big), then nothing',()=>{
+test('after the Minerva, once: the towers while a kit is in the inventory, then "Eles vão atrás do Uno. Defenda." (big), then nothing',()=>{
   const m=new MissionTracker(),at=(tick:number,towerKit:boolean)=>m.step({tick,minervaAte:MINERVA_END,towerKit,playing:true});
   at(START,true);
   const towers=at(MINERVA_END,true);
   assert.equal(towers.line?.key,'torres');assert.equal(towers.line?.text,'Ponha as torres perto do Uno.');assert.equal(towers.pointUno,false);
   assert.equal(at(MINERVA_END+s(5),true).line?.key,'torres');
-  // Placed it (no kit left): "Defenda o Uno." at once, big all along, gone after DEFEND_MS.
+  // Placed it (no kit left): "Eles vão atrás do Uno. Defenda." at once, big all along, gone after DEFEND_MS.
   const defend=at(MINERVA_END+s(6),false);
-  assert.deepEqual(defend.line,{key:'defenda',text:'Defenda o Uno.',big:true,urgent:false});
+  assert.deepEqual(defend.line,{key:'defenda',text:'Eles vão atrás do Uno. Defenda.',big:true,urgent:false});
   assert.equal(at(MINERVA_END+s(6+DEFEND_MS/1000)-1,false).line?.key,'defenda');
   assert.equal(at(MINERVA_END+s(6+DEFEND_MS/1000),false).line,undefined);
   // Once a run: a kit picked up later says nothing.
   assert.equal(at(MINERVA_END+s(60),true).line,undefined);
 });
 
-test('no kit at the end of the Minerva: straight to "Defenda o Uno."; a kit never placed lets go after TOWERS_MAX_S',()=>{
+test('no kit at the end of the Minerva: straight to "Eles vão atrás do Uno. Defenda."; a kit never placed lets go after TOWERS_MAX_S',()=>{
   const a=new MissionTracker();a.step({tick:START,minervaAte:MINERVA_END,towerKit:false,playing:true});
   assert.equal(a.step({tick:MINERVA_END,minervaAte:MINERVA_END,towerKit:false,playing:true}).line?.key,'defenda');
   const b=new MissionTracker();b.step({tick:START,minervaAte:MINERVA_END,towerKit:true,playing:true});

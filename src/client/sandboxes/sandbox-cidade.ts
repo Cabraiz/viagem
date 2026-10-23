@@ -120,6 +120,9 @@ import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.
 import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
 import {LINE_EVENTS,hash32,pickLine,talkSeed,type LineEvent} from '../render/chaveiro/lines.ts';
 import {castSilhouette,silhouetteImage} from '../render/silhouette.ts';
+import {UnoPip} from '../render/chaveiro/pip.ts';
+import {PIP_KEEP_PX,pipWanted} from '../render/chaveiro/pip-rules.ts';
+import {CAR_LOW,carLife} from '../render/chaveiro/rules.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -180,6 +183,12 @@ const arsenal=tele&&params.get('arsenal')==='1';
 const ninhos=tele&&params.get('ninhos')==='1',NEST_WAKE_MS=3000,NEST_WAKE_AGO_MS=150;
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/**
+ * `pip=1` (with objetivo=1&apanha=1; card inimigos-querem-o-uno, etapa 3): the hero `longe=dx,dy` units from the car
+ * (default 18,10) and the Uno's live window (render/chaveiro/pip.ts) in a stand-in HUD root (`.rh`, data-hud from
+ * `hud=fone|mesa`, else fone under 768 px wide), as the game shows it while the car takes hits out of view.
+ */
+const pipOn=objective&&params.get('pip')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
 const bancos=real&&params.get('bancos')==='1';
 /**
@@ -267,6 +276,7 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
+  private pip?:UnoPip;
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean;
     /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
     talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
@@ -322,6 +332,14 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(objective)this.chaveiro=this.mountObjective(!start);
+    if(pipOn&&this.chaveiro){
+      const car=this.chaveiro.fake.view(0).view.car,[dx,dy]=(params.get('longe')??'18,10').split(',').map(Number);
+      this.at={x:car.x+(dx||0),y:car.y+(dy||0)};
+      const root=document.createElement('div');root.className='rh';root.dataset.hud=params.get('hud')??(innerWidth<768?'fone':'mesa');
+      Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'5'});document.body.append(root);
+      void import('../hud/hud.css');
+      this.pip=new UnoPip(this,{onTap:()=>{}});
+    }
     if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
@@ -393,6 +411,13 @@ class CitySandbox extends Phaser.Scene {
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
+      if(this.pip){
+        const hit=this.chaveiro.renderer.hitState(),cam=this.cameras.main,proj=this.cityProjector().project(view.car.x,view.car.y,{x:0,y:0});
+        const wanted=!!hit&&pipWanted({live:!hit.ended,now,carOnScreen:cam.worldView.contains(proj.x,proj.y),distance:Math.hypot(view.car.x-this.at.x,view.car.y-this.at.y),
+          ...(hit.lastHitAt!==undefined?{lastHitAt:hit.lastHitAt}:{})});
+        const life=carLife(view.car);
+        this.pip.update({wanted,car:proj,mainZoom:cam.zoom,time:now,life:{fraction:life,low:life<CAR_LOW}});
+      }
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
       this.speak(_t,dt,view,tick);
     }
@@ -836,7 +861,10 @@ class CitySandbox extends Phaser.Scene {
     const cam=this.cameras.main.worldView,layer=this.layer;
     if(!layer)return;
     const z=groundZ(this.asset,this.at.x,this.at.y);
-    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
+    // pip=1: the chunks around the car stay built, as the game does (scene.ts updateCity, PIP_KEEP_PX).
+    const car=this.pip&&this.chaveiro?this.cityProjector().project(this.chaveiro.fake.view(0).view.car.x,this.chaveiro.fake.view(0).view.car.y,{x:0,y:0}):undefined;
+    const also=car&&{x:car.x-PIP_KEEP_PX,y:car.y-PIP_KEEP_PX,w:PIP_KEEP_PX*2,h:PIP_KEEP_PX*2};
+    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z},...(also?{also}:{})});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);castSilhouette(this.shadow,this.hero,this.hero.x,this.hero.y,true,d-1);
     if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
     for(const w of this.horde){

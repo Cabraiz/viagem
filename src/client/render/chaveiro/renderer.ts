@@ -179,6 +179,14 @@ export class ChaveiroRenderer {
     return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope)};
   }
 
+  /**
+   * Card inimigos-querem-o-uno: the car (world units), its hits of the limit, whether the run ended and when it last took
+   * a hit (the update clock) for the Uno's live window (pip.ts); undefined without the objective.
+   */
+  hitState():{car:{x:number;y:number;hits:number;limit:number};ended:boolean;lastHitAt?:number}|undefined{
+    const v=this.state.view;
+    return v&&{car:v.car,ended:!!v.ended,...(this.state.lastHitAt!==undefined?{lastHitAt:this.state.lastHitAt}:{})};
+  }
   /** A new view: the objective (undefined hides it all) at the server tick. */
   push(view:ChaveiroView|undefined,tick:number){this.state.push(view,tick,this.now,this.options.reduced);}
 

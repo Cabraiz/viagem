@@ -169,6 +169,20 @@ test('ChunkTracker keeps chunks inside the keep margin (hysteresis) and drops th
   for(const k of t.visible()){const r=t.bounds(chunk(k),0);assert.ok(rectsOverlap(r,grow(far,384)),k);}
 });
 
+test('ChunkTracker keeps a second rect built too (card inimigos-querem-o-uno: the Uno window), after the camera rect',()=>{
+  const t=new ChunkTracker(index,asset,{maxShowPerUpdate:8}),b=t.bounds(chunk('0,0'),0),far=t.bounds(chunk('1,1'),0);
+  const cam:Rect={x:b.x+b.w/2-20,y:b.y+b.h/2-20,w:40,h:40},car:Rect={x:far.x+far.w/2-20,y:far.y+far.h/2-20,w:40,h:40};
+  // A camera far from both chunks (beyond the keep margin): only the second rect shows '1,1'.
+  const away:Rect={x:cam.x-5000,y:cam.y-5000,w:40,h:40};
+  t.update(away,0,car);
+  assert.ok(t.visible().includes('1,1'));assert.ok(!t.visible().includes('0,0'));
+  assert.ok(!t.update(away,0,car).hide.includes('1,1'),'kept while the second rect is there');
+  assert.ok(t.update(away,0).hide.includes('1,1'),'gone with it');
+  // Without a second rect the tracker is main's.
+  const plain=new ChunkTracker(index,asset,{maxShowPerUpdate:8}),also=new ChunkTracker(index,asset,{maxShowPerUpdate:8});
+  assert.deepEqual(plain.update(cam,0),also.update(cam,0,undefined));
+});
+
 test('ChunkTracker drops everything on a view change and starts over',()=>{
   const t=new ChunkTracker(index,asset,{maxShowPerUpdate:8});
   const all0=grow(unionRect(boundsAll(0)),0),all1=unionRect(boundsAll(1));

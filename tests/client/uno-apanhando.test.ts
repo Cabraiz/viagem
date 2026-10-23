@@ -14,6 +14,7 @@ import type {ChaveiroView} from '../../src/client/render/chaveiro/view.ts';
 import * as city from '../../src/client/hud/city/index.ts';
 import {EDGE_KINDS_SHOWN,shownTargets} from '../../src/client/hud/arrows.ts';
 import {OBJECTIVE_CAUSE_TEXT} from '../../src/client/hud/chaveiro.ts';
+import {PEEK_MS,PIP_FAR_U,PIP_HIDE_MS,PIP_ZOOM_K,peeking,pipViewport,pipWanted,pipZoom} from '../../src/client/render/chaveiro/pip-rules.ts';
 
 const view=(hits:number,extra:Partial<ChaveiroView>={}):ChaveiroView=>({moto:{x:84.5,y:40,mode:'anda'},etaS:300,alarmUntil:0,
   car:{x:84.5,y:84.5,hits,limit:120,parts:0},...extra});
@@ -66,4 +67,26 @@ test('edges: the Uno gets a Cone arrow only while it takes hits out of view, aft
 
 test('result: the run lost with the car names it',()=>{
   assert.match(OBJECTIVE_CAUSE_TEXT.car,/^O Uno não aguentou/);
+});
+
+test('etapa 3, the Uno live window: shows while hit out of view or far, goes 3 s after the last hit, not while peeking',()=>{
+  const base={live:true,lastHitAt:1000,now:1500,carOnScreen:false,distance:40};
+  assert.ok(pipWanted(base));
+  assert.ok(!pipWanted({...base,now:1000+PIP_HIDE_MS}),'3 s after the last hit');
+  assert.ok(pipWanted({...base,now:1000+PIP_HIDE_MS-1}));
+  assert.ok(!pipWanted({...base,lastHitAt:undefined}),'never hit');
+  assert.ok(!pipWanted({...base,live:false}),'the run ended');
+  assert.ok(!pipWanted({...base,carOnScreen:true,distance:PIP_FAR_U}),'on screen and near: the player sees it');
+  assert.ok(pipWanted({...base,carOnScreen:true,distance:PIP_FAR_U+1}),'on screen but far');
+  assert.ok(!pipWanted({...base,peeking:true}),'the camera is already on it');
+  assert.ok(!pipWanted({...base,now:900}),'a clock going back');
+  assert.equal(pipZoom(1),PIP_ZOOM_K);assert.equal(pipZoom(0),.05);assert.equal(pipZoom(NaN),PIP_ZOOM_K);
+  assert.ok(peeking(100,100)&&peeking(100,100+PEEK_MS-1)&&!peeking(100,100+PEEK_MS)&&!peeking(undefined,5)&&!peeking(100,50));
+});
+
+test('etapa 3: the window camera viewport is its frame inner box in game px (a scaled canvas too)',()=>{
+  const inner={left:1000,top:300,width:240,height:150},canvas={left:0,top:0,width:1280,height:800};
+  assert.deepEqual(pipViewport(inner,canvas,{width:1280,height:800}),{x:1000,y:300,width:240,height:150});
+  assert.deepEqual(pipViewport(inner,canvas,{width:2560,height:1600}),{x:2000,y:600,width:480,height:300},'DPR 2 canvas');
+  assert.deepEqual(pipViewport({left:10,top:20,width:0,height:0},{left:10,top:0,width:100,height:100},{width:100,height:100}),{x:0,y:20,width:1,height:1});
 });

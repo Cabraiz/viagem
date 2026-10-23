@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2132,
-  "bytes": 1542062372,
-  "liteBytes": 501929502,
+  "files": 2133,
+  "bytes": 1542132046,
+  "liteBytes": 501966786,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -18866,6 +18866,14 @@
    "lite": "496bf6389728f38a507d3357d0e123897934a30eb29adc4e58a80b71b6eb34d2",
    "bytes": 67682,
    "liteBytes": 36318,
+   "psnr": 40.9,
+   "shownPsnr": 40.8
+  },
+  "sprites/gato-nada-pra-comer.run16-nw.cdd9cb885144.webp": {
+   "source": "cdd9cb8851447d3f4055907a9d86b2c85bec455e826b1b71afc5edf322b549ca",
+   "lite": "2588db84a47450c5d281ce54fe6d7b15c2320e5a3e87041f750dee9ef0bb2cda",
+   "bytes": 69674,
+   "liteBytes": 37284,
    "psnr": 40.9,
    "shownPsnr": 40.8
   },

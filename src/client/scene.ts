@@ -33,10 +33,13 @@ import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
+import {PushShifts,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
 import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
+import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
+import {talkSeed} from './render/chaveiro/lines.ts';
 import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
@@ -278,8 +281,13 @@ export class IslandScene extends Phaser.Scene {
   private stone?:StonewardsRenderer;
   /** D-047: the chaveiro objective in the world (the car, the moto, their effects); only while a run view has one. */
   private chaveiro?:ChaveiroRenderer;
+  /** Card empurrar-uno: the pushers' drawn shift onto the car (push-contact.ts); the own hero's this frame. */
+  private pushShifts=new PushShifts();
+  private selfShift={x:0,y:0};
   /** Bancos (card bancos-e-veiculos): the run's ATMs in the world; only while a run view has banks. */
   private banks?:BankRenderer;
+  /** D-047 (card chaveiro-falas): when the chaveiro's cast speaks, in the horde's balloons; made with the renderer. */
+  private talk?:ChaveiroTalk;
   /**
    * Tower defenses (torres-render): built on the first snapshot that has one (makeTowers; a world without defenses pays
    * nothing: no renderer, atlas, layers or enemy walk), then kept across world swaps (reset, not rebuilt), fed by
@@ -548,7 +556,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -847,7 +855,8 @@ export class IslandScene extends Phaser.Scene {
     this.destination.fillStyle(breu,m.breuAlpha).fillCircle(p.x,p.y,m.dotBreu).fillStyle(papel,1).fillCircle(p.x,p.y,m.dotPapel);
   }
   private place(){
-    const p=this.project(this.position),depth=this.depth(this.position);
+    const at=this.selfShift.x||this.selfShift.y?{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y}:this.position;
+    const p=this.project(at),depth=this.depth(at);
     // Canopies soften only when they cover the hero; feet still define scene depth.
     let covered=false;
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
@@ -952,8 +961,11 @@ export class IslandScene extends Phaser.Scene {
     if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
+    // Pushing the Uno (empurrar-uno): faces it with the push clip, drawn with the palms on it (place() adds the shift).
+    const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
+    this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,this.hooks.aimStick?.());
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1033,11 +1045,27 @@ export class IslandScene extends Phaser.Scene {
    * D-047: a new snapshot for the chaveiro objective (RunView.objective). The renderer is built on the first view that
    * has one, on the scene's projector (the city's actor depth), and fades a figure that covers the hero.
    */
-  private pushChaveiro(view:RunView){
+  private pushChaveiro(view:RunView,time:number){
     const objective=objectiveOf(view);
     if(!objective&&!this.chaveiro)return;
     if(!this.chaveiro&&this.projector)this.chaveiro=new ChaveiroRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
     this.chaveiro?.push(objective,view.tick);
+    this.talk??=new ChaveiroTalk(talkSeed(this.hooks.net?.code??'',this.field.seed));
+    this.talk.push(objective,view.events as readonly LooseEvent[],view.tick,time);
+  }
+  /**
+   * D-047 (card chaveiro-falas): the cast's line due now, if any (talk.ts), in the zueiras' balloon: the chaveiro and
+   * Cida over the moto (or him where he stands), the Tio beside the car, the alarm over it. The end of the run
+   * comes from the result too (RunState.objective, protocol 15, read loosely).
+   */
+  private speakChaveiro(time:number){
+    const talk=this.talk,net=this.hooks.net;
+    if(!talk||!this.chaveiro||!this.horde)return;
+    talk.result((net?.run as {objective?:unknown}|undefined)?.objective,time);
+    const said=talk.take(time);
+    if(!said)return;
+    const chaveiro=this.chaveiro;
+    this.horde.speak(`chaveiro:${said.speaker}`,said.text,()=>chaveiro.speechAnchor(said.speaker),said.priority);
   }
   /**
    * D-051 (ninhos-arte-render): the snapshot's nests (structures of kind 'ninho') drawn on the city ground with their
@@ -1194,14 +1222,14 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
-      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
+      this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
       this.offersVersion=net.feed.offersVersion;
       const runView=net.feed.peek();this.roundPhase=effectivePhase(runView,net.predicted);
       this.hooks.runView?.(runView);
     }
-    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
+    this.zueira?.update(time);this.horde?.update(time,delta);this.stone?.update(time);this.chaveiro?.update(time);this.speakChaveiro(time);this.fortify?.update(time);this.banks?.update(time);this.updateTowers(time,delta);
     this.accumulator=stepClock(this.accumulator,this.frameMs);
     this.steps.sync(net.predicted);
     // PC: the melee swing goes where the mouse points (the ground under it, from the hero; cone-ataque-melee).
@@ -1243,12 +1271,13 @@ export class IslandScene extends Phaser.Scene {
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){this.pushShifts.forget(id);objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
+    const carPose=this.chaveiro?.carPose();
     this.allyFeet=[];
-    const feet=this.drawnFeet;feet.clear();feet.set(net.id,this.position);
+    const feet=this.drawnFeet;feet.clear();feet.set(net.id,{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y});
     for(const player of view.players){
       if(player.id===net.id)continue;
       if(city&&player.online&&!player.spectator)this.allyFeet.push({x:player.x,y:player.y});
@@ -1258,9 +1287,11 @@ export class IslandScene extends Phaser.Scene {
       if(!objects){objects={image:sunlit(this.add.sprite(0,0,this.classIcon(player.classId)).setOrigin(.5,.88).setDisplaySize(100*k,100*k)),label:new MapLabel(this,''),ring:this.add.ellipse(0,0,ALLY_RING_SIZE.width,ALLY_RING_SIZE.height).setStrokeStyle(2,tokenColor('--c-breu'),.8).setScale(k)};this.remoteActors.set(player.id,objects);}
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view);
-      const q=this.project(player),depth=this.depth(player),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
-      feet.set(player.id,{x:player.x,y:player.y});
+      const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir,player.hp);
+      const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
+      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
+      feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});

@@ -63,7 +63,7 @@
 .rh .rh-ofc .rh-ofc-skip{background:color-mix(in srgb,var(--c-cartolina) 45%,var(--c-breu))}
 .rh .rh-ofc .rh-ofc-reroll{background:color-mix(in srgb,var(--arte-azul) 45%,var(--c-breu))}
 .rh .rh-ofc .rh-ofc-btn:disabled{opacity:.55;cursor:default}
-.rh .rh-ofc .rh-ofc-btn-count{font:700 11px/1 var(--f-sistema);opacity:.8}
+.rh .rh-ofc .rh-ofc-btn-count{font:700 11px/1 var(--f-sistema)}
 .rh .rh-ofc.rh-ofc-only-wait :is(.rh-offer-cards,.rh-offer-foot,.rh-window-fall){display:none}
 /* Short screens (phone landscape): two columns of cards, tighter rows. */
 @media (max-height:500px){

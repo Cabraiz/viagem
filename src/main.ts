@@ -12,11 +12,14 @@ import { CUTOUT_QUERY, cutoutFile, cutoutOf, fitCutout, frameArt, frameHero, pla
 import { startVersionWatch, fetchBuildId } from './client/ui/version-watch.ts';
 import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
-import { hasNewArt, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
+import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
+import './client/ui/insta.css';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 mountIcons();
 // Old tab after a deploy (NEW-20261012-E5-chunk-velho-deploy): /version.json changed or a lazy chunk answered 404.
@@ -66,6 +69,8 @@ app.innerHTML = `
   <div class="estadio-palco"><div id="portrait" class="estadio-heroi dance-pending" role="img"></div><img class="estadio-recorte" alt="" aria-hidden="true" decoding="async" hidden><img class="estadio-mureta" alt="" aria-hidden="true" decoding="async" hidden></div>
   <button type="button" class="menu-config" aria-label="Configurações" aria-haspopup="dialog">${icon('config',{size:32})}</button>
   <section id="personagem" class="estadio-escolha" aria-labelledby="screen-title" data-etapa="escolher">
+    <div class="insta-topo">${barraHtml()}<nav class="insta-stories" aria-label="Trocar personagem"></nav><p class="insta-trocar">Toque para trocar</p><div class="insta-perfil"></div><ul class="insta-chips"></ul></div>
+    <div class="insta-grade-area">${abasHtml()}<div class="insta-grade"></div></div>
     <div class="estadio-caixa-titulo"><h1 id="screen-title" class="estadio-titulo"><span></span> <span></span><img class="estadio-letreiro" alt="" hidden></h1>
     <h2 id="class-name" class="estadio-classe"></h2></div>
     <nav class="estadio-fileira" aria-label="Trocar personagem">
@@ -86,7 +91,11 @@ app.innerHTML = `
 
 // The menu's gear (config-audio-musica-efeitos): Música, Efeitos and the vibration; its code loads on the first tap.
 const menuConfig=document.querySelector<HTMLButtonElement>('.menu-config')!;
-menuConfig.addEventListener('click',()=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(menuConfig)).catch(e=>console.error('settings failed to load',e));});
+const openSettings=(from:HTMLElement)=>{void import('./client/audio/settings-dialog.ts').then(m=>m.openSoundSettings(from)).catch(e=>console.error('settings failed to load',e));};
+menuConfig.addEventListener('click',()=>openSettings(menuConfig));
+// The phone upright shows the hero pick as an Instagram profile (ui/insta.ts): its ≡ is the gear.
+const instaMenu=document.querySelector<HTMLButtonElement>('.insta-menu')!;
+instaMenu.addEventListener('click',()=>openSettings(instaMenu));
 
 // The hero's feet on the bar: the stage's box and the file the CSS shows (phone upright = the tall crop) give the
 // point; the CSS sizes the dancer from it. PC: the hero stands at 70% of the width, like the approved reference.
@@ -166,7 +175,8 @@ function lazySrc(img: HTMLImageElement, url: string) {
   img.dataset.src=url; lazyArt.observe(img);
 }
 // After the first screen is up, the rest of the row comes in idle time, so scrolling it never shows empty frames.
-addEventListener('load',()=>idle(()=>document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
+// Not on the profile (phone upright), where the row is hidden: its faces come in when it shows (the observer above).
+addEventListener('load',()=>idle(()=>!instaScreen.matches&&document.querySelectorAll<HTMLImageElement>('img[data-src]:not([data-seen])').forEach(img=>{ img.dataset.seen='1'; img.src=img.dataset.src!; lazyArt.unobserve(img); })),{once:true});
 let portraitToken=0, pending: HTMLImageElement|null=null;
 const menuDance=new MenuDance(document.getElementById('portrait')!);
 // A hero with his own art drawn in place (menu-arte-viciado, stadium.ts RECORTES) stands there instead of the dance, on
@@ -253,10 +263,14 @@ function setArt(id: string,hero: HeroClass) {
 // The row holds every playable hero once (built here, never rebuilt); a pick only moves aria-pressed and scrolls the
 // chosen one into the row's middle. The row scrolls by itself (a swipe on the phone), the page never does.
 // The row's faces wait for the new art (21/10): a "?" in the letreiro's style until the hero is in ui/apelidos.ts ARTE_NOVA.
+// selecao-miniatura-rosto: a released hero shows his face over his own background (ui/miniatura.ts), loaded lazily too.
 // cadeado-so-clt-viciado: a locked hero (rules/personagens-liberados.ts) keeps his tile, darkened under a lock.
-rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${hasNewArt(hero.id)
-  ?`<img class="card-portrait" draggable="false" data-src="${thumbUrl(hero)}" alt="" width="256" height="256" decoding="async" aria-hidden="true" />`
-  :'<span class="card-misterio" aria-hidden="true">?</span>'}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
+const cardFace=(hero:HeroClass)=>{
+  const rosto=miniaturaOf(hero.id,isLiberado(hero.id)),url=rosto??(hasNewArt(hero.id)?thumbUrl(hero):undefined);
+  return url?`<img class="card-portrait${rosto?' card-rosto':''}" draggable="false" data-src="${url}" alt="" width="192" height="192" decoding="async" aria-hidden="true" />`
+    :'<span class="card-misterio" aria-hidden="true">?</span>';
+};
+rowList.innerHTML=classes.map(hero=>`<button type="button" class="class-card" data-hero="${hero.id}"${isLiberado(hero.id)?'':' data-bloqueado'} aria-pressed="${hero.id===selected.id}" aria-label="${hero.name}${isLiberado(hero.id)?'':' (em breve)'}">${cardFace(hero)}${isLiberado(hero.id)?'':`<span class="card-cadeado">${icon('cadeado',{size:32})}</span>`}</button>`).join('');
 rowList.querySelectorAll<HTMLImageElement>('img[data-src]').forEach(img=>lazySrc(img,img.dataset.src!));
 function showInRow(smooth: boolean) {
   const card=rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`);
@@ -274,10 +288,15 @@ function renderSelected(announce=false) {
   top.textContent=lines[0];top.hidden=!lines[0]||!!picture;big.textContent=lines[1];big.hidden=!!picture;
   if(picture){if(sign.getAttribute('src')!==picture)sign.src=picture;sign.alt=`${selected.name}: ${plaque}`;}
   sign.hidden=!picture;title.classList.toggle('com-letreiro',!!picture);document.getElementById('class-name')!.hidden=!!picture;
+  // A letreiro taller than its sign (the gato's collar): laid out by the sign's own shape, the rest over the top.
+  const tall=picture?letreiroAltoOf(selected.id):undefined;sign.classList.toggle('letreiro-alto',!!tall);
+  if(tall){sign.style.setProperty('--sinal-ar',String(tall.sinal/tall.w));sign.style.setProperty('--alto-ar',String(tall.h/tall.w));}
+  else{sign.style.removeProperty('--sinal-ar');sign.style.removeProperty('--alto-ar');}
   const fit=String(titleFit(lines));if(title.style.getPropertyValue('--titulo-fit')!==fit)title.style.setProperty('--titulo-fit',fit);
   text('class-name',plaque);
   showCutout(); // first: a hero standing in place never starts his dance
-  showPortrait(selected,announce);
+  // The profile (phone upright) shows no dancer and no portrait: neither downloads until the stadium comes back.
+  if(instaScreen.matches) renderInsta(); else showPortrait(selected,announce);
   document.getElementById('portrait')!.setAttribute('aria-label',`Ilustração de ${selected.name}`);
   // Writing a custom property on <html> restyles the whole page, even with the same value: only on a real change.
   if(document.documentElement.style.getPropertyValue('--emblem')!==color) document.documentElement.style.setProperty('--emblem',color);
@@ -286,6 +305,48 @@ function renderSelected(announce=false) {
   showLock();
   if(announce) text('announcement',`${selected.name}, ${selected.role}. ${selected.subtitle}${isLiberado(selected.id)?'':'. Em breve.'}`);
 }
+// The profile screen (selecao-mobile-instagram): the other heroes as stories, the chosen one's profile and his 3 photos
+// (none for a locked one). Built only while the phone is upright, so the stadium never downloads its pictures.
+const instaScreen=matchMedia(INSTA_QUERY);
+const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perfil:document.querySelector<HTMLElement>('.insta-perfil')!,
+  chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!};
+const instaIds=classes.map(hero=>hero.id);
+let instaShown='';
+function renderInsta() {
+  const perfil=instaPerfil(selected.id);
+  if(!perfil||instaShown===selected.id) return;
+  instaShown=selected.id;
+  insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
+  insta.perfil.innerHTML=perfilHtml(perfil);
+  insta.chips.innerHTML=chipsHtml(perfil);
+  insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
+  void document.fonts.ready.then(fitHandle);
+}
+// The @handle's size was a guess from its letters (insta.ts handleFit): measured once the font is in, a handle wider than
+// its column shrinks until it and the badge fit (its share in card px, so any screen size keeps it).
+function fitHandle() {
+  const line=insta.perfil.querySelector<HTMLElement>('.insta-arroba'),text=line?.firstElementChild as HTMLElement|null;
+  if(!line||!text||line.scrollWidth<=line.clientWidth) return;
+  const fit=parseFloat(line.style.getPropertyValue('--arroba-fit'))||1,room=line.clientWidth-(line.scrollWidth-text.offsetWidth);
+  line.style.setProperty('--arroba-fit',(fit*room/text.offsetWidth*.98).toFixed(3));
+}
+insta.stories.addEventListener('click',event=>{
+  const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
+  if(!story) return;
+  if(etapaOf(etapa)==='nome') showEtapa(etapa,'escolher');
+  selected=getClass(story.dataset.hero!)!;
+  renderSelected(true);
+});
+// The dancer is held while the profile is up; a hero with no profile (picked on the stadium) becomes the default one.
+let instaHold:(()=>void)|undefined;
+function syncInsta() {
+  if(instaScreen.matches&&!instaHold) instaHold=menuDance.hold();
+  else if(!instaScreen.matches&&instaHold) {instaHold();instaHold=undefined;}
+  if(instaScreen.matches&&!instaPerfil(selected.id)) selected=heroiPadrao();
+  instaShown='';
+  renderSelected();
+}
+instaScreen.addEventListener('change',syncInsta);
 // A locked hero can be looked at, never chosen: SELECIONAR turns into a disabled "EM BREVE" with the lock in the star's place.
 function showLock() {
   const button=document.getElementById('confirm') as HTMLButtonElement,locked=!isLiberado(selected.id);
@@ -404,7 +465,7 @@ document.getElementById('enter-island')!.addEventListener('click',async()=>{
   } catch(e) {if(!chunkFailed(e))text('explore-error',soloErrorText(e));}
   finally {releaseDance();button.disabled=false;button.textContent=label;}
 });
-renderSelected();
+syncInsta();
 // Back from a version reload (at most RESUME_MAX_MS old): the hero came from localStorage; the lobby opens again and,
 // with a room, joins it by itself (the room's token in sessionStorage keeps the same seat for GRACE_MS).
 const resume=takeResume(session(),Date.now());

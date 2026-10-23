@@ -1,0 +1,440 @@
+{
+ "sha": "77b8f40",
+ "run": "https://github.com/Cabraiz/viagem/actions/runs/39945308792",
+ "medicoes": 70,
+ "fails": [],
+ "contraste": {
+  "1280x720 parado": [
+   {
+    "name": "onda",
+    "worstEdge": 3.54,
+    "worstText": 9.79,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 3.87,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 3.79,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.62,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 4.08,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.97,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.68,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.82,
+    "worstText": 10.76,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.42,
+    "worstText": 10.46,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.44,
+    "worstText": 9.78,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.26,
+    "worstText": 10.6,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 4.13,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 10.84,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "390x844 parado": [
+   {
+    "name": "onda",
+    "worstEdge": 5.46,
+    "worstText": 9.83,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 5.3,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 4.27,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 4.27,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.71,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.64,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.97,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.22,
+    "worstText": 10.6,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.6,
+    "worstText": 9.5,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.18,
+    "worstText": 10.09,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.87,
+    "worstText": 9.95,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 7,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 3.67,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "1280x720 depois da rajada": [
+   {
+    "name": "onda",
+    "worstEdge": 3.59,
+    "worstText": 9.38,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 13.12,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 10.33,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.72,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 12.69,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 4.82,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.73,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 8.73,
+    "worstText": 9.53,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.36,
+    "worstText": 9.53,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.51,
+    "worstText": 9.93,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.54,
+    "worstText": 11.15,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 3.78,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 9.74,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "390x844 depois da rajada": [
+   {
+    "name": "onda",
+    "worstEdge": 3.51,
+    "worstText": 10.92,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 3.95,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 3.42,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 4.53,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.64,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 12.65,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.89,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.48,
+    "worstText": 10.44,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.75,
+    "worstText": 9.53,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 10.91,
+    "worstText": 9.39,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.68,
+    "worstText": 9.41,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 3.74,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 6.2,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "celular-390x844 parado": [
+   {
+    "name": "nível",
+    "worstEdge": 10.85,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 8.32,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.65,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.85,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.32,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.73,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 7.94,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 9.75,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "joystick",
+    "worstEdge": 12.55,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "celular-844x390 parado": [
+   {
+    "name": "nível",
+    "worstEdge": 7.55,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 5.8,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.96,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.09,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.63,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 11.06,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 4.53,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 7.66,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "joystick",
+    "worstEdge": 4.13,
+    "worstText": null,
+    "fails": []
+   }
+  ]
+ }
+}

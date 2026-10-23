@@ -8,7 +8,7 @@
 
 @media (orientation: portrait) and (max-width: 820px) {
   .world.estadio { background: var(--insta-fundo); }
-  .estadio .estadio-palco, .estadio .menu-config, .estadio .estadio-caixa-titulo, .estadio .estadio-fileira { display: none; }
+  .estadio .estadio-palco, .estadio .menu-config, .estadio .menu-tela-cheia, .estadio .estadio-caixa-titulo, .estadio .estadio-fileira { display: none; }
 
   .estadio .estadio-escolha {
     --u: calc(min(100vw, 51.873dvh) / 734); /* 734 / 1415 */

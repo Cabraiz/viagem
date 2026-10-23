@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import sharp from 'sharp';
-import {barTop, columnRight, CUTOUT_QUERY, cutoutFile, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameHero, frameMoved, headRoom, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
+import {barTop, columnRight, CUTOUT_QUERY, cutoutFile, PC_QUERY, SHORT_MAX_H, cutoutMargin, cutoutOf, FEET_MARGIN, fitCutout, frameArt, frameHero, frameMoved, headRoom, moveOf, MURETA_TOPO, muretaTopo, placeCutout, placeOnBar, RECORTES, rostoNoPalco, SEM_MOVE, STADIUM, STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {APELIDOS, ARTE_NOVA, BIG_CHARS, LETREIRO_ALTO, LETREIROS, MIN_FIT, TOP_CHARS, hasNewArt, letreiroOf, plaqueText, titleFit, titleLines} from '../../src/client/ui/apelidos.ts';
 import {playableClasses} from '../../src/rules/index.ts';
 import {CONFIRM_TEXT, etapaOf, nameKey, showEtapa} from '../../src/client/ui/menu-etapa.ts';
@@ -158,9 +158,12 @@ test('menu-arte-viciado: the letreiro picture and the hero cut out of the 1920x1
   const pc=placeCutout({w:1280,h:800},STADIUM.wide,cut)!,s=800/1080,ox=(1280-1920*s)/2;
   assert.ok(Math.abs(pc.x-(ox+953*s))<1e-9&&Math.abs(pc.y-23*s)<1e-9&&Math.abs(pc.h-1058*s)<1e-9);
   assert.equal(placeCutout({w:0,h:0},STADIUM.wide,cut),undefined);
-  // PC only: the phone (upright or on its side, under 521 px tall) keeps the dance; the dance is held while he stands.
-  assert.equal(CUTOUT_QUERY,'(orientation: landscape) and (min-height: 521px)');
-  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`),'the CSS and main.ts agree on what a PC is');
+  // celular-deitado-foto (the user, 23/10): every landscape screen, the PC and the phone on its side, shows his picture;
+  // only the phone held upright keeps the dance. The dance is held while he stands.
+  assert.equal(CUTOUT_QUERY,'(orientation: landscape)');
+  assert.equal(PC_QUERY,'(orientation: landscape) and (min-height: 521px)');
+  assert.ok(css.includes(`@media ${CUTOUT_QUERY} {`)&&css.includes(`@media ${PC_QUERY} {`),'the CSS and main.ts agree on what a PC is');
+  assert.ok(css.includes(`@media (max-height: ${SHORT_MAX_H}px) and (orientation: landscape) {`),'the phone on its side: columnRight measures its column');
   assert.match(main,/const cut=cutoutScreen\.matches\?cutoutOf\(selected\.id\):undefined;/);
   assert.match(main,/if\(spot&&!cutoutHold\) cutoutHold=menuDance\.hold\(\);/);
   // selecao-mobile-instagram: the phone upright shows the profile instead of the portrait (tests/client/insta.test.ts).
@@ -321,7 +324,10 @@ test('menu-fundo-sangria: on the PC the E6 bleed is framed so the approved pictu
   assert.ok(css.includes(".estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }"));
   assert.match(main,/const stageArt=\(\):StadiumArt=>tallStadium\.matches\?STADIUM\.tall:cutoutScreen\.matches\?STADIUM\.bleed:STADIUM\.wide;/);
   assert.match(main,/placed=cut&&placeCutout\(box,STADIUM\.bleed,cut\)/);
-  assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\) and \(min-height: 521px\)" \/>/);
+  assert.match(html,/<link rel="preload" href="\/art\/lite\/menu\/fundo-estadio-viciado\.webp" as="image" fetchpriority="high" media="\(orientation: landscape\)" \/>/);
+  // No landscape screen preloads the plain stadium (the bleed shows there) nor the dance (his picture shows there).
+  for(const m of html.matchAll(/<link rel="preload" href="\/art\/ui-extra\/estadio-(?:1920|1280)\.webp"[^>]*media="([^"]*)"/g))assert.ok(!m[1].includes('landscape')&&!m[1].includes('max-height'),m[1]);
+  assert.ok(html.includes("matchMedia('(orientation: landscape)').matches)return;"),'the dance preload skips landscape');
 });
 
 test('heroi-grande-por-tela: on the PC every hero as big as the window lets, his head 9% under the top (menu-folga-topo), his feet on the bar',()=>{
@@ -531,7 +537,7 @@ test('botao-igual-gerado: the star, text and burst sit in the pill where the gen
 });
 
 test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger, right under each title, the sign off the top, the block 2vw right; phones as they were',async()=>{
-  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const pc=css.slice(css.indexOf(`@media ${PC_QUERY} {`)).split('\n}')[0];
   const vh=(re:RegExp)=>{const m=pc.match(re);assert.ok(m,String(re));return Number(m![1])/100;};
   // In the column's flow (fileira-botao-maiores-embaixo had them pinned to the bottom; the user: "é para ficar embaixo do
   // título da pessoa"), 2.5vh under whatever is above (the column's own gap + a margin).
@@ -585,7 +591,7 @@ test('fileira-botao-colados-titulo: on the PC the row and the button 30% bigger,
 });
 
 test('titulo-mesmo-espaco: on the PC one title box for every hero, the CLT as big as the viciado, the row never moves',async()=>{
-  const pc=css.slice(css.indexOf(`@media ${CUTOUT_QUERY} {`)).split('\n}')[0];
+  const pc=css.slice(css.indexOf(`@media ${PC_QUERY} {`)).split('\n}')[0];
   // The title and the pill in one box (a plain wrapper elsewhere: the phones keep their layout).
   assert.match(main,/<div class="estadio-caixa-titulo"><h1 id="screen-title"[^]*?<h2 id="class-name" class="estadio-classe"><\/h2><\/div>/);
   assert.ok(css.includes('.estadio-caixa-titulo { display: contents; }'));

@@ -100,8 +100,12 @@ test('icons: the home screen icons have no transparency and the manifest lists r
   assert.ok(links.some((l) => l.rel === 'manifest' && l.href === '/manifest.webmanifest'));
   const manifest = JSON.parse(fs.readFileSync('public/manifest.webmanifest', 'utf8'));
   assert.equal(manifest.theme_color, meta('name', 'theme-color'));
-  // browser, not standalone: no install prompt appears; the home screen shortcut opens the site as it is today.
-  assert.equal(manifest.display, 'browser');
+  // celular-deitado-tela-cheia: the home screen shortcut opens as a game, without the browser's bar (any orientation:
+  // the profile is upright). Still no install prompt: main.ts swallows beforeinstallprompt.
+  assert.equal(manifest.display, 'fullscreen');
+  assert.deepEqual(manifest.display_override, ['fullscreen', 'standalone']);
+  assert.equal(manifest.orientation, 'any');
+  assert.match(fs.readFileSync('src/main.ts', 'utf8'), /addEventListener\('beforeinstallprompt',e=>e\.preventDefault\(\)\)/);
   for (const icon of manifest.icons) {
     const { width, height } = await sharp(`public${icon.src}`).metadata();
     assert.equal(`${width}x${height}`, icon.sizes, icon.src);

@@ -6,6 +6,7 @@ import {inventorySlots,slotLabel,tapCommand} from '../../src/client/hud/inventor
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {BUILD_REACH} from '../../src/sim/towers/system.ts';
 import {KIT_CHARGES,kitItem} from '../../src/rules/index.ts';
+import {ATTACK_WORD,BUILD_WORD,SKILL_WORD,actionFace} from '../../src/client/hud/skill.ts';
 
 const CELL=.88;
 
@@ -15,7 +16,7 @@ test('the kit slot: its tier is the border, a tap starts the mode (nothing to th
   assert.equal(slots[1].name,'Kit Morteiro');assert.equal(itemDisplay('kit:morteiro').icon,'torre-morteiro');
   assert.deepEqual(tapCommand(slots[1]),{t:'kit',slot:1});
   assert.equal(slots[2].rarity,1);assert.equal(slots[2].stack,KIT_CHARGES.muro);
-  assert.match(slotLabel(slots[1]),/Kit Morteiro \(roxa\): tocar para pôr no chão/);
+  assert.match(slotLabel(slots[1]),/Kit Morteiro \(roxa\): tocar para construir/);
 });
 
 test('the ghost starts ahead of the hero with the room\'s footprint; green, red when taken or out of reach',()=>{
@@ -50,6 +51,8 @@ test('confirm sends {t:place} once per cell; the answer: a tower kit ends the mo
   assert.equal(k.answer({req:2,ok:true}),undefined);assert.equal(k.active,false,'a tower kit is done');
   k.start(0,'kit:muro',{x:10,y:10},CELL);k.confirm(net);
   assert.equal(k.answer({req:3,ok:true}),undefined);assert.equal(k.active,true,'a muro kit keeps laying');
+  assert.equal(k.ghost({cell:CELL,structures:[]},{x:10,y:10})!.look,'bloqueado','the wall it just laid takes that cell');
+  assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
   assert.equal(kitRefusalText('away'),'Longe demais, chega mais perto');assert.equal(kitRefusalText('limite'),'Chegou no limite');
   assert.equal(k.answer({req:99,ok:false}),undefined,'not ours');
 });
@@ -59,4 +62,39 @@ test('sync: the kit follows its id when the slots shift, the mode ends when it i
   k.start(2,'kit:morteiro',{x:0,y:0},CELL);
   k.sync([{id:'faca'},{id:'kit:morteiro'}]);assert.equal(k.kit?.slot,1);
   k.sync([{id:'faca'}]);assert.equal(k.active,false);
+});
+
+test('construir-no-botao: the selected kit is the slot in the hand and the button says Construir with the kit sticker',()=>{
+  const player={weapons:[{id:'faca',level:1},kitItem('morteiro'),kitItem('muro')],hand:0};
+  const picked=inventorySlots(player,1)!;
+  assert.deepEqual(picked.map(s=>s.hand),[false,true,false],'the kit, not the knife, is marked');
+  assert.match(slotLabel(picked[1]),/na mão: Construir/);
+  assert.deepEqual(inventorySlots(player)!.map(s=>s.hand),[true,false,false],'no kit: the weapon again');
+  // The button's face for each selection.
+  const kit=actionFace('manual','cidadao-comum','faca','kit:morteiro');
+  assert.deepEqual([kit.word,kit.icon],[BUILD_WORD,itemDisplay('kit:morteiro').icon]);
+  assert.equal(BUILD_WORD,'Construir');assert.match(kit.label,/Construir Kit Morteiro/);
+  assert.equal(actionFace('manual','cidadao-comum','faca',kitItem('muro').id).icon,itemDisplay('kit:muro').icon);
+  assert.deepEqual([actionFace('manual','cidadao-comum','faca').word,actionFace('manual','cidadao-comum','faca').icon],[ATTACK_WORD,'faca'],'back to Atacar with the weapon');
+  assert.equal(actionFace('auto','cidadao-comum','').word,SKILL_WORD);
+});
+
+test('construir-no-botao: the ghost walks KIT_AHEAD in front of the hero; red says why (no confirm sent)',()=>{
+  const k=new KitPlace(()=>0);let hero={x:30,y:30};
+  k.hero(hero);k.start(1,'kit:muro',hero,CELL);
+  for(const step of [{x:31,y:30},{x:32,y:30},{x:33,y:30}]){hero=step;k.hero(hero);k.follow(hero,CELL);}
+  const g=k.ghost({cell:CELL,structures:[]},hero)!;
+  assert.ok(Math.abs((g.c+.5)*CELL-(hero.x+KIT_AHEAD))<CELL&&Math.abs((g.r+.5)*CELL-hero.y)<CELL,'ahead, the way it walks');
+  assert.equal(g.look,'ok');assert.equal(k.blocked,undefined);
+  k.ghost({cell:CELL,structures:[{id:'s',kind:'muro',x:0,y:0,hp:10,c:g.c,r:g.r}]},hero);
+  assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
+  // Off walkable ground (the room's onGround, kitGround): red, 'fora'; the room's own refusal is the word after it.
+  k.ghost({cell:CELL,structures:[],ground:()=>false},hero);assert.equal(kitRefusalText(k.blocked),'Aí não dá pra construir');
+  // A friend or a critter standing on it: red, as the room's 'taken' (the builder itself never counts).
+  k.ghost({cell:CELL,structures:[],bodies:[{x:(g.c+.5)*CELL,y:(g.r+.5)*CELL}]},hero);assert.equal(kitRefusalText(k.blocked),'Já tem coisa aí');
+  // The walk the player asks for wins over a reconciled step back.
+  k.hero({x:hero.x-.3,y:hero.y},{x:0,y:1});k.follow(hero,CELL);
+  const down=k.ghost({cell:CELL,structures:[]},hero)!;
+  assert.ok(Math.abs((down.r+.5)*CELL-(hero.y+KIT_AHEAD))<CELL,'the intent turned it');
+  k.cancel();k.follow(hero,CELL);assert.equal(k.ghost({cell:CELL,structures:[]},hero),null,'no kit, no ghost');
 });

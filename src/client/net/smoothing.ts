@@ -107,15 +107,16 @@ export class ArrivalJitter {
 /**
  * Where a remote entity is drawn at `target` (ms) from timed samples `a` (at ≤ target, or the oldest) and `b` (the
  * next, or the newest): interpolated between them, or past the newest along its last motion for at most
- * EXTRAPOLATE_MAX_MS (`prev` is the sample before the newest). Returns the blend factor (may be > 1).
+ * EXTRAPOLATE_MAX_MS (`prev` is the sample before the newest). Returns the blend factor (may be > 1). `minGap`: the
+ * shortest time two samples can be apart (arrival times: INTERP_MIN_MS; room ticks are exact: TICK_MS).
  */
-export function blendFactor(aAt:number,bAt:number,target:number,prevAt?:number):number{
+export function blendFactor(aAt:number,bAt:number,target:number,prevAt?:number,minGap=INTERP_MIN_MS):number{
   if(bAt>aAt)return Math.max(0,Math.min(1,(target-aAt)/(bAt-aAt)));
   // a === b: the newest sample; extrapolate along prev→newest when the target is past it.
   if(prevAt===undefined||!(aAt>=prevAt)||target<=aAt)return 1;
   // Arrival times, not server ticks: frames held by a lossy link land in a burst (a gap under 1 ms). The motion between
   // two frames took at least the room's send period, so the gap counts as at least INTERP_MIN_MS.
-  return 1+Math.min(target-aAt,EXTRAPOLATE_MAX_MS)/Math.max(aAt-prevAt,INTERP_MIN_MS);
+  return 1+Math.min(target-aAt,EXTRAPOLATE_MAX_MS)/Math.max(aAt-prevAt,minGap);
 }
 /** a + (b - a)·t for any t; past b (t > 1) at most EXTRAPOLATE_MAX_UNITS beyond it. */
 export function along(a:Point,b:Point,t:number):Point{
@@ -126,3 +127,78 @@ export function along(a:Point,b:Point,t:number):Point{
 }
 /** Largest extrapolation of an enemy glide, as a share of the glide (and never past EXTRAPOLATE_MAX_MS). */
 export function glideCeiling(glideMs:number){return 1+Math.min(.5,EXTRAPOLATE_MAX_MS/Math.max(1,glideMs));}
+
+/** One frame of the room as the render buffer keeps it: its arrival time (ms), its tick and each remote's position. */
+export type RemoteSample={at:number;tick?:number;players:ReadonlyMap<string,Point>};
+/** Room tick period (ms, 20 Hz): a sample's room time is tick × TICK_MS. */
+export const TICK_MS=50;
+/** Shortest and longest render delay behind the fastest frame of the window (ms) for the tick clock. */
+export const REMOTE_DELAY_MIN_MS=100,REMOTE_DELAY_MAX_MS=300;
+/**
+ * BUG bots-ainda-mais-rapidos: the drawn room time catches up at most this fast and slows down at most this much against
+ * the phone's clock, so a remote never walks over 1.03× its room speed on screen (frames in a burst do not speed it up).
+ */
+export const CLOCK_FAST=1.03,CLOCK_SLOW=.9;
+/** Further off than this (a drop, the app hidden, a new round) the clock snaps instead of gliding (ms). */
+export const CLOCK_SNAP_MS=600;
+const CLOCK_WINDOW=30;
+/**
+ * BUG bots-ainda-mais-rapidos: the time the others are drawn at, in ROOM time (tick × TICK_MS), not in arrival time.
+ * Interpolating by arrival time drew a remote 1.7-4× its speed whenever frames landed close together (a lossy link holds
+ * them and lets them go in a burst). Here the offset phone→room is the fastest frame of the last ~3 s (the least delayed
+ * one: arrival − tick time, its minimum), the target lags it by REMOTE_DELAY_MIN_MS plus the window's p90 spread, and the
+ * drawn time follows the target at CLOCK_SLOW..CLOCK_FAST of the phone's clock, never past the newest frame +
+ * EXTRAPOLATE_MAX_MS.
+ */
+export class RemoteClock {
+  private lags:number[]=[];
+  private newest=-Infinity;
+  private shown?:number;
+  private last?:number;
+  /** A frame of room tick `tick` arrived at `at` (phone ms). */
+  push(at:number,tick:number){
+    if(!Number.isFinite(at)||!Number.isFinite(tick))return;
+    this.lags.push(at-tick*TICK_MS);if(this.lags.length>CLOCK_WINDOW)this.lags.shift();
+    this.newest=Math.max(this.newest,tick*TICK_MS);
+  }
+  /** The ticks start over (a new round, a new map, a new connection). */
+  reset(){this.lags=[];this.newest=-Infinity;this.shown=this.last=undefined;}
+  /** Render delay behind the fastest frame (ms): REMOTE_DELAY_MIN_MS + the p90 of how late the window's frames came. */
+  delay(){
+    if(!this.lags.length)return REMOTE_DELAY_MIN_MS;
+    const min=Math.min(...this.lags),late=this.lags.map(l=>l-min).sort((a,b)=>a-b);
+    const p90=late[Math.min(late.length-1,Math.floor(.9*late.length))];
+    return Math.max(REMOTE_DELAY_MIN_MS,Math.min(REMOTE_DELAY_MAX_MS,REMOTE_DELAY_MIN_MS+p90));
+  }
+  /** Room time (ms) the others are drawn at, at phone time `now`; undefined before the first frame. Never goes back. */
+  time(now:number):number|undefined{
+    if(!this.lags.length)return undefined;
+    if(this.shown!==undefined&&this.last!==undefined&&now<=this.last)return this.shown;
+    const target=now-Math.min(...this.lags)-this.delay(),dt=this.last===undefined?0:now-this.last;
+    if(this.shown===undefined||dt>CLOCK_SNAP_MS||Math.abs(target-this.shown)>CLOCK_SNAP_MS)this.shown=target;
+    else this.shown+=Math.max(dt*CLOCK_SLOW,Math.min(dt*CLOCK_FAST,target-this.shown));
+    this.shown=Math.min(this.shown,this.newest+EXTRAPOLATE_MAX_MS);
+    this.last=now;
+    return this.shown;
+  }
+}
+/** A sample's room time (ms): its tick × TICK_MS. */
+export const tickTime=(s:RemoteSample)=>(s.tick??0)*TICK_MS;
+/** A sample's arrival time (ms). */
+export const arrivalTime=(s:RemoteSample)=>s.at;
+/**
+ * Where remote `id` is drawn at `target` (ms, on the clock `time` reads off a sample: arrival by default, tickTime with a
+ * RemoteClock): between the two samples around it; before the oldest, the oldest; past the newest, along the last two
+ * (blendFactor and along cap it). Undefined when no sample has it.
+ */
+export function remoteAt(samples:readonly RemoteSample[],target:number,id:string,time:(s:RemoteSample)=>number=arrivalTime):Point|undefined{
+  const s=samples,n=s.length;
+  let i=0;while(i<n&&time(s[i])<=target)i++;
+  const a=s[Math.max(0,Math.min(i,n)-1)]??s[0],b=i<n?s[i]:s[n-1],prev=i>=n&&n>1?s[n-2]:undefined;
+  if(!a||!b)return undefined;
+  const t=i>=n&&prev?blendFactor(time(b),time(b),target,time(prev),time===tickTime?TICK_MS:INTERP_MIN_MS):i===0?1:blendFactor(time(a),time(b),target);
+  const q=(i>=n&&prev?prev:a).players.get(id),r=b.players.get(id);
+  if(i>=n&&prev)return q&&r?along(q,r,t):r;
+  if(!q||!r)return r??q;
+  const k=Math.max(0,Math.min(1,t));return {x:q.x+(r.x-q.x)*k,y:q.y+(r.y-q.y)*k};
+}

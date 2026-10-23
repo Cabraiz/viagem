@@ -80,3 +80,9 @@ test('pack12: the A2 patterns are wired in the weapon system and inert until the
   assert.equal(mineTouched(none,none,none),true);
   assert.deepEqual(PACK12.filter(w=>w.pattern==='ricochet'||w.pattern==='mine'||w.pattern==='turret').map(w=>w.id).sort(),['bola-murcha','carro-de-som','panela-de-pressao']);
 });
+
+test('pack12 A1 render: the lobbed objects (traque, tijolo) are drawn at their own size on their burst zone, not stretched to it', async ()=>{
+  const {shotDrawScale}=await import('../../src/client/render/arsenal-rules.ts');
+  for(const id of ['traque','tijolo-baiano']){const r=getWeapon(id)!.levels[0].area;assert.ok(shotDrawScale(false,id)*Math.min(3,r*2*46/64)<=1.1,id);}
+  assert.equal(shotDrawScale(false,'baladeira'),1);
+});

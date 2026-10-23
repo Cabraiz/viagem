@@ -178,8 +178,14 @@ export const PACK12_PROJECTILE_IDS:readonly string[]=[...new Set([...PACK12_A1_A
  */
 export const DEFAULT_SHOT_DRAW_SCALE=5;
 const DEFAULT_SHOT_SOURCES:ReadonlySet<string>=new Set(['pistola']);
-/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, else 1. */
-export const shotDrawScale=(hostile:boolean,source:string)=>!hostile&&DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:1;
+/**
+ * Pack 12 fatia A1: the lobbed ones (traque, tijolo) land as a zone as wide as their burst, and the zone wears the thrown
+ * object's piece: drawn at the burst's size it was a giant brick. This factor brings the object back to its size (the
+ * layer scales a piece by the zone's radius, up to 3×); the burst itself is FIRE_LOOK's blast.
+ */
+const LOBBED_DRAW_SCALE:ReadonlyMap<string,number>=new Map([['traque',.4],['tijolo-baiano',.35]]);
+/** Draw-scale factor of a projectile (layers.ts): DEFAULT_SHOT_DRAW_SCALE for a hero's default shot, a lobbed object's, else 1. */
+export const shotDrawScale=(hostile:boolean,source:string)=>hostile?1:DEFAULT_SHOT_SOURCES.has(source)?DEFAULT_SHOT_DRAW_SCALE:LOBBED_DRAW_SCALE.get(source)??1;
 
 /** One arsenal texture to load: an image (sticker) or a strip cut in square frames. */
 export interface ArsenalLoad {key:string;url:string;strip:boolean}

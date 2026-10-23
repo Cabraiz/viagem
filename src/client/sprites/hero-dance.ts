@@ -15,28 +15,73 @@ export const DANCE_PREFETCH_MS=3000;
  */
 export const DANCE_RATE=2;
 
+/** A cheer (round won, team level-up, a big enemy down near a bot) dances this long, whenever the figure stands still. */
+export const CHEER_MS=6000;
+/** A bot cheers a boss or an elite that falls within this many world units of it. */
+export const CHEER_RADIUS=8;
+
 /**
  * What the scene knows about one figure this frame. `allowed`: it may dance at all (alive, on its feet, not riding,
  * slipping or out of the run: see danceAllowed). `poke`: the scene-clock time of the local player's last input (own
- * hero only): an input restarts the wait.
+ * hero only): an input restarts the wait and cuts a cheer. `idle: false`: standing still never starts it (the room's
+ * bots dance only when they cheer). `cheer`: the scene-clock time of the figure's last cheer (Cheers.of).
  */
-export interface DanceCue {allowed:boolean;poke?:number}
+export interface DanceCue {allowed:boolean;poke?:number;idle?:boolean;cheer?:number}
 
 /** The wait and the dance of one figure. */
 export class DanceGate {
   private quietSince?:number;
+  private start?:number;
   /**
    * `still`: the figure rests this frame (CharacterSprites: motion idle, not pushing, no flinch). Returns the dance's
-   * start (scene clock) while it dances, else undefined; `prefetch` tells when to start downloading the sheet.
+   * start (scene clock) while it dances, else undefined; `prefetch` tells when to start downloading the sheet. A cheer
+   * dances from the moment it is still within CHEER_MS of the cheer; a dance that goes on (a cheer that runs into the
+   * idle wait) keeps its start, so the moves never jump back to the first pose.
    */
   prefetch=false;
   update(now:number,still:boolean,cue?:DanceCue):number|undefined{
     if(!cue||!cue.allowed||!still||this.quietSince===undefined||now<this.quietSince)this.quietSince=now;
     if(cue?.poke!==undefined&&cue.poke>this.quietSince)this.quietSince=Math.min(now,cue.poke);
-    const quiet=now-this.quietSince;
-    this.prefetch=quiet>=DANCE_IDLE_MS-DANCE_PREFETCH_MS;
-    return quiet>=DANCE_IDLE_MS?this.quietSince+DANCE_IDLE_MS:undefined;
+    const quiet=now-this.quietSince,idle=cue?.idle!==false;
+    const cheer=cue?.allowed&&cue.cheer!==undefined&&now>=cue.cheer&&now-cue.cheer<CHEER_MS&&!(cue.poke!==undefined&&cue.poke>cue.cheer)?cue.cheer:undefined;
+    this.prefetch=cheer!==undefined||idle&&quiet>=DANCE_IDLE_MS-DANCE_PREFETCH_MS;
+    const idleStart=idle&&quiet>=DANCE_IDLE_MS?this.quietSince+DANCE_IDLE_MS:undefined;
+    const cheerStart=cheer!==undefined&&still&&cue?.allowed?Math.max(cheer,this.quietSince):undefined;
+    if(idleStart===undefined&&cheerStart===undefined){this.start=undefined;return undefined;}
+    if(this.start===undefined||this.start>now||this.start<this.quietSince)this.start=Math.min(idleStart??Infinity,cheerStart??Infinity);
+    return this.start;
   }
+}
+
+/** One figure the cheers know of this tick (RunView.players). */
+export interface CheerFigure {id:string;x:number;y:number;bot?:boolean}
+/** The run's events the cheers read (contract SimEvent: round, levelup, kill). */
+export type CheerEvent={type:string;phase?:unknown;enemy?:unknown;kind?:unknown;x?:unknown;y?:unknown};
+const isBossKind=(kind:unknown)=>typeof kind==='string'&&(kind==='chefe'||kind.startsWith('chefe-'));
+
+/**
+ * Card danca-no-jogo, etapa 2: who cheers, from the events every client already gets (nothing new on the wire, each
+ * client draws the same). A round that ends (the wave knocked down, the last one is the win): everyone. The team's
+ * level-up: the bots. A boss or an elite that falls within CHEER_RADIUS of a bot: that bot. Pure (no Phaser).
+ */
+export class Cheers {
+  private at=new Map<string,number>();
+  private big=new Set<string>();
+  /** One RunView: its events at scene time `now`, its players, and its enemies (the big ones are remembered for their kill). */
+  push(now:number,events:readonly CheerEvent[],players:readonly CheerFigure[],enemies:readonly {id:string;elite?:boolean;boss?:boolean}[]=[]){
+    for(const e of events){
+      const round=e.type==='round'&&e.phase==='end',levelup=e.type==='levelup',big=e.type==='kill'&&(this.big.has(String(e.enemy))||isBossKind(e.kind));
+      if(!round&&!levelup&&!big)continue;
+      for(const p of players){
+        if(round||p.bot&&(levelup||big&&Math.hypot(p.x-Number(e.x),p.y-Number(e.y))<=CHEER_RADIUS))this.at.set(p.id,now);
+      }
+    }
+    this.big.clear();
+    for(const e of enemies)if(e.elite||e.boss)this.big.add(e.id);
+    for(const id of this.at.keys())if(!players.some(p=>p.id===id))this.at.delete(id);
+  }
+  /** The scene time of `id`'s last cheer, if any (DanceCue.cheer). */
+  of(id:string):number|undefined{return this.at.get(id);}
 }
 
 /** The fields of a player's run state (PlayerRunView) that forbid dancing. */

@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {dancePlan} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites,danceFrame} from '../../src/client/sprites/character-sprites.ts';
-import {DanceGate,danceAllowed,DANCE_IDLE_MS,DANCE_PREFETCH_MS,DANCE_RATE} from '../../src/client/sprites/hero-dance.ts';
+import {Cheers,DanceGate,danceAllowed,CHEER_MS,CHEER_RADIUS,DANCE_IDLE_MS,DANCE_PREFETCH_MS,DANCE_RATE} from '../../src/client/sprites/hero-dance.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
 import {screenDirection} from '../../src/client/projection.ts';
 
@@ -64,6 +64,46 @@ test('no dance dead, downed, out, offline, watching, riding or sliding; without 
   // Allowed again (got up, left the moto): the 5 s count from the last frame it was not.
   assert.equal(gate.update(20500,true,on),undefined);assert.equal(gate.update(20000+DANCE_IDLE_MS-1,true,on),undefined);
   assert.equal(gate.update(20000+DANCE_IDLE_MS,true,on),20000+DANCE_IDLE_MS);
+});
+
+test('a cheer dances at once while still, for CHEER_MS; a step or a tap cuts it; bots never dance from the wait',()=>{
+  const gate=new DanceGate();
+  assert.equal(gate.update(1000,true,{allowed:true,cheer:1000}),1000,'from the cheer, no 5 s wait');assert.equal(gate.prefetch,true);
+  assert.equal(gate.update(1500,false,{allowed:true,cheer:1000}),undefined,'a step cuts it');
+  assert.equal(gate.update(2000,true,{allowed:true,cheer:1000}),1500,'standing again within the cheer, it dances again from its last step');
+  // A person that stays still runs on into the wait's dance with the same start (no jump to the first pose).
+  assert.equal(gate.update(1000+CHEER_MS+3000,true,{allowed:true,cheer:1000}),1500);
+  const tapped=new DanceGate();tapped.update(0,true,{allowed:true,cheer:0});
+  assert.equal(tapped.update(100,true,{allowed:true,cheer:0,poke:50}),undefined,'the local player tap cuts the cheer');
+  assert.equal(tapped.update(200,true,{allowed:true,cheer:0,poke:50}),undefined);
+  // A bot: only the cheer, and only for CHEER_MS.
+  const bot=new DanceGate();
+  assert.equal(bot.update(0,true,{allowed:true,idle:false}),undefined);
+  assert.equal(bot.update(20000,true,{allowed:true,idle:false}),undefined,'a bot never dances from standing still');assert.equal(bot.prefetch,false);
+  assert.equal(bot.update(30000,true,{allowed:true,idle:false,cheer:30000}),30000);
+  assert.equal(bot.update(30000+CHEER_MS-1,true,{allowed:true,idle:false,cheer:30000}),30000);
+  assert.equal(bot.update(30000+CHEER_MS,true,{allowed:true,idle:false,cheer:30000}),undefined,'the cheer is over');
+  // Never in the forbidden states, cheer or not.
+  assert.equal(new DanceGate().update(0,true,{allowed:false,cheer:0}),undefined);
+});
+
+test('who cheers: a round that ends, everyone; the level-up, the bots; a boss or an elite down near a bot, that bot',()=>{
+  const players=[{id:'eu',x:0,y:0},{id:'bot-perto',x:3,y:0,bot:true},{id:'bot-longe',x:CHEER_RADIUS+20,y:0,bot:true}];
+  let c=new Cheers();
+  c.push(100,[{type:'damage'},{type:'round',phase:'wave'},{type:'kill',enemy:'e1',kind:'pombo',x:0,y:0}],players);
+  assert.deepEqual(players.map(p=>c.of(p.id)),[undefined,undefined,undefined],'a round that starts or a small kill: nobody');
+  c.push(200,[{type:'round',phase:'end'}],players);
+  assert.deepEqual(players.map(p=>c.of(p.id)),[200,200,200],'the wave down (the last one is the win): all');
+  c=new Cheers();c.push(300,[{type:'levelup',level:4}],players);
+  assert.deepEqual(players.map(p=>c.of(p.id)),[undefined,300,300],'the level-up: the bots only');
+  // The elite is known by the view before its kill (the kill's tick no longer lists it).
+  c=new Cheers();c.push(400,[],players,[{id:'e2',elite:true},{id:'e3'}]);
+  c.push(450,[{type:'kill',enemy:'e2',kind:'motoboy',x:4,y:1}],players,[]);
+  assert.deepEqual(players.map(p=>c.of(p.id)),[undefined,450,undefined],'the elite fell near one bot');
+  c.push(500,[{type:'kill',enemy:'e9',kind:'chefe-pastel',x:CHEER_RADIUS+19,y:0}],players);
+  assert.equal(c.of('bot-longe'),500,'a boss by its kind');assert.equal(c.of('eu'),undefined);
+  c.push(600,[],players.slice(0,1));
+  assert.equal(c.of('bot-perto'),undefined,'a bot that left is forgotten');
 });
 
 test('the dance plan: one frontal 16×8 sheet of 96 px cells, its lite copy, malformed entries ignored',()=>{

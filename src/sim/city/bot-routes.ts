@@ -23,8 +23,7 @@
  * between the lure of a gem and its circle around the wall (city-room-bots, after cidade-06). Since no blocker reaches
  * the grid, routes are per asset: every room (each on its own fork of the city) shares one grid and the LRU.
  */
-import {CityTerrain,FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type Point} from '../../maps/index.ts';
-import {DIRS} from '../../maps/flowfield.ts';
+import {CityTerrain,DIRS,FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type Point} from '../../maps/index.ts';
 import {CITY_MAP_SCALE} from '../../rules/index.ts';
 import {cityFlowGrid,type CityFlowGrid} from './grid.ts';
 

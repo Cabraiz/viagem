@@ -13,9 +13,16 @@ import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 // Light under memory pressure (many test processes at once): no libvips operation cache, one libvips thread.
 sharp.cache(false);sharp.concurrency(1);
 
-test('all 36 class IDs have a transparent 18-frame sheet and a measured scale',async()=>{
-  assert.equal(Object.keys(spriteCatalog).length,classes.length);
-  for(const hero of classes){
+/** The classes drawn before the movement art (the 35 of D-025): each has today's 18-frame sheet in the catalog. */
+const legacy=classes.filter(hero=>hero.id in spriteCatalog);
+test('the 35 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
+  assert.equal(legacy.length,35);
+  assert.ok(Object.keys(spriteCatalog).every(id=>classes.some(hero=>hero.id===id)));
+  // gato-no-menu: a class born with the movement art (16 poses per facing) has no 18-frame sheet; the renderer skips it.
+  const pieces=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
+  for(const hero of classes.filter(hero=>!(hero.id in spriteCatalog)))
+    assert.ok(['idle16-S','walk16-S','run16-S','attack16-S'].every(k=>pieces[hero.id]?.files?.[k]),`${hero.id}: no legacy sheet and no movement art`);
+  for(const hero of legacy){
     assert.ok(spriteCatalog[hero.id].height>0);
     const m=await sharp(`public/art/sprites/${hero.id}.webp`).metadata();
     assert.deepEqual([m.width,m.height,m.hasAlpha],[1152,576,true],hero.id);
@@ -177,12 +184,12 @@ test('4 directions: a remote ally turns by its interpolated velocity, without bl
   }
 });
 
-test('4 directions: the 36 classes without a 4-direction batch keep exactly the old mirror rule',()=>{
+test('4 directions: the legacy classes without a 4-direction batch keep exactly the old mirror rule',()=>{
   // No class ships a 4-direction batch yet: every class (the 35 others and the lab one outside the lab) uses its
   // approved single sheet, under the same texture key and clips as before.
   assert.equal(directionalSheets.size,Object.values(spriteCatalog).filter(c=>c.dir4).length);
   const v2Heroes=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};
-  for(const hero of classes){
+  for(const hero of legacy){
     if(spriteCatalog[hero.id].dir4)continue;
     assert.equal(sheetKey(hero.id),`sprite:${hero.id}`,hero.id);
     // An atlas from the art v2 import is fine: the index lists it (the game only uses it once the index is in).
@@ -229,7 +236,7 @@ const labPixels=()=>labDecoded??=sharp(LAB).ensureAlpha().raw().toBuffer({resolv
 const labImage=async()=>{const {data,info}=await labPixels();return sharp(data,{raw:{width:info.width,height:info.height,channels:4}});};
 
 test('figure boxes come measured in the catalog (no pixel reads in a match) and match the art',async()=>{
-  for(const hero of classes){
+  for(const hero of legacy){
     const {data,width,height}=await raw(`public/art/sprites/${hero.id}.webp`);
     assert.deepEqual(spriteCatalog[hero.id].figure,figureBox(data,width,height),hero.id);
   }

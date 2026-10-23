@@ -17430,10 +17430,10 @@
    "shownPsnr": 46
   },
   "menu/fundo-gato-nada-pra-comer.webp": {
-   "source": "93f88b17dd548bf53aa15d96c11d7eb76f5748bca92ff566a174972575070675",
-   "lite": "b0b511496d57346907bd7bde53a50bf7800c9c8b44872158ceb16e74fd340609",
-   "bytes": 836604,
-   "liteBytes": 614994,
+   "source": "1d0a5f795e0e66f0f0b4ce5b8d45aea22c432db459cdfa11fbe8c12b9dfd3d08",
+   "lite": "0059ccda6e80bc9cfe8199772cd00bf7d9bb05b1f593ed794cb147a120b357b6",
+   "bytes": 834604,
+   "liteBytes": 613792,
    "psnr": 43.6,
    "shownPsnr": 45.4
   },

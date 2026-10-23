@@ -1168,9 +1168,13 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
-const bit=(field:number)=>1<<(field+FIELD_BIT);
-const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
+/**
+ * Field bits by arithmetic, not `1<<` / `>>>` (31-bit): the players passed 29 fields with the viaduct's `andar` after
+ * `moveSpeed` (mapa-175-com-viaduto), and 1<<31 is negative. Masks are varints, exact up to 2^53 (~50 fields); the bytes
+ * of a mask under 2^31 are the same as before. NUDGE and NEW stay in the low bits (`mask&NEW` keeps them exact).
+ */
+const bit=(field:number)=>2**(field+FIELD_BIT);
+const has=(mask:number,field:number)=>Math.floor(mask/2**(field+FIELD_BIT))%2===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).

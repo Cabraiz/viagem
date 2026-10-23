@@ -45,7 +45,12 @@ const HEROES=[
   // sole line). His 2x is Real-ESRGAN 4x of that native cutout, reduced (`esrganDir`: his own folder). His background is
   // the rooftop without him plus `sombra` (contact shadow + the wet tiles' reflection, a semi-transparent layer in the
   // bleed's px, kept apart so a new pose only redoes it).
+  // Letreiro (NEW-20261023-ORQ-gato-no-menu, the user chose variation 3 of 8: the fish collar tag): his scene's sign with
+  // the collar redrawn far up by Codex (the user: "ampliar bem muito para cima caso precise descer"), the tag from the
+  // scene itself below the bell (juntar-ext.py), 2x by Real-ESRGAN (ampliar.py). The menu shows the tag where variation 3
+  // was and lets the collar run off the top (apelidos.ts LETREIRO_ALTO).
   {id:'gato-nada-pra-comer',evidence:'D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-gato-destaque-8',
+    letreiro:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-letreiro-gato-na-cena/letreiro-3x-2x.png',
     heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
     sombra:'gato-1-sombra-2560.png'},

@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import {handTone} from '../../scripts/hand-track.mjs';
 import {HAND_POINTS} from '../../src/client/sprites/hand-points-data.ts';
 import {AIM_ANGLE,DEFAULT_HOLD,HAND_PATCH,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,patchCrop,patchShift,handOnScreen,handPoint,handSheetKey,heldHand,holdPose,type HandSheet} from '../../src/client/sprites/hand-points.ts';
-import {FIRE_LOOK} from '../../src/client/render/arsenal-rules.ts';
+import {FIRE_LOOK,PACK12_ITEMS} from '../../src/client/render/arsenal-rules.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movementIdle8Frame,movementPlan} from '../../src/client/sprites/movement128.ts';
 import {HERO_DIRECTIONS} from '../../src/client/sprites/sprite-motion.ts';
@@ -223,7 +223,8 @@ test('holdPose: the barrel along the aim, upright when aiming left, the maçaric
   const torch=WEAPON_HOLD.macarico;
   assert.deepEqual(holdPose(torch,Math.PI),{rotation:0,flipX:true,flipY:false,ox:1-torch.grip[0],oy:torch.grip[1]});
   assert.deepEqual(holdPose(torch,0),{rotation:0,flipX:false,flipY:false,ox:torch.grip[0],oy:torch.grip[1]});
-  for(const id of Object.keys(FIRE_LOOK))assert.ok(WEAPON_HOLD[id],`${id} has a hold`);
+  // The firearms have their hold; the Pack 12 weapons hold their sticker small (DEFAULT_HOLD) until their in-hand art.
+  for(const id of Object.keys(FIRE_LOOK))if(!PACK12_ITEMS.includes(id))assert.ok(WEAPON_HOLD[id],`${id} has a hold`);
   assert.ok(DEFAULT_HOLD.px>0);
 });
 

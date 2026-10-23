@@ -94,7 +94,7 @@ import {homeOf,pickRecipe,type BrainMemory} from '../src/sim/bot-brain.ts';
 import {isStanding} from '../src/sim/revive.ts';
 import {OPEN_SECONDS} from '../src/sim/crates.ts';
 import {CRATE_STAND} from '../src/sim/bot-loot.ts';
-import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,returnTicks,type RecipeId} from '../src/rules/index.ts';
+import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
@@ -105,7 +105,7 @@ import {NEST_PACE} from '../src/sim/ninhos/ninhos.ts';
 import {NOISE} from '../src/sim/ninhos/sono.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
 const CLEAN_DELIVERY_TICKS=ENTREGA_CLEAN_SECONDS*20;
-import {BOT_FORGE_LEFT,BOT_NAMES,RoomBots} from '../multiplayer/room-bots.ts';
+import {BOT_FORGE_LEFT,botName,RoomBots} from '../multiplayer/room-bots.ts';
 import {LevelupPause,PAUSE_FIRST_MS} from '../multiplayer/levelup-pause.ts';
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -767,7 +767,7 @@ export function playRun(o:RunOptions):RunRecord{
   const ids:string[]=[],cls:string[]=[];
   for(let i=0;i<o.players;i++){
     const id=`bot${i+1}`,classId=CLASS_ROTATION[i%CLASS_ROTATION.length];
-    sim.addBot(id,BOT_NAMES[i%BOT_NAMES.length],classId);room.add(id,i);ids.push(id);cls.push(classId);
+    sim.addBot(id,botName(getClass(classId)?.name??id,new Set([...sim.players.values()].map(p=>p.name))),classId);room.add(id,i);ids.push(id);cls.push(classId);
   }
   sim.botState=()=>room.state();
   sim.resetRun();room.reset();

@@ -38,6 +38,8 @@ export interface WeaponProjectile extends ProjectileState {
   knockback?:number; slowTicks?:number;
   /** Destroys hostile projectiles that touch it (guarda-chuva). */
   blocksHostile?:boolean;
+  /** Thrown zone (rules/thrown.ts): in flight until this tick, hitting nothing; then it stops on landX/landY and bursts. */
+  landTick?:number; landX?:number; landY?:number;
   /** Boomerang: at this tick velocity reverses and `hit` resets once for the return pass. */
   returnTick?:number;
   /** Hostile only: status the hit applies to the player it hurts (agiota's boleto-juros, enemies/catalog.ts DEVENDO). */
@@ -176,6 +178,11 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
       p.vx=-Math.sin(p.angle)*r*spin*SIM_HZ;p.vy=Math.cos(p.angle)*r*spin*SIM_HZ;
       return true;
     }
+    if(p.landTick!==undefined&&ctx.tick>=p.landTick){
+      p.x=p.landX??p.x;p.y=p.landY??p.y;p.vx=0;p.vy=0;
+      delete p.landTick;delete p.landX;delete p.landY;
+      return true;
+    }
     if(motion==='homing')steer(ctx,p);
     if(p.returnTick!==undefined&&ctx.tick>=p.returnTick){
       // Return pass may hit everyone again, except enemies still touching it at the turn (no 2-tick double hit).
@@ -205,7 +212,7 @@ export function createProjectileSystem(opts:{cap?:number}={}):SimSystem{
   }
 
   function collideFriendly(ctx:SimContext,p:WeaponProjectile,from:{x:number;y:number}):boolean{
-    if(p.mechanic==='turret')return true;
+    if(p.mechanic==='turret'||p.landTick!==undefined)return true;
     const half=Math.hypot(p.x-from.x,p.y-from.y)/2;
     const mx=(p.x+from.x)/2,my=(p.y+from.y)/2;
     candidates.length=0;

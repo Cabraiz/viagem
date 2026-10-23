@@ -2,7 +2,7 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,interpolate,type FloorPoint} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,type FloorPoint} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
 import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
@@ -14,10 +14,10 @@ import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
 import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
-import {ArrivalJitter,along,blendFactor} from './smoothing.ts';
+import {ArrivalJitter,RemoteClock,remoteAt,tickTime} from './smoothing.ts';
 import {SilenceWatch,DEAD_MAX_MS} from './silence.ts';
 /** Enemies live in `feed` (the horde renderer interpolates them itself); samples only smooth remote players. */
-type Sample={at:number;players:Map<string,Player>};
+type Sample={at:number;tick:number;players:Map<string,Player>};
 /**
  * A frame not acked by an input within this long gets a standalone {t:'ack'} (lobby, standing still, fallen, watching).
  * input-10hz: every message the room receives counts toward the free plan (20 messages = 1 request), and a still
@@ -186,6 +186,8 @@ export class CoopClient {
   onReconcile?:(from:Point,to:Point,skill:boolean)=>void;
   /** Frame arrival jitter: the render delay of the other players (smoothing.ts). */
   readonly arrivals=new ArrivalJitter();
+  /** Room time the other players are drawn at (smoothing.ts RemoteClock, BUG bots-ainda-mais-rapidos). */
+  readonly remoteClock=new RemoteClock();
   /** A frame has placed the hero once (predicted is no longer the constructor placeholder). */
   private placed=false;
   /** The own skill's last tick: a frame that moves it brings a real move (a dash), not a prediction error. */
@@ -557,7 +559,7 @@ export class CoopClient {
     const terrain=terrainFor(m.world as Parameters<typeof terrainFor>[0]);
     if(typeof terrain==='string'){this.fail(ws,terrain);return;}
     this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-    this.pending=[];this.samples=[];this.mapSwitches++;
+    this.pending=[];this.samples=[];this.remoteClock.reset();this.mapSwitches++;
     this.onMap(map);
   }
   /** One JSON message from the room (after any city wait). */
@@ -572,7 +574,7 @@ export class CoopClient {
       const terrain=terrainFor(m.world);
       if(typeof terrain==='string'){this.fail(ws,terrain);return;}
       this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.remoteClock.reset();this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -721,7 +723,7 @@ export class CoopClient {
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};
@@ -775,8 +777,9 @@ export class CoopClient {
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
     }
-    const at=performance.now();this.arrivals.push(at);
-    this.samples.push({at,players:new Map(this.players)});
+    const at=performance.now();this.arrivals.push(at);this.remoteClock.push(at,view.tick);
+    // Ticks only go forward within a round; a frame older than the newest (a resync) is not drawn back to.
+    if(view.tick>=(this.samples.at(-1)?.tick??-Infinity))this.samples.push({at,tick:view.tick,players:new Map(this.players)});
     if(this.samples.length>12)this.samples.shift();
   }
   /** Sends one JSON message; the current socket's send time feeds the keepalive. */
@@ -899,20 +902,16 @@ export class CoopClient {
     this.onCommand?.(command,sent);
   }
   /**
-   * A render buffer smooths remote players without delaying local controls: as long as the link's jitter needs
-   * (smoothing.ts ArrivalJitter, 100-250 ms); a late frame does not freeze them, they go on along their last motion for
-   * at most EXTRAPOLATE_MAX_MS (3g-rede-sem-teleporte).
+   * A render buffer smooths remote players without delaying local controls: they are drawn at a room time (tick ×
+   * 50 ms) that follows the frames' arrival at the phone's own pace (smoothing.ts RemoteClock), so frames landing in a
+   * burst never speed them up (BUG bots-ainda-mais-rapidos); a late frame does not freeze them, they go on along their
+   * last motion for at most EXTRAPOLATE_MAX_MS (3g-rede-sem-teleporte).
    */
   view(now=performance.now()):{players:Player[]}{
-    const target=now-this.arrivals.delay(),s=this.samples,n=s.length;
-    let i=0;while(i<n&&s[i].at<=target)i++;
-    // Between two samples; before the oldest: the oldest; past the newest: along the last two (blendFactor caps it).
-    const a=s[Math.max(0,Math.min(i,n)-1)]??s[0],b=i<n?s[i]:s[n-1],prev=i>=n&&n>1?s[n-2]:undefined;
-    const t=a&&b?(i>=n&&prev?blendFactor(b.at,b.at,target,prev.at):i===0?1:blendFactor(a.at,b.at,target)):1;
+    const target=this.remoteClock.time(now)??-Infinity,s=this.samples;
     return {players:[...this.players.values()].map(p=>{
       if(p.id===this.id)return {...p,...this.predicted,andar:this.predicted.andar};
-      if(i>=n&&prev){const q=prev.players.get(p.id),r=b.players.get(p.id);return {...p,...(q&&r?along(q,r,t):r??p)};}
-      return {...p,...interpolate(a?.players.get(p.id)??p,b?.players.get(p.id)??p,t)};
+      return {...p,...(remoteAt(s,target,p.id,tickTime)??p)};
     })};
   }
   /** Exposed as a visible diagnostic control; closes the actual socket, then normal retry takes over. */

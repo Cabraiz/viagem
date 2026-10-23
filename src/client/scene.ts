@@ -53,7 +53,7 @@ import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
 import {LIFTED_DEPTH,auditBlackout} from './render/blackout-rules.ts';
 import {MARK_DEPTH} from './render/you.ts';
-import {HERO_SHADOW_SIZE,destinationArtRim,destinationMark,heroShadow} from './render/city-edge-rules.ts';
+import {destinationArtRim,destinationMark} from './render/city-edge-rules.ts';
 import {ENEMY_DRAW_SCALE,HERO_DRAW_SCALE} from './render/draw-scale.ts';
 import {FpsWatch,frameGateMs} from './economy.ts';
 import {QUALITY_WATCH,qualityProfile,type QualityLevel} from './quality.ts';
@@ -102,6 +102,8 @@ export interface SceneHooks {
   enemyPicked?:(id:string)=>void;
   /** D-051: the right mouse button pressed (true) or let go (false) holds the attack like Space. Absent: no manual attack. */
   attackHold?:(down:boolean)=>void;
+  /** The phone's aim stick over the attack button (tiro-na-direcao-mobile): its world direction while it aims, else undefined. */
+  aimStick?:()=>Point|undefined;
   /** D-051: the room plays the manual combat (the target words say "ataque", not "a arma atira sozinha"). */
   manual?:()=>boolean;
   /** Each new authoritative RunView (coop only), right after the horde renderer got it: the HUD consumes it. */
@@ -221,9 +223,10 @@ export class IslandScene extends Phaser.Scene {
   private outlines=new CityOutlines(this,{active:()=>isCityWorld(this.field),zoom:()=>this.settledZoom,
     groundLuminance:(x,y)=>this.city?cityGroundLuminance(this.city.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
-  private shadow!:Phaser.GameObjects.Ellipse;
-  /** BUG sombra-longe: the hero's frame laid on the ground (render/silhouette.ts); off in economy mode. */
+  /** The hero's frame laid on the ground, its only shadow (render/silhouette.ts; card sombra-silhueta), in every quality. */
   private heroSil?:Phaser.GameObjects.Image;
+  /** Depth of the hero's ground layer (its silhouette): the melee cone draws there. */
+  private heroGroundDepth=0;
   private ring!:Phaser.GameObjects.Ellipse;
   private destination!:Graphics;
   /** Imported destination marker and skill rings (art/frames-art.ts); without the art, today's Graphics. */
@@ -277,9 +280,7 @@ export class IslandScene extends Phaser.Scene {
   private skillEffects?:Graphics;
   private displayed?:Point;
   private remoteActors=new Map<string,{image:Phaser.GameObjects.Sprite;label:MapLabel;ring:Phaser.GameObjects.Ellipse;
-    /** City only: the ally's contact shadow, Breu 38% like the hero's (created on demand, dropped off the city). */
-    shadow?:Phaser.GameObjects.Ellipse;
-    /** The ally's cast silhouette (render/silhouette.ts), like the hero's; created on demand. */
+    /** The ally's cast silhouette (render/silhouette.ts), like the hero's; its only shadow, created on demand. */
     sil?:Phaser.GameObjects.Image}>();
   /** Horde layers (VGM-039) fed by net.feed; players stay sprites owned by this scene. */
   private horde?:HordeRenderer;
@@ -449,9 +450,7 @@ export class IslandScene extends Phaser.Scene {
     this.buildWorld();
     // Lighting card: the vignette over the world (the grade itself is baked into the ground shaders; `?luz=0` skips both).
     this.vignette=new Vignette(this);this.applyGrade();
-    // The hero's shadow, ring and stand-in follow its drawn size (HERO_DRAW_SCALE, render/draw-scale.ts).
-    this.shadow=this.add.ellipse(0,0,42,17,0x3d756a,.2).setScale(HERO_DRAW_SCALE);
-    this.shadowLook();
+    // The hero's ring and stand-in follow its drawn size (HERO_DRAW_SCALE, render/draw-scale.ts).
     // The old cream ring stays only as an object (rotation/placement code moves it); the you-marker draws the real one.
     this.ring=this.add.ellipse(0,0,50,23).setStrokeStyle(2,0xfff8c8,.95).setVisible(false).setScale(HERO_DRAW_SCALE);
     this.actor=sunlit(this.add.sprite(0,0,'hero').setOrigin(.5,.88).setDisplaySize(112*HERO_DRAW_SCALE,112*HERO_DRAW_SCALE));
@@ -537,7 +536,7 @@ export class IslandScene extends Phaser.Scene {
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
-        aim:()=>this.mouseGround(),
+        aim:()=>this.mouseGround()??this.stickGround(),
         // …drawn by the scene right after the hero is placed: under his shadow, at his drawn depth (cone-por-cima).
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
@@ -628,14 +627,12 @@ export class IslandScene extends Phaser.Scene {
     if(this.hooks.net){this.position={...this.hooks.net.predicted};this.displayed=undefined;this.correction.clear();}
     // The old world's defenses and their craters go; the next snapshot brings this world's (no volley on first sight).
     this.towers?.reset();this.towerFeed.reset();this.buildPlan=undefined;
-    this.buildWorld();this.shadowLook();this.applyGrade();
+    this.buildWorld();this.applyGrade();
     this.rebaseDepth(true);this.reproject();this.fit();this.place();
     // hooks.terrain is not called again: explore.ts appends a settings line per call (it reports the first world only).
   }
   /** Cidade Nevada mode (the field says 'cidade'): the Breu edges and shadows of card cidade-contorno-breu. */
   private get cityMode(){return isCityWorld(this.field);}
-  /** The hero's contact shadow for this world: Breu 38% in the city, main's teal 20% elsewhere. */
-  private shadowLook(){const look=heroShadow(this.cityMode);this.shadow?.setFillStyle(look.color,look.alpha);}
   /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
   private cityDepths(){
     if(!this.projector)return;
@@ -652,7 +649,7 @@ export class IslandScene extends Phaser.Scene {
     const old=this.actorScale;if(k===old)return;
     this.actorScale=k;this.sprites.viewScale=k;
     const hero=this.heroScale;
-    this.shadow?.setScale(hero);this.ring?.setScale(hero);
+    this.ring?.setScale(hero);
     const resize=(s:Phaser.GameObjects.Sprite,icon:number)=>{
       if(s.texture.key.startsWith('sprite:')||s.texture.key.startsWith('sprite128:'))s.setScale(s.scaleX/old*k,s.scaleY/old*k);else s.setDisplaySize(icon*hero,icon*hero);
     };
@@ -774,9 +771,16 @@ export class IslandScene extends Phaser.Scene {
     const p=this.input.activePointer;
     return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.field);
   }
+  /** The ground point one unit from the hero along the phone's aim stick, or undefined while it does not aim. */
+  private stickGround():Point|undefined{
+    const d=this.hooks.aimStick?.();
+    return d&&{x:this.position.x+d.x,y:this.position.y+d.y};
+  }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */
   get chosenTarget(){return this.attackTarget;}
+  /** Where the local hero means to walk (world units; zero standing): the kit's ghost goes that way (construir-no-botao). */
+  get heroIntent():Point{return this.intent;}
   setPaused(paused:boolean){this.paused=paused;if(paused){this.attackTarget=undefined;this.horde?.setTarget(undefined);}this.route=[];this.destination?.clear();this.hold.release();if(paused)this.rightAttack(false);this.input.keyboard?.resetKeys();}
   /**
    * Focus lost on the desktop (controles-desktop): no pause, but nothing stays held: the keys Phaser saw down, and the
@@ -871,9 +875,9 @@ export class IslandScene extends Phaser.Scene {
     this.selfCovered=covered;
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
-    this.shadow.setPosition(p.x,p.y).setDepth(depth-2);
+    this.heroGroundDepth=depth-2;
     this.heroSil??=silhouetteImage(this,'hero',depth-2);
-    castSilhouette(this.heroSil,this.actor,p.x,p.y,!this.economy,depth-2);
+    castSilhouette(this.heroSil,this.actor,p.x,p.y,true,depth-2);
     this.ring.setPosition(p.x,p.y).setDepth(depth-1);
   }
   /** Whether a prop drawn in front of the point `p` (screen) at `depth` covers a sprite standing there. */
@@ -965,7 +969,8 @@ export class IslandScene extends Phaser.Scene {
     if(this.terrainWatch.sync(this.hooks.net?.terrain))this.swapWorld();
     this.drawLabels();
     const self=this.hooks.net?.players.get(this.hooks.net.id);
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent);
+    // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,this.hooks.aimStick?.());
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1227,7 +1232,7 @@ export class IslandScene extends Phaser.Scene {
       }
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
-      const aim=mouse&&{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y};
+      const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
       net.input(direction,false,this.attackTarget,!frozen&&!out&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
@@ -1249,14 +1254,14 @@ export class IslandScene extends Phaser.Scene {
     this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
     // The floor comes with the prediction (maps prediction.ts FloorPoint): the hero on a viaduct's deck is drawn on it.
     this.position={...this.displayed,...(net.predicted.andar===1?{andar:1 as const}:{})};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
-    this.horde?.selfCone(this.position,this.shadow.depth);
+    this.horde?.selfCone(this.position,this.heroGroundDepth);
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
-    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.shadow?.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
+    for(const [id,objects] of this.remoteActors)if(!ids.has(id)){objects.image.destroy();objects.label.destroy();objects.ring.destroy();objects.sil?.destroy();this.remoteActors.delete(id);this.you?.forget(id);this.allyRings?.forget(id);}
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
@@ -1278,14 +1283,9 @@ export class IslandScene extends Phaser.Scene {
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
-      // City: a contact shadow under each ally too, the same as the hero's (Breu 38%); none elsewhere (main).
-      if(city){
-        const look=heroShadow(true);
-        objects.shadow??=this.add.ellipse(0,0,HERO_SHADOW_SIZE.width,HERO_SHADOW_SIZE.height,look.color,look.alpha);
-        objects.shadow.setScale(k).setPosition(q.x,q.y).setDepth(depth-2);
-        objects.sil??=silhouetteImage(this,'hero',depth-2);
-        castSilhouette(objects.sil,objects.image,q.x,q.y,!this.economy&&!down,depth-2);
-      }else{if(objects.shadow){objects.shadow.destroy();objects.shadow=undefined;}if(objects.sil){objects.sil.destroy();objects.sil=undefined;}}
+      // Each ally casts its frame on the ground like the hero (card sombra-silhueta), in every world and quality.
+      objects.sil??=silhouetteImage(this,'hero',depth-2);
+      castSilhouette(objects.sil,objects.image,q.x,q.y,true,depth-2);
       // Imported ring (the "Você" ring tinted Breu) at today's outer width and depth: the ellipse hides while it draws.
       if(this.allyRings?.draw(player.id,q.x,q.y,ALLY_RING_WIDTH*k,depth-1,time,this.reduced))objects.ring.setVisible(false);
       else if(!objects.ring.visible)objects.ring.setVisible(true);

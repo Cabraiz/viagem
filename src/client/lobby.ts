@@ -70,6 +70,14 @@ export function compositionLine(members:readonly {classId?:string}[]){
 }
 /** The class's short name under a chip's name ("CLT"); empty until the class is known. */
 export const memberClassName=(classId:string|undefined)=>classId?getClass(classId)?.name??'':'';
+/**
+ * A chip's name as HTML. A numbered name ("Mendigo 2", a bot named after its class) keeps its number in sight: only
+ * the words before it end in reticências in a narrow cell, so "Mendigo 2" and "Mendigo 3" never both read "Mendig…".
+ */
+export function chipNameHtml(name:string){
+  const m=/^(.+) (\d)$/.exec(name);
+  return m?`<b class="coop-wait-numbered"><b>${escapeHtml(m[1])}</b><b>&nbsp;${m[2]}</b></b>`:escapeHtml(name);
+}
 
 /** Joke for each countdown second (3, 2, 1). */
 export function countdownJoke(seconds:number){
@@ -469,9 +477,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
           // A bot goes out by the door (neutral); a person is expelled: the cross, and a Cone edge on the chip.
           const ask=armed?.id===m.id,out=m.bot?'saiu':'fechar';
           const label=ask?confirmText(m):`${m.name}${said}. Tocar pra ${m.bot?'tirar':'expulsar'}.`;
-          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${escapeHtml(ask?confirmText(m):shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})+kind}</button></li>`;
+          return `<li class="${cls}${ask?' is-asking':''}">${robot}<button type="button" data-id="${escapeHtml(m.id)}" aria-label="${escapeHtml(label)}">${ask?icon(out):status}${face}<span>${ask?escapeHtml(confirmText(m)):chipNameHtml(shown)}</span>${ask?'':crown+icon(out,{className:'coop-wait-out'})+kind}</button></li>`;
         }
-        return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${escapeHtml(shown)}${m.self?' <small>(você)</small>':''}${kind}</span>${crown}<span class="sr-only">${said}</span></li>`;
+        return `<li class="${cls}${m.self?' is-self':''}">${robot}${status}${face}<span${shown!==m.name?` aria-label="${escapeHtml(m.name)}"`:''}>${chipNameHtml(shown)}${m.self?' <small>(você)</small>':''}${kind}</span>${crown}<span class="sr-only">${said}</span></li>`;
       }).join('');
       wasReady=new Set(view.members.filter(m=>m.ready).map(m=>m.id));
     }

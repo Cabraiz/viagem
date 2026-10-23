@@ -258,7 +258,7 @@ function sendPause(){
 if(pausa)setInterval(sendPause,200);
 /**
  * `inv=meio|cheio|kit` (D-051): the local player's inventory in manual combat (hud/inventory.ts); `kit` (torre-pela-caixa)
- * holds a Morteiro kit and a muro kit, and `kit=1` opens the "pôr torre" bar on the Morteiro (hud/kit-place).
+ * holds a Morteiro kit and a muro kit.
  */
 const inv=(['meio','cheio','kit'] as const).find(v=>v===params.get('inv'));
 const INV_HERO={x:12,y:15};
@@ -668,11 +668,6 @@ if(cidade)void (async()=>{
  * D-052 slice 3: ?carro=perto (Puxar near the car), corda (Soltar, on the rope) or obra[-muro|-barricada] (the build
  * tray open with that piece). The buttons and the tray only; the ghost is the scene's (sandbox-cidade obra=1).
  */
-if(inv==='kit'&&params.get('kit')==='1')void (async()=>{
-  const {KitPlaceHud}=await import('../hud/kit-place/kit-place.ts');
-  const bar=new KitPlaceHud(hud.el,{onConfirm:()=>{},onCancel:()=>{},onTurn:()=>{},onAim:()=>{},canvas:()=>undefined});
-  bar.update({open:true,id:'kit:morteiro',canTurn:false,rot:0});
-})();
 const carro=params.get('carro');
 if(carro)void (async()=>{
   const {FortifyHud}=await import('../hud/fortify/fortify.ts');

@@ -21,7 +21,9 @@ const OUT=process.argv[3];
 
 /** Runs in the page. Returns problems for the elements under `rootsSelector`. */
 function audit(rootsSelector,minFont){
-  const vis=e=>{const s=getComputedStyle(e),b=e.getBoundingClientRect();return s.visibility!=='hidden'&&s.display!=='none'&&b.width>0&&b.height>0&&+s.opacity>0.05&&!e.closest('[hidden]');};
+  // Folded for screen readers only (clip-path:inset(50%) on a 1 px box, the result's extra prizes): not on screen.
+  const srOnly=e=>{for(let a=e;a;a=a.parentElement){const s=getComputedStyle(a);if(s.clipPath==='inset(50%)'&&a.getBoundingClientRect().width<=1)return true;}return false;};
+  const vis=e=>{const s=getComputedStyle(e),b=e.getBoundingClientRect();return s.visibility!=='hidden'&&s.display!=='none'&&b.width>0&&b.height>0&&+s.opacity>0.05&&!e.closest('[hidden]')&&!srOnly(e);};
   const ownText=e=>[...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());
   const label=e=>`${e.className||e.tagName}: "${e.textContent.trim().slice(0,28)}"`;
   const problems=[];

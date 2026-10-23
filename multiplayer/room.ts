@@ -7,7 +7,7 @@ import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
 import { classes, liberadoId, PLAYABLE_CLASS_IDS, playableClassId } from '../src/rules/index.ts';
-import {ROOT_DEFENSE,type BuildPiece} from '../src/rules/index.ts';
+import {ROOT_DEFENSE,isKitId,kitItem,kitPiece,type BuildPiece} from '../src/rules/index.ts';
 import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
@@ -913,6 +913,8 @@ export class Room {
     if(typeof m.give==='string'&&ITEMS.get(m.give)?.kind==='weapon'&&p.build.hand!==undefined&&p.build.weapons.length<MAX_WEAPONS){
       p.build.weapons.push({id:m.give,level:1});p.build.hand=p.build.weapons.length-1;
     }
+    // construir-no-botao proofs: a kit de torre in the backpack (the hand stays), without waiting for a crate's kit.
+    else if(isKitId(m.give)&&p.build.hand!==undefined&&p.build.weapons.length<MAX_WEAPONS)p.build.weapons.push(kitItem(kitPiece(m.give)!));
     // VGM-053B proofs (design review D3): a harmless telegraph (0 damage) and a critter at a point near the base reach,
     // so the blackout is photographed with danger on screen.
     const lab=(v:unknown)=>v&&typeof v==='object'&&Number.isFinite((v as {x:number}).x)&&Number.isFinite((v as {y:number}).y)&&

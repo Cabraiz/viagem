@@ -1,0 +1,86 @@
+[
+ {
+  "espera": {
+   "faixa": [],
+   "espera": [
+    "Maria (você)Viciado em Bet, Viciado em Bet, dono da sala, ainda não",
+    "Caça-Pr.Caça-Promoção",
+    "ConcurseiraConcurseira"
+   ],
+   "resultado": []
+  }
+ },
+ "espera-390x844-100.jpg",
+ "espera-390x844-125.jpg",
+ "espera-844x390-100.jpg",
+ "espera-844x390-125.jpg",
+ {
+  "combate": {
+   "faixa": [
+    "Você",
+    "Concurseira",
+    "Caça-Pr.",
+    "Passageira",
+    "Concurs. 2",
+    "Caça-Pr. 2"
+   ],
+   "espera": [
+    "Maria (você)Viciado em Bet, Viciado em Bet, dono da sala, pronto",
+    "Caça-Pr.Caça-Promoção",
+    "Caça-Pr. 2Caça-Promoção",
+    "ConcurseiraConcurseira",
+    "Concurs. 2Concurseira",
+    "PassageiraPassageira do Busão"
+   ],
+   "resultado": []
+  }
+ },
+ "combate-390x844-100.jpg",
+ "combate-390x844-125.jpg",
+ "combate-844x390-100.jpg",
+ "combate-844x390-125.jpg",
+ {
+  "resultado": {
+   "faixa": [
+    "Você",
+    "Concurseira",
+    "Caça-Pr.",
+    "Passageira",
+    "Concurs. 2",
+    "Caça-Pr. 2"
+   ],
+   "espera": [
+    "Maria (você)Viciado em Bet, Viciado em Bet, dono da sala, pronto",
+    "Caça-Pr.Caça-Promoção",
+    "Caça-Pr. 2Caça-Promoção",
+    "ConcurseiraConcurseira",
+    "Concurs. 2Concurseira",
+    "PassageiraPassageira do Busão"
+   ],
+   "resultado": [
+    "Maria Aparecida…",
+    "Concurseira",
+    "Caça-Promoção",
+    "Passageira do Busão",
+    "Concurseira 2",
+    "Caça-Promoção 2"
+   ]
+  }
+ },
+ "resultado-390x844-100.jpg",
+ "resultado-390x844-125.jpg",
+ "resultado-844x390-100.jpg",
+ "resultado-844x390-125.jpg",
+ {
+  "aberto": [
+   "Maria Aparecida dos…"
+  ]
+ },
+ "resultado-toque-390x844-100.jpg",
+ "resultado-toque-390x844-125.jpg",
+ "resultado-toque-844x390-100.jpg",
+ "resultado-toque-844x390-125.jpg",
+ {
+  "errors": []
+ }
+]

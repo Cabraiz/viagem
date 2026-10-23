@@ -29,6 +29,7 @@ import {TriBand} from './city/tri-band.ts';
 import {INTERATIVO_COR} from '../hud/tralha/model.ts';
 import {MuralhaLayer} from './muralha.ts';
 import {towerArtScale} from './towers/tower-rules.ts';
+import {UsableGlow,glowPieces} from './usable-glow.ts';
 
 const LIGHT=lightEnabled();
 
@@ -86,6 +87,8 @@ export class StonewardsRenderer {
   private images=new Map<string,Phaser.GameObjects.Image>();
   /** muralha-tralha-no-jogo: the junk wall the free barricade squares wear (render/muralha.ts), when its sheets are loaded. */
   private muralha:MuralhaLayer;
+  /** contorno-usavel-wc3: the Warcraft 3 gold outline on what the player uses here (barricades, loot crates). */
+  private glow:UsableGlow;
   /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -109,6 +112,7 @@ export class StonewardsRenderer {
     this.ground=scene.add.graphics().setDepth(-9980).setName('base-chao');
     this.wall=scene.add.graphics().setName('base-muralha');
     this.muralha=new MuralhaLayer(scene,options.projector);
+    this.glow=new UsableGlow(scene,options.reduced);
     const c=this.c;
     c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.lilas=tokenColor('--c-lilas');
     c.cartolina=tokenColor('--c-cartolina');c.cone=tokenColor('--c-cone');
@@ -154,7 +158,7 @@ export class StonewardsRenderer {
   update(time:number){
     this.now=time;
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),u=this.options.actorScale?.()??1;
-    this.ground.clear();
+    this.ground.clear();this.glow.begin(time);
     const wall=this.structures.find(s=>structureRole(s.kind)==='wall');
     if(wall&&this.prepare)this.drawRing(wall,k);
     for(const m of this.marks.values())this.drawNode(m,k,u);
@@ -164,6 +168,7 @@ export class StonewardsRenderer {
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
     }
     this.drawPops(k);
+    this.glow.end();
   }
 
   destroy(){
@@ -172,7 +177,7 @@ export class StonewardsRenderer {
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
     for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
-    this.muralha.destroy();
+    this.muralha.destroy();this.glow.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
     for(const p of this.pops)p.text.destroy();this.pops=[];
   }
@@ -338,10 +343,12 @@ export class StonewardsRenderer {
     }
     if(junk){
       for(const i of junk){if(flash)i.setTintFill(this.c.claro);else if(alert)i.setTint(ALERT_RED);else i.clearTint();}
+      if(!down)glowPieces(this.glow,s.id,junk,k);
       pile?.setVisible(false);
     }else if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);
       if(flash)img.setTintFill(this.c.claro);else if(alert)img.setTint(ALERT_RED);else img.clearTint();
+      if(!down)this.glow.mark(s.id,img,k);
       pile?.setVisible(false);
     }else{
       const a=this.project(span.ax,span.ay),ax=a.x,ay=a.y,b=this.project(span.bx,span.by),bx=b.x,by=b.y;
@@ -421,6 +428,8 @@ export class StonewardsRenderer {
     if(!img)return;
     const p=this.project(n.x,n.y);
     img.setPosition(p.x,p.y).setDepth(this.options.projector.depth(n.x,n.y)).setAlpha(n.remaining<=0?.35:1);
+    // An emptied crate is used up: no glow.
+    if(n.remaining>0)this.glow.mark(key,img,1/Math.max(.05,this.scene.cameras.main.zoom));
   }
 
   /** Chinelo tower: a small stand with a sandal on top and a Papel bar of the time it has left (`u`, `k`: as drawWall). */

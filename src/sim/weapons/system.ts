@@ -14,12 +14,18 @@
  *  - orbit, shield, zone that follows its owner (Cafeteira): no longer passive; a hold with an enemy within their
  *    ring/radius starts one cycle (the effect of the equipped weapon), then the usual duration + cooldown.
  * The hero never walks to a target (the stick moves him).
+ *
+ * BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack (WeaponOptions.manual.free) always goes off, toward the aim
+ * (PlayerInput.aim: the mouse, or the phone's aim stick) or else the facing, even with nobody in reach (the cooldown
+ * runs). A light aim assist bends it onto the live enemy in reach nearest the middle of a ±ASSIST_ANGLE cone around that
+ * direction; outside the cone it flies straight (never behind nor to the side). The bots and the autopiloted keep the
+ * rule above (no attack at the air).
  */
 import type {EnemyState,PlayerBuild,SimPlayer} from '../../contract/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIM_HZ,ticks} from '../../contract/index.ts';
 import {floorOf} from '../../maps/index.ts';
-import {AURA,HERO_SHOT_SPEED_MULT,attackTargets} from '../../rules/index.ts';
+import {AURA,HERO_SHOT_SPEED_MULT,THROW_TICKS,attackTargets} from '../../rules/index.ts';
 import {PIERCE_INFINITE,resolveWeapon,weaponCatalog} from './catalog.ts';
 import type {ResolvedWeapon,WeaponDef} from './catalog.ts';
 import {PROJECTILE_CAP,canAct,hitEnemy,isAlive,queryHittable,spawnProjectile} from '../projectiles.ts';
@@ -43,12 +49,16 @@ interface WeaponOptions {
   cap?:number;
   catalog?:{get(id:string):WeaponDef|undefined};
   /** D-051 manual combat: whether the player holds the attack on this tick (players system ManualCombat). Absent: automatic weapons. */
-  manual?:{attacking(playerId:string):boolean};
+  manual?:{attacking(playerId:string):boolean;
+    /** A person (not a bot nor the autopilot): the attack goes off toward the aim or facing, even into the air. Absent: nobody. */
+    free?(playerId:string):boolean};
   /** D-052: hands busy (moving the chaveiro's car): the player does not fire this tick. */
   busy?(playerId:string):boolean;
 }
 
 type Dir={x:number;y:number};
+/** Half-angle (rad) of the aim assist's cone of a person's attack: ±20°. */
+export const ASSIST_ANGLE=20*Math.PI/180;
 
 /** How far a straight shot gets before it expires, plus its own radius: an enemy farther than this cannot be hit. */
 export const pierceReach=(w:{speed:number;durationTicks:number;area:number})=>w.speed*w.durationTicks/SIM_HZ+w.area;
@@ -156,6 +166,27 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     return order.slice(0,count).map(c=>c.e);
   }
 
+  /**
+   * A person's attack (BUG-20261023-ORQ-tiro-na-direcao-mobile): the direction (the aim, or else the facing) and up to
+   * `count` live enemies (awake or asleep) within `range` (plus their radius with `pad`) inside the ±ASSIST_ANGLE cone
+   * around it, nearest the cone's middle first (then nearer, then by id). `dir` turns to the first one.
+   */
+  function freeAim(ctx:SimContext,player:SimPlayer,range:number,count:number,pad=false):{dir:Dir;aimed:EnemyState[]}{
+    const a=player.aim,alen=a?Math.hypot(a.x,a.y):0;
+    const base=a&&alen>1e-9?{x:a.x/alen,y:a.y/alen}:facingOf(player);
+    const found:EnemyState[]=[];
+    queryHittable(ctx,player.x,player.y,range+(pad?PAD_QUERY:0),found);
+    const ranked=found.flatMap(e=>{
+      const dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);
+      if(!isAlive(ctx,e)||d>range+(pad?e.radius:0))return [];
+      const angle=d>1e-9?Math.acos(Math.max(-1,Math.min(1,(dx*base.x+dy*base.y)/d))):0;
+      return angle<=ASSIST_ANGLE?[{e,angle,d}]:[];
+    }).sort((p,q)=>p.angle-q.angle||p.d-q.d||(p.e.id<q.e.id?-1:p.e.id>q.e.id?1:0));
+    const aimed=ranked.slice(0,count).map(r=>r.e);
+    return {dir:aimed[0]?towardOr(player,aimed[0]):base,aimed};
+  }
+  const isFree=(player:SimPlayer)=>!!opts.manual?.free?.(player.id);
+
   const group=(player:SimPlayer,w:ResolvedWeapon)=>`${player.id}:${w.def.id}`;
   /** What the patterns in their own files (fire-api.ts) get: this system's target order and cap. */
   const api:FireApi={cap,group,targets:(ctx,player,range,count,pad=false)=>opts.manual?manualTargets(ctx,player,range,count,pad):targets(ctx,player,range,count)};
@@ -194,7 +225,10 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
     // no shot at one beyond the flight distance; with none, the weapon keeps its cooldown and fires at the first in reach.
     // Card upgrades-megabonk (manual combat): each extra projectile (the Bombinha's +1 projétil) goes to the next enemy in
     // reach, like Megabonk's extra shots; only with fewer enemies than shots do the rest fan around the first.
-    const aimed=targets(ctx,player,Math.min(w.range,pierceReach(w)),opts.manual?w.amount:1),target=aimed[0];
+    // A person's shot always leaves, toward the aim or facing (freeAim), bent onto an enemy in the assist's cone.
+    // With nobody in the cone it aims at a point straight ahead (the volley below is the same).
+    const reach=Math.min(w.range,pierceReach(w)),free=isFree(player)?freeAim(ctx,player,reach,w.amount):undefined;
+    const aimed:{x:number;y:number}[]=free?(free.aimed.length?free.aimed:[{x:player.x+free.dir.x,y:player.y+free.dir.y}]):targets(ctx,player,reach,opts.manual?w.amount:1),target=aimed[0];
     if(!target)return false;
     let dir=facingOf(player);
     const len=Math.hypot(target.x-player.x,target.y-player.y);if(len>1e-9)dir={x:(target.x-player.x)/len,y:(target.y-player.y)/len};
@@ -231,15 +265,20 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
       return !!p;
     }
     const scatter=w.def.effect?.scatter;
-    const list=targets(ctx,player,w.range,scatter?1:w.amount);
+    const free=isFree(player)?freeAim(ctx,player,w.range,scatter?1:w.amount):undefined;
+    // A person throws even with nobody in the cone: the puddle lands at the weapon's range, straight ahead.
+    const list:{x:number;y:number}[]=free?(free.aimed.length?free.aimed:[{x:player.x+free.dir.x*w.range,y:player.y+free.dir.y*w.range}]):targets(ctx,player,w.range,scatter?1:w.amount);
     if(!list.length)return false;
     // Pack 12 traque (effect.scatter): the volley's bursts ring the first target, the ring turning with the tick.
     const spots=scatter?Array.from({length:w.amount},(_,i)=>{const a=ctx.tick*.7+2*Math.PI*i/w.amount;return {x:list[0].x+Math.cos(a)*scatter,y:list[0].y+Math.sin(a)*scatter};}):list;
+    // Thrown (rules/thrown.ts): leaves the hero, flies THROW_TICKS hitting nothing, then bursts there for its duration.
+    const land=w.def.effect?.thrown?ctx.tick+THROW_TICKS:undefined;
     let spawned=0;
     for(const e of spots){
+      const fly=land!==undefined?{x:player.x,y:player.y,vx:(e.x-player.x)*SIM_HZ/THROW_TICKS,vy:(e.y-player.y)*SIM_HZ/THROW_TICKS,landTick:land,landX:e.x,landY:e.y}:{x:e.x,y:e.y,vx:0,vy:0};
       const p=spawnProjectile(ctx,{
-        owner:player.id,source:w.def.id,motion:'linear',x:e.x,y:e.y,vx:0,vy:0,
-        radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:until,hostile:false,
+        owner:player.id,source:w.def.id,motion:'linear',...fly,
+        radius:w.area,damage:w.damage,pierce:PIERCE_INFINITE,untilTick:land!==undefined?land+w.durationTicks:until,hostile:false,
         rehit:w.rehitTicks,group:group(player,w),knockback:w.knockback,slowTicks,
       },cap);
       if(p)spawned++;
@@ -259,21 +298,24 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   }
 
   function fireHoming(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
-    const list=targets(ctx,player,w.range,w.amount);
-    if(!list.length)return false;
+    const free=isFree(player)?freeAim(ctx,player,w.range,w.amount):undefined;
+    const list=free?free.aimed:targets(ctx,player,w.range,w.amount);
+    if(!list.length&&!free)return false;
     let spawned=0;
     for(let i=0;i<w.amount;i++){
-      const target=list[i%list.length],len=Math.hypot(target.x-player.x,target.y-player.y);
-      const aim=len>1e-9?{x:(target.x-player.x)/len,y:(target.y-player.y)/len}:facingOf(player);
+      // A person's volley with nobody in the cone leaves straight ahead and seeks whoever comes within reach.
+      const target=list.length?list[i%list.length]:undefined,len=target?Math.hypot(target.x-player.x,target.y-player.y):0;
+      const aim=target&&len>1e-9?{x:(target.x-player.x)/len,y:(target.y-player.y)/len}:free?free.dir:facingOf(player);
       const d=rotate(aim,(i-(w.amount-1)/2)*HOMING_SPREAD);
       const p=spawnProjectile(ctx,{
-        owner:player.id,source:w.def.id,motion:'homing',homing:target.id,seek:w.range,turn:HOMING_TURN,
+        owner:player.id,source:w.def.id,motion:'homing',...(target?{homing:target.id}:{}),seek:w.range,turn:HOMING_TURN,
         x:player.x,y:player.y,vx:d.x*w.speed,vy:d.y*w.speed,radius:w.area,damage:w.damage,pierce:w.pierce,
         untilTick:ctx.tick+w.durationTicks,hostile:false,knockback:w.knockback,
       },cap);
       if(p)spawned++;
     }
-    if(spawned)ctx.emit({type:'fire',player:player.id,weapon:w.def.id,x:player.x,y:player.y,dx:list[0].x-player.x,dy:list[0].y-player.y});
+    const at=list[0]?{x:list[0].x-player.x,y:list[0].y-player.y}:free!.dir;
+    if(spawned)ctx.emit({type:'fire',player:player.id,weapon:w.def.id,x:player.x,y:player.y,dx:at.x,dy:at.y});
     return spawned>0;
   }
 
@@ -284,7 +326,9 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
    * like LoL. Without an aim (a phone, a bot): the auto aim below.
    */
   function fireCone(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
-    const aim=opts.manual?player.aim:undefined;
+    // A person's swing always goes off, toward the aim or facing, bent onto an enemy in the assist's cone (freeAim).
+    const free=isFree(player)?freeAim(ctx,player,w.area,1,true):undefined;
+    const aim=free?free.dir:opts.manual?player.aim:undefined;
     // D-051 manual combat: the wave goes where the aim points (nobody in reach: no wave).
     const aimed=opts.manual&&!aim?manualTargets(ctx,player,w.area,1,true)[0]:undefined;
     if(opts.manual&&!aim&&!aimed)return false;
@@ -324,7 +368,8 @@ export function createWeaponSystem(opts:WeaponOptions={}):SimSystem{
   function fire(ctx:SimContext,player:SimPlayer,w:ResolvedWeapon):boolean{
     // D-051 manual combat: the ring, the umbrella and the walking puddle are no longer passive: a hold starts a cycle
     // only with an enemy they can touch (no swing at the air; the cooldown waits).
-    if(opts.manual&&(w.def.pattern==='orbit'||w.def.pattern==='shield'||w.def.pattern==='zone'&&w.def.evolved?.followsOwner)){
+    // A person's hold starts them even with nobody near (BUG-20261023-ORQ-tiro-na-direcao-mobile).
+    if(opts.manual&&!isFree(player)&&(w.def.pattern==='orbit'||w.def.pattern==='shield'||w.def.pattern==='zone'&&w.def.evolved?.followsOwner)){
       const {reach,pad}=manualReach(w);
       if(!manualTargets(ctx,player,reach,1,pad).length)return false;
     }

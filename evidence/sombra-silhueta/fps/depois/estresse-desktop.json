@@ -1,0 +1,322 @@
+[
+ {
+  "label": "desktop-full-1500",
+  "device": "desktop",
+  "variant": "full",
+  "n": 1500,
+  "fps": {
+   "mean": 42.5,
+   "median": 42.3,
+   "p5": 40.7
+  },
+  "frameMs": {
+   "p50": 16.7,
+   "p95": 33.4,
+   "max": 33.5
+  },
+  "draws": {
+   "p50": 63,
+   "p95": 68
+  },
+  "uploadsInWindow": {
+   "n": 604,
+   "ms": 32.5
+  },
+  "gpuTexMB": 590.4,
+  "heapMB": 55.7,
+  "busy": 0.32,
+  "script": 0.3,
+  "screen": {
+   "onScreen": 2835,
+   "horde": 1001,
+   "zoom": 0.9273504273504274,
+   "view": {
+    "w": 1335.3846153846155,
+    "h": 620.3974358974359
+   },
+   "byKind": {
+    "horde:fx:shadow": {
+     "n": 370,
+     "w": 16,
+     "h": 7
+    },
+    "art:enemy:coach": {
+     "n": 95,
+     "w": 108,
+     "h": 124
+    },
+    "art:enemy:bebado": {
+     "n": 611,
+     "w": 113,
+     "h": 129
+    },
+    "art:enemy:agiota": {
+     "n": 292,
+     "w": 109,
+     "h": 125
+    },
+    "art:enemy:motoboy": {
+     "n": 76,
+     "w": 121,
+     "h": 140
+    },
+    "art:enemy:tio-pave": {
+     "n": 552,
+     "w": 126,
+     "h": 145
+    },
+    "art:enemy:anao-molotov": {
+     "n": 189,
+     "w": 123,
+     "h": 142
+    },
+    "art:enemy:pombos": {
+     "n": 239,
+     "w": 68,
+     "h": 78
+    },
+    "art:enemy:influencer": {
+     "n": 91,
+     "w": 128,
+     "h": 146
+    },
+    "art:enemy:chefe": {
+     "n": 2,
+     "w": 355,
+     "h": 411
+    },
+    "horde:pickup:boleto": {
+     "n": 296,
+     "w": 46,
+     "h": 37
+    },
+    "horde:pickup:heal": {
+     "n": 5,
+     "w": 35,
+     "h": 32
+    },
+    "horde:pickup:resource": {
+     "n": 10,
+     "w": 28,
+     "h": 26
+    },
+    "horde:pickup:chest": {
+     "n": 7,
+     "w": 44,
+     "h": 38
+    }
+   },
+   "stats": {
+    "created": 1561,
+    "active": 1430,
+    "byLayer": {
+     "enemies": {
+      "created": 1009,
+      "active": 1001
+     },
+     "pickups": {
+      "created": 382,
+      "active": 318
+     },
+     "projectiles": {
+      "created": 84,
+      "active": 52
+     },
+     "damage": {
+      "created": 25,
+      "active": 25
+     },
+     "pops": {
+      "created": 1,
+      "active": 0
+     },
+     "poofs": {
+      "created": 3,
+      "active": 0
+     },
+     "stars": {
+      "created": 15,
+      "active": 0
+     },
+     "bubbles": {
+      "created": 0,
+      "active": 0
+     },
+     "warnings": {
+      "created": 14,
+      "active": 6
+     },
+     "deaths": {
+      "created": 24,
+      "active": 24
+     },
+     "graphics": {
+      "created": 4,
+      "active": 4
+     }
+    }
+   }
+  },
+  "errors": []
+ },
+ {
+  "label": "desktop-reduced-1500",
+  "device": "desktop",
+  "variant": "reduced",
+  "n": 1500,
+  "fps": {
+   "mean": 42.5,
+   "median": 42.3,
+   "p5": 41.3
+  },
+  "frameMs": {
+   "p50": 16.7,
+   "p95": 33.4,
+   "max": 49.9
+  },
+  "draws": {
+   "p50": 62,
+   "p95": 67
+  },
+  "uploadsInWindow": {
+   "n": 581,
+   "ms": 32.2
+  },
+  "gpuTexMB": 586.1,
+  "heapMB": 53.2,
+  "busy": 0.32,
+  "script": 0.3,
+  "screen": {
+   "onScreen": 2838,
+   "horde": 1001,
+   "zoom": 0.9273504273504274,
+   "view": {
+    "w": 1335.3846153846155,
+    "h": 620.3974358974359
+   },
+   "byKind": {
+    "horde:fx:shadow": {
+     "n": 373,
+     "w": 17,
+     "h": 8
+    },
+    "art:enemy:coach": {
+     "n": 93,
+     "w": 108,
+     "h": 124
+    },
+    "art:enemy:bebado": {
+     "n": 611,
+     "w": 113,
+     "h": 129
+    },
+    "art:enemy:agiota": {
+     "n": 290,
+     "w": 109,
+     "h": 125
+    },
+    "art:enemy:motoboy": {
+     "n": 78,
+     "w": 121,
+     "h": 140
+    },
+    "art:enemy:tio-pave": {
+     "n": 550,
+     "w": 126,
+     "h": 145
+    },
+    "art:enemy:anao-molotov": {
+     "n": 191,
+     "w": 123,
+     "h": 142
+    },
+    "art:enemy:pombos": {
+     "n": 241,
+     "w": 68,
+     "h": 78
+    },
+    "art:enemy:influencer": {
+     "n": 91,
+     "w": 128,
+     "h": 146
+    },
+    "art:enemy:chefe": {
+     "n": 2,
+     "w": 355,
+     "h": 411
+    },
+    "horde:pickup:boleto": {
+     "n": 295,
+     "w": 46,
+     "h": 37
+    },
+    "horde:pickup:heal": {
+     "n": 5,
+     "w": 32,
+     "h": 28
+    },
+    "horde:pickup:resource": {
+     "n": 10,
+     "w": 28,
+     "h": 26
+    },
+    "horde:pickup:chest": {
+     "n": 8,
+     "w": 43,
+     "h": 37
+    }
+   },
+   "stats": {
+    "created": 1537,
+    "active": 1418,
+    "byLayer": {
+     "enemies": {
+      "created": 1009,
+      "active": 1001
+     },
+     "pickups": {
+      "created": 382,
+      "active": 318
+     },
+     "projectiles": {
+      "created": 84,
+      "active": 55
+     },
+     "damage": {
+      "created": 10,
+      "active": 10
+     },
+     "pops": {
+      "created": 1,
+      "active": 0
+     },
+     "poofs": {
+      "created": 3,
+      "active": 0
+     },
+     "stars": {
+      "created": 6,
+      "active": 0
+     },
+     "bubbles": {
+      "created": 0,
+      "active": 0
+     },
+     "warnings": {
+      "created": 14,
+      "active": 6
+     },
+     "deaths": {
+      "created": 24,
+      "active": 24
+     },
+     "graphics": {
+      "created": 4,
+      "active": 4
+     }
+    }
+   }
+  },
+  "errors": []
+ }
+]

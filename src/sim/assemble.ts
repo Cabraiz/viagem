@@ -493,7 +493,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
     zueira,enemyAi,boss,
-    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id)}}:{}),
+    createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id),
+      // BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack goes off toward the aim/facing even into the air; bots keep the target rule.
+      free:(id:string)=>!options.bot?.(id)&&!options.autopilot?.(id)}}:{}),
       ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     {id:'pickups',step(ctx:SimContext){
       progression.pickups.step(ctx);

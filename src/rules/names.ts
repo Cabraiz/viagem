@@ -6,9 +6,11 @@ export const RAIL_CUT=7;
 /**
  * The team rail's short name: the first word, whole up to RAIL_MAX letters, else RAIL_CUT letters and a dot, so a
  * name is never cut mid-word without a mark ("Concursei" was "Concurseira"). The same player has one name on the
- * rail and on the map.
+ * rail and on the map. A last word of one digit stays (bot-nome-do-personagem: "CLT 2", "Viciado em Bet 2" is
+ * "Viciado 2"), and the first word then gives it room (RAIL_MAX in all: "Concurseira 2" is "Concurs. 2").
  */
 export const railName=(name:string)=>{
-  const word=[...(name.trim().split(/\s+/)[0]??'')];
-  return word.length<=RAIL_MAX?word.join(''):`${word.slice(0,RAIL_CUT).join('')}.`;
+  const words=name.trim().split(/\s+/),num=words.length>1&&/^\d$/.test(words.at(-1)!)?` ${words.at(-1)}`:'';
+  const word=[...(words[0]??'')],max=RAIL_MAX-num.length;
+  return (word.length<=max?word.join(''):`${word.slice(0,Math.min(RAIL_CUT,max-1)).join('')}.`)+num;
 };

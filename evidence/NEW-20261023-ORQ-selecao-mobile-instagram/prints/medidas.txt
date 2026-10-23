@@ -1,0 +1,10 @@
+{"barra":[17,135],"logo":[9,149],"story":[151,365],"nome":[374,402],"trocar":[417,442],"foto":[458,778],"arroba":[508,572],"numeros":[598,677],"bio":[703,733],"chips":[782,852],"abas":[880,951],"grade":[967,1232],"nomeRow":null,"botao":[1251,1374],"fim":1501}
+{"w":390,"h":844,"top":46.703125,"left":0,"width":390,"scroll":0,"u":null}
+{"barra":[17,135],"logo":[9,149],"story":[151,365],"nome":[374,402],"trocar":[417,442],"foto":[458,778],"arroba":[508,572],"numeros":[598,677],"bio":[703,733],"chips":[782,852],"abas":[880,951],"grade":[967,1232],"nomeRow":null,"botao":[1251,1374],"fim":1502}
+{"w":360,"h":780,"top":43.53125,"left":0,"width":360,"scroll":0,"u":null}
+{"barra":[17,135],"logo":[9,149],"story":[151,365],"nome":[374,402],"trocar":[417,442],"foto":[458,778],"arroba":[508,564],"numeros":[590,669],"bio":[695,755],"chips":[782,852],"abas":[880,951],"grade":[967,1232],"nomeRow":null,"botao":[1251,1374],"fim":1501}
+{"w":390,"h":844,"top":46.703125,"left":0,"width":390,"scroll":0,"u":null}
+{"barra":[17,135],"logo":[9,149],"story":[151,365],"nome":[374,402],"trocar":[417,442],"foto":[458,778],"arroba":[508,555],"numeros":[581,660],"bio":[686,746],"chips":[782,852],"abas":[880,951],"grade":[967,1232],"nomeRow":null,"botao":[1251,1374],"fim":1501}
+{"w":390,"h":844,"top":46.703125,"left":0,"width":390,"scroll":0,"u":null}
+{"barra":[17,135],"logo":[9,149],"story":[151,365],"nome":[374,402],"trocar":[417,442],"foto":[458,778],"arroba":[508,572],"numeros":[598,677],"bio":[703,763],"chips":[782,852],"abas":null,"grade":null,"nomeRow":[880,1234],"botao":[1253,1376],"fim":1502}
+{"w":390,"h":844,"top":46.109375,"left":0,"width":390,"scroll":0,"u":null}

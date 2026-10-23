@@ -7,8 +7,8 @@ import {CLASS_LINES} from '../../src/client/fun/lines.data.ts';
 
 const normalize=(s:string)=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim();
 
-test('every one of the 35 classes has short lines for all situations',()=>{
-  assert.equal(classes.length,35);
+test('every one of the 36 classes has short lines for all situations',()=>{
+  assert.equal(classes.length,36);
   assert.deepEqual(Object.keys(CLASS_LINES).sort(),classes.map(c=>c.id).sort());
   for(const hero of classes)for(const situation of SITUATIONS){
     const lines=CLASS_LINES[hero.id][situation];

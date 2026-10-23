@@ -1,0 +1,555 @@
+{
+ "sha": "f0b1c8d",
+ "run": "https://github.com/Cabraiz/viagem/actions/runs/39934472872",
+ "fails": [
+  "1280×720 parado: contraste: nível: corpo #5b3f8c e contorno #1e1530 com 2,0:1 sobre o mapa #1e2025 (mín. 3:1)",
+  "1280×720 parado: contraste: retrato: corpo #5b3f8c e contorno #1e1530 com 2,0:1 sobre o mapa #564a46 (mín. 3:1)",
+  "1280×720 parado: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,5:1 sobre o mapa #c8b298 (mín. 3:1)",
+  "1280×720 parado: contraste: retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,5:1 sobre o mapa #cdc5ca (mín. 3:1)",
+  "1280×720 parado: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,6:1 sobre o mapa #c6af9b (mín. 3:1)",
+  "1280×720 parado: contraste: minimapa: corpo #1e1430 e contorno #1e1530 com 1,4:1 sobre o mapa #3e3425 (mín. 3:1)",
+  "390×844 parado: contraste: nível: corpo #5b3f8c e contorno #1e1530 com 1,6:1 sobre o mapa #302e2b (mín. 3:1)",
+  "390×844 parado: contraste: retrato: corpo #5b3f8c e contorno #1e1530 com 1,5:1 sobre o mapa #383230 (mín. 3:1)",
+  "390×844 parado: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #cbc6d8 (mín. 3:1)",
+  "390×844 parado: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,6:1 sobre o mapa #b0b0bc (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: nível: corpo #5b3f8c e contorno #1e1530 com 1,7:1 sobre o mapa #1d2a4a (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: retrato: corpo #5b3f8c e contorno #1e1530 com 2,5:1 sobre o mapa #63564b (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #cec8d0 (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #ff7aa2 com 2,5:1 sobre o mapa #869087 (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,3:1 sobre o mapa #e2e3ea (mín. 3:1)",
+  "1280×720 depois da rajada: contraste: minimapa: corpo #1e1430 e contorno #1e1530 com 2,1:1 sobre o mapa #515039 (mín. 3:1)",
+  "390×844 depois da rajada: contraste: nível: corpo #5b3f8c e contorno #1e1530 com 1,8:1 sobre o mapa #46443c (mín. 3:1)",
+  "390×844 depois da rajada: contraste: retrato: corpo #5b3f8c e contorno #1e1530 com 2,1:1 sobre o mapa #534d46 (mín. 3:1)",
+  "390×844 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,4:1 sobre o mapa #e1c9ca (mín. 3:1)",
+  "390×844 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,4:1 sobre o mapa #bbbacf (mín. 3:1)",
+  "390×844 depois da rajada: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,1:1 sobre o mapa #d3d1d8 (mín. 3:1)",
+  "390×844 depois da rajada: contraste: minimapa: corpo #1e1430 e contorno #1e1530 com 1,4:1 sobre o mapa #35363a (mín. 3:1)",
+  "celular-390×844 parado: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #c8cbe0 (mín. 3:1)",
+  "celular-390×844 parado: contraste: retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,5:1 sobre o mapa #c3c6dc (mín. 3:1)",
+  "celular-390×844 parado: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,1:1 sobre o mapa #cfd1e4 (mín. 3:1)",
+  "celular-390×844 parado: contraste: minimapa: corpo #1e1430 e contorno #1e1530 com 1,6:1 sobre o mapa #423d40 (mín. 3:1)",
+  "celular-390×844 parado: contraste: relógio: corpo #000000 e contorno nenhum com 1,0:1 sobre o mapa #c6cadf (mín. 3:1)",
+  "celular-390×844 parado: contraste: relógio: texto \"Chaveiro chega em 8:43. \" #eeddb8 com 1,1:1 sobre #ced0e4 (mín. 4.5:1)",
+  "celular-844×390 parado: contraste: nível: corpo #5b3f8c e contorno #1e1530 com 1,6:1 sobre o mapa #403c36 (mín. 3:1)",
+  "celular-844×390 parado: contraste: retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,6:1 sobre o mapa #dedee3 (mín. 3:1)",
+  "celular-844×390 parado: contraste: retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,9:1 sobre o mapa #e1e0e8 (mín. 3:1)",
+  "celular-844×390 parado: contraste: retrato: corpo #eeddb8 e contorno #8be04e com 1,3:1 sobre o mapa #e5e4e9 (mín. 3:1)",
+  "celular-844×390 parado: contraste: minimapa: corpo #1e1430 e contorno #1e1530 com 1,6:1 sobre o mapa #403c37 (mín. 3:1)",
+  "celular-844×390 parado: contraste: relógio: corpo #000000 e contorno nenhum com 1,0:1 sobre o mapa #eceaef (mín. 3:1)",
+  "celular-844×390 parado: contraste: relógio: texto \"Chaveiro chega em 7:02. \" #eeddb8 com 1,0:1 sobre #dddde7 (mín. 4.5:1)"
+ ],
+ "contraste": {
+  "1280x720 parado": [
+   {
+    "name": "onda",
+    "worstEdge": 3.57,
+    "worstText": 9.79,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 1.97,
+    "worstText": 6.18,
+    "fails": [
+     "nível: corpo #5b3f8c e contorno #1e1530 com 2,0:1 sobre o mapa #1e2025 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 3.68,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 2.04,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #5b3f8c e contorno #1e1530 com 2,0:1 sobre o mapa #564a46 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.52,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,5:1 sobre o mapa #c8b298 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.45,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,5:1 sobre o mapa #cdc5ca (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.57,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,6:1 sobre o mapa #c6af9b (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.27,
+    "worstText": 9.79,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.83,
+    "worstText": 10.46,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.48,
+    "worstText": 9.65,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.31,
+    "worstText": 10.59,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 1.43,
+    "worstText": null,
+    "fails": [
+     "minimapa: corpo #1e1430 e contorno #1e1530 com 1,4:1 sobre o mapa #3e3425 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 10.84,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "390x844 parado": [
+   {
+    "name": "onda",
+    "worstEdge": 8.31,
+    "worstText": 9.83,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 1.63,
+    "worstText": 6.18,
+    "fails": [
+     "nível: corpo #5b3f8c e contorno #1e1530 com 1,6:1 sobre o mapa #302e2b (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 7.91,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.52,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #5b3f8c e contorno #1e1530 com 1,5:1 sobre o mapa #383230 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.29,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #cbc6d8 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 3.11,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.6,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,6:1 sobre o mapa #b0b0bc (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.73,
+    "worstText": 10.63,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.71,
+    "worstText": 11.43,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.57,
+    "worstText": 11.43,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.41,
+    "worstText": 11.46,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 11.71,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 10.1,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "1280x720 depois da rajada": [
+   {
+    "name": "onda",
+    "worstEdge": 4.62,
+    "worstText": 10.9,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 1.71,
+    "worstText": 6.18,
+    "fails": [
+     "nível: corpo #5b3f8c e contorno #1e1530 com 1,7:1 sobre o mapa #1d2a4a (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 4.6,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 2.46,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #5b3f8c e contorno #1e1530 com 2,5:1 sobre o mapa #63564b (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.31,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #cec8d0 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 2.47,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #ff7aa2 com 2,5:1 sobre o mapa #869087 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.28,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,3:1 sobre o mapa #e2e3ea (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.09,
+    "worstText": 9.53,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.96,
+    "worstText": 11.73,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.74,
+    "worstText": 11.22,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 5.03,
+    "worstText": 9.78,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 2.12,
+    "worstText": null,
+    "fails": [
+     "minimapa: corpo #1e1430 e contorno #1e1530 com 2,1:1 sobre o mapa #515039 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 6.65,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "390x844 depois da rajada": [
+   {
+    "name": "onda",
+    "worstEdge": 6.64,
+    "worstText": 9.36,
+    "fails": []
+   },
+   {
+    "name": "nível",
+    "worstEdge": 1.79,
+    "worstText": 6.18,
+    "fails": [
+     "nível: corpo #5b3f8c e contorno #1e1530 com 1,8:1 sobre o mapa #46443c (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 4.85,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 2.09,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #5b3f8c e contorno #1e1530 com 2,1:1 sobre o mapa #534d46 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.37,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,4:1 sobre o mapa #e1c9ca (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.42,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,4:1 sobre o mapa #bbbacf (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.13,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,1:1 sobre o mapa #d3d1d8 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.92,
+    "worstText": 10.52,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.81,
+    "worstText": 10.16,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 4.69,
+    "worstText": 9.8,
+    "fails": []
+   },
+   {
+    "name": "nome do retrato",
+    "worstEdge": 3.65,
+    "worstText": 11.22,
+    "fails": []
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 1.44,
+    "worstText": null,
+    "fails": [
+     "minimapa: corpo #1e1430 e contorno #1e1530 com 1,4:1 sobre o mapa #35363a (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 5.27,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "celular-390x844 parado": [
+   {
+    "name": "nível",
+    "worstEdge": 10.85,
+    "worstText": 6.18,
+    "fails": []
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 8.32,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 10.65,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.34,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,3:1 sobre o mapa #c8cbe0 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.45,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,5:1 sobre o mapa #c3c6dc (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.13,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,1:1 sobre o mapa #cfd1e4 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 1.64,
+    "worstText": null,
+    "fails": [
+     "minimapa: corpo #1e1430 e contorno #1e1530 com 1,6:1 sobre o mapa #423d40 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "relógio",
+    "worstEdge": 1,
+    "worstText": 1.14,
+    "fails": [
+     "relógio: corpo #000000 e contorno nenhum com 1,0:1 sobre o mapa #c6cadf (mín. 3:1)",
+     "relógio: texto \"Chaveiro chega em 8:43. \" #eeddb8 com 1,1:1 sobre #ced0e4 (mín. 4.5:1)"
+    ]
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 9.75,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "joystick",
+    "worstEdge": 11.59,
+    "worstText": null,
+    "fails": []
+   }
+  ],
+  "celular-844x390 parado": [
+   {
+    "name": "nível",
+    "worstEdge": 1.59,
+    "worstText": 6.18,
+    "fails": [
+     "nível: corpo #5b3f8c e contorno #1e1530 com 1,6:1 sobre o mapa #403c36 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "barra de XP",
+    "worstEdge": 3.72,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 12.3,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.6,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #3ec1d3 com 1,6:1 sobre o mapa #dedee3 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.87,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #ff7aa2 com 1,9:1 sobre o mapa #e1e0e8 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "retrato",
+    "worstEdge": 1.29,
+    "worstText": null,
+    "fails": [
+     "retrato: corpo #eeddb8 e contorno #8be04e com 1,3:1 sobre o mapa #e5e4e9 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "minimapa",
+    "worstEdge": 1.59,
+    "worstText": null,
+    "fails": [
+     "minimapa: corpo #1e1430 e contorno #1e1530 com 1,6:1 sobre o mapa #403c37 (mín. 3:1)"
+    ]
+   },
+   {
+    "name": "relógio",
+    "worstEdge": 1,
+    "worstText": 1.01,
+    "fails": [
+     "relógio: corpo #000000 e contorno nenhum com 1,0:1 sobre o mapa #eceaef (mín. 3:1)",
+     "relógio: texto \"Chaveiro chega em 7:02. \" #eeddb8 com 1,0:1 sobre #dddde7 (mín. 4.5:1)"
+    ]
+   },
+   {
+    "name": "barra do acampamento",
+    "worstEdge": 11.86,
+    "worstText": null,
+    "fails": []
+   },
+   {
+    "name": "joystick",
+    "worstEdge": 12.91,
+    "worstText": null,
+    "fails": []
+   }
+  ]
+ }
+}

@@ -8,7 +8,7 @@
 .spect-seta:disabled{opacity:.4;cursor:default}
 .spect-seta:not(:disabled):active{background:var(--c-amarelo);color:var(--c-breu)}
 .spect-quem{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0}
-.spect-quem::before{content:'Assistindo';font:700 var(--t-13)/1 var(--f-sistema);opacity:.8}
+.spect-quem::before{content:'Assistindo';font:700 var(--t-13)/1 var(--f-sistema)}
 .spect[data-ghost] .spect-quem::before{content:'Fantasma'}
 .spect-rosto{width:32px;height:32px;flex:none;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-retrato-a);object-fit:cover}
 .spect-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

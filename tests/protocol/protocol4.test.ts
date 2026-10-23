@@ -1662,9 +1662,9 @@ test('D-052: who moves the car and who holds the rope round-trip; dropping them 
   assert.deepEqual(r.view.objective?.car.movers,crowd.slice(0,MAX_CAR_MOVERS));
 });
 
-test('D-052: the car\'s speed by movers is the approved table (0.8 / 1.4 / 1.8 u/s, capped at 3)',()=>{
-  assert.deepEqual([...CAR_SPEED],[0,.8,1.4,1.8]);
-  assert.deepEqual([0,1,2,3,4,9].map(carSpeed),[0,.8,1.4,1.8,1.8,1.8]);
+test('D-052: the car\'s speed by movers is the approved table 2x (empurrar-uno: 1.6 / 2.8 / 3.6 u/s, capped at 3)',()=>{
+  assert.deepEqual([...CAR_SPEED],[0,1.6,2.8,3.6]);
+  assert.deepEqual([0,1,2,3,4,9].map(carSpeed),[0,1.6,2.8,3.6,3.6,3.6]);
 });
 
 test('D-052: a built piece\'s cell and rot round-trip in the structures, the wall and the barricade by their dictionary byte',()=>{

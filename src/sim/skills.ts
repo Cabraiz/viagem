@@ -235,6 +235,12 @@ const burst=(spec:BurstSpec):SkillFn=>(ctx,player,source)=>{
   }
   return {hits,helped:[]};
 };
+/** Two effects in one cast (the first, then the second): hits and helped merged; null only when both had nothing to do. */
+const both=(first:SkillFn,second:SkillFn):SkillFn=>(ctx,player,source,rng)=>{
+  const a=first(ctx,player,source,rng),b=second(ctx,player,source,rng);
+  if(!a||!b)return a??b;
+  return {...a,...b,hits:[...new Set([...a.hits,...b.hits])],helped:[...new Set([...a.helped,...b.helped])]};
+};
 /** Classes whose own skill refunds others; they are never refunded themselves (no refund loops). */
 export const REFUNDERS:ReadonlySet<string>=new Set(['pagodeiro','caca-promocao']);
 interface RallySpec {radius:number;heal?:number;shield?:number;refreshWeapons?:boolean;skillRefund?:number;mostHurt?:boolean}
@@ -399,6 +405,8 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   'rei-arraia':cone({range:3,angle:Math.PI*2,damage:5,knock:0.7}),
   aposentado:burst({at:'target',range:8,radius:0.01,maxTargets:1,damage:12,knock:0.8,freeze:1}),
   conspiracionista:slowNearest({radius:8,count:6,slow:2,damage:4}),
+  // The scared ones freeze, then chase the cat (the freeze runs first so the taunt starts on the survivors).
+  'gato-nada-pra-comer':both(burst({radius:5,at:'self',damage:4,freeze:1.2}),taunt({shield:1.5,radius:5,taunt:3.5,slow:0})),
 };
 
 export const hasSkill=(classId:string)=>!!kitFor(classId)&&classId in SKILLS;

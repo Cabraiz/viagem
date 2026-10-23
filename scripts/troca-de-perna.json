@@ -22,5 +22,13 @@
  "clt-cansado.run16-nw.14f4fd36e26a.webp": {
   "alterna": true,
   "prova": "evidence BUG-20261022-ORQ-troca-de-perna: gerar/clt-NW-run-G-r3p, contato ampliado: pose 0 a perna direita (cruza), pose 8 a esquerda (manequim 3D como referência de pose)"
+ },
+ "gato-nada-pra-comer.run16-w.ab6967f5204b.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261022-ORQ-gato-personagem-completo: f2/gerar/W-run-t8/ciclo-zoom.png (MARK=2: pantufa vermelha = esquerda, ciano = direita): poses 0-3 e 12-15 a ciano à frente, 4-11 a vermelha; conferido a olho pelo E2 na integração animacoes-juntas"
+ },
+ "gato-nada-pra-comer.run16-se.41da07dc107d.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261022-ORQ-gato-personagem-completo: f2/gerar/SE-run-t17/ciclo-zoom.png (MARK=2: pantufa vermelha = esquerda, ciano = direita): poses 0-2 e 10-15 a ciano à frente, 3-9 a vermelha; conferido a olho pelo E2 na integração animacoes-juntas"
  }
 }

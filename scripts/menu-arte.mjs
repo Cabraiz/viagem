@@ -40,6 +40,20 @@ const HEROES=[
   {id:'clt-cansado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-tela-clt-pose2',
     letreiro:'D:/Gits/viagem-board/evidence/NEW-20261021-ORQ-letreiro-clt-na-cena/letreiro-2-2x.png',heroi:'clt-cansado-1080p-no-lugar.png',
     esrgan:'clt-2x-x4plus-anime.png',box:{left:792,top:73,width:635,height:865},fundo:'fundo-clt-2560.png'},
+  // NEW-20261022-ORQ-gato-personagem-completo (the user chose pose 1, the bowl): Codex redrew the cat of the in-scene
+  // picture alone on green (same light), keyed with the colour unmixed; in the viciado's box (same height, middle and
+  // sole line). His 2x is Real-ESRGAN 4x of that native cutout, reduced (`esrganDir`: his own folder). His background is
+  // the rooftop without him plus `sombra` (contact shadow + the wet tiles' reflection, a semi-transparent layer in the
+  // bleed's px, kept apart so a new pose only redoes it).
+  // Letreiro (NEW-20261023-ORQ-gato-no-menu, the user chose variation 3 of 8: the fish collar tag): his scene's sign with
+  // the collar redrawn far up by Codex (the user: "ampliar bem muito para cima caso precise descer"), the tag from the
+  // scene itself below the bell (juntar-ext.py), 2x by Real-ESRGAN (ampliar.py). The menu shows the tag where variation 3
+  // was and lets the collar run off the top (apelidos.ts LETREIRO_ALTO).
+  {id:'gato-nada-pra-comer',evidence:'D:/Gits/viagem-board/evidence/NEW-20261022-ORQ-gato-destaque-8',
+    letreiro:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-letreiro-gato-na-cena/letreiro-3x-2x.png',
+    heroi:'gato-nada-pra-comer-1080p-no-lugar.png',esrgan:'gato-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:944,top:19,width:812,height:1058},fundo:'../NEW-20261022-ORQ-tela-gato-nada-pra-comer/fundo-gato-2560.png',
+    sombra:'gato-1-sombra-2560.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */
@@ -116,7 +130,8 @@ for(const hero of HEROES){
     const source=path.join(dir,hero.fundo),{width,height}=await sharp(source).metadata();
     if(width!==2560||height!==1707)throw new Error(`${hero.fundo}: expected 2560x1707, got ${width}x${height}`);
     const file=out('',`fundo-${hero.id}.webp`);
-    report(file,await sharp(source).webp({quality:95,effort:6}).toFile(file));
+    const layered=hero.sombra?sharp(source).composite([{input:path.join(dir,hero.sombra)}]):sharp(source);
+    report(file,await layered.webp({quality:95,effort:6}).toFile(file));
   }
   if(!part('heroi'))continue;
   const source=path.join(dir,hero.heroi);
@@ -125,7 +140,7 @@ for(const hero of HEROES){
   const found=await alphaBox(source);
   if(JSON.stringify(found)!==JSON.stringify(hero.box))throw new Error(`${hero.id}: the hero's box is ${JSON.stringify(found)}, update box and RECORTES`);
   // The 2x file is the same box twice as big: the page keeps the 1x box (RECORTES) and the feet stay on the bar.
-  const big=hero.esrgan?path.join(ESRGAN,hero.esrgan):undefined,base=big?2:1;
+  const big=hero.esrgan?path.resolve(hero.esrganDir?path.resolve(dir,hero.esrganDir):ESRGAN,hero.esrgan):undefined,base=big?2:1;
   if(big){
     const meta=await sharp(big).metadata();
     if(meta.width!==hero.box.width*2||meta.height!==hero.box.height*2)throw new Error(`${hero.esrgan}: expected the box at 2x, got ${meta.width}x${meta.height}`);

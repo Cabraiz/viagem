@@ -1,0 +1,7 @@
+Gere UMA imagem com a ferramenta de imagem (image_gen), paisagem 1536x1024, fundo branco liso, com TRÊS fotos QUADRADAS iguais lado a lado numa linha, centralizadas, separadas por uma faixa branca fina e reta (como a grade de fotos de um perfil de rede social). Cada foto é uma cena engraçada diferente do mesmo personagem, corpo inteiro ou meio corpo, bem enquadrado no quadrado:
+1) selfie na arquibancada fazendo careta de vitória com a corneta, confete caindo; 2) sentado na arquibancada olhando o celular em pânico, suando, as mãos na cabeça, torcida comemorando atrás dele; 3) em pé em cima da cadeira do estádio tocando a corneta com tudo, bochechas infladas, a torcida roxa olhando torto
+Cenário de referência (use onde fizer sentido em cada cena): estádio de futebol lotado à noite com torcida roxa, bandeiras roxas com coroa dourada, holofotes e confete roxo e amarelo.
+Personagem: o Viciado em Bet: garoto de cabelo cacheado castanho, boné roxo e branco, camisa roxa com coroa dourada, corneta amarela, sorriso de quem acha que vai ficar rico.
+Estilo: o cartoon 3D brilhante do NOSSO jogo "Viciado em Bet" (o mesmo da imagem anexa): cores vivas, contorno suave, luz quente, acabamento de jogo mobile. NADA de estilo novo. A imagem anexa é só para LER o personagem e o estilo: não copie, não edite e não reaproveite nenhum pedaço dela; desenhe de novo.
+Sem nenhum texto, letra, número, logo ou marca d'água na imagem.
+Salve como grade-viciado.png nesta pasta. Não inspecione, não rode código, não confira com PIL. Responda só "ok".

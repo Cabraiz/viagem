@@ -85,8 +85,10 @@ export interface ObjectiveView {
  * the rope's length, the car's body radius and how close to a living nest it may never go. The body is 1 u (the siege
  * radius it always had), not the proposal's 1.5: a 1.5 u disc does not fit the city's streets (from the wall's spot it
  * reaches 16 u², against the whole city at 1-1.2 u). Pushing: an input pointing at the car within CAR_PUSH_DOT (cos).
+ * Card empurrar-uno (user, 22/10: "deixe empurrar 2x mais rápido o Uno"): twice the approved 0.8 / 1.4 / 1.8, the rope
+ * too (one table); the cap stays under the city hero's walk (heroSpeed 3.99 u/s), so the movers keep up with it.
  */
-export const CAR_SPEED:readonly number[]=Object.freeze([0,.8,1.4,1.8]);
+export const CAR_SPEED:readonly number[]=Object.freeze([0,1.6,2.8,3.6]);
 export const carSpeed=(movers:number)=>CAR_SPEED[Math.max(0,Math.min(CAR_SPEED.length-1,Math.floor(movers)))];
 export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1,CAR_NEST_KEEP_OUT=6,CAR_PUSH_DOT=.5;
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */

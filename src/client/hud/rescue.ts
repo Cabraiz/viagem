@@ -29,6 +29,10 @@ import {pickLine} from '../fun/lines.ts';
 import {causeCopy} from './cause.ts';
 import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../maps/index.ts';
 import {getAudio} from '../audio/engine.ts';
+import {playEvents} from '../audio/events.ts';
+import {Footsteps,allyGain,type StepFigure} from '../audio/footsteps.ts';
+import {heroRuns} from '../sprites/movement128.ts';
+import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
@@ -100,6 +104,8 @@ export class RescueBoard {
    * targets on screen (relocateCityTargets) and lays the arrows out, so 300 critters are not clustered 60 times a second.
    */
   private cityAt=-Infinity;private cityPeople:CityPerson[]=[];private cityEnemies:EnemyPoint[]=[];private cityTargets:CityEdgeTarget[]=[];
+  /** The heroes' footsteps and the boss's (audio/footsteps.ts), counted every frame. */
+  private stepper?:{steps:Footsteps;figures:StepFigure[]};
   constructor(options:RescueOptions){
     this.net=options.net;this.hud=options.hud;this.scene=options.scene;
     const b=this.button=document.createElement('button');b.type='button';b.id='coop-sos';b.hidden=true;
@@ -139,6 +145,8 @@ export class RescueBoard {
   /** Each authoritative view (after the HUD took it): spawn warnings, fall and rescue lines, the rescuer's buzz. */
   view(view:RunView){
     this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
+    // The match's sounds (audio/events.ts): the local hero's hits, shots, kills and pickups, and the team's moments.
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events,this.net.id);
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){
@@ -169,6 +177,29 @@ export class RescueBoard {
     // Same frame as the team strip (it took this view a moment ago): the arrows never show the other clock.
     this.tick();
   }
+  /**
+   * One frame of footsteps: the local hero at its predicted spot (only while its input asks to walk), the allies at
+   * theirs, quieter with distance, and the boss. The walk cycle is counted at the heroes' drawn size, as the sprites do.
+   */
+  private footsteps(scene:IslandScene|undefined,now:number){
+    const audio=getAudio(),net=this.net;
+    if(!scene||!audio.unlocked||!net.run){this.stepper?.steps.reset();return;}
+    const {steps,figures}=this.stepper??={steps:new Footsteps(audio),figures:[]};
+    // The scene's actor scale and the hero's input (private there; scene.ts is not this card's): read like its probe does.
+    const look=scene as unknown as {actorScale?:number;intent?:{x:number;y:number}};
+    const figurePx=96*(look.actorScale??1)*HERO_DRAW_SCALE,hero=net.predicted,me=net.feed.players.get(net.id);
+    figures.length=0;
+    for(const p of net.players.values()){
+      const local=p.id===net.id,at=local?hero:p;
+      const alive=p.online&&!p.spectator&&(local?!!me&&me.hp>0&&!me.downed&&!me.eliminated:p.hp>0);
+      figures.push({id:p.id,x:at.x,y:at.y,local,runs:heroRuns(p.classId),alive,gain:local?1:allyGain(Math.hypot(p.x-hero.x,p.y-hero.y))});
+    }
+    const intent=look.intent;
+    steps.update(now,figures,scene.cameraView,figurePx,!intent||Math.hypot(intent.x,intent.y)>1e-6);
+    let boss:{x:number;y:number}|undefined;
+    for(const e of net.feed.enemies.values())if(e.boss&&e.hp>0){boss=e;break;}
+    steps.boss(now,boss,hero);
+  }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
     // The room may switch maps in the lobby and the HUD is built once (explore.ts): the arrows follow the world now.
@@ -180,6 +211,7 @@ export class RescueBoard {
     hud.setCityRoute(asset&&run?.phase==='combat'?{terrain:net.terrain,hero:net.predicted,view:scene?.cameraView??0}:undefined);
     const combat=run?.phase==='combat'&&!hud.el.hidden&&!hud.el.classList.contains('rh-ended');
     const now=performance.now(),me=net.feed.players.get(net.id);
+    this.footsteps(scene,now);
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){

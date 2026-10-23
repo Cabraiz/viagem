@@ -26,9 +26,11 @@
 
   /* Top bar (17..135): the logo 118 tall at x 52; the bell 36x41 at x 573, ≡ 43 wide at x 650, both from y 46. */
   .insta-barra { display: flex; justify-content: space-between; align-items: flex-start; height: calc(var(--u) * 118); margin-top: calc(var(--u) * 17); padding-left: calc(var(--u) * 52); }
-  /* The game's letreiro carries a crown and confetti the reference's logo has not: drawn taller (140, from y 9), so its
-     letters are as big as the reference's. */
-  .insta-logo { display: block; height: calc(var(--u) * 140); width: auto; margin: calc(var(--u) * -8) 0 0 calc(var(--u) * -14); }
+  /* The logo is the letreiro of the profile on screen (main.ts renderInsta, BUG-20261023-ORQ-instagram-letreiro-do-perfil):
+     every hero's at the same 140 tall from y 9 (the viciado's crown and confetti made it taller than the reference's,
+     so its letters are as big); the widest, the CLT's plaque, ends at x 287, far from the bell. No src yet: no box. */
+  .insta-logo { display: block; height: calc(var(--u) * 140); width: auto; max-width: calc(var(--u) * 480); margin: calc(var(--u) * -8) 0 0 calc(var(--u) * -14); }
+  .insta-logo:not([src]) { visibility: hidden; }
   .insta-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 24) calc(var(--u) * 32) 0 0; }
   .insta-sino, .insta-menu { display: grid; place-items: center; color: var(--insta-texto); }
   .insta-sino svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
@@ -75,7 +77,7 @@
   .insta-numeros p + p { border-left: max(1px, calc(var(--u) * 2)) solid var(--insta-linha); }
   .insta-numeros strong { font: 800 max(10px, calc(var(--u) * 37))/1.05 var(--f-sistema); }
   .insta-numeros span { margin-top: calc(var(--u) * 6); font: 400 max(10px, calc(var(--u) * 24))/1.1 var(--f-sistema); color: var(--insta-cinza); }
-  .insta-bio { margin: calc(var(--u) * 26) 0 0; font: 400 max(10px, calc(var(--u) * 25))/1.2 var(--f-sistema); text-align: center; text-wrap: balance; }
+  .insta-bio { margin: calc(var(--u) * 26) 0 0; font: 400 max(10px, calc(var(--u) * 25))/1.2 var(--f-sistema); text-align: center; text-wrap: balance; white-space: pre-line; }
 
   /* Chips (782..852, x 25..709 with 18 between): the icon, then the label and the value. The game's letter is wider than
      the reference's, so each chip is as wide as its text (the longest trio, the viciado's, takes 670 of the 684) and the
@@ -85,7 +87,11 @@
     display: flex; align-items: center; gap: calc(var(--u) * 8); min-width: 0; height: calc(var(--u) * 70); padding: 0 calc(var(--u) * 8) 0 calc(var(--u) * 10);
     border-radius: var(--r-ficha); background: var(--insta-chip);
   }
-  .insta-chip-icone { flex: none; width: calc(var(--u) * 38); height: calc(var(--u) * 38); object-fit: contain; }
+  /* The icons in the reference's dark grey, one flat colour like its own (the user, 23/10): the Codex drawing as a mask. */
+  .insta-chip-icone { flex: none; width: calc(var(--u) * 38); height: calc(var(--u) * 38); background: var(--insta-icone); mask: var(--icone) 50% 50% / contain no-repeat; }
+  .insta-chip-icone[data-icone="oculos"] { --icone: url('/art/lite/menu/insta/icone-oculos.webp'); }
+  .insta-chip-icone[data-icone="coroa"] { --icone: url('/art/lite/menu/insta/icone-coroa.webp'); }
+  .insta-chip-icone[data-icone="pata"] { --icone: url('/art/lite/menu/insta/icone-pata.webp'); }
   .insta-chip span { display: flex; flex-direction: column; min-width: 0; }
   .insta-chip small { font: 400 max(10px, calc(var(--u) * 19))/1.15 var(--f-sistema); color: var(--insta-cinza); }
   .insta-chip b { font: 800 max(10px, calc(var(--u) * 20))/1.2 var(--f-sistema); white-space: nowrap; }
@@ -97,6 +103,8 @@
   .insta-aba.ativa { box-shadow: inset 0 calc(var(--u) * -8) 0 var(--insta-roxo); margin: 0 calc(var(--u) * 14); }
   /* The grid (967..1231): three photos 231x265 with 8 between, x 17..715; exactly three, no second row. */
   .insta-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(var(--u) * 8); height: calc(var(--u) * 265); margin: calc(var(--u) * 16) calc(var(--u) * 19) 0 calc(var(--u) * 17); }
+  .estadio .insta-post-botao { display: block; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: var(--r-ficha); background: none; box-shadow: none; cursor: zoom-in; }
+  .insta-post-botao:active .insta-post { transform: scale(.97); }
   .insta-post { display: block; width: 100%; height: 100%; border-radius: var(--r-ficha); object-fit: cover; }
   .insta-privada {
     grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 24);
@@ -136,3 +144,48 @@
   .estadio .estadio-escolha > .estadio-confirmar .estadio-confirmar-texto { translate: none; rotate: none; font-size: calc(var(--u) * 54); }
   .estadio .estadio-escolha > .estadio-confirmar .estadio-cadeado:not([hidden]) { width: calc(var(--u) * 52); height: calc(var(--u) * 52); translate: none; }
 }
+
+/* A grid photo opened as a post (ui/insta-post.ts, BUG-20261023-ORQ-instagram-letreiro-do-perfil), over the whole page:
+   the veil, then the card at the profile's width (--u as above), centred. Its sizes are card px too. */
+.insta-ver {
+  --u: calc(min(100vw, 51.873dvh) / 734);
+  position: fixed; inset: 0; z-index: var(--z-dialogo); display: grid; place-items: center; overscroll-behavior: contain; touch-action: none;
+  color: var(--insta-texto); user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.insta-ver-veu { position: absolute; inset: 0; background: var(--insta-veu); }
+.insta-ver-cartao { position: relative; width: calc(var(--u) * 734); overflow: hidden; border-radius: var(--r-janela); background: var(--insta-fundo); touch-action: none; }
+.insta-ver button { display: grid; place-items: center; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: inherit; cursor: pointer; }
+.insta-ver svg { display: block; }
+.insta-ver-topo { display: flex; align-items: center; gap: calc(var(--u) * 16); height: calc(var(--u) * 104); padding: 0 calc(var(--u) * 24) 0 calc(var(--u) * 12); }
+.insta-ver-voltar { width: calc(var(--u) * 64); height: calc(var(--u) * 64); }
+.insta-ver-voltar svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
+.insta-ver-avatar {
+  width: calc(var(--u) * 66); height: calc(var(--u) * 66); padding: calc(var(--u) * 4); border-radius: var(--r-circulo); object-fit: cover;
+  background: linear-gradient(45deg, var(--insta-anel-a) 12%, var(--insta-anel-b) 52%, var(--insta-anel-c) 88%);
+}
+.insta-ver-topo b { font: 800 max(10px, calc(var(--u) * 30))/1 var(--f-sistema); }
+.insta-ver-selo { width: calc(var(--u) * 32); height: auto; margin-left: calc(var(--u) * -8); }
+.insta-ver-mais { margin-left: auto; }
+.insta-ver-mais svg { width: calc(var(--u) * 46); height: calc(var(--u) * 46); }
+.insta-ver-janela { overflow: hidden; }
+.insta-ver-trilho { display: flex; transition: transform .26s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.insta-ver-slide { flex: none; width: 100%; }
+.insta-ver-midia { position: relative; aspect-ratio: 1; background: var(--insta-chip); }
+.insta-ver-foto { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* The double tap's big heart, in the page's colour over the photo. */
+.insta-ver-pop { position: absolute; inset: 0; display: grid; place-items: center; color: var(--insta-fundo); opacity: 0; pointer-events: none; }
+.insta-ver-pop svg { width: calc(var(--u) * 240); height: calc(var(--u) * 240); fill: currentColor; stroke: none; }
+.insta-ver-acoes { display: flex; align-items: center; gap: calc(var(--u) * 30); padding: calc(var(--u) * 20) calc(var(--u) * 26) calc(var(--u) * 10); }
+.insta-ver-acoes svg { width: calc(var(--u) * 54); height: calc(var(--u) * 54); }
+.insta-ver-curtir[aria-pressed="true"] { color: var(--insta-curtir); }
+.insta-ver-curtir[aria-pressed="true"] svg { fill: currentColor; }
+.insta-ver-salvar { margin-left: auto; }
+.insta-ver-curtidas, .insta-ver-legenda, .insta-ver-quando { margin: 0 calc(var(--u) * 28); }
+.insta-ver-curtidas { font: 400 max(10px, calc(var(--u) * 26))/1.3 var(--f-sistema); }
+.insta-ver-curtidas b, .insta-ver-legenda b { font-weight: 800; }
+.insta-ver-legenda { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 27))/1.3 var(--f-sistema); }
+.insta-ver-quando { margin-top: calc(var(--u) * 8); font: 400 max(10px, calc(var(--u) * 22))/1.2 var(--f-sistema); color: var(--insta-cinza); }
+.insta-ver-pontos { display: flex; justify-content: center; gap: calc(var(--u) * 10); padding: calc(var(--u) * 20) 0 calc(var(--u) * 24); }
+.insta-ver-pontos i { width: calc(var(--u) * 12); height: calc(var(--u) * 12); border-radius: var(--r-circulo); background: var(--insta-linha); }
+.insta-ver-pontos i.ativo { background: var(--insta-roxo); }
+@media (prefers-reduced-motion: reduce) { .insta-ver-trilho { transition: none; } }

@@ -63,11 +63,14 @@
 #coop-attack[data-build=bloqueado] .skillbtn-track{stroke:var(--c-lilas-escuro)}
 #coop-attack[data-build=bloqueado] .skillbtn-fill{stroke:transparent}
 /* D-051 manual combat: the same slot is "Atacar". Held (finger, mouse or Space) = pressed look while it attacks; the
-   reticle is a fixed SVG over the map in viewport px (hud/attack-button.ts): yellow line from the hero, ring on the pick
-   (dashed when the drag's cone is empty: letting go there chooses nothing), knob under the thumb while dragging. */
+   aim stick is a fixed SVG over the map in viewport px (hud/attack-button.ts). */
 #coop-attack[data-held]{background:var(--c-lilas);transform:translateY(2px)}
 .atk-aim{position:fixed;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:var(--z-hud)}
+/* The aim stick over Atacar (tiro-na-direcao-mobile): the left stick's ring and knob, see-through so the weapon's sticker
+   shows under them, and the arrow on the ground from the hero as far as the weapon reaches. */
+.atk-aim-ring{fill:color-mix(in srgb,var(--c-breu) 22%,transparent);stroke:var(--c-papel);stroke-width:3px;filter:drop-shadow(0 2px 0 var(--c-breu))}
 .atk-aim-knob{fill:color-mix(in srgb,var(--c-papel) 55%,transparent);stroke:var(--c-breu);stroke-width:2px}
+.atk-aim-arrow{fill:color-mix(in srgb,var(--c-papel) 70%,transparent);stroke:color-mix(in srgb,var(--c-papel) 70%,transparent);stroke-width:4px;stroke-linecap:round;stroke-linejoin:round}
 /* Out of the run or watching: the stick stays live, it walks the ghost (morto-anda-pelo-mapa, hud/spectator.css). */
 /* Out of the round (BUG-20261006-ORQ-lobby-dead-controls): waiting room, countdown and result drop every move and cast,
    so the stick and the skill are not shown (visibility: their boxes stay, the round starts with nothing jumping, and a
@@ -262,6 +265,11 @@
 .coop-wait-members li>span:has(>.coop-wait-class){line-height:1.15;min-width:0}
 .coop-wait-members button:has(>.coop-wait-class){flex-wrap:wrap;row-gap:0}
 .coop-wait-members button>.coop-wait-class{flex:1 0 100%;margin:-4px 0 0}
+/* Nome numerado ("Mendigo 2", bot com o nome da classe): as reticências ficam no começo, o número nunca some. */
+.coop-wait-members .coop-wait-numbered{display:flex;min-width:0;font-weight:inherit}
+.coop-wait-members .coop-wait-numbered>b{font-weight:inherit}
+.coop-wait-members .coop-wait-numbered>b:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coop-wait-members .coop-wait-numbered>b:last-child{flex:none;white-space:nowrap}
 /* Retrato a 125%, convidado com 5 ou 6 na sala: a janela rolaria (59 px). A linha da classe sai; o rosto continua
    mostrando a classe e o leitor de tela continua lendo. */
 @media(min-height:501px){:root[data-texto="125"] .coop-wait:not(.is-owner) .coop-wait-members:has(>li:nth-child(5)) .coop-wait-class{display:none}}

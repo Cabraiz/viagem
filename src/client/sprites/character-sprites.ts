@@ -259,7 +259,9 @@ export class CharacterSprites {
    * `intent` (local hero only): the world direction the hero is sent to walk this step (joystick or route), so its
    * drawing never turns on a reconciliation snap; remote figures leave it out and turn by their displacement.
    */
-  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number}){
+  animate(sprite:Phaser.GameObjects.Sprite,id:string,x:number,y:number,attackTick=0,alive=true,view=0,intent?:{x:number;y:number},
+    /** Where the body looks instead of the stick (world): the phone's aim stick while it fires (tiro-na-direcao-mobile). */
+    look?:{x:number;y:number}){
     watchOrphans(this.scene);
     const root=this.sheet(id);
     let state=this.states.get(sprite);
@@ -271,7 +273,7 @@ export class CharacterSprites {
     const swing=state.motion.swing,newSwing=motion==='attack'&&state.swingShown!==swing.start;
     if(motion==='attack')state.phaseStarted=swing.start;
     state.x=x;state.y=y;
-    const legacyFacing=state.facing.update(dx,dy,view,intent),direction=state.eight.update(dx,dy,view,intent);
+    const face=look??intent,legacyFacing=state.facing.update(dx,dy,view,face),direction=state.eight.update(dx,dy,view,face);
     const seen=movement128Visible(sprite,this.scene);
     const detailed=alive&&seen?movementPlan(id,motion,direction):undefined;
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the

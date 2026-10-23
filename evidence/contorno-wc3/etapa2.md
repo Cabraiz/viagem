@@ -26,3 +26,9 @@ tiro do jogador (faixa fina, 4 direções por faixa = 8 cópias). Nada no tiro d
 SwiftShader: a variação entre rodadas iguais (5,6–19 ms) é maior que a diferença com/sem. A 1ª versão tinha custo real
 (criar objetos por tiro), corrigido com o pool. Falta a medida de verdade no celular emulado com o build
 (`scripts/perf-andar.mjs` com e sem `--query brilho=0`): precisa do lock pesado (estava com o E8, sons TangoFlux ~2,7 h).
+
+## Etapa 3 (23/10)
+- `depois/pulso-muralha.gif`: 2 s do pulso (gif.mjs: foto `muralha-tralha` congelada, `__cidade.step(100)` por quadro, ffmpeg).
+- perf-andar com/sem `?brilho=0` (2 rodadas cada, alternadas): as 4 pararam em `__partidaPronta` (240 s) — GPU 100 %
+  com o E8 (TangoFlux); o worker mostra a sala em combate com lag 7 s e expira. Não é do brilho (o `sem` também para).
+  Medir de novo quando a GPU soltar: `node scripts/perf-andar.mjs --saida …` e `--query brilho=0`, alternados.

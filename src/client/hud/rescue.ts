@@ -31,6 +31,9 @@ import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../ma
 import {getAudio} from '../audio/engine.ts';
 import {playEvents} from '../audio/events.ts';
 import {Footsteps,allyGain,type StepFigure} from '../audio/footsteps.ts';
+import {AlarmLoop} from '../audio/alarm.ts';
+/** The alarm stays loud this long after the car's last hit (ms). */
+const ALARM_HIT_MS=1500;
 import {heroRuns} from '../sprites/movement128.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {icon} from '../ui/icon.ts';
@@ -205,6 +208,14 @@ export class RescueBoard {
     for(const e of net.feed.enemies.values())if(e.boss&&e.hp>0){boss=e;break;}
     steps.boss(now,boss,hero);
   }
+  /** Card inimigos-querem-o-uno, etapa 4: the Uno's alarm by the hero's distance to the car, louder while it takes hits. */
+  private alarmLoop?:AlarmLoop;
+  private alarm(now:number){
+    const objective=objectiveOf(this.last),live=!!objective&&!objective.ended&&!!this.net.run;
+    if(!live&&!this.alarmLoop)return;
+    const loop=this.alarmLoop??=new AlarmLoop(getAudio()),hero=this.net.predicted;
+    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,now-this.carHitAt<=ALARM_HIT_MS);
+  }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
     // The room may switch maps in the lobby and the HUD is built once (explore.ts): the arrows follow the world now.
@@ -217,6 +228,7 @@ export class RescueBoard {
     const combat=run?.phase==='combat'&&!hud.el.hidden&&!hud.el.classList.contains('rh-ended');
     const now=performance.now(),me=net.feed.players.get(net.id);
     this.footsteps(scene,now);
+    this.alarm(now);
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){
@@ -332,5 +344,5 @@ export class RescueBoard {
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
-  destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
+  destroy(){this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

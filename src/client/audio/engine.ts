@@ -129,6 +129,8 @@ export class AudioEngine {
   get context():AudioContext|undefined{return this.ctx;}
   get output():AudioNode|undefined{return this.master;}
   get musicOutput():AudioNode|undefined{return this.buses.music;}
+  /** The effects bus (its volume and mute): a looping voice of its own joins it (audio/alarm.ts, the Uno's alarm). */
+  get effectsOutput():AudioNode|undefined{return this.buses.effects;}
 
   /**
    * Unlocks on the first gesture on `target` and keeps listening: any later gesture revives a context that

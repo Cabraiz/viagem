@@ -30,7 +30,10 @@ export class UnoPip {
   private rectAt=-Infinity;
   private life='';
 
-  constructor(private readonly scene:Phaser.Scene,private readonly options:UnoPipOptions){
+  private readonly scene:Phaser.Scene;
+  private readonly options:UnoPipOptions;
+  constructor(scene:Phaser.Scene,options:UnoPipOptions){
+    this.scene=scene;this.options=options;
     const doc=document;
     this.el=doc.createElement('button');this.el.type='button';this.el.className='rh-pip';this.el.hidden=true;
     this.el.setAttribute('aria-label','O Uno está apanhando. Toque para ver.');

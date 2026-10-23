@@ -347,6 +347,9 @@ try{
       if(r.why&&r.errors.length&&r.errors.every(glFault)&&r.why.split(' | ').every(w=>w.startsWith('pageerror')||w.startsWith('não entrou'))){again=' (2ª tentativa: o contexto WebGL caiu na 1ª)';r=await smoke(chromium,preview.url,mode,worker.endpoint);}
       else if(r.hung){again=' (2ª tentativa num navegador novo: o renderer travou na 1ª)';r=await smoke(chromium,preview.url,mode,worker.endpoint);
         if(r.hung)again=' (travou nas 2 tentativas, em navegadores novos: se repetir, pode ser um laço do jogo)';}
+      // The solo start's platform error (SOLO_FAILED, solo-plan.ts): 23/10 the local rooms Worker on a loaded PC missed it
+      // on main alone, once in each mode across 2 runs. Once more; a real room bug fails both.
+      else if(r.why.includes('Não foi possível começar a partida')){again=' (2ª tentativa: a sala local não começou na 1ª)';r=await smoke(chromium,preview.url,mode,worker.endpoint);}
       results.push(r);
       console.log(`smoke ${mode}: ${r.why?`${isMachine(r)?'INFRA':'FALHOU'} · ${r.why}${r.starved?` · ${r.starved}`:''}`:'OK'}${again}`);
     }

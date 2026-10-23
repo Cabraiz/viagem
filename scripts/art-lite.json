@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2224,
-  "bytes": 1548456518,
-  "liteBytes": 507014452,
+  "bytes": 1548446910,
+  "liteBytes": 507007068,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -17622,36 +17622,36 @@
    "shownPsnr": 41.5
   },
   "menu/insta/logo-clt-cansado.webp": {
-   "source": "0031e0cbfedad5727d87440a5c373018b16691593ec666db5dd782706203fc00",
-   "lite": "ab8acf953c8f58b5339bf8bc9a93a86091ebebcf0f9bcd76ea9175aed92b3f68",
-   "bytes": 23176,
-   "liteBytes": 20242,
-   "psnr": 41.6,
-   "shownPsnr": 43.9
+   "source": "fcb3b06d2033c7682e43a59ddb805d89716898439018e633e6df7487d241db2c",
+   "lite": "8ad88521717c31458a13ae73ab6ba82e58e7d413bba321089736bee5777a8474",
+   "bytes": 16882,
+   "liteBytes": 14452,
+   "psnr": 43.5,
+   "shownPsnr": 46.2
   },
   "menu/insta/logo-gato-nada-pra-comer.webp": {
-   "source": "7aec09ccc988881532f7991eb2617e598481888924894c5347365d8967bf9869",
-   "lite": "7cd2e99616ba3b29fff9c75807f60e871f2eeba10a35a1797f0c2cd30c8b2d52",
-   "bytes": 25674,
-   "liteBytes": 21516,
-   "psnr": 38.7,
-   "shownPsnr": 41.1
+   "source": "e9c265a3ab51fa41002c53b09ead9609cb1d046e651e977878fae2918775d6ba",
+   "lite": "57c1028825d59200592df77c7fc42e98f31e1cb60246112776801024bdef8d4a",
+   "bytes": 25112,
+   "liteBytes": 21624,
+   "psnr": 39.8,
+   "shownPsnr": 42
   },
   "menu/insta/logo-maromba.webp": {
-   "source": "bcbfa10e31c53859a6885cef1452c4fdba13729e2ddd3ceb76de41e4be4ffaaf",
-   "lite": "644ca05eed80cee45ba936cb7a7b0913f0d1212d76a3d97b74bfe9c3bee3fa87",
-   "bytes": 22044,
-   "liteBytes": 18396,
-   "psnr": 38.8,
-   "shownPsnr": 41
+   "source": "68e02cf9af3029e791f20189d7d892337f6606ec44b8cbb0a8b34353f6fefa69",
+   "lite": "889b92b3e1f7b92ce1853ee2cd167046c619fe159f4f2b2fe7a90dc417f6f5bf",
+   "bytes": 18194,
+   "liteBytes": 15534,
+   "psnr": 42,
+   "shownPsnr": 44.3
   },
   "menu/insta/logo-viciado-em-bet.webp": {
-   "source": "0486dd661bd5b7475765fbf8f9b91842d30263af7cc3ade9d50410be38f79cc4",
-   "lite": "b93e1b440a9c55fd4b2e5016d11c564d592464e8b9cff18fb8e1927e7b11b992",
-   "bytes": 29228,
-   "liteBytes": 25168,
-   "psnr": 37.4,
-   "shownPsnr": 41.7
+   "source": "7cb5b04a0dd6b65baee2c0c6ba357d83105c2cbec7389baf9af2644786981aeb",
+   "lite": "709c954e14d27443ef22fc15a948f5fbc80997f568c16f6a843b7c00f4c41227",
+   "bytes": 30326,
+   "liteBytes": 26328,
+   "psnr": 38.4,
+   "shownPsnr": 40.8
   },
   "menu/insta/perfil-clt-cansado.webp": {
    "source": "f222157e953c12eb08abfdc2dbb4c348b472e536da5981090a42b793d2cc32b5",

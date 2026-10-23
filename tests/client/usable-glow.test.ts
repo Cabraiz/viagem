@@ -2,8 +2,8 @@
 // the player's shot — its look (gold over a solid Breu band, on screen px), the pulse, and the copies that follow the sprite.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {GLOW_BANDS,GLOW_BREU,GLOW_MAX,GLOW_MIN,GLOW_PERIOD_MS,SHOT_BANDS,copiesOf,glowAlpha} from '../../src/client/render/usable-glow-rules.ts';
-import {UsableGlow} from '../../src/client/render/usable-glow.ts';
+import {GLOW_BANDS,GLOW_BREU,GLOW_MAX,GLOW_MIN,GLOW_PERIOD_MS,SHOT_BANDS,copiesOf,copySlot,glowAlpha} from '../../src/client/render/usable-glow-rules.ts';
+import {POOL_MAX,UsableGlow} from '../../src/client/render/usable-glow.ts';
 import {INTERATIVO_COR} from '../../src/client/hud/tralha/model.ts';
 
 test('the glow is the interactive gold hugging the figure, a solid Breu band outside it, thinner on the shot', ()=>{
@@ -17,6 +17,9 @@ test('the glow is the interactive gold hugging the figure, a solid Breu band out
   assert.ok(GLOW_BANDS[1].css>=2,'the gold reads at 2+ CSS px');
   assert.ok(SHOT_BANDS[1].css<GLOW_BANDS[1].css,'a bullet gets a thinner glow');
   assert.equal(copiesOf(GLOW_BANDS),16);
+  assert.equal(copiesOf(SHOT_BANDS),8,'a shot: 4 directions per band');
+  const dirs=Array.from({length:8},(_,i)=>copySlot(SHOT_BANDS,i).dir).sort();
+  assert.deepEqual(dirs,[0,1,2,3,4,5,6,7],'Breu and gold together cover the 8 directions');
 });
 
 test('the gold pulses once a second between its bounds; steady with reduced motion', ()=>{
@@ -66,7 +69,7 @@ test('copies follow the sprite: same texture and frame, 8 directions per band at
   assert.equal(glow.stats().shown,1);
 });
 
-test('unmarked or hidden sprites lose their glow; unused glows are freed', ()=>{
+test('unmarked or hidden sprites lose their glow; unused glows go back to the pool', ()=>{
   const {made,scene}=fakeScene(),glow=new UsableGlow(scene,true);
   const src=fakeImage('item');
   glow.begin(0);glow.mark('i',src,1);glow.end();
@@ -75,19 +78,36 @@ test('unmarked or hidden sprites lose their glow; unused glows are freed', ()=>{
   assert.ok(made.every(c=>!c.visible),'not marked: hidden');
   src.visible=false;glow.begin(32);glow.mark('i',src,1);glow.end();
   assert.ok(made.every(c=>!c.visible),'hidden sprite: no glow');
-  for(let i=0;i<200;i++){glow.begin(i);glow.end();}
-  assert.ok(made.every(c=>c.destroyed));assert.equal(glow.stats().glows,0);
+  glow.begin(48);glow.end();
+  assert.equal(glow.stats().glows,0);assert.equal(glow.stats().pooled,1);
   // Reduced motion: the gold is steady.
   const again=fakeImage('item');glow.begin(GLOW_PERIOD_MS*.75);glow.mark('j',again,1);glow.end();
   assert.ok(made.filter(c=>!c.destroyed&&c.tint===INTERATIVO_COR).every(c=>c.alpha===GLOW_MAX));
 });
 
-test('the shot bands make 16 thinner copies and switching bands rebuilds them', ()=>{
+test('the shot bands make 8 thinner copies and switching bands rebuilds them', ()=>{
   const {made,scene}=fakeScene(),glow=new UsableGlow(scene,false),src=fakeImage('proj');
   glow.begin(0);glow.mark('t',src,1,SHOT_BANDS);glow.end();
-  assert.equal(made.length,16);
+  assert.equal(made.length,8);
   const far=Math.max(...made.map(c=>Math.hypot(c.x,c.y)));
   assert.ok(Math.abs(far-SHOT_BANDS[0].css)<1e-4);
   glow.begin(1);glow.mark('t',src,1);glow.end();
-  assert.equal(made.filter(c=>c.destroyed).length,16);assert.equal(made.length,32);
+  assert.equal(made.length,24,'the shot glow went to its pool, the usable one was made');
+});
+
+test('a stream of shots (a new id every frame) creates no GameObjects once the pool is warm', ()=>{
+  const {made,scene}=fakeScene(),glow=new UsableGlow(scene,false),src=fakeImage('proj');
+  for(let f=0;f<5;f++){glow.begin(f);for(let i=0;i<3;i++)glow.mark(`tiro:${f*3+i}`,src,1,SHOT_BANDS);glow.end();}
+  const warm=glow.created;
+  assert.ok(warm<=2*3*8,"one frame in use + one pooled");
+  for(let f=5;f<300;f++){glow.begin(f);for(let i=0;i<3;i++)glow.mark(`tiro:${f*3+i}`,src,1,SHOT_BANDS);glow.end();}
+  assert.equal(glow.created,warm);assert.equal(made.filter(c=>c.destroyed).length,0);
+  glow.destroy();assert.ok(made.every(c=>c.destroyed));
+});
+
+test('the pool keeps at most POOL_MAX glows; the rest are destroyed', ()=>{
+  const {made,scene}=fakeScene(),glow=new UsableGlow(scene,false),src=fakeImage('proj');
+  glow.begin(0);for(let i=0;i<POOL_MAX+5;i++)glow.mark(`t${i}`,src,1,SHOT_BANDS);glow.end();
+  glow.begin(1);glow.end();
+  assert.equal(glow.stats().pooled,POOL_MAX);assert.equal(made.filter(c=>c.destroyed).length,5*8);
 });

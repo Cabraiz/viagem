@@ -13,8 +13,14 @@ import {INTERATIVO_COR} from '../hud/tralha/model.ts';
 import {OUTLINE_DIRS} from './you-rules.ts';
 
 export {OUTLINE_DIRS};
-/** One ring of offset copies: radius (CSS px from the figure's edge), colour, depth under the sprite. */
-export interface GlowBand {css:number;color:number;depth:number}
+/**
+ * One ring of offset copies: radius (CSS px from the figure's edge), colour, depth under the sprite; `dirs` which of the
+ * 8 directions it uses (default all; a shot uses 4 per band, half the copies: it is small and moving).
+ */
+export interface GlowBand {css:number;color:number;depth:number;dirs?:readonly number[]}
+const AXES=Object.freeze([0,2,4,6]),DIAGONALS=Object.freeze([1,3,5,7]),ALL=Object.freeze([0,1,2,3,4,5,6,7]);
+/** The directions (indices into OUTLINE_DIRS) a band uses. */
+export const bandDirs=(band:GlowBand):readonly number[]=>band.dirs??ALL;
 /** Breu #1E1530 (the city's ring colour). */
 export const GLOW_BREU=0x1e1530;
 /** The glow of usable things: gold 2.5 CSS px, then Breu to 3.5 CSS px (drawn first, farther under). */
@@ -22,10 +28,13 @@ export const GLOW_BANDS:readonly GlowBand[]=Object.freeze([
   {css:3.5,color:GLOW_BREU,depth:-.0006},
   {css:2.5,color:INTERATIVO_COR,depth:-.0004},
 ]);
-/** The shot: the same gold and Breu, thinner (a bullet is a few px; the full glow would swallow it). */
+/**
+ * The shot: the same gold and Breu, thinner (a bullet is a few px; the full glow would swallow it), 4 directions per band
+ * (Breu on the diagonals, gold on the axes): 8 copies a bullet, not 16 (measured: shots are most of the glows in a fight).
+ */
 export const SHOT_BANDS:readonly GlowBand[]=Object.freeze([
-  {css:2.5,color:GLOW_BREU,depth:-.0006},
-  {css:1.5,color:INTERATIVO_COR,depth:-.0004},
+  {css:2.5,color:GLOW_BREU,depth:-.0006,dirs:DIAGONALS},
+  {css:1.5,color:INTERATIVO_COR,depth:-.0004,dirs:AXES},
 ]);
 /** One pulse a second, like Warcraft 3's highlighted items. */
 export const GLOW_PERIOD_MS=1000;
@@ -37,5 +46,10 @@ export function glowAlpha(now:number,reduced:boolean):number{
   const t=.5+.5*Math.sin(now/GLOW_PERIOD_MS*Math.PI*2);
   return GLOW_MIN+(GLOW_MAX-GLOW_MIN)*t;
 }
-/** Copies per glow (8 directions per band). */
-export const copiesOf=(bands:readonly GlowBand[])=>bands.length*OUTLINE_DIRS.length;
+/** Copies per glow (each band's directions). */
+export const copiesOf=(bands:readonly GlowBand[])=>bands.reduce((n,b)=>n+bandDirs(b).length,0);
+/** Band and direction of copy `i` of a glow: bands in order, each over its own directions. */
+export function copySlot(bands:readonly GlowBand[],i:number,out:{band:number;dir:number}={band:0,dir:0}){
+  for(let b=0;b<bands.length;b++){const d=bandDirs(bands[b]);if(i<d.length){out.band=b;out.dir=d[i];return out;}i-=d.length;}
+  out.band=bands.length-1;out.dir=0;return out;
+}

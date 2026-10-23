@@ -3,17 +3,20 @@
  * style gold outline around everything the player can use, and around the player's shot.
  *
  * Per frame: begin(), then mark(id, sprite, k) for every glowing sprite shown this frame (k = world px per CSS px), then
- * end(), which hides the copies of what was not marked and destroys them after a while unused. Each glow is a ring of
+ * end(), which hides the copies of what was not marked and pools them for the next new id (POOL_MAX). Each glow is a ring of
  * tint-filled copies of the sprite (same texture and frame, so they batch with it), offset in 8 directions per band,
  * just under the sprite. Nothing is built at load and nothing is allocated once a glow's copies exist.
  */
 import type Phaser from 'phaser';
-import {GLOW_BANDS,GLOW_BREU,OUTLINE_DIRS,copiesOf,glowAlpha,type GlowBand} from './usable-glow-rules.ts';
+import {GLOW_BANDS,GLOW_BREU,OUTLINE_DIRS,copiesOf,copySlot,glowAlpha,type GlowBand} from './usable-glow-rules.ts';
 
 type Img=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
 interface Glow {copies:Phaser.GameObjects.Image[];bands:readonly GlowBand[];seen:number;shown:boolean}
-/** Frames a glow survives unmarked before its copies are destroyed (an item blinking out of view keeps them). */
-const KEEP_FRAMES=120;
+/**
+ * Glows kept hidden for reuse per band set: a glow not marked in a frame goes back to the pool at once and the next new
+ * id takes it, so a stream of shots (a new id each) never creates GameObjects once the pool is warm.
+ */
+export const POOL_MAX=48;
 /** Phaser's crop rectangle of a cropped image (frame px). */
 interface Crop {x:number;y:number;width:number;height:number}
 /** `?brilho=0`: no glow at all (the before/after FPS measure on one build, scripts/perf-andar.mjs --query brilho=0). */
@@ -21,8 +24,12 @@ const OFF=typeof location!=='undefined'&&new URLSearchParams(location.search).ge
 
 export class UsableGlow {
   private glows=new Map<string,Glow>();
+  private pool=new Map<readonly GlowBand[],Glow[]>();
+  /** GameObjects created since the start (tests: a warm pool creates none). */
+  created=0;
   private frame=0;
   private alpha=1;
+  private slot={band:0,dir:0};
   private scene:Phaser.Scene;
   /** prefers-reduced-motion: the gold stays steady (the owner updates it at runtime). */
   reduced:boolean;
@@ -40,20 +47,21 @@ export class UsableGlow {
     if(OFF)return;
     let g=this.glows.get(id);
     if(!g||g.bands!==bands){
-      if(g)for(const c of g.copies)c.destroy();
-      g={copies:[],bands,seen:0,shown:false};this.glows.set(id,g);
+      if(g)this.free(g);
+      g=this.pool.get(bands)?.pop()??{copies:[],bands,seen:0,shown:false};this.glows.set(id,g);
     }
     g.seen=this.frame;
     const on=src.visible&&src.alpha>0&&src.texture.key!=='__DEFAULT'&&k>0;
     if(!on){if(g.shown)this.hide(g);return;}
-    const n=copiesOf(bands),dirs=OUTLINE_DIRS.length;
+    const n=copiesOf(bands),slot=this.slot;
     while(g.copies.length<n){
-      const band=bands[Math.floor(g.copies.length/dirs)];
-      g.copies.push(this.scene.add.image(0,0,src.texture.key,src.frame.name).setTintFill(band.color).setName('brilho-usavel'));
+      const band=bands[copySlot(bands,g.copies.length,slot).band];
+      g.copies.push(this.scene.add.image(0,0,src.texture.key,src.frame.name).setTintFill(band.color).setName('brilho-usavel'));this.created++;
     }
     const key=src.texture.key,frame=src.frame.name,depth=under,crop=src.isCropped?(src as unknown as {_crop:Crop})._crop:undefined;
     for(let i=0;i<n;i++){
-      const c=g.copies[i],band=bands[Math.floor(i/dirs)],dir=OUTLINE_DIRS[i%dirs],r=band.css*k;
+      copySlot(bands,i,slot);
+      const c=g.copies[i],band=bands[slot.band],dir=OUTLINE_DIRS[slot.dir],r=band.css*k;
       if(c.texture.key!==key)c.setTexture(key,frame);else if(c.frame.name!==frame)c.setFrame(frame);
       // Gold pulses; the outer Breu band stays solid so the contrast never drops on the snow.
       const a=src.alpha*(band.color===GLOW_BREU?1:this.alpha);
@@ -64,17 +72,30 @@ export class UsableGlow {
     }
     g.shown=true;
   }
-  /** End of the frame: glows not marked in it are hidden, and destroyed once unused for KEEP_FRAMES. */
+  /** End of the frame: glows not marked in it are hidden and go back to the pool (past POOL_MAX, destroyed). */
   end(){
     for(const [id,g] of this.glows){
       if(g.seen===this.frame)continue;
-      if(g.shown)this.hide(g);
-      if(this.frame-g.seen>KEEP_FRAMES){for(const c of g.copies)c.destroy();this.glows.delete(id);}
+      this.glows.delete(id);this.free(g);
     }
   }
-  /** Glows with copies alive and how many are shown (dev probes, tests). */
-  stats(){let shown=0,copies=0;for(const g of this.glows.values()){copies+=g.copies.length;if(g.shown)shown++;}return {glows:this.glows.size,shown,copies};}
-  destroy(){for(const g of this.glows.values())for(const c of g.copies)c.destroy();this.glows.clear();}
+  /** Glows in use, how many are shown, copies alive (pool included) and pooled glows (dev probes, tests). */
+  stats(){
+    let shown=0,copies=0,pooled=0;
+    for(const g of this.glows.values()){copies+=g.copies.length;if(g.shown)shown++;}
+    for(const list of this.pool.values())for(const g of list){pooled++;copies+=g.copies.length;}
+    return {glows:this.glows.size,shown,copies,pooled};
+  }
+  destroy(){
+    for(const g of this.glows.values())for(const c of g.copies)c.destroy();this.glows.clear();
+    for(const list of this.pool.values())for(const g of list)for(const c of g.copies)c.destroy();this.pool.clear();
+  }
+  private free(g:Glow){
+    if(g.shown)this.hide(g);
+    let list=this.pool.get(g.bands);
+    if(!list){list=[];this.pool.set(g.bands,list);}
+    if(list.length<POOL_MAX)list.push(g);else for(const c of g.copies)c.destroy();
+  }
   private hide(g:Glow){for(const c of g.copies)c.setVisible(false);g.shown=false;}
 }
 

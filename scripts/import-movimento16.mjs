@@ -3,7 +3,7 @@
 // the game mirrors it into the other side (src/client/sprites/movement128.ts movement16Source). Never replaces
 // R06, dance or legacy files: a class without the 15 sheets keeps them. Dry-run is the default.
 //   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--motions push] [--write] [--report x.json]
-// --motions (card empurrar-uno): only these optional motions (run, push) of each class, the rest of its sheets untouched.
+// --motions (card empurrar-uno): only these optional motions (run, push, hurt) of each class, the rest of its sheets untouched.
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile,rename,rm,access} from 'node:fs/promises';
 import {createHash,randomBytes} from 'node:crypto';
@@ -23,11 +23,17 @@ export const MOVEMENT16_META=Object.freeze({revision:16,cell:[192,192],direction
     // Optional (card passo-3x-mais-lento): a run, the hero's gait when the class has it; the walk stays.
     run:{columns:4,rows:4,frames:16,durationMs:600,loop:true},
     // Optional (card empurrar-uno): pushing the Uno, two steps with the hands on its back; placed by the ground walked.
-    push:{columns:4,rows:4,frames:16,durationMs:1000,loop:true}}});
-/** The motions every M16 class draws; `run` and `push` are optional, all 5 drawn directions or none. */
-const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push'];
+    push:{columns:4,rows:4,frames:16,durationMs:1000,loop:true},
+    // Optional (card animacao-receber-dano): a flinch when hit, the rest pose first and last (those two may be equal).
+    hurt:{columns:3,rows:2,frames:6,durationMs:300,loop:false}}});
+/** The motions every M16 class draws; `run`, `push` and `hurt` are optional, all 5 drawn directions or none. */
+const MOTIONS=['walk','attack','idle'],OPTIONAL_MOTIONS=['run','push','hurt'];
 /** The optional motions placed by their assembler and the ground walked (a phase table next to the sheet). */
-const PHASED=new Set(OPTIONAL_MOTIONS);
+const PHASED=new Set(['run','push']);
+/** The motions placed by their assembler (no pose moved here): the phased ones, and the hurt (its feet where the rest's are). */
+const AS_DRAWN=new Set([...PHASED,'hurt']);
+/** A hurt starts and ends on the rest pose: its last cell may repeat its first. */
+const distinctPoses=(motion,hashes)=>motion==='hurt'?new Set(hashes.slice(0,-1)).size===hashes.length-1&&hashes.at(-1)!==hashes.at(-2):new Set(hashes).size===hashes.length;
 const exists=file=>access(file).then(()=>true,()=>false);
 /**
  * A run alone (card corrida-clt): an R06 class (walk128/attack128/idle8 in the manifest) with no walk/attack/idle M16
@@ -99,7 +105,7 @@ export async function inspectMovement16(source,motion,label=`${motion}`){
     if(frame===0)firstFrameHeight=bottom-top+1;
   }
   // The rest may hold a pose (breathing is subtle); a walk or a swing with repeated cells is not 16 poses.
-  if(motion!=='idle')assert.equal(new Set(hashes).size,frames,`${label}: all ${frames} poses must be distinct`);
+  if(motion!=='idle')assert.ok(distinctPoses(motion,hashes),`${label}: all ${frames} poses must be distinct`);
   return {source,sourceSha256:SHA(bytes),firstFrameHeight,uniqueFrames:new Set(hashes).size};
 }
 
@@ -124,7 +130,7 @@ export async function alignMovement16(bytes,motion,label=motion){
   const {data,info}=await sharp(bytes).ensureAlpha().raw().toBuffer({resolveWithObject:true});
   // A run is placed by its assembler (torso on x 96, each pose at the height it flies, the planted foot measured in
   // run/<dir>.phase.json): moving a pose would move that foot, so it stays as drawn.
-  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors).map(s=>PHASED.has(motion)?{dx:0,dy:0}:s);
+  const anchors=poseAnchors(data,info.width,columns,frames),shifts=rootMotionShifts(anchors).map(s=>AS_DRAWN.has(motion)?{dx:0,dy:0}:s);
   const out=Buffer.alloc(data.length),figure={left:192,top:192,right:0,bottom:0},xs=[];
   for(let frame=0;frame<frames;frame++){
     const sx=frame%columns*192,sy=Math.floor(frame/columns)*192,{dx,dy}=shifts[frame];xs.push(anchors[frame].x+dx);
@@ -151,7 +157,7 @@ async function checkGamePoses(encoded,motion,label){
     for(let i=0;i<cell.length;i+=4)if(cell[i+3]<255)for(let c=0;c<3;c++)cell[i+c]=Math.round(cell[i+c]*cell[i+3]/255);
     hashes.push(SHA(cell));
   }
-  if(motion!=='idle')assert.equal(new Set(hashes).size,frames,`${label}: 96px game output must retain ${frames} distinct poses`);
+  if(motion!=='idle')assert.ok(distinctPoses(motion,hashes),`${label}: 96px game output must retain ${frames} distinct poses`);
 }
 
 /** Validates every selected class before writing; merges its 15 M16 keys into the personagens piece (R06 stays). */
@@ -208,6 +214,13 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
             revision:16,movementHands:'empty',anchor:[.5,.875],height:record.height/2,pivotX:Math.round(aligned.pivotX/2*100)/100,
             figure:{left:Math.max(0,Math.floor(f.left/2)-2),top:Math.max(0,Math.floor(f.top/2)-2),right:Math.min(96,Math.ceil(f.right/2)+2),bottom:Math.min(96,Math.ceil(f.bottom/2)+2)},
             pages:[{file,columns:m.columns,rows:m.rows,firstFrame:0,frameCount:m.frames,sha256:SHA(encoded)}],sha256:SHA(encoded)};
+          // A hurt pivots where its class's rest does (its assembler put the feet in the rest's cell spot): the flinch
+          // starts and ends on the rest pose without a sideways jump. Its rest: the M16 idle16-<dir>, else the R06 idle8.
+          if(clip.motion==='hurt'){
+            const rest=previous.pieces[record.id]?.files?.[`idle16-${clip.direction}`]??previous.pieces[record.id]?.files?.idle8;
+            const pivot=rest?.pivotX??(rest?.anchor?.[0]??.5)*96;
+            assert.ok(Number.isFinite(pivot)&&pivot>0&&pivot<96,`${record.id}/${key}: the rest's pivot`);files[key].pivotX=pivot;
+          }
           clip.pivotX=files[key].pivotX;
           if(clip.phase)files[key].phase=clip.phase;
         }
@@ -239,5 +252,5 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   sharp.cache(false);sharp.concurrency(1);
   const {report,...options}=parseMovement16Args(process.argv.slice(2)),result=await importMovement16(options);
   if(report)await writeAtomic(path.resolve(report),JSON.stringify(result,null,2)+'\n');
-  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')}${c.runOnly?`; ${c.motions.join('+')} only`:''})`).join(', ')}: ${result.characters.every(c=>c.runOnly)?`16 ${[...new Set(result.characters.flatMap(c=>c.motions))].join('/')} poses`:'16 walk+attack poses and 8 rest poses'} x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
+  console.log(`M16 ${result.dryRun?'validated':'imported'} ${result.characters.map(c=>`${c.id} (${c.drawn.join(' ')}; mirrored ${Object.entries(c.mirrored).map(([to,from])=>`${to}←${from}`).join(' ')}${c.runOnly?`; ${c.motions.join('+')} only`:''})`).join(', ')}: ${result.characters.every(c=>c.runOnly)?`${[...new Set(result.characters.flatMap(c=>c.motions))].map(m=>`${MOVEMENT16_META.motions[m].frames} ${m}`).join(' + ')} poses`:'16 walk+attack poses and 8 rest poses'} x 5 drawn directions; 96px game cells; R06/legacy preserved.`);
 }

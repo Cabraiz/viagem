@@ -78,3 +78,13 @@ test('push16 (empurrar-uno): the head keeps ±4 %, the height may drop to PUSH_M
   // a run keeps the plain ±4 % height
   assert.equal(verdict({id:'x',dirs:{W:{rest:{},restKey:'idle8',clips:{run:clip(1,.9)}}}}).length,1);
 });
+
+test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gated like a loop seam, the sizes like a walk',()=>{
+  const clip=(head:number,height:number,ratio:number,join=.2)=>({scale:1,frames:[],head,height,torso:1,area:1,joins:{in:join,out:join,median:.2,ratio,steps:[]}});
+  const m=(hurt:ReturnType<typeof clip>)=>({id:'x',dirs:{S:{rest:{},restKey:'idle8',clips:{hurt}}}});
+  assert.deepEqual(verdict(m(clip(1.01,.99,.7))),[]);
+  assert.deepEqual(verdict(m(clip(1.01,.99,1.5))),['x hurt16-S rest join 0.2 = 1.5× the median step 0.2 (≤ 1.2×)']);
+  // a tiny join over a still clip is no seam (SEAM_FLOOR)
+  assert.deepEqual(verdict(m(clip(1,1,3,.05))),[]);
+  assert.deepEqual(verdict(m(clip(1.06,1,.7))),['x hurt16-S head 1.06 (±4%)']);
+});

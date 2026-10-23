@@ -1,4 +1,4 @@
-// cadeado-so-clt-viciado (the user, 22/10): a person may only play the CLT or the viciado; the other playable heroes
+// cadeado-so-clt-viciado (the user, 22/10): a person may only play the CLT or the viciado (and the gato since gato-no-menu); the other playable heroes
 // show locked in the menu and cannot be confirmed; a room converts a locked class sent by a person (a console, an old
 // tab) to the viciado; room bots still draw from every playable class.
 import test from 'node:test';
@@ -15,12 +15,12 @@ function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Arr
 type TestPeer=ReturnType<typeof peer>;
 const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.connect(p,now);room.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name,classId}),now);return p.messages.findLast(m=>m.t==='welcome').id as string;};
 
-test('one list: the viciado and the CLT, both playable; the viciado is the default; anything else falls to him',()=>{
-  assert.deepEqual([...PERSONAGENS_LIBERADOS],['viciado-em-bet','clt-cansado']);
+test('one list: the viciado, the CLT and the gato, all playable; the viciado is the default; anything else falls to him',()=>{
+  assert.deepEqual([...PERSONAGENS_LIBERADOS],['viciado-em-bet','clt-cansado','gato-nada-pra-comer']);
   for(const id of PERSONAGENS_LIBERADOS)assert.ok(PLAYABLE_CLASS_IDS.includes(id),`${id} has the movement art`);
   assert.equal(PERSONAGEM_PADRAO,'viciado-em-bet');assert.equal(heroiPadrao().id,'viciado-em-bet');
   assert.equal(isLiberado('clt-cansado'),true);assert.equal(isLiberado('coach'),false);assert.equal(isLiberado(42),false);
-  assert.equal(liberadoId('clt-cansado'),'clt-cansado');
+  assert.equal(liberadoId('clt-cansado'),'clt-cansado');assert.equal(liberadoId('gato-nada-pra-comer'),'gato-nada-pra-comer');
   for(const id of ['coach','pedreiro','aposentado','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
   assert.ok(PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id)).length>=10,'the rest of the playable heroes are locked');
 });

@@ -142,6 +142,12 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'clt-cansado':{x:792,y:73,w:635,h:865,files:[[423,'/art/menu/heroi/clt-cansado-423.webp'],[635,'/art/menu/heroi/clt-cansado-635.webp'],
     [847,'/art/menu/heroi/clt-cansado-847.webp'],[1270,'/art/menu/heroi/clt-cansado-1270.webp']],
     fundo:'/art/lite/menu/fundo-clt-cansado.webp',rosto:{x:1077,y:223,w:155,h:140},lugar:{de:'viciado-em-bet',k:1.248,dx:100,dy:33}},
+  // NEW-20261022-ORQ-gato-personagem-completo (the user chose pose 1, the bowl): in the viciado's box of the approved
+  // picture (same height, middle and sole line; no `desce`: he stands on his own floor, PES), on the rooftop without him;
+  // his contact shadow and the wet tiles' reflection are in his fundo (scripts/menu-arte.mjs `sombra`).
+  'gato-nada-pra-comer':{x:944,y:19,w:812,h:1058,files:[[541,'/art/menu/heroi/gato-nada-pra-comer-541.webp'],[812,'/art/menu/heroi/gato-nada-pra-comer-812.webp'],
+    [1083,'/art/menu/heroi/gato-nada-pra-comer-1083.webp'],[1624,'/art/menu/heroi/gato-nada-pra-comer-1624.webp']],
+    fundo:'/art/lite/menu/fundo-gato-nada-pra-comer.webp',rosto:{x:1080,y:100,w:400,h:220}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
 /** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */

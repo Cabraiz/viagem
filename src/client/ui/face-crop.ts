@@ -43,6 +43,7 @@ export const FACE_CROP:Readonly<Record<string,Readonly<FaceCrop>>>=Object.freeze
   'feirante':{cx:.478,cy:.227,size:.454},
   'gambiarreiro':{cx:.467,cy:.176,size:.353},
   'gamer-mobile':{cx:.499,cy:.242,size:.435},
+  'gato-nada-pra-comer':{cx:.48,cy:.25,size:.5},
   'goleira':{cx:.456,cy:.21,size:.359},
   'mae-pet':{cx:.42,cy:.214,size:.429},
   'maromba':{cx:.475,cy:.227,size:.454},

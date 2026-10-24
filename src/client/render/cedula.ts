@@ -22,7 +22,7 @@ export const cedulaPile=(value:number)=>Math.min(CEDULA_PILE_MAX,1+CEDULA_PILE_G
 export function cedulaPop(age:number,reduced=false){
   if(reduced||age>=CEDULA_POP_MS)return 1;
   const t=Math.max(0,age)/CEDULA_POP_MS,c=1.7,u=t-1;
-  return 1+(c+1)*u*u*u+c*u*u;
+  return Math.max(0,1+(c+1)*u*u*u+c*u*u);
 }
 /**
  * The note's pose at `now` (ms): `lift` (CSS px over the ground at body 1), `turn` (its width, always > 0), `back` (the

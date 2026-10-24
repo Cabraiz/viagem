@@ -19,12 +19,12 @@ test('every enemy kind maps to an importer id (identity after the D-033/D-036 re
   assert.deepEqual(Object.values(ENEMY_ART_ID),['bebado','anao-molotov','pombos','tio-pave','agiota','chefe','coach','motoboy','influencer']);
 });
 
-test('static art replaces today\'s keys: pickups, the boleto, projectiles and FX',()=>{
+test('static art replaces today\'s keys: pickups, projectiles and FX',()=>{
   const keys=STATIC_ART.map(s=>s.key);
   for(const k of ['heal','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
-  // D-054: no gem nor ímã art (the only XP on the ground is the boleto rain, FX.boleto).
-  assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima')),'no gem, no ímã');
-  for(const k of [FX.boleto,FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
+  // D-054: no gem nor ímã art; NEW-20261024-ORQ-tirar-drops-cedula-girando: nor the boleto rain's.
+  assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima'||id==='boleto-chuva')),'no gem, no ímã, no boleto rain');
+  for(const k of [FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);
   // The agiota's boleto has its own key now (art:proj:boleto-juros, horde-actions.test.ts), not today's FX.projBoleto.
   assert.ok(!keys.includes(FX.projBoleto));
   assert.equal(new Set(keys).size,keys.length,'one entry per key');

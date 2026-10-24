@@ -209,17 +209,18 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     let n=0;while(n<due.length&&due[n].tick<=ctx.tick)n++;
     if(!n)return;
     const ready=due.splice(0,n);if(!due.length)delete state.cedulas;
-    const lying:PickupState[]=[];for(const p of ctx.pickups.values())if(p.kind==='grana'&&!p.homing)lying.push(p);
+    // Every cédula on screen counts for the cap (flying ones too); a nearby one only joins one lying still.
+    const notes:PickupState[]=[];for(const p of ctx.pickups.values())if(p.kind==='grana')notes.push(p);
     let collectors:SimPlayer[]|undefined;
     for(const c of ready){
-      const full=!hasRoom(ctx.pickups,MAX_PICKUPS);
-      let join:PickupState|undefined,best=lying.length>=CEDULA_CAP||full?Infinity:CEDULA_MERGE_RADIUS**2;
-      for(const p of lying){const d=dist2(p,c);if(d<=best){join=p;best=d;}}
+      const full=!hasRoom(ctx.pickups,MAX_PICKUPS),crowded=full||notes.length>=CEDULA_CAP;
+      let join:PickupState|undefined,best=crowded?Infinity:CEDULA_MERGE_RADIUS**2;
+      for(const p of notes)if(crowded||!p.homing){const d=dist2(p,c);if(d<=best){join=p;best=d;}}
       if(join){join.value+=c.value;continue;}
       if(full){options.payGrana?.(ctx,c.value,c.owner);continue;}
       const pickup=addPickup(ctx,'grana',c.value,c,collectors??=sortedCollectors(ctx),ctx.tick+ticks(CEDULA_WAIT_SECONDS));
       if(c.owner!==undefined)pickup.owner=c.owner;
-      if(!pickup.homing)lying.push(pickup);
+      notes.push(pickup);
     }
   }
 

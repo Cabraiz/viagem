@@ -23,7 +23,7 @@ export function openMenuSandbox(){
   let leaves=0;
   const menu=createGameMenu(settings,settings.querySelector<HTMLElement>('.explore-settings-heading h2')!,content,{
     onResume:()=>settings.close(),onLeave:()=>{leaves++;document.body.dataset.menuLeaves=String(leaves);}});
-  menu.status.innerHTML='<strong id="coop-code">Sala KZ7Q</strong><p id="coop-network">Conectado · até 6 amigos</p>';
+  menu.status.innerHTML='<strong id="coop-code">Sala KZ7Q</strong><p id="coop-network">Conectado · até 10 amigos</p>';
   menu.invite.innerHTML='<button id="coop-copy">Copiar convite</button>';
   settings.querySelector('.explore-settings-close')!.addEventListener('click',()=>settings.close());
   settings.addEventListener('cancel',e=>{e.preventDefault();if(menu.view!=='menu')menu.show('menu');else settings.close();});

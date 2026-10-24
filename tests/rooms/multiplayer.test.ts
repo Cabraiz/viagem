@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {STEP,reconcile,simulate} from '../../src/maps/prediction.ts';
-import {delta,ROOM_PROTOCOL,GRACE_MS,type Input} from '../../src/protocol/room.ts';
+import {delta,ROOM_PROTOCOL,GRACE_MS,MAX_PLAYERS,ROOM_FULL,type Input} from '../../src/protocol/room.ts';
 import {Room,LAB_REACH,ROOM_LIFETIME_MS,RUN_START_WINDOW_MS,ROOM_CLOSING_NOTICE,VERSION_REFUSED,type Peer} from '../../multiplayer/room.ts';
 import {FrameRunFeed} from '../../src/client/net/run-feed.ts';
 import {PROTOCOL_VERSION} from '../../src/protocol/protocol4.ts';
@@ -20,10 +20,11 @@ function peer(){
   return {messages,frames,closes,log,send:(s:string|Uint8Array)=>{if(typeof s==='string'){const m=JSON.parse(s);messages.push(m);log.push(m);}else{frames.push(s);log.push(s);}},close:(code:number,reason:string)=>closes.push({code,reason})};
 }
 const join=(r:Room,p:Peer,n='Amigo',now=1000)=>{r.connect(p,now);r.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name:n,classId:'cidadao-comum'}),now);};
-test('six slots, seventh refused, and rooms isolated',()=>{
-  const r=new Room(1000),peers=Array.from({length:7},()=>peer());peers.forEach((p,i)=>join(r,p,`Amigo ${i}`));
-  assert.equal(r.sim.players.size,6);assert.equal(peers[6].closes[0].code,4003);
-  const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,6);
+test('MAX_PLAYERS slots, one more refused, and rooms isolated',()=>{
+  const r=new Room(1000),peers=Array.from({length:MAX_PLAYERS+1},()=>peer());peers.forEach((p,i)=>join(r,p,`Amigo ${i}`));
+  assert.equal(r.sim.players.size,MAX_PLAYERS);assert.equal(peers[MAX_PLAYERS].closes[0].code,4003);
+  assert.equal(peers[MAX_PLAYERS].messages[0].message,ROOM_FULL);
+  const other=new Room(1000),p=peer();join(other,p);assert.equal(other.sim.players.size,1);assert.equal(r.sim.players.size,MAX_PLAYERS);
 });
 test('a class this build no longer has (old client with tia-festa) plays as the viciado (D-053, cadeado-so-clt-viciado), a non-string is refused',()=>{
   const r=new Room(1000),old=peer();r.connect(old,1000);

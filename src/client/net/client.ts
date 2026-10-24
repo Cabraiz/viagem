@@ -10,7 +10,7 @@ import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import {ObraHold} from './obra-hold.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
-import {InputBatcher,parseElenco} from '../../protocol/index.ts';
+import {InputBatcher,parseElenco,playersWord} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
 import {MARK_ID,ROOT_DEFENSE,parseMark,type MarkNote} from '../../rules/index.ts';
 import {Backlog,SETTLE_RTT_MS} from './backlog.ts';
@@ -580,7 +580,7 @@ export class CoopClient {
       this.combat=m.combat==='manual'?'manual':'auto';
       // Consent for the result's embarrassing moment (VGM-053B): only an opt-out needs saying (the room's default is on).
       if(!this.shamePref)this.out(ws,{t:'pref',shame:false});
-      this.onStatus('Conectado. Cabe até seis na sala.');this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
+      this.onStatus(`Conectado. Cabe até ${playersWord()} na sala.`);this.resolveReady?.();this.resolveReady=undefined;this.rejectReady=undefined;
       this.saveToken();
       clearInterval(this.heartbeat);this.beatAt=performance.now();
       this.heartbeat=setInterval(()=>this.beat(ws),HEARTBEAT_MS);

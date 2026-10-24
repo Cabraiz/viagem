@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BANK_SHARE_TARGET,RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,countBankEvent,countVehicleEvent,emptyBanks,emptyVehicles,parsePlayers,parseSeeds,runLine,summarize,summaryLines,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
+import {BANK_SHARE_TARGET,RECIPE_MEAN_UNITS,barricadeStates,barricadesFell,classRotation,classRotationWide,countBankEvent,countVehicleEvent,emptyBanks,emptyVehicles,parsePlayers,parseSeeds,runLine,summarize,summaryLines,winTarget,type RunRecord} from '../../scripts/bench-city-run.ts';
 import type {SimEvent} from '../../src/contract/index.ts';
 
 function run(seed:number,players:number,outcome:RunRecord['outcome'],roundReached:number,extra:Partial<RunRecord>={}):RunRecord{
@@ -22,9 +22,13 @@ test('city run summary: seed and player lists',()=>{
   assert.deepEqual(parseSeeds('1-4'),[1,2,3,4]);
   assert.deepEqual(parseSeeds('3,1-2,3'),[1,2,3]);
   assert.deepEqual(parsePlayers('6,1,3'),[1,3,6]);
-  assert.throws(()=>parsePlayers('0,7'));
+  assert.throws(()=>parsePlayers('0'));
   assert.throws(()=>parseSeeds('a-b'));
   assert.deepEqual(classRotation(['a','b','c','d','e','f','g','h','i','j','k','l'],3),['a','e','i']);
+  // sala-ate-10-jogadores: seats 7..10 sit between the first six's picks; the first six stay as they were.
+  const ids=Array.from({length:36},(_,i)=>`c${i}`),wide=classRotationWide(ids,10);
+  assert.deepEqual(wide.slice(0,6),classRotation(ids));assert.equal(wide.length,10);assert.equal(new Set(wide).size,10);
+  assert.deepEqual(parsePlayers('8,10'),[8,10]);assert.throws(()=>parsePlayers('11'));
 });
 
 test('city run summary: wins, death rounds, arrivals, loot and verdict per team size',()=>{

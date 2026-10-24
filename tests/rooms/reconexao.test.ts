@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,CHECKPOINT_FROM_ROUND,CHECKPOINT_V,type Peer,type RoomCheckpoint,type RoomRoster} from '../../multiplayer/room.ts';
-import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,restartedNotice,resumedNotice} from '../../src/protocol/room.ts';
+import {ROOM_PROTOCOL,GRACE_MS,MAX_PLAYERS,REPLACED_MESSAGE,restartedNotice,resumedNotice} from '../../src/protocol/room.ts';
 import {sha256Hex} from '../../src/protocol/sha256.ts';
 import {createEnemy} from '../../src/sim/enemies/catalog.ts';
 
@@ -238,12 +238,12 @@ test('roster rows per run stay small (free plan: 100k rows written per day)',()=
   assert.ok(rows<=14,`${rows} rows`);
 });
 
-test('a restored roster ignores junk and never seats more than six',()=>{
+test('a restored roster ignores junk and never seats more than MAX_PLAYERS',()=>{
   const room=new Room(1000);
   room.restore({v:2,running:true,players:[
-    ...Array.from({length:8},(_,i)=>({id:`p${i}`,name:`P${i}`,classId:'cidadao-comum',tokenHash:sha256Hex(`t${i}`),until:null})),
+    ...Array.from({length:MAX_PLAYERS+2},(_,i)=>({id:`p${i}`,name:`P${i}`,classId:'cidadao-comum',tokenHash:sha256Hex(`t${i}`),until:null})),
   ]},1000);
-  assert.equal(room.sim.players.size,6);
+  assert.equal(room.sim.players.size,MAX_PLAYERS);
   const other=new Room(1000);
   other.restore({v:2} as unknown as RoomRoster,1000);other.restore({v:1,running:true,players:[]} as unknown as RoomRoster,1000);
   other.restore({v:2,running:true,players:[{id:'x',name:'X',classId:'nada',tokenHash:sha256Hex('t'),until:null},{id:'y',name:'Y',classId:'cidadao-comum',tokenHash:'plain-token',until:null}]},1000);

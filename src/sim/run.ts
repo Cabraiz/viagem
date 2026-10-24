@@ -1,6 +1,8 @@
 /** Pure server-side lifecycle. Only Room may translate trusted simulation outcomes. */
 import type {ObjectiveResult,RunMember,RunOutcome,RunPhase,RunState,ShameMoment} from '../contract/index.ts';
 export type {RunMember,RunOutcome,RunPhase,RunState} from '../contract/index.ts';
+/** Seats of a run: the room's MAX_PLAYERS (src/protocol/room.ts; sim does not import protocol, a test keeps them equal). */
+export const RUN_SLOTS=10;
 export const RUN_HZ=20;
 /** Safety limit only: a full horde run (10 rounds, 30 s Stonewards intermissions and the boss) takes about 15 min. */
 export const RUN_DURATION_TICKS=20*60*RUN_HZ;
@@ -54,7 +56,7 @@ export class RunLifecycle {
   join(id:string,options:{bot?:boolean}={}){
     const existing=this.members.get(id);
     if(existing){if(!existing.bot)this.setOnline(id,true);return;}
-    if(!id||this.members.size>=6)throw new Error('Run has six slots');
+    if(!id||this.members.size>=RUN_SLOTS)throw new Error(`Run has ${RUN_SLOTS} slots`);
     if(options.bot){this.members.set(id,{id,online:true,ready:true,spectator:this.phase==='combat',bot:true});this.refreshCountdown();return;}
     this.members.set(id,{id,online:true,ready:false,spectator:this.phase==='combat'||this.phase==='countdown'});
   }

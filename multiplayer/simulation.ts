@@ -1,7 +1,7 @@
 import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,CityTerrain,type WorldKind} from '../src/maps/index.ts';
 import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
-import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
+import {GRACE_MS,MAX_PLAYERS,ROOM_FULL,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
 import { worldSpawn,moveStep,statMoveSpeed, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,cityRunStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
@@ -507,8 +507,8 @@ export class Simulation {
     refreshStats(p);p.hp=p.stats.maxHp;
   }
   add(id:string,name:string,classId:string){
-    if(this.players.size>=MAX_PLAYERS)throw new Error('Sala cheia. Máximo de seis jogadores.');
-    const slots=Array.from({length:6},(_,i)=>spawnSlot(i,this.start()));
+    if(this.players.size>=MAX_PLAYERS)throw new Error(ROOM_FULL);
+    const slots=Array.from({length:MAX_PLAYERS},(_,i)=>spawnSlot(i,this.start()));
     const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??this.start();
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
     this.equip(p);

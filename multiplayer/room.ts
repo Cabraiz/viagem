@@ -2,7 +2,7 @@ import {DEFAULT_SEED,type WorldKind,cityTerrainFrom,cityTerrainFor,cityAsField,t
 import {Simulation,DEFAULT_WORLD,worldDescriptor,type SimCheckpoint} from './simulation.ts';
 import {LevelupPause} from './levelup-pause.ts';
 import {CITY_PLAYABLE,CITY_SOON,INFINITO_REF,MAP_TEXT,ROOM_DEFAULT_MAP,checkJoinMaps,clientCatalog,isMapId,playersMissingMap,readMapRef,roomCatalog,sameMap,validateSetMap,welcomeMap,type MapCatalog,type MapId,type MapRef} from '../src/protocol/index.ts';
-import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,parsePix} from '../src/protocol/index.ts';
+import {SOLO_ROOM_REFUSED,GRACE_MS,ROOM_PROTOCOL,ROOM_CLOSING_NOTICE,restartedNotice,resumedNotice,REPLACED_MESSAGE,UPDATE_NEEDED,KICK_BAN_MS,kickedMessage,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,ROOM_FULL,MAX_PLAYERS,parsePix} from '../src/protocol/index.ts';
 import {RoomBots,botIdentity} from './room-bots.ts';
 import {FrameEncoder,WireIds,SEND_EVERY,type FrameInput} from '../src/protocol/index.ts';
 import {RunLifecycle,RUN_DURATION_TICKS,CITY_RUN_DURATION_TICKS,RUN_HZ} from '../src/sim/index.ts';
@@ -465,7 +465,7 @@ export class Room {
     if(roster?.v!==2||!Array.isArray(roster.players))return;
     const lost=roster.running===true?{round:Number(roster.lost?.round)||0,level:Number(roster.lost?.level)||0}:undefined;
     this.restoredRef=lost?linkOf(roster.checkpoint):undefined;
-    for(const r of roster.players.slice(0,6)){
+    for(const r of roster.players.slice(0,MAX_PLAYERS)){
       if(typeof r?.id!=='string'||typeof r.tokenHash!=='string'||!/^[0-9a-f]{64}$/.test(r.tokenHash)||typeof r.name!=='string'||!classIds.has(r.classId)||this.sim.players.has(r.id))continue;
       const until=typeof r.until==='number'&&Number.isFinite(r.until)?r.until:now+GRACE_MS;
       if(until<now)continue;
@@ -478,7 +478,7 @@ export class Room {
     for(const b of Array.isArray(roster.nameBans)?roster.nameBans:[])if(typeof b?.name==='string'&&b.name.length<=40&&Number.isFinite(b.until)&&b.until>now)this.nameBans.set(b.name,b.until);
     this.botsAdded=Number.isSafeInteger(roster.botsAdded)&&roster.botsAdded!>0?roster.botsAdded!:0;
     if(this.sessions.size)for(const b of Array.isArray(roster.bots)?roster.bots:[]){
-      if(this.sim.players.size>=6||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
+      if(this.sim.players.size>=MAX_PLAYERS||typeof b?.id!=='string'||!PLAYER_ID.test(b.id)||typeof b.name!=='string'||!classIds.has(b.classId)||this.sim.players.has(b.id))continue;
       this.seatBot(b.id,b.name.slice(0,20),playableClassId(b.classId),Number.isInteger(b.slot)?b.slot:this.bots.freeSlot());
     }
     this.setOwner(typeof roster.owner==='string'&&this.sessions.has(roster.owner)?roster.owner:this.oldestPerson());
@@ -622,8 +622,8 @@ export class Room {
         const named=this.nameBans.get(nameKey(m.name));
         if(named!==undefined&&named>now){this.sendKicked(peer,named,now);return;}
         // A full room out of combat: the newest bot gives its seat to the person (bots fill, people come first).
-        if(this.sim.players.size>=6&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
-        if(this.sim.players.size>=6){this.reject(peer,'Sala cheia. Máximo de seis jogadores.',now);return;}
+        if(this.sim.players.size>=MAX_PLAYERS&&this.run.snapshot().phase!=='combat'&&this.bots.size){this.removeBot(this.bots.ids.at(-1)!);this.pushRun();}
+        if(this.sim.players.size>=MAX_PLAYERS){this.reject(peer,ROOM_FULL,now);return;}
         const id=this.newId(),token=crypto.randomUUID()+crypto.randomUUID();session={id,hash:sha256Hex(token),token,until:Infinity};
         this.sim.add(id,m.name.trim(),humanClass(m.classId));this.sessions.set(id,session);
         if(!this.owner)this.setOwner(id);
@@ -752,10 +752,10 @@ export class Room {
     for(const other of [...this.connections.values()])if(other.playerId===id)this.sendKicked(other.peer,until,now);
     this.dropPerson(id);this.syncSpectators();this.pushRun();
   }
-  /** {t:'bot-add',round}: one more bot, while the room has fewer than six (bots count). */
+  /** {t:'bot-add',round}: one more bot, while the room has fewer than MAX_PLAYERS (bots count). */
   private addBot(c:Connection,m:any,now:number){
     if(!this.ownerCommand(c,m,now))return;
-    if(this.sim.players.size>=6){this.notice(c,ROOM_FULL_BOTS);return;}
+    if(this.sim.players.size>=MAX_PLAYERS){this.notice(c,ROOM_FULL_BOTS);return;}
     const n=this.botsAdded++,taken=new Set([...this.sim.players.values()].map(p=>p.name));
     const {name,classId}=botIdentity(this.sim.seed,n,BOT_CLASSES,taken);
     this.seatBot(`bot-${n+1}`,name,classId,this.bots.freeSlot());

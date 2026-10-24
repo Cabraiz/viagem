@@ -97,7 +97,7 @@ import {CRATE_STAND} from '../src/sim/bot-loot.ts';
 import {RECIPES,ROOT_DEFENSE,TOWER_TOKENS,classes,getClass,returnTicks,type RecipeId} from '../src/rules/index.ts';
 import type {CityTerrain} from '../src/maps/index.ts';
 import type {SimEvent} from '../src/contract/index.ts';
-import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
+import {GRACE_MS,MAX_PLAYERS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
 import type {ObjectiveResult} from '../src/contract/index.ts';
 import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
@@ -121,7 +121,7 @@ export const HZ=20;
 export const RECIPE_UNITS:Readonly<Record<string,number>>=Object.freeze(Object.fromEntries(Object.values(RECIPES).map(r=>[r.id,r.cost])));
 export const RECIPE_MEAN_UNITS=Object.values(RECIPE_UNITS).reduce((a,b)=>a+b,0)/Object.values(RECIPE_UNITS).length;
 /** Card targets: wins out of 16 per team size, and round 1 (tutorial) without deaths. */
-export const WIN_TARGETS:Readonly<Record<number,readonly [number,number]>>=Object.freeze({6:[7,11],1:[2,6]});
+export const WIN_TARGETS:Readonly<Record<number,readonly [number,number]>>=Object.freeze({10:[7,11],8:[7,11],6:[7,11],1:[2,6]});
 export const TARGET_SEEDS=16;
 /** Card bancos-e-veiculos: the banks give 25–35 % of a run's Grana (pooled over a team size's runs). */
 export const BANK_SHARE_TARGET=Object.freeze({min:.25,max:.35});
@@ -263,10 +263,10 @@ export function parseSeeds(spec:string):number[]{
   }
   return [...out].sort((a,b)=>a-b);
 }
-/** "1,3,6" → [1,3,6] (team sizes 1..6). */
+/** "1,3,6" → [1,3,6] (team sizes 1..MAX_PLAYERS). */
 export function parsePlayers(spec:string):number[]{
   const list=parseSeeds(spec);
-  if(!list.length||list.some(n=>n<1||n>6))throw new Error(`players must be 1..6: ${spec}`);
+  if(!list.length||list.some(n=>n<1||n>MAX_PLAYERS))throw new Error(`players must be 1..${MAX_PLAYERS}: ${spec}`);
   return list;
 }
 export const runKey=(seed:number,players:number)=>`${seed}:${players}`;
@@ -726,7 +726,15 @@ export function classRotation(ids:readonly string[],count=6):string[]{
   const step=Math.max(1,Math.floor(ids.length/count));
   return Array.from({length:count},(_,i)=>ids[(i*step)%ids.length]);
 }
-const CLASS_ROTATION=classRotation(classes.map(c=>c.id));
+/**
+ * Seats 7..MAX_PLAYERS (sala-ate-10-jogadores): halfway between the first six's picks, so teams of 1..6 keep the
+ * classes (and the baselines) they always had.
+ */
+export function classRotationWide(ids:readonly string[],count=MAX_PLAYERS):string[]{
+  const base=classRotation(ids),step=Math.max(1,Math.floor(ids.length/6));
+  return [...base,...Array.from({length:Math.max(0,count-6)},(_,i)=>ids[(i*step+Math.ceil(step/2))%ids.length])].slice(0,Math.max(count,6));
+}
+const CLASS_ROTATION=classRotationWide(classes.map(c=>c.id));
 
 export interface RunOptions {seed:number;players:number;capTicks:number;city:CityTerrain;nav:CityNavigator;knobs?:unknown;route:KnobRoute;towers:boolean;vehicles?:boolean;objective?:'chaveiro';
   /** D-051 (--combat manual): the attack button, the arsenal, the crates and the inventory (Simulation combat). */

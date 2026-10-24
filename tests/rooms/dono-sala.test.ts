@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Room,OWNER_GAP_MS,ROSTER_BOTS_MS,nameKey,type Peer,type RoomRoster} from '../../multiplayer/room.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
-import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,kickedMessage} from '../../src/protocol/room.ts';
+import {ROOM_PROTOCOL,GRACE_MS,KICK_BAN_MS,OWNER_ONLY,OWNER_NOT_NOW,ROOM_FULL_BOTS,MAX_PLAYERS,kickedMessage} from '../../src/protocol/room.ts';
 import {RunLifecycle} from '../../src/sim/run.ts';
 import {RoomBots,botIdentity,botName,numberedName,BOT_FALLBACK_NAME,BOT_NAME_MAX,BOT_THINK_EVERY} from '../../multiplayer/room-bots.ts';
 import {downPlayer} from '../../src/sim/revive.ts';
@@ -116,23 +116,23 @@ test('the owner post moves to the oldest person when the owner leaves for good, 
   say(room,c,{t:'leave'},t);assert.equal(room.sim.players.size,0);assert.equal(owner(room),undefined);
 });
 
-test('six with bots: a seventh bot is refused; a person takes the newest bot seat out of combat, never in it',()=>{
-  const room=new Room(1000),a=peer(),b=peer();join(room,a,'Ana',1000);join(room,b,'Bia',1000);
-  for(let i=0;i<4;i++)addBot(room,a,1100);
-  assert.equal(room.sim.players.size,6);assert.equal(bots(room).length,4);
-  addBot(room,a,1100);assert.equal(bots(room).length,4);assert.equal(notices(a).at(-1),ROOM_FULL_BOTS);
+test('full with bots: one more bot is refused; a person takes the newest bot seat out of combat, never in it',()=>{
+  const room=new Room(1000),a=peer(),b=peer(),full=MAX_PLAYERS-2;join(room,a,'Ana',1000);join(room,b,'Bia',1000);
+  for(let i=0;i<full;i++)addBot(room,a,1100);
+  assert.equal(room.sim.players.size,MAX_PLAYERS);assert.equal(bots(room).length,full);
+  addBot(room,a,1100);assert.equal(bots(room).length,full);assert.equal(notices(a).at(-1),ROOM_FULL_BOTS);
   // Lobby: Caio takes the seat of the newest bot.
   const newest=bots(room).at(-1),before=bots(room);
   const caio=peer();join(room,caio,'Caio',3000);
-  assert.equal(welcome(caio).t,'welcome');assert.equal(room.sim.players.size,6);
+  assert.equal(welcome(caio).t,'welcome');assert.equal(room.sim.players.size,MAX_PLAYERS);
   assert.deepEqual(bots(room),before.filter(id=>id!==newest));
   // Combat: full is full, nobody's bot goes.
   const t=combat(room,[a,b,caio],3100);
   const late=peer();join(room,late,'Duda',t);
-  assert.equal(late.closes[0]?.code,4003);assert.match(late.messages[0].message,/Sala cheia/);assert.equal(bots(room).length,3);
+  assert.equal(late.closes[0]?.code,4003);assert.match(late.messages[0].message,/Sala cheia/);assert.equal(bots(room).length,full-1);
   // Result: again a person comes first.
   room.run.finish('defeat');room.advance(t+50);
-  const after=peer();join(room,after,'Duda',t+100);assert.equal(welcome(after).t,'welcome');assert.equal(bots(room).length,2);
+  const after=peer();join(room,after,'Duda',t+100);assert.equal(welcome(after).t,'welcome');assert.equal(bots(room).length,full-2);
 });
 
 test('bots: named after their character (numbered when repeated), a class of the 36, marked as bot, ready, never holding the start alone',()=>{

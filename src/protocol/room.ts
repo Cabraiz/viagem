@@ -59,7 +59,6 @@ export const OWNER_ONLY='Só o dono da sala mexe na turma.';
 /** Title of the kicked window (D-025, design review): who did what, in the voice of the room. */
 export const KICKED_TITLE='Tiraram você da sala';
 export const OWNER_NOT_NOW='No meio do Round não dá. Espera o resultado.';
-export const ROOM_FULL_BOTS='Sala cheia: seis é o máximo, bot conta.';
 /** A second person knocking on a "Jogar sozinho" room (sala-solo-privada). */
 export const SOLO_ROOM_REFUSED='Essa sala é de alguém jogando sozinho. Peça um código de sala da turma.';
 /**
@@ -74,7 +73,13 @@ export const SOLO_ROOM_REFUSED='Essa sala é de alguém jogando sozinho. Peça u
 export interface RoomCreateOptions {map?:'infinito'|'cidade-nevada';solo?:true;objective?:'chaveiro'|'muralha';mode?:'ninhos';combat?:'manual'}
 /** This connection lost the character to a newer one (another tab, or the same phone back on another network). */
 export const REPLACED_MESSAGE='Seu personagem entrou por outra aba ou outro aparelho. Pra jogar aqui, toca em Atualizar.';
-export const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 10;
+/** MAX_PLAYERS in words, for the room's texts ("Máximo de dez jogadores."). */
+export function playersWord(n=MAX_PLAYERS){return ['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez'][n]??String(n);}
+/** A person knocking on a room with MAX_PLAYERS seats taken (bots count). */
+export const ROOM_FULL=`Sala cheia. Máximo de ${playersWord()} jogadores.`;
+/** The owner's bot-add on a full room (D-025). */
+export const ROOM_FULL_BOTS=`Sala cheia: ${playersWord()} é o máximo, bot conta.`;
 /**
  * The run's rotation (D-040) for the client's per-match art (arte-do-roster-no-render): {t:'elenco',ids} on welcome and
  * when a run draws a new one, so a phone fetches the drawn enemies' sheets before they show up. JSON control, no

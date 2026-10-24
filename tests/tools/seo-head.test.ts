@@ -35,7 +35,7 @@ test('seo head: tone (no superlatives, no shouting, no sales talk, no keyword li
 test('seo head: the claims are the game (players, free, no made-up rating)', () => {
   assert.equal(ld['@type'], 'VideoGame');
   assert.equal(ld.numberOfPlayers.maxValue, MAX_PLAYERS);
-  assert.match(description, new RegExp(`up to ${['', 'one', 'two', 'three', 'four', 'five', 'six'][MAX_PLAYERS]} players`));
+  assert.match(description, new RegExp(`up to ${['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][MAX_PLAYERS]} players`));
   assert.equal(ld.offers.price, '0');
   assert.equal(ld.inLanguage, 'pt-BR', "the game's text is Portuguese");
   assert.match(html, /<html lang="pt-BR">/);

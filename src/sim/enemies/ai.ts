@@ -25,6 +25,7 @@ import {addTelegraph,cancelTelegraphs,telegraphHits,type TelegraphSpec} from '..
 import {MAX_ENEMIES,MAX_TELEGRAPHS} from '../../rules/index.ts';
 import type {Telegraph} from '../../contract/index.ts';
 import type {TauntedEnemy} from '../skills.ts';
+import {AGGRO,AGGRO_PER_PLAYER,AGGRO_SECONDS,FOCO,FOCO_CACADOR,FOCO_UNO,type ProvokedEnemy} from './foco.ts';
 
 /**
  * Optional non-player target (wall/shelter, VGM-046). Only siege enemies (memory.siege === 1, set by the director)
@@ -303,6 +304,10 @@ export class EnemyAi implements SimSystem {
     // D-004: positions are snapshotted on rebuild; the core rebuilds again after enemy-ai for later systems.
     ctx.enemyIndex.rebuild(ctx.enemies.values());
     const detonate=this.detonate;detonate.length=0;
+    // Foco (foco.ts): FOCO_UNO bodies turned on a player right now, against the cap for this tick.
+    let aggro=0;
+    for(const e of ctx.enemies.values())if(e.memory?.[AGGRO]===1&&(e as TauntedEnemy).taunt)aggro++;
+    const aggroCap=AGGRO_PER_PLAYER*targets.length,openStructure=structures.some(s=>!s.blocking);
     for(const e of ctx.enemies.values()){
       // Bosses belong to VGM-038; retreating enemies are walked into the sea by the director (D-010).
       if(e.hp<=0||e.boss)continue;
@@ -333,15 +338,20 @@ export class EnemyAi implements SimSystem {
       const planted=memory.state===STATE.joke||memory.state===STATE.charge;
       // Nearest live player, or a structure if its edge is closer; a valid taunt overrides both.
       let player:SimPlayer|undefined,structure:StructureTarget|undefined,bait:Point|undefined,best=Infinity;
+      const foco=memory[FOCO];
+      if(foco===FOCO_UNO&&this.answerHit(ctx,e,memory,aggro<aggroCap))aggro++;
       const taunter=tauntTarget(ctx,e);
+      if(!taunter&&memory[AGGRO]===1)delete memory[AGGRO];
+      // FOCO_UNO walks past the players to the car; FOCO_CACADOR leaves the car alone while a player stands.
+      const huntPlayers=!(foco===FOCO_UNO&&openStructure),huntStructures=!(foco===FOCO_CACADOR&&targets.length>0);
       const goal=taunter?undefined:this.options.goal?.(ctx,e);
       if(taunter){player=taunter;best=Math.hypot(taunter.x-e.x,taunter.y-e.y);}
       else if(!goal){
-        for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
+        if(huntPlayers)for(const p of targets){const d=Math.hypot(p.x-e.x,p.y-e.y);if(d<best){best=d;player=p;}}
         // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
         bait=baitOf(memory,ctx.tick);
         if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
-        else if(memory[SIEGE]===1)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone
@@ -842,6 +852,23 @@ export class EnemyAi implements SimSystem {
    * budget is full); an explosion hurts the enemies inside it once, through ctx.damageEnemy (no player credit), which
    * ignores the dead, so a kill never counts twice; a neighbor anão it kills explodes in turn on a later tick.
    */
+  /**
+   * Foco (foco.ts): a FOCO_UNO body a player hurt since its last step turns on that player for AGGRO_SECONDS (its taunt),
+   * if `room` (under the cap) or it is already turned (the new hit only refreshes it). A skill's taunt is left alone.
+   * True when it took a new slot of the cap.
+   */
+  private answerHit(ctx:SimContext,e:EnemyState,memory:Record<string,number>,room:boolean){
+    const held=e as ProvokedEnemy&TauntedEnemy,by=held.provokedBy;
+    if(by===undefined)return false;
+    delete held.provokedBy;
+    const p=ctx.players.get(by);
+    if(!p||!live(p)||(held.taunt&&memory[AGGRO]!==1))return false;
+    const fresh=memory[AGGRO]!==1;
+    if(fresh&&!room)return false;
+    held.taunt={player:by,untilTick:ctx.tick+ticks(AGGRO_SECONDS)};memory[AGGRO]=1;
+    return fresh;
+  }
+
   private landHazards(ctx:SimContext){
     const due:HazardTelegraph[]=[];
     for(const t of ctx.telegraphs.values())if(t.fireTick<=ctx.tick&&t.owner.startsWith('env:'))due.push(t);

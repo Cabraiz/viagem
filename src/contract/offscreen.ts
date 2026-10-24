@@ -185,6 +185,12 @@ export const INTEREST_RADIUS=Math.ceil(MAX_OFFSCREEN_DISTANCE+RING_OUTER+RING_SL
 /** Hysteresis: once sent, an entity stays until it is this much farther, so edge walkers do not flicker. */
 export const INTEREST_HYSTERESIS=4;
 /**
+ * Card inimigos-querem-o-uno (etapa 3, the Uno's picture-in-picture): every client also gets the awake enemies within
+ * this radius of the chaveiro's car, however far it is, kept first under the AWAKE_PER_VIEWER cap and never held for
+ * the far frame: the small live window shows who is hitting it. The car is 4 u long; a critter hits it from ≤ 2 u.
+ */
+export const CAR_INTEREST_RADIUS=8;
+/**
  * D-051: at most this many sleeping bodies (EnemyView.asleep) per client, the nearest ones.
  * Card horda-visivel-capacidade (scripts/bench-horda-visivel.ts, seed 4242, 4 players, 4930 asleep; real screens: a
  * PC at 1920×1080 shows 954×537 world px, ±11 u around the hero; a phone in portrait at the default zoom 434×939): with

@@ -7,7 +7,8 @@
  *    WAVE_BOSS.clear from every body, along the wave's way in; arrival() says so on that tick only;
  *  - hp × players like the final boss (bossMaxHp with WAVE_BOSS's numbers); the final boss is untouched;
  *  - beaten: a dourada crate where he fell, up() false; a checkpoint keeps him (and brings him back if he stood);
- *  - the bots aim at a boss near the car (bot-brain bossFocus).
+ *  - the bots aim at a boss near the car (bot-brain bossFocus);
+ *  - he stops the time: while he stands no wave leaves and the nests' clock waits (holdWaveClock), then it resumes.
  * D-031: sim ticks only.
  */
 import test from 'node:test';
@@ -22,7 +23,7 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems,type RunSystemsState} from '../../src/sim/assemble.ts';
 import {bossMaxHp} from '../../src/sim/boss.ts';
-import {waveBossSpot,waveBossTuning} from '../../src/sim/ninhos/chefao.ts';
+import {holdWaveClock,waveBossSpot,waveBossTuning,type WaveClock} from '../../src/sim/ninhos/chefao.ts';
 import {WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -136,6 +137,35 @@ test('beaten: a dourada crate where he fell and up() false; the checkpoint keeps
   const done=sys.state().chefao!;assert.equal(done.boss.defeated,true);
   for(let i=0;i<20;i++)world.step();
   assert.equal(bossesOf(world).length,0,'he never comes back');
+});
+
+test('he stops the time: while he stands no wave leaves, nobody is born and the clock waits; it resumes once he fell',()=>{
+  const {world,sys}=run({seed:4});
+  waveOneLeft(sys,world);world.step();
+  const n=sys.nests!.state,start=n.startTick!,boss=bossesOf(world)[0];
+  assert.ok(boss&&sys.chefao!.up());
+  // The 2nd wave was due in 5 ticks: it waits as long as he stands.
+  n.nextWave=world.tick+5;
+  const horde=world.enemies.size;
+  for(let i=0;i<60;i++)world.step();
+  assert.equal(n.sent,1,'no wave while he stands');
+  assert.equal(n.nextWave-world.tick,5,'the next wave as far as it was');
+  assert.equal(n.startTick,start+60,'the ramp waits too');
+  assert.ok(world.enemies.size<=horde,`${world.enemies.size} > ${horde}: nobody born in the fight`);
+  world.damageEnemy(boss.id,boss.hp+1);
+  for(let i=0;i<10&&n.sent<2;i++)world.step();
+  assert.equal(sys.chefao!.up(),false);
+  assert.equal(n.sent,2,'the 2nd wave right after he fell');
+});
+
+test('holdWaveClock: every deadline and the ramp start move by the ticks held; nothing before the first step',()=>{
+  const c:WaveClock={startTick:100,nextWave:900,waveOpen:300,exploreFrom:400,exploreUntil:2800};
+  holdWaveClock(c,30);
+  assert.deepEqual(c,{startTick:130,nextWave:930,waveOpen:330,exploreFrom:430,exploreUntil:2830});
+  const before:WaveClock={startTick:null,nextWave:5};holdWaveClock(before);
+  assert.deepEqual(before,{startTick:null,nextWave:5});
+  const old:WaveClock={startTick:0,nextWave:10};holdWaveClock(old);
+  assert.deepEqual(old,{startTick:1,nextWave:11},'absent fields stay absent');
 });
 
 test('bots: a boss within BOSS_FOCUS_R of the car is their target (the nearest such); farther, or dead, none',()=>{

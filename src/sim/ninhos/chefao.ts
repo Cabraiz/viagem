@@ -9,7 +9,10 @@
  *  - the fight: a second boss controller (sim/boss.ts createBoss, the final boss's own fight: telegraphed slam and
  *    charge, the assembly at half hp, the enrage), with his kind (the roster chefe: its art), his lines, WAVE_BOSS's hp
  *    and × WAVE_BOSS.damage on every hit; he besieges the car like the final boss; his crate is a WAVE_BOSS.crate;
- *  - the scene: `arrival(tick)` on the tick he appears, for the room (multiplayer/boss-scene.ts) to hold the sim.
+ *  - the scene: `arrival(tick)` on the tick he appears, for the room (multiplayer/boss-scene.ts) to hold the sim;
+ *  - he stops the time (the user, 24/10: "o boss ele para o tempo"): while he stands the nests do not step (assemble.ts),
+ *    holdWaveClock moves their clock one tick a tick, so no wave or drip is born (he fights almost alone) and the next
+ *    wave, the open wave's cap and the time to explore wait for him to fall.
  * The final boss (the chaveiro's ETA, assemble.ts `boss`) is untouched: another controller, another state.
  * A checkpoint keeps no live enemy: one taken while he stands (the calm checkpoint never is, Simulation.calmCheckpointDue)
  * brings him back on the next step, scene and all.
@@ -51,6 +54,19 @@ export interface ChefaoSystem extends SimSystem {
   arrival(tick:number):ChefaoArrival|undefined;
   /** Dev labs (the room's {t:'lab',chefao:true}): he comes on the next step, wherever the wave stands. False when he already came. */
   summon():boolean;
+}
+
+/** The ticks of the nests' clock (NestsState; the open wave and the time to explore where the run has them). */
+export interface WaveClock {startTick:number|null;nextWave?:number;waveOpen?:number;exploreFrom?:number;exploreUntil?:number}
+/**
+ * The wave clock stands still for `by` ticks (the chefão up): every deadline and the ramp's start move with the tick, so
+ * the next wave, the warm-up, f, the wave's cap and the time to explore resume where they stood. Before the first step
+ * (startTick null) there is nothing to hold. The drip's tick is the wave's log key: kept (the nests do not step).
+ */
+export function holdWaveClock(clock:WaveClock,by=1){
+  if(clock.startTick===null)return;
+  clock.startTick+=by;
+  for(const key of ['nextWave','waveOpen','exploreFrom','exploreUntil'] as const){const v=clock[key];if(v!==undefined)clock[key]=v+by;}
 }
 
 /**

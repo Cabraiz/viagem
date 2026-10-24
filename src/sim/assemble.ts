@@ -40,7 +40,7 @@ import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './ban
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
-import {createChefao,type ChefaoState,type ChefaoSystem} from './ninhos/chefao.ts';
+import {createChefao,holdWaveClock,type ChefaoState,type ChefaoSystem} from './ninhos/chefao.ts';
 import {CALMA,WAVE_BOSS} from '../rules/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -515,7 +515,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id))),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
-    {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
+    // Card boss-fim-onda-1: the chefão stops the time; while he stands the nests hold their clock (no wave, no drip).
+    {id:'director',step(ctx:SimContext){
+      director!.step(ctx);
+      if(nests&&chefao?.up())holdWaveClock(nests.state);else nests?.step(ctx);
+      sono?.step(ctx);applyEliteExtras(ctx);
+    }} satisfies SimSystem,
     zueira,enemyAi,
     // Card boss-fim-onda-1: the chefão of the 1st wave steps in the boss's slot (no new system id).
     chefao?{id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao!.step(ctx);}} satisfies SimSystem:boss,

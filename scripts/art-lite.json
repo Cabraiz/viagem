@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3082,
-  "bytes": 2213021208,
-  "liteBytes": 767895206,
+  "bytes": 2212997262,
+  "liteBytes": 767881198,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -27822,28 +27822,28 @@
    "shownPsnr": 42.3
   },
   "menu/insta/grade-maromba-1.webp": {
-   "source": "3f22f45d5981066910cf9500f18d2216b9b02e6b7bf58f6245d42276ca80ecee",
-   "lite": "81cd5c6a5d98a558f841775e86c8be5d680fcf3e3f13dc5cadf087f600628a39",
-   "bytes": 30030,
-   "liteBytes": 24544,
-   "psnr": 41.4,
-   "shownPsnr": 43.9
+   "source": "fd0813805e8ef7b991a1b78a1cb2f423ab27677232408bf8bca6df33e7c25518",
+   "lite": "5e982f2d312361e0703f75fbe7cd183dc8b6d5c58cc534c8b39703db3343e29f",
+   "bytes": 30926,
+   "liteBytes": 25490,
+   "psnr": 41.2,
+   "shownPsnr": 43.5
   },
   "menu/insta/grade-maromba-2.webp": {
-   "source": "22b9f359849542d0e810d5a00db8243c0c1f5cb32b73ff9b35c4835c689c84d1",
-   "lite": "9843a77eefb90c5156cf5432f7c15c029f3bbad37bbe0b5da0b3b64390090eb0",
-   "bytes": 46418,
-   "liteBytes": 37116,
-   "psnr": 39.1,
-   "shownPsnr": 41.7
+   "source": "8a2e8556d7a5eacfbbc0716d59b18c411853246aa934e24588a240fbe027b9b6",
+   "lite": "8a5b3c567499400dfde018304733bacaa406c046bfbff2daf212f671be27e725",
+   "bytes": 42844,
+   "liteBytes": 35260,
+   "psnr": 39.5,
+   "shownPsnr": 42.1
   },
   "menu/insta/grade-maromba-3.webp": {
-   "source": "7ec2f2634e172949ef615c240212dddede8a2497d644027b7d3e70b0032075ef",
-   "lite": "cea341d5167b557def74fb917694fe9891c8db631fbe41efc38e586b06fd791c",
-   "bytes": 38782,
-   "liteBytes": 31266,
-   "psnr": 39.8,
-   "shownPsnr": 42.4
+   "source": "e804ce5ab89d49c3e25067f1c0b945eeb69bf52c7469567efc07394957d4b0a8",
+   "lite": "993a500d63fdd773c9e55f3b6ac3a06d4febe72413d121c7f90235f8cca976c0",
+   "bytes": 39672,
+   "liteBytes": 32208,
+   "psnr": 39.9,
+   "shownPsnr": 42.3
   },
   "menu/insta/grade-vendedor-praia-1.webp": {
    "source": "a31d11b1fbd0db2b8ddff6adc8e877b510e298f4dc6ba92aeed9fc3f0bcdb6a3",
@@ -28046,12 +28046,12 @@
    "shownPsnr": 42.2
   },
   "menu/insta/perfil-maromba.webp": {
-   "source": "a8d6167cd41ef343058d9b39652f32a9d670a59d84fd3d95dae8f52e3295ae69",
-   "lite": "7f967a6e70c5e20fcdd6ad544472ca4af1c1f7096dba2434d68632519b1a9f77",
-   "bytes": 43040,
-   "liteBytes": 34574,
-   "psnr": 41.4,
-   "shownPsnr": 43.9
+   "source": "ceee8e5286586d1a0577fc46973c89c38ebf7127f0773b5c748dc2bb8c320da0",
+   "lite": "9fb4a1dfceea2e3fb3abe2350237dfb33d183cc89a32b4b3316c29de22ea62a3",
+   "bytes": 40568,
+   "liteBytes": 32906,
+   "psnr": 42,
+   "shownPsnr": 44.3
   },
   "menu/insta/perfil-vendedor-praia.webp": {
    "source": "91cdf2a061660461b668bbe96080937045d0539048abb21908f2c0e5b9cc9232",
@@ -28142,28 +28142,28 @@
    "shownPsnr": 43.8
   },
   "menu/insta/post-maromba-1.webp": {
-   "source": "b05d626f9d455e28af2930325347c9e0c795b3623e19e9d265f36e55f45253d7",
-   "lite": "911b543ca959397bbf467cf6e6d389d4ede2e6c929ebaa3624f9063fcb33ff36",
-   "bytes": 62470,
-   "liteBytes": 49134,
-   "psnr": 42.3,
-   "shownPsnr": 44.5
+   "source": "66b88754bda0f747f9392eeaa3c3863f2f684b4280ebdd428f5bb1d2c353bd72",
+   "lite": "c42ca3f232a8f2a75741393e4b68ca0d0054bf7e044a84f265a8008090d388bb",
+   "bytes": 61346,
+   "liteBytes": 48568,
+   "psnr": 42.4,
+   "shownPsnr": 44.6
   },
   "menu/insta/post-maromba-2.webp": {
-   "source": "2b45c09c6acaec1031594f55f67a0257688bf78e4e5984cffdac1f55e97302da",
-   "lite": "5098547100e23924c9713782ab24e796821e3245283d8b30772913dfb0ed6fe3",
-   "bytes": 102068,
-   "liteBytes": 82162,
-   "psnr": 40,
-   "shownPsnr": 42.4
+   "source": "37d20572bb041b082ec6423bfff825d1de67eab495ec8a7260012ef0516beac1",
+   "lite": "f488e69c3c28f21381afbd8a3ca9d54214337b634b7776f5d39a37cffa150276",
+   "bytes": 88146,
+   "liteBytes": 72236,
+   "psnr": 41.1,
+   "shownPsnr": 43.5
   },
   "menu/insta/post-maromba-3.webp": {
-   "source": "13f2c706a09339e360e446fadefe4e1e81627a73623c18d00a22cf6b9f0b55cf",
-   "lite": "8e4383a6a82aed73f670c762d78372678af6e00df27698ef9839e4e4e9cc6591",
-   "bytes": 78858,
-   "liteBytes": 63594,
-   "psnr": 41.3,
-   "shownPsnr": 43.8
+   "source": "1f7cd2a50a313c9413ce1b1f10a0c117b07018ed2aebb08663217d6a34b8d700",
+   "lite": "eba834b1c3508598365425deb3f68325de6aff720b682247286562a8ad7c716d",
+   "bytes": 74218,
+   "liteBytes": 61714,
+   "psnr": 42,
+   "shownPsnr": 44.2
   },
   "menu/insta/post-vendedor-praia-1.webp": {
    "source": "27e39fba0eb1986dd84be277ea0546c0e52b87bd22c8a8b5b4588ace979f5d37",

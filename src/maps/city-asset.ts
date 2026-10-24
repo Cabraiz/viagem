@@ -1,12 +1,14 @@
 /**
  * City map asset (D-027, contract in design/cidade-protocolo.md §5): the single source of the `viagem-city` JSON
  * format written by the importer (E1) and read by the simulation, the renderer and the rooms Worker.
- * Pure and self-contained (no imports, no Node-only APIs): runs in browsers, Node and Cloudflare Workers.
+ * Pure and self-contained (no imports but the pure viaduct geometry, no Node-only APIs): runs in browsers, Node and
+ * Cloudflare Workers.
  * Conventions: units of the game (1 cell = unitsPerCell u), origin at the NW corner of the whole cell grid,
  * x grows east and y grows south; grids are row-major, row 0 = north. Walkable/water samples are 4 per cell
  * (sample (sx,sy) covers [sx*step,(sx+1)*step) on x), stored as LSB-first bitsets (bit i = byte[i>>3]>>(i&7)&1);
  * heights sit on the (cells+1)^2 cell corners as Int16 little-endian centi-units. Binary sections travel in base64.
  */
+import {viaductProblem,type ViaductRect,type CityViaduct,type RampUp} from './city/viaduct.ts';
 
 export const CITY_FORMAT='viagem-city';
 /** Version of the JSON layout; the map content version is `version` (it goes to the MapRef). */
@@ -14,7 +16,7 @@ export const CITY_FORMAT_VERSION=1;
 export const MAX_JSON_CHARS=4_000_000;
 /** Largest sample grid side; the cell grid is at most MAX_DIM/SAMPLES_PER_CELL per side. */
 export const MAX_DIM=4096;
-export const MAX_BLOCKS=20_000,MAX_PROPS=50_000,MAX_LOOT=5000,MAX_DECOR=50_000;
+export const MAX_BLOCKS=20_000,MAX_PROPS=50_000,MAX_LOOT=5000,MAX_DECOR=50_000,MAX_VIADUCTS=16,MAX_PILLARS=256;
 /** Turns a decor piece may take (degrees; see CityDecor.rot). */
 export const DECOR_ROTS=[0,90,180,270] as const;
 /** Total rectangles over all blocks (bounds an object handed to decode, where the text limit does not apply). */
@@ -69,6 +71,8 @@ export interface CityAssetData {
   walkable:Uint8Array; water?:Uint8Array; heights:Float32Array;
   points:CityPoints; blocks:readonly CityBlock[]; props:readonly CityProp[]; loot:readonly CityPoint[];
   decor?:readonly CityDecor[];
+  /** The viaducts (city/viaduct.ts; optional, an older reader ignores them). */
+  viaducts?:readonly CityViaduct[];
   source?:CitySource;
 }
 
@@ -84,6 +88,8 @@ export interface CityAsset {
   readonly loot:readonly CityPoint[]; readonly source?:CitySource;
   /** The placed scenery (empty when the asset has none). */
   readonly decor:readonly CityDecor[];
+  /** The viaducts (city/viaduct.ts; empty when the asset has none). */
+  readonly viaducts:readonly CityViaduct[];
   /** Walkable/water sample grid ((cells*4)^2, step = unitsPerCell/4). */
   readonly samples:CityGrid;
   /** Height corner grid ((cells+1)^2, step = unitsPerCell). */
@@ -241,6 +247,13 @@ export function encodeCityAsset(data:CityAssetData):string{
     return {id:text(q.id,`${at}.id`),c:int(q.c,`${at}.c`),r:int(q.r,`${at}.r`),w:int(q.w,`${at}.w`),h:int(q.h,`${at}.h`),rot:int(q.rot,`${at}.rot`),
       ...(q.links!==undefined?{links:int(q.links,`${at}.links`)}:{}),...(q.cover===true?{cover:true as const}:{})};
   });
+  const viaducts=d.viaducts===undefined?undefined:list(d.viaducts,'viaducts').map((v,i)=>{
+    const q=obj(v,`viaducts[${i}]`),at=`viaducts[${i}]`,ramp=obj(q.ramp,`${at}.ramp`);
+    const cells=(r:unknown,path:string)=>{const a=list(r,path);if(a.length!==4)fail(`${path} must be [c,r,w,h]`);return a.map((n,k)=>int(n,`${path}[${k}]`));};
+    return {id:text(q.id,`${at}.id`),deck:cells(q.deck,`${at}.deck`),ramp:{rect:cells(ramp.rect,`${at}.ramp.rect`),up:text(ramp.up,`${at}.ramp.up`)},
+      pillars:list(q.pillars,`${at}.pillars`).map((p,k)=>{const a=list(p,`${at}.pillars[${k}]`);return a.map((n,j)=>int(n,`${at}.pillars[${k}][${j}]`));}),
+      height:f3(q.height,`${at}.height`)};
+  });
   const lines=[
     `"format":${J(CITY_FORMAT)}`,
     `"formatVersion":${CITY_FORMAT_VERSION}`,
@@ -264,6 +277,7 @@ export function encodeCityAsset(data:CityAssetData):string{
     `"props":${J(props)}`,
     `"loot":${J(loot)}`,
   );
+  if(viaducts?.length)lines.push(`"viaducts":${J(viaducts)}`);
   // One piece per line: the file stays diffable and the decor never shifts the bytes of the sections above.
   if(decor?.length)lines.push(`"decor":[\n${decor.map(q=>J(q)).join(',\n')}\n]`);
   if(d.source!==undefined){
@@ -417,6 +431,22 @@ function decodeRoot(root:unknown):CityAsset{
     if(q.cover!==undefined&&q.cover!==true)bad(`${at}.cover must be true when given`);
     return Object.freeze({id:str(q.id,`${at}.id`,MAX_ID),c,r,w,h,rot:q.rot as CityDecor['rot'],...(links!==undefined?{links}:{}),...(q.cover===true?{cover:true as const}:{})});
   }));
+  const viaducts=o.viaducts===undefined?Object.freeze([]) as readonly CityViaduct[]:Object.freeze(each(arr(o.viaducts,'viaducts',MAX_VIADUCTS),(v,i):CityViaduct=>{
+    const q=rec(v,`viaducts[${i}]`),at=`viaducts[${i}]`,ramp=rec(q.ramp,`${at}.ramp`);
+    const cells=(r:unknown,path:string)=>{
+      const a=arr(r,path,4);if(a.length!==4)bad(`${path} must be [c,r,w,h]`);
+      return Object.freeze(each(a,(n,k)=>cellInt(n,`${path}[${k}]`,Math.max(cellsW,cellsH)))) as unknown as ViaductRect;
+    };
+    const pillars=Object.freeze(each(arr(q.pillars,`${at}.pillars`,MAX_PILLARS),(p,k)=>{
+      const a=arr(p,`${at}.pillars[${k}]`,2);if(a.length!==2)bad(`${at}.pillars[${k}] must be [c,r]`);
+      return Object.freeze([cellInt(a[0],`${at}.pillars[${k}][0]`,cellsW-1),cellInt(a[1],`${at}.pillars[${k}][1]`,cellsH-1)] as const);
+    }));
+    const out:CityViaduct={id:str(q.id,`${at}.id`,MAX_ID),deck:cells(q.deck,`${at}.deck`),
+      ramp:Object.freeze({rect:cells(ramp.rect,`${at}.ramp.rect`),up:ramp.up as RampUp}),pillars,height:num(q.height,`${at}.height`)};
+    const problem=viaductProblem(out,cellsW,cellsH);
+    if(problem)bad(`${at}: ${problem}`);
+    return Object.freeze(out);
+  }));
   let source:CitySource|undefined;
   if(o.source!==undefined){
     const s=rec(o.source,'source'),sha=s.sha256;
@@ -425,7 +455,7 @@ function decodeRoot(root:unknown):CityAsset{
     source=Object.freeze({sha256:sha as string,note:s.note as string});
   }
   const meta={id,version,name,cells:Object.freeze({w:cellsW,h:cellsH}),unitsPerCell:unit,size:Object.freeze(size),
-    playable:Object.freeze(playable),points,blocks,props,loot,decor};
+    playable:Object.freeze(playable),points,blocks,props,loot,decor,viaducts};
   return Object.freeze(Object.assign(asset,meta,source?{source}:{})) as CityAsset;
 }
 
@@ -484,6 +514,8 @@ export function cityAssetToData(asset:CityAsset):CityAssetData{
     blocks:asset.blocks.map(b=>({id:b.id,kind:b.kind,bbox:rc(b.bbox),rects:b.rects.map(rc)})),
     props:asset.props.map(q=>({...q})),loot:asset.loot.map(pt),
     ...(asset.decor.length?{decor:asset.decor.map(q=>({...q}))}:{}),
+    ...(asset.viaducts.length?{viaducts:asset.viaducts.map(v=>({id:v.id,deck:[...v.deck] as unknown as ViaductRect,
+      ramp:{rect:[...v.ramp.rect] as unknown as ViaductRect,up:v.ramp.up},pillars:v.pillars.map(([c,r])=>[c,r] as const),height:v.height}))}:{}),
   };
   if(asset.waterBits)data.water=unpackBits(asset.waterBits,count);
   if(asset.source)data.source={...asset.source};

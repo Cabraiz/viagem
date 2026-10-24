@@ -184,7 +184,7 @@ function assembled(seed:number,players:Map<string,SimPlayer>,objective:'chaveiro
   return {world,sys};
 }
 
-test('in a run: the city has vehicles in both modes (in the state), the island and the endless world none; the pickups system never takes one; the Simulation view carries the ride',()=>{
+test('in a run: the city has vehicles in both modes (in the state), the island and the endless world none; the pickups system never takes one; the Simulation view and the bot view carry the ride',()=>{
   for(const objective of ['chaveiro',undefined] as const){
     const players=new Map<string,SimPlayer>(),a=assembled(11,players,objective);
     assert.ok(a.sys.vehicles,`vehicles in the city (${objective??'muralha'})`);
@@ -208,6 +208,9 @@ test('in a run: the city has vehicles in both modes (in the state), the island a
   const p=sim.players.get('p1')!;p.ride='carrinho';p.rideUntil=sim.world.tick+100;
   const me=sim.view('p1').players.find(o=>o.id==='p1')!;
   assert.deepEqual([me.ride,me.rideUntil],['carrinho',sim.world.tick+100]);
+  // The room bots' view too (vehicleGoal reads it): a riding bot walked to a parked vehicle it could never take.
+  const bot=sim.botView().players.find(o=>o.id==='p1')!;
+  assert.deepEqual([bot.ride,bot.rideUntil],['carrinho',sim.world.tick+100]);
   p.rideUntil=sim.world.tick;
   assert.equal(sim.view('p1').players.find(o=>o.id==='p1')!.ride,undefined,'an expired ride costs no bytes');
 });

@@ -13,3 +13,4 @@ export * from './far-path.ts';
 export * from './nests.ts';
 export * from './city-decor.ts';
 export * from './safe-places.ts';
+export * from './city/viaduct.ts';

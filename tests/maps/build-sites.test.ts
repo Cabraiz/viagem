@@ -81,7 +81,7 @@ test('a smaller build sits inside the site’s largest footprint, centred', () =
 test('the validator refuses a site on a building, the wall, a mouth, the spawn, or on top of another', () => {
   const plan=buildPlanFor(city),base=worldBase(city),mouth=decoded.asset.points.bocas.N,spawn=worldSpawn(city);
   const withSite=(site:BuildSite):BuildPlan=>({...plan,sites:[...plan.sites.slice(0,15),site]});
-  assert.ok(reasons(withSite(cellSite('x',94,86)),city).includes('x: não cabe no chão livre'));
+  assert.ok(reasons(withSite(cellSite('x',47,51)),city).includes('x: não cabe no chão livre'));
   assert.ok(reasons(withSite({id:'x',x:base.x,y:base.y,maxSize:1}),city).includes('x: cobre a muralha/forja'));
   assert.ok(reasons(withSite({id:'x',x:mouth.x,y:mouth.y-2,maxSize:1}),city).includes('x: cobre uma boca/barricada'));
   assert.ok(reasons(withSite({id:'x',x:spawn.x+.5,y:spawn.y,maxSize:1}),city).includes('x: cobre o ponto de nascer'));

@@ -8,6 +8,7 @@ import {readFileSync} from 'node:fs';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {DICT,FrameDecoder,FrameEncoder,WireIds} from '../../src/protocol/protocol4.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
+import {NEST_COUNT} from '../../src/maps/nests.ts';
 import {ASLEEP_PER_VIEWER,INTEREST_RADIUS} from '../../src/contract/offscreen.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
@@ -26,7 +27,7 @@ const put=(sim:Simulation,x:number,y:number)=>{const p=sim.players.get('bot-1')!
 
 test('ninhos room: the nests are structures (size, phase, hp), seen once someone comes near; a fallen one stays at hp 0',()=>{
   const sim=room('ninhos'),nests=sim.run.nests!.state.nests;
-  assert.equal(nests.length,8);
+  assert.equal(nests.length,NEST_COUNT);
   let wire=sim.frame().structures.filter(s=>s.kind==='ninho');
   assert.deepEqual(wire.map(s=>s.id),nests.map(n=>n.id));
   for(const s of wire){

@@ -58,12 +58,13 @@ const railOf=(u:Rect,scale:number)=>{const hw=halfW(scale)+RIM_PAD,hh=HALF_H+RIM
 const within=(a:Rect,box:Rect,eps=.5)=>a.x>=box.x-eps&&a.y>=box.y-eps&&right(a)<=right(box)+eps&&bottom(a)<=bottom(box)+eps;
 const near=(a:number,b:number,eps=1e-6)=>Math.abs(a-b)<=eps;
 /**
- * NEW-20261013-ORQ-cidade-escala-1-7: the city is 1.7× the .w3x map (287.232 u, asset version 2); map lengths (the city,
- * the plaza, GROUP_RANGE, the avenue match) are × K, people lengths (danger radii, GROUP_CELL, NEAR_BLOCK) are not.
- * MID shifts the old fixtures (built around the 169 u map's centre 84.5) onto the new centre by whole 8 u cells, so a
- * blob keeps its group cell.
+ * NEW-20261013-ORQ-cidade-escala-1-7: the city was 1.7× the .w3x map (287.232 u, asset version 2); since asset v4
+ * (NEW-20261023-ORQ-mapa-175-com-viaduto) its distances are 1.75× shorter (164.56 u). Map lengths (the city, the plaza,
+ * GROUP_RANGE, the avenue match) are × K = CITY_DISTANCE_SCALE, people lengths (danger radii, GROUP_CELL, NEAR_BLOCK)
+ * are not. MID shifts the old fixtures (built around the 169 u map's centre 84.5) onto the city's centre by whole 8 u
+ * cells, so a blob keeps its group cell.
  */
-const K=deps.CITY_MAP_SCALE,MID=Math.round((287.232/2-84.5)/8)*8;
+const K=deps.CITY_DISTANCE_SCALE,MID=Math.round((city.CITY_SIZE/2-84.5)/8)*8;
 const fmt=(a:Rect|undefined)=>a?`{${a.x},${a.y},${a.width},${a.height}}`:'undefined';
 const lcg=(seed:number)=>{let s=seed>>>0;return ()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/2**32;};};
 
@@ -155,7 +156,7 @@ const MUST_POINT=['caido','chefe'] as const;
 test('contract: constants and reference controls match the doc (§0, §1, §2, §3, §4)',()=>{
   assert.equal(THUMB_GAP,24);assert.equal(HERO_MARGIN,40);assert.equal(EDGE_COLUMN,120);assert.equal(MAX_ARROWS,6);
   assert.equal(city.GROUP_CELL,8);assert.equal(city.GROUP_MIN,5);assert.equal(city.GROUP_RANGE,60*K);assert.equal(city.GROUP_ARROWS,2);
-  assert.equal(K,1.7);assert.equal(city.CITY_SIZE,287.232);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
+  assert.equal(K,1.7/1.75);assert.equal(city.CITY_SIZE,164.56);assert.equal(city.DEFAULT_MAP,deps.PROTOCOL_DEFAULT_MAP,'the selector shows the protocol default until the room confirms');assert.equal(city.PENDING_MS,3000);
   for(const o of ['portrait','landscape'] as const){
     const k=city.REFERENCE_CONTROLS[o] as any,d=DOC[o];
     assert.deepEqual(k.joystick,d.joystick,`${o} joystick`);assert.deepEqual(k.skill,d.skill,`${o} skill`);assert.deepEqual(k.team,d.team,`${o} team`);
@@ -509,7 +510,7 @@ test('9. pickGroupArrows: off-screen, ≥ 5, within GROUP_RANGE (60 u × K), nea
 
 test('9. DEFAULT_CITY: the whole city (CITY_SIZE), the plaza at its centre (radius 10 u × K), the 4 mouths and the start inside',()=>{
   const map=city.DEFAULT_CITY,c=map.size;
-  assert.equal(c,city.CITY_SIZE);assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:143.616,y:143.616});assert.equal(map.plaza.radius,10*K);
+  assert.equal(c,city.CITY_SIZE);assert.deepEqual({x:map.plaza.x,y:map.plaza.y},{x:82.28,y:82.28});assert.equal(map.plaza.radius,10*K);
   assert.deepEqual(map.mouths.map(m=>m.id).sort(),['L','N','O','S']);
   assert.ok(map.start.x>=0&&map.start.x<=c&&map.start.y>=0&&map.start.y<=c);
 });
@@ -892,12 +893,13 @@ test('§7 active mouths: a spawn warning lights the mouth of its avenue (real ma
   assert.deepEqual(city.trackMouths(state,[{type:'spawn-warning',x:plaza.x,y:plaza.y,atTick:1300}],1250,map),['O'],'the boss warning lights nothing');
 });
 
-test('cidade-04: every point the real planner spawns a group at lights that group\'s mouth (the south avenue starts 2.4 u from praca)',async()=>{
+test('cidade-04: every point the real planner spawns a group at lights that group\'s mouth (the south gate well inside the plaza radius)',async()=>{
   const terrain=await realCity(),map=city.cityMapInfo(city.cityAssetOf(terrain)!),planner=cityPlanner(terrain),P=terrain.asset.points;
-  // The plaza is no circle: its south gate is 2.4 u from praca, the east and west ones 12 u. A radius for all (12.66 u)
+  // The plaza is no circle: its south gate was 2.4 u from praca, the east and west ones 12 u. A radius for all (12.66 u)
   // dropped the south groups planned right outside their gate (5.9 u from praca, cidade-04 review).
+  // Asset v4 (mapa-175-com-viaduto): the N and S gates ~6 u from the plaza point, L and O ~12 u.
   const gateS=map.mouths.find(m=>m.id==='S')!.gate!;
-  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<3*K&&map.plaza.radius>12*K);
+  assert.ok(Math.hypot(gateS.x-map.plaza.x,gateS.y-map.plaza.y)<map.plaza.radius*.6&&map.plaza.radius>10*K);
   // Players at the plaza, east of it, at the start, on each avenue and at its end; with the team chase (cidade-05c) and without.
   const spots=[P.praca,{x:P.praca.x+20*K,y:P.praca.y},P.inicio,...[{x:84,y:40},{x:40,y:88},{x:130,y:88},{x:84,y:130}].map(q=>({x:q.x*K,y:q.y*K})),P.spawnN,P.spawnL,P.spawnO];
   let total=0,south=0,nearPlaza=0;const wrong:string[]=[];

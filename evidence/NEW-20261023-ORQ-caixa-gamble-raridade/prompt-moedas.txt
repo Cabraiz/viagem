@@ -1,0 +1,5 @@
+Generate ONE image with the image generation tool and save it as moedas.png in the current directory. Do not inspect, do not run code, do not check with PIL.
+
+The attached image is only a style reference (thick dark outline, painted cartoon game sticker style). Do not copy, edit or reuse any part of it.
+
+Draw a sprite sheet of 8 separate cartoon game effect pieces in one row, well separated by empty space, same thick dark outline style: 4 shiny gold coins at different spin angles (front, three-quarter, edge, three-quarter), and 4 four-pointed golden-white sparkle stars of different sizes. No text, no symbols on the coins except a simple star. Flat pure green #00FF00 background, no shadows. Wide image.

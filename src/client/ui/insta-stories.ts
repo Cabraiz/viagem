@@ -16,6 +16,8 @@ export const SEGURAR_MS=220;
 /** The share of the width, from the left, where a tap goes back. */
 export const VOLTAR_LADO=.3;
 const ABRIR_MS=240,FECHAR_MS=200;
+/** The letters of the stories' texts and stickers (tokens.css, BUG-20261024-ORQ-stories-texto-estilo-instagram). */
+export const LETRAS_STORIES=['400 1em Inter','800 1em Inter','800 1em "Archivo Expanded"','1em "Bebas Neue"','700 1em "Courier Prime"'] as const;
 
 /** What a tap at `x` px of a `largura` px wide screen does on story `i` of `n`. */
 export function toqueOf(x:number,largura:number,i:number,n:number):{ir:number}|'fechar'{
@@ -41,7 +43,11 @@ export function abrirStories(perfil:InstaPerfil,origem:HTMLElement|null,fim?:()=
   const palco=q<HTMLElement>('.insta-sv-palco'),quando=q<HTMLElement>('.insta-sv-quando');
   const stories=[...tela.querySelectorAll<HTMLElement>('.insta-sv-story')],barras=[...tela.querySelectorAll<HTMLElement>('.insta-sv-barra b')];
   const reduzido=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let i=0,tempo=0,ultimo=0,pausa=false,fechando=false,quadro=0;
+  let i=0,tempo=0,ultimo=0,pausa=false,fechando=false,quadro=0,letras=false;
+  // The texts' letters are asked for on opening, with the first picture; the texts show and the clock runs once they came
+  // (or failed: then the fallback letters, never a story stuck).
+  const chegaram=()=>{letras=true;tela.classList.add('letras');};
+  void Promise.all(LETRAS_STORIES.map(f=>document.fonts.load(f))).then(chegaram,chegaram);
 
   // The pictures load as they come near: the one on screen and the next.
   const carregar=(k:number)=>{const foto=stories[k]?.querySelector('img');if(foto&&!foto.src)foto.src=storyUrl(perfil.id,k);};
@@ -57,7 +63,7 @@ export function abrirStories(perfil:InstaPerfil,origem:HTMLElement|null,fim?:()=
     quadro=requestAnimationFrame(passo);
     const dt=ultimo?Math.min(100,agora-ultimo):0;ultimo=agora;
     const foto=stories[i]!.querySelector('img')!;
-    if(pausa||document.hidden||!foto.complete||!foto.naturalWidth) return;
+    if(pausa||document.hidden||!letras||!foto.complete||!foto.naturalWidth) return;
     tempo+=dt;
     if(tempo>=STORY_MS){if(i<stories.length-1)mostrar(i+1);else fechar();return;}
     pintar();

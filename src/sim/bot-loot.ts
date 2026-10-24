@@ -68,7 +68,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1)continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

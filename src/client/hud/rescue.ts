@@ -35,7 +35,6 @@ import {AlarmLoop} from '../audio/alarm.ts';
 /** The alarm stays loud this long after the car's last hit (ms). */
 const ALARM_HIT_MS=1500;
 import {heroRuns} from '../sprites/movement128.ts';
-import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
@@ -186,27 +185,25 @@ export class RescueBoard {
     this.tick();
   }
   /**
-   * One frame of footsteps: the local hero at its predicted spot (only while its input asks to walk), the allies at
-   * theirs, quieter with distance, and the boss. The walk cycle is counted at the heroes' drawn size, as the sprites do.
+   * One frame of footsteps: each hero's walk as the scene drew it (its sheet's contacts, card som-passos-fora-do-eixo),
+   * the local hero full and centred, the allies quieter with distance and from their side of the screen, and the boss.
    */
   private footsteps(scene:IslandScene|undefined,now:number){
     const audio=getAudio(),net=this.net;
     if(!scene||!audio.unlocked||!net.run){this.stepper?.steps.reset();return;}
     const {steps,figures}=this.stepper??={steps:new Footsteps(audio),figures:[]};
-    // The scene's actor scale and the hero's input (private there; scene.ts is not this card's): read like its probe does.
-    const look=scene as unknown as {actorScale?:number;intent?:{x:number;y:number}};
-    const figurePx=96*(look.actorScale??1)*HERO_DRAW_SCALE,hero=net.predicted,me=net.feed.players.get(net.id);
+    const hero=net.predicted,me=net.feed.players.get(net.id);
     figures.length=0;
     for(const p of net.players.values()){
-      const local=p.id===net.id,at=local?hero:p;
+      const local=p.id===net.id;
       const alive=p.online&&!p.spectator&&(local?!!me&&me.hp>0&&!me.downed&&!me.eliminated:p.hp>0);
-      figures.push({id:p.id,x:at.x,y:at.y,local,runs:heroRuns(p.classId),alive,gain:local?1:allyGain(Math.hypot(p.x-hero.x,p.y-hero.y))});
+      figures.push({id:p.id,gait:scene.heroGait(p.id),local,runs:heroRuns(p.classId),alive,
+        gain:local?1:allyGain(Math.hypot(p.x-hero.x,p.y-hero.y)),side:local?0:scene.screenSide(p)});
     }
-    const intent=look.intent;
-    steps.update(now,figures,scene.cameraView,figurePx,!intent||Math.hypot(intent.x,intent.y)>1e-6);
+    steps.update(now,figures);
     let boss:{x:number;y:number}|undefined;
     for(const e of net.feed.enemies.values())if(e.boss&&e.hp>0){boss=e;break;}
-    steps.boss(now,boss,hero);
+    steps.boss(now,boss,hero,boss?scene.screenSide(boss):0);
   }
   /** Card inimigos-querem-o-uno, etapa 4: the Uno's alarm by the hero's distance to the car, louder while it takes hits. */
   private alarmLoop?:AlarmLoop;

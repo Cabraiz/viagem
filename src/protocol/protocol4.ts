@@ -32,6 +32,7 @@
  * everyone sees everyone's balance; the camp block's and the objective block's `grana` are the viewer's own wallet
  * (0 for a spectator), written per encoder from the viewer's player record. The `pix` event goes to everyone.
  * Sleeping bodies (D-051, `asleep`) count at most ASLEEP_PER_VIEWER per client, the nearest ones.
+ * Per-player crates (caixa-gamble): a pickup whose server-only `hiddenFor` names the viewer is left out of his frames.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
@@ -379,6 +380,9 @@ const contribution=optional<Contribution>({
 export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number;
   /** The player's wallet in R$ (contract SimPlayer.grana; carteira-e-pix): absent = 0. */
   grana?:number};
+/** A pickup this viewer no longer sees (PickupState.hiddenFor, the caixa-gamble's per-player crates). */
+const hidden=(e:Entity,viewer:string)=>(e.hiddenFor as readonly string[]|undefined)?.includes(viewer)===true;
+
 /** What `viewer` sees as their own Grana: their wallet (0 when absent, a spectator, or not in the frame). */
 export function viewerGrana(players:readonly PlayerWireView[],viewer:string|undefined):number{
   const p=viewer===undefined?undefined:players.find(q=>q.id===viewer);
@@ -1004,6 +1008,9 @@ export class FrameEncoder {
    */
   private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined,car?:Point2):Map<number,Entity>{
     const current=new Map<number,Entity>();
+    // The caixa-gamble: a crate this viewer no longer sees (server-only hiddenFor) is not in his frames at all.
+    const viewer=this.viewer;
+    if(section==='pickups'&&viewer!==undefined&&list.some(e=>hidden(e,viewer)))list=list.filter(e=>!hidden(e,viewer));
     const interest=this.interest,always=section==='players'||section==='structures';
     if(!interest||!focus||always){
       for(const e of list)current.set(this.ids.wire(section,e.id),e);

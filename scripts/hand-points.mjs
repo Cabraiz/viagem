@@ -89,6 +89,10 @@ const OVERRIDES={
   // The gato's SE breathing rest: the paw rule flips between the paw and the sash knot as the shoulders open; the paw
   // stays where the rest has it (frame 0, behind the sleeve).
   'gato-nada-pra-comer:idle16-SE':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[65.8,60,1]])),
+  // The maromba's S and N breathing rest: the wristband sits at the hip line and the rule finds it only half the breath
+  // (the weapon would flip in front ↔ behind); the fist stays where the rest has it (S frame 0; N where it is found).
+  'maromba:idle16-S':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[29.1,62.4]])),
+  'maromba:idle16-N':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[66.7,62.3]])),
   // The vendedor's S punch toward the camera (7) and the guard at the chest (12, 13): the fist sits on the torso, the
   // outermost skin is the cheek (marked by eye on the debug sheet, 24/10).
   'vendedor-praia:attack16-S':{7:[40,54],12:[40,52],13:[38,50]},

@@ -17703,28 +17703,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.idle16-n.e81973b32b79.webp": {
-   "sha": "4235cd425eb131ef4e43393a737b6414eca5a68e9aa2d9fe16df0185b976a45f",
+  "lite/sprites/maromba.idle16-n.5a1e7f951590.webp": {
+   "sha": "4f905fe21f7a26b3166db2544863182358e6c18fdd4707fc0d63ecb33ab6c8c8",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.idle16-nw.4d6a781daa29.webp": {
-   "sha": "f4b1f8398def481b295fb8ef07622a4d2809d5b6e89a9ec77f0dac9fb93dc786",
+  "lite/sprites/maromba.idle16-nw.3db3393ddff9.webp": {
+   "sha": "1639b51af818d16469e524275e14d543b5d80258f61e96c1ff49add139b999b2",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.idle16-s.d391c57cc339.webp": {
-   "sha": "9b5dda72267abfc2a61a9dddb07b9fd59dbf07bd754b8f0433056425f972132f",
+  "lite/sprites/maromba.idle16-s.5d112d66dfd2.webp": {
+   "sha": "8fdf194c2cd370816feccaee94473e8fe9e763a82e6579ea3355afc1da7a1cd2",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.idle16-se.46d9b5ad7845.webp": {
-   "sha": "61cff10f59dd56e91023652292c27b3dbc4299b4ce9bb2e55019272a0ceee3b9",
+  "lite/sprites/maromba.idle16-se.7c1463965f31.webp": {
+   "sha": "def5d5cf93ba1a26176c99dee0b26dce610b612ac3a143050a90f7b3212929e3",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/maromba.idle16-w.ad12bee652ad.webp": {
-   "sha": "68208088f9162cca63fed3fdeb21ff1401752d07f8b7433ef99bba7d05b3d5a8",
+  "lite/sprites/maromba.idle16-w.1a2a8b85b04d.webp": {
+   "sha": "75e0f56b3ca8aefda0903b7f678d98b98986d768bb2c9f6f7a1e90f5712e053c",
    "ilhas": 0,
    "fails": []
   },
@@ -20143,28 +20143,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.idle16-n.e81973b32b79.webp": {
-   "sha": "e81973b32b792d0a65f353837f4006349292dcd01eba0b37d741a1a9eb8dc180",
+  "sprites/maromba.idle16-n.5a1e7f951590.webp": {
+   "sha": "5a1e7f951590dcb8ebf49782412958a818b6985baae4001b1710606338892906",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.idle16-nw.4d6a781daa29.webp": {
-   "sha": "4d6a781daa298423eb958ba35b3a6c5e220c9435713710b842744920c675ed5c",
+  "sprites/maromba.idle16-nw.3db3393ddff9.webp": {
+   "sha": "3db3393ddff9bc5c548fa9292c13abdcf047d48c18f3ca807daf08f525d1dfef",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.idle16-s.d391c57cc339.webp": {
-   "sha": "d391c57cc339d77ee25e3cd19bc849099fa5e5cf08cdb572b8cbaeeb1cadc115",
+  "sprites/maromba.idle16-s.5d112d66dfd2.webp": {
+   "sha": "5d112d66dfd24ab6a96bef24eac6c43a49b4c46a2096926a6ae7c845d773de72",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.idle16-se.46d9b5ad7845.webp": {
-   "sha": "46d9b5ad7845a2d2f8cb27b500ccb5c0593ba81b0f8d4f383ff52245e804e318",
+  "sprites/maromba.idle16-se.7c1463965f31.webp": {
+   "sha": "7c1463965f315f486c847d68f3601874afae370c495118a4599c5643fa9cdcfe",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/maromba.idle16-w.ad12bee652ad.webp": {
-   "sha": "ad12bee652ad64e07391866a31b868574f0cec2cfd2b691d05043c28045ca36e",
+  "sprites/maromba.idle16-w.1a2a8b85b04d.webp": {
+   "sha": "1a2a8b85b04dcabb6e8026ae822a2d2ade70362bf4134977345737de3546de04",
    "ilhas": 0,
    "fails": []
   },

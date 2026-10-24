@@ -11891,14 +11891,14 @@
           "sha256": "ba4bc5a50f3c2d92b2ae8d1297e342b0f5586fce68c1bf7046450823a1e4b73c"
         },
         "idle16-N": {
-          "file": "maromba.idle16-n.e81973b32b79.webp",
+          "file": "maromba.idle16-n.5a1e7f951590.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -11907,34 +11907,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.82,
+          "pivotX": 47.84,
           "figure": {
-            "left": 26,
-            "top": 21,
-            "right": 70,
+            "left": 25,
+            "top": 19,
+            "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-n.e81973b32b79.webp",
+              "file": "maromba.idle16-n.5a1e7f951590.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "e81973b32b792d0a65f353837f4006349292dcd01eba0b37d741a1a9eb8dc180"
+              "frameCount": 16,
+              "sha256": "5a1e7f951590dcb8ebf49782412958a818b6985baae4001b1710606338892906"
             }
           ],
-          "sha256": "e81973b32b792d0a65f353837f4006349292dcd01eba0b37d741a1a9eb8dc180"
+          "sha256": "5a1e7f951590dcb8ebf49782412958a818b6985baae4001b1710606338892906"
         },
         "idle16-NW": {
-          "file": "maromba.idle16-nw.4d6a781daa29.webp",
+          "file": "maromba.idle16-nw.3db3393ddff9.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -11943,34 +11943,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.25,
+          "pivotX": 47.29,
           "figure": {
             "left": 27,
-            "top": 20,
-            "right": 64,
+            "top": 18,
+            "right": 65,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-nw.4d6a781daa29.webp",
+              "file": "maromba.idle16-nw.3db3393ddff9.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "4d6a781daa298423eb958ba35b3a6c5e220c9435713710b842744920c675ed5c"
+              "frameCount": 16,
+              "sha256": "3db3393ddff9bc5c548fa9292c13abdcf047d48c18f3ca807daf08f525d1dfef"
             }
           ],
-          "sha256": "4d6a781daa298423eb958ba35b3a6c5e220c9435713710b842744920c675ed5c"
+          "sha256": "3db3393ddff9bc5c548fa9292c13abdcf047d48c18f3ca807daf08f525d1dfef"
         },
         "idle16-S": {
-          "file": "maromba.idle16-s.d391c57cc339.webp",
+          "file": "maromba.idle16-s.5d112d66dfd2.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -11979,34 +11979,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.23,
+          "pivotX": 48.22,
           "figure": {
-            "left": 27,
-            "top": 20,
+            "left": 26,
+            "top": 18,
             "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-s.d391c57cc339.webp",
+              "file": "maromba.idle16-s.5d112d66dfd2.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "d391c57cc339d77ee25e3cd19bc849099fa5e5cf08cdb572b8cbaeeb1cadc115"
+              "frameCount": 16,
+              "sha256": "5d112d66dfd24ab6a96bef24eac6c43a49b4c46a2096926a6ae7c845d773de72"
             }
           ],
-          "sha256": "d391c57cc339d77ee25e3cd19bc849099fa5e5cf08cdb572b8cbaeeb1cadc115"
+          "sha256": "5d112d66dfd24ab6a96bef24eac6c43a49b4c46a2096926a6ae7c845d773de72"
         },
         "idle16-SE": {
-          "file": "maromba.idle16-se.46d9b5ad7845.webp",
+          "file": "maromba.idle16-se.7c1463965f31.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -12015,34 +12015,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.69,
+          "pivotX": 47.72,
           "figure": {
-            "left": 30,
-            "top": 19,
+            "left": 29,
+            "top": 17,
             "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-se.46d9b5ad7845.webp",
+              "file": "maromba.idle16-se.7c1463965f31.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "46d9b5ad7845a2d2f8cb27b500ccb5c0593ba81b0f8d4f383ff52245e804e318"
+              "frameCount": 16,
+              "sha256": "7c1463965f315f486c847d68f3601874afae370c495118a4599c5643fa9cdcfe"
             }
           ],
-          "sha256": "46d9b5ad7845a2d2f8cb27b500ccb5c0593ba81b0f8d4f383ff52245e804e318"
+          "sha256": "7c1463965f315f486c847d68f3601874afae370c495118a4599c5643fa9cdcfe"
         },
         "idle16-W": {
-          "file": "maromba.idle16-w.ad12bee652ad.webp",
+          "file": "maromba.idle16-w.1a2a8b85b04d.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -12053,22 +12053,22 @@
           "height": 56,
           "pivotX": 48.2,
           "figure": {
-            "left": 31,
-            "top": 19,
-            "right": 65,
+            "left": 29,
+            "top": 17,
+            "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-w.ad12bee652ad.webp",
+              "file": "maromba.idle16-w.1a2a8b85b04d.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "ad12bee652ad64e07391866a31b868574f0cec2cfd2b691d05043c28045ca36e"
+              "frameCount": 16,
+              "sha256": "1a2a8b85b04dcabb6e8026ae822a2d2ade70362bf4134977345737de3546de04"
             }
           ],
-          "sha256": "ad12bee652ad64e07391866a31b868574f0cec2cfd2b691d05043c28045ca36e"
+          "sha256": "1a2a8b85b04dcabb6e8026ae822a2d2ade70362bf4134977345737de3546de04"
         },
         "idle8": {
           "file": "maromba.idle8.e728a4403de7.webp",
@@ -14395,7 +14395,7 @@
           "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
         }
       },
-      "sha256": "ff0317bcbaa3f67db86985542d881403152424f12ec1aef5f7e1050d34540f29"
+      "sha256": "063eddd222aa1a31a321d9d915bd153e531d852d96a4c21c86f233877fa9b343"
     },
     "mendigo": {
       "kind": "dir8",

@@ -37,6 +37,8 @@ export const HEROES={
   maromba:{cabAlt:.38,cabOmbro:.73,chad:true},
   // M16 from the card vendedor-aposentado-arte-8-direcoes (24/10), declared as measured: at the top of the human band
   'vendedor-praia':{cabAlt:.45,cabOmbro:1.11},
+  // same card, declared as measured (parado-respiracao-herois, 24/10): an old man with a small head, below HUMAN
+  aposentado:{cabAlt:.34,cabOmbro:.86,small:true},
   // a cat's head, no neck: its own rule, not HUMAN
   'gato-nada-pra-comer':{cabAlt:.28,cabOmbro:.61,animal:true},
 };
@@ -61,10 +63,14 @@ export function headBox(a,n=CELL){
   return {H,cab:chin-top,cabAlt:(chin-top)/H,cabW:head,ombro:shoulder,cabOmbro:shoulder?head/shoulder:NaN};
 }
 
-/** The rest cells of direction d: idle16-<d>'s frames, else the idle8 column. */
+/**
+ * The rest cells of direction d: idle16-<d>'s frames, else the idle8 column. A breathing rest (16 frames,
+ * parado-respiracao-herois) is the approved pose in frame 0 and that pose stretched (torso up, shoulders open): only
+ * frame 0 is measured, the breath would read as a smaller head.
+ */
 async function restCells(files,d,dir){
   const c=files[`idle16-${d}`];
-  if(c)return cells(path.join(dir,c.file),c.frames);
+  if(c)return (await cells(path.join(dir,c.file),c.frames)).slice(0,c.frames===16?1:c.frames);
   if(files.idle8){const all=await cells(path.join(dir,files.idle8.file),8);return [all[IDLE8.indexOf(d)]];}
   return [];
 }

@@ -30,7 +30,7 @@
  * Everything in ChaveiroState is JSON-safe (systems.state(), checkpoints, stateHash); the route is rebuilt.
  */
 import type {FlowGrid,Point} from '../../maps/index.ts';
-import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
+import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,carGap,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
   type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type PullResult,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
@@ -182,7 +182,7 @@ export interface ChaveiroSystem {
   /** Runs once a tick (assemble.ts: right after the 'structures' system). */
   step(ctx:SimContext):void;
   /** Siege targets: the car until the end, the moto while it rides (with MOTO_LURE_REACH). */
-  targets():{id:string;x:number;y:number;radius:number;reach?:number}[];
+  targets():{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[];
   /** An enemy's (or the boss's) contact with the car. */
   hitCar(ctx:SimContext,enemy:EnemyState):void;
   /** Gives back `share` of the car's limit in hits (not below 0); the parts that fell stay down. */
@@ -471,7 +471,8 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     },
     targets(){
       if(state.ended)return [];
-      const out:{id:string;x:number;y:number;radius:number;reach?:number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS}];
+      // Card uno-bloqueio-corpo: the critters hit the car from its box's edge (carGap), not the old disc's.
+      const out:{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS,gap:p=>carGap(car,p)}];
       if(riding()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
       return out;
     },

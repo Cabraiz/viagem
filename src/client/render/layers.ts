@@ -41,6 +41,7 @@ import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
 import {SHOT_BANDS} from './usable-glow-rules.ts';
+import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -52,6 +53,8 @@ export interface HordeRendererOptions{
   projector:Projector;
   /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
   cull?:boolean;
+  /** Card uno-bloqueio-corpo: the chaveiro's car as drawn (car-sort.ts): the critters near it sort against its footprint. */
+  carSort?:()=>CarSort|undefined;
   /** Card inimigos-querem-o-uno: a second camera's world view (the Uno's live window): what stands in it is drawn too. */
   alsoView?:()=>ViewRect|undefined;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
@@ -808,7 +811,7 @@ export class HordeRenderer{
       a.screenX=NaN;this.culledNow++;return;
     }
     if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
-    const depth=this.depth(this.at);
+    const depth=carSortDepth(this.at,this.depth(this.at),this.options.carSort?.());
     // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
     const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
     let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;

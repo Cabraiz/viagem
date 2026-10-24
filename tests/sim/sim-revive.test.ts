@@ -313,7 +313,7 @@ test('a 6-bot run: every downed names a known critter kind (UX-voce-e-dano aceit
   for(const seed of [7,12345,0x042a5eed]){
     const sim=new Simulation(seed);
     const ids=Array.from({length:6},(_,i)=>`bot${i}`);
-    ids.forEach((id,i)=>sim.add(id,`Bot ${i}`,['cidadao-comum','sensei','pedreiro','roqueira','feirante','goleira'][i]));
+    ids.forEach((id,i)=>sim.add(id,`Bot ${i}`,['cidadao-comum','rei-pastel','pedreiro','maromba','feirante','clt-cansado'][i]));
     sim.resetRun();
     // Unarmed and standing still: the horde downs everyone, through contact, telegraphs and projectiles.
     const disarm=()=>{for(const id of ids){const p=sim.players.get(id)!;p.build.weapons=[];p.weaponReady={};}};

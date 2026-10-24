@@ -40,7 +40,7 @@ const SCREEN_PER_CELL=45/50;
 const MIN_FINGERS=6;
 
 test('every sheet the game shows any hero has its hand in each frame, inside the figure', ()=>{
-  assert.equal(HELD.length,16,HELD.join());
+  assert.equal(HELD.length,14,HELD.join());
   for(const id of HELD){
     const sheets=shown(id);
     // M16 (viciado, gato, maromba): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.

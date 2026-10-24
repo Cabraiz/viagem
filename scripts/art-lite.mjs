@@ -177,6 +177,10 @@ for(const kind of kinds){
   // Recursive (enemies keep one folder per id); names use '/' on every OS.
   const names=readdirSync(dir,{recursive:true}).map(n=>String(n).replaceAll('\\','/'));
   if(kind==='towers'||kind==='city')continue; // joined per file / smaller per cell below
+  // A source that left (a hero moved to legado/, a sheet reimported under a new hash) takes its entry with it.
+  const present=new Set(names);
+  if(!args.has('--check'))for(const key of Object.keys(manifest.files))
+    if(key.startsWith(`${kind}/`)&&!present.has(key.slice(kind.length+1))){delete manifest.files[key];console.error(key,'dropped (no source)');}
   for(const name of names.filter(n=>n.endsWith('.webp')&&!UNUSED.test(n.split('/').pop())&&(kind!=='menu'||MENU_LITE.test(n))).sort()){
     const source=readFileSync(join(dir,name)),key=`${kind}/${name}`,entry=manifest.files[key];
     const out=join(ROOT,'public/art/lite',kind,name),small=liteCells.get(key),liteCell=small?.lite;

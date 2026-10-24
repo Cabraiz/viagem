@@ -181,7 +181,12 @@ test('main.ts: watch and notice in the entry chunk, every lazy-import catch asks
   assert.match(main,/inMatch:\(\)=>inMatchOf\(document\)/);
   assert.match(main,/onAvailable:\(\)=>showUpdateToast\(document\)/);
   assert.match(main,/beforeReload:\(\)=>saveResume\(session\(\),resumeOf\(document,Date\.now\(\)\)\)/);
-  assert.match(main,/linkWatch\(startVersionWatch\(/);
+  assert.match(main,/const versionWatch=startVersionWatch\(/);
+  assert.match(main,/linkWatch\(versionWatch\);/);
+  // arrastar-atualiza-versao-nova: one check at startup (a page from the HTTP cache reloads into the site's build),
+  // and the menus' pull-to-refresh goes through the watch's tap.
+  assert.match(main,/void versionWatch\.check\(\);/);
+  assert.match(main,/startPullToRefresh\(\{doc:document,win:window,inMatch:\(\)=>inMatchOf\(document\),refresh:\(\)=>updateNow\(\)\}\)/);
   // The two old messages only when it was not a stale chunk.
   assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível abrir as salas\.'\)/);
   assert.match(main,/if\(!chunkFailed\(e\)\)text\('explore-error','Não foi possível carregar a ilha\. Tente novamente\.'\)/);

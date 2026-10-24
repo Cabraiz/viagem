@@ -32,7 +32,7 @@ export {RoomIndex};
 /**
  * Lab vars, wrangler dev only (ignored unless ALLOW_LOCAL): LAB_WORLD 'ilha' opens rooms on the old island (internal test
  * world; every room is on the endless map otherwise); LAB_HORDE n keeps n critters on the players (stress measure, see
- * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,boletos"
+ * RoomOptions.labHorde); LAB_OFFSET "x,y" starts the runs that far from the base (map prints); LAB_ZUEIRA "apagao,promo"
  * plays those zueira events one per round from round 2 (VGM-053B proofs); LAB_SEED n gives every new room that seed (the
  * same city plan in each run of a before/after); LAB_ASLEEP n caps each client's sleeping bodies at n, 'sem' = no cap
  * (card horda-visivel-capacidade); LAB_DOURADA 0..1 is the caixa-gamble's hidden dourada chance (1 = always, for a video).

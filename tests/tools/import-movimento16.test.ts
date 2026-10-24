@@ -7,7 +7,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {MOVEMENT16_META,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movementPlan,movementSheets,hasMovement16,hasRun16,hasPush16,pushPlan,hasHurt16,hurtPlan,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
+import {movementPlan,movementSheets,hasMovement16,hasRun16,hasPush16,pushPlan,hasPull16,pullPlan,hasHurt16,hurtPlan,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
 import {HERO_GAIT} from '../../src/client/sprites/sprite-motion.ts';
 
 sharp.cache(false);sharp.concurrency(1);
@@ -19,7 +19,7 @@ async function sheet(columns:number,rows:number,{x0=50,slide=3,distinct=true}={}
     return `<rect x="${x}" y="${y+60}" width="60" height="108" fill="rgb(${c*13%256},${c*29%256},${80+c*7%170})"/>`;}).join('');
   return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${columns*192}" height="${rows*192}">${rects}</svg>`)).png().toBuffer();
 }
-/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run` (never the push or the hurt). */
+/** The class's sheets in `input`: walk, attack and idle in the 5 default directions, and the optional run with `run` (never the push, the pull or the hurt). */
 async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;indexFile:string;old:any})=>Promise<void>,{run=false}={}){
   const work=await mkdtemp(path.join(tmpdir(),'viagem-movement16-')),input=path.join(work,'input'),outRoot=path.join(work,'out');
   try{
@@ -30,7 +30,7 @@ async function fixture(fn:(p:{input:string;outRoot:string;manifestFile:string;in
     await write(manifestFile,{version:2,group:'personagens',pieces:{aposentado:old}});
     await write(indexFile,{version:2,groups:{personagens:{output:'public/art/sprites',pieces:{aposentado:old}}}});
     for(const [motion,m] of Object.entries(MOVEMENT16_META.motions)){
-      if(motion==='run'&&!run||motion==='push'||motion==='hurt')continue;
+      if(motion==='run'&&!run||motion==='push'||motion==='pull'||motion==='hurt')continue;
       const bytes=await sheet(m.columns,m.rows,{distinct:motion!=='idle'});
       for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado',motion,d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
     }
@@ -55,7 +55,7 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   assert.deepEqual(Object.keys(entry.files).filter(k=>k.includes('16-')).sort(),
     ['attack','idle','walk'].flatMap(m=>MOVEMENT16_META.directions.map(d=>`${m}16-${d}`)).sort());
   for(const [motion,m] of Object.entries(MOVEMENT16_META.motions))for(const d of MOVEMENT16_META.directions){
-    if(motion==='run'||motion==='push'||motion==='hurt')continue;
+    if(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt')continue;
     const f=entry.files[`${motion}16-${d}`],webp=path.join(outRoot,'public/art/sprites',f.file),meta=await sharp(webp).metadata();
     assert.deepEqual([meta.width,meta.height],[m.columns*96,m.rows*96]);assert.equal(f.frames,m.frames);assert.equal(f.durationMs,m.durationMs);assert.equal(f.loop,m.loop);
     assert.equal(f.revision,16);assert.match(f.file,new RegExp(`^aposentado\\.${motion}16-${d.toLowerCase()}\\.[0-9a-f]{12}\\.webp$`));
@@ -149,6 +149,25 @@ test('push (empurrar-uno): --motions push imports only the push of a class, with
   // the client sees it (the index keeps push16 keys) and pushes on it, mirrored like the rest of the class
   setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
   assert.equal(hasPush16('aposentado'),true);assert.equal(pushPlan('aposentado','SE')?.key,'sprite16:aposentado:push:SW');assert.deepEqual(pushPlan('aposentado','E')?.phase,table);
+}));
+
+test('pull (puxar-uno-corda): --motions pull imports the rope pull of a class like its push, with its phase table',async()=>fixture(async({input,outRoot,manifestFile})=>{
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const before=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  const m=MOVEMENT16_META.motions.pull,bytes=await sheet(m.columns,m.rows),table={d:Array(16).fill(.03),v:Array.from({length:16},(_,i)=>i%2?[1.5,0]:[0,0])};
+  assert.deepEqual([m.columns,m.rows,m.frames,m.durationMs,m.loop],[4,4,16,1000,true]);
+  for(const d of MOVEMENT16_META.directions){const target=movement16Source(input,'aposentado','pull',d);await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes);}
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],motions:['pull'],write:true}),/a pull needs its phase table/);
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','pull',d).replace(/\.png$/,'.phase.json'),JSON.stringify(table));
+  const result=await importMovement16({input,outRoot,ids:['aposentado'],motions:['pull'],write:true});
+  assert.equal(result.characters[0].outputs.length,5);assert.deepEqual(result.characters[0].motions,['pull']);
+  const files=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files;
+  for(const [k,f] of Object.entries(before))assert.deepEqual(files[k],f,`${k} kept`);
+  for(const d of MOVEMENT16_META.directions){const f=files[`pull16-${d}`];assert.equal(f.frames,16);assert.deepEqual(f.phase,table);assert.equal(f.height,before['idle16-S'].height);}
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  assert.equal(hasPull16('aposentado'),true);assert.equal(pullPlan('aposentado','SE')?.key,'sprite16:aposentado:pull:SW');assert.deepEqual(pullPlan('aposentado','E')?.phase,table);
+  // no push here: the pull stands alone
+  assert.equal(hasPush16('aposentado'),false);
 }));
 
 test('hurt (animacao-receber-dano): --motions hurt imports the flinch, its last pose the rest again, placed as drawn on the rest pivot',async()=>fixture(async({input,outRoot,manifestFile})=>{

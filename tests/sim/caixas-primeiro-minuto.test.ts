@@ -2,6 +2,7 @@
 // combat) a hero who walks the first minute passes at least FIRST_MINUTE_CRATES crates (within PASS_DIST, about the PC
 // camera's half view), whichever way he goes; the start crates sit around where the heroes spawn (they sat by the
 // plaza, ~76 u of walk away and out of the frames' interest radius, so the phone got none), on open ground.
+// Card inicio-no-uno-caixas-120: the team spawns beside the Uno (cityUnoStart) and the trail lasts the 120 s Minerva.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -18,7 +19,7 @@ import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {FrameDecoder} from '../../src/protocol/protocol4.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
-import {cityRunStart} from '../../src/sim/city/tutorial.ts';
+import {cityUnoStart} from '../../src/sim/city/uno-start.ts';
 import {cityLoot,AROUND_START} from '../../src/sim/stonewards/loot.ts';
 import {FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER} from '../../src/sim/crates.ts';
 
@@ -27,7 +28,7 @@ const cityText=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
 const manifest=JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string;version:number};
 const loaded=await cityTerrainFrom(cityText,manifest.hash);
 if(!loaded.ok)throw new Error(loaded.error);
-const city=loaded.terrain,field=cityAsField(city),grid=cityFlowGrid(city),start=cityRunStart(city),P=city.asset.points;
+const city=loaded.terrain,field=cityAsField(city),grid=cityFlowGrid(city),start=cityUnoStart(city),P=city.asset.points;
 const step=heroSpeed(field)/SIM_HZ;
 const fields=new Map<string,FlowField>();
 const toward=(p:Point)=>{const k=`${Math.round(p.x)},${Math.round(p.y)}`;let f=fields.get(k);if(!f){f=new FlowField(grid,[p]);fields.set(k,f);}return f;};
@@ -85,8 +86,8 @@ function walk(seed:number,patterns:readonly Pattern[]){
 
 test('the start crates sit around the spawn: in the frames from the first one, on open ground, not piled up',async()=>{
   const loot=cityLoot(field)!;
-  assert.ok(loot.aroundStart.length>=50,`${loot.aroundStart.length} start spots`);
-  assert.ok(loot.aroundStart.every(p=>p.walk>=AROUND_START[0]&&p.walk<=AROUND_START[1]&&city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)));
+  assert.ok(loot.aroundUno.length>=50,`${loot.aroundUno.length} start spots`);
+  assert.ok(loot.aroundUno.every(p=>p.walk>=AROUND_START[0]&&p.walk<=AROUND_START[1]&&city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)));
   for(const seed of [1,2,3]){
     const m=match(seed,1);m.step();
     const near=m.chests().filter(k=>Math.hypot(k.x-start.x,k.y-start.y)<=AROUND_START[1]);
@@ -114,9 +115,11 @@ test(`a hero who walks the first minute passes at least ${FIRST_MINUTE_CRATES} c
   }
 });
 
+// inicio-no-uno-caixas-120: in 120 s the wreck walker is back circling the plaza beside the plaza walker (one view, so
+// they share the trail crates): the third one wanders off instead.
 test('a team of three walking apart: each one passes his own',()=>{
   for(const seed of [5,6]){
-    const passed=walk(seed,[PATTERNS.praca(),PATTERNS.vaga(),PATTERNS.destroco()]);
+    const passed=walk(seed,[PATTERNS.praca(),PATTERNS.vaga(),PATTERNS.vaga()]);
     passed.forEach((set,i)=>assert.ok(set.size>=FIRST_MINUTE_CRATES,`seed ${seed}, hero ${i}: ${set.size}`));
   }
 });

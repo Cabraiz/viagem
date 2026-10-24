@@ -35,13 +35,13 @@ import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSy
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
-import {cityRunStart} from './city/tutorial.ts';
-import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
+import {cityUnoStart} from './city/uno-start.ts';
+import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
 import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
-import {CALMA} from '../rules/index.ts';
+import {CALMA,calmAround} from '../rules/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -233,6 +233,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
   // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
   const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
+    // A cédula with no room on the ground: paid like the kill would have been (read through `stonewards`, created below).
+    payGrana:(ctx,amount,owner)=>{payKill(ctx.players,{},amount,stonewards.state,owner);},
     ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
@@ -354,7 +356,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // gives only a weapon or a kit de torre (bau-so-arma-ou-torre), straight into the opener's inventory.
   const crates:Crates|undefined=manual?createCrates({seed:world.seed,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
-    startPoints:cityLoot(world.terrain)?.aroundStart??[],
+    // inicio-no-uno: in mode 'ninhos' the team spawns beside the Uno, so the first crates sit around it.
+    startPoints:(nestMode?cityLoot(world.terrain)?.aroundUno:cityLoot(world.terrain)?.aroundStart)??[],
     // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
     ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
     ...(options.goldLab!==undefined?{goldChance:options.goldLab}:{}),
@@ -435,7 +438,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       nests=createNests({
         // The plan is drawn once, for the room size of the first step (or the checkpoint's); its sleepers come with it.
         plan:players=>{
-          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityRunStart(city),...(options.nestPopulation!==undefined?{population:options.nestPopulation}:{})});
+          const plan=cityNestPlan(city,world.seed,{players,routes,start:cityUnoStart(city),...(options.nestPopulation!==undefined?{population:options.nestPopulation}:{})});
           const sleep=sono=createSono({plan,kindOf:sleeperKinds(plan,world.seed,round=>director!.roster(round)),hpScale:playerScale(players).hp*(ROUNDS[SLEEPER_ROUND-1].hpNinhos??ROUNDS[SLEEPER_ROUND-1].hpScale),speedMap:citySpeed,
             // Shots and kills are heard from the previous step's events; the alarm and the riding moto while they last.
             events:()=>world.lastEvents,
@@ -467,6 +470,11 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // the car); the map's share wakes along that route; the map's dead count the kills against the quota.
         entrances:ENTRANCES.map((e,i)=>({id:e,x:entrances[e].x,y:entrances[e].y,route:routes[i]})),
         mapDead:()=>sono?.dead()??0,
+        // inicio-no-uno-caixas-120: a wave is over (the time to explore opens) with calm at the car and no boss up
+        // (boss-fim-onda-1: the boss at the end of wave 1 holds it until he falls).
+        calm:ctx=>!(boss.state.bossId&&!boss.state.defeated)&&calmAround(ctx.enemies.values(),chaveiro!.state.car,CALMA.checkpointR),
+        // inimigos-querem-o-uno: each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit.
+        onExplore:ctx=>{chaveiro!.repair(ctx);},
         recruit:(ctx,route,count,tune)=>sono?.recruit(ctx,route,count,tune)??0,
         clear:(x,y,r)=>city.clearDisc(x,y,r),
         // A fallen nest pays the team, split among the seated like the boss (carteira-e-pix).
@@ -500,7 +508,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
-      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id))),
+      // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
@@ -530,9 +539,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
-    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world: the killer,
-    // a tower's owner (credit), else split among the standing seats; the boss always split among every seat.
-    payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
+    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world. Since
+    // NEW-20261024-ORQ-tirar-drops-cedula-girando it falls as a cédula a second later (progression.ts dropGrana): whoever
+    // walks by takes it, else it flies to the killer, a tower's owner (credit) or the nearest hero. The boss is still
+    // split among every seat at once.
+    if(enemy.boss)payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
+    else progression.dropGrana(ctx,enemy,granaPerKill(enemy),killPayee(ctx.players,by,credit));
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}

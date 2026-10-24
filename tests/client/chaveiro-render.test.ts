@@ -196,12 +196,13 @@ test('D-052 the car moves: heading on the move axis (pulled back it reverses), e
   }
   const mark=(step:number)=>carBoxes({parts:0,hazard:false,trunk:0,wrecked:false,near:1,wheel:step}).filter(b=>b.layer===1.7)[0];
   assert.notDeepEqual([mark(0).x,mark(0).z],[mark(2).x,mark(2).z],'the mark turns');
-  // Tracker: the car's heading follows its moves, the roll adds up (backwards negative), reset when the objective goes.
+  // Tracker: the car's heading is the room's (puxar-uno-corda: view.car.heading, absent = east), the roll adds up along
+  // it (backwards negative), reset when the objective goes.
   const t=new ChaveiroTracker();
   t.push(view({car:{x:84.5,y:84.5,hits:0,limit:80,parts:0}}),1,0,false);assert.equal(t.carHeading,0);
-  t.push(view({car:{x:84.5,y:85.5,hits:0,limit:80,parts:0}}),2,50,false);
+  t.push(view({car:{x:84.5,y:85.5,hits:0,limit:80,parts:0,heading:Math.PI/2}}),2,50,false);
   assert.ok(near(t.carHeading,Math.PI/2,1e-9)&&near(t.carRoll,1,1e-9));
-  t.push(view({car:{x:84.5,y:85,hits:0,limit:80,parts:0}}),3,100,false);
+  t.push(view({car:{x:84.5,y:85,hits:0,limit:80,parts:0,heading:Math.PI/2}}),3,100,false);
   assert.ok(near(t.carHeading,Math.PI/2,1e-9),'pulled back: same heading');assert.ok(near(t.carRoll,.5,1e-9));
   t.push(undefined,4,150,false);assert.equal(t.carHeading,0);assert.equal(t.carRoll,0);
 });

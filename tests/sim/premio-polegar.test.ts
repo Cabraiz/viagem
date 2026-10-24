@@ -1,11 +1,12 @@
 // Prizes never under a thumb nor out of reach (VGM-053B review M3, pacote-bugs-ux): the server's rule against the thumb
-// zones measured on the real scene, and every boleto and coxinha of real rains and sales on the endless map.
+// zones measured on the real scene, and every coxinha of real sales on the endless map (the boleto rain is retired:
+// NEW-20261024-ORQ-tirar-drops-cedula-girando).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_WORLD,Simulation} from '../../multiplayer/simulation.ts';
 import {projectView} from '../../src/client/projection.ts';
 import {followZoom} from '../../src/client/framing.ts';
-import {BOLETO,PRIZE_SCREEN_SPAN,PROMO,PROMO_RADIUS,RAIN_RADIUS,THUMB_MARGIN_PX,THUMB_ZONES,THUMB_ZOOM,parseZueiraLab,prizeSpotSafe,underThumb} from '../../src/sim/zueira.ts';
+import {PRIZE_SCREEN_SPAN,PROMO,PROMO_RADIUS,THUMB_MARGIN_PX,THUMB_ZONES,THUMB_ZOOM,parseZueiraLab,prizeSpotSafe,underThumb} from '../../src/sim/zueira.ts';
 import {PRIZE_TOWER_CLEAR,PRIZE_WALL_CLEAR} from '../../src/sim/assemble.ts';
 import {clearSegment,walkable} from '../../src/maps/world.ts';
 
@@ -22,6 +23,8 @@ const THUMBS=[
 /** The follow camera's look-ahead may move the hero this far on screen (15% of the useful half-width), and a sale's
  * coxinha is 1.6x a pickup (about 46 px wide): half of it counts as margin. */
 const LOOK_PX=36,PRIZE_HALF_PX=23;
+/** The widest ring a prize ever fell on (the retired boleto rain's, 1.4–5.5 u): the rule is checked over all of it. */
+const RAIN_RADIUS:readonly [number,number]=[1.4,5.5];
 
 test('a prize spot the rule accepts lands under no thumb, in any of the 4 views, both orientations, 100% and 125%',()=>{
   let checked=0;
@@ -62,11 +65,11 @@ test('the server\'s thumb zones cover the measured ones; its own hero\'s ring ne
   assert.equal(underThumb(4,-4),true);
 });
 
-test('real rains and sales on the endless map, 6 heroes: every prize near its hero with a straight walk, off the wall and towers, mostly clear of teammates\' thumbs',()=>{
+test('real sales on the endless map, 6 heroes: every prize near its hero with a straight walk, off the wall and towers, mostly clear of teammates\' thumbs',()=>{
   let prizes=0,underMate=0;
   for(const seed of [3,11,29]){
     const sim=new Simulation(seed,{world:DEFAULT_WORLD});
-    sim.zueiraLab=parseZueiraLab('boletos,promo');
+    sim.zueiraLab=parseZueiraLab('promo,promo,promo');
     const ids=['b0','b1','b2','b3','b4','b5'];ids.forEach((id,i)=>sim.add(id,`B${i}`,'cidadao-comum'));sim.resetRun();
     const sw=(sim as unknown as {systems:{stonewards:{state:{wall:{x:number;y:number};wallDown:boolean;towers:{x:number;y:number}[]}}}}).systems.stonewards.state;
     const seen=new Set<string>();
@@ -77,7 +80,7 @@ test('real rains and sales on the endless map, 6 heroes: every prize near its he
       sim.step();
       const standing=[...sim.players.values()].filter(p=>!p.downed);
       for(const p of sim.world.pickups.values()){
-        if((p.resource!==BOLETO&&p.resource!==PROMO)||seen.has(p.id))continue;
+        if(p.resource!==PROMO||seen.has(p.id))continue;
         seen.add(p.id);
         // Checked on the tick it fell, against the heroes where they stand on that tick (the zueira system runs after
         // the players' move).
@@ -96,6 +99,6 @@ test('real rains and sales on the endless map, 6 heroes: every prize near its he
       for(const e of [...sim.world.enemies.values()])if(sim.tick-e.spawnTick>60)sim.world.enemies.delete(e.id);
     }
   }
-  assert.ok(prizes>=100,`only ${prizes} prizes dropped`);
+  assert.ok(prizes>=80,`only ${prizes} prizes dropped`);
   console.log(`# prêmios ${prizes}, sob o polegar de um colega (em alguma vista/orientação) ${underMate}`);
 });

@@ -1636,6 +1636,23 @@ test('D-052: the wall and the barricade are dictionary bytes appended after the 
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
 
+test('puxar-uno-corda: the car nose round-trips in 256 steps; east (0) and a turn back to it leave it out',()=>{
+  const view=busyWorld(new Rng(7),4).view,enc=new FrameEncoder(),dec=new FrameDecoder();
+  view.objective=objectiveAt(view.tick);
+  let r=dec.decode(enc.encode(view));assert.ok(r.ok);enc.ack(r.seq,r.ack.event);
+  assert.equal(r.view.objective?.car.heading,undefined);
+  for(const h of [.7,-2.9,Math.PI,-.001]){
+    view.tick+=2;const base=objectiveAt(view.tick);view.objective={...base,car:{...base.car,heading:h}};
+    r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    const got=r.view.objective?.car.heading;
+    if(Math.abs(h)<Math.PI/256)assert.equal(got,undefined,`${h}: east`);
+    else assert.ok(got!==undefined&&Math.abs(Math.atan2(Math.sin(got-h),Math.cos(got-h)))<=Math.PI/256+1e-9,`${h} -> ${got}`);
+  }
+  view.tick+=2;const back=objectiveAt(view.tick);view.objective={...back,car:{...back.car}};
+  r=dec.decode(enc.encode(view));assert.ok(r.ok);
+  assert.equal(r.view.objective?.car.heading,undefined,'back east: cleared on the phone');
+});
+
 test('D-052: who moves the car and who holds the rope round-trip; dropping them clears them on the phone',()=>{
   const view=busyWorld(new Rng(7),4).view,enc=new FrameEncoder(),dec=new FrameDecoder();
   view.objective=objectiveAt(view.tick);

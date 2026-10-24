@@ -1,7 +1,8 @@
 /**
  * XP, pickups, team levels and the upgrade offer queue (VGM-034).
- * D-054: no XP gems. A kill's XP goes straight into the team bar (killXp); the only XP on the ground is the boleto rain
- * of the zueira (sim/zueira.ts). No magnet either: heal and boletos are pulled from PULL_RADIUS.
+ * D-054: no XP gems. A kill's XP goes straight into the team bar (killXp); no XP lies on the ground since the boleto
+ * rain was retired (NEW-20261024-ORQ-tirar-drops-cedula-girando). No magnet either: heal is pulled from PULL_RADIUS.
+ * Cédulas (same card): a kill's Grana falls as a 'grana' pickup a second after the kill (dropGrana, CEDULA_*).
  * Offers come from two sources: team level (`lvl-…`) and end of round (`rnd-…`, called by the director).
  * Only the oldest offer of each player can be chosen. Clocks never run while the player is offline.
  * Deadlines (D-021, replaces the 10 s head clock of VGM-034 when a round director runs):
@@ -25,6 +26,8 @@ import type {ItemCatalog} from '../rules/index.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
 import {refreshStats} from '../rules/index.ts';
+import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';
+import {addGrana} from './wallet.ts';
 import type {ClassBonus} from '../rules/index.ts';
 
 /** Contract additions approved in D-005 (SimPlayer.classBonus, SimContext.runStartTick), read defensively until VGM-030 lands them. */
@@ -56,7 +59,20 @@ export const ROUND1_XP=6;
 export const ROUND_OFFER_FALLBACK_SECONDS=20;
 const DROP_LIFETIME_SECONDS=30,DROP_SPREAD=.3,MAX_LEVELS_PER_TICK=100;
 const REROLL='~';
-const ATTRACTED:ReadonlySet<PickupKind>=new Set(['xp','heal']);
+const ATTRACTED:ReadonlySet<PickupKind>=new Set(['xp','heal','grana']);
+/**
+ * NEW-20261024-ORQ-tirar-drops-cedula-girando (the user: "ao matar inimigo, 1 segundo depois dele morrer deve aparecer
+ * flutuante [...] uma cédula de dinheiro rodando"): a kill's Grana (never the boss's: split at once) appears as a
+ * cédula CEDULA_DELAY_SECONDS after the kill where the enemy fell. A hero within CEDULA_PULL_RADIUS pulls it (a short
+ * magnet) and takes it into their own wallet; after CEDULA_WAIT_SECONDS on the ground it flies by itself to its owner
+ * (the killer, a tower's owner; the nearest hero when nobody), so no Grana is ever lost (the bots' purse, the vaquinha).
+ * A cédula appearing within CEDULA_MERGE_RADIUS of one on the ground joins it (the values add up); with CEDULA_CAP on the
+ * ground it joins the nearest wherever it is (a big horde on a phone), and with the pickup budget full and none to join
+ * it is paid at once (options.payGrana).
+ */
+export const CEDULA_DELAY_SECONDS=1,CEDULA_WAIT_SECONDS=10,CEDULA_PULL_RADIUS=1.6,CEDULA_MERGE_RADIUS=1.2,CEDULA_CAP=24;
+/** A cédula still to appear (ProgressionState.cedulas): the tick it appears, where, its R$ and who the kill paid. */
+export interface PendingCedula {tick:number;x:number;y:number;value:number;owner?:string}
 
 export interface ProgressionOptions {
   catalog:ItemCatalog;
@@ -73,6 +89,8 @@ export interface ProgressionOptions {
    * ('item' pickups, the inventory's, are never collected here: sim/inventory.ts takes them.)
    */
   crates?:boolean;
+  /** A cédula with no room on the ground (the pickup budget full, none to join): its Grana paid at once (default: dropped). */
+  payGrana?(ctx:SimContext,amount:number,owner?:string):void;
 }
 /** JSON-safe bookkeeping: offers are granted once per level and per round; rngState lets a room checkpoint resume the same rolls. */
 export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:number;rngState?:number;
@@ -83,7 +101,9 @@ export interface ProgressionState {lastLevelGranted:number;lastRoundGranted:numb
   /** D-052: each player's [skips, rerolls] left this run (absent: the full OFFER_SKIPS / OFFER_REROLLS). */
   charges?:Record<string,[number,number]>;
   /** D-054: ROUND1_XP was paid this run. */
-  round1Paid?:boolean}
+  round1Paid?:boolean;
+  /** Cédulas still to appear, in the order they appear (CEDULA_DELAY_SECONDS after their kill). */
+  cedulas?:PendingCedula[]}
 /** D-052: every player starts a run with this many "Pular" (close the offer, no prize) and "Rolar de novo" (new cards). */
 export const OFFER_SKIPS=2,OFFER_REROLLS=2;
 export type OfferActionFailure='no-player'|'no-offer'|'unknown-offer'|'not-oldest'|'no-charge';
@@ -133,7 +153,7 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   let chestRng:Rng|undefined;
   const chestRngOf=(ctx:SimContext)=>chestRng??=options.seed!==undefined?new Rng(options.seed).fork('chest'):ctx.rng.fork('chest');
   /** New run (rematch): forget granted levels/rounds and restart the stream from the seed. */
-  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;rng=undefined;chestRng=undefined;}
+  function reset(){Object.assign(state,createProgressionState());delete state.rngState;delete state.runStartTick;delete state.lateHeld;delete state.charges;delete state.round1Paid;delete state.cedulas;rng=undefined;chestRng=undefined;}
   const reachable=options.reachable??((ctx:SimContext,p:Point)=>isLand(p,0,ctx.terrain));
 
   function addPickup(ctx:SimContext,kind:PickupKind,value:number,at:Point,collectors:readonly SimPlayer[],expires?:number){
@@ -178,6 +198,32 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     return out;
   }
 
+  /** A kill's Grana (`amount` R$, paid to `owner` when nobody takes it): a cédula where the enemy fell, a second later. */
+  function dropGrana(ctx:SimContext,at:Point,amount:number,owner?:string){
+    if(!(amount>0))return;
+    (state.cedulas??=[]).push({tick:ctx.tick+ticks(CEDULA_DELAY_SECONDS),x:at.x,y:at.y,value:amount,...(owner!==undefined?{owner}:{})});
+  }
+  /** The cédulas due this tick: each joins one on the ground nearby (or anywhere past CEDULA_CAP), else lies down. */
+  function placeCedulas(ctx:SimContext){
+    const due=state.cedulas;if(!due?.length)return;
+    let n=0;while(n<due.length&&due[n].tick<=ctx.tick)n++;
+    if(!n)return;
+    const ready=due.splice(0,n);if(!due.length)delete state.cedulas;
+    // Every cédula on screen counts for the cap (flying ones too); a nearby one only joins one lying still.
+    const notes:PickupState[]=[];for(const p of ctx.pickups.values())if(p.kind==='grana')notes.push(p);
+    let collectors:SimPlayer[]|undefined;
+    for(const c of ready){
+      const full=!hasRoom(ctx.pickups,MAX_PICKUPS),crowded=full||notes.length>=CEDULA_CAP;
+      let join:PickupState|undefined,best=crowded?Infinity:CEDULA_MERGE_RADIUS**2;
+      for(const p of notes)if(crowded||!p.homing){const d=dist2(p,c);if(d<=best){join=p;best=d;}}
+      if(join){join.value+=c.value;continue;}
+      if(full){options.payGrana?.(ctx,c.value,c.owner);continue;}
+      const pickup=addPickup(ctx,'grana',c.value,c,collectors??=sortedCollectors(ctx),ctx.tick+ticks(CEDULA_WAIT_SECONDS));
+      if(c.owner!==undefined)pickup.owner=c.owner;
+      notes.push(pickup);
+    }
+  }
+
   /** Returns false when the pickup stays on the ground (a chest the player cannot open). */
   function collect(ctx:SimContext,pickup:PickupState,player:SimPlayer){
     if(pickup.kind==='chest'){
@@ -190,12 +236,14 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     ctx.pickups.delete(pickup.id);
     if(pickup.kind==='xp')ctx.team.xp+=pickup.value*player.stats.growth;
     else if(pickup.kind==='heal')player.hp=Math.min(player.stats.maxHp,player.hp+pickup.value);
+    else if(pickup.kind==='grana')addGrana(player,pickup.value);
     ctx.emit({type:'pickup',player:player.id,pickup:pickup.id,kind:pickup.kind,value:pickup.value});
     return true;
   }
 
   const pickups:SimSystem={id:'pickups',step(ctx){
     state.runStartTick??=ctx.tick;
+    placeCedulas(ctx);
     const collectors=sortedCollectors(ctx),byId=new Map(collectors.map(p=>[p.id,p]));
     const stepLength=HOMING_SPEED/SIM_HZ;
     for(const pickup of [...ctx.pickups.values()]){
@@ -209,11 +257,15 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
           if(d<=stepLength){pickup.x=target.x;pickup.y=target.y;}
           else{pickup.x+=(target.x-pickup.x)/d*stepLength;pickup.y+=(target.y-pickup.y)/d*stepLength;}
         }
-      }else if(pickup.expiresTick!==undefined&&ctx.tick>=pickup.expiresTick){ctx.pickups.delete(pickup.id);continue;}
+      }else if(pickup.expiresTick!==undefined&&ctx.tick>=pickup.expiresTick){
+        // Nobody took the cédula: it flies to its owner (next tick on), never lost.
+        if(pickup.kind==='grana')pickup.homing=pickup.owner??HOME_ANY;
+        else{ctx.pickups.delete(pickup.id);continue;}
+      }
       const taker=nearest(collectors,pickup,()=>COLLECT_RADIUS);
       if(taker&&collect(ctx,pickup,taker))continue;
       if(!pickup.homing&&ATTRACTED.has(pickup.kind)){
-        const puller=nearest(collectors,pickup,()=>PULL_RADIUS);
+        const puller=nearest(collectors,pickup,()=>pickup.kind==='grana'?CEDULA_PULL_RADIUS:PULL_RADIUS);
         if(puller)pickup.homing=puller.id;
       }
     }
@@ -395,6 +447,6 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     ctx.emit({type:'offer',player:player.id,offer:head.id});
   }
 
-  return {state,reset,dropLoot,pickups,progression,grantLevelOffers,grantRoundOffers,choose,settle,skip,rerollOffer,charges};
+  return {state,reset,dropLoot,dropGrana,pickups,progression,grantLevelOffers,grantRoundOffers,choose,settle,skip,rerollOffer,charges};
 }
 export type Progression=ReturnType<typeof createProgression>;

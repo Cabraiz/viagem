@@ -278,10 +278,10 @@ test('victory beats defeat when the boss dies in the same tick the last player f
 // Two novice scripts from the UX review: stand still for the first 15 s, and stop 8 s at every new offer.
 const ROUND1_SEEDS=Array.from({length:10},(_,i)=>i?i*7919+1:SEED);
 const ROUND1_TEAMS:readonly (readonly string[])[]=[
-  ['cidadao-comum'],['roqueira'],['viciado-em-bet'],['universitario'],['mendigo'],
-  ['cidadao-comum','mendigo'],['roqueira','viciado-em-bet'],['universitario','pedreiro'],
-  KIT_CLASSES.slice(0,6),['viciado-em-bet','universitario','roqueira','streamer','gamer-mobile','coach'],
-  ['cidadao-comum','pedreiro','passageira','porteiro','goleira','maromba'],
+  ['cidadao-comum'],['maromba'],['viciado-em-bet'],['universitario'],['mendigo'],
+  ['cidadao-comum','mendigo'],['maromba','viciado-em-bet'],['universitario','pedreiro'],
+  KIT_CLASSES.slice(0,6),['viciado-em-bet','universitario','maromba','streamer','rei-pastel','coach'],
+  ['cidadao-comum','pedreiro','passageira','porteiro','clt-cansado','maromba'],
 ];
 const NOVICE:Record<string,Script>={
   'walking in circles':{move:true,choose:true,killEvery:0},
@@ -321,7 +321,7 @@ test('round 1 is not a free pass forever: armed bots standing still can still lo
 // D-021 (UX-oferta-em-combate): bots that never pick. Level offers wait through the wave (no default in combat), and the
 // end of each intermission applies every pending default exactly once: nothing is lost, nothing applied twice.
 test('D-021: bots that never pick get no default in combat and every offer resolved once at the end of each intermission',()=>{
-  const {sim,ids}=setup(SEED,3,['cidadao-comum','roqueira','pedreiro']);
+  const {sim,ids}=setup(SEED,3,['cidadao-comum','maromba','pedreiro']);
   installKiller(sim,ids,15,()=>{});
   const granted=new Set<string>(),resolved=new Map<string,number>();
   let combatResolutions=0,heldInCombat=0,intermissionsChecked=0;

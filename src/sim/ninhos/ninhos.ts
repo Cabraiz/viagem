@@ -32,6 +32,7 @@ import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
 import {ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
+import {assignFoco} from '../enemies/foco.ts';
 
 export const NEST_RUN_SECONDS=540;
 export const NEST_SPEEDUP=.4;
@@ -287,6 +288,8 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     // Once per body (a recruit that slept again and comes back keeps its tune).
     if(e.memory?.tuned===1)return;
     (e.memory??={}).tuned=1;
+    // Foco (enemies/foco.ts): most of the wave goes for the Uno, the rest hunts the players.
+    assignFoco(e);
     const march=pace(NEST_PACE.march,state.players);
     if(march!==1)e.speed*=march;
     if(NEST_PACE.hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*NEST_PACE.hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*NEST_PACE.hp)));}

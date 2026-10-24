@@ -8,7 +8,6 @@ import {bossInfo,nestCount,nestsMode,roundInfo,xpFraction,type HudPart} from './
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
-import {stickerOrIcon} from '../ui/sticker.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,className:string,parent?:HTMLElement)=>{
   const node=document.createElement(tag);node.className=className;parent?.append(node);return node;
@@ -25,6 +24,9 @@ export function createTopBar():HudPart{
   const level=el('span','rh-xp-level',xp);
   const track=el('div','rh-xp-track',xp),fill=el('i','rh-xp-fill',track);
   xp.setAttribute('role','progressbar');xp.setAttribute('aria-label','XP do time');
+  // BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: the user asked for no level on screen; the badge and its thread stay
+  // built (the level-up pop, the tests) but hidden (hud.css .rh-xp[hidden]).
+  xp.hidden=true;
   const boss=el('div','rh-boss',root);boss.hidden=true;
   const bossName=el('strong','rh-boss-name',boss),bossTrack=el('div','rh-boss-track',boss),bossFill=el('i','rh-boss-fill',bossTrack);
   let lastLevel=-1;
@@ -49,11 +51,11 @@ export function createTopBar():HudPart{
         detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
-      // D-051 nests: the nests still standing ("[ninho] 6/8") after his clock.
+      // D-051 nests: the nests still standing go to screen readers only (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: no "6/8" on screen).
       const clock=round.chaveiro,count=nests?nestCount(view):undefined;
       put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
         putHidden(eta,!clock);
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon('moto')}<b>${clock.clock}</b>${count?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${count.text}</b></i>`:''}</span>`;}
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon('moto')}<b>${clock.clock}</b></span>`;}
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);

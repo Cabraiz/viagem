@@ -75,8 +75,8 @@ export function placeOnBar(box:{w:number;h:number},art:StadiumArt,atX:number,pos
 
 /**
  * A hero drawn in place on the wide picture (NEW-20261021-ORQ-menu-arte-viciado): the file is only the hero's box of the
- * 1920x1080 picture (scripts/menu-arte.mjs, same numbers), so the page puts it back where it was. PC only
- * (CUTOUT_QUERY); the phone, upright or on its side, keeps the dance.
+ * 1920x1080 picture (scripts/menu-arte.mjs, same numbers), so the page puts it back where it was. Every landscape
+ * screen (CUTOUT_QUERY: the PC and the phone on its side, celular-deitado-foto); the phone held upright keeps the dance.
  */
 export interface StadiumCutout {
   /** The box in the whole 1920x1080 picture, px. */
@@ -148,6 +148,22 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'gato-nada-pra-comer':{x:944,y:19,w:812,h:1058,files:[[541,'/art/menu/heroi/gato-nada-pra-comer-541.webp'],[812,'/art/menu/heroi/gato-nada-pra-comer-812.webp'],
     [1083,'/art/menu/heroi/gato-nada-pra-comer-1083.webp'],[1624,'/art/menu/heroi/gato-nada-pra-comer-1624.webp']],
     fundo:'/art/lite/menu/fundo-gato-nada-pra-comer.webp',rosto:{x:1080,y:100,w:400,h:220}},
+  // NEW-20261023-ORQ-tela-maromba (the user chose the beach, variation 2, and pose 14, the stretch): like the cat, in the
+  // viciado's box (same height, middle and sole line), on the beach without him; his sand shadow is in his fundo.
+  'maromba':{x:1056,y:19,w:588,h:1058,files:[[392,'/art/menu/heroi/maromba-392.webp'],[588,'/art/menu/heroi/maromba-588.webp'],
+    [784,'/art/menu/heroi/maromba-784.webp'],[1176,'/art/menu/heroi/maromba-1176.webp']],
+    fundo:'/art/lite/menu/fundo-maromba.webp',rosto:{x:1195,y:105,w:210,h:140}},
+  // NEW-20261023-ORQ-tela-vendedor-praia (the user chose the promenade at sunset, variation 2, and pose 2, crouched at the
+  // cooler): like the maromba, at pose 1's scale and sole line, on the promenade without him; his flip-flops' shadow is
+  // in his fundo.
+  'vendedor-praia':{x:866,y:49,w:735,h:1028,files:[[490,'/art/menu/heroi/vendedor-praia-490.webp'],[735,'/art/menu/heroi/vendedor-praia-735.webp'],
+    [980,'/art/menu/heroi/vendedor-praia-980.webp'],[1470,'/art/menu/heroi/vendedor-praia-1470.webp']],
+    fundo:'/art/lite/menu/fundo-vendedor-praia.webp',rosto:{x:1095,y:150,w:245,h:180}},
+  // NEW-20261023-ORQ-tela-aposentado (the user chose the backyard workshop, variation 7, and pose 4, on the stool with a
+  // coffee): like the vendedor (the stool is part of him), in the workshop without him; the stool's shadow is in his fundo.
+  'aposentado':{x:1034,y:45,w:689,h:1032,files:[[459,'/art/menu/heroi/aposentado-459.webp'],[689,'/art/menu/heroi/aposentado-689.webp'],
+    [919,'/art/menu/heroi/aposentado-919.webp'],[1378,'/art/menu/heroi/aposentado-1378.webp']],
+    fundo:'/art/lite/menu/fundo-aposentado.webp',rosto:{x:1260,y:175,w:190,h:150}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
 /** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */
@@ -184,7 +200,12 @@ export const headRoom=(h:number)=>Math.max(28,h*.09);
  * The right edge of the menu's column on the PC (estadio.css under CUTOUT_QUERY: left max(3vw, 16px) + 2vw, width
  * min(77vh, 60vw)) plus 2% of the width: no hero grows into it.
  */
-export const columnRight=(box:{w:number;h:number})=>Math.max(.03*box.w,16)+.02*box.w+Math.min(.77*box.h,.6*box.w)+.02*box.w;
+export const columnRight=(box:{w:number;h:number})=>box.h<=SHORT_MAX_H
+  // The phone on its side (estadio.css short landscape: left max(3vw, 16px), width min(50vw, 560px)).
+  ?Math.max(.03*box.w,16)+Math.min(.5*box.w,560)+.02*box.w
+  :Math.max(.03*box.w,16)+.02*box.w+Math.min(.77*box.h,.6*box.w)+.02*box.w;
+/** The tallest short landscape (estadio.css `max-height: 520px`): the phone on its side; taller is the PC (PC_QUERY). */
+export const SHORT_MAX_H=520;
 /** The cutout's box (px) for a framing of his own picture (frameMoved/frameHero). */
 function boxIn(f:Frame,art:StadiumArt,cut:Placeable){
   const {s,ox,oy}=f,focal=art.focal??{x:0,y:0,w:art.w,h:art.h},k=focal.w/WHOLE.w;
@@ -207,8 +228,14 @@ export function frameHero(box:{w:number;h:number},art:StadiumArt,cut:Placeable,p
   const ax=at.x+at.w/2,w=at.w*z,slide=Math.min(Math.max(ax-w/2,lo),hi-w)-(ax-w/2),s=base.s*z;
   return {s,ox:Math.min(0,Math.max(box.w-art.w*s,ax-(ax-base.ox)*z+slide)),oy:feet-(feet-base.oy)*z};
 }
-/** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
-export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
+/** The PC's layout (estadio.css): the wide picture taller than a phone on its side; the column, the big button. */
+export const PC_QUERY='(orientation: landscape) and (min-height: 521px)';
+/**
+ * Where the cutout stands in for the dance (and E6's bleed is the stage): every landscape screen, the PC and the phone on
+ * its side (celular-deitado-foto, the user, 23/10: "ao girar o celular deveria não ter essa dança, mas a foto que tem no
+ * desktop"). The phone held upright keeps the dance.
+ */
+export const CUTOUT_QUERY='(orientation: landscape)';
 export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
 /**
  * The cutout's box in the stage (px) for the same framing the background uses (frameHero: frameArt, `pos` for `cover`,

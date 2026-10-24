@@ -70,6 +70,8 @@ export interface RunSystemsOptions {
   reconnectGraceTicks?:number;
   /** Lab only (LAB_ZUEIRA): replaces the seed's plan of zueira events (VGM-053B). */
   zueiraLab?:ZueiraLab;
+  /** Lab only (LAB_DOURADA): the caixa-gamble's hidden dourada chance instead of GOLD_HIDDEN_CHANCE (1 = always, for a video). */
+  goldLab?:number;
   /** City: the plaza barricades (cidade-06, default on). Off only for travel/reach measurements in tests. */
   barricades?:boolean;
   /**
@@ -350,6 +352,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     startPoints:(nestMode?cityLoot(world.terrain)?.aroundUno:cityLoot(world.terrain)?.aroundStart)??[],
     // BUG-20261022-ORQ-caixas-sumiram: the first minute's trail crates, ahead of a hero behind the pace (city only).
     ...(cityLoot(world.terrain)?{trailSpot:(at:{x:number;y:number},heading:{x:number;y:number},ahead:number,rng:{next():number})=>cityLoot(world.terrain)!.spotAhead(at,heading,ahead,rng)}:{}),
+    ...(options.goldLab!==undefined?{goldChance:options.goldLab}:{}),
     ...(cp?.crates?{state:cp.crates}:{})}):undefined;
   const boss=createBoss({
     ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,5);}}:{}),

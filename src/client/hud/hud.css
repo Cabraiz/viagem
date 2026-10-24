@@ -41,6 +41,8 @@
 .rh-xp-track{flex:none;height:5px;border-radius:var(--r-etiqueta);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);overflow:hidden}
 .rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
 .rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
+/* BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: the level is not shown (topbar.ts hides .rh-xp). */
+.rh-xp[hidden]{display:none}
 .rh-boss{order:3;flex:1 0 100%;max-width:560px;padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
 /* The base ficha gives way first (its wall bar shrinks): the numbers never get cut. Wide screens keep one row; only the
    boss bar wraps under it. */
@@ -651,6 +653,8 @@
 .rh-edge-face{flex:none;width:26px;height:26px;display:grid;place-items:center}
 .rh-edge-face .ic{width:26px;height:26px}
 .rh-edge-face .face{width:26px;height:26px;border:2px solid var(--c-papel);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)} /* the ally's face crop (ui/face.css) */
+/* Card inimigos-querem-o-uno: the Uno's arrow wears the car itself (its SE view, frame 7 of the 4×2 sheet, uno-art.ts). */
+.rh-edge-uno{width:26px;height:26px;background:url(/art/lite/veiculos/quadradao.webp) -78px -26px/104px 52px no-repeat}
 .rh-edge-num{flex:1;text-align:center;font-size:var(--t-13)}
 .rh-edge-tip{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0}
 .rh-edge-tip::before,.rh-edge-tip::after{content:'';position:absolute;width:0;height:0;border-style:solid;border-color:transparent}
@@ -829,8 +833,6 @@
 .rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
 /* D-051 nests (ninhos-rounds-fora): the nests still standing after the chaveiro's clock, "[ninho] 6/8" (chip and phone bar). */
-.rh-ninhos{display:inline-flex;align-items:center;gap:2px;margin-left:8px;font-style:normal}
-.rh-ninhos :is(img,.ic){width:20px;height:20px}
 
 /* UX-resultado-revanche: the prize first, two numbers (dano, salvou), the other two with a tap on the card. */
 .rh-rcard{position:relative;cursor:pointer}
@@ -866,3 +868,18 @@
 .rh-result.rh-result-nolost .rh-result-lost{display:none}
 /* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
 @media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}
+
+/* ---------- O Uno apanhando: a janela ao vivo (card inimigos-querem-o-uno, etapa 3; render/chaveiro/pip.ts) ----------
+   A moldura é vazia no meio (.rh-pip-view): a 2ª câmera do Phaser desenha ali embaixo. Computador: à direita, logo
+   abaixo do minimapa (o botão de ataque fica embaixo). Celular (data-hud=fone): em cima à direita, abaixo da engrenagem
+   e da faixa do time. Toque: a câmera olha o Uno por um instante. */
+.rh-pip{--pip-w:240px;--pip-h:150px;position:absolute;right:var(--rh-r);top:calc(var(--rh-t) + 64px + clamp(124px,30vmin,210px) + 16px);
+  display:flex;flex-direction:column;gap:4px;padding:3px;margin:0;width:calc(var(--pip-w) + 6px);background:transparent;
+  border:2px solid var(--c-papel);border-radius:var(--r-etiqueta);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);pointer-events:auto;cursor:pointer;touch-action:none}
+.rh-pip[hidden]{display:none}
+.rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:0 0 0 3px var(--c-breu),inset 0 0 0 2px var(--c-cone)}
+.rh-pip-bar{display:block;height:8px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:inset 0 0 0 1px var(--c-papel);overflow:hidden}
+.rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--c-cartolina)}
+.rh-pip-low .rh-pip-bar>i{background:var(--c-cone)}
+.rh[data-hud=fone] .rh-pip{--pip-w:150px;--pip-h:96px;top:calc(var(--rh-t) + 112px)}
+@media (max-height:500px){.rh[data-hud=fone] .rh-pip{--pip-w:168px;--pip-h:96px;top:calc(var(--rh-t) + 60px)}}

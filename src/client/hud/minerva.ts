@@ -7,8 +7,8 @@
  * pulse in the danger colour and, at zero, the face flashes for WAKE_MS and the clock goes away. The same clock shows
  * the time to explore after each wave (RunState.exploraDesdeTick/exploraAteTick), its full turn that window's length.
  * Time comes from the sim (view.tick against minervaAteTick), never the local clock, so it matches the server and a
- * player who joins late sees the same hand. It sits in the announcement slot of the top band: never over the hero nor
- * the phone's controls, and it pauses nothing.
+ * player who joins late sees the same hand. It sits in the announcement slot of the top band (a phone lying down: under
+ * the minimap, minerva.css): never over the hero nor the phone's controls, and it pauses nothing.
  */
 import {SIM_HZ, type RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';

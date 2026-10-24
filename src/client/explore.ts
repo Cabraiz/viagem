@@ -71,6 +71,7 @@ import {artReady} from './ui/art-boot.ts';
 import {controlsFor,applyControls,STICK_HTML,CONTROLS_HINT_HTML,SKILL_HTML} from './controls-phase.ts';
 import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} from './desktop-input.ts';
 import {HUD_SWITCH} from './hud/arrows.ts';
+import {adBreakThen,soloRoom} from './ads/ads.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
@@ -160,7 +161,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),onRematch:()=>net.rematch(),onExit:()=>close(),critterIcon:kind=>controller?.scene.critterIcon(kind),
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
+      // waits on this player's vote (a room of friends never waits on someone's ad). Off or blocked = runs at once.
+      onRematch:()=>{if(net&&soloRoom(net.run?.members,net.id))adBreakThen('revanche',()=>net?.rematch());else net?.rematch();},
+      onExit:()=>adBreakThen('sair',()=>close()),critterIcon:kind=>controller?.scene.critterIcon(kind),
       onForge:(recipe,target)=>net.forge(recipe,target),
       // Dona Cida (D-047): {t:'cida'}; the room answers {t:'bought'} (net.onBought below).
       onCida:item=>net.buyCida(item),

@@ -39,8 +39,8 @@ const VIEWPORTS=[[1920,1080],[1920,1000],[1920,950],[1590,903],[1366,768],[1280,
  * floor], the floor being the bottom edge of that sole's lowest row with alpha >= 128, where the picture the user
  * approved has it touching the plateau (the cat: the rooftop's tiles). CLT, cat: left, right. tests/client/menu-estadio.test.ts re-measures them on the art.
  */
-const PES={"clt-cansado":[[792,965,921],[1290,1427,935]],"gato-nada-pra-comer":[[1009,1241,1047],[1366,1592,1076]]};
-const NOMES={"clt-cansado":['pé esquerdo','pé direito'],"gato-nada-pra-comer":['pantufa esquerda','pantufa direita']};
+const PES={"clt-cansado":[[792,965,921],[1290,1427,935]],"gato-nada-pra-comer":[[1009,1241,1047],[1366,1592,1076]],"maromba":[[1057,1228,1076],[1373,1594,1069]],"vendedor-praia":[[876,1018,1052],[1239,1545,1076]],"aposentado":[[1133,1284,1076],[1575,1722,1056]]};
+const NOMES={"clt-cansado":['pé esquerdo','pé direito'],"gato-nada-pra-comer":['pantufa esquerda','pantufa direita'],"maromba":['tênis esquerdo','tênis direito']};
 /**
  * The feet of a hero behind a front layer (whole-picture px): the columns of the sole on the bar's top; the columns of
  * the one behind it and the row its sneaker starts at (desce included). The bar's top falls to the right faster than the
@@ -228,7 +228,8 @@ async function main(){
       await page.waitForSelector('[data-hero="clt-cansado"]',{timeout:60000});
       const boxes=[];
       for(const hero of Object.keys(RECORTES)){
-        await page.click(`[data-hero="${hero}"]`);
+        // The upright row pages its faces (4+ heroes: the first one can be off the page): the click the row itself takes.
+        await page.evaluate(id=>document.querySelector(`[data-hero="${id}"]`).click(),hero);
         await page.waitForFunction(id=>document.querySelector(`[data-hero="${id}"]`)?.getAttribute('aria-pressed')==='true',hero,{timeout:60000});
         await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
         boxes.push(await page.evaluate(()=>{const r=document.querySelector('#portrait').getBoundingClientRect();return {hidden:!!document.querySelector('.estadio-recorte')?.hidden,x:r.x,y:r.y,w:r.width,h:r.height};}));

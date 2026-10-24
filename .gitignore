@@ -28,4 +28,5 @@ artifacts/
 !/docs/movement16.md
 !/docs/playtest-ux.md
 !/docs/seo.md
+!/docs/anuncios.md
 /scripts/check-multiplayer-artifact.mjs

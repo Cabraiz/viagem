@@ -4,7 +4,7 @@ import {setArtIndex,parseArtIndex,type ArtPiece} from '../../src/client/art/mani
 import {eventAction,projectileAction,actionDuration,onceColumn,deathAlpha,DEATH_FADE_MS,TELEGRAPH_ACTIONS,
   type ActionActor,type ActionCue,type ActionWorld} from '../../src/client/art/horde-actions.ts';
 import {ENEMY_ANIM_RATE,ENEMY_LOOP_RATE,applyEnemyArt,artLoads,currentAction,drawDeathArt,enemyArtActive,enemyArtRow,enemyFrame,hasDeathArt,loopAnim,
-  playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
+  playEnemyAction,projectileFrame,projectileFrames,projectileLook,startAction,hitGap,HIT_GAP_MIN_MS,SWING_FILL,SWING_FILL_MAX_MS,SWING_RESTART,STATIC_ART,type ActionState} from '../../src/client/art/horde-art.ts';
 import {FX,projectileTexture,type EnemyKind} from '../../src/client/render/keys.ts';
 import {Ring} from '../../src/client/render/pool.ts';
 import type {SimEvent,TelegraphKind} from '../../src/contract/index.ts';
@@ -115,7 +115,7 @@ test('an action plays once at its fps, then the loop comes back; hit never inter
   assert.ok(startAction(s,bebado,'attack',1900),'an action replaces a hit');assert.equal(s.action,'attack');
   // An enemy in an aura is hit every tick: at most one hit per hitGap (≥ 3 hit animations, ≥ 1500 ms), so it walks in between.
   const gap=hitGap(actionDuration(3,12*ENEMY_ANIM_RATE));assert.equal(gap,HIT_GAP_MIN_MS);assert.equal(hitGap(800),2400);
-  assert.equal(startAction(s,bebado,'hit',2700),false);assert.equal(currentAction(s,2700),undefined,'walking');
+  assert.equal(startAction(s,bebado,'hit',2900),false);assert.equal(currentAction(s,2900),undefined,'walking (the swing at 1900 came 900 ms after the last: SWING_FILL stretched it to 972 ms)');
   assert.equal(startAction(s,bebado,'hit',1800+gap-1),false);
   assert.ok(startAction(s,bebado,'hit',1800+gap));
   // Frames: one pass, the last frame holds (never wraps to 0 while the action lasts).
@@ -124,6 +124,25 @@ test('an action plays once at its fps, then the loop comes back; hit never inter
   assert.deepEqual(enemyFrame('bebado',bebado,'attack',2,slow(5000),{key:'',frame:0},true),{key:'art:enemy:bebado:attack',frame:2*6+5});
   assert.deepEqual(enemyFrame('bebado',bebado,'walk',0,slowLoop(1000)),{key:'art:enemy:bebado:walk',frame:10%8},'loops still loop');
 });
+test('a swing that comes back fills the gap: no idle flash between two contact hits (inimigos-animacao-auditoria)',()=>{
+  const s:ActionState={at:0,end:0},drawn=actionDuration(6,12*ENEMY_ANIM_RATE),near=(a:number,b:number,m:string)=>assert.ok(Math.abs(a-b)<1e-6,`${m}: ${a} vs ${b}`);
+  assert.ok(startAction(s,bebado,'attack',1000));near(s.end-s.at,drawn,'a first swing keeps its own length');assert.equal(s.pace,1);
+  // The sim hits every second (contactCooldown 1 s): the second swing plays over that second and a bit, slower.
+  assert.ok(startAction(s,bebado,'attack',2000));near(s.end-s.at,1000*SWING_FILL,'fills the second');assert.ok(Math.abs(s.pace!-drawn/(1000*SWING_FILL))<1e-9);
+  assert.equal(currentAction(s,3040),'attack','still swinging when the next hit is a bit late');
+  // The network brings the next hit a bit early: past SWING_RESTART of the swing it restarts; before, it does not.
+  assert.equal(startAction(s,bebado,'attack',2000+1000*SWING_FILL*SWING_RESTART-5),false);
+  assert.ok(startAction(s,bebado,'attack',2950),'restarted near its end');
+  // Its frames: the column follows the drawn time, so the stretched swing reaches its last frame only at its end.
+  assert.equal(onceColumn((s.end-s.at-1)*s.pace!,6,12*ENEMY_ANIM_RATE),5);assert.equal(onceColumn(((s.end-s.at)/2)*s.pace!,6,12*ENEMY_ANIM_RATE),3);
+  // A lone swing after a pause (> SWING_FILL_MAX_MS) and a faster-than-drawn repeat keep the drawn length.
+  assert.ok(startAction(s,bebado,'attack',2950+SWING_FILL_MAX_MS+1));near(s.end-s.at,drawn,'lone swing');
+  const q:ActionState={at:0,end:0};assert.ok(startAction(q,bebado,'attack',0));assert.ok(startAction(q,bebado,'attack',drawn*.85));assert.ok(q.end-q.at>=drawn-1e-6,'never faster than drawn');
+  // A hit in between does not count as a swing.
+  const h:ActionState={at:0,end:0};assert.ok(startAction(h,bebado,'attack',0));assert.ok(startAction(h,bebado,'hit',900));assert.ok(startAction(h,bebado,'attack',1300));
+  near(h.end-h.at,1300*SWING_FILL,'the gap is from the last swing, not the hit');
+});
+
 
 test('phase 2: the still chefe idles with phase2-idle; walking, phase 1 or no such sheet keep today\'s choice',()=>{
   assert.equal(loopAnim(chefe,false,false,2),'phase2-idle');assert.equal(loopAnim(chefe,false,false,3),'phase2-idle');

@@ -10,17 +10,20 @@
  * from today's art to the imported one mid-session.
  */
 import {loadArtManifest} from '../art/manifest.ts';
+import {finePointer} from '../desktop-input.ts';
 
 type Answer={ok:boolean;json():Promise<unknown>};
 export interface ArtBootOptions {
   timeoutMs?:number;
   /** Settling it has the same effect as the deadline: later answers are refused (artReady's seal). */
   until?:Promise<unknown>;
+  /** The computer's enemy copies (manifest.ts pcCell): the fine pointer, the same test as the fixed zoom (explore.ts). */
+  pc?:boolean;
   fetcher?:(url:string,init:{cache:RequestCache;signal?:AbortSignal})=>Promise<Answer>;
 }
 
 /** Resolves true when a valid index arrived in time; false on timeout, seal, network failure, !ok or bad JSON. */
-export async function bootArt({timeoutMs=1500,until,fetcher=(url,init)=>fetch(url,init)}:ArtBootOptions={}):Promise<boolean>{
+export async function bootArt({timeoutMs=1500,until,fetcher=(url,init)=>fetch(url,init),pc=finePointer()}:ArtBootOptions={}):Promise<boolean>{
   let late=false,arrived=false,timer:ReturnType<typeof setTimeout>|undefined;
   const abort=typeof AbortController==='function'?new AbortController():undefined;
   // After the deadline any answer is refused, so a late manifest can't swap half the icons mid-session.
@@ -35,7 +38,7 @@ export async function bootArt({timeoutMs=1500,until,fetcher=(url,init)=>fetch(ur
     void until?.then(expire,expire);
   });
   try{
-    return await Promise.race([loadArtManifest(guarded).then(()=>arrived&&!late),deadline]);
+    return await Promise.race([loadArtManifest(guarded,pc).then(()=>arrived&&!late),deadline]);
   }catch{
     return false;
   }finally{

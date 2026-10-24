@@ -120,6 +120,9 @@ import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.
 import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
 import {LINE_EVENTS,hash32,pickLine,talkSeed,type LineEvent} from '../render/chaveiro/lines.ts';
 import {castSilhouette,silhouetteImage} from '../render/silhouette.ts';
+import {UnoPip} from '../render/chaveiro/pip.ts';
+import {PIP_KEEP_PX,pipWanted} from '../render/chaveiro/pip-rules.ts';
+import {CAR_LOW,carLife} from '../render/chaveiro/rules.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -155,6 +158,8 @@ const BASE_R=2.2;
 /** Where the hero stands without `hero`, from the wall (u): just south of it, in front of the camera. */
 const BASE_HERO={x:.6,y:1.2};
 const tele=real&&params.get('tele')==='1';
+/** `limpo=1` (with tele=1; card inimigos-v5a-padrao): no telegraphs and no map labels, so a print of the horde reads clean. */
+const limpo=tele&&params.get('limpo')==='1';
 /**
  * Card contorno-breu: the city's screen-scale Breu outlines (render/city-outline.ts) on the hero and, with tele=1, on
  * the horde; `contorno=0` draws without them (before/after). `elenco=1` (with tele=1) adds one critter of every kind,
@@ -180,6 +185,12 @@ const arsenal=tele&&params.get('arsenal')==='1';
 const ninhos=tele&&params.get('ninhos')==='1',NEST_WAKE_MS=3000,NEST_WAKE_AGO_MS=150;
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/**
+ * `pip=1` (with objetivo=1&apanha=1; card inimigos-querem-o-uno, etapa 3): the hero `longe=dx,dy` units from the car
+ * (default 18,10) and the Uno's live window (render/chaveiro/pip.ts) in a stand-in HUD root (`.rh`, data-hud from
+ * `hud=fone|mesa`, else fone under 768 px wide), as the game shows it while the car takes hits out of view.
+ */
+const pipOn=objective&&params.get('pip')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
 const bancos=real&&params.get('bancos')==='1';
 /**
@@ -267,6 +278,7 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
+  private pip?:UnoPip;
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean;
     /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
     talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
@@ -322,6 +334,17 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(objective)this.chaveiro=this.mountObjective(!start);
+    // `longe` alone (pip=0) puts the hero at the same spot without the window: the FPS before × after.
+    if((pipOn||objective&&params.has('longe'))&&this.chaveiro){
+      const car=this.chaveiro.fake.view(0).view.car,[dx,dy]=(params.get('longe')??'18,10').split(',').map(Number);
+      this.at={x:car.x+(dx||0),y:car.y+(dy||0)};
+    }
+    if(pipOn&&this.chaveiro){
+      const root=document.createElement('div');root.className='rh';root.dataset.hud=params.get('hud')??(innerWidth<768?'fone':'mesa');
+      Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'6'});host.append(root);
+      void import('../hud/hud.css');
+      this.pip=new UnoPip(this,{onTap:()=>{}});
+    }
     if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
@@ -393,6 +416,13 @@ class CitySandbox extends Phaser.Scene {
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
+      if(this.pip){
+        const hit=this.chaveiro.renderer.hitState(),cam=this.cameras.main,proj=this.cityProjector().project(view.car.x,view.car.y,{x:0,y:0});
+        const wanted=!!hit&&pipWanted({live:!hit.ended,now,carOnScreen:cam.worldView.contains(proj.x,proj.y),distance:Math.hypot(view.car.x-this.at.x,view.car.y-this.at.y),
+          ...(hit.lastHitAt!==undefined?{lastHitAt:hit.lastHitAt}:{})});
+        const life=carLife(view.car);
+        this.pip.update({wanted,car:proj,mainZoom:cam.zoom,time:now,life:{fraction:life,low:life<CAR_LOW}});
+      }
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
       this.speak(_t,dt,view,tick);
     }
@@ -608,7 +638,7 @@ class CitySandbox extends Phaser.Scene {
         aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
-      telegraphs:[
+      telegraphs:limpo?[]:[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
         {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
@@ -620,7 +650,7 @@ class CitySandbox extends Phaser.Scene {
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
-    const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
+    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
@@ -736,8 +766,8 @@ class CitySandbox extends Phaser.Scene {
     lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:this.layer?.covers(this.at.x,this.at.y)??false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
     // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
-    lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
-    lab.labels[1].anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[0]?.anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[1]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -809,6 +839,8 @@ class CitySandbox extends Phaser.Scene {
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
+      uno:()=>this.chaveiro?.renderer.hitState(),
       /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */
       fixar:(on=true)=>{cameraFixed=on;},
       /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */
@@ -836,7 +868,10 @@ class CitySandbox extends Phaser.Scene {
     const cam=this.cameras.main.worldView,layer=this.layer;
     if(!layer)return;
     const z=groundZ(this.asset,this.at.x,this.at.y);
-    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
+    // pip=1: the chunks around the car stay built, as the game does (scene.ts updateCity, PIP_KEEP_PX).
+    const car=this.pip&&this.chaveiro?this.cityProjector().project(this.chaveiro.fake.view(0).view.car.x,this.chaveiro.fake.view(0).view.car.y,{x:0,y:0}):undefined;
+    const also=car&&{x:car.x-PIP_KEEP_PX,y:car.y-PIP_KEEP_PX,w:PIP_KEEP_PX*2,h:PIP_KEEP_PX*2};
+    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z},...(also?{also}:{})});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);castSilhouette(this.shadow,this.hero,this.hero.x,this.hero.y,true,d-1);
     if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
     for(const w of this.horde){
@@ -848,8 +883,9 @@ class CitySandbox extends Phaser.Scene {
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
-// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art.
-if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start();
+// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art;
+// zoom=pc also takes the computer's enemy copies (manifest.ts pcCell), as the game on a fine pointer.
+if(base||params.get('arte')!=='0')void loadArtManifest(undefined,params.get('zoom')==='pc').then(start);else start();
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{

@@ -38,6 +38,8 @@ export interface CityEdgeInput {
    * Minerva, the last seconds of a time to explore; urgent: Cone, "Volte ao Uno."). Key 'uno' (arrows.ts shows it).
    */
   uno?:{x:number;y:number;urgent:boolean};
+  /** Card inimigos-querem-o-uno: the car, and whether it took a hit in the last UNO_HIT_MS (its arrow shows only then). */
+  car?:{x:number;y:number;hit:boolean};
 }
 /** A bank as the city's arrows and minimap read it. */
 export interface CityBank {id:string;x:number;y:number;name:BankName;state:BankState;saldo:number}
@@ -51,14 +53,16 @@ export const GROUP_DANGER_HERO=8,GROUP_DANGER_WALL=12;
 export const MOUTH_GROUP_MERGE=10;
 /** At most this many active-mouth arrows. */
 export const MOUTH_ARROWS=2;
+/** The car's arrow stays this long after its last hit (ms): a horde's blows keep it up, a lone scratch blinks it once. */
+export const UNO_HIT_MS=2500;
 
 const isGroup=(t:EdgeTarget)=>t.kind==='grupo'||t.key.startsWith('grupo:'),isMouth=(t:EdgeTarget)=>t.key.startsWith('boca:');
 /**
- * Doc §3 priority: caído 0 > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > a robbed bank 3.8 (bancos) >
+ * Doc §3 priority: caído 0 > the Uno taking hits .5 (losing it ends the run) > chefe 1 > grupo 2 > boca 3 > the chaveiro's moto 3.5 (D-047) > a robbed bank 3.8 (bancos) >
  * base 4 > a bank with notes 4.2 (the way back in the intermission goes first); anything else never gets an arrow in the city (9).
  */
 export function cityEdgeRank(t:EdgeTarget):number{
-  return t.kind==='caido'?0:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='banco'?(t.danger?3.8:4.2):t.kind==='base'?4:9;
+  return t.kind==='caido'?0:t.kind==='uno'?.5:t.kind==='chefe'?1:isGroup(t)?2:isMouth(t)?3:t.kind==='moto'?3.5:t.kind==='banco'?(t.danger?3.8:4.2):t.kind==='base'?4:9;
 }
 /**
  * The bank that gets an arrow (one at most, out of view): the one a critter robs (Cone: "corre lá"), else the nearest
@@ -96,13 +100,16 @@ export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];g
   const moto=input.moto;
   if(moto&&moto.mode!=='abrindo'&&!isOnScreen(moto))targets.push({key:'moto',kind:'moto',screen:locate(moto),world:{x:moto.x,y:moto.y},distance:dist(moto),
     name:motoNeedsTeam(moto.mode)?'Chaveiro parado':'Chaveiro',...(motoNeedsTeam(moto.mode)?{danger:true}:{})});
+  // Card inimigos-querem-o-uno: the car while it takes hits out of view (Cone: losing it ends the run).
+  const car=input.car;
+  if(car?.hit&&!isOnScreen(car))targets.push({key:'uno',kind:'uno',screen:locate(car),world:{x:car.x,y:car.y},distance:dist(car),name:'O Uno está apanhando',danger:true});
   // Bancos: one bank, the robbed one first (rules/bancos.ts BANK_SHORT names it for the screen reader).
   const bank=bankForArrow(input.banks,hero,isOnScreen);
   if(bank)targets.push({key:`banco:${bank.id}`,kind:'banco',screen:locate(bank),world:{x:bank.x,y:bank.y},distance:dist(bank),
     name:bank.state==='bicho'?`Bicho sacando no ${BANK_SHORT[bank.name]}`:`Banco ${BANK_SHORT[bank.name]}: R$ ${bank.saldo}`,...(bank.state==='bicho'?{danger:true}:{})});
-  // The Uno while the mission points at it (inicio-no-uno-caixas-120).
+  // The Uno while the mission points at it (inicio-no-uno-caixas-120); the hit arrow above (same key) wins.
   const uno=input.uno;
-  if(uno&&!isOnScreen(uno))targets.push({key:'uno',kind:'base',screen:locate(uno),world:{x:uno.x,y:uno.y},distance:dist(uno),name:'Uno',...(uno.urgent?{danger:true}:{})});
+  if(uno&&!car?.hit&&!isOnScreen(uno))targets.push({key:'uno',kind:'base',screen:locate(uno),world:{x:uno.x,y:uno.y},distance:dist(uno),name:'Uno',...(uno.urgent?{danger:true}:{})});
   // Base: in the intermission when the plaza is out of view (Cone with the seconds after the horn); in a wave only after a hit on the wall.
   const plaza={x:map.plaza.x,y:map.plaza.y};
   if((input.phase==='prepare'||input.wallHitRecently)&&!isOnScreen(plaza)){
@@ -153,7 +160,7 @@ export function mergeGroupTargets<T extends CityEdgeTarget>(targets:readonly T[]
 // layoutEdges folds a crowded arrow into one of the same kind ("+N"): during layout each city class rides the kind of
 // its rank (caído, chefe, grupo, boca as 'spawn', base), in edges.ts's priority order, so a group and a mouth never fold
 // into each other.
-const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',3.8:'banco',4:'base',4.2:'banco'};
+const LAYOUT_KIND:Readonly<Record<number,EdgeKind>>={0:'caido',.5:'uno',1:'chefe',2:'grupo',3:'spawn',3.5:'moto',3.8:'banco',4:'base',4.2:'banco'};
 
 /**
  * The part of `area` left beside the open windows (the offer, the forge, the minimap): for each window over it, the largest
@@ -181,7 +188,7 @@ export function besideWindows(area:Rect,windows:readonly (Rect|undefined)[]):Rec
  * the boss, as on the island, and the base after the horn (Cone, the seconds to get back on its tag, doc §3): a short
  * landscape field used to crowd it out while "Volta pra base" ran (visual review cidade-04).
  */
-export const cityMustPoint=(t:EdgeTarget)=>MUST_POINT.includes(t.kind)||t.kind==='base'&&(t.seconds!==undefined||!!t.danger);
+export const cityMustPoint=(t:EdgeTarget)=>MUST_POINT.includes(t.kind)||t.kind==='uno'||t.kind==='base'&&(t.seconds!==undefined||!!t.danger);
 /**
  * The order the city's arrows are placed in: cityEdgeRank, except the base after the horn (its seconds on the tag), which
  * goes before the mouths: with "Volta pra base" running, a mouth used to take the base's side of a short landscape field

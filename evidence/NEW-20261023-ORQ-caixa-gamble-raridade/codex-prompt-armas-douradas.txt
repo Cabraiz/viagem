@@ -1,0 +1,5 @@
+Generate ONE image with the image generation tool and save it as out-0.png in the current directory. Do not inspect, do not run code, do not check with PIL.
+
+The attached image shows 5 cartoon game item stickers in a row (a revolver, a double-barrel shotgun, a toy submachine gun, a hunting rifle, a blowtorch) on flat green. Use it only to read the objects and the style.
+
+Draw the SAME 5 objects, in the same order, same shapes, same angle and same thick-outline painted cartoon sticker style, but as the GOLDEN ("dourada") legendary edition: every part made of polished shiny gold (warm yellow-gold with orange shadows and bright white highlights), small sparkle glints, keep the dark outline. Wooden grips become gold too, maybe with a few small red gems. Each object fully visible, separated by empty space, same size as in the reference. Flat pure green #00FF00 background, no shadows on the background, no text, no frame. Wide image, 5 objects in one row.

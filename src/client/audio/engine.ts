@@ -11,7 +11,7 @@
 import type {SoundId,SoundRecipe,Tone} from './types.ts';
 import {recipeLength} from './types.ts';
 import {RECIPES} from './recipes.ts';
-import {SFX,SFX_WARM,drawTake,pickSfxFormat,sfxUrl,type SfxFormat,type SfxSpec} from './sfx.ts';
+import {SFX,SFX_WARM,alignTake,drawTake,pickSfxFormat,sfxUrl,type SfxFormat,type SfxSpec} from './sfx.ts';
 import {busGain,busQuiet,clampVolume,copySettings,loadSettings,saveSettings,type AudioSettings,type Bus,type StorageLike} from './settings.ts';
 
 export {DEFAULT_SETTINGS,SETTINGS_KEY,LEGACY_SETTINGS_KEY,type AudioSettings,type Bus,type BusSettings} from './settings.ts';
@@ -43,8 +43,13 @@ interface EngineOptions {
   nowMs?:()=>number;
 }
 interface Voice {id:SoundId;priority:number;startedAt:number;endsAt:number;out:GainNode;sources:AudioScheduledSourceNode[]}
-/** One play's own level and speed: a footstep's ±2 dB and ±5 % (footsteps.ts), an ally farther away. */
-export interface PlayOptions {gain?:number;rate?:number}
+/**
+ * One play's own level and speed: a footstep's jitter (footsteps.ts), an ally farther away; `pan` (-1 left … 1 right) puts
+ * a file's take where its figure is on screen (the recipes stay centred).
+ */
+export interface PlayOptions {gain?:number;rate?:number;pan?:number}
+/** The output latency the engine reports at most (a context that claims more is not believed). */
+export const MAX_LATENCY_MS=150;
 type FileState=AudioBuffer|'loading'|'failed';
 
 async function fetchFile(url:string):Promise<ArrayBuffer>{
@@ -88,6 +93,7 @@ export class AudioEngine {
   private detachers=new Set<()=>void>();
   private state:AudioSettings;
   private isUnlocked=false;
+  private hushed=false;
   private resumeAskedAt=-Infinity;
   private cleanups:(()=>void)[]=[];
   private readonly recipes:Readonly<Partial<Record<SoundId,SoundRecipe>>>;
@@ -97,6 +103,8 @@ export class AudioEngine {
   private readonly random:()=>number;
   /** Each file's state by URL: decoded, on its way, or failed (then the recipe plays for good). */
   private files=new Map<string,FileState>();
+  /** An aligned sound's take (SfxSpec.align): where its attack starts and the gain that evens it. */
+  private aligned=new WeakMap<AudioBuffer,{offset:number;gain:number}>();
   private lastTake=new Map<SoundId,number>();
   private readonly createContext:()=>AudioContext;
   private readonly storage:StorageLike|null;
@@ -128,6 +136,17 @@ export class AudioEngine {
   get context():AudioContext|undefined{return this.ctx;}
   get output():AudioNode|undefined{return this.master;}
   get musicOutput():AudioNode|undefined{return this.buses.music;}
+  /** The effects bus (its volume and mute): a looping voice of its own joins it (audio/alarm.ts, the Uno's alarm). */
+  get effectsOutput():AudioNode|undefined{return this.buses.effects;}
+  /**
+   * How late a sound started now reaches the speakers (ms): the context's base and output latency, 0 before unlock or
+   * where the browser does not say; at most MAX_LATENCY_MS. footsteps.ts plays that much ahead of the foot.
+   */
+  get latencyMs(){
+    const ctx=this.ctx as (AudioContext&{outputLatency?:number})|undefined;
+    const s=(Number(ctx?.baseLatency)||0)+(Number(ctx?.outputLatency)||0);
+    return Math.max(0,Math.min(MAX_LATENCY_MS,s*1000));
+  }
 
   /**
    * Unlocks on the first gesture on `target` and keeps listening: any later gesture revives a context that
@@ -152,7 +171,7 @@ export class AudioEngine {
     try{
       const ctx=this.ctx=this.createContext();
       this.master=ctx.createGain();
-      this.master.gain.value=1;
+      this.master.gain.value=this.hushed?0:1;
       // A limiter keeps a boss roar plus a fall plus hits from hard-clipping on phone speakers.
       const limiter=ctx.createDynamicsCompressor?.();
       if(limiter){
@@ -190,6 +209,15 @@ export class AudioEngine {
     this.update({[bus]:{...this.state[bus],volume:clampVolume(volume)}},opts.persist??true);
   }
   setMuted(bus:Bus,muted:boolean){this.update({[bus]:{...this.state[bus],muted}});}
+  /** Silences everything for an ad break (ads/ads.ts) without touching the saved settings; false restores. */
+  setHushed(on:boolean){
+    this.hushed=on;
+    const ctx=this.ctx,master=this.master;
+    if(!ctx||!master)return;
+    master.gain.cancelScheduledValues?.(ctx.currentTime);
+    master.gain.setValueAtTime?.(on?0:1,ctx.currentTime);
+    master.gain.value=on?0:1;
+  }
   setVibration(vibration:boolean){this.update({vibration});}
 
   activeVoices(){this.prune();return this.voices.length;}
@@ -217,7 +245,10 @@ export class AudioEngine {
         this.files.set(url,'loading');
         let job:Promise<ArrayBuffer>;
         try{job=load(url);}catch(error){job=Promise.reject(error);}
-        job.then(data=>ctx.decodeAudioData(data)).then(buffer=>{this.files.set(url,buffer);},()=>{this.files.set(url,'failed');});
+        job.then(data=>ctx.decodeAudioData(data)).then(buffer=>{
+          if(file.align){try{this.aligned.set(buffer,alignTake(buffer.getChannelData(0),buffer.sampleRate));}catch{/* plays whole */}}
+          this.files.set(url,buffer);
+        },()=>{this.files.set(url,'failed');});
       }
     }
   }
@@ -257,13 +288,16 @@ export class AudioEngine {
     let length:number;
     if(take){
       const rate=Math.max(.5,Math.min(2,Number.isFinite(opts.rate)?opts.rate!:1));
-      const src=ctx.createBufferSource();
+      const src=ctx.createBufferSource(),align=this.aligned.get(take.buffer),offset=align?.offset??0;
       src.buffer=take.buffer;
       if(src.playbackRate)src.playbackRate.value=rate;
-      voice.gain.value=file!.gain*level;
-      src.connect(voice);src.start(start);
+      voice.gain.value=file!.gain*level*(align?.gain??1);
+      // Panned before the voice: the voice's release (releaseOnEnd, a steal) cuts the whole chain off the bus.
+      const pan=Number.isFinite(opts.pan)?Math.max(-1,Math.min(1,opts.pan!)):0,panner=Math.abs(pan)>.01?ctx.createStereoPanner?.():undefined;
+      if(panner){panner.pan.value=pan;src.connect(panner);panner.connect(voice);}else src.connect(voice);
+      src.start(start,offset);
       sources.push(src);
-      length=take.buffer.duration/rate;
+      length=Math.max(0,take.buffer.duration-offset)/rate;
       this.lastTake.set(id,take.index);
     }else{
       voice.gain.value=level;

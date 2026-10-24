@@ -10,7 +10,7 @@ import {computeAwards} from '../../src/client/hud/awards.ts';
 
 function playRun(){
   const s=new Simulation(9001);
-  s.add('a','Ana','rei-do-pastel');s.add('b','Bia','tio-do-churrasco');s.add('c','Caio','goleira');
+  s.add('a','Ana','rei-do-pastel');s.add('b','Bia','tio-do-churrasco');s.add('c','Caio','porteiro');
   s.resetRun();
   const steps:Snapshot[]=[];
   for(let t=0;t<2400;t++){

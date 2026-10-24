@@ -15,7 +15,7 @@ const START=40,MINERVA_END=START+s(120);
 test('the copy: pt-BR, short, no forced exclamation; the window length as people say it',()=>{
   assert.equal(MISSION_TEXT.minerva,'Busque o máximo de caixas e volte ao Uno antes do tempo acabar.');
   for(const line of Object.values(MISSION_TEXT))assert.doesNotMatch(line,/!/);
-  assert.equal(exploreText(120),'Você tem 2 minutos para buscar mais caixas.');
+  assert.equal(exploreText(120),'Você tem 2 minutos para buscar mais caixas. Vá em dupla.');
   assert.deepEqual([60,90,120,150,45].map(durationText),['1 minuto','1 minuto e meio','2 minutos','2 minutos e meio','45 segundos']);
 });
 
@@ -61,7 +61,7 @@ test('each time to explore: "Você tem 2 minutos…" with the real length, big t
   const m=new MissionTracker(),from=5000,explora={from,until:from+s(120)};
   const at=(tick:number)=>m.step({tick,explora,towerKit:false,playing:true});
   const open=at(from);
-  assert.deepEqual(open.line,{key:'explora',text:'Você tem 2 minutos para buscar mais caixas.',big:true,urgent:false});
+  assert.deepEqual(open.line,{key:'explora',text:'Você tem 2 minutos para buscar mais caixas. Vá em dupla.',big:true,urgent:false});
   assert.equal(open.pointUno,false);
   assert.equal(at(from+s(10)).line?.big,false);
   const back=at(explora.until-s(RETURN_SECONDS));
@@ -69,7 +69,7 @@ test('each time to explore: "Você tem 2 minutos…" with the real length, big t
   assert.equal(at(explora.until).line,undefined,'the wave: nothing');
   // The next window opens big again, with its own length.
   const next={from:explora.until+s(80),until:explora.until+s(80+90)};
-  assert.equal(m.step({tick:next.from,explora:next,towerKit:false,playing:true}).line?.text,'Você tem 1 minuto e meio para buscar mais caixas.');
+  assert.equal(m.step({tick:next.from,explora:next,towerKit:false,playing:true}).line?.text,'Você tem 1 minuto e meio para buscar mais caixas. Vá em dupla.');
 });
 
 test('a spectator or someone out sees no mission; a rematch (the tick back to 0) starts it over',()=>{

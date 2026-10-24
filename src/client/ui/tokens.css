@@ -30,6 +30,23 @@
   unicode-range:U+0100-0130,U+0132-0151,U+0154-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:'M PLUS Rounded 1c';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/londrina-solid-400.woff2) format('woff2');
   unicode-range:U+2026}
+/* As 4 letras do texto dos stories (BUG-20261024-ORQ-stories-texto-estilo-instagram, o usuário 24/10: "copiar ... fonte,
+   cor, jeito, opções"): equivalentes OFL das do Instagram. Clássica = Inter 800, Moderna = Archivo expandido 800,
+   Forte = Bebas Neue, Máquina = Courier Prime; a Inter 400 é a letra comum dos stickers (enquete, pergunta). Latin do
+   Google Fonts recortado para pt-BR (~82 KB as 6); só baixam quando os stories abrem (ui/insta-stories.ts as pede ao
+   abrir), nunca com a página. */
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/inter-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00AC,U+00AE-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+@font-face{font-family:'Inter';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/inter-800.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00AC,U+00AE-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+@font-face{font-family:'Archivo Expanded';font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/archivo-expandido-800.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+@font-face{font-family:'Bebas Neue';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/bebas-neue-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+@font-face{font-family:'Courier Prime';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/courier-prime-400.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
+@font-face{font-family:'Courier Prime';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/courier-prime-700.woff2) format('woff2');
+  unicode-range:U+0020-007E,U+00A0-00FF,U+0152-0153,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2026,U+20AC}
 
 :root,::backdrop{
   /* ::backdrop does not inherit custom properties before Safari 17.4 / Chrome 122, so the dialog veil needs its own copy. */
@@ -88,11 +105,28 @@
   --insta-texto:#170D36;--insta-cinza:#7E7C87;
   --insta-roxo:#8623CC;--insta-botao-a:#9440F2;--insta-botao-b:#680DCC;--insta-botao-c:#7A1EDB;--insta-botao-borda:#4F1696;--insta-botao-coroa:#C9A2FF;
   --insta-anel-a:#F2B347;--insta-anel-b:#D45FB0;--insta-anel-c:#9A1DD3;
+  /* BUG-20261023-ORQ-instagram-letreiro-do-perfil: os ícones dos chips em cinza-escuro como na referência; o coração
+     curtido e o véu atrás do post aberto. */
+  --insta-icone:#4B4853;--insta-curtir:#ED4956;--insta-veu:color-mix(in srgb,var(--insta-texto) 78%,transparent);
+  /* NEW-20261023-ORQ-insta-stories-4-herois: o visualizador de stories, escuro como o do Instagram, texto branco. */
+  --insta-sv-fundo:#0B0714;--insta-sv-texto:#FFFFFF;
+  /* BUG-20261024-ORQ-stories-texto-estilo-instagram: as cores do seletor de texto do Instagram (faixa por linha, letra,
+     hashtag) e os stickers dele (enquete, caixa de pergunta, coração). Só ui/insta.css .insta-st-*. */
+  --insta-st-branco:#FFFFFF;--insta-st-preto:#000000;--insta-st-azul:#3897F0;--insta-st-verde:#70C050;
+  --insta-st-amarelo:#FDCB5C;--insta-st-laranja:#FD8D32;--insta-st-vermelho:#ED4956;--insta-st-rosa:#D10869;--insta-st-roxo:#A307BA;
+  --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#8E8E8E;
+  --insta-st-sombra-texto:0 1px 6px color-mix(in srgb,var(--insta-st-preto) 55%,transparent);
+  --insta-st-sombra-sticker:0 2px 10px color-mix(in srgb,var(--insta-st-preto) 25%,transparent);
 
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
   --f-botao:'Lilita One',var(--f-cartaz);     /* o botão SELECIONAR do estádio (fonte-botao-coerente) */
   --f-sistema:'M PLUS Rounded 1c',sans-serif;  /* voz de sistema: instrução, botão, apelido, timer */
+  /* As letras do texto dos stories (só ui/insta.css .insta-st-*), as 4 do Instagram. */
+  --f-insta-classica:'Inter',var(--f-sistema);
+  --f-insta-moderna:'Archivo Expanded',var(--f-insta-classica);
+  --f-insta-forte:'Bebas Neue',var(--f-cartaz);
+  --f-insta-maquina:'Courier Prime',var(--f-sistema);
   /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
   --t-escala:1;
   --t-13:calc(13px * var(--t-escala));
@@ -114,6 +148,7 @@
   --r-circulo:50%;   /* só toque (joystick, Atacar, emote) ou pessoa (retrato) */
   --r-pilula:999px;  /* só o menu do estádio (menu-estadio): classe, nome e "Selecionar", como na referência aprovada */
   --r-insta:16px;    /* só o SELECIONAR do perfil no celular em pé (selecao-mobile-instagram), como na referência */
+  --r-faixa:.22em;   /* só a faixa por linha do texto dos stories: canto levemente redondo, cresce com a letra */
 
   /* ---------- Sombras duras e contorno ---------- */
   --s-1:0 3px 0 var(--c-breu);

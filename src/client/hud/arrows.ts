@@ -2,11 +2,11 @@
  * Which edge arrows the game shows (card NEW-20261018-ORQ-setas-e-construir, user 18/10): only TWO pointers on screen,
  * the downed ally to lift ('caido') and the orange arrow at the top to the car (hud/city/objective.ts, not an edge
  * arrow). The others (nests' obra sites, banks, the chaveiro's moto, the boss, the groups, the mouths, the base) are
- * off; to bring one back, add its kind here. The obra's site arrows read 'obra'.
+ * off; to bring one back, add its kind here. Card inimigos-querem-o-uno brings 'uno': the car taking hits off screen. The obra's site arrows read 'obra'.
  */
 import type {EdgeKind,EdgeTarget} from './edges.ts';
 
-export const EDGE_KINDS_SHOWN:ReadonlySet<EdgeKind>=new Set<EdgeKind>(['caido']);
+export const EDGE_KINDS_SHOWN:ReadonlySet<EdgeKind>=new Set<EdgeKind>(['caido','uno']);
 /**
  * Keys shown whatever their kind: the Uno while the mission points at it (card inicio-no-uno-caixas-120, the user: a
  * mark on the screen's edge pointing at the Uno when it leaves the screen; hud/city/edges.ts `uno`).

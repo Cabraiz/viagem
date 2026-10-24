@@ -193,9 +193,10 @@ export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=
 
 /**
  * The enemy sheets load their lossy copy (scripts/art-lite.mjs, public/art/lite/enemies/<id>/<file>), like the hero
- * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl).
+ * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl). A file the
+ * computer draws from its own copy (manifest.ts pcCell, kept only on a computer) loads public/art/lite/enemies-pc/.
  */
-export const liteEnemyUrl=(url:string)=>url.replace('/art/enemies/','/art/lite/enemies/');
+export const liteEnemyUrl=(url:string,file?:Pick<ArtFile,'pcCell'>)=>url.replace('/art/enemies/',file?.pcCell?'/art/lite/enemies-pc/':'/art/lite/enemies/');
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
@@ -233,7 +234,7 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
-      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      const lite=liteEnemyUrl(url,file);if(file.liteCell)LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }
@@ -399,9 +400,10 @@ export const ENEMY_CADENCE_KEPT:ReadonlySet<string>=new Set(['rato-de-boteco']);
 export const ENEMY_PACE={loop:ENEMY_LOOP_RATE,cadence:ENEMY_WALK_CADENCE,maxCps:ENEMY_WALK_MAX_CPS};
 /**
  * The sandbox's before/after proof (`?sandbox=horda&relogio=1`): `byGround:false` brings back the clock-driven walk,
- * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts).
+ * `faceTarget:false` the facing of the last step and no swing on a contact hit (render/layers.ts); `leash:false`
+ * (`golpe=antes`) walking on any step, a jiggle against a player too (render/motion.ts leashMoving).
  */
-export const ENEMY_WALK={byGround:true,faceTarget:true};
+export const ENEMY_WALK={byGround:true,faceTarget:true,leash:true};
 /** Walk cycles per visible step of art `id` (ENEMY_PACE.cadence, or 1 for ENEMY_CADENCE_KEPT). */
 export const enemyCadence=(id:string)=>ENEMY_CADENCE_KEPT.has(id)?1:ENEMY_PACE.cadence;
 /** Visible step (heights of the figure per walk cycle) of art `id`. */
@@ -557,7 +559,25 @@ export function loopAnim(piece:ArtPiece,moving:boolean,elite:boolean,bossPhase=1
  * the loop comes back. A 'hit' never interrupts another action nor restarts itself; any other action replaces a hit
  * or a different action, and the same action already playing is not restarted. Pure, for tests and playEnemyAction.
  */
-export interface ActionState {action?:string;at:number;end:number;hitAt?:number}
+export interface ActionState {action?:string;at:number;end:number;hitAt?:number;
+  /** Drawn time per ms on screen of the action playing (1: its fps; under 1: a repeated swing stretched, SWING_FILL). */
+  pace?:number;
+  /** The last action started and when: a swing that comes back is timed by the gap between the two. */
+  lastAction?:string;lastAt?:number}
+/**
+ * Repeated swings (inimigos-animacao-auditoria, the user: "animação muito rápida, bem bugadas"): an enemy on a player
+ * hits every contactCooldown (1 s; the swarm 0.6 s) and its 'attack' lasted ~0.7 s, so between two swings it snapped to
+ * its idle for 0.3 s at a random column (attack, idle flash, attack, every second). When the same action comes back
+ * within SWING_FILL_MAX_MS, it plays over the whole gap (SWING_FILL of it, slower, never faster than drawn): the swings
+ * follow each other with no idle in between. SWING_FILL is a bit over the gap: the next hit comes a few ms late with
+ * the network's jitter, and a frame of the loop between two swings still showed (real match, swarm every 0.6 s); the
+ * next swing cuts the tail (SWING_RESTART). A first or a lone swing keeps its own length.
+ * SWING_RESTART: a repeat may restart the swing once this share of it played (the next hit arrives a bit early with
+ * the network's jitter); earlier, the same action is not restarted.
+ */
+export const SWING_FILL=1.08,SWING_FILL_MAX_MS=1700,SWING_RESTART=.8;
+/** The sandbox's before/after proof (`?sandbox=horda&golpe=antes`): `fill:false` brings back the swing of before. */
+export const ENEMY_SWING={fill:true};
 /**
  * A hit starts at most once per hitGap(its duration): at least HIT_GAP_HITS × the hit animation and never under
  * HIT_GAP_MIN_MS. An enemy inside an aura is damaged every tick: it plays its hit now and then and walks in between,
@@ -584,11 +604,15 @@ export function pieceAction(piece:ArtPiece,action:string):string|undefined{
 }
 export function startAction(s:ActionState,piece:ArtPiece,action:string,now:number):boolean{
   const file=piece.files[action];if(!file)return false; // missing animation: the walk/idle loop goes on
-  // A hit never starts while another action plays, and the same action already playing is not restarted.
-  if(s.action!==undefined&&now<s.end&&(action==='hit'||action===s.action))return false;
-  const duration=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
-  if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(duration))return false;s.hitAt=now;}
-  s.action=action;s.at=now;s.end=now+duration;
+  // A hit never starts while another action plays, and the same action already playing is not restarted (but a
+  // swing that comes back near its end, SWING_RESTART).
+  if(s.action!==undefined&&now<s.end&&(action==='hit'||(action===s.action&&(!ENEMY_SWING.fill||now<s.at+(s.end-s.at)*SWING_RESTART))))return false;
+  const drawn=actionDuration(Math.max(1,file.frames??1),enemyFps(file,action));
+  if(action==='hit'){if(s.hitAt!==undefined&&now-s.hitAt<hitGap(drawn))return false;s.hitAt=now;}
+  const gap=action!=='hit'&&s.lastAction===action&&s.lastAt!==undefined?now-s.lastAt:Infinity;
+  const duration=ENEMY_SWING.fill&&gap<=SWING_FILL_MAX_MS?Math.max(drawn,gap*SWING_FILL):drawn;
+  if(action!=='hit'){s.lastAction=action;s.lastAt=now;}
+  s.action=action;s.at=now;s.end=now+duration;s.pace=drawn/duration;
   return true;
 }
 /** The action still playing at `now` (clears a finished one), or undefined. */
@@ -639,7 +663,7 @@ function layerFrame(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
 }
 
 /** A pooled enemy image now shows a new enemy: forget its facing and action (and hide its elite layer until drawn). */
-export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=undefined;s.lx=s.ly=s.lt=NaN;}}
+export function resetEnemyArt(image:object){const s=states.get(image);if(s){s.row=-1;s.eliteOn=s.costumeOn=false;s.action=s.hitAt=s.lastAction=s.lastAt=undefined;s.pace=1;s.lx=s.ly=s.lt=NaN;}}
 /** Whether any enemy kind has imported art (false with an empty manifest: the renderer skips the action cues). */
 export function enemyArtActive(){const g=artIndex().groups.inimigos;if(g)for(const _ in g.pieces)return true;return false;}
 /** Whether a pooled enemy image showed imported art on its last frame (the renderer then drops the roster accent tint). */
@@ -700,9 +724,11 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   const textures=image.scene.textures;
   let action=loop?currentAction(s,now):undefined;
   if(ENEMY_WALK.faceTarget&&actor.x!==undefined&&actor.y!==undefined)s.row=targetRow(actor.x,actor.y,target,action!==undefined&&action!=='hit',view,s.row);
-  let frame=action?enemyFrame(id,piece,action,s.row,now-s.at,base,true):undefined;
+  // The action's own clock: drawn time since it started (slower for a stretched swing, SWING_FILL).
+  const acted=(now-s.at)*(s.pace??1);
+  let frame=action?enemyFrame(id,piece,action,s.row,acted,base,true):undefined;
   if(action&&(!frame||!textures.exists(frame.key))){action=s.action=undefined;frame=undefined;}
-  let anim=action??loop;const t=action?now-s.at:now+actor.phase*1000;
+  let anim=action??loop;const t=action?acted:now+actor.phase*1000;
   // The walk by the ground walked since the last draw (monstros-sem-deslizar); the clock for every other loop. A fresh
   // image starts at its own phase of the cycle, so a pack never steps in unison.
   const wx=actor.x,wy=actor.y,walkFile=piece.files.walk;

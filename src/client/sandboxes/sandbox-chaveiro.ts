@@ -73,6 +73,9 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
   const stops=STOPS.map(s=>({kind:s.kind,...along(route,s.at),s:+(s.at*routeLength(route)).toFixed(2)}));
   const fixedParts=Math.max(0,Math.min(15,Number(params.get('pecas'))|0)),cycle=params.get('cai')==='1';
   const alarm=params.get('alarme')==='1';
+  // Card inimigos-querem-o-uno: `apanha=1` the car takes 2 hits every APANHA_MS from `pancadas` (the numbers, the flash,
+  // and under 30 % the hood's smoke), round again once it would break.
+  const beating=params.get('apanha')==='1';
   const ended=params.get('fim')==='vitoria'?'victory':params.get('fim')==='derrota'?'defeat':undefined;
   const swing=params.has('anda')?(Number(params.get('anda'))||0)*Math.PI/180:undefined;
   const roll=params.has('empurrando')?(Number(params.get('empurrando'))||0)*Math.PI/180:undefined,rollSpeed=Number(params.get('vel'))||3.6;
@@ -85,7 +88,8 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
     const tick=Math.floor(now/100);
     const parts=cycle?(1<<(Math.floor(now/2500)%5))-1:ended==='defeat'?15:fixedParts;
     const fell=[1,2,4,8].filter(b=>parts&b).length;
-    const hits=Number(params.get('pancadas'))||(ended==='defeat'?80:fell*20);
+    const hits=beating?(Number(params.get('pancadas'))||0)+Math.floor(now/APANHA_MS)*2%Math.max(2,80-(Number(params.get('pancadas'))||0)):
+      Number(params.get('pancadas'))||(ended==='defeat'?80:fell*20);
     const t=stillMode==='anda'?(now%LOOP_MS)/LOOP_MS:stillAt;
     const moto=stillMode==='anda'?along(route,t):motoStill;
     const total=routeLength(route),speed=total/(LOOP_MS/1000);
@@ -103,6 +107,8 @@ export function fakeChaveiro(params:URLSearchParams,car:Pt,from?:Pt,mouth?:Pt,fa
   }};
 }
 
+/** `apanha=1`: a blow on the car every this many ms. */
+export const APANHA_MS=700;
 /** `fala=`: the first moment's event at FALA_AT_MS, then one every FALA_EVERY_MS (past the cast's line gap). */
 export const FALA_AT_MS=1200,FALA_EVERY_MS=5000;
 /** The protocol-15 event (or main's boss arrival) of each `fala=` moment. */

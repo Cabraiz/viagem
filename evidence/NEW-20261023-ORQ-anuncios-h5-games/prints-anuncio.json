@@ -1,0 +1,275 @@
+[
+ {
+  "view": "pe",
+  "shots": [
+   "pe-1-menu.jpg",
+   "pe-2-partida.jpg",
+   "pe-3-resultado.jpg",
+   {
+    "ms": 400,
+    "frames": [],
+    "menu": false
+   },
+   "pe-4-sair-00400ms.jpg",
+   {
+    "ms": 1200,
+    "frames": [],
+    "menu": true
+   },
+   "pe-4-sair-01200ms.jpg",
+   {
+    "ms": 2500,
+    "frames": [],
+    "menu": true
+   },
+   "pe-4-sair-02500ms.jpg",
+   "pe-5-depois.jpg"
+  ],
+  "errors": [],
+  "net": [
+   "200 https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+  ],
+  "scriptNoMenu": [],
+  "adsDuranteAPartida": 0,
+  "menuVoltouEmMs": 1644,
+  "dom": {
+   "iframes": [],
+   "ins": [],
+   "body": null,
+   "html": "--emblem: #75b8a6;",
+   "tops": [
+    "svg#icon-sprite.[object SVGAnimatedString] absolute z=auto",
+    "svg#sticker-sprite.[object SVGAnimatedString] absolute z=auto",
+    "DIV#app. static z=auto"
+   ],
+   "raf": 62,
+   "visibility": "visible"
+  },
+  "menuNaPagina": {
+   "raf": 1665,
+   "poll": 1665.7999999970198,
+   "sairAt": 52032
+  },
+  "adlog": [
+   {
+    "at": 25310,
+    "ev": "push",
+    "call": "adConfig {\"preloadAdBreaks\":\"on\",\"sound\":\"on\"}"
+   },
+   {
+    "at": 52032,
+    "ev": "push",
+    "call": "adBreak next sair"
+   }
+  ],
+  "video": "video-pe.webm"
+ },
+ {
+  "view": "pc",
+  "shots": [
+   "pc-1-menu.jpg",
+   "pc-2-partida.jpg",
+   "pc-3-resultado.jpg",
+   {
+    "ms": 400,
+    "frames": [],
+    "menu": false
+   },
+   "pc-4-sair-00400ms.jpg",
+   {
+    "ms": 1200,
+    "frames": [],
+    "menu": true
+   },
+   "pc-4-sair-01200ms.jpg",
+   {
+    "ms": 2500,
+    "frames": [],
+    "menu": true
+   },
+   "pc-4-sair-02500ms.jpg",
+   "pc-5-depois.jpg"
+  ],
+  "errors": [],
+  "net": [
+   "200 https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+  ],
+  "scriptNoMenu": [
+   {
+    "src": "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+    "test": "on",
+    "freq": "180s"
+   }
+  ],
+  "adsDuranteAPartida": 0,
+  "menuVoltouEmMs": 5167,
+  "dom": {
+   "iframes": [],
+   "ins": [],
+   "body": null,
+   "html": "--emblem: #75b8a6;",
+   "tops": [
+    "svg#icon-sprite.[object SVGAnimatedString] absolute z=auto",
+    "svg#sticker-sprite.[object SVGAnimatedString] absolute z=auto",
+    "DIV#app. static z=auto"
+   ],
+   "raf": 62,
+   "visibility": "visible"
+  },
+  "menuNaPagina": {
+   "raf": 1713.0999999940395,
+   "poll": 1531,
+   "sairAt": 38884
+  },
+  "adlog": [
+   {
+    "at": 3471,
+    "ev": "push",
+    "call": "adConfig {\"preloadAdBreaks\":\"on\",\"sound\":\"on\"}"
+   },
+   {
+    "at": 38884,
+    "ev": "push",
+    "call": "adBreak next sair"
+   }
+  ],
+  "video": "video-pc.webm"
+ },
+ {
+  "view": "deitado",
+  "shots": [
+   "deitado-1-menu.jpg",
+   "deitado-2-partida.jpg",
+   "deitado-3-resultado.jpg",
+   {
+    "ms": 400,
+    "frames": [],
+    "menu": false
+   },
+   "deitado-4-sair-00400ms.jpg",
+   {
+    "ms": 1200,
+    "frames": [],
+    "menu": true
+   },
+   "deitado-4-sair-01200ms.jpg",
+   {
+    "ms": 2500,
+    "frames": [],
+    "menu": true
+   },
+   "deitado-4-sair-02500ms.jpg",
+   "deitado-5-depois.jpg"
+  ],
+  "errors": [],
+  "net": [
+   "200 https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+  ],
+  "scriptNoMenu": [
+   {
+    "src": "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+    "test": "on",
+    "freq": "180s"
+   }
+  ],
+  "adsDuranteAPartida": 0,
+  "menuVoltouEmMs": 1792,
+  "dom": {
+   "iframes": [],
+   "ins": [],
+   "body": null,
+   "html": "--emblem: #75b8a6;",
+   "tops": [
+    "svg#icon-sprite.[object SVGAnimatedString] absolute z=auto",
+    "svg#sticker-sprite.[object SVGAnimatedString] absolute z=auto",
+    "DIV#app. static z=auto"
+   ],
+   "raf": 61,
+   "visibility": "visible"
+  },
+  "menuNaPagina": {
+   "raf": 1750.4000000059605,
+   "poll": 1526,
+   "sairAt": 28677
+  },
+  "adlog": [
+   {
+    "at": 3319,
+    "ev": "push",
+    "call": "adConfig {\"preloadAdBreaks\":\"on\",\"sound\":\"on\"}"
+   },
+   {
+    "at": 28677,
+    "ev": "push",
+    "call": "adBreak next sair"
+   }
+  ],
+  "video": "video-deitado.webm"
+ },
+ {
+  "view": "bloqueado",
+  "shots": [
+   "bloqueado-1-menu.jpg",
+   "bloqueado-2-partida.jpg",
+   "bloqueado-3-resultado.jpg",
+   {
+    "ms": 400,
+    "frames": [],
+    "menu": true
+   },
+   "bloqueado-4-sair-00400ms.jpg",
+   {
+    "ms": 1200,
+    "frames": [],
+    "menu": true
+   },
+   "bloqueado-4-sair-01200ms.jpg",
+   {
+    "ms": 2500,
+    "frames": [],
+    "menu": true
+   },
+   "bloqueado-4-sair-02500ms.jpg",
+   "bloqueado-5-depois.jpg"
+  ],
+  "errors": [],
+  "net": [
+   "FALHOU net::ERR_BLOCKED_BY_CLIENT.Inspector https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"
+  ],
+  "scriptNoMenu": [
+   {
+    "src": "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+    "test": "on",
+    "freq": "180s"
+   }
+  ],
+  "adsDuranteAPartida": 0,
+  "menuVoltouEmMs": 414,
+  "dom": {
+   "iframes": [],
+   "ins": [],
+   "body": null,
+   "html": "--emblem: #75b8a6;",
+   "tops": [
+    "svg#icon-sprite.[object SVGAnimatedString] absolute z=auto",
+    "svg#sticker-sprite.[object SVGAnimatedString] absolute z=auto",
+    "DIV#app. static z=auto"
+   ],
+   "raf": 61,
+   "visibility": "visible"
+  },
+  "menuNaPagina": {
+   "raf": 11.5,
+   "poll": 64.29999999701977,
+   "sairAt": 33867
+  },
+  "adlog": [
+   {
+    "at": 3178,
+    "ev": "push",
+    "call": "adConfig {\"preloadAdBreaks\":\"on\",\"sound\":\"on\"}"
+   }
+  ],
+  "video": "video-bloqueado.webm"
+ }
+]

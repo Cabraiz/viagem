@@ -6,6 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {statSync} from 'node:fs';
 import {ALARM_HIT_BOOST,ALARM_LOOP_S,ALARM_MAX,ALARM_RADIUS_U,ALARM_FILE,ALARM_FILE_WAIT_MS,AlarmLoop,alarmLevel,alarmSamples} from '../../src/client/audio/alarm.ts';
 
 test('level: silent beyond the radius (no bed), rises toward the car, louder while hit, never above 1',()=>{
@@ -82,4 +83,11 @@ test('the TangoFlux file: fetched once in the browser format, plays when decoded
   const bad=withFile(async()=>{throw new Error('404');});
   bad.loop.update(true,6,false);await new Promise(r=>setImmediate(r));bad.loop.update(true,6,false);
   assert.equal(bad.sources.length,1,'failed: the synthesized loop at once');
+});
+
+test('the imported loop (scripts/import-uno-alarme.mjs): both formats in public/, small',()=>{
+  for(const f of ['webm','m4a']){
+    const size=statSync(new URL(`../../public${ALARM_FILE}.${f}`,import.meta.url)).size;
+    assert.ok(size>8_000&&size<60_000,`uno-alarme.${f}: ${size} B`);
+  }
 });

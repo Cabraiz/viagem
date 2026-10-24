@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * The Uno's car alarm loop (card NEW-20261023-ORQ-inimigos-querem-o-uno, etapa 4) from two TangoFlux takes: the siren,
- * a short gap, the horn, a longer gap, into public/audio/sfx/uno-alarme.webm (Opus) and .m4a (AAC, Safari's).
+ * a short gap, the horn twice ("beep beep"), a longer gap, into public/audio/sfx/uno-alarme.webm (Opus) and .m4a (AAC,
+ * Safari's). Takes chosen by measure (etapa 4): siren 2 sweeps ~610-1020 Hz the whole 2.4 s (siren 1 dies at 0.6 s);
+ * horn 1 is one clean 0.28 s honk (horn 2 is a 0.6 s drone), played twice.
  *
  *   node scripts/import-uno-alarme.mjs [siren take] [horn take] [source dir]
  *
@@ -17,15 +19,16 @@ import {gainFor,parseLoudness} from './import-sfx.mjs';
 
 const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const OUT=join(ROOT,'public/audio/sfx');
-/** Silence after the siren and after the horn (s). */
-export const GAP_S=.12,TAIL_S=.35;
+/** Silence after the siren, between the two honks and after them (s). */
+export const GAP_S=.12,HONK_GAP_S=.1,TAIL_S=.35;
 
 function main(){
-  const [siren='1',horn='1',dir='D:/Gits/ferramentas/sons-ia/sfx']=process.argv.slice(2);
+  const [siren='2',horn='1',dir='D:/Gits/ferramentas/sons-ia/sfx']=process.argv.slice(2);
   const parts=[join(dir,`uno-sirene-${siren}.final.wav`),join(dir,`uno-buzina-${horn}.final.wav`)];
   for(const p of parts)if(!existsSync(p))throw new Error(`no ${p}`);
   const mix=`[0:a]aformat=sample_rates=48000:channel_layouts=mono,apad=pad_dur=${GAP_S}[s];`+
-    `[1:a]aformat=sample_rates=48000:channel_layouts=mono,apad=pad_dur=${TAIL_S}[h];[s][h]concat=n=2:v=0:a=1`;
+    `[1:a]aformat=sample_rates=48000:channel_layouts=mono,asplit=2[h1][h2];[h1]apad=pad_dur=${HONK_GAP_S}[a];`+
+    `[h2]apad=pad_dur=${TAIL_S}[b];[s][a][b]concat=n=3:v=0:a=1`;
   const loop=join(OUT,'uno-alarme.tmp.wav');
   run(['-y','-hide_banner','-i',parts[0],'-i',parts[1],'-filter_complex',mix,'-c:a','pcm_f32le',loop]);
   const r=spawnSync('ffmpeg',['-hide_banner','-nostats','-i',loop,'-af','ebur128=peak=true:framelog=info','-f','null','-'],{encoding:'utf8'});

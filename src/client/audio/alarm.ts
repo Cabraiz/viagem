@@ -5,8 +5,9 @@
  *   the car takes hits (alarmLevel);
  * - it plays into the effects bus (engine.ts effectsOutput): the game's effects volume and mute apply, and the ad
  *   break's hush (engine.setHushed) silences it with everything else;
- * - the sound: the TangoFlux loop (siren + horn, scripts/import-uno-alarme.mjs) fetched once the objective runs; the
- *   synthesized one (alarmSamples) plays instead when the file fails or is still on its way after ALARM_FILE_WAIT_MS.
+ * - the sound: the TangoFlux loop (3.5 s: siren, then "beep beep", ~37 KB; scripts/import-uno-alarme.mjs) fetched
+ *   once the objective runs; the synthesized one (alarmSamples) plays instead when the file fails or is still on its
+ *   way after ALARM_FILE_WAIT_MS.
  * Pure rules and samples (tested) plus one small WebAudio part (AlarmLoop).
  */
 import {SFX_DIR,pickSfxFormat,type SfxFormat} from './sfx.ts';

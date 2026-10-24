@@ -2,7 +2,7 @@
  * D-052 slice 1, sim-carro (card NEW-20261016-ORQ-carro-e-fortificacao-livre, approved proposal; the contract is
  * src/contract/objective.ts): the chaveiro's car moves. Stepped by the ChaveiroSystem (system.ts) before the moto rides.
  *
- * - Push: a standing hero within CAR_PUSH_REACH of the body (CAR_RADIUS) whose stick points at the car (cos ≥
+ * - Push: a standing hero within CAR_PUSH_REACH of the body (its box, carGap) whose stick points at the car (cos ≥
  *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A helper (a room bot, a player on the
  *   room's autopilot) only helps: it counts while a person moves the car (a bot walking home never drags it away).
  * - Pull (card puxar-uno-corda): the rope is tied to the front bumper (carNose) and its free end lies on the ground
@@ -22,9 +22,9 @@
  *   attack (busy: the weapons system skips them); the rope holder never attacks, taut or not.
  * Everything kept is on the ChaveiroState's car (JSON-safe): movers, rope and the rope holder's hp at the last step.
  */
-import {CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,CAR_ROPE_LET_GO_S,
-  CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
-import {maskSurface,walkable,type Point} from '../../maps/index.ts';
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH,CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,
+  CAR_ROPE_LET_GO_S,CAR_ROPE_TURN,SIM_HZ,carGap,carNose,carPushOut,carSpeed,ropeTip,ticks,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
+import {RADIUS as PLAYER_RADIUS,maskSurface,walkable,type Point} from '../../maps/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 
@@ -52,7 +52,8 @@ export interface CarWorld {
   helper?(id:string):boolean;
 }
 
-const gapTo=(car:Point,p:Point)=>Math.hypot(p.x-car.x,p.y-car.y)-CAR_RADIUS;
+/** Card uno-bloqueio-corpo: from the body's box (contract carGap), not the old disc. */
+const gapTo=(car:CarBody,p:Point)=>carGap(car,p);
 const scratch:EnemyState[]=[];
 
 function dropRope(car:CarBody){delete car.rope;delete car.ropeHp;delete car.ropeIdle;}
@@ -107,26 +108,53 @@ function fits(ctx:SimContext,world:CarWorld,from:Point,to:Point){
   return true;
 }
 
-/** Enemies under the body go to its edge (no damage); the boss is not moved. */
-function shove(ctx:SimContext,car:Point,ux:number,uy:number){
+/**
+ * Enemies on the body go to its box's edge (no damage); the boss is not moved. Every tick, moving or not (card
+ * uno-bloqueio-corpo: a crowd pressing on the car squeezed critters into its sides). The standing heroes too.
+ */
+function shove(ctx:SimContext,car:CarBody){
   const mask=maskSurface(ctx.terrain);
-  ctx.enemyIndex.query(car.x,car.y,CAR_RADIUS+2,scratch);
+  ctx.enemyIndex.query(car.x,car.y,CAR_HALF_LENGTH+2,scratch);
   for(const e of scratch){
     if(!(e.hp>0)||!ctx.enemies.has(e.id)||e.boss)continue;
-    const keep=CAR_RADIUS+e.radius,d=Math.hypot(e.x-car.x,e.y-car.y);
-    if(d>=keep)continue;
-    const nx=d>1e-6?(e.x-car.x)/d:ux,ny=d>1e-6?(e.y-car.y)/d:uy;
-    const x=car.x+nx*keep,y=car.y+ny*keep;
-    if(mask&&!mask.clearDisc(x,y,e.radius))continue;
-    e.x=x;e.y=y;
+    const q=carPushOut(car,e,e.radius);
+    if(q===e)continue;
+    const to=!mask||mask.clearDisc(q.x,q.y,e.radius)?q:sideExit(car,e,e.radius,mask);
+    if(to){e.x=to.x;e.y=to.y;}
   }
+  // The heroes it rolled onto this tick too (the players system keeps them out of it from the next step: maps carBlock).
+  for(const p of ctx.players.values()){
+    if(!isStanding(p))continue;
+    const q=carPushOut(car,p,PLAYER_RADIUS);
+    if(q!==p&&walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}
+  }
+}
+/**
+ * The nearest of the box's four sides (straight out across the body) where a disc of `radius` at `p` fits the mask:
+ * against a wall the nearest way out may be shut (the street's kerb 0.5 u off the car's north side). Undefined: none.
+ */
+function sideExit(car:CarBody,p:Point,radius:number,mask:{clearDisc(x:number,y:number,r:number):boolean}):Point|undefined{
+  const c=Math.cos(car.heading??0),s=Math.sin(car.heading??0),rx=p.x-car.x,ry=p.y-car.y,l=rx*c+ry*s,w=-rx*s+ry*c;
+  const L=CAR_HALF_LENGTH+radius,W=CAR_HALF_WIDTH+radius;
+  const exits=[[L,w],[-L,w],[l,W],[l,-W]].map(([el,ew])=>({el,ew,d:Math.hypot(el-l,ew-w)})).sort((a,b)=>a.d-b.d);
+  for(const {el,ew} of exits){
+    const x=car.x+el*c-ew*s,y=car.y+el*s+ew*c;
+    if(mask.clearDisc(x,y,radius))return {x,y};
+  }
+  return undefined;
 }
 
 /**
- * One tick of the car: who moves it now (car.movers), and the step they give it. `locked` (the chaveiro is opening it):
- * nobody moves it, the rope stays hooked. Returns whether it moved.
+ * One tick of the car: who moves it now (car.movers), and the step they give it, then the critters off its body.
+ * `locked` (the chaveiro is opening it): nobody moves it, the rope stays hooked. Returns whether it moved.
  */
 export function stepCar(ctx:SimContext,car:CarBody,world:CarWorld,locked=false):boolean{
+  const moved=moveCar(ctx,car,world,locked);
+  shove(ctx,car);
+  return moved;
+}
+
+function moveCar(ctx:SimContext,car:CarBody,world:CarWorld,locked:boolean):boolean{
   // The rope first: it drops on a fall, a hit, a leave, or too far.
   if(car.rope!==undefined){
     const holder=ctx.players.get(car.rope),nose=carNose(car);
@@ -153,7 +181,7 @@ export function stepCar(ctx:SimContext,car:CarBody,world:CarWorld,locked=false):
       continue;
     }
     const d=Math.hypot(p.x-car.x,p.y-car.y),s=stick(world,p.id);
-    if(!s||d-CAR_RADIUS>CAR_PUSH_REACH||d<1e-6)continue;
+    if(!s||gapTo(car,p)>CAR_PUSH_REACH||d<1e-6)continue;
     if(s.x*(car.x-p.x)/d+s.y*(car.y-p.y)/d<CAR_PUSH_DOT)continue;
     if(helper){helpers.push(p.id);hx+=s.x;hy+=s.y;}else{movers.push(p.id);people++;dx+=s.x;dy+=s.y;}
   }
@@ -168,7 +196,6 @@ export function stepCar(ctx:SimContext,car:CarBody,world:CarWorld,locked=false):
     if(!fits(ctx,world,from,to))continue;
     car.x=to.x;car.y=to.y;
     turn(car,ux,uy,roped);
-    shove(ctx,car,ux,uy);
     return true;
   }
   return false;

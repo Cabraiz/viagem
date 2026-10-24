@@ -1,44 +1,59 @@
 /**
  * Bancos (card NEW-20261014-ORQ-bancos-e-veiculos, part 1; proposal viagem-board/plans/bancos-e-veiculos-proposta.md §1):
- * the "Caixa 24 h que só dá nota de 2". City only, in BOTH city modes (the chaveiro and the wall); the island and the
- * endless world have none (no system, nothing in the state: their digests do not move). Every number is rules/bancos.ts
- * BANCO; the names are contract BANK_IDS.
+ * the "Caixa 24 h que só dá nota de 2", now the BICOS (card NEW-20261024-ORQ-bancos-viram-bicos: the same places are
+ * shops with a gig; a hero clocks in with Trabalhar). City only, in BOTH city modes (the chaveiro and the wall); the
+ * island and the endless world have none (no system, nothing in the state: their digests do not move). The places and
+ * the critters' numbers are rules/bancos.ts BANCO, the shift's rules/bicos.ts BICO; the names are contract BANK_IDS and
+ * BICO_IDS.
  *
  * API (what the tests and the rooms use):
  *  - planBanks(seed, candidates, car, anchor) → BankPlace[] (pure): the BANCO.count banks of a run, drawn with
  *    Rng(seed).fork('bancos') among `candidates` (the city's loot points as cityLoot(terrain).crates place them). One
  *    per third of the map (three 120° sectors around the car, their start angle drawn), BANCO.distCarro..distCarroMax from the car,
  *    and BANCO.desvio[0]..[1] from the anchor: the moto's route (anchor.route, chaveiro) or the plaza (anchor.plaza,
- *    wall mode). A sector with no candidate that fits drops the desvio rule, then the car rule. Ids 'banco-1'..,
+ *    wall mode). In each sector a spot where the whole shop fits (candidate.lot: a BICO.lote disc clear; ringCandidates
+ *    marks it) comes first; with none, the desvio rule drops, then the car rule. Ids 'banco-1'..,
  *    names BANK_IDS in sector order.
- *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)}}.
+ *  - createBanks(options, restore?) → BanksSystem. options: {seed, candidates, car, route? | plaza, wallet:{add(n)},
+ *    work?(id)}: work is a player's Trabalhar this tick (assemble.ts: the input, held and standing still; undefined
+ *    with no input this tick).
  *    `restore`: a checkpointed BanksState (deep-copied by the caller); the places come back from the seed (never stored).
  *  - The crate at a bank's loot point is not in the run (BankPlace.crate), nor any other candidate crate a hero could
  *    work while holding the bank (its point within CRATE_CLEAR of the bank): BanksSystem.crates, which stonewards
  *    hiddenNodes and the Simulation's node views skip, in both city modes. Else gathering there withdrew for free.
  *  - BanksSystem: places (static), state (BanksState, JSON-safe), step(ctx) once a tick (assemble.ts: in the
- *    'structures' slot, after the stonewards and the chaveiro), view(tick) → contract BankView[].
+ *    'structures' slot, after the stonewards and the chaveiro), view(tick) → contract BankView[], working(id) → the
+ *    bank a player works in (assemble.ts: the weapons' busy, nobody fires from inside).
  *  - In a run: createRunSystems(...) on a city terrain → RunSystems.banks (the system), RunSystems.bankViews(),
  *    RunSystemsState.banks (present only in the city). Simulation.view()/frame()/botView() carry RunView.banks.
  *  - BanksState: {list:BankRow[] (same order as places), paid (R$ the heroes took into the Grana), taken (R$ the
  *    critters took), primes (Cliente Prime made)}. BankRow: {saldo, state, until (tick, 0 unless 'sem-cedulas'),
- *    drawer? (enemy id while 'bicho'), clock (ticks toward the next note), held (0 nobody, 1 a hero, 2 a critter)}.
+ *    drawer? (enemy id while 'bicho'), clock (ticks toward the critter's next note), held (0 nobody, 1 a shift, 2 a
+ *    critter), bico, opened, workers?, earn?, fila?}; banned? (player → the tick they may clock in again).
+ *  - firstBicos(seed, n) / nextBico(seed, shop, opened, now, others): the gigs, drawn by the seed (all different at the
+ *    start; on each reopening, one neither the shop had nor another shop has).
  *  - Critters: EnemyState extras (D-002, JSON-safe) bankTake (R$ it withdrew) and prime (true once a Cliente Prime);
  *    isPrime(e) reads it (EnemyView.prime). The lure is enemies/ai.ts baitEnemy (memory baitX, baitY, baitUntil).
  *
  * Rules (a tick):
- *  - 'sem-cedulas': nothing until `until`; then saldo = BANCO.saldo, 'aberto', event bank-refill.
- *  - A standing hero within holdR holds it (more heroes are not faster). With no live critter within filaR ("tem gente
- *    na fila") it is 'sacando' and every saqueS pays min(nota, saldo) into the wallet of the hero holding it (the nearest
- *    within holdR, ties by id; carteira-e-pix), event bank-cash
- *    by 'hero', and lures every critter within iscaR (not the boss, not a retreater) to the bank for iscaS (baitEnemy).
- *    With a critter in the queue it is 'aberto' and the count waits (it is kept while a hero holds it).
+ *  - 'sem-cedulas' (closed): nothing until `until`; then another gig (nextBico), saldo = BICO.saldo, 'aberto', event
+ *    bank-refill.
+ *  - The shift: a worker stays while standing, within holdR and work is not false (moving or letting go: event bico
+ *    'saiu'); a standing hero within holdR with work true clocks in (event bico 'entrou') unless banned or working
+ *    another shop. Workers are invulnerable through the next tick (core damagePlayer skips them) and do not fire.
+ *  - With workers it is 'sacando': fila = live critters within filaR (not the boss, not a retreater). At
+ *    BICO.filaExpulsa the manager throws them out (event bico 'expulso', slowed BICO.expulsoS, banned BICO.banidoS).
+ *    Else each worker earns bicoPay(bico, workers, fila) a tick (thousandths of R$: porSegundo alone, dupla each when
+ *    shared, × (1 − filaCorte × fila)); every BICO.nota earned pays min(nota, saldo) into their wallet (carteira-e-pix),
+ *    event bank-cash by 'hero', and lures every critter within iscaR (not the boss, not a retreater) to the bank for
+ *    iscaS (baitEnemy).
+ *  - No worker but a standing hero within holdR: 'aberto', nobody draws ("tem gente").
  *  - No hero within holdR and a live critter within bichoR (not the boss, not a retreater): 'bicho', drawer = it (kept
  *    while it stays in reach, else the nearest); every bichoSaqueS it withdraws min(nota, saldo) (the money goes
  *    nowhere: it keeps it, bankTake), event bank-cash by 'enemy'. At primeCada withdrawn (once: a Prime stays one, it
  *    never grows again) maxHp and hp × primeVida, prime, event bank-prime.
  *  - Nobody: 'aberto', the count starts over.
- *  - saldo 0 after a note: 'sem-cedulas' until now + recargaS, event bank-empty.
+ *  - saldo 0 after a note: 'sem-cedulas' until now + recargaS, the shift out (bico 'saiu'), event bank-empty.
  * Deterministic: the placement stream is forked from the seed, the step reads ctx (players and enemies in their order).
  */
 import type {Point} from '../../maps/index.ts';

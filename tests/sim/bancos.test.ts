@@ -420,3 +420,21 @@ test('bots in the wave: a full team (BANK_WAVE_MIN_UP standing) sends one bot pe
   // Enough Grana: nobody goes.
   assert.equal(ids.filter(id=>bankTask({...view(players),camp:{grana:1e6}},id,ids,'b1')).length,0);
 });
+
+test('bots at a shop: in the ring with no critter within 12 u and a short queue they hold Trabalhar and stand still; a critter near or a queue of 2 and they step out',async()=>{
+  const {decide,newMemory,BICO_BOT_CLEAR,BICO_BOT_FILA}=await import('../../src/sim/bot-brain.ts');
+  const bot=(id:string,x:number,y:number)=>({id,name:id,classId:'x',online:true,spectator:false,hp:100,maxHp:100,weapons:[],passives:[],bot:true,x,y});
+  const shop=(fila?:number)=>[{id:'banco-1',x:45,y:0,name:'juros' as const,saldo:40,state:'aberto' as const,bico:'telemarketing' as const},
+    {id:'banco-2',x:-45,y:0,name:'pao-duro' as const,saldo:40,state:'aberto' as const,bico:'curso' as const,...(fila?{fila}:{})},
+    {id:'banco-3',x:0,y:50,name:'posto' as const,saldo:40,state:'aberto' as const,bico:'fiscal' as const}];
+  const players=[bot('b1',44,0),bot('b2',30,0),bot('b3',-44,0),bot('b4',-30,0),bot('b5',0,2),bot('b6',2,2)],ids=players.map(p=>p.id);
+  const view=(enemies:unknown[]=[],fila?:number)=>({tick:1000,players,banks:shop(fila),enemies,pickups:[],projectiles:[],telegraphs:[],offers:[],events:[],
+    team:{xp:0,level:1,nextXp:10},round:{index:3,total:10,phase:'wave',phaseEndsTick:1000+ticks(20),remaining:0},camp:{grana:0,units:0},
+    structures:[{id:'muralha',kind:'muralha',x:0,y:0,hp:600,maxHp:600}]} as any);
+  const run=(v:unknown)=>decide({view:v as any,selfId:'b3',at:{x:-44,y:0},index:2,memory:newMemory(2),forger:'b1',teamBots:ids});
+  const calm=run(view());
+  assert.equal(calm.mode,'bank');assert.equal(calm.work,true);assert.deepEqual(calm.direction,{x:0,y:0});
+  const near=run(view([{id:'e1',kind:'bebado',x:-44+BICO_BOT_CLEAR-1,y:0,hp:10,maxHp:10}]));
+  assert.equal(near.mode,'bank');assert.notEqual(near.work,true,'a critter within 12 u: out');
+  assert.notEqual(run(view([],BICO_BOT_FILA)).work,true,'a queue of 2: out');
+});

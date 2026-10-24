@@ -198,8 +198,9 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
-  // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS) and the `bico` event's `what`.
-  'telemarketing','aura-67','entregador','compro-ouro','colchao','coach','curso','influencer','pesquisa',
+  // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS; telemarketing, coach and influencer are
+  // already here as critters, fiscal too) and the `bico` event's `what`. The dictionary is now at 253 of 255.
+  'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
   'entrou','saiu','expulso',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));

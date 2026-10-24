@@ -5,7 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
 import type {ArtIndex} from '../../src/client/art/manifest.ts';
-import {BICO_BACK,BICO_IDS,BICO_OF_BANK,BICO_PX,bicoArt,bicoSpots,doorQuad,frontNormal} from '../../src/client/render/bancos/bico-art.ts';
+import {BICO_BACK,BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,frontNormal,shopOf} from '../../src/client/render/bancos/bico-art.ts';
+import {BICO_IDS} from '../../src/contract/objective.ts';
 import {Projector} from '../../src/client/render/projector.ts';
 
 const piece=(porta:unknown=[72,164,24,36])=>({kind:'views',files:{sheet:{file:'bico-24-7.webp',cell:[232,211] as [number,number],views:1,anchor:[84/232,170/211] as [number,number]}},meta:{pixelArt:true,porta}});
@@ -19,10 +20,11 @@ test('bico art: the piece in any group → url, cell, anchor and door; no door o
   assert.equal(bicoArt(index({}),'24-7'),undefined);
 });
 
-test('bico art: every bank has a shop, and the shipped manifest has all six with a door',()=>{
-  for(const id of Object.values(BICO_OF_BANK))assert.ok((BICO_IDS as readonly string[]).includes(id));
+test('bico art: every gig opens in one of the shops, each shop has a gig, and the shipped manifest has all six with a door',()=>{
+  for(const id of BICO_IDS)assert.ok((SHOP_IDS as readonly string[]).includes(shopOf(id)),id);
+  for(const shop of SHOP_IDS)assert.ok(BICO_IDS.some(id=>shopOf(id)===shop),`${shop}: some gig opens in it`);
   const shipped=JSON.parse(readFileSync('public/art/manifest.json','utf8')) as ArtIndex;
-  for(const id of BICO_IDS){
+  for(const id of SHOP_IDS){
     const art=bicoArt(shipped,id);
     assert.ok(art,id);
     assert.ok(existsSync(`public${art.url}`),art.url);

@@ -313,7 +313,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'26a8c859733e7f61',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// cidade again for the bicos (bancos-viram-bicos: each bank row's gig in the state, the shops placed on a clear lot first);
+// ilha and infinito unchanged (no banks).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'b2736e940a9565aa',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

@@ -41,6 +41,8 @@
 .rh-xp-track{flex:none;height:5px;border-radius:var(--r-etiqueta);background:var(--c-ficha);box-shadow:0 0 0 1px var(--c-papel);overflow:hidden}
 .rh-xp-fill{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:var(--c-lilas);box-shadow:inset 0 3px 0 color-mix(in srgb,var(--c-papel) 40%,transparent);transition:transform .25s ease-out}
 .rh-xp.rh-pop .rh-xp-level{animation:rh-pop .5s ease-out}
+/* BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: the level is not shown (topbar.ts hides .rh-xp). */
+.rh-xp[hidden]{display:none}
 .rh-boss{order:3;flex:1 0 100%;max-width:560px;padding:4px 8px 6px;border-radius:var(--r-ficha);background:var(--c-ficha);border:2px solid var(--c-cone);box-shadow:var(--s-2);text-shadow:var(--s-texto)}
 /* The base ficha gives way first (its wall bar shrinks): the numbers never get cut. Wide screens keep one row; only the
    boss bar wraps under it. */
@@ -829,8 +831,6 @@
 .rh-result-conta b{font:400 var(--t-16)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
 .rh .rh-result-divida{background:var(--c-cone);color:var(--c-breu);border-color:var(--c-breu)}
 /* D-051 nests (ninhos-rounds-fora): the nests still standing after the chaveiro's clock, "[ninho] 6/8" (chip and phone bar). */
-.rh-ninhos{display:inline-flex;align-items:center;gap:2px;margin-left:8px;font-style:normal}
-.rh-ninhos :is(img,.ic){width:20px;height:20px}
 
 /* UX-resultado-revanche: the prize first, two numbers (dano, salvou), the other two with a tap on the card. */
 .rh-rcard{position:relative;cursor:pointer}

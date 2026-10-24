@@ -4,7 +4,9 @@
   "description": "A free browser game for up to six players. You survive waves of creatures in a city as a gambler, a tired office worker or a hungry cat.",
   "start_url": "/",
   "scope": "/",
-  "display": "browser",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
   "background_color": "#2E1A52",
   "theme_color": "#5B3F8C",
   "icons": [

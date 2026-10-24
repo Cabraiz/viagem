@@ -76,7 +76,7 @@ test('initial placement: crateCap on distinct points, half near first, base rari
   run(none,noCrates,5);assert.equal(chests(none).length,0);
   const dropped=noCrates.dropCrate(none,{x:1,y:2},4);
   assert.equal(dropped.kind,'chest');assert.equal(dropped.value,4);
-  assert.deepEqual(noCrates.state.crates[dropped.id],{rarity:4,origin:'dropped'});
+  assert.deepEqual(noCrates.state.crates[dropped.id],{rarity:4,origin:'dropped',item:dropped.resource});
 });
 
 /** Standing ticks until a crate of this rarity opens (the first step only records where the player stands). */
@@ -268,6 +268,45 @@ test('the same prize never twice in a row for a hero, in any crate (rollCrate re
   }
 });
 
+test('caixa-icone-torre-arma: a crate shows its prize from the start (resource), opening gives that item, never the same as the last one shown',()=>{
+  const kinds=new Set<string>();
+  for(let seed=1;seed<=30;seed++){
+    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200}))});
+    addPlayer(ctx,'a',-500,-500);
+    crates.step(ctx);
+    let prev:string|undefined;
+    for(const c of chests(ctx)){
+      const record=crates.state.crates[c.id];
+      assert.ok(c.resource,'every crate shows an item');
+      assert.equal(record.item,c.resource);
+      const pool=record.start?[...STARTER_WEAPONS,...KIT_POOL[1].map(kitId)]:[...CRATE_WEAPONS[record.rarity],...KIT_POOL[record.rarity].map(kitId)];
+      assert.ok(pool.includes(c.resource!),`${c.resource} in a ${record.start?'start':record.rarity} crate`);
+      assert.notEqual(c.resource,prev,'never the same as the crate before');prev=c.resource;
+      kinds.add(isKitId(c.resource)?'kit':'arma');
+    }
+    // Opening gives exactly what it showed: a weapon at the crate's rarity of that moment.
+    const c=chests(ctx).find(k=>!crates.state.crates[k.id].start&&!isKitId(k.resource))!;
+    const p=addPlayer(ctx,'b',c.x,c.y),rarity=crates.state.crates[c.id].rarity;
+    run(ctx,crates,1+ticks(3));
+    assert.ok(!ctx.pickups.has(c.id));
+    assert.deepEqual(p.build.weapons[1],{id:c.resource,level:Math.max(rarity,ARSENAL_WEAPONS.find(w=>w.id===c.resource)?.minRarity??1)});
+  }
+  assert.deepEqual([...kinds].sort(),['arma','kit']);
+  // Same seed, same items (its own stream: the rest of the step does not shift it).
+  const items=(seed:number)=>{const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30)});crates.step(ctx);return chests(ctx).map(c=>c.resource);};
+  assert.deepEqual(items(7),items(7));
+});
+
+test('caixa-icone-torre-arma: a crate from an older checkpoint (no item) still rolls its prize when opened',()=>{
+  const ctx=makeCtx(2),crates=createCrates({seed:2,points:[]}),p=addPlayer(ctx,'a',0,0);
+  const c=crates.dropCrate(ctx,{x:0,y:0},2);
+  delete crates.state.crates[c.id].item;delete c.resource;
+  run(ctx,crates,1+ticks(2));
+  assert.ok(!ctx.pickups.has(c.id));
+  assert.ok(crates.state.last!.a&&crates.state.last!.a!=='nada');
+  assert.ok(p.build.weapons.length>1||isKitId(crates.state.last!.a));
+});
+
 test('the placed crates scale with the players: 1 + 3 a player, up to MAX_CRATES; the cap is kept for the run',()=>{
   assert.deepEqual([0,1,2,3,6,8].map(crateCap),[4,4,7,10,16,16]);
   assert.equal(MAX_CRATES,16);
@@ -427,7 +466,8 @@ test('elite and boss chests become dropped crates; dropped crates skip the cap a
       const p=addPlayer(ctx,'a',boss.x,boss.y);
       run(ctx,crates,1+ticks(3));
       assert.equal(opened(ctx).at(-1)?.value,5);
-      assert.match(p.build.weapons[1].id,/-lendario$/);
+      assert.equal(crates.state.last!.a,boss.resource,'the item it showed');
+      assert.ok(isKitId(boss.resource)||/-lendario$/.test(boss.resource!),boss.resource);
       assert.deepEqual(crates.state.respawns,[],'a dropped crate never respawns');
     }
   }

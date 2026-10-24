@@ -18,8 +18,8 @@ export const FONE={
   bandGap:6,
   /** The band ends this far left of the right edge (.rh-top right: --rh-r + 66px): the gear's 48 px and its room. */
   gearRoom:66,
-  /** Row 1: the level badge (44 px wide at "Nv 1", its XP thread under it) and the team's bar (a 34 px ficha). */
-  row:34,levelWidth:44,
+  /** Row 1: the team's bar (a 34 px ficha). The level badge is hidden (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos): 0 px. */
+  row:34,levelWidth:0,
   /** The bar's ficha: grows from 88 px up to 150 px in portrait, 160–180 px in landscape. */
   bar:{portrait:{min:88,max:150},landscape:{min:160,max:180}},
   /** Gap between the band's rows (.rh-top row-gap) and, in landscape, between the bar and the fan (margin-left). */

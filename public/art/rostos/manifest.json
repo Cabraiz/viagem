@@ -60,35 +60,6 @@
         "expression": "normal"
       }
     },
-    "caca-promocao-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "caca-promocao-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "caca-promocao-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "76bdd0c00b8956dcc8d395d6279a16ce5fc2eeb6fa4d13282b74f4163c6bae40"
-            }
-          ],
-          "sha256": "76bdd0c00b8956dcc8d395d6279a16ce5fc2eeb6fa4d13282b74f4163c6bae40"
-        }
-      },
-      "sha256": "5c12cd025a1d5805764f963297c06f0731de925ad0ba4ab0f9fbf85488c15412",
-      "meta": {
-        "face": "caca-promocao",
-        "expression": "normal"
-      }
-    },
     "cidadao-comum-normal": {
       "kind": "icon",
       "files": {
@@ -318,64 +289,6 @@
       "sha256": "82102e85ab2dff9dc33bcf7313318c3ebfef1d8c328648ee0fd5321509eeedc1",
       "meta": {
         "face": "gambiarreiro",
-        "expression": "normal"
-      }
-    },
-    "gamer-mobile-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "gamer-mobile-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "gamer-mobile-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "cead75ddda3c315fbfdb8c9a17c1ae8e0e2eb675fc33571958348289dcf54cb3"
-            }
-          ],
-          "sha256": "cead75ddda3c315fbfdb8c9a17c1ae8e0e2eb675fc33571958348289dcf54cb3"
-        }
-      },
-      "sha256": "1a04707cf791b1b84ef75c464b334b9ca125c530c7330b7e8532d7d5cca8e8b0",
-      "meta": {
-        "face": "gamer-mobile",
-        "expression": "normal"
-      }
-    },
-    "goleira-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "goleira-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "goleira-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "0354bffca136ff9ed018aa975f8145def478a59edebac9cda800236fb18c7e82"
-            }
-          ],
-          "sha256": "0354bffca136ff9ed018aa975f8145def478a59edebac9cda800236fb18c7e82"
-        }
-      },
-      "sha256": "6e6be82522072076e6befb5a5a2096e001c826572ab445a54110374b49955f89",
-      "meta": {
-        "face": "goleira",
         "expression": "normal"
       }
     },
@@ -640,35 +553,6 @@
         "expression": "normal"
       }
     },
-    "rainha-bateria-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "rainha-bateria-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "rainha-bateria-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "a56c8b6107d5c2fae3d8bcc70cee200a0c6b9fb677e3cf35921248aebd48093b"
-            }
-          ],
-          "sha256": "a56c8b6107d5c2fae3d8bcc70cee200a0c6b9fb677e3cf35921248aebd48093b"
-        }
-      },
-      "sha256": "47fa95f1b4bf8eb9c539f7577368efae625dc3f37e6c5988be7d6f193a3e5682",
-      "meta": {
-        "face": "rainha-bateria",
-        "expression": "normal"
-      }
-    },
     "rei-arraia-normal": {
       "kind": "icon",
       "files": {
@@ -724,93 +608,6 @@
       "sha256": "60f3aa31ac7c32f7ba69d5454b040b7c736aa5d952f12fd8bd948496c02983a8",
       "meta": {
         "face": "rei-pastel",
-        "expression": "normal"
-      }
-    },
-    "roqueira-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "roqueira-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "roqueira-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "5e54bf99a52e9fc507cd256caaaed0ac67f3ab942e9c5dc36b39eae796e2e72d"
-            }
-          ],
-          "sha256": "5e54bf99a52e9fc507cd256caaaed0ac67f3ab942e9c5dc36b39eae796e2e72d"
-        }
-      },
-      "sha256": "564b57ff980cca5199ebcfc71c6bf9831fc294fe24e029fa3f112d9ef80f9102",
-      "meta": {
-        "face": "roqueira",
-        "expression": "normal"
-      }
-    },
-    "salva-vidas-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "salva-vidas-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "salva-vidas-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "b8df6482b9f2828e835522dc4d233cbb10d2e6bcb6e7d06f8492c4aad5f235dd"
-            }
-          ],
-          "sha256": "b8df6482b9f2828e835522dc4d233cbb10d2e6bcb6e7d06f8492c4aad5f235dd"
-        }
-      },
-      "sha256": "a13c93442ecdd5c76c465db533f1ea7ce8dfe7cd62df914f2cc02d4ae8fa3445",
-      "meta": {
-        "face": "salva-vidas",
-        "expression": "normal"
-      }
-    },
-    "sensei-normal": {
-      "kind": "icon",
-      "files": {
-        "sheet": {
-          "file": "sensei-normal.webp",
-          "cell": [
-            256,
-            256
-          ],
-          "frames": 1,
-          "pages": [
-            {
-              "file": "sensei-normal.webp",
-              "columns": 1,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 1,
-              "sha256": "26505fd2c45472a30b59f1258c43447cb572c1d97c2b861ee1cd4ea7db24f60e"
-            }
-          ],
-          "sha256": "26505fd2c45472a30b59f1258c43447cb572c1d97c2b861ee1cd4ea7db24f60e"
-        }
-      },
-      "sha256": "b5d6c92dd947e6ac14f906f8c3867f7efd7dc714f8b937e40f8c8ccad6edd5f1",
-      "meta": {
-        "face": "sensei",
         "expression": "normal"
       }
     },

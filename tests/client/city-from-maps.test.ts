@@ -148,7 +148,7 @@ test('ground: water from the samples, rubble on blocked ground, no street or cob
   assert.ok(/^[spirwc]+$/.test(city.ground));
 });
 
-test('ground: the plaza around the praça is cobble, with the fountain water in it',()=>{
+test('ground: the plaza around the praça is cobble (asset v4: its fountains and their water were dropped)',()=>{
   const p=maps.points,mouths=[p.bocas.N,p.bocas.S,p.bocas.L,p.bocas.O];
   const x0=Math.min(...mouths.map(m=>m.x))/CELL-PLAZA_PAD_CELLS,x1=Math.max(...mouths.map(m=>m.x))/CELL+PLAZA_PAD_CELLS;
   const y0=Math.min(...mouths.map(m=>m.y))/CELL-PLAZA_PAD_CELLS,y1=Math.max(...mouths.map(m=>m.y))/CELL+PLAZA_PAD_CELLS;
@@ -160,7 +160,8 @@ test('ground: the plaza around the praça is cobble, with the fountain water in 
     if(coverOf[cy*W+cx]<0&&g!=='w'&&g!=='r'){open++;if(g==='c')cobble++;}
   }
   assert.ok(open>100&&cobble/open>0.95,`${cobble}/${open} open plaza cells are cobble`);
-  assert.ok(wet>0,'the fountain shows as water inside the plaza');
+  // mapa-175-com-viaduto: the plaza 1.75× smaller lost its fountains with their basins (scripts/compactar-cidade.ts PLAZA_DROP).
+  assert.equal(wet,0,'no fountain water left in the plaza');
   // Near the praça itself.
   const pcx=p.praca.x/CELL,pcy=p.praca.y/CELL;
   let near=0,nearC=0;

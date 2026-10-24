@@ -61,6 +61,23 @@ const HEROES=[
     heroi:'maromba-1080p-no-lugar.png',esrgan:'maromba-2x-x4plus-anime.png',esrganDir:'.',
     box:{left:1056,top:19,width:588,height:1058},fundo:'fundo-maromba-2560.png',sombra:'maromba-14-sombra-2560.png',
     letreiro:'letreiro/letreiro-2-2x.png'},
+  // NEW-20261023-ORQ-tela-vendedor-praia (the user chose variation 2, the promenade at sunset): Codex redrew it alone
+  // at 16:9 and outpainted the bleed (lona/largo/compoe, like the maromba). The hero cut out like the maromba: painted
+  // into that picture walking up with a bottle raised (cena-1), redrawn alone on green (recorte-1), keyed and enlarged by
+  // Real-ESRGAN (recorta.py, final.py), in the viciado's box; `sombra` = his flip-flops' contact shadow.
+  // The user then chose pose 2 of the variations (crouched opening the cooler; recorta-2.py, final-2.py, at pose 1's
+  // scale and sole line) and letreiro 1 of 8 (the blue cooler).
+  {id:'vendedor-praia',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-vendedor-praia',
+    heroi:'vendedor-praia-1080p-no-lugar.png',esrgan:'vendedor-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:866,top:49,width:735,height:1028},fundo:'fundo-vendedor-praia-2560.png',sombra:'vendedor-2-sombra-2560.png',
+    letreiro:'letreiro/letreiro-1-2x.png'},
+  // NEW-20261023-ORQ-tela-aposentado (the user chose variation 7, the backyard workshop, and pose 4, sitting on the
+  // stool with a coffee): cut out like the vendedor (the stool comes with him), 2x from Real-ESRGAN 4x of the native
+  // cutout; `sombra` = the stool's and his feet's shadow. Letreiro: the user's pick of 8, the workshop's wooden plaque (1).
+  {id:'aposentado',evidence:'D:/Gits/viagem-board/evidence/NEW-20261023-ORQ-tela-aposentado',
+    heroi:'aposentado-1080p-no-lugar.png',esrgan:'aposentado-2x-x4plus-anime.png',esrganDir:'.',
+    box:{left:1034,top:45,width:689,height:1032},fundo:'fundo-aposentado-2560.png',sombra:'aposentado-4-sombra-2560.png',
+    letreiro:'letreiro/letreiro-1-2x.png'},
 ];
 // menu-pes-nitidez (the user, 21/10: "muito pixelado"): q95 and the alpha untouched, at the source's own size and 2/3.
 /** The letreiro's width: 2x the most the PC shows (1218 px on 4K). */

@@ -45,6 +45,8 @@ export const LETREIROS:Readonly<Record<string,string>>=Object.freeze({
   'clt-cansado':'/art/menu/letreiro/clt-cansado.webp', // the office plaque drawn into his sunset (letreiro-clt-na-cena)
   'gato-nada-pra-comer':'/art/menu/letreiro/gato-nada-pra-comer.webp', // the fish collar tag (gato-no-menu, variation 3 of 8)
   'maromba':'/art/menu/letreiro/maromba.webp', // the iron plate (tela-maromba, variation 2 of 8)
+  'vendedor-praia':'/art/menu/letreiro/vendedor-praia.webp', // the blue cooler (tela-vendedor-praia, variation 1 of 8)
+  'aposentado':'/art/menu/letreiro/aposentado.webp', // the workshop's wooden plaque (tela-aposentado, variation 1 of 8)
 });
 /**
  * Letreiros taller than their sign (gato-no-menu, the user: "ampliar bem muito para cima caso precise descer"): the

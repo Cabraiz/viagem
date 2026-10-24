@@ -52,6 +52,8 @@ export interface HordeRendererOptions{
   projector:Projector;
   /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
   cull?:boolean;
+  /** Card inimigos-querem-o-uno: a second camera's world view (the Uno's live window): what stands in it is drawn too. */
+  alsoView?:()=>ViewRect|undefined;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
   uiScale?:()=>number;
   /**
@@ -455,7 +457,7 @@ export class HordeRenderer{
     this.ground.clear();this.overlay.clear();this.balloons.clear();this.heroBalloons.clear();this.top.clear();this.eyes.clear();this.lifted.clear();this.art.begin();this.glow.begin(timeMs);
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
-    this.view=this.scene.cameras.main.worldView;this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
+    this.view=this.scene.cameras.main.worldView;this.alsoView=this.options.alsoView?.();this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
     this.enemies.forEach(this.drawEnemy);
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
@@ -790,6 +792,7 @@ export class HordeRenderer{
   private view:ViewRect={x:0,y:0,right:0,bottom:0};
   private cullMargin=0;
   private culledNow=0;
+  private alsoView?:ViewRect;
   private drawEnemy=(a:EnemyActor)=>{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
@@ -798,7 +801,9 @@ export class HordeRenderer{
     // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, silhouette, bar or cues. The boss, the target and
     // a coach's lecture ring (wider than the body) are always drawn.
     const k=size*a.fit*body;
-    if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,art.width*.6*k,art.height*art.originY*k+art.hover*size*body+this.barLift(a),this.cullMargin)){
+    const halfW=art.width*.6*k,tall=art.height*art.originY*k+art.hover*size*body+this.barLift(a);
+    if(this.options.cull!==false&&!a.boss&&a.id!==this.targetId&&!a.look.aura&&!inView(this.view,q.x,q.y,halfW,tall,this.cullMargin)
+      &&!(this.alsoView&&inView(this.alsoView,q.x,q.y,halfW,tall,this.cullMargin))){
       if(!a.culled){a.culled=true;a.image.setVisible(false);a.sil.setVisible(false);a.contact.setVisible(false);a.barBg.setVisible(false);a.barFill.setVisible(false);}
       a.screenX=NaN;this.culledNow++;return;
     }

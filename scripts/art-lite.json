@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3082,
-  "bytes": 2212769356,
-  "liteBytes": 767787622,
+  "files": 3090,
+  "bytes": 2213741952,
+  "liteBytes": 768681932,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28213,6 +28213,38 @@
    "psnr": 40.3,
    "shownPsnr": 42.6
   },
+  "menu/insta/story-aposentado-1.webp": {
+   "source": "6344a1e228da13fefa6fb936bb700a414510682671ae9129aea27baf4f1dcf92",
+   "lite": "f33bcc2c7486c04db2d095de120c02d1b26dd2b022db680c076a9beddb192770",
+   "bytes": 135024,
+   "liteBytes": 125266,
+   "psnr": 44.3,
+   "shownPsnr": 47.6
+  },
+  "menu/insta/story-aposentado-2.webp": {
+   "source": "d730de871eb85701cb729ac1281ee4cabbe62c26555c578325df720395a40d15",
+   "lite": "51f1bf75bf5d98c286dbee567736b6feb3602b148ada7426001d77b4481ad777",
+   "bytes": 74978,
+   "liteBytes": 69420,
+   "psnr": 45.9,
+   "shownPsnr": 48.2
+  },
+  "menu/insta/story-aposentado-3.webp": {
+   "source": "e40bcbeb93f995f0417c3ad26cf13e4d373472a9fb5feeaf61800a3b73bd2043",
+   "lite": "db37108f94efc8a2ce575dce4ba2bf1810e1575bb80b313f34e577a7fb70da72",
+   "bytes": 113156,
+   "liteBytes": 103916,
+   "psnr": 44.8,
+   "shownPsnr": 48.1
+  },
+  "menu/insta/story-aposentado-4.webp": {
+   "source": "62518876206604f48875a1419539659b989fdad267fb8358dd03a951f237d525",
+   "lite": "0f766790f70d17f68af6b436de3d6a133c805de9f7cee3822193356653756f59",
+   "bytes": 121984,
+   "liteBytes": 109498,
+   "psnr": 44.4,
+   "shownPsnr": 47.4
+  },
   "menu/insta/story-clt-cansado-1.webp": {
    "source": "4e18d7c534fdf25ce4af7c0bdd9b24d16b38fd4026254d502c42a5a9523fd464",
    "lite": "b655a6b72917106972b414e94cefd932ee78bee7392834586fbb683dd6b97c34",
@@ -28307,6 +28339,38 @@
    "bytes": 163000,
    "liteBytes": 150956,
    "psnr": 43.7,
+   "shownPsnr": 47.3
+  },
+  "menu/insta/story-vendedor-praia-1.webp": {
+   "source": "ad896adb846fd29f34ed9f2cc2084e55dbb05cf1692f46ea1eea0a9f1ea0f1ab",
+   "lite": "eec26ccd706bceb22432961e86f91f1269102f39d93d19757e0b7db4c8747ae9",
+   "bytes": 155474,
+   "liteBytes": 145524,
+   "psnr": 42.8,
+   "shownPsnr": 46.2
+  },
+  "menu/insta/story-vendedor-praia-2.webp": {
+   "source": "4d61e75a9735d8e336bec7a958981246d84b7f091a47519cf3d549dbe88db32b",
+   "lite": "6fb95379440b0ed20cc0e8442b50cf20ef48e946766779dded08fdd84cefa77f",
+   "bytes": 119402,
+   "liteBytes": 111232,
+   "psnr": 44.3,
+   "shownPsnr": 47.5
+  },
+  "menu/insta/story-vendedor-praia-3.webp": {
+   "source": "90152f7cda9e7eb06195a2c8fa7b1f309759d1a42befbc2a5b3c815c513cd529",
+   "lite": "6e3689be31e73db86abff036cbbea7e85c12f3b93fb603f2c218f08ff9629eb8",
+   "bytes": 142602,
+   "liteBytes": 127928,
+   "psnr": 45.6,
+   "shownPsnr": 51.3
+  },
+  "menu/insta/story-vendedor-praia-4.webp": {
+   "source": "9a8cc08ab4431e89fa8369b8dd0959f5b4a2bd92ec9bbfa420af8a0a811f71d9",
+   "lite": "477c54b792291b061af6d223004e4ae30bab6884689ce84f795757ba820a487f",
+   "bytes": 109976,
+   "liteBytes": 101526,
+   "psnr": 44.6,
    "shownPsnr": 47.3
   },
   "menu/insta/story-viciado-em-bet-1.webp": {

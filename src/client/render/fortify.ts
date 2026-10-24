@@ -5,7 +5,8 @@
  * - the build ghost (the HUD sets it: piece, cell, rot and its look) as a translucent box of the piece's footprint,
  *   Verde Cartolina when it may go there, Laranja Cone when not, drawn over everything so the finger always sees it;
  * - the hints: the faint top of the same footprint on the free sites nearest to the car (fortify-rules buildHints);
- * - the rope (ObjectiveView.car.rope): from the hero holding it to the car's bumper on his side, sagging with slack.
+ * - the rope (ObjectiveView.car.rope; card puxar-uno-corda): tied to the car's front bumper, always drawn: to the hands
+ *   of the hero holding it, sagging with slack, or lying on the ground ahead with a loop at its end (fortify-rules ropeRest).
  * Free barricades are the city barricades (stonewards.ts, turned by rot); defenses are the towers renderer's.
  * Pure drawing: the scene pushes each new RunView and calls update every frame; the rules are in fortify-rules.ts.
  * Card NEW-20261021-E2-obra-muro-assado: each wall segment is frozen into triangles (TriBand) per wallKey and frozen
@@ -21,7 +22,7 @@ import {boxFaces,mix,type Box,type Face} from './chaveiro/iso.ts';
 import {CAR_HALF} from './chaveiro/figures.ts';
 import {objectiveOf} from './chaveiro/view.ts';
 import {HIT_FLASH_MS,damageStage,hpDropped,wallBar} from './stonewards-rules.ts';
-import {cellRect,footprintCells,ropeLine,wallKey,type CellRect,type GhostLook} from './fortify-rules.ts';
+import {cellRect,footprintCells,ropeLine,ropeRest,wallKey,type CellRect,type GhostLook} from './fortify-rules.ts';
 import {TriBand} from './city/tri-band.ts';
 import {MURO_SHEETS,MuralhaLayer} from './muralha.ts';
 import {tokenColor} from '../ui/tokens.ts';
@@ -36,11 +37,13 @@ const GHOST_H=(piece:string)=>piece==='muro'?WALL_H:piece==='barricada'?1.1:1.3;
 const GHOST_ALPHA=.5,HINT_ALPHA=.35;
 /** Rope hand and bumper heights (u). */
 const HAND_Z=.62,BUMPER_Z=.38;
+/** The loop at the free rope's end (u, its half width on the ground). */
+const ROPE_LOOP=.16;
 
 export interface FortifyOptions {projector:Projector;reduced:boolean;cell:number;
   /** Where a player is now (the scene's smoothed actor), or undefined when not drawn. */
   playerAt:(id:string)=>Pt|undefined;
-  /** The car's heading as drawn (chaveiro renderer): the rope hooks to the bumper the hero is behind. */
+  /** The car's heading as drawn (chaveiro renderer): the rope is tied to its front bumper. */
   carHeading?:()=>number}
 /** `w`/`h`: the footprint in cells when the HUD knows the room's own (a kit de torre: rules pieceCells), else the catalog's. */
 export interface GhostInput {piece:string;c:number;r:number;rot?:number;w?:number;h?:number;look:GhostLook}
@@ -66,14 +69,15 @@ export class FortifyRenderer {
   private now=0;
   private readonly q:Pt={x:0,y:0};
   private readonly pts=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
-  private readonly c={breu:0,papel:0,cartolina:0,cone:0};
+  private readonly c={breu:0,papel:0,cartolina:0,cone:0,corda:0};
+  private readonly ropePts:Pt[]=[];
 
   constructor(private scene:Phaser.Scene,private options:FortifyOptions){
     this.ghostG=scene.add.graphics().setName('obra-fantasma').setDepth(1e6);
     this.hintG=scene.add.graphics().setName('obra-dicas');
     this.ropeG=scene.add.graphics().setName('carro-corda');
     const c=this.c;c.breu=tokenColor('--c-breu');c.papel=tokenColor('--c-papel');c.cartolina=tokenColor('--c-cartolina');
-    c.cone=tokenColor('--c-cone');
+    c.cone=tokenColor('--c-cone');c.corda=mix(c.papel,c.breu,.3);
     this.muro=new MuralhaLayer(scene,options.projector,MURO_SHEETS,options.cell);
     this.glow=new UsableGlow(scene,!!options.reduced);
   }
@@ -196,17 +200,35 @@ export class FortifyRenderer {
 
   private drawRope(k:number){
     const g=this.ropeG;g.clear();
-    const car=this.car,holder=car?.rope&&this.options.playerAt(car.rope);
-    if(!car||!holder)return;
-    const line=ropeLine(holder,car,CAR_HALF.l,this.options.carHeading?.()??0),proj=this.options.projector,N=10;
-    const a=proj.project(line.ax,line.ay,{x:0,y:0}),b=proj.project(line.bx,line.by,{x:0,y:0});
-    const za=HAND_Z*HEIGHT_PX,zb=BUMPER_Z*HEIGHT_PX,sag=line.sag*HEIGHT_PX;
-    g.lineStyle(2.4*k,this.c.breu,1).beginPath();
-    for(let i=0;i<=N;i++){
-      const t=i/N,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t-(za+(zb-za)*t)+sag*4*t*(1-t);
-      if(i)g.lineTo(x,y);else g.moveTo(x,y);
+    const car=this.car;
+    if(!car)return;
+    const holder=car.rope!==undefined?this.options.playerAt(car.rope):undefined,heading=this.options.carHeading?.()??0;
+    const proj=this.options.projector,pts=this.ropePts;pts.length=0;
+    let depth:number;
+    if(holder){
+      // Held: from the hands to the front bumper, sagging with the slack.
+      const line=ropeLine(holder,car,CAR_HALF.l,heading),N=10;
+      const a=proj.project(line.ax,line.ay,{x:0,y:0}),b=proj.project(line.bx,line.by,{x:0,y:0});
+      const za=HAND_Z*HEIGHT_PX,zb=BUMPER_Z*HEIGHT_PX,sag=line.sag*HEIGHT_PX;
+      for(let i=0;i<=N;i++){const t=i/N;pts.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t-(za+(zb-za)*t)+sag*4*t*(1-t)});}
+      depth=Math.max(proj.depth(line.ax,line.ay),proj.depth(line.bx,line.by))+.5;
+    }else{
+      // Free (puxar-uno-corda): tied at the bumper, it drops to the ground and lies ahead of the nose, a loop at its end.
+      const rest=ropeRest(car,CAR_HALF.l,heading);
+      rest.forEach((p,i)=>{const s=proj.project(p.x,p.y,{x:0,y:0}),z=BUMPER_Z*Math.max(0,1-i/2.5)**2*HEIGHT_PX;pts.push({x:s.x,y:s.y-z});});
+      depth=proj.depth(rest[0].x,rest[0].y)+.5;
     }
-    g.strokePath();
-    g.setDepth(Math.max(proj.depth(line.ax,line.ay),proj.depth(line.bx,line.by))+.5);
+    // The Uno's contour (Breu) around a Papel strand, every other stretch a shade darker: it reads as a twisted rope.
+    g.lineStyle(4.8*k,this.c.breu,1).strokePoints(pts,false);
+    g.lineStyle(2.6*k,this.c.papel,1).strokePoints(pts,false);
+    g.lineStyle(2.6*k,this.c.corda,1);
+    for(let i=1;i<pts.length;i+=2)g.lineBetween(pts[i-1].x+(pts[i].x-pts[i-1].x)*.35,pts[i-1].y+(pts[i].y-pts[i-1].y)*.35,pts[i].x,pts[i].y);
+    if(!holder){
+      // The loop a hero takes: a small ring on the ground, the iso squash (half as tall as wide).
+      const end=pts[pts.length-1],r=ROPE_LOOP*HEIGHT_PX;
+      g.lineStyle(4.8*k,this.c.breu,1).strokeEllipse(end.x,end.y,r*2,r);
+      g.lineStyle(2.6*k,this.c.papel,1).strokeEllipse(end.x,end.y,r*2,r);
+    }
+    g.setDepth(depth);
   }
 }

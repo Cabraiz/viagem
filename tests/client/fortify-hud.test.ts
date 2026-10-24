@@ -1,18 +1,15 @@
 // D-052 slice 3 (HUD): the Puxar button, the free build's ghost and requests, and the wall counter.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAR_PULL_REACH,CAR_RADIUS} from '../../src/contract/index.ts';
 import {CITY_BUILD_CELL} from '../../src/maps/build-sites.ts';
 import {FORT_PENDING_MS,FortBuild,ROOT_PIECE,WALL_LIMIT,fortCounts,fortRefusalText,pullRefusalText,pullState,wallCounterText} from '../../src/client/hud/fortify/model.ts';
 
 const cell=CITY_BUILD_CELL;
 const car={x:10,y:10};
 
-test('Puxar shows within the pull reach of the car body, Soltar while on the rope', ()=>{
+test('puxar-uno-corda: no Puxar button (the rope is taken by walking away at its end), Soltar while on the rope', ()=>{
   assert.equal(pullState(undefined,'a',{x:0,y:0}).show,false);
-  const edge=CAR_RADIUS+CAR_PULL_REACH;
-  assert.deepEqual(pullState(car,'a',{x:10+edge-.01,y:10}),{show:true,on:false,label:'Puxar',pushing:false});
-  assert.equal(pullState(car,'a',{x:10+edge+.1,y:10}).show,false);
+  assert.deepEqual(pullState(car,'a',{x:11.5,y:10}),{show:false,on:false,label:'Puxar',pushing:false});
   // On the rope it stays (the rope is 3 u: the hero may be past the reach) and says Soltar.
   assert.deepEqual(pullState({...car,rope:'a',movers:['a']},'a',{x:20,y:10}),{show:true,on:true,label:'Soltar',pushing:false});
   // Someone else's rope: this player may still be pushing.

@@ -75,8 +75,10 @@ export interface ObjectiveView {
   /**
    * D-052 (the car moves): `movers` are the players pushing or pulling it now (absent: nobody; they do not attack while
    * they do), `rope` the one pulling it by the rope (one at a time). The position follows the car as it moves.
+   * Card puxar-uno-corda: `heading` (radians, absent = 0) is where its nose points; the rope is tied to the front bumper
+   * (carNose) and lies on the ground ahead of it (ropeTip) while nobody holds it.
    */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;movers?:string[];rope?:string};
+  car:{x:number;y:number;hits:number;limit:number;parts:number;movers?:string[];rope?:string;heading?:number};
   ended?:'victory'|'defeat';
 }
 /**
@@ -91,6 +93,21 @@ export interface ObjectiveView {
 export const CAR_SPEED:readonly number[]=Object.freeze([0,1.6,2.8,3.6]);
 export const carSpeed=(movers:number)=>CAR_SPEED[Math.max(0,Math.min(CAR_SPEED.length-1,Math.floor(movers)))];
 export const CAR_PUSH_REACH=1.2,CAR_PULL_REACH=1.5,CAR_ROPE=3,CAR_RADIUS=1,CAR_NEST_KEEP_OUT=6,CAR_PUSH_DOT=.5;
+/**
+ * Card puxar-uno-corda (user, 23/10: "ao empurrar o Uno deveria estar visível algum lugar para puxá-lo também"): the
+ * rope is tied to the FRONT bumper, CAR_NOSE u ahead of the centre along the heading, and its free end lies
+ * CAR_ROPE_REST u further ahead on the ground. A hero within CAR_PULL_REACH of that end walking away from the bumper
+ * (cos ≥ CAR_PUSH_DOT) takes it, the way a pusher leans on the car: no button. Taut (CAR_ROPE from the bumper) it pulls
+ * and counts as one mover (carSpeed). It is let go after CAR_ROPE_LET_GO_S without a stick pointing away from the
+ * bumper (cos ≥ CAR_ROPE_KEEP_DOT: steering is fine, turning back or stopping lets it go). A pulled car turns its nose
+ * toward the pull at CAR_ROPE_TURN rad/s at most (a towed car), a pushed one along the push's axis.
+ */
+export const CAR_NOSE=1.3,CAR_ROPE_REST=1.6,CAR_ROPE_LET_GO_S=.6,CAR_ROPE_KEEP_DOT=.3,CAR_ROPE_TURN=1.2;
+const unitHeading=(heading=0)=>({x:Math.cos(heading),y:Math.sin(heading)});
+/** The front bumper, where the rope is tied (world u). */
+export const carNose=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading);return {x:car.x+h.x*CAR_NOSE,y:car.y+h.y*CAR_NOSE};};
+/** The free end of the rope lying on the ground ahead of the bumper. */
+export const ropeTip=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading),d=CAR_NOSE+CAR_ROPE_REST;return {x:car.x+h.x*d,y:car.y+h.y*d};};
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;
 /**

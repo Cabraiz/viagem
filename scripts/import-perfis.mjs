@@ -1,6 +1,6 @@
 // The enemies' dating-app profile photos (card nome-inimigo-rede-social): the chosen ChatGPT portraits
 // (<evidence>/fotos/loteN/escolhidas/<id>.png, ~763×1024) → public/art/perfis/<id>.webp (384×512), and the two button
-// pictures (fotos/botoes/curtir|passar.png) → public/art/perfis/botao-<curtir|passar>.webp (128×128, alpha).
+// pictures (fotos/botoes/curtir|passar.png) → public/art/perfis/botao-<curtir|passar>.webp (160×160, alpha).
 // Usage: node scripts/import-perfis.mjs --fotos <dir of id.png> [--botoes <dir with curtir.png and passar.png>]
 import {mkdir,readdir,stat} from 'node:fs/promises';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import sharp from 'sharp';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const PERFIS_DIR=path.join(ROOT,'public','art','perfis');
 export const PHOTO_SIZE=Object.freeze([384,512]);
-export const BUTTON_SIZE=128;
+export const BUTTON_SIZE=160;
 const safeId=id=>/^[a-z][a-z0-9-]*$/.test(id);
 
 export async function importPhotos(fotos,out=PERFIS_DIR){

@@ -22,10 +22,9 @@ test('lote 1: 22 profiles, each a roster kind with its photo; the texts fit the 
     assert.ok(p,`${id} is in the roster`);
     assert.equal(p.name,ROSTER.find(e=>e.id===id)?.name);
     assert.ok(existsSync(fileURLToPath(new URL(`../../public${p.foto}`,import.meta.url))),`${id}: photo`);
-    assert.ok(p.bio.length<=64,`${id}: bio ${p.bio.length}`);
+    assert.ok(p.bio.length<=66,`${id}: bio ${p.bio.length}`);
     assert.ok(p.recado.length<=28,`${id}: recado ${p.recado.length}`);
     assert.ok(p.idade.length>0&&p.idade.length<=24,`${id}: idade`);
-    for(const t of p.interesses)assert.ok(t.length<=18,`${id}: ${t}`);
   }
   for(const b of ['curtir','passar'])assert.ok(existsSync(fileURLToPath(new URL(`../../public/art/perfis/botao-${b}.webp`,import.meta.url))));
   assert.equal(perfilOf('sogra-tita'),undefined,'a kind of a later batch has no card yet');

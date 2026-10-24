@@ -1,8 +1,8 @@
 /**
  * "Inimigo novo" as a dating-app profile (card nome-inimigo-rede-social): the first time a kind with a profile comes
- * near the hero (NEAR_M; the boss from anywhere), its card opens in the top band's right corner for PROFILE_MS: the
- * ChatGPT photo with its message balloon, "Name, age", how far it is, the bio and three interests, and the ✕ / ✓
- * buttons (pictures from the same artist). The match never pauses. Several new kinds in a row pile up as a FAN, like
+ * near the hero (NEAR_M; the boss from anywhere), its card opens in the top band's right corner for PROFILE_MS, laid out
+ * as the mockup the user chose (evidence etapa1 opção 8): the ChatGPT photo with its speech balloon, "Name, age", the
+ * pin and how far it is, the bio, and the ✕ / ♥ buttons (ChatGPT pictures made from that mockup). The match never pauses. Several new kinds in a row pile up as a FAN, like
  * cards in a hand (at most FAN_MAX; the rest wait their turn). ✕ throws the card away, ✓ stamps "DEU MATCH" first.
  * Each kind shows once per phone (PERFIS_KEY in localStorage; this page's memory when storage is off). While a window
  * holds the screen (level-up offer, pause, result) the fan hides and its clock stands still.
@@ -125,6 +125,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:st
   const node=doc.createElement(tag);node.className=className;parent?.append(node);return node;
 };
 const hex=(n:number)=>`#${n.toString(16).padStart(6,'0')}`;
+/** The map pin of the distance line (outline, as in the mockup). */
+const PIN_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7Z" fill="currentColor"/><circle cx="12" cy="9.5" r="2.6" fill="#fff"/></svg>';
 
 export interface ProfilesOptions {
   /** Where the local hero stands (RunHud.setHero), for the distance; undefined: every kind counts as near. */
@@ -154,13 +156,11 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
     const img=el(doc,'img','rh-perfil-img',foto);img.alt='';img.draggable=false;img.decoding='async';
     const ready=()=>{node.dataset.foto='ok';};
     img.onload=ready;img.src=p.foto;if(img.complete&&img.naturalWidth>0)ready();
-    el(doc,'p','rh-perfil-recado',foto).textContent=p.recado;
+    el(doc,'p','rh-perfil-balao',foto).textContent=p.recado;
     const info=el(doc,'div','rh-perfil-info',node);
-    const title=el(doc,'h3','rh-perfil-nome',info);
-    el(doc,'b','',title).textContent=p.name;title.append(`, ${p.idade}`);
-    el(doc,'p','rh-perfil-dist',info);
+    el(doc,'h3','rh-perfil-nome',info).textContent=`${p.name}, ${p.idade}`;
+    const dist=el(doc,'p','rh-perfil-dist',info);dist.innerHTML=PIN_SVG;el(doc,'span','',dist);
     el(doc,'p','rh-perfil-bio',info).textContent=p.bio;
-    const tags=el(doc,'ul','rh-perfil-tags',info);for(const t of p.interesses)el(doc,'li','',tags).textContent=t;
     const buttons=el(doc,'div','rh-perfil-botoes',node);
     for(const how of ['passar','curtir'] as const){
       const b=el(doc,'button',`rh-perfil-${how}`,buttons);b.type='button';b.setAttribute('aria-label',how==='curtir'?'Curtir':'Passar');
@@ -184,7 +184,7 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
       node.style.zIndex=String(i<0?FAN_MAX+1:FAN_MAX-i);
       if(card.leaving&&node.dataset.sai!==card.leaving)node.dataset.sai=card.leaving;
       if(card.leaving==='curtir'&&(card.leftMs??0)>=MATCH_MS)node.dataset.saindo='1';
-      const dist=node.querySelector('.rh-perfil-dist') as HTMLElement;
+      const dist=node.querySelector('.rh-perfil-dist span') as HTMLElement;
       const text=card.distance===undefined?'por perto':`a ${distanceText(card.distance)} de você`;
       if(dist.textContent!==text)dist.textContent=text;
     }

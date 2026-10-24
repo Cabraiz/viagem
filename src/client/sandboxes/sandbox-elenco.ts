@@ -6,7 +6,7 @@
  */
 import {artReady} from '../ui/art-boot.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
-import {MASS_ALPHA,chooseAnim,liteEnemyUrl,topRow} from '../art/horde-art.ts';
+import {MASS_ALPHA,chooseAnim,enemyFileUrl,topRow} from '../art/horde-art.ts';
 import {directionalSheet} from '../sprites/sprite-sheets.ts';
 import {roleOf} from '../../rules/index.ts';
 import {ELENCO_DIRS,GAP_PX,PAD_PX,CAPTION_PX,caixaMundo,elencoGrade,elencoIds,elencoPagina,elencoZoom,enemyEscala,heroEscala,type Caixa} from '../dev/elenco.ts';
@@ -32,12 +32,12 @@ function alphaBox(data:Uint8ClampedArray,w:number,h:number){
   return x1<0?{x0:0,x1:w-1,y0:0,y1:h-1}:{x0,x1,y0,y1};
 }
 /** Source position of frame `col` of sheet row `row` (paged sheets: the page holding it). */
-async function celula(file:ArtFile,row:number,col:number){
+async function celula(id:string,file:ArtFile,row:number,col:number){
   const frames=file.frames??1,global=row*frames+col;
   const page=artPages(file).find(p=>global>=p.firstFrame&&global<p.firstFrame+p.frameCount);
   const url=page&&artUrl('inimigos',page.file);if(!page||!url)throw new Error(`sem página para ${file.file} linha ${row}`);
   const i=global-page.firstFrame;
-  return {img:await imagem(liteEnemyUrl(url,file)),sx:(i%page.columns)*file.cell[0],sy:Math.floor(i/page.columns)*file.cell[1]};
+  return {img:await imagem(enemyFileUrl(id,url,file)),sx:(i%page.columns)*file.cell[0],sy:Math.floor(i/page.columns)*file.cell[1]};
 }
 
 async function inimigo(id:string){
@@ -46,7 +46,7 @@ async function inimigo(id:string){
   const cell=file.cell,anchor=file.anchor??[.5,.88],feet=cell[1]*anchor[1];
   // The game's drawn height (horde-art drawnHeight): the tallest of the 8 directions' frame 0.
   let drawn:number|undefined;
-  const cels=await Promise.all(Array.from({length:file.directions??8},(_,r)=>celula(file,r,0)));
+  const cels=await Promise.all(Array.from({length:file.directions??8},(_,r)=>celula(id,file,r,0)));
   for(const c of cels){const top=topRow(pixels(c.img,c.sx,c.sy,cell[0],cell[1]),cell[0],cell[1]);if(top>=0&&top<feet)drawn=Math.max(drawn??0,feet-top);}
   const escala=enemyEscala(id,drawn,cell[1],anchor[1]);
   const figs=ELENCO_DIRS.map(({row}):Figura=>{

@@ -106,7 +106,7 @@ test('his size (the user: 2× to 3×): body and charge × drawScale, the areas o
   assert.equal(waveBossTuning().radius,BOSS_TUNING.radius*WAVE_BOSS.drawScale);
 });
 
-test('his art in HD (the approved files, not the lite copies) and a ground shadow that stays short at his size',async()=>{
+test('his art in HD (AI copy of idle/walk/slam, the rest at the approved cell; tests/tools/art-hd-chefao) and a ground shadow that stays short at his size',async()=>{
   const {HD_ENEMIES,parseArtIndex,setArtIndex}=await import('../../src/client/art/manifest.ts');
   const {enemyPieceLoads,artShadowLength}=await import('../../src/client/art/horde-art.ts');
   const {readFileSync}=await import('node:fs');
@@ -116,7 +116,11 @@ test('his art in HD (the approved files, not the lite copies) and a ground shado
     for(const b of WAVE_BOSSES){
       const loads=enemyPieceLoads(b.id);
       assert.ok(loads.length,b.id);
-      for(const l of loads){assert.ok(l.url.startsWith('/art/enemies/')&&!l.url.includes('/lite/'),l.url);assert.equal(l.cell[1],384,l.url);}
+      for(const l of loads){
+        const hd=/:(idle|walk|slam)(:p\d)?$/.test(l.key);
+        assert.ok(hd?l.url.startsWith('/art/hd/enemies/'):/^\/art\/(enemies|lite\/enemies-pc)\//.test(l.url),l.url);
+        assert.equal(l.cell[1],hd?512:384,l.url);
+      }
       assert.ok(artShadowLength(b.id)<1&&artShadowLength(b.id)>0);
     }
     // Everyone else: still the lite copies, the shadow as long as the figure.

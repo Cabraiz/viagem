@@ -197,6 +197,17 @@ export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=
  * computer draws from its own copy (manifest.ts pcCell, kept only on a computer) loads public/art/lite/enemies-pc/.
  */
 export const liteEnemyUrl=(url:string,file?:Pick<ArtFile,'pcCell'>)=>url.replace('/art/enemies/',file?.pcCell?'/art/lite/enemies-pc/':'/art/lite/enemies/');
+/**
+ * URL of a file of enemy art `id` the game downloads: the chefão's HD copy (manifest.ts hdFile, public/art/hd/enemies/;
+ * no fallback, its cell is its own); his other files at the approved cell (manifest.ts HD_ENEMIES), from the computer's
+ * lossy copy when it has that cell (~half the bytes; a failed load falls back to the approved file), on both screens;
+ * everyone else's lite copy.
+ */
+export const enemyFileUrl=(id:string,url:string,file?:Pick<ArtFile,'cell'|'pcCell'|'hd'>)=>{
+  if(file?.hd)return url.replace('/art/enemies/','/art/hd/enemies/');
+  if(!HD_ENEMIES.has(id))return liteEnemyUrl(url,file);
+  return file?.pcCell&&file.pcCell[0]===file.cell[0]&&file.pcCell[1]===file.cell[1]?liteEnemyUrl(url,file):url;
+};
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
@@ -234,9 +245,8 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
-      // The chefão's approved file (manifest.ts HD_ENEMIES): HD at his size; everyone else's lite copy.
-      if(HD_ENEMIES.has(id)){out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});return;}
-      const lite=liteEnemyUrl(url,file);if(file.liteCell)LITE_ONLY.add(lite);
+      // The chefão's HD copy or approved file (enemyFileUrl); everyone else's lite copy.
+      const lite=enemyFileUrl(id,url,file);if(file.hd||file.liteCell&&!HD_ENEMIES.has(id))LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }

@@ -131,7 +131,8 @@ test('pcCell is the cell only on a computer; the phone never keeps it; a malform
 test('the phone loads exactly what it loaded before the computer copies (same URLs and cells as an index without pcCell)',()=>{
   const strip=JSON.parse(JSON.stringify(index));
   for(const piece of Object.values<any>(strip.groups.inimigos.pieces))for(const f of Object.values<any>(piece.files))delete f.pcCell;
-  const ids=Object.keys(enemies.pieces);
+  // The 1st wave's chefão loads his own files on any screen (tests/tools/art-hd-chefao.test.ts).
+  const ids=Object.keys(enemies.pieces).filter(id=>!HD_ENEMIES.has(id));
   setArtIndex(parseArtIndex(strip));const before=ids.flatMap(id=>enemyPieceLoads(id));
   setArtIndex(parseArtIndex(index));const after=ids.flatMap(id=>enemyPieceLoads(id)),frames=ids.map(id=>critterSheetFrame(id));
   setArtIndex(parseArtIndex(index,true));const pcFrames=ids.map(id=>critterSheetFrame(id));
@@ -151,8 +152,8 @@ test('a computer loads every drawn file with pcCell from enemies-pc at that cell
   for(const {id,l} of loads){
     const f=Object.values<any>(enemies.pieces[id].files).find(x=>filesOf(x).some(p=>l.url.endsWith(`/${p}`)));
     assert.ok(existsSync(`public${l.url}`),l.url);
-    // The 1st wave's chefão draws his approved file at its own cell (boss-fim-onda-1, HD at 3×), on any screen.
-    if(HD_ENEMIES.has(id)){assert.ok(l.url.startsWith('/art/enemies/'),l.url);assert.deepEqual(l.cell,f.cell,l.url);continue;}
+    // The 1st wave's chefão (boss-fim-onda-1): his HD copy at its cell, the rest at the approved cell (tests/tools/art-hd-chefao).
+    if(HD_ENEMIES.has(id)){assert.ok(/^\/art\/(hd\/enemies|lite\/enemies-pc)\//.test(l.url),l.url);assert.ok(l.cell[0]>=384,l.url);continue;}
     if(f.pcCell){
       pc++;
       assert.ok(l.url.startsWith('/art/lite/enemies-pc/'),l.url);

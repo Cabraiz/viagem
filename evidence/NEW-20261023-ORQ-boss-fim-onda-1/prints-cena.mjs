@@ -62,6 +62,15 @@ try{
   // The hero next to him (a lab move), so the fight's shot shows both: his size against the hero's.
   const near=()=>page.evaluate(()=>{const net=window.__perfScene.hooks.net,b=[...net.feed.enemies.values()].find(e=>e.boss);if(b)for(const [dx,dy] of [[4,5],[0,0],[6,0],[0,6],[-5,4],[3,-4]])net.socket.send(JSON.stringify({t:'lab',to:{x:b.x+dx,y:b.y+dy}}));});
   await near();await sleep(1200);await near();await sleep(1200);console.log('probe-luta',JSON.stringify(await probe()));await page.screenshot({path:join(OUT,`${tag}-3-luta.png`)});
+  // Etapa 6: his textures (GPU: w × h × 4 per page, no mipmaps) and what they cost to download, per file.
+  console.log('medida',JSON.stringify(await page.evaluate(id=>{
+    const s=window.__perfScene,tex=[];let gpu=0;
+    for(const key of s.textures.getTextureKeys())if(key.startsWith(`art:enemy:${id}:`)){const src=s.textures.get(key).getSourceImage();const b=src.width*src.height*4;gpu+=b;tex.push({key:key.slice(`art:enemy:${id}:`.length),w:src.width,h:src.height,mb:+(b/1e6).toFixed(1)});}
+    const res=performance.getEntriesByType('resource').filter(r=>r.name.includes(`/${id}/`)&&/\/art\//.test(r.name));
+    const bytes=res.reduce((n,r)=>n+(r.encodedBodySize||r.transferSize||0),0);
+    return {id,gpuMB:+(gpu/1e6).toFixed(1),downloadMB:+(bytes/1e6).toFixed(2),files:res.map(r=>({url:r.name.replace(/^https?:\/\/[^/]+/,''),kb:Math.round((r.encodedBodySize||r.transferSize)/1024)})),tex,
+      maxTexture:s.renderer.getMaxTextureSize?.()??s.renderer.gl?.getParameter(s.renderer.gl.MAX_TEXTURE_SIZE)};
+  },who)));
   console.log(tag,'chefão:',who,'erros da página:',errors.length,errors.slice(0,4).join(' | '));
 }catch(e){
   console.log('falhou:',e.message.split('\n')[0],'erros:',globalThis.__errors?.slice(0,6));

@@ -227,7 +227,7 @@ export class RunHud {
       live:()=>!this.el.hidden&&!this.el.classList.contains('rh-ended')});
     this.el.insertBefore(pix.el,this.result.el);this.parts.push(pix);
     // The caça-níquel when a crate turns DOURADA for me (caixa-gamble, hud/caca-niquel.ts): over the play, under the result.
-    const cacaNiquel=createCacaNiquel(parent.ownerDocument);
+    const cacaNiquel=createCacaNiquel(parent.ownerDocument,{onPlay:()=>{const audio=getAudio();if(audio.unlocked)audio.play('caca-niquel');}});
     this.el.insertBefore(cacaNiquel.el,this.result.el);this.parts.push(cacaNiquel);
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.

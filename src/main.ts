@@ -18,9 +18,10 @@ import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveR
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
-import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, aneisHtml, aneisOf } from './client/ui/insta.ts';
 import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
+import { emLoop, montarAneis } from './client/ui/insta-aneis.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
@@ -332,7 +333,9 @@ const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perf
   chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!,
   logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
-let instaShown='';
+let instaShown='',instaAneis='';
+// The heroes' rings: one endless row a finger drags (ui/insta-aneis.ts); drawn again only when the heroes or locks change.
+const aneis=montarAneis(insta.stories);
 // Whose stories were watched this visit: his ring goes grey (ui/insta.ts perfilHtml).
 const instaVistos=new Set<string>();
 function renderInsta() {
@@ -341,7 +344,14 @@ function renderInsta() {
   instaShown=selected.id;
   // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
   insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
-  insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
+  const perfis=aneisOf(instaIds),assinatura=perfis.map(p=>`${p.id}${isLiberado(p.id)?'':'!'}`).join();
+  if(instaAneis!==assinatura){
+    instaAneis=assinatura;
+    insta.stories.innerHTML=aneisHtml(perfis,isLiberado,emLoop(perfis.length));
+    aneis.montou(perfis.length,perfis.indexOf(perfil));
+  }
+  insta.stories.querySelectorAll<HTMLElement>('[data-hero]').forEach(anel=>{if(anel.dataset.hero===perfil.id)anel.setAttribute('aria-current','true');else anel.removeAttribute('aria-current');});
+  aneis.mostrar(perfis.indexOf(perfil));
   insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
@@ -358,6 +368,8 @@ function fitHandle() {
 insta.stories.addEventListener('click',event=>{
   const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
   if(!story) return;
+  // The half ring at the edge comes fully into view, also when it is the one already chosen.
+  aneis.mostrar(aneisOf(instaIds).findIndex(p=>p.id===story.dataset.hero));
   if(etapaOf(etapa)==='nome') showEtapa(etapa,'escolher');
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);

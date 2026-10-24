@@ -99,8 +99,12 @@ type Task='anda'|'lombada'|'entrega'|'morta'|'abrindo';
 export interface ChaveiroStop {kind:ObjectiveStopKind;s:number}
 /** JSON-safe objective state (RunSystemsState.chaveiro). */
 export interface ChaveiroState {
-  /** movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step. */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number};
+  /**
+   * movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step; heading,
+   * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
+   * pulling, and who a hit knocked off it (no gesture until then).
+   */
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -543,7 +547,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
         etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.seated().reduce((n,p)=>n+walletOf(p),0),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
-        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{})},
+        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{}),...(car.heading?{heading:car.heading}:{})},
         ...(state.ended?{ended:state.ended}:{}),
       };
     },

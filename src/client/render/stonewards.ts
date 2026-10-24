@@ -29,7 +29,7 @@ import {TriBand} from './city/tri-band.ts';
 import {INTERATIVO_COR} from '../hud/tralha/model.ts';
 import {MuralhaLayer} from './muralha.ts';
 import {towerArtScale} from './towers/tower-rules.ts';
-import {UsableGlow,glowPieces} from './usable-glow.ts';
+import {UsableGlow,WallGlow} from './usable-glow.ts';
 
 const LIGHT=lightEnabled();
 
@@ -89,6 +89,8 @@ export class StonewardsRenderer {
   private muralha:MuralhaLayer;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on what the player uses here (barricades, loot crates). */
   private glow:UsableGlow;
+  /** The junk wall's pieces this frame, glowed per wall (one outline around the squares that touch). */
+  private wallGlow=new WallGlow();
   /** Life of each structure in the last view, and when a hit one stops flashing (renderer clock). */
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -167,6 +169,7 @@ export class StonewardsRenderer {
       const role=structureRole(s.kind);
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
     }
+    this.wallGlow.flush(this.glow,k);
     this.drawPops(k);
     this.glow.end();
   }
@@ -343,7 +346,7 @@ export class StonewardsRenderer {
     }
     if(junk){
       for(const i of junk){if(flash)i.setTintFill(this.c.claro);else if(alert)i.setTint(ALERT_RED);else i.clearTint();}
-      if(!down)glowPieces(this.glow,s.id,junk,k);
+      if(!down)this.wallGlow.add(s.id,this.muralha.groupOf(s),junk);
       pile?.setVisible(false);
     }else if(img){
       img.setPosition(x,y).setDepth(depth-BAR_OVER_ART);

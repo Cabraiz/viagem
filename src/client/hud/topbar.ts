@@ -53,9 +53,11 @@ export function createTopBar():HudPart{
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
       // D-051 nests: the nests still standing go to screen readers only (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: no "6/8" on screen).
       const clock=round.chaveiro,count=nests?nestCount(view):undefined;
-      put('eta',clock?`${clock.clock}|${clock.aria}|${count?.text??''}`:'',()=>{
+      put('eta',clock?`${clock.clock}|${clock.aria}|${clock.held}|${count?.text??''}`:'',()=>{
         putHidden(eta,!clock);
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon('moto')}<b>${clock.clock}</b></span>`;}
+        // The chefão up (boss-fim-onda-1): a padlock and the number grey, the clock stopped until he falls.
+        if(clock?.held)eta.dataset.parado='';else delete eta.dataset.parado;
+        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon(clock.held?'cadeado':'moto')}<b>${clock.clock}</b></span>`;}
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);

@@ -8,7 +8,8 @@
  *  - hp × players like the final boss (bossMaxHp with WAVE_BOSS's numbers); the final boss is untouched;
  *  - beaten: a dourada crate where he fell, up() false; a checkpoint keeps him (and brings him back if he stood);
  *  - the bots aim at a boss near the car (bot-brain bossFocus);
- *  - he stops the time: while he stands no wave leaves and the nests' clock waits (holdWaveClock), then it resumes.
+ *  - he stops the time: while he stands no wave leaves and the nests' clock waits (holdWaveClock), then it resumes; the
+ *    chaveiro's ETA stands still too (holdChaveiroClock, ORQ 24/10).
  * D-031: sim ticks only.
  */
 import test from 'node:test';
@@ -23,7 +24,7 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems,type RunSystemsState} from '../../src/sim/assemble.ts';
 import {bossMaxHp} from '../../src/sim/boss.ts';
-import {holdWaveClock,waveBossSpot,waveBossTuning,type WaveClock} from '../../src/sim/ninhos/chefao.ts';
+import {holdChaveiroClock,holdWaveClock,waveBossSpot,waveBossTuning,type ChaveiroClock,type WaveClock} from '../../src/sim/ninhos/chefao.ts';
 import {WAVE_BOSS,WAVE_BOSS_IDS,pickWaveBoss} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -166,6 +167,33 @@ test('holdWaveClock: every deadline and the ramp start move by the ticks held; n
   assert.deepEqual(before,{startTick:null,nextWave:5});
   const old:WaveClock={startTick:0,nextWave:10};holdWaveClock(old);
   assert.deepEqual(old,{startTick:1,nextWave:11},'absent fields stay absent');
+});
+
+test("the chaveiro's ETA stands still while he stands (the moto stays, nobody pushes the car), and runs again once he fell",()=>{
+  const {world,sys}=run({seed:4});
+  for(let i=0;i<40;i++)world.step(); // the moto rides a little
+  waveOneLeft(sys,world);world.step();
+  const ch=sys.chaveiro!,boss=bossesOf(world)[0];
+  assert.ok(boss&&sys.chefao!.up());
+  const eta=ch.eta(world.tick),s=ch.state.moto.s;
+  for(let i=0;i<90;i++)world.step();
+  assert.equal(ch.eta(world.tick),eta,'the ETA reads the same');
+  assert.equal(ch.state.moto.s,s,'the moto waits');
+  assert.equal(ch.view(world.tick).etaS,Math.ceil(eta));
+  world.damageEnemy(boss.id,boss.hp+1);
+  world.step();
+  assert.equal(sys.chefao!.up(),false);
+  for(let i=0;i<60;i++)world.step();
+  assert.ok(ch.eta(world.tick)<eta,'it runs again once he fell');
+});
+
+test("holdChaveiroClock: the alarm, the fall, the next sale and the start move by the ticks held; the car's movers go; nothing before the first step",()=>{
+  const c:ChaveiroClock={car:{alarmUntil:50,movers:['p0']},moto:{tomboUntil:70,tomboReady:90},cida:{nextSaleTick:200},startTick:10};
+  holdChaveiroClock(c,30);
+  assert.deepEqual(c,{car:{alarmUntil:80},moto:{tomboUntil:100,tomboReady:120},cida:{nextSaleTick:230},startTick:40});
+  const before:ChaveiroClock={car:{alarmUntil:5},moto:{tomboUntil:0,tomboReady:0},cida:{nextSaleTick:9},startTick:null};
+  holdChaveiroClock(before);
+  assert.deepEqual(before,{car:{alarmUntil:5},moto:{tomboUntil:0,tomboReady:0},cida:{nextSaleTick:9},startTick:null});
 });
 
 test('bots: a boss within BOSS_FOCUS_R of the car is their target (the nearest such); farther, or dead, none',()=>{

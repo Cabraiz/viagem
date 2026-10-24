@@ -40,7 +40,7 @@ import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './ban
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
-import {createChefao,holdWaveClock,type ChefaoState,type ChefaoSystem} from './ninhos/chefao.ts';
+import {createChefao,holdChaveiroClock,holdWaveClock,type ChefaoState,type ChefaoSystem} from './ninhos/chefao.ts';
 import {CALMA,WAVE_BOSS} from '../rules/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
@@ -540,7 +540,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     progression.progression,revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
-    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro?.step(ctx);banks?.step(ctx);}} satisfies SimSystem:stonewards,
+    // Card boss-fim-onda-1: while the chefão stands the chaveiro's ETA holds too (holdChaveiroClock).
+    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){
+      stonewards.step(ctx);
+      if(chaveiro&&chefao?.up())holdChaveiroClock(chaveiro.state);else chaveiro?.step(ctx);
+      banks?.step(ctx);
+    }} satisfies SimSystem:stonewards,
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx,credit)=>{

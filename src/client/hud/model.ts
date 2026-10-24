@@ -113,7 +113,7 @@ export function nestTally(view:Pick<RunView,'structures'>|undefined):{down:numbe
  * objective running (D-047) the rounds have no end ("Onda N": waves go on past 10) and the chip carries his clock.
  */
 export function roundInfo(view:RunView):RoundInfo|undefined{
-  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective)}:{}),...(nestsMode(view)?{nests:true as const}:{})};
+  const round=view.round,objective=liveObjective(view),chaveiro={...(objective?{chaveiro:chaveiroClock(objective,waveBossUp(view))}:{}),...(nestsMode(view)?{nests:true as const}:{})};
   if(round){
     const total=round.total||TOTAL_ROUNDS;
     const label=objective?`Onda ${round.index}`:`Rodada ${round.index} de ${total}`;
@@ -134,6 +134,9 @@ export function roundInfo(view:RunView):RoundInfo|undefined{
 
 /** Enemies the round still has to beat: a nest's sleepers (D-051, asleep) are not in the count until they wake. */
 export function awakeCount(enemies:readonly object[]){let n=0;for(const e of enemies)if(!isAsleep(e))n++;return n;}
+
+/** The 1st wave's chefão stands (card boss-fim-onda-1): the chaveiro's clock is stopped until he falls. */
+export const waveBossUp=(view:Pick<RunView,'enemies'>)=>view.enemies.some(e=>e.boss&&e.hp>0&&!!waveBossById(e.kind));
 
 export interface BossInfo {id:string;name:string;fraction:number;phase:number;enraged:boolean}
 export const BOSS_NAME='Síndico Supremo';

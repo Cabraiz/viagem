@@ -12,7 +12,7 @@
  *  - the scene: `arrival(tick)` on the tick he appears, for the room (multiplayer/boss-scene.ts) to hold the sim;
  *  - he stops the time (the user, 24/10: "o boss ele para o tempo"): while he stands the nests do not step (assemble.ts),
  *    holdWaveClock moves their clock one tick a tick, so no wave or drip is born (he fights almost alone) and the next
- *    wave, the open wave's cap and the time to explore wait for him to fall.
+ *    wave, the open wave's cap and the time to explore wait for him to fall; the chaveiro's ETA too (holdChaveiroClock).
  * The final boss (the chaveiro's ETA, assemble.ts `boss`) is untouched: another controller, another state.
  * A checkpoint keeps no live enemy: one taken while he stands (the calm checkpoint never is, Simulation.calmCheckpointDue)
  * brings him back on the next step, scene and all.
@@ -67,6 +67,23 @@ export function holdWaveClock(clock:WaveClock,by=1){
   if(clock.startTick===null)return;
   clock.startTick+=by;
   for(const key of ['nextWave','waveOpen','exploreFrom','exploreUntil'] as const){const v=clock[key];if(v!==undefined)clock[key]=v+by;}
+}
+
+/** The ticks of the chaveiro's clock (chaveiro/system.ts ChaveiroState) holdChaveiroClock moves. */
+export interface ChaveiroClock {
+  car:{alarmUntil:number;movers?:string[]};moto:{tomboUntil:number;tomboReady:number};cida:{nextSaleTick:number};startTick:number|null;
+}
+/**
+ * The chaveiro's ETA stands still for `by` ticks (the chefão up; ORQ 24/10: "CONGELA o ETA do chaveiro enquanto o
+ * chefão vive", the match goes on only once he falls): the chaveiro does not step (assemble.ts: the moto stays, nobody
+ * pushes the car, so nobody walks at its pace either) and every deadline of the ETA moves with the tick (the alarm, the
+ * fall, the next Cida sale, the run's start that chaveiro-no-final counts from), so it reads the same when he falls.
+ * Hits on the car still sound the alarm (hitCar) and add to it. Before the first step (startTick null) nothing to hold.
+ */
+export function holdChaveiroClock(clock:ChaveiroClock,by=1){
+  if(clock.startTick===null)return;
+  clock.startTick+=by;clock.car.alarmUntil+=by;clock.moto.tomboUntil+=by;clock.moto.tomboReady+=by;clock.cida.nextSaleTick+=by;
+  delete clock.car.movers;
 }
 
 /**

@@ -45,10 +45,11 @@ test('every sheet the game shows any hero has its hand in each frame, inside the
     const sheets=shown(id);
     // M16 (viciado, gato, maromba, vendedor, aposentado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
     assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'||id==='maromba'||id==='vendedor-praia'||id==='aposentado'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
+    // The M16 rest: 8 poses (held) or 16 (breathing, card parado-respiracao-herois), as its entry says.
     for(const [name,f] of sheets){
-      const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?8:16;
+      const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?f.frames:16;
       assert.ok(sheet,`${f.file} measured (node scripts/hand-points.mjs --ids ${id})`);
-      assert.equal(sheet.points.length,frames,name);
+      assert.equal(sheet.points.length,frames,name);if(name.startsWith('idle16'))assert.ok(f.frames===8||f.frames===16,name);
       for(const [i,p] of sheet.points.entries()){
         assert.ok(p[0]>=f.figure.left-1&&p[0]<=f.figure.right+1&&p[1]>=f.figure.top-1&&p[1]<=f.figure.bottom+1,`${name} frame ${i} ${p} in ${JSON.stringify(f.figure)}`);
       }

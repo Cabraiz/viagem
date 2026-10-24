@@ -108,6 +108,8 @@ const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]]
 export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,pull:1000,hurt:300} as const;
 /** hurt (card animacao-receber-dano): 6 poses, the first and the last the rest pose, a flinch between. */
 export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],pull:[4,4],hurt:[3,2]} as const;
+/** A breathing rest (card parado-respiracao-herois): 16 poses in 4×4 over 3.2 s, taken when the manifest says 16 frames. */
+export const MOVEMENT16_IDLE_BREATH={grid:[4,4],durationMs:3200} as const;
 const M16_MOTIONS=['walk','attack','idle'] as const;
 /**
  * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
@@ -128,7 +130,9 @@ export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroD
   current();const {source,flip}=movement16Source(id,direction,motion),lookup=`m16:${id}:${motion}:${direction}`;
   if(plans.has(lookup))return plans.get(lookup)??undefined;
   const f=artPiece('personagens',id)?.files[`${motion}16-${source}`],p=f?.pages?.[0],original=f?.file&&artUrl('personagens',f.file);
-  const [columns,rows]=MOVEMENT16_GRID[motion],frameCount=columns*rows,durationMs=MOVEMENT16_DURATION[motion],loop=m16Loop(motion);
+  const breath=motion==='idle'&&f?.frames===16;
+  const [columns,rows]=breath?MOVEMENT16_IDLE_BREATH.grid:MOVEMENT16_GRID[motion],frameCount=columns*rows;
+  const durationMs=breath?MOVEMENT16_IDLE_BREATH.durationMs:MOVEMENT16_DURATION[motion],loop=m16Loop(motion);
   if(!f||!original||f.revision!==16||f.movementHands!=='empty'||f.cell[0]!==96||f.cell[1]!==96||f.frames!==frameCount||
     f.pages?.length!==1||!p||p.file!==f.file||p.columns!==columns||p.rows!==rows||p.firstFrame!==0||p.frameCount!==frameCount||
     f.durationMs!==durationMs||f.loop!==loop||f.anchor?.[0]!==.5||f.anchor[1]!==.875||

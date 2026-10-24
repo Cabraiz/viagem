@@ -5,7 +5,7 @@ import {mkdtemp,mkdir,readFile,writeFile,rm,rename} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {MOVEMENT16_META,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
+import {MOVEMENT16_META,IDLE_BREATH,importMovement16,parseMovement16Args,movement16Source} from '../../scripts/import-movimento16.mjs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {movementPlan,movementSheets,hasMovement16,hasRun16,hasPush16,pushPlan,hasPull16,pullPlan,hasHurt16,hurtPlan,movement16Source as drawnSource} from '../../src/client/sprites/movement128.ts';
 import {HERO_GAIT} from '../../src/client/sprites/sprite-motion.ts';
@@ -68,6 +68,24 @@ test('M16 writes 15 WebP of 96 px cells (4×4 / 4×2), aligns the body, records 
   // The client reads what the importer wrote: the class switches to M16.
   setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
   assert.equal(hasMovement16('aposentado'),true);assert.equal(movementPlan('aposentado','walk','SE')?.key,'sprite16:aposentado:walk:SW');
+}));
+
+test('M16 takes a 4×4 idle as the breathing rest: 16 distinct poses over 3.2 s, kept as drawn; the client plays them',async()=>fixture(async({input,outRoot,manifestFile,old})=>{
+  // Card parado-respiracao-herois: the poses slide 0–9 px (a sway) and must stay so; a held 4×4 rest is refused.
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','idle',d),await sheet(4,4,{distinct:false,slide:0}));
+  await assert.rejects(importMovement16({input,outRoot,ids:['aposentado'],write:true}),/idle\/S: all 16 poses must be distinct/);
+  assert.deepEqual(JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado,old);
+  for(const d of MOVEMENT16_META.directions)await writeFile(movement16Source(input,'aposentado','idle',d),await sheet(4,4));
+  await importMovement16({input,outRoot,ids:['aposentado'],write:true});
+  const f=JSON.parse(await readFile(manifestFile,'utf8')).pieces.aposentado.files['idle16-S'],webp=path.join(outRoot,'public/art/sprites',f.file);
+  assert.deepEqual([f.frames,f.durationMs,f.loop,f.pages[0].columns,f.pages[0].rows],[16,3200,true,4,4]);assert.deepEqual(IDLE_BREATH,{columns:4,rows:4,frames:16,durationMs:3200,loop:true});
+  assert.deepEqual(await sharp(webp).metadata().then(m=>[m.width,m.height]),[384,384]);
+  const {data,info}=await sharp(webp).ensureAlpha().raw().toBuffer({resolveWithObject:true}),xs:number[]=[];
+  for(let i=0;i<4;i++){let left=96;for(let y=0;y<96;y++)for(let x=0;x<96;x++)if(data[((Math.floor(i/4)*96+y)*info.width+i%4*96+x)*4+3]>20)left=Math.min(left,x);xs.push(left);}
+  assert.ok(xs[3]-xs[0]>=4,`as drawn, not aligned: ${xs}`);
+  setArtIndex(parseArtIndex(JSON.parse(await readFile(path.join(outRoot,'public/art/manifest.json'),'utf8'))));
+  const plan=movementPlan('aposentado','idle','S');
+  assert.deepEqual([plan?.columns,plan?.rows,plan?.frameCount,plan?.durationMs,plan?.loop],[4,4,16,3200,true]);
 }));
 
 test('M16 rejects a wrong grid, missing alpha and repeated walk poses before writing anything',async()=>fixture(async({input,outRoot,manifestFile,old})=>{

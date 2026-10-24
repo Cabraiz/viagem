@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3117,
-  "bytes": 2214595282,
-  "liteBytes": 768863912,
+  "files": 3127,
+  "bytes": 2215611966,
+  "liteBytes": 769459988,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28485,45 +28485,85 @@
    "psnr": 39.5,
    "shownPsnr": 42.8
   },
-  "sprites/aposentado.idle16-n.c18386ea358b.webp": {
-   "source": "c18386ea358be7e354d4da69b55bced14edc82fe2aa526ad0241dd0be8d13df0",
-   "lite": "296fb9003124209cb47cfa397fc54eb6954289b44e44bd82f8ae0f126f688dc2",
-   "bytes": 6202,
-   "liteBytes": 14874,
-   "psnr": 40.7,
+  "sprites/aposentado.idle16-n.1a143b9db7a2.webp": {
+   "source": "1a143b9db7a2e63c5d2bb0fc64b0f16b691e563aa84c337e4fec8fd5df5fbb5a",
+   "lite": "ebce24b25035701b0f66d5e0d7ab8e4eb227e80e1ea6efb79259c9f66e80d92d",
+   "bytes": 53604,
+   "liteBytes": 36012,
+   "psnr": 40.6,
    "shownPsnr": 43.4
   },
-  "sprites/aposentado.idle16-nw.1c006b955baa.webp": {
-   "source": "1c006b955baac53f887c289b7a48d6ee4a48038ffdba7ece276b23b00041cde8",
-   "lite": "d651decd5c4e21901f6c1e5849baf7de6b2799a99b7b9384f0078c7c1bbe60c6",
-   "bytes": 6866,
-   "liteBytes": 14540,
-   "psnr": 39.3,
-   "shownPsnr": 42.3
+  "sprites/aposentado.idle16-n.d8de9c0c7657.webp": {
+   "source": "d8de9c0c7657d5aca1c75629dbacd5a23323136d4c8f0a6947ecc1bbf2212ec0",
+   "lite": "c0ab982475b80f5a55365575d476855b0e292ef7f7b443fab8a07fe93327cc23",
+   "bytes": 55374,
+   "liteBytes": 36642,
+   "psnr": 40.5,
+   "shownPsnr": 43.4
   },
-  "sprites/aposentado.idle16-s.3869ae19330e.webp": {
-   "source": "3869ae19330ed56b71a8ffe5f9fcdd690c77642e4534bc01785a9ab6c822baae",
-   "lite": "48c0b9ad26e67f5d04a40e64a0d7c680cdbedb907ac9fbfa86eab395459de2a6",
-   "bytes": 5176,
-   "liteBytes": 15674,
-   "psnr": 38.2,
+  "sprites/aposentado.idle16-nw.7e7f6fa491fa.webp": {
+   "source": "7e7f6fa491fa18092dbff0a5c7130c1da0d64adb2354a5ae1e97b883252a2fe0",
+   "lite": "928a713b2fdd31e68ae755e53268b719bf6df6c63437fb5dbcbc46293ef87eca",
+   "bytes": 52016,
+   "liteBytes": 34074,
+   "psnr": 39.4,
+   "shownPsnr": 43
+  },
+  "sprites/aposentado.idle16-nw.ca5df5cec598.webp": {
+   "source": "ca5df5cec598eca5e55184f3234a1166d94e1191ed989d012121ee168995b215",
+   "lite": "57b30d12ff859bf9fc32009aed3a634eec49294401ea1d4df300713e26ebbe95",
+   "bytes": 53726,
+   "liteBytes": 34598,
+   "psnr": 39.4,
+   "shownPsnr": 42.9
+  },
+  "sprites/aposentado.idle16-s.8e404514fbd4.webp": {
+   "source": "8e404514fbd46bebb16244d357747bfdbf599213d397ec533289b4af8ff2c916",
+   "lite": "bf3458229d508fcaba1235587f13c234e5089e00dbf2319fb55f8cb89dc7b44c",
+   "bytes": 54150,
+   "liteBytes": 37724,
+   "psnr": 38.1,
    "shownPsnr": 42.6
   },
-  "sprites/aposentado.idle16-se.046ce7263364.webp": {
-   "source": "046ce72633649ba3e67502e72cdc6202561367c3a4197f4c1fad59a4b7d95fc0",
-   "lite": "e367e0118457c917103404669181d685f7774cad5f0e745bac4b8f20a714fc17",
-   "bytes": 5130,
-   "liteBytes": 15328,
-   "psnr": 38,
-   "shownPsnr": 42.5
+  "sprites/aposentado.idle16-s.f9f4da098fe1.webp": {
+   "source": "f9f4da098fe1058fcc70ceeaf7878ac18fbe5a51107742e9218eead864fdc95c",
+   "lite": "f1da1a03298987e9dcf050d6bbd10c786582354f285922e9bb3840f9d8fbf0a5",
+   "bytes": 52956,
+   "liteBytes": 37098,
+   "psnr": 38.1,
+   "shownPsnr": 42.6
   },
-  "sprites/aposentado.idle16-w.32242bb541ed.webp": {
-   "source": "32242bb541ed481194c1e0f28ae0a5cc4a4933fc163b2926f0be1e807484d806",
-   "lite": "5e0e368a5bd7ceecaa6225df3e5452e7a87d6d1d5cc5ff807db2866428f1529b",
-   "bytes": 5822,
-   "liteBytes": 12434,
-   "psnr": 39.5,
-   "shownPsnr": 44.8
+  "sprites/aposentado.idle16-se.03d5738eeb3e.webp": {
+   "source": "03d5738eeb3ec8a9addba7e67eb858a132b1746e8bebab1e72e9832b7771fd5d",
+   "lite": "4d6a72ae85aa9962e3eb541894b5ab94112044a18ae128852ed0059d5f8f5013",
+   "bytes": 53272,
+   "liteBytes": 36250,
+   "psnr": 38.3,
+   "shownPsnr": 42.9
+  },
+  "sprites/aposentado.idle16-se.f0a75e5a6c01.webp": {
+   "source": "f0a75e5a6c018b3b86e5180db509382240c15af0606bd5cf66c2863573d6fc8b",
+   "lite": "fc8a624dd892036b87e3518084a6d3ccee21fa9025c0ad952a71ff47404f7557",
+   "bytes": 51780,
+   "liteBytes": 35912,
+   "psnr": 38.2,
+   "shownPsnr": 42.9
+  },
+  "sprites/aposentado.idle16-w.581a04ffd519.webp": {
+   "source": "581a04ffd51934f6ba129dd76a4ba58cabecdecc2c4826c2b0c9d9ffec1aa1c7",
+   "lite": "cdf47997a64df65528fbe1d23a188b1ca52bee78dfab4c64bb155df9484b607a",
+   "bytes": 44830,
+   "liteBytes": 29740,
+   "psnr": 39.7,
+   "shownPsnr": 44.3
+  },
+  "sprites/aposentado.idle16-w.c961fbde2d34.webp": {
+   "source": "c961fbde2d342d757e1f726e2167516c9bc38b53b3a7bf05e93a6e87b6811277",
+   "lite": "40092c80e579438717a6dc064ada854c0e6bec296f2ae24a37688aa46b027777",
+   "bytes": 45360,
+   "liteBytes": 30248,
+   "psnr": 39.7,
+   "shownPsnr": 44.2
   },
   "sprites/aposentado.pull16-n.f86d2a03069a.webp": {
    "source": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
@@ -31549,45 +31589,85 @@
    "psnr": 35.8,
    "shownPsnr": 39.2
   },
-  "sprites/vendedor-praia.idle16-n.a01271ec6a7b.webp": {
-   "source": "a01271ec6a7bd7d7eaa0f4053ed75e2f7bd9e6a64e7de3fc702eacce67bbae8c",
-   "lite": "194d9bcce7435d205398e8d7bd0ed7a8d357798847ed31678ae93b6cf22f56f3",
-   "bytes": 5532,
-   "liteBytes": 16498,
-   "psnr": 36.4,
+  "sprites/vendedor-praia.idle16-n.47f176f36c65.webp": {
+   "source": "47f176f36c658ef0ac0137d8f6451c7ba91bd6cb6d2551e77eedabb34046da8e",
+   "lite": "706d781a58931464a01d1207c9d9540afda7c8e15ec7f54943687ff22467e495",
+   "bytes": 59578,
+   "liteBytes": 41882,
+   "psnr": 36.8,
    "shownPsnr": 40.3
   },
-  "sprites/vendedor-praia.idle16-nw.3df2de804cab.webp": {
-   "source": "3df2de804cab3cc095087c55933e6dffa870b6d7111fa51b3f1bd75f2255dd6c",
-   "lite": "ca2eee8522af8a83ba7cfc13fe9b62f119a14468a6e1ae076ec4da4ff6642797",
-   "bytes": 5220,
-   "liteBytes": 15414,
-   "psnr": 36.5,
+  "sprites/vendedor-praia.idle16-n.871540042e9d.webp": {
+   "source": "871540042e9db6a89e5238653b33023bae672775718938d708a08bcc8c6ddf52",
+   "lite": "77b7730db9794b919f52f8fdc2273450ad45a71831e9939af6ccbcaa562eee7f",
+   "bytes": 60170,
+   "liteBytes": 42242,
+   "psnr": 36.9,
+   "shownPsnr": 40.4
+  },
+  "sprites/vendedor-praia.idle16-nw.11147b05113e.webp": {
+   "source": "11147b05113eab75986ac39fc7ab9c4c1ffa84058e53974bd4a13694710600b9",
+   "lite": "e77fd6423c321b70b6f5af421dfdfa0ae127867d74d05d1e0b6eaa40f1fa84c7",
+   "bytes": 54532,
+   "liteBytes": 39162,
+   "psnr": 36.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/vendedor-praia.idle16-nw.915361801ead.webp": {
+   "source": "915361801ead9fbdde6663ca848fc941154f00a0a284730d8a8c69552643f191",
+   "lite": "1e8dc778f5b4925efae09a4e13cc5f048278cdbf74f1c5ffca4f0a50683ce944",
+   "bytes": 55726,
+   "liteBytes": 39370,
+   "psnr": 36.9,
+   "shownPsnr": 40.6
+  },
+  "sprites/vendedor-praia.idle16-s.16f82c70c21b.webp": {
+   "source": "16f82c70c21b7839ecd43d5ba398ef49068e50c8a8fe983676e27cae95b762dc",
+   "lite": "21f7b0e6a8f1c17f522334bda27262e5a1c95f52b5cd074ef3aea1f1b61f2b15",
+   "bytes": 61372,
+   "liteBytes": 43434,
+   "psnr": 35.4,
+   "shownPsnr": 40
+  },
+  "sprites/vendedor-praia.idle16-s.92f9ba81ef42.webp": {
+   "source": "92f9ba81ef4250e953c826a02b2490e9ee8cde128f94da10add2a472aee32437",
+   "lite": "22feb77bf78fd81e1a507e2ff3d51dd3ff399f89d3481f121cc29f8fba91095f",
+   "bytes": 60090,
+   "liteBytes": 43134,
+   "psnr": 35.4,
    "shownPsnr": 39.9
   },
-  "sprites/vendedor-praia.idle16-s.66eb7104dfb0.webp": {
-   "source": "66eb7104dfb0ff110fb344cf79bd241870d55cc122aae51ca55250f618a8889c",
-   "lite": "97afe47839062b8693991cf174e7e6ea204a006595d29e8d61356d568ed603dc",
-   "bytes": 5478,
-   "liteBytes": 17010,
+  "sprites/vendedor-praia.idle16-se.12e751416f00.webp": {
+   "source": "12e751416f009cfee4216585331ab5079d309be115217d9a20ef1de6e03e4137",
+   "lite": "6276b6c5058a6a28a71c3059de3ee961e416c4395eb1e0b078d27cbb980ba35e",
+   "bytes": 56810,
+   "liteBytes": 41278,
+   "psnr": 35.3,
+   "shownPsnr": 40.2
+  },
+  "sprites/vendedor-praia.idle16-se.afe577db8ef5.webp": {
+   "source": "afe577db8ef5cb63818f73c5baf77bfb907b4693d254aecbafa3d4c31fea064f",
+   "lite": "a72ea1568a42b9c4288789d8c9f24ab3cf294def93c37f00a243264ad3e791b9",
+   "bytes": 55918,
+   "liteBytes": 40898,
    "psnr": 35.2,
-   "shownPsnr": 39.2
+   "shownPsnr": 40.2
   },
-  "sprites/vendedor-praia.idle16-se.92b9c34f995a.webp": {
-   "source": "92b9c34f995ab15bacd91c63ffab9a8a51a4877f3d613a0c807e6eeb048595b6",
-   "lite": "96bd41c3bebb255861daa6d76aa09bd8da24d0a95ba3a25cb3781227c3745ba0",
-   "bytes": 5168,
-   "liteBytes": 15960,
-   "psnr": 34.5,
-   "shownPsnr": 39.4
+  "sprites/vendedor-praia.idle16-w.d447ad2933a2.webp": {
+   "source": "d447ad2933a2785f7b16c83f126447647720abfdc713f9ead2b04cdba85dfa1c",
+   "lite": "eb58a7756f20a50f5aed9ee77fb8cdcb096d6205535ddad951e6058f37a2b1a5",
+   "bytes": 44922,
+   "liteBytes": 33324,
+   "psnr": 37.3,
+   "shownPsnr": 41.2
   },
-  "sprites/vendedor-praia.idle16-w.ae72679d0dbb.webp": {
-   "source": "ae72679d0dbbecfe7d78ca9c6764fe41493fc43eb1641cb338f6525a9bd0edff",
-   "lite": "f18b57dd961419462df6608e108c87b5739ce7e564482d9aa47ee0bfa0923b95",
-   "bytes": 4246,
-   "liteBytes": 12694,
-   "psnr": 37.2,
-   "shownPsnr": 41.1
+  "sprites/vendedor-praia.idle16-w.ee0f644fce86.webp": {
+   "source": "ee0f644fce865148e928e33f141562265e91fdf279a3d9867c9d61b5be3f72eb",
+   "lite": "458f784b50b2bd0a9b595b6833a0adf4db13b59339aec207168c707a1d53a015",
+   "bytes": 45338,
+   "liteBytes": 33480,
+   "psnr": 37.3,
+   "shownPsnr": 41.3
   },
   "sprites/vendedor-praia.pull16-n.fe3908b26ca4.webp": {
    "source": "fe3908b26ca4b0aa6addd5f2a2b78637a0e861ee27c07a615096894f2d95b0ff",

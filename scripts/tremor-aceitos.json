@@ -691,6 +691,18 @@
   "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
   "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
  },
+ "motoboy|crash|E|3": {
+  "sha256": "2d6e2d088a69b5ecf4ff9763e9519e95a0ed456883c93b96339aaea047ed953c",
+  "motivo": "motoboy crash: queda da moto de propósito, aceito pelo usuário 24/10"
+ },
+ "motoboy|crash|S|2": {
+  "sha256": "2d6e2d088a69b5ecf4ff9763e9519e95a0ed456883c93b96339aaea047ed953c",
+  "motivo": "motoboy crash: queda da moto de propósito, aceito pelo usuário 24/10"
+ },
+ "motoboy|crash|S|3": {
+  "sha256": "2d6e2d088a69b5ecf4ff9763e9519e95a0ed456883c93b96339aaea047ed953c",
+  "motivo": "motoboy crash: queda da moto de propósito, aceito pelo usuário 24/10"
+ },
  "o-grande-credor|charge|E|5": {
   "sha256": "b84d3e4e6baac5379c1213388e07d1ad16a1e4e6b060ff4449469cf02c91326b",
   "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"

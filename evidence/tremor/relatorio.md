@@ -1,6 +1,6 @@
 # Tremor por quadro — 1133 folhas, 10114 achados em 6805 quadros
 
-Loops: 1892 achados (1534 quadros desalinhados, 0 de arte nova, 5 poses aceitas). Dano e ações: 8222 achados (4970 desalinhados, 3 de arte nova, 293 poses aceitas).
+Loops: 1892 achados (1534 quadros desalinhados, 0 de arte nova, 5 poses aceitas). Dano e ações: 8222 achados (4970 desalinhados, 0 de arte nova, 296 poses aceitas).
 
 Mede o desenho dentro da célula, não a posição no mundo: o "andar no lugar" (76bffa9) não entra aqui.
 Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé, centroide, altura), fica com IoU ≥ 0.8 × o IoU típico de dois quadros seguidos: o pipeline corrige com a correção da tabela (px da célula). Arte nova = mesmo alinhado destoa: precisa redesenhar o quadro.
@@ -149,9 +149,6 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 
 | inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |
 |---|---|---|---|---|---|---|---|
-| motoboy | crash | E | 3 | altura, cy, escala | 5.69 | 0.425 → 0.584 / 0.777 | 2.7, 0, 0.97 |
-| motoboy | crash | S | 2 | altura, escala, cy | 4.49 | 0.532 → 0.654 / 0.841 | 6.2, 0, 0.975 |
-| motoboy | crash | S | 3 | cx | 1.05 | 0.572 → 0.661 / 0.841 | -6.5, 0, 0.976 |
 
 ## Poses aceitas (scripts/tremor-aceitos.json) — 40 piores
 
@@ -173,6 +170,7 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | urubu-fiscal | wake | 0 | 2 | cy, pe, escala | 5.9 | 0.413 → 0.655 / 0.882 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | coco-que-vende-gente | death | NW | 7 | altura, cy, escala | 5.79 | 0.421 → 0.393 / 0.711 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | auditor-das-sombras | death | W | 7 | cy | 5.76 | 0.086 → 0.266 / 0.806 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| motoboy | crash | E | 3 | altura, cy, escala | 5.69 | 0.425 → 0.584 / 0.777 | motoboy crash: queda da moto de propósito, aceito pelo usuário 24/10 |
 | hater-anonimo | death | S | 8 | altura | 5.67 | 0.265 → 0.443 / 0.757 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | rodinho-do-sinal | death | E | 8 | escala, cy | 5.67 | 0.354 → 0.472 / 0.629 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | fogueteiro | death | E | 6 | cy, cx | 5.51 | 0.134 → 0.362 / 0.672 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
@@ -196,4 +194,3 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | o-grande-credor | death | S | 7 | escala | 4.9 | 0.402 → 0.462 / 0.706 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | glitter-senciente | death | W | 8 | cx, pe | 4.87 | 0.185 → 0.175 / 0.713 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | rodinho-do-sinal | attack | S | 3 | cx | 4.84 | 0.26 → 0.407 / 0.694 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
-| auditor-das-sombras | death | S | 6 | altura | 4.81 | 0.258 → 0.462 / 0.776 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |

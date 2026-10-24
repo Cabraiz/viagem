@@ -234,9 +234,11 @@ test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and outpu
 });
 
 test('city director: knobs change rounds 2+ only; round 1 (tutorial) spawns the same bodies; siegeShare per round',()=>{
-  const base=cityRun(3,4,true);
+  // Seed 8 (was 3 before vida-inimigos-estilo-clash): count ×2 in round 2 moves the run's stream, so the later rounds'
+  // modifier (its hpMult) can differ between the two runs; on seed 8 rounds 2-4 draw the same theme in both.
+  const base=cityRun(8,4,true);
   const knobs=cityBalanceFrom({all:{hp:1.25},rounds:{2:{count:2},3:{siegeShare:1}}},NEUTRAL_CITY_BALANCE);
-  const tuned=cityRun(3,4,true,{cityBalance:knobs});
+  const tuned=cityRun(8,4,true,{cityBalance:knobs});
   assert.equal(tuned.ends,4);
   const r1=(b:Body[])=>b.filter(x=>x.round===1).map(x=>[x.id,x.tick,x.kind,x.scale,x.siege]);
   assert.ok(r1(base.bodies).length>0,'the tutorial spawned');

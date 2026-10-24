@@ -171,16 +171,17 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 22 'Sinal do Recreio' (× 1.25).
-  const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c22=directorSpeeds(city,22,3,s=>citySpeed(s));
+  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 18 'Sinal do Recreio' (× 1.25; 22 before
+  // vida-inimigos-estilo-clash moved the stream with ×0.7 bodies).
+  const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c18=directorSpeeds(city,18,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
-  console.log(`[cidade-05c] director speeds: city seed 4 ${c4.checked} bodies (multipliers ${c4.mults.join(', ')}), seed 22 ${c22.checked} (${c22.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
-  for(const [name,r] of [['city 4',c4],['city 22',c22],['island',i],['endless',n]] as const){
+  console.log(`[cidade-05c] director speeds: city seed 4 ${c4.checked} bodies (multipliers ${c4.mults.join(', ')}), seed 18 ${c18.checked} (${c18.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
+  for(const [name,r] of [['city 4',c4],['city 18',c18],['island',i],['endless',n]] as const){
     assert.ok(r.checked>0,`${name}: bodies were spawned`);
     assert.deepEqual(r.bad.slice(0,8),[],`${name}: ${r.bad.length} bodies with another speed`);
   }
-  const mults=new Set([...c4.mults,...c22.mults]);
+  const mults=new Set([...c4.mults,...c18.mults]);
   for(const m of [.75,1,1.25])assert.ok(mults.has(m),`city: a round with speed multiplier ${m} was checked (${[...mults].join(', ')})`);
   // The boss controller keeps the authored speed on its body outside the city (its walk is measured in section 7).
   for(const terrain of [new TerrainField(3),new TerrainField(3,{world:'infinito'})]){

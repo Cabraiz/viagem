@@ -20,7 +20,7 @@ import type {EnemyState,LevelOffer,OfferSource,PickupKind,PickupState,SimPlayer,
 import type {SimContext,SimSystem} from './context.ts';
 import type {Point} from '../maps/index.ts';
 import {isLand} from '../maps/index.ts';
-import {HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';
+import {CLASH_XP,HEAL_AMOUNT,HEAL_CHOICE,ARM_SECONDS,HELD_DEADLINE,OFFER_SECONDS,applyChoice,defaultIndexFor,isEligible,isHeldOffer,rollChoices} from '../rules/index.ts';
 import type {ItemCatalog} from '../rules/index.ts';
 import {openChest as openEvolutionChest} from './evolutions.ts';
 import type {ChestOptions} from './evolutions.ts';
@@ -170,7 +170,8 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
     const near=()=>({x:enemy.x+r.range(-DROP_SPREAD,DROP_SPREAD),y:enemy.y+r.range(-DROP_SPREAD,DROP_SPREAD)});
     const out:PickupState[]=[];
     if(enemy.elite&&!enemy.boss)out.push(addPickup(ctx,'chest',1,near(),collectors));
-    const heal=r.chance(HEAL_DROP_CHANCE*luck);
+    // Fewer, sturdier bodies (rules CLASH_XP): a body's coxinha chance pays for the ones that no longer come.
+    const heal=r.chance(HEAL_DROP_CHANCE*(enemy.boss?1:CLASH_XP)*luck);
     // The old ímã roll, drawn and dropped: the run's random stream stays as before D-054 (seeded runs and tests keep their story).
     r.next();
     if(heal)out.push(addPickup(ctx,'heal',HEAL_AMOUNT,near(),collectors,ctx.tick+ticks(DROP_LIFETIME_SECONDS)));

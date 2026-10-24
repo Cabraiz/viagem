@@ -24,7 +24,7 @@
  */
 import type {NestPlan,NestSize,Point} from '../../maps/index.ts';
 import {Rng,ticks,type EnemyState} from '../../contract/index.ts';
-import {ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
+import {CLASH_BODIES,ROUNDS,playerScale,type EnemyRole,type RoundRoster} from '../../rules/index.ts';
 import type {SimContext,SimSystem} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
 import {assignFoco} from '../enemies/foco.ts';
@@ -69,7 +69,9 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // 1p 0/16 and 6p 2/16 (the car fell). The pace that keeps every body (the user: "sem diminuir número de inimigos"):
 // period 90/60 s, the first wave 90–120 s after the minuto de Minerva, 1–3 recruits a second, march × .85 on 1p.
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[90,120] as [number,number],alive:[8,60] as [number,number],
-  warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
+  warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,
+  // × CLASH_BODIES (rules/enemy-roles.ts): the Clash hp table's fewer, sturdier bodies (outside group and map quota).
+  size:[CLASH_BODIES,1.85*CLASH_BODIES] as [number,number],mapShare:[.1*CLASH_BODIES,.1*CLASH_BODIES] as [number,number],
   trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5};
 /** The first wave's window (s): NEST_PACE.first. */
 export const FIRST_EXIT:readonly [number,number]=NEST_PACE.first;

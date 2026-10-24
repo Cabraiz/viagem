@@ -39,7 +39,17 @@ function fresh(path,stored,versions){
 /** A response worth storing: same-origin, complete, 200. */
 const storable=response=>!!response&&response.type==='basic'&&response.status===200;
 
-self.__viagemSw={route,fresh,storable,CACHE,VERSIONS_URL,VERSION_HEADER};
+/**
+ * Whether a page load goes through the worker with cache:'no-cache': a same-origin GET navigation; anything else
+ * (another origin, a form POST) is left to the browser.
+ * @param {{method:string,url:string}} request @param {string} origin
+ */
+function navigateFresh(request,origin){
+  if(request.method!=='GET')return false;
+  try{return new URL(request.url).origin===origin;}catch{return false;}
+}
+
+self.__viagemSw={route,fresh,storable,navigateFresh,CACHE,VERSIONS_URL,VERSION_HEADER};
 
 let versions,versionsText='',versionsAt=0,versionsAsk;
 /** The versions file, network first (bounded), then the last copy kept in the cache. */
@@ -116,8 +126,15 @@ self.addEventListener('activate',event=>{
 });
 self.addEventListener('fetch',event=>{
   const request=event.request;
-  // A page load: the deploy may have changed, so the versions file is asked again (not awaited here).
-  if(request.mode==='navigate'){event.waitUntil(loadVersions(true).catch(()=>undefined));return;}
+  // A page load: the deploy may have changed, so the versions file is asked again (not awaited here), and the page
+  // itself skips the HTTP cache (BUG-20261024-ORQ-arrastar-atualiza-versao-nova): Pages serves it with max-age=600, so
+  // reopening the game (or the installed app) within 10 min of a deploy came back to the old build, which the rooms
+  // refuse. no-cache revalidates (304 when nothing changed); offline, the plain request decides.
+  if(request.mode==='navigate'){
+    event.waitUntil(loadVersions(true).catch(()=>undefined));
+    if(navigateFresh(request,self.location.origin))event.respondWith(fetch(new Request(request,{cache:'no-cache'})).catch(()=>fetch(request)));
+    return;
+  }
   if(route({method:request.method,url:request.url,range:request.headers.has('range')},self.location.origin)!=='cache')return;
   event.respondWith(serve(request));
 });

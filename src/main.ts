@@ -14,8 +14,10 @@ import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
-import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
+import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, updateNow, type ResumeIntent } from './client/ui/update-toast.ts';
+import { startPullToRefresh } from './client/ui/pull-refresh.ts';
 import './client/ui/update-toast.css';
+import './client/ui/pull-refresh.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
 import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, aneisHtml, aneisOf } from './client/ui/insta.ts';
@@ -30,8 +32,14 @@ mountIcons();
 // Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
 const session=()=>{try{return sessionStorage;}catch{return undefined;}};
 const storage=()=>{try{return localStorage;}catch{return undefined;}};
-linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
-  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
+const versionWatch=startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
+  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))});
+linkWatch(versionWatch);
+// arrastar-atualiza-versao-nova: a page from the HTTP cache (an old SW, or the browser's own) may be an older build than
+// the site: ask once at startup, so it reloads into the new one before the rooms refuse it (the watch's guard stops loops).
+void versionWatch.check();
+// ...and in the menus, pulling down reloads (the browser's own pull-to-refresh is off: fullscreen, installed app, html overflow).
+startPullToRefresh({doc:document,win:window,inMatch:()=>inMatchOf(document),refresh:()=>updateNow()});
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
 // the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
 void startArt();

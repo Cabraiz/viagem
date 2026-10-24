@@ -1,0 +1,11 @@
+/* Puxar para atualizar (arrastar-atualiza-versao-nova): a ficha redonda desce do topo com o dedo, gira, e fica Amarela quando soltar já atualiza. */
+.pull-refresh{position:fixed;left:50%;top:calc(env(safe-area-inset-top) - 52px);z-index:2147483000;transform:translate(-50%,var(--pull,0px));
+  display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border:2px solid var(--c-breu);border-radius:var(--r-janela);
+  background:var(--c-lilas);color:var(--c-papel);box-shadow:0 0 0 2px var(--c-papel),var(--s-1);font:800 var(--t-13)/1.1 var(--f-sistema);
+  pointer-events:none;white-space:nowrap}
+.pull-refresh-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--r-circulo);background:var(--c-papel);color:var(--c-breu);
+  transform:rotate(var(--pull-turn,0deg))}
+.pull-refresh[data-ready=true]{background:var(--c-amarelo);color:var(--c-breu)}
+.pull-refresh[data-going=true] .pull-refresh-icon{animation:pull-refresh-spin .8s linear infinite}
+@keyframes pull-refresh-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pull-refresh[data-going=true] .pull-refresh-icon{animation:none}}

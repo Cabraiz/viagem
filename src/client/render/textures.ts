@@ -486,6 +486,13 @@ const PICKUP_DRAW:Record<string,(g:G)=>void>={
     g.fillStyle(0x1e1530).fillRect(-1,2,2,2.4);
     g.lineStyle(2.2,0x1e1530).beginPath().arc(0,-2.5,3.2,Math.PI*1.05,Math.PI*.35,false).strokePath();
   },
+  // The kill's cédula without its art (render/cedula.ts): a mint note with a Breu edge, a darker oval and corner marks.
+  grana:g=>{
+    sil(g,[['r',-22,-11,44,22,3]],0x9fd8b0,0x1e4d3a,1.6);
+    g.fillStyle(0xc9ecd2).fillRect(-19,-8,38,4);
+    g.fillStyle(0x4f9a70).fillEllipse(0,1,15,14,16);g.fillStyle(0xe2a04a).fillEllipse(0,2,8,8,12);
+    g.fillStyle(0x1e4d3a).fillRect(-18,-2,6,8).fillRect(12,-2,6,8);
+  },
   resource:g=>{
     g.save().translateCanvas(0,2);
     sil(g,[['p',[-11,8,-12,-1,-5,-8,5,-7,11,0,10,8]]],0xa59a8a,0x6c6255);
@@ -562,25 +569,4 @@ export function ensureHordeTextures(scene:Phaser.Scene):void {
   }
   drawFx(make);
   g.destroy();
-  drawBoleto(scene);
-}
-
-/**
- * Boleto of the rain (VGM-053B): a Papel slip with a Breu edge (double-edge rule on sand and grass), the Lilás bank band
- * with "R$" in Papel and the bar code. 1.4× the gem (~24 px CSS at the follow zoom, the smallest sticker size of §2.4),
- * so the rain reads as boletos and not as gems or cards. Drawn on a canvas for the "R$".
- */
-export const BOLETO_SIZE={width:46,height:34} as const;
-function drawBoleto(scene:Phaser.Scene){
-  if(scene.textures.exists(FX.boleto))return;
-  const tex=scene.textures.createCanvas(FX.boleto,BOLETO_SIZE.width,BOLETO_SIZE.height);if(!tex)return;
-  const c=tex.getContext(),k=1.4,hex=(v:number)=>`#${v.toString(16).padStart(6,'0')}`;
-  const breu=hex(tokenColor('--c-breu')),papel=hex(tokenColor('--c-papel')),lilas=hex(tokenColor('--c-lilas'));
-  c.save();c.scale(k,k);
-  const box=(x:number,y:number,w:number,h:number,r:number,fill:string)=>{c.fillStyle=fill;c.beginPath();c.roundRect(x,y,w,h,r);c.fill();};
-  box(1,2,30,21,3,breu);box(3,4,26,17,2,papel);c.fillStyle=lilas;c.fillRect(3,4,26,6);
-  c.fillStyle=papel;c.font='900 6.5px "Londrina Solid", sans-serif';c.textBaseline='middle';c.fillText('R$',5,7.4);
-  const bars=[1,2,1,1,3,1,2,1,1,2,1,3,1,1,2];let x=5;c.fillStyle=breu;
-  for(const [i,w] of bars.entries()){if(i%2===0)c.fillRect(x,12,w*.8,7);x+=w*.8+.6;if(x>27)break;}
-  c.restore();tex.refresh();
 }

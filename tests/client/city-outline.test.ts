@@ -10,7 +10,7 @@ import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {CITY_CONTOUR,YouMarkers,type HeroMark} from '../../src/client/render/you.ts';
 import {OUTLINE_DIRS,RING_UNDER,STICKER_CSS} from '../../src/client/render/you-rules.ts';
-import {ENEMY_KINDS,ENEMY_TEXTURES,PICKUP_KINDS,enemyTexture,pickupTexture,FX} from '../../src/client/render/keys.ts';
+import {ENEMY_KINDS,ENEMY_TEXTURES,PICKUP_KINDS,enemyTexture,pickupTexture} from '../../src/client/render/keys.ts';
 import {ELITE_ART_SCALE,applyEnemyArt,enemyArtKey,enemyDrawScale} from '../../src/client/art/horde-art.ts';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {CITY_VIEW_SCALE,cityZoom} from '../../src/client/framing.ts';
@@ -43,7 +43,7 @@ test('ground luminance under a world point reads the city grid (snow outside it)
 });
 
 test('texture keys: city copies are tagged, no base key is',()=>{
-  const bases=[...ENEMY_KINDS.flatMap(k=>[enemyTexture(k),enemyTexture(k,true)]),...PICKUP_KINDS.map(pickupTexture),FX.boleto,
+  const bases=[...ENEMY_KINDS.flatMap(k=>[enemyTexture(k),enemyTexture(k,true)]),...PICKUP_KINDS.map(pickupTexture),
     'sprite:cidadao-comum:dir4',enemyArtKey('bebado','walk',0,1)];
   for(const base of bases)assert.ok(!isCityKey(base),`${base} is not a city key`);
   for(const k of ENEMY_KINDS){assert.equal(ENEMY_TEXTURES[k][0],enemyTexture(k));assert.equal(ENEMY_TEXTURES[k][1],enemyTexture(k,true));}

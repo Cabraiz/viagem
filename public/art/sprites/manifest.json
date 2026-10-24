@@ -35,6 +35,186 @@
     "aposentado": {
       "kind": "dir8",
       "files": {
+        "attack16-N": {
+          "file": "aposentado.attack16-n.33f7d65b44ca.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.93,
+          "figure": {
+            "left": 23,
+            "top": 22,
+            "right": 78,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-n.33f7d65b44ca.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "33f7d65b44cae597d618882da14d5a2c6eb45604133e94125d101522ca094749"
+            }
+          ],
+          "sha256": "33f7d65b44cae597d618882da14d5a2c6eb45604133e94125d101522ca094749"
+        },
+        "attack16-NW": {
+          "file": "aposentado.attack16-nw.6b50e6b35868.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.68,
+          "figure": {
+            "left": 17,
+            "top": 23,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-nw.6b50e6b35868.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "6b50e6b3586866553b6af07ae7e24dc7fa9f31a11a3113590007d0839196bdb3"
+            }
+          ],
+          "sha256": "6b50e6b3586866553b6af07ae7e24dc7fa9f31a11a3113590007d0839196bdb3"
+        },
+        "attack16-S": {
+          "file": "aposentado.attack16-s.83201f6755bc.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 23,
+            "top": 27,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-s.83201f6755bc.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "83201f6755bce12014bc7ea0ec03f8e25fb22da275b4d701bab40f8aa165e0cf"
+            }
+          ],
+          "sha256": "83201f6755bce12014bc7ea0ec03f8e25fb22da275b4d701bab40f8aa165e0cf"
+        },
+        "attack16-SE": {
+          "file": "aposentado.attack16-se.00989823152c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.59,
+          "figure": {
+            "left": 24,
+            "top": 23,
+            "right": 75,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-se.00989823152c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "00989823152cc1e08d35ecc274e41f41aefd9d7cbf76a032f4142770f66bf571"
+            }
+          ],
+          "sha256": "00989823152cc1e08d35ecc274e41f41aefd9d7cbf76a032f4142770f66bf571"
+        },
+        "attack16-W": {
+          "file": "aposentado.attack16-w.d8d3f9e066e6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.76,
+          "figure": {
+            "left": 19,
+            "top": 24,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-w.d8d3f9e066e6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96"
+            }
+          ],
+          "sha256": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96"
+        },
         "dir4": {
           "file": "aposentado.dir4.webp",
           "cell": [
@@ -105,9 +285,2379 @@
             }
           ],
           "sha256": "1b8ff8b8c9b6b737212a9a388a95f5e78e44f7d81000d1d59eacc0f7c27ee357"
+        },
+        "hurt16-N": {
+          "file": "aposentado.hurt16-n.e5fbc3b16d14.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.05,
+          "figure": {
+            "left": 22,
+            "top": 23,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-n.e5fbc3b16d14.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "e5fbc3b16d14d0df4c971bcf8bc356dfad1972e3c9a6b7cebe031e6e66572aa8"
+            }
+          ],
+          "sha256": "e5fbc3b16d14d0df4c971bcf8bc356dfad1972e3c9a6b7cebe031e6e66572aa8"
+        },
+        "hurt16-NW": {
+          "file": "aposentado.hurt16-nw.deeb7475f924.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.98,
+          "figure": {
+            "left": 22,
+            "top": 24,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-nw.deeb7475f924.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "deeb7475f924e18b68c35c78c41125214a1dbd82a8f963ea4aa34267d3b3a034"
+            }
+          ],
+          "sha256": "deeb7475f924e18b68c35c78c41125214a1dbd82a8f963ea4aa34267d3b3a034"
+        },
+        "hurt16-S": {
+          "file": "aposentado.hurt16-s.b42e6befd9c3.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.09,
+          "figure": {
+            "left": 24,
+            "top": 25,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-s.b42e6befd9c3.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "b42e6befd9c3c543c519ae4019a3acb1ac4b6bcd7c4e5dda7c77e7e5789d0069"
+            }
+          ],
+          "sha256": "b42e6befd9c3c543c519ae4019a3acb1ac4b6bcd7c4e5dda7c77e7e5789d0069"
+        },
+        "hurt16-SE": {
+          "file": "aposentado.hurt16-se.e832cd82a506.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 24,
+            "top": 23,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-se.e832cd82a506.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "e832cd82a506268b1cc6fb64db873f4369a333d435600fd723f40f19a75321df"
+            }
+          ],
+          "sha256": "e832cd82a506268b1cc6fb64db873f4369a333d435600fd723f40f19a75321df"
+        },
+        "hurt16-W": {
+          "file": "aposentado.hurt16-w.89e56fd8f4e0.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.87,
+          "figure": {
+            "left": 30,
+            "top": 26,
+            "right": 68,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-w.89e56fd8f4e0.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "89e56fd8f4e033dda22eccee87711297759c1cdab8596083161b1102baed6eae"
+            }
+          ],
+          "sha256": "89e56fd8f4e033dda22eccee87711297759c1cdab8596083161b1102baed6eae"
+        },
+        "idle16-N": {
+          "file": "aposentado.idle16-n.c18386ea358b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.05,
+          "figure": {
+            "left": 27,
+            "top": 24,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-n.c18386ea358b.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "c18386ea358be7e354d4da69b55bced14edc82fe2aa526ad0241dd0be8d13df0"
+            }
+          ],
+          "sha256": "c18386ea358be7e354d4da69b55bced14edc82fe2aa526ad0241dd0be8d13df0"
+        },
+        "idle16-NW": {
+          "file": "aposentado.idle16-nw.1c006b955baa.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.98,
+          "figure": {
+            "left": 27,
+            "top": 24,
+            "right": 64,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-nw.1c006b955baa.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "1c006b955baac53f887c289b7a48d6ee4a48038ffdba7ece276b23b00041cde8"
+            }
+          ],
+          "sha256": "1c006b955baac53f887c289b7a48d6ee4a48038ffdba7ece276b23b00041cde8"
+        },
+        "idle16-S": {
+          "file": "aposentado.idle16-s.3869ae19330e.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.09,
+          "figure": {
+            "left": 27,
+            "top": 26,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-s.3869ae19330e.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "3869ae19330ed56b71a8ffe5f9fcdd690c77642e4534bc01785a9ab6c822baae"
+            }
+          ],
+          "sha256": "3869ae19330ed56b71a8ffe5f9fcdd690c77642e4534bc01785a9ab6c822baae"
+        },
+        "idle16-SE": {
+          "file": "aposentado.idle16-se.046ce7263364.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 28,
+            "top": 24,
+            "right": 68,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-se.046ce7263364.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "046ce72633649ba3e67502e72cdc6202561367c3a4197f4c1fad59a4b7d95fc0"
+            }
+          ],
+          "sha256": "046ce72633649ba3e67502e72cdc6202561367c3a4197f4c1fad59a4b7d95fc0"
+        },
+        "idle16-W": {
+          "file": "aposentado.idle16-w.32242bb541ed.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.87,
+          "figure": {
+            "left": 33,
+            "top": 25,
+            "right": 63,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-w.32242bb541ed.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "32242bb541ed481194c1e0f28ae0a5cc4a4933fc163b2926f0be1e807484d806"
+            }
+          ],
+          "sha256": "32242bb541ed481194c1e0f28ae0a5cc4a4933fc163b2926f0be1e807484d806"
+        },
+        "pull16-N": {
+          "file": "aposentado.pull16-n.f86d2a03069a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.83,
+          "figure": {
+            "left": 30,
+            "top": 14,
+            "right": 67,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-n.f86d2a03069a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67"
+            }
+          ],
+          "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
+          "phase": {
+            "d": [
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-NW": {
+          "file": "aposentado.pull16-nw.4ec66f679327.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 25,
+            "top": 24,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-nw.4ec66f679327.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "4ec66f6793271f093656a0a19fe59dab5148e49f8fc9a2bf29662ed0dd9ffe2a"
+            }
+          ],
+          "sha256": "4ec66f6793271f093656a0a19fe59dab5148e49f8fc9a2bf29662ed0dd9ffe2a",
+          "phase": {
+            "d": [
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-S": {
+          "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.01,
+          "figure": {
+            "left": 31,
+            "top": 27,
+            "right": 65,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc"
+            }
+          ],
+          "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc",
+          "phase": {
+            "d": [
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-SE": {
+          "file": "aposentado.pull16-se.7d5a96f3ff99.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.61,
+          "figure": {
+            "left": 25,
+            "top": 25,
+            "right": 77,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-se.7d5a96f3ff99.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "7d5a96f3ff9944aabc77d869c5b395ecf289abe2f53b5f21ec667aa7c50b2b53"
+            }
+          ],
+          "sha256": "7d5a96f3ff9944aabc77d869c5b395ecf289abe2f53b5f21ec667aa7c50b2b53",
+          "phase": {
+            "d": [
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-W": {
+          "file": "aposentado.pull16-w.90fbf5f87134.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 51.03,
+          "figure": {
+            "left": 21,
+            "top": 27,
+            "right": 77,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-w.90fbf5f87134.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "90fbf5f8713453dcab935b71d9c78920097327e9fe428d3e45914c0e87269431"
+            }
+          ],
+          "sha256": "90fbf5f8713453dcab935b71d9c78920097327e9fe428d3e45914c0e87269431",
+          "phase": {
+            "d": [
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-N": {
+          "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 30,
+            "top": 26,
+            "right": 67,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f"
+            }
+          ],
+          "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f",
+          "phase": {
+            "d": [
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-NW": {
+          "file": "aposentado.push16-nw.69f6b2ae90a9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 42.37,
+          "figure": {
+            "left": 14,
+            "top": 22,
+            "right": 71,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-nw.69f6b2ae90a9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "69f6b2ae90a9c0ecc7d42f000fad1d1f6b3de9eca536d46c1a86422ae4039e72"
+            }
+          ],
+          "sha256": "69f6b2ae90a9c0ecc7d42f000fad1d1f6b3de9eca536d46c1a86422ae4039e72",
+          "phase": {
+            "d": [
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-S": {
+          "file": "aposentado.push16-s.888e45d2c0dd.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.52,
+          "figure": {
+            "left": 24,
+            "top": 26,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-s.888e45d2c0dd.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "888e45d2c0dd8eea466c4a2ae225f06d4d778fcce10be17f17864af02a23eadb"
+            }
+          ],
+          "sha256": "888e45d2c0dd8eea466c4a2ae225f06d4d778fcce10be17f17864af02a23eadb",
+          "phase": {
+            "d": [
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-SE": {
+          "file": "aposentado.push16-se.ab9663bb68a9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 52.9,
+          "figure": {
+            "left": 27,
+            "top": 26,
+            "right": 78,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-se.ab9663bb68a9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ab9663bb68a91787478c9a9cbdcd3ec9f1a351967dea1680889b3552f5144d4a"
+            }
+          ],
+          "sha256": "ab9663bb68a91787478c9a9cbdcd3ec9f1a351967dea1680889b3552f5144d4a",
+          "phase": {
+            "d": [
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-W": {
+          "file": "aposentado.push16-w.848bb50f0713.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 39.71,
+          "figure": {
+            "left": 15,
+            "top": 23,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-w.848bb50f0713.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "848bb50f071399ff3980668b43c765aa0b8e9b41bc4e17e3955c7e05e2a51570"
+            }
+          ],
+          "sha256": "848bb50f071399ff3980668b43c765aa0b8e9b41bc4e17e3955c7e05e2a51570",
+          "phase": {
+            "d": [
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-N": {
+          "file": "aposentado.run16-n.c7c875baca98.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 26,
+            "top": 18,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-n.c7c875baca98.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c7c875baca98bfb9d01d32688ad5e873bc08e6490e7c99829ac04a3df72ac30b"
+            }
+          ],
+          "sha256": "c7c875baca98bfb9d01d32688ad5e873bc08e6490e7c99829ac04a3df72ac30b",
+          "phase": {
+            "d": [
+              0.13368,
+              0.13368,
+              0.05217,
+              0.13368,
+              0.02609,
+              0.13368,
+              0.2,
+              0.13368,
+              0.13368,
+              0.13368,
+              0.05217,
+              0.13368,
+              0.02609,
+              0.13368,
+              0.2,
+              0.13368
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                11.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                11.5
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-NW": {
+          "file": "aposentado.run16-nw.3689aaeeeaa6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.74,
+          "figure": {
+            "left": 29,
+            "top": 21,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-nw.3689aaeeeaa6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3689aaeeeaa6ab23b6b9c2bcddb770fda409a310c2829fe49a8c33186d2bca05"
+            }
+          ],
+          "sha256": "3689aaeeeaa6ab23b6b9c2bcddb770fda409a310c2829fe49a8c33186d2bca05",
+          "phase": {
+            "d": [
+              0.23366,
+              0.23366,
+              0.23366,
+              0.23366,
+              0.2159,
+              0.23366,
+              0.23366,
+              0.23366,
+              0.05783,
+              0.0694,
+              0.23366,
+              0.23366,
+              0.03855,
+              0.0347,
+              0.23366,
+              0.23366
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                11.2,
+                5.6
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                1.5
+              ],
+              [
+                3.6,
+                1.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                1.8,
+                0.9
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-S": {
+          "file": "aposentado.run16-s.272535c7d895.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 29,
+            "top": 23,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-s.272535c7d895.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "272535c7d89596b35ba5d07e5b1e55714a58bca03ae864e41737431745b2fd22"
+            }
+          ],
+          "sha256": "272535c7d89596b35ba5d07e5b1e55714a58bca03ae864e41737431745b2fd22",
+          "phase": {
+            "d": [
+              0.12121,
+              0.12121,
+              0.12121,
+              0.09821,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.09821,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -5.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -5.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-SE": {
+          "file": "aposentado.run16-se.c0fb6c470784.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 26,
+            "top": 21,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-se.c0fb6c470784.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c0fb6c4707841ff0b2e548d8d613ee9c52e097b8b8f5beba65dfa02b7793e0ef"
+            }
+          ],
+          "sha256": "c0fb6c4707841ff0b2e548d8d613ee9c52e097b8b8f5beba65dfa02b7793e0ef",
+          "phase": {
+            "d": [
+              0.2288,
+              0.2288,
+              0.10889,
+              0.2288,
+              0.2288,
+              0.2288,
+              0.03111,
+              0.2288,
+              0.05444,
+              0.2288,
+              0.2288,
+              0.04667,
+              0.2288,
+              0.2288,
+              0.2288,
+              0.2288
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -5.6,
+                -2.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -1.6,
+                -0.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -2.8,
+                -1.4
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -2.4,
+                -1.2
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-W": {
+          "file": "aposentado.run16-w.1f89451acf13.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.88,
+          "figure": {
+            "left": 26,
+            "top": 25,
+            "right": 73,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-w.1f89451acf13.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1f89451acf13822f32da5fe00fd9633818648595b4a5d625a27f26c05a955c24"
+            }
+          ],
+          "sha256": "1f89451acf13822f32da5fe00fd9633818648595b4a5d625a27f26c05a955c24",
+          "phase": {
+            "d": [
+              0.27579,
+              0.27579,
+              0.02655,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.11504,
+              0.0531,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                1.5,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                6.5,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "walk16-N": {
+          "file": "aposentado.walk16-n.b25e20405860.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.93,
+          "figure": {
+            "left": 25,
+            "top": 21,
+            "right": 71,
+            "bottom": 84
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-n.b25e20405860.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299"
+            }
+          ],
+          "sha256": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299"
+        },
+        "walk16-NW": {
+          "file": "aposentado.walk16-nw.513a46c525bb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.91,
+          "figure": {
+            "left": 29,
+            "top": 20,
+            "right": 66,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-nw.513a46c525bb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "513a46c525bb48f1ee90ae582b8893da91e80c48a12816a86eab3807cfd0e36a"
+            }
+          ],
+          "sha256": "513a46c525bb48f1ee90ae582b8893da91e80c48a12816a86eab3807cfd0e36a"
+        },
+        "walk16-S": {
+          "file": "aposentado.walk16-s.79f3a09ba058.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.75,
+          "figure": {
+            "left": 27,
+            "top": 26,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-s.79f3a09ba058.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "79f3a09ba0585c1c6a9e139bd4456fbb563af64565b0b469e87b6aa7ea81ba5a"
+            }
+          ],
+          "sha256": "79f3a09ba0585c1c6a9e139bd4456fbb563af64565b0b469e87b6aa7ea81ba5a"
+        },
+        "walk16-SE": {
+          "file": "aposentado.walk16-se.1e05d3d2cfda.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 30,
+            "top": 25,
+            "right": 66,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-se.1e05d3d2cfda.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1e05d3d2cfdaeb0430ffcb927a81d17152709a9ebddffd0deec8abfd9a3336ec"
+            }
+          ],
+          "sha256": "1e05d3d2cfdaeb0430ffcb927a81d17152709a9ebddffd0deec8abfd9a3336ec"
+        },
+        "walk16-W": {
+          "file": "aposentado.walk16-w.95d52ad4323c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.78,
+          "figure": {
+            "left": 27,
+            "top": 25,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-w.95d52ad4323c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54"
+            }
+          ],
+          "sha256": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54"
         }
       },
-      "sha256": "14eabd111d751d1b4c2ac3ec6a88c2a369799dd7c70173cdc8e31e28ec7f06b7"
+      "sha256": "d987a9327243b501e5f509bffc58d5f6d46f47b2610ac7bb36c9078a2d8b8002"
     },
     "astrologa": {
       "kind": "dir8",

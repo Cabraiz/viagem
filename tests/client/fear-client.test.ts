@@ -145,3 +145,11 @@ test('the result names the dark',()=>{
   assert.equal(causeCopy(FEAR_SOURCE),DARK_COPY);
   assert.equal(DARK_COPY.name,'Escuridão');
 });
+
+test('a stalled page (one frame every 3 s) still follows the wire: the dark is not stuck seconds behind',()=>{
+  const clock=new FearClock();
+  let f;
+  for(let i=1;i<=3;i++)f=clock.step(fearAt(i*3-1),3000,i*3000);
+  assert.ok(Math.abs(f!.seconds-8)<1,`8 s alone drawn as ${f!.seconds}`);
+  assert.ok(f!.look.alpha>0,'the dark shows');
+});

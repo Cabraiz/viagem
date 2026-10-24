@@ -977,6 +977,7 @@ export class IslandScene extends Phaser.Scene {
   private readonly fearClock=new FearClock();
   private fearDark?:FearDark;
   private fearOn=false;
+  private fearAt?:number;
   private readonly fearSpots:FearSpotPx[]=[];
   /**
    * The dark around the own hero (the server's fear 0..1), the safe spots (allies on their feet, the Uno) lit in it
@@ -987,7 +988,9 @@ export class IslandScene extends Phaser.Scene {
     const raw=combat&&me&&!me.downed&&!me.eliminated&&!me.spectator&&me.hp>0?me.fear??0:0;
     if(!combat&&this.fearOn)this.fearClock.reset();
     if(raw<=0&&!this.fearOn)return;
-    const frame=this.fearClock.step(raw,delta,time,this.reduced);
+    // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
+    const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
+    const frame=this.fearClock.step(raw,dt,time,this.reduced);
     const lit=frame.look.alpha>0||frame.alone;
     this.fearOn=lit||frame.seconds>0;
     const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);

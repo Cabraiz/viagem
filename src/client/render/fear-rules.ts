@@ -114,7 +114,8 @@ export class FearClock {
   private warned=false;
   /** One frame: `raw` the server's fear 0..1 (0 when not in combat, down or out), `dtMs` since the last frame. */
   step(raw:number,dtMs:number,nowMs:number,reduced=false):FearFrame{
-    const value=clamp01(Number.isFinite(raw)?raw:0),dt=Math.max(0,Math.min(dtMs,250))/1000;
+    // Up to 2 s a frame: a slow phone (a few frames a second) still catches up with the wire within a frame or two.
+    const value=clamp01(Number.isFinite(raw)?raw:0),dt=Math.max(0,Math.min(dtMs,2000))/1000;
     if(value>this.last)this.rising=true;else if(value<this.last||value===0)this.rising=false;
     this.last=value;
     // Ease toward the wire, but never lag behind a fall to 0 by more than a moment (company found: the dark goes).

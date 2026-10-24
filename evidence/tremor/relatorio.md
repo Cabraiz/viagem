@@ -1,6 +1,6 @@
-# Tremor por quadro — 1133 folhas, 10142 achados em 6807 quadros
+# Tremor por quadro — 1133 folhas, 10113 achados em 6803 quadros
 
-Loops: 1896 achados (1527 quadros desalinhados, 11 de arte nova). Dano e ações: 8246 achados (4954 desalinhados, 315 de arte nova).
+Loops: 1892 achados (1534 quadros desalinhados, 0 de arte nova, 5 poses aceitas). Dano e ações: 8221 achados (4967 desalinhados, 3 de arte nova, 294 poses aceitas).
 
 Mede o desenho dentro da célula, não a posição no mundo: o "andar no lugar" (76bffa9) não entra aqui.
 Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé, centroide, altura), fica com IoU ≥ 0.8 × o IoU típico de dois quadros seguidos: o pipeline corrige com a correção da tabela (px da célula). Arte nova = mesmo alinhado destoa: precisa redesenhar o quadro.
@@ -12,7 +12,6 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | pombos | 75.2 | 16 | 0 |
 | orelhao-zumbi | 57.2 | 18 | 0 |
 | cobrador-fantasma | 56.7 | 16 | 0 |
-| skatista-de-47 | 55.0 | 14 | 5 |
 | boitata-de-sacolinha | 53.3 | 25 | 0 |
 | glitter-senciente | 43.9 | 20 | 0 |
 | sogra-tita | 41.9 | 22 | 0 |
@@ -31,13 +30,12 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | camelo-pirata | 34.2 | 14 | 0 |
 | urubu-fiscal | 33.6 | 11 | 0 |
 | rapa-da-prefeitura | 33.0 | 17 | 0 |
-| quati-influencer | 32.8 | 14 | 1 |
 | buraco-de-rua | 32.3 | 14 | 0 |
-| barata-voadora | 31.1 | 6 | 2 |
+| skatista-de-47 | 30.8 | 16 | 0 |
 | rodinho-do-sinal | 30.8 | 17 | 0 |
 | dancinha-viral | 30.5 | 13 | 0 |
+| quati-influencer | 30.4 | 15 | 0 |
 | furry-de-convencao | 30.4 | 13 | 0 |
-| sommelier-de-ipa | 30.2 | 12 | 1 |
 | auditor-das-sombras | 29.9 | 12 | 0 |
 | gerente-regional | 29.8 | 15 | 0 |
 | coelho-falsificado | 29.5 | 15 | 0 |
@@ -46,9 +44,11 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | jacare-do-bueiro | 29.1 | 15 | 0 |
 | zelador-hidraulico | 29.0 | 12 | 0 |
 | contador-de-almas | 28.1 | 15 | 0 |
-| bandeirinha-existencial | 27.8 | 10 | 1 |
+| bandeirinha-existencial | 28.1 | 12 | 0 |
 | rei-do-camarote | 27.8 | 11 | 0 |
 | caixa-eletronico | 27.4 | 11 | 0 |
+| ressaca-ambulante | 27.3 | 15 | 0 |
+| pombo-rei | 26.4 | 15 | 0 |
 
 ## Loops, desalinhamento (corrigível) — 40 piores
 
@@ -87,29 +87,18 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | mapinguari-do-shopping | phase2-idle | NW | 3 | pex | 5.75 | 0.933 → 0.942 / 0.908 | 0.6, 0, 1 |
 | bebedouro-da-fofoca | idle | W | 3 | pex | 5.63 | 0.84 → 0.895 / 0.926 | -2.9, 1, 1 |
 | coco-que-vende-gente | sleep | 0 | 5 | altura | 5.62 | 0.854 → 0.872 / 0.869 | 0.1, 0, 1 |
-| skatista-de-47 | walk | SW | 3 | altura, cy | 5.61 | 0.572 → 0.714 / 0.831 | 1.5, 0, 1.101 |
 | bebum-de-carrinho | idle | SE | 1 | pex | 5.5 | 0.914 → 0.923 / 0.916 | -0.2, 0, 1 |
 | coelho-falsificado | idle | SE | 1 | pex | 5.5 | 0.861 → 0.888 / 0.896 | -1.1, 0, 1.016 |
 | dancinha-viral | idle | NW | 3 | pex | 5.5 | 0.771 → 0.849 / 0.925 | 1.8, 1, 1 |
 | anao-molotov | idle | NW | 2 | pex, altura | 5.43 | 0.896 → 0.95 / 0.864 | -0.4, 0, 0.982 |
 | guru-cripto | idle | SW | 0 | pex | 5.4 | 0.94 → 0.953 / 0.984 | -1.4, 1, 1 |
 | bandeirinha-existencial | idle | SE | 2 | pex, cy, escala | 5.38 | 0.685 → 0.759 / 0.893 | 0.6, 0, 1 |
+| executivo-de-patinete | idle | W | 2 | altura, cy, escala | 5.35 | 0.661 → 0.774 / 0.925 | -0.4, 0, 1.2 |
 
 ## Loops, arte nova — 40 piores
 
 | inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |
 |---|---|---|---|---|---|---|---|
-| skatista-de-47 | walk | NE | 3 | cx, altura, escala, cy | 11.02 | 0.214 → 0.647 / 0.876 | -28, 0, 1.165 |
-| barata-voadora | fly | N | 4 | cy, escala | 5.18 | 0.463 → 0.524 / 0.769 | 0.5, 0, 1.049 |
-| quati-influencer | idle | SE | 3 | escala, pex | 4.89 | 0.567 → 0.642 / 0.821 | 0.5, -1, 1 |
-| skatista-de-47 | walk | SE | 3 | cx, escala | 4.58 | 0.56 → 0.612 / 0.869 | 11, 0, 1 |
-| sommelier-de-ipa | idle | W | 4 | cx, pex | 4.56 | 0.473 → 0.734 / 0.94 | -13.6, 0, 0.981 |
-| skatista-de-47 | walk | E | 7 | escala, cx | 3.68 | 0.621 → 0.715 / 0.912 | -4.9, 0, 0.968 |
-| skatista-de-47 | walk | NW | 3 | cx, altura, escala | 3.62 | 0.557 → 0.647 / 0.894 | 9.5, 0, 1.047 |
-| bandeirinha-existencial | idle | NW | 2 | cy | 2.13 | 0.681 → 0.709 / 0.899 | 3.3, 1, 1 |
-| skatista-de-47 | walk | E | 3 | cy | 2.09 | 0.541 → 0.639 / 0.912 | 0.2, 0, 1.023 |
-| manobrista | walk | NW | 7 | escala, cy | 1.96 | 0.606 → 0.616 / 0.843 | -3.3, 0, 1 |
-| barata-voadora | fly | NE | 4 | escala | 1.68 | 0.525 → 0.573 / 0.753 | -0.1, 0, 1.043 |
 
 ## Dano e ações, desalinhamento — 40 piores
 
@@ -160,43 +149,51 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 
 | inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |
 |---|---|---|---|---|---|---|---|
-| buraco-de-rua | death | NW | 1 | altura, cy, escala | 10.53 | 0.581 → 0.679 / 0.87 | 1.3, 0, 0.886 |
-| buraco-de-rua | death | E | 1 | altura, cy, escala | 10.29 | 0.542 → 0.65 / 0.851 | -1.5, 0, 0.752 |
-| buraco-de-rua | death | W | 1 | altura, cy, escala | 8.97 | 0.537 → 0.603 / 0.868 | 1.9, 0, 0.87 |
-| buraco-de-rua | death | SE | 1 | altura, cy, escala | 8.48 | 0.58 → 0.658 / 0.829 | -0.8, 0, 0.777 |
-| coco-que-vende-gente | death | SW | 8 | cy, cx | 7.64 | 0.296 → 0.61 / 0.811 | 6.6, 16.5, 1 |
-| auditor-das-sombras | death | NE | 7 | pe, cy, cx | 7 | 0.124 → 0.268 / 0.834 | -5.6, -21, 1 |
-| coco-que-vende-gente | death | W | 8 | altura, pe, cy, cx | 6.98 | 0.382 → 0.35 / 0.829 | 9.6, -19.5, 0.7 |
-| bandeirinha-existencial | death | W | 6 | cy, altura, cx | 6.73 | 0.164 → 0.509 / 0.637 | -13.1, 0, 0.912 |
-| mapinguari-do-shopping | slam | S | 4 | altura, cy, escala | 6.63 | 0.433 → 0.516 / 0.762 | 4.1, 0, 0.731 |
-| malabarista-do-sinal | death | E | 8 | altura, cy, cx | 6.34 | 0.389 → 0.369 / 0.609 | -9, 0, 1 |
-| peladeiro-de-vidro | death | S | 5 | altura, cy | 6.27 | 0.372 → 0.487 / 0.64 | 3.4, 2, 0.922 |
-| revendedora-de-catalogo | throw | NE | 4 | altura, cy, escala | 6.2 | 0.423 → 0.541 / 0.906 | 1.5, 0, 0.858 |
-| mapinguari-do-shopping | slam | NW | 4 | cy, altura, escala | 6.17 | 0.449 → 0.493 / 0.79 | -1.6, 0, 0.88 |
-| coco-que-vende-gente | death | E | 8 | altura, pe | 6.15 | 0.377 → 0.336 / 0.816 | -4, -11.5, 0.879 |
-| urubu-fiscal | wake | 0 | 2 | cy, pe, escala | 5.9 | 0.413 → 0.655 / 0.882 | -1.3, 8, 1 |
-| coco-que-vende-gente | death | NW | 7 | altura, cy, escala | 5.79 | 0.421 → 0.393 / 0.711 | -4.6, -13.5, 0.7 |
-| auditor-das-sombras | death | W | 7 | cy | 5.76 | 0.086 → 0.266 / 0.806 | -1.5, -14.5, 1.2 |
 | motoboy | crash | E | 3 | altura, cy, escala | 5.69 | 0.425 → 0.584 / 0.777 | 2.7, 0, 0.97 |
-| hater-anonimo | death | S | 8 | altura | 5.67 | 0.265 → 0.443 / 0.757 | -1, -1, 1 |
-| rodinho-do-sinal | death | E | 8 | escala, cy | 5.67 | 0.354 → 0.472 / 0.629 | -0.1, 0, 1 |
-| fogueteiro | death | E | 6 | cy, cx | 5.51 | 0.134 → 0.362 / 0.672 | -6.4, 8, 1.25 |
-| auditor-das-sombras | death | S | 7 | cy, pe | 5.46 | 0.085 → 0.336 / 0.776 | -3.2, -11.5, 1.4 |
-| boitata-de-sacolinha | charge | NW | 3 | pe, altura, cy | 5.44 | 0.432 → 0.506 / 0.678 | -9.3, 49, 1.326 |
-| coco-que-vende-gente | death | SW | 1 | altura | 5.37 | 0.731 → 0.605 / 0.811 | -0.2, 22, 1.15 |
-| fogueteiro | death | W | 6 | cy | 5.28 | 0.149 → 0.312 / 0.66 | -4.7, 3.5, 1.13 |
-| rodinho-do-sinal | death | NE | 8 | escala, cy | 5.28 | 0.337 → 0.473 / 0.758 | -0.9, 0, 1 |
-| homem-surdo | lecture | E | 6 | altura, cy, escala | 5.26 | 0.404 → 0.452 / 0.83 | -2.1, 0, 1 |
-| cupim-mansao | shove | SE | 4 | cy, altura | 5.24 | 0.528 → 0.661 / 0.863 | -0.9, 0, 1.125 |
-| boitata-de-sacolinha | charge | E | 3 | altura | 5.22 | 0.504 → 0.57 / 0.734 | -7.4, 14.5, 1.198 |
-| buraco-de-rua | death | SW | 1 | altura, cy, escala | 5.21 | 0.629 → 0.655 / 0.84 | 1.1, 0, 1 |
-| glitter-senciente | death | NE | 8 | cx, pe | 5.19 | 0.159 → 0.188 / 0.705 | 26, -12, 1.155 |
-| fogueteiro | death | SW | 6 | escala, cy | 5.18 | 0.145 → 0.309 / 0.667 | -5.1, 6, 1.171 |
-| chefe-pizza | death | SE | 7 | altura, cx | 5.12 | 0.531 → 0.642 / 0.823 | 10.4, -2, 0.85 |
-| homem-surdo | lecture | NW | 6 | altura, cy, escala | 5.1 | 0.47 → 0.529 / 0.856 | -1.9, 0, 1 |
-| mapinguari-do-shopping | slam | SW | 4 | altura, cy, cx | 5.03 | 0.419 → 0.57 / 0.751 | -20.5, 0, 0.787 |
-| glitter-senciente | death | SE | 8 | cx, pe | 5.01 | 0.204 → 0.2 / 0.757 | 25.1, -12, 1 |
-| perueiro | crash | E | 5 | altura, cy | 5 | 0.469 → 0.584 / 0.847 | -2.6, 0, 0.924 |
-| glitter-senciente | death | E | 8 | cx, pe, cy | 4.98 | 0.189 → 0.16 / 0.689 | 24.9, -10, 1.4 |
-| boitata-de-sacolinha | charge | SE | 3 | altura, cy, escala, pe | 4.95 | 0.485 → 0.61 / 0.774 | 7.9, -9.5, 1.196 |
-| auditor-das-sombras | death | SE | 7 | cy | 4.93 | 0.101 → 0.31 / 0.842 | 2.4, -12, 1.4 |
+| motoboy | crash | S | 2 | altura, escala, cy | 4.49 | 0.532 → 0.654 / 0.841 | 6.2, 0, 0.975 |
+| motoboy | crash | S | 3 | cx | 1.05 | 0.572 → 0.661 / 0.841 | -6.5, 0, 0.976 |
+
+## Poses aceitas (scripts/tremor-aceitos.json) — 40 piores
+
+| inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |
+|---|---|---|---|---|---|---|---|
+| buraco-de-rua | death | NW | 1 | altura, cy, escala | 10.53 | 0.581 → 0.679 / 0.87 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| buraco-de-rua | death | E | 1 | altura, cy, escala | 10.29 | 0.542 → 0.65 / 0.851 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| buraco-de-rua | death | W | 1 | altura, cy, escala | 8.97 | 0.537 → 0.603 / 0.868 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| buraco-de-rua | death | SE | 1 | altura, cy, escala | 8.48 | 0.58 → 0.658 / 0.829 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| coco-que-vende-gente | death | SW | 8 | cy, cx | 7.64 | 0.296 → 0.61 / 0.811 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| auditor-das-sombras | death | NE | 7 | pe, cy, cx | 7 | 0.124 → 0.268 / 0.834 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| coco-que-vende-gente | death | W | 8 | altura, pe, cy, cx | 6.98 | 0.382 → 0.35 / 0.829 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| bandeirinha-existencial | death | W | 6 | cy, altura, cx | 6.73 | 0.164 → 0.509 / 0.637 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| mapinguari-do-shopping | slam | S | 4 | altura, cy, escala | 6.63 | 0.433 → 0.516 / 0.762 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| malabarista-do-sinal | death | E | 8 | altura, cy, cx | 6.34 | 0.389 → 0.369 / 0.609 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| peladeiro-de-vidro | death | S | 5 | altura, cy | 6.27 | 0.372 → 0.487 / 0.64 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| revendedora-de-catalogo | throw | NE | 4 | altura, cy, escala | 6.2 | 0.423 → 0.541 / 0.906 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| mapinguari-do-shopping | slam | NW | 4 | cy, altura, escala | 6.17 | 0.449 → 0.493 / 0.79 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| coco-que-vende-gente | death | E | 8 | altura, pe | 6.15 | 0.377 → 0.336 / 0.816 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| urubu-fiscal | wake | 0 | 2 | cy, pe, escala | 5.9 | 0.413 → 0.655 / 0.882 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| coco-que-vende-gente | death | NW | 7 | altura, cy, escala | 5.79 | 0.421 → 0.393 / 0.711 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| auditor-das-sombras | death | W | 7 | cy | 5.76 | 0.086 → 0.266 / 0.806 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| hater-anonimo | death | S | 8 | altura | 5.67 | 0.265 → 0.443 / 0.757 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| rodinho-do-sinal | death | E | 8 | escala, cy | 5.67 | 0.354 → 0.472 / 0.629 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| fogueteiro | death | E | 6 | cy, cx | 5.51 | 0.134 → 0.362 / 0.672 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| auditor-das-sombras | death | S | 7 | cy, pe | 5.46 | 0.085 → 0.336 / 0.776 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| boitata-de-sacolinha | charge | NW | 3 | pe, altura, cy | 5.44 | 0.432 → 0.506 / 0.678 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| coco-que-vende-gente | death | SW | 1 | altura | 5.37 | 0.731 → 0.605 / 0.811 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| barata-voadora | fly | N | 4 | cy, escala | 5.31 | 0.465 → 0.528 / 0.769 | asa embaixo no voo (corpo no lugar: cebola-voo.png) |
+| fogueteiro | death | W | 6 | cy | 5.28 | 0.149 → 0.312 / 0.66 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| rodinho-do-sinal | death | NE | 8 | escala, cy | 5.28 | 0.337 → 0.473 / 0.758 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| cupim-mansao | shove | SE | 4 | cy, altura | 5.24 | 0.528 → 0.661 / 0.863 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| boitata-de-sacolinha | charge | E | 3 | altura | 5.22 | 0.504 → 0.57 / 0.734 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| buraco-de-rua | death | SW | 1 | altura, cy, escala | 5.21 | 0.629 → 0.655 / 0.84 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| glitter-senciente | death | NE | 8 | cx, pe | 5.19 | 0.159 → 0.188 / 0.705 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| fogueteiro | death | SW | 6 | escala, cy | 5.18 | 0.145 → 0.309 / 0.667 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| mapinguari-do-shopping | slam | SW | 4 | altura, cy, cx | 5.03 | 0.419 → 0.57 / 0.751 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| glitter-senciente | death | SE | 8 | cx, pe | 5.01 | 0.204 → 0.2 / 0.757 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| perueiro | crash | E | 5 | altura, cy | 5 | 0.469 → 0.584 / 0.847 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| glitter-senciente | death | E | 8 | cx, pe, cy | 4.98 | 0.189 → 0.16 / 0.689 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| boitata-de-sacolinha | charge | SE | 3 | altura, cy, escala, pe | 4.95 | 0.485 → 0.61 / 0.774 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| auditor-das-sombras | death | SE | 7 | cy | 4.93 | 0.101 → 0.31 / 0.842 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| o-grande-credor | death | S | 7 | escala | 4.9 | 0.402 → 0.462 / 0.706 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| glitter-senciente | death | W | 8 | cx, pe | 4.87 | 0.185 → 0.175 / 0.713 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| rodinho-do-sinal | attack | S | 3 | cx | 4.84 | 0.26 → 0.407 / 0.694 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |

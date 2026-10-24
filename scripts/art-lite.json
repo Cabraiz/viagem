@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 2131,
-  "bytes": 1446168634,
-  "liteBytes": 461400176,
+  "bytes": 1446097556,
+  "liteBytes": 461414096,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -3594,10 +3594,10 @@
    "shownPsnr": 40.4
   },
   "enemies/bandeirinha-existencial/idle.webp": {
-   "source": "ab83733e669ee8db9981817b775c46f666a7c78a93cda22bfa35bcb8f891efd8",
-   "lite": "cbfabce672a337851a7a8551602eeee400be949cc52dbda0b2c2e9e6d0685d5d",
-   "bytes": 410724,
-   "liteBytes": 105152,
+   "source": "32de4ee9b2fb777c753bd6bf66cb46aab9fc65d9aa4e37256a03a0b1c47583d2",
+   "lite": "80e21f7ff9364edb08499b931bc0eac0b009f334e8f8ab7941b7d69978b8d851",
+   "bytes": 402954,
+   "liteBytes": 103644,
    "liteCell": [
     76,
     76
@@ -3670,10 +3670,10 @@
    "shownPsnr": 42.1
   },
   "enemies/barata-voadora/fly.webp": {
-   "source": "cc654701927310f748fea7eb7f5a4dfa4da5d73e11424d449f70a98dbae52035",
-   "lite": "4b77c982e4e8f259afcdd36b42b99c28cc5b7981c7852b3aa7d975192df29288",
-   "bytes": 258504,
-   "liteBytes": 78566,
+   "source": "328cebba8a6cb8d536aacd901987681a9138b63e420d31724732130b2b54acf6",
+   "lite": "84850c9511265dd0b0345aada0f0c21aa97df5d3bf21558c9ca37cc774f3a5d7",
+   "bytes": 258266,
+   "liteBytes": 78376,
    "liteCell": [
     62,
     62
@@ -4786,10 +4786,10 @@
    "shownPsnr": 40.7
   },
   "enemies/cafeteira-burnout/crash.webp": {
-   "source": "7afcd09deb923f33f850a712918de414aa18810b45b8ae55cef01bf1070ed4d1",
-   "lite": "acf06754a0b8230a1baa203f5838124ea7a0ea26329b0ec91a217b784dcdded2",
-   "bytes": 823272,
-   "liteBytes": 148182,
+   "source": "54adb7544247930351c8ba0eb6c892af9266d1b84f816adaecf1c775c1028f17",
+   "lite": "0b5ffb69aeecc6dc8c3f5b221747bbc09e219c9cdc250fa4252a868442972aa8",
+   "bytes": 754472,
+   "liteBytes": 142668,
    "liteCell": [
     84,
     84
@@ -5282,16 +5282,16 @@
    "shownPsnr": 45.5
   },
   "enemies/chefe-pizza/death.webp": {
-   "source": "6785c112d1b84943289940ef8cc262139b919dcd8667abc6566bf8c94c2612d6",
-   "lite": "2143b9d718a4acdd11833f3ecaf9a9e092ce58af59b659fda4cadd2c1ed5d913",
-   "bytes": 858412,
-   "liteBytes": 199410,
+   "source": "fb233f5dacc934503bbfdda6659449aa884ab763ab1ffa35b84cdf40f61ed250",
+   "lite": "d3ddb19fe04f4a82d5d4e3443d25a3891b3e597fa5dbcdb771f501364f56f476",
+   "bytes": 873862,
+   "liteBytes": 207838,
    "liteCell": [
     100,
     100
    ],
-   "psnr": 44.1,
-   "shownPsnr": 43.4
+   "psnr": 44,
+   "shownPsnr": 43.3
   },
   "enemies/chefe-pizza/hit.webp": {
    "source": "f0bbfbf244577ad6021b57bdb6f04ddfc78222c49758f1502b9ef1e1bedd71c6",
@@ -8138,16 +8138,16 @@
    "shownPsnr": 44.9
   },
   "enemies/espetinho-suspeito/death.webp": {
-   "source": "aae0cf9f759f8a25c2af3b4826830c1d14d6d70f55777795494581f29e21b8df",
-   "lite": "71f36f2404a1d229d6fadc245d2fa7aaea0303e9c49725f0d3d79bf98eb06258",
-   "bytes": 777026,
-   "liteBytes": 332938,
+   "source": "eae5b63c872a156fdbc0c618b563cada5abfb0df5aad1dff9ec6ff73bb541d47",
+   "lite": "5b27e412a514b914ed6db4cfa746c3e2f3d24f0feeee5b8ede6503abd489cacc",
+   "bytes": 787088,
+   "liteBytes": 333766,
    "liteCell": [
     112,
     112
    ],
-   "psnr": 42.5,
-   "shownPsnr": 43.6
+   "psnr": 42.4,
+   "shownPsnr": 43.5
   },
   "enemies/espetinho-suspeito/hit.webp": {
    "source": "7b5f3451490531d6f3996aa412a94b6e4851cb33d4bdf670d83c9877b74de464",
@@ -9722,16 +9722,16 @@
    "shownPsnr": 38.8
   },
   "enemies/guru-do-linkedin/death.webp": {
-   "source": "120ff188d865007c38b22bf4893da545b4556aa8030f226dbf32ba62a8ddd6a6",
-   "lite": "cc1f70fadc2cabd297154ec2380cfe21cb8a45bffb14f7e8fc4f6f5dda75ff13",
-   "bytes": 1028210,
-   "liteBytes": 193364,
+   "source": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+   "lite": "d498faf006ba926f19b5d97cba7ef898156a32a8c981e376363399f2035ef226",
+   "bytes": 1015170,
+   "liteBytes": 193236,
    "liteCell": [
     87,
     87
    ],
    "psnr": 43,
-   "shownPsnr": 41.9
+   "shownPsnr": 42
   },
   "enemies/guru-do-linkedin/hit.webp": {
    "source": "4648b6abe0c4fff850bf3148165477cf44e91e8b7a66a973968b173c8d0e0cec",
@@ -10038,16 +10038,16 @@
    "shownPsnr": 39.7
   },
   "enemies/homem-surdo/death.webp": {
-   "source": "8576a82ec41420021bca4148d5a80eb5420c2aadee9b7c2a77fdacd37b13684f",
-   "lite": "b86912cc8faa5bcd1add28cf374859bd5c8b78903de4c5ac404907f4efdc2fcc",
-   "bytes": 408382,
-   "liteBytes": 135634,
+   "source": "559d87e1967ce0545db25c20e65db31875da6027406e4e49a1dc9ad296f58f61",
+   "lite": "2604d933e5d36f9e6a201ee7420bcb80ff880c7e8f6cc2c50f6af2bbae8705cb",
+   "bytes": 412000,
+   "liteBytes": 139688,
    "liteCell": [
     93,
     93
    ],
-   "psnr": 42.9,
-   "shownPsnr": 42.8
+   "psnr": 42.5,
+   "shownPsnr": 42
   },
   "enemies/homem-surdo/hit.webp": {
    "source": "1f1a9c1b440305a73c9dc41b9507fb1fc3a700004289176333a1176ed1e3720b",
@@ -10074,16 +10074,16 @@
    "shownPsnr": 42.8
   },
   "enemies/homem-surdo/lecture.webp": {
-   "source": "0b80f06e3aa4313e5c163764a510bd40fda00f433aeef65cc7d89dcc14d9725d",
-   "lite": "6c77c549b7255a533e6b299a38250e844d505bec8386a4c279f32335739de445",
-   "bytes": 717360,
-   "liteBytes": 217688,
+   "source": "7aa59f2a39f0aa4654a0d6ea19dd80268893450797f0c11e2aa2d2577e63a2ea",
+   "lite": "c1384867f7ce55752ccf8d55907724882f6720f4b5814fd988d339548e4e945e",
+   "bytes": 729170,
+   "liteBytes": 224620,
    "liteCell": [
     93,
     93
    ],
-   "psnr": 41.8,
-   "shownPsnr": 41.8
+   "psnr": 41.4,
+   "shownPsnr": 41.1
   },
   "enemies/homem-surdo/sleep.webp": {
    "source": "152d5615dfe9bc08665f0e94e664587804c9e19a1136c2b9f4d9b3ec59cb3833",
@@ -10950,10 +10950,10 @@
    "shownPsnr": 46.9
   },
   "enemies/manobrista/walk.webp": {
-   "source": "08f79733ae9ec1b77d9ab78e429d73d7df933a51a5b7479375e1f131d030d3ec",
-   "lite": "61c86b7a790c8707b8b47d5d025321f93a1e3a9c9ecfba031c895477d96db31b",
-   "bytes": 864074,
-   "liteBytes": 226576,
+   "source": "5a9648e4d5385d38ec3a1ff39f82ff5c4edb9110505e6f34ca6771cc063fbf9a",
+   "lite": "4e65b75cf3eeaafaf17aad864bef8d89f40ad6150141c908fe77200558200c6a",
+   "bytes": 854972,
+   "liteBytes": 226178,
    "liteCell": [
     114,
     114
@@ -13170,10 +13170,10 @@
    "shownPsnr": 43.9
   },
   "enemies/quati-influencer/idle.webp": {
-   "source": "dcba51c20ef91381b3d63370b44ad5eaa0b5fa7c22d365b68e3c9fb9d02cacb7",
-   "lite": "b1773b1dcbb4a5dcf7e7b4549bc505e8fff36a43f5465cde14e15009f80f333f",
-   "bytes": 354608,
-   "liteBytes": 162248,
+   "source": "35f886b82ccd4a13f68c00afb8d203b88b405db68cb155e19cec8cd89c950469",
+   "lite": "5c6b166b3841beeb5f43a722dda528a39177a203e98d2af93333333af706695a",
+   "bytes": 348544,
+   "liteBytes": 159774,
    "liteCell": [
     114,
     114
@@ -14414,16 +14414,16 @@
    "shownPsnr": 44.1
   },
   "enemies/skatista-de-47/walk.webp": {
-   "source": "e73558fed07b525d538d27e6adf1734f60061065faaec98b6b4bf9e78be44f9d",
-   "lite": "64f99db93a6f7c2f0e818da745aa26148b4eefdeb4b099afce682a7b1c6b92cb",
-   "bytes": 651570,
-   "liteBytes": 182232,
+   "source": "c37ba35dfebdaa5aee1d04e5532c81f52dc7b2212918717eefe233a1db8f91c8",
+   "lite": "e35f246b6dd0203ccbdfbd819a4aa00e318a5f5bd94c104b6b2ee73340d66963",
+   "bytes": 655564,
+   "liteBytes": 186396,
    "liteCell": [
     84,
     84
    ],
-   "psnr": 41.4,
-   "shownPsnr": 40.7
+   "psnr": 41.3,
+   "shownPsnr": 40.3
   },
   "enemies/sogra-do-chinelo/aim.webp": {
    "source": "ed35ce7249fa5d9399f65e7569d275cd966dc6511d83c6d85e7f95a7665df388",
@@ -14662,15 +14662,15 @@
    "shownPsnr": 41.6
   },
   "enemies/sommelier-de-ipa/idle.webp": {
-   "source": "2d76d8a18437117b66487f174b008955506e1dbe3359b42fabf75c89c3fcc405",
-   "lite": "d02a22e031d892fda5f2c62df819c5c49dc2a4a3c9d9a0eda1d352b74cf68c86",
-   "bytes": 587834,
-   "liteBytes": 120300,
+   "source": "7aeed70a6153fc525d9513cb65a86ba381b9918673eb8fadb57f119f6215e3fc",
+   "lite": "c530f4407dc19cf570767137539dfd85e55d5c09f41c32551d8da1b4b762a845",
+   "bytes": 576836,
+   "liteBytes": 120026,
    "liteCell": [
     90,
     90
    ],
-   "psnr": 42.8,
+   "psnr": 42.9,
    "shownPsnr": 41.3
   },
   "enemies/sommelier-de-ipa/joke.webp": {
@@ -21776,7 +21776,7 @@
    "drawn": 76
   },
   "bandeirinha-existencial": {
-   "source": "ab83733e669ee8db9981817b775c46f666a7c78a93cda22bfa35bcb8f891efd8",
+   "source": "32de4ee9b2fb777c753bd6bf66cb46aab9fc65d9aa4e37256a03a0b1c47583d2",
    "cell": [
     128,
     128
@@ -21784,7 +21784,7 @@
    "drawn": 104
   },
   "barata-voadora": {
-   "source": "cc654701927310f748fea7eb7f5a4dfa4da5d73e11424d449f70a98dbae52035",
+   "source": "328cebba8a6cb8d536aacd901987681a9138b63e420d31724732130b2b54acf6",
    "cell": [
     96,
     96
@@ -22672,7 +22672,7 @@
    "drawn": 113
   },
   "quati-influencer": {
-   "source": "dcba51c20ef91381b3d63370b44ad5eaa0b5fa7c22d365b68e3c9fb9d02cacb7",
+   "source": "35f886b82ccd4a13f68c00afb8d203b88b405db68cb155e19cec8cd89c950469",
    "cell": [
     128,
     128
@@ -22824,7 +22824,7 @@
    "drawn": 291
   },
   "sommelier-de-ipa": {
-   "source": "2d76d8a18437117b66487f174b008955506e1dbe3359b42fabf75c89c3fcc405",
+   "source": "7aeed70a6153fc525d9513cb65a86ba381b9918673eb8fadb57f119f6215e3fc",
    "cell": [
     160,
     160

@@ -5,6 +5,7 @@
  * volta, o corpo pula de lado. Isso não é o "andar no lugar" (a posição no mundo, corrigido em 76bffa9): é o desenho.
  *
  *   node scripts/medir-tremor.mjs [--ids a,b] [--json out.json] [--md out.md] [--top N]
+ *   node scripts/medir-tremor.mjs --aceitar "id|anim|dir|quadro[,…]" --motivo "…"   (pose de propósito, revista na tira)
  *
  * Por quadro (alfa ≥ ALFA): base (linha mais baixa = pé no chão), pex (centro entre os dois pés, na faixa de baixo),
  * topo, altura, largura, cx/cy (centroide pesado pelo alfa) e escala (raiz da área). Por sequência (inimigo × animação
@@ -18,6 +19,7 @@
  */
 import sharp from 'sharp';
 import {readFileSync,writeFileSync,existsSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -203,10 +205,30 @@ export async function achadosDaFolha(dirArte,file,anim){
   return {achados,dirs:medidas.length,frames:medidas[0].length};
 }
 
+/**
+ * Arte nova revista a olho e mantida (card NEW-20261023-E4-inimigos-tremor-arte-nova): pose de propósito que o IoU
+ * não reconhece (o chute do skatista, a asa embaixo no voo, a queda da morte). Chave "inimigo|anim|direção|quadro",
+ * valor {sha256 da folha, motivo}: a folha mudou, o aceite cai e o quadro volta a ser arte nova até alguém olhar de novo.
+ */
+export const ACEITOS='scripts/tremor-aceitos.json';
+export const chaveAceito=a=>`${a.inimigo}|${a.anim}|${a.direcao}|${a.quadro}`;
+/** Arte nova com aceite da MESMA folha (sha) vira 'aceito'; o resto fica como veio. */
+export const aplicarAceitos=(achados,aceitos,sha)=>achados.map(a=>{
+  const ok=a.tipo==='arte-nova'&&aceitos[chaveAceito(a)];
+  return ok&&sha&&ok.sha256===sha?{...a,tipo:'aceito',motivo:ok.motivo}:a;
+});
+const shaArquivo=f=>createHash('sha256').update(readFileSync(f)).digest('hex');
+/** sha da folha: o do arquivo, ou (várias páginas) o das linhas "<página> <sha>", como o manifest. */
+const shaFolha=(dirArte,file)=>{
+  const pgs=file.pages??[{file:file.file}];
+  return pgs.length===1?shaArquivo(join(dirArte,pgs[0].file)):createHash('sha256').update(pgs.map(p=>`${p.file} ${shaArquivo(join(dirArte,p.file))}`).join('\n')).digest('hex');
+};
+
 /** Mede o elenco inteiro (ou `ids`): lista de achados com inimigo, animação, direção e quadro, do pior ao melhor. */
 export async function medirElenco(repo,{ids}={}){
   const m=JSON.parse(readFileSync(join(repo,'public/art/manifest.json'),'utf8')).groups.inimigos;
   const dirArte=join(repo,m.output),achados=[],folhas=[];
+  const aceitos=existsSync(join(repo,ACEITOS))?JSON.parse(readFileSync(join(repo,ACEITOS),'utf8')):{};
   for(const [id,peca] of Object.entries(m.pieces)){
     if(ids&&!ids.includes(id))continue;
     for(const [anim,file] of Object.entries(peca.files??{})){
@@ -214,7 +236,8 @@ export async function medirElenco(repo,{ids}={}){
       if(!Array.isArray(file.cell)||anim.includes('/'))continue;
       const r=await achadosDaFolha(dirArte,file,anim);
       folhas.push({id,anim,dirs:r.dirs,frames:r.frames});
-      for(const a of r.achados)achados.push({inimigo:id,...a});
+      const sha=shaFolha(dirArte,file);
+      achados.push(...aplicarAceitos(r.achados.map(a=>({inimigo:id,...a})),aceitos,sha));
     }
   }
   achados.sort((a,b)=>b.gravidade-a.gravidade);
@@ -230,14 +253,14 @@ function markdown({folhas,achados},top){
   const qs=[...quadros.values()].sort((a,b)=>b.gravidade-a.gravidade);
   const porInimigo=new Map();
   for(const q of qs){if(q.categoria!=='loop')continue;const r=porInimigo.get(q.inimigo)??{soma:0,des:0,nova:0};
-    r.soma+=q.gravidade;q.tipo==='desalinhamento'?r.des++:r.nova++;porInimigo.set(q.inimigo,r);}
+    if(q.tipo==='aceito')continue;r.soma+=q.gravidade;q.tipo==='desalinhamento'?r.des++:r.nova++;porInimigo.set(q.inimigo,r);}
   const rank=[...porInimigo].sort((a,b)=>b[1].soma-a[1].soma);
   const tabela=lista=>['| inimigo | animação | direção | quadro | medidas | gravidade | IoU cru → alinhado / típico | correção (dx, dy, escala) |','|---|---|---|---|---|---|---|---|',
-    ...lista.slice(0,top).map(a=>`| ${a.inimigo} | ${a.anim} | ${a.direcao} | ${a.quadro} | ${a.medidas.join(', ')} | ${a.gravidade} | ${a.iouCru??'–'} → ${a.iouAlinhado??'–'} / ${a.iouTipico??'–'} | ${a.correcao?`${a.correcao.dx}, ${a.correcao.dy}, ${a.correcao.escala}`:a.motivo??'–'} |`)];
+    ...lista.slice(0,top).map(a=>`| ${a.inimigo} | ${a.anim} | ${a.direcao} | ${a.quadro} | ${a.medidas.join(', ')} | ${a.gravidade} | ${a.iouCru??'–'} → ${a.iouAlinhado??'–'} / ${a.iouTipico??'–'} | ${a.tipo==='aceito'?a.motivo:a.correcao?`${a.correcao.dx}, ${a.correcao.dy}, ${a.correcao.escala}`:a.motivo??'–'} |`)];
   const sel=(cat,tipo)=>qs.filter(q=>(cat==='loop'?q.categoria==='loop':q.categoria!=='loop')&&q.tipo===tipo);
   return [`# Tremor por quadro — ${folhas.length} folhas, ${achados.length} achados em ${qs.length} quadros`,'',
-    `Loops: ${conta(a=>a.categoria==='loop')} achados (${sel('loop','desalinhamento').length} quadros desalinhados, ${sel('loop','arte-nova').length} de arte nova). `+
-    `Dano e ações: ${conta(a=>a.categoria!=='loop')} achados (${sel('acao','desalinhamento').length} desalinhados, ${sel('acao','arte-nova').length} de arte nova).`,'',
+    `Loops: ${conta(a=>a.categoria==='loop')} achados (${sel('loop','desalinhamento').length} quadros desalinhados, ${sel('loop','arte-nova').length} de arte nova, ${sel('loop','aceito').length} poses aceitas). `+
+    `Dano e ações: ${conta(a=>a.categoria!=='loop')} achados (${sel('acao','desalinhamento').length} desalinhados, ${sel('acao','arte-nova').length} de arte nova, ${sel('acao','aceito').length} poses aceitas).`,'',
     'Mede o desenho dentro da célula, não a posição no mundo: o "andar no lugar" (76bffa9) não entra aqui.',
     `Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé, centroide, altura), fica com IoU ≥ ${ALINHA} × o IoU típico de dois quadros seguidos: o pipeline corrige com a correção da tabela (px da célula). Arte nova = mesmo alinhado destoa: precisa redesenhar o quadro.`,'',
     '## Inimigos — soma das gravidades nos loops (um quadro conta uma vez)','','| inimigo | soma | desalinhados | arte nova |','|---|---|---|---|',
@@ -245,12 +268,25 @@ function markdown({folhas,achados},top){
     `## Loops, desalinhamento (corrigível) — ${top} piores`,'',...tabela(sel('loop','desalinhamento')),'',
     `## Loops, arte nova — ${top} piores`,'',...tabela(sel('loop','arte-nova')),'',
     `## Dano e ações, desalinhamento — ${top} piores`,'',...tabela(sel('acao','desalinhamento')),'',
-    `## Dano e ações, arte nova — ${top} piores`,'',...tabela(sel('acao','arte-nova')),''].join('\n');
+    `## Dano e ações, arte nova — ${top} piores`,'',...tabela(sel('acao','arte-nova')),'',
+    `## Poses aceitas (${ACEITOS}) — ${top} piores`,'',...tabela(qs.filter(q=>q.tipo==='aceito')),''].join('\n');
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const args=process.argv.slice(2),opt=k=>{const i=args.indexOf(k);return i>=0?args[i+1]:undefined;};
   const repo=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+  // --aceitar "id|anim|dir|q[,…]" --motivo "…": grava o aceite com o sha atual da folha (só depois de olhar a tira).
+  if(opt('--aceitar')){
+    const g=JSON.parse(readFileSync(join(repo,'public/art/manifest.json'),'utf8')).groups.inimigos,f=join(repo,ACEITOS);
+    const aceitos=existsSync(f)?JSON.parse(readFileSync(f,'utf8')):{};
+    for(const k of opt('--aceitar').split(',')){
+      const [id,anim]=k.split('|'),file=g.pieces[id]?.files?.[anim];if(!file)throw new Error(`sem ${id}/${anim}`);
+      aceitos[k]={sha256:shaFolha(join(repo,g.output),file),motivo:opt('--motivo')??'pose de propósito'};
+    }
+    writeFileSync(f,`${JSON.stringify(Object.fromEntries(Object.entries(aceitos).sort()),null,1)}
+`);
+    console.log(`${opt('--aceitar').split(',').length} aceitos → ${ACEITOS}`);process.exit(0);
+  }
   const r=await medirElenco(repo,{ids:opt('--ids')?.split(',')});
   const top=+(opt('--top')??40);
   const salvar=(f,t)=>{mkdirSync(dirname(resolve(f)),{recursive:true});writeFileSync(f,t);};

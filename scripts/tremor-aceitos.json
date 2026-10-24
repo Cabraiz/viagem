@@ -1,0 +1,1202 @@
+{
+ "alambiqueiro|death|W|7": {
+  "sha256": "c9f3a89d1024fb986d122d20e567488cf8f7c0251594edc1b2a6b0bb2a12ec6b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|NE|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|NW|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|N|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|SE|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|SW|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|S|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "animador-necromante|lecture|W|6": {
+  "sha256": "5309ea1138e485c92ed22a306d85e930de9ce561b9b1ef86284d537b0ed4af13",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|E|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|E|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|NE|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|NE|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|NW|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|NW|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|N|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|N|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|SE|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|SW|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|SW|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|S|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|S|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|W|6": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "auditor-das-sombras|death|W|7": {
+  "sha256": "6112638c7f2f5d9f0a602b1da083a764363faf4457794a2279122618dea5d0d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|E|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|NE|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|N|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|SE|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|SW|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|S|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "balao-rancoroso|death|W|4": {
+  "sha256": "5fd3dd04f54dc110d156f280f56ff96ddc021f86a5d88094184cb31c4dea2950",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "bandeirinha-existencial|death|W|6": {
+  "sha256": "ae0d36f81ab6a724343ee9d01cec08ab89ea2090cb2a08a1834f6d5c22772ec1",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "bandeirinha-existencial|lecture|SW|6": {
+  "sha256": "130fd750b53e0bf1db7943c9ec7f06c0d88110836f4d4b087c849baa76bac1d2",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "barata-voadora|fly|NE|4": {
+  "sha256": "328cebba8a6cb8d536aacd901987681a9138b63e420d31724732130b2b54acf6",
+  "motivo": "asa embaixo no voo (corpo no lugar: cebola-voo.png)"
+ },
+ "barata-voadora|fly|N|4": {
+  "sha256": "328cebba8a6cb8d536aacd901987681a9138b63e420d31724732130b2b54acf6",
+  "motivo": "asa embaixo no voo (corpo no lugar: cebola-voo.png)"
+ },
+ "bebedouro-da-fofoca|death|NE|6": {
+  "sha256": "486707bb387806de426661ef517a24cc4418b7ae186b5a58e1907b4ff0a9416b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "bebedouro-da-fofoca|death|N|6": {
+  "sha256": "486707bb387806de426661ef517a24cc4418b7ae186b5a58e1907b4ff0a9416b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boitata-de-sacolinha|charge|E|3": {
+  "sha256": "b5b0bded37bd8ef50cbb8efd1f31a4661b5a53eb6858a79211f5b1fdd1b302da",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boitata-de-sacolinha|charge|NW|3": {
+  "sha256": "b5b0bded37bd8ef50cbb8efd1f31a4661b5a53eb6858a79211f5b1fdd1b302da",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boitata-de-sacolinha|charge|SE|3": {
+  "sha256": "b5b0bded37bd8ef50cbb8efd1f31a4661b5a53eb6858a79211f5b1fdd1b302da",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boneco-gigante|shove|NE|3": {
+  "sha256": "f591c93e5e7c9232405a18d38556f3f5ab0070faa85333826cce18d92562700e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boneco-gigante|shove|NW|3": {
+  "sha256": "f591c93e5e7c9232405a18d38556f3f5ab0070faa85333826cce18d92562700e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "boneco-gigante|shove|N|3": {
+  "sha256": "f591c93e5e7c9232405a18d38556f3f5ab0070faa85333826cce18d92562700e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|E|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|NW|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|SE|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|SW|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|S|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "buraco-de-rua|death|W|1": {
+  "sha256": "eef6b1e07ebd04a2757e37fa149ee63e9e50052ac1ccfffc42fbcbcbdb38a030",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cafeteira-burnout|crash|NE|5": {
+  "sha256": "54adb7544247930351c8ba0eb6c892af9266d1b84f816adaecf1c775c1028f17",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cafeteira-burnout|crash|N|5": {
+  "sha256": "54adb7544247930351c8ba0eb6c892af9266d1b84f816adaecf1c775c1028f17",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cafeteira-burnout|crash|N|6": {
+  "sha256": "54adb7544247930351c8ba0eb6c892af9266d1b84f816adaecf1c775c1028f17",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cafeteira-burnout|crash|SE|5": {
+  "sha256": "54adb7544247930351c8ba0eb6c892af9266d1b84f816adaecf1c775c1028f17",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "camelo-pirata|death|E|4": {
+  "sha256": "985cfdd5941387c718f5d837e01f54ac312219d79ad24fe294f5935770dcc731",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "camelo-pirata|death|W|4": {
+  "sha256": "985cfdd5941387c718f5d837e01f54ac312219d79ad24fe294f5935770dcc731",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "caramujo-financiado|death|N|6": {
+  "sha256": "6ca17e2a2794925b93a7aa1541d0ac24e7bb477a7cac90d99bf1ec368b98358a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "carrinho-da-vo|charge|W|3": {
+  "sha256": "c8c7cd25eded88e0e92a44c83f6c4da646d4eb1bb38197f38d8ff1bf1ba6074c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "chefe-pizza|death|E|5": {
+  "sha256": "fb233f5dacc934503bbfdda6659449aa884ab763ab1ffa35b84cdf40f61ed250",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cobrador-do-busao|death|W|2": {
+  "sha256": "e8165230e4e153776510148e6aacfd40138accf4590f36bdbd0c98ea22dea5a4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|E|8": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|NE|8": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|NW|7": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|SE|8": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|SW|1": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|SW|8": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "coco-que-vende-gente|death|W|8": {
+  "sha256": "d020d3ce0d19efecaa2ee1d252a7c44cc9a21940bc19bb4d1f4eeb921af0baf5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "contador-de-almas|lecture|NW|5": {
+  "sha256": "1e7cc19f79aeb76dee8a32701af989eba80151579c5127284c485e2df41334ac",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cosplayer|pose|E|4": {
+  "sha256": "29edacb91f857a6eee092243e7a88a11a5444dcbdab347dfeb9dd31fdae30d01",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "crossfiteiro-do-pneu|death|E|5": {
+  "sha256": "651ac3e23cadf05454c580334448f3e678409454055d1cba62b30519518a6034",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "cupim-mansao|shove|SE|4": {
+  "sha256": "f9cc448ef5ba500eaf803350db5c8a393be67e08c314f0ab30d67961809d66d5",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|E|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|NE|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|NW|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|N|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|N|7": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|SW|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|S|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "dono-do-boteco|death|W|6": {
+  "sha256": "193d3b4f384c4f264fd6213f0e045d940e06eb7882835a15bacf9d8d10730f56",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "executivo-de-patinete|crash|NE|4": {
+  "sha256": "63055cbc3ef5b076c77e7964a1e2513e8844493f7ee62bd598771030a3168371",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "executivo-de-patinete|crash|NW|5": {
+  "sha256": "63055cbc3ef5b076c77e7964a1e2513e8844493f7ee62bd598771030a3168371",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "executivo-de-patinete|crash|SE|4": {
+  "sha256": "63055cbc3ef5b076c77e7964a1e2513e8844493f7ee62bd598771030a3168371",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "executivo-de-patinete|crash|SE|5": {
+  "sha256": "63055cbc3ef5b076c77e7964a1e2513e8844493f7ee62bd598771030a3168371",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fa-de-novela|shove|W|4": {
+  "sha256": "6c82570c3915e4b57137c1be7971926b09679449948f977e3023194b5b1afbf6",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "flanelinha-interdimensional|summon|E|3": {
+  "sha256": "f6b060f9a173a786120479decb86f8325d6cab2342ed8bf6f1667a7ec164f77c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|E|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|E|7": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|E|8": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|NE|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|NE|7": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|NW|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|N|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|N|7": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|SE|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|SW|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|SW|7": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|S|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "fogueteiro|death|W|6": {
+  "sha256": "e1e837cf73b407bbb39a24794fb8163856c9de834bae231c9ff7a8763208e8cd",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "frango-de-academia|attack|NW|3": {
+  "sha256": "8baba5403ebb9e1efed9c723883b6ee50b76e11fcc226da719b1814149fa7d25",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gamer-rage-quit|crash|E|6": {
+  "sha256": "d5283adda8ae5300e513df4fb74e3fce697444bc05dfcbad24fccf4c835af782",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gamer-rage-quit|crash|NW|6": {
+  "sha256": "d5283adda8ae5300e513df4fb74e3fce697444bc05dfcbad24fccf4c835af782",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gamer-rage-quit|crash|N|6": {
+  "sha256": "d5283adda8ae5300e513df4fb74e3fce697444bc05dfcbad24fccf4c835af782",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gamer-rage-quit|crash|SW|6": {
+  "sha256": "d5283adda8ae5300e513df4fb74e3fce697444bc05dfcbad24fccf4c835af782",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gamer-rage-quit|crash|W|6": {
+  "sha256": "d5283adda8ae5300e513df4fb74e3fce697444bc05dfcbad24fccf4c835af782",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "geladeira-do-feijao|throw|S|4": {
+  "sha256": "875b745c42863886f6b4bf9ce0614f00797e241a0673aeecd5bc4aec365ccd4e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "gerente-regional|charge|NW|5": {
+  "sha256": "c1a24eef285e4459d566ac89749e33ef479ad165dbff323287680c4bccb0c5ae",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|E|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|NE|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|NE|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|NW|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|NW|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|N|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|N|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|SE|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|SE|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|SW|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|SW|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|S|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|S|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|W|7": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "glitter-senciente|death|W|8": {
+  "sha256": "5b8aa51ac36e5e7ef6272c585063ad7c74459e102bc686f1e4cd7009aad7081b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|E|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|NE|7": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|NE|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|NW|7": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|NW|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|N|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|SE|7": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|SE|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|SW|7": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "guru-do-linkedin|death|W|8": {
+  "sha256": "a318d099fa88d777145ebf903f37d4ed0ab079abdd78f9dc507f3f175400d342",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|NE|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|NW|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|N|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|SE|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|SW|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "hater-anonimo|death|S|8": {
+  "sha256": "db8f8a4f370cf985c07cf9f577427e385766a3bd6543944c2427b3937602801a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "homem-placa-do-fim|shove|E|4": {
+  "sha256": "6071f05f86331b380741cb00c96955673a4077dcbb93095e66579986d549de5a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "homem-surdo|death|NE|6": {
+  "sha256": "559d87e1967ce0545db25c20e65db31875da6027406e4e49a1dc9ad296f58f61",
+  "motivo": "braços para cima (redesenhado no corpo do bumbo, Codex E8 24/10) e o desmanche da morte"
+ },
+ "homem-surdo|death|NW|5": {
+  "sha256": "559d87e1967ce0545db25c20e65db31875da6027406e4e49a1dc9ad296f58f61",
+  "motivo": "braços para cima (redesenhado no corpo do bumbo, Codex E8 24/10) e o desmanche da morte"
+ },
+ "homem-surdo|death|W|6": {
+  "sha256": "559d87e1967ce0545db25c20e65db31875da6027406e4e49a1dc9ad296f58f61",
+  "motivo": "braços para cima (redesenhado no corpo do bumbo, Codex E8 24/10) e o desmanche da morte"
+ },
+ "homem-surdo|lecture|NE|6": {
+  "sha256": "7aa59f2a39f0aa4654a0d6ea19dd80268893450797f0c11e2aa2d2577e63a2ea",
+  "motivo": "braços para cima (redesenhado no corpo do bumbo, Codex E8 24/10) e o desmanche da morte"
+ },
+ "homem-surdo|lecture|NW|6": {
+  "sha256": "7aa59f2a39f0aa4654a0d6ea19dd80268893450797f0c11e2aa2d2577e63a2ea",
+  "motivo": "braços para cima (redesenhado no corpo do bumbo, Codex E8 24/10) e o desmanche da morte"
+ },
+ "homem-surdo|lecture|N|6": {
+  "sha256": "bf40c8cd5026dc79e6d04a6d11714de1deef158c9dc0d8da34d7d56a4627f3f6",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "homem-wifi|death|NE|4": {
+  "sha256": "f8e1722d0e0e6928a6fdfb74513dee64878ebd786704520f12713275c7c65706",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "homem-wifi|death|NW|5": {
+  "sha256": "f8e1722d0e0e6928a6fdfb74513dee64878ebd786704520f12713275c7c65706",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "homem-wifi|death|N|4": {
+  "sha256": "f8e1722d0e0e6928a6fdfb74513dee64878ebd786704520f12713275c7c65706",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "influencer|death|N|8": {
+  "sha256": "e58320d93c31131b32a404a95c0dd42e4f215b0fe651f88948745c35f17b7b7e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|E|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|NE|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|NE|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|NW|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|NW|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|N|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|N|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|SW|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|SW|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|S|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|S|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|W|6": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|W|7": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "malabarista-do-sinal|death|W|8": {
+  "sha256": "7429423dd980e52f6477c5b76ab90dae04d1eea07efe8339b35f44e80faff98e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|slam|NW|4": {
+  "sha256": "8adec6e13ae5fdbc9b339005ef5da7d98049f70ef1e6059556fb873463faf17c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|slam|SW|4": {
+  "sha256": "8adec6e13ae5fdbc9b339005ef5da7d98049f70ef1e6059556fb873463faf17c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|slam|S|4": {
+  "sha256": "8adec6e13ae5fdbc9b339005ef5da7d98049f70ef1e6059556fb873463faf17c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|summon|NW|3": {
+  "sha256": "438c27b29dec915ff56e418ea8f79da0040dbc3b35330f98c0caabcc5af776af",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|summon|N|7": {
+  "sha256": "438c27b29dec915ff56e418ea8f79da0040dbc3b35330f98c0caabcc5af776af",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "mapinguari-do-shopping|summon|S|3": {
+  "sha256": "438c27b29dec915ff56e418ea8f79da0040dbc3b35330f98c0caabcc5af776af",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|E|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|NE|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|NW|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|N|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|SE|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|S|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "marimbondo-sindical|death|W|4": {
+  "sha256": "d2ffbd35c69449acfc6d0e661572deb71ec7262bc5139f22975379ea26f6f1d4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|charge|E|5": {
+  "sha256": "b84d3e4e6baac5379c1213388e07d1ad16a1e4e6b060ff4449469cf02c91326b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|E|11": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|NE|14": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|NW|11": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|NW|13": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|SE|12": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|SW|10": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|SW|13": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|SW|7": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|S|10": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|S|11": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|S|13": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|S|14": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|S|7": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|W|10": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|W|13": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "o-grande-credor|death|W|14": {
+  "sha256": "bdfc1d237da1b2b15593a48f7fc37a53d8a03ce44e2e81a4277cb387f361b3aa",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "paredao-ambulante|summon|NW|6": {
+  "sha256": "cd6937681a1ddd3fa3214cf2c7a74c378045c661ef2b6a5720a01f7ee6328486",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "peladeiro-de-vidro|death|S|5": {
+  "sha256": "b06e3862ccd1e4073a390e8d64ef134063d161da67cc85d4be93fb31f1ab889d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "peladeiro-de-vidro|death|W|5": {
+  "sha256": "b06e3862ccd1e4073a390e8d64ef134063d161da67cc85d4be93fb31f1ab889d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|E|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|NE|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|NW|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|N|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|SE|4": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|SE|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|SW|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "perueiro|crash|W|5": {
+  "sha256": "4616c65c6314338c6ccaf0a711526a1574e55e5e19b5a92910b15c92ef19b81b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|E|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|NE|4": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|NE|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|NW|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|N|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|SE|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|SW|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|S|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "podcaster-de-garagem|death|W|5": {
+  "sha256": "5a09c3c12180db8d40812517c2dd363a8f82cf8db7bed3d8852c0c16df37d39e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "pombo-rei|charge|NE|4": {
+  "sha256": "2aa94355177724785caf1a28bc737192f854f34ea2659416f2d1a0a47569a46e",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "pombo-rei|death|NW|7": {
+  "sha256": "619516e81b661f6376208fb265456d527e4bcda7f05d2787583f266531eefde4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "pombo-rei|death|SE|6": {
+  "sha256": "619516e81b661f6376208fb265456d527e4bcda7f05d2787583f266531eefde4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "pombo-rei|death|W|8": {
+  "sha256": "619516e81b661f6376208fb265456d527e4bcda7f05d2787583f266531eefde4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "pombo-rei|death|W|9": {
+  "sha256": "619516e81b661f6376208fb265456d527e4bcda7f05d2787583f266531eefde4",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "poste-gambiarra|death|SW|6": {
+  "sha256": "d68feb0de12b2e58c455203ee3f88ed1753f6853eb74a2f3a71d3b88e463a08d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "poste-gambiarra|death|SW|7": {
+  "sha256": "d68feb0de12b2e58c455203ee3f88ed1753f6853eb74a2f3a71d3b88e463a08d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "poste-gambiarra|death|W|6": {
+  "sha256": "d68feb0de12b2e58c455203ee3f88ed1753f6853eb74a2f3a71d3b88e463a08d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|NW|1": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|NW|2": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|N|2": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|SE|3": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|SW|1": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "primo-do-violao|death|SW|2": {
+  "sha256": "12336efb80c2579e051fb5e06dc05bcefeebbf26ba2a8c99055e716a83162368",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "promotor-infinito|death|E|6": {
+  "sha256": "6eb6ad8944cb1310d42628a08e433fab53a3df4ce62e54dbe22430c218728734",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "promotor-infinito|death|NW|6": {
+  "sha256": "6eb6ad8944cb1310d42628a08e433fab53a3df4ce62e54dbe22430c218728734",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "promotor-infinito|death|N|6": {
+  "sha256": "6eb6ad8944cb1310d42628a08e433fab53a3df4ce62e54dbe22430c218728734",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "promotor-infinito|death|W|6": {
+  "sha256": "6eb6ad8944cb1310d42628a08e433fab53a3df4ce62e54dbe22430c218728734",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "promotor-infinito|lecture|SE|8": {
+  "sha256": "3edc7557711c9212f7d2c1be3b9ffaf262ec1d96ef4c9473fc59d0dc20d47e1a",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "ratazana-mafiosa|shove|SW|4": {
+  "sha256": "71c6961e49bd24004f90a5521430db961dd7bc9ca032d21b460ea3c30eecdee7",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rei-do-camarote|death|NE|4": {
+  "sha256": "0c2c0463bc6c20b879abf3c43ba91f35394316f7febd53e9c02e2174cd0327c0",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rei-do-camarote|death|SE|3": {
+  "sha256": "0c2c0463bc6c20b879abf3c43ba91f35394316f7febd53e9c02e2174cd0327c0",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rei-do-camarote|death|SE|4": {
+  "sha256": "0c2c0463bc6c20b879abf3c43ba91f35394316f7febd53e9c02e2174cd0327c0",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "ressaca-ambulante|death|E|2": {
+  "sha256": "8892c87f92ac2dde029b6a23c0c0b3b5a69d40b1948aae0e7a753571b22c8292",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "reuniao-que-podia-ser-email|summon|W|6": {
+  "sha256": "d88cf1c0c39bab4c56566d974481564a1162102fcf10dbe7295d947f2b157676",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "revendedora-de-catalogo|throw|NE|4": {
+  "sha256": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "revendedora-de-catalogo|throw|W|5": {
+  "sha256": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rh-sorridente|death|S|6": {
+  "sha256": "5c5ce37fce63f52f1cc2f77e1ca64b323d4b7b425e97dea08d2d03ae96bc49a6",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|attack|SW|3": {
+  "sha256": "d3d2bb623bd53a811a56a34db9be65b0d89d57ac210521a4bf33ea25eb81338c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|attack|S|3": {
+  "sha256": "d3d2bb623bd53a811a56a34db9be65b0d89d57ac210521a4bf33ea25eb81338c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|attack|W|3": {
+  "sha256": "d3d2bb623bd53a811a56a34db9be65b0d89d57ac210521a4bf33ea25eb81338c",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|E|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|NE|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|SE|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|SW|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|S|7": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|S|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "rodinho-do-sinal|death|W|8": {
+  "sha256": "799b28f0f92361b5548f7b367c73a3e611cb17174ba99911e2db46b6d3ecef8f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "skatista-de-47|walk|E|3": {
+  "sha256": "c37ba35dfebdaa5aee1d04e5532c81f52dc7b2212918717eefe233a1db8f91c8",
+  "motivo": "chute de impulso no skate, redesenhado com o corpo do andar (Codex, E8 24/10)"
+ },
+ "skatista-de-47|walk|NE|3": {
+  "sha256": "c37ba35dfebdaa5aee1d04e5532c81f52dc7b2212918717eefe233a1db8f91c8",
+  "motivo": "chute de impulso no skate, redesenhado com o corpo do andar (Codex, E8 24/10)"
+ },
+ "skatista-de-47|walk|SE|3": {
+  "sha256": "c37ba35dfebdaa5aee1d04e5532c81f52dc7b2212918717eefe233a1db8f91c8",
+  "motivo": "chute de impulso no skate, redesenhado com o corpo do andar (Codex, E8 24/10)"
+ },
+ "sogra-tita|slam|W|5": {
+  "sha256": "cfbfc2cf1b4329bdee2e381c07cfd81391d3a057f62d5b78f6fe44307642bdad",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "telemarketing|death|SE|6": {
+  "sha256": "bc14cd4888fb5c4196f6ec1994785afeb65417176734e11ca1c969b2dc518d88",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "telemarketing|death|SW|6": {
+  "sha256": "bc14cd4888fb5c4196f6ec1994785afeb65417176734e11ca1c969b2dc518d88",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|E|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|E|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|E|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NE|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NE|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NE|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NW|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NW|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|NW|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|N|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|N|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|N|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SE|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SE|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SE|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SW|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SW|7": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|SW|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|S|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|S|8": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|death|W|6": {
+  "sha256": "1a0301bdde98fa538b7b83705eec4b209a6329c74e12305f386f8ccfc0b1619d",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|throw|SW|6": {
+  "sha256": "50e1897fbac367c55ca69779c56163cffeeae5b9745fb83323078b903539bb7f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tia-do-zap|throw|W|6": {
+  "sha256": "50e1897fbac367c55ca69779c56163cffeeae5b9745fb83323078b903539bb7f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tijolo-pai|throw|S|5": {
+  "sha256": "007e3c9db2a90268d3a78e26abdf125994c4a102c9bfbff171f637849af880ae",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "tiozinho-da-sinuca|death|NE|7": {
+  "sha256": "9e7eb02a823ba6c3b6276a02c627777b20e44ef5ca547e2667af413ea6e871af",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "trenzinho-da-festa|death|W|3": {
+  "sha256": "975749038626a63f9aae1b6be445b85c1ff88871fc636a03d06b8dfddf6ffe4b",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "unboxer|summon|NW|7": {
+  "sha256": "78752055ba55f0df3854231828c7a3fbe25a5d3b8dfadf022b24a5965a998fbe",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "unboxer|summon|N|7": {
+  "sha256": "78752055ba55f0df3854231828c7a3fbe25a5d3b8dfadf022b24a5965a998fbe",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "unboxer|summon|SE|7": {
+  "sha256": "78752055ba55f0df3854231828c7a3fbe25a5d3b8dfadf022b24a5965a998fbe",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "urubu-fiscal|wake|0|2": {
+  "sha256": "0ea49b90b2bcfbeb438d2721c1511c67fc6536cfe1ec8ff19df73cc5b8248e30",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vendedor-de-piramide|summon|NW|3": {
+  "sha256": "00f72bea6f7922f6ddddc6359856c1c3c91953c8dde94e8af9e58373428fc03f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vendedor-de-piramide|summon|SE|3": {
+  "sha256": "00f72bea6f7922f6ddddc6359856c1c3c91953c8dde94e8af9e58373428fc03f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vendedor-de-piramide|summon|SW|3": {
+  "sha256": "00f72bea6f7922f6ddddc6359856c1c3c91953c8dde94e8af9e58373428fc03f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vendedor-de-piramide|summon|S|3": {
+  "sha256": "00f72bea6f7922f6ddddc6359856c1c3c91953c8dde94e8af9e58373428fc03f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vendedor-de-piramide|summon|W|3": {
+  "sha256": "00f72bea6f7922f6ddddc6359856c1c3c91953c8dde94e8af9e58373428fc03f",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vizinho-da-furadeira|death|NW|8": {
+  "sha256": "c3652dbe8762653760c99bcfb3b2848aec0fb7028637d0640c968b679f1ac6f2",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "vizinho-da-furadeira|death|S|8": {
+  "sha256": "c3652dbe8762653760c99bcfb3b2848aec0fb7028637d0640c968b679f1ac6f2",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|E|7": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|E|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|NE|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|NW|7": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|NW|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|N|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|SE|7": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|SW|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ },
+ "zelador-hidraulico|death|S|8": {
+  "sha256": "b9555da2a71dc87f96b15eded930b1b23fd0b55c4ddc7d8b54616096bbd11798",
+  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+ }
+}

@@ -70,6 +70,7 @@ import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
 import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
+import {planBarraca,type BarracaCommand,type BarracaMemory} from './bot-barracas.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
@@ -172,7 +173,7 @@ export const PUSH_TRIP_SECONDS=10;
  */
 export const CHAVEIRO_KEEP_SHARE=1.3,CHAVEIRO_SAVE_ETA=-1;
 
-export interface BrainMemory {
+export interface BrainMemory extends BarracaMemory {
   lastPos?:Point;lastMoveTick:number;unstickUntil:number;unstick?:Point;
   lastCastTick:number;lastSosTick:number;lastForgeTick:number;
   offerSeen?:{id:string;tick:number};lastChoose?:{id:string;tick:number};
@@ -226,11 +227,11 @@ export interface Decision {
   /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
   attack?:boolean;
   /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
-  inventory?:LootCommand;
+  inventory?:LootCommand|BarracaCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
   build?:TowerOrder;
   /** What the bot is up to (logs and tests). */
-  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro'|'bank'|'veiculo';
+  mode:'idle'|'down'|'fight'|'rescue'|'home'|'gather'|'forge'|'build'|'dodge'|'unstick'|'escort'|'push'|'clear'|'loot'|'carro'|'bank'|'veiculo'|'barraca';
 }
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -584,6 +585,17 @@ export function decide(input:BrainInput):Decision{
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;
+    // NEW-20261023-ORQ-barracas-no-caminho (bot-barracas.ts): in a lull, a barraca of the map's rows to the Uno's side.
+    // Eating and the best weapon first (their command wins); the barraca's walk before the crates.
+    const barraca=!task?planBarraca(view,me,at,index,memory,terrain,input.teamBots,prepare?LOOT_RADIUS_CALM:LOOT_RADIUS):undefined;
+    if(barraca&&(!loot.command||loot.command.t==='kit')){
+      decision.mode='barraca';
+      if(barraca.command)decision.inventory=barraca.command;else if(loot.command?.t==='kit')delete decision.inventory;
+      const close=dist(at,barraca.goal.at)<=barraca.goal.reach;
+      if(!close)want=go(barraca.goal.at);
+      decision.direction=close?{x:0,y:0}:norm(want);
+      return finish(decision,input);
+    }
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
     const late=prepare&&!!round&&!!loot.goal&&round.phaseEndsTick-tick<=

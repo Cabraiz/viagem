@@ -12,6 +12,7 @@
  */
 import type {OwnedItem,PickupState,PickupView,PlayerRunView,RunView,VehicleKind} from '../contract/index.ts';
 import {BASE_STATS} from '../contract/index.ts';
+import {kitId} from '../rules/index.ts';
 import {getWeapon,resolveWeapon} from './weapons/catalog.ts';
 import {OPEN_REACH} from './crates.ts';
 import {INVENTORY_SLOTS,TAKE_REACH,isKitItem} from './inventory.ts';
@@ -19,7 +20,7 @@ import type {Point} from '../maps/index.ts';
 
 /** LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather). */
 export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=40;
-const VERDE_PISTOL={id:'pistola',level:1};
+const VERDE_PISTOL={id:'pistola',level:1},BARRACA_KIT=kitId('barraca');
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;
 
@@ -60,7 +61,8 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   // 3. Loot only in a lull.
   if(view.enemies.some(e=>e.hp>0&&dist(e,at)<LOOT_SAFE))return plan;
   if(view.players.some(p=>p.id!==me.id&&p.downed&&!p.eliminated))return plan;
-  const kit=inv.findIndex(isKitItem);
+  // The kit:barraca goes near the Uno instead (bot-barracas.ts).
+  const kit=inv.findIndex(i=>isKitItem(i)&&i.id!==BARRACA_KIT);
   if(kit>=0&&!plan.command)plan.command={t:'kit',slot:kit};
   const handScore=Math.max(...inv.map(i=>weaponScore(i)),0),armed=handScore>=weaponScore(VERDE_PISTOL);
   const pickups=view.pickups as readonly (PickupState|RunView['pickups'][number])[];

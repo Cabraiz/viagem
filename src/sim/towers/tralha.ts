@@ -30,8 +30,11 @@ export const TRALHA_OWNER='mapa';
 export const TRALHA_PREFIX='tralha';
 export type TralhaRefusal='player'|'nada'|'longe'|'cheio'|'ocupado';
 export interface Coleta {player:string;piece:string;until:number;hp:number;req?:number}
-/** `barracas`: the map's barracas were laid (towers/barracas.ts placeBarracas). */
-export interface TralhaState {placed?:true;barracas?:true;coletas?:Coleta[]}
+/**
+ * `barracas`: the map's barracas were laid (towers/barracas.ts placeBarracas). `rows`: how many rows to lay instead of
+ * BARRACA_ROWS (set before the first step: the balance bench's --barraca-rows; absent in a room).
+ */
+export interface TralhaState {placed?:true;barracas?:true;rows?:number;coletas?:Coleta[]}
 /** The map pieces a hero collects or destroys (the barricada de tralha, the barraca). */
 export type TralhaKind='barricada'|'barraca';
 export const isTralhaKind=(kind:string):kind is TralhaKind=>kind==='barricada'||kind==='barraca';

@@ -54,7 +54,7 @@ export function placeBarracas(ctx:SimContext,state:StonewardsState,world:TralhaW
   const nests=[...world.nests??[]];
   for(let i=nests.length-1;i>0;i--){const j=rng.int(0,i);[nests[i],nests[j]]=[nests[j],nests[i]];}
   const sources=nests.length?nests:spawns;
-  for(let g=0;g<BARRACA_ROWS;g++){
+  for(let g=0,rows=t.rows??BARRACA_ROWS;g<rows;g++){
     const s=sources[g%sources.length],at=rng.range(BARRACA_ROW_AT[0],BARRACA_ROW_AT[1]),way=wayCells(city,s,car);
     if(way.length<2)continue;
     // `way` runs spawn → car: the point `at` of its length from the car, and the street's direction there (±WAY_LOOK cells).

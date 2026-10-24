@@ -12,7 +12,7 @@ import {botSites,botSpotOrder,decide,holdsObra,freeCity,granaReserve,newMemory,t
 import {CAR_RADIUS,PIX_MAX} from '../src/contract/index.ts';
 import type {Simulation} from './simulation.ts';
 import type {RecipeId} from '../src/rules/index.ts';
-import {getClass,railName} from '../src/rules/index.ts';
+import {getClass,kitId,railName} from '../src/rules/index.ts';
 
 /** A bot looks at the world this often (ticks): 200 ms, like a thumb (VGM-045 DECISION_MS). Slots are staggered. */
 export const BOT_THINK_EVERY=4;
@@ -49,6 +49,8 @@ export const BOT_NUMBER_MAX=9;
 const RECIPE_REFUSALS=new Set(['no-weapon','full','recipe']);
 /** A bot whose kit de torre fit nowhere around it tries again this much later (it may have walked on). */
 export const KIT_RETRY_TICKS=5*HZ;
+/** NEW-20261023-ORQ-barracas-no-caminho: the kit a collected barraca becomes (counted as RoomBots.barracas once set). */
+const BARRACA_KIT=kitId('barraca');
 
 /**
  * NEW-20261014-ORQ-carteira-e-pix: a bot that is not the forger sends what its wallet holds above its part of the
@@ -128,6 +130,8 @@ export class RoomBots {
   built=0;
   /** PIX from a bot to the forger that went through (lab, bench and tests): count and R$. */
   pixes=0;pixed=0;
+  /** NEW-20261023-ORQ-barracas-no-caminho: coletas started and kit:barraca set near the Uno (bench and tests). */
+  coletas=0;barracas=0;
   /** Bench --no-towers (scripts/bench-city-run.ts): the builder never gets the tower view, so no bot builds. */
   towersOff=false;
   /** What each bot was last up to (Decision.mode; the bench steers by it). Not part of state(): it decides nothing. */
@@ -213,7 +217,14 @@ export class RoomBots {
         // A kit de torre (torre-pela-caixa) goes on the nearest cell that takes it; refused, the bot waits KIT_RETRY_TICKS.
         const command=d.inventory;
         if(command.t==='kit'){
-          if(tick>=(this.kitRetry.get(mind.id)??0)&&!sim.place(mind.id,command.slot,'near').ok)this.kitRetry.set(mind.id,tick+KIT_RETRY_TICKS);
+          const barraca=p.build.weapons[command.slot]?.id===BARRACA_KIT;
+          if(tick>=(this.kitRetry.get(mind.id)??0)){
+            if(!sim.place(mind.id,command.slot,'near').ok)this.kitRetry.set(mind.id,tick+KIT_RETRY_TICKS);
+            else if(barraca)this.barracas++;
+          }
+        }else if(command.t==='coletar'){
+          // NEW-20261023-ORQ-barracas-no-caminho: a barraca of the map's rows (bot-barracas.ts), carried to the Uno.
+          if(sim.coletar(mind.id,command.piece).ok)this.coletas++;
         }else sim.inventory(mind.id,command);
       }
       if(d.forge){

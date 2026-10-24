@@ -23,8 +23,8 @@
  * Everything kept is on the ChaveiroState's car (JSON-safe): movers, rope and the rope holder's hp at the last step.
  */
 import {CAR_HALF_LENGTH,CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,CAR_ROPE_LET_GO_S,
-  CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,carGap,carPushOut,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
-import {maskSurface,walkable,type Point} from '../../maps/index.ts';
+  CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,CAR_HALF_WIDTH,carGap,carPushOut,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
+import {RADIUS as PLAYER_RADIUS,maskSurface,walkable,type Point} from '../../maps/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';
 
@@ -110,7 +110,7 @@ function fits(ctx:SimContext,world:CarWorld,from:Point,to:Point){
 
 /**
  * Enemies on the body go to its box's edge (no damage); the boss is not moved. Every tick, moving or not (card
- * uno-bloqueio-corpo: a crowd pressing on the car squeezed critters into its sides).
+ * uno-bloqueio-corpo: a crowd pressing on the car squeezed critters into its sides). The standing heroes too.
  */
 function shove(ctx:SimContext,car:CarBody){
   const mask=maskSurface(ctx.terrain);
@@ -118,9 +118,30 @@ function shove(ctx:SimContext,car:CarBody){
   for(const e of scratch){
     if(!(e.hp>0)||!ctx.enemies.has(e.id)||e.boss)continue;
     const q=carPushOut(car,e,e.radius);
-    if(q===e||mask&&!mask.clearDisc(q.x,q.y,e.radius))continue;
-    e.x=q.x;e.y=q.y;
+    if(q===e)continue;
+    const to=!mask||mask.clearDisc(q.x,q.y,e.radius)?q:sideExit(car,e,e.radius,mask);
+    if(to){e.x=to.x;e.y=to.y;}
   }
+  // The heroes it rolled onto this tick too (the players system keeps them out of it from the next step: maps carBlock).
+  for(const p of ctx.players.values()){
+    if(!isStanding(p))continue;
+    const q=carPushOut(car,p,PLAYER_RADIUS);
+    if(q!==p&&walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}
+  }
+}
+/**
+ * The nearest of the box's four sides (straight out across the body) where a disc of `radius` at `p` fits the mask:
+ * against a wall the nearest way out may be shut (the street's kerb 0.5 u off the car's north side). Undefined: none.
+ */
+function sideExit(car:CarBody,p:Point,radius:number,mask:{clearDisc(x:number,y:number,r:number):boolean}):Point|undefined{
+  const c=Math.cos(car.heading??0),s=Math.sin(car.heading??0),rx=p.x-car.x,ry=p.y-car.y,l=rx*c+ry*s,w=-rx*s+ry*c;
+  const L=CAR_HALF_LENGTH+radius,W=CAR_HALF_WIDTH+radius;
+  const exits=[[L,w],[-L,w],[l,W],[l,-W]].map(([el,ew])=>({el,ew,d:Math.hypot(el-l,ew-w)})).sort((a,b)=>a.d-b.d);
+  for(const {el,ew} of exits){
+    const x=car.x+el*c-ew*s,y=car.y+el*s+ew*c;
+    if(mask.clearDisc(x,y,radius))return {x,y};
+  }
+  return undefined;
 }
 
 /**

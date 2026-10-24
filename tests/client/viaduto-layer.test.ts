@@ -22,3 +22,16 @@ test('the viaduct layer draws in the four views, fades around a hero under it an
   assert.ok(L.bodyLift(a.points.inicio.x,a.points.inicio.y,1)>0);
   L.destroy();
 });
+
+test('a deck body before the layer first draws has no depth of its own, never NaN (the scene falls back to the city\'s)',()=>{
+  // Etapa 5: the hero starts on the deck and may be drawn a frame before the layer's first update. A NaN depth there
+  // went to the hero's 24 contour copies, which the city sticker then hides without ever setting again: a NaN in the
+  // display list breaks Phaser's depth sort for the whole scene (the deck, the Uno and the cars drew under the ground).
+  const r=decodeCityAsset(readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8'));if(!r.ok)throw r.error;
+  const a=r.asset,g=()=>{const o:any={alpha:1,clear(){return o;},fillStyle(){return o;},fillPoints(){return o;},lineStyle(){return o;},strokePoints(){return o;},setDepth(){return o;},setAlpha(){return o;},destroy(){}};return o;};
+  const L=new ViaductLayer({add:{graphics:g}} as any,a.viaducts,a.unitsPerCell,{depthOf:k=>k,groundPx:()=>0},-1e8,a.points.inicio);
+  assert.equal(L.bodyDepth(a.points.inicio.x,a.points.inicio.y),undefined);
+  L.update(0,{x:a.points.inicio.x,y:a.points.inicio.y,andar:1});
+  assert.ok(Number.isFinite(L.bodyDepth(a.points.inicio.x,a.points.inicio.y)!));
+  L.destroy();
+});

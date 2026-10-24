@@ -355,10 +355,14 @@ export class ViaductLayer {
   bodyLift(x:number,y:number,floor:number|undefined):number{
     return floor===1?surfaceHeight(this.viaducts,this.unit,x,y,1)*HEIGHT_PX:0;
   }
-  /** Draw depth of a body of floor 1 at (x, y): just above the strip under it; undefined when it is on no strip. */
+  /**
+   * Draw depth of a body of floor 1 at (x, y): just above the strip under it; undefined when it is on no strip, or
+   * before the first draw (no keys yet: the caller falls back to the city's depth, never a NaN in the display list).
+   */
   bodyDepth(x:number,y:number):number|undefined{
     if(this.stripAt(x,y)===undefined)return undefined;
-    return this.hooks.depthOf(this.deckKey(x-this.unit,y-this.unit,x+this.unit,y+this.unit))+ON_STRIP;
+    const key=this.deckKey(x-this.unit,y-this.unit,x+this.unit,y+this.unit);
+    return Number.isFinite(key)?this.hooks.depthOf(key)+ON_STRIP:undefined;
   }
   /** True when the ground at (x, y) is under a deck (or the ramp's foot, where its strips hang over). */
   under(x:number,y:number){return this.viaducts.some(v=>overDeck(v,this.unit,x,y));}
@@ -376,7 +380,8 @@ export class ViaductLayer {
    */
   private deckKey(x0:number,y0:number,x1:number,y1:number):number{
     let key=-Infinity;
-    for(const p of this.pieces)if((p.kind==='deck'||p.kind==='ramp')&&p.x0<x1&&p.x1>x0&&p.y0<y1&&p.y1>y0)key=Math.max(key,this.keys[p.strip]);
+    // Before the first draw the keys are not there (Math.max with undefined is NaN).
+    for(const p of this.pieces)if((p.kind==='deck'||p.kind==='ramp')&&p.x0<x1&&p.x1>x0&&p.y0<y1&&p.y1>y0)key=Math.max(key,this.keys[p.strip]??-Infinity);
     return key;
   }
   /** The highest front-corner key of the city's blocks under piece `p` (their parts inside its footprint), or −∞. */

@@ -26,7 +26,7 @@ import {TriBand} from './city/tri-band.ts';
 import {MURO_SHEETS,MuralhaLayer} from './muralha.ts';
 import {tokenColor} from '../ui/tokens.ts';
 import {HEIGHT_PX} from './city/projection.ts';
-import {UsableGlow,glowPieces} from './usable-glow.ts';
+import {UsableGlow,WallGlow} from './usable-glow.ts';
 
 /** Wall segment height (u) when whole; each damage stage takes a share off. */
 const WALL_H=.95;
@@ -51,6 +51,8 @@ export class FortifyRenderer {
   private muro:MuralhaLayer;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on the painted wall segments (built and repaired by the player). */
   private glow:UsableGlow;
+  /** The muro's pieces this frame, glowed per wall (one outline around the segments that touch). */
+  private wallGlow=new WallGlow();
   private wallViews:StructureView[]=[];
   private lastHp=new Map<string,number>();
   private flashUntil=new Map<string,number>();
@@ -95,6 +97,7 @@ export class FortifyRenderer {
     const k=1/Math.max(.05,this.scene.cameras.main.zoom);
     this.glow.begin(time);
     for(const s of this.wallViews)this.drawWall(s,k);
+    this.wallGlow.flush(this.glow,k);
     this.glow.end();
     this.drawGhost(k);this.drawHints(k);this.drawRope(k);
   }
@@ -128,7 +131,7 @@ export class FortifyRenderer {
     const bar=wallBar(s.hp,s.maxHp),showBar=!down&&bar.fraction<1,depth=this.options.projector.depth(s.x,s.y);
     // The painted wall when its sheets are loaded ([] when down: nothing), the band then holds only the bar over it.
     const art=this.muro.draw(s,depth);
-    if(art&&!down)glowPieces(this.glow,s.id,art,k);
+    if(art&&!down)this.wallGlow.add(s.id,this.muro.groupOf(s),art);
     const key=`${art?'arte|':''}${wallKey(stage,flash&&!art,view,showBar?bar:undefined,k)}`;
     let w=this.walls.get(s.id);
     if(w?.key!==key&&art){

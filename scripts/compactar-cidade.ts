@@ -10,7 +10,8 @@
 //     that region maps to are opened again (repair), then every 1-cell door is widened to 2 where the region allows;
 //   - buildings keep today's size around their mapped centre, slid up to 2 cells when that closes a room; the ones that
 //     still do not fit shrink (the big ones from 1/BIG_SHRINK, card decision 2); open slivers they cut off close;
-//   - the plaza loses its three fountains (PLAZA_DROP) and its base point goes to the centre of its four mouths;
+//   - the plaza loses its three fountains (PLAZA_DROP) with their basins' water, and its base point goes to the centre of
+//     its four mouths;
 //   - water and heights are sampled at the mapped point (a lake shrinks, a cliff keeps its height);
 //   - props move to their mapped point and keep their ground (open or block), else they are dropped (counted in the log);
 //   - points (start, mouths, spawns): the mapped point, moved to the nearest open cell centre of the city's main ground
@@ -323,10 +324,16 @@ function writeData(src:CityAsset,cell:Int32Array,K:number,m:number,log:Record<st
     blocks.push({id:b.id,kind:b.kind,bbox:[r3(x0),r3(y0),r3(x1-x0),r3(y1-y0)],rects});});
   log.blocks=blocks.length;log.blocksDropped=src.blocks.length-blocks.length;
   const walkable=new Uint8Array(S*S),water=src.waterBits?new Uint8Array(S*S):undefined;
+  // The dropped fountains' basins go with them (the plaza is paved now): their water would still place the fountain's
+  // art (render/city/art-plan.ts fountainLot) over the base point, where the Uno and the team stand.
+  // The basin runs between the fountains' blocks too: the box around all of them.
+  const sk=src.samples.w/src.cells.w,dropped=src.blocks.filter(b=>PLAZA_DROP.includes(b.id)).map(b=>b.bbox);
+  const bx0=Math.min(...dropped.map(b=>b[0])),by0=Math.min(...dropped.map(b=>b[1])),bx1=Math.max(...dropped.map(b=>b[0]+b[2])),by1=Math.max(...dropped.map(b=>b[1]+b[3]));
+  const inDropped=(X:number,Y:number)=>{const x=(X+.5)/sk*u,y=(Y+.5)/sk*u;return x>=bx0&&x<bx1&&y>=by0&&y<by1;};
   for(let sy=0;sy<S;sy++)for(let sx=0;sx<S;sx++){
     const i=sx+sy*S,t=Math.floor(sx/P)+Math.floor(sy/P)*m;
     walkable[i]=cell[t]<0?1:0;
-    if(water&&walkable[i]){const X=Math.min(src.samples.w-1,Math.floor((sx+.5)*K)),Y=Math.min(src.samples.h-1,Math.floor((sy+.5)*K));water[i]=src.water(X,Y)?1:0;}
+    if(water&&walkable[i]){const X=Math.min(src.samples.w-1,Math.floor((sx+.5)*K)),Y=Math.min(src.samples.h-1,Math.floor((sy+.5)*K));water[i]=src.water(X,Y)&&!inDropped(X,Y)?1:0;}
   }
   const heights=new Float32Array((m+1)*(m+1));
   for(let y=0;y<=m;y++)for(let x=0;x<=m;x++)heights[x+y*(m+1)]=src.heightAt(x*u*K,y*u*K);

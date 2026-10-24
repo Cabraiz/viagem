@@ -228,6 +228,8 @@ export class Simulation {
   private shame=new ShameTracker();
   /** Lab only (LAB_ZUEIRA): the zueira plan every run of this simulation uses instead of the seed's. */
   zueiraLab?:ZueiraLab;
+  /** Lab only (LAB_DOURADA): the hidden dourada chance of every run of this simulation (assemble goldLab). */
+  goldLab?:number;
   /** This room's own fork of the decoded city (cidade-06): its blockers (barricades) never leak into other rooms. */
   private readonly city?:CityTerrain;
   /**
@@ -348,6 +350,7 @@ export class Simulation {
       // seat itself may be held longer (the whole run while someone is connected, 3g-rede-sem-teleporte).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
+      ...(this.goldLab!==undefined?{goldLab:this.goldLab}:{}),
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),
@@ -912,7 +915,7 @@ export class Simulation {
     for(const [id,t] of this.tracks)if(t.tapped!==undefined){const p=this.players.get(id);if(p)this.casts.push({id,seq:t.tapped,ok:p.skillTick!==castBefore.get(id),readyTick:skillReadyTick(p)});}
     if(!this.result)this.result=this.pending.victory?'victory':this.pending.defeat?'defeat':undefined;
     this.pending=undefined;
-    // Refunds (pagodeiro, caça-promoção) move the cooldown after the cast; the wire follows the skill state.
+    // Refunds (pagodeiro) move the cooldown after the cast; the wire follows the skill state.
     for(const p of this.players.values())p.skillReadyTick=skillReadyTick(p);
     for(const e of events)if(e.type==='fire'&&!e.weapon.startsWith('skill:')){
       const p=this.players.get(e.player);
@@ -1001,7 +1004,8 @@ export class Simulation {
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
       enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews(playerId,false)],
-      pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
+      // caixa-gamble: a crate this player no longer sees (PickupState.hiddenFor) is not in his view.
+      pickups:[...w.pickups.values()].filter(p=>!p.hiddenFor?.includes(playerId)).map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(playerId),
@@ -1030,7 +1034,8 @@ export class Simulation {
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
       enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews()],
-      pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
+      // caixa-gamble: hiddenFor rides along (server-side only): the encoder leaves the crate out of those players' frames.
+      pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource,...(p.hiddenFor?{hiddenFor:p.hiddenFor}:{})})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),

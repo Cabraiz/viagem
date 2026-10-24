@@ -1,38 +1,43 @@
 /**
  * Footsteps as in games (NEW-20261022-ORQ-sons-ia-ace-step, explained to the user 23/10): no loop, one short step each
- * time a foot lands, on the walk's contact poses: pose 0 and the middle one of SPRITE_CLIPS.walk (the run16 and M16
- * cycles plant the feet on the same halves). The cycle is counted as the sprites count it (sprite-motion.ts walkCycles:
- * the ground walked on screen over the drawn stride), so the steps keep the drawn feet's pace at any speed and a hero
- * standing still never treads. Each step draws one of the 6 snow takes, never the last one again (the engine), at ±5 %
- * of pitch and ±2 dB. The local hero at full volume; allies lower and quieter with distance; critters none (the horde
- * would be noise), only the boss's heavy steps. A run is the same step, a bit louder.
+ * time a foot lands. BUG-20261024-ORQ-som-passos-fora-do-eixo: the steps counted a walk cycle of their own (the legacy
+ * walk's stride, RUN_STRIDE for a run) while the M16 run is drawn at its phase table's stride (1.89 to 3.78 heights by
+ * direction), so a run stepped 1.5 to 3× the drawn feet, off their beat. Now each step is the drawn walk's own
+ * (CharacterSprites.gait): the cycles the sprite walked and the points where its sheet plants a foot, played the audio's
+ * output latency ahead (the foot and the crunch land together on a phone too). Each step draws one of the 6 snow takes,
+ * never the last one again (the engine, which starts each at its crunch and evens their level: sfx.ts alignTake), at
+ * ±5 % of pitch and ±1.5 dB. The local hero at full volume and centred; allies lower, quieter with distance and from
+ * their side of the screen; critters none (the horde would be noise), only the boss's heavy steps. A run is a bit louder.
  */
-import {RUN_STRIDE,SPRITE_CLIPS,WALK_HOLD_MS,WALK_STRIDE,WALK_TUNE,walkCycles} from '../sprites/sprite-motion.ts';
+import type {Gait} from '../sprites/character-sprites.ts';
+import {WALK_HOLD_MS} from '../sprites/sprite-motion.ts';
 import type {PlayOptions} from './engine.ts';
 import type {SoundId} from './types.ts';
 
-/** Where in the walk cycle (0..1) a foot lands: pose 0 and the middle pose of the walk clip. */
-export const STEP_CONTACTS:readonly number[]=[0,Math.floor(SPRITE_CLIPS.walk.frames.length/2)/SPRITE_CLIPS.walk.frames.length];
-/** ±5 % of pitch and ±2 dB of level per step. */
-export const STEP_PITCH=.05,STEP_DB=2;
+/** ±5 % of pitch and ±1.5 dB of level per step (the takes themselves are evened by the engine). */
+export const STEP_PITCH=.05,STEP_DB=1.5;
 /** A run lands harder: this much over the walk's level. */
 export const RUN_GAIN=1.25;
 /** Allies under the local hero, and how their steps fade (world tiles): 1 / (1 + d / ALLY_FALLOFF), none past ALLY_RANGE. */
 export const ALLY_GAIN=.4,ALLY_FALLOFF=5,ALLY_RANGE=14;
+/** How far to the side an ally at the screen's edge sounds (the pan, -1..1). */
+export const ALLY_PAN=.6;
 /** The boss's step every this many ms while it moves, heard up to BOSS_RANGE tiles. */
 export const BOSS_STEP_MS=520,BOSS_RANGE=18;
 /** Never two steps of one figure closer than this (a stop-and-go on the stick). */
 export const MIN_STEP_MS=140;
+/** The latency is made up by playing ahead along the walk, at most this much of a cycle (a stop never owes a step). */
+export const MAX_LEAD_CYCLES=.2;
 
 /** Contacts the cycle crossed going from `from` to `to` cycles (each contact once per cycle; at most 2 a frame). */
-export function contactsCrossed(from:number,to:number,contacts:readonly number[]=STEP_CONTACTS){
+export function contactsCrossed(from:number,to:number,contacts:readonly number[]){
   if(!(to>from))return 0;
   let n=0;
   for(const c of contacts)n+=Math.floor(to-c)-Math.floor(from-c);
   return Math.min(2,n);
 }
 /** The step's own pitch and level, drawn from rnd() in [0, 1). */
-export function stepJitter(rnd:()=>number,gain=1):Required<PlayOptions>{
+export function stepJitter(rnd:()=>number,gain=1):Required<Pick<PlayOptions,'rate'|'gain'>>{
   const db=(rnd()*2-1)*STEP_DB;
   return {rate:1+(rnd()*2-1)*STEP_PITCH,gain:gain*10**(db/20)};
 }
@@ -40,60 +45,73 @@ export function stepJitter(rnd:()=>number,gain=1):Required<PlayOptions>{
 export function allyGain(d:number){return d>ALLY_RANGE?0:ALLY_GAIN/(1+d/ALLY_FALLOFF);}
 
 export interface StepFigure {
-  id:string;x:number;y:number;
-  /** The local hero: full level, and it walks only while its input asks to (sprite-motion WalkGate). */
+  id:string;
+  /** The walk as this frame drew it (CharacterSprites.gait); undefined while the figure stands or is not drawn. */
+  gait?:Gait;
+  /** The local hero: full level, centred. */
   local?:boolean;
-  /** Runs (run16, movement128 heroRuns): the foot locked to the ground at the run's stride, a louder step. */
+  /** Runs (run16, movement128 heroRuns): a louder step. */
   runs?:boolean;
   /** Level before the jitter (allyGain for an ally). */
   gain:number;
   alive:boolean;
+  /** Where the figure is across the screen (-1 left … 1 right, Scene.screenSide): an ally's step comes from there. */
+  side?:number;
 }
-interface Track {x:number;y:number;cycles:number;until:number;lastStep:number}
+/** `at` the drawn frame's time (Gait.at) and `rate` the walk's cycles a ms on that clock. */
+interface Track {since:number;cycles:number;at:number;rate:number;ahead:number;lastStep:number}
+interface StepAudio {play(id:SoundId,opts?:PlayOptions):boolean;readonly latencyMs?:number}
 
-/** Counts each figure's walk cycle frame by frame and plays a step on each contact. */
+/** Plays a step each time a figure's drawn walk crosses a contact of its sheet (the latency ahead). */
 export class Footsteps {
   private tracks=new Map<string,Track>();
   private bossAt=-Infinity;
   private bossPos:{x:number;y:number}|undefined;
   /** The boss walks until then (its view moves at the server's rate, so it is held a little between views). */
   private bossMoving=-Infinity;
-  private readonly audio:{play(id:SoundId,opts?:PlayOptions):boolean};
+  private readonly audio:StepAudio;
   private readonly rnd:()=>number;
-  constructor(audio:{play(id:SoundId,opts?:PlayOptions):boolean},rnd:()=>number=Math.random){this.audio=audio;this.rnd=rnd;}
+  constructor(audio:StepAudio,rnd:()=>number=Math.random){this.audio=audio;this.rnd=rnd;}
 
-  /**
-   * One frame: `figurePx` the heroes' drawn height in world px (96 × the actor scale × HERO_DRAW_SCALE), `view` the
-   * camera's quarter turns. `intent`: whether the local hero's input asks to walk. Returns the steps played.
-   */
-  update(now:number,figures:Iterable<StepFigure>,view:number,figurePx:number,intent=true):number{
+  /** One frame (`now` in ms): each figure's drawn walk; a new `since` is a new walk. Returns the steps played. */
+  update(now:number,figures:Iterable<StepFigure>):number{
     let played=0;
-    const seen=new Set<string>();
+    const seen=new Set<string>(),lead=Math.max(0,this.audio.latencyMs??0);
     for(const f of figures){
       seen.add(f.id);
+      const g=f.alive?f.gait:undefined;
       let t=this.tracks.get(f.id);
-      if(!t){this.tracks.set(f.id,{x:f.x,y:f.y,cycles:0,until:-Infinity,lastStep:-Infinity});continue;}
-      const dx=f.x-t.x,dy=f.y-t.y;t.x=f.x;t.y=f.y;
-      const moved=Math.hypot(dx,dy)>.001;
-      const wasWalking=now<t.until;
-      if(moved)t.until=now+WALK_HOLD_MS;
-      const walking=f.alive&&now<t.until&&(!f.local||intent);
-      if(!walking){t.cycles=0;continue;}
-      const step=f.runs?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx,WALK_STRIDE,WALK_TUNE.lock);
-      // The walk starts on pose 0, a foot on the ground: the first step sounds at once.
-      const crossed=wasWalking?contactsCrossed(t.cycles,t.cycles+step):1;
-      t.cycles=wasWalking?t.cycles+step:step;
+      if(!g){if(t)t.since=NaN;continue;}
+      let crossed:number;
+      if(!t||t.since!==g.since){
+        // A walk starts on pose 0, a foot on the ground: its first step sounds at once.
+        const lastStep=t?.lastStep??-Infinity;
+        t={since:g.since,cycles:g.cycles,at:g.at,rate:0,ahead:g.cycles,lastStep};this.tracks.set(f.id,t);
+        crossed=1;
+      }else{
+        // The pace on the drawing's own clock, one sample a drawn frame: a tick between two frames (the HUD also ticks on
+        // a network view) saw a whole frame's walk over a few ms and played the steps up to 75 ms early.
+        const dt=g.at-t.at;
+        if(dt>0&&g.cycles>=t.cycles){const rate=(g.cycles-t.cycles)/dt;t.rate=t.rate>0?t.rate*.6+rate*.4:rate;t.cycles=g.cycles;t.at=g.at;}
+        const ahead=g.cycles+Math.min(MAX_LEAD_CYCLES,t.rate*lead);
+        crossed=contactsCrossed(t.ahead,ahead,g.contacts);
+        if(ahead>t.ahead)t.ahead=ahead;
+      }
       if(crossed>0&&f.gain>0&&now-t.lastStep>=MIN_STEP_MS){
         t.lastStep=now;
-        if(this.audio.play('passo-neve',stepJitter(this.rnd,f.gain*(f.runs?RUN_GAIN:1))))played++;
+        const pan=f.local?0:(f.side??0)*ALLY_PAN;
+        if(this.audio.play('passo-neve',{...stepJitter(this.rnd,f.gain*(f.runs?RUN_GAIN:1)),...(pan?{pan}:{})}))played++;
       }
     }
     for(const id of this.tracks.keys())if(!seen.has(id))this.tracks.delete(id);
     return played;
   }
 
-  /** The boss's heavy step while it moves (`boss` undefined: none alive), quieter away from `hero`, none out of earshot. */
-  boss(now:number,boss:{x:number;y:number}|undefined,hero:{x:number;y:number}){
+  /**
+   * The boss's heavy step while it moves (`boss` undefined: none alive), quieter away from `hero`, none out of earshot,
+   * from its side of the screen (`side`, -1..1).
+   */
+  boss(now:number,boss:{x:number;y:number}|undefined,hero:{x:number;y:number},side=0){
     const last=this.bossPos;
     this.bossPos=boss&&{x:boss.x,y:boss.y};
     if(!boss||!last)return false;
@@ -101,7 +119,8 @@ export class Footsteps {
     const distance=Math.hypot(boss.x-hero.x,boss.y-hero.y);
     if(now>=this.bossMoving||distance>BOSS_RANGE||now-this.bossAt<BOSS_STEP_MS)return false;
     this.bossAt=now;
-    return this.audio.play('chefe-passo',{gain:1/(1+distance/8)});
+    const pan=side*ALLY_PAN;
+    return this.audio.play('chefe-passo',{gain:1/(1+distance/8),...(pan?{pan}:{})});
   }
 
   reset(){this.tracks.clear();this.bossAt=-Infinity;this.bossPos=undefined;this.bossMoving=-Infinity;}

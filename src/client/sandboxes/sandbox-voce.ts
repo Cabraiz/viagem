@@ -3,7 +3,7 @@
  * of every ground it must read on: today's dark sea and grass, and the light tropical scene of D-022 (water, grass,
  * sand), plus the lilac horde and the bêbado (D-033). A table measures each ring layer against each ground (WCAG contrast):
  * at least one layer must pass 3:1 everywhere (design onda 3 §0, checklist A8). Dev page; ground hexes are samples.
- * Query: hero (class id, default sensei), facing (degrees, default 90 = down), low=1 (health at 20%).
+ * Query: hero (class id, default maromba), facing (degrees, default 90 = down), low=1 (health at 20%).
  */
 import Phaser from 'phaser';
 import {YouMarkers} from '../render/you.ts';
@@ -21,7 +21,7 @@ const lum=(hex:string)=>{const n=parseInt(hex.replace('#',''),16);return .2126*l
 export const contrast=(a:string,b:string)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
 
 const params=new URLSearchParams(location.search);
-const hero=params.get('hero')||'sensei',facing=Number(params.get('facing')??90)*Math.PI/180,low=params.get('low')==='1';
+const hero=params.get('hero')||'maromba',facing=Number(params.get('facing')??90)*Math.PI/180,low=params.get('low')==='1';
 
 class VoceScene extends Phaser.Scene{
   private you:YouMarkers[]=[];private sprites:Phaser.GameObjects.Sprite[]=[];

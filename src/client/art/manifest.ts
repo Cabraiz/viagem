@@ -33,6 +33,12 @@ export interface ArtFile {
    * parsed index already has it as `cell` (parseArtIndex), and keeps it here: that copy has no approved file of its size to fall back to.
    */
   liteCell?:[number,number];
+  /**
+   * Enemies on the computer (scripts/art-lite.mjs enemies-pc, NEW-20261023-ORQ-inimigos-v5a-padrao): the cell of the
+   * computer's copy, between liteCell and cell. Kept in the parsed index only when the screen draws it (parseArtIndex pc),
+   * as the cell; horde-art liteEnemyUrl then asks for that copy.
+   */
+  pcCell?:[number,number];
 }
 /**
  * Render hints the importer copies from the P0 table or the sidecar (scripts/art-v2/spec.mjs), e.g.
@@ -71,14 +77,20 @@ function parseFile(value:unknown):ArtFile|undefined{
   }
   if(file.file===undefined&&file.pages===undefined)return undefined;
   // A lite copy's cell (scripts/art-lite.mjs) is never larger than the file's; a malformed one is dropped.
-  if(file.liteCell!==undefined&&!(isCell(file.liteCell)&&file.liteCell[0]<=file.cell[0]&&file.liteCell[1]<=file.cell[1])){const {liteCell:_,...rest}=file;return rest;}
+  if(file.liteCell!==undefined&&!(isCell(file.liteCell)&&file.liteCell[0]<=file.cell[0]&&file.liteCell[1]<=file.cell[1])){const {liteCell:_,pcCell:__,...rest}=file;return rest;}
+  // The computer's copy sits between the two (cell ≥ pcCell ≥ liteCell); without a lite copy, or malformed, it is dropped.
+  if(file.pcCell!==undefined&&!(file.liteCell&&isCell(file.pcCell)&&file.pcCell[0]<=file.cell[0]&&file.pcCell[1]<=file.cell[1]&&
+    file.pcCell[0]>=file.liteCell[0]&&file.pcCell[1]>=file.liteCell[1])){const {pcCell:_,...rest}=file;return rest;}
   return file;
 }
-/** An enemy file as the client draws it: its lite copy's cell when that copy is smaller (a malformed one is dropped). */
-function liteFile(file:ArtFile):ArtFile{
+/**
+ * An enemy file as the client draws it: its lite copy's cell when that copy is smaller, the computer's copy's (pcCell)
+ * on a computer that has one (parseFile already dropped a malformed one); the phone never keeps pcCell.
+ */
+function liteFile(file:ArtFile,pc:boolean):ArtFile{
   if(file.liteCell===undefined)return file;
-  const {liteCell,...rest}=file;
-  return isCell(liteCell)&&liteCell[0]<=file.cell[0]&&liteCell[1]<=file.cell[1]?{...rest,cell:[liteCell[0],liteCell[1]],liteCell}:rest;
+  const {liteCell,pcCell,...rest}=file;
+  return pc&&pcCell?{...rest,cell:[pcCell[0],pcCell[1]],liteCell,pcCell}:{...rest,cell:[liteCell[0],liteCell[1]],liteCell};
 }
 /**
  * Enemies drawn from their approved files, not the lite copies: the 1st wave's chefão (rules WAVE_BOSS_IDS; the user,
@@ -86,26 +98,27 @@ function liteFile(file:ArtFile):ArtFile{
  * ids (this module imports nothing); tests/client/chefao-cena.test.ts checks it against the rules.
  */
 export const HD_ENEMIES:ReadonlySet<string>=new Set(['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha']);
-function parsePiece(value:unknown,lite=false):ArtPiece|undefined{
+function parsePiece(value:unknown,lite=false,pc=false):ArtPiece|undefined{
   if(!isObject(value)||typeof value.kind!=='string'||!isObject(value.files))return undefined;
   const files:Record<string,ArtFile>=Object.create(null);
-  for(const [key,f] of safeEntries(value.files,true)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file):file;}
+  for(const [key,f] of safeEntries(value.files,true)){const file=parseFile(f);if(file)files[key]=lite?liteFile(file,pc):file;}
   if(!Object.keys(files).length)return undefined;
   return {kind:value.kind,files,...(isObject(value.meta)?{meta:value.meta}:{})};
 }
 
 /**
- * The enemies are drawn from their lite copies only (horde-art liteEnemyUrl), so their files take `liteCell` as the cell.
+ * The enemies are drawn from their lite copies only (horde-art liteEnemyUrl), so their files take `liteCell` as the cell;
+ * on a computer (`pc`: the fine pointer of the fixed zoom, camera-zoom.ts startZoom) `pcCell` where the file has one.
  * Validates the index defensively (it is a public file the client trusts for URLs): unknown or malformed groups,
  * pieces and files are dropped one by one, so a bad entry only keeps that piece procedural; never throws.
  */
-export function parseArtIndex(value:unknown):ArtIndex{
+export function parseArtIndex(value:unknown,pc=false):ArtIndex{
   if(!isObject(value)||value.version!==2||!isObject(value.groups))return EMPTY;
   const groups:Record<string,ArtGroup>=Object.create(null);
   for(const [id,g] of safeEntries(value.groups)){
     if(!isObject(g)||typeof g.output!=='string'||!/^public\/art\/[a-z0-9/_-]+$/.test(g.output)||g.output.includes('..')||!isObject(g.pieces))continue;
     const pieces:Record<string,ArtPiece>=Object.create(null);
-    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos'&&!HD_ENEMIES.has(pid));if(piece)pieces[pid]=piece;}
+    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos'&&!HD_ENEMIES.has(pid),pc);if(piece)pieces[pid]=piece;}
     groups[id]={output:g.output,pieces};
   }
   return {version:2,groups};
@@ -116,9 +129,9 @@ export function parseArtIndex(value:unknown):ArtIndex{
 export let artIndexVersion=0;
 export function setArtIndex(next:ArtIndex){index=next;artIndexVersion++;}
 
-/** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. */
-export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'})){
-  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?parseArtIndex(await r.json()):EMPTY);}
+/** Fetches `/art/manifest.json` once at boot; any failure keeps the procedural art. `pc`: see parseArtIndex. */
+export async function loadArtManifest(fetcher:(url:string)=>Promise<{ok:boolean;json():Promise<unknown>}>=url=>fetch(url,{cache:'no-cache'}),pc=false){
+  try{const r=await fetcher('/art/manifest.json');setArtIndex(r.ok?parseArtIndex(await r.json(),pc):EMPTY);}
   catch{setArtIndex(EMPTY);}
   return index;
 }

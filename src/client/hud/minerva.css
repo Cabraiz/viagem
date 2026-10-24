@@ -29,3 +29,18 @@
 .rh[data-hud=fone] .rh-minerva-face{width:44px;height:44px}
 .rh[data-hud=fone] .rh-minerva-title{font-size:var(--t-13)}
 .rh[data-hud=fone] .rh-minerva-count{font-size:var(--t-21)}
+/* The phone lying down (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem): the slot under the one-row band ends right over
+   the hero at 390 px of height, so the sticker leaves the slot for the left column, under the minimap (fone.css: top-left,
+   --rh-mm wide), as wide as it: clear of the hero, the joystick (bottom-left) and the buttons (right). Fixed is the
+   screen here: .rh is fixed at inset 0 with no transform. PC and portrait keep the slot. */
+@media (max-height:500px){
+  .rh[data-hud=fone] .rh-minerva{position:fixed;top:calc(var(--rh-t) + var(--rh-mm) + 8px);left:var(--rh-l);width:var(--rh-mm);gap:4px;padding:4px 6px 4px 4px}
+  .rh[data-hud=fone] .rh-minerva-face{width:36px;height:36px}
+  .rh[data-hud=fone] .rh-minerva-text{min-width:0}
+  .rh[data-hud=fone] .rh-minerva-title{white-space:normal}
+  /* "Os monstros acordaram!" takes the whole width (the hand is at zero anyway): the face makes room for "acordaram!". */
+  .rh[data-hud=fone] .rh-minerva[data-phase=wake]{justify-content:center}
+  .rh[data-hud=fone] .rh-minerva[data-phase=wake] .rh-minerva-face{display:none}
+  .rh[data-hud=fone] .rh-minerva[data-phase=wake] .rh-minerva-text{align-items:center;text-align:center}
+  .rh[data-hud=fone] .rh-minerva[data-phase=wake] .rh-minerva-title{font-size:var(--t-16)}
+}

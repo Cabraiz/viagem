@@ -11,7 +11,7 @@
  * as a type only.
  */
 import type Phaser from 'phaser';
-import {artPages,artPiece,artUrl} from './manifest.ts';
+import {HD_ENEMIES,artPages,artPiece,artUrl} from './manifest.ts';
 import {ENEMY_ART_ID,chooseAnim,enemyFrameAt,liteEnemyUrl} from './horde-art.ts';
 import {markArt,markFrame,placeMark,sliceArt,type MarkArt,type SliceArt} from './frames-art.ts';
 import {uiArtUrl} from '../ui/icon.ts';
@@ -50,7 +50,8 @@ export function critterSheetFrame(id:string):CritterSheetFrame|undefined{
   const page=file&&Array.isArray(file.cell)?artPages(file).find(p=>p.firstFrame===0&&p.frameCount>0):undefined;
   const url=page&&artUrl('inimigos',page.file);
   if(!file||!page||!url)return undefined;
-  return {url:liteEnemyUrl(url),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
+  // The chefão's face comes from his approved file at its cell, like his body (horde-art enemyPieceLoads).
+  return {url:HD_ENEMIES.has(art)?url:liteEnemyUrl(url,file),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
 }
 
 /**

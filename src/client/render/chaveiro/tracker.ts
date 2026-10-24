@@ -3,7 +3,7 @@
  * since when the alarm sounds and the run ended (renderer clock), the moto's heading, and the route and stops, which
  * protocol 15 sends on the keyframe and when they change only (RouteMemo). Pure, so the state machine is tested.
  */
-import {carAxisHeading,headingOf,newlyFallen,PART_FALL_MS,alarmOn} from './rules.ts';
+import {carAxisHeading,headingOf,newlyFallen,PART_FALL_MS,alarmOn,HIT_MERGE_MS,HIT_POPS_MAX,HIT_POP_MS} from './rules.ts';
 import type {ChaveiroView} from './view.ts';
 
 /** Keeps the last route and stops seen, and fills a view that came without them. */
@@ -33,7 +33,11 @@ export class ChaveiroTracker {
   carHeading=0;
   /** How far the car rolled along its heading (units, negative backwards): its wheels turn by it. */
   carRoll=0;
+  /** Card inimigos-querem-o-uno: when the car last took a hit (renderer clock) and the hits' numbers in the air. */
+  lastHitAt?:number;
+  readonly pops:{amount:number;at:number}[]=[];
   private carAt?:{x:number;y:number};
+  private hits?:number;
   private parts=0;
   private motoAt?:{x:number;y:number};
   private memo=new RouteMemo();
@@ -42,7 +46,16 @@ export class ChaveiroTracker {
   push(next:ChaveiroView|undefined,tick:number,now:number,reduced:boolean){
     this.tick=tick;
     const view=this.memo.fill(next);
-    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=this.carAt=undefined;this.heading=this.carHeading=this.carRoll=0;return;}
+    if(!view){this.view=undefined;this.parts=0;this.falling.clear();this.alarmSince=this.endedAt=this.motoAt=this.carAt=this.hits=this.lastHitAt=undefined;this.pops.length=0;this.heading=this.carHeading=this.carRoll=0;return;}
+    // The hits it took since the last view (none on the first view: its old damage is no news).
+    const took=this.hits===undefined?0:view.car.hits-this.hits;
+    this.hits=view.car.hits;
+    if(took>0&&!view.ended){
+      const last=this.pops[this.pops.length-1];
+      if(last&&now-last.at<HIT_MERGE_MS)last.amount+=took;
+      else{this.pops.push({amount:took,at:now});if(this.pops.length>HIT_POPS_MAX)this.pops.shift();}
+      this.lastHitAt=now;
+    }
     // Parts that fell since the last view fall now (the first view shows the fallen ones already down).
     if(this.view&&!reduced)for(const i of newlyFallen(this.parts,view.car.parts))this.falling.set(1<<i,now);
     this.parts=view.car.parts;
@@ -64,6 +77,7 @@ export class ChaveiroTracker {
   settle(now:number):number{
     let bits=0;
     for(const [bit,at] of this.falling){if(now-at>=PART_FALL_MS)this.falling.delete(bit);else bits|=bit;}
+    while(this.pops.length&&now-this.pops[0].at>=HIT_POP_MS)this.pops.shift();
     return bits;
   }
 }

@@ -146,6 +146,11 @@ export interface PickupState extends Point {
    * not pick it back up (take, the "Trocar" button, still does).
    */
   dropper?:string;
+  /**
+   * D-051 'chest' only (server-side, never on the wire): players who no longer see this crate (crates.ts HIDE_AFTER_TAKEN:
+   * they took a weapon of its colour); the encoder leaves it out of their frames and their bots skip it.
+   */
+  hiddenFor?:string[];
 }
 
 export interface ProjectileState extends Point {

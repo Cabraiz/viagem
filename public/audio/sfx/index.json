@@ -69,6 +69,13 @@
   "webm": 6490,
   "m4a": 7660
  },
+ "caca-niquel": {
+  "seconds": 1.65,
+  "gainDb": 0,
+  "lufs": -16.1,
+  "webm": 15996,
+  "m4a": 14796
+ },
  "cafe": {
   "seconds": 0.794,
   "gainDb": 0,

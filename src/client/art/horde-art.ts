@@ -193,9 +193,10 @@ export const projectileFrame=(look:{frames:number;fps:number},elapsedMs:number)=
 
 /**
  * The enemy sheets load their lossy copy (scripts/art-lite.mjs, public/art/lite/enemies/<id>/<file>), like the hero
- * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl).
+ * sheets; a copy that fails to load falls back to the approved file (scene artFallback, originalUrl). A file the
+ * computer draws from its own copy (manifest.ts pcCell, kept only on a computer) loads public/art/lite/enemies-pc/.
  */
-export const liteEnemyUrl=(url:string)=>url.replace('/art/enemies/','/art/lite/enemies/');
+export const liteEnemyUrl=(url:string,file?:Pick<ArtFile,'pcCell'>)=>url.replace('/art/enemies/',file?.pcCell?'/art/lite/enemies-pc/':'/art/lite/enemies/');
 
 export interface ArtLoad {key:string;url:string;cell:[number,number];bake?:{key:string;size:readonly [number,number];fit:'contain'|'fill'}}
 /**
@@ -235,7 +236,7 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
       // The chefão's approved file (manifest.ts HD_ENEMIES): HD at his size; everyone else's lite copy.
       if(HD_ENEMIES.has(id)){out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});return;}
-      const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
+      const lite=liteEnemyUrl(url,file);if(file.liteCell)LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
   }

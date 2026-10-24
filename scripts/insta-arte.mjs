@@ -28,7 +28,8 @@ const out=file=>path.join(outDir,file);
 const WEBP={quality:95,alphaQuality:100,effort:6,smartSubsample:true};
 
 /** The README's choices (E5): the option number of each hero's profile sheet. */
-const PERFIL={'viciado-em-bet':['viciado',1],'clt-cansado':['clt',1],'gato-nada-pra-comer':['gato',1],'maromba':['maromba',4]};
+const PERFIL={'viciado-em-bet':['viciado',1],'clt-cansado':['clt',1],'gato-nada-pra-comer':['gato',1],'maromba':['maromba',4],
+  'vendedor-praia':['vendedor',4],'aposentado':['aposentado',3]};
 const PERFIL_PX=360,GRADE=[272,312],POST_PX=480;
 
 // --logos: only the top bar's logos (their source is public/art/menu/letreiro, not the evidence).

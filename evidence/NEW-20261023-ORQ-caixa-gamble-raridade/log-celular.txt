@@ -1,0 +1,6 @@
+worker http://127.0.0.1:8790
+partida aberta
+alvo espeto cor 2 a 45.1 u; armas no meu frame por cor: {"2":1}
+abriu espeto: caça-níquel apareceu
+depois, armas no meu frame por cor: {"2":2}
+erros: 0 

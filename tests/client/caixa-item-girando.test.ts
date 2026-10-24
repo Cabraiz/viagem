@@ -2,7 +2,8 @@
 // (render/arsenal-rules.ts floatPose/floatSpin), no rarity colour; every item a crate can roll has a sticker the arsenal loads.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ARSENAL_ITEMS,FLOAT_BOB,FLOAT_EDGE,FLOAT_LIFT,FLOAT_TURN_MS,FLOAT_TURN_OPEN,floatPose,floatSpin,itemIcon} from '../../src/client/render/arsenal-rules.ts';
+import {ARSENAL_ITEMS,FLOAT_BOB,FLOAT_EDGE,FLOAT_LIFT,FLOAT_PHONE_MAX,floatLegible,FLOAT_TURN_MS,FLOAT_TURN_OPEN,floatPose,floatSpin,itemIcon} from '../../src/client/render/arsenal-rules.ts';
+import {hordeUiScale} from '../../src/client/framing.ts';
 import {CRATE_ITEMS,arsenalView} from '../../src/client/sandboxes/arsenal-view.ts';
 import {CRATE_WEAPONS,STARTER_WEAPONS} from '../../src/sim/crates.ts';
 import {KIT_POOL,kitId} from '../../src/rules/tower-kits.ts';
@@ -35,4 +36,12 @@ test('the sandbox crates name their items (arsenal=1 shows them floating)',()=>{
   assert.ok(chests.length>=6);
   for(const c of chests)assert.ok(c.resource&&itemIcon(c.resource),`${c.id}: ${c.resource}`);
   assert.deepEqual(chests.slice(0,5).map(c=>c.resource),[...CRATE_ITEMS]);
+});
+
+test('the floating item grows on a phone only (hordeUiScale over the body), capped at FLOAT_PHONE_MAX',()=>{
+  const scale=.6;
+  assert.equal(floatLegible(hordeUiScale(1,scale),scale),1,'PC zoom: as authored');
+  const phone=floatLegible(hordeUiScale(.5,scale),scale);
+  assert.ok(phone>1&&phone<=FLOAT_PHONE_MAX,`phone: ${phone}`);
+  assert.equal(floatLegible(hordeUiScale(.1,scale),scale),FLOAT_PHONE_MAX,'never past the cap');
 });

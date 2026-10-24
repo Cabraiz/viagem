@@ -22,7 +22,7 @@ import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
-import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
+import {sticker,type StickerName} from '../ui/sticker.ts';
 import {fallLine,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
@@ -219,7 +219,7 @@ export function createCamp(options:CampOptions):CampPart{
     const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.nests??''}`:'';
     if(key===lastClock)return;
     lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>${bar.nests?`<i class="rh-ninhos">${stickerOrIcon('ninho','base')}<b>${bar.nests}</b></i>`:''}`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
+    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
     else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */

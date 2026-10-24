@@ -36,11 +36,22 @@ export const ART_STICKER_NAMES=[
   'torre-antiaerea-quadrupla','torre-arame-e-sirene','torre-atiradores-do-telhado','torre-equipe-antimaterial',
   'torre-guarnicao-do-predio','torre-gustavao','torre-holofote','torre-lanca-foguetes','torre-morteiro',
   'torre-ninho-de-metralhadora','torre-ninho-do-sniper','torre-obuseiro','torre-posto-de-radar','torre-rojao-de-festa',
-  'torre-vigia-do-predio','torre-vigias-armados'] as const;
+  'torre-vigia-do-predio','torre-vigias-armados',
+  // The dourada edition of each arsenal weapon (caixa-gamble-raridade, the user 24/10: "crie as armas sendo douradas
+  // pelo chatgpt"): `<weapon sticker>-dourada`, worn by a weapon at level 4 (goldSticker).
+  'pistola-dourada','escopeta-dourada','submetralhadora-dourada','rifle-dourada','macarico-dourada','rojao-dourada','estilingue-dourada','espeto-dourada','sacole-dourada','tampa-de-panela-dourada','pandeiro-dourada','bola-murcha-dourada','traque-dourada','buscape-dourada','figa-dourada','vela-esoterica-dourada','tijolo-baiano-dourada','taro-vencido-dourada','panela-de-pressao-dourada','carro-de-som-dourada'] as const;
 export type StickerName=typeof STICKER_NAMES[number]|typeof ART_STICKER_NAMES[number];
 const KNOWN=new Set<string>([...STICKER_NAMES,...ART_STICKER_NAMES]);
 const SVG=new Set<string>(STICKER_NAMES);
 export const isStickerName=(name:string):name is StickerName=>KNOWN.has(name);
+/** The level a weapon wears its dourada sticker at (sim/weapons/arsenal.ts: 4 = dourada). */
+export const GOLD_LEVEL=4;
+/** A weapon's sticker at this level: its `-dourada` edition at GOLD_LEVEL when that art is in, else its own. */
+export function goldSticker(name:StickerName,level:number):StickerName{
+  if(level!==GOLD_LEVEL)return name;
+  const gold=`${name}-dourada`;
+  return isStickerName(gold)&&uiArtUrl(gold)?gold:name;
+}
 
 const escape=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]!);
 export function sticker(name:StickerName,options:IconOptions={}):string{

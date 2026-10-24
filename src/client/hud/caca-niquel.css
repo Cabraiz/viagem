@@ -1,0 +1,58 @@
+/* The caça-níquel of the dourada escondida (card NEW-20261023-ORQ-caixa-gamble-raridade, hud/caca-niquel.ts): over the
+   screen's centre, never catching the pointer (the game goes on under it). Fade in FADE_IN_MS, the three reels spin and
+   stop at their --stop (REEL_STOP_MS), the banner and the weapon shine gold, fade out from FADE_OUT_AT_MS; SLOT_MS in all.
+   The frame, the coins and the sparkles are ChatGPT/Codex pieces (public/art/ui-extra/caca-niquel-*.webp); the banner is
+   text, so it reads. Tokens only (lint-design.mjs). */
+.rh .rh-cn{--cn-w:320px;position:absolute;inset:0;z-index:var(--z-painel);display:flex;align-items:center;justify-content:center;pointer-events:none;
+  animation:rh-cn-fade 1900ms linear both}
+.rh .rh-cn[hidden]{display:none}
+.rh-cn-box{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;transform-origin:50% 50%;animation:rh-cn-pop 1900ms ease-out both}
+/* The Codex frame (ui-extra/caca-niquel-moldura.webp, 720×223) with its three windows cut out; the reels sit in them. */
+.rh-cn-frame{position:relative;width:var(--cn-w);aspect-ratio:720/223;background:url('/art/ui-extra/caca-niquel-moldura.webp') 0 0/100% 100% no-repeat}
+.rh-cn-reels{position:absolute;inset:0}
+/* A reel fills a window (measured on the frame); its strip of --cells stickers slides up until the last one (the weapon) sits in it. */
+.rh-cn-reel{position:absolute;top:17.5%;width:26.7%;height:64.1%;overflow:hidden;border-radius:var(--r-ficha);background:var(--c-papel);container-type:size}
+.rh-cn-reel:nth-child(1){left:6%}
+.rh-cn-reel:nth-child(2){left:36.7%}
+.rh-cn-reel:nth-child(3){left:67.4%}
+.rh-cn-strip{position:absolute;left:0;top:0;width:100%;display:flex;flex-direction:column;
+  animation:rh-cn-spin var(--stop) cubic-bezier(.2,.6,.3,1.08) both}
+.rh-cn-cell{display:flex;align-items:center;justify-content:center;width:100%;height:100cqh;flex:none}
+.rh-cn-cell .ic{width:80cqh;height:80cqh}
+/* A weapon without its dourada sticker (ui/<id>-dourada) wears its own, warmed to gold. */
+.rh-cn-gold .ic:not([data-sticker$="-dourada"]),.rh-cn-gold-ic{filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.08)}
+.rh-cn-gold{animation:rh-cn-shine 500ms ease-in-out 1100ms 2 alternate}
+.rh-cn-banner{padding:2px 14px;border:3px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-amarelo);color:var(--c-breu);
+  box-shadow:var(--s-2);font:400 var(--t-28)/1.1 var(--f-cartaz);opacity:0;transform:scale(.6);
+  animation:rh-cn-banner 500ms cubic-bezier(.3,1.6,.5,1) 1100ms both}
+.rh-cn-item{display:flex;align-items:center;gap:6px;padding:2px 10px;border-radius:var(--r-etiqueta);background:var(--c-papel);color:var(--c-breu);
+  font:700 var(--t-13)/1.2 var(--f-sistema);opacity:0;animation:rh-cn-banner 300ms ease-out 1200ms both}
+.rh-cn-item .ic{width:24px;height:24px}
+/* Coins and sparkles (ui-extra/caca-niquel-moeda|brilho.webp) burst from the frame's centre when the last reel stops. */
+.rh-cn-chuva{position:absolute;left:50%;top:calc(var(--cn-w) * 223 / 720 / 2);width:0;height:0}
+.rh-cn-moeda,.rh-cn-brilho{position:absolute;left:-16px;top:-16px;width:32px;height:32px;background:0 0/contain no-repeat;opacity:0;
+  animation:rh-cn-voa 650ms cubic-bezier(.2,.7,.4,1) var(--at,1100ms) both}
+.rh-cn-moeda{background-image:url('/art/ui-extra/caca-niquel-moeda.webp')}
+.rh-cn-brilho{background-image:url('/art/ui-extra/caca-niquel-brilho.webp')}
+
+@keyframes rh-cn-fade{0%{opacity:0}10.5%{opacity:1}84.2%{opacity:1}100%{opacity:0}}
+@keyframes rh-cn-pop{0%{transform:scale(.85)}10.5%{transform:scale(1)}100%{transform:scale(1)}}
+@keyframes rh-cn-spin{from{transform:translateY(0)}to{transform:translateY(calc((1 - 1 / var(--cells)) * -100%))}}
+@keyframes rh-cn-voa{0%{opacity:0;transform:translate(0,0) scale(.4) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(var(--s,1)) rotate(var(--rot))}}
+@keyframes rh-cn-banner{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes rh-cn-shine{from{filter:none}to{filter:brightness(1.35)}}
+
+/* A wide screen (PC, tablet): bigger reels, the banner too. */
+@media (min-width:768px){
+  .rh .rh-cn{--cn-w:560px}
+  .rh-cn-moeda,.rh-cn-brilho{left:-24px;top:-24px;width:48px;height:48px}
+  .rh-cn-banner{font-size:var(--t-48)}
+  .rh-cn-item{font-size:var(--t-16)}
+}
+/* No spin: the weapon is there from the start, the box only fades. */
+.rh .rh-cn[data-fase=parado] .rh-cn-strip{animation:none}
+@media (prefers-reduced-motion:reduce){
+  .rh-cn-strip,.rh-cn-box,.rh-cn-gold{animation:none}
+  .rh-cn-chuva{display:none}
+  .rh-cn-banner,.rh-cn-item{animation:none;opacity:1;transform:none}
+}

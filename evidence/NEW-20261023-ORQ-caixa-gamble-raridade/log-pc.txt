@@ -1,0 +1,9 @@
+worker http://127.0.0.1:8790
+partida aberta
+alvo escopeta cor 1 a 16.5 u; armas no meu frame por cor: {"1":3,"2":1}
+abriu escopeta: caça-níquel apareceu
+depois, armas no meu frame por cor: {"1":1,"2":1}
+alvo buscape cor 2 a 35.4 u; armas no meu frame por cor: {"1":1,"2":1}
+abriu buscape: caça-níquel apareceu
+depois, armas no meu frame por cor: {"1":1}
+erros: 0 

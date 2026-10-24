@@ -1,0 +1,5 @@
+Generate ONE image with the image generation tool and save it as moldura.png in the current directory. Do not inspect, do not run code, do not check with PIL.
+
+The attached image is only a style reference (thick dark outline, painted cartoon game sticker style, warm colors). Do not copy, edit or reuse any part of it.
+
+Draw the FRONT VIEW of a cartoon slot machine reel frame for a game HUD overlay: a wide horizontal golden casino frame with rounded corners, chunky gold trim, small red and white marquee light bulbs all around the border, and exactly THREE square reel windows side by side in the middle, equal size, separated by thin gold dividers. The inside of the three windows must be EMPTY flat pure green #00FF00 (they will be cut out). Straight-on, perfectly symmetric, no perspective, no lever, no text, no numbers, no symbols in the windows. Flat pure green #00FF00 background around the frame too. Aspect about 3.2:1, the frame filling the width.

@@ -33,7 +33,7 @@ import type {CityOutlines} from './city-outline.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
 import {THROW_MS} from '../../rules/index.ts';
 import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,
-  FLOAT_PX,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
+  FLOAT_PX,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -186,7 +186,7 @@ export class ArsenalFx{
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
-      const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id);
+      const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id,p.weapons[p.hand]?.level);
       if(icon)this.handOf.set(p.id,icon);
       if(p.id===me){const weapon=p.weapons[p.hand]?.id,cone=weapon&&meleeCone(weapon,p,p.classId);if(cone)this.selfCone={weapon,...cone};}
     }
@@ -230,7 +230,7 @@ export class ArsenalFx{
       return {key:ref.key,frame:ref.frame,k:CRATE_PX/file.cell[0]};
     }
     if(view.kind==='item'){
-      const icon=itemIcon(view.resource),key=icon&&iconKey(icon);
+      const icon=itemIcon(view.resource,isWeaponItem(view.resource)?view.value:1),key=icon&&iconKey(icon);
       if(!key||!this.scene.textures.exists(key))return undefined;
       return {key,k:ITEM_PX/Math.max(1,this.scene.textures.get(key).getSourceImage().width)};
     }
@@ -339,7 +339,7 @@ export class ArsenalFx{
       const q=projector.project(at.x,at.y,this.q),w=Math.max(1,this.scene.textures.getFrame(key)?.width??1),held=this.options.hand?.(id);
       let dx=HAND_DX*b,dy=HAND_DY*b,k=HAND_PX*b/w,rotation=0,flipX=false,flipY=false,ox=.5,oy=.5,depth=HAND_DEPTH;
       if(held){
-        const hold=WEAPON_HOLD[icon]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
+        const hold=WEAPON_HOLD[plainIcon(icon)]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
         dx=held.x-q.x;dy=held.y-q.y;k=hold.px*b/w;rotation=pose.rotation;flipX=pose.flipX;flipY=pose.flipY;ox=pose.ox;oy=pose.oy;
         depth=held.depth+(held.behind?HELD_DEPTH.behind:HELD_DEPTH.front);
       }

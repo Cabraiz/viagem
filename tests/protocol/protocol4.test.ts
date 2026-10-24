@@ -1767,6 +1767,29 @@ test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousa
   assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,undefined);
 });
 
+test('card inimigos-querem-o-uno: the awake critters by a far car come too (the Uno\'s live window), first under the cap; not after the end',async()=>{
+  const {CAR_INTEREST_RADIUS}=await import('../../src/contract/offscreen.ts');
+  const rng=new Rng(77),w=farWorld(rng,5000,-3000,0),v=w.view,R=INTEREST_RADIUS;
+  const car={x:5000+R+40,y:-3000};
+  v.objective={...objectiveAt(v.tick),car:{...objectiveAt(v.tick).car,x:car.x,y:car.y}};
+  v.enemies=[
+    {id:'e-near',kind:'bebado',x:5000+5,y:-3000,hp:20,maxHp:20},
+    {id:'e-car',kind:'bebado',x:car.x+1.5,y:car.y,hp:20,maxHp:20},
+    {id:'e-car-edge',kind:'bebado',x:car.x,y:car.y+CAR_INTEREST_RADIUS-.5,hp:20,maxHp:20},
+    {id:'e-car-far',kind:'bebado',x:car.x+CAR_INTEREST_RADIUS+INTEREST_HYSTERESIS+2,y:car.y,hp:20,maxHp:20},
+    {id:'e-car-asleep',kind:'bebado',x:car.x-1,y:car.y,hp:20,maxHp:20,asleep:true},
+  ];
+  const run=(interest?:{awake:number})=>{
+    const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0',...(interest?{interest}:{})}),dec=new FrameDecoder();
+    const r=dec.decode(enc.encode(v));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    return (r.view.enemies as {id:string}[]).map(e=>enc.ids.resolve(e.id)).sort();
+  };
+  assert.deepEqual(run(),['e-car','e-car-edge','e-near'],'by the car (awake), and the viewer\'s own area');
+  assert.deepEqual(run({awake:1}),['e-car'],'over the cap the car\'s go first');
+  v.objective={...v.objective,ended:'defeat'};
+  assert.deepEqual(run(),['e-near'],'the run ended: only the viewer\'s area');
+});
+
 test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 it is gone on the phone too',()=>{
   const view=busyWorld(new Rng(5),10).view;
   view.players[0]={...view.players[0],fear:.5};

@@ -1,0 +1,252 @@
+[
+ {
+  "hero": "vendedor-praia",
+  "screen": "1920x1080",
+  "chosen": "Suporte Vendedor de Praia",
+  "classInMatch": "vendedor-praia",
+  "textures": [
+   "sprite:vendedor-praia:dir4:cidade:1",
+   "sprite:vendedor-praia:dir4c",
+   "sprite:vendedor-praia:dir4c:cidade:3"
+  ],
+  "distinctFrames": 7,
+  "anims": [
+   "sprite:vendedor-praia:dir4:cidade:1:idle:front-right",
+   "sprite:vendedor-praia:dir4c:walk:front-right",
+   "sprite:vendedor-praia:dir4c:attack:front-left",
+   "sprite:vendedor-praia:dir4c:idle:front-left",
+   "sprite:vendedor-praia:dir4c:cidade:3:attack:front-left",
+   "sprite:vendedor-praia:dir4c:cidade:3:idle:front-left"
+  ],
+  "attackingSamples": 19,
+  "samples": 84,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 0,
+   "kills": 0,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 0,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 38,
+  "alive": [
+   300,
+   303
+  ]
+ },
+ {
+  "hero": "vendedor-praia",
+  "screen": "390x844 cel",
+  "chosen": "Suporte Vendedor de Praia",
+  "classInMatch": "vendedor-praia",
+  "textures": [
+   "sprite:vendedor-praia:dir4:cidade:1",
+   "sprite:vendedor-praia:dir4c",
+   "sprite:vendedor-praia:dir4c:cidade:3"
+  ],
+  "distinctFrames": 11,
+  "anims": [
+   "sprite:vendedor-praia:dir4:cidade:1:idle:front-right",
+   "sprite:vendedor-praia:dir4c:walk:front-right",
+   "sprite:vendedor-praia:dir4:cidade:1:walk:front-left",
+   "sprite:vendedor-praia:dir4c:cidade:3:walk:front-right",
+   "sprite:vendedor-praia:dir4c:cidade:3:idle:front-right",
+   "sprite:vendedor-praia:dir4c:cidade:3:attack:front-right"
+  ],
+  "attackingSamples": 9,
+  "samples": 41,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 30,
+   "kills": 1,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 0,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 32,
+  "alive": [
+   300,
+   306
+  ]
+ },
+ {
+  "hero": "vendedor-praia",
+  "screen": "844x390 cel",
+  "chosen": "Suporte Vendedor de Praia",
+  "classInMatch": "vendedor-praia",
+  "textures": [
+   "sprite:vendedor-praia:dir4:cidade:1"
+  ],
+  "distinctFrames": 9,
+  "anims": [
+   "sprite:vendedor-praia:dir4:cidade:1:idle:front-right",
+   "sprite:vendedor-praia:dir4:cidade:1:walk:front-left",
+   "sprite:vendedor-praia:dir4:cidade:1:idle:front-left",
+   "sprite:vendedor-praia:dir4:cidade:1:attack:front-left"
+  ],
+  "attackingSamples": 26,
+  "samples": 138,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 0,
+   "kills": 0,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 0,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 77,
+  "alive": [
+   300,
+   300
+  ]
+ },
+ {
+  "hero": "aposentado",
+  "screen": "1920x1080",
+  "chosen": "Controle Aposentado da Praça",
+  "classInMatch": "aposentado",
+  "textures": [
+   "sprite:aposentado:dir4:cidade:1",
+   "sprite:aposentado:dir4c",
+   "sprite:aposentado:dir4c:cidade:3"
+  ],
+  "distinctFrames": 5,
+  "anims": [
+   "sprite:aposentado:dir4:cidade:1:idle:front-right",
+   "sprite:aposentado:dir4c:walk:back-right",
+   "sprite:aposentado:dir4c:idle:back-right",
+   "sprite:aposentado:dir4c:attack:back-right",
+   "sprite:aposentado:dir4c:cidade:3:idle:back-right",
+   "sprite:aposentado:dir4c:cidade:3:attack:back-right"
+  ],
+  "attackingSamples": 7,
+  "samples": 68,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 0,
+   "kills": 0,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 1,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 78,
+  "alive": [
+   300,
+   301
+  ]
+ },
+ {
+  "hero": "aposentado",
+  "screen": "390x844 cel",
+  "chosen": "Controle Aposentado da Praça",
+  "classInMatch": "aposentado",
+  "textures": [
+   "sprite:aposentado:dir4:cidade:1",
+   "sprite:aposentado:dir4c",
+   "sprite:aposentado:dir4c:cidade:6"
+  ],
+  "distinctFrames": 8,
+  "anims": [
+   "sprite:aposentado:dir4:cidade:1:idle:front-right",
+   "sprite:aposentado:dir4:cidade:1:walk:front-right",
+   "sprite:aposentado:dir4c:idle:front-right",
+   "sprite:aposentado:dir4c:attack:front-right",
+   "sprite:aposentado:dir4c:cidade:6:idle:front-right",
+   "sprite:aposentado:dir4c:cidade:6:attack:front-right"
+  ],
+  "attackingSamples": 27,
+  "samples": 136,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 24,
+   "kills": 0,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 0,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 28,
+  "alive": [
+   300,
+   303
+  ]
+ },
+ {
+  "hero": "aposentado",
+  "screen": "844x390 cel",
+  "chosen": "Controle Aposentado da Praça",
+  "classInMatch": "aposentado",
+  "textures": [
+   "sprite:aposentado:dir4:cidade:1",
+   "sprite:aposentado:dir4c",
+   "sprite:aposentado:dir4c:cidade:3"
+  ],
+  "distinctFrames": 6,
+  "anims": [
+   "sprite:aposentado:dir4:cidade:1:idle:front-right",
+   "sprite:aposentado:dir4c:walk:front-right",
+   "sprite:aposentado:dir4c:idle:back-right",
+   "sprite:aposentado:dir4c:attack:back-right",
+   "sprite:aposentado:dir4c:walk:front-left",
+   "sprite:aposentado:dir4c:attack:front-right",
+   "sprite:aposentado:dir4c:cidade:3:attack:front-right",
+   "sprite:aposentado:dir4c:cidade:3:idle:front-right"
+  ],
+  "attackingSamples": 4,
+  "samples": 134,
+  "missing": [],
+  "errors": [],
+  "bad": [],
+  "hiddenSamples": 0,
+  "stats": {
+   "damage": 9,
+   "kills": 1,
+   "revives": 0,
+   "pickups": 0,
+   "downs": 0,
+   "heals": 0,
+   "chests": 0,
+   "magnets": 0,
+   "evolves": 0
+  },
+  "minD": 112,
+  "alive": [
+   300,
+   300
+  ]
+ }
+]

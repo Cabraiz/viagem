@@ -131,7 +131,7 @@ export const cidaBought=(name:string)=>`${name.trim().split(/\s+/)[0]} na mão!`
 /** Why the run ended, as the result screen says it (card: aberto / perda total / time caído / timeout). */
 export const OBJECTIVE_CAUSE_TEXT:Readonly<Record<ObjectiveCause,string>>=Object.freeze({
   opened:'Abriu! O carregador era do conector errado.',
-  car:'Perda total. O motor segue ligado.',
+  car:'O Uno não aguentou. Perda total.',
   team:'O time caiu antes do chaveiro chegar.',
   timeout:'Acabou o tempo. O chaveiro não chegou.',
 });

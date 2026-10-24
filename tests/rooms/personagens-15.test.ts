@@ -14,21 +14,23 @@ const R06=['clt-cansado','coach','concurseira','faxineira','feirante','maromba',
   'streamer','universitario','viciado-em-bet','vizinha-fofoqueira'];
 /** gato-no-menu (23/10): the gato, playable with its own movement art (16 poses), never a bot for now. */
 const GATO='gato-nada-pra-comer';
-const PLAYABLE=[...R06,GATO];
+/** liberar-vendedor-aposentado (user, 24/10): playable with their 4-direction sheets, never bots until their 8-direction art. */
+const VITRINE4=['vendedor-praia','aposentado'];
+const PLAYABLE=[...R06,GATO,...VITRINE4];
 
 function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Array)=>{if(typeof s==='string')messages.push(JSON.parse(s));},close:()=>{}};}
 type TestPeer=ReturnType<typeof peer>;
 const say=(room:Room,p:Peer,m:object,now:number)=>room.receive(p,JSON.stringify(m),now);
 const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.connect(p,now);say(room,p,{t:'join',protocol:ROOM_PROTOCOL,name,classId},now);return p.messages.findLast(m=>m.t==='welcome').id as string;};
 
-test('the menu\'s list is the 13 with R06 art and the gato, in the roster\'s order; the 15 others stay in the data',()=>{
+test('the menu\'s list is the 13 with R06 art, the gato, the vendedor and the aposentado, in the roster\'s order; the 13 others stay in the data',()=>{
   assert.deepEqual([...PLAYABLE_CLASS_IDS].sort(),[...PLAYABLE].sort());
   assert.deepEqual(playableClasses.map(c=>c.id),classes.map(c=>c.id).filter(id=>PLAYABLE.includes(id)));
   assert.equal(classes.length,29,'only the 7 of legado/ were deleted');
-  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 14 only');
+  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 16 only');
   for(const role of roles)for(const c of filterClasses('',role))assert.ok(PLAYABLE.includes(c.id),`${role}: ${c.id}`);
-  assert.deepEqual([...BOT_CLASS_IDS].sort(),[...R06].sort(),'the gato is never a bot');
-  assert.equal(playableClassId('aposentado'),playableClasses[0].id);assert.equal(playableClassId('coach'),'coach');
+  assert.deepEqual([...BOT_CLASS_IDS].sort(),[...R06].sort(),'the gato, the vendedor and the aposentado are never bots');
+  assert.equal(playableClassId('cidadao-comum'),playableClasses[0].id);assert.equal(playableClassId('aposentado'),'aposentado');assert.equal(playableClassId('coach'),'coach');
   assert.equal(playableClassId(42),playableClasses[0].id);
 });
 
@@ -36,7 +38,7 @@ test('a room seats a person\'s hidden or locked class as the viciado, a released
   const seen=new Set<string>();
   for(let seed=1;seed<=12;seed++){
     const room=new Room(1000,seed),a=peer(),b=peer();
-    const ana=join(room,a,'Ana','aposentado',1000),bia=join(room,b,'Bia','clt-cansado',1000);
+    const ana=join(room,a,'Ana','cidadao-comum',1000),bia=join(room,b,'Bia','clt-cansado',1000);
     assert.equal(room.sim.players.get(ana)!.classId,'viciado-em-bet','a hidden class plays the viciado (cadeado-so-clt-viciado)');
     assert.equal(room.sim.players.get(bia)!.classId,'clt-cansado');
     let t=1100;

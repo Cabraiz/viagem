@@ -79,6 +79,25 @@ export function tioSpot(car:{x:number;y:number},view:number,heading=0):{x:number
 export const motoNeedsTeam=(mode:MotoMode)=>mode==='morta'||mode==='tombo';
 /** The car's life bar turns Cone under this share of hits left. */
 export const CAR_LOW=.3;
+/**
+ * Card inimigos-querem-o-uno, the Uno takes hits: each hit's number ("-3") rises off the roof for HIT_POP_MS, the car
+ * flashes for HIT_FLASH_MS, and under CAR_LOW of its life the hood smokes dark (a puff every LOW_SMOKE_MS).
+ */
+export const HIT_POP_MS=900,HIT_FLASH_MS=160,LOW_SMOKE_MS=260;
+/** At most this many numbers in the air: a horde's hits add into the newest one instead of piling up. */
+export const HIT_POPS_MAX=4;
+/** Hits closer than this (ms) add into one number. */
+export const HIT_MERGE_MS=250;
+/** A hit's number at `ms` after it: how high it rose (world px, before the zoom factor) and its alpha; undefined once gone. */
+export function hitPop(ms:number,reduced:boolean):{rise:number;alpha:number}|undefined{
+  if(ms<0||ms>=HIT_POP_MS)return undefined;
+  const t=ms/HIT_POP_MS;
+  return {rise:reduced?0:28*(1-(1-t)*(1-t)),alpha:t<.6?1:1-(t-.6)/.4};
+}
+/** Whether the car shows its hit flash at `ms` after the last hit (never with reduced effects: no blinking). */
+export const hitFlash=(ms:number|undefined,reduced:boolean)=>!reduced&&ms!==undefined&&ms>=0&&ms<HIT_FLASH_MS;
+/** The share of hits the car still takes (1 untouched, 0 wrecked). */
+export const carLife=(car:{hits:number;limit:number})=>car.limit>0?Math.max(0,Math.min(1,1-car.hits/car.limit)):0;
 /** The heading of a figure that moved from `a` to `b` (radians), or `old` when it barely moved. */
 export function headingOf(a:{x:number;y:number},b:{x:number;y:number},old:number):number{
   const dx=b.x-a.x,dy=b.y-a.y;

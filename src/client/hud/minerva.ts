@@ -4,8 +4,8 @@
  * analog clock whose seconds hand sweeps once in 60 s, the title and the seconds left; the last 5 s pulse in the danger
  * colour and, when it reaches zero, "Os monstros acordaram!" shows for WAKE_MS and the clock goes away.
  * Time comes from the sim (view.tick against minervaAteTick), never the local clock, so it matches the server and a
- * player who joins late sees the same hand. It sits in the announcement slot of the top band: never over the hero nor
- * the phone's controls, and it pauses nothing.
+ * player who joins late sees the same hand. It sits in the announcement slot of the top band (a phone lying down: under
+ * the minimap, minerva.css): never over the hero nor the phone's controls, and it pauses nothing.
  */
 import {SIM_HZ, type RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';

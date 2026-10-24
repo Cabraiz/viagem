@@ -15,8 +15,8 @@
   animation:rh-cn-spin var(--stop) cubic-bezier(.2,.6,.3,1.08) both}
 .rh-cn-cell{display:flex;align-items:center;justify-content:center;width:var(--cn-cell);height:var(--cn-cell);flex:none}
 .rh-cn-cell .ic{width:var(--cn-ic);height:var(--cn-ic)}
-/* Until the golden stickers land (card etapa 4): the weapon's own sticker, warmed to gold. */
-.rh-cn-gold .ic,.rh-cn-gold-ic{filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.08)}
+/* A weapon without its dourada sticker (ui/<id>-dourada) wears its own, warmed to gold. */
+.rh-cn-gold .ic:not([data-sticker$="-dourada"]),.rh-cn-gold-ic{filter:sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.08)}
 .rh-cn-gold{animation:rh-cn-shine 500ms ease-in-out 1100ms 2 alternate}
 .rh-cn-banner{padding:2px 14px;border:3px solid var(--c-breu);border-radius:var(--r-etiqueta);background:var(--c-amarelo);color:var(--c-breu);
   box-shadow:var(--s-2);font:400 var(--t-28)/1.1 var(--f-cartaz);opacity:0;transform:scale(.6);

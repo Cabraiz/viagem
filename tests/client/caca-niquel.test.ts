@@ -7,6 +7,11 @@ import {FADE_IN_MS,FADE_OUT_AT_MS,REEL_CELLS,REEL_STOP_MS,SLOT_MS,cratesOf,creat
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {GOLD_HIDDEN_FROM,GOLD_RARITY} from '../../src/sim/crates.ts';
 import {KIT_POOL,kitId} from '../../src/rules/tower-kits.ts';
+import {artPiece,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {arsenalLoads,iconKey,itemIcon,plainIcon,prizeLook} from '../../src/client/render/arsenal-rules.ts';
+import {itemSticker} from '../../src/client/hud/items.ts';
+import {goldSticker} from '../../src/client/ui/sticker.ts';
+import {ARSENAL_WEAPONS} from '../../src/sim/weapons/arsenal.ts';
 
 const chest=(over:Partial<Extract<SimEvent,{type:'pickup'}>>={},eventId=1):SimEvent=>
   ({type:'pickup',player:'eu',pickup:'k1',kind:'chest',value:4,eventId,...over} as SimEvent);
@@ -82,4 +87,26 @@ test('the CSS runs SLOT_MS, fades in FADE_IN_MS and out from FADE_OUT_AT_MS, sto
   assert.match(css,new RegExp(`@keyframes rh-cn-fade\\{0%\\{opacity:0\\}${pct(FADE_IN_MS)}\\{opacity:1\\}${pct(FADE_OUT_AT_MS)}\\{opacity:1\\}100%\\{opacity:0\\}\\}`));
   assert.match(css,new RegExp(`rh-cn-banner 500ms [^;]* ${REEL_STOP_MS.at(-1)}ms`),'the banner when the last reel stops');
   assert.match(css,/prefers-reduced-motion/);
+});
+
+// ---------- the dourada stickers (card etapa 4: ChatGPT/Codex art, ui/<weapon sticker>-dourada) ----------
+test('dourada art: every weapon that can be dourada has its ui/<sticker>-dourada piece; level 4 wears it, other levels and no art keep the plain one',()=>{
+  const index=parseArtIndex(JSON.parse(readFileSync(new URL('../../public/art/manifest.json',import.meta.url),'utf8')));
+  const weapons=ARSENAL_WEAPONS.filter(w=>w.id!=='faca'&&w.minRarity<=4);
+  setArtIndex(index);
+  try{
+    for(const w of weapons){
+      const plain=itemDisplay(w.id).icon,gold=`${plain}-dourada`;
+      assert.ok(artPiece('ui',gold),`ui/${gold}`);
+      assert.equal(itemIcon(w.id,4),gold);
+      assert.equal(itemSticker(w.id,4),gold);
+      for(const level of [1,2,3,5]){assert.equal(itemIcon(w.id,level),plain);assert.equal(itemSticker(w.id,level),plain);}
+      assert.equal(plainIcon(gold),plain);
+      assert.ok(arsenalLoads().some(l=>l.key===iconKey(gold)),`loads ${gold}`);
+    }
+    assert.equal(prizeLook('pistola',4).icon,'pistola-dourada');
+    assert.equal(prizeLook('pistola',2).icon,'pistola');
+  }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
+  assert.equal(itemIcon('pistola',4),'pistola','no art index: the plain sticker');
+  assert.equal(goldSticker('pistola',4),'pistola');
 });

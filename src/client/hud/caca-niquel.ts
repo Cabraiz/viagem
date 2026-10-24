@@ -11,7 +11,7 @@
  */
 import type {RunView,SimEvent} from '../../contract/index.ts';
 import {kitPiece} from '../../rules/index.ts';
-import {sticker} from '../ui/sticker.ts';
+import {GOLD_LEVEL,goldSticker,sticker} from '../ui/sticker.ts';
 import {allItemDisplays,itemDisplay} from './items.ts';
 import type {HudContext,HudPart} from './model.ts';
 
@@ -79,15 +79,17 @@ export function createCacaNiquel(doc:Document=document,options:{onPlay?:(item:st
 
   function play(item:string){
     stop();
-    const name=itemDisplay(item).name,icon=itemDisplay(item).icon,still=reducedMotion();
+    const name=itemDisplay(item).name,icon=goldSticker(itemDisplay(item).icon,GOLD_LEVEL),still=reducedMotion();
     shows++;
     const reels=REEL_STOP_MS.map((ms,r)=>{
       const strip=still?[item]:reelStrip(item,shows*7919+r*104729);
-      const cells=strip.map(id=>`<span class="rh-cn-cell${id===item&&strip.length===1?' rh-cn-gold':''}">${sticker(itemDisplay(id).icon,{size:48})}</span>`).join('');
+      // The last cell is the weapon in its dourada sticker (the CSS warms the plain one to gold until that art is in).
+      const cells=strip.map((id,i)=>{const last=i===strip.length-1;
+        return `<span class="rh-cn-cell${last&&strip.length===1?' rh-cn-gold':''}">${sticker(last?icon:itemDisplay(id).icon,{size:48})}</span>`;}).join('');
       return `<span class="rh-cn-reel"><span class="rh-cn-strip" style="--cells:${strip.length};--stop:${ms}ms">${cells}</span></span>`;
     }).join('');
     el.innerHTML=`<div class="rh-cn-box"><div class="rh-cn-frame"><div class="rh-cn-reels">${reels}</div></div>`+
-      `<div class="rh-cn-banner">DOURADA!</div><div class="rh-cn-item">${sticker(icon,{size:48,className:'rh-cn-gold-ic'})}<span>${name}</span></div></div>`;
+      `<div class="rh-cn-banner">DOURADA!</div><div class="rh-cn-item">${sticker(icon,{size:48,className:icon.endsWith('-dourada')?'':'rh-cn-gold-ic'})}<span>${name}</span></div></div>`;
     el.setAttribute('aria-label',`${name} dourada!`);
     el.hidden=false;el.dataset.fase=still?'parado':'gira';playing=true;
     // Each strip's last cell is the weapon: gold once its reel stops (caca-niquel.css runs the motion).

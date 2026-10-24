@@ -12,7 +12,7 @@
 import {putHidden} from './dom-put.ts';
 import type {PlayerRunView,PickupView,RunView} from '../../contract/index.ts';
 import type {HudContext,HudPart} from './model.ts';
-import {itemDisplay} from './items.ts';
+import {itemDisplay,itemSticker} from './items.ts';
 import {sticker} from '../ui/sticker.ts';
 import {SHELL_DIALOG} from '../desktop-input.ts';
 import {kitPiece,kitRarity} from '../../rules/index.ts';
@@ -161,7 +161,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
     putHidden(swap,!candidate);
     if(!candidate)return;
     const name=itemDisplay(candidate.resource!).name,key=`${candidate.id}`;
-    if(swap.dataset.pickup!==key){swap.dataset.pickup=key;swap.innerHTML=`${sticker(itemDisplay(candidate.resource!).icon,{size:24})}<span>Trocar</span>`;swap.setAttribute('aria-label',`Trocar pela ${name}`);}
+    if(swap.dataset.pickup!==key){swap.dataset.pickup=key;swap.innerHTML=`${sticker(itemSticker(candidate.resource!,candidate.value),{size:24})}<span>Trocar</span>`;swap.setAttribute('aria-label',`Trocar pela ${name}`);}
   };
   const paint=()=>{
     putHidden(el,!live||!slots);
@@ -173,7 +173,7 @@ export function createInventory(options:InventoryOptions,doc:Document=document):
       b.disabled=!s;b.dataset.empty=String(!s);b.dataset.hand=String(!!s?.hand);
       if(s?.rarity)b.dataset.rarity=String(s.rarity);else delete b.dataset.rarity;
       b.dataset.kind=s?.kind??'';
-      b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemDisplay(s.id).icon,{size:24}):'';
+      b.querySelector('.rh-inv-ic')!.innerHTML=s?sticker(itemSticker(s.id,s.kind==='weapon'?s.rarity:1),{size:24}):'';
       b.querySelector('.rh-inv-pilha')!.textContent=s&&s.kind!=='weapon'&&(s.stack??1)>1?String(s.stack):'';
       b.setAttribute('aria-label',s?slotLabel(s):`Espaço ${i+1} vazio`);
       b.setAttribute('aria-pressed',String(!!s?.hand));

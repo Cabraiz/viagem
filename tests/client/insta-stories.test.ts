@@ -9,10 +9,13 @@ import {LETRAS_STORIES, SEGURAR_MS, STORY_MS, toqueOf, VOLTAR_LADO} from '../../
 const css=readFileSync(new URL('../../src/client/ui/insta.css',import.meta.url),'utf8');
 const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
 const pub=(url:string)=>new URL(`../../public${url}`,import.meta.url);
+const COM_STORIES=INSTA_PERFIS.filter(p=>storiesDe(p.id).length>0);
 
-test('each of the four heroes has 3-4 stories with a short sticker, their art in WebP + lite',()=>{
-  assert.deepEqual(Object.keys(INSTA_STORIES),INSTA_PERFIS.map(p=>p.id));
-  for(const p of INSTA_PERFIS){
+test('each of the six heroes has 3-4 stories with a short sticker, their art in WebP + lite',()=>{
+  // NEW-20261024-ORQ-stories-vendedor-aposentado: the vendedor and the aposentado too, every profile opens its stories.
+  assert.deepEqual(Object.keys(INSTA_STORIES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
+  assert.deepEqual(COM_STORIES.map(p=>p.id),INSTA_PERFIS.map(p=>p.id));
+  for(const p of COM_STORIES){
     const lista=storiesDe(p.id);
     assert.ok(lista.length>=3&&lista.length<=4,`${p.id}: ${lista.length}`);
     for(const [k,s] of lista.entries()){
@@ -30,7 +33,7 @@ test('each of the four heroes has 3-4 stories with a short sticker, their art in
 });
 
 test('the viewer: one bar per story, the pictures with no src (loaded on open), the sticker, @ and the X',()=>{
-  for(const p of INSTA_PERFIS){
+  for(const p of COM_STORIES){
     const html=storiesTelaHtml(p),n=storiesDe(p.id).length;
     assert.match(html,new RegExp(`role="dialog" aria-modal="true" aria-label="Stories de ${p.handle}"`));
     assert.equal(html.match(/class="insta-sv-barra"/g)?.length,n);

@@ -137,7 +137,9 @@ export function parsePixed(m:unknown):{req:number;result:PixResult}|undefined{
  */
 export const GRACE_MS = 120_000;
 export type Input = PlayerInput;
-export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number; spectator?:boolean; skillTick?:number; skillReadyTick?:number };
+export type Player = Point & { id:string; name:string; classId:string; hp:number; ack:number; online:boolean; score:number; attackTick?:number; spectator?:boolean; skillTick?:number; skillReadyTick?:number;
+  /** The viaduct (maps city/viaduct.ts): on a deck, floor 1; absent on the ground. */
+  andar?:1 };
 export type Enemy = Point & { id:string; hp:number };
 // Fixed tuple fields avoid repeated property names in frequent patches.
 export type PlayerWire = [string,number,number,number,number,boolean,number,string,string,number?,boolean?,number?,number?];

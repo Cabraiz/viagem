@@ -14,3 +14,4 @@ export type {CityLiveOptions,LiveNest,LivePiece} from './live/layer.ts';
 export {artViewOf,decorKey,isDecal,type ArtView,type DecorEntry} from './live/rules.ts';
 export {nestArtId,nestsFromStructures} from './live/nests.ts';
 export {liveSheets,livePieces,liveTextureKey,type LiveSheet} from './live/art.ts';
+export {ViaductLayer,viaductPieces,viaductProps,frontSides,UNDER_ALPHA,UNDER_RADIUS,VIADUCT_PROP_IDS} from './viaduct.ts';

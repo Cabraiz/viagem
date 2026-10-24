@@ -153,6 +153,17 @@ export const RECORTES:Readonly<Record<string,StadiumCutout>>=Object.freeze({
   'maromba':{x:1056,y:19,w:588,h:1058,files:[[392,'/art/menu/heroi/maromba-392.webp'],[588,'/art/menu/heroi/maromba-588.webp'],
     [784,'/art/menu/heroi/maromba-784.webp'],[1176,'/art/menu/heroi/maromba-1176.webp']],
     fundo:'/art/lite/menu/fundo-maromba.webp',rosto:{x:1195,y:105,w:210,h:140}},
+  // NEW-20261023-ORQ-tela-vendedor-praia (the user chose the promenade at sunset, variation 2, and pose 2, crouched at the
+  // cooler): like the maromba, at pose 1's scale and sole line, on the promenade without him; his flip-flops' shadow is
+  // in his fundo.
+  'vendedor-praia':{x:866,y:49,w:735,h:1028,files:[[490,'/art/menu/heroi/vendedor-praia-490.webp'],[735,'/art/menu/heroi/vendedor-praia-735.webp'],
+    [980,'/art/menu/heroi/vendedor-praia-980.webp'],[1470,'/art/menu/heroi/vendedor-praia-1470.webp']],
+    fundo:'/art/lite/menu/fundo-vendedor-praia.webp',rosto:{x:1095,y:150,w:245,h:180}},
+  // NEW-20261023-ORQ-tela-aposentado (the user chose the backyard workshop, variation 7, and pose 4, on the stool with a
+  // coffee): like the vendedor (the stool is part of him), in the workshop without him; the stool's shadow is in his fundo.
+  'aposentado':{x:1034,y:45,w:689,h:1032,files:[[459,'/art/menu/heroi/aposentado-459.webp'],[689,'/art/menu/heroi/aposentado-689.webp'],
+    [919,'/art/menu/heroi/aposentado-919.webp'],[1378,'/art/menu/heroi/aposentado-1378.webp']],
+    fundo:'/art/lite/menu/fundo-aposentado.webp',rosto:{x:1260,y:175,w:190,h:150}},
 });
 type Placeable=Pick<StadiumCutout,'x'|'y'|'w'|'h'|'desce'>&Partial<Pick<StadiumCutout,'rosto'|'lugar'>>;
 /** How a hero's own picture lands on the stage's (lugar): his face's middle on the other's, `dx` right and `dy` lower. */

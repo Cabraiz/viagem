@@ -137,7 +137,9 @@ test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s 
 
 // ---------- The room's calm checkpoint ----------
 test('calm checkpoint: every 90 s of calm with no boss, right after a nest falls, never with a critter awake within 20 u of a standing hero, never in the rounds mode',()=>{
-  const sim=new Simulation(7,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos'});
+  // Seed 1 (was 7) since the viaduct (mapa-175-com-viaduto): with the hero on the deck at the start, seed 7 sends a
+  // critter along the street under it, 19 u away, on the tick the second checkpoint was due.
+  const sim=new Simulation(1,{world:'cidade',terrain:city,objective:'chaveiro',mode:'ninhos'});
   sim.add('p1','Ana','cidadao-comum');
   const due:number[]=[];
   const step=(n:number)=>{for(let i=0;i<n;i++){sim.world.step();if(sim.calmCheckpointDue())due.push(sim.world.tick);}};

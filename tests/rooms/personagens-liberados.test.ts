@@ -15,13 +15,14 @@ function peer(){const messages:any[]=[];return {messages,send:(s:string|Uint8Arr
 type TestPeer=ReturnType<typeof peer>;
 const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.connect(p,now);room.receive(p,JSON.stringify({t:'join',protocol:ROOM_PROTOCOL,name,classId}),now);return p.messages.findLast(m=>m.t==='welcome').id as string;};
 
-test('one list: the viciado, the CLT, the gato and the maromba (user, 23/10: released for the play test), all playable; the viciado is the default; anything else falls to him',()=>{
-  assert.deepEqual([...PERSONAGENS_LIBERADOS],['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
+test('one list: the viciado, the CLT, the gato, the maromba (user, 23/10: released for the play test), the vendedor and the aposentado (user, 24/10), all playable; the viciado is the default; anything else falls to him',()=>{
+  assert.deepEqual([...PERSONAGENS_LIBERADOS],['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
   for(const id of PERSONAGENS_LIBERADOS)assert.ok(PLAYABLE_CLASS_IDS.includes(id),`${id} has the movement art`);
   assert.equal(PERSONAGEM_PADRAO,'viciado-em-bet');assert.equal(heroiPadrao().id,'viciado-em-bet');
   assert.equal(isLiberado('clt-cansado'),true);assert.equal(isLiberado('coach'),false);assert.equal(isLiberado(42),false);
   assert.equal(liberadoId('clt-cansado'),'clt-cansado');assert.equal(liberadoId('gato-nada-pra-comer'),'gato-nada-pra-comer');
-  for(const id of ['coach','pedreiro','aposentado','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
+  assert.equal(liberadoId('aposentado'),'aposentado');assert.equal(liberadoId('vendedor-praia'),'vendedor-praia');
+  for(const id of ['coach','pedreiro','cidadao-comum','tia-festa',undefined,42])assert.equal(liberadoId(id),'viciado-em-bet',String(id));
   assert.ok(PLAYABLE_CLASS_IDS.filter(id=>!isLiberado(id)).length>=10,'the rest of the playable heroes are locked');
 });
 

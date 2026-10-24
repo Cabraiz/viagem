@@ -212,10 +212,13 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * down the road, cityRunStart; plain seed 21 has no tutorial and kept its digest), then plain seed 21 for its city retreat
  * (CITY_GONE_DISTANCE 42.5 → 25 u: timed-out bodies vanish once hidden past the plaza block), and for cenario-no-mapa
  * (the city asset v3: the places with life put on open ground stop those cells being walkable, so routes and spawn spots
- * move; with main's asset v2 the old digests still come out).
+ * move; with main's asset v2 the old digests still come out), and for mapa-175-com-viaduto (asset v4: the distances
+ * 1.75× shorter, the map lengths × CITY_DISTANCE_SCALE, the nests and the field to it), and for its viaduct (etapa 3: the
+ * pillars and the ramp's embankment are solid on the ground, the run starts on the deck, the group behind the team comes
+ * on it and the plaza group never takes the N avenue, the team's now).
  */
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'904736d2bebf594f','tutorial seed 8 r4':'8dff5d5d74d1dc82','plain seed 21 r10':'f1578307e14a1b4e',
+  'tutorial seed 3 r4':'70cfb007d26b54a3','tutorial seed 8 r4':'81b032fc3ab13260','plain seed 21 r10':'c5de8d73936922d8',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -313,7 +316,12 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'26a8c859733e7f61',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// All three again for tirar-drops-cedula-girando (a kill's Grana is a 'grana' pickup a second later, the cédulas pending
+// in the progression state, instead of the wallet at once; no boleto rain in the zueira plan).
+// cidade again for mapa-175-com-viaduto (asset v4, the city 1.75× shorter, many more crates); ilha and infinito unchanged.
+// cidade again for its viaduct (etapa 3: the start on the deck, pillars and embankment solid); ilha and infinito unchanged.
+// cidade again for the merge of both (the viaduct's city with the cédulas).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'7c66ebaa5b166e44',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

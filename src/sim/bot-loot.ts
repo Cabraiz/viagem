@@ -17,8 +17,11 @@ import {OPEN_REACH} from './crates.ts';
 import {INVENTORY_SLOTS,TAKE_REACH,isKitItem} from './inventory.ts';
 import type {Point} from '../maps/index.ts';
 
-/** LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather). */
-export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=40;
+/**
+ * LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather): 40 u on the
+ * 1.7× city, 23 since mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
+ */
+export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=23;
 const VERDE_PISTOL={id:'pistola',level:1};
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;
@@ -68,7 +71,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1)continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

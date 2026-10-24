@@ -3,7 +3,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {GLOW_BANDS,GLOW_BREU,GLOW_MAX,GLOW_MIN,GLOW_PERIOD_MS,SHOT_BANDS,copiesOf,copySlot,glowAlpha} from '../../src/client/render/usable-glow-rules.ts';
-import {POOL_MAX,UsableGlow} from '../../src/client/render/usable-glow.ts';
+import {POOL_MAX,UsableGlow,WallGlow} from '../../src/client/render/usable-glow.ts';
 import {INTERATIVO_COR} from '../../src/client/hud/tralha/model.ts';
 
 test('the glow is the interactive gold hugging the figure, a solid Breu band outside it, thinner on the shot', ()=>{
@@ -110,4 +110,19 @@ test('the pool keeps at most POOL_MAX glows; the rest are destroyed', ()=>{
   glow.begin(0);for(let i=0;i<POOL_MAX+5;i++)glow.mark(`t${i}`,src,1,SHOT_BANDS);glow.end();
   glow.begin(1);glow.end();
   assert.equal(glow.stats().pooled,POOL_MAX);assert.equal(made.filter(c=>c.destroyed).length,5*8);
+});
+
+test('barricada-grossura-e-contorno: every piece of a wall glows under the whole wall’s lowest piece (no seam between squares)', ()=>{
+  const {made,scene}=fakeScene(),glow=new UsableGlow(scene,false),walls=new WallGlow();
+  // Wall 0: a back square (depth 10) and a front one (depth 20, 2 pieces); wall 1 alone at depth 30.
+  const back=fakeImage('m'),front=[fakeImage('m'),fakeImage('m')],alone=fakeImage('m');
+  back.depth=10;front[0].depth=20;front[1].depth=21;alone.depth=30;
+  glow.begin(0);walls.add('a',0,[back]);walls.add('b',0,front);walls.add('c',1,[alone]);walls.flush(glow,1);glow.end();
+  assert.equal(made.length,4*16);
+  const wall0=made.slice(0,3*16),wall1=made.slice(3*16);
+  assert.ok(wall0.every(c=>c.depth<10),'the front square’s gold sits under the back square too');
+  assert.ok(wall1.every(c=>c.depth<30&&c.depth>20),'another wall keeps its own depth');
+  // Entries are reused: the next frame adds again from scratch, nothing new is made.
+  glow.begin(16);walls.add('a',0,[back]);walls.flush(glow,1);glow.end();
+  assert.equal(made.length,4*16);assert.equal(glow.stats().shown,1);
 });

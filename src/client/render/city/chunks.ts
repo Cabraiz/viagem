@@ -228,7 +228,11 @@ export class ChunkTracker {
   /** Forgets every shown chunk (e.g. the layer was destroyed); the next update starts over. */
   reset(){this.shown.clear();this.view=undefined;}
 
-  update(camera:Rect,view:number):{show:string[];hide:string[]}{
+  /**
+   * `also`: a second screen rect kept built too (card inimigos-querem-o-uno: the Uno's live window, wherever the car is):
+   * its chunks come after the camera's (farther from the camera centre) and stay while either rect is near.
+   */
+  update(camera:Rect,view:number,also?:Rect):{show:string[];hide:string[]}{
     const v=normalizeView(view),hide:string[]=[];
     // After a rotation the whole screen is new: every chunk the camera itself meets comes back at once instead of leaving
     // holes; the ring ahead of it (showMarginPx) follows at the per-update budget (NEW-20261018-ORQ-chunks-cidade-sem-pico).
@@ -236,15 +240,16 @@ export class ChunkTracker {
     const turned=this.view!==v&&this.view!==undefined;
     if(this.view!==v){hide.push(...[...this.shown].sort());this.shown.clear();this.view=v;}
     const keep=grow(camera,this.keepMarginPx),want=grow(camera,this.showMarginPx);
+    const keepAlso=also&&grow(also,this.showMarginPx),wantAlso=also&&grow(also,this.showMarginPx/2);
     for(const key of [...this.shown].sort()){
       const c=this.byKey.get(key);
-      if(!c||!rectsOverlap(this.bounds(c,v),keep)){this.shown.delete(key);hide.push(key);}
+      if(!c||!rectsOverlap(this.bounds(c,v),keep)&&!(keepAlso&&rectsOverlap(this.bounds(c,v),keepAlso))){this.shown.delete(key);hide.push(key);}
     }
     const mx=camera.x+camera.w/2,my=camera.y+camera.h/2,cand:{key:string;d:number;on:boolean}[]=[];
     for(const c of this.index.chunks){
       if(this.shown.has(c.key))continue;
       const b=this.bounds(c,v);
-      if(rectsOverlap(b,want))cand.push({key:c.key,d:(b.x+b.w/2-mx)**2+(b.y+b.h/2-my)**2,on:turned&&rectsOverlap(b,camera)});
+      if(rectsOverlap(b,want)||wantAlso&&rectsOverlap(b,wantAlso))cand.push({key:c.key,d:(b.x+b.w/2-mx)**2+(b.y+b.h/2-my)**2,on:turned&&rectsOverlap(b,camera)});
     }
     cand.sort((a,b)=>Number(b.on)-Number(a.on)||a.d-b.d||(a.key<b.key?-1:a.key>b.key?1:0));
     if(turned)budget=Math.max(budget,cand.filter(c=>c.on).length);

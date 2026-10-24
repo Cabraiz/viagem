@@ -39,13 +39,29 @@
   .estadio .insta-menu { width: calc(var(--u) * 56); height: calc(var(--u) * 56); min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
   .insta-menu svg { width: calc(var(--u) * 54); height: calc(var(--u) * 54); }
 
-  /* Stories (151..397): rings of 214 every 234 from x 14 (centres 131, 365, 599), the name 11 under the ring. */
-  .insta-stories { display: grid; grid-template-columns: repeat(3, calc(var(--u) * 234)); justify-content: center; margin-top: calc(var(--u) * 16); }
-  .estadio .insta-story {
-    display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 9); width: 100%; min-height: 0; padding: 0;
-    border: 0; background: none; box-shadow: none; color: var(--insta-texto); cursor: pointer;
+  /* Stories (151..397) as one endless row (ui/insta-aneis.ts, BUG-20261024-ORQ-aneis-herois-carrossel-infinito): from x 4,
+     3 cells and half of the 4th fill the 730 (--passo = 730 / ANEIS_VISIVEIS), so at rest the edge cuts a face in half;
+     the ring is its cell less 20, the name 11 under it, the band as tall as the reference's (246). With no more rings
+     than fit, they stand still, centred. The chosen one is underlined as the active tab (.insta-aba.ativa). */
+  .insta-stories {
+    --passo: calc(var(--u) * 730 / 3.5);
+    display: flex; align-items: center; height: calc(var(--u) * 246); margin-top: calc(var(--u) * 16); padding-left: calc(var(--u) * 4);
+    overflow: hidden; overflow: clip; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
+  .insta-stories:not([data-loop]) { justify-content: center; padding-left: 0; }
+  .insta-aneis-trilho { display: flex; flex: none; }
+  .insta-stories[data-loop] .insta-aneis-trilho { will-change: transform; }
+  .estadio .insta-story {
+    display: flex; flex: none; flex-direction: column; align-items: center; gap: calc(var(--u) * 9); width: var(--passo); min-height: 0; padding: 0;
+    border: 0; background: none; box-shadow: none; color: var(--insta-texto); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .insta-story .insta-anel { width: calc(var(--passo) - var(--u) * 20); height: calc(var(--passo) - var(--u) * 20); }
   .insta-story:active .insta-anel { transform: scale(.96); }
+  .insta-stories.arrastando .insta-anel { transform: none; }
+  .insta-story[aria-current="true"] .insta-story-nome {
+    text-decoration: underline; text-decoration-color: var(--insta-roxo); text-decoration-thickness: max(2px, calc(var(--u) * 6));
+    text-underline-offset: calc(var(--u) * 8);
+  }
   /* The gradient ring, a sliver of the page's colour, then the face: 9 + 3 of 214 (the profile: 9 + 4 of 320). */
   .insta-anel {
     position: relative; display: block; flex: none; width: calc(var(--u) * 214); height: calc(var(--u) * 214); padding: calc(var(--u) * 9);
@@ -128,6 +144,12 @@
   }
   .estadio .estadio-nome #nickname::placeholder { color: var(--insta-cinza); }
 
+  /* Keyboard up on the name (estadio.css data-teclado): the card keeps its size (--u from the height before the keyboard,
+     for a browser that shrinks the layout) and only the profile, the field and BORA! stay, the field right above BORA!. */
+  .estadio .estadio-escolha[data-teclado] { --u: calc(min(100vw, var(--tec-cheia, 100dvh) * .51873) / 734); }
+  .estadio .estadio-escolha[data-teclado] :is(.insta-barra, .insta-stories, .insta-trocar) { display: none; }
+  .estadio .estadio-escolha:has(.insta-topo)[data-teclado] > .estadio-nome { height: auto; margin-top: calc(var(--u) * 20); padding-block: calc(var(--u) * 12); }
+
   /* SELECIONAR (1251..1373, x 22..708): the wide purple button with a crown at each end, white condensed letters. */
   .estadio .estadio-escolha > .estadio-confirmar {
     --bh: calc(var(--u) * 123);
@@ -145,6 +167,7 @@
   }
   .estadio .estadio-escolha > .estadio-confirmar .estadio-confirmar-texto { translate: none; rotate: none; font-size: calc(var(--u) * 54); }
   .estadio .estadio-escolha > .estadio-confirmar .estadio-cadeado:not([hidden]) { width: calc(var(--u) * 52); height: calc(var(--u) * 52); translate: none; }
+  .estadio .estadio-escolha[data-teclado] > .estadio-confirmar { margin-bottom: calc(var(--u) * 12); }
 }
 
 /* A grid photo opened as a post (ui/insta-post.ts, BUG-20261023-ORQ-instagram-letreiro-do-perfil), over the whole page:

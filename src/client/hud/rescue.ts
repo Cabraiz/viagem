@@ -31,6 +31,9 @@ import {worldBase,prewarmFarPath,type CityAsset as MapsCityAsset} from '../../ma
 import {getAudio} from '../audio/engine.ts';
 import {playEvents} from '../audio/events.ts';
 import {Footsteps,allyGain,type StepFigure} from '../audio/footsteps.ts';
+import {AlarmLoop} from '../audio/alarm.ts';
+/** The alarm stays loud this long after the car's last hit (ms). */
+const ALARM_HIT_MS=1500;
 import {heroRuns} from '../sprites/movement128.ts';
 import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
@@ -38,7 +41,7 @@ import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
 import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
-import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,
+import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
   type CityAssetLike,type CityMapInfo,type MouthId,type EnemyPoint,type CityEdgeTarget,type CityPerson} from './city/index.ts';
 import {shownTargets} from './arrows.ts';
 
@@ -97,6 +100,8 @@ export class RescueBoard {
   private mouths=new Map<MouthId,number>();private groupKeys=new Set<string>();
   /** When the wall last lost life (performance.now ms), from the views. */
   private wallHitAt=-Infinity;private wallHp?:number;
+  /** Card inimigos-querem-o-uno: when the car last took a hit (its hits went up), for its edge arrow. */
+  private carHitAt=-Infinity;private carHits?:number;
   /**
    * The city's world picture, rebuilt every CITY_TARGETS_MS (cityRefresh): the people and the live critters (buffers
    * reused) and the arrows' targets. Each frame only re-locates the few
@@ -153,6 +158,9 @@ export class RescueBoard {
       const wall=wallOf(view.structures);
       if(wall&&this.wallHp!==undefined&&wall.hp<this.wallHp)this.wallHitAt=performance.now();
       this.wallHp=wall?.hp;
+      const car=objectiveOf(view)?.car;
+      if(car&&this.carHits!==undefined&&car.hits>this.carHits)this.carHitAt=performance.now();
+      this.carHits=car?.hits;
     }
     for(const e of view.events){
       // Veículos: the vehicle's line over the rider (rules/veiculos.ts), at the take and at the end of the ride.
@@ -197,6 +205,14 @@ export class RescueBoard {
     for(const e of net.feed.enemies.values())if(e.boss&&e.hp>0){boss=e;break;}
     steps.boss(now,boss,hero,boss?scene.screenSide(boss):0);
   }
+  /** Card inimigos-querem-o-uno, etapa 4: the Uno's alarm by the hero's distance to the car, louder while it takes hits. */
+  private alarmLoop?:AlarmLoop;
+  private alarm(now:number){
+    const objective=objectiveOf(this.last),live=!!objective&&!objective.ended&&!!this.net.run;
+    if(!live&&!this.alarmLoop)return;
+    const loop=this.alarmLoop??=new AlarmLoop(getAudio()),hero=this.net.predicted;
+    loop.update(live,objective?Math.hypot(objective.car.x-hero.x,objective.car.y-hero.y):Infinity,now-this.carHitAt<=ALARM_HIT_MS);
+  }
   private tick(){
     const scene=this.scene(),net=this.net,hud=this.hud,run=net.run;
     // The room may switch maps in the lobby and the HUD is built once (explore.ts): the arrows follow the world now.
@@ -209,6 +225,7 @@ export class RescueBoard {
     const combat=run?.phase==='combat'&&!hud.el.hidden&&!hud.el.classList.contains('rh-ended');
     const now=performance.now(),me=net.feed.players.get(net.id);
     this.footsteps(scene,now);
+    this.alarm(now);
     const sos=sosButton(me,run?.phase==='combat',this.gate.remaining(net.id,now));
     if(this.button.hidden===sos.show)this.button.hidden=!sos.show;
     if(sos.show){
@@ -217,7 +234,7 @@ export class RescueBoard {
     }
     // Out of the wave the run's leftovers go (an old view, spawn warnings, lit pings, "Segura aí" already said).
     if(run?.phase!=='combat'&&this.last){this.last=undefined;this.states.clear();this.warnings.length=0;this.pings.clear();this.said.clear();
-      this.mouths.clear();this.groupKeys.clear();this.wallHp=undefined;this.wallHitAt=-Infinity;this.cityAt=-Infinity;}
+      this.mouths.clear();this.groupKeys.clear();this.wallHp=undefined;this.wallHitAt=-Infinity;this.carHits=undefined;this.carHitAt=-Infinity;this.cityAt=-Infinity;}
     if(!scene||!combat||!this.last){hud.edges?.clear();return;}
     const view=net.view(now),focus=scene.focusPoint(),zones=hud.zones();
     const self=view.players.find(p=>p.id===net.id);
@@ -318,11 +335,12 @@ export class RescueBoard {
     const phase=last.round?.phase==='prepare'?'prepare':'wave';
     const activeMouths=trackMouths(this.mouths,[],last.tick,map);
     const objective=objectiveOf(last),moto=objective&&!objective.ended?objective.moto:undefined;
-    const banks=last.banks;
-    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),
+    const banks=last.banks,car=objective&&!objective.ended?{x:objective.car.x,y:objective.car.y,hit:now-this.carHitAt<=UNO_HIT_MS}:undefined;
+    const point=this.hud.unoArrow,uno=car&&point?{x:car.x,y:car.y,urgent:point.urgent}:undefined;
+    const {targets,groupKeys}=cityEdgeTargets({hero:focus,selfId:net.id,players:people,enemies,activeMouths,map,phase,...(moto?{moto}:{}),...(banks?{banks}:{}),...(car?{car}:{}),...(uno?{uno}:{}),
       wallHitRecently:now-this.wallHitAt<=WALL_HIT_MS,hornSeconds:hornSeconds(last.camp,last.tick,phase),locate,isOnScreen:p=>inView(locate(p),seen),previousGroups:this.groupKeys});
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
-  destroy(){for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
+  destroy(){this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

@@ -3,7 +3,7 @@ import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {movement16Plan,movementPlan,movementSheets,movementFrame,movementPivotX,hasMovement16,movement128Figure,movement16Source,hasPush16,pushPlan} from '../../src/client/sprites/movement128.ts';
+import {movement16Plan,movementPlan,movementSheets,movementFrame,movementPivotX,hasMovement16,movement128Figure,movement16Source,hasPush16,pushPlan,hasPull16,pullPlan} from '../../src/client/sprites/movement128.ts';
 import {CharacterSprites} from '../../src/client/sprites/character-sprites.ts';
 import {HERO_ANIM_RATE,HERO_DIRECTIONS,cycleFrame,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
 import {screenDirection} from '../../src/client/projection.ts';
@@ -204,4 +204,19 @@ test('empurrar-uno: push16 keys survive the index, an R06 class (CLT) and an M16
   for(const d of DRAWN)m16files[`push16-${d}`]=sheet('push',d);
   setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files:m16files}}}}}));
   assert.equal(hasPush16(ID),true);assert.equal(pushPlan(ID,'SE')?.key,`sprite16:${ID}:push:SW`);assert.equal(pushPlan(ID,'SE')?.flip,true);
+});
+
+test('puxar-uno-corda: pull16 keys survive the index, mirrored as drawn, apart from the push', ()=>{
+  const sheet=(motion:'run'|'push'|'pull',d:keyof typeof PIVOT)=>{const m=m16('walk',d),file=`${ID}.${motion}16-${d.toLowerCase()}.webp`;
+    return {...m,file,height:60,durationMs:motion==='run'?600:1000,pages:[{...m.pages[0],file}],phase:{d:Array(16).fill(.02),v:Array(16).fill([0,0])}};};
+  const files:Record<string,unknown>={idle8};
+  for(const motion of ['walk','attack'])for(const d of HERO_DIRECTIONS)files[`${motion}128-${d}`]=r06(motion,d);
+  for(const d of ['S','N','W','NW','SE'] as const){files[`push16-${d}`]=sheet('push',d);files[`pull16-${d}`]=sheet('pull',d);}
+  const load=()=>setArtIndex(parseArtIndex({version:2,groups:{personagens:{output:'public/art/sprites',pieces:{[ID]:{kind:'dir8',files}}}}}));
+  load();
+  assert.equal(hasPull16(ID),true);assert.equal(hasPush16(ID),true);
+  assert.equal(pullPlan(ID,'E')?.key,`sprite16:${ID}:pull:W`);assert.equal(pullPlan(ID,'E')?.flip,true);assert.equal(pullPlan(ID,'SE')?.flip,false);
+  assert.equal(pushPlan(ID,'W')?.key,`sprite16:${ID}:push:W`);
+  // without its phase table, no pull (the holder walks); the push stays
+  files['pull16-N']={...sheet('pull','N'),phase:undefined};load();assert.equal(hasPull16(ID),false);assert.equal(pullPlan(ID,'W'),undefined);assert.equal(hasPush16(ID),true);
 });

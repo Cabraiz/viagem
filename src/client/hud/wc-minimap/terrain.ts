@@ -17,6 +17,8 @@ export const MM_COLORS=Object.freeze({
   outside:'#2b2542',snow:'#eef0f7',packed:'#cfd0e2',ice:'#cfe9f5',water:'#3f86d6',rubble:'#3b3456',cobble:'#f0b45c',
   building:'#3b3456',wall:'#3b3456',cliff:'#3b3456',
   grass:'#5f9e4c',grassDark:'#3f7a37',dry:'#a9a85a',sand:'#e3cf94',trail:'#c9a46a',tree:'#2e5a2a',rock:'#8d8f8c',sea:'#2f7fb8',
+  // The viaduct (mapa-175-com-viaduto): a light strip with a dark edge over the streets it crosses.
+  deck:'#c3bfd6',deckEdge:'#5b5478',
 });
 /** Share of solid cells in a 5×5 neighbourhood that makes a cell "built-up" (dark) on the city minimap. */
 export const BUILT_SHARE=.2;
@@ -56,6 +58,18 @@ export function cityTerrainPixels(asset:MapsCityAsset):{width:number;height:numb
     // The plaza keeps its warm tone even among the fountains and benches: it is the place to find.
     const [cr,cg,cb]=rgb(water?MM_COLORS.water:g==='c'?MM_COLORS.cobble:smooth[i]?MM_COLORS.building:GROUND_HEX[g]??MM_COLORS.snow);
     data[i*4]=cr;data[i*4+1]=cg;data[i*4+2]=cb;data[i*4+3]=255;
+  }
+  // 4. The viaducts on top (deck and ramp): their cells light, the ones on their outline dark.
+  const deck=new Uint8Array(W*H),u=asset.unitsPerCell;
+  for(const v of asset.viaducts)for(const [c0,r0,w,h] of [v.deck,v.ramp.rect])for(let j=r0;j<r0+h;j++)for(let i=c0;i<c0+w;i++){
+    const x=Math.floor(((i+.5)*u-r.origin.x)/cell),y=Math.floor(((j+.5)*u-r.origin.y)/cell);
+    if(x>=0&&y>=0&&x<W&&y<H)deck[y*W+x]=1;
+  }
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x;if(!deck[i])continue;
+    const edge=x===0||y===0||x===W-1||y===H-1||!deck[i-1]||!deck[i+1]||!deck[i-W]||!deck[i+W];
+    const [cr,cg,cb]=rgb(edge?MM_COLORS.deckEdge:MM_COLORS.deck);
+    data[i*4]=cr;data[i*4+1]=cg;data[i*4+2]=cb;
   }
   return {width:W,height:H,data,unit:cell,origin:{x:r.origin.x,y:r.origin.y}};
 }

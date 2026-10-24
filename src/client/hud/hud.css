@@ -201,7 +201,7 @@
   --of-tilt-a:-1deg;--of-tilt-b:.8deg;--of-card:76px;
   /* Right of the team column (54 px, or its widest name: --rh-coluna, NEW-UX-nome-do-time-na-coluna) plus 8 px. */
   --of-left:max(62px,var(--rh-coluna,54px) + 8px);
-  position:absolute;z-index:1;left:calc(var(--rh-l) + var(--of-left));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  position:absolute;z-index:1;left:calc(var(--rh-l) + var(--of-left));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px);
   width:max-content;max-width:calc(100vw - var(--rh-l) - var(--of-left) - var(--rh-r));margin-left:auto;padding:9px 6px 6px;border-radius:var(--r-janela);
   display:grid;grid-template-columns:minmax(0,auto) auto;grid-template-areas:'head head' 'fall fall' 'cards foot';align-items:stretch;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
@@ -359,7 +359,7 @@
    (24 px over the joystick), right of the team column and clear of the hero. */
 .rh-offer[data-mode=combat]{
   left:auto;right:var(--rh-r);max-width:calc(100vw - var(--rh-l) - 70px - var(--rh-r));margin:0;padding:5px;
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px + var(--inv-coluna,0px));
 }
 .rh-offer[data-mode=combat] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-deadline,.rh-offer-foot){display:none}
 
@@ -386,7 +386,7 @@
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
   /* D-050: the level-up pause's window is the same right column. */
   .rh:has(.rh-offer[data-mode=pause]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
-  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);max-width:calc(50vw - 44px - var(--rh-r))}
+  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px + var(--inv-coluna,0px));max-width:calc(50vw - 44px - var(--rh-r))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
 }
 
@@ -653,6 +653,8 @@
 .rh-edge-face{flex:none;width:26px;height:26px;display:grid;place-items:center}
 .rh-edge-face .ic{width:26px;height:26px}
 .rh-edge-face .face{width:26px;height:26px;border:2px solid var(--c-papel);background:var(--c-papel);box-shadow:0 0 0 1px var(--c-breu)} /* the ally's face crop (ui/face.css) */
+/* Card inimigos-querem-o-uno: the Uno's arrow wears the car itself (its SE view, frame 7 of the 4×2 sheet, uno-art.ts). */
+.rh-edge-uno{width:26px;height:26px;background:url(/art/lite/veiculos/quadradao.webp) -78px -26px/104px 52px no-repeat}
 .rh-edge-num{flex:1;text-align:center;font-size:var(--t-13)}
 .rh-edge-tip{position:absolute;left:50%;top:50%;width:0;height:0;transform-origin:0 0}
 .rh-edge-tip::before,.rh-edge-tip::after{content:'';position:absolute;width:0;height:0;border-style:solid;border-color:transparent}
@@ -791,7 +793,7 @@
 .rh .rh-minimap.rh-mm{--mm-side:clamp(124px,30vmin,210px);width:var(--mm-side);height:var(--mm-side);padding:0;border-radius:var(--r-etiqueta);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);overflow:hidden;cursor:crosshair;touch-action:none}
 /* Narrow screens (portrait phones): no room beside the hero up top, so bottom-left as in Warcraft 3, 24 px above the
    joystick (112 px at 24 px from the bottom: explore.css), below the hero's zone and the team column. */
-@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px)}}
+@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px)}}
 .rh-mm-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
 .rh-mm-ping{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu);pointer-events:none;animation:rh-mm-ping 1.6s ease-out forwards}
 @keyframes rh-mm-ping{0%{transform:scale(.4);opacity:1}70%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
@@ -866,3 +868,18 @@
 .rh-result.rh-result-nolost .rh-result-lost{display:none}
 /* Landscape: the rematch button takes its words' width ("Revanche (3/6)", "Começa em 7 s (4/6)"), never cut. */
 @media (max-height:500px){.rh-result .rh-result-rematch,.rh-result .rh-result-actions.has-manage .rh-result-rematch{flex:0 0 auto}}
+
+/* ---------- O Uno apanhando: a janela ao vivo (card inimigos-querem-o-uno, etapa 3; render/chaveiro/pip.ts) ----------
+   A moldura é vazia no meio (.rh-pip-view): a 2ª câmera do Phaser desenha ali embaixo. Computador: à direita, logo
+   abaixo do minimapa (o botão de ataque fica embaixo). Celular (data-hud=fone): em cima à direita, abaixo da engrenagem
+   e da faixa do time. Toque: a câmera olha o Uno por um instante. */
+.rh-pip{--pip-w:240px;--pip-h:150px;position:absolute;right:var(--rh-r);top:calc(var(--rh-t) + 64px + clamp(124px,30vmin,210px) + 16px);
+  display:flex;flex-direction:column;gap:4px;padding:3px;margin:0;width:calc(var(--pip-w) + 6px);background:transparent;
+  border:2px solid var(--c-papel);border-radius:var(--r-etiqueta);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);pointer-events:auto;cursor:pointer;touch-action:none}
+.rh-pip[hidden]{display:none}
+.rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:0 0 0 3px var(--c-breu),inset 0 0 0 2px var(--c-cone)}
+.rh-pip-bar{display:block;height:8px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:inset 0 0 0 1px var(--c-papel);overflow:hidden}
+.rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--c-cartolina)}
+.rh-pip-low .rh-pip-bar>i{background:var(--c-cone)}
+.rh[data-hud=fone] .rh-pip{--pip-w:150px;--pip-h:96px;top:calc(var(--rh-t) + 112px)}
+@media (max-height:500px){.rh[data-hud=fone] .rh-pip{--pip-w:168px;--pip-h:96px;top:calc(var(--rh-t) + 60px)}}

@@ -46,30 +46,31 @@
 .rh-inv-nota{margin:0;padding:4px 8px;border-radius:var(--r-ficha);background:var(--c-ficha);color:var(--c-papel);font:700 var(--t-13)/1.2 var(--f-sistema);text-shadow:var(--s-texto);white-space:nowrap}
 .rh-inv-nota[hidden]{display:none}
 
-/* Phone (BUG-20261022-ORQ-hud-mobile-rodape): the bar sits in the gap between the stick and the attack button, 14 px
-   clear of each (12 + the hand slot's 1.1 lift), centred on their shared axis (explore.css .explore-controls centres
-   them): the box spans that gap and is as tall as the taller control. Only the filled slots show (no dashed empties on
-   the snow), up to 3 a row, centred; a slot shrinks to fit the gap (container width), its tap area stays 44 px. The
-   numbers follow explore.css: 24 px margins and a 112 px stick; 18/16 px and 96 px on small phones and in landscape. */
+/* Phone (BUG-20261024-ORQ-joystick-maior-inventario-direita, after BUG-20261022-ORQ-hud-mobile-rodape): the bar is a
+   column on the right thumb, right-aligned with Atacar and 12 px above it (the hand slot's 1.1 lift fits), so the gap
+   between the stick and Atacar is the map again. Only the filled slots show (no dashed empties on the snow), 3 a row,
+   rows from the bottom up (the weapons, slots 1–3, next to the thumb; the kit and the consumables above them). A slot
+   is 34 px (32 on small phones and lying down); its tap area stays 44 px. --inv-coluna (tokens: none) is the room the
+   column takes above Atacar, two rows: what used to sit right above Atacar (Dona Cida's button, the emotes, the combat
+   offer, the car's tray) goes up by it. hud/fone-layout.ts foneFooter mirrors these numbers. */
 .rh[data-hud=fone] .rh-inv{
-  --inv-stick:112px;--inv-lado:min(34px,(100cqi - 2 * var(--inv-gap)) / 3 - 0.5px);
-  container-type:inline-size;
-  left:calc(max(24px,env(safe-area-inset-left)) + var(--inv-stick) + 14px);
-  right:calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade) + 14px);
-  bottom:max(24px,env(safe-area-inset-bottom));
-  height:max(var(--inv-stick),var(--botao-habilidade));
-  justify-content:center;align-items:center}
+  --inv-lado:34px;--inv-eixo:max(var(--joystick),var(--botao-habilidade));
+  left:auto;right:max(24px,env(safe-area-inset-right));
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 12px);
+  width:max(var(--botao-habilidade),3 * var(--inv-lado) + 2 * var(--inv-gap));height:auto;
+  justify-content:flex-end;align-items:flex-end}
 @media (max-width:370px),(max-height:500px){
   .rh[data-hud=fone] .rh-inv{
-    --inv-stick:96px;--inv-gap:3px;--inv-lado:min(32px,(100cqi - 2 * var(--inv-gap)) / 3 - 0.5px);
-    left:calc(max(18px,env(safe-area-inset-left)) + var(--inv-stick) + 14px);
-    right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 14px);
-    bottom:max(16px,env(safe-area-inset-bottom))}
+    --inv-lado:32px;--inv-gap:3px;--inv-eixo:max(var(--joystick-justo),var(--botao-habilidade));
+    right:max(18px,env(safe-area-inset-right));
+    bottom:calc(max(16px,env(safe-area-inset-bottom)) + (var(--inv-eixo) + var(--botao-habilidade)) / 2 + 12px)}
 }
-.rh[data-hud=fone] .rh-inv-slots{display:flex;flex-wrap:wrap;justify-content:center;max-width:100%}
+:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 34px + 4px + 12px)}
+@media (max-width:370px),(max-height:500px){:root:has(.rh[data-hud=fone] .rh-inv:not([hidden])){--inv-coluna:calc(2 * 32px + 3px + 12px)}}
+.rh[data-hud=fone] .rh-inv-slots{display:flex;flex-wrap:wrap-reverse;justify-content:flex-end;width:100%}
 .rh[data-hud=fone] .rh-inv-slot{width:var(--inv-lado);height:var(--inv-lado)}
 .rh[data-hud=fone] .rh-inv-slot[data-empty=true]{display:none}
 .rh[data-hud=fone] .rh-inv-ic .ic{width:min(24px,var(--inv-lado) - 10px);height:min(24px,var(--inv-lado) - 10px)}
-.rh[data-hud=fone] .rh-inv-slot::before{content:'';position:absolute;inset:min(-3px,(var(--inv-lado) - 44px) / 2)}
-/* "Trocar" and the refusal line float over the box (they never push the slots off the axis). */
-.rh[data-hud=fone] :is(.rh-inv-trocar,.rh-inv-nota){position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%)}
+.rh[data-hud=fone] .rh-inv-slot::before{content:'';position:absolute;inset:calc((var(--inv-lado) - 44px) / 2)}
+/* "Trocar" and the refusal line float over the column, right-aligned (they never push the slots). */
+.rh[data-hud=fone] :is(.rh-inv-trocar,.rh-inv-nota){position:absolute;bottom:calc(100% + 6px);right:0}

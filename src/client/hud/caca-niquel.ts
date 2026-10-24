@@ -21,6 +21,17 @@ export const SLOT_MS=1900,FADE_IN_MS=200,FADE_OUT_AT_MS=1600;
 export const REEL_STOP_MS:readonly number[]=[700,900,1100];
 /** Stickers each reel runs through before stopping on the weapon. */
 export const REEL_CELLS=12;
+/** Coins and sparkles that burst out of the frame when the last reel stops (caca-niquel.css .rh-cn-chuva). */
+export const BURST_PIECES=12;
+
+/** The burst: piece i flies out at an even angle (a little jitter), coins and sparkles alternating, far ones bigger. */
+export function burst(n=BURST_PIECES):{kind:'moeda'|'brilho';dx:number;dy:number;rot:number;scale:number;delay:number}[]{
+  return Array.from({length:n},(_,i)=>{
+    const angle=(i/n)*Math.PI*2+(i%3-1)*.18,reach=110+(i*37%5)*22;
+    return {kind:i%2?'brilho':'moeda',dx:Math.round(Math.cos(angle)*reach),dy:Math.round(Math.sin(angle)*reach*.7),
+      rot:(i%2?1:-1)*(180+i*40),scale:+(.8+(i*29%5)*.12).toFixed(2),delay:REEL_STOP_MS[REEL_STOP_MS.length-1]+(i%4)*30};
+  });
+}
 /** The rarity the gamble reveals (sim/crates.ts GOLD_RARITY) and the colours it may hide under (GOLD_HIDDEN_FROM). */
 const GOLD=4,HIDES_UNDER=new Set([1,2,3]);
 
@@ -88,7 +99,8 @@ export function createCacaNiquel(doc:Document=document,options:{onPlay?:(item:st
         return `<span class="rh-cn-cell${last&&strip.length===1?' rh-cn-gold':''}">${sticker(last?icon:itemDisplay(id).icon,{size:48})}</span>`;}).join('');
       return `<span class="rh-cn-reel"><span class="rh-cn-strip" style="--cells:${strip.length};--stop:${ms}ms">${cells}</span></span>`;
     }).join('');
-    el.innerHTML=`<div class="rh-cn-box"><div class="rh-cn-frame"><div class="rh-cn-reels">${reels}</div></div>`+
+    const chuva=burst().map(b=>`<span class="rh-cn-${b.kind}" style="--dx:${b.dx}px;--dy:${b.dy}px;--rot:${b.rot}deg;--s:${b.scale};--at:${b.delay}ms"></span>`).join('');
+    el.innerHTML=`<div class="rh-cn-box"><div class="rh-cn-frame"><div class="rh-cn-reels">${reels}</div></div><div class="rh-cn-chuva">${chuva}</div>`+
       `<div class="rh-cn-banner">DOURADA!</div><div class="rh-cn-item">${sticker(icon,{size:48,className:icon.endsWith('-dourada')?'':'rh-cn-gold-ic'})}<span>${name}</span></div></div>`;
     el.setAttribute('aria-label',`${name} dourada!`);
     el.hidden=false;el.dataset.fase=still?'parado':'gira';playing=true;

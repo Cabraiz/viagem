@@ -1,9 +1,9 @@
 // The caça-níquel of the dourada escondida (NEW-20261023-ORQ-caixa-gamble-raridade, hud/caca-niquel.ts).
 import test,{mock} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
 import type {RunView,SimEvent} from '../../src/contract/index.ts';
-import {FADE_IN_MS,FADE_OUT_AT_MS,REEL_CELLS,REEL_STOP_MS,SLOT_MS,cratesOf,createCacaNiquel,goldTurn,reelStrip} from '../../src/client/hud/caca-niquel.ts';
+import {BURST_PIECES,burst,FADE_IN_MS,FADE_OUT_AT_MS,REEL_CELLS,REEL_STOP_MS,SLOT_MS,cratesOf,createCacaNiquel,goldTurn,reelStrip} from '../../src/client/hud/caca-niquel.ts';
 import {itemDisplay} from '../../src/client/hud/items.ts';
 import {GOLD_HIDDEN_FROM,GOLD_RARITY} from '../../src/sim/crates.ts';
 import {KIT_POOL,kitId} from '../../src/rules/tower-kits.ts';
@@ -109,4 +109,17 @@ test('dourada art: every weapon that can be dourada has its ui/<sticker>-dourada
   }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
   assert.equal(itemIcon('pistola',4),'pistola','no art index: the plain sticker');
   assert.equal(goldSticker('pistola',4),'pistola');
+});
+
+test('the Codex pieces are in public/art/ui-extra and the CSS uses them; the burst spreads all around after the last reel',()=>{
+  const css=readFileSync(new URL('../../src/client/hud/caca-niquel.css',import.meta.url),'utf8');
+  for(const piece of ['moldura','moeda','brilho']){
+    assert.ok(existsSync(new URL(`../../public/art/ui-extra/caca-niquel-${piece}.webp`,import.meta.url)),piece);
+    assert.ok(css.includes(`url('/art/ui-extra/caca-niquel-${piece}.webp')`),`css uses ${piece}`);
+  }
+  const b=burst();
+  assert.equal(b.length,BURST_PIECES);
+  assert.ok(b.some(p=>p.kind==='moeda')&&b.some(p=>p.kind==='brilho'));
+  for(const [sx,sy] of [[1,1],[1,-1],[-1,1],[-1,-1]])assert.ok(b.some(p=>Math.sign(p.dx)===sx&&Math.sign(p.dy)===sy),`quadrant ${sx},${sy}`);
+  assert.ok(b.every(p=>p.delay>=REEL_STOP_MS.at(-1)!&&p.delay+650<=SLOT_MS),'after the last reel, gone before the end');
 });

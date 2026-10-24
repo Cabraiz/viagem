@@ -14,6 +14,7 @@ import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
+import { manterAcimaDoTeclado } from './client/ui/teclado.ts';
 import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
 import './client/ui/update-toast.css';
 import './client/ui/cadeado.css';
@@ -442,6 +443,8 @@ function backToRow() {
   rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`)?.focus({preventScroll:true});
 }
 document.getElementById('trocar')!.addEventListener('click',backToRow);
+// The phone's keyboard never covers the field and BORA! (teclado-cobre-nome-bora): the column takes what it leaves.
+manterAcimaDoTeclado(etapa.section,nameInput);
 nameInput.addEventListener('keydown',event=>{
   const key=nameKey(event);
   if(!key) return;

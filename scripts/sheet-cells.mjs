@@ -1,6 +1,6 @@
 /**
  * Cell hygiene of every character and enemy sheet (card BUG-20261022-ORQ-quadro-sangra-vizinho, 22/10: "uma mão
- * flutuando atrás de mim" and "esse senhor inimigo foi mal cortado"). Per frame, in the full sheet and its lite copy:
+ * flutuando atrás de mim" and "esse senhor inimigo foi mal cortado"). Per frame, in the full sheet and its lite copies:
  *
  *   corte  a piece cut off by the cell's edge: an opaque part apart from the figure within FIX_RING px of the cell's
  *          edge (1 px in a lite copy, whose cells are smaller): a hand or a prop whose arm is outside the cell
@@ -66,10 +66,12 @@ export function sheets(root=ROOT){
     const dir=g.output.replace(/^public\/art\//,'');
     for(const piece of Object.values(g.pieces))for(const f of Object.values(piece.files)){
       if(!f.cell||!f.pages?.length)continue;
-      for(const page of f.pages)for(const lite of [false,true]){
-        const key=`${lite?'lite/':''}${dir}/${page.file}`;
+      // the full sheet, its phone copy and, for the enemies that have one, the computer's (art-lite.mjs enemies-pc)
+      const copies=[['',f.cell,false],['lite/',f.liteCell??f.cell,true],...(f.pcCell?[['lite/',f.pcCell,true,'-pc']]:[])];
+      for(const page of f.pages)for(const [pre,cell,lite,suffix=''] of copies){
+        const key=`${pre}${dir}${suffix}/${page.file}`;
         if(out.some(s=>s.key===key))continue;
-        out.push({key,path:join(root,'public/art',key),cell:lite&&f.liteCell?f.liteCell:f.cell,columns:page.columns,frames:page.frameCount,firstFrame:page.firstFrame,lite});
+        out.push({key,path:join(root,'public/art',key),cell,columns:page.columns,frames:page.frameCount,firstFrame:page.firstFrame,lite});
       }
     }
   }

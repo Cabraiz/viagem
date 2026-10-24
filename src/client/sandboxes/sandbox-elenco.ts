@@ -37,7 +37,7 @@ async function celula(file:ArtFile,row:number,col:number){
   const page=artPages(file).find(p=>global>=p.firstFrame&&global<p.firstFrame+p.frameCount);
   const url=page&&artUrl('inimigos',page.file);if(!page||!url)throw new Error(`sem página para ${file.file} linha ${row}`);
   const i=global-page.firstFrame;
-  return {img:await imagem(liteEnemyUrl(url)),sx:(i%page.columns)*file.cell[0],sy:Math.floor(i/page.columns)*file.cell[1]};
+  return {img:await imagem(liteEnemyUrl(url,file)),sx:(i%page.columns)*file.cell[0],sy:Math.floor(i/page.columns)*file.cell[1]};
 }
 
 async function inimigo(id:string){

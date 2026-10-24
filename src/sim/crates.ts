@@ -28,17 +28,27 @@
  *  - opening: a standing player (hasInventory) within OPEN_REACH who did not move this tick fills OPEN_SECONDS of its
  *    rarity, on the nearest crate; moving or losing hp starts over. From the roxa up, starting to open makes noise
  *    (hooks.onNoise, OPEN_NOISE_RADIUS): the lock creaks and calls the enemies around;
- *  - the prize never repeats the opener's last crate prize (the user, 22/10: "sem repetir a mesma arma em sequência"):
- *    the same per-crate stream draws again, up to PRIZE_REDRAWS times, then the other kind (otherPrize);
+ *  - the prize is rolled when the crate appears (card caixa-icone-torre-arma, the user 23/10: "vamos pôr o item
+ *    flutuando e girando"): its item id is the record's `item` and the pickup's `resource`, which the client shows
+ *    spinning over the spot; opening gives that item, a weapon at the crate's rarity of that moment. It avoids repeating
+ *    (the user, 22/10: "sem repetir a mesma arma em sequência"): a trail crate its hero's last prize, any other the last
+ *    item that appeared; the same per-crate stream draws again, up to PRIZE_REDRAWS times, then the other kind (otherPrize);
  *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else a weapon of its rarity, rollPrize) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
  *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem). A crate gives only a
  *    weapon or a kit (BUG-20261022-ORQ-bau-so-arma-ou-torre, the user: "os baús não deveriam dropar algo sem ser arma
- *    ou torre"): coxinha, doces and the ímã come from the critters (progression dropLoot), Grana from kills and banks.
+ *    ou torre"): coxinha, doces and the ímã come from the critters (progression dropLoot), Grana from kills and banks;
+ *  - the gamble (NEW-20261023-ORQ-caixa-gamble-raridade, the user 24/10): a WEAPON crate that shows verde, azul or roxa
+ *    (GOLD_HIDDEN_FROM) gives its weapon DOURADA with GOLD_HIDDEN_CHANCE (rarityAtOpen, a per-crate stream): the map keeps
+ *    the crate's colour, the surprise comes on opening (the pickup event's value is 4). Kits never turn;
+ *  - per player (same card): who opened a weapon crate that SHOWED a colour in HIDE_AFTER_TAKEN (verde, azul) no longer
+ *    sees nor opens weapon crates of that colour (state.took; the pickup's server-only `hiddenFor`, which the encoder
+ *    and the bots skip); the others still do. Kit crates (the towers) stay for everyone; a trail crate for such a hero
+ *    comes at the next colour up.
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem} from '../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
@@ -98,6 +108,10 @@ export const OPEN_REACH=CRATE_OPEN_RADIUS;
 export const OPEN_SECONDS:readonly number[]=[1,1.5,2,2.5,3];
 /** From this rarity up (roxa) starting to open makes noise, heard within OPEN_NOISE_RADIUS world units. */
 export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=10;
+/** The gamble: a weapon crate showing one of these colours gives the weapon DOURADA (4) with this chance. */
+export const GOLD_HIDDEN_CHANCE=.05,GOLD_HIDDEN_FROM:readonly Rarity[]=[1,2,3],GOLD_RARITY:Rarity=4;
+/** Colours of weapon crates a player stops seeing after opening one that showed that colour (the user 24/10: verde and azul). */
+export const HIDE_AFTER_TAKEN:readonly Rarity[]=[1,2];
 /** Pickup id prefix of the crates this module places or drops (not CRATE_PREFIX 'caixa-': those are the gather nodes). */
 export const CRATE_ID_PREFIX='bau';
 /**
@@ -133,6 +147,8 @@ export interface CrateRecord {
   start?:true;
   /** Index of the map point a placed crate sits on. */
   point?:number;
+  /** The item it gives and shows (the pickup's resource); absent in an older checkpoint: rolled when opened. */
+  item?:string;
 }
 /** JSON-safe. */
 export interface CratesState {
@@ -152,10 +168,14 @@ export interface CratesState {
   rng:number;
   /** Per player: the key (prizeKey) of his last crate prize; absent in an older checkpoint. */
   last?:Record<string,string>;
+  /** The item of the last crate that appeared (the next one avoids it). */
+  lastItem?:string;
   /** The first step's tick (the first minute's clock); absent in an older checkpoint: no trail. */
   startTick?:number;
   /** Per player, the first minute: crates passed (ids), his waiting trail crate, how many he got, his walk heading. */
   trail?:Record<string,{passed:string[];waiting?:string;placed:number;hx:number;hy:number}>;
+  /** Per player: the colours (HIDE_AFTER_TAKEN) of weapon crates he opened, as shown; absent in an older checkpoint. */
+  took?:Record<string,Rarity[]>;
 }
 export const createCratesState=(seed:number):CratesState=>({placed:false,crates:{},respawns:[],opening:{},seen:{},rng:new Rng(seed).fork('caixas').state});
 
@@ -177,6 +197,9 @@ export interface CratesOptions {
   trailSpot?(at:Point,heading:Point,ahead:number,rng:Rng):Point|undefined;
   /** A checkpoint to resume from. */
   state?:CratesState;
+  /** The gamble's knobs (tests): GOLD_HIDDEN_CHANCE and HIDE_AFTER_TAKEN by default. */
+  goldChance?:number;
+  hideAfterTaken?:readonly Rarity[];
 }
 export interface Crates {
   readonly state:CratesState;
@@ -283,17 +306,43 @@ export function otherPrize(rng:Rng,rarity:Rarity,start:boolean,last:string):Priz
 }
 /** What a "the same prize again" check compares: the item's id. */
 export const prizeKey=(prize:Prize)=>prize.items[0]?.id??'nada';
+/**
+ * A crate's prize item (rollCrate, or rollStarter for a first-minute crate) on `stream`, other than `avoid`: up to
+ * PRIZE_REDRAWS redraws, then the other kind (otherPrize).
+ */
+export function drawPrize(stream:Rng,rarity:Rarity,start:boolean,avoid?:string):Prize{
+  const draw=()=>start?rollStarter(stream,rarity):rollCrate(stream,rarity);
+  let prize=draw();
+  for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===avoid;i++)prize=draw();
+  return avoid!==undefined&&prizeKey(prize)===avoid?otherPrize(stream,rarity,start,avoid):prize;
+}
+/** The item a crate shows, given at `rarity` (the crate's when opened): a kit as it comes, a weapon at that rarity. */
+export function prizeItem(id:string,rarity:Rarity):OwnedItem{
+  const kit=kitPiece(id);
+  return kit?kitItem(kit):weaponItem(id,rarity);
+}
+
+/** A crate whose item is a weapon (not a kit de torre); an older checkpoint's crate without item counts as none. */
+const weaponCrate=(record:CrateRecord)=>record.item!==undefined&&!kitPiece(record.item);
+/** Whether the player `took` (CratesState.took) no longer sees this crate. */
+export const hiddenFor=(took:readonly Rarity[]|undefined,record:CrateRecord)=>!!took?.includes(record.rarity)&&weaponCrate(record);
 
 export function createCrates(options:CratesOptions):Crates{
-  const {seed,points,startPoints=[],hooks={}}=options;
+  const {seed,points,startPoints=[],hooks={},goldChance=GOLD_HIDDEN_CHANCE,hideAfterTaken=HIDE_AFTER_TAKEN}=options;
   const state=options.state??createCratesState(seed);
   // Distance tier of each point: thirds of the points sorted by walk time (ties: map order), 0 near .. 2 far.
   const tierOf:number[]=new Array(points.length).fill(0);
   points.map((p,i)=>({s:p.seconds,i})).sort((a,b)=>a.s-b.s||a.i-b.i).forEach(({i},rank)=>{tierOf[i]=Math.min(2,Math.floor(rank*3/points.length));});
   const scratch:string[]=[];
 
-  function addCrate(ctx:SimContext,at:Point,record:CrateRecord):PickupState{
+  /** Rolls the item a new crate gives and shows (on its own stream: no other draw shifts it), other than `avoid`. */
+  function stock(pickup:PickupState,record:CrateRecord,avoid=state.lastItem){
+    const item=prizeKey(drawPrize(new Rng(seed).fork(`premio:${pickup.id}`),record.rarity,!!record.start,avoid));
+    record.item=item;pickup.resource=item;state.lastItem=item;
+  }
+  function addCrate(ctx:SimContext,at:Point,record:CrateRecord,avoid?:string):PickupState{
     const pickup:PickupState={id:ctx.nextId(CRATE_ID_PREFIX),kind:'chest',value:record.rarity,x:at.x,y:at.y,spawnTick:ctx.tick};
+    stock(pickup,record,avoid??state.lastItem);
     ctx.pickups.set(pickup.id,pickup);
     state.crates[pickup.id]=record;
     return pickup;
@@ -355,7 +404,9 @@ export function createCrates(options:CratesOptions):Crates{
       const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
       const at=options.trailSpot(p,heading,ahead,rng);
       if(!at||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
-      t.waiting=addCrate(ctx,at,{rarity:t.placed++%2?2:1,origin:'dropped',start:true}).id;
+      let rarity:Rarity=t.placed++%2?2:1;
+      while(rarity<GOLD_RARITY&&state.took?.[p.id]?.includes(rarity))rarity=rarity+1 as Rarity;
+      t.waiting=addCrate(ctx,at,{rarity,origin:'dropped',start:true},state.last?.[p.id]).id;
     }
     for(const id in trail)if(!ctx.players.has(id))delete trail[id];
   }
@@ -395,36 +446,67 @@ export function createCrates(options:CratesOptions):Crates{
       if(pickup.kind!=='chest'||state.crates[pickup.id])continue;
       const rarity:Rarity=isRarity(pickup.value)&&pickup.value>1?pickup.value:pickup.id.startsWith(BOSS_CHEST_PREFIX)?5:roll(rng,ELITE_ODDS);
       pickup.value=rarity;
-      state.crates[pickup.id]={rarity,origin:'dropped'};
+      const record:CrateRecord=state.crates[pickup.id]={rarity,origin:'dropped'};
+      stock(pickup,record);
     }
   }
 
   /** The nearest live crate within OPEN_REACH (ties: the first known). */
-  function nearestCrate(ctx:SimContext,p:Point){
+  function nearestCrate(ctx:SimContext,p:SimPlayer){
     let best:PickupState|undefined,bestD=Infinity;
+    const took=state.took?.[p.id];
     for(const id in state.crates){
       const c=ctx.pickups.get(id);
-      if(!c)continue;
+      if(!c||hiddenFor(took,state.crates[id]))continue;
       const d=Math.hypot(c.x-p.x,c.y-p.y);
       if(d<=OPEN_REACH&&d<bestD){best=c;bestD=d;}
     }
     return best;
   }
 
+  /**
+   * The rarity a crate gives when opened: the one it shows, except a weapon crate showing GOLD_HIDDEN_FROM, which turns
+   * DOURADA with GOLD_HIDDEN_CHANCE on its own stream (seed, crate id): no other draw shifts it.
+   */
+  function rarityAtOpen(id:string,record:CrateRecord):Rarity{
+    if(!GOLD_HIDDEN_FROM.includes(record.rarity)||!weaponCrate(record))return record.rarity;
+    return new Rng(seed).fork(`dourada:${id}`).next()<goldChance?GOLD_RARITY:record.rarity;
+  }
+
+  /** Who opened a weapon crate of a HIDE_AFTER_TAKEN colour stops seeing that colour. */
+  function remember(p:SimPlayer,record:CrateRecord){
+    if(!hideAfterTaken.includes(record.rarity)||!weaponCrate(record))return;
+    const took=(state.took??={})[p.id]??=[];
+    if(!took.includes(record.rarity))took.push(record.rarity);
+  }
+
+  /** The pickups' server-only hiddenFor: the players who no longer see each crate (absent when nobody). */
+  function hide(ctx:SimContext){
+    const took=state.took;
+    for(const id in state.crates){
+      const pickup=ctx.pickups.get(id);
+      if(!pickup)continue;
+      let who:string[]|undefined;
+      if(took)for(const pid in took)if(hiddenFor(took[pid],state.crates[id]))(who??=[]).push(pid);
+      const had=pickup.hiddenFor;
+      if(!who){if(had)delete pickup.hiddenFor;continue;}
+      if(!had||had.length!==who.length||had.some((q,i)=>q!==who![i]))pickup.hiddenFor=who;
+    }
+  }
+
   function open(ctx:SimContext,p:SimPlayer,crate:PickupState){
-    const record=state.crates[crate.id];
+    const record=state.crates[crate.id],rarity=rarityAtOpen(crate.id,record);
+    remember(p,record);
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
-    // Never the opener's last prize again: the same stream draws again (up to PRIZE_REDRAWS times), then the other kind.
-    const stream=new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),draw=()=>record.start?rollStarter(stream,record.rarity):rollCrate(stream,record.rarity);
+    // The item it showed; a crate from an older checkpoint rolls now, never the opener's last prize.
     const last=(state.last??={})[p.id];
-    let prize=draw();
-    for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===last;i++)prize=draw();
-    if(prizeKey(prize)===last)prize=otherPrize(stream,record.rarity,!!record.start,last);
+    const prize:Prize=record.item?{items:[prizeItem(record.item,rarity)]}
+      :drawPrize(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),rarity,!!record.start,last);
     state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
-    ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:record.rarity});
+    ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:rarity});
   }
 
   function openStep(ctx:SimContext){
@@ -437,7 +519,8 @@ export function createCrates(options:CratesOptions):Crates{
       let doing=state.opening[p.id];
       const current=doing&&ctx.pickups.get(doing.crate);
       // Keep the crate being opened while it is there and in reach; else the nearest one starts from zero.
-      const crate=current&&state.crates[current.id]&&Math.hypot(current.x-p.x,current.y-p.y)<=OPEN_REACH?current:nearestCrate(ctx,p);
+      const crate=current&&state.crates[current.id]&&!hiddenFor(state.took?.[p.id],state.crates[current.id])
+        &&Math.hypot(current.x-p.x,current.y-p.y)<=OPEN_REACH?current:nearestCrate(ctx,p);
       if(!crate){delete state.opening[p.id];continue;}
       if(!doing||doing.crate!==crate.id){
         doing=state.opening[p.id]={crate:crate.id,ticks:0};
@@ -469,6 +552,7 @@ export function createCrates(options:CratesOptions):Crates{
       restage(ctx);
       trailStep(ctx,rng);
       openStep(ctx);
+      hide(ctx);
       state.rng=rng.state;
     },
     dropCrate(ctx,at,rarity){return addCrate(ctx,{x:at.x,y:at.y},{rarity,origin:'dropped'});},

@@ -11,6 +11,7 @@ import {CIDA_GUARD_MULT,CIDA_MIGHT_MULT,SYSTEM_ORDER} from '../contract/index.ts
 import type {EnemyState,LevelOffer,PickupState,ProjectileState,RoundState,SimEvent,StampedEvent,SimPlayer,SpatialIndex,TeamProgress,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem,Sleepers} from './context.ts';
 import {DEVENDO,isDevendo} from './enemies/catalog.ts';
+import {provoke} from './enemies/foco.ts';
 
 export type {StampedEvent};
 /**
@@ -229,7 +230,8 @@ export class SimWorld implements SimContext {
     if(enemy.hp-dealt<1e-9)dealt=enemy.hp;
     enemy.hp-=dealt;
     this.emit({type:'damage',target:enemy.id,amount:dealt,source:sourcePlayer,weapon});
-    if(enemy.hp>0)return false;
+    // Foco (enemies/foco.ts): a hit a FOCO_UNO body survives may turn it on the hitter (the enemy-ai decides).
+    if(enemy.hp>0){if(sourcePlayer!==undefined&&this.players.has(sourcePlayer))provoke(enemy,sourcePlayer);return false;}
     this.enemies.delete(enemyId);
     this.emit({type:'kill',enemy:enemy.id,kind:enemy.kind,by:sourcePlayer,x:enemy.x,y:enemy.y});
     this.pendingKills.push({enemy,by:sourcePlayer,...(credit!==undefined?{credit}:{})});

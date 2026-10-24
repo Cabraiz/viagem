@@ -10,6 +10,7 @@
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
+import {GOLD_LEVEL} from '../ui/sticker.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
 export type Rarity=1|2|3|4|5;
@@ -34,6 +35,38 @@ export const CRATE_OPEN_ROWS=6;
 export function crateRow(progress:number):string{
   if(!(progress>0))return 'fechada';
   return `abrindo-${Math.min(CRATE_OPEN_ROWS,Math.max(1,Math.ceil(progress*CRATE_OPEN_ROWS)))}`;
+}
+/**
+ * Card caixa-icone-torre-arma (the user, 23/10: "vamos pôr o item flutuando e girando"): a crate whose view names its
+ * item (PickupView.resource, sim/crates.ts rolls it when the crate appears) is drawn as that item's own sticker instead
+ * of the crate sheet, floating over the spot and turning like a coin (its width is the cosine of the turn: no new art),
+ * with no rarity colour (the rarity shows only when it opens). FLOAT_PX: the sticker's size at body 1 (CSS px, about
+ * half the crate's width, so it reads on a phone); FLOAT_LIFT ± FLOAT_BOB: its centre over the ground; one bob in
+ * FLOAT_BOB_MS, one turn in FLOAT_TURN_MS, FLOAT_TURN_OPEN× faster when a hero has it all but open.
+ */
+export const FLOAT_PX=120,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
+/**
+ * On a phone (the user, 23/10: "aumentar o item flutuando no celular até ficar legível") the floating item grows with the
+ * square of the horde's legibility multiplier over the body scale (framing.ts hordeUiScale: 1 on the PC, ~1.25 at a
+ * phone's zoom, so ~1.55×: the plain multiplier read too small), capped at FLOAT_PHONE_MAX; its lift and shadow grow with it.
+ */
+export const FLOAT_PHONE_MAX=1.8;
+export const floatLegible=(ui:number,body:number)=>Math.max(1,Math.min(FLOAT_PHONE_MAX,(ui/Math.max(1e-6,body))**2));
+/** The thinnest the coin gets (edge on): a sliver, never gone (its glow and its shadow stay). */
+export const FLOAT_EDGE=.08;
+/** The turn after `dt` ms at opening `progress` (0..1): the angle advances, faster as the opening fills. */
+export const floatSpin=(angle:number,dt:number,progress:number)=>
+  (angle+Math.max(0,dt)*Math.PI*2/FLOAT_TURN_MS*(1+FLOAT_TURN_OPEN*Math.max(0,Math.min(1,progress))))%(Math.PI*2);
+/**
+ * The floating item's pose: `lift` (CSS px over the ground at body 1), `turn` (its horizontal scale: the coin's width,
+ * negative when its back faces us) and `shadow` (the ground shadow's scale: narrower as the coin turns edge on and as
+ * the item rises). Reduced motion: still, facing us, at FLOAT_LIFT.
+ */
+export function floatPose(now:number,phase:number,angle:number,reduced=false):{lift:number;turn:number;shadow:number}{
+  if(reduced)return {lift:FLOAT_LIFT,turn:1,shadow:1};
+  const bob=Math.sin(now*Math.PI*2/FLOAT_BOB_MS+phase*Math.PI*2),c=Math.cos(angle);
+  const turn=(c<0?-1:1)*Math.max(FLOAT_EDGE,Math.abs(c));
+  return {lift:FLOAT_LIFT+FLOAT_BOB*bob,turn,shadow:(.55+.45*Math.abs(c))*(1-.12*bob)};
 }
 /** Opening progress (0..1) of a hero standing still `stillMs` within reach of a crate of `rarity`. */
 export const crateProgress=(stillMs:number,rarity:number)=>Math.max(0,Math.min(1,stillMs/1000/crateOpenSeconds(rarity)));
@@ -139,7 +172,7 @@ export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5
 /** The prize as the crate shows it: its inventory sticker, its name in the crate's rarity colour, the glow behind. */
 export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
   const item=itemDisplay(id);
-  return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
+  return {id,icon:goldIcon(item.icon,rarity),name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
 }
 /** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
 export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
@@ -198,8 +231,18 @@ export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','subme
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */
 export const iconKey=(icon:string)=>`arsenal:ui:${icon}`;
-/** The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. */
-export const itemIcon=(id:string|undefined):string|undefined=>id?KNOWN.get(id)?.icon:undefined;
+/**
+ * The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. A weapon at the
+ * dourada level (4) wears its `<icon>-dourada` edition when that ui piece is in (caixa-gamble-raridade).
+ */
+export const itemIcon=(id:string|undefined,level=1):string|undefined=>{
+  const icon=id?KNOWN.get(id)?.icon:undefined;
+  return icon?goldIcon(icon,level):undefined;
+};
+/** An icon at a level: its dourada edition at level 4 when the art index has `ui/<icon>-dourada`, else itself. */
+export const goldIcon=(icon:string,level:number)=>level===GOLD_LEVEL&&fileOf('ui',`${icon}-dourada`)?`${icon}-dourada`:icon;
+/** The plain weapon icon of a sticker that may be its dourada edition (the hand's grip table is by the plain one). */
+export const plainIcon=(icon:string)=>icon.endsWith('-dourada')?icon.slice(0,-'-dourada'.length):icon;
 /** Whether an item on the ground is a weapon (its `value` is then its rarity; a consumable's is its stack). */
 export const isWeaponItem=(id:string|undefined)=>{const kind=id?KNOWN.get(id)?.kind:undefined;return kind==='weapon'||kind==='evolution';};
 /**
@@ -302,8 +345,12 @@ const fileOf=(group:'ui'|'efeitos',id:string)=>{const piece=artPiece(group,id);i
 export function arsenalLoads():ArsenalLoad[]{
   const out:ArsenalLoad[]=[],seen=new Set<string>();
   for(const id of ARSENAL_ITEMS){
-    const icon=itemIcon(id);if(!icon||seen.has(icon))continue;seen.add(icon);
-    const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    const plain=itemIcon(id);if(!plain||seen.has(plain))continue;
+    // The weapon's sticker and, where it is in, its dourada edition (goldIcon).
+    for(const icon of [plain,goldIcon(plain,GOLD_LEVEL)]){
+      if(seen.has(icon))continue;seen.add(icon);
+      const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    }
   }
   for(const look of Object.values(FIRE_LOOK)){
     if(!look.art||seen.has(look.art))continue;seen.add(look.art);

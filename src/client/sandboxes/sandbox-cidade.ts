@@ -80,7 +80,7 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
-import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
+import {CAR_ROPE,HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
 import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
@@ -106,7 +106,7 @@ import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
 import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
-import {PushShifts,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
+import {PushShifts,pullDirection,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
@@ -120,6 +120,9 @@ import {fakeChaveiro,fakeTalkEvents,type FakeChaveiro} from './sandbox-chaveiro.
 import {ChaveiroTalk,type SaidLine} from '../render/chaveiro/talk.ts';
 import {LINE_EVENTS,hash32,pickLine,talkSeed,type LineEvent} from '../render/chaveiro/lines.ts';
 import {castSilhouette,silhouetteImage} from '../render/silhouette.ts';
+import {UnoPip} from '../render/chaveiro/pip.ts';
+import {PIP_KEEP_PX,pipWanted} from '../render/chaveiro/pip-rules.ts';
+import {CAR_LOW,carLife} from '../render/chaveiro/rules.ts';
 
 const params=new URLSearchParams(location.search);
 const real=params.get('mapa')==='real';
@@ -155,6 +158,8 @@ const BASE_R=2.2;
 /** Where the hero stands without `hero`, from the wall (u): just south of it, in front of the camera. */
 const BASE_HERO={x:.6,y:1.2};
 const tele=real&&params.get('tele')==='1';
+/** `limpo=1` (with tele=1; card inimigos-v5a-padrao): no telegraphs and no map labels, so a print of the horde reads clean. */
+const limpo=tele&&params.get('limpo')==='1';
 /**
  * Card contorno-breu: the city's screen-scale Breu outlines (render/city-outline.ts) on the hero and, with tele=1, on
  * the horde; `contorno=0` draws without them (before/after). `elenco=1` (with tele=1) adds one critter of every kind,
@@ -180,6 +185,12 @@ const arsenal=tele&&params.get('arsenal')==='1';
 const ninhos=tele&&params.get('ninhos')==='1',NEST_WAKE_MS=3000,NEST_WAKE_AGO_MS=150;
 /** `objetivo=1` (card chaveiro-render, D-047): the chaveiro objective's renderer with a fake objective (sandbox-chaveiro.ts). */
 const objective=params.get('objetivo')==='1';
+/**
+ * `pip=1` (with objetivo=1&apanha=1; card inimigos-querem-o-uno, etapa 3): the hero `longe=dx,dy` units from the car
+ * (default 18,10) and the Uno's live window (render/chaveiro/pip.ts) in a stand-in HUD root (`.rh`, data-hud from
+ * `hud=fone|mesa`, else fone under 768 px wide), as the game shows it while the car takes hits out of view.
+ */
+const pipOn=objective&&params.get('pip')==='1';
 /** `bancos=1` (card bancos-e-veiculos): the banks' renderer with three fake ATMs around the hero (sandbox-bancos.ts). */
 const bancos=real&&params.get('bancos')==='1';
 /**
@@ -195,6 +206,16 @@ const carMoves=obra&&params.has('anda');
  * its back, drawn as the game draws a pusher (scene.ts: pushContact, the push16 clip facing the car, palms on it).
  */
 const pushing=objective&&params.has('empurrando');
+/** `puxando=1` with empurrando= (puxar-uno-corda): the hero pulls the rolling car on its rope, ahead of the nose (pull16). */
+const pulling=pushing&&params.get('puxando')==='1';
+/**
+ * `junto=<classe>` with empurrando= (puxar-uno-corda): a second hero on the other end of the car, drawn as the game draws
+ * it: it pushes at the back while the hero pulls (puxando=1), or holds the rope and pulls while the hero pushes (a helper,
+ * as a bot takes the free rope). sandbox-chaveiro.ts adds it (`junto`) to the movers.
+ */
+const mateClass=pushing&&spriteCatalog[params.get('junto')??'']?params.get('junto')!:undefined;
+/** `corda=livre` with obra=1 (puxar-uno-corda): nobody on the rope, it lies on the ground ahead of the front bumper. */
+const freeRope=params.get('corda')==='livre';
 /** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
 const tralhaShot=obra&&params.get('tralha')==='1';
 /**
@@ -245,6 +266,9 @@ class CitySandbox extends Phaser.Scene {
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
   private ally?:Phaser.GameObjects.Sprite;
+  private mate?:Phaser.GameObjects.Sprite;
+  private mateAt={x:0,y:0};
+  private mateShift={x:0,y:0};
   /** The hero's cast silhouette, as in the game (render/silhouette.ts, card sombra-silhueta). */
   private shadow!:Phaser.GameObjects.Image;
   /** empurrando=: the hero's drawn shift onto the car (the game's PushShifts). */
@@ -267,6 +291,7 @@ class CitySandbox extends Phaser.Scene {
   private fpsLabel?:HTMLElement;
   private stone?:StonewardsRenderer;
   private projector?:Projector;
+  private pip?:UnoPip;
   private chaveiro?:{renderer:ChaveiroRenderer;fake:FakeChaveiro;warmed?:boolean;
     /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
     talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
@@ -299,6 +324,7 @@ class CitySandbox extends Phaser.Scene {
     this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{})});
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
+    if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(towersParam)queueTowerArt(this);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
@@ -322,6 +348,17 @@ class CitySandbox extends Phaser.Scene {
     this.at=start?{x:start[0]*this.asset.cell,y:start[1]*this.asset.cell}:real&&inicio?{...inicio}:{x:6.5*this.asset.cell,y:3.3*this.asset.cell};
     const centre=base?this.asset.points.praca??{...this.at}:undefined;
     if(objective)this.chaveiro=this.mountObjective(!start);
+    // `longe` alone (pip=0) puts the hero at the same spot without the window: the FPS before × after.
+    if((pipOn||objective&&params.has('longe'))&&this.chaveiro){
+      const car=this.chaveiro.fake.view(0).view.car,[dx,dy]=(params.get('longe')??'18,10').split(',').map(Number);
+      this.at={x:car.x+(dx||0),y:car.y+(dy||0)};
+    }
+    if(pipOn&&this.chaveiro){
+      const root=document.createElement('div');root.className='rh';root.dataset.hud=params.get('hud')??(innerWidth<768?'fone':'mesa');
+      Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'6'});host.append(root);
+      void import('../hud/hud.css');
+      this.pip=new UnoPip(this,{onTap:()=>{}});
+    }
     if(centre&&!start&&!objective)this.at={x:centre.x+BASE_HERO.x,y:centre.y+BASE_HERO.y};
     else if(towersParam&&!start&&this.asset.points.praca)this.at={...this.asset.points.praca}; // torres: the open plaza
     this.cameras.main.setBackgroundColor(OUTSIDE_CITY);
@@ -343,6 +380,7 @@ class CitySandbox extends Phaser.Scene {
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
     if(arsenal)this.ally=this.add.sprite(0,0,'__DEFAULT');
+    if(mateClass)this.mate=this.add.sprite(0,0,'__DEFAULT');
     this.spawnHorde();
     if(acao)void this.mountAttack();
     if(centre)this.mountBase(centre);
@@ -351,6 +389,7 @@ class CitySandbox extends Phaser.Scene {
     if(kitParam)this.mountKit();
     if(bancos)this.mountBanks();
     if(obra&&this.chaveiro)this.mountObra();
+    else if(pushing&&this.chaveiro)this.mountRope();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -370,16 +409,28 @@ class CitySandbox extends Phaser.Scene {
   update(_t:number,dt:number){
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
-    let push:ReturnType<typeof pushContact>;
+    let push:ReturnType<typeof pushContact>,pull:ReturnType<typeof pullDirection>;
     if(pushing&&this.chaveiro){
       // the hero walks with the car, just behind its back (inside the room's reach); the drawing puts its palms on it
-      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=CAR_HALF.l+.6;
+      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=pulling?-(CAR_HALF.l+CAR_ROPE):CAR_HALF.l+.6;
       this.at={x:car.x-Math.cos(h)*back,y:car.y-Math.sin(h)*back};
       const pose=this.chaveiro.renderer.carPose();
-      push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      // puxando=1: the rope taut ahead of the nose, the hero facing away from the bumper (scene.ts: pullDirection)
+      push=pose&&!pulling?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      if(pulling&&pose)pull=pullDirection(this.at,pose);
       this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
+      if(this.mate&&mateClass){
+        // junto=: the other end, the other role (pushing at the back while the hero pulls, on the rope while it pushes)
+        const mb=pulling?CAR_HALF.l+.6:-(CAR_HALF.l+CAR_ROPE);this.mateAt={x:car.x-Math.cos(h)*mb,y:car.y-Math.sin(h)*mb};
+        const mp=pose&&pulling?pushContact(this.mateAt,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+        const ml=pose&&!pulling?pullDirection(this.mateAt,pose):undefined;
+        this.mateShift=this.pushShifts.step('junto',mp?.shift,dt);
+        this.sprites.animate(this.mate,mateClass,this.mateAt.x,this.mateAt.y,0,true,this.view,undefined,mp?.dir??ml);
+      }
     }
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
+    // anda= (puxar-uno-corda): the hero on the rope ahead of the car, drawn pulling (its pull16) along the swing's axis.
+    const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir??pull,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
@@ -393,6 +444,14 @@ class CitySandbox extends Phaser.Scene {
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
+      else if(pushing&&this.fortify&&this.obraView)this.fortify.push({...this.obraView,objective:{...this.obraView.objective!,car:view.car}});
+      if(this.pip){
+        const hit=this.chaveiro.renderer.hitState(),cam=this.cameras.main,proj=this.cityProjector().project(view.car.x,view.car.y,{x:0,y:0});
+        const wanted=!!hit&&pipWanted({live:!hit.ended,now,carOnScreen:cam.worldView.contains(proj.x,proj.y),distance:Math.hypot(view.car.x-this.at.x,view.car.y-this.at.y),
+          ...(hit.lastHitAt!==undefined?{lastHitAt:hit.lastHitAt}:{})});
+        const life=carLife(view.car);
+        this.pip.update({wanted,car:proj,mainZoom:cam.zoom,time:now,life:{fraction:life,low:life<CAR_LOW}});
+      }
       chaveiroMs.push(performance.now()-t0);if(chaveiroMs.length>240)chaveiroMs.shift();
       this.speak(_t,dt,view,tick);
     }
@@ -506,6 +565,14 @@ class CitySandbox extends Phaser.Scene {
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view);
     this.hero.setPosition(feet.x,feet.y);
   }
+  /** empurrando= (puxar-uno-corda): only the fortify layer's rope, free on the ground ahead of the pushed car. */
+  private mountRope(){
+    const projector=this.cityProjector(),fake=this.chaveiro!.fake.view(0).view;
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell:CITY_BUILD_CELL,playerAt:id=>pulling&&id==='voce'?this.at:mateClass&&!pulling&&id==='junto'?this.mateAt:undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
+    const view={tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
+      objective:fake} as unknown as RunView;
+    this.fortify.push(view);this.obraView=view;
+  }
   /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
   private mountObra(){
     const projector=this.cityProjector(),cell=CITY_BUILD_CELL,car=this.chaveiro!.fake.view(0).view.car;
@@ -524,7 +591,7 @@ class CitySandbox extends Phaser.Scene {
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
     const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
-    const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
+    const objectiveView={...this.chaveiro!.fake.view(0).view,car:freeRope?{...car}:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
@@ -608,7 +675,7 @@ class CitySandbox extends Phaser.Scene {
         aim:()=>{const p=this.input.activePointer;return !p||p.wasTouch||!p.time?undefined:unprojectView(this.cameras.main.getWorldPoint(p.x,p.y),this.view,this.decoded);}}:{})});
     const {x,y}=this.at,tick=100,sugar=params.get('acucar')==='1'?{sugar:true as const}:{};
     const view:RunView={tick,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],
-      telegraphs:[
+      telegraphs:limpo?[]:[
         {id:'t-circle',shape:'circle',x:x+2.2,y:y-1.6,radius:1.15,fireTick:tick+30},
         {id:'t-line',shape:'line',x:x-1.2,y:y+1.4,radius:3.2,dx:-1,dy:.35,width:.9,fireTick:tick+12},
         {id:'t-cone',shape:'cone',x:x+.9,y:y+1.1,radius:2.4,dx:.45,dy:1,width:1.1,fireTick:tick+3},
@@ -620,7 +687,7 @@ class CitySandbox extends Phaser.Scene {
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
-    const labels=[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
+    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
@@ -736,8 +803,8 @@ class CitySandbox extends Phaser.Scene {
     lab.you.update(time,zoom,[{id:'self',sprite:this.hero,self:true,feet,covered:this.layer?.covers(this.at.x,this.at.y)??false,hp:1,maxHp:1,downed:false,facing:Math.PI/2,...(veiculos?{ride:{kind:'carrinho' as const,left:.6}}:{})}]);
     // Two fichas as the scene anchors an ally's (15 px under the feet × the actor scale), beside the hero.
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
-    lab.labels[0].anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
-    lab.labels[1].anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[0]?.anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[1]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -808,7 +875,9 @@ class CitySandbox extends Phaser.Scene {
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
-      move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,mate:this.mate,
+      /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
+      uno:()=>this.chaveiro?.renderer.hitState(),
       /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */
       fixar:(on=true)=>{cameraFixed=on;},
       /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */
@@ -836,9 +905,13 @@ class CitySandbox extends Phaser.Scene {
     const cam=this.cameras.main.worldView,layer=this.layer;
     if(!layer)return;
     const z=groundZ(this.asset,this.at.x,this.at.y);
-    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z}});
+    // pip=1: the chunks around the car stay built, as the game does (scene.ts updateCity, PIP_KEEP_PX).
+    const car=this.pip&&this.chaveiro?this.cityProjector().project(this.chaveiro.fake.view(0).view.car.x,this.chaveiro.fake.view(0).view.car.y,{x:0,y:0}):undefined;
+    const also=car&&{x:car.x-PIP_KEEP_PX,y:car.y-PIP_KEEP_PX,w:PIP_KEEP_PX*2,h:PIP_KEEP_PX*2};
+    layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z},...(also?{also}:{})});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);castSilhouette(this.shadow,this.hero,this.hero.x,this.hero.y,true,d-1);
     if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
+    if(this.mate){const at=this.mateAt,s=this.mateShift,az=groundZ(this.asset,at.x,at.y),q=project(at.x+s.x,at.y+s.y,az,this.view),md=layer.actorDepth(at.x,at.y,az);this.mate.setPosition(q.x,q.y).setDepth(md);}
     for(const w of this.horde){
       const wz=groundZ(this.asset,w.x,w.y),p=project(w.x,w.y,wz,this.view);
       w.image.setPosition(p.x,p.y).setDepth(layer.actorDepth(w.x,w.y,wz));
@@ -848,8 +921,9 @@ class CitySandbox extends Phaser.Scene {
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
-// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art.
-if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start();
+// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art;
+// zoom=pc also takes the computer's enemy copies (manifest.ts pcCell), as the game on a fine pointer.
+if(base||params.get('arte')!=='0')void loadArtManifest(undefined,params.get('zoom')==='pc').then(start);else start();
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{

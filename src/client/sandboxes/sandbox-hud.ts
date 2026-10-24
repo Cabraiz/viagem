@@ -636,7 +636,9 @@ if(cidade)void (async()=>{
     const plaza=locate(map.plaza);
     hud.setHero({x:hero.x,y:hero.y,bearing:Math.atan2(plaza.y-anchor.y,plaza.x-anchor.x)*180/Math.PI});
     const {targets,groupKeys}=city.cityEdgeTargets({hero,selfId:'p1',players:people,enemies,activeMouths:active,map,phase,
-      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{})});
+      hornSeconds:city.hornSeconds(run.camp,tick,phase),locate,isOnScreen,previousGroups:previous,...(chaveiro?{moto:chaveiro.moto}:{}),...(banks?{banks}:{}),
+      // Card inimigos-querem-o-uno: `apanha=1` the car takes hits (its edge arrow while it is out of view).
+      ...(chaveiro&&params.get('apanha')==='1'?{car:{x:chaveiro.car.x,y:chaveiro.car.y,hit:true}}:{})});
     previous=groupKeys;
     const arrows=city.layoutCityEdges(shownHere(targets),area,heroBox,{seen,windows:all(WINDOWS),textScale:hud.edges!.scale()});
     hud.edges!.render(arrows);

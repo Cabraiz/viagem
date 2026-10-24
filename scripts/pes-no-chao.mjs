@@ -39,7 +39,7 @@ const VIEWPORTS=[[1920,1080],[1920,1000],[1920,950],[1590,903],[1366,768],[1280,
  * floor], the floor being the bottom edge of that sole's lowest row with alpha >= 128, where the picture the user
  * approved has it touching the plateau (the cat: the rooftop's tiles). CLT, cat: left, right. tests/client/menu-estadio.test.ts re-measures them on the art.
  */
-const PES={"clt-cansado":[[792,965,921],[1290,1427,935]],"gato-nada-pra-comer":[[1009,1241,1047],[1366,1592,1076]],"maromba":[[1057,1228,1076],[1373,1594,1069]]};
+const PES={"clt-cansado":[[792,965,921],[1290,1427,935]],"gato-nada-pra-comer":[[1009,1241,1047],[1366,1592,1076]],"maromba":[[1057,1228,1076],[1373,1594,1069]],"vendedor-praia":[[876,1018,1052],[1239,1545,1076]],"aposentado":[[1133,1284,1076],[1575,1722,1056]]};
 const NOMES={"clt-cansado":['pé esquerdo','pé direito'],"gato-nada-pra-comer":['pantufa esquerda','pantufa direita'],"maromba":['tênis esquerdo','tênis direito']};
 /**
  * The feet of a hero behind a front layer (whole-picture px): the columns of the sole on the bar's top; the columns of

@@ -249,14 +249,13 @@ const UI=(()=>{
 
 // ---------------------------------------------------------------- face avatars (board design/PACOTE-ROSTOS.md, §4b)
 /**
- * The 35 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
+ * The 29 classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
  * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
  */
-export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','pedreiro',
-  'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
-  'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
-  'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
-  'conspiracionista','gamer-mobile','rainha-bateria','gato-nada-pra-comer']);
+export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl',
+  'pedreiro','vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira',
+  'concurseira','vendedor-praia','pagodeiro','gambiarreiro','universitario','passageira','porteiro','merendeira',
+  'rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','conspiracionista','gato-nada-pra-comer']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
 export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
 /** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */

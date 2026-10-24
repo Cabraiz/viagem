@@ -24,6 +24,8 @@ export class Vignette {
     }
     this.image=scene.add.image(0,0,KEY).setOrigin(.5).setScrollFactor(0).setDepth(VIGNETTE_DEPTH).setVisible(false);
   }
+  /** The image (screen space): a second camera (the Uno's live window, chaveiro/pip.ts) ignores it. */
+  get object():Phaser.GameObjects.Image|undefined{return this.image;}
   /** The map's strength; hidden in economy mode. */
   set(world:LightWorld,economy:boolean){this.image?.setAlpha(GRADES[world].vignette).setVisible(!economy);}
   /** Every frame: covers the camera (scroll factor 0 still zooms around the centre, so undo the zoom). */

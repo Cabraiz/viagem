@@ -16,6 +16,8 @@ Arte gerada no Codex (gpt-6.1-sol, effort low, 9 chamadas), com as referências 
 | CLT | 1 | Cabeça apoiada na mão, olheiras e cara de segunda-feira: o cansaço se lê sem legenda. A 3 (bocejo) é engraçada, mas a mão cobre a boca e os olhos estão fechados. |
 | Gato | 1 | Lágrima e tigela vazia: é a piada do personagem ("nada pra comer em casa"). A 3 (grito) é mais genérica. |
 | Maromba | 4 | Sorriso confiante com o polegar para cima, o "Tá leve!" dele. Rosto no centro; o polegar fica dentro do círculo. |
+| Vendedor de Praia | 4 | Gargalhada de frente, rosto e óculos no centro e o chapéu inteiro dentro do círculo. As quatro são parecidas (todas rindo); na 1 e na 3 a aba do chapéu encosta na borda e seria cortada pelo círculo. |
+| Aposentado | 3 | Olhos abertos e rosto no centro, com o cafezinho da pose dele no menu (sentado no banquinho). A 2 (piscadela e joinha) é simpática, mas o polegar fica na borda e o círculo corta. Grade: as variações 1, 2 e 5 da tela dele, cortadas ao quadrado nele (sem Codex novo). |
 
 `recorta.cjs` divide as folhas pelas faixas brancas; `folha.cjs` monta a folha de contato (os dois rodam sobre os PNG da pasta do board).
 

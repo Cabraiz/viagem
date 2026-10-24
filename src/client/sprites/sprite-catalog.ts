@@ -146,30 +146,12 @@ export const spriteCatalog:Record<string,{height:number;figure?:FigureBox;dir4?:
       "bottom": 171
     }
   },
-  "roqueira": {
-    "height": 120,
-    "figure": {
-      "left": 46,
-      "top": 50,
-      "right": 173,
-      "bottom": 171
-    }
-  },
   "pagodeiro": {
     "height": 146,
     "figure": {
       "left": 35,
       "top": 21,
       "right": 176,
-      "bottom": 170
-    }
-  },
-  "caca-promocao": {
-    "height": 144,
-    "figure": {
-      "left": 28,
-      "top": 21,
-      "right": 170,
       "bottom": 170
     }
   },
@@ -206,24 +188,6 @@ export const spriteCatalog:Record<string,{height:number;figure?:FigureBox;dir4?:
       "left": 45,
       "top": 34,
       "right": 186,
-      "bottom": 170
-    }
-  },
-  "goleira": {
-    "height": 102,
-    "figure": {
-      "left": 46,
-      "top": 64,
-      "right": 179,
-      "bottom": 170
-    }
-  },
-  "sensei": {
-    "height": 112,
-    "figure": {
-      "left": 25,
-      "top": 58,
-      "right": 133,
       "bottom": 170
     }
   },
@@ -281,39 +245,12 @@ export const spriteCatalog:Record<string,{height:number;figure?:FigureBox;dir4?:
       "bottom": 170
     }
   },
-  "salva-vidas": {
-    "height": 114,
-    "figure": {
-      "left": 36,
-      "top": 55,
-      "right": 183,
-      "bottom": 170
-    }
-  },
   "conspiracionista": {
     "height": 147,
     "figure": {
       "left": 34,
       "top": 21,
       "right": 182,
-      "bottom": 170
-    }
-  },
-  "gamer-mobile": {
-    "height": 144,
-    "figure": {
-      "left": 38,
-      "top": 23,
-      "right": 182,
-      "bottom": 170
-    }
-  },
-  "rainha-bateria": {
-    "height": 146,
-    "figure": {
-      "left": 24,
-      "top": 21,
-      "right": 175,
       "bottom": 170
     }
   }

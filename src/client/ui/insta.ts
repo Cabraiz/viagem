@@ -56,6 +56,14 @@ export const INSTA_PERFIS:readonly InstaPerfil[]=Object.freeze([
     chips:chips('Regata 365','Só mais uma','No pump'),
     posts:posts('creatina_pura',['Registro do bíceps. Dia 412.','7.704','há 4 horas'],
       ['O pneu não ia se puxar sozinho.','6.091','há 8 horas'],['Shake: meu único relacionamento sério.','9.338','há 3 dias'])},
+  {id:'vendedor-praia',nome:'VENDEDOR',handle:'@VENDEDOR',letreiro:'Vendedor de Praia, reforço geladinho',seguidores:'47,3 mil',seguindo:'2.318',bio:'Olha a água, olha o mate!\nAceito Pix.',
+    chips:chips('Chapéu de palha','Água gelada','Na areia quente'),
+    posts:posts('quiosque_do_ze',['Selfie com o isopor. Gelo novinho.','2.214','há 1 hora'],
+      ['Areia a 60 graus. O chinelo resiste.','3.870','há 5 horas'],['Vai uma geladinha, aventureiro?','5.402','há 1 dia'])},
+  {id:'aposentado',nome:'APOSENTADO',handle:'@APOSENTADO',letreiro:'Aposentado, experiência não falta',seguidores:'3.104',seguindo:'12',bio:'No meu tempo\no boss era maior.',
+    chips:chips('Colete de pesca','Vara no torno','Contando história'),
+    posts:posts('neto_favorito',['Consertei a vara. Ficou melhor que nova.','312','há 2 horas'],
+      ['O peixe era DESSE tamanho. Juro.','487','há 6 horas'],['Puxando o chefe do lago. Ele resistiu.','655','há 1 dia'])},
 ]);
 export const instaPerfil=(id:string):InstaPerfil|undefined=>INSTA_PERFIS.find(p=>p.id===id);
 
@@ -67,8 +75,9 @@ export const gradeUrls=(id:string,liberado:boolean):string[]=>liberado?[1,2,3].m
 export const postUrl=(id:string,i:number)=>instaUrl(`post-${id}-${i+1}`);
 /** The top bar's logo: the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil). */
 export const logoUrl=(id:string)=>instaUrl(`logo-${id}`);
-/** The stories: every other hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). */
-export const storiesOf=(selectedId:string,ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>p.id!==selectedId&&ids.includes(p.id));
+/** The rings row: every hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). The chosen one
+ *  stays in it, marked (BUG-20261024-ORQ-aneis-herois-carrossel-infinito): a pick never reshuffles the row under the finger. */
+export const aneisOf=(ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>ids.includes(p.id));
 
 /**
  * The handle's size (insta.css: 64 card px of 734): the column beside the photo holds 335, 275 of them for the text
@@ -91,6 +100,7 @@ export const LINHA={
   mais:svg('<circle cx="5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="19" cy="12" r="1.2" fill="currentColor"/>'),
   comentar:svg('<path d="M20.5 11.6a8.4 8.4 0 0 1-12.3 7.4L3.5 20.5l1.6-4.5a8.4 8.4 0 1 1 15.4-4.4z"/>'),
   enviar:svg('<path d="M21 3.5 10.2 13.8M21 3.5l-6.6 17-4.2-6.7-6.7-4.2z"/>'),
+  fechar:svg('<path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/>'),
   salvar:svg('<path d="M18.5 20.5 12 15.6l-6.5 4.9V4.5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1z"/>'),
 } as const;
 
@@ -98,16 +108,25 @@ export const LINHA={
 // The bar is in the page from the start with no logo: main.ts renderInsta sets it, so the stadium never downloads one.
 export const barraHtml=()=>`<header class="insta-barra"><img class="insta-logo" alt="" decoding="async" draggable="false"><span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
 
-/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. */
-export function storyHtml(p:InstaPerfil,liberado:boolean):string{
-  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
+/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. A `copia` is
+ *  the endless row's second set (ui/insta-aneis.ts): tappable, but hidden from screen readers and out of the tab order. */
+export function storyHtml(p:InstaPerfil,liberado:boolean,copia=false):string{
+  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'}${copia?' aria-hidden="true" tabindex="-1"':''} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
     `<span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false">${liberado?'':img('icone-cadeado','insta-cadeado')}</span>`+
     `<span class="insta-story-nome">${esc(p.nome)}</span></button>`;
 }
+/** The rings row's track: the rings, then (`loop`: more than fit) the same rings again for the endless row. */
+export const aneisHtml=(perfis:readonly InstaPerfil[],liberado:(id:string)=>boolean,loop:boolean)=>
+  `<div class="insta-aneis-trilho">${perfis.map(p=>storyHtml(p,liberado(p.id))).join('')}${loop?perfis.map(p=>storyHtml(p,liberado(p.id),true)).join(''):''}</div>`;
 
-/** The profile: photo with the badge, @handle with the badge, followers | following, the bio. */
-export function perfilHtml(p:InstaPerfil):string{
-  return `<div class="insta-foto"><span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"></span>${img('icone-verificado','insta-selo-foto')}</div>`+
+/**
+ * The profile: photo with the badge, @handle with the badge, followers | following, the bio. A released hero's photo is
+ * a button that opens his stories (ui/insta-stories.ts); `visto` greys its ring once they were watched, as Instagram.
+ */
+export function perfilHtml(p:InstaPerfil,liberado=true,visto=false):string{
+  const abre=liberado&&storiesDe(p.id).length>0;
+  const foto=abre?`<button type="button" class="insta-foto insta-foto-botao"${visto?' data-visto':''} aria-label="Ver os stories de ${esc(p.handle)}" aria-haspopup="dialog">`:'<div class="insta-foto">';
+  return `${foto}<span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"></span>${img('icone-verificado','insta-selo-foto')}${abre?'</button>':'</div>'}`+
     `<div class="insta-info"><p class="insta-arroba" style="--arroba-fit:${handleFit(p.handle).toFixed(3)}"><span>${esc(p.handle)}</span>${img('icone-verificado','insta-selo','verificado')}</p>`+
     `<div class="insta-numeros"><p><strong>${esc(p.seguidores)}</strong><span>seguidores</span></p><p><strong>${esc(p.seguindo)}</strong><span>seguindo</span></p></div>`+
     `<p class="insta-bio">${esc(p.bio)}</p></div>`;
@@ -145,6 +164,128 @@ export function postTelaHtml(p:InstaPerfil):string{
     `<span class="insta-ver-mais">${LINHA.mais}</span></header>`+
     `<div class="insta-ver-janela"><div class="insta-ver-trilho">${slides}</div></div>`+
     `<div class="insta-ver-pontos" aria-hidden="true"><i></i><i></i><i></i></div></div></div>`;
+}
+
+/** The colours of Instagram's text picker (tokens.css --insta-st-*). */
+export type StoryCor='branco'|'preto'|'azul'|'verde'|'amarelo'|'laranja'|'vermelho'|'rosa'|'roxo';
+/** Instagram's letters, as OFL equivalents (tokens.css --f-insta-*): Classic, Modern, Strong and Typewriter. */
+export type StoryFonte='classica'|'moderna'|'forte'|'maquina';
+/**
+ * How a text sits on the picture, as Instagram's "A" button: a band of colour behind each line ('faixa'), the bare
+ * letters with a soft shadow ('sombra'), or one box behind the whole block ('caixa').
+ */
+export type StoryJeito='faixa'|'sombra'|'caixa';
+/** Where a layer sits: its centre at x,y % of the story, turned `giro` degrees, `tam` times the base letter. */
+interface StoryLugar {x:number;y:number;giro?:number;tam?:number}
+/** A text (its lines broken by hand, as typed on Instagram) or one of Instagram's stickers. */
+export type StoryCamada=StoryLugar&(
+  |{tipo:'texto';fonte:StoryFonte;jeito:StoryJeito;cor:StoryCor;fundo?:StoryCor;alinhar?:'esquerda';linhas:readonly string[]}
+  |{tipo:'enquete';pergunta:string;a:string;b:string}
+  |{tipo:'pergunta';pergunta:string}
+  |{tipo:'hashtag';tag:string;cor:StoryCor}
+  |{tipo:'curtidas';n:number});
+/** One story: its picture is story-<hero>-<k>.webp; when it was posted (the bar's "2 h") and what is written over it. */
+export interface InstaStory {quando:string;camadas:readonly StoryCamada[]}
+/** Every word over a story, in its layers' order: the picture's alt. */
+export const textoDe=(s:InstaStory)=>s.camadas.map(c=>c.tipo==='texto'?c.linhas.join(' '):c.tipo==='enquete'?`${c.pergunta} ${c.a} ou ${c.b}`:
+  c.tipo==='pergunta'?c.pergunta:c.tipo==='hashtag'?c.tag:`${c.n} curtidas`).join(' ');
+/**
+ * The stories (NEW-20261023-ORQ-insta-stories-4-herois): the 3-4 pictures chosen of each hero's 8 (evidence/<ID>/README.md,
+ * scripts/insta-stories.mjs), in the order they play, the oldest first. What is written over each one is written here,
+ * not drawn: BUG-20261024-ORQ-stories-texto-estilo-instagram (the user 24/10, "copiar ... fonte, cor, jeito, opções")
+ * gives each its own look, as Instagram's (evidence/<ID>/ref-*.jpg), placed off the faces; fixed, never drawn by lot.
+ */
+export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object.freeze({
+  'viciado-em-bet':[
+    {quando:'5 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['GREEN!','EU AVISEI.'],x:66,y:24,giro:-6,tam:1.9},
+      {tipo:'hashtag',tag:'#TÔRICO',cor:'verde',x:68,y:84,giro:4}]},
+    {quando:'4 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'roxo',linhas:['Bilionário','até o próximo jogo.'],x:50,y:72},
+      {tipo:'curtidas',n:1,x:80,y:61}]},
+    {quando:'2 h',camadas:[
+      {tipo:'texto',fonte:'maquina',jeito:'caixa',cor:'preto',fundo:'branco',alinhar:'esquerda',linhas:['Red.','Faltou um gol.','De novo.'],x:66,y:56},
+      {tipo:'hashtag',tag:'#ÚLTIMAVEZ',cor:'vermelho',x:38,y:76,giro:-5}]},
+    {quando:'20 min',camadas:[
+      {tipo:'enquete',pergunta:'4H DA MANHÃ. SÓ MAIS UMA?',a:'Só mais uma',b:'Só mais duas',x:50,y:74}]},
+  ],
+  'clt-cansado':[
+    {quando:'12 h',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'sombra',cor:'branco',linhas:['Cardio diário:','ônibus das 6h.'],x:50,y:16},
+      {tipo:'hashtag',tag:'#VIDADECLT',cor:'azul',x:32,y:82,giro:-5}]},
+    {quando:'7 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'preto',fundo:'amarelo',linhas:['Fila do micro-ondas:','40 min.'],x:50,y:16},
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'rosa',linhas:['Almoço: 5.'],x:60,y:25,giro:3,tam:1.15}]},
+    {quando:'3 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'sombra',cor:'branco',linhas:['17h59.','Ele chegou','com mais papel.'],x:50,y:62,tam:1.1},
+      {tipo:'pergunta',pergunta:'Me dá uma desculpa pra ir embora',x:50,y:82}]},
+    {quando:'1 h',camadas:[
+      {tipo:'texto',fonte:'maquina',jeito:'caixa',cor:'preto',fundo:'branco',alinhar:'esquerda',linhas:['Só vou responder','um e-mail.'],x:38,y:17},
+      {tipo:'curtidas',n:3,x:22,y:58}]},
+  ],
+  'gato-nada-pra-comer':[
+    {quando:'9 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'preto',fundo:'branco',linhas:['NÃO TEM','NADA','PRA COMER.'],x:50,y:42,giro:-4,tam:2},
+      {tipo:'hashtag',tag:'#PASSANDOFOME',cor:'laranja',x:62,y:82,giro:3}]},
+    {quando:'6 h',camadas:[
+      {tipo:'enquete',pergunta:'POTE VAZIO. DENUNCIO?',a:'Denuncia!',b:'Enche o pote',x:50,y:73}]},
+    {quando:'2 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'azul',linhas:['O jantar','passou na janela.'],x:50,y:80}]},
+    {quando:'15 min',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'sombra',cor:'branco',linhas:['3h da manhã.','Ainda com fome.'],x:50,y:18,tam:1.1},
+      {tipo:'pergunta',pergunta:'Quem tem sachê?',x:50,y:79}]},
+  ],
+  'maromba':[
+    {quando:'8 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'branco',fundo:'laranja',linhas:['DIA DE BRAÇO.'],x:48,y:66,giro:-4,tam:1.7},
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'amarelo',fundo:'preto',linhas:['TODO DIA É.'],x:54,y:74,giro:-4,tam:1.4}]},
+    {quando:'5 h',camadas:[
+      {tipo:'texto',fonte:'maquina',jeito:'caixa',cor:'preto',fundo:'branco',alinhar:'esquerda',linhas:['Frango,','batata-doce','e foco.'],x:30,y:19},
+      {tipo:'curtidas',n:21,x:78,y:84}]},
+    {quando:'2 h',camadas:[
+      {tipo:'enquete',pergunta:'ELEVADOR TAMBÉM É ACADEMIA?',a:'Óbvio',b:'Claro que sim',x:50,y:75}]},
+    {quando:'30 min',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['Domingo:','21 marmitas','prontas.'],x:50,y:46},
+      {tipo:'hashtag',tag:'#MARMITAFIT',cor:'rosa',x:64,y:80,giro:-3}]},
+  ],
+});
+export const storiesDe=(id:string):readonly InstaStory[]=>INSTA_STORIES[id]??[];
+/** Story k (from 0) of a hero: requested only when the viewer opens (ui/insta-stories.ts), never with the profile. */
+export const storyUrl=(id:string,k:number)=>instaUrl(`story-${id}-${k+1}`);
+
+const corVar=(c:StoryCor)=>`var(--insta-st-${c})`;
+/** One layer over a story; the place and colours ride in custom properties, the look in insta.css .insta-st-*. */
+export function camadaHtml(c:StoryCamada,p:InstaPerfil):string{
+  const lugar=`left:${c.x}%;top:${c.y}%`+(c.giro?`;--giro:${c.giro}deg`:'')+(c.tam?`;--tam:${c.tam}`:'');
+  if(c.tipo==='texto'){
+    const cores=`;--st-cor:${corVar(c.cor)}`+(c.fundo?`;--st-fundo:${corVar(c.fundo)}`:'');
+    return `<p class="insta-st insta-st-texto" data-fonte="${c.fonte}" data-jeito="${c.jeito}"${c.alinhar?` data-alinhar="${c.alinhar}"`:''} style="${lugar}${cores}">`+
+      `<span>${c.linhas.map(esc).join('<br>')}</span></p>`;
+  }
+  if(c.tipo==='enquete') return `<div class="insta-st insta-st-enquete" style="${lugar}"><p>${esc(c.pergunta)}</p>`+
+    `<ol><li><i>A</i>${esc(c.a)}</li><li><i>B</i>${esc(c.b)}</li></ol></div>`;
+  if(c.tipo==='pergunta') return `<div class="insta-st insta-st-pergunta" style="${lugar}">`+
+    `<img class="insta-st-avatar" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"><p>${esc(c.pergunta)}</p><span>Digite algo...</span></div>`;
+  if(c.tipo==='hashtag') return `<span class="insta-st insta-st-hashtag" style="${lugar};--st-cor:${corVar(c.cor)}">${esc(c.tag)}</span>`;
+  return `<span class="insta-st insta-st-curtidas" style="${lugar}">${LINHA.coracao}<b>${c.n}</b></span>`;
+}
+
+/**
+ * The stories viewer, over the whole page: one bar per story (it fills as the story plays), the avatar, @, when and the
+ * close button, the pictures stacked (the one on screen fades in over the last) with their texts and stickers, and the
+ * drawn reply bar. The <img> have no src: ui/insta-stories.ts sets it as each story comes near.
+ */
+export function storiesTelaHtml(p:InstaPerfil):string{
+  const lista=storiesDe(p.id);
+  const barras=lista.map(()=>'<i class="insta-sv-barra"><b></b></i>').join('');
+  const fotos=lista.map((s,k)=>`<figure class="insta-sv-story" data-story="${k}" aria-hidden="true">`+
+    `<img class="insta-sv-foto" alt="Story ${k+1} de ${lista.length} de ${esc(p.handle)}: ${esc(textoDe(s))}" decoding="async" draggable="false">`+
+    `<figcaption class="insta-sv-camadas" aria-hidden="true">${s.camadas.map(c=>camadaHtml(c,p)).join('')}</figcaption></figure>`).join('');
+  return `<div class="insta-sv" role="dialog" aria-modal="true" aria-label="Stories de ${esc(p.handle)}"><div class="insta-sv-palco">${fotos}`+
+    `<div class="insta-sv-topo"><div class="insta-sv-barras">${barras}</div><div class="insta-sv-quem">`+
+    `<img class="insta-sv-avatar" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false"><b>${esc(p.handle)}</b>${img('icone-verificado','insta-sv-selo')}`+
+    `<span class="insta-sv-quando"></span><button type="button" class="insta-sv-fechar" aria-label="Fechar">${LINHA.fechar}</button></div></div></div>`+
+    `<div class="insta-sv-rodape" aria-hidden="true"><span class="insta-sv-responder">Enviar mensagem</span>${LINHA.coracao}${LINHA.enviar}</div></div>`;
 }
 
 /** The tabs: grid (active), video and liked, as in the reference; only the grid exists, the others are drawn. */

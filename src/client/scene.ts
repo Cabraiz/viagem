@@ -6,6 +6,8 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
+import {FEAR_BEAT_PULL,FearClock,safeSpots,type FearFrame} from './render/fear-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
@@ -47,7 +49,7 @@ import {talkSeed} from './render/chaveiro/lines.ts';
 import {TowerRenderer,queueTowerArt,towerLoads} from './render/towers/towers.ts';
 import {TowerFeed,hasTowers,type TowerKind} from './render/towers/tower-rules.ts';
 import {HEIGHT_PX} from './render/city/projection.ts';
-import {buildPlanFor,elevation,farPath} from '../maps/index.ts';
+import {buildPlanFor,elevation,farPath,worldBase} from '../maps/index.ts';
 import {Projector} from './render/projector.ts';
 import {ENEMY_ART,ELITE_SCALE,drawnKind,enemyKind,enemyTexture} from './render/keys.ts';
 import type {RunView} from '../contract/index.ts';
@@ -121,6 +123,11 @@ export interface SceneHooks {
   quality?:QualityLevel;
   /** The FPS watch saw the first 10 s of combat under 40 fps (coop, above Leve): the shell steps the level down and says so. */
   slow?:()=>void;
+  /**
+   * Fear (card fear-escuridao-sozinho): every frame of a run once the dark has shown, what it is now (seconds alone,
+   * the notice, a heartbeat starting): the HUD writes the notice and dims the portraits, the sound plays the beat.
+   */
+  fear?:(frame:FearFrame,far:readonly string[])=>void;
   /** The player's zoom at start (camera-zoom.ts: a factor on the follow zoom; default ZOOM_DEFAULT). */
   zoom?:number;
   /** The wheel or a pinch changed the wanted zoom (the shell saves it). */
@@ -749,7 +756,7 @@ export class IslandScene extends Phaser.Scene {
   private updatePip(time:number){
     const hit=this.chaveiro?.hitState();
     if(!hit&&!this.pip)return;
-    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return v?[v]:[];}});
+    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return [...v?[v]:[],...this.fearDark?.objects??[]];}});
     const live=!!hit&&!hit.ended,cam=this.cameras.main,carPx=hit?this.project(hit.car):undefined;
     const me=this.watchPoint??this.position,distance=hit?Math.hypot(hit.car.x-me.x,hit.car.y-me.y):Infinity;
     const carOnScreen=!!carPx&&cam.worldView.contains(carPx.x,carPx.y);
@@ -987,6 +994,42 @@ export class IslandScene extends Phaser.Scene {
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
+  /** Fear (card fear-escuridao-sozinho, render/fear-rules.ts): the clock and the dark, built on the first fear. */
+  private readonly fearClock=new FearClock();
+  private fearDark?:FearDark;
+  private fearOn=false;
+  private fearAt?:number;
+  private readonly fearSpots:FearSpotPx[]=[];
+  /**
+   * The dark around the own hero (the server's fear 0..1), the safe spots (allies on their feet, the Uno) lit in it
+   * and the arrow to the nearest; the HUD gets the frame (notice, portraits, sound) through hooks.fear.
+   */
+  private drawFear(time:number,delta:number){
+    const net=this.hooks.net!,me=net.feed.players.get(net.id),combat=net.run?.phase==='combat';
+    const raw=combat&&me&&!me.downed&&!me.eliminated&&!me.spectator&&me.hp>0?me.fear??0:0;
+    if(!combat&&this.fearOn)this.fearClock.reset();
+    if(raw<=0&&!this.fearOn)return;
+    // The wall clock between calls (Phaser's delta is smoothed and capped): a slow page still catches up.
+    const dt=this.fearAt===undefined?delta:time-this.fearAt;this.fearAt=time;
+    const frame=this.fearClock.step(raw,dt,time,this.reduced);
+    const lit=frame.look.alpha>0||frame.alone;
+    this.fearOn=lit||frame.seconds>0;
+    const car=this.chaveiro?.carPose(),uno=car?{x:car.x,y:car.y}:worldBase(net.terrain);
+    const players=[...net.feed.players.values()].map(p=>{const at=this.drawnFeet.get(p.id);return at?{...p,x:at.x,y:at.y}:p;});
+    const spots=lit?safeSpots(net.id,this.position,players,uno):[];
+    this.hooks.fear?.(frame,frame.alone?spots.filter(s=>s.kind==='aliado').map(s=>s.id!):[]);
+    if(!lit){this.fearDark?.hide();this.vignette?.cover(false);return;}
+    const dark=this.fearDark??=new FearDark(this),out=this.fearSpots;out.length=0;
+    for(const s of spots){
+      const c=this.project(s),u=this.project({x:s.x+s.radius,y:s.y}),v=this.project({x:s.x,y:s.y+s.radius});
+      out.push({x:c.x,y:c.y,rx:Math.hypot(u.x-c.x,v.x-c.x),ry:Math.hypot(u.y-c.y,v.y-c.y)});
+    }
+    const box=this.heroWorldBox(),hero={x:box.x+box.width/2,y:box.y+box.height/2};
+    const near=frame.alone?spots[0]:undefined,to=near?this.project(near):undefined;
+    dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,spots:out,
+      ...to?{arrow:{x:to.x,y:to.y}}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
+    this.vignette?.cover(dark.covering);
+  }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
   private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
   private readonly catchUp=new CatchUp();
@@ -1040,7 +1083,7 @@ export class IslandScene extends Phaser.Scene {
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
-      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);return;
+      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);this.drawFear(_time,delta);return;
     }
     if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction(),keys=this.keyAxis();

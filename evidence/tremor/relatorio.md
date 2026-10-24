@@ -1,6 +1,6 @@
-# Tremor por quadro — 1133 folhas, 10113 achados em 6803 quadros
+# Tremor por quadro — 1133 folhas, 10114 achados em 6805 quadros
 
-Loops: 1892 achados (1534 quadros desalinhados, 0 de arte nova, 5 poses aceitas). Dano e ações: 8221 achados (4967 desalinhados, 3 de arte nova, 294 poses aceitas).
+Loops: 1892 achados (1534 quadros desalinhados, 0 de arte nova, 5 poses aceitas). Dano e ações: 8222 achados (4970 desalinhados, 3 de arte nova, 293 poses aceitas).
 
 Mede o desenho dentro da célula, não a posição no mundo: o "andar no lugar" (76bffa9) não entra aqui.
 Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé, centroide, altura), fica com IoU ≥ 0.8 × o IoU típico de dois quadros seguidos: o pipeline corrige com a correção da tabela (px da célula). Arte nova = mesmo alinhado destoa: precisa redesenhar o quadro.
@@ -168,7 +168,6 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | mapinguari-do-shopping | slam | S | 4 | altura, cy, escala | 6.63 | 0.433 → 0.516 / 0.762 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | malabarista-do-sinal | death | E | 8 | altura, cy, cx | 6.34 | 0.389 → 0.369 / 0.609 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | peladeiro-de-vidro | death | S | 5 | altura, cy | 6.27 | 0.372 → 0.487 / 0.64 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
-| revendedora-de-catalogo | throw | NE | 4 | altura, cy, escala | 6.2 | 0.423 → 0.541 / 0.906 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | mapinguari-do-shopping | slam | NW | 4 | cy, altura, escala | 6.17 | 0.449 → 0.493 / 0.79 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | coco-que-vende-gente | death | E | 8 | altura, pe | 6.15 | 0.377 → 0.336 / 0.816 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | urubu-fiscal | wake | 0 | 2 | cy, pe, escala | 5.9 | 0.413 → 0.655 / 0.882 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
@@ -197,3 +196,4 @@ Desalinhamento = o quadro, transladado/escalado até a âncora dos vizinhos (pé
 | o-grande-credor | death | S | 7 | escala | 4.9 | 0.402 → 0.462 / 0.706 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | glitter-senciente | death | W | 8 | cx, pe | 4.87 | 0.185 → 0.175 / 0.713 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
 | rodinho-do-sinal | attack | S | 3 | cx | 4.84 | 0.26 → 0.407 / 0.694 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |
+| auditor-das-sombras | death | S | 6 | altura | 4.81 | 0.258 → 0.462 / 0.776 | pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10 |

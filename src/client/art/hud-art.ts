@@ -50,7 +50,7 @@ export function critterSheetFrame(id:string):CritterSheetFrame|undefined{
   const page=file&&Array.isArray(file.cell)?artPages(file).find(p=>p.firstFrame===0&&p.frameCount>0):undefined;
   const url=page&&artUrl('inimigos',page.file);
   if(!file||!page||!url)return undefined;
-  return {url:liteEnemyUrl(url),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
+  return {url:liteEnemyUrl(url,file),cell:file.cell,col:0,row:0,columns:Math.max(1,page.columns),rows:Math.max(1,page.rows)};
 }
 
 /**

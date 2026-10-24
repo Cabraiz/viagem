@@ -939,13 +939,9 @@
   "sha256": "d88cf1c0c39bab4c56566d974481564a1162102fcf10dbe7295d947f2b157676",
   "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
  },
- "revendedora-de-catalogo|throw|NE|4": {
-  "sha256": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
-  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
- },
  "revendedora-de-catalogo|throw|W|5": {
-  "sha256": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
-  "motivo": "pose de propósito na ação (queda, golpe, desmanche); triagem a olho nas tiras, E8 24/10"
+  "sha256": "23efe52060951362035b92baa606cc8c6f6154b3dd0d29b2a115f6861ca2b238",
+  "motivo": "arremesso (mão esticada), E8 24/10"
  },
  "rh-sorridente|death|S|6": {
   "sha256": "5c5ce37fce63f52f1cc2f77e1ca64b323d4b7b425e97dea08d2d03ae96bc49a6",

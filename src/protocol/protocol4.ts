@@ -103,9 +103,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
+ * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=32;
+export const PROTOCOL_VERSION=33;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

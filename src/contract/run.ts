@@ -49,5 +49,11 @@ export interface RunState {
    * {t:'run'} tick is before it; the HUD's clock reads (minervaAteTick − frame tick) / 20 s. Absent: no Minerva.
    */
   minervaAteTick?:number;
+  /**
+   * Combat only, mode 'ninhos' (card inicio-no-uno-caixas-120): the time to explore after a wave (sim/ninhos/ninhos.ts
+   * NestsState.exploreFrom/exploreUntil, NEST_PACE.explore): its first tick and its end, when the next wave leaves.
+   * Present while the {t:'run'} tick is inside it; the HUD shows the same clock and "Você tem 2 minutos…".
+   */
+  exploraDesdeTick?:number;exploraAteTick?:number;
 }
 export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[];skips?:Record<string,number>;rerolls?:Record<string,number>}

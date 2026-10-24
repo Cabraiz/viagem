@@ -133,7 +133,10 @@ test('the end of the minuto de Minerva: the bodies it held stand MINERVA_REACT s
   const perTick=new Map<number,number>();
   for(const e of held)perTick.set(e.readyTick,(perTick.get(e.readyTick)??0)+1);
   assert.ok(Math.max(...perTick.values())<=Math.ceil(held.length/spread),'never all on one tick');
-  // MINERVA_REACT s: nobody moves and the hero takes no hit, the band at his side.
+  // MINERVA_REACT s: nobody moves and the hero takes no hit, the band at his side. A shot or a telegraph still in the
+  // air belongs to the minute (a held body hits whoever is in its reach, a sogra's chinelo too: with the 120 s minute of
+  // inicio-no-uno-caixas-120 one leaves on its last tick): dropped, so only a new attack would count.
+  world.projectiles.clear();world.telegraphs.clear();
   const hp=p.hp;
   // world.tick is the tick of the step just run: until+react is the first one they act on.
   while(world.tick<until+react-1)world.step();

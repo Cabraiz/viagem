@@ -3,9 +3,11 @@
  * - The dark: one small render texture (1/FEAR_RT_SCALE of the screen; the gradients are soft, so nothing is lost and
  *   the phone fills a sixteenth of the pixels) holding a dark stamp with a clear circle at the hero; each safe spot
  *   (an ally on their feet, the Uno) erases its company radius out of it, so they stay lit in the dark.
- * - The warm light: the same spots get a soft warm glow on top (additive), "light = safe".
+ * - The warm light: the same spots get a soft warm glow, stamped in the same texture after the erase, "light = safe".
  * - The arrow: a warm chevron with two dots by the hero, pointing at the nearest safe spot.
  * Over the lighting vignette (render/vignette.ts), under the DOM HUD. Built on the first fear, hidden while there is none.
+ * One full-screen layer (etapa 4 bench, SwiftShader phone: each full-screen layer cost ~4 ms a frame, the RT's redraw
+ * nothing): the glows live in the texture, and the scene hides the 3 % vignette while the dark covers it.
  * Shown in economy mode and with `?luz=0` too: it is the game telling the player something, not a look.
  */
 import Phaser from 'phaser';
@@ -78,18 +80,14 @@ function makeTextures(scene:Phaser.Scene){
 
 export class FearDark {
   private readonly rt:Phaser.GameObjects.RenderTexture;
-  private readonly warm:Phaser.GameObjects.Image[]=[];
   private readonly arrow:Phaser.GameObjects.Image;
-  private readonly tint:number;
   private shown=false;
   constructor(private readonly scene:Phaser.Scene){
     makeTextures(scene);
     const cam=scene.cameras.main;
     this.rt=scene.add.renderTexture(0,0,Math.max(1,Math.ceil(cam.width/FEAR_RT_SCALE)),Math.max(1,Math.ceil(cam.height/FEAR_RT_SCALE)))
       .setOrigin(.5).setScrollFactor(0).setDepth(FEAR_DEPTH).setVisible(false).setName('medo-escuro');
-    this.rt.setTint(CITY_PALETTE.breu);
     this.arrow=scene.add.image(0,0,ARROW_KEY).setDepth(FEAR_DEPTH+2).setVisible(false).setName('medo-seta');
-    this.tint=LAMP_LIGHT.color;
     this.mainOnly(this.rt);this.mainOnly(this.arrow);
   }
   /** Only the main camera draws it: a second one already made (the Uno's live window, the kill-cam) ignores it. */
@@ -99,10 +97,12 @@ export class FearDark {
     return object;
   }
   /** Everything it draws (a second camera, the Uno's live window, ignores them). */
-  get objects():Phaser.GameObjects.GameObject[]{return [this.rt,this.arrow,...this.warm];}
+  get objects():Phaser.GameObjects.GameObject[]{return [this.rt,this.arrow];}
+  /** True while the dark layer is on screen (the scene hides the vignette under it). */
+  get covering(){return this.shown&&this.rt.visible;}
   hide(){
     if(!this.shown)return;
-    this.shown=false;this.rt.setVisible(false);this.arrow.setVisible(false);for(const w of this.warm)w.setVisible(false);
+    this.shown=false;this.rt.setVisible(false);this.arrow.setVisible(false);
   }
   draw(d:FearDraw){
     if(d.alpha<=0&&!d.arrow){this.hide();return;}
@@ -117,22 +117,15 @@ export class FearDark {
       const halfDiag=Math.hypot(W,H)/2,holePx=d.hole*halfDiag/FEAR_RT_SCALE;
       const scale=holePx/(DARK_RAMP[0]*DARK_SIZE/2);
       rt.clear();
-      rt.stamp(DARK_KEY,undefined,sx(d.hero.x),sy(d.hero.y),{scale,alpha:d.alpha});
-      for(const s of d.spots){
-        const rx=s.rx*z/FEAR_RT_SCALE,ry=s.ry*z/FEAR_RT_SCALE;
-        rt.stamp(LIGHT_KEY,undefined,sx(s.x),sy(s.y),{scaleX:2*rx/LIGHT_SIZE,scaleY:2*ry/LIGHT_SIZE,alpha:SPOT_CLEAR,erase:true});
-      }
+      rt.stamp(DARK_KEY,undefined,sx(d.hero.x),sy(d.hero.y),{scale,alpha:d.alpha,tint:CITY_PALETTE.breu});
+      const spot=(s:FearSpotPx)=>({x:sx(s.x),y:sy(s.y),scaleX:2*s.rx*z/FEAR_RT_SCALE/LIGHT_SIZE,scaleY:2*s.ry*z/FEAR_RT_SCALE/LIGHT_SIZE});
+      for(const s of d.spots){const p=spot(s);rt.stamp(LIGHT_KEY,undefined,p.x,p.y,{scaleX:p.scaleX,scaleY:p.scaleY,alpha:SPOT_CLEAR,erase:true});}
+      // The warm glows over the cleared spots, in the same texture (no layer of their own).
+      const warm=SPOT_WARM*Math.min(1,d.alpha/.8);
+      for(const s of d.spots){const p=spot(s);rt.stamp(LIGHT_KEY,undefined,p.x,p.y,{scaleX:p.scaleX,scaleY:p.scaleY,alpha:warm,tint:LAMP_LIGHT.color});}
       // Scroll factor 0 still zooms around the camera's centre: undo the zoom.
       rt.setPosition(W/2,H/2).setDisplaySize(W/z,H/z).setVisible(true);
     }else rt.setVisible(false);
-    // The warm glows (world objects), one per spot, pooled.
-    while(this.warm.length<d.spots.length)
-      this.warm.push(this.mainOnly(this.scene.add.image(0,0,LIGHT_KEY).setDepth(FEAR_DEPTH+1).setBlendMode(Phaser.BlendModes.ADD).setTint(this.tint).setVisible(false).setName('medo-luz')));
-    this.warm.forEach((w,i)=>{
-      const s=d.spots[i];
-      if(!s||d.alpha<=0){w.setVisible(false);return;}
-      w.setPosition(s.x,s.y).setDisplaySize(2*s.rx,2*s.ry).setAlpha(SPOT_WARM*Math.min(1,d.alpha/.8)).setVisible(true);
-    });
     const a=d.arrow;
     if(!a){this.arrow.setVisible(false);return;}
     const angle=Math.atan2(a.y-d.hero.y,a.x-d.hero.x);
@@ -140,5 +133,5 @@ export class FearDark {
     this.arrow.setPosition(d.hero.x+Math.cos(angle)*ring/z,d.hero.y+Math.sin(angle)*ring/z).setRotation(angle)
       .setDisplaySize(ARROW_PX/z*ARROW_SIZE/48,ARROW_PX/z*ARROW_SIZE/48).setVisible(true);
   }
-  destroy(){this.rt.destroy();this.arrow.destroy();for(const w of this.warm)w.destroy();this.warm.length=0;}
+  destroy(){this.rt.destroy();this.arrow.destroy();}
 }

@@ -999,7 +999,7 @@ export class IslandScene extends Phaser.Scene {
     const players=[...net.feed.players.values()].map(p=>{const at=this.drawnFeet.get(p.id);return at?{...p,x:at.x,y:at.y}:p;});
     const spots=lit?safeSpots(net.id,this.position,players,uno):[];
     this.hooks.fear?.(frame,frame.alone?spots.filter(s=>s.kind==='aliado').map(s=>s.id!):[]);
-    if(!lit){this.fearDark?.hide();return;}
+    if(!lit){this.fearDark?.hide();this.vignette?.cover(false);return;}
     const dark=this.fearDark??=new FearDark(this),out=this.fearSpots;out.length=0;
     for(const s of spots){
       const c=this.project(s),u=this.project({x:s.x+s.radius,y:s.y}),v=this.project({x:s.x,y:s.y+s.radius});
@@ -1009,6 +1009,7 @@ export class IslandScene extends Phaser.Scene {
     const near=frame.alone?spots[0]:undefined,to=near?this.project(near):undefined;
     dark.draw({alpha:frame.look.alpha,hole:frame.look.hole*(1-FEAR_BEAT_PULL*frame.beat),hero,spots:out,
       ...to?{arrow:{x:to.x,y:to.y}}:{},bob:this.reduced?0:(Math.sin(time/180)+1)/2});
+    this.vignette?.cover(dark.covering);
   }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
   private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}

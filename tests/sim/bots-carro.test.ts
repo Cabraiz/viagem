@@ -89,13 +89,11 @@ test('room: a person leans on the car, two bots join (any phase) and it goes her
   for(let i=0;i<ticks(120)&&!(sim.world.round.index>=2&&sim.world.round.phase==='prepare');i++){calm();bots.think(sim);sim.step(sim.tick*50);}
   assert.equal(sim.world.round.phase,'prepare');
   const car=()=>sim.objectiveView()!.car,ana=sim.players.get('ana')!,east={x:1,y:0};
-  // Ana leans on its west side and walks east; the bots stand around the car (3 to 6 u, where they fight). Asset v4
-  // (mapa-175-com-viaduto): the two nearest behind it and the third ahead (the plaza is 1.75× smaller: a helper that
-  // starts ahead circles a rolling car while Ana and the other helper hold its back).
-  // The street east of the car is ~9 u long in v4 (a block at x ≈ 92): the car starts 5 u west, where it stands clear
-  // to x ≈ 73, so the 3 s and the second at full crew fit before it.
+  // Ana leans on its west side and walks east; the bots stand around the car (3 to 6 u, where they fight).
+  // Asset v4 (mapa-175-com-viaduto): the street east of the car is ~9 u long (a block at x ≈ 92): the car starts 5 u
+  // west, where it stands clear to x ≈ 73, so the 3 s and the second at full crew fit before it.
   const start=sim.run.chaveiro!.state.car;start.x-=5;
-  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[-3,-4,6][i];b.y=c.y;});
+  ids.forEach((id,i)=>{const b=sim.players.get(id)!,c=car();b.x=c.x+[3,-4,-6][i];b.y=c.y;});
   let seq=0;
   const lean=(push:boolean)=>{
     if(push){const c=car();ana.x=c.x-(CAR_RADIUS+.3);ana.y=c.y;}

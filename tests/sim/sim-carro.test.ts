@@ -12,7 +12,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {heroSpeed,type Point} from '../../src/maps/world.ts';
-import {BASE_STATS,CAR_NEST_KEEP_OUT,CAR_NOSE,CAR_PULL_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_LET_GO_S,CAR_ROPE_REST,CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,type EnemyState,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
+import {BASE_STATS,CAR_HALF_LENGTH,CAR_NEST_KEEP_OUT,CAR_PUSH_REACH,CAR_NOSE,CAR_PULL_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_LET_GO_S,CAR_ROPE_REST,CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,type EnemyState,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER,playersSystem} from '../../src/sim/systems/players.ts';
@@ -84,7 +84,8 @@ test('empurrar-uno: the fastest car (2x) stays under the city hero walk, so a mo
 
 test('push needs reach, aim and a real stick: far, sideways, away, a light touch or a downed hero move nothing',()=>{
   const cases:[string,(p:SimPlayer,r:Rig)=>void][]=[
-    ['far',(p)=>{p.x-=1.2;}],
+    // uno-bloqueio-corpo: the reach is from the box's rear bumper (CAR_HALF_LENGTH), not the old disc.
+    ['far',(p,r)=>{p.x=r.sys.state.car.x-(CAR_HALF_LENGTH+CAR_PUSH_REACH+.1);}],
     ['sideways',(_p,r)=>{r.sticks.set('p0',{x:.3,y:1});}],
     ['away',(_p,r)=>{r.sticks.set('p0',WEST);}],
     ['light',(_p,r)=>{r.sticks.set('p0',{x:.2,y:0});}],

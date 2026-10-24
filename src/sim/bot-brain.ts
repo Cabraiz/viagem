@@ -103,6 +103,12 @@ export const SIEGE_REACH=4;
 /** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
 export const NEST_THREAT_RADIUS=40;
 /**
+ * Mode 'ninhos' with the car (inicio-no-uno-caixas-120 bench): a critter this close to the car keeps the bots off the
+ * crates (planLoot's lull only looks around the bot: with the start and its crates beside the Uno, six bots stood at
+ * crates 8-25 u off while the first wave took the car in 60 s).
+ */
+export const LOOT_CAR_THREAT=12;
+/**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
  * at 2.8 u a lone bot's chinelo never reached the siege at the car, so it got no kill and no XP). With other weapons,
@@ -601,7 +607,8 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  if(input.combat==='manual'){
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;

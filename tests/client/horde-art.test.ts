@@ -21,7 +21,9 @@ test('every enemy kind maps to an importer id (identity after the D-033/D-036 re
 
 test('static art replaces today\'s keys: pickups, projectiles and FX',()=>{
   const keys=STATIC_ART.map(s=>s.key);
-  for(const k of ['heal','chest','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
+  for(const k of ['heal','resource'])assert.ok(keys.includes(pickupTexture(k)),k);
+  // bau-antigo-ainda-visivel: the old baú art is not loaded any more (a crate is its floating item).
+  assert.ok(!keys.includes(pickupTexture('chest'))&&!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('bau'))),'no baú');
   // D-054: no gem nor ímã art; NEW-20261024-ORQ-tirar-drops-cedula-girando: nor the boleto rain's.
   assert.ok(!STATIC_ART.some(s=>s.ids.some(id=>id.startsWith('gema')||id==='ima'||id==='boleto-chuva')),'no gem, no ímã, no boleto rain');
   for(const k of [FX.projFriendly,FX.shadow,FX.puff,FX.warning])assert.ok(keys.includes(k),k);

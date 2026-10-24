@@ -77,7 +77,7 @@ export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mo
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
 export const STATIC_ART:readonly StaticArt[]=[
   pickup('heal',['coxinha']),
-  pickup('chest',['bau','bau-fechado']),
+  // No 'chest' (bau-antigo-ainda-visivel): a crate is drawn only as its floating item (render/arsenal-fx.ts), never the old baú.
   pickup('resource',['recurso']),
   {key:FX.projFriendly,group:'projeteis',ids:['tiro-aliado'],mode:'sheet'},
   // Sizes of render/textures.ts drawFx (layers.ts scales the shadow by SHADOW_W/H = 46×16 of the 48×18 texture).

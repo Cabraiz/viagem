@@ -70,7 +70,9 @@ export function farPath(start:Point,target:Point,terrain?:TerrainField):Point[]{
       if(dir.x===0&&dir.y===0)break;
       p.x+=dir.x*cell*.5;p.y+=dir.y*cell*.5;walked+=cell*.5;
       if(Math.hypot(goal.x-p.x,goal.y-p.y)<cell)break;
-      if(walked>=cell*2){walked=0;points.push({x:p.x,y:p.y});}
+      // Every step (half a cell): sparser samples (2 cells) cut a corner at a 2-cell door of the 1.75× city (asset v4), and
+      // thin keeps such a leg when nothing farther is clear.
+      if(walked>=cell*.5){walked=0;points.push({x:p.x,y:p.y});}
     }
     points.push(goal);
     return thin(start,points,terrain);

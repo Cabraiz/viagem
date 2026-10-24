@@ -38,10 +38,11 @@ test('CityLayer.covers: the see-through\'s own test (collectCovering) for one fi
 test('scene: in the city the hero and the allies get the copy on top whenever a city piece covers them',()=>{
   const scene=src('src/client/scene.ts');
   const place=scene.slice(scene.indexOf('  private place(){'),scene.indexOf('  private propCovers('));
-  const cover=place.indexOf('if(this.city)covered=this.city.covers(this.position.x,this.position.y);');
+  // mapa-175-com-viaduto: under a viaduct's deck (on the street) too.
+  const cover=place.indexOf('if(this.city)covered=this.city.covers(this.position.x,this.position.y)||this.position.andar!==1&&!!this.viaduct?.under(this.position.x,this.position.y);');
   assert.ok(cover>0&&cover<place.indexOf('this.selfCovered=covered;'),'the hero: covered by the city before selfCovered');
   assert.match(place,/setDepth\(this\.city\?depth:/,'the sprite keeps its actor depth (the copy is what shows on top)');
-  assert.match(scene,/covered=this\.city\?this\.city\.covers\(player\.x,player\.y\):this\.treeCovers\(q,depth\)/,'each ally too');
+  assert.match(scene,/covered=this\.city\?this\.city\.covers\(player\.x,player\.y\)\|\|player\.andar!==1&&!!this\.viaduct\?\.under\(player\.x,player\.y\):this\.treeCovers\(q,depth\)/,'each ally too');
   assert.match(scene,/covered&&!this\.city\?depth\+2:ALLY_DEPTH\+1/,'an ally\'s ficha stays over the buildings');
   assert.match(src('src/client/sandboxes/sandbox-cidade.ts'),/covered:this\.layer\?\.covers\(this\.at\.x,this\.at\.y\)\?\?false/,'the sandbox draws the same copy');
 });

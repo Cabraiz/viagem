@@ -1,14 +1,15 @@
 /**
  * D-051 crates (NEW-20261014-ORQ-armas-caixas-inventario, plans/armas-caixas-inventario-proposta.md §2), manual combat
  * only (assemble wires it then). A crate IS a 'chest' pickup whose `value` is its rarity (1 verde .. 5 lendária):
- *  - placed: at the first step up to crateCap(players) crates on distinct random map points (the city's `loot` points),
- *    the cap kept for the run; NEAR_START of them on the near third (the user, 16/10: "more crates early and near"). The rarity grows with the
+ *  - placed: at the first step up to crateCap(players) crates on distinct map points (the city's `loot` points), the cap
+ *    kept for the run, spread (spreadPick: each one on a point among the farthest from the crates already placed; the
+ *    user, 23/10: "bem mais caixas pelo mapa e mais espalhadas, estão muito aglomeradas"). The rarity grows with the
  *    walk time from the plaza: the points are split in thirds by `seconds` (near / mid / far) and each third rolls its
  *    pair (TIER_ODDS), the crate's base. It also grows along the match: a placed crate shows its base shifted by the
  *    round's stage (stageShift: -1 in the first rounds .. +2 in the last, clamped verde..lendária), so an unopened
  *    crate turns better as the rounds go by ("from comum to lendária as the match goes"). An opened placed crate comes
- *    back RESPAWN_SECONDS later on a random free point at least RESPAWN_MIN_DIST from every player (retried on later
- *    ticks while none qualifies);
+ *    back RESPAWN_SECONDS later on a free point at least RESPAWN_MIN_DIST from every player, spread the same way
+ *    (retried on later ticks while none qualifies);
  *  - start (the first minute's, BUG-20261022-ORQ-caixas-sumiram): at the first step START_CRATES_PER_PLAYER crates a
  *    player (1..START_PLAYERS_MAX players) on `startPoints` (the city: around where the heroes spawn, cityLoot.aroundStart;
  *    they used to sit by the plaza, ~76 u of walk from the spawn and out of the frames' interest radius, so a hero
@@ -54,16 +55,30 @@ import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsena
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
 /** Placed crates alive at once (proposal: "para o mapa não virar supermercado"). Dropped crates do not count. */
-export const MAX_CRATES=16;
+export const MAX_CRATES=40;
 /**
- * Placed crates of a run with this many players (the 16/10 CI bench with 12 for all: a solo, who has them all to
- * itself, won 16/16, and 8/16 with 6; six players, who split them, 3/16): CRATES_BASE + CRATES_PER_PLAYER a player, up to
- * MAX_CRATES.
+ * Placed crates of a run with this many players: CRATES_BASE + CRATES_PER_PLAYER a player, up to MAX_CRATES. Was
+ * 1 + 3 (a solo 4, six 16; the 16/10 CI bench); the user, 23/10 ("bem mais caixas pelo mapa e mais espalhadas"), with
+ * the city 1.75× shorter and its loot points doubled (asset v4, scripts/compactar-cidade.ts spreadLoot): a solo 16,
+ * six 36.
  */
-export const CRATES_BASE=1,CRATES_PER_PLAYER=3;
+export const CRATES_BASE=12,CRATES_PER_PLAYER=4;
 export const crateCap=(players:number)=>Math.min(MAX_CRATES,CRATES_BASE+CRATES_PER_PLAYER*Math.max(1,players));
-/** Of the initial crates, up to half sit on the near third (the rest anywhere), so the first rounds have crates close. */
-export const NEAR_SHARE=.5;
+/**
+ * spreadPick: a placed crate goes to a free point whose distance to the nearest live placed crate is at least this share
+ * of the best such distance (the stream picks among them), so the crates cover the map instead of clumping.
+ */
+export const SPREAD_SLACK=.85;
+/**
+ * The point (index into `points`) of the next placed crate among `free`: the first one at random, then one of those
+ * farthest from the live placed crates (within SPREAD_SLACK of the farthest). Pure: same stream, same pick.
+ */
+export function spreadPick(rng:Rng,points:readonly Point[],free:readonly number[],live:readonly Point[]):number{
+  if(!live.length)return rng.pick(free);
+  const far=free.map(i=>{let d=Infinity;for(const q of live)d=Math.min(d,Math.hypot(points[i].x-q.x,points[i].y-q.y));return d;});
+  const best=Math.max(...far);
+  return rng.pick(free.filter((_,k)=>far[k]>=best*SPREAD_SLACK));
+}
 /**
  * The first minute's crates: START_CRATES_PER_PLAYER a player, for 1..START_PLAYERS_MAX players (the user, 22/10: a
  * hero walking the first minute passes at least 4, each player his own; was one verde a player by the plaza).
@@ -343,15 +358,19 @@ export function createCrates(options:CratesOptions):Crates{
     addCrate(ctx,points[point],{rarity:shifted(base,stageShift(ctx.round)),base,origin:'placed',point});
   }
 
-  /** Initial placement: a seeded shuffle of the points, NEAR_SHARE of the cap from the near third first, then the rest. */
+  /** Where the live placed crates stand. */
+  const livePlaced=(ctx:SimContext)=>{const out:Point[]=[];for(const id in state.crates){const c=ctx.pickups.get(id);if(c&&state.crates[id].origin==='placed')out.push(c);}return out;};
+  /** Initial placement: the cap, one by one, spread over the points (spreadPick). */
   function placeInitial(ctx:SimContext,rng:Rng){
     state.placed=true;state.startTick=ctx.tick;
     let players=0;for(const p of ctx.players.values())if(!p.spectator)players++;
     const cap=state.cap=crateCap(players);
-    const order=points.map((_,i)=>i);
-    for(let i=order.length-1;i>0;i--){const j=rng.int(0,i);[order[i],order[j]]=[order[j],order[i]];}
-    const near=order.filter(i=>tierOf[i]===0).slice(0,Math.ceil(cap*NEAR_SHARE)),rest=order.filter(i=>!near.includes(i));
-    for(const point of [...near,...rest].slice(0,cap))place(ctx,rng,point);
+    const free=points.map((_,i)=>i),live:Point[]=[];
+    for(let n=0;n<cap&&free.length;n++){
+      const point=spreadPick(rng,points,free,live);
+      free.splice(free.indexOf(point),1);live.push(points[point]);
+      place(ctx,rng,point);
+    }
     // Start crates: the k-th of each player's set in the k-th walk band (startBands), the first one random, each next
     // the candidate of its band farthest from those taken (ties: list order; an empty band takes from every point).
     const want=Math.min(startPoints.length,START_CRATES_PER_PLAYER*Math.max(1,Math.min(START_PLAYERS_MAX,players)));
@@ -408,7 +427,7 @@ export function createCrates(options:CratesOptions):Crates{
     }
   }
 
-  /** Due respawns, oldest first: a random free point far enough from every player, else wait for a later tick. */
+  /** Due respawns, oldest first: a free point far enough from every player, spread (spreadPick), else wait for a later tick. */
   function respawn(ctx:SimContext,rng:Rng){
     while(state.respawns.length&&state.respawns[0]<=ctx.tick){
       if(placedCount()>=(state.cap??MAX_CRATES)){state.respawns.shift();continue;}
@@ -416,7 +435,7 @@ export function createCrates(options:CratesOptions):Crates{
       const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&players.every(p=>Math.hypot(p.x-points[i].x,p.y-points[i].y)>=RESPAWN_MIN_DIST));
       if(!free.length)return;
       state.respawns.shift();
-      place(ctx,rng,rng.pick(free));
+      place(ctx,rng,spreadPick(rng,points,free,livePlaced(ctx)));
     }
   }
 

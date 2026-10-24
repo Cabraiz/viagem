@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3090,
-  "bytes": 2214019414,
-  "liteBytes": 768823314,
+  "files": 3095,
+  "bytes": 2214804234,
+  "liteBytes": 769414690,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -780,6 +780,30 @@
    ],
    "psnr": 42.4,
    "shownPsnr": 42.4
+  },
+  "city/decor/carro-batido-1/sheet.webp": {
+   "source": "42907e433a42ccbe80e18cb279f487c93c94f77fc0f4b7be7021f0fbce89a4fb",
+   "lite": "e80ea2c5a0ed7073782d4187734b675e918bfff44334b1be96d7f79cc7f74437",
+   "bytes": 69620,
+   "liteBytes": 47868,
+   "liteCell": [
+    225,
+    154
+   ],
+   "psnr": 43.1,
+   "shownPsnr": 43.1
+  },
+  "city/decor/carro-batido-2/sheet.webp": {
+   "source": "a2179ac0b681b67b7c00dba9326e2f846bc22f88bc8bea685a12493d094aa778",
+   "lite": "82b42135f572d7616397e27bc3740652a6c9eb3393a42246a6cdfa06c1ec1d29",
+   "bytes": 98528,
+   "liteBytes": 64080,
+   "liteCell": [
+    243,
+    167
+   ],
+   "psnr": 39.6,
+   "shownPsnr": 39.6
   },
   "city/decor/carroca-1/sheet.webp": {
    "source": "f0a488167430d4a01265e82438de0b6c006a8437b7ed07867c98431c916e1724",
@@ -2077,6 +2101,18 @@
    "psnr": 40.6,
    "shownPsnr": 40.6
   },
+  "city/decor/pedagio/sheet.webp": {
+   "source": "f2df07d8f493db599b50668e52677d076cb3be72966f45b454749d98a8fe59a7",
+   "lite": "ba94dcdb7aa6c3d28e1eedbdee3e3fdbef5822557071dabba677cb89eca8e853",
+   "bytes": 206984,
+   "liteBytes": 153950,
+   "liteCell": [
+    351,
+    287
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
   "city/decor/pedregulho-1/sheet.webp": {
    "source": "caafe1fc8107540dcd6301332c0d123487bd355b41b0798036deaf6c01b3128d",
    "lite": "3aa2fab8ecec4168f1926318d7f0f2202081f7bb69c2ecd08929d1e2e8236859",
@@ -2232,6 +2268,30 @@
    ],
    "psnr": 41.5,
    "shownPsnr": 41.5
+  },
+  "city/decor/ponto-onibus/sheet.webp": {
+   "source": "a26dd4bf3b78f9592ecb247836a2ec50a3639ffef5aae112d242b7543cbca2e7",
+   "lite": "dc65a55739037a663833f03b5847007d4b946d6a47f4674b48c08857a3397246",
+   "bytes": 130980,
+   "liteBytes": 91998,
+   "liteCell": [
+    216,
+    217
+   ],
+   "psnr": 43.4,
+   "shownPsnr": 43.4
+  },
+  "city/decor/portico-placa/sheet.webp": {
+   "source": "88cf0be08f76ea2323bcdc02dba2ec63a69619a8ff0867c2503e5b48f2cf2706",
+   "lite": "9d12127f7c10c181bc80dba5ab9fa876c67060fce313224f37bc657cef19157a",
+   "bytes": 278708,
+   "liteBytes": 233480,
+   "liteCell": [
+    440,
+    463
+   ],
+   "psnr": 45.8,
+   "shownPsnr": 45.8
   },
   "city/decor/poste-aceso-amarelo-1/sheet.webp": {
    "source": "2739b591dd517de9aaabf22f744879edb8e33562989a9e50d06177d86a71a26e",

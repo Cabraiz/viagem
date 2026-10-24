@@ -28,7 +28,7 @@ import {DAMAGED_AT,DEFENSES,DEFENSE_IDS,DEFENSE_LIMIT,GUSTAVAO_COST,RAIL,ROOT_DE
 import {buildPlanFor,validateBuildPlan} from '../../src/sim/towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST,defensePhase,defensesStep,radarBonus,siteRect,type DefenseState} from '../../src/sim/towers/system.ts';
 import {REPAIR_FRACTION} from '../../src/sim/stonewards/forge.ts';
-import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {CITY_DISTANCE_SCALE} from '../../src/rules/scale.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),
@@ -461,9 +461,10 @@ test('combat: the Gustavão shells the densest crowd across the map, rarely',()=
   assert.ok(sys.upgrade(ctx,'a',g0.id).ok);
   const g=sys.state.defenses!.list.find(x=>x.id===g0.id)!;at(ctx,g.readyTick,'wave');
   ctx.enemies.set('lone',enemy('lone',g.x+10,g.y,{hp:5000}));
-  // The crowd at the plaza's north mouth: (84, 80) on the .w3x-sized city, a map position, so × CITY_MAP_SCALE
-  // (NEW-20261013-ORQ-cidade-escala-1-7); the 0.5 u spacing is the bodies' and stays.
-  for(let i=0;i<6;i++)ctx.enemies.set(`c${i}`,enemy(`c${i}`,84*CITY_MAP_SCALE+i*.5,80*CITY_MAP_SCALE,{hp:5000}));
+  // The crowd at the plaza's north mouth: (84, 80) on the .w3x-sized city, a map position, so × the map's distance scale
+  // (CITY_DISTANCE_SCALE: × 1.7 since cidade-escala-1-7, ÷ 1.75 since mapa-175-com-viaduto); the 0.5 u spacing is the
+  // bodies' and stays.
+  for(let i=0;i<6;i++)ctx.enemies.set(`c${i}`,enemy(`c${i}`,84*CITY_DISTANCE_SCALE+i*.5,80*CITY_DISTANCE_SCALE,{hp:5000}));
   defensesStep(ctx,sys.state);
   assert.deepEqual(dmg(ctx).map(e=>e.target).sort(),['c0','c1','c2','c3','c4','c5']);
   assert.ok(dmg(ctx).every(e=>e.amount===600));

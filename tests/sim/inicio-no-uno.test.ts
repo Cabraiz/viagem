@@ -77,7 +77,10 @@ test('the first wave ends by waveCap at the latest even with its map share still
   const nests=sim.run.nests!,car=sim.run.chaveiro!.state.car;
   const first=nests.state.nextWave!;
   while(sim.world.tick<=first)sim.step(now+=50);
-  assert.ok(nests.state.drip&&nests.state.drip.left>NEST_PACE.waveCap,'1p wave 1: a share longer than the cap');
+  // Asset v4 (mapa-175-com-viaduto, the same density on a city 1.75× shorter): wave 1's share is 81 for one player (141
+  // for six), under the cap; the cap is what this test checks, so the share is made longer than it here.
+  assert.ok(nests.state.drip,'1p wave 1 drips its share');
+  nests.state.drip!.left=Math.max(nests.state.drip!.left,NEST_PACE.waveCap+30);
   // The wave's bodies die as they come and the car took a beating: the window opens at the cap and repairs it.
   car.hits=Math.round(car.limit*.6);const before=car.hits;
   while(sim.world.tick<first+ticks(NEST_PACE.waveCap)+ticks(1)&&!nests.exploring(sim.world.tick)){sim.world.enemies.clear();sim.step(now+=50);}

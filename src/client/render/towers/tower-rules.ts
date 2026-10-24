@@ -22,7 +22,7 @@ import {artPiece,type ArtFile} from '../../art/manifest.ts';
 import {ART_CELL} from '../city/art-plan.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {TILE_X} from '../city/projection.ts';
-import {CITY_MAP_SCALE,DEFENSES} from '../../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,DEFENSES} from '../../../rules/index.ts';
 
 export type TowerKind=
   | 'vigia-do-predio'
@@ -74,7 +74,7 @@ export const TOWER_LOOK:Readonly<Record<TowerKind,TowerLook>>=Object.freeze({
   'morteiro':look('B','morteiro',[2,2],9,2.2,.7,{minRange:2,hits:'ground',area:1.6}),
   'lanca-foguetes':look('B','foguete',[3,2],10,3,.9,{minRange:2,hits:'ground',shots:4,area:1.6}),
   'obuseiro':look('B','obus',[3,3],12,3.5,1,{minRange:3,hits:'ground',area:2.4}),
-  'gustavao':look('B','gustavao',[12,4],60*CITY_MAP_SCALE,20,.6,{minRange:6,hits:'ground',area:6}),
+  'gustavao':look('B','gustavao',[12,4],60*CITY_DISTANCE_SCALE,20,.6,{minRange:6,hits:'ground',area:6}),
   'holofote':look('C','holofote',[1,1],6,.5,1.2,{area:2}),
   'arame-e-sirene':look('C','arame',[1,2],4,.5,.6,{hits:'ground'}),
   'antiaerea-quadrupla':look('C','antiaerea',[2,2],9,.3,.8,{hits:'air',shots:4}),

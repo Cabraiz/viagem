@@ -139,6 +139,9 @@
   /* Botão de habilidade (polegar direito): adesivo + "Habilidade" cabem dentro do anel; o chip, a dica e a oferta
      se medem por ele. Cresce com a escala de texto (UX-acessibilidade). */
   --botao-habilidade:calc(14px + 80px * var(--t-escala));
+  /* Joystick (polegar esquerdo, explore.css): 112 px; 96 px no celular estreito (≤ 370 px) e deitado. */
+  --joystick:112px;
+  --joystick-justo:96px;
 
   /* ---------- Formas (§2.3) ---------- */
   --r-etiqueta:4px;  /* escolha ou evento: oferta, prêmio, faixa */
@@ -176,3 +179,13 @@
   --emblem:var(--c-emblema);
 }
 :root[data-texto="125"]{--t-escala:1.25}
+/* Celular (toque: HUD data-hud=fone, ou a casca do jogo sem data-input=mouse, como controls-phase.ts): joystick e Atacar 20 % maiores
+   (BUG-20261024-ORQ-joystick-maior-inventario-direita); hud/fone-layout.ts RODAPE/foneSkillSide espelham. O PC fica igual.
+   O Atacar fica com o maior entre os 20 % e o texto a 125 % (114 px), sem multiplicar os dois: 137 px tiravam a janela
+   da Cida de cima do herói (tests/client/forja-uma-linha). */
+:root:has(.rh[data-hud=fone],.explore-shell:not([data-input=mouse])){
+  --controle-fone:1.2;
+  --joystick:calc(112px * var(--controle-fone));
+  --joystick-justo:calc(96px * var(--controle-fone));
+  --botao-habilidade:max(calc(94px * var(--controle-fone)),calc(14px + 80px * var(--t-escala)));
+}

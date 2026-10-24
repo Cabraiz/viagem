@@ -5,7 +5,7 @@ export {cityHudLayout,minimapRect,heroRect,arrowRailOf,selectorRects,announceSlo
 export {clusterEnemies,pickGroupArrows,groupCountText,GROUP_CELL,GROUP_MIN,GROUP_RANGE,GROUP_ARROWS,GROUP_SHOW,GROUP_KEEP_NEAREST,
   type EnemyPoint,type EnemyGroup,type PickOptions} from './clusters.ts';
 export {CITY_SIZE,DEFAULT_CITY,type MouthId,type CityMapInfo} from './map-info.ts';
-export {cityEdgeTargets,relocateCityTargets,motoNeedsTeam,layoutCityEdges,mergeGroupTargets,cityMustPoint,cityPlaceRank,besideWindows,cityEdgeRank,WALL_HIT_MS,GROUP_DANGER_HERO,GROUP_DANGER_WALL,MOUTH_GROUP_MERGE,MOUTH_ARROWS,GROUP_EDGE_ARROWS,
+export {cityEdgeTargets,relocateCityTargets,motoNeedsTeam,layoutCityEdges,mergeGroupTargets,cityMustPoint,cityPlaceRank,besideWindows,cityEdgeRank,WALL_HIT_MS,UNO_HIT_MS,GROUP_DANGER_HERO,GROUP_DANGER_WALL,MOUTH_GROUP_MERGE,MOUTH_ARROWS,GROUP_EDGE_ARROWS,
   type CityEdgeInput,type CityPerson,type CityEdgeTarget,type CityEdgeArrow,type CityEdgeOptions} from './edges.ts';
 export {initialSelector,selectorReducer,selectorView,mountMapSelector,mapChangedNews,downloadText,cityHudCss,MAP_OPTIONS,DEFAULT_MAP,PENDING_MS,NEWS_MS,GUEST_HINT_MS,SELECTOR_TEXT,
   type MapId,type SelectorState,type SelectorEvent,type SelectorView,type SelectorSticker,type MapSelectorOptions} from './map-selector.ts';

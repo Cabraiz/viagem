@@ -77,10 +77,8 @@ export interface StaticArt {key:string;group:ArtGroupId;ids:readonly string[];mo
 const pickup=(kind:keyof typeof PICKUP_SIZE,ids:string[]):StaticArt=>({key:pickupTexture(kind),group:'itens',ids,mode:'bake',size:[PICKUP_SIZE[kind].width,PICKUP_SIZE[kind].height]});
 export const STATIC_ART:readonly StaticArt[]=[
   pickup('heal',['coxinha']),
-  pickup('chest',['bau','bau-fechado']),
+  // No 'chest' (bau-antigo-ainda-visivel): a crate is drawn only as its floating item (render/arsenal-fx.ts), never the old baú.
   pickup('resource',['recurso']),
-  // Size of render/textures.ts BOLETO_SIZE (that module imports Phaser at runtime).
-  {key:FX.boleto,group:'itens',ids:['boleto-chuva','boleto'],mode:'bake',size:[46,34]},
   {key:FX.projFriendly,group:'projeteis',ids:['tiro-aliado'],mode:'sheet'},
   // Sizes of render/textures.ts drawFx (layers.ts scales the shadow by SHADOW_W/H = 46×16 of the 48×18 texture).
   // Stretched (not contained): the contact shadow keeps today's 48×18 footprint whatever its cell's aspect.

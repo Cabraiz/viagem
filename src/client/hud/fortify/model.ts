@@ -1,15 +1,16 @@
 /**
  * D-052 slice 3 (card NEW-20261016-ORQ-carro-e-fortificacao-livre, HUD), pure rules kept apart from the DOM so node
  * tests import them:
- * - The "Puxar" button: shown when the hero is within CAR_PULL_REACH of the car's body (or already holds the rope);
- *   "Soltar" while this player is on the rope. It only sends {t:'puxar',on} and shows what the room says back.
+ * - The rope button: card puxar-uno-corda, the rope is taken by walking away from the car at its end (no button, like
+ *   a push), so only "Soltar" shows, while this player is on the rope. It only sends {t:'puxar',on:false} and shows
+ *   what the room says back.
  * - The free build ("Construir"): the piece picked (the tower root, a wall segment, a barricade), its rot, the cell under
  *   the finger or the mouse, and the ghost's colour (render/fortify-rules: local check, the room's answer for that very
  *   cell wins). One {t:'build',piece,c,r,rot?} per confirm; a dragged wall sends one per new cell.
  * - The wall counter: free walls standing over WALL_LIMIT (proposal §2), barricades over BARRICADE_LIMIT.
  * The limits and prices are the approved proposal's; the room (slice 2) is the judge and answers 'limite'.
  */
-import {CAR_PULL_REACH,CAR_RADIUS,type BuildRot,type FreeBuildRefusal,type PullRefusal} from '../../../contract/index.ts';
+import {type BuildRot,type FreeBuildRefusal,type PullRefusal} from '../../../contract/index.ts';
 import {DEFENSE_LIMIT,FREE_PIECE_DEFS} from '../../../rules/index.ts';
 import {cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,type CellRect,type FortStructure,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
@@ -33,14 +34,13 @@ export const FORT_PENDING_MS=3000;
 interface CarLike {x:number;y:number;movers?:readonly string[];rope?:string}
 export interface PullState {show:boolean;on:boolean;label:'Puxar'|'Soltar';pushing:boolean}
 /**
- * The Puxar button for this player: on the rope → "Soltar" (shown anywhere); else "Puxar" within CAR_PULL_REACH of the
- * car's body (its radius CAR_RADIUS). `pushing`: this player moves the car without the rope (the HUD says "Empurrando").
+ * The rope button for this player: on the rope → "Soltar" (shown anywhere); off it nothing (puxar-uno-corda: the rope
+ * is taken by gesture at its end). `pushing`: this player moves the car without the rope (the HUD says "Empurrando").
  */
-export function pullState(car:CarLike|undefined,me:string,hero:{x:number;y:number}|undefined):PullState{
+export function pullState(car:CarLike|undefined,me:string,_hero?:{x:number;y:number}):PullState{
   if(!car)return {show:false,on:false,label:'Puxar',pushing:false};
   const on=car.rope===me,pushing=!on&&!!car.movers?.includes(me);
-  const near=!!hero&&Math.hypot(hero.x-car.x,hero.y-car.y)-CAR_RADIUS<=CAR_PULL_REACH;
-  return {show:on||near,on,label:on?'Soltar':'Puxar',pushing};
+  return {show:on,on,label:on?'Soltar':'Puxar',pushing};
 }
 
 /** The free pieces standing (built with a cell: the city's old barricades have none). */

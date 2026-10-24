@@ -20,7 +20,7 @@
    the fan opens as a 2x2 block right above it (emote-fan-overlap): it stays in the controls corner and never reaches
    the middle, where the camera keeps the hero. Step 70 px: the 62 px buttons keep an 8 px gap. Phones up to 370 px
    wide get one column along the edge instead, since even the second column reached the hero there. */
-.fun-emotes{--size:48px;--radius:70px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.fun-emotes{--size:48px;--radius:70px;--cooldown:0;position:absolute;z-index:14;right:var(--fun-emote-right,calc(max(24px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(24px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px + var(--inv-coluna,0px)));width:var(--size);height:var(--size);pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .fun-emote-toggle{position:relative;width:var(--size);height:var(--size);padding:0;border:2px solid var(--c-papel);border-radius:var(--r-circulo);background:var(--c-ficha);color:var(--c-papel);font-size:22px;line-height:1;box-shadow:var(--s-2);pointer-events:auto;cursor:pointer;touch-action:manipulation}
 .fun-emotes.is-open .fun-emote-toggle{background:var(--c-lilas)}
 .fun-emotes.is-cooling .fun-emote-toggle{background:conic-gradient(var(--c-breu) calc(var(--cooldown)*360deg),var(--c-ficha) 0)}
@@ -33,7 +33,7 @@
 .fun-emotes.is-open .fun-emote{pointer-events:auto;opacity:1;transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(1)}
 .fun-emotes.is-open .fun-emote:not(:disabled):active{background:var(--c-amarelo);transform:translate(calc(var(--ux)*var(--radius)),calc(var(--uy)*var(--radius))) scale(.92)}
 .fun-emotes.is-open .fun-emote:disabled{opacity:.45;filter:grayscale(.6);cursor:default}
-@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:68px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px))}}
+@media(max-width:370px),(max-height:500px){.fun-emotes{--size:46px;--radius:68px;right:var(--fun-emote-right,calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade)/2 - var(--size)/2));bottom:var(--fun-emote-bottom,calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px + var(--inv-coluna,0px)))}}
 
 @keyframes fun-pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes fun-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}

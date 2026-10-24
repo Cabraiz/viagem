@@ -239,7 +239,8 @@ test('starter prizes (caixas-sumiram): every weapon and verde kit shows up; in 1
   // 100 matches: a hero opens his first four start crates one after the other.
   const tally=new Map<string,number>();let total=0;
   for(let m=1;m<=100;m++){
-    const ctx=makeCtx(m),crates=createCrates({seed:1000+m,points:[]}),p=addPlayer(ctx,'a',0,0);
+    // hideAfterTaken [] / goldChance 0: the caixa-gamble is tested on its own (caixa-gamble-raridade.test.ts).
+    const ctx=makeCtx(m),crates=createCrates({seed:1000+m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);
     const keys:string[]=[];
     for(let i=0;i<4;i++){
       const crate=crates.dropCrate(ctx,{x:0,y:0},(i%2+1) as Rarity);crates.state.crates[crate.id].start=true;
@@ -259,7 +260,7 @@ test('starter prizes (caixas-sumiram): every weapon and verde kit shows up; in 1
 
 test('the same prize never twice in a row for a hero, in any crate (rollCrate redraws on the same stream)',()=>{
   for(let m=1;m<=30;m++){
-    const ctx=makeCtx(m),crates=createCrates({seed:m,points:[]}),p=addPlayer(ctx,'a',0,0);let last='';
+    const ctx=makeCtx(m),crates=createCrates({seed:m,points:[],hideAfterTaken:[],goldChance:0}),p=addPlayer(ctx,'a',0,0);let last='';
     for(let i=0;i<6;i++){
       crates.dropCrate(ctx,{x:0,y:0},1);p.build.weapons=[{id:'faca',level:1}];
       run(ctx,crates,1+ticks(2));
@@ -271,7 +272,7 @@ test('the same prize never twice in a row for a hero, in any crate (rollCrate re
 test('caixa-icone-torre-arma: a crate shows its prize from the start (resource), opening gives that item, never the same as the last one shown',()=>{
   const kinds=new Set<string>();
   for(let seed=1;seed<=30;seed++){
-    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200}))});
+    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
     addPlayer(ctx,'a',-500,-500);
     crates.step(ctx);
     let prev:string|undefined;

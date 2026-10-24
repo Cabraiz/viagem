@@ -15,10 +15,11 @@ export const ENEMY_KINDS=['bebado','anao-molotov','pombos','tio-pave','agiota','
 export type EnemyKind=typeof ENEMY_KINDS[number];
 /**
  * The pickups drawn with a texture of their kind. 'item' (D-051): an inventory item on the ground; its sticker when the
- * arsenal art loaded (render/arsenal-fx.ts), else this. No 'xp' (D-054: no gems; the boleto rain's XP is FX.boleto).
+ * arsenal art loaded (render/arsenal-fx.ts), else this. 'grana': the kill's cédula without its art (render/cedula.ts).
+ * No 'xp' (D-054: no gems; the boleto rain, the last XP on the ground, was retired: NEW-20261024-ORQ-tirar-drops-cedula-girando).
  */
 export type DrawnPickup=Exclude<PickupKind,'xp'>;
-export const PICKUP_KINDS:readonly DrawnPickup[]=['heal','chest','resource','item'];
+export const PICKUP_KINDS:readonly DrawnPickup[]=['heal','chest','resource','item','grana'];
 
 export const isEnemyKind=(kind:string):kind is EnemyKind=>(ENEMY_KINDS as readonly string[]).includes(kind);
 /**
@@ -61,10 +62,10 @@ export const projectileTexture=(hostile:boolean,source?:string)=>!hostile?FX.pro
 /** Veículos: a parked vehicle's provisional look, per kind (textures.ts VEHICLE_DRAW). */
 export const vehicleTexture=(kind:VehicleKind)=>`horde:pickup:vehicle:${kind}`;
 /**
- * What a pickup looks like: its kind's texture; XP is always a boleto (D-054: no gems, only the boleto rain's XP,
- * VGM-053B); a parked vehicle its own (an unknown vehicle: the item parcel).
+ * What a pickup looks like: its kind's texture; a parked vehicle its own (an unknown vehicle: the item parcel); an
+ * unknown kind (the retired 'xp' included) the item parcel.
  */
-export const pickupLook=(kind:string,resource?:string)=>kind==='xp'?FX.boleto:
+export const pickupLook=(kind:string,resource?:string)=>
   kind==='vehicle'?isVehicleKind(resource)?vehicleTexture(resource):pickupTexture('item'):pickupTexture(kind);
 
 export const FX={
@@ -79,8 +80,6 @@ export const FX={
   bar:'horde:fx:bar',
   barElite:'horde:fx:bar-elite',
   barFill:'horde:fx:bar-fill',
-  /** XP of the boleto rain (VGM-053B). */
-  boleto:'horde:pickup:boleto',
 } as const;
 
 /**
@@ -103,7 +102,7 @@ export const ENEMY_ART:Record<EnemyKind,EnemyArt>={
 /** Elite variants are the base art with crown and aura, drawn into a texture this much larger. */
 export const ELITE_SCALE=1.35;
 export const PICKUP_SIZE:Record<DrawnPickup,{width:number;height:number}>={
-  heal:{width:34,height:30},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},
+  heal:{width:34,height:30},chest:{width:46,height:40},resource:{width:30,height:28},item:{width:34,height:34},grana:{width:48,height:26},
   // Veículos: a parked vehicle (the provisional art is drawn per kind, render/veiculos).
   vehicle:{width:56,height:48},
 };

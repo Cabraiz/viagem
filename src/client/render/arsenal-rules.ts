@@ -10,6 +10,7 @@
 import {CRATE_OPEN_RADIUS,KIT_IDS} from '../../rules/index.ts';
 import {allItemDisplays,itemDisplay} from '../hud/items.ts';
 import {artPages,artPiece,artUrl,type ArtFile} from '../art/manifest.ts';
+import {GOLD_LEVEL} from '../ui/sticker.ts';
 import {A2_FIRE_LOOK,A2_ITEMS,A2_PROJECTILE_ALIAS,A2_PROJECTILE_STICKER} from './arsenal-a2-look.ts';
 
 export type Rarity=1|2|3|4|5;
@@ -171,7 +172,7 @@ export const PRIZE_GLOW:Readonly<Record<Rarity,number>>={1:.35,2:.45,3:.6,4:.9,5
 /** The prize as the crate shows it: its inventory sticker, its name in the crate's rarity colour, the glow behind. */
 export function prizeLook(id:string,rarity:Rarity,colors:Readonly<Record<Rarity,number>>=RARITY_COLOR):PrizeLook{
   const item=itemDisplay(id);
-  return {id,icon:item.icon,name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
+  return {id,icon:goldIcon(item.icon,rarity),name:item.name,color:colors[rarity],glow:PRIZE_GLOW[rarity]};
 }
 /** The prize's life (ms): it rises out of the crate fading in, with a hop; stays; fades out drifting up. */
 export const PRIZE_RISE_MS=600,PRIZE_HOLD_MS=1200,PRIZE_FADE_MS=350,PRIZE_MS=PRIZE_RISE_MS+PRIZE_HOLD_MS+PRIZE_FADE_MS;
@@ -230,8 +231,18 @@ export const ARSENAL_ITEMS:readonly string[]=['faca','pistola','escopeta','subme
 const KNOWN=new Map(allItemDisplays().map(i=>[i.id,i]));
 /** Texture key of a `ui` sticker loaded for the arsenal. */
 export const iconKey=(icon:string)=>`arsenal:ui:${icon}`;
-/** The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. */
-export const itemIcon=(id:string|undefined):string|undefined=>id?KNOWN.get(id)?.icon:undefined;
+/**
+ * The sticker of an item id (its hud/items.ts icon), or undefined for an id the HUD does not know. A weapon at the
+ * dourada level (4) wears its `<icon>-dourada` edition when that ui piece is in (caixa-gamble-raridade).
+ */
+export const itemIcon=(id:string|undefined,level=1):string|undefined=>{
+  const icon=id?KNOWN.get(id)?.icon:undefined;
+  return icon?goldIcon(icon,level):undefined;
+};
+/** An icon at a level: its dourada edition at level 4 when the art index has `ui/<icon>-dourada`, else itself. */
+export const goldIcon=(icon:string,level:number)=>level===GOLD_LEVEL&&fileOf('ui',`${icon}-dourada`)?`${icon}-dourada`:icon;
+/** The plain weapon icon of a sticker that may be its dourada edition (the hand's grip table is by the plain one). */
+export const plainIcon=(icon:string)=>icon.endsWith('-dourada')?icon.slice(0,-'-dourada'.length):icon;
 /** Whether an item on the ground is a weapon (its `value` is then its rarity; a consumable's is its stack). */
 export const isWeaponItem=(id:string|undefined)=>{const kind=id?KNOWN.get(id)?.kind:undefined;return kind==='weapon'||kind==='evolution';};
 /**
@@ -334,8 +345,12 @@ const fileOf=(group:'ui'|'efeitos',id:string)=>{const piece=artPiece(group,id);i
 export function arsenalLoads():ArsenalLoad[]{
   const out:ArsenalLoad[]=[],seen=new Set<string>();
   for(const id of ARSENAL_ITEMS){
-    const icon=itemIcon(id);if(!icon||seen.has(icon))continue;seen.add(icon);
-    const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    const plain=itemIcon(id);if(!plain||seen.has(plain))continue;
+    // The weapon's sticker and, where it is in, its dourada edition (goldIcon).
+    for(const icon of [plain,goldIcon(plain,GOLD_LEVEL)]){
+      if(seen.has(icon))continue;seen.add(icon);
+      const url=firstPageUrl('ui',fileOf('ui',icon));if(url)out.push({key:iconKey(icon),url,strip:false});
+    }
   }
   for(const look of Object.values(FIRE_LOOK)){
     if(!look.art||seen.has(look.art))continue;seen.add(look.art);

@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3007,
-  "bytes": 2205423314,
-  "liteBytes": 763001280,
+  "files": 3090,
+  "bytes": 2212736008,
+  "liteBytes": 768386722,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -27701,6 +27701,14 @@
    "psnr": 49.4,
    "shownPsnr": 51.7
   },
+  "menu/fundo-aposentado.webp": {
+   "source": "233d4a23d71eda999ded8b2d0f3588a741a0e834098c6f1030c98660df481f6e",
+   "lite": "d080af2187a8c261a196d900c0ed0e7c6d8b386cefcdb558314e6fd697afbabd",
+   "bytes": 1230164,
+   "liteBytes": 951644,
+   "psnr": 42.9,
+   "shownPsnr": 45.1
+  },
   "menu/fundo-clt-cansado.webp": {
    "source": "0c2846c7a86cede1b64e6366735fa8f3a81929cb6f844742d9aa89233d579ba1",
    "lite": "8f28b3e746f1cbab544d026eae19feec910fbb79f29f75f11a67ae2c24b08110",
@@ -27732,6 +27740,38 @@
    "liteBytes": 894772,
    "psnr": 42.4,
    "shownPsnr": 44.4
+  },
+  "menu/fundo-vendedor-praia.webp": {
+   "source": "dc768829fd6e720fc021762b96a3b10bcba7636d40e836b8e8d9398048542646",
+   "lite": "2d87655cc1df6612c26f814b921c763c32a7ba5747ac3adb426f8bfcb0438934",
+   "bytes": 1135476,
+   "liteBytes": 893418,
+   "psnr": 42.7,
+   "shownPsnr": 44.9
+  },
+  "menu/insta/grade-aposentado-1.webp": {
+   "source": "ab3e47bd0d4d6d707c5bb15fa4dfefca5d346164f378ca2a40636a9c6417da44",
+   "lite": "5e6a2c4066f06fdca69eaf028688bd8490f03424d139344f70a8bbee9b1a8088",
+   "bytes": 49282,
+   "liteBytes": 40034,
+   "psnr": 39.2,
+   "shownPsnr": 42
+  },
+  "menu/insta/grade-aposentado-2.webp": {
+   "source": "82776357a9d0f5653afd2168eb688810e602611800238685b7e6c1917e15b2ea",
+   "lite": "5117241e22fe4120360a12fdd6d99c3d504f6367e5119ced8dd2da4c2d21eeb4",
+   "bytes": 48500,
+   "liteBytes": 40534,
+   "psnr": 39.5,
+   "shownPsnr": 42.3
+  },
+  "menu/insta/grade-aposentado-3.webp": {
+   "source": "caf6a09c4e63b06c3355669334de7136117b783323d7e5fe13dda80d71fce52d",
+   "lite": "4f753d21d5d82bf47c9fbf5bb85e6c3dc425f5d7d42bd7204c45f4f321fcd615",
+   "bytes": 50918,
+   "liteBytes": 42410,
+   "psnr": 39.5,
+   "shownPsnr": 42.3
   },
   "menu/insta/grade-clt-cansado-1.webp": {
    "source": "b3b4d37fc3c9b3cd319d2a7886d0bf5a176b8230beadc3dcf3f0872defc46362",
@@ -27804,6 +27844,30 @@
    "liteBytes": 31266,
    "psnr": 39.8,
    "shownPsnr": 42.4
+  },
+  "menu/insta/grade-vendedor-praia-1.webp": {
+   "source": "a31d11b1fbd0db2b8ddff6adc8e877b510e298f4dc6ba92aeed9fc3f0bcdb6a3",
+   "lite": "67829581dc2f3dea07bf515eaab3282fda619db7a2bdc61a0480c14caba72877",
+   "bytes": 45650,
+   "liteBytes": 37176,
+   "psnr": 39.3,
+   "shownPsnr": 42.1
+  },
+  "menu/insta/grade-vendedor-praia-2.webp": {
+   "source": "799b8ad379ffdd00bdbe94b6fdbc96cc041c725012259e60035ad3568f87fa0b",
+   "lite": "554b4336a1b3d82ddec349685c53eb953c8210232d7235ec8d09722e0bd526f0",
+   "bytes": 49316,
+   "liteBytes": 40174,
+   "psnr": 38.8,
+   "shownPsnr": 41.4
+  },
+  "menu/insta/grade-vendedor-praia-3.webp": {
+   "source": "3dd257dfc27b401e875584ec24ab62b737ef8076aeec6c8afa8188be6dab0ad8",
+   "lite": "bf2521ad4cd5e66f5181534989b66090d7320d6bbf6065306be1ce01ca270136",
+   "bytes": 46596,
+   "liteBytes": 38122,
+   "psnr": 39.3,
+   "shownPsnr": 42.1
   },
   "menu/insta/grade-viciado-em-bet-1.webp": {
    "source": "e599b80d8fd0a1e3d798f16a717599a53680fcec4a240a1efc6b009b9b19ce6f",
@@ -27909,6 +27973,14 @@
    "psnr": 38.6,
    "shownPsnr": 41.5
   },
+  "menu/insta/logo-aposentado.webp": {
+   "source": "f7e9db75b27e385eb55abcaf4cb5ebcae03393053abb43d1ebb1cffc7aa4731b",
+   "lite": "96a61cffed4438c035039e91b2f2fe69d243faa9542a7d1bebca173fd337af65",
+   "bytes": 21602,
+   "liteBytes": 18634,
+   "psnr": 42.2,
+   "shownPsnr": 45.1
+  },
   "menu/insta/logo-clt-cansado.webp": {
    "source": "fcb3b06d2033c7682e43a59ddb805d89716898439018e633e6df7487d241db2c",
    "lite": "8ad88521717c31458a13ae73ab6ba82e58e7d413bba321089736bee5777a8474",
@@ -27933,6 +28005,14 @@
    "psnr": 42,
    "shownPsnr": 44.3
   },
+  "menu/insta/logo-vendedor-praia.webp": {
+   "source": "31d4bcaae18f06ce37991ac8ee9128d458f8e3971e1d0c6dbb5eb987a6df8270",
+   "lite": "5abcd2accabaad8b3fce9f00a2c42c23517f15905adcbef0c92a964e96830ef9",
+   "bytes": 23042,
+   "liteBytes": 19976,
+   "psnr": 40.2,
+   "shownPsnr": 42.4
+  },
   "menu/insta/logo-viciado-em-bet.webp": {
    "source": "7cb5b04a0dd6b65baee2c0c6ba357d83105c2cbec7389baf9af2644786981aeb",
    "lite": "709c954e14d27443ef22fc15a948f5fbc80997f568c16f6a843b7c00f4c41227",
@@ -27940,6 +28020,14 @@
    "liteBytes": 26328,
    "psnr": 38.4,
    "shownPsnr": 40.8
+  },
+  "menu/insta/perfil-aposentado.webp": {
+   "source": "65f31955be71a6cab4d046a3ae133485dca6d5e87312fbe64f604b49162156fa",
+   "lite": "b6ed9459b84a4ead8443e16c92a57bb2bbc25a1dbca4ac00c83e179a4e2f55c1",
+   "bytes": 55306,
+   "liteBytes": 44312,
+   "psnr": 40.3,
+   "shownPsnr": 42.7
   },
   "menu/insta/perfil-clt-cansado.webp": {
    "source": "f222157e953c12eb08abfdc2dbb4c348b472e536da5981090a42b793d2cc32b5",
@@ -27965,6 +28053,14 @@
    "psnr": 41.4,
    "shownPsnr": 43.9
   },
+  "menu/insta/perfil-vendedor-praia.webp": {
+   "source": "91cdf2a061660461b668bbe96080937045d0539048abb21908f2c0e5b9cc9232",
+   "lite": "d9ee93772abc907b3556ebdebcbee7bbe97679a2e47b0aa56cf22b36f625412f",
+   "bytes": 56726,
+   "liteBytes": 46102,
+   "psnr": 40,
+   "shownPsnr": 42.5
+  },
   "menu/insta/perfil-viciado-em-bet.webp": {
    "source": "57b0e9c44f4ae8d9963d016f4d2aa810297b0b71078669743fc23269e0a8aba0",
    "lite": "2643a4129a6d1ebe3a63ae7da0aadb689def8201ad52bc0f8892b45a7e685eee",
@@ -27972,6 +28068,30 @@
    "liteBytes": 44400,
    "psnr": 39.8,
    "shownPsnr": 41.9
+  },
+  "menu/insta/post-aposentado-1.webp": {
+   "source": "4386fed6935cc3180e03ce11fce59dee7bcc11175f82baacdd5a53959f5eb811",
+   "lite": "e0be45332d78df9f47330b1be6dfac1cbf27bd2f8f8142f84c20e96ba0da5771",
+   "bytes": 116860,
+   "liteBytes": 95526,
+   "psnr": 39.7,
+   "shownPsnr": 42.3
+  },
+  "menu/insta/post-aposentado-2.webp": {
+   "source": "0e6474d1b522f7d56863472aadfc1552942142ecad6f3c42ebec215406933a57",
+   "lite": "25e738d0d0c0a3fd5a42ccca79ccc59fe0daabe63128fe6d76ab175d67f2fa47",
+   "bytes": 119322,
+   "liteBytes": 97894,
+   "psnr": 39.9,
+   "shownPsnr": 42.7
+  },
+  "menu/insta/post-aposentado-3.webp": {
+   "source": "320b19c71b64e379f97607c35cf4f543095f8a689a1713a9f1925cbefa81af5f",
+   "lite": "fe53b70a7ce07a97a1e57032e58d0958b23c98a682b9d942e5ace9c785e677bb",
+   "bytes": 120548,
+   "liteBytes": 99310,
+   "psnr": 39.8,
+   "shownPsnr": 42.5
   },
   "menu/insta/post-clt-cansado-1.webp": {
    "source": "8a4dcc908705053bd33ff174edc524f8dc991c8d68a26a1967e54ed2ab3f709a",
@@ -28045,6 +28165,30 @@
    "psnr": 41.3,
    "shownPsnr": 43.8
   },
+  "menu/insta/post-vendedor-praia-1.webp": {
+   "source": "27e39fba0eb1986dd84be277ea0546c0e52b87bd22c8a8b5b4588ace979f5d37",
+   "lite": "18cc8bc52d0f9453ff26ba382f68bd78afa9e4be4f79dd75cd8a552d7c38f86c",
+   "bytes": 105504,
+   "liteBytes": 85630,
+   "psnr": 39.7,
+   "shownPsnr": 42.3
+  },
+  "menu/insta/post-vendedor-praia-2.webp": {
+   "source": "1434a856c0e0932ae58a61edd9968c7593fcc819157b3107e14c53ce4f4db544",
+   "lite": "4376b0a92a34ef2d1ccc0c94c8dcbd1e97f25b9fa62c1c7f5d965c6d458c7385",
+   "bytes": 109962,
+   "liteBytes": 87458,
+   "psnr": 39.5,
+   "shownPsnr": 42
+  },
+  "menu/insta/post-vendedor-praia-3.webp": {
+   "source": "06589f081a4185b6d72bb6d21397abe373d0e4a0ee6ad1734214455aa760282a",
+   "lite": "f6aed3e65392ff7ea47e2e04b62a02de3be4580e009005e964dc18180067ebd4",
+   "bytes": 101420,
+   "liteBytes": 82846,
+   "psnr": 40.2,
+   "shownPsnr": 42.7
+  },
   "menu/insta/post-viciado-em-bet-1.webp": {
    "source": "f33007c7e7ed93499aaf3571bc22ac672d0b3a1cdfeb87861b778f31105b4a69",
    "lite": "f4e7c442a78c2c8d61924db9863a0c56d7e682cbdcdec0e2c4b10b82ef3836af",
@@ -28068,6 +28212,38 @@
    "liteBytes": 71922,
    "psnr": 40.3,
    "shownPsnr": 42.6
+  },
+  "menu/insta/story-aposentado-1.webp": {
+   "source": "6344a1e228da13fefa6fb936bb700a414510682671ae9129aea27baf4f1dcf92",
+   "lite": "f33bcc2c7486c04db2d095de120c02d1b26dd2b022db680c076a9beddb192770",
+   "bytes": 135024,
+   "liteBytes": 125266,
+   "psnr": 44.3,
+   "shownPsnr": 47.6
+  },
+  "menu/insta/story-aposentado-2.webp": {
+   "source": "d730de871eb85701cb729ac1281ee4cabbe62c26555c578325df720395a40d15",
+   "lite": "51f1bf75bf5d98c286dbee567736b6feb3602b148ada7426001d77b4481ad777",
+   "bytes": 74978,
+   "liteBytes": 69420,
+   "psnr": 45.9,
+   "shownPsnr": 48.2
+  },
+  "menu/insta/story-aposentado-3.webp": {
+   "source": "e40bcbeb93f995f0417c3ad26cf13e4d373472a9fb5feeaf61800a3b73bd2043",
+   "lite": "db37108f94efc8a2ce575dce4ba2bf1810e1575bb80b313f34e577a7fb70da72",
+   "bytes": 113156,
+   "liteBytes": 103916,
+   "psnr": 44.8,
+   "shownPsnr": 48.1
+  },
+  "menu/insta/story-aposentado-4.webp": {
+   "source": "62518876206604f48875a1419539659b989fdad267fb8358dd03a951f237d525",
+   "lite": "0f766790f70d17f68af6b436de3d6a133c805de9f7cee3822193356653756f59",
+   "bytes": 121984,
+   "liteBytes": 109498,
+   "psnr": 44.4,
+   "shownPsnr": 47.4
   },
   "menu/insta/story-clt-cansado-1.webp": {
    "source": "4e18d7c534fdf25ce4af7c0bdd9b24d16b38fd4026254d502c42a5a9523fd464",
@@ -28165,6 +28341,38 @@
    "psnr": 43.7,
    "shownPsnr": 47.3
   },
+  "menu/insta/story-vendedor-praia-1.webp": {
+   "source": "ad896adb846fd29f34ed9f2cc2084e55dbb05cf1692f46ea1eea0a9f1ea0f1ab",
+   "lite": "eec26ccd706bceb22432961e86f91f1269102f39d93d19757e0b7db4c8747ae9",
+   "bytes": 155474,
+   "liteBytes": 145524,
+   "psnr": 42.8,
+   "shownPsnr": 46.2
+  },
+  "menu/insta/story-vendedor-praia-2.webp": {
+   "source": "4d61e75a9735d8e336bec7a958981246d84b7f091a47519cf3d549dbe88db32b",
+   "lite": "6fb95379440b0ed20cc0e8442b50cf20ef48e946766779dded08fdd84cefa77f",
+   "bytes": 119402,
+   "liteBytes": 111232,
+   "psnr": 44.3,
+   "shownPsnr": 47.5
+  },
+  "menu/insta/story-vendedor-praia-3.webp": {
+   "source": "90152f7cda9e7eb06195a2c8fa7b1f309759d1a42befbc2a5b3c815c513cd529",
+   "lite": "6e3689be31e73db86abff036cbbea7e85c12f3b93fb603f2c218f08ff9629eb8",
+   "bytes": 142602,
+   "liteBytes": 127928,
+   "psnr": 45.6,
+   "shownPsnr": 51.3
+  },
+  "menu/insta/story-vendedor-praia-4.webp": {
+   "source": "9a8cc08ab4431e89fa8369b8dd0959f5b4a2bd92ec9bbfa420af8a0a811f71d9",
+   "lite": "477c54b792291b061af6d223004e4ae30bab6884689ce84f795757ba820a487f",
+   "bytes": 109976,
+   "liteBytes": 101526,
+   "psnr": 44.6,
+   "shownPsnr": 47.3
+  },
   "menu/insta/story-viciado-em-bet-1.webp": {
    "source": "f1793c1b7ca1bc7d3b16379f550468bc20c80da5f2ef515f73a443423382b911",
    "lite": "70e6f5c8635d3746053d73fd2fe6256844535d4f65be3565ff0e86952a1afbcf",
@@ -28197,6 +28405,14 @@
    "psnr": 45.5,
    "shownPsnr": 47.8
   },
+  "menu/rosto/aposentado.webp": {
+   "source": "48bd3d879d3c7216f6ed2a079945bac6058fb9ecf5f2865430e09cc55eb3ea7c",
+   "lite": "b1146d8b62b52af8a8601654dc62bd2df96095651fa58010e7a415e74c0ddf64",
+   "bytes": 19704,
+   "liteBytes": 16050,
+   "psnr": 39.5,
+   "shownPsnr": 42.2
+  },
   "menu/rosto/clt-cansado.webp": {
    "source": "3a5321d4c0a712e8dc092c4d22501b54b8b2080f3e1d996449a9ecabb3de22b8",
    "lite": "c01eb46440291d1e5c7e848b68a9ae3b74f20a176fb33f182198c8545a8388f9",
@@ -28220,6 +28436,14 @@
    "liteBytes": 13286,
    "psnr": 39.6,
    "shownPsnr": 42.3
+  },
+  "menu/rosto/vendedor-praia.webp": {
+   "source": "172783494825a16011c6663e35388232395e7f2faaee802bbd9b3f11c472f455",
+   "lite": "f20e4b8ae402b2d012bc7bb7fdaa9591d443a41bf00b711bdb4f2813e018c5bc",
+   "bytes": 20200,
+   "liteBytes": 16174,
+   "psnr": 38.9,
+   "shownPsnr": 41.6
   },
   "menu/rosto/viciado-em-bet.webp": {
    "source": "2af7cf408ba9ed923d7f5aeae026a68d09a236a7d6c7c937d6cd043b4051dd89",
@@ -28428,6 +28652,46 @@
    "liteBytes": 13936,
    "psnr": 42.1,
    "shownPsnr": 47.4
+  },
+  "sprites/clt-cansado.pull16-n.f488e9df4471.webp": {
+   "source": "f488e9df447116e2f9354683d035779987559774f87dabfc58ec5a1a6d4434af",
+   "lite": "038f158f8b91f496172dcb4efc765c3abe2742948066312f163f0d616ba5c482",
+   "bytes": 39970,
+   "liteBytes": 24392,
+   "psnr": 42.6,
+   "shownPsnr": 45.4
+  },
+  "sprites/clt-cansado.pull16-nw.07a845ca600b.webp": {
+   "source": "07a845ca600becd987dcb308b2363e3e841931bd27c3bfd19737dd5495512735",
+   "lite": "deabf3ee8e91cf2bdd1043cd7c4efba9cb27057c9a85f715b104e90a7c5b6c3f",
+   "bytes": 47642,
+   "liteBytes": 27408,
+   "psnr": 42.9,
+   "shownPsnr": 45.1
+  },
+  "sprites/clt-cansado.pull16-s.5cb6ec50ccff.webp": {
+   "source": "5cb6ec50ccff78fc0d05f7b5ad926c11c8da96b5553f8ecf278e5d45b5c469b2",
+   "lite": "e7920d88777f369ea2f5b6e7cd7ab51807a491871c099a0babdf585e9e1d500e",
+   "bytes": 35272,
+   "liteBytes": 22078,
+   "psnr": 41.8,
+   "shownPsnr": 46.6
+  },
+  "sprites/clt-cansado.pull16-se.11527e300cae.webp": {
+   "source": "11527e300caea4bfcaeffdb174a78ed5627271851439a9b173785c55be7c28b6",
+   "lite": "203e31cee83642c6329ad794a7ade6c677a835e822d8ebf6cde146573b3f989f",
+   "bytes": 37636,
+   "liteBytes": 23536,
+   "psnr": 42.4,
+   "shownPsnr": 46.6
+  },
+  "sprites/clt-cansado.pull16-w.1f93cfb11815.webp": {
+   "source": "1f93cfb11815894b5612355f85f2b07d3526d04a5b1edaad662d59243d9c62dc",
+   "lite": "e523624c3eccee5efec16d5a1ac3c4b8e6ee1cfa439b2c083972a6fd1f6048ee",
+   "bytes": 45226,
+   "liteBytes": 27972,
+   "psnr": 42.6,
+   "shownPsnr": 45.1
   },
   "sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
    "source": "c1273e2bf5da3ee91bb3ecc84ea2b79b5c3dfcc8bf24dad1ac6812717a31b31d",
@@ -29373,6 +29637,46 @@
    "psnr": 41.4,
    "shownPsnr": 42.3
   },
+  "sprites/gato-nada-pra-comer.pull16-n.8bb0b9447751.webp": {
+   "source": "8bb0b94477510e938e6c679d63f5af23b10b4d48465ef0f498b222bdefb5de21",
+   "lite": "86f98c82efe72444dd9771e1955359290a12c75cdf9d199981c1257b1aa5bf7f",
+   "bytes": 58828,
+   "liteBytes": 32008,
+   "psnr": 40.7,
+   "shownPsnr": 40.6
+  },
+  "sprites/gato-nada-pra-comer.pull16-nw.44478e25f577.webp": {
+   "source": "44478e25f577f0dce00fb67c900593e56c8792eec1966a91c9d88ca43f8a8c5e",
+   "lite": "e63d8399b423adc69aa40a90c5d278f039e9de1daca82b5064e2821984889b86",
+   "bytes": 64472,
+   "liteBytes": 36368,
+   "psnr": 41.5,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.pull16-s.b002c776eacf.webp": {
+   "source": "b002c776eacfddae20bcff20a13e3187020f6e31655d1fc4305cc22918b335bb",
+   "lite": "44020fb8e8a8a01f42c21922b3450097dfcabdd0373a66fcf115fa6711f98835",
+   "bytes": 58254,
+   "liteBytes": 31842,
+   "psnr": 40.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.pull16-se.419458bfb158.webp": {
+   "source": "419458bfb158456455b842dd6627b163d522354b3a79e994627435312603cc3f",
+   "lite": "8984a5b774b6f5ffd956861ecf76f223c6a8100363d76f04effc3035a5d0d23b",
+   "bytes": 54406,
+   "liteBytes": 30882,
+   "psnr": 41.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.pull16-w.1b493386698b.webp": {
+   "source": "1b493386698bf98658d9f0ae984df5d01563ed2f4f35d7dc451c50c2dd524045",
+   "lite": "58e2298c4a3b4632fdd0ba4f8ccae5d932fbd674eb6f8b6828644fece187aab6",
+   "bytes": 53912,
+   "liteBytes": 31210,
+   "psnr": 42.1,
+   "shownPsnr": 40.9
+  },
   "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
    "source": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
    "lite": "882656ac81c1be9074ceeef1bc8e6475b11dc3bbc2476692790a71f0bf27864b",
@@ -29724,6 +30028,46 @@
    "liteBytes": 20426,
    "psnr": 39.9,
    "shownPsnr": 43.5
+  },
+  "sprites/maromba.pull16-n.e614246a7aca.webp": {
+   "source": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650",
+   "lite": "86c32185dc8105e133198f25afd5d740084f51d5af20e43ced39bbe72d662aea",
+   "bytes": 56766,
+   "liteBytes": 32274,
+   "psnr": 38.7,
+   "shownPsnr": 41.8
+  },
+  "sprites/maromba.pull16-nw.d76399bb4812.webp": {
+   "source": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f",
+   "lite": "667f97ee03469ee1d32ea977c478765af1f4cd3997345d021524a6599d35b28d",
+   "bytes": 61848,
+   "liteBytes": 35012,
+   "psnr": 39.4,
+   "shownPsnr": 42.5
+  },
+  "sprites/maromba.pull16-s.4b943fbf0a83.webp": {
+   "source": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e",
+   "lite": "96a4a712250582fdcc23164ea03e0997b2537bc33a639275f47fc997bb7bdc07",
+   "bytes": 49144,
+   "liteBytes": 28830,
+   "psnr": 38.7,
+   "shownPsnr": 42.6
+  },
+  "sprites/maromba.pull16-se.0de4fbde928d.webp": {
+   "source": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799",
+   "lite": "14f7adb8af2169cdb915738b5fec3ed2f5df60b6be9336345d4caa830d6739ec",
+   "bytes": 47200,
+   "liteBytes": 29200,
+   "psnr": 39.2,
+   "shownPsnr": 42.6
+  },
+  "sprites/maromba.pull16-w.5d910382cd71.webp": {
+   "source": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d",
+   "lite": "8c41743ba34ea3228571ecbb08a04d04055f933633902bfe6e7705a3ead95e8a",
+   "bytes": 50704,
+   "liteBytes": 30850,
+   "psnr": 39.7,
+   "shownPsnr": 42.9
   },
   "sprites/maromba.push16-n.d8725566eb99.webp": {
    "source": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
@@ -30893,6 +31237,46 @@
    "psnr": 41.5,
    "shownPsnr": 45.9
   },
+  "sprites/vendedor-praia.attack16-n.5c5d846f41ee.webp": {
+   "source": "5c5d846f41eec79f71ee0eec6252c87fc902681506206e75f90927475a16ca73",
+   "lite": "d693e8f534a83c74107445b6a03287c111b5fdb87e77bd36482eecd086b4dbe3",
+   "bytes": 77700,
+   "liteBytes": 44622,
+   "psnr": 35.5,
+   "shownPsnr": 38.5
+  },
+  "sprites/vendedor-praia.attack16-nw.aaae8fdc9f55.webp": {
+   "source": "aaae8fdc9f55dcaae2ef1cefc87d8685d66d93877a6394a8efd03407e724caa6",
+   "lite": "f8d191fa57565b360d5540b004ae999b15db9964d366210410e84988a89743d0",
+   "bytes": 79690,
+   "liteBytes": 44534,
+   "psnr": 35.4,
+   "shownPsnr": 39
+  },
+  "sprites/vendedor-praia.attack16-s.e911192e75b6.webp": {
+   "source": "e911192e75b668157b3bce0b337543d089f4db63210468cbe9cabd9ff2a4b3d8",
+   "lite": "c288216787a463662cb9f7b534bad906cb2d073f898d3fd19c18917f88afbcd9",
+   "bytes": 77114,
+   "liteBytes": 43564,
+   "psnr": 34.3,
+   "shownPsnr": 38.6
+  },
+  "sprites/vendedor-praia.attack16-se.5486dbbd1c91.webp": {
+   "source": "5486dbbd1c91001e9ab6d90ea148ee807e5f860ea9aa0111cab6ebd305d25ff9",
+   "lite": "5c4f1ad6403a04088a29dc8635e5eb633939341997a2e50732188fc50f6a2b64",
+   "bytes": 73314,
+   "liteBytes": 42802,
+   "psnr": 34.8,
+   "shownPsnr": 38.2
+  },
+  "sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
+   "source": "2c7a98219d03062f593a24d88f0cde2aa81cbd853a00bdb6d5af9852d4235301",
+   "lite": "bb95e44cf18aad5fc1259742bec45ee2f162f46e55badbc24fc4379b4a77c9fe",
+   "bytes": 66384,
+   "liteBytes": 37624,
+   "psnr": 35.5,
+   "shownPsnr": 38.8
+  },
   "sprites/vendedor-praia.dir4.webp": {
    "source": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926",
    "lite": "d852f573fa68a8cd4c83d045170f2b5f37ccc89cdbf601b2c30abdb44844a615",
@@ -30908,6 +31292,246 @@
    "liteBytes": 492546,
    "psnr": 40,
    "shownPsnr": 43.4
+  },
+  "sprites/vendedor-praia.hurt16-n.3eb185f0eb0b.webp": {
+   "source": "3eb185f0eb0baa21574ba611ab9b0810665778de3930a2aa645f2540159547be",
+   "lite": "f096c58df5d5b20316f562cb14bcf0c46db73cc43c85724f869b158296d729a9",
+   "bytes": 31492,
+   "liteBytes": 17478,
+   "psnr": 35.5,
+   "shownPsnr": 39
+  },
+  "sprites/vendedor-praia.hurt16-nw.85f29169fbc3.webp": {
+   "source": "85f29169fbc394275bcc61df3d6589605923535997f57866b3642e20d2b906b3",
+   "lite": "d99deb694d64bf44967f4fd6ceeddaaa52507491c8641e69cb31fcda8d18c887",
+   "bytes": 29756,
+   "liteBytes": 16552,
+   "psnr": 36,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.hurt16-s.7d366adfb2c8.webp": {
+   "source": "7d366adfb2c8452fa2753d845e87133c160d97cd0d6320d1c480d56e80bf9ead",
+   "lite": "cd498b6ce13478391a9715dff1938ec6ec090160f8e6b257a5827996c811fbc7",
+   "bytes": 30472,
+   "liteBytes": 17644,
+   "psnr": 34.4,
+   "shownPsnr": 38
+  },
+  "sprites/vendedor-praia.hurt16-se.b672829ff17e.webp": {
+   "source": "b672829ff17e3b9daa89ddbeb3f35c4a8fdb85290e1f6bffb0ad498e119be74a",
+   "lite": "36fe6ebab242799434822198503a7265f24bdcd6534af88082f9728c102aa109",
+   "bytes": 28182,
+   "liteBytes": 16582,
+   "psnr": 34.4,
+   "shownPsnr": 38.1
+  },
+  "sprites/vendedor-praia.hurt16-w.bd6d9c87398a.webp": {
+   "source": "bd6d9c87398a1c3ce7a3662eb61531a36101b9deea047a723e70c026ee2107bd",
+   "lite": "5d761da79faabeb86eb28c15af1251184c7522761e7725b97982b66bdfaef868",
+   "bytes": 24148,
+   "liteBytes": 14132,
+   "psnr": 35.8,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.idle16-n.a01271ec6a7b.webp": {
+   "source": "a01271ec6a7bd7d7eaa0f4053ed75e2f7bd9e6a64e7de3fc702eacce67bbae8c",
+   "lite": "194d9bcce7435d205398e8d7bd0ed7a8d357798847ed31678ae93b6cf22f56f3",
+   "bytes": 5532,
+   "liteBytes": 16498,
+   "psnr": 36.4,
+   "shownPsnr": 40.3
+  },
+  "sprites/vendedor-praia.idle16-nw.3df2de804cab.webp": {
+   "source": "3df2de804cab3cc095087c55933e6dffa870b6d7111fa51b3f1bd75f2255dd6c",
+   "lite": "ca2eee8522af8a83ba7cfc13fe9b62f119a14468a6e1ae076ec4da4ff6642797",
+   "bytes": 5220,
+   "liteBytes": 15414,
+   "psnr": 36.5,
+   "shownPsnr": 39.9
+  },
+  "sprites/vendedor-praia.idle16-s.66eb7104dfb0.webp": {
+   "source": "66eb7104dfb0ff110fb344cf79bd241870d55cc122aae51ca55250f618a8889c",
+   "lite": "97afe47839062b8693991cf174e7e6ea204a006595d29e8d61356d568ed603dc",
+   "bytes": 5478,
+   "liteBytes": 17010,
+   "psnr": 35.2,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.idle16-se.92b9c34f995a.webp": {
+   "source": "92b9c34f995ab15bacd91c63ffab9a8a51a4877f3d613a0c807e6eeb048595b6",
+   "lite": "96bd41c3bebb255861daa6d76aa09bd8da24d0a95ba3a25cb3781227c3745ba0",
+   "bytes": 5168,
+   "liteBytes": 15960,
+   "psnr": 34.5,
+   "shownPsnr": 39.4
+  },
+  "sprites/vendedor-praia.idle16-w.ae72679d0dbb.webp": {
+   "source": "ae72679d0dbbecfe7d78ca9c6764fe41493fc43eb1641cb338f6525a9bd0edff",
+   "lite": "f18b57dd961419462df6608e108c87b5739ce7e564482d9aa47ee0bfa0923b95",
+   "bytes": 4246,
+   "liteBytes": 12694,
+   "psnr": 37.2,
+   "shownPsnr": 41.1
+  },
+  "sprites/vendedor-praia.pull16-n.fe3908b26ca4.webp": {
+   "source": "fe3908b26ca4b0aa6addd5f2a2b78637a0e861ee27c07a615096894f2d95b0ff",
+   "lite": "e5fbd1173cf8724ea50dd8e2304e9ba375dbfae2d952f3fa91422ada1e604eab",
+   "bytes": 70700,
+   "liteBytes": 37778,
+   "psnr": 36.9,
+   "shownPsnr": 40
+  },
+  "sprites/vendedor-praia.pull16-nw.dd2a8ef3f149.webp": {
+   "source": "dd2a8ef3f14905e4bed15967eac19850d99f11380ca8d65a4b9b00bf3df171b2",
+   "lite": "6d640b42e2a8b39d4119cd22a32f46c3b678e5cfcf8b5d177473813ea82a5127",
+   "bytes": 65482,
+   "liteBytes": 37888,
+   "psnr": 36.8,
+   "shownPsnr": 40.2
+  },
+  "sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
+   "source": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98",
+   "lite": "d14e37bd48776d4428834e0b6429b9a2f86fd5592b9e2d7b55be21f8f6ea8d02",
+   "bytes": 55230,
+   "liteBytes": 31588,
+   "psnr": 36.5,
+   "shownPsnr": 40
+  },
+  "sprites/vendedor-praia.pull16-se.df2823bedab2.webp": {
+   "source": "df2823bedab2c0afa72c2f28320243b74528abff62b3ca94d80c844a0eda4366",
+   "lite": "4a7b677942e13614644d8a15ef275e98e13da39912f90156a070a22caf8144af",
+   "bytes": 56922,
+   "liteBytes": 34700,
+   "psnr": 36.3,
+   "shownPsnr": 39.5
+  },
+  "sprites/vendedor-praia.pull16-w.bf6419827fcf.webp": {
+   "source": "bf6419827fcf77c4f1d13b86a96fe66a677e9be2a1bc0e6965fbc6c11e4e040c",
+   "lite": "aa5ef26285e157c258472d46e10f9fc17a536362057284dabe424c84deb4ba55",
+   "bytes": 57684,
+   "liteBytes": 34478,
+   "psnr": 37,
+   "shownPsnr": 40.1
+  },
+  "sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
+   "source": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7",
+   "lite": "3c9de4a3317ef944367cb8459c1d58b3e31a18021cad0da3fee6f3bdf0fe4db3",
+   "bytes": 61558,
+   "liteBytes": 35296,
+   "psnr": 36.8,
+   "shownPsnr": 39.5
+  },
+  "sprites/vendedor-praia.push16-nw.359c7f8056c5.webp": {
+   "source": "359c7f8056c53d37bc6362707b83e44c5d3b9f3c0bfd8896a2443b9617fe024a",
+   "lite": "fd84188221141e85f4db74bcd595e2f580314404edf9e9984d02db96bbb8f68a",
+   "bytes": 69660,
+   "liteBytes": 40170,
+   "psnr": 36.6,
+   "shownPsnr": 39.9
+  },
+  "sprites/vendedor-praia.push16-s.a8e9ee5df6d5.webp": {
+   "source": "a8e9ee5df6d5a1724225bc58ca8f6bb014b5c61a7e7640c5713453092da976ff",
+   "lite": "bcb56a85cc90ffdff01010286d9a314ae6d6e209544deb517c27eb5cc893e6d7",
+   "bytes": 69602,
+   "liteBytes": 38598,
+   "psnr": 35.9,
+   "shownPsnr": 39.7
+  },
+  "sprites/vendedor-praia.push16-se.7486fe0111e9.webp": {
+   "source": "7486fe0111e96e4ee8977c0a09426fd36de2319424950dd277fbd2c76097806b",
+   "lite": "8042d3035331943cf12ad5756db32f3895f55630d55461ee6d8560356464e585",
+   "bytes": 64468,
+   "liteBytes": 37946,
+   "psnr": 36.1,
+   "shownPsnr": 39.1
+  },
+  "sprites/vendedor-praia.push16-w.b711c534988a.webp": {
+   "source": "b711c534988a4a572bff12fc563e3cb3863f258fc749e9a7d53da05d26cd346c",
+   "lite": "c2a6e1269bfc92486f65104638855139b7571eedfae122207c0f3205cfea3d05",
+   "bytes": 64272,
+   "liteBytes": 39596,
+   "psnr": 36.4,
+   "shownPsnr": 38.9
+  },
+  "sprites/vendedor-praia.run16-n.55040537f67f.webp": {
+   "source": "55040537f67f8b9679599fcb7022ae01cfcb2b64efe998cd7d85acb3351e71d1",
+   "lite": "5018369f2ab63fc5f5af8287938363224b61969b85284a03667d6c4aa372f5e2",
+   "bytes": 65232,
+   "liteBytes": 37450,
+   "psnr": 36.3,
+   "shownPsnr": 39.5
+  },
+  "sprites/vendedor-praia.run16-nw.144d1d773de7.webp": {
+   "source": "144d1d773de7aac65a1f43e858bb1b2005750870338d7c5722b341a88816a42c",
+   "lite": "35a230bfc9bd071c5b6f81b977e354541280ef5fb3d3d1c6bde51383253e2ec6",
+   "bytes": 63708,
+   "liteBytes": 37102,
+   "psnr": 36.3,
+   "shownPsnr": 39.9
+  },
+  "sprites/vendedor-praia.run16-s.fe31a59ed3a0.webp": {
+   "source": "fe31a59ed3a04e406e091e134ef331bd32b1ded57277decdaee7099565d15045",
+   "lite": "c3c483d61108524892ec8ad037f1ed7cfbd6875e3100700854943809e113d5ed",
+   "bytes": 63912,
+   "liteBytes": 36990,
+   "psnr": 35.5,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.run16-se.8a174da8df82.webp": {
+   "source": "8a174da8df82e7d69b5a63974211bda5c9cf8dfb579c335afc6cb2027163de53",
+   "lite": "3b617a6ec19cf3435bcc68f641ffe19434c8fe8dd3791479b885c84932c17165",
+   "bytes": 70568,
+   "liteBytes": 41280,
+   "psnr": 35.4,
+   "shownPsnr": 38.6
+  },
+  "sprites/vendedor-praia.run16-w.90c753af84c2.webp": {
+   "source": "90c753af84c2dd7a92585fe5b615683f7a56e1eb254441d727036b49624e08ff",
+   "lite": "9d6797e9fdb9ed1d74d435c90c568a1462e220d98e409e548392be311bf3eb9e",
+   "bytes": 67958,
+   "liteBytes": 39764,
+   "psnr": 35.6,
+   "shownPsnr": 39
+  },
+  "sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
+   "source": "79c664a88da38e3f02734148cce313fdbc7cf4a32aed716d0bc640f96122037a",
+   "lite": "ad244caa80e94b0b6e524a677a0b8d51cc166af8d00e7ab7742e1eb6beaacacd",
+   "bytes": 63840,
+   "liteBytes": 36872,
+   "psnr": 36.1,
+   "shownPsnr": 39.3
+  },
+  "sprites/vendedor-praia.walk16-nw.0d7cfbe0296d.webp": {
+   "source": "0d7cfbe0296d7a9856e96c68b83c94785045731e0f919c03dc9a3db3355a628e",
+   "lite": "f1b73b609393a20e4b683888e0abd2d93a6a9438344880d1cfab5ec15e5dda52",
+   "bytes": 64354,
+   "liteBytes": 37592,
+   "psnr": 35.9,
+   "shownPsnr": 39.6
+  },
+  "sprites/vendedor-praia.walk16-s.8fd0d554e4c4.webp": {
+   "source": "8fd0d554e4c4a2f75661094736fae32dfd5b3130618d7cb448149e2157fcc8cd",
+   "lite": "29d8a8e25a1d6d041575de0d4d81c4776ebed874fef4a34b4c80392c2e9187b5",
+   "bytes": 66086,
+   "liteBytes": 38378,
+   "psnr": 35.3,
+   "shownPsnr": 38.2
+  },
+  "sprites/vendedor-praia.walk16-se.c504e8064f4f.webp": {
+   "source": "c504e8064f4f5b6105b1b10bf72ad37ac69039306fcbdf751af5f7c9695ca28d",
+   "lite": "dc82db22d0c0f9872dc49403a676231b8f53db6a37a0747c19bead3d32eeebda",
+   "bytes": 65496,
+   "liteBytes": 37524,
+   "psnr": 35.6,
+   "shownPsnr": 39.2
+  },
+  "sprites/vendedor-praia.walk16-w.4b8747a23b11.webp": {
+   "source": "4b8747a23b1113032f1109a0a56a3ec23a99aea68c03b0e2ce0a30d8fa992f6b",
+   "lite": "0eb1284bb47f0a52dfc37868e355e839f6e4e4e196a8908a577bafd2608b913c",
+   "bytes": 63866,
+   "liteBytes": 37588,
+   "psnr": 35.9,
+   "shownPsnr": 39.3
   },
   "sprites/vendedor-praia.webp": {
    "source": "77d361eb4690a8b69fa55bb81aebb9c5d954017056471416f84b5ed32dcaab1b",
@@ -31124,6 +31748,46 @@
    "liteBytes": 15818,
    "psnr": 40.2,
    "shownPsnr": 43.6
+  },
+  "sprites/viciado-em-bet.pull16-n.a0eff8521f64.webp": {
+   "source": "a0eff8521f64004a7992f2f68d270e50a929de9feab13bd4a9aa39c375883536",
+   "lite": "edea8c0813fdb81d805b4c4bf9129bec3d4c572fb8ab520eae6e8fcdc8157672",
+   "bytes": 45790,
+   "liteBytes": 27196,
+   "psnr": 39.2,
+   "shownPsnr": 41.9
+  },
+  "sprites/viciado-em-bet.pull16-nw.9041c5123af2.webp": {
+   "source": "9041c5123af2983fed95210279069277724706e219b775699b8ac2d79bcd4109",
+   "lite": "9e6efb4bbbf32d2f39db0f5fc631b9a4db9df802e10db4e7bbef6da8d8b7d47a",
+   "bytes": 45518,
+   "liteBytes": 27736,
+   "psnr": 39.9,
+   "shownPsnr": 42.8
+  },
+  "sprites/viciado-em-bet.pull16-s.b68d79ae5b82.webp": {
+   "source": "b68d79ae5b826c62285a00871073625617502c3b5647eefd010a9e6a10dc9181",
+   "lite": "48813c57d8a33060240ce187a40801c4cb8350dcc5c842c387f79bbf6d7c8485",
+   "bytes": 37846,
+   "liteBytes": 23096,
+   "psnr": 39.1,
+   "shownPsnr": 42.9
+  },
+  "sprites/viciado-em-bet.pull16-se.adaa239d667a.webp": {
+   "source": "adaa239d667aed2ad117f9331f7c59f79e7f109b330386485058217d69ad9025",
+   "lite": "4bb58fe0e7bca2886677dba93055e7f85e59796177e22918278987a392f38973",
+   "bytes": 41564,
+   "liteBytes": 25448,
+   "psnr": 39.8,
+   "shownPsnr": 43
+  },
+  "sprites/viciado-em-bet.pull16-w.743612307f91.webp": {
+   "source": "743612307f91bb34a03798281bb1141f8f83d7198cfb5dc7927b9c853aa8bdbe",
+   "lite": "6537900a4f667d85362850ea7bf2890d880da92d28861b93c5b260c14221432e",
+   "bytes": 47508,
+   "liteBytes": 28682,
+   "psnr": 38.8,
+   "shownPsnr": 42.6
   },
   "sprites/viciado-em-bet.push16-n.e8e3c05b5850.webp": {
    "source": "e8e3c05b5850c39cb86effce41833a2b216d99675e3722b5d6589fe462770b3a",

@@ -1,0 +1,20 @@
+/* The mission line (hud/missao.ts, card inicio-no-uno-caixas-120): a big band for 4 s when the line changes, then a
+   small paper row; both rows of the announcement slot right under the clock. "Volte ao Uno." in Laranja Cone. */
+.rh-missao-grande{box-sizing:border-box;
+  width:max-content;max-width:min(100%,980px);padding:8px 20px;text-align:center;text-wrap:balance;
+  font:400 var(--t-28)/1.1 var(--f-cartaz);color:var(--c-breu);background:var(--c-papel);
+  border:4px solid var(--c-breu);border-radius:var(--r-etiqueta);box-shadow:var(--s-1);pointer-events:none;
+  animation:rh-missao-entra .3s ease-out both}
+.rh-missao-grande[hidden],.rh-missao[hidden]{display:none}
+.rh-missao{box-sizing:border-box;width:max-content;max-width:min(100%,420px);padding:4px 12px;text-align:center;text-wrap:balance;
+  font:400 var(--t-16)/1.15 var(--f-botao);color:var(--c-breu);background:var(--c-papel);
+  border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:var(--s-1);pointer-events:none}
+.rh-missao-urgente{background:var(--c-cone)}
+.rh-missao-grande.rh-missao-urgente{animation:rh-missao-entra .3s ease-out both,rh-missao-pulso .5s ease-in-out .3s 2 alternate}
+@keyframes rh-missao-entra{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes rh-missao-pulso{from{transform:scale(1)}to{transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.rh-missao-grande,.rh-missao-grande.rh-missao-urgente{animation:none}}
+.rh-ended .rh-missao,.rh-ended .rh-missao-grande{display:none}
+/* The phone: smaller, so the hero and the thumbs keep their room. */
+.rh[data-hud=fone] .rh-missao-grande{padding:5px 12px;font-size:var(--t-16);border-width:3px}
+.rh[data-hud=fone] .rh-missao{max-width:min(100%,300px);padding:3px 8px;font-size:var(--t-13)}

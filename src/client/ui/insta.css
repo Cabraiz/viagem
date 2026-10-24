@@ -39,13 +39,29 @@
   .estadio .insta-menu { width: calc(var(--u) * 56); height: calc(var(--u) * 56); min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
   .insta-menu svg { width: calc(var(--u) * 54); height: calc(var(--u) * 54); }
 
-  /* Stories (151..397): rings of 214 every 234 from x 14 (centres 131, 365, 599), the name 11 under the ring. */
-  .insta-stories { display: grid; grid-template-columns: repeat(3, calc(var(--u) * 234)); justify-content: center; margin-top: calc(var(--u) * 16); }
-  .estadio .insta-story {
-    display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 9); width: 100%; min-height: 0; padding: 0;
-    border: 0; background: none; box-shadow: none; color: var(--insta-texto); cursor: pointer;
+  /* Stories (151..397) as one endless row (ui/insta-aneis.ts, BUG-20261024-ORQ-aneis-herois-carrossel-infinito): from x 4,
+     3 cells and half of the 4th fill the 730 (--passo = 730 / ANEIS_VISIVEIS), so at rest the edge cuts a face in half;
+     the ring is its cell less 20, the name 11 under it, the band as tall as the reference's (246). With no more rings
+     than fit, they stand still, centred. The chosen one is underlined as the active tab (.insta-aba.ativa). */
+  .insta-stories {
+    --passo: calc(var(--u) * 730 / 3.5);
+    display: flex; align-items: center; height: calc(var(--u) * 246); margin-top: calc(var(--u) * 16); padding-left: calc(var(--u) * 4);
+    overflow: hidden; overflow: clip; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   }
+  .insta-stories:not([data-loop]) { justify-content: center; padding-left: 0; }
+  .insta-aneis-trilho { display: flex; flex: none; }
+  .insta-stories[data-loop] .insta-aneis-trilho { will-change: transform; }
+  .estadio .insta-story {
+    display: flex; flex: none; flex-direction: column; align-items: center; gap: calc(var(--u) * 9); width: var(--passo); min-height: 0; padding: 0;
+    border: 0; background: none; box-shadow: none; color: var(--insta-texto); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .insta-story .insta-anel { width: calc(var(--passo) - var(--u) * 20); height: calc(var(--passo) - var(--u) * 20); }
   .insta-story:active .insta-anel { transform: scale(.96); }
+  .insta-stories.arrastando .insta-anel { transform: none; }
+  .insta-story[aria-current="true"] .insta-story-nome {
+    text-decoration: underline; text-decoration-color: var(--insta-roxo); text-decoration-thickness: max(2px, calc(var(--u) * 6));
+    text-underline-offset: calc(var(--u) * 8);
+  }
   /* The gradient ring, a sliver of the page's colour, then the face: 9 + 3 of 214 (the profile: 9 + 4 of 320). */
   .insta-anel {
     position: relative; display: block; flex: none; width: calc(var(--u) * 214); height: calc(var(--u) * 214); padding: calc(var(--u) * 9);
@@ -211,13 +227,59 @@
 .insta-sv-story { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .35s ease; }
 .insta-sv-story.ativo { opacity: 1; z-index: 1; }
 .insta-sv-foto { display: block; width: 100%; height: 100%; object-fit: cover; }
-.insta-sv-legenda {
-  position: absolute; left: 50%; bottom: 20%; max-width: 82%; translate: -50% 0; rotate: -2deg; padding: .35em .6em; border-radius: var(--r-ficha);
-  background: color-mix(in srgb, var(--insta-sv-fundo) 62%, transparent); font: 800 clamp(15px, calc(var(--sv-h) * .03), 24px)/1.25 var(--f-sistema);
-  text-align: center; text-wrap: balance;
+/* What is written over each story (BUG-20261024-ORQ-stories-texto-estilo-instagram, the user 24/10: "copiar ... fonte,
+   cor, jeito, opções"), as Instagram's (viagem-board/evidence/<ID>/ref-*.jpg): each layer centred on its x,y (ui/insta.ts
+   INSTA_STORIES), turned --giro, its letter a share of the stage's height (same look on the phone and the PC), hidden until
+   its letters arrive (ui/insta-stories.ts .letras) so a fallback font never flashes. */
+.insta-sv-camadas { position: absolute; inset: 0; margin: 0; pointer-events: none; }
+.insta-sv:not(.letras) .insta-sv-camadas { visibility: hidden; }
+.insta-st {
+  position: absolute; margin: 0; translate: -50% -50%; rotate: var(--giro, 0deg); white-space: nowrap; text-align: center;
+  font-size: clamp(10px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
 }
+/* Texts: the 4 letters, and the 3 ways of the "A" button (a band per line, bare with a shadow, one box). */
+.insta-st-texto[data-alinhar="esquerda"] { text-align: left; }
+.insta-st-texto[data-fonte="classica"] { font-family: var(--f-insta-classica); font-weight: 800; }
+.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(10px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
+.insta-st-texto[data-fonte="forte"] { font-family: var(--f-insta-forte); font-weight: 400; line-height: 1.02; }
+.insta-st-texto[data-fonte="maquina"] { font-family: var(--f-insta-maquina); font-weight: 700; }
+.insta-st-texto[data-jeito="faixa"] { line-height: 1.45; }
+.insta-st-texto[data-jeito="faixa"] > span {
+  padding: .14em .42em; border-radius: var(--r-faixa); background: var(--st-fundo); -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.insta-st-texto[data-jeito="sombra"] { text-shadow: var(--insta-st-sombra-texto); }
+.insta-st-texto[data-jeito="caixa"] { padding: .5em .7em; background: var(--st-fundo, var(--insta-st-branco)); }
+/* The poll (the LEGO one): the question in a dark box over a white card with the two answers, A and B. */
+.insta-st-enquete {
+  width: 15em; white-space: normal; font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica);
+  color: var(--insta-st-preto); box-shadow: var(--insta-st-sombra-sticker); border-radius: var(--r-janela); overflow: hidden;
+}
+.insta-st-enquete p { margin: 0; padding: 1em 1.2em; background: var(--insta-st-enquete); color: var(--insta-st-branco); font-weight: 800; font-size: 1.1em; text-wrap: balance; }
+.insta-st-enquete ol { display: grid; gap: .6em; margin: 0; padding: .9em; list-style: none; background: var(--insta-st-branco); }
+.insta-st-enquete li { display: flex; align-items: center; gap: .6em; padding: .55em .7em; border: 1px solid var(--insta-st-linha); border-radius: var(--r-pilula); text-align: left; }
+.insta-st-enquete i { display: grid; place-items: center; flex: none; width: 1.7em; height: 1.7em; border: 1.5px solid var(--insta-st-preto); border-radius: var(--r-circulo); font-style: normal; font-weight: 800; font-size: .8em; }
+/* The question box (the goodlifefitness one): the hero's face on top of a white card, the question, "Digite algo...". */
+.insta-st-pergunta {
+  width: 13em; padding: 1.5em 1em 1em; white-space: normal; border-radius: var(--r-janela); background: var(--insta-st-branco);
+  box-shadow: var(--insta-st-sombra-sticker); font: 400 clamp(10px, calc(var(--sv-h) * .019), 40px)/1.25 var(--f-insta-classica); color: var(--insta-st-preto);
+}
+.insta-st-avatar { position: absolute; left: 50%; top: 0; width: 2.4em; height: 2.4em; translate: -50% -50%; border: 2px solid var(--insta-st-branco); border-radius: var(--r-circulo); object-fit: cover; }
+.insta-st-pergunta p { margin: 0 0 .7em; font-weight: 800; font-size: 1.05em; text-wrap: balance; }
+.insta-st-pergunta span { display: block; padding: .6em; border-radius: var(--r-balao); background: var(--insta-st-campo); color: var(--insta-st-cinza); font-size: .85em; }
+/* The hashtag sticker (#BOZZUTORAD): white, its tag in the strong letter and a colour. */
+.insta-st-hashtag {
+  padding: .12em .4em .02em; border-radius: var(--r-ficha); background: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
+  font: 400 clamp(10px, calc(var(--sv-h) * .036), 96px)/1.1 var(--f-insta-forte); color: var(--st-cor);
+}
+/* The likes bubble (the red ♥ 1 of the reference): a heart and a number on red, its tail pointing down. */
+.insta-st-curtidas {
+  display: flex; align-items: center; gap: .25em; padding: .35em .55em; border-radius: var(--r-balao); background: var(--insta-st-vermelho);
+  font: 800 clamp(10px, calc(var(--sv-h) * .024), 60px)/1 var(--f-insta-classica); color: var(--insta-st-branco); box-shadow: var(--insta-st-sombra-sticker);
+}
+.insta-st-curtidas svg { width: 1.1em; height: 1.1em; fill: currentColor; stroke: none; }
+.insta-st-curtidas::after { content: ''; position: absolute; left: 50%; bottom: -.3em; width: .7em; height: .7em; translate: -50% 0; rotate: 45deg; background: inherit; }
 .insta-sv-topo { position: absolute; inset: 0 0 auto; z-index: 2; padding: 10px 10px 28px; background: linear-gradient(color-mix(in srgb, var(--insta-sv-fundo) 45%, transparent), transparent); transition: opacity .2s; }
-.insta-sv.pausado .insta-sv-topo, .insta-sv.pausado .insta-sv-legenda { opacity: 0; transition: opacity .2s .25s; }
+.insta-sv.pausado .insta-sv-topo { opacity: 0; transition: opacity .2s .25s; }
 .insta-sv-barras { display: flex; gap: 4px; }
 .insta-sv-barra { flex: 1; height: 2.5px; overflow: hidden; border-radius: var(--r-etiqueta); background: color-mix(in srgb, var(--insta-sv-texto) 38%, transparent); }
 .insta-sv-barra b { display: block; height: 100%; background: var(--insta-sv-texto); transform: scaleX(0); transform-origin: left; }

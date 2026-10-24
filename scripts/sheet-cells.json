@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4097,
+  "sheets": 4207,
   "failing": 0,
   "frames": 0
  },
@@ -16698,6 +16698,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/clt-cansado.pull16-n.f488e9df4471.webp": {
+   "sha": "038f158f8b91f496172dcb4efc765c3abe2742948066312f163f0d616ba5c482",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.pull16-nw.07a845ca600b.webp": {
+   "sha": "deabf3ee8e91cf2bdd1043cd7c4efba9cb27057c9a85f715b104e90a7c5b6c3f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.pull16-s.5cb6ec50ccff.webp": {
+   "sha": "e7920d88777f369ea2f5b6e7cd7ab51807a491871c099a0babdf585e9e1d500e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.pull16-se.11527e300cae.webp": {
+   "sha": "203e31cee83642c6329ad794a7ade6c677a835e822d8ebf6cde146573b3f989f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.pull16-w.1f93cfb11815.webp": {
+   "sha": "e523624c3eccee5efec16d5a1ac3c4b8e6ee1cfa439b2c083972a6fd1f6048ee",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/clt-cansado.push16-n.c1273e2bf5da.webp": {
    "sha": "11b3d399e964c36364a1d7464ea34f057c1cc5f6ee40ae3033db1dbd92368b85",
    "ilhas": 0,
@@ -17253,6 +17278,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.pull16-n.8bb0b9447751.webp": {
+   "sha": "86f98c82efe72444dd9771e1955359290a12c75cdf9d199981c1257b1aa5bf7f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.pull16-nw.44478e25f577.webp": {
+   "sha": "e63d8399b423adc69aa40a90c5d278f039e9de1daca82b5064e2821984889b86",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.pull16-s.b002c776eacf.webp": {
+   "sha": "44020fb8e8a8a01f42c21922b3450097dfcabdd0373a66fcf115fa6711f98835",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.pull16-se.419458bfb158.webp": {
+   "sha": "8984a5b774b6f5ffd956861ecf76f223c6a8100363d76f04effc3035a5d0d23b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.pull16-w.1b493386698b.webp": {
+   "sha": "58e2298c4a3b4632fdd0ba4f8ccae5d932fbd674eb6f8b6828644fece187aab6",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
    "sha": "882656ac81c1be9074ceeef1bc8e6475b11dc3bbc2476692790a71f0bf27864b",
    "ilhas": 0,
@@ -17465,6 +17515,31 @@
   },
   "lite/sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "629b30a9d3ea56c363fe4aa2c50fc16f2aeea043777c828dcb35fa80db8c6d44",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.pull16-n.e614246a7aca.webp": {
+   "sha": "86c32185dc8105e133198f25afd5d740084f51d5af20e43ced39bbe72d662aea",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.pull16-nw.d76399bb4812.webp": {
+   "sha": "667f97ee03469ee1d32ea977c478765af1f4cd3997345d021524a6599d35b28d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.pull16-s.4b943fbf0a83.webp": {
+   "sha": "96a4a712250582fdcc23164ea03e0997b2537bc33a639275f47fc997bb7bdc07",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.pull16-se.0de4fbde928d.webp": {
+   "sha": "14f7adb8af2169cdb915738b5fec3ed2f5df60b6be9336345d4caa830d6739ec",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.pull16-w.5d910382cd71.webp": {
+   "sha": "8c41743ba34ea3228571ecbb08a04d04055f933633902bfe6e7705a3ead95e8a",
    "ilhas": 0,
    "fails": []
   },
@@ -18128,6 +18203,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/vendedor-praia.attack16-n.5c5d846f41ee.webp": {
+   "sha": "d693e8f534a83c74107445b6a03287c111b5fdb87e77bd36482eecd086b4dbe3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.attack16-nw.aaae8fdc9f55.webp": {
+   "sha": "f8d191fa57565b360d5540b004ae999b15db9964d366210410e84988a89743d0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.attack16-s.e911192e75b6.webp": {
+   "sha": "c288216787a463662cb9f7b534bad906cb2d073f898d3fd19c18917f88afbcd9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.attack16-se.5486dbbd1c91.webp": {
+   "sha": "5c4f1ad6403a04088a29dc8635e5eb633939341997a2e50732188fc50f6a2b64",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
+   "sha": "bb95e44cf18aad5fc1259742bec45ee2f162f46e55badbc24fc4379b4a77c9fe",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/vendedor-praia.dir4.webp": {
    "sha": "d852f573fa68a8cd4c83d045170f2b5f37ccc89cdbf601b2c30abdb44844a615",
    "ilhas": 0,
@@ -18135,6 +18235,156 @@
   },
   "lite/sprites/vendedor-praia.dir4c.webp": {
    "sha": "8454a78368b713b6aca1cf921d409a45ecd7367ef93ed7969d9e1bfcd9e4575b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.hurt16-n.3eb185f0eb0b.webp": {
+   "sha": "f096c58df5d5b20316f562cb14bcf0c46db73cc43c85724f869b158296d729a9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.hurt16-nw.85f29169fbc3.webp": {
+   "sha": "d99deb694d64bf44967f4fd6ceeddaaa52507491c8641e69cb31fcda8d18c887",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.hurt16-s.7d366adfb2c8.webp": {
+   "sha": "cd498b6ce13478391a9715dff1938ec6ec090160f8e6b257a5827996c811fbc7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.hurt16-se.b672829ff17e.webp": {
+   "sha": "36fe6ebab242799434822198503a7265f24bdcd6534af88082f9728c102aa109",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.hurt16-w.bd6d9c87398a.webp": {
+   "sha": "5d761da79faabeb86eb28c15af1251184c7522761e7725b97982b66bdfaef868",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.idle16-n.a01271ec6a7b.webp": {
+   "sha": "194d9bcce7435d205398e8d7bd0ed7a8d357798847ed31678ae93b6cf22f56f3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.idle16-nw.3df2de804cab.webp": {
+   "sha": "ca2eee8522af8a83ba7cfc13fe9b62f119a14468a6e1ae076ec4da4ff6642797",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.idle16-s.66eb7104dfb0.webp": {
+   "sha": "97afe47839062b8693991cf174e7e6ea204a006595d29e8d61356d568ed603dc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.idle16-se.92b9c34f995a.webp": {
+   "sha": "96bd41c3bebb255861daa6d76aa09bd8da24d0a95ba3a25cb3781227c3745ba0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.idle16-w.ae72679d0dbb.webp": {
+   "sha": "f18b57dd961419462df6608e108c87b5739ce7e564482d9aa47ee0bfa0923b95",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.pull16-n.fe3908b26ca4.webp": {
+   "sha": "e5fbd1173cf8724ea50dd8e2304e9ba375dbfae2d952f3fa91422ada1e604eab",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.pull16-nw.dd2a8ef3f149.webp": {
+   "sha": "6d640b42e2a8b39d4119cd22a32f46c3b678e5cfcf8b5d177473813ea82a5127",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
+   "sha": "d14e37bd48776d4428834e0b6429b9a2f86fd5592b9e2d7b55be21f8f6ea8d02",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.pull16-se.df2823bedab2.webp": {
+   "sha": "4a7b677942e13614644d8a15ef275e98e13da39912f90156a070a22caf8144af",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.pull16-w.bf6419827fcf.webp": {
+   "sha": "aa5ef26285e157c258472d46e10f9fc17a536362057284dabe424c84deb4ba55",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
+   "sha": "3c9de4a3317ef944367cb8459c1d58b3e31a18021cad0da3fee6f3bdf0fe4db3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.push16-nw.359c7f8056c5.webp": {
+   "sha": "fd84188221141e85f4db74bcd595e2f580314404edf9e9984d02db96bbb8f68a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.push16-s.a8e9ee5df6d5.webp": {
+   "sha": "bcb56a85cc90ffdff01010286d9a314ae6d6e209544deb517c27eb5cc893e6d7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.push16-se.7486fe0111e9.webp": {
+   "sha": "8042d3035331943cf12ad5756db32f3895f55630d55461ee6d8560356464e585",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.push16-w.b711c534988a.webp": {
+   "sha": "c2a6e1269bfc92486f65104638855139b7571eedfae122207c0f3205cfea3d05",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.run16-n.55040537f67f.webp": {
+   "sha": "5018369f2ab63fc5f5af8287938363224b61969b85284a03667d6c4aa372f5e2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.run16-nw.144d1d773de7.webp": {
+   "sha": "35a230bfc9bd071c5b6f81b977e354541280ef5fb3d3d1c6bde51383253e2ec6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.run16-s.fe31a59ed3a0.webp": {
+   "sha": "c3c483d61108524892ec8ad037f1ed7cfbd6875e3100700854943809e113d5ed",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.run16-se.8a174da8df82.webp": {
+   "sha": "3b617a6ec19cf3435bcc68f641ffe19434c8fe8dd3791479b885c84932c17165",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.run16-w.90c753af84c2.webp": {
+   "sha": "9d6797e9fdb9ed1d74d435c90c568a1462e220d98e409e548392be311bf3eb9e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
+   "sha": "ad244caa80e94b0b6e524a677a0b8d51cc166af8d00e7ab7742e1eb6beaacacd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.walk16-nw.0d7cfbe0296d.webp": {
+   "sha": "f1b73b609393a20e4b683888e0abd2d93a6a9438344880d1cfab5ec15e5dda52",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.walk16-s.8fd0d554e4c4.webp": {
+   "sha": "29d8a8e25a1d6d041575de0d4d81c4776ebed874fef4a34b4c80392c2e9187b5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.walk16-se.c504e8064f4f.webp": {
+   "sha": "dc82db22d0c0f9872dc49403a676231b8f53db6a37a0747c19bead3d32eeebda",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.walk16-w.4b8747a23b11.webp": {
+   "sha": "0eb1284bb47f0a52dfc37868e355e839f6e4e4e196a8908a577bafd2608b913c",
    "ilhas": 0,
    "fails": []
   },
@@ -18265,6 +18515,31 @@
   },
   "lite/sprites/viciado-em-bet.idle8.f8c45d75d0f1.webp": {
    "sha": "bf574d1ad862d91c0ad9c8017bc5df5a1cb84d5c09fdbc462407d50032d18ad4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.pull16-n.a0eff8521f64.webp": {
+   "sha": "edea8c0813fdb81d805b4c4bf9129bec3d4c572fb8ab520eae6e8fcdc8157672",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.pull16-nw.9041c5123af2.webp": {
+   "sha": "9e6efb4bbbf32d2f39db0f5fc631b9a4db9df802e10db4e7bbef6da8d8b7d47a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.pull16-s.b68d79ae5b82.webp": {
+   "sha": "48813c57d8a33060240ce187a40801c4cb8350dcc5c842c387f79bbf6d7c8485",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.pull16-se.adaa239d667a.webp": {
+   "sha": "4bb58fe0e7bca2886677dba93055e7f85e59796177e22918278987a392f38973",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.pull16-w.743612307f91.webp": {
+   "sha": "6537900a4f667d85362850ea7bf2890d880da92d28861b93c5b260c14221432e",
    "ilhas": 0,
    "fails": []
   },
@@ -18610,6 +18885,31 @@
   },
   "sprites/clt-cansado.idle8.15cf38519b49.webp": {
    "sha": "bbd5e881619b2999c2f8a1051ebaebce40d957ef6af80c61d817eacb93ec0046",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.pull16-n.f488e9df4471.webp": {
+   "sha": "f488e9df447116e2f9354683d035779987559774f87dabfc58ec5a1a6d4434af",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.pull16-nw.07a845ca600b.webp": {
+   "sha": "07a845ca600becd987dcb308b2363e3e841931bd27c3bfd19737dd5495512735",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.pull16-s.5cb6ec50ccff.webp": {
+   "sha": "5cb6ec50ccff78fc0d05f7b5ad926c11c8da96b5553f8ecf278e5d45b5c469b2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.pull16-se.11527e300cae.webp": {
+   "sha": "11527e300caea4bfcaeffdb174a78ed5627271851439a9b173785c55be7c28b6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.pull16-w.1f93cfb11815.webp": {
+   "sha": "1f93cfb11815894b5612355f85f2b07d3526d04a5b1edaad662d59243d9c62dc",
    "ilhas": 0,
    "fails": []
   },
@@ -19193,6 +19493,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gato-nada-pra-comer.pull16-n.8bb0b9447751.webp": {
+   "sha": "8bb0b94477510e938e6c679d63f5af23b10b4d48465ef0f498b222bdefb5de21",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.pull16-nw.44478e25f577.webp": {
+   "sha": "44478e25f577f0dce00fb67c900593e56c8792eec1966a91c9d88ca43f8a8c5e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.pull16-s.b002c776eacf.webp": {
+   "sha": "b002c776eacfddae20bcff20a13e3187020f6e31655d1fc4305cc22918b335bb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.pull16-se.419458bfb158.webp": {
+   "sha": "419458bfb158456455b842dd6627b163d522354b3a79e994627435312603cc3f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.pull16-w.1b493386698b.webp": {
+   "sha": "1b493386698bf98658d9f0ae984df5d01563ed2f4f35d7dc451c50c2dd524045",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
    "sha": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
    "ilhas": 0,
@@ -19415,6 +19740,31 @@
   },
   "sprites/maromba.idle8.e728a4403de7.webp": {
    "sha": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.pull16-n.e614246a7aca.webp": {
+   "sha": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.pull16-nw.d76399bb4812.webp": {
+   "sha": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.pull16-s.4b943fbf0a83.webp": {
+   "sha": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.pull16-se.0de4fbde928d.webp": {
+   "sha": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.pull16-w.5d910382cd71.webp": {
+   "sha": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d",
    "ilhas": 0,
    "fails": []
   },
@@ -20138,6 +20488,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/vendedor-praia.attack16-n.5c5d846f41ee.webp": {
+   "sha": "5c5d846f41eec79f71ee0eec6252c87fc902681506206e75f90927475a16ca73",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.attack16-nw.aaae8fdc9f55.webp": {
+   "sha": "aaae8fdc9f55dcaae2ef1cefc87d8685d66d93877a6394a8efd03407e724caa6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.attack16-s.e911192e75b6.webp": {
+   "sha": "e911192e75b668157b3bce0b337543d089f4db63210468cbe9cabd9ff2a4b3d8",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.attack16-se.5486dbbd1c91.webp": {
+   "sha": "5486dbbd1c91001e9ab6d90ea148ee807e5f860ea9aa0111cab6ebd305d25ff9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
+   "sha": "2c7a98219d03062f593a24d88f0cde2aa81cbd853a00bdb6d5af9852d4235301",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/vendedor-praia.dir4.webp": {
    "sha": "cf5d6db12332093494f98eefc12f955c3ae7554aedbb2bba2398ea0dc3115926",
    "ilhas": 0,
@@ -20150,6 +20525,156 @@
   },
   "sprites/vendedor-praia.downed.webp": {
    "sha": "39c0a4344d15c25aef17c4d8b1c81c0c20a2886500381b812b00d0c73503054e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.hurt16-n.3eb185f0eb0b.webp": {
+   "sha": "3eb185f0eb0baa21574ba611ab9b0810665778de3930a2aa645f2540159547be",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.hurt16-nw.85f29169fbc3.webp": {
+   "sha": "85f29169fbc394275bcc61df3d6589605923535997f57866b3642e20d2b906b3",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.hurt16-s.7d366adfb2c8.webp": {
+   "sha": "7d366adfb2c8452fa2753d845e87133c160d97cd0d6320d1c480d56e80bf9ead",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.hurt16-se.b672829ff17e.webp": {
+   "sha": "b672829ff17e3b9daa89ddbeb3f35c4a8fdb85290e1f6bffb0ad498e119be74a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.hurt16-w.bd6d9c87398a.webp": {
+   "sha": "bd6d9c87398a1c3ce7a3662eb61531a36101b9deea047a723e70c026ee2107bd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.idle16-n.a01271ec6a7b.webp": {
+   "sha": "a01271ec6a7bd7d7eaa0f4053ed75e2f7bd9e6a64e7de3fc702eacce67bbae8c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.idle16-nw.3df2de804cab.webp": {
+   "sha": "3df2de804cab3cc095087c55933e6dffa870b6d7111fa51b3f1bd75f2255dd6c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.idle16-s.66eb7104dfb0.webp": {
+   "sha": "66eb7104dfb0ff110fb344cf79bd241870d55cc122aae51ca55250f618a8889c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.idle16-se.92b9c34f995a.webp": {
+   "sha": "92b9c34f995ab15bacd91c63ffab9a8a51a4877f3d613a0c807e6eeb048595b6",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.idle16-w.ae72679d0dbb.webp": {
+   "sha": "ae72679d0dbbecfe7d78ca9c6764fe41493fc43eb1641cb338f6525a9bd0edff",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.pull16-n.fe3908b26ca4.webp": {
+   "sha": "fe3908b26ca4b0aa6addd5f2a2b78637a0e861ee27c07a615096894f2d95b0ff",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.pull16-nw.dd2a8ef3f149.webp": {
+   "sha": "dd2a8ef3f14905e4bed15967eac19850d99f11380ca8d65a4b9b00bf3df171b2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
+   "sha": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.pull16-se.df2823bedab2.webp": {
+   "sha": "df2823bedab2c0afa72c2f28320243b74528abff62b3ca94d80c844a0eda4366",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.pull16-w.bf6419827fcf.webp": {
+   "sha": "bf6419827fcf77c4f1d13b86a96fe66a677e9be2a1bc0e6965fbc6c11e4e040c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
+   "sha": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.push16-nw.359c7f8056c5.webp": {
+   "sha": "359c7f8056c53d37bc6362707b83e44c5d3b9f3c0bfd8896a2443b9617fe024a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.push16-s.a8e9ee5df6d5.webp": {
+   "sha": "a8e9ee5df6d5a1724225bc58ca8f6bb014b5c61a7e7640c5713453092da976ff",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.push16-se.7486fe0111e9.webp": {
+   "sha": "7486fe0111e96e4ee8977c0a09426fd36de2319424950dd277fbd2c76097806b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.push16-w.b711c534988a.webp": {
+   "sha": "b711c534988a4a572bff12fc563e3cb3863f258fc749e9a7d53da05d26cd346c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.run16-n.55040537f67f.webp": {
+   "sha": "55040537f67f8b9679599fcb7022ae01cfcb2b64efe998cd7d85acb3351e71d1",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.run16-nw.144d1d773de7.webp": {
+   "sha": "144d1d773de7aac65a1f43e858bb1b2005750870338d7c5722b341a88816a42c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.run16-s.fe31a59ed3a0.webp": {
+   "sha": "fe31a59ed3a04e406e091e134ef331bd32b1ded57277decdaee7099565d15045",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.run16-se.8a174da8df82.webp": {
+   "sha": "8a174da8df82e7d69b5a63974211bda5c9cf8dfb579c335afc6cb2027163de53",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.run16-w.90c753af84c2.webp": {
+   "sha": "90c753af84c2dd7a92585fe5b615683f7a56e1eb254441d727036b49624e08ff",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.walk16-n.79c664a88da3.webp": {
+   "sha": "79c664a88da38e3f02734148cce313fdbc7cf4a32aed716d0bc640f96122037a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.walk16-nw.0d7cfbe0296d.webp": {
+   "sha": "0d7cfbe0296d7a9856e96c68b83c94785045731e0f919c03dc9a3db3355a628e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.walk16-s.8fd0d554e4c4.webp": {
+   "sha": "8fd0d554e4c4a2f75661094736fae32dfd5b3130618d7cb448149e2157fcc8cd",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.walk16-se.c504e8064f4f.webp": {
+   "sha": "c504e8064f4f5b6105b1b10bf72ad37ac69039306fcbdf751af5f7c9695ca28d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.walk16-w.4b8747a23b11.webp": {
+   "sha": "4b8747a23b1113032f1109a0a56a3ec23a99aea68c03b0e2ce0a30d8fa992f6b",
    "ilhas": 0,
    "fails": []
   },
@@ -20285,6 +20810,31 @@
   },
   "sprites/viciado-em-bet.idle8.f8c45d75d0f1.webp": {
    "sha": "2f40d164bcf21c691dcbff20911646a4c6026a7d4d5e10d7c40763ffcae97a8f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.pull16-n.a0eff8521f64.webp": {
+   "sha": "a0eff8521f64004a7992f2f68d270e50a929de9feab13bd4a9aa39c375883536",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.pull16-nw.9041c5123af2.webp": {
+   "sha": "9041c5123af2983fed95210279069277724706e219b775699b8ac2d79bcd4109",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.pull16-s.b68d79ae5b82.webp": {
+   "sha": "b68d79ae5b826c62285a00871073625617502c3b5647eefd010a9e6a10dc9181",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.pull16-se.adaa239d667a.webp": {
+   "sha": "adaa239d667aed2ad117f9331f7c59f79e7f109b330386485058217d69ad9025",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.pull16-w.743612307f91.webp": {
+   "sha": "743612307f91bb34a03798281bb1141f8f83d7198cfb5dc7927b9c853aa8bdbe",
    "ilhas": 0,
    "fails": []
   },

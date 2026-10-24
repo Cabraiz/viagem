@@ -30,7 +30,7 @@
  * Everything in ChaveiroState is JSON-safe (systems.state(), checkpoints, stateHash); the route is rebuilt.
  */
 import type {FlowGrid,Point} from '../../maps/index.ts';
-import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
+import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,carGap,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
   type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type PullResult,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
@@ -48,6 +48,14 @@ export const MOTO_RIDE_SECONDS=420;
  * Executor-6: 25 + 3/hit, so a clean run's bill is paid from the kills and a battered car still leaves a debt to joke about).
  */
 export const CAR_LIMIT=120,BUDGET_BASE=25,BUDGET_PER_HIT=3;
+/**
+ * The Uno's hit limit grows with the room like a group's reach (rules playerScale.group: 1p 120, 3p 170, 6p 224), set at
+ * the first step from the players then in the run (inimigos-querem-o-uno: most of a wave now goes for the car; the step 5
+ * bench: by .count, 420 at 6p, the car never fell to a room that left it). CAR_REPAIR_SHARE: share of
+ * the limit given back by repair() (the 2-minute explore interval between waves, NEW-20261023-ORQ-inicio-no-uno-caixas-120).
+ */
+export const CAR_REPAIR_SHARE=.25;
+export const carLimitFor=(players:number)=>Math.round(CAR_LIMIT*playerScale(players).group);
 export const CAR_HIT_UNITS=Object.freeze({normal:1,elite:3,boss:2});
 export const ALARM_PER_HIT_SECONDS=1.5,ALARM_MAX_SECONDS=8;
 /** Fractions of the hit limit where a part falls (CAR_PARTS in order). */
@@ -74,6 +82,7 @@ export const CIDA_HANDLED_LIMIT=64;
 export const CIDA_STOCK=4,CIDA_REACH=3,SALE_GAP_SECONDS=20,SALE_RADIUS=3;
 /** Moved to rules/stonewards.ts (D-048: the Grana is the team's in every world); kept here for the chaveiro's readers. */
 export {GRANA_PER_KILL} from '../../rules/index.ts';
+import {playerScale} from '../../rules/index.ts';
 export const BOSS_ETA_SECONDS=60;
 /** The boss appears on the route this fraction of its length back from the car and marches to it. */
 export const BOSS_SPAWN_BACK=.3;
@@ -90,8 +99,12 @@ type Task='anda'|'lombada'|'entrega'|'morta'|'abrindo';
 export interface ChaveiroStop {kind:ObjectiveStopKind;s:number}
 /** JSON-safe objective state (RunSystemsState.chaveiro). */
 export interface ChaveiroState {
-  /** movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step. */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number};
+  /**
+   * movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step; heading,
+   * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
+   * pulling, and who a hit knocked off it (no gesture until then).
+   */
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -169,9 +182,11 @@ export interface ChaveiroSystem {
   /** Runs once a tick (assemble.ts: right after the 'structures' system). */
   step(ctx:SimContext):void;
   /** Siege targets: the car until the end, the moto while it rides (with MOTO_LURE_REACH). */
-  targets():{id:string;x:number;y:number;radius:number;reach?:number}[];
+  targets():{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[];
   /** An enemy's (or the boss's) contact with the car. */
   hitCar(ctx:SimContext,enemy:EnemyState):void;
+  /** Gives back `share` of the car's limit in hits (not below 0); the parts that fell stay down. */
+  repair(ctx:SimContext,share?:number):void;
   /** A team purchase from Dona Cida (room command). */
   buy(ctx:SimContext,playerId:string,item:string,requestId?:string):CidaBuyResult;
   /** D-052 {t:'puxar'} past the room's checks: hook (`on`) or drop the car's rope. A resent `requestId` is 'duplicate'. */
@@ -433,7 +448,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     step(ctx){
       if(state.ended)return;
       countCrew(ctx);
-      state.startTick??=ctx.tick;
+      if(state.startTick===null){
+        state.startTick=ctx.tick;
+        // The limit follows the room the run starts with (a checkpoint keeps it).
+        if(car.hits===0){let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;car.limit=carLimitFor(n);}
+      }
       stepCar(ctx,car,carWorld,moto.task==='abrindo');
       replan(ctx);
       const before=moto.mode;
@@ -452,7 +471,8 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     },
     targets(){
       if(state.ended)return [];
-      const out:{id:string;x:number;y:number;radius:number;reach?:number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS}];
+      // Card uno-bloqueio-corpo: the critters hit the car from its box's edge (carGap), not the old disc's.
+      const out:{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS,gap:p=>carGap(car,p)}];
       if(riding()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
       return out;
     },
@@ -471,6 +491,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         car.parts|=1<<i;ctx.emit({type:'part',name:CAR_PARTS[i]});
       });
       if(car.hits>=car.limit)end(ctx,'defeat');
+    },
+    repair(ctx,share=CAR_REPAIR_SHARE){
+      if(state.ended||car.hits<=0)return;
+      car.hits=Math.max(0,car.hits-Math.round(share*car.limit));
+      ctx.emit({type:'structure',id:CAR_ID,hp:car.limit-car.hits,maxHp:car.limit});
     },
     buy(ctx,playerId,itemId,requestId){
       const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
@@ -523,7 +548,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
         etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.seated().reduce((n,p)=>n+walletOf(p),0),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
-        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{})},
+        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{}),...(car.heading?{heading:car.heading}:{})},
         ...(state.ended?{ended:state.ended}:{}),
       };
     },

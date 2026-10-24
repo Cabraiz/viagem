@@ -32,36 +32,6 @@
       },
       "sha256": "56242d81c9d6992489bcbff9a5a8be5cc6240d85616eea37f160bbf4498cdc32"
     },
-    "boleto-chuva": {
-      "kind": "frames",
-      "files": {
-        "sheet": {
-          "file": "boleto-chuva.webp",
-          "cell": [
-            64,
-            64
-          ],
-          "frames": 8,
-          "anchor": [
-            0.5,
-            0.85
-          ],
-          "fps": 8,
-          "pages": [
-            {
-              "file": "boleto-chuva.webp",
-              "columns": 8,
-              "rows": 1,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "91b5ea04273547a06bee5bfe693a233103572b6b329cf55d46cd3c43f55eaaa0"
-            }
-          ],
-          "sha256": "91b5ea04273547a06bee5bfe693a233103572b6b329cf55d46cd3c43f55eaaa0"
-        }
-      },
-      "sha256": "c21e0858e08f7d9407e87c4753b41043f4e32a5a40b6a16b6e9263ad22e579e6"
-    },
     "coxinha": {
       "kind": "frames",
       "files": {

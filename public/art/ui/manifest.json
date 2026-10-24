@@ -516,6 +516,31 @@
       },
       "sha256": "974b70e9e086d4f2f57621d7673d3b24b59af8bfbd8b97d43ef5c5063bad24ee"
     },
+    "bola-murcha-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "bola-murcha-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "bola-murcha-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5e96ee4689a327858f721e5d671a2a4fcbe0bff85834edd99d24300547686149"
+            }
+          ],
+          "sha256": "5e96ee4689a327858f721e5d671a2a4fcbe0bff85834edd99d24300547686149"
+        }
+      },
+      "sha256": "babbeb6e23d763cfb0c5d73c9cedef9b09270b7138e7310491fcbb3c83b045af"
+    },
     "boleto": {
       "kind": "icon",
       "files": {
@@ -685,6 +710,31 @@
         }
       },
       "sha256": "fb985c0077cafa1cef95711de216e4bbcd93215e16a77456f35782ebece44d96"
+    },
+    "buscape-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "buscape-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "buscape-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "91f0742940483fae134ea7e9af2042474a6f7e3c903c00eafdd80068f006cc02"
+            }
+          ],
+          "sha256": "91f0742940483fae134ea7e9af2042474a6f7e3c903c00eafdd80068f006cc02"
+        }
+      },
+      "sha256": "1c742610b68fe7301ed7461eae0b59ae1a0cd3bebb131d12dc810879b82374b1"
     },
     "bussola": {
       "kind": "icon",
@@ -965,6 +1015,31 @@
         }
       },
       "sha256": "3d72bcc52389e47fd01575743b6d324f4050167baaaa374d4afa3979c53e1f32"
+    },
+    "carro-de-som-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "carro-de-som-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "carro-de-som-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "f4cd70e74dc4efade22be4990c494aff18e426622d310be2b98be10a5ae5a0ce"
+            }
+          ],
+          "sha256": "f4cd70e74dc4efade22be4990c494aff18e426622d310be2b98be10a5ae5a0ce"
+        }
+      },
+      "sha256": "d27c304c2d127294484642099de94bcf5cd105dfe24518d3f84b90f615297a0d"
     },
     "cartao": {
       "kind": "icon",
@@ -1613,6 +1688,31 @@
       },
       "sha256": "4f0717bff732cd220f529498511883fef802457277f9441d23bd14ac20491f6e"
     },
+    "escopeta-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "escopeta-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "escopeta-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "645477da5048495f49c02ddea7370a56d916eb719edb942ee8a4202bf3b820bd"
+            }
+          ],
+          "sha256": "645477da5048495f49c02ddea7370a56d916eb719edb942ee8a4202bf3b820bd"
+        }
+      },
+      "sha256": "995cb4ed563fb718377731b5fcfa954c45048a1e4ddaba6a0c948a04a8f48f9d"
+    },
     "espeto": {
       "kind": "icon",
       "files": {
@@ -1638,6 +1738,31 @@
       },
       "sha256": "3cfbf3f120e0ca298a39542ae02260d0ba812a3e04caed9785a9eb7336b6760a"
     },
+    "espeto-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "espeto-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "espeto-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1b34d8f79379fa03e0681ca78a5de1179707c253421530b40e07021681e98269"
+            }
+          ],
+          "sha256": "1b34d8f79379fa03e0681ca78a5de1179707c253421530b40e07021681e98269"
+        }
+      },
+      "sha256": "8c20aa04421f210c652dbb7c02e446d48d901db47039a7e08e070fbf789c5b6f"
+    },
     "estilingue": {
       "kind": "icon",
       "files": {
@@ -1662,6 +1787,31 @@
         }
       },
       "sha256": "2b4890650e0f233403d1b1fdd6466a37b0a8a8170eab1014e153ee152d0196f6"
+    },
+    "estilingue-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "estilingue-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "estilingue-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "2829147dfd86ae5830e1971d92065925257cfadcba2129b1f68c8c8ab2bdda00"
+            }
+          ],
+          "sha256": "2829147dfd86ae5830e1971d92065925257cfadcba2129b1f68c8c8ab2bdda00"
+        }
+      },
+      "sha256": "636fd86fa3cfe3d2c0e0bf20d00b1652261d2b555e8e6b388ac6a3ce356810c8"
     },
     "faca": {
       "kind": "icon",
@@ -1767,6 +1917,31 @@
         }
       },
       "sha256": "18194f123986060e13594942e29818ea068442c5a5f17eab95c5b5aa81e488a7"
+    },
+    "figa-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "figa-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "figa-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5e8771d2f54420d44d7528fc7f4d64e738a3e3e74b71ebb889dbcfdf0033d9aa"
+            }
+          ],
+          "sha256": "5e8771d2f54420d44d7528fc7f4d64e738a3e3e74b71ebb889dbcfdf0033d9aa"
+        }
+      },
+      "sha256": "67ea0bc711b859ab7f56389a41530ecde4cdd79a4c1711de8a4d26333e620a31"
     },
     "fita": {
       "kind": "icon",
@@ -2429,6 +2604,31 @@
       },
       "sha256": "75a1ba2c22fb01331bd080d88f0576837160d090770eb9e843f9ad26d4420238"
     },
+    "macarico-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "macarico-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "macarico-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7014107eaa6109cb61b766fa78db6a28880b5c8e1d8113762397773ac7a559e7"
+            }
+          ],
+          "sha256": "7014107eaa6109cb61b766fa78db6a28880b5c8e1d8113762397773ac7a559e7"
+        }
+      },
+      "sha256": "ac1a116c595a1abb84fd01dd2fe77214a4e4073b6c5a75555ca1c97129be8f5e"
+    },
     "mangueira": {
       "kind": "icon",
       "files": {
@@ -2984,6 +3184,31 @@
       },
       "sha256": "bcfbd03f65560b99f006e2c587a638534501825aa90d7be777ac66904af5b79a"
     },
+    "pandeiro-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pandeiro-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pandeiro-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "758c13ccbf4610ba423f44b55f827d483bab5147753a6c32ece59e0e337611a4"
+            }
+          ],
+          "sha256": "758c13ccbf4610ba423f44b55f827d483bab5147753a6c32ece59e0e337611a4"
+        }
+      },
+      "sha256": "79c9eeb5281d53fd2bfbb0049863b281ac11abc5155920191b2c9c1e13ef9a96"
+    },
     "panela-de-pressao": {
       "kind": "icon",
       "files": {
@@ -3008,6 +3233,31 @@
         }
       },
       "sha256": "546b13aa0ac081c99099771363e1b2c15ba0f14711c4d61b8f21b1a1c401bf5e"
+    },
+    "panela-de-pressao-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "panela-de-pressao-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "panela-de-pressao-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "eb090da0fecc3d974a50a784fb86cee8ad44c17f1511b9891a8e128d759b415a"
+            }
+          ],
+          "sha256": "eb090da0fecc3d974a50a784fb86cee8ad44c17f1511b9891a8e128d759b415a"
+        }
+      },
+      "sha256": "fd159a5c11e1de6bf95a93a51f882efff6e9a8b2eced541c19d89df9a2231162"
     },
     "papagaio": {
       "kind": "icon",
@@ -3193,6 +3443,31 @@
         }
       },
       "sha256": "618b3c2b89988d302a790bd1d3e9e057eb7799ff710811bbd003662739a52167"
+    },
+    "pistola-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "pistola-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "pistola-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "084a1008d90c0065efc735abb5657442db4b408d0e65657e901a68802c4e631b"
+            }
+          ],
+          "sha256": "084a1008d90c0065efc735abb5657442db4b408d0e65657e901a68802c4e631b"
+        }
+      },
+      "sha256": "acd28f8621be6226e974692c42ae804801b65a02fc03ebd80b8cdbab45d1489f"
     },
     "pix-envio": {
       "kind": "icon",
@@ -3419,6 +3694,31 @@
       },
       "sha256": "8affc8a2a69381fef1b0ddb6451e0f65c1f67cd8489db844ee54a6896b9a5aaf"
     },
+    "rifle-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rifle-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rifle-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "ae8bf5c9ef61dc266e57877d30ba9c1b6b1598cc95a6cd2409db86ca22ff44e9"
+            }
+          ],
+          "sha256": "ae8bf5c9ef61dc266e57877d30ba9c1b6b1598cc95a6cd2409db86ca22ff44e9"
+        }
+      },
+      "sha256": "613ead290deb6c49fda0560a17014f4136654c4003071dce932adc0619e2ec2f"
+    },
     "risada": {
       "kind": "icon",
       "files": {
@@ -3535,6 +3835,31 @@
       },
       "sha256": "2c15f27b119bc8295d1196a84b7e095672e8b00b86d14c06b72931bd854f7a1d"
     },
+    "rojao-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "rojao-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "rojao-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "72cd451609abdbaaeea053ad6fffbf7ad6bc078abaa7a358f8646f357c6870b4"
+            }
+          ],
+          "sha256": "72cd451609abdbaaeea053ad6fffbf7ad6bc078abaa7a358f8646f357c6870b4"
+        }
+      },
+      "sha256": "a873766e24cc09767018ee1e516f525fe1a02aefdd4356114d1aa5e3faa3bbe6"
+    },
     "sacola": {
       "kind": "icon",
       "files": {
@@ -3589,6 +3914,31 @@
         }
       },
       "sha256": "3bb012c0f632a44569d3fca2ffba18e8b5418a312a71b7bc8da3ec187950d6cd"
+    },
+    "sacole-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "sacole-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "sacole-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "7e74d72ba73a896f39b6f2a18f392d19a12c9c88c0d80c9b950362b4a94bee94"
+            }
+          ],
+          "sha256": "7e74d72ba73a896f39b6f2a18f392d19a12c9c88c0d80c9b950362b4a94bee94"
+        }
+      },
+      "sha256": "47041774d9b1f000b2ea50561339b76358a148cc6ce55b4d6695b99d79112285"
     },
     "saiu": {
       "kind": "icon",
@@ -3785,6 +4135,31 @@
       },
       "sha256": "1a6fff808ce91d135abf72e82b3a100828290d36d286d65710c4e8f1efebee11"
     },
+    "submetralhadora-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "submetralhadora-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "submetralhadora-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "89b210b47f1153882ca43c41a8b66000cb97e146e25d0ab747c6fc60ba258c96"
+            }
+          ],
+          "sha256": "89b210b47f1153882ca43c41a8b66000cb97e146e25d0ab747c6fc60ba258c96"
+        }
+      },
+      "sha256": "7530a10a97fcf4e17462798d2dd778b569cd771ba48d8e9eb0d17eb69d4977d6"
+    },
     "suor": {
       "kind": "icon",
       "files": {
@@ -3841,6 +4216,31 @@
       },
       "sha256": "344bd66a51d716bb6eebe1e6231165a1a198cc2a56fb9a9807f7d3c05e2e0b3c"
     },
+    "tampa-de-panela-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tampa-de-panela-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tampa-de-panela-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "38fd5a4331979e009930786cbfe053ac7b9ff8391a8af40f1b296622d8b28536"
+            }
+          ],
+          "sha256": "38fd5a4331979e009930786cbfe053ac7b9ff8391a8af40f1b296622d8b28536"
+        }
+      },
+      "sha256": "65cd0759dc31dea53fb6421a5860f8514c5c3f051454e2ba6f19a35c85799623"
+    },
     "taro-vencido": {
       "kind": "icon",
       "files": {
@@ -3865,6 +4265,31 @@
         }
       },
       "sha256": "644adfd330802a9bbabac23cdd398c368aaf2c4c6ef4c866439a478274499809"
+    },
+    "taro-vencido-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "taro-vencido-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "taro-vencido-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5e1331648482fb6d434fc08a17a1dafb44703f13d59d9c6e695b231ac1b0f8f1"
+            }
+          ],
+          "sha256": "5e1331648482fb6d434fc08a17a1dafb44703f13d59d9c6e695b231ac1b0f8f1"
+        }
+      },
+      "sha256": "737d20a1ff1badb8b3d1965072d09b74e355ea8d7183f742ba9e10c48162b3be"
     },
     "tenis": {
       "kind": "icon",
@@ -3920,6 +4345,31 @@
         }
       },
       "sha256": "181e3d4778788b2128b4d51f70ec21fb5958a939656f9355a698425e5fa6ff64"
+    },
+    "tijolo-baiano-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "tijolo-baiano-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "tijolo-baiano-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "5ad75c9dd53458592df6f55ccfccfb32f4bf623c62a977213c868e8dbbca28db"
+            }
+          ],
+          "sha256": "5ad75c9dd53458592df6f55ccfccfb32f4bf623c62a977213c868e8dbbca28db"
+        }
+      },
+      "sha256": "d3bbff096d1a7da99e0756c5fa766faf9e244b1ecd2d9e3a5c6f4c5a28ac20f8"
     },
     "torre-antiaerea-quadrupla": {
       "kind": "icon",
@@ -4346,6 +4796,31 @@
       },
       "sha256": "5c513c72bc7715f0f48e87291b8819ecddbc5dbeeb7e23f6ff379a707fdc22f5"
     },
+    "traque-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "traque-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "traque-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "713ecad8946731b1958a293a82107b9dcc341011a882cb7ef985c132d9a25c3d"
+            }
+          ],
+          "sha256": "713ecad8946731b1958a293a82107b9dcc341011a882cb7ef985c132d9a25c3d"
+        }
+      },
+      "sha256": "71f113d935f197661ce19b78d1a577a4283626519183f3f1b6b437898e4a97c0"
+    },
     "trave": {
       "kind": "icon",
       "files": {
@@ -4450,6 +4925,31 @@
         }
       },
       "sha256": "cdb9b6aed584697f9440342e796edb71ccb6b69d0f09eb86f3a5b975acaab41a"
+    },
+    "vela-esoterica-dourada": {
+      "kind": "icon",
+      "files": {
+        "sheet": {
+          "file": "vela-esoterica-dourada.webp",
+          "cell": [
+            128,
+            128
+          ],
+          "frames": 1,
+          "pages": [
+            {
+              "file": "vela-esoterica-dourada.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "c528897321fb2f549c4753bd06de4a5d0051226121ac5b3a623366eed6c9473d"
+            }
+          ],
+          "sha256": "c528897321fb2f549c4753bd06de4a5d0051226121ac5b3a623366eed6c9473d"
+        }
+      },
+      "sha256": "c45decc3a5009805ed384cc5ed4c5822118511d1397872d6bde5fc5858c2ef78"
     },
     "ventilador": {
       "kind": "icon",

@@ -61,6 +61,8 @@ export interface RoomOptions {
    * ASLEEP_PER_VIEWER (card horda-visivel-capacidade: the same walk measured at several caps); 'sem' = no cap.
    */
   labAsleep?:number;
+  /** Lab only (wrangler dev with ALLOW_LOCAL and LAB_DOURADA 0..1): the caixa-gamble's hidden dourada chance (1 = every verde/azul/roxa weapon, for a video). */
+  labGold?:number;
   /** Lab only (wrangler dev with ALLOW_LOCAL): keep per-tick and per-frame time samples for the /lab percentiles. */
   lab?:boolean;
   /**
@@ -417,6 +419,7 @@ export class Room {
     if(Number.isFinite(options.labAsleep)&&options.labAsleep!>0)this.labAsleep=Math.floor(options.labAsleep!);
     const o=options.labOffset;if(o&&Number.isFinite(o.x)&&Number.isFinite(o.y)&&(o.x||o.y))this.labOffset={x:o.x,y:o.y};this.sampling=!!options.lab||this.labHorde>0;this.labOn=!!options.lab;
     if(options.labZueira)this.sim.zueiraLab=options.labZueira;
+    if(options.labGold!==undefined&&options.labGold>=0&&options.labGold<=1)this.sim.goldLab=options.labGold;
     this.fixedDuration=options.durationTicks;this.newId=options.newId??(()=>crypto.randomUUID());
     this.run=new RunLifecycle(crypto.randomUUID(),options.durationTicks??RUN_DURATION_TICKS);
     this.onRoster=options.onRoster;this.onCheckpoint=options.onCheckpoint;this.log=options.log;
@@ -840,7 +843,7 @@ export class Room {
     // The city's frames carry its 4 barricades (kind 'barricada', cityStructures): the client draws them and repairs them.
     const sim=city?new Simulation(old.seed,{world:'cidade',terrain:cityAsField(city),cityStructures:true,...(this.cityObjective?{objective:this.cityObjective}:{}),...(this.cityMode&&this.cityObjective==='chaveiro'?{mode:this.cityMode}:{}),...this.combatOption()})
       :new Simulation(old.seed,{world:this.baseWorld,...this.combatOption()});
-    sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;
+    sim.botState=()=>this.minds();if(old.zueiraLab)sim.zueiraLab=old.zueiraLab;if(old.goldLab!==undefined)sim.goldLab=old.goldLab;
     for(const p of old.players.values()){
       const next=old.bots.has(p.id)?sim.addBot(p.id,p.name,p.classId):sim.add(p.id,p.name,p.classId);
       next.ack=p.ack;next.spectator=p.spectator;sim.setOnline(p.id,p.online);
@@ -1157,7 +1160,8 @@ export class Room {
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
     // The minuto de Minerva (mode 'ninhos'): its end tick while it lasts; one push when it shows, one when it goes.
     const until=snap.phase==='combat'?this.sim.run.nests?.state.minervaUntil:undefined;
-    const minerva=until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{};
+    const explore=snap.phase==='combat'?this.sim.run.nests?.exploring(this.sim.tick):undefined;
+    const minerva={...(until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{}),...(explore?{exploraDesdeTick:explore.from,exploraAteTick:explore.until}:{})};
     return pause?{...snap,...minerva,pause:{...pause,...this.sim.offerCharges()}}:{...snap,...minerva};
   }
   private pushRun(force=false){

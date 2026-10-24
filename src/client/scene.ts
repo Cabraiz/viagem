@@ -18,7 +18,7 @@ import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
-import {CharacterSprites} from './sprites/character-sprites.ts';
+import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -33,10 +33,14 @@ import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
 import {StonewardsRenderer} from './render/stonewards.ts';
 import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
-import {PushShifts,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
+import {UnoPip} from './render/chaveiro/pip.ts';
+import {PIP_KEEP_PX,peeking,pipWanted} from './render/chaveiro/pip-rules.ts';
+import {CAR_LOW,carLife} from './render/chaveiro/rules.ts';
+import {PushShifts,pullDirection,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
 import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
+import {carSortDepth} from './render/chaveiro/car-sort.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
 import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
 import {talkSeed} from './render/chaveiro/lines.ts';
@@ -281,6 +285,9 @@ export class IslandScene extends Phaser.Scene {
   private stone?:StonewardsRenderer;
   /** D-047: the chaveiro objective in the world (the car, the moto, their effects); only while a run view has one. */
   private chaveiro?:ChaveiroRenderer;
+  /** Card inimigos-querem-o-uno: the Uno's live window, and when a tap on it swung the camera to the car (loop clock). */
+  private pip?:UnoPip;
+  private peekSince?:number;
   /** Card empurrar-uno: the pushers' drawn shift onto the car (push-contact.ts); the own hero's this frame. */
   private pushShifts=new PushShifts();
   private selfShift={x:0,y:0};
@@ -531,6 +538,7 @@ export class IslandScene extends Phaser.Scene {
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
+        alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
@@ -556,7 +564,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -677,7 +685,10 @@ export class IslandScene extends Phaser.Scene {
     // The fade test needs the hero's real ground height (city relief reaches ~185 px).
     const asset=this.city.asset,hero=this.watchPoint?undefined:{x:this.position.x,y:this.position.y,z:groundZ(asset,this.position.x,this.position.y)};
     const allies=this.allyFeet.map(p=>({x:p.x,y:p.y,z:groundZ(asset,p.x,p.y)}));
-    this.city.update({camera,view:this.view,dtMs:delta,hero,allies});
+    const car=this.chaveiro?.hitState(),carPx=car&&!car.ended?this.project(car.car):undefined;
+    // Card inimigos-querem-o-uno: the chunks around the car stay built, so the Uno's live window never opens on a hole.
+    const also=carPx&&{x:carPx.x-PIP_KEEP_PX,y:carPx.y-PIP_KEEP_PX,w:PIP_KEEP_PX*2,h:PIP_KEEP_PX*2};
+    this.city.update({camera,view:this.view,dtMs:delta,hero,allies,...(also?{also}:{})});
   }
   /** Follows the hero every frame: smooth, body at the viewport centre in the round, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
@@ -698,14 +709,37 @@ export class IslandScene extends Phaser.Scene {
     // only the lobby/countdown (waiting panel), an open obra window and, in portrait, the forge or Dona Cida's tray frame
     // it beside the panel (framing.ts framesBeside).
     this.follow.beside=framesBeside(run,this.roundPhase,this.besideWindow);
-    const b=this.heroWorldBox(),size=this.watchPoint?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
+    // Card inimigos-querem-o-uno: a tap on the Uno's live window looks at the car for a moment (PEEK_MS).
+    const peek=this.peekCar();
+    const b=this.heroWorldBox(),size=this.watchPoint||peek?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
     // The hero as drawn (the interpolated prediction plus the reconcile glide, coop), not the bare prediction: the camera
     // centres what the player sees, so a correction slides the world, not the hero off the centre (camera-centro-heroi).
-    const focus=this.project(this.watchPoint??this.position);
+    const focus=this.project(peek??this.watchPoint??this.position);
     const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size);
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
     this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);
+  }
+  /** Where the camera looks while a tap on the Uno's window holds (the car, world units), else undefined. */
+  private peekCar():Point|undefined{
+    if(!peeking(this.peekSince,this.game.loop.time))return undefined;
+    const car=this.chaveiro?.hitState();
+    return car&&!car.ended?{x:car.car.x,y:car.car.y}:undefined;
+  }
+  /**
+   * Card inimigos-querem-o-uno, etapa 3: the Uno's live window (render/chaveiro/pip.ts) while the car takes hits out of
+   * view or far from the hero; after the main camera moved.
+   */
+  private updatePip(time:number){
+    const hit=this.chaveiro?.hitState();
+    if(!hit&&!this.pip)return;
+    const pip=this.pip??=new UnoPip(this,{onTap:()=>{this.peekSince=this.game.loop.time;},ignore:()=>{const v=this.vignette?.object;return v?[v]:[];}});
+    const live=!!hit&&!hit.ended,cam=this.cameras.main,carPx=hit?this.project(hit.car):undefined;
+    const me=this.watchPoint??this.position,distance=hit?Math.hypot(hit.car.x-me.x,hit.car.y-me.y):Infinity;
+    const carOnScreen=!!carPx&&cam.worldView.contains(carPx.x,carPx.y);
+    const wanted=pipWanted({live,now:time,carOnScreen,distance,peeking:peeking(this.peekSince,this.game.loop.time),...(hit?.lastHitAt!==undefined?{lastHitAt:hit.lastHitAt}:{})});
+    const life=hit?carLife(hit.car):0;
+    pip.update({wanted,mainZoom:cam.zoom,time,...(carPx?{car:carPx}:{}),...(hit?{life:{fraction:life,low:life<CAR_LOW}}:{})});
   }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
@@ -753,6 +787,16 @@ export class IslandScene extends Phaser.Scene {
   }
   /** The current view (0..3), for the minimap and the edge arrows. */
   get cameraView(){return this.view;}
+  /** A hero's walk as this frame drew it (audio/footsteps.ts steps on its contacts); undefined standing or not drawn. */
+  heroGait(id:string):Gait|undefined{
+    const sprite=id===this.hooks.net?.id?this.actor:this.remoteActors.get(id)?.image;
+    return sprite?this.sprites.gait(sprite):undefined;
+  }
+  /** Where a world point is across the camera: -1 its left edge, 0 the centre, 1 the right (a sound's pan). */
+  screenSide(p:Point){
+    const view=this.cameras.main.worldView,q=this.project(p);
+    return view.width>0?Math.max(-1,Math.min(1,(q.x-view.centerX)/(view.width/2))):0;
+  }
   /** What the camera follows (world units): the hero, or the teammate watched while out. Distances count from here. */
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
@@ -856,7 +900,8 @@ export class IslandScene extends Phaser.Scene {
   }
   private place(){
     const at=this.selfShift.x||this.selfShift.y?{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y}:this.position;
-    const p=this.project(at),depth=this.depth(at);
+    // Card uno-bloqueio-corpo: near the Uno, on its side of the car's footprint (car-sort.ts).
+    const p=this.project(at),depth=carSortDepth(at,this.depth(at),this.chaveiro?.carSort());
     // Canopies soften only when they cover the hero; feet still define scene depth.
     let covered=false;
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
@@ -964,8 +1009,10 @@ export class IslandScene extends Phaser.Scene {
     // Pushing the Uno (empurrar-uno): faces it with the push clip, drawn with the palms on it (place() adds the shift).
     const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
+    // On the rope (puxar-uno-corda): faces away from the bumper with the pull clip.
+    const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.());
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -974,7 +1021,7 @@ export class IslandScene extends Phaser.Scene {
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
-      this.updateCamera(delta);this.shakeCamera();this.drawYou(_time);return;
+      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);return;
     }
     if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction(),keys=this.keyAxis();
@@ -1275,7 +1322,7 @@ export class IslandScene extends Phaser.Scene {
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
-    const carPose=this.chaveiro?.carPose();
+    const carPose=this.chaveiro?.carPose(),carSort=this.chaveiro?.carSort();
     this.allyFeet=[];
     const feet=this.drawnFeet;feet.clear();feet.set(net.id,{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y});
     for(const player of view.players){
@@ -1288,9 +1335,10 @@ export class IslandScene extends Phaser.Scene {
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir,player.hp);
+      const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp);
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
-      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
+      const q=this.project(drawnAt),depth=carSortDepth(drawnAt,this.depth(drawnAt),carSort),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);

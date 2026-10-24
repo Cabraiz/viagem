@@ -29,8 +29,9 @@ async function open(name){
   await page.goto(`${VITE}?perf=1`,{waitUntil:'load',timeout:180000});
   await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
   await page.evaluate(n=>{const i=document.getElementById('nickname');i.value=n;i.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('confirm').click();},name);
-  await sleep(2000);
-  const bora=page.getByRole('button',{name:/BORA/i});if(await bora.count())await bora.first().click({timeout:5000}).catch(()=>{});
+  // On a loaded PC the first BORA click can land before the menu listens: click again until the play dialog is up.
+  const bora=page.getByRole('button',{name:/BORA/i}),dialog=page.getByRole('button',{name:/Jogar sozinho|Jogar com amigos/i}).first();
+  for(let i=0;i<12&&!await dialog.isVisible().catch(()=>false);i++){await sleep(2000);if(await bora.count())await bora.first().click({timeout:10000}).catch(()=>{});}
   await sleep(1500);
   return {ctx,page,born};
 }
@@ -38,7 +39,7 @@ const inMatch=p=>p.waitForFunction(()=>{const s=document.querySelector('dialog.e
 const skipTips=async p=>{for(let i=0;i<4;i++){const b=p.getByRole('button',{name:/^Pular/});if(await b.count()&&await b.first().isVisible()){await b.first().click().catch(()=>{});await sleep(300);}else break;}};
 try{
   release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:`E1 boss-onda-1 video ${PHONE?'celular':'pc'} ${TWO?2:1}`});
-  browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required']});
+  browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required',...(PHONE?[`--window-size=${size.width},${size.height}`]:[])]});
   const A=await open('Tia Cleide');let B;
   if(!TWO){
     const solo=A.page.getByRole('button',{name:/Jogar sozinho/i});await solo.first().click({timeout:20000});
@@ -59,10 +60,13 @@ try{
   // His art in on every page first (the elenco names him: in a real run he comes minutes in, long after it loaded).
   for(const P of pages)await P.page.waitForFunction(ids=>{const s=window.__perfScene,id=(s.hooks.net.elenco??[]).find(i=>ids.includes(i));return !!id&&s.textures.exists(`art:enemy:${id}:idle`);},ids,{timeout:180000});
   // Phone: Playwright's recorder squeezes the isMobile page into a corner of the frame (grey around), so the phone
-  // clip is built from screenshots (the same capture the prints use) taken back to back from here on.
-  let shooting=PHONE;const shots=pages.map(()=>[]);
-  const shooters=PHONE?pages.map(async(P,k)=>{const dir=join(VIDEO,`j${k+1}`);mkdirSync(dir,{recursive:true});
-    while(shooting){const at=Date.now(),file=join(dir,`${at}.jpg`);try{await P.page.screenshot({path:file,type:'jpeg',quality:85});shots[k].push({at,file});}catch{await sleep(100);}}}):[];
+  // clip is built from the page's own screencast frames (CDP, no resize; screenshots back to back only reach ~1 q/s).
+  const shots=pages.map(()=>[]),sizes=pages.map(()=>new Set());
+  const casts=PHONE?await Promise.all(pages.map(async(P,k)=>{const dir=join(VIDEO,`j${k+1}`);mkdirSync(dir,{recursive:true});
+    const cdp=await P.ctx.newCDPSession(P.page);
+    cdp.on('Page.screencastFrame',f=>{const at=Date.now(),file=join(dir,`${at}.jpg`);writeFileSync(file,Buffer.from(f.data,'base64'));shots[k].push({at,file});
+      sizes[k].add(`${f.metadata.deviceWidth}x${f.metadata.deviceHeight}`);cdp.send('Page.screencastFrameAck',{sessionId:f.sessionId}).catch(()=>{});});
+    await cdp.send('Page.startScreencast',{format:'jpeg',quality:85,everyNthFrame:1});return cdp;})):[];
   await sleep(2000);
   const called=Date.now();
   await A.page.evaluate(()=>window.__perfScene.hooks.net.socket.send(JSON.stringify({t:'lab',chefao:true})));
@@ -86,7 +90,8 @@ try{
     }
   }
   const hp=await A.page.evaluate(()=>{const b=[...window.__perfScene.hooks.net.feed.enemies.values()].find(e=>e.boss);return b?`${Math.round(b.hp)}/${b.maxHp}`:'caiu';});
-  shooting=false;await Promise.all(shooters);
+  await Promise.all(casts.map(c=>c.send('Page.stopScreencast').catch(()=>{})));
+  if(PHONE)console.log('quadros do screencast (tela):',sizes.map(s=>[...s].join(',')).join(' | '));
   const clips=[];
   for(const [k,P] of pages.entries()){
     const clip=`${OUT}${pages.length>1?`-j${k+1}`:''}.mp4`;
@@ -99,8 +104,10 @@ try{
       console.log('jogador',k+1,'quadros:',s.length,`(${(s.length/((s.at(-1).at-s[0].at)/1000)).toFixed(1)} q/s)`,'erros da página:',P.page.__errors.length,P.page.__errors.slice(0,3).join(' | '));
       continue;
     }
-    const video=P.page.video();await P.ctx.close();const raw=await video.path();
-    const from=Math.max(0,(called-P.born)/1000-1.5);
+    // Under load the recorder drops time (its file is shorter than the wall clock): cut counting back from its end.
+    const video=P.page.video(),ended=Date.now();await P.ctx.close();const raw=await video.path();
+    const dur=Number(execFileSync('ffprobe',['-v','error','-show_entries','format=duration','-of','csv=p=0',raw]).toString().trim());
+    const from=Math.max(0,Math.min((called-P.born)/1000,dur-(ended-called)/1000)-1.5);
     execFileSync('ffmpeg',['-y','-v','error','-ss',from.toFixed(2),'-i',raw,'-t',String(SECS+1.5),'-c:v','libx264','-pix_fmt','yuv420p','-crf','26','-preset','veryfast',clip]);
     clips.push(clip);console.log('jogador',k+1,'erros da página:',P.page.__errors.length,P.page.__errors.slice(0,3).join(' | '));
   }

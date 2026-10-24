@@ -18,7 +18,7 @@ import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
-import {CharacterSprites} from './sprites/character-sprites.ts';
+import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
 import {treeUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from './sprites/art-urls.ts';
@@ -753,6 +753,16 @@ export class IslandScene extends Phaser.Scene {
   }
   /** The current view (0..3), for the minimap and the edge arrows. */
   get cameraView(){return this.view;}
+  /** A hero's walk as this frame drew it (audio/footsteps.ts steps on its contacts); undefined standing or not drawn. */
+  heroGait(id:string):Gait|undefined{
+    const sprite=id===this.hooks.net?.id?this.actor:this.remoteActors.get(id)?.image;
+    return sprite?this.sprites.gait(sprite):undefined;
+  }
+  /** Where a world point is across the camera: -1 its left edge, 0 the centre, 1 the right (a sound's pan). */
+  screenSide(p:Point){
+    const view=this.cameras.main.worldView,q=this.project(p);
+    return view.width>0?Math.max(-1,Math.min(1,(q.x-view.centerX)/(view.width/2))):0;
+  }
   /** What the camera follows (world units): the hero, or the teammate watched while out. Distances count from here. */
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */

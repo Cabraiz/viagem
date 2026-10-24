@@ -35,6 +35,38 @@ export function crateRow(progress:number):string{
   if(!(progress>0))return 'fechada';
   return `abrindo-${Math.min(CRATE_OPEN_ROWS,Math.max(1,Math.ceil(progress*CRATE_OPEN_ROWS)))}`;
 }
+/**
+ * Card caixa-icone-torre-arma (the user, 23/10: "vamos pôr o item flutuando e girando"): a crate whose view names its
+ * item (PickupView.resource, sim/crates.ts rolls it when the crate appears) is drawn as that item's own sticker instead
+ * of the crate sheet, floating over the spot and turning like a coin (its width is the cosine of the turn: no new art),
+ * with no rarity colour (the rarity shows only when it opens). FLOAT_PX: the sticker's size at body 1 (CSS px, about
+ * half the crate's width, so it reads on a phone); FLOAT_LIFT ± FLOAT_BOB: its centre over the ground; one bob in
+ * FLOAT_BOB_MS, one turn in FLOAT_TURN_MS, FLOAT_TURN_OPEN× faster when a hero has it all but open.
+ */
+export const FLOAT_PX=120,FLOAT_LIFT=50,FLOAT_BOB=8,FLOAT_BOB_MS=2400,FLOAT_TURN_MS=2800,FLOAT_TURN_OPEN=3;
+/**
+ * On a phone (the user, 23/10: "aumentar o item flutuando no celular até ficar legível") the floating item grows with the
+ * square of the horde's legibility multiplier over the body scale (framing.ts hordeUiScale: 1 on the PC, ~1.25 at a
+ * phone's zoom, so ~1.55×: the plain multiplier read too small), capped at FLOAT_PHONE_MAX; its lift and shadow grow with it.
+ */
+export const FLOAT_PHONE_MAX=1.8;
+export const floatLegible=(ui:number,body:number)=>Math.max(1,Math.min(FLOAT_PHONE_MAX,(ui/Math.max(1e-6,body))**2));
+/** The thinnest the coin gets (edge on): a sliver, never gone (its glow and its shadow stay). */
+export const FLOAT_EDGE=.08;
+/** The turn after `dt` ms at opening `progress` (0..1): the angle advances, faster as the opening fills. */
+export const floatSpin=(angle:number,dt:number,progress:number)=>
+  (angle+Math.max(0,dt)*Math.PI*2/FLOAT_TURN_MS*(1+FLOAT_TURN_OPEN*Math.max(0,Math.min(1,progress))))%(Math.PI*2);
+/**
+ * The floating item's pose: `lift` (CSS px over the ground at body 1), `turn` (its horizontal scale: the coin's width,
+ * negative when its back faces us) and `shadow` (the ground shadow's scale: narrower as the coin turns edge on and as
+ * the item rises). Reduced motion: still, facing us, at FLOAT_LIFT.
+ */
+export function floatPose(now:number,phase:number,angle:number,reduced=false):{lift:number;turn:number;shadow:number}{
+  if(reduced)return {lift:FLOAT_LIFT,turn:1,shadow:1};
+  const bob=Math.sin(now*Math.PI*2/FLOAT_BOB_MS+phase*Math.PI*2),c=Math.cos(angle);
+  const turn=(c<0?-1:1)*Math.max(FLOAT_EDGE,Math.abs(c));
+  return {lift:FLOAT_LIFT+FLOAT_BOB*bob,turn,shadow:(.55+.45*Math.abs(c))*(1-.12*bob)};
+}
 /** Opening progress (0..1) of a hero standing still `stillMs` within reach of a crate of `rarity`. */
 export const crateProgress=(stillMs:number,rarity:number)=>Math.max(0,Math.min(1,stillMs/1000/crateOpenSeconds(rarity)));
 /** A hero moved this far (world units) between frames: not standing still (the sim's rule is "same position"). */

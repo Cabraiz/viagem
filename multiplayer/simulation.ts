@@ -905,7 +905,7 @@ export class Simulation {
     for(const [id,t] of this.tracks)if(t.tapped!==undefined){const p=this.players.get(id);if(p)this.casts.push({id,seq:t.tapped,ok:p.skillTick!==castBefore.get(id),readyTick:skillReadyTick(p)});}
     if(!this.result)this.result=this.pending.victory?'victory':this.pending.defeat?'defeat':undefined;
     this.pending=undefined;
-    // Refunds (pagodeiro, caça-promoção) move the cooldown after the cast; the wire follows the skill state.
+    // Refunds (pagodeiro) move the cooldown after the cast; the wire follows the skill state.
     for(const p of this.players.values())p.skillReadyTick=skillReadyTick(p);
     for(const e of events)if(e.type==='fire'&&!e.weapon.startsWith('skill:')){
       const p=this.players.get(e.player);

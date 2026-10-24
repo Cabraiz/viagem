@@ -24,7 +24,7 @@ export const TEST_NINESLICE=Object.freeze({kind:'nineslice',cell:[48,32],slice:[
 /** Item strip: 4 square frames of 32. */
 export const TEST_FRAMES=Object.freeze({cell:32,frames:4});
 /** Classes used for dir8 (real ids with an approved sheet): the correct one and the two broken ones. */
-export const DIR8_OK='aposentado',DIR8_WRONG_COLUMN='mendigo',DIR8_LIFTED='sensei';
+export const DIR8_OK='aposentado',DIR8_WRONG_COLUMN='mendigo',DIR8_LIFTED='porteiro';
 /** Block lifted in DIR8_LIFTED, and by how many px. */
 export const LIFTED_DIRECTION='NE',LIFT=20;
 /** One flat colour per direction: the block signature used to check the dir8 → dir4 split. */

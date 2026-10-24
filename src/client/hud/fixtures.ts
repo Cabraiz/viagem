@@ -33,7 +33,7 @@ const roster=[
   {id:'p3',name:'Zé do Pix',classId:'viciado-em-bet'},
   {id:'p4',name:'Bruninha',classId:'motogirl'},
   {id:'p5',name:'Seu Jorge',classId:'aposentado'},
-  {id:'p6',name:'Kaique Mil Grau',classId:'gamer-mobile'},
+  {id:'p6',name:'Kaique Mil Grau',classId:'streamer'},
 ];
 const builds=[
   {weapons:[{id:'chinelo',level:5},{id:'cafe',level:3}],passives:[{id:'tenis',level:2},{id:'marmita',level:1}]},

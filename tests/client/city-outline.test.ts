@@ -308,10 +308,10 @@ test('H1 cropped hero copies are centred: a flipped single sheet keeps every fig
     }
     classes++;
   }
-  assert.ok(classes>=30,`${classes} classes`);
-  // The two the review measured: the old crop (figure box ± 1 px) moved them 16 and 17 CSS px on a flip.
+  assert.ok(classes>=28,`${classes} classes`);
+  // One the review measured (sensei, the other, left with NEW-20261023-ORQ-remover-7-personagens): the old crop
+  // (figure box ± 1 px) moved it 16 CSS px on a flip.
   assert.deepEqual(cropOf(spriteCatalog.porteiro.figure,192,192),{x:5,y:33,w:182,h:138});
-  assert.deepEqual(cropOf(spriteCatalog.sensei.figure,192,192),{x:24,y:57,w:144,h:114});
 });
 
 test('H2 an imported sheet drawn plain and elite (×1.35) keeps one copy each: 60 alternating frames build 2',()=>{

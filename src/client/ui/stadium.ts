@@ -75,8 +75,8 @@ export function placeOnBar(box:{w:number;h:number},art:StadiumArt,atX:number,pos
 
 /**
  * A hero drawn in place on the wide picture (NEW-20261021-ORQ-menu-arte-viciado): the file is only the hero's box of the
- * 1920x1080 picture (scripts/menu-arte.mjs, same numbers), so the page puts it back where it was. PC only
- * (CUTOUT_QUERY); the phone, upright or on its side, keeps the dance.
+ * 1920x1080 picture (scripts/menu-arte.mjs, same numbers), so the page puts it back where it was. Every landscape
+ * screen (CUTOUT_QUERY: the PC and the phone on its side, celular-deitado-foto); the phone held upright keeps the dance.
  */
 export interface StadiumCutout {
   /** The box in the whole 1920x1080 picture, px. */
@@ -189,7 +189,12 @@ export const headRoom=(h:number)=>Math.max(28,h*.09);
  * The right edge of the menu's column on the PC (estadio.css under CUTOUT_QUERY: left max(3vw, 16px) + 2vw, width
  * min(77vh, 60vw)) plus 2% of the width: no hero grows into it.
  */
-export const columnRight=(box:{w:number;h:number})=>Math.max(.03*box.w,16)+.02*box.w+Math.min(.77*box.h,.6*box.w)+.02*box.w;
+export const columnRight=(box:{w:number;h:number})=>box.h<=SHORT_MAX_H
+  // The phone on its side (estadio.css short landscape: left max(3vw, 16px), width min(50vw, 560px)).
+  ?Math.max(.03*box.w,16)+Math.min(.5*box.w,560)+.02*box.w
+  :Math.max(.03*box.w,16)+.02*box.w+Math.min(.77*box.h,.6*box.w)+.02*box.w;
+/** The tallest short landscape (estadio.css `max-height: 520px`): the phone on its side; taller is the PC (PC_QUERY). */
+export const SHORT_MAX_H=520;
 /** The cutout's box (px) for a framing of his own picture (frameMoved/frameHero). */
 function boxIn(f:Frame,art:StadiumArt,cut:Placeable){
   const {s,ox,oy}=f,focal=art.focal??{x:0,y:0,w:art.w,h:art.h},k=focal.w/WHOLE.w;
@@ -212,8 +217,14 @@ export function frameHero(box:{w:number;h:number},art:StadiumArt,cut:Placeable,p
   const ax=at.x+at.w/2,w=at.w*z,slide=Math.min(Math.max(ax-w/2,lo),hi-w)-(ax-w/2),s=base.s*z;
   return {s,ox:Math.min(0,Math.max(box.w-art.w*s,ax-(ax-base.ox)*z+slide)),oy:feet-(feet-base.oy)*z};
 }
-/** Where the cutout stands in for the dance: the PC (the wide picture, taller than a phone on its side). */
-export const CUTOUT_QUERY='(orientation: landscape) and (min-height: 521px)';
+/** The PC's layout (estadio.css): the wide picture taller than a phone on its side; the column, the big button. */
+export const PC_QUERY='(orientation: landscape) and (min-height: 521px)';
+/**
+ * Where the cutout stands in for the dance (and E6's bleed is the stage): every landscape screen, the PC and the phone on
+ * its side (celular-deitado-foto, the user, 23/10: "ao girar o celular deveria não ter essa dança, mas a foto que tem no
+ * desktop"). The phone held upright keeps the dance.
+ */
+export const CUTOUT_QUERY='(orientation: landscape)';
 export const cutoutOf=(id:string):StadiumCutout|undefined=>RECORTES[id];
 /**
  * The cutout's box in the stage (px) for the same framing the background uses (frameHero: frameArt, `pos` for `cover`,

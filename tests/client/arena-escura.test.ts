@@ -47,4 +47,5 @@ test('drawn under the fear dark, with the arena clear edge at ARENA.radius, wire
   assert.match(scene,/this\.drawYou\(_time\);this\.drawArena\(delta\)/);
   assert.match(scene,/ARENA\.radius\*grow/);
   assert.match(scene,/ARENA\.bodyLight/,'his body has its own light');
+  assert.match(scene,/this\.events\.once\('shutdown',drop\);this\.events\.once\('destroy',drop\)/,'released with the scene (a rematch builds a new one)');
 });

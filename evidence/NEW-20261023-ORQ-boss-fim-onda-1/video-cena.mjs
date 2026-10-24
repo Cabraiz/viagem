@@ -7,7 +7,7 @@
  *
  *   node evidence/NEW-20261023-ORQ-boss-fim-onda-1/video-cena.mjs <out-prefix> [--celular] [--dois] [--segundos 24]
  */
-import {pathToFileURL} from 'node:url';import {join,resolve,dirname} from 'node:path';import {existsSync,mkdirSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';import {join,resolve,dirname} from 'node:path';import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const arg=(n,d)=>{const i=process.argv.indexOf(`--${n}`);return i>0?process.argv[i+1]:d;};
@@ -17,15 +17,15 @@ const VIDEO=`${OUT}-bruto`;mkdirSync(VIDEO,{recursive:true});mkdirSync(dirname(O
 const {claimSlot}=await import(pathToFileURL('D:/Gits/viagem/tools/vaga.mjs').href);
 const pwDir='D:/Gits/viagem-tools/node_modules/playwright';
 const pw=await import(pathToFileURL(join(pwDir,existsSync(join(pwDir,'index.mjs'))?'index.mjs':'index.js')).href);
-const chromium=pw.chromium??pw.default.chromium;let browser,release;
+const chromium=pw.chromium??pw.default.chromium;let browser,release;const opened=[];
 const size=PHONE?{width:390,height:844}:{width:1280,height:720};
 const ids=['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha'];
 async function open(name){
-  const ctx=await browser.newContext({viewport:size,deviceScaleFactor:1,...(PHONE?{isMobile:true,hasTouch:true}:{}),serviceWorkers:'block',recordVideo:{dir:VIDEO,size}});
+  const ctx=await browser.newContext({viewport:size,deviceScaleFactor:1,...(PHONE?{isMobile:true,hasTouch:true}:{}),serviceWorkers:'block',...(PHONE?{}:{recordVideo:{dir:VIDEO,size}})});
   await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:solo-bots:v1','0');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));localStorage.removeItem('viagem.chefao.cenas');}catch{}});
   await ctx.route('**/multiplayer.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({endpoint:SALAS})}));
-  const page=await ctx.newPage();const born=Date.now();page.__errors=[];
-  page.on('pageerror',e=>page.__errors.push(e.message));page.on('console',m=>{if(m.type()==='error')page.__errors.push(m.text());});
+  const page=await ctx.newPage();opened.push(page);const born=Date.now();page.__errors=[];
+  page.on('pageerror',e=>page.__errors.push(`${e.message} @ ${(e.stack??'').split('\n').slice(1,4).map(l=>l.trim()).join(' < ')}`));page.on('console',m=>{if(m.type()==='error')page.__errors.push(m.text());});
   await page.goto(`${VITE}?perf=1`,{waitUntil:'load',timeout:180000});
   await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
   await page.evaluate(n=>{const i=document.getElementById('nickname');i.value=n;i.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('confirm').click();},name);
@@ -58,6 +58,11 @@ try{
   for(const P of pages){await inMatch(P.page);await P.page.waitForFunction(()=>window.__perfScene.hooks.net.run?.phase==='combat',null,{timeout:240000});await skipTips(P.page);}
   // His art in on every page first (the elenco names him: in a real run he comes minutes in, long after it loaded).
   for(const P of pages)await P.page.waitForFunction(ids=>{const s=window.__perfScene,id=(s.hooks.net.elenco??[]).find(i=>ids.includes(i));return !!id&&s.textures.exists(`art:enemy:${id}:idle`);},ids,{timeout:180000});
+  // Phone: Playwright's recorder squeezes the isMobile page into a corner of the frame (grey around), so the phone
+  // clip is built from screenshots (the same capture the prints use) taken back to back from here on.
+  let shooting=PHONE;const shots=pages.map(()=>[]);
+  const shooters=PHONE?pages.map(async(P,k)=>{const dir=join(VIDEO,`j${k+1}`);mkdirSync(dir,{recursive:true});
+    while(shooting){const at=Date.now(),file=join(dir,`${at}.jpg`);try{await P.page.screenshot({path:file,type:'jpeg',quality:85});shots[k].push({at,file});}catch{await sleep(100);}}}):[];
   await sleep(2000);
   const called=Date.now();
   await A.page.evaluate(()=>window.__perfScene.hooks.net.socket.send(JSON.stringify({t:'lab',chefao:true})));
@@ -67,7 +72,7 @@ try{
   // The fight: every hero next to him (lab moves), the attack held (Space on a PC, the button on a phone).
   const near=P=>P.page.evaluate(()=>{const net=window.__perfScene.hooks.net,b=[...net.feed.enemies.values()].find(e=>e.boss);if(b)for(const [dx,dy] of [[2.6,2.2],[2.2,2.6],[3.2,0],[0,3.2]])net.socket.send(JSON.stringify({t:'lab',to:{x:b.x+dx,y:b.y+dy}}));});
   for(const P of pages)await near(P);
-  const until=called+SECS*1000;
+  const until=called+SECS*1000;let beat=0;
   while(Date.now()<until){
     for(const P of pages){
       if(PHONE){const b=P.page.locator('#coop-attack');await b.dispatchEvent('pointerdown').catch(()=>{});}
@@ -77,19 +82,29 @@ try{
     for(const P of pages){
       if(PHONE)await P.page.locator('#coop-attack').dispatchEvent('pointerup').catch(()=>{});
       else await P.page.keyboard.up('Space').catch(()=>{});
-      await near(P);
+      if(++beat%3===0)await near(P);
     }
   }
   const hp=await A.page.evaluate(()=>{const b=[...window.__perfScene.hooks.net.feed.enemies.values()].find(e=>e.boss);return b?`${Math.round(b.hp)}/${b.maxHp}`:'caiu';});
+  shooting=false;await Promise.all(shooters);
   const clips=[];
   for(const [k,P] of pages.entries()){
+    const clip=`${OUT}${pages.length>1?`-j${k+1}`:''}.mp4`;
+    if(PHONE){
+      const s=shots[k],list=join(VIDEO,`j${k+1}.txt`);
+      const fwd=f=>f.replaceAll('\\','/');
+      writeFileSync(list,s.map((x,i)=>`file '${fwd(x.file)}'\nduration ${(((s[i+1]?.at??x.at+100)-x.at)/1000).toFixed(3)}`).join('\n')+`\nfile '${fwd(s.at(-1).file)}'\n`);
+      execFileSync('ffmpeg',['-y','-v','error','-f','concat','-safe','0','-i',list,'-vf','fps=25,scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-pix_fmt','yuv420p','-crf','26','-preset','veryfast',clip]);
+      await P.ctx.close();clips.push(clip);
+      console.log('jogador',k+1,'quadros:',s.length,`(${(s.length/((s.at(-1).at-s[0].at)/1000)).toFixed(1)} q/s)`,'erros da página:',P.page.__errors.length,P.page.__errors.slice(0,3).join(' | '));
+      continue;
+    }
     const video=P.page.video();await P.ctx.close();const raw=await video.path();
     const from=Math.max(0,(called-P.born)/1000-1.5);
-    const clip=`${OUT}${pages.length>1?`-j${k+1}`:''}.mp4`;
     execFileSync('ffmpeg',['-y','-v','error','-ss',from.toFixed(2),'-i',raw,'-t',String(SECS+1.5),'-c:v','libx264','-pix_fmt','yuv420p','-crf','26','-preset','veryfast',clip]);
     clips.push(clip);console.log('jogador',k+1,'erros da página:',P.page.__errors.length,P.page.__errors.slice(0,3).join(' | '));
   }
   if(clips.length>1)execFileSync('ffmpeg',['-y','-v','error','-i',clips[0],'-i',clips[1],'-filter_complex','hstack=inputs=2','-c:v','libx264','-pix_fmt','yuv420p','-crf','26','-preset','veryfast',`${OUT}.mp4`]);
   console.log('vídeo:',`${OUT}.mp4`,'chefão:',who,'vida no fim:',hp);
-}catch(e){console.log('falhou:',e.message.split('\n')[0]);process.exitCode=2;}
+}catch(e){console.log('falhou:',e.message.split('\n')[0]);process.exitCode=2;for(const [k,p] of opened.entries())await p.screenshot({path:`${OUT}-falhou-${k+1}.png`}).catch(()=>{});}
 finally{await browser?.close();release?.();}

@@ -1036,7 +1036,14 @@ export class IslandScene extends Phaser.Scene {
     }
     const car=this.chaveiro?.carPose();
     if(car)out.push(this.groundEllipse(car,ARENA.unoLight*grow));
-    (this.arenaDark??=new ArenaDark(this)).draw({alpha:frame.alpha,spots:out});
+    (this.arenaDark??=this.makeArenaDark()).draw({alpha:frame.alpha,spots:out});
+  }
+  /** Released with the scene (stop → 'shutdown', game.destroy → 'destroy'): a rematch builds a new one. */
+  private makeArenaDark(){
+    const dark=new ArenaDark(this);
+    const drop=()=>{dark.destroy();if(this.arenaDark===dark)this.arenaDark=undefined;this.arenaClock.reset();this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+    this.events.once('shutdown',drop);this.events.once('destroy',drop);
+    return dark;
   }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
   private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}

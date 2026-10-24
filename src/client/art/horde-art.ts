@@ -628,11 +628,19 @@ interface ArtState extends ActionState {on:boolean;row:number;overlay?:Phaser.Ga
   /** Walk by the ground (enemyWalkCycles): cycles walked, and the world point and clock of the last draw (NaN: none). */
   cycles:number;lx:number;ly:number;lt:number;
   /** On-screen figure height over the procedural reserve's (1 = today's size): bars, shadow and ring follow it. */
-  ratio:number}
+  ratio:number;
+  /** Feet-to-head height of the figure drawn (world px before the scene's body scale; figurePx): the bar sits on it. */
+  head:number}
 const states=new WeakMap<object,ArtState>();
-const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
+const stateOf=(image:object)=>{let s=states.get(image);if(!s){s={on:false,row:-1,eliteOn:false,costumeOn:false,at:0,end:0,ratio:1,head:0,cycles:0,lx:NaN,ly:NaN,lt:NaN};states.set(image,s);}return s;};
 /** Size of an enemy's imported figure over its procedural reserve (1 when the art is off): see ArtState.ratio. */
 export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&s.on?s.ratio:1;};
+/**
+ * Feet-to-head height (world px before the body scale) of the imported figure on `image`, undefined when the art is
+ * off: the measured figure (the role's target height), not the cell, whose empty top would float the bar (card
+ * vida-inimigos-estilo-clash: the bar sits right on the head, like Clash Royale's).
+ */
+export const enemyArtHead=(image:object)=>{const s=states.get(image);return s&&s.on&&s.head>0?s.head:undefined;};
 /**
  * Scale of art `id`'s file `file` for an enemy of `kind`: the drawn height (drawnHeight) to the role's target once
  * measured; until then (or unmeasurable) today's cell rule (enemyDrawScale).
@@ -773,6 +781,7 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   s.on=true;
   const art=ENEMY_ART[actor.kind];
   s.ratio=scale/body*file.cell[1]*(file.anchor?.[1]??.88)/(art.height*art.originY*(actor.elite?ELITE_ART_SCALE:1));
+  s.head=figurePx(textures,id,piece,actor.kind,file,actor.elite);
   if(eliteFrame)follow(image,overlayOf(image,s,'overlay'),copyTop?copyTop.key:eliteFrame.key,eliteFrame.frame,ELITE_LAYER_DEPTH);
   if(costumeFrame)follow(image,overlayOf(image,s,'costume'),copyMid?copyMid.key:costumeFrame.key,costumeFrame.frame,COSTUME_LAYER_DEPTH);
   return true;

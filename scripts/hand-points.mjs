@@ -86,6 +86,9 @@ const OVERRIDES={
   // Its breathing rest (parado-respiracao-herois): the idle8's poses, the hands below the hip, where nothing moves.
   'clt-cansado:idle16-W':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[58,59]])),
   'clt-cansado:idle16-E':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[50,56]])),
+  // The gato's SE breathing rest: the paw rule flips between the paw and the sash knot as the shoulders open; the paw
+  // stays where the rest has it (frame 0, behind the sleeve).
+  'gato-nada-pra-comer:idle16-SE':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[65.8,60,1]])),
   // The vendedor's S punch toward the camera (7) and the guard at the chest (12, 13): the fist sits on the torso, the
   // outermost skin is the cheek (marked by eye on the debug sheet, 24/10).
   'vendedor-praia:attack16-S':{7:[40,54],12:[40,52],13:[38,50]},

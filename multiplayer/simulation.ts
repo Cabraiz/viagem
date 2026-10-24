@@ -228,6 +228,8 @@ export class Simulation {
   private shame=new ShameTracker();
   /** Lab only (LAB_ZUEIRA): the zueira plan every run of this simulation uses instead of the seed's. */
   zueiraLab?:ZueiraLab;
+  /** Lab only (LAB_DOURADA): the hidden dourada chance of every run of this simulation (assemble goldLab). */
+  goldLab?:number;
   /** This room's own fork of the decoded city (cidade-06): its blockers (barricades) never leak into other rooms. */
   private readonly city?:CityTerrain;
   /**
@@ -341,6 +343,7 @@ export class Simulation {
       // seat itself may be held longer (the whole run while someone is connected, 3g-rede-sem-teleporte).
       reconnectGraceTicks:Math.round(GRACE_MS/STEP_MS),
       zueiraLab:this.zueiraLab,
+      ...(this.goldLab!==undefined?{goldLab:this.goldLab}:{}),
       ...(this.cityBalance?{cityBalance:this.cityBalance}:{}),
       ...(this.rotation!==undefined?{rotation:this.rotation}:{}),
       ...(this.objective?{objective:this.objective}:{}),

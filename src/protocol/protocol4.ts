@@ -101,6 +101,8 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
+ * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
+ * the players (the client's vignette); an older decoder would refuse the player mask.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=31;
@@ -398,7 +400,11 @@ const SCHEMAS:Record<SectionKey,Schema>={
   // Fields that change every frame come first, so the usual mask (nudge + ack + hp + stats) fits one byte.
   players:{prefix:'',fields:{
     ack:c(optional(count)),hp:c(count),stats:c(contribution),downed:c(downed),attackTick:c(optional(tickRel)),
-    x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
+    x:c(optional(posX)),y:c(optional(posY)),
+    // Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): the dark 0..1 in 1/255 steps, one change every ~0.24 s alone. Next
+    // to x/y, so a hero walking alone keeps the two-byte mask they already had.
+    fear:c(optional(unit)),
+    skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
     online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
     name:c(str),classId:c(str),
     // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
@@ -1233,7 +1239,8 @@ function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[
   for(let i=0;i<n;i++){
     const gap=r.uvar();if(!gap)throw new FrameError('ids out of order');
     const id=last+=gap,mask=r.uvar();
-    if(mask>=bit(keys.length))throw new FrameError('bad field mask');
+    // 2** and not bit(): with 29 fields 1<<31 is negative and every mask would be refused.
+    if(mask>=2**(keys.length+FIELD_BIT))throw new FrameError('bad field mask');
     const prev=client.get(id);
     if(!(mask&NEW)&&!prev)throw new FrameError('delta for unknown entity');
     // `client` is this frame's copy (advance): update in place. A bad frame is dropped whole, so nothing leaks.

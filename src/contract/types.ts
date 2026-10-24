@@ -97,6 +97,11 @@ export interface SimPlayer extends Point {
   /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
   grana?:number;
   /**
+   * Fear (rules/fear.ts, sim/fear.ts): ticks of dark built up alone, 0..FEAR_TICKS; at FEAR_TICKS the hero falls.
+   * Absent = 0 (and in the runs without the fear system, so their digests stay).
+   */
+  fear?:number;
+  /**
    * D-051, manual combat only (server-side, never on the wire): the enemy whose hit last landed on this player and the
    * tick (core damagePlayer), for the auto aim's "who is hitting me" rule. Absent with the automatic weapons, so no
    * digest of the default game moves.

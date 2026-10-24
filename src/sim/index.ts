@@ -16,6 +16,7 @@ export * from './enemies/catalog.ts';
 export * from './player-effects.ts';
 export * from './progression.ts';
 export * from './revive.ts';
+export * from './fear.ts';
 export * from './run.ts';
 export * from './shame.ts';
 export * from './skills.ts';

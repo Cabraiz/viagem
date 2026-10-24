@@ -10,8 +10,8 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt} from '../src/sim/index.ts';
-import {CALMA,refreshStats} from '../src/rules/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {CALMA,FEAR_TICKS,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -184,6 +184,8 @@ function playerRunOk(run:unknown){
   if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
   if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
+  // Fear (sim/fear.ts): whole ticks of dark, 0..FEAR_TICKS.
+  if(run.fear!==undefined&&!(Number.isSafeInteger(run.fear)&&(run.fear as number)>=0&&(run.fear as number)<=FEAR_TICKS))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
 }
 /** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
@@ -1005,6 +1007,7 @@ export class Simulation {
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...(p.grana!==undefined?{grana:p.grana}:{}),
+        ...fearView(p),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
@@ -1062,6 +1065,11 @@ export class Simulation {
 export type {SimEvent};
 
 /** D-047 Dona Cida's sweets still running on `tick` (a finished one costs no bytes). */
+/** The wire's fear (PlayerRunView.fear, sim/fear.ts): the dark 0..1, absent at 0. */
+export function fearView(p:SimPlayer):{fear?:number}{
+  const v=fearOf(p);
+  return v===undefined?{}:{fear:v};
+}
 /** The wire's moveSpeed (PlayerRunView.moveSpeed): stats.moveSpeed as the walk takes it, absent when 1. */
 export function moveSpeedOf(p:SimPlayer):{moveSpeed?:number}{
   const v=statMoveSpeed(p);

@@ -7,7 +7,7 @@ import type {CityOutlines} from '../render/city-outline.ts';
 import {figureOffThread} from '../render/outline-jobs.ts';
 import {copyX,copyY,cropOf,variantOrigin,type CellCrop,type VariantGeometry} from '../render/city-outline-rules.ts';
 import {HERO_DRAW_SCALE} from '../render/draw-scale.ts';
-import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,type Movement128Plan} from './movement128.ts';
+import {movement128Figure,movementPlan,movementSheets,movementFrame,swingFrame,movementPivotX,heroRuns,runPhase,phaseStride,phaseContacts,hasPush16,pushPlan,hasPull16,pullPlan,hurtPlan,type Movement128Plan} from './movement128.ts';
 import {clipFeetY,detailedFeetY,heroFeetY} from './hero-feet.ts';
 import {setBareFrame} from '../render/silhouette.ts';
 import {movement128Textures,movement128Visible,freeSheet,type Movement128Textures} from './movement128-textures.ts';
@@ -20,6 +20,13 @@ export type {FigureBox};
 interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
 /** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen (`geom`: the city copy shown). */
 export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
+/**
+ * A walk as drawn (card som-passos-fora-do-eixo): the cycles walked since it started (`since`, the scene's clock) up to
+ * the frame drawn at `at` (same clock), and the points of the cycle (0..1) where the sheet shown plants a foot: the run
+ * and push phase tables' (phaseContacts), else pose 0 and the middle pose of a looping clip (LOOP_CONTACTS).
+ */
+export interface Gait {cycles:number;contacts:readonly number[];since:number;at:number}
+export const LOOP_CONTACTS:readonly number[]=[0,.5];
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 
 /** Animation key per motion (single sheet) or per motion and facing (4-direction atlas) of one texture. */
@@ -132,7 +139,7 @@ export class CharacterSprites {
     }catch{box=null;}
     this.measured.set(sheet.key,box);
   }
-  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;stream?:Movement128Plan;hand?:HandFrame}>();
+  private states=new WeakMap<Phaser.GameObjects.Sprite,{motion:SpriteMotion;hurt:HurtGate;walk:WalkGate;facing:FacingTracker;eight:Facing8Tracker;x:number;y:number;shown?:Motion;side?:string;swingShown?:number;phaseMotion?:Motion;phaseStarted?:number;cycles:number;gait?:Gait;stream?:Movement128Plan;hand?:HandFrame}>();
   private detailed?:Movement128Textures<Phaser.GameObjects.Sprite>;
   private detailedPreloads=new Map<string,Movement128Plan>();
   private preloadCleanup=false;
@@ -254,6 +261,8 @@ export class CharacterSprites {
    * (hand-points.ts) and how that frame is drawn. Undefined for a clip without measured hands (the legacy sheets, R06,
    * a class not measured yet): render/arsenal-fx.ts then keeps the weapon sticker at the hero's side.
    */
+  /** The walk `sprite` shows this frame (footsteps.ts steps on its contacts); undefined while it does not walk. */
+  gait(sprite:Phaser.GameObjects.Sprite):Gait|undefined{return this.states.get(sprite)?.gait;}
   handPose(sprite:Phaser.GameObjects.Sprite):HandPose|undefined{
     const h=this.states.get(sprite)?.hand,point=h&&handPoint(h.url,h.frame);
     return h&&point?{point,ox:h.ox,oy:h.oy,scale:h.scale,flip:h.flip,direction:h.direction,...(h.geom?{geom:h.geom}:{})}:undefined;
@@ -296,7 +305,8 @@ export class CharacterSprites {
     if(motion==='walk'){
       const figurePx=96*this.viewScale*HERO_DRAW_SCALE,phase=detailed?.phase;
       state.cycles+=phase?walkCycles(dx,dy,view,figurePx,phaseStride(phase),1):heroRuns(id)?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx);
-    }
+      state.gait={cycles:state.cycles,contacts:phase?phaseContacts(phase):LOOP_CONTACTS,since:state.phaseStarted!,at:this.scene.time.now};
+    }else state.gait=undefined;
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);
       if(cache.request(sprite,detailed)){

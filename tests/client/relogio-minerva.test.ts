@@ -68,3 +68,14 @@ test('the HUD mounts the clock first in the announcement slot and the explore wi
   const css=readFileSync(new URL('../../src/client/hud/minerva.css',import.meta.url),'utf8');
   assert.match(css,/\.rh-minerva\{[^}]*pointer-events:none/);
 });
+
+test('the phone lying down moves the clock under the minimap, off the hero (BUG-20261024-ORQ-minerva-cobre-heroi-paisagem)',()=>{
+  const css=readFileSync(new URL('../../src/client/hud/minerva.css',import.meta.url),'utf8');
+  const landscape=css.slice(css.indexOf('@media (max-height:500px){'));
+  assert.ok(landscape.length<css.length,'a landscape block');
+  // Only the phone (data-hud=fone) in landscape: PC and portrait keep the announcement slot.
+  assert.match(landscape,/\.rh\[data-hud=fone\] \.rh-minerva\{position:fixed;top:calc\(var\(--rh-t\) \+ var\(--rh-mm\) \+ 8px\);left:var\(--rh-l\);width:var\(--rh-mm\)/);
+  assert.doesNotMatch(css.slice(0,css.indexOf('@media (max-height:500px){')),/position:fixed/);
+  // "Os monstros acordaram!" fits the column: the face steps aside.
+  assert.match(landscape,/\[data-phase=wake\] \.rh-minerva-face\{display:none\}/);
+});

@@ -40,6 +40,17 @@ export function runPhase(p:RunPhase,cycles:number):{frame:number;shift:[number,n
   }
   return {frame:p.d.length-1,shift:[0,0]};
 }
+const contactsOf=new WeakMap<RunPhase,readonly [number,number]>();
+/**
+ * Where a foot lands in a phase table's cycle (0..1): pose 0 and the middle pose, as the M16 run and push sheets are drawn
+ * (card som-passos-fora-do-eixo: the legs' spread along the way peaks there on the W and NW sheets). The middle pose's
+ * point is the ground of the poses before it over the stride, not 1/2: the sound lands on the pose the walk shows.
+ */
+export function phaseContacts(p:RunPhase):readonly [number,number]{
+  let c=contactsOf.get(p);
+  if(!c){let x=0;for(let i=0;i<p.d.length>>1;i++)x+=p.d[i];c=[0,x/phaseStride(p)];contactsOf.set(p,c);}
+  return c;
+}
 let version=-1;
 const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),hurt16=new Map<string,boolean>();
 function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();hurt16.clear();}}

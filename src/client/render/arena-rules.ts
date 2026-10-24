@@ -10,12 +10,15 @@
 import {WAVE_BOSS_IDS} from '../../rules/index.ts';
 
 export const ARENA=Object.freeze({
-  /** The lit circle around him (u): his slam, his charge's run-up and the heroes fighting him. */
-  radius:13,
+  /**
+   * The lit ground around his feet (u; 1 u ≈ 30 px across on screen at zoom 1): his slam and the heroes next to him.
+   * His body (several heroes tall) gets its own light (bodyLight × his drawn height), so he never stands in the dark.
+   */
+  radius:6,bodyLight:.5,
   /** Light around the own hero, an ally on their feet and the Uno (u). */
-  heroLight:3.5,allyLight:3,unoLight:5,
+  heroLight:2.2,allyLight:1.8,unoLight:3,
   /** The dark's opacity: the map still reads as shapes, the fight is the only colour. */
-  alpha:.86,
+  alpha:.9,
   /** Seconds to close in once he stands, and to open again once he falls. */
   inS:1.4,outS:1.1,
   /** The arena's centre follows him with this time constant (s). */
@@ -24,6 +27,8 @@ export const ARENA=Object.freeze({
 
 /** An enemy on the wire (EnemyView). */
 export interface ArenaEnemy {id:string;kind:string;x:number;y:number;hp:number}
+/** A spot's radius is where its soft edge is half dark: the texture is clear to `core` of its size, nothing at 1. */
+export const spotScale=(core:number)=>2/(1+core);
 /** The 1st wave's chefão on his feet, or undefined. */
 export const arenaBoss=(enemies:Iterable<ArenaEnemy>)=>{
   for(const e of enemies)if(e.hp>0&&WAVE_BOSS_IDS.includes(e.kind))return e;

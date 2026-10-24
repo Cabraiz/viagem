@@ -27,12 +27,14 @@ try{
   await ctx.route('**/multiplayer.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({endpoint:SALAS})}));
   const page=await ctx.newPage();const errors=[];globalThis.__page=page;globalThis.__errors=errors;
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
-  await page.goto(`${VITE}?perf=1&chefaoEscala=${K}`,{waitUntil:'load',timeout:180000});
-  await page.waitForSelector('#confirm',{state:'attached',timeout:180000});
+  await page.goto(`${VITE}?perf=1&chefaoEscala=${K}`,{waitUntil:'domcontentloaded',timeout:300000});
+  await page.waitForSelector('#confirm',{state:'attached',timeout:420000});
   await page.evaluate(()=>{const n=document.getElementById('nickname');n.value='Tia Cleide';n.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('confirm').click();});
   await sleep(2000);
   const bora=page.getByRole('button',{name:/BORA/i});if(await bora.count()){await bora.first().click();await sleep(2000);}
   const solo=page.getByRole('button',{name:/Jogar sozinho/i});
+  // The menu may come late on a cold vite (the PC run, etapa 7): wait for it or the old confirmation.
+  await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>/Jogar sozinho/i.test(b.textContent)&&b.offsetParent)||document.getElementById('confirmation')?.open,null,{timeout:180000}).catch(()=>{});
   if(await solo.count())await solo.first().click();
   else if(await page.evaluate(()=>document.getElementById('confirmation')?.open))await page.evaluate(()=>document.getElementById('enter-island').click());
   await page.waitForFunction(()=>{const s=document.querySelector('dialog.explore-shell');return s&&!s.querySelector('.explore-loading:not([hidden])')&&window.__perfScene?.actor&&window.__perfScene.hooks.net?.run?.phase==='combat';},null,{timeout:180000});
@@ -78,7 +80,8 @@ try{
   await sleep(300);await page.screenshot({path:join(OUT,`${tag}-2-volta.png`)});
   // The hero next to him (a lab move), so the fight's shot shows both: his size against the hero's.
   const near=()=>page.evaluate(()=>{const net=window.__perfScene.hooks.net,b=[...net.feed.enemies.values()].find(e=>e.boss);if(b)for(const [dx,dy] of [[4,5],[0,0],[6,0],[0,6],[-5,4],[3,-4]])net.socket.send(JSON.stringify({t:'lab',to:{x:b.x+dx,y:b.y+dy}}));});
-  await near();await sleep(1200);await near();await sleep(1200);console.log('probe-luta',JSON.stringify(await probe()));await page.screenshot({path:join(OUT,`${tag}-3-luta.png`)});
+  await near();await sleep(1200);await near();await sleep(1200);console.log('probe-luta',JSON.stringify(await probe()));
+  console.log('arena',JSON.stringify(await page.evaluate(()=>{const s=window.__perfScene,rt=s.arenaDark?.rt;return {rt:!!rt,visible:rt?.visible,zoom:s.cameras.main.zoom,spots:s.arenaSpots?.map(p=>({rx:Math.round(p.rx),ry:Math.round(p.ry)}))};})));await page.screenshot({path:join(OUT,`${tag}-3-luta.png`)});
   // Etapa 6: his textures (GPU: w × h × 4 per page, no mipmaps) and what they cost to download, per file.
   console.log('medida',JSON.stringify(await page.evaluate(id=>{
     const s=window.__perfScene,tex=[];let gpu=0;

@@ -7,7 +7,7 @@ import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './pre
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
 import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
-import {ARENA,ArenaClock,arenaBoss} from './render/arena-rules.ts';
+import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
@@ -1021,9 +1021,14 @@ export class IslandScene extends Phaser.Scene {
     if(!boss&&!this.arenaDark)return;
     const frame=this.arenaClock.step(boss,delta);
     if(frame.alpha<=0||!frame.at){this.arenaDark?.hide();return;}
-    // The light texture is clear to LIGHT_CORE of its radius: the arena's clear edge sits at ARENA.radius.
-    const out=this.arenaSpots,grow=1/LIGHT_CORE;out.length=0;
+    // Every radius is where its soft edge is half dark (the light texture is clear to LIGHT_CORE of its size).
+    const out=this.arenaSpots,grow=spotScale(LIGHT_CORE);out.length=0;
     out.push(this.groundEllipse(frame.at,ARENA.radius*grow),this.groundEllipse(this.position,ARENA.heroLight*grow));
+    if(boss){
+      // His body: an upright ellipse over his drawing (he stands several heroes tall), as drawn, not eased.
+      const feet=this.project(boss),h=artTargetHeight(boss.kind)*this.actorScale*ENEMY_DRAW_SCALE;
+      out.push({x:feet.x,y:feet.y-h*.45,rx:h*ARENA.bodyLight*.6*grow,ry:h*ARENA.bodyLight*grow});
+    }
     for(const p of net.feed.players.values()){
       if(p.id===net.id||p.spectator||p.downed||p.eliminated||!(p.hp>0))continue;
       const at=this.drawnFeet.get(p.id)??(p.x!==undefined&&p.y!==undefined?{x:p.x,y:p.y}:undefined);

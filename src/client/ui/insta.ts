@@ -56,6 +56,14 @@ export const INSTA_PERFIS:readonly InstaPerfil[]=Object.freeze([
     chips:chips('Regata 365','Só mais uma','No pump'),
     posts:posts('creatina_pura',['Registro do bíceps. Dia 412.','7.704','há 4 horas'],
       ['O pneu não ia se puxar sozinho.','6.091','há 8 horas'],['Shake: meu único relacionamento sério.','9.338','há 3 dias'])},
+  {id:'vendedor-praia',nome:'VENDEDOR',handle:'@VENDEDOR',letreiro:'Vendedor de Praia, reforço geladinho',seguidores:'47,3 mil',seguindo:'2.318',bio:'Olha a água, olha o mate!\nAceito Pix.',
+    chips:chips('Chapéu de palha','Água gelada','Na areia quente'),
+    posts:posts('quiosque_do_ze',['Selfie com o isopor. Gelo novinho.','2.214','há 1 hora'],
+      ['Areia a 60 graus. O chinelo resiste.','3.870','há 5 horas'],['Vai uma geladinha, aventureiro?','5.402','há 1 dia'])},
+  {id:'aposentado',nome:'APOSENTADO',handle:'@APOSENTADO',letreiro:'Aposentado, experiência não falta',seguidores:'3.104',seguindo:'12',bio:'No meu tempo\no boss era maior.',
+    chips:chips('Colete de pesca','Vara no torno','Contando história'),
+    posts:posts('neto_favorito',['Consertei a vara. Ficou melhor que nova.','312','há 2 horas'],
+      ['O peixe era DESSE tamanho. Juro.','487','há 6 horas'],['Puxando o chefe do lago. Ele resistiu.','655','há 1 dia'])},
 ]);
 export const instaPerfil=(id:string):InstaPerfil|undefined=>INSTA_PERFIS.find(p=>p.id===id);
 

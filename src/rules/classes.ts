@@ -45,9 +45,11 @@ export function getClass(id: string): HeroClass | undefined { return classes.fin
  * hidden: a room or link asking for one of them plays one of these (playableClassId), never an error.
  */
 export const PLAYABLE_CLASS_IDS: readonly string[] = Object.freeze(['clt-cansado','coach','concurseira','faxineira','feirante',
-  'gato-nada-pra-comer','maromba','mendigo','passageira','pedreiro','streamer','universitario','viciado-em-bet','vizinha-fofoqueira']);
-/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now). */
-export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer']);
+  'gato-nada-pra-comer','maromba','mendigo','passageira','pedreiro','streamer','universitario','viciado-em-bet','vizinha-fofoqueira',
+  // The user (24/10, "falta liberar o aposentado e o vendedor"): playable with their 4-direction sheets until the 8-direction art lands.
+  'vendedor-praia','aposentado']);
+/** Playable, but never drawn for a room bot (gato-no-menu: "bots não usam" for now; the vendedor and the aposentado until their 8-direction art). */
+export const NOT_FOR_BOTS: readonly string[] = Object.freeze(['gato-nada-pra-comer','vendedor-praia','aposentado']);
 /** The classes a room bot may get: the playable ones minus NOT_FOR_BOTS, in the roster's order. */
 export const BOT_CLASS_IDS: readonly string[] = Object.freeze(PLAYABLE_CLASS_IDS.filter(id => !NOT_FOR_BOTS.includes(id)));
 /** The playable classes, in the roster's order. */

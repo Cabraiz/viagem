@@ -136,6 +136,8 @@ export class AudioEngine {
   get context():AudioContext|undefined{return this.ctx;}
   get output():AudioNode|undefined{return this.master;}
   get musicOutput():AudioNode|undefined{return this.buses.music;}
+  /** The effects bus (its volume and mute): a looping voice of its own joins it (audio/alarm.ts, the Uno's alarm). */
+  get effectsOutput():AudioNode|undefined{return this.buses.effects;}
   /**
    * How late a sound started now reaches the speakers (ms): the context's base and output latency, 0 before unlock or
    * where the browser does not say; at most MAX_LATENCY_MS. footsteps.ts plays that much ahead of the foot.

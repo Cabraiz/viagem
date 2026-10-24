@@ -32,11 +32,12 @@
  * everyone sees everyone's balance; the camp block's and the objective block's `grana` are the viewer's own wallet
  * (0 for a spectator), written per encoder from the viewer's player record. The `pix` event goes to everyone.
  * Sleeping bodies (D-051, `asleep`) count at most ASLEEP_PER_VIEWER per client, the nearest ones.
+ * Per-player crates (caixa-gamble): a pickup whose server-only `hiddenFor` names the viewer is left out of his frames.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CAR_INTEREST_RADIUS,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
@@ -101,11 +102,12 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
+ * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
  * Next (the queue numbers it) since the barracas (card NEW-20261023-ORQ-barracas-no-caminho): 'kit:barraca' and the
  * 'barraca' structure kind at the end of the DICT; an older decoder would read the new indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=31;
+export const PROTOCOL_VERSION=32;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -383,6 +385,9 @@ const contribution=optional<Contribution>({
 export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number;
   /** The player's wallet in R$ (contract SimPlayer.grana; carteira-e-pix): absent = 0. */
   grana?:number};
+/** A pickup this viewer no longer sees (PickupState.hiddenFor, the caixa-gamble's per-player crates). */
+const hidden=(e:Entity,viewer:string)=>(e.hiddenFor as readonly string[]|undefined)?.includes(viewer)===true;
+
 /** What `viewer` sees as their own Grana: their wallet (0 when absent, a spectator, or not in the frame). */
 export function viewerGrana(players:readonly PlayerWireView[],viewer:string|undefined):number{
   const p=viewer===undefined?undefined:players.find(q=>q.id===viewer);
@@ -815,6 +820,11 @@ const sameWorld=(a?:WorldDescriptor,b?:WorldDescriptor)=>!!a&&!!b&&a.kind===b.ki
   a.generatorVersion===b.generatorVersion&&a.seed===b.seed&&a.signature===b.signature;
 
 /** What the server hands the encoder each frame: a RunView with server ids, minus offers and events. */
+/** Whether an entity stands by the car (CAR_INTEREST_RADIUS; + `hysteresis` for one already sent). */
+function carNear(car:Point2,hysteresis:number){
+  const r2=CAR_INTEREST_RADIUS**2,s2=(CAR_INTEREST_RADIUS+hysteresis)**2;
+  return (e:Entity,had:boolean)=>{const dx=(e.x as number)-car.x,dy=(e.y as number)-car.y,d2=dx*dx+dy*dy;return d2<=r2||had&&d2<=s2;};
+}
 export type FrameInput=Omit<RunView,'offers'|'events'|'players'>&{players:PlayerWireView[];world?:WorldDescriptor};
 export interface EncoderStats {frames:number;fullFrames:number;bytes:number;eventBytes:number;
   /** Entities left out by the area of interest (summed over frames), and events dropped as out of sight. */
@@ -916,7 +926,7 @@ export class FrameEncoder {
     this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);this.chain=!!options.chain;
     this.farEvery=Math.max(1,Math.floor(options.farEvery??1));
     if(options.viewer!==undefined&&options.interest!==false)
-      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER};
+      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER,...(options.interest?.awake!==undefined?{awake:options.interest.awake}:{})};
   }
 
   /**
@@ -997,8 +1007,15 @@ export class FrameEncoder {
       at(view.structures[0])??{x:0,y:0};
   }
   /** The entities of a section this client gets, as wire id -> server entity. */
-  private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined):Map<number,Entity>{
+  /**
+   * `car`: the chaveiro's car while the objective runs (card inimigos-querem-o-uno): the awake enemies by it come too,
+   * first under the cap (the Uno's live window).
+   */
+  private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined,car?:Point2):Map<number,Entity>{
     const current=new Map<number,Entity>();
+    // The caixa-gamble: a crate this viewer no longer sees (server-only hiddenFor) is not in his frames at all.
+    const viewer=this.viewer;
+    if(section==='pickups'&&viewer!==undefined&&list.some(e=>hidden(e,viewer)))list=list.filter(e=>!hidden(e,viewer));
     const interest=this.interest,always=section==='players'||section==='structures';
     if(!interest||!focus||always){
       for(const e of list)current.set(this.ids.wire(section,e.id),e);
@@ -1008,6 +1025,7 @@ export class FrameEncoder {
     const before=this.members[section],keep=new Set<string>();
     this.previous[section]=before;
     const near=interest.radius,stay=interest.radius+interest.hysteresis,near2=near*near,stay2=stay*stay,tele=section==='telegraphs';
+    const byCar=section==='enemies'&&car?carNear(car,interest.hysteresis):undefined;
     // D-051: the sleepers inside the area wait here and only the nearest `interest.asleep` go (ties by id).
     const sleepers:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.sleepScratch:undefined;
     if(sleepers)sleepers.length=0;
@@ -1018,10 +1036,11 @@ export class FrameEncoder {
       let d2=dx*dx+dy*dy;
       if(tele){const d=Math.sqrt(d2)-Math.max(0,finite(e.radius as number))-Math.max(0,finite((e.width as number|undefined)??0));d2=d<0?0:d*d;}
       // The boss is always sent: the arrow to it and its hp bar matter from anywhere. NaN positions stay out.
-      const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
+      const atCar=!!byCar&&e.asleep!==true&&byCar(e,!!before?.has(e.id));
+      const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id))||atCar;
       if(!inside){this.stats.culled++;continue;}
       if(sleepers&&e.asleep===true){sleepers.push({e,d2});continue;}
-      if(awake){awake.push({e,d2});continue;}
+      if(awake){awake.push({e,d2:atCar?0:d2});continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
     }
     // The awake inside the area: only the nearest `interest.awake` (ties by id), the phone's drawing budget.
@@ -1079,6 +1098,8 @@ export class FrameEncoder {
     const baseSeq=this.chain?this.seq:this.acked,seq=++this.seq,base=this.history.get(baseSeq);
     const focus=this.focusOf(view,options.focus);
     const f:FrameCtx={tick:view.tick,ox:focus?Math.round(focus.x):0,oy:focus?Math.round(focus.y):0};
+    const car=this.interest&&view.objective&&!view.objective.ended?view.objective.car:undefined;
+    const nearCar=car&&this.interest?carNear(car,this.interest.hysteresis):undefined;
     if(!(Math.abs(f.ox)<=POS_LIMIT))f.ox=0;
     if(!(Math.abs(f.oy)<=POS_LIMIT))f.oy=0;
     const w=new Writer();
@@ -1116,11 +1137,11 @@ export class FrameEncoder {
     for(const section of SECTIONS){
       const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
-      const current=this.select(section,list,focus);
+      const current=this.select(section,list,focus,car);
       // Off-screen critters wait for their frame (farEvery): the client keeps the copy it has.
       const hold=section==='enemies'&&this.farEvery>1&&focus&&this.viewer!==undefined&&seq%this.farEvery!==0?
         // Both where the client has it and where it is now: one walking off the edge still gets its last steps.
-        (e:Entity,had:Entity)=>e.boss!==true&&!visibleOffset((e.x as number)-focus.x,(e.y as number)-focus.y)&&
+        (e:Entity,had:Entity)=>e.boss!==true&&!(nearCar?.(e,true))&&!visibleOffset((e.x as number)-focus.x,(e.y as number)-focus.y)&&
           !visibleOffset((had.x as number)-focus.x,(had.y as number)-focus.y):undefined;
       // Removed from this client but still in the world: it left the area of interest (no death poof).
       const exists=this.interest?(label:string)=>liveIds(list,view.tick).has(section==='players'?label:this.ids.resolve(label)??''):()=>false;

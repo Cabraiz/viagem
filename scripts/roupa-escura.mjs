@@ -6,6 +6,7 @@
 // scripts/roupa-escura.json levam uma cor de destaque (matiz longe da pele). Alfa e contorno (2 px) e a cabeça (topo 28 %
 // da figura) não mudam; a pseudo-sombra já assada fica, porque o sombreado relativo de cada pixel é mantido.
 //
+// Peça com `fora` no json fica como está (sem roupa: objeto ou bicho; ou o vermelho/marrom é a assinatura dela).
 //   node scripts/roupa-escura.mjs [--ids a,b]           todas as peças de scripts/roupa-escura.json (ou só estas), no lugar
 //   node scripts/roupa-escura.mjs --saida <dir> --ids a  grava as folhas em <dir> (antes × depois), sem mexer no repositório
 //   node scripts/art-lite.mjs --kinds enemies           depois: as cópias lite e enemies-pc saem das folhas recoloridas
@@ -190,13 +191,15 @@ async function main(){
   for(const id of ids){
     const peca=man.pieces[id],cfg=conf[id];
     if(!peca||!cfg){console.warn('sem peça ou sem config:',id);continue;}
+    if(cfg.fora){console.log(`${id}: fica como está (${cfg.fora})`);continue;}
     const base=parado(peca),anchorY=base.anchor?.[1]??.88;
     // Os grupos vêm do carimbo (a folha do parado já recolorida não serve para separar de novo).
     let sep=carimbo.pecas[id];
     if(!sep){const {px,w}=await ler(join(DIR,paginas(base)[0].file));sep=separar(px,w,base.cell,anchorY);}
     const alvos=alvosDa(cfg,sep),antes={},depois={};
     for(const [anim,file] of Object.entries(peca.files)){
-      if(cfg.pular?.includes(anim))continue;
+      // As camadas elite/ (coroa, fantasias como o picolé) desenham por cima do corpo: não são roupa, ficam.
+      if(anim.includes('/')||cfg.pular?.includes(anim))continue;
       for(const page of paginas(file)){
         const src=join(DIR,page.file);if(!existsSync(src))continue;
         if(noLugar&&carimbo.files[page.file]===sha256(readFileSync(src))){pulou++;continue;}

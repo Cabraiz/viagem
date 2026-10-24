@@ -491,8 +491,10 @@ let waveBossDraw:number=WAVE_BOSS.drawScale;
 /** Dev labs (`?chefaoEscala=3`, boss-fim-onda-1): the chefão's drawing scale; anything not in 1..4 puts the rule's back. */
 export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?scale:WAVE_BOSS.drawScale;}
 if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
+/** The chefão's extra scale for art `id` (1 for every other art). */
+const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
-export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*(WAVE_BOSS_IDS.includes(id)?waveBossDraw:1);
+export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */
 export const MASS_ALPHA=128;
 /**
@@ -643,7 +645,7 @@ export const enemyArtRatio=(image:object)=>{const s=states.get(image);return s&&
  */
 function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite);
+  return drawnScale(id,drawn===undefined?undefined:drawn*file.cell[1]/(cachedFile(piece)?.cell[1]??file.cell[1]),elite)??enemyDrawScale(kind,file,elite)*waveBossK(id);
 }
 /**
  * The figure's height in world px (before the scene's `body` scale) for `file`: the role's target once the drawn height
@@ -651,7 +653,7 @@ function pieceScale(textures:Phaser.Textures.TextureManager,id:string,piece:ArtP
  */
 function figurePx(textures:Phaser.Textures.TextureManager,id:string,piece:ArtPiece,kind:EnemyKind,file:ArtFile,elite:boolean){
   const drawn=drawnHeight(textures,id,piece);
-  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*file.cell[1]*(file.anchor?.[1]??.88);
+  return drawn!==undefined&&drawn>=4?artTargetHeight(id)*(elite?ELITE_ART_SCALE:1):enemyDrawScale(kind,file,elite)*waveBossK(id)*file.cell[1]*(file.anchor?.[1]??.88);
 }
 /** The file drawnHeight measures (the still loop's), for a piece whose animations have different cells. */
 const cachedFile=(piece:ArtPiece)=>{const a=cachedAnim(piece,false,false);return a?piece.files[a]:undefined;};

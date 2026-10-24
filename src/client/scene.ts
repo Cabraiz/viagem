@@ -27,7 +27,7 @@ import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {heldHand} from './sprites/hand-points.ts';
-import {liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
+import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -712,7 +712,8 @@ export class IslandScene extends Phaser.Scene {
     // The chefão's arrival (boss-fim-onda-1): the camera eases over to him and back; a light shake as it lands on him.
     const cena=this.hooks.cena?.frame(performance.now());
     if(cena&&cena.weight>0){
-      const at=this.project({x:cena.cena.x,y:cena.cena.y}),w=cena.weight;
+      // On his body's middle, not his feet (he stands several heroes tall).
+      const at=this.project({x:cena.cena.x,y:cena.cena.y}),w=cena.weight;at.y-=artTargetHeight(cena.cena.who)*this.actorScale*ENEMY_DRAW_SCALE*.45;
       c.x+=(at.x-c.x)*w;c.y+=(at.y-c.y)*w;focus={x:focus.x+(at.x-focus.x)*w,y:focus.y+(at.y-focus.y)*w};
       if(cena.hold&&this.shookFor!==cena.cena.enemy){this.shookFor=cena.cena.enemy;if(!this.reduced)this.cameras.main.shake(320,.006);}
     }
@@ -736,7 +737,10 @@ export class IslandScene extends Phaser.Scene {
    */
   private rebaseDepth(force=false){
     if(!this.field.chunks&&!this.city)return;
-    const o=this.depthOrigin,at=this.watchPoint??this.position;
+    // The chefão's arrival (boss-fim-onda-1): while the camera is mostly on him the origin goes to him (he would sort
+    // under the ground far from the hero), and back with the camera.
+    const cena=this.hooks.cena?.frame(performance.now()),near=cena&&cena.weight>=.5?{x:cena.cena.x,y:cena.cena.y}:undefined;
+    const o=this.depthOrigin,at=near??this.watchPoint??this.position;
     if(!force&&o&&Math.max(Math.abs(o.x-at.x),Math.abs(o.y-at.y))<DEPTH_REBASE_UNITS)return;
     this.depthOrigin={x:Math.round(at.x),y:Math.round(at.y)};
     if(this.actor)this.reproject();

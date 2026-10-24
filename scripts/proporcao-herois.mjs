@@ -33,8 +33,10 @@ const CELL=96,SOLID=128;
 export const HEROES={
   'viciado-em-bet':{cabAlt:.38,cabOmbro:.85},
   'clt-cansado':{cabAlt:.41,cabOmbro:.81},
-  // etapa 3 of the card replaces this with the Chad head the user picks; until then his current head, too small (`small`)
-  maromba:{cabAlt:.31,cabOmbro:.57,small:true},
+  // Chad, +25 % (the user's dose, 24/10): his head scaled on every M16 sheet; .31/.57 before, a pin head on that torso
+  maromba:{cabAlt:.38,cabOmbro:.73,chad:true},
+  // M16 from the card vendedor-aposentado-arte-8-direcoes (24/10), declared as measured: at the top of the human band
+  'vendedor-praia':{cabAlt:.45,cabOmbro:1.11},
   // a cat's head, no neck: its own rule, not HUMAN
   'gato-nada-pra-comer':{cabAlt:.28,cabOmbro:.61,animal:true},
 };

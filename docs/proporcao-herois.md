@@ -19,7 +19,8 @@ O perfil (W/NW) não entra na medida, porque de lado o queixo não estreita e a 
 |---|---|---|---|
 | viciado-em-bet | 0,38 | 0,85 | |
 | clt-cansado | 0,41 | 0,81 | idle8 (R06) |
-| maromba | 0,31 | 0,57 | pequena demais (`small`); a etapa 3 põe a cabeça de Chad que o usuário escolher |
+| maromba | 0,38 | 0,73 | Chad +25 % (dose do usuário, 24/10): a cabeça escalada em todas as folhas M16; antes 0,31/0,57 |
+| vendedor-praia | 0,45 | 1,11 | M16 do card vendedor-aposentado (24/10), no teto da faixa humana |
 | gato-nada-pra-comer | 0,28 | 0,61 | `animal` |
 
 Os heróis R06 que só têm `idle8` (coach, pedreiro…) aparecem com `node scripts/proporcao-herois.mjs --todos`, mas o teste não os cobra: vários ficam em 0,28–0,33 e só vão ser corrigidos quando ganharem folha M16.
@@ -29,3 +30,7 @@ Os heróis R06 que só têm `idle8` (coach, pedreiro…) aparecem com `node scri
 1. Meça o parado: `node scripts/proporcao-herois.mjs --ids <classe>`.
 2. Se o herói for humano e a cab/alt sair da faixa 0,36–0,45, corrija o parado antes de gerar as outras ações, porque todas elas herdam a cabeça dele.
 3. Declare os valores em `HEROES`. Fugir da faixa de propósito (como a cabeça de Chad do maromba) exige a marca `chad` e o motivo no comentário.
+
+## Cabeça maior sem regerar as ações (maromba, 24/10)
+
+`evidence/NEW-20261024-ORQ-maromba-cabeca-proporcao/enxerto/enxertar.py` (no viagem-board) escala a cabeça de cada quadro de cada folha M16 por máscara: a máscara é a cabeça do parado (marcada à mão por direção: tudo acima do maxilar mais o polígono dele), deslocada até o cabelo do quadro; a escala é em volta do pescoço; a toalha e a regata dentro da máscara ficam no corpo; o braço erguido ao lado da cabeça volta por cima. A boca do ataque e a careta do dano são as do próprio quadro. Reimporte com `node scripts/import-movimento16.mjs --input <entrada> --ids <classe> --body-height <altura do corpo em px nativos>`: sem `--body-height` a altura de referência passa a contar a cabeça nova, e o jogo (que desenha 96/height) encolhe o herói inteiro.

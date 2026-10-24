@@ -5,6 +5,8 @@
  *  - Juros & Juros: a critter robs it (bicho), a note every BANCO.bichoSaqueS from 18; the robber is a Cliente Prime;
  *  - Caixa do Posto: empty ("SEM CÉDULAS"), full again in 2:10.
  * `banco=aberto|sacando|bicho|vazio` puts all three in that state instead. Deterministic from the clock only.
+ * `bicos=1` (card bancos-viram-bicos): the three in a row across the screen, a shop's width apart (the pixel-art
+ * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
  */
 import {SIM_HZ,type BankState,type BankView,type EnemyView} from '../../contract/index.ts';
 import {BANCO} from '../../rules/index.ts';
@@ -17,6 +19,9 @@ const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacand
  */
 const AROUND:readonly Pt[]=[{x:-3.6,y:-1.2},{x:1.5,y:4.5},{x:3.4,y:4.2}];
 const DEFAULT:readonly BankState[]=['sacando','bicho','sem-cedulas'];
+/** bicos=1: same screen row (x+y), 7 units apart along the screen's x (x−y); the middle one at the hero. */
+const ROW:readonly Pt[]=[{x:-3.5,y:3.5},{x:0,y:0},{x:3.5,y:-3.5}];
+const ROW_STATES:readonly BankState[]=['aberto','sacando','bicho'];
 
 export interface FakeBanks {
   /** The banks at `now` (ms) and the sim tick it stands for. */
@@ -26,9 +31,9 @@ export interface FakeBanks {
 }
 
 export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
-  const all=STATES[params.get('banco')??''];
-  const states=AROUND.map((_,i)=>all??DEFAULT[i]);
-  const at=AROUND.map(o=>({x:+(hero.x+o.x).toFixed(3),y:+(hero.y+o.y).toFixed(3)}));
+  const all=STATES[params.get('banco')??''],row=params.get('bicos')==='1';
+  const states=AROUND.map((_,i)=>all??(row?ROW_STATES:DEFAULT)[i]);
+  const at=(row?ROW:AROUND).map(o=>({x:+(hero.x+o.x).toFixed(3),y:+(hero.y+o.y).toFixed(3)}));
   const names=['pao-duro','juros','posto'] as const;
   const enemies:EnemyView[]=[];
   states.forEach((s,i)=>{if(s==='bicho')enemies.push({id:`prime-${i}`,kind:'agiota',x:at[i].x+1.1,y:at[i].y+.5,hp:8,maxHp:8,prime:true});});

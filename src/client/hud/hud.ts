@@ -14,6 +14,8 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
+import {createCacaNiquel} from './caca-niquel.ts';
+import './caca-niquel.css';
 import {createResultScreen,type ResultRoster,type RematchVotes} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
@@ -224,6 +226,9 @@ export class RunHud {
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
       live:()=>!this.el.hidden&&!this.el.classList.contains('rh-ended')});
     this.el.insertBefore(pix.el,this.result.el);this.parts.push(pix);
+    // The caça-níquel when a crate turns DOURADA for me (caixa-gamble, hud/caca-niquel.ts): over the play, under the result.
+    const cacaNiquel=createCacaNiquel(parent.ownerDocument);
+    this.el.insertBefore(cacaNiquel.el,this.result.el);this.parts.push(cacaNiquel);
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the

@@ -22,6 +22,7 @@ try{
   browser=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   const ctx=await browser.newContext(PHONE?{viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,serviceWorkers:'block'}
     :{viewport:{width:1280,height:720},deviceScaleFactor:1,serviceWorkers:'block'});
+  await ctx.addInitScript(()=>{try{performance.setResourceTimingBufferSize(20000);}catch{}});
   await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:solo-bots:v1','0');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
   await ctx.route('**/multiplayer.json',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({endpoint:SALAS})}));
   const page=await ctx.newPage();const errors=[];globalThis.__page=page;globalThis.__errors=errors;
@@ -38,9 +39,23 @@ try{
   for(let i=0;i<4;i++){const b=page.getByRole('button',{name:/^Pular/});if(await b.count()&&await b.first().isVisible()){await b.first().click().catch(()=>{});await sleep(400);}else break;}
   // His art first (the {t:'elenco'} list names him): in a real run he comes minutes in, long after it loaded.
   await page.waitForFunction(()=>{const s=window.__perfScene,ids=['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha'];
-    const id=(s.hooks.net.elenco??[]).find(i=>ids.includes(i));return !!id&&s.textures.exists(`art:enemy:${id}:idle`);},null,{timeout:120000});
-  await sleep(1500);
+    const id=(s.hooks.net.elenco??[]).find(i=>ids.includes(i));return !!id&&['idle','walk','slam:p1','slam','charge','summon','hit'].filter(k=>s.textures.exists(`art:enemy:${id}:${k}`)).length>=6;},null,{timeout:240000});
+  await sleep(30000); // the last pages upload (one big sheet a frame, seconds each under swiftshader); a real match: minutes
+  console.log('canvas',JSON.stringify(await page.evaluate(()=>{const s=window.__perfScene,ids=['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha'];
+    const id=(s.hooks.net.elenco??[]).find(i=>ids.includes(i)),src=s.textures.get(`art:enemy:${id}:idle`).getSourceImage();
+    const c=document.createElement('canvas');c.width=c.height=768;const x=c.getContext('2d',{willReadFrequently:true});const out=[];
+    for(let i=0;i<3;i++){const t=performance.now();x.drawImage(src,0,0,768,768,0,0,768,768);x.getImageData(0,0,768,768);out.push(Math.round(performance.now()-t));}
+    return {src:src.constructor.name,w:src.width,out};})));
+  await page.evaluate(()=>{window.__long=[];new PerformanceObserver(l=>{for(const e of l.getEntries())window.__long.push(Math.round(e.duration));}).observe({type:'longtask'});});
+  const cdp=process.argv.includes('--perfil')?await ctx.newCDPSession(page):undefined;
+  if(cdp){await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:500});await cdp.send('Profiler.start');}
   await page.evaluate(()=>window.__perfScene.hooks.net.socket.send(JSON.stringify({t:'lab',chefao:true})));
+  if(cdp){await sleep(7000);const {profile}=await cdp.send('Profiler.stop');const self=new Map(),byId=new Map(profile.nodes.map(n=>[n.id,n]));
+    const dt=profile.timeDeltas;for(let i=0;i<profile.samples.length;i++){const n=byId.get(profile.samples[i]),f=n.callFrame,k=`${f.functionName||'(anon)'} ${f.url.split('/').pop()}:${f.lineNumber}`;self.set(k,(self.get(k)??0)+(dt[i]??0)/1000);}
+    const parent=new Map();for(const n of profile.nodes)for(const c of n.children??[])parent.set(c,n.id);
+    const chains=new Map();for(let i=0;i<profile.samples.length;i++){let id=profile.samples[i];if(byId.get(id).callFrame.functionName!=='texImage2D')continue;const ch=[];for(let k=0;k<7&&id!==undefined;k++){const f=byId.get(id).callFrame;ch.push(`${f.functionName||'anon'}@${f.url.split('/').pop()}:${f.lineNumber}`);id=parent.get(id);}const key=ch.join(' < ');chains.set(key,(chains.get(key)??0)+(dt[i]??0)/1000);}
+    console.log('upload',JSON.stringify([...chains].sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${Math.round(v)}ms ${k}`)));
+    console.log('perfil',JSON.stringify([...self].sort((a,b)=>b[1]-a[1]).slice(0,15).map(([k,v])=>`${Math.round(v)}ms ${k}`)));}
   await page.waitForFunction(()=>{const c=window.__perfScene.hooks.net.run?.cena;if(c)window.__cena=c;return !!c;},null,{polling:20,timeout:20000});
   const who=await page.evaluate(()=>window.__cena.who);
   const probe=()=>page.evaluate(()=>{const s=window.__perfScene,c=window.__cena,cam=s.cameras.main,at=s.project({x:c.x,y:c.y}),me=s.project(s.position);
@@ -49,7 +64,9 @@ try{
     return {weight:f?.weight,ms:f&&Math.round(f.ms),cam:{x:Math.round(cam.midPoint.x),y:Math.round(cam.midPoint.y)},bossPx:{x:Math.round(at.x),y:Math.round(at.y)},heroPx:{x:Math.round(me.x),y:Math.round(me.y)},actor:b,heroDh:Math.round(s.actor.displayHeight)};});
 
   // The shot while the camera holds on him with his name (the page is slow under swiftshader: wait for that moment).
-  await page.waitForFunction(()=>{const f=window.__perfScene.hooks.cena?.frame(performance.now());return f&&f.title&&f.ms>900;},null,{polling:20,timeout:10000}).catch(()=>{});
+  const seen=await page.waitForFunction(()=>{const f=window.__perfScene.hooks.cena?.frame(performance.now());const rc=window.__perfScene.hooks.net.run?.cena;(window.__seen??=[]).push((f?`${Math.round(f.ms)}:${f.weight?.toFixed?.(2)}:${!!f.title}`:'-')+`|left ${rc?.leftMs} total ${rc?.totalMs}|seen ${localStorage.getItem('viagem.chefao.cenas')}`);return f&&f.title&&f.weight>=.95;},null,{polling:20,timeout:10000}).then(()=>'ok').catch(()=>'timeout');
+  console.log('longas',JSON.stringify(await page.evaluate(()=>window.__long)));
+  console.log('espera',seen,JSON.stringify(await page.evaluate(()=>(window.__seen??[]).filter((v,i,a)=>v!==a[i-1]).slice(0,40))));
   await page.screenshot({path:join(OUT,`${tag}-1-chegada.png`)});console.log('probe',JSON.stringify(await probe()));
   console.log('diag:',JSON.stringify(await page.evaluate(()=>{const s=window.__perfScene,net=s.hooks.net,c=window.__cena,now=net.run?.cena;
     const boss=[...net.feed.enemies.values()].find(e=>e.boss);const me=s.position;

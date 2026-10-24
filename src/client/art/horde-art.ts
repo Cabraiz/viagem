@@ -783,8 +783,10 @@ export function applyEnemyArt(image:Phaser.GameObjects.Image,actor:{kind:EnemyKi
   s.eliteOn=!!eliteFrame;s.costumeOn=!!costumeFrame;
   // City mode (contorno-breu): the Breu-ring copy where the ground under the feet is too dark for the imported umber
   // rim (render/city-outline-rules.ts rimForGround); base and elite layer switch together so their geometry matches.
+  // The chefão's HD sheets (manifest.ts hdFile) keep their baked rim: a Breu copy of each would be another ~120-190 MB
+  // of video memory on a computer (measured, boss-fim-onda-1 etapa 6), and at 3× he reads on any ground.
   let copy:CityVariant|undefined,copyTop:CityVariant|undefined,copyMid:CityVariant|undefined;
-  if(city&&city.active()&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
+  if(city&&city.active()&&!file.hd&&city.rimAt(actor.x??0,actor.y??0)==='breu'){
     copy=city.variant(frame.key,scale);
     const same=(v:CityVariant|undefined)=>!!v&&!!copy&&v.geom.slotW===copy.geom.slotW&&v.geom.slotH===copy.geom.slotH;
     if(copy&&eliteFrame){copyTop=city.variant(eliteFrame.key,scale);if(!same(copyTop))copy=copyTop=undefined;}

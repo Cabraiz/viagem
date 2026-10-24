@@ -171,17 +171,17 @@ function directorSpeeds(terrain:SimWorld['terrain'],seed:number,rounds:number,co
 }
 test('only in the city: the director\'s bodies get citySpeed(catalog × the round multiplier) (× 0.75 and × 1.25 rounds included); island and endless keep catalog × multiplier',()=>{
   const identity=(s:number)=>s;
-  // City seeds whose round 3 has a speed modifier: 4 'Modo Segunda-feira' (× 0.75), 18 'Sinal do Recreio' (× 1.25; 22 before
-  // vida-inimigos-estilo-clash moved the stream with ×0.7 bodies).
-  const c4=directorSpeeds(city,4,3,s=>citySpeed(s)),c18=directorSpeeds(city,18,3,s=>citySpeed(s));
+  // City seeds whose round 3 has a speed modifier: 31 'Modo Segunda-feira' (× 0.75), 17 'Sinal do Recreio' (× 1.25); 4 and
+  // 22 before vida-inimigos-estilo-clash moved the stream with ×0.7 bodies from round 2.
+  const c31=directorSpeeds(city,31,3,s=>citySpeed(s)),c17=directorSpeeds(city,17,3,s=>citySpeed(s));
   const i=directorSpeeds(new TerrainField(3),4,3,identity);
   const n=directorSpeeds(new TerrainField(3,{world:'infinito'}),4,1,identity);
-  console.log(`[cidade-05c] director speeds: city seed 4 ${c4.checked} bodies (multipliers ${c4.mults.join(', ')}), seed 18 ${c18.checked} (${c18.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
-  for(const [name,r] of [['city 4',c4],['city 18',c18],['island',i],['endless',n]] as const){
+  console.log(`[cidade-05c] director speeds: city seed 31 ${c31.checked} bodies (multipliers ${c31.mults.join(', ')}), seed 17 ${c17.checked} (${c17.mults.join(', ')}), island ${i.checked} (${i.mults.join(', ')}), endless ${n.checked} (${n.mults.join(', ')})`);
+  for(const [name,r] of [['city 31',c31],['city 17',c17],['island',i],['endless',n]] as const){
     assert.ok(r.checked>0,`${name}: bodies were spawned`);
     assert.deepEqual(r.bad.slice(0,8),[],`${name}: ${r.bad.length} bodies with another speed`);
   }
-  const mults=new Set([...c4.mults,...c18.mults]);
+  const mults=new Set([...c31.mults,...c17.mults]);
   for(const m of [.75,1,1.25])assert.ok(mults.has(m),`city: a round with speed multiplier ${m} was checked (${[...mults].join(', ')})`);
   // The boss controller keeps the authored speed on its body outside the city (its walk is measured in section 7).
   for(const terrain of [new TerrainField(3),new TerrainField(3,{world:'infinito'})]){
@@ -472,7 +472,8 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both re-recorded for balanco-pos-1-7's enemy radius × ENEMY_RADIUS_SCALE 1.15 (the boss's, every body's and the
 // enemy-ai's neighbour reach, which is the boss's radius; were
 // ilha 75a2225f4fc40291, infinito e2d8811cc8c12ed9), the one change allowed to move them.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'251d5c145e1bf470',infinito:'dba3b8b9445b3997'};
+// Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'af8dac7125e12200',infinito:'9097a9f38d2f69c7'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

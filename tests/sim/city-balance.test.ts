@@ -214,8 +214,9 @@ function cityRun(seed:number,rounds:number,tutorial:boolean,extra:Partial<Direct
  * (the city asset v3: the places with life put on open ground stop those cells being walkable, so routes and spawn spots
  * move; with main's asset v2 the old digests still come out).
  */
+// Re-recorded for vida-inimigos-estilo-clash (24/10): role hp (ROLE_HITS), ×0.7 bodies from round 2, ×1.4 XP.
 const CITY_BASELINE:Readonly<Record<string,string>>={
-  'tutorial seed 3 r4':'904736d2bebf594f','tutorial seed 8 r4':'8dff5d5d74d1dc82','plain seed 21 r10':'f1578307e14a1b4e',
+  'tutorial seed 3 r4':'f82a70465864d68b','tutorial seed 8 r4':'2277a9f60104b5b2','plain seed 21 r10':'7effacfb7ee109cf',
 };
 
 test('city director: no option and NEUTRAL_CITY_BALANCE give the plans and output recorded before cidade-11',()=>{
@@ -315,7 +316,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'26a8c859733e7f61',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// cidade re-recorded for vida-inimigos-estilo-clash (24/10).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'c760e6beee7a0f94',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

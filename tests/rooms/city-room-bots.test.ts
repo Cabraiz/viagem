@@ -42,9 +42,11 @@ const STUCK_SECONDS=5,STUCK_REACH=1,FIGHT_NEAR=6;
  * Round 3 (BUG-20261013-E1). ROUND3_MAX_SECONDS: 75 s before the barricades (cidade-06) plus 25 s for what they hold
  * back, plus 15 s since torres-fio (13/10): the room bots now build tower defenses, so the forger spends material on
  * them instead of only repairs and the towers become siege targets too (83 s before it, 103 s with it, seed 4242).
- * A stuck critter is still caught by STALLED_MAX.
+ * Plus 30 s since vida-inimigos-estilo-clash (24/10, ORQ option A): the rounds mode's round 3 is pombo-heavy and the
+ * pombos take 2 hits now (role hp, ROLE_HITS), so the wave runs longer (103 s before, 137 s with it, seed 4242); the live
+ * game is ninhos, where the horde's hp stays +4 %. A stuck critter is still caught by STALLED_MAX.
  */
-const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=115;
+const STALL_SECONDS=10,STALL_REACH=1,STALLED_MAX=3,ROUND3_MAX_SECONDS=145;
 
 function peer(){
   const messages:any[]=[];

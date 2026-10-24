@@ -12,15 +12,17 @@ const css=readFileSync(new URL('../../src/client/ui/insta.css',import.meta.url),
 const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
 const pub=(url:string)=>new URL(`../../public${url}`,import.meta.url);
 
-test('the four profiles are heroes of the game, with the texts of step 2 and their art in WebP + lite',()=>{
-  assert.deepEqual(INSTA_PERFIS.map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
+test('the six profiles are heroes of the game, with the texts of step 2 and their art in WebP + lite',()=>{
+  assert.deepEqual(INSTA_PERFIS.map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
   for(const p of INSTA_PERFIS){
     assert.ok(getClass(p.id)&&PLAYABLE_CLASS_IDS.includes(p.id),p.id);
     assert.equal(p.handle,`@${p.nome}`);
-    assert.ok(p.bio.length<=31,`${p.id}: bio de ${p.bio.length} letras`);
+    // The Vendedor's first line ("Olha a água, olha o mate!", 25) is the longest; it fits one line at 390 px (print 24/10).
+    for(const linha of p.bio.split('\n'))assert.ok(linha.length<=25,`${p.id}: linha da bio de ${linha.length} letras`);
     assert.equal(p.bio.split('\n').length,2,`${p.id}: the bio in 2 lines`);
     assert.deepEqual(p.chips.map(c=>c.label),['Estilo','Especialidade','Status']);
-    for(const c of p.chips)assert.ok(c.valor.length<=15,`${p.id}: ${c.valor}`);
+    // "Contando história" (the Aposentado, 17) is the longest chip; the row still fits at 390 px (print 24/10).
+    for(const c of p.chips)assert.ok(c.valor.length<=17,`${p.id}: ${c.valor}`);
     for(const url of [perfilUrl(p.id),logoUrl(p.id),...gradeUrls(p.id,true),...[0,1,2].map(i=>postUrl(p.id,i))]){
       assert.ok(url.startsWith(INSTA_ART),url);
       assert.ok(existsSync(pub(url)),`lite ${url}`);
@@ -45,16 +47,16 @@ test('a released hero shows exactly 3 photos; a locked one shows none (a private
     assert.ok(!locked.includes('grade-')&&!locked.includes('insta-post'),`${p.id}: the locked grid leaked a photo`);
     assert.match(locked,/Esta conta é privada/);
   }
-  // The game's own lock decides: all four are released (the maromba since 23/10, for the play test).
-  assert.deepEqual(INSTA_PERFIS.filter(p=>isLiberado(p.id)).map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
+  // The game's own lock decides: all six are released (the maromba since 23/10, for the play test; the vendedor and the aposentado since 24/10).
+  assert.deepEqual(INSTA_PERFIS.filter(p=>isLiberado(p.id)).map(p=>p.id),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
   assert.match(main,/gradeHtml\(perfil,isLiberado\(perfil\.id\)\)/);
 });
 
 test('the stories are the other heroes with a profile; a locked one has the lock over his face',()=>{
   const ids=INSTA_PERFIS.map(p=>p.id);
-  assert.deepEqual(storiesOf('gato-nada-pra-comer',ids).map(p=>p.nome),['VICIADO','CLT','MAROMBA']);
-  assert.deepEqual(storiesOf('viciado-em-bet',ids).map(p=>p.nome),['CLT','GATO','MAROMBA']);
-  assert.equal(storiesOf('feirante',ids).length,4);
+  assert.deepEqual(storiesOf('gato-nada-pra-comer',ids).map(p=>p.nome),['VICIADO','CLT','MAROMBA','VENDEDOR','APOSENTADO']);
+  assert.deepEqual(storiesOf('viciado-em-bet',ids).map(p=>p.nome),['CLT','GATO','MAROMBA','VENDEDOR','APOSENTADO']);
+  assert.equal(storiesOf('feirante',ids).length,6);
   assert.deepEqual(storiesOf('viciado-em-bet',['viciado-em-bet','maromba']).map(p=>p.id),['maromba'],'only heroes this build has');
   const maromba=instaPerfil('maromba')!;
   assert.match(storyHtml(maromba,false),/data-bloqueado[^>]*aria-label="MAROMBA \(em breve\)"/);

@@ -56,15 +56,17 @@ test('alerta: from the plaza\'s edge (seed 1\'s stuck band) it walks the city to
   const alive=NEST_PACE.alive;NEST_PACE.alive=[0,0];
   try{
     const {world,sys}=run();
-    const e=alerta(world,sys,144.16,139.17,138.38,49.17);
+    // Spots of the 1.7× city (asset v3) taken to asset v4 by the compaction's mapping (192 → 110 cells).
+    const k=110/192,gx=138.38*k,gy=49.17*k;
+    const e=alerta(world,sys,144.16*k,139.17*k,gx,gy);
     const start={x:e.x,y:e.y};
     let reached=false;
     for(let i=0;i<ticks(120)&&!reached;i++){
       world.step();
       if(!world.enemies.has(e.id))break;
-      if(Math.hypot(e.x-138.38,e.y-49.17)<=GOAL_REACH+.5||e.memory?.sono===MODE.cacando)reached=true;
+      if(Math.hypot(e.x-gx,e.y-gy)<=GOAL_REACH+.5||e.memory?.sono===MODE.cacando)reached=true;
     }
-    assert.ok(Math.hypot(e.x-start.x,e.y-start.y)>40,`it walked away from the edge (${Math.hypot(e.x-start.x,e.y-start.y).toFixed(1)} u)`);
+    assert.ok(Math.hypot(e.x-start.x,e.y-start.y)>40*k,`it walked away from the edge (${Math.hypot(e.x-start.x,e.y-start.y).toFixed(1)} u)`);
     assert.ok(reached,`it reached the noise (at ${e.x.toFixed(1)}, ${e.y.toFixed(1)})`);
     sys.dispose();
   }finally{NEST_PACE.alive=alive;}

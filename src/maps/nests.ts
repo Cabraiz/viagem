@@ -46,18 +46,26 @@ export interface NestPlanOptions {
   population?:number;
 }
 
-export const NEST_COUNT=8;
-export const NEST_MIX:Readonly<Record<NestSize,number>>=Object.freeze({G:2,M:3,P:3});
-/** A yard of open ground must hold a disc this wide (u) to host a nest of that size. */
-export const NEST_YARD_RADIUS:Readonly<Record<NestSize,number>>=Object.freeze({P:6,M:9,G:12});
+/** NEW-20261023-ORQ-mapa-175-com-viaduto (ORQ decision 3): 5 nests on the city 1.75× shorter (was 8: 2 G, 3 M, 3 P). */
+export const NEST_COUNT=5;
+export const NEST_MIX:Readonly<Record<NestSize,number>>=Object.freeze({G:1,M:2,P:2});
+/**
+ * A yard of open ground must hold a disc this wide (u) to host a nest of that size: the yards of the 1.7× city
+ * (6 / 9 / 12 u) ÷ CITY_COMPACT, as the yards shrank with the distances (mapa-175-com-viaduto).
+ */
+export const NEST_YARD_RADIUS:Readonly<Record<NestSize,number>>=Object.freeze({P:3.4,M:5,G:6.5});
 export const TRAINING_BANDS=4,TRAINING_MEMBERS=3;
-export const TRAINING_FROM_CAR:readonly [number,number]=[25,35];
+/** 25–35 u on the 1.7× city ÷ CITY_COMPACT (mapa-175-com-viaduto). */
+export const TRAINING_FROM_CAR:readonly [number,number]=[14,20];
 /** Sleepers for `players` (the proposal's ×(1 + 0.15(n − 1))). */
 export const scaleSleepers=(count:number,players:number)=>Math.round(count*(1+.15*(Math.max(1,Math.min(6,players|0))-1)));
-/** Keep-outs (u). */
-/** NEST_FROM_START: beyond the widest camera (48.9 u, D-046) of a team just spawned. */
-export const NEST_FROM_CAR=60,NEST_FROM_ROUTE=35,NEST_SPACING=30,NEST_FROM_START=50,LOOSE_FROM_START=25;
-export const LOOSE_FROM_CAR=40,LOOSE_NEAR_ROUTE=12;
+/**
+ * Keep-outs (u): the 1.7× city's (60, 35, 30, 50, 25 / 40, 12) ÷ CITY_COMPACT since mapa-175-com-viaduto (the map's
+ * distances are 1.75× shorter; maps may not import rules, so the values are written out).
+ * NEST_FROM_START: beyond half the widest camera (48.9 u, D-046) of a team just spawned.
+ */
+export const NEST_FROM_CAR=34,NEST_FROM_ROUTE=20,NEST_SPACING=17,NEST_FROM_START=29,LOOSE_FROM_START=14;
+export const LOOSE_FROM_CAR=23,LOOSE_NEAR_ROUTE=7;
 /** The sleepers' own clearance (u): the widest body of the roster stands there. */
 export const SLEEPER_CLEAR=.5;
 /** The reference population (card ninhos-perto-ataca-20x's ×20): NestPlanOptions.population scales the field against it. */
@@ -66,17 +74,24 @@ export const POPULATION=20;
  * The pool (u), measured on the asset v2 with the four possible chaveiro routes (scan of 14/10): each centre ≥ 60 u from
  * the car and ≥ 35 u from every route; a building is a nest by its bbox (buildingNestSize: its shorter side ≥ 14.5 u G, ≥ 8 u M, else P), a
  * yard by the disc it holds (NEST_YARD_RADIUS). Pairs closer than NEST_SPACING never come out together (the draw skips).
+ * Asset v4 (mapa-175-com-viaduto): the spots taken to the compacted city (scripts/compactar-cidade.ts): a building's
+ * row is its new bbox centre (the building kept its size, moved by its block; b-0016 and b-0047, shrunk 1.3–1.5×, are M
+ * now), a yard's the open point of most clearance near its mapped point. The moto's routes run elsewhere on the
+ * shorter streets: b-0146, b-0140 and three yards (SE, SO) fell within NEST_FROM_ROUTE and left the pool; one SO yard
+ * (42.5, 147.5) joined it; the SO yard at (18, 134.5) left too, 13 u from the only G (always drawn), so never drawn.
+ * The viaduct (etapa 3): the N avenue runs beside the ramp now, nearer the NO yard at (58.3, 21), which left too (it was
+ * 21 u from the new start, the Uno on the deck, under NEST_FROM_START: never drawn).
+ * 11 spots, every quadrant beyond NEST_FROM_START of the start.
  */
 const POOL_ROWS:readonly (readonly [NestKind,number,number,NestSize,string?])[]=[
   // NO
-  ['predio',65.8,56.8,'G','b-0016'],['predio',52.4,38.9,'P','b-0015'],['terreno',100,34,'P'],['terreno',82,91,'P'],
+  ['predio',37.4,32.9,'M','b-0016'],['predio',29.9,22.4,'P','b-0015'],['terreno',47,53.1,'P'],
   // NE
-  ['predio',244.6,80,'G','b-0047'],['predio',236.4,110,'P','b-0087'],['terreno',181,94,'P'],['terreno',259,58,'P'],
+  ['predio',139.9,45.6,'M','b-0047'],['predio',136.1,63.6,'P','b-0087'],['terreno',100.7,52.9,'P'],['terreno',147.9,34.2,'P'],
   // SE
-  ['predio',198.2,225.9,'G','b-0146'],['predio',176.5,255.1,'M','b-0158'],['predio',262.4,201.2,'P','b-0140'],
-  ['terreno',220,259,'M'],['terreno',244,208,'M'],
+  ['predio',103.2,145.9,'M','b-0158'],['terreno',124.5,147.9,'M'],
   // SO
-  ['terreno',34,256,'G'],['terreno',94,238,'G'],['terreno',94,208,'G'],['terreno',31,226,'M'],
+  ['terreno',19,147.7,'G'],['terreno',42.5,147.5,'M'],
 ];
 export const CITY_NEST_POOL:readonly NestSpot[]=Object.freeze(POOL_ROWS.map(([kind,x,y,maxSize,block],i)=>
   Object.freeze({id:`ninho-${String(i+1).padStart(2,'0')}`,kind,x,y,maxSize,...(block?{block}:{})})));
@@ -107,7 +122,7 @@ function shuffle<T>(items:readonly T[],rng:Rng):T[]{
   return out;
 }
 
-/** 8 spots of the pool with sizes: spaced, one per quadrant at least, 2 G + 3 M + 3 P within each spot's maxSize. */
+/** NEST_COUNT spots of the pool with sizes: spaced, one per quadrant at least, NEST_MIX within each spot's maxSize. */
 export function drawNests(seed:number,car:Point,start?:Point,all:readonly NestSpot[]=CITY_NEST_POOL):{spot:NestSpot;size:NestSize}[]{
   // The whole pool is shuffled and the spots too near the start skipped while picking: the start never changes the dice.
   const rng=new Rng(seed>>>0).fork('ninhos'),pool=all,eligible=(s:NestSpot)=>!start||dist(s,start)>=NEST_FROM_START;
@@ -131,7 +146,7 @@ export function drawNests(seed:number,car:Point,start?:Point,all:readonly NestSp
     if(sized.size<NEST_COUNT)continue;
     return chosen.map(spot=>({spot,size:sized.get(spot)!}));
   }
-  throw new Error('ninhos: pool cannot give 8 spaced nests over the quadrants');
+  throw new Error(`ninhos: pool cannot give ${NEST_COUNT} spaced nests over the quadrants`);
 }
 
 const half=(r:{w:number;h:number})=>Math.hypot(r.w,r.h)/2;
@@ -199,13 +214,19 @@ export function cityNestPlan(city:CityTerrain,seed:number,options:NestPlanOption
  *  - route, routeNear: × the gap within routeNear u of a moto route (the moto rides by without a crowd to wake);
  *  - yard: a body within a nest's radius + yard u is that nest's sleeper;
  *  - tile: the loose bodies' grouping square (u).
+ * mapa-175-com-viaduto: ramp 90, yard 10 and tile 24 ÷ CITY_COMPACT (51, 6, 14); k 148 → 73 with FIELD_BODIES (the
+ * same gap as on the 1.7× city: 148 × √(820/3400)).
  */
-export const SPREAD={k:148,gap:0,sub:2,nearCar:1.6,ramp:90,route:1.6,routeNear:LOOSE_NEAR_ROUTE,yard:10,tile:24};
+export const SPREAD={k:73,gap:0,sub:2,nearCar:1.6,ramp:51,route:1.6,routeNear:LOOSE_NEAR_ROUTE,yard:6,tile:14};
 /**
  * Today's horde for one player at the reference POPULATION (the 8 nests' rings, 110, and the 60 loose, × 20: card
- * ninhos-perto-ataca-20x), the field's size since monstros-espalhados (the user, 22/10: "mantendo o total de hoje").
+ * ninhos-perto-ataca-20x), the field's size since monstros-espalhados (the user, 22/10: "mantendo o total de hoje"):
+ * 3400 on the 1.7× city; 820 since mapa-175-com-viaduto, the same density: at today's gap (2.54 u for one player) the
+ * city 1.75× shorter holds ~870 (its keep-offs, the car's and the start's discs and the safe places, take a bigger
+ * share of it than the area's ÷ 3.06 says; the card's "~1.100" was the area alone), and 6 players need some slack.
+ * SPREAD.k follows (148 × √(820/3400) ≈ 73), so the gap between two bodies stays today's.
  */
-export const FIELD_BODIES=3400;
+export const FIELD_BODIES=820;
 /** The bodies of a room's plan (training bands included): FIELD_BODIES × the player scale × population / POPULATION. */
 export const fieldTarget=(players:number,population:number=POPULATION)=>Math.round(scaleSleepers(FIELD_BODIES,players)*Math.max(1,population)/POPULATION);
 /** Training band members stand within this × the gap of the band's spot. */

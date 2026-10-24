@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3082,
-  "bytes": 2212769356,
-  "liteBytes": 767787622,
+  "files": 3095,
+  "bytes": 2214526772,
+  "liteBytes": 769273308,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -780,6 +780,30 @@
    ],
    "psnr": 42.4,
    "shownPsnr": 42.4
+  },
+  "city/decor/carro-batido-1/sheet.webp": {
+   "source": "42907e433a42ccbe80e18cb279f487c93c94f77fc0f4b7be7021f0fbce89a4fb",
+   "lite": "e80ea2c5a0ed7073782d4187734b675e918bfff44334b1be96d7f79cc7f74437",
+   "bytes": 69620,
+   "liteBytes": 47868,
+   "liteCell": [
+    225,
+    154
+   ],
+   "psnr": 43.1,
+   "shownPsnr": 43.1
+  },
+  "city/decor/carro-batido-2/sheet.webp": {
+   "source": "a2179ac0b681b67b7c00dba9326e2f846bc22f88bc8bea685a12493d094aa778",
+   "lite": "82b42135f572d7616397e27bc3740652a6c9eb3393a42246a6cdfa06c1ec1d29",
+   "bytes": 98528,
+   "liteBytes": 64080,
+   "liteCell": [
+    243,
+    167
+   ],
+   "psnr": 39.6,
+   "shownPsnr": 39.6
   },
   "city/decor/carroca-1/sheet.webp": {
    "source": "f0a488167430d4a01265e82438de0b6c006a8437b7ed07867c98431c916e1724",
@@ -2077,6 +2101,18 @@
    "psnr": 40.6,
    "shownPsnr": 40.6
   },
+  "city/decor/pedagio/sheet.webp": {
+   "source": "f2df07d8f493db599b50668e52677d076cb3be72966f45b454749d98a8fe59a7",
+   "lite": "ba94dcdb7aa6c3d28e1eedbdee3e3fdbef5822557071dabba677cb89eca8e853",
+   "bytes": 206984,
+   "liteBytes": 153950,
+   "liteCell": [
+    351,
+    287
+   ],
+   "psnr": 41.5,
+   "shownPsnr": 41.5
+  },
   "city/decor/pedregulho-1/sheet.webp": {
    "source": "caafe1fc8107540dcd6301332c0d123487bd355b41b0798036deaf6c01b3128d",
    "lite": "3aa2fab8ecec4168f1926318d7f0f2202081f7bb69c2ecd08929d1e2e8236859",
@@ -2232,6 +2268,30 @@
    ],
    "psnr": 41.5,
    "shownPsnr": 41.5
+  },
+  "city/decor/ponto-onibus/sheet.webp": {
+   "source": "a26dd4bf3b78f9592ecb247836a2ec50a3639ffef5aae112d242b7543cbca2e7",
+   "lite": "dc65a55739037a663833f03b5847007d4b946d6a47f4674b48c08857a3397246",
+   "bytes": 130980,
+   "liteBytes": 91998,
+   "liteCell": [
+    216,
+    217
+   ],
+   "psnr": 43.4,
+   "shownPsnr": 43.4
+  },
+  "city/decor/portico-placa/sheet.webp": {
+   "source": "88cf0be08f76ea2323bcdc02dba2ec63a69619a8ff0867c2503e5b48f2cf2706",
+   "lite": "9d12127f7c10c181bc80dba5ab9fa876c67060fce313224f37bc657cef19157a",
+   "bytes": 278708,
+   "liteBytes": 233480,
+   "liteCell": [
+    440,
+    463
+   ],
+   "psnr": 45.8,
+   "shownPsnr": 45.8
   },
   "city/decor/poste-aceso-amarelo-1/sheet.webp": {
    "source": "2739b591dd517de9aaabf22f744879edb8e33562989a9e50d06177d86a71a26e",
@@ -28213,6 +28273,38 @@
    "psnr": 40.3,
    "shownPsnr": 42.6
   },
+  "menu/insta/story-aposentado-1.webp": {
+   "source": "6344a1e228da13fefa6fb936bb700a414510682671ae9129aea27baf4f1dcf92",
+   "lite": "f33bcc2c7486c04db2d095de120c02d1b26dd2b022db680c076a9beddb192770",
+   "bytes": 135024,
+   "liteBytes": 125266,
+   "psnr": 44.3,
+   "shownPsnr": 47.6
+  },
+  "menu/insta/story-aposentado-2.webp": {
+   "source": "d730de871eb85701cb729ac1281ee4cabbe62c26555c578325df720395a40d15",
+   "lite": "51f1bf75bf5d98c286dbee567736b6feb3602b148ada7426001d77b4481ad777",
+   "bytes": 74978,
+   "liteBytes": 69420,
+   "psnr": 45.9,
+   "shownPsnr": 48.2
+  },
+  "menu/insta/story-aposentado-3.webp": {
+   "source": "e40bcbeb93f995f0417c3ad26cf13e4d373472a9fb5feeaf61800a3b73bd2043",
+   "lite": "db37108f94efc8a2ce575dce4ba2bf1810e1575bb80b313f34e577a7fb70da72",
+   "bytes": 113156,
+   "liteBytes": 103916,
+   "psnr": 44.8,
+   "shownPsnr": 48.1
+  },
+  "menu/insta/story-aposentado-4.webp": {
+   "source": "62518876206604f48875a1419539659b989fdad267fb8358dd03a951f237d525",
+   "lite": "0f766790f70d17f68af6b436de3d6a133c805de9f7cee3822193356653756f59",
+   "bytes": 121984,
+   "liteBytes": 109498,
+   "psnr": 44.4,
+   "shownPsnr": 47.4
+  },
   "menu/insta/story-clt-cansado-1.webp": {
    "source": "4e18d7c534fdf25ce4af7c0bdd9b24d16b38fd4026254d502c42a5a9523fd464",
    "lite": "b655a6b72917106972b414e94cefd932ee78bee7392834586fbb683dd6b97c34",
@@ -28307,6 +28399,38 @@
    "bytes": 163000,
    "liteBytes": 150956,
    "psnr": 43.7,
+   "shownPsnr": 47.3
+  },
+  "menu/insta/story-vendedor-praia-1.webp": {
+   "source": "ad896adb846fd29f34ed9f2cc2084e55dbb05cf1692f46ea1eea0a9f1ea0f1ab",
+   "lite": "eec26ccd706bceb22432961e86f91f1269102f39d93d19757e0b7db4c8747ae9",
+   "bytes": 155474,
+   "liteBytes": 145524,
+   "psnr": 42.8,
+   "shownPsnr": 46.2
+  },
+  "menu/insta/story-vendedor-praia-2.webp": {
+   "source": "4d61e75a9735d8e336bec7a958981246d84b7f091a47519cf3d549dbe88db32b",
+   "lite": "6fb95379440b0ed20cc0e8442b50cf20ef48e946766779dded08fdd84cefa77f",
+   "bytes": 119402,
+   "liteBytes": 111232,
+   "psnr": 44.3,
+   "shownPsnr": 47.5
+  },
+  "menu/insta/story-vendedor-praia-3.webp": {
+   "source": "90152f7cda9e7eb06195a2c8fa7b1f309759d1a42befbc2a5b3c815c513cd529",
+   "lite": "6e3689be31e73db86abff036cbbea7e85c12f3b93fb603f2c218f08ff9629eb8",
+   "bytes": 142602,
+   "liteBytes": 127928,
+   "psnr": 45.6,
+   "shownPsnr": 51.3
+  },
+  "menu/insta/story-vendedor-praia-4.webp": {
+   "source": "9a8cc08ab4431e89fa8369b8dd0959f5b4a2bd92ec9bbfa420af8a0a811f71d9",
+   "lite": "477c54b792291b061af6d223004e4ae30bab6884689ce84f795757ba820a487f",
+   "bytes": 109976,
+   "liteBytes": 101526,
+   "psnr": 44.6,
    "shownPsnr": 47.3
   },
   "menu/insta/story-viciado-em-bet-1.webp": {

@@ -186,7 +186,6 @@ const strip=(cell,frames,priority=P0)=>({priority,kind:'frames',cell:Array.isArr
 const ITENS=Object.freeze({
   'gema-pequena':strip(64,4),'gema-media':strip(64,4),'gema-grande':strip(64,4),
   coxinha:strip(64,4),ima:strip(64,4),bau:strip(64,4),'recurso-coco':strip(64,4),'recurso-pedra':strip(64,4),
-  'boleto-chuva':strip(64,8,P1),
 });
 const PROJETEIS=Object.freeze({
   'tiro-aliado':strip(32,4),'garrafa-molotov':strip(64,8),'coco-pombo':strip(48,6),'coco-pombo-poca':strip(96,6),

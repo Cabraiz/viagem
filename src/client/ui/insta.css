@@ -144,6 +144,12 @@
   }
   .estadio .estadio-nome #nickname::placeholder { color: var(--insta-cinza); }
 
+  /* Keyboard up on the name (estadio.css data-teclado): the card keeps its size (--u from the height before the keyboard,
+     for a browser that shrinks the layout) and only the profile, the field and BORA! stay, the field right above BORA!. */
+  .estadio .estadio-escolha[data-teclado] { --u: calc(min(100vw, var(--tec-cheia, 100dvh) * .51873) / 734); }
+  .estadio .estadio-escolha[data-teclado] :is(.insta-barra, .insta-stories, .insta-trocar) { display: none; }
+  .estadio .estadio-escolha:has(.insta-topo)[data-teclado] > .estadio-nome { height: auto; margin-top: calc(var(--u) * 20); padding-block: calc(var(--u) * 12); }
+
   /* SELECIONAR (1251..1373, x 22..708): the wide purple button with a crown at each end, white condensed letters. */
   .estadio .estadio-escolha > .estadio-confirmar {
     --bh: calc(var(--u) * 123);
@@ -161,6 +167,7 @@
   }
   .estadio .estadio-escolha > .estadio-confirmar .estadio-confirmar-texto { translate: none; rotate: none; font-size: calc(var(--u) * 54); }
   .estadio .estadio-escolha > .estadio-confirmar .estadio-cadeado:not([hidden]) { width: calc(var(--u) * 52); height: calc(var(--u) * 52); translate: none; }
+  .estadio .estadio-escolha[data-teclado] > .estadio-confirmar { margin-bottom: calc(var(--u) * 12); }
 }
 
 /* A grid photo opened as a post (ui/insta-post.ts, BUG-20261023-ORQ-instagram-letreiro-do-perfil), over the whole page:

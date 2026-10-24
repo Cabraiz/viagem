@@ -562,9 +562,9 @@ if(cidade)void (async()=>{
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
   // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
   const P=terrain.asset.points;
-  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_MAP_SCALE they are the same places on the 1.7×
+  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) they are the same places on the 1.7×
   // map (NEW-20261013-ORQ-cidade-escala-1-7). The asset's points (P) are already in its units.
-  const {CITY_MAP_SCALE:S}=await import('../../rules/index.ts');
+  const {CITY_DISTANCE_SCALE:S}=await import('../../rules/index.ts');
   const at=(x:number,y:number)=>({x:x*S,y:y*S});
   const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};

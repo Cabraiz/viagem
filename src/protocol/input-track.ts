@@ -157,8 +157,10 @@ export class InputBatcher {
   get waitingUntil():number|undefined{return this.unsent.length?this.lastSend+SEND_MIN_MS:undefined;}
 }
 
-/** One applied step: where the player stood before it (the owner's confirmed position is read from here). */
-interface Applied {seq:number;x:number;y:number}
+/** One applied step: where the player stood before it, and on which floor (maps city/viaduct.ts; absent: the ground). */
+interface Applied {seq:number;x:number;y:number;andar?:1}
+/** A position with its floor, as the room's step takes and returns it (maps prediction.ts FloorPoint). */
+type At=Point&{andar?:1};
 /** Serializable part of a track (stateHash; replay). */
 export interface InputTrackState {applied:number;lastFrom:number;known:number;held:InputSegment;queue:InputSegment[];skillPress:boolean;batched:boolean;knownAt:number;casts:number[];lastCast:number;appliedTarget?:string;
   /** D-051: present (true) only while an attack press waits, so a state without one hashes as before. */
@@ -250,7 +252,7 @@ export class InputTrack {
    * the new segments, the history (the owner's confirmed position) follows, and the new position is returned.
    * Undefined: nothing to redo, or it could not be (the late state just goes on from the next step, as before).
    */
-  rewind(p:Point,step:(at:Point,input:PlayerInput)=>Point|undefined):Point|undefined{
+  rewind(p:At,step:(at:At,input:PlayerInput)=>At|undefined):At|undefined{
     const late=this.late;this.late=undefined;
     if(!late)return undefined;
     const from=late.segments[0].from,start=this.history.findIndex(h=>h.seq===from);
@@ -259,10 +261,10 @@ export class InputTrack {
     const inputOf=(s:InputSegment,seq:number):PlayerInput=>({seq,x:s.x,y:s.y,attack:!!s.attack,skill:s.skill});
     for(let i=0;i<entries.length;i++){
       const after=entries[i+1]??p,again=step(entries[i],inputOf(late.old,entries[i].seq));
-      if(!again||again.x!==after.x||again.y!==after.y)return undefined;
+      if(!again||again.x!==after.x||again.y!==after.y||again.andar!==after.andar)return undefined;
     }
-    const before:Point[]=[];
-    let at:Point={x:entries[0].x,y:entries[0].y},k=0,state=late.segments[0];
+    const before:At[]=[];
+    let at:At=floorAt(entries[0]),k=0,state=late.segments[0];
     for(const h of entries){
       while(k+1<late.segments.length&&late.segments[k+1].from<=h.seq)state=late.segments[++k];
       before.push(at);
@@ -270,7 +272,7 @@ export class InputTrack {
       if(!next)return undefined;
       at=next;
     }
-    entries.forEach((h,i)=>{h.x=before[i].x;h.y=before[i].y;});
+    entries.forEach((h,i)=>{h.x=before[i].x;h.y=before[i].y;if(before[i].andar===1)h.andar=1;else delete h.andar;});
     return at;
   }
   /** A skill tap (client tap id, increasing): carried by the next step, or cast in place while standing or waiting. */
@@ -304,7 +306,7 @@ export class InputTrack {
       return this.press({seq:this.applied,x:0,y:0,attack:attackPress,skill:skillPress,...(this.appliedTarget!==undefined?{target:this.appliedTarget}:{}),...aimOf(this.held),...this.pressAimOf()});
     }
     this.applied=seq;
-    this.history.push({seq,x:p.x,y:p.y});
+    this.history.push(floorAt(p,seq));
     if(this.history.length>HISTORY_STEPS)this.history.shift();
     this.appliedTarget=this.held.target;this.appliedWork=!!this.held.work;
     const input:PlayerInput={seq,x:this.held.x,y:this.held.y,attack:!!this.held.attack,skill:this.held.skill,...(this.held.target!==undefined?{target:this.held.target}:{}),...aimOf(this.held),...(this.held.work?{work:true as const}:{})};
@@ -322,11 +324,12 @@ export class InputTrack {
    * What the owner's frames carry for itself when the room walked past the last step the client reported: that
    * step and the position after it. Undefined: send the live position.
    */
-  confirmed():{ack:number;x:number;y:number}|undefined{
+  confirmed():{ack:number;x:number;y:number;andar:1|undefined}|undefined{
     const c=Math.min(this.applied,this.known);
     if(c>=this.applied)return undefined;
     const after=this.history.find(h=>h.seq===c+1);
-    return after?{ack:c,x:after.x,y:after.y}:undefined;
+    // `andar` always present (undefined on the ground), so it overrides the live one when spread over the player.
+    return after?{ack:c,x:after.x,y:after.y,andar:after.andar}:undefined;
   }
   /** Steps the client reported that still move or cast (an idle stretch is jumped over, so it is not owed). */
   private owed(){
@@ -342,6 +345,13 @@ export class InputTrack {
   }
 }
 const movable=(p:SimPlayer)=>!p.downed&&!p.eliminated&&p.hp>0&&!p.spectator;
+/** A copy of p's position and floor (the floor only when on a deck); with `seq`, a history entry. */
+function floorAt(p:At):At;
+function floorAt(p:At,seq:number):Applied;
+function floorAt(p:At,seq?:number):At|Applied{
+  return {...(seq!==undefined?{seq}:{}),x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
+}
+
 /** A batch, or a legacy single step as a one-segment batch. */
 function toBatch(value:unknown):InputBatch|undefined{
   if(!value||typeof value!=='object')return undefined;

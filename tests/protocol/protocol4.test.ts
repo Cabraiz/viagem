@@ -1792,6 +1792,23 @@ test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventor
   const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit:obuseiro',1]);
 });
 
+// ---------- The viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): andar on players, enemies and shots ----------
+test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, and clears when they come down',()=>{
+  const view=busyWorld(new Rng(7),10).view;
+  view.players[0]={...view.players[0],andar:1};
+  view.enemies[0]={...view.enemies[0],andar:1};
+  view.projectiles[0]={...view.projectiles[0],andar:1};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.deepEqual(r.view.players.filter(p=>p.andar===1).map(p=>p.id),[view.players[0].id]);
+  assert.equal(r.view.enemies.filter(e=>e.andar===1).length,1);
+  assert.equal(r.view.projectiles.filter(p=>p.andar===1).length,1);
+  const down={...view,tick:view.tick+2,players:view.players.map(({andar:_,...p})=>p),enemies:view.enemies.map(({andar:_,...e})=>e),
+    projectiles:view.projectiles.map(({andar:_,...p})=>p)};
+  const d=dec.decode(enc.encode(down));assert.ok(d.ok,!d.ok?d.error:'');
+  assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
+});
+
 test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
   const view=busyWorld(new Rng(5),10).view;
   view.players[0]={...view.players[0],moveSpeed:1.35};

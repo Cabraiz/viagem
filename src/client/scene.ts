@@ -13,7 +13,7 @@ import {GHOST_ALPHA,GHOST_TINT,GhostCam,ghostBounds,ghostSpeed} from './ghost.ts
 import {FollowCamera,StepLerp,stepClock,chooseWatched,cycleWatched,framesBeside,hordeUiScale,isCityWorld,toScreen,edgeOf,type BesideWindow,type Rect,type Watchable} from './framing.ts';
 import {SceneTerrain,worldCamera} from './world-swap.ts';
 import {Pinch,ZOOM_DEFAULT,clampZoom,easeZoom,wheelZoom} from './camera-zoom.ts';
-import {CityLayer,OUTSIDE_CITY,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
+import {CITY_GROUND_DEPTH,CityLayer,OUTSIDE_CITY,VIADUCT_PROP_IDS,ViaductLayer,PINE_TEXTURE,buildCityArtPlan,cityArtOptions,cityRenderAsset,groundZ,liveSheets,nestsFromStructures,queueCityArt,type CityArtPlan} from './render/city/index.ts';
 import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
@@ -166,10 +166,19 @@ export class IslandScene extends Phaser.Scene {
   private terrainWatch!:SceneTerrain<TerrainField>;
   private get field():TerrainField{return this.terrainWatch.field;}
   private signs:Sign[]=[];
-  private project=(p:Point)=>projectView(p,this.view,this.field);
+  /** A point carrying `andar` 1 (a body on a viaduct's deck) is lifted by the deck's surface (render/city/viaduct.ts). */
+  private project=(p:Point&{andar?:number})=>{
+    const q=projectView(p,this.view,this.field);
+    if(p.andar===1&&this.viaduct)q.y-=this.viaduct.bodyLift(p.x,p.y,1);
+    return q;
+  };
   /** Depth origin: none on the island; near the hero in the endless world, so depths stay in the island's range. */
   private depthOrigin?:Point;
-  private depth=(p:Point)=>this.city?this.city.actorDepth(p.x,p.y):viewDepth(p,this.view,this.depthOrigin);
+  /** A body on a deck draws just above the deck strip it stands on (render/city/viaduct.ts bodyDepth). */
+  private depth=(p:Point&{andar?:number})=>(p.andar===1?this.viaduct?.bodyDepth(p.x,p.y):undefined)
+    ??(this.city?this.city.actorDepth(p.x,p.y):viewDepth(p,this.view,this.depthOrigin));
+  /** The viaducts of the city (mapa-175-com-viaduto), with the city layer; undefined elsewhere or without any. */
+  private viaduct?:ViaductLayer;
   /**
    * Cidade Nevada (card cidade-03): the city render replaces the island ground and props. Actors draw at the layer's
    * actor depth (exact against the buildings' unit columns), not at the island's fixed SELF_DEPTH/ALLY_DEPTH.
@@ -209,7 +218,8 @@ export class IslandScene extends Phaser.Scene {
   private allyFeet:Point[]=[];
   /** Each hero's feet where this frame drew his sprite (world u): the Defumador's smoke is centred there (aura-descentralizada). */
   private drawnFeet=new Map<string,Point>();
-  private position:Point={...SPAWN};
+  private position:Point&{andar?:1}={...SPAWN};
+
   private route:Point[]=[];
   /** The player's zoom factor (camera-zoom.ts): wanted (wheel, pinch), on screen (eased toward it). */
   private zoomWant=ZOOM_DEFAULT;
@@ -642,7 +652,12 @@ export class IslandScene extends Phaser.Scene {
   /** Cidade Nevada mode (the field says 'cidade'): the Breu edges and shadows of card cidade-contorno-breu. */
   private get cityMode(){return isCityWorld(this.field);}
   /** City mode: enemies, pickups and projectiles draw at the city layer's actor depth (Projector.depthOverride). */
-  private cityDepths(){if(this.projector)this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;}
+  private cityDepths(){
+    if(!this.projector)return;
+    this.projector.depthOverride=this.city?(x,y)=>this.city?this.city.actorDepth(x,y):0:undefined;
+    // The viaducts (mapa-175-com-viaduto): critters and shots on a deck are lifted onto it (Projector.projectOn).
+    this.projector.deck=this.viaduct;
+  }
   /** The heroes' drawn scale: the actor scale × HERO_DRAW_SCALE (their sheets, shadows, ally rings and fichas). */
   private get heroScale(){return this.actorScale*HERO_DRAW_SCALE;}
   /** Scales every figure drawn at the endless map's size; the sheets follow on their next animate(). */
@@ -691,6 +706,7 @@ export class IslandScene extends Phaser.Scene {
     // Card inimigos-querem-o-uno: the chunks around the car stay built, so the Uno's live window never opens on a hole.
     const also=carPx&&{x:carPx.x-PIP_KEEP_PX,y:carPx.y-PIP_KEEP_PX,w:PIP_KEEP_PX*2,h:PIP_KEEP_PX*2};
     this.city.update({camera,view:this.view,dtMs:delta,hero,allies,...(also?{also}:{})});
+    this.viaduct?.update(this.view,this.watchPoint?undefined:this.position);
   }
   /** Follows the hero every frame: smooth, body at the viewport centre in the round, lag ≤ 1 u; the water is re-baked only when the view leaves it. */
   private updateCamera(delta:number){
@@ -901,16 +917,19 @@ export class IslandScene extends Phaser.Scene {
     this.destination.fillStyle(breu,m.breuAlpha).fillCircle(p.x,p.y,m.dotBreu).fillStyle(papel,1).fillCircle(p.x,p.y,m.dotPapel);
   }
   private place(){
-    const at=this.selfShift.x||this.selfShift.y?{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y}:this.position;
-    // Card uno-bloqueio-corpo: near the Uno, on its side of the car's footprint (car-sort.ts).
-    const p=this.project(at),depth=carSortDepth(at,this.depth(at),this.chaveiro?.carSort());
+    const pos=this.position as Point&{andar?:1};
+    const at=this.selfShift.x||this.selfShift.y?{x:pos.x+this.selfShift.x,y:pos.y+this.selfShift.y,andar:pos.andar}:pos;
+    // Card uno-bloqueio-corpo: near the Uno, on its side of the car's footprint (car-sort.ts); on a viaduct's deck the
+    // hero is above the (ground) car.
+    const p=this.project(at),own=this.depth(at),depth=at.andar===1?own:carSortDepth(at,own,this.chaveiro?.carSort());
     // Canopies soften only when they cover the hero; feet still define scene depth.
     let covered=false;
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
     // Above the horde, numbers, pops and balloons (UX B7) unless a canopy is in front: then the sprite keeps its world
     // depth behind the tree and an 85% copy shows on top (UX-voce-e-dano: never hidden behind a canopy).
     // City: the same copy behind a building, wall or prop (the see-through's layers stack in a dense block).
-    if(this.city)covered=this.city.covers(this.position.x,this.position.y);
+    // Under a viaduct's deck (on the street) the hero gets the same see-through copy as behind a building.
+    if(this.city)covered=this.city.covers(this.position.x,this.position.y)||this.position.andar!==1&&!!this.viaduct?.under(this.position.x,this.position.y);
     this.selfCovered=covered;
     // City: the hero stays at its actor depth (walls and buildings in front of it cover it, and turn translucent).
     this.actor.setPosition(p.x,p.y).setDepth(this.city?depth:covered?depth+1:SELF_DEPTH);
@@ -1319,7 +1338,8 @@ export class IslandScene extends Phaser.Scene {
     const unitPx=this.unitPx(smooth),last=this.lastSmooth;this.lastSmooth=smooth;
     this.correction.step(delta,unitPx,last&&{x:smooth.x-last.x,y:smooth.y-last.y});
     this.displayed={x:smooth.x+this.correction.x,y:smooth.y+this.correction.y};
-    this.position={...this.displayed};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
+    // The floor comes with the prediction (maps prediction.ts FloorPoint): the hero on a viaduct's deck is drawn on it.
+    this.position={...this.displayed,...(net.predicted.andar===1?{andar:1 as const}:{})};this.distance+=Math.hypot(old.x-this.position.x,old.y-this.position.y);this.place();
     this.horde?.selfCone(this.position,this.heroGroundDepth);
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
@@ -1348,8 +1368,9 @@ export class IslandScene extends Phaser.Scene {
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp);
-      const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
-      const q=this.project(drawnAt),depth=carSortDepth(drawnAt,this.depth(drawnAt),carSort),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
+      // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).
+      const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y,andar:player.andar}:player;
+      const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       const inShop=this.shopWorkers.has(player.id);
@@ -1487,6 +1508,11 @@ export class IslandScene extends Phaser.Scene {
       if(!(this.field instanceof CityTerrain))return;
       const art=this.cityArt();
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
+      // No Uno on the deck (ORQ 24/10, with inicio-no-uno): the team spawns beside the real Uno, the chaveiro's car on the
+      // plaza; the deck keeps its pile-up at the closed end and is a base on the second floor.
+      const field=this.field,viaduct=this.viaduct=field.asset.viaducts.length?new ViaductLayer(this,field.asset.viaducts,field.asset.unitsPerCell,
+        {depthOf:this.cityDepthOf,groundPx:(x,y)=>elevation(x,y,field),sheet:id=>art.decor[id],
+          blocks:field.asset.blocks.flatMap(b=>b.rects)},CITY_GROUND_DEPTH+3):undefined;
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);city.setStill(qualityProfile(this.quality).still);
       // A map switch into the city: its ground arrives after the first chunks, which are rebuilt with it.
@@ -1495,7 +1521,8 @@ export class IslandScene extends Phaser.Scene {
         if(!this.load.isLoading())this.load.start();
       }
       const stopStream=this.streamCityArt(city,art);
-      const drop=()=>{stopStream();city.destroy();if(this.city===city)this.city=undefined;this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+      const drop=()=>{stopStream();city.destroy();if(this.city===city)this.city=undefined;viaduct?.destroy();if(this.viaduct===viaduct)this.viaduct=undefined;
+        this.events.off('shutdown',drop);this.events.off('destroy',drop);};
       this.events.once('shutdown',drop);this.events.once('destroy',drop);
       this.dropGround=drop;
       return;
@@ -1588,8 +1615,8 @@ export class IslandScene extends Phaser.Scene {
   private cityArt():CityArtPlan{
     // Lots on the asset's cell (1.496 u on the 1.7× city, cidade-escala-1-7): the buildings grow with the map.
     const asset=this.field instanceof CityTerrain?this.field.asset:undefined,cell=asset?.unitsPerCell;
-    // The new scenery's sheets (cenario-no-mapa): only the decor ids this map places.
-    const decor=asset?.decor.map(d=>d.id);
+    // The new scenery's sheets (cenario-no-mapa): only the decor ids this map places, and its viaducts' pieces.
+    const decor=asset&&[...asset.decor.map(d=>d.id),...(asset.viaducts.length?VIADUCT_PROP_IDS:[])];
     return this.cityArtPlan??=buildCityArtPlan(artIndex(),{...cityArtOptions(typeof location==='undefined'?'':location.search),...(cell?{cell}:{}),...(decor?{decor}:{})});
   }
   private loadTree(id:string){

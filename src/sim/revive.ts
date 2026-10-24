@@ -7,6 +7,7 @@ import type {SimPlayer} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
 import {hazardKind} from './enemies/catalog.ts';
 import {clearMoveEffects} from './player-effects.ts';
+import {floorOf} from '../maps/index.ts';
 import {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS} from '../rules/index.ts';
 export {BLEED_OUT_TICKS,EXTRA_RESCUER_WEIGHT,RECONNECT_GRACE_TICKS,REVIVE_DECAY_PER_TICK,REVIVE_HP_FRACTION,REVIVE_INVULNERABLE_TICKS,REVIVE_RADIUS,REVIVE_TICKS};
 
@@ -103,7 +104,8 @@ export function createReviveSystem(options:ReviveOptions={}):ReviveSystem{
         if(p.spectator){p.downed=undefined;continue;}
         if(paused)d.bleedOutTick++;
         // An offline downed player cannot be picked up; they still bleed out.
-        const near=p.online&&!p.spectator?rescuers.filter(r=>r.id!==p.id&&Math.hypot(r.x-p.x,r.y-p.y)<=REVIVE_RADIUS+EPS):[];
+        // The viaduct (maps city/viaduct.ts): a rescuer on the other floor (over or under the deck) is not beside them.
+        const near=p.online&&!p.spectator?rescuers.filter(r=>r.id!==p.id&&floorOf(r)===floorOf(p)&&Math.hypot(r.x-p.x,r.y-p.y)<=REVIVE_RADIUS+EPS):[];
         const rates=near.map(r=>({r,rate:reviveRate(r)})).filter(e=>e.rate>0).sort((a,b)=>b.rate-a.rate||byId(a.r,b.r));
         if(rates.length){
           const weight=rates.reduce((n,e,i)=>n+e.rate*(i?EXTRA_RESCUER_WEIGHT:1),0);

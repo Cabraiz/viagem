@@ -2623,6 +2623,100 @@
         ]
       }
     },
+    "carro-batido-1": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "carro-batido-1/sheet.webp",
+          "cell": [
+            300,
+            205
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.960976
+          ],
+          "pages": [
+            {
+              "file": "carro-batido-1/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "42907e433a42ccbe80e18cb279f487c93c94f77fc0f4b7be7021f0fbce89a4fb"
+            }
+          ],
+          "sha256": "42907e433a42ccbe80e18cb279f487c93c94f77fc0f4b7be7021f0fbce89a4fb",
+          "liteCell": [
+            225,
+            154
+          ]
+        }
+      },
+      "sha256": "45789019f8a98d1d02dad30b1a9d89d43a0a29d8996c5d3aebf1e0ce78f2a5ff",
+      "meta": {
+        "cell": [
+          300,
+          205
+        ],
+        "footprint": [
+          2,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-batido-a.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
+    "carro-batido-2": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "carro-batido-2/sheet.webp",
+          "cell": [
+            324,
+            222
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.963964
+          ],
+          "pages": [
+            {
+              "file": "carro-batido-2/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "a2179ac0b681b67b7c00dba9326e2f846bc22f88bc8bea685a12493d094aa778"
+            }
+          ],
+          "sha256": "a2179ac0b681b67b7c00dba9326e2f846bc22f88bc8bea685a12493d094aa778",
+          "liteCell": [
+            243,
+            167
+          ]
+        }
+      },
+      "sha256": "8ff410d899a371b0082312d594ca95e67e3caa7453a16fe7e2984bb5e84186e1",
+      "meta": {
+        "cell": [
+          324,
+          222
+        ],
+        "footprint": [
+          2,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-batido-b.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
     "carroca-1": {
       "kind": "decor",
       "files": {
@@ -8570,6 +8664,53 @@
         }
       }
     },
+    "pedagio": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "pedagio/sheet.webp",
+          "cell": [
+            468,
+            382
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.979058
+          ],
+          "pages": [
+            {
+              "file": "pedagio/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "f2df07d8f493db599b50668e52677d076cb3be72966f45b454749d98a8fe59a7"
+            }
+          ],
+          "sha256": "f2df07d8f493db599b50668e52677d076cb3be72966f45b454749d98a8fe59a7",
+          "liteCell": [
+            351,
+            287
+          ]
+        }
+      },
+      "sha256": "6e8972aec282e68308d187cd6a039f844b84b1cfa24ee9eab3c7f364351c6982",
+      "meta": {
+        "cell": [
+          468,
+          382
+        ],
+        "footprint": [
+          3,
+          2
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-pedagio.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
     "pedregulho-1": {
       "kind": "decor",
       "files": {
@@ -9214,6 +9355,92 @@
         ]
       }
     },
+    "placa-60": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "placa-60/sheet.webp",
+          "cell": [
+            118,
+            272
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.970588
+          ],
+          "pages": [
+            {
+              "file": "placa-60/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "efd2fe6a8f813ca7287e26b7b550ce344a1740bd4a82ddd9b38b01bcb492fcf8"
+            }
+          ],
+          "sha256": "efd2fe6a8f813ca7287e26b7b550ce344a1740bd4a82ddd9b38b01bcb492fcf8"
+        }
+      },
+      "sha256": "9abe89d53b3a8f3525d6fe21a137bc1f57c02ba7456caf6fb89bf8d92ab698ac",
+      "meta": {
+        "cell": [
+          118,
+          272
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-placas.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
+    "placa-pare": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "placa-pare/sheet.webp",
+          "cell": [
+            122,
+            272
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.970588
+          ],
+          "pages": [
+            {
+              "file": "placa-pare/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "8515ad9d045f4d43bd6934cf199bf6a08025bef312f9795abf7882f6dcd174d9"
+            }
+          ],
+          "sha256": "8515ad9d045f4d43bd6934cf199bf6a08025bef312f9795abf7882f6dcd174d9"
+        }
+      },
+      "sha256": "3fca8f790b793a65850c7b0fe69a9691824cafeb2b4f9ab8039b5b4a2fea9185",
+      "meta": {
+        "cell": [
+          122,
+          272
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-placas.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
     "pneus-empilhados-1": {
       "kind": "decor",
       "files": {
@@ -9547,6 +9774,100 @@
           2,
           1
         ]
+      }
+    },
+    "ponto-onibus": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "ponto-onibus/sheet.webp",
+          "cell": [
+            288,
+            289
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.972318
+          ],
+          "pages": [
+            {
+              "file": "ponto-onibus/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "a26dd4bf3b78f9592ecb247836a2ec50a3639ffef5aae112d242b7543cbca2e7"
+            }
+          ],
+          "sha256": "a26dd4bf3b78f9592ecb247836a2ec50a3639ffef5aae112d242b7543cbca2e7",
+          "liteCell": [
+            216,
+            217
+          ]
+        }
+      },
+      "sha256": "e375cdb21d370c42c45e05286d7d405a025eb7366a6e005219127714f3cd8221",
+      "meta": {
+        "cell": [
+          288,
+          289
+        ],
+        "footprint": [
+          2,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-ponto-onibus.png (Codex, E6, card mapa-175-com-viaduto)"
+      }
+    },
+    "portico-placa": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "portico-placa/sheet.webp",
+          "cell": [
+            586,
+            617
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.987034
+          ],
+          "pages": [
+            {
+              "file": "portico-placa/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "88cf0be08f76ea2323bcdc02dba2ec63a69619a8ff0867c2503e5b48f2cf2706"
+            }
+          ],
+          "sha256": "88cf0be08f76ea2323bcdc02dba2ec63a69619a8ff0867c2503e5b48f2cf2706",
+          "liteCell": [
+            440,
+            463
+          ]
+        }
+      },
+      "sha256": "03b5b410093dbe55b26a3feced09e26b7a8b506982ecaf71f7f293d97165a03a",
+      "meta": {
+        "cell": [
+          586,
+          617
+        ],
+        "footprint": [
+          4,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-portico.png (Codex, E6, card mapa-175-com-viaduto)"
       }
     },
     "poste-aceso-amarelo-1": {
@@ -11021,6 +11342,49 @@
       "sha256": "2276ce23128963ae334e77691ddd0087badfd8fc11f8b3e683eed50c84d1caac",
       "meta": {
         "decal": true
+      }
+    },
+    "radar-lombada": {
+      "kind": "decor",
+      "files": {
+        "sheet": {
+          "file": "radar-lombada/sheet.webp",
+          "cell": [
+            150,
+            331
+          ],
+          "views": 4,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.5,
+            0.975831
+          ],
+          "pages": [
+            {
+              "file": "radar-lombada/sheet.webp",
+              "columns": 4,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 4,
+              "sha256": "136687fe2759c4a861a76c769b6cb0ef36ad038e5f817a72da739f79a39e6d5d"
+            }
+          ],
+          "sha256": "136687fe2759c4a861a76c769b6cb0ef36ad038e5f817a72da739f79a39e6d5d"
+        }
+      },
+      "sha256": "50ed55b1ab61b29dcd2ea9530ee8ba105f47ea7f8872cfd49690457d694b91bb",
+      "meta": {
+        "cell": [
+          150,
+          331
+        ],
+        "footprint": [
+          1,
+          1
+        ],
+        "origem": "arte-entrada/cenario/decor/viaduto/p-placas.png (Codex, E6, card mapa-175-com-viaduto)"
       }
     },
     "rampa": {

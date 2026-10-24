@@ -108,11 +108,15 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the 'grana' pickup
  * kind (a kill's Grana on the ground) and its string at the end of the DICT; an older client would draw a parcel.
  * 35 given by the integration queue (tools/fila.mjs, lote 20261024-164948) to: NEW-20261024-ORQ-tirar-drops-cedula-girando.
+ * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
+ * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
+ * would refuse the masks.
+ * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
  * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
  * the players (the client's vignette); an older decoder would refuse the player mask.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=35;
+export const PROTOCOL_VERSION=36;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -331,6 +335,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 /** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
 const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
+/** The viaduct's floor (andar): only ever 1 or absent, like trueFlag (optional(deckFlag) is its presence byte). */
+const deckFlag:Codec<1>={write:()=>{},read:()=>1,norm:()=>1,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -431,6 +437,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
     // oferta-velocidade: stats.moveSpeed when not 1, in thousandths (it drives the phone's prediction too).
     moveSpeed:c(optional(milli)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
+    andar:c(optional(deckFlag)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -440,9 +448,13 @@ const SCHEMAS:Record<SectionKey,Schema>={
     asleep:c(optional(trueFlag)),
     // Bancos: it robbed an ATM into a Cliente Prime (the crown).
     prime:c(optional(trueFlag)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
+    andar:c(optional(deckFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),
+    // The viaduct (mapa-175-com-viaduto): flying on a deck, floor 1.
+    andar:c(optional(deckFlag))},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
@@ -1197,9 +1209,13 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
-const bit=(field:number)=>1<<(field+FIELD_BIT);
-const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
+/**
+ * Field bits by arithmetic, not `1<<` / `>>>` (31-bit): the players passed 29 fields with the viaduct's `andar` after
+ * `moveSpeed` (mapa-175-com-viaduto), and 1<<31 is negative. Masks are varints, exact up to 2^53 (~50 fields); the bytes
+ * of a mask under 2^31 are the same as before. NUDGE and NEW stay in the low bits (`mask&NEW` keeps them exact).
+ */
+const bit=(field:number)=>2**(field+FIELD_BIT);
+const has=(mask:number,field:number)=>Math.floor(mask/2**(field+FIELD_BIT))%2===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).

@@ -145,6 +145,8 @@ interface EnemyActor{
   tex:string;
   /** D-040: a roster entry drawn with its role's fallback texture wears its accent (keys.ts fallbackTint); undefined = none. */
   tint:number|undefined;
+  /** The viaduct (EnemyView.andar): 1 on a deck, drawn lifted onto it (Projector.projectOn); absent on the ground. */
+  floor?:1;
 }
 /** look: texture key (a 'grana' pickup: the cédula's art when loaded, render/cedula.ts). */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
@@ -162,7 +164,9 @@ interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number
   /** Look-only size factor (arsenal-rules.ts shotDrawScale: the heroes' default shot ×5); the shadow keeps the hit circle's. */
   draw:number;
   /** A hero's thrown weapon (render/shot-flight.ts): flies on an arc from `born` while it moves, then lands. */
-  thrown:ThrownLook|undefined}
+  thrown:ThrownLook|undefined;
+  /** The viaduct (ProjectileView.andar): 1 flying over a deck. */
+  floor?:1}
 /** width: undefined = server default (D-015: cone = full aperture in radians, line = thickness). */
 interface TelegraphState{shape:TelegraphView['shape'];x:number;y:number;radius:number;dx:number;dy:number;width:number|undefined;fireTick:number;start:number;
   /** D-036 hazard kind (undefined = generic look) and a per-id phase so twin hazards do not flicker in sync. */
@@ -562,6 +566,7 @@ export class HordeRenderer{
     // D-047 (protocol 15): EnemyView.sugar, the critter bought a sweet from Dona Cida.
     a.sugar=view.sugar===true;
     a.prime=view.prime===true;
+    a.floor=view.andar;
     // Every enemy's art (the nine kinds' too) loads per match, the first time one of them shows up (horde-art.ts
     // queueEnemyArt); a fresh actor starts with no art id, so even the default 'bebado' asks.
     const art=enemyArtId(view.kind,kind);
@@ -610,7 +615,7 @@ export class HordeRenderer{
       // Who threw a hostile shot plays its throw (the agiota's boleto): nearest enemy of that kind, art v2 only.
       if(view.hostile&&enemyArtActive()){const cue=projectileAction(view.source,true,view.x,view.y,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
     }
-    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);
+    a.x=view.x;a.y=view.y;a.vx=view.vx;a.vy=view.vy;a.radius=view.radius;a.hostile=view.hostile;a.thrown=thrownLook(view.hostile,view.source);a.floor=view.andar;
     this.aim(a);
   }
   /** Screen-space heading, recomputed only on push and camera rotation. */
@@ -807,7 +812,8 @@ export class HordeRenderer{
     const f=this.lead,now=this.now,art=ENEMY_ART[a.kind],size=a.elite?ELITE_SCALE:1,body=this.enemyBody;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
-    const q=this.project(this.at);
+    // On a viaduct's deck (floor 1): lifted onto it and drawn over its strip.
+    const q=this.options.projector.projectOn(a.x,a.y,a.floor,this.q);
     // Off camera (estudo-desempenho F2): hidden, no art, tint, shadow, silhouette, bar or cues. The boss, the target and
     // a coach's lecture ring (wider than the body) are always drawn.
     const k=size*a.fit*body;
@@ -818,7 +824,8 @@ export class HordeRenderer{
       a.screenX=NaN;this.culledNow++;return;
     }
     if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
-    const depth=carSortDepth(this.at,this.depth(this.at),this.options.carSort?.());
+    // On a viaduct's deck the critter is above the (ground) car: no car sort there.
+    const own=this.options.projector.depthOn(a.x,a.y,a.floor),depth=a.floor===1?own:carSortDepth(this.at,own,this.options.carSort?.());
     // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
     const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
     let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;
@@ -1054,7 +1061,7 @@ export class HordeRenderer{
     // vx/vy are units per second: lead in seconds (it used to be in ticks, drawing shots up to 20× too far ahead).
     const lead=projectileLeadSeconds(this.now,this.pushAt,this.tickMs);
     this.at.x=a.x+a.vx*lead;this.at.y=a.y+a.vy*lead;
-    const q=this.project(this.at),depth=this.depth(this.at),qx=q.x,qy=q.y;
+    const q=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q),depth=this.options.projector.depthOn(this.at.x,this.at.y,a.floor),qx=q.x,qy=q.y;
     // A thrown weapon (render/shot-flight.ts) rises on an arc while it flies (its shadow stays on the ground); landed, the
     // rocket is gone in its burst and the brick and the firecrackers lie under theirs.
     const t=a.thrown,flying=!!t&&(a.vx!==0||a.vy!==0),age=this.now-a.born;
@@ -1064,7 +1071,7 @@ export class HordeRenderer{
       if(t.landed)angle=age*.012;
       else{
         // The rocket points along its arc: the ground heading plus the arc's climb, both per second of flight.
-        this.at.x+=a.vx;this.at.y+=a.vy;const ahead=this.project(this.at);
+        this.at.x+=a.vx;this.at.y+=a.vy;const ahead=this.options.projector.projectOn(this.at.x,this.at.y,a.floor,this.q);
         angle=Math.atan2(ahead.y-qy-throwLiftSlope(age,t.arc)*this.body*1000/THROW_MS,ahead.x-qx)-(t.tilt??0);
       }
     }

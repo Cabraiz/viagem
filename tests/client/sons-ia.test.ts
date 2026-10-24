@@ -10,8 +10,7 @@ import {RECIPES} from '../../src/client/audio/recipes.ts';
 import {SFX,SFX_WARM,drawTake,pickSfxFormat,sfxNames,sfxUrl} from '../../src/client/audio/sfx.ts';
 import {AudioEngine} from '../../src/client/audio/engine.ts';
 import {PACK12_TYPES,chestSound,weaponSound} from '../../src/client/audio/events.ts';
-import {Footsteps,STEP_CONTACTS,STEP_DB,STEP_PITCH,allyGain,contactsCrossed,stepJitter,type StepFigure} from '../../src/client/audio/footsteps.ts';
-import {SPRITE_CLIPS,WALK_HOLD_MS,WALK_STRIDE,WALK_TUNE,walkCycles} from '../../src/client/sprites/sprite-motion.ts';
+import {Footsteps,STEP_DB,STEP_PITCH,allyGain,stepJitter} from '../../src/client/audio/footsteps.ts';
 import {CALIBRE} from '../../src/client/render/towers/tower-rules.ts';
 import {PACK12} from '../../src/sim/weapons/pack12.ts';
 import {ARSENAL_WEAPONS,NEW_WEAPONS} from '../../src/sim/weapons/arsenal.ts';
@@ -173,20 +172,9 @@ test('the steps draw a take never the same twice in a row',async()=>{
   assert.ok(new Set(takes).size>=3);
 });
 
-// ---- footsteps ----
+// ---- footsteps (the walk as drawn: tests/client/som-passos.test.ts) ----
 
-test('the contacts are pose 0 and the middle pose of the walk clip',()=>{
-  const n=SPRITE_CLIPS.walk.frames.length;
-  assert.deepEqual(STEP_CONTACTS,[0,Math.floor(n/2)/n]);
-  assert.equal(contactsCrossed(0,.49),0);
-  assert.equal(contactsCrossed(.49,.51),1);
-  assert.equal(contactsCrossed(.9,1.1),1);
-  assert.equal(contactsCrossed(.1,1.6),2);
-  assert.equal(contactsCrossed(.4,.4),0);
-  assert.equal(contactsCrossed(0,9),2,'a jump plays at most two');
-});
-
-test('the step jitter stays within ±5 % of pitch and ±2 dB',()=>{
+test('the step jitter stays within ±5 % of pitch and ±1.5 dB',()=>{
   for(const r of [0,.25,.5,.999]){
     const j=stepJitter(()=>r,1);
     assert.ok(Math.abs(j.rate-1)<=STEP_PITCH+1e-9);
@@ -200,36 +188,6 @@ function walker(){
   const steps=new Footsteps({play:(id,o)=>{plays.push({id,gain:o?.gain??1,rate:o?.rate??1});return true;}},()=>.5);
   return {steps,plays};
 }
-
-test('a walking hero steps twice per walk cycle, the first at once; standing still never treads',()=>{
-  const {steps,plays}=walker(),figurePx=96,dt=16,speed=.06;
-  const hero=(x:number):StepFigure=>({id:'me',x,y:0,local:true,gain:1,alive:true});
-  steps.update(0,[hero(0)],0,figurePx);
-  let x=0,cycles=0;
-  for(let t=dt;t<=4000;t+=dt){x+=speed;cycles+=walkCycles(speed,0,0,figurePx,WALK_STRIDE,WALK_TUNE.lock);steps.update(t,[hero(x)],0,figurePx);}
-  const expected=1+Math.floor(cycles*2);
-  assert.ok(Math.abs(plays.length-expected)<=1,`${plays.length} steps for ${cycles.toFixed(2)} cycles`);
-  assert.ok(plays.every(p=>p.id==='passo-neve'));
-  const n=plays.length;
-  for(let t=4000+dt;t<=6000;t+=dt)steps.update(t,[hero(x)],0,figurePx);
-  assert.equal(plays.length,n,'no step standing still');
-  // Pushing against a wall without input does not walk (a reconcile nudge), nor does a downed hero.
-  for(let t=6000+dt;t<=7000;t+=dt){x+=speed;steps.update(t,[hero(x)],0,figurePx,false);}
-  assert.equal(plays.length,n,'no input, no step');
-  for(let t=7000+dt;t<=8000;t+=dt){x+=speed;steps.update(t,[{...hero(x),alive:false}],0,figurePx);}
-  assert.equal(plays.length,n,'a downed hero is dragged in silence');
-});
-
-test('a run is louder; an ally is quieter; a still hold under WALK_HOLD_MS keeps the cycle',()=>{
-  const {steps,plays}=walker(),figurePx=96;
-  const fig=(id:string,x:number,o:Partial<StepFigure>={}):StepFigure=>({id,x,y:0,gain:1,alive:true,...o});
-  steps.update(0,[fig('me',0,{local:true,runs:true}),fig('ally',0,{gain:allyGain(6)})],0,figurePx);
-  steps.update(16,[fig('me',.1,{local:true,runs:true}),fig('ally',.1,{gain:allyGain(6)})],0,figurePx);
-  assert.equal(plays.length,2,'both start on a planted foot');
-  assert.ok(plays[0].gain>1,'the run lands harder');
-  assert.ok(plays[1].gain<.4,'the ally is quieter');
-  assert.ok(WALK_HOLD_MS>16);
-});
 
 test('the boss steps while it moves and within earshot',()=>{
   const {steps,plays}=walker(),hero={x:0,y:0};

@@ -283,8 +283,8 @@ class CitySandbox extends Phaser.Scene {
   private fortify?:FortifyRenderer;
   /** obra=1: the fortify view pushed (anda= moves its car). */
   private obraView?:RunView;
-  /** `barracas=1`: the view where b5 fell, pushed once its sheet is loaded; then the renderer's clock stays BARRACA_SHOT_MS on. */
-  private barracaFall?:RunView;private barracaClock?:number;
+  /** `barracas=1`: the hit and the view where b5 fell, pushed once its sheet is loaded; then the renderer's clock stays BARRACA_SHOT_MS on. */
+  private barracaFall?:RunView[];private barracaClock?:number;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
@@ -397,7 +397,7 @@ class CitySandbox extends Phaser.Scene {
     this.tick(dt);
     if(this.barracaFall&&this.textures.exists(baseArtKey('barraca'))){
       // The fall a moment after the hit: the "-N" and the wreck are up, the hit flash is over; nothing ages after.
-      this.stone!.update(_t);this.stone!.push(this.barracaFall);this.barracaFall=undefined;this.barracaClock=_t+BARRACA_SHOT_MS;
+      this.stone!.update(_t);for(const v of this.barracaFall)this.stone!.push(v);this.barracaFall=undefined;this.barracaClock=_t+BARRACA_SHOT_MS;
     }
     this.stone?.update(this.barracaClock??_t);
     if(this.chaveiro){
@@ -544,10 +544,10 @@ class CitySandbox extends Phaser.Scene {
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
     if(barracasShot){
-      // The hit (b3 loses 60, b5 is about to fall), then the next view: b5 gone right after the hit (its wreck), b3 hit again.
+      // Whole, then the hit (b5 about to fall), then the next view: b5 gone right after the hit (its wreck), b3 hit again.
       const hit=(id:string,hp:number)=>structures.map(s=>s.id===id?{...s,hp}:s);
-      this.stone.push({...view,structures:hit('b5',30)});
-      this.barracaFall={...view,tick:tick+1,structures:hit('b3',110).filter(s=>s.id!=='b5')};
+      this.stone.push(view);
+      this.barracaFall=[{...view,structures:hit('b5',30)},{...view,tick:tick+1,structures:hit('b3',110).filter(s=>s.id!=='b5')}];
       this.stone.outline='b1';
       return;
     }

@@ -6,7 +6,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
-import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteOnly,unusedEnemyFile} from '../../src/client/art/horde-art.ts';
+import {existsSync} from 'node:fs';
+import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteEnemyUrl,liteOnly,unusedEnemyFile} from '../../src/client/art/horde-art.ts';
+import {critterSheetFrame} from '../../src/client/art/hud-art.ts';
+import {bootArt} from '../../src/client/ui/art-boot.ts';
 import {ELITE_SCALE} from '../../src/client/render/keys.ts';
 import {HERO_DESKTOP_SCREEN_PX,HERO_MIN_SCREEN_PX,REFERENCE_SHORT_SIDE_PX} from '../../src/contract/offscreen.ts';
 
@@ -98,4 +101,67 @@ test('a computer copy keeps LITE_TEXELS (0.9) texels per CSS px of a plain enemy
     checked++;
   }
   assert.ok(checked>=100,`${checked} pieces`);
+});
+
+// Etapa 4: the client picks the computer's copy only on a computer (the fine pointer of the fixed zoom).
+test('pcCell is the cell only on a computer; the phone never keeps it; a malformed one (bigger than cell, smaller than liteCell, without liteCell) is dropped',()=>{
+  const file=(liteCell:unknown,pcCell:unknown)=>({file:'x/idle.webp',cell:[384,384],...(liteCell?{liteCell}:{}),pcCell});
+  const raw={version:2,groups:{inimigos:{output:'public/art/enemies',pieces:{
+    a:{kind:'animations',files:{idle:file([128,128],[256,256])}},
+    big:{kind:'animations',files:{idle:file([128,128],[512,512])}},
+    small:{kind:'animations',files:{idle:file([128,128],[96,96])}},
+    bad:{kind:'animations',files:{idle:file([128,128],'x')}},
+    nolite:{kind:'animations',files:{idle:file(undefined,[256,256])}}}}}};
+  const pc=parseArtIndex(raw,true).groups.inimigos.pieces,phone=parseArtIndex(raw).groups.inimigos.pieces;
+  assert.deepEqual(pc.a.files.idle.cell,[256,256]);assert.deepEqual(pc.a.files.idle.pcCell,[256,256]);assert.deepEqual(pc.a.files.idle.liteCell,[128,128]);
+  assert.deepEqual(phone.a.files.idle.cell,[128,128]);assert.equal(phone.a.files.idle.pcCell,undefined);
+  for(const id of ['big','small','bad']){
+    for(const p of [pc,phone]){assert.deepEqual(p[id].files.idle.cell,[128,128],id);assert.equal(p[id].files.idle.pcCell,undefined,id);}
+  }
+  for(const p of [pc,phone]){assert.deepEqual(p.nolite.files.idle.cell,[384,384]);assert.equal(p.nolite.files.idle.pcCell,undefined);}
+  assert.equal(liteEnemyUrl('/art/enemies/a/idle.webp',pc.a.files.idle),'/art/lite/enemies-pc/a/idle.webp');
+  assert.equal(liteEnemyUrl('/art/enemies/a/idle.webp',phone.a.files.idle),'/art/lite/enemies/a/idle.webp');
+});
+
+test('the phone loads exactly what it loaded before the computer copies (same URLs and cells as an index without pcCell)',()=>{
+  const strip=JSON.parse(JSON.stringify(index));
+  for(const piece of Object.values<any>(strip.groups.inimigos.pieces))for(const f of Object.values<any>(piece.files))delete f.pcCell;
+  const ids=Object.keys(enemies.pieces);
+  setArtIndex(parseArtIndex(strip));const before=ids.flatMap(id=>enemyPieceLoads(id));
+  setArtIndex(parseArtIndex(index));const after=ids.flatMap(id=>enemyPieceLoads(id)),frames=ids.map(id=>critterSheetFrame(id));
+  setArtIndex(parseArtIndex(index,true));const pcFrames=ids.map(id=>critterSheetFrame(id));
+  setArtIndex(parseArtIndex({version:2,groups:{}}));
+  assert.ok(after.length>=500);
+  assert.deepEqual(after,before);
+  assert.ok(after.every(l=>!l.url.includes('/enemies-pc/')));
+  assert.ok(frames.every(f=>!f||!f.url.includes('/enemies-pc/')));
+  assert.ok(pcFrames.some(f=>f?.url.includes('/enemies-pc/')),'the HUD face on a computer takes its copy too');
+});
+
+test('a computer loads every drawn file with pcCell from enemies-pc at that cell (on disk, never falling back to the approved file); the rest keep the phone copy',()=>{
+  setArtIndex(parseArtIndex(index,true));
+  const loads=Object.keys(enemies.pieces).flatMap(id=>enemyPieceLoads(id).map(l=>({id,l})));
+  setArtIndex(parseArtIndex({version:2,groups:{}}));
+  let pc=0;
+  for(const {id,l} of loads){
+    const f=Object.values<any>(enemies.pieces[id].files).find(x=>filesOf(x).some(p=>l.url.endsWith(`/${p}`)));
+    assert.ok(existsSync(`public${l.url}`),l.url);
+    if(f.pcCell){
+      pc++;
+      assert.ok(l.url.startsWith('/art/lite/enemies-pc/'),l.url);
+      assert.deepEqual(l.cell,f.pcCell,l.url);
+      assert.ok(liteOnly(l.url),l.url);
+    }else assert.ok(l.url.startsWith('/art/lite/enemies/'),l.url);
+  }
+  assert.ok(pc>=500,`${pc} computer loads`);
+});
+
+test('bootArt takes the computer copies only when asked (the fine pointer; node has no matchMedia: the phone)',async()=>{
+  const answer=async()=>({ok:true,json:async()=>index});
+  for(const pc of [undefined,false,true]){
+    assert.equal(await bootArt({fetcher:answer,...(pc===undefined?{}:{pc})}),true);
+    const id=Object.keys(enemies.pieces).find(k=>Object.values<any>(enemies.pieces[k].files).some(f=>f.pcCell))!;
+    assert.equal(enemyPieceLoads(id).some(l=>l.url.includes('/enemies-pc/')),pc===true,String(pc));
+  }
+  setArtIndex(parseArtIndex({version:2,groups:{}}));
 });

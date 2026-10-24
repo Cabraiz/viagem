@@ -848,8 +848,9 @@ class CitySandbox extends Phaser.Scene {
 
 const start=()=>new Phaser.Game({type:Phaser.AUTO,parent:host,backgroundColor:'#2B2542',scene:[CitySandbox],
   scale:{mode:Phaser.Scale.RESIZE,width:innerWidth,height:innerHeight},render:{antialias:true}});
-// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art.
-if(base||params.get('arte')!=='0')void loadArtManifest().then(start);else start();
+// The art manifest first (as the game does at boot): the city art (unless arte=0) and, with base=1, the base art;
+// zoom=pc also takes the computer's enemy copies (manifest.ts pcCell), as the game on a fine pointer.
+if(base||params.get('arte')!=='0')void loadArtManifest(undefined,params.get('zoom')==='pc').then(start);else start();
 
 /** elenco=1: one critter of every kind (and an elite bêbado) and every pickup on a ring around (x, y), world units. */
 function withCast(view:RunView,x:number,y:number):RunView{

@@ -1,0 +1,30 @@
+{
+ "card": "NEW-20261024-ORQ-sala-ate-10-jogadores",
+ "players": 1,
+ "device": "pc",
+ "cpu": 1,
+ "gpu": false,
+ "seconds": 61.6,
+ "fps": 3.7,
+ "frameMs": {
+  "p50": 160.4,
+  "p95": 513.4,
+  "p99": 563,
+  "max": 679.5
+ },
+ "longFrames": {
+  "over50ms": 229,
+  "over100ms": 226
+ },
+ "onScreen": {
+  "heroesMax": 1,
+  "crittersMax": 2
+ },
+ "heapMBMax": 98,
+ "quality": [
+  "alta"
+ ],
+ "economyOn": false,
+ "pageErrors": 0,
+ "phaseAtEnd": "combat"
+}

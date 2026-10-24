@@ -1,0 +1,111 @@
+{
+ "card": "NEW-20261024-ORQ-sala-ate-10-jogadores",
+ "players": 10,
+ "people": 10,
+ "bots": 0,
+ "seed": 4242,
+ "ackMs": 100,
+ "room": {
+  "map": "cidade-nevada",
+  "objective": "chaveiro",
+  "mode": "ninhos",
+  "combat": "manual"
+ },
+ "outcome": "victory",
+ "combatMinutes": 9.5,
+ "ticks": 11394,
+ "levelupPauseTicks": 8,
+ "maxEnemies": 89,
+ "warmupMaxMs": 193.631,
+ "peopleWalkedU": 913,
+ "tickMs": {
+  "mean": 8.933,
+  "p50": 8.579,
+  "p95": 12.315,
+  "p99": 14.539,
+  "max": 21.8
+ },
+ "encodeMsPerTick": {
+  "mean": 2.988,
+  "p50": 2.719,
+  "p95": 4.84,
+  "p99": 5.734,
+  "max": 14.534
+ },
+ "thinkMsPerTick": {
+  "mean": 0.319,
+  "p50": 0,
+  "p95": 1.073,
+  "p99": 2.725,
+  "max": 5.658
+ },
+ "restMsPerTick": {
+  "mean": 5.626,
+  "p50": 5.282,
+  "p95": 7.941,
+  "p99": 9.375,
+  "max": 12.733
+ },
+ "encodeMsPerFrame": {
+  "mean": 0.598,
+  "p50": 0.544,
+  "p95": 0.968,
+  "p99": 1.147,
+  "max": 2.907
+ },
+ "worstWindow": {
+  "fromMin": 6,
+  "tickP99": 15.343,
+  "tickMax": 20.511,
+  "encodeP99": 6.003
+ },
+ "windows": [
+  {
+   "fromMin": 0,
+   "tickP50": 8.776,
+   "tickP99": 14.735,
+   "encodeP99": 5.816
+  },
+  {
+   "fromMin": 2,
+   "tickP50": 8.924,
+   "tickP99": 14.333,
+   "encodeP99": 5.677
+  },
+  {
+   "fromMin": 4,
+   "tickP50": 8.293,
+   "tickP99": 13.996,
+   "encodeP99": 5.544
+  },
+  {
+   "fromMin": 6,
+   "tickP50": 8.874,
+   "tickP99": 15.343,
+   "encodeP99": 6.003
+  },
+  {
+   "fromMin": 8,
+   "tickP50": 7.754,
+   "tickP99": 13.244,
+   "encodeP99": 5.493
+  }
+ ],
+ "framePerPhone": {
+  "bytes": {
+   "p50": 166,
+   "p95": 420,
+   "p99": 550,
+   "max": 4561
+  },
+  "KBpsMean": 1.953,
+  "KBpsMax": 2.058,
+  "framesPerS": 10
+ },
+ "roomOutKBps": 19.534,
+ "decodeErrors": 0,
+ "heapMB": {
+  "start": 35.8,
+  "end": 229.7
+ }
+}

@@ -5,7 +5,7 @@
  */
 import type Phaser from 'phaser';
 import {LIT_SHADOW} from './light.ts';
-import {SILHOUETTE,SILHOUETTE_ROTATION} from './shadow-rules.ts';
+import {CONTACT,SILHOUETTE,SILHOUETTE_ROTATION} from './shadow-rules.ts';
 
 type Body=Phaser.GameObjects.Image|Phaser.GameObjects.Sprite;
 /** A body's frame without the city's rims (contorno-breu copies): its sheet, origin and scale. */
@@ -34,4 +34,26 @@ export function castSilhouette(sil:Phaser.GameObjects.Image,body:Body,x:number,y
     .setScale(plain?plain.sx:body.scaleX,-(plain?plain.sy:body.scaleY)*SILHOUETTE.flatten).setRotation(SILHOUETTE_ROTATION+body.rotation).setPosition(x,y)
     .setAlpha(SILHOUETTE.alpha*body.alpha);
   if(depth!==undefined)sil.setDepth(depth);
+}
+
+/** The enemies' contact shadow texture (shadow-rules.ts CONTACT): a soft radial Breu blot, drawn once on a canvas. */
+export const CONTACT_KEY='horde:fx:contact';
+function ensureContact(scene:Phaser.Scene){
+  if(scene.textures.exists(CONTACT_KEY))return;
+  const {w,h,color,alpha}=CONTACT,c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d') as CanvasRenderingContext2D,rgb=color.join(',');
+  g.setTransform(1,0,0,h/w,0,0);
+  const r=g.createRadialGradient(w/2,w/2,0,w/2,w/2,w/2);
+  r.addColorStop(0,`rgba(${rgb},${alpha})`);r.addColorStop(.45,`rgba(${rgb},${alpha*.8})`);r.addColorStop(1,`rgba(${rgb},0)`);
+  g.fillStyle=r;g.fillRect(0,0,w,w);
+  scene.textures.addCanvas(CONTACT_KEY,c);
+}
+export function contactImage(scene:Phaser.Scene,depth:number){
+  ensureContact(scene);
+  return scene.add.image(0,0,CONTACT_KEY).setDepth(depth).setVisible(false).setActive(false);
+}
+/** Lays the contact shadow `width` px wide (shadow-rules.ts contactWidth) at the feet (x, y); it fades with the body. */
+export function castContact(contact:Phaser.GameObjects.Image,body:Body,x:number,y:number,width:number,on:boolean){
+  if(!on||!body.visible||!(width>0)){if(contact.visible)contact.setVisible(false).setActive(false);return;}
+  contact.setVisible(true).setActive(true).setPosition(x,y).setScale(width*CONTACT.width/CONTACT.w,width*CONTACT.height/CONTACT.h).setAlpha(body.alpha);
 }

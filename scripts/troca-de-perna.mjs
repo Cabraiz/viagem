@@ -23,6 +23,12 @@ export const GAIT=/^(walk16|run16|walk128)-(\w+)$/;
 export const MIRROR_MAX=.6;
 /** The legs band: from this share of the figure's height (top 0) down to its feet. */
 const LEGS=.55;
+/**
+ * The legs band per class, where the default one catches what does not mirror on purpose. vendedor-praia (card
+ * vendedor-aposentado-arte-8-direcoes, 24/10): the cooler box hangs on the LEFT hip only, at 55–74 % of the figure, so
+ * mirrored it jumps sides (0.83–0.9 at 55 %); below the shorts' hem (74 %) only the legs remain (S 0.41–0.42, N 0.36–0.45).
+ */
+export const LEGS_BY_CLASS={'vendedor-praia':.74};
 
 let sharpLib;
 const sharp=()=>sharpLib??=require('sharp');
@@ -46,11 +52,11 @@ export async function frames(file,count,cell){
  * Mean RGBA difference over the legs band between frame a and frame b (b mirrored about pivotX when `mirror`), counted
  * where either frame has the figure.
  */
-export function legsDistance(a,b,cell,pivotX,mirror){
+export function legsDistance(a,b,cell,pivotX,mirror,legs=LEGS){
   let top=cell,bot=-1;
   for(const f of [a,b])for(let y=0;y<cell;y++)for(let x=0;x<cell;x++)if(f[(y*cell+x)*4+3]>.25){if(y<top)top=y;if(y>bot)bot=y;}
   if(bot<0)return 0;
-  const y0=Math.round(top+(bot-top)*LEGS);let sum=0,n=0;
+  const y0=Math.round(top+(bot-top)*legs);let sum=0,n=0;
   for(let y=y0;y<=bot;y++)for(let x=0;x<cell;x++){
     const xb=mirror?Math.round(2*pivotX-x):x,i=(y*cell+x)*4,j=(y*cell+xb)*4,inB=xb>=0&&xb<cell;
     const aa=a[i+3],ba=inB?b[j+3]:0;if(aa<=.25&&ba<=.25)continue;
@@ -60,9 +66,9 @@ export function legsDistance(a,b,cell,pivotX,mirror){
 }
 
 /** same/mirror over 16 frame pairs (i, i+N/2) of a looping clip, and their ratio. */
-export function mirrorTest(fr,cell,pivotX){
+export function mirrorTest(fr,cell,pivotX,legs=LEGS){
   const N=fr.length,step=Math.max(1,Math.round(N/16));let same=0,mirror=0,k=0;
-  for(let i=0;i<N/2;i+=step){same+=legsDistance(fr[i],fr[i+N/2],cell,pivotX,false);mirror+=legsDistance(fr[i],fr[i+N/2],cell,pivotX,true);k++;}
+  for(let i=0;i<N/2;i+=step){same+=legsDistance(fr[i],fr[i+N/2],cell,pivotX,false,legs);mirror+=legsDistance(fr[i],fr[i+N/2],cell,pivotX,true,legs);k++;}
   same/=k;mirror/=k;
   return {same:+same.toFixed(4),mirror:+mirror.toFixed(4),ratio:+(mirror/(same||1e-9)).toFixed(2)};
 }
@@ -85,7 +91,7 @@ export function gaitClips(manifest,ids){
 export async function measureClip(clip){
   if(clip.direction!=='S'&&clip.direction!=='N')return undefined;
   const fr=await frames(path.join(SPRITES,clip.file),clip.frames,clip.cell);
-  return {...mirrorTest(fr,clip.cell,clip.pivotX)};
+  return {...mirrorTest(fr,clip.cell,clip.pivotX,LEGS_BY_CLASS[clip.id]??LEGS)};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

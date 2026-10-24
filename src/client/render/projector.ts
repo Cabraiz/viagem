@@ -46,6 +46,21 @@ export class Projector {
    * of the buildings (render/city occlusion.ts actorDepth), instead of the plain ground depth. Unset elsewhere.
    */
   depthOverride?:(x:number,y:number)=>number;
+  /**
+   * The viaducts (render/city/viaduct.ts, city only): a body of floor 1 is lifted by the deck under it (px) and drawn
+   * just above the deck strip it stands on. Unset elsewhere: projectOn/depthOn are project/depth.
+   */
+  deck?:{bodyLift(x:number,y:number,floor:number|undefined):number;bodyDepth(x:number,y:number):number|undefined};
+  /** project() for a body on floor `floor` (andar): lifted onto a viaduct's deck when it is on one. */
+  projectOn(x:number,y:number,floor:number|undefined,out:Pt):Pt{
+    this.project(x,y,out);
+    if(floor===1&&this.deck)out.y-=this.deck.bodyLift(x,y,1);
+    return out;
+  }
+  /** depth() for a body on floor `floor`: above its deck strip on floor 1. */
+  depthOn(x:number,y:number,floor:number|undefined){
+    return (floor===1?this.deck?.bodyDepth(x,y):undefined)??this.depth(x,y);
+  }
   depth(x:number,y:number){
     if(this.depthOverride)return this.depthOverride(x,y);
     const q=this.rotate(x,y,this.scratch);return (q.x+q.y-this.base)*100;

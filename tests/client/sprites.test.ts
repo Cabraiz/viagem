@@ -13,10 +13,10 @@ import {packPlayer,unpackPlayer} from '../../src/protocol/room.ts';
 // Light under memory pressure (many test processes at once): no libvips operation cache, one libvips thread.
 sharp.cache(false);sharp.concurrency(1);
 
-/** The classes drawn before the movement art (the 35 of D-025): each has today's 18-frame sheet in the catalog. */
+/** The classes drawn before the movement art (28 of the 35 of D-025 left; 7 went to legado/): each has today's 18-frame sheet in the catalog. */
 const legacy=classes.filter(hero=>hero.id in spriteCatalog);
-test('the 35 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
-  assert.equal(legacy.length,35);
+test('the 28 legacy class IDs have a transparent 18-frame sheet and a measured scale; a newer class ships movement art instead',async()=>{
+  assert.equal(legacy.length,28);
   assert.ok(Object.keys(spriteCatalog).every(id=>classes.some(hero=>hero.id===id)));
   // gato-no-menu: a class born with the movement art (16 poses per facing) has no 18-frame sheet; the renderer skips it.
   const pieces=JSON.parse(readFileSync('public/art/manifest.json','utf8')).groups?.personagens?.pieces??{};

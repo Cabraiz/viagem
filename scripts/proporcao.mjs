@@ -174,10 +174,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`hurt16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('hurt16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -191,7 +191,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
     const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run','push','hurt']){
+    for(const motion of ['idle','walk','run','push','pull','hurt']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -228,14 +228,23 @@ export const PUSH_MIN_HEIGHT=.88;
  * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
  */
 export const PUSH_HEAD_UNREAD=['N'];
+/**
+ * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
+ * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the
+ * sheets read 0.80–1.02); the head keeps ±4 %.
+ */
+export const PULL_MIN_HEIGHT=.78;
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
-    if(motion==='push'){
-      const unread=PUSH_HEAD_UNREAD.includes(d);
-      if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} push16-${d} head ${c.head} (±${TOL.head*100}%)`);
-      if(keys.includes('height')&&c.height<PUSH_MIN_HEIGHT-1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≥ ${PUSH_MIN_HEIGHT})`);
-      if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} push16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
+    // The pull (puxar-uno-corda): leaning forward on the rope, the fists behind the hips: the push's rule (its head is
+    // read in every direction, the hands never beside it).
+    if(motion==='push'||motion==='pull'){
+      const unread=motion==='push'&&PUSH_HEAD_UNREAD.includes(d);
+      if(keys.includes('head')&&!unread&&Math.abs(c.head-1)>TOL.head+1e-9)bad.push(`${m.id} ${motion}16-${d} head ${c.head} (±${TOL.head*100}%)`);
+      const min=motion==='pull'?PULL_MIN_HEIGHT:PUSH_MIN_HEIGHT;
+      if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
+      if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys){
       const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
@@ -266,7 +275,7 @@ export async function sheet(manifest,id,outDir,dir=SPRITES){
   const files=clipsOf(manifest,id),Z=3,S=CELL*Z,feetOf={};fs.mkdirSync(outDir,{recursive:true});
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
-    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...['run','push'].flatMap(m=>Array.from({length:files[`${m}16-${d}`]?.frames??0},(_,i)=>[m,i]))].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
+    const idle=r.clip,list=[['idle',r.frames[0]],['walk',0],...['run','push','pull'].flatMap(m=>Array.from({length:files[`${m}16-${d}`]?.frames??0},(_,i)=>[m,i]))].filter(([m])=>m==='idle'||files[`${m}16-${d}`]);
     const comps=[];
     for(let k=0;k<list.length;k++){
       const [motion,i]=list[k],clip=motion==='idle'?idle:files[`${motion}16-${d}`],cols=clip.pages?.[0]?.columns??4,size=Math.round(S*idle.height/clip.height);

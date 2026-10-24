@@ -1636,6 +1636,23 @@ test('D-052: the wall and the barricade are dictionary bytes appended after the 
   assert.ok(DICT.length<255,'255 is the inline escape');
 });
 
+test('puxar-uno-corda: the car nose round-trips in 256 steps; east (0) and a turn back to it leave it out',()=>{
+  const view=busyWorld(new Rng(7),4).view,enc=new FrameEncoder(),dec=new FrameDecoder();
+  view.objective=objectiveAt(view.tick);
+  let r=dec.decode(enc.encode(view));assert.ok(r.ok);enc.ack(r.seq,r.ack.event);
+  assert.equal(r.view.objective?.car.heading,undefined);
+  for(const h of [.7,-2.9,Math.PI,-.001]){
+    view.tick+=2;const base=objectiveAt(view.tick);view.objective={...base,car:{...base.car,heading:h}};
+    r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    const got=r.view.objective?.car.heading;
+    if(Math.abs(h)<Math.PI/256)assert.equal(got,undefined,`${h}: east`);
+    else assert.ok(got!==undefined&&Math.abs(Math.atan2(Math.sin(got-h),Math.cos(got-h)))<=Math.PI/256+1e-9,`${h} -> ${got}`);
+  }
+  view.tick+=2;const back=objectiveAt(view.tick);view.objective={...back,car:{...back.car}};
+  r=dec.decode(enc.encode(view));assert.ok(r.ok);
+  assert.equal(r.view.objective?.car.heading,undefined,'back east: cleared on the phone');
+});
+
 test('D-052: who moves the car and who holds the rope round-trip; dropping them clears them on the phone',()=>{
   const view=busyWorld(new Rng(7),4).view,enc=new FrameEncoder(),dec=new FrameDecoder();
   view.objective=objectiveAt(view.tick);
@@ -1755,6 +1772,23 @@ test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventor
   const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit:obuseiro',1]);
 });
 
+// ---------- The viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): andar on players, enemies and shots ----------
+test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, and clears when they come down',()=>{
+  const view=busyWorld(new Rng(7),10).view;
+  view.players[0]={...view.players[0],andar:1};
+  view.enemies[0]={...view.enemies[0],andar:1};
+  view.projectiles[0]={...view.projectiles[0],andar:1};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.deepEqual(r.view.players.filter(p=>p.andar===1).map(p=>p.id),[view.players[0].id]);
+  assert.equal(r.view.enemies.filter(e=>e.andar===1).length,1);
+  assert.equal(r.view.projectiles.filter(p=>p.andar===1).length,1);
+  const down={...view,tick:view.tick+2,players:view.players.map(({andar:_,...p})=>p),enemies:view.enemies.map(({andar:_,...e})=>e),
+    projectiles:view.projectiles.map(({andar:_,...p})=>p)};
+  const d=dec.decode(enc.encode(down));assert.ok(d.ok,!d.ok?d.error:'');
+  assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
+});
+
 test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
   const view=busyWorld(new Rng(5),10).view;
   view.players[0]={...view.players[0],moveSpeed:1.35};
@@ -1765,4 +1799,27 @@ test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousa
   view.tick+=2;view.players[0]={...view.players[0],moveSpeed:undefined};
   const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
   assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.moveSpeed,undefined);
+});
+
+test('card inimigos-querem-o-uno: the awake critters by a far car come too (the Uno\'s live window), first under the cap; not after the end',async()=>{
+  const {CAR_INTEREST_RADIUS}=await import('../../src/contract/offscreen.ts');
+  const rng=new Rng(77),w=farWorld(rng,5000,-3000,0),v=w.view,R=INTEREST_RADIUS;
+  const car={x:5000+R+40,y:-3000};
+  v.objective={...objectiveAt(v.tick),car:{...objectiveAt(v.tick).car,x:car.x,y:car.y}};
+  v.enemies=[
+    {id:'e-near',kind:'bebado',x:5000+5,y:-3000,hp:20,maxHp:20},
+    {id:'e-car',kind:'bebado',x:car.x+1.5,y:car.y,hp:20,maxHp:20},
+    {id:'e-car-edge',kind:'bebado',x:car.x,y:car.y+CAR_INTEREST_RADIUS-.5,hp:20,maxHp:20},
+    {id:'e-car-far',kind:'bebado',x:car.x+CAR_INTEREST_RADIUS+INTEREST_HYSTERESIS+2,y:car.y,hp:20,maxHp:20},
+    {id:'e-car-asleep',kind:'bebado',x:car.x-1,y:car.y,hp:20,maxHp:20,asleep:true},
+  ];
+  const run=(interest?:{awake:number})=>{
+    const enc=new FrameEncoder(new WireIds(),{viewer:'uuid-0',...(interest?{interest}:{})}),dec=new FrameDecoder();
+    const r=dec.decode(enc.encode(v));assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
+    return (r.view.enemies as {id:string}[]).map(e=>enc.ids.resolve(e.id)).sort();
+  };
+  assert.deepEqual(run(),['e-car','e-car-edge','e-near'],'by the car (awake), and the viewer\'s own area');
+  assert.deepEqual(run({awake:1}),['e-car'],'over the cap the car\'s go first');
+  v.objective={...v.objective,ended:'defeat'};
+  assert.deepEqual(run(),['e-near'],'the run ended: only the viewer\'s area');
 });

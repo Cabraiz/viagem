@@ -92,13 +92,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Qual apartamento, por favor?','Deixa o documento aqui comigo.','Encomenda só com autorização.','Interfonei, ninguém atendeu.'],
   },
   {
-    classId:'goleira',role:'Linha de frente',weapon:'guarda-chuva',
-    classBonus:{armor:3,maxHp:15,moveSpeed:-0.05},
-    skill:{name:'Muralha do Bairro',cooldown:15,
-      effect:'Espalma tudo o que vem pela frente: derruba tiros inimigos, empurra os bichos e protege os aliados perto dela.'},
-    lines:['Aqui é muralha, meu filho!','Bate que eu pego, pode bater!','Chuta de longe, vai, tenta!','Bola na área é minha, sai!'],
-  },
-  {
     classId:'maromba',role:'Dano',weapon:'chinelo',
     classBonus:{might:0.15,maxHp:15,moveSpeed:-0.05},
     skill:{name:'Última Repetição',cooldown:12,
@@ -113,13 +106,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Clipa isso, moderador!','Chat, foi tudo planejado.','Oi, mãe! Tô ao vivo agora!','Deixa o like e ativa o sininho!'],
   },
   {
-    classId:'roqueira',role:'Dano',weapon:'audio',
-    classBonus:{area:0.1,might:0.1},
-    skill:{name:'Solo de Respeito',cooldown:13,
-      effect:'Onda sonora em cone estreito e longo à frente: dano alto e um empurrãozinho.'},
-    lines:['Aumenta, que isso aí é rock!','O síndico que lute!','Afinar? Vai assim mesmo!','Barulho? Isso é arte, vizinho.'],
-  },
-  {
     classId:'universitario',role:'Dano',weapon:'boleto',
     classBonus:{cooldown:-0.08,might:0.05,maxHp:-10},
     skill:{name:'Prazo Final',cooldown:10,
@@ -127,32 +113,11 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Trabalho em grupo e só eu fiz.','Professor, o arquivo corrompeu!','Sétimo café do dia, bora.','Slide final: obrigado pela atenção.'],
   },
   {
-    classId:'sensei',role:'Dano',weapon:'chinelo',
-    classBonus:{might:0.1,armor:1,moveSpeed:0.05},
-    skill:{name:'Combo da Garagem',cooldown:11,
-      effect:'Três golpes seguidos no bicho tocado (ou no mais perto); se os três acertarem e ele aguentar, fica atordoado (o chefe não).'},
-    lines:['Faixa preta em fugir de boleto.','Primeiro a reverência. Depois o golpe.','Kiai! Foi mal, vizinho.','Concentra. Mira. Chinelada.'],
-  },
-  {
     classId:'rei-pastel',role:'Dano',weapon:'cafe',
     classBonus:{might:0.1,area:0.1},
     skill:{name:'Óleo no Fogo',cooldown:14,
       effect:'Arremessa um pacote fumegante no bicho tocado (ou no mais perto): dano em área e todo mundo ali fica lento.'},
     lines:['Pastel de vento aqui não tem!','Caprichei no recheio, toma!','Cuidado que o óleo tá pelando!','Vai um caldo de cana pra acompanhar?'],
-  },
-  {
-    classId:'gamer-mobile',role:'Dano',weapon:'pombo',
-    classBonus:{speed:0.1,luck:0.1,cooldown:-0.05},
-    skill:{name:'Modo Tryhard',cooldown:12,
-      effect:'Dois toques rápidos em cada um dos 2 bichos mais perto (o tocado primeiro), e as armas disparam de novo na hora.'},
-    lines:['Foi o ping, eu juro!','Bateria em 3%, é agora ou nunca!','Peraí, o Wi-Fi caiu de novo.','Tela rachada e mesmo assim acertei!'],
-  },
-  {
-    classId:'rainha-bateria',role:'Dano',weapon:'audio',
-    classBonus:{might:0.1,moveSpeed:0.1},
-    skill:{name:'Virada de Carnaval',cooldown:14,
-      effect:'Pulso em volta dela: dano em todos os bichos perto e um empurrão para abrir a roda.'},
-    lines:['Esquenta, bateria!','Ninguém atravessa o samba aqui!','Paradinha... e volta!','Dez, nota dez! Pro chefe, zero!'],
   },
   {
     classId:'tio-do-churrasco',role:'Suporte',weapon:'cafe',
@@ -204,13 +169,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
   },
   {
-    classId:'salva-vidas',role:'Suporte',weapon:'guarda-chuva',
-    classBonus:{moveSpeed:0.1,maxHp:10},
-    skill:{name:'Segura a Boia',cooldown:16,
-      effect:'Joga a boia no aliado mais machucado em alcance: puxa ele até 3 passos para perto (menos quem está resgatando alguém), cura um pouco e protege. Ninguém ferido, nada acontece.'},
-    lines:['Segura a boia e não solta!','Bandeira vermelha, pessoal!','Volta pro raso, por favor!','Piiii! Sai daí agora!'],
-  },
-  {
     classId:'tecnico-ti',role:'Controle',weapon:'audio',
     classBonus:{area:0.1,duration:0.1},
     skill:{name:'Reinicia Isso',cooldown:16,
@@ -230,13 +188,6 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     skill:{name:'Questão Anulada',cooldown:20,
       effect:'Anula o bicho tocado (ou o mais perto): cancela o próximo ataque avisado dele (no mesmo bicho, no máximo um a cada 6 s), trava ele e dá um dano leve. O chefe não trava.'},
     lines:['Pegadinha clássica de prova.','Recurso deferido, questão anulada!','Isso tá no edital, página 47.','Na dúvida, marca a C.'],
-  },
-  {
-    classId:'caca-promocao',role:'Controle',weapon:'pombo',
-    classBonus:{cooldown:-0.1,luck:0.1},
-    skill:{name:'Cupom Acumulado',cooldown:18,
-      effect:'Cupom para a turma em volta: armas disparam de novo na hora e a habilidade dos aliados volta 4 s mais cedo (nunca antes da metade da recarga; não vale para quem também adianta).'},
-    lines:['Leve três, pague dois!','Cupom de energia, gente!','Frete grátis acima de três chefes.','Ontem tava mais barato, viu?'],
   },
   {
     classId:'gambiarreiro',role:'Controle',weapon:'cafe',

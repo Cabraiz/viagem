@@ -14,6 +14,8 @@ import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
+import {createCacaNiquel} from './caca-niquel.ts';
+import './caca-niquel.css';
 import {createResultScreen,type ResultRoster,type RematchVotes} from './result.ts';
 import {getAudio} from '../audio/engine.ts';
 import {GameMusic,musicCue} from '../audio/music.ts';
@@ -31,6 +33,9 @@ import {CityObjectiveTracker,createObjectiveRow,objectiveSlot,prewarmCityRoute,c
 import {RowQueue} from './row-queue.ts';
 import {createKillcam,type KillcamPart} from './killcam.ts';
 import {createMinerva} from './minerva.ts';
+import {createMission,MissionTracker,type MissionPart} from './missao.ts';
+import './missao.css';
+import {isTowerKit,kitPiece} from '../../rules/index.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {createInventory,type InventoryCommand,type InventoryPart} from './inventory.ts';
@@ -135,6 +140,8 @@ export class RunHud {
   private readonly camp:CampPart;
   /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
   private readonly killcam:KillcamPart;
+  /** The mission line (inicio-no-uno-caixas-120, hud/missao.ts): big in the middle, then a row of the slot. */
+  private readonly mission:MissionPart;private readonly missionTracker=new MissionTracker();private unoArrowNow:{urgent:boolean}|undefined;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
   /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
@@ -205,6 +212,7 @@ export class RunHud {
     const killcam=this.killcam=createKillcam();
     // The Minuto de Minerva clock (relogio-minerva): the slot's first row while the monsters sleep.
     const minerva=createMinerva();
+    const mission=this.mission=createMission(parent.ownerDocument);
     const cida=this.cida=createCida({onBuy:item=>options.onCida?.(item),onWindow:open=>{this.camp.yieldTo(this.obraOpen||open);this.relayout();}});
     const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open,kitSlot:()=>options.kitSlot?.()},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
@@ -214,7 +222,7 @@ export class RunHud {
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(minerva.el,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
@@ -224,6 +232,9 @@ export class RunHud {
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
       live:()=>!this.el.hidden&&!this.el.classList.contains('rh-ended')});
     this.el.insertBefore(pix.el,this.result.el);this.parts.push(pix);
+    // The caça-níquel when a crate turns DOURADA for me (caixa-gamble, hud/caca-niquel.ts): over the play, under the result.
+    const cacaNiquel=createCacaNiquel(parent.ownerDocument,{onPlay:()=>{const audio=getAudio();if(audio.unlocked)audio.play('caca-niquel');}});
+    this.el.insertBefore(cacaNiquel.el,this.result.el);this.parts.push(cacaNiquel);
     if(options.worldRescue){this.edges=new EdgeArrows(this.el);this.wc=new WcMinimap(this.el.ownerDocument);this.el.insertBefore(this.edges.el,offer.el);this.el.insertBefore(this.wc.el,offer.el);}
     // Interactive panels must not leak taps to the canvas/joystick underneath.
     // Passive readouts (round chip, XP, boss bar, team strip, revive alerts) also swallow taps (VGM-043: a tap on the
@@ -275,6 +286,12 @@ export class RunHud {
   setMinerva(untilTick?:number){
     if(untilTick===undefined)delete this.ctx.minervaAteTick;else this.ctx.minervaAteTick=untilTick;
   }
+  /** The time to explore after a wave (RunState.exploraDesdeTick/exploraAteTick), or undefined; the clock and the mission read it. */
+  setExplora(window?:{from:number;until:number}){
+    if(!window)delete this.ctx.explora;else this.ctx.explora=window;
+  }
+  /** The Uno gets its edge arrow now (the mission: the Minerva, the last seconds of a time to explore); urgent: "Volte ao Uno.". */
+  get unoArrow(){return this.unoArrowNow;}
 
   update(view:RunView){
     const t0=perfNow(); // ?perf=1: the HUD's work this frame
@@ -283,11 +300,14 @@ export class RunHud {
     this.music.update(musicCue(view,this.el.classList.contains('rh-ended')));
     // On the result the run is over: no damage edge (it would frame the result screen).
     for(const part of this.parts)if(part!==this.hurt||!this.el.classList.contains('rh-ended'))part.update(view,this.ctx);
+    this.stepMission(view);
     // One row in the announcement slot: a fall/rescue/connection notice outranks the round name (danger over the joke).
     const marquee=this.stack.querySelector<HTMLElement>('.rh-marquee');
     // The offer window outranks it too (design onda 3 B4): the banner shrinks into the round chip at once.
     if(marquee&&!marquee.hidden&&this.stack.querySelector('.rh-alert:not([hidden])'))marquee.hidden=true;
     if(marquee&&!marquee.hidden&&this.el.querySelector('.rh-offer:not([hidden])'))marquee.hidden=true;
+    // The mission's big band (inicio-no-uno-caixas-120) too: one big line under the clock, the hero kept in view.
+    if(marquee&&!marquee.hidden&&!this.mission.band.hidden)marquee.hidden=true;
     // The kill-cam (VGM-053B) gives way to any notice (danger over the joke) and takes the round banner's turn
     // ("Intervalo!": the round chip already says it).
     const notice=!!this.stack.querySelector('.rh-alert:not([hidden])');
@@ -305,6 +325,15 @@ export class RunHud {
     perfSpan('hud',t0);
   }
 
+  private stepMission(view:RunView){
+    const me=view.players.find(p=>p.id===this.ctx.localId),ended=this.el.classList.contains('rh-ended');
+    const playing=!!me&&!me.spectator&&!me.eliminated&&!ended;
+    const towerKit=!!me?.weapons.some(w=>{const piece=kitPiece(w.id);return !!piece&&isTowerKit(piece);});
+    const out=this.missionTracker.step({tick:view.tick,...(this.ctx.minervaAteTick!==undefined?{minervaAte:this.ctx.minervaAteTick}:{}),
+      ...(this.ctx.explora?{explora:this.ctx.explora}:{}),towerKit,playing});
+    this.unoArrowNow=out.pointUno?{urgent:out.line?.key==='volta'}:undefined;
+    this.mission.render(out.line);
+  }
   /**
    * The city's round-1 walk (card cidade-08): the run's terrain, the local hero's predicted spot and the camera's view,
    * every frame (rescue.ts); undefined out of a run. The row shows from the opening countdown through round 1 while the

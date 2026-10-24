@@ -12,7 +12,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {heroSpeed,type Point} from '../../src/maps/world.ts';
-import {BASE_STATS,CAR_NEST_KEEP_OUT,CAR_RADIUS,CAR_ROPE,SIM_HZ,carSpeed,ticks,type EnemyState,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
+import {BASE_STATS,CAR_HALF_LENGTH,CAR_NEST_KEEP_OUT,CAR_PUSH_REACH,CAR_NOSE,CAR_PULL_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_LET_GO_S,CAR_ROPE_REST,CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,type EnemyState,type PlayerInput,type SimPlayer} from '../../src/contract/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER,playersSystem} from '../../src/sim/systems/players.ts';
@@ -84,7 +84,8 @@ test('empurrar-uno: the fastest car (2x) stays under the city hero walk, so a mo
 
 test('push needs reach, aim and a real stick: far, sideways, away, a light touch or a downed hero move nothing',()=>{
   const cases:[string,(p:SimPlayer,r:Rig)=>void][]=[
-    ['far',(p)=>{p.x-=1.2;}],
+    // uno-bloqueio-corpo: the reach is from the box's rear bumper (CAR_HALF_LENGTH), not the old disc.
+    ['far',(p,r)=>{p.x=r.sys.state.car.x-(CAR_HALF_LENGTH+CAR_PUSH_REACH+.1);}],
     ['sideways',(_p,r)=>{r.sticks.set('p0',{x:.3,y:1});}],
     ['away',(_p,r)=>{r.sticks.set('p0',WEST);}],
     ['light',(_p,r)=>{r.sticks.set('p0',{x:.2,y:0});}],
@@ -100,7 +101,10 @@ test('push needs reach, aim and a real stick: far, sideways, away, a light touch
 });
 
 test('the body keeps to the mask: pushed into the building north it does not move; along the street it slides',()=>{
-  const r=rig(),c=r.sys.state.car,y0=c.y;
+  // Asset v4 (mapa-175-com-viaduto): the plaza lost the fountain north of the car, so the car starts 0.5 u south of the
+  // plaza's north wall (its bottom edge at row 52, 77.792 u), west of mouth N.
+  const r=rig(),c=r.sys.state.car;c.x=75;c.y=77.792+CAR_RADIUS+.5;const y0=c.y;
+  assert.ok(city.clearDisc(c.x,c.y,CAR_RADIUS)&&!city.clearDisc(c.x,c.y-.9,CAR_RADIUS),'0.5 u south of the wall');
   pushers(r,2,NORTH).run(SIM_HZ*2);
   assert.ok(city.clearDisc(c.x,c.y,CAR_RADIUS),'still on the street');
   assert.ok(y0-c.y<.5+1e-9,`went ${y0-c.y} u north into a building 0.5 u away`);
@@ -136,25 +140,28 @@ test('the car shoves enemies to its edge without hurting them; the boss stands i
   assert.deepEqual({x:b.x,y:b.y},{x:bx,y:by});
 });
 
-test('rope: hooked within reach, one at a time; taut it pulls, slack it rests; a hit, a fall or "off" drops it; a resent req is duplicate',()=>{
-  const r=rig(),c=r.sys.state.car,x0=c.x;
-  const a=addPlayer(r.world,'a',{x:CAR.x+CAR_RADIUS+3,y:CAR.y}),b=addPlayer(r.world,'b',{x:CAR.x-CAR_RADIUS-1,y:CAR.y});
+test('rope by hand ({t:\'puxar\'}): hooked near the body or its end, one at a time; taut it pulls, slack it rests; a hit, "off" or too far drops it; a resent req is duplicate',()=>{
+  const r=rig(),c=r.sys.state.car,x0=c.x,nose=carNose(c);
+  const a=addPlayer(r.world,'a',{x:CAR.x+CAR_RADIUS+5,y:CAR.y}),b=addPlayer(r.world,'b',{x:CAR.x-CAR_RADIUS-1,y:CAR.y});
   assert.deepEqual(r.sys.pull(r.world,'a',true,'r:1'),{ok:false,reason:'longe'});
   a.x=CAR.x+CAR_RADIUS+1.4;
   assert.deepEqual(r.sys.pull(r.world,'a',true,'r:2'),{ok:true});
   assert.deepEqual(r.sys.pull(r.world,'a',true,'r:2'),{ok:false,reason:'duplicate'});
   assert.deepEqual(r.sys.pull(r.world,'b',true,'r:1'),{ok:false,reason:'ocupado'});
-  r.step(5);
+  r.sticks.set('a',EAST);
+  r.step(5);a.x=CAR.x+CAR_RADIUS+1.4;
   assert.equal(c.x,x0,'slack: the car rests');
   assert.equal(r.sys.view(r.world.tick).car.rope,'a');
   assert.equal(r.sys.busy('a'),true,'the rope holder does not fire');
   assert.equal(r.sys.moverCap('a'),undefined,'slack: walks free');
-  // Taut: the holder walks out to the rope's length and keeps it there.
-  for(let i=0;i<SIM_HZ;i++){a.x=c.x+CAR_RADIUS+CAR_ROPE+.1;r.step();}
+  // Taut: the holder walks out to the rope's length from the front bumper and keeps it there.
+  for(let i=0;i<SIM_HZ;i++){a.x=carNose(c).x+CAR_ROPE+.1;r.step();}
   assert.ok(Math.abs(c.x-x0-carSpeed(1))<1e-9,`pulled ${c.x-x0}`);
   assert.deepEqual(r.sys.view(r.world.tick).car.movers,['a']);
+  assert.equal(r.sys.view(r.world.tick).car.heading,undefined,'pulled straight ahead: the nose stays east');
   a.hp-=1;r.step();
   assert.equal(r.sys.view(r.world.tick).car.rope,undefined,'a hit drops the rope');
+  r.sticks.delete('a');
   // Hooked again, then dropped by hand, then by going too far.
   a.x=c.x+CAR_RADIUS+1;
   assert.deepEqual(r.sys.pull(r.world,'a',true,'r:3'),{ok:true});
@@ -162,10 +169,73 @@ test('rope: hooked within reach, one at a time; taut it pulls, slack it rests; a
   assert.equal(r.sys.state.car.rope,undefined);
   b.x=c.x-CAR_RADIUS-1;
   assert.deepEqual(r.sys.pull(r.world,'b',true,'r:5'),{ok:true});
-  b.x=c.x-CAR_RADIUS-CAR_ROPE-1.5;r.step();
+  b.x=carNose(c).x+CAR_ROPE+1.5;r.step();
   assert.equal(r.sys.state.car.rope,undefined,'too far: it slips off');
   b.downed=true;
   assert.deepEqual(r.sys.pull(r.world,'b',true,'r:6'),{ok:false,reason:'fase'});
+  assert.ok(nose.x>CAR.x,'the bumper is ahead of the centre');
+});
+
+test('puxar-uno-corda: the rope lies on the ground ahead of the front bumper; walking away from it at its end takes it, no button',()=>{
+  const r=rig(),c=r.sys.state.car,x0=c.x,tip=ropeTip(c);
+  assert.ok(Math.abs(tip.x-(CAR.x+CAR_NOSE+CAR_ROPE_REST))<1e-9&&tip.y===CAR.y,'the end lies east (heading 0)');
+  const a=addPlayer(r.world,'a',{x:tip.x+.5,y:tip.y});
+  // Standing at the end, or walking back at the car, takes nothing.
+  r.step(3);assert.equal(c.rope,undefined,'no stick');
+  r.sticks.set('a',WEST);r.step(3);assert.equal(c.rope,undefined,'toward the car');
+  r.sticks.set('a',EAST);
+  // Walk away: the hero takes the end and, once taut, pulls at carSpeed(1).
+  for(let i=0;i<SIM_HZ*3;i++){a.x+=heroSpeed(city)/SIM_HZ;const cap=r.sys.moverCap('a');if(cap!==undefined)a.x=carNose(c).x+CAR_ROPE+.05;r.step();}
+  assert.equal(c.rope,'a');
+  assert.deepEqual(r.sys.view(r.world.tick).car.movers,['a']);
+  assert.ok(c.x-x0>carSpeed(1)*1.5,`pulled ${c.x-x0}`);
+  assert.equal(r.sys.moverCap('a'),carSpeed(1)/SIM_HZ,'taut: walks at the car speed');
+  // Stopping lets go after CAR_ROPE_LET_GO_S (the hands free again).
+  r.sticks.delete('a');
+  r.step(Math.ceil(CAR_ROPE_LET_GO_S*SIM_HZ)-1);assert.equal(c.rope,'a','a short stop keeps it');
+  r.step(1);assert.equal(c.rope,undefined,'a longer stop lets it go');
+  assert.equal(r.sys.busy('a'),false);
+});
+
+test('puxar-uno-corda: far from the end, behind the car or beside it nobody takes the rope',()=>{
+  for(const [name,at,dir] of [['far',{x:CAR_NOSE+CAR_ROPE_REST+CAR_PULL_REACH+.3,y:0},EAST],['behind',{x:-CAR_RADIUS-.5,y:0},WEST],['beside',{x:CAR_NOSE+CAR_ROPE_REST,y:.3},{x:0,y:1}]] as const){
+    const r=rig(),c=r.sys.state.car;
+    addPlayer(r.world,'a',{x:CAR.x+at.x,y:CAR.y+at.y});r.sticks.set('a',dir);
+    r.step(3);
+    assert.equal(c.rope,undefined,name);
+  }
+});
+
+test('puxar-uno-corda: one pulling at the front and one pushing at the back sum (carSpeed(2)); a pulled car turns its nose to the pull, slowly',()=>{
+  const r=rig(),c=r.sys.state.car,x0=c.x;
+  const back=pushers(r,1,EAST);
+  const a=addPlayer(r.world,'a',{x:0,y:0});r.sticks.set('a',EAST);
+  const hold=()=>{const n=carNose(c);a.x=n.x+CAR_ROPE+.05;a.y=n.y;};
+  hold();
+  assert.deepEqual(r.sys.pull(r.world,'a',true,'r:1'),{ok:true});
+  for(let i=0;i<SIM_HZ;i++){hold();back.run(1);}
+  assert.ok(Math.abs(c.x-x0-carSpeed(2))<1e-9,`pull + push: ${c.x-x0}`);
+  assert.deepEqual([...r.sys.view(r.world.tick).car.movers!].sort(),['a','p0']);
+  // The puller steps to the south-east: the nose turns toward it at CAR_ROPE_TURN rad/s at most.
+  r.sticks.delete('p0');
+  const turnTo=Math.PI/4;
+  for(let i=0;i<5;i++){const n=carNose(c);a.x=n.x+Math.cos(turnTo)*(CAR_ROPE+.05);a.y=n.y+Math.sin(turnTo)*(CAR_ROPE+.05);r.sticks.set('a',{x:Math.cos(turnTo),y:Math.sin(turnTo)});r.step();}
+  const h=c.heading??0;
+  assert.ok(h>0&&h<=5*CAR_ROPE_TURN/SIM_HZ+1e-9,`turned ${h}`);
+  assert.equal(r.sys.view(r.world.tick).car.heading,h,'the view carries the nose');
+});
+
+test('puxar-uno-corda: a person takes the rope from a helper; a helper on the rope pulls only along with a person',()=>{
+  const bots=new Set(['bot']);
+  const r=rig({helper:id=>bots.has(id)}),c=r.sys.state.car,x0=c.x;
+  const bot=addPlayer(r.world,'bot',{x:0,y:0});r.sticks.set('bot',EAST);
+  const hold=(p:SimPlayer)=>{const n=carNose(c);p.x=n.x+CAR_ROPE+.05;p.y=n.y;};
+  hold(bot);assert.deepEqual(r.sys.pull(r.world,'bot',true,'r:1'),{ok:true});
+  for(let i=0;i<SIM_HZ;i++){hold(bot);r.step();}
+  assert.equal(c.x,x0,'a bot alone on the rope leaves the car');
+  const tip=ropeTip(c),me=addPlayer(r.world,'me',{x:tip.x,y:tip.y+.4});r.sticks.set('me',EAST);
+  r.step();
+  assert.equal(c.rope,'me','the person takes it');
 });
 
 test('nobody moves the car while the chaveiro opens it',()=>{

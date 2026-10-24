@@ -48,6 +48,25 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   box-shadow: var(--s-1);
 }
 
+/* Full screen (celular-deitado-tela-cheia, ui/tela-cheia.ts): the gear's twin, left of it; hidden where the page can't. */
+.estadio .menu-tela-cheia {
+  position: absolute; z-index: 6; top: max(10px, env(safe-area-inset-top)); right: calc(max(10px, env(safe-area-inset-right)) + 58px);
+  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+  border: 3px solid var(--c-breu); border-radius: var(--r-circulo); background: var(--c-lilas); color: var(--c-papel-claro);
+  box-shadow: var(--s-1);
+}
+.estadio .menu-tela-cheia[hidden] { display: none; }
+.estadio .menu-tela-cheia:active { transform: translateY(2px); }
+
+/* The privacy policy (anuncios-h5-games, AdSense): a quiet link in the bottom-left corner, under
+   the choice column (centred) and away from the hero's feet. */
+.estadio .menu-privacidade {
+  position: absolute; z-index: 6; left: max(12px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+  padding: 4px 6px; font: 700 12px/1.2 var(--f-sistema); color: var(--c-papel-claro); opacity: .8;
+  text-decoration: none; text-shadow: 0 1px 0 var(--c-breu);
+}
+.estadio .menu-privacidade:hover, .estadio .menu-privacidade:focus-visible { opacity: 1; text-decoration: underline; }
+
 /* The choice: title, class, row, name, button. Left column on a wide screen. */
 .estadio-escolha {
   position: absolute; z-index: 5; top: 0; bottom: 0; left: max(3vw, 16px, env(safe-area-inset-left)); width: min(46vw, 640px);
@@ -164,13 +183,18 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
 }
 .estadio .estadio-confirmar:active { transform: translateY(2px); }
 
-/* PC (stadium.ts CUTOUT_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
-   approved screen's layout (tela-1080p), the sign
-   from the top, the row and the button right under it. */
-@media (orientation: landscape) and (min-height: 521px) {
+/* Every landscape screen (stadium.ts CUTOUT_QUERY: the PC and the phone on its side, celular-deitado-foto): the hero's
+   own picture stands in for the dance, on E6's stadium. */
+@media (orientation: landscape) {
   /* E6's stadium past every edge (menu-fundo-sangria): main.ts frameStage() sizes it so the approved 1920x1080 inside
      it is never cut; `cover` around its middle until then. */
   .estadio-palco { background-image: url('/art/lite/menu/fundo-estadio-viciado.webp'); background-position: 50% 50%; }
+}
+
+/* PC (stadium.ts PC_QUERY): the button as big as the approved screen allows; with a hero's letreiro picture, the
+   approved screen's layout (tela-1080p), the sign
+   from the top, the row and the button right under it. */
+@media (orientation: landscape) and (min-height: 521px) {
   /* fileira-botao-maiores-embaixo (the user, 22/10: "em 1080p isso deve ir para baixo (? e o selecionar) e ficar 30%
      maior"): only the row and the button grow 30% (button 640x108 → 832x140, tiles 80 → 104 px, in vh so every PC
      screen is the 1080p one scaled). The title and the pill stay where they were (round 2, "por que você desceu?"). The
@@ -247,6 +271,17 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio .class-card { width: 58px; }
   .estadio-fileira, .estadio-nome { max-width: 520px; }
 }
+
+/* teclado-cobre-nome-bora (the user, 24/10: "o 'bora' e o input text deveriam ficar cima do teclado"): while the phone's
+   keyboard is up on the name field, the column is the box the keyboard leaves (ui/teclado.ts writes --tec-top / --tec-h
+   from the visual viewport). Its bottom, the field then BORA!, sits right above the keys; what does not fit slides up
+   out of it (overflow on the start side). The title box would only be cut there, so it steps out. */
+.estadio .estadio-escolha[data-teclado] {
+  top: var(--tec-top); bottom: auto; height: var(--tec-h); justify-content: flex-end; overflow: hidden;
+  padding-top: 0; padding-bottom: 8px;
+}
+.estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
+.estadio:has(.estadio-escolha[data-teclado]) .menu-privacidade { display: none; }
 
 #enter-island { display: block; width: 100%; margin: 12px auto; }
 #explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

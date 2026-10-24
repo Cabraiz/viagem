@@ -1,7 +1,9 @@
 /**
  * D-051 arsenal on screen (NEW-20261016-ORQ-armas-caixas-render): what render/layers.ts adds in the manual combat.
- *  - Crates: base `caixa-saque` (closed, then abrindo-1..6 while a hero stands still at one) over a ring in its
- *    rarity colour, that ring filling while it opens and a burst when it opens ('pickup' chest event).
+ *  - Crates: the crate's item (caixa-icone-torre-arma: the view names it) is its sticker floating and turning
+ *    (arsenal-rules.ts floatPose; render/layers.ts moves it) over a neutral ring that fills while a hero stands still at
+ *    it, and a burst when it opens ('pickup' chest event). No crate sheet (BUG-20261024-ORQ-bau-antigo-ainda-visivel):
+ *    a crate whose item or sticker is not in yet is not drawn at all.
  *  - The crate's prize (bau-mostra-o-premio): its sticker rises out of the opened crate over a glow in the crate's colour,
  *    its name under it in that colour; smaller for a crate another hero opened, kept off the HUD (arsenal-rules.ts prizeSpot).
  *  - Items on the ground: their sticker (hud/items.ts icon) and, for a weapon, a ring in its rarity colour.
@@ -18,7 +20,7 @@ import type Phaser from 'phaser';
 import type {PickupView,RunView,SimEvent} from '../../contract/index.ts';
 import type {Projector} from './projector.ts';
 import {Ring} from './pool.ts';
-import {baseArtKey,baseFile,baseFrame,type BaseFrameRef} from '../art/base-art.ts';
+import {baseArtKey} from '../art/base-art.ts';
 import {token,tokenColor} from '../ui/tokens.ts';
 import {silhouetteImage} from './silhouette.ts';
 import {MeleeCone,meleeCone} from './melee-cone.ts';
@@ -30,8 +32,8 @@ import {DEFAULT_HOLD,HELD_DEPTH,HELD_TINT,WEAPON_HOLD,heldLook,holdPose,type Hel
 import type {CityOutlines} from './city-outline.ts';
 import {PELLETS,THROWN,pelletAlpha,pelletDistance,pelletSpread,type PelletLook} from './shot-flight.ts';
 import {THROW_MS} from '../../rules/index.ts';
-import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,crateRow,fxKey,iconKey,
-  prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
+import {CRATE_ART,ChestPrizes,CrateOpenings,FIRE_LOOK,PRIZE_CLAIM_MS,PRIZE_PX,RARITY_COLOR,RARITY_TOKEN,arsenalLoads,coneSteps,fxKey,iconKey,
+  FLOAT_PX,plainIcon,prizeLook,prizeMotion,prizeSpot,shotFrame,SLASH_AHEAD,handsOnCar,isWeaponItem,itemIcon,rarityOf,type FireLook,type PrizeLook,type Rarity} from './arsenal-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -39,8 +41,6 @@ type Image=Phaser.GameObjects.Image;
 const CRATE_PX=64*CRATE_SCALE,ITEM_PX=34,HAND_PX=36;
 /** The crate's rarity ring (its body on the ground, rules/crate-size.ts CRATE_BODY_RADIUS) and its opening arc, at body 1 (CSS px). */
 const CRATE_RING_W=58*CRATE_SCALE,CRATE_RING_H=24*CRATE_SCALE,CRATE_ARC_RX=36*CRATE_SCALE,CRATE_ARC_RY=15*CRATE_SCALE;
-/** The crate's shadow width at body 1 (CSS px; render/layers.ts draws it). */
-export const CRATE_SHADOW_PX=34*CRATE_SCALE;
 /** Where the hand sticker sits from the hero's feet (CSS px): at the side, about hip height. */
 const HAND_DX=26,HAND_DY=-30;
 /**
@@ -104,8 +104,11 @@ export interface ArsenalOptions {
    */
   auraFromScene?:boolean;
 }
-/** The look of a pickup the arsenal draws: texture, frame and scale over the image's own size. */
-export interface ArsenalLook {key:string;frame?:string|number;k:number}
+/**
+ * The look of a pickup the arsenal draws: texture, frame and scale over the image's own size; `float`: a crate drawn as
+ * its item, floating and turning (centred on its texture, not standing on the ground).
+ */
+export interface ArsenalLook {key:string;frame?:string|number;k:number;float?:boolean}
 
 export class ArsenalFx{
   /** The current view plays the manual combat (some hero has a hand slot). */
@@ -127,7 +130,6 @@ export class ArsenalFx{
   private papel=0xeeddb8;private breu=0x1e1530;private amarelo=0xffd23f;
   private q:Pt={x:0,y:0};private q2:Pt={x:0,y:0};
   private pts:Pt[]=Array.from({length:PROGRESS_POINTS},()=>({x:0,y:0}));
-  private frameRef:BaseFrameRef={key:'',frame:0};
   private ringLooks=new Map<string,{bands:TriBand[];used:number;seen:number}>();
   /** Opening prediction for every hero who can open (has a hand slot, is in the run): the local one and the others. */
   private openings=new CrateOpenings();
@@ -183,7 +185,7 @@ export class ArsenalFx{
       if(p.hand===undefined)continue;
       manual=true;
       if(!p.spectator&&!p.eliminated&&!p.downed)this.canOpen.add(p.id);
-      const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id);
+      const icon=p.spectator||p.eliminated||handsOnCar(car,p.id)?undefined:itemIcon(p.weapons[p.hand]?.id,p.weapons[p.hand]?.level);
       if(icon)this.handOf.set(p.id,icon);
       if(p.id===me){const weapon=p.weapons[p.hand]?.id,cone=weapon&&meleeCone(weapon,p,p.classId);if(cone)this.selfCone={weapon,...cone};}
     }
@@ -195,7 +197,10 @@ export class ArsenalFx{
     this.prizes.forEach(p=>{if(!p.look)this.claimPrize(p);});
   }
 
-  /** Per event: a damage on a hero restarts its opening; a crate opened bursts; an arsenal weapon's shot shows. */
+  /**
+   * Per event: a damage on a hero restarts its opening; a crate opened bursts (a ring in its rarity
+   * colour and its prize); an arsenal weapon's shot shows.
+   */
   event(event:SimEvent,crateAt?:Pt){
     if(!this.manual)return;
     if(event.type==='damage')this.openings.hurt(event.target,this.now);
@@ -213,12 +218,16 @@ export class ArsenalFx{
    */
   pickupLook(view:PickupView):ArsenalLook|undefined{
     if(view.kind==='chest'&&this.manual){
-      const file=baseFile(CRATE_ART),ref=file&&baseFrame(CRATE_ART,'fechada',0,0,this.frameRef);
-      if(!file||!ref||!this.scene.textures.exists(ref.key))return undefined;
-      return {key:ref.key,frame:ref.frame,k:CRATE_PX/file.cell[0]};
+      // caixa-icone-torre-arma: the crate's own item, when the view names it and its sticker is in.
+      // Only that (BUG-20261024-ORQ-bau-antigo-ainda-visivel, the user: "o baú antigo ainda está visível, delete ele"):
+      // no closed-crate sheet any more; until the sticker is in (or the crate's prize is known) the renderer hides it.
+      const icon=itemIcon(view.resource),key=icon&&iconKey(icon);
+      if(!key||!this.scene.textures.exists(key))return undefined;
+      const frame=this.scene.textures.getFrame(key),size=Math.max(1,frame?.width??1,frame?.height??1);
+      return {key,k:FLOAT_PX/size,float:true};
     }
     if(view.kind==='item'){
-      const icon=itemIcon(view.resource),key=icon&&iconKey(icon);
+      const icon=itemIcon(view.resource,isWeaponItem(view.resource)?view.value:1),key=icon&&iconKey(icon);
       if(!key||!this.scene.textures.exists(key))return undefined;
       return {key,k:ITEM_PX/Math.max(1,this.scene.textures.get(key).getSourceImage().width)};
     }
@@ -245,12 +254,15 @@ export class ArsenalFx{
   }
 
   /**
-   * A crate drawn this frame at world (x,y), screen `q`: its rarity ring, the opening arc when a hero is at it (the most
-   * advanced one, when several are),
-   * and the sheet frame to show (closed, or abrindo-n with the progress). Undefined when its sheet is not in use.
+   * A crate drawn as its floating item (caixa-icone-torre-arma) at world (x,y), screen `q`: its ring and opening arc in
+   * Papel (no rarity colour: the rarity shows when it opens). Returns the opening progress (0..1), which spins it faster.
    */
-  crate(id:string,x:number,y:number,value:number,q:Pt):BaseFrameRef|undefined{
-    const rarity=rarityOf(value),b=this.body,color=this.colors[rarity];
+  floatingCrate(id:string,x:number,y:number,value:number,q:Pt):number{
+    return this.crateGround(id,x,y,value,q,this.papel);
+  }
+  /** A crate's ring on the ground in `color` and, when a hero is at it, the opening arc; returns the progress (0..1). */
+  private crateGround(id:string,x:number,y:number,value:number,q:Pt,color:number):number{
+    const b=this.body;
     const pulse=this.reduced?1:1+.06*Math.sin(this.now*.006);
     this.ringBand(`c|${color}|${Math.round(b*100)}`,g=>{
       g.fillStyle(color,.22).fillEllipse(0,0,CRATE_RING_W*b,CRATE_RING_H*b);
@@ -264,7 +276,7 @@ export class ArsenalFx{
       this.rings.lineStyle(9*b,this.breu,.8).strokePoints(pts,false,false,n);
       this.rings.lineStyle(5*b,color,1).strokePoints(pts,false,false,n);
     }
-    return baseFrame(CRATE_ART,crateRow(progress),0,0,this.frameRef);
+    return progress;
   }
 
   /** An item drawn this frame at screen `q`: a weapon gets the ring of its rarity, a kit de torre its tier's (a consumable none). */
@@ -315,7 +327,7 @@ export class ArsenalFx{
       const q=projector.project(at.x,at.y,this.q),w=Math.max(1,this.scene.textures.getFrame(key)?.width??1),held=this.options.hand?.(id);
       let dx=HAND_DX*b,dy=HAND_DY*b,k=HAND_PX*b/w,rotation=0,flipX=false,flipY=false,ox=.5,oy=.5,depth=HAND_DEPTH;
       if(held){
-        const hold=WEAPON_HOLD[icon]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
+        const hold=WEAPON_HOLD[plainIcon(icon)]??DEFAULT_HOLD,pose=holdPose(hold,held.aim);
         dx=held.x-q.x;dy=held.y-q.y;k=hold.px*b/w;rotation=pose.rotation;flipX=pose.flipX;flipY=pose.flipY;ox=pose.ox;oy=pose.oy;
         depth=held.depth+(held.behind?HELD_DEPTH.behind:HELD_DEPTH.front);
       }
@@ -442,10 +454,9 @@ export class ArsenalFx{
     return true;
   };
   private burst(at:Pt,rarity:Rarity,player:string){
-    const ref=baseFrame(CRATE_ART,'abrindo-6',0,0,this.frameRef),b=this.bursts.spawn(),file=baseFile(CRATE_ART);
-    b.born=this.now;b.x=at.x;b.y=at.y;b.rarity=rarity;
-    if(ref&&file&&this.scene.textures.exists(ref.key))b.image.setTexture(ref.key,ref.frame).setOrigin(.5,.88).setDepth(FX_DEPTH);
-    else b.image.setVisible(false);
+    // No open-crate sheet (bau-antigo-ainda-visivel): a crate is its floating item, so the burst is the ring and the prize.
+    const b=this.bursts.spawn();
+    b.born=this.now;b.x=at.x;b.y=at.y;b.rarity=rarity;b.image.setVisible(false);
     const p=this.prizes.spawn();
     p.born=this.now;p.start=-1;p.x=at.x;p.y=at.y;p.rarity=rarity;p.player=player;p.own=player===this.options.selfId?.();p.look=undefined;
     this.claimPrize(p);
@@ -500,8 +511,7 @@ export class ArsenalFx{
   }
   private drawBurst=(o:BurstFx)=>{
     const age=this.now-o.born;if(age>=BURST_MS)return false;
-    const q=this.options.projector.project(o.x,o.y,this.q),b=this.body,u=age/BURST_MS,file=baseFile(CRATE_ART);
-    if(file&&o.image.visible)o.image.setPosition(q.x,q.y).setScale(CRATE_PX*b/file.cell[0]).setAlpha(1-u*u);
+    const q=this.options.projector.project(o.x,o.y,this.q),b=this.body,u=age/BURST_MS;
     const color=this.colors[o.rarity],r=(30+70*u)*b;
     this.arcs.lineStyle(5*b*(1-u)+1,color,1-u).strokeEllipse(q.x,q.y-10*b,r*2,r*.9);
     return true;

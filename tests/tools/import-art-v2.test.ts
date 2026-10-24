@@ -548,12 +548,13 @@ test('P0 table: absent P0 pieces are pending, absent P1/P2 only optional; extra 
   approved(piece(r,'itens','moeda'));
   for(const id of ['gema-media','gema-grande','coxinha','ima','bau','recurso-coco','recurso-pedra'])
     assert.deepEqual([piece(r,'itens',id).status,piece(r,'itens',id).priority],['pendente','P0'],id);
-  assert.deepEqual([piece(r,'itens','boleto-chuva').status,piece(r,'itens','boleto-chuva').priority],['opcional','P1']);
-  for(const id of ['coach','motoboy','influencer'])assert.equal(piece(r,'inimigos',id).status,'opcional',id);
+  // The boleto rain's 'boleto-chuva' (the items' only P1) left with the rain (NEW-20261024-ORQ-tirar-drops-cedula-girando).
+  assert.equal(r.pieces.some(p=>p.group==='itens'&&p.id==='boleto-chuva'),false);
+  for(const id of ['coach','motoboy','influencer'])assert.deepEqual([piece(r,'inimigos',id).status,piece(r,'inimigos',id).priority],['opcional','P1'],id);
   assert.equal(piece(r,'inimigos','bebado').status,'pendente');
   const html=readFileSync(reportFile,'utf8');
   const optional=[...html.matchAll(/<p class="pending optional">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
-  assert.match(optional,/Opcionais \(P1\/P2\).*<code>boleto-chuva<\/code>/);
+  assert.match(optional,/Opcionais \(P1\/P2\).*<code>coach<\/code>/);
   const pending=[...html.matchAll(/<p class="pending">[^\n]*?<\/p>/g)].map(m=>m[0]).join('\n');
   assert.match(pending,/<code>gema-media<\/code>/);
   assert.doesNotMatch(pending,/boleto-chuva|coach/,'P1 piece listed as pending');

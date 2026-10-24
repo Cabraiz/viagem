@@ -89,6 +89,8 @@ const columnFade=(pieceId:string)=>`c:${pieceId}`;
 export interface CityFrame {
   /** Visible screen rect in projected pixels (camera worldView). */
   camera:Rect;
+  /** Card inimigos-querem-o-uno: a second camera's rect (the Uno's live window), its chunks kept built too. */
+  also?:Rect;
   view:number;
   /**
    * Local hero feet (world units) or undefined when there is none (spectating). In city mode the scene draws every
@@ -410,7 +412,7 @@ export class CityLayer {
   update(frame:CityFrame){
     const view=normalizeView(frame.view);
     if(view!==this.view){this.view=view;this.fader.reset();this.faded.clear();this.cellColumns.clear();this.drawFog(view);}
-    const {show,hide}=this.tracker.update(frame.camera,view);
+    const {show,hide}=this.tracker.update(frame.camera,view,frame.also);
     for(const key of hide)this.dropChunk(key);
     for(const key of show){const t0=perfNow();this.buildChunk(key,view);perfSpan('chunk',t0);} // ?perf=1: a chunk built, charged to this frame
     let old=show.length?undefined:this.tracker.nearest(this.stale,frame.camera,view);

@@ -20,6 +20,8 @@
  * `relogio=1` brings back the game of before (horde-art.ts ENEMY_WALK): the clock-driven walk, the facing of the last
  * step and no swing on a contact hit.
  * `ritmo=antes` (card inimigos-animacao-2x-lenta): the enemies' loops and walk cadence of before, 2x faster (ENEMY_PACE).
+ * `golpe=antes` (card inimigos-animacao-auditoria): the swing and the walking of before: each contact hit swings once
+ * at the sheet's pace (idle in between) and a jiggle against the hero walks in place (ENEMY_SWING, ENEMY_WALK.leash).
  * Exposes window.__horde for automated FPS and pooling checks.
  */
 import Phaser from 'phaser';
@@ -39,7 +41,7 @@ import {HordeRenderer} from '../render/layers.ts';
 import {YouMarkers,type HeroMark} from '../render/you.ts';
 import {token} from '../ui/tokens.ts';
 import {Projector} from '../render/projector.ts';
-import {ENEMY_ANIM_RATE,ENEMY_ART_ID,ENEMY_PACE,ENEMY_WALK,artTargetHeight,queueHordeArt} from '../art/horde-art.ts';
+import {ENEMY_ANIM_RATE,ENEMY_ART_ID,ENEMY_PACE,ENEMY_SWING,ENEMY_WALK,artTargetHeight,queueHordeArt} from '../art/horde-art.ts';
 import {ENEMY_DRAW_SCALE} from '../render/draw-scale.ts';
 import {artPiece} from '../art/manifest.ts';
 import {enemyKind} from '../render/keys.ts';
@@ -271,7 +273,10 @@ class FakeHorde {
         // Closing in to arm's length; then the crowd shoves it sideways now and then (it walks back in).
         if(d>.8){e.x+=dx/d*e.speed/SIM_HZ;e.y+=dy/d*e.speed/SIM_HZ;}
         else if((this.tick+i*37)%150<14){e.x+=-dy/d*.06+dx/d*-.03;e.y+=dx/d*.06+dy/d*-.03;}
-        if(d<=1&&(this.tick+i*23)%60===0)this.emit({type:'damage',target:me.id,amount:5,source:e.id});
+        // Pressed on him, the sim pushes it to and fro (±0.05 u a tick, measured in a real match: inimigos-animacao-auditoria).
+        else{const k=(this.tick+i)%2?.05:-.05;e.x+=dx/d*k;e.y+=dy/d*k;}
+        // A contact hit every second (sim contactCooldown 1 s), each enemy on its own beat.
+        if(d<=1&&(this.tick+i*7)%SIM_HZ===0)this.emit({type:'damage',target:me.id,amount:5,source:e.id});
       });
       return;
     }
@@ -466,6 +471,7 @@ export async function openHordeSandbox(){
   for(const pair of (params.get('arte')??'').split(',')){const [kind,id]=pair.split(':');if(kind&&id&&Object.hasOwn(ENEMY_ART_ID,kind))(ENEMY_ART_ID as Record<string,string>)[kind]=id;}
   if(params.get('relogio')==='1')ENEMY_WALK.byGround=ENEMY_WALK.faceTarget=false;
   if(params.get('ritmo')==='antes')Object.assign(ENEMY_PACE,{loop:ENEMY_ANIM_RATE,cadence:1,maxCps:3});
+  if(params.get('golpe')==='antes'){ENEMY_SWING.fill=false;ENEMY_WALK.leash=false;}
   const count=Math.max(0,Math.min(1000,Number(params.get('n')??300)||0));
   const seed=Number(params.get('seed'))||DEFAULT_SEED;
   const reduced=params.get('reduced')==='1';

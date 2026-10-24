@@ -35,8 +35,9 @@ const isPole=(id:string)=>POSTES.some(([p])=>p===id);
 const isObject=(id:string)=>[...OBJETOS_1,...OBJETOS_2].some(o=>id===o||id.startsWith(`${o}-`));
 
 test('the decor decodes, round-trips through the encoder, and is one extra top-level key',()=>{
-  assert.equal(asset.version,3);
-  assert.ok(asset.decor.length>5000,`${asset.decor.length} pieces`);
+  assert.equal(asset.version,4);
+  // v4: the city 1.75× shorter (mapa-175-com-viaduto) holds ~3 300 pieces (7 535 on the 1.7× city).
+  assert.ok(asset.decor.length>2500,`${asset.decor.length} pieces`);
   assert.equal(encodeCityAsset(cityAssetToData(asset)),TEXT);
   const keys=Object.keys(JSON.parse(TEXT));
   assert.equal(keys.at(-2)==='decor'||keys.at(-1)==='decor',true);
@@ -113,7 +114,7 @@ test('nothing stands in a keep-out: the plaza, the start, spawns, mouths, build 
 
 test('poles keep their spacing; every place with life at least once, apart on open ground',()=>{
   const poles=asset.decor.filter(d=>isPole(d.id));
-  assert.ok(poles.length>500,`${poles.length} poles`);
+  assert.ok(poles.length>300,`${poles.length} poles`);
   for(let i=0;i<poles.length;i++)for(let j=i+1;j<poles.length;j++)
     assert.ok(Math.max(Math.abs(poles[i].c-poles[j].c),Math.abs(poles[i].r-poles[j].r))>=POLE_SPACING);
   const lugares=asset.decor.filter(d=>isLugar(d.id));
@@ -132,7 +133,7 @@ test('undecorate gives back the grid without the places: they only took cells, a
   const before=decodeCityAsset(undecorate(TEXT));
   assert.ok(before.ok);
   const b=before.asset;
-  assert.equal(b.decor.length,0);assert.equal(b.version,2);
+  assert.equal(b.decor.length,0);assert.equal(b.version,3);
   let changed=0;
   for(let s=0;s<b.samples.w*b.samples.h;s++){
     const x=s%b.samples.w,y=(s-x)/b.samples.w,was=b.walkable(x,y),now=asset.walkable(x,y);
@@ -167,7 +168,7 @@ test('rochas-grandes: the thick cliffs are big massifs, the same cliff cells cov
 test('grades-sem-padrao: each wall is one line of straight pieces along it, back to back, never crossed or stacked',()=>{
   const walls=asset.decor.filter(d=>WALL_FAMILIES.some(f=>d.id.startsWith(`${f}-`)));
   const pieces=walls.filter(d=>!d.cover);
-  assert.ok(pieces.length>800,`${pieces.length} pieces`);
+  assert.ok(pieces.length>450,`${pieces.length} pieces`);
   // Centre (sub units, half cells) and axis: rot 0 along y (rows), rot 90 along x; the rect is centred on the line.
   const key=(x:number,y:number)=>`${x},${y}`,centre=new Map<string,string>(),posts=new Map<string,number>();
   for(const d of pieces){
@@ -179,9 +180,10 @@ test('grades-sem-padrao: each wall is one line of straight pieces along it, back
     centre.set(k,d.id);
     for(const s of [-1,1]){const p=d.rot===90?key(cx+s,cy):key(cx,cy+s);posts.set(p,(posts.get(p)??0)+1);}
   }
-  // Back to back: most posts are shared by two pieces (the ends of a line are the only lone posts).
+  // Back to back: most posts are shared by two pieces (the ends of a line are the only lone posts). Asset v4: the walls
+  // are 1.75× shorter, so a line has fewer pieces between its two ends (was < 35 %).
   const lone=[...posts.values()].filter(n=>n===1).length;
-  assert.ok(lone<posts.size*.35,`${lone} lone posts of ${posts.size}`);
+  assert.ok(lone<posts.size*.45,`${lone} lone posts of ${posts.size}`);
 });
 
 test('wallLines: every wall cell is drawn by its line (a piece or a cover), nothing off the wall; a lone bit gets a piece',()=>{

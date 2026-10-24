@@ -32,11 +32,12 @@
  * everyone sees everyone's balance; the camp block's and the objective block's `grana` are the viewer's own wallet
  * (0 for a spectator), written per encoder from the viewer's player record. The `pix` event goes to everyone.
  * Sleeping bodies (D-051, `asleep`) count at most ASLEEP_PER_VIEWER per client, the nearest ones.
+ * Per-player crates (caixa-gamble): a pickup whose server-only `hiddenFor` names the viewer is left out of his frames.
  */
 import type {OfferChoice,OfferSource,PickupKind,RoundState,SimEvent} from '../contract/index.ts';
 import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,ProjectileView,RunView,StructureView,TelegraphView} from '../contract/index.ts';
 import type {TelegraphKind} from '../contract/index.ts';
-import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
+import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CAR_INTEREST_RADIUS,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
 import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
@@ -101,9 +102,19 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
+ * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
+ * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
+ * 34 given by the integration queue (tools/fila.mjs, lote 20261024-134734) to: NEW-20261023-ORQ-inicio-no-uno-caixas-120.
+ * Next (the queue numbers it) since the cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the 'grana' pickup
+ * kind (a kill's Grana on the ground) and its string at the end of the DICT; an older client would draw a parcel.
+ * 35 given by the integration queue (tools/fila.mjs, lote 20261024-164948) to: NEW-20261024-ORQ-tirar-drops-cedula-girando.
+ * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
+ * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
+ * would refuse the masks.
+ * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=31;
+export const PROTOCOL_VERSION=36;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -190,6 +201,8 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
+  // Cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the kill's Grana as a pickup kind.
+  'grana',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -320,6 +333,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 /** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
 const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
+/** The viaduct's floor (andar): only ever 1 or absent, like trueFlag (optional(deckFlag) is its presence byte). */
+const deckFlag:Codec<1>={write:()=>{},read:()=>1,norm:()=>1,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -379,6 +394,9 @@ const contribution=optional<Contribution>({
 export type PlayerWireView=PlayerRunView&{x?:number;y?:number;ack?:number;attackTick?:number;skillTick?:number;skillReadyTick?:number;
   /** The player's wallet in R$ (contract SimPlayer.grana; carteira-e-pix): absent = 0. */
   grana?:number};
+/** A pickup this viewer no longer sees (PickupState.hiddenFor, the caixa-gamble's per-player crates). */
+const hidden=(e:Entity,viewer:string)=>(e.hiddenFor as readonly string[]|undefined)?.includes(viewer)===true;
+
 /** What `viewer` sees as their own Grana: their wallet (0 when absent, a spectator, or not in the frame). */
 export function viewerGrana(players:readonly PlayerWireView[],viewer:string|undefined):number{
   const p=viewer===undefined?undefined:players.find(q=>q.id===viewer);
@@ -413,6 +431,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
     // oferta-velocidade: stats.moveSpeed when not 1, in thousandths (it drives the phone's prediction too).
     moveSpeed:c(optional(milli)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
+    andar:c(optional(deckFlag)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -422,9 +442,13 @@ const SCHEMAS:Record<SectionKey,Schema>={
     asleep:c(optional(trueFlag)),
     // Bancos: it robbed an ATM into a Cliente Prime (the crown).
     prime:c(optional(trueFlag)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
+    andar:c(optional(deckFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),
+    // The viaduct (mapa-175-com-viaduto): flying on a deck, floor 1.
+    andar:c(optional(deckFlag))},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
@@ -638,7 +662,10 @@ interface World {tick:number;tables:Record<SectionKey,Table>;objective?:Objectiv
  *   static: uvar n, (svar x*16, svar y*16)* route | uvar m, (str kind, svar x*16, svar y*16, uvar s*16)* stops
  */
 const OBJ_DYN=1,OBJ_STATIC=2,OBJ_CLEAR=4;
-const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32;
+const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32,OBJ_HEADING=64;
+/** Card puxar-uno-corda: the car's nose travels in 256 steps per turn (1.4°); step 0 (east) is left out. */
+const headingByte=(h:number)=>((Math.round(finite(h)/(Math.PI*2)*256)%256)+256)%256;
+const byteHeading=(b:number)=>(b>128?b-256:b)/256*Math.PI*2;
 /** Objective positions travel at 1/16 unit. */
 export const OBJECTIVE_POS_SCALE=16;
 const MAX_ROUTE_POINTS=512,MAX_STOPS=64,MAX_STOCK=8;
@@ -656,7 +683,8 @@ function normObjective(v:ObjectiveView):ObjectiveView{
     etaS:uint(v.etaS),alarmUntil:Math.round(finite(v.alarmUntil)),grana:uint(v.grana),budget:uint(v.budget),stock:v.stock.slice(0,MAX_STOCK).map(uint),
     ...(v.delivery?{delivery:{...pt16(v.delivery),etaS:uint(v.delivery.etaS)}}:{}),
     car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts),
-      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{})},
+      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{}),
+      ...(v.car.heading!==undefined&&headingByte(v.car.heading)?{heading:byteHeading(headingByte(v.car.heading))}:{})},
     ...(v.ended?{ended:v.ended}:{}),
   };
 }
@@ -668,13 +696,13 @@ const sameDynamic=(a:ObjectiveView,b:ObjectiveView)=>a.kind===b.kind&&a.moto.x==
   a.stock.length===b.stock.length&&a.stock.every((n,i)=>n===b.stock[i])&&a.ended===b.ended&&
   (a.delivery===undefined?b.delivery===undefined:b.delivery!==undefined&&a.delivery.x===b.delivery.x&&a.delivery.y===b.delivery.y&&a.delivery.etaS===b.delivery.etaS)&&
   a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts&&
-  a.car.rope===b.car.rope&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
+  a.car.rope===b.car.rope&&a.car.heading===b.car.heading&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
 function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
   w.u8(bits);
   if(bits&OBJ_DYN){
     w.str(v.kind);w.svar(q16(v.moto.x));w.svar(q16(v.moto.y));w.str(v.moto.mode);
     w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0)|
-      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0));
+      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0)|(v.car.heading!==undefined&&headingByte(v.car.heading)?OBJ_HEADING:0));
     w.uvar(v.etaS);w.svar(v.alarmUntil-tick);w.uvar(v.grana);w.uvar(v.budget);
     w.uvar(v.stock.length);for(const n of v.stock)w.uvar(n);
     if(v.moto.push!==undefined)w.u8(unitByte(v.moto.push));
@@ -682,6 +710,7 @@ function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
     w.svar(q16(v.car.x));w.svar(q16(v.car.y));w.uvar(v.car.hits);w.uvar(v.car.limit);w.uvar(v.car.parts);
     if(v.car.movers?.length){w.uvar(v.car.movers.length);for(const id of v.car.movers)w.str(id);}
     if(v.car.rope!==undefined)w.str(v.car.rope);
+    if(v.car.heading!==undefined&&headingByte(v.car.heading))w.u8(headingByte(v.car.heading));
   }
   if(bits&OBJ_STATIC){
     w.uvar(v.route.length);for(const p of v.route){w.svar(q16(p.x));w.svar(q16(p.y));}
@@ -698,7 +727,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const kind=r.str(),mx=pos(),my=pos(),mode=r.str();
     if(kind!=='chaveiro')throw new FrameError('unknown objective');
     if(!MOTO_MODES.has(mode))throw new FrameError('bad moto mode');
-    const has=r.u8();if(has>63||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
+    const has=r.u8();if(has>127||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
     const etaS=r.uvar(),alarmUntil=tick+r.svar(),grana=r.uvar(),budget=r.uvar();
     const stock=Array.from({length:r.count(MAX_STOCK)},()=>r.uvar());
     const push=has&OBJ_PUSH?r.u8()/255:undefined;
@@ -706,6 +735,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const car:ObjectiveView['car']={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
     if(has&OBJ_MOVERS)car.movers=Array.from({length:r.count(MAX_CAR_MOVERS)},()=>r.str());
     if(has&OBJ_ROPE)car.rope=r.str();
+    if(has&OBJ_HEADING){const b=r.u8();if(!b)throw new FrameError('bad car heading');car.heading=byteHeading(b);}
     next={kind,moto:{x:mx,y:my,mode:mode as MotoMode,...(push!==undefined?{push}:{})},route:next?.route??[],stops:next?.stops??[],
       etaS,alarmUntil,grana,budget,stock,...(delivery?{delivery}:{}),car,
       ...(has&OBJ_VICTORY?{ended:'victory' as const}:has&OBJ_DEFEAT?{ended:'defeat' as const}:{})};
@@ -811,6 +841,11 @@ const sameWorld=(a?:WorldDescriptor,b?:WorldDescriptor)=>!!a&&!!b&&a.kind===b.ki
   a.generatorVersion===b.generatorVersion&&a.seed===b.seed&&a.signature===b.signature;
 
 /** What the server hands the encoder each frame: a RunView with server ids, minus offers and events. */
+/** Whether an entity stands by the car (CAR_INTEREST_RADIUS; + `hysteresis` for one already sent). */
+function carNear(car:Point2,hysteresis:number){
+  const r2=CAR_INTEREST_RADIUS**2,s2=(CAR_INTEREST_RADIUS+hysteresis)**2;
+  return (e:Entity,had:boolean)=>{const dx=(e.x as number)-car.x,dy=(e.y as number)-car.y,d2=dx*dx+dy*dy;return d2<=r2||had&&d2<=s2;};
+}
 export type FrameInput=Omit<RunView,'offers'|'events'|'players'>&{players:PlayerWireView[];world?:WorldDescriptor};
 export interface EncoderStats {frames:number;fullFrames:number;bytes:number;eventBytes:number;
   /** Entities left out by the area of interest (summed over frames), and events dropped as out of sight. */
@@ -912,7 +947,7 @@ export class FrameEncoder {
     this.ids=ids;this.viewer=options.viewer;this.slot=sendSlot(options.slot??0);this.chain=!!options.chain;
     this.farEvery=Math.max(1,Math.floor(options.farEvery??1));
     if(options.viewer!==undefined&&options.interest!==false)
-      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER};
+      this.interest={radius:options.interest?.radius??INTEREST_RADIUS,hysteresis:options.interest?.hysteresis??INTEREST_HYSTERESIS,asleep:options.interest?.asleep??ASLEEP_PER_VIEWER,...(options.interest?.awake!==undefined?{awake:options.interest.awake}:{})};
   }
 
   /**
@@ -993,8 +1028,15 @@ export class FrameEncoder {
       at(view.structures[0])??{x:0,y:0};
   }
   /** The entities of a section this client gets, as wire id -> server entity. */
-  private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined):Map<number,Entity>{
+  /**
+   * `car`: the chaveiro's car while the objective runs (card inimigos-querem-o-uno): the awake enemies by it come too,
+   * first under the cap (the Uno's live window).
+   */
+  private select(section:SectionKey,list:readonly Entity[],focus:Point2|undefined,car?:Point2):Map<number,Entity>{
     const current=new Map<number,Entity>();
+    // The caixa-gamble: a crate this viewer no longer sees (server-only hiddenFor) is not in his frames at all.
+    const viewer=this.viewer;
+    if(section==='pickups'&&viewer!==undefined&&list.some(e=>hidden(e,viewer)))list=list.filter(e=>!hidden(e,viewer));
     const interest=this.interest,always=section==='players'||section==='structures';
     if(!interest||!focus||always){
       for(const e of list)current.set(this.ids.wire(section,e.id),e);
@@ -1004,6 +1046,7 @@ export class FrameEncoder {
     const before=this.members[section],keep=new Set<string>();
     this.previous[section]=before;
     const near=interest.radius,stay=interest.radius+interest.hysteresis,near2=near*near,stay2=stay*stay,tele=section==='telegraphs';
+    const byCar=section==='enemies'&&car?carNear(car,interest.hysteresis):undefined;
     // D-051: the sleepers inside the area wait here and only the nearest `interest.asleep` go (ties by id).
     const sleepers:{e:Entity;d2:number}[]|undefined=section==='enemies'?this.sleepScratch:undefined;
     if(sleepers)sleepers.length=0;
@@ -1014,10 +1057,11 @@ export class FrameEncoder {
       let d2=dx*dx+dy*dy;
       if(tele){const d=Math.sqrt(d2)-Math.max(0,finite(e.radius as number))-Math.max(0,finite((e.width as number|undefined)??0));d2=d<0?0:d*d;}
       // The boss is always sent: the arrow to it and its hp bar matter from anywhere. NaN positions stay out.
-      const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id));
+      const atCar=!!byCar&&e.asleep!==true&&byCar(e,!!before?.has(e.id));
+      const inside=(section==='enemies'&&e.boss===true)||d2<=near2||(d2<=stay2&&!!before?.has(e.id))||atCar;
       if(!inside){this.stats.culled++;continue;}
       if(sleepers&&e.asleep===true){sleepers.push({e,d2});continue;}
-      if(awake){awake.push({e,d2});continue;}
+      if(awake){awake.push({e,d2:atCar?0:d2});continue;}
       keep.add(e.id);current.set(this.ids.wire(section,e.id),e);
     }
     // The awake inside the area: only the nearest `interest.awake` (ties by id), the phone's drawing budget.
@@ -1075,6 +1119,8 @@ export class FrameEncoder {
     const baseSeq=this.chain?this.seq:this.acked,seq=++this.seq,base=this.history.get(baseSeq);
     const focus=this.focusOf(view,options.focus);
     const f:FrameCtx={tick:view.tick,ox:focus?Math.round(focus.x):0,oy:focus?Math.round(focus.y):0};
+    const car=this.interest&&view.objective&&!view.objective.ended?view.objective.car:undefined;
+    const nearCar=car&&this.interest?carNear(car,this.interest.hysteresis):undefined;
     if(!(Math.abs(f.ox)<=POS_LIMIT))f.ox=0;
     if(!(Math.abs(f.oy)<=POS_LIMIT))f.oy=0;
     const w=new Writer();
@@ -1112,11 +1158,11 @@ export class FrameEncoder {
     for(const section of SECTIONS){
       const schema=SCHEMAS[section],list=(view[section]??NONE) as unknown as Entity[];
       const client=advance(schema,base?.tables[section],view.tick,base?.tick??view.tick);
-      const current=this.select(section,list,focus);
+      const current=this.select(section,list,focus,car);
       // Off-screen critters wait for their frame (farEvery): the client keeps the copy it has.
       const hold=section==='enemies'&&this.farEvery>1&&focus&&this.viewer!==undefined&&seq%this.farEvery!==0?
         // Both where the client has it and where it is now: one walking off the edge still gets its last steps.
-        (e:Entity,had:Entity)=>e.boss!==true&&!visibleOffset((e.x as number)-focus.x,(e.y as number)-focus.y)&&
+        (e:Entity,had:Entity)=>e.boss!==true&&!(nearCar?.(e,true))&&!visibleOffset((e.x as number)-focus.x,(e.y as number)-focus.y)&&
           !visibleOffset((had.x as number)-focus.x,(had.y as number)-focus.y):undefined;
       // Removed from this client but still in the world: it left the area of interest (no death poof).
       const exists=this.interest?(label:string)=>liveIds(list,view.tick).has(section==='players'?label:this.ids.resolve(label)??''):()=>false;
@@ -1157,9 +1203,13 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
-const bit=(field:number)=>1<<(field+FIELD_BIT);
-const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
+/**
+ * Field bits by arithmetic, not `1<<` / `>>>` (31-bit): the players passed 29 fields with the viaduct's `andar` after
+ * `moveSpeed` (mapa-175-com-viaduto), and 1<<31 is negative. Masks are varints, exact up to 2^53 (~50 fields); the bytes
+ * of a mask under 2^31 are the same as before. NUDGE and NEW stay in the low bits (`mask&NEW` keeps them exact).
+ */
+const bit=(field:number)=>2**(field+FIELD_BIT);
+const has=(mask:number,field:number)=>Math.floor(mask/2**(field+FIELD_BIT))%2===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).

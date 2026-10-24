@@ -186,7 +186,6 @@ const strip=(cell,frames,priority=P0)=>({priority,kind:'frames',cell:Array.isArr
 const ITENS=Object.freeze({
   'gema-pequena':strip(64,4),'gema-media':strip(64,4),'gema-grande':strip(64,4),
   coxinha:strip(64,4),ima:strip(64,4),bau:strip(64,4),'recurso-coco':strip(64,4),'recurso-pedra':strip(64,4),
-  'boleto-chuva':strip(64,8,P1),
 });
 const PROJETEIS=Object.freeze({
   'tiro-aliado':strip(32,4),'garrafa-molotov':strip(64,8),'coco-pombo':strip(48,6),'coco-pombo-poca':strip(96,6),
@@ -249,14 +248,13 @@ const UI=(()=>{
 
 // ---------------------------------------------------------------- face avatars (board design/PACOTE-ROSTOS.md, §4b)
 /**
- * The 35 playable classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
+ * The 29 classes, in src/rules/classes.ts order (a test keeps both lists equal; the importer runs in plain
  * node and cannot import the TS catalog). Face file: `rostos/<classe>-<expressão>.png`, 256×256, transparent.
  */
-export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl','pedreiro',
-  'vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira','concurseira',
-  'vendedor-praia','roqueira','pagodeiro','caca-promocao','gambiarreiro','universitario','passageira','porteiro',
-  'goleira','sensei','merendeira','rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','salva-vidas',
-  'conspiracionista','gamer-mobile','rainha-bateria','gato-nada-pra-comer']);
+export const FACE_CLASSES=Object.freeze(['cidadao-comum','mendigo','viciado-em-bet','clt-cansado','motogirl',
+  'pedreiro','vizinha-fofoqueira','tio-do-churrasco','maromba','feirante','tecnico-ti','streamer','coach','faxineira',
+  'concurseira','vendedor-praia','pagodeiro','gambiarreiro','universitario','passageira','porteiro','merendeira',
+  'rei-pastel','astrologa','rei-arraia','mae-pet','aposentado','conspiracionista','gato-nada-pra-comer']);
 /** Expressions, in brief order: `normal` is P0 (default face), the other four P1. */
 export const FACE_EXPRESSIONS=Object.freeze(['normal','ferido','caido','rindo','bravo']);
 /** Canvas side and the diameter of the central circle the game crops to (nothing drawn outside it). */

@@ -99,8 +99,33 @@ export class UsableGlow {
   private hide(g:Glow){for(const c of g.copies)c.setVisible(false);g.shown=false;}
 }
 
-/** The gold outline of a wall made of pieces (muralha.ts): every piece under the lowest one, so only the wall's edge shows. */
-export function glowPieces(glow:UsableGlow,id:string,pieces:readonly Img[],k:number){
-  let under=Infinity;for(const i of pieces)if(i.visible&&i.depth<under)under=i.depth;
-  for(let n=0;n<pieces.length;n++)glow.mark(`${id}:${n}`,pieces[n],k,undefined,under);
+/**
+ * The gold outline of walls made of pieces (muralha.ts): add() each square's pieces with its wall's group during the
+ * frame, then flush(): every piece of a wall glows under the lowest piece of the WHOLE wall, so only the wall's outer edge
+ * shows gold. Per square, the front square's gold sat over the square behind it: a gold seam between them
+ * (barricada-grossura-e-contorno, user 24/10). Entries are reused frame to frame.
+ */
+export class WallGlow {
+  private list:{id:string;group:number|string;pieces:readonly Img[]}[]=[];
+  private n=0;
+  private under=new Map<number|string,number>();
+  /** Square `id`'s pieces, of wall `group` (muralha.ts MuralhaLayer.groupOf; a square alone: its own id). */
+  add(id:string,group:number|string,pieces:readonly Img[]){
+    const e=this.list[this.n++];
+    if(e){e.id=id;e.group=group;e.pieces=pieces;}else this.list.push({id,group,pieces});
+  }
+  /** Marks every piece added since the last flush on `glow` (between its begin and end), `k` world px per CSS px. */
+  flush(glow:UsableGlow,k:number){
+    const under=this.under;under.clear();
+    for(let w=0;w<this.n;w++){
+      const {group,pieces}=this.list[w];let u=under.get(group)??Infinity;
+      for(const i of pieces)if(i.visible&&i.depth<u)u=i.depth;
+      under.set(group,u);
+    }
+    for(let w=0;w<this.n;w++){
+      const {id,group,pieces}=this.list[w],u=under.get(group)!;
+      for(let n=0;n<pieces.length;n++)glow.mark(`${id}:${n}`,pieces[n],k,undefined,u);
+    }
+    this.n=0;
+  }
 }

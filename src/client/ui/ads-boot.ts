@@ -9,7 +9,7 @@ export const ADS_BOOT_DELAY_MS=3000;
 
 /** Schedules the ads chunk when ads can run; false (nothing loaded, zero calls) otherwise. */
 export function startAds(win:Window,dev:boolean,config:Readonly<AdsConfig>=ADS_CONFIG):boolean{
-  const active=activeAds({dev,search:win.location.search},config);
+  const active=activeAds({dev,search:win.location.search,host:win.location.hostname},config);
   if(!active)return false;
   const boot=()=>void import('../ads/ads.ts').then(m=>m.bootAds(active,win)).catch(()=>undefined);
   const later=()=>{

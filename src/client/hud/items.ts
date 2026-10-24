@@ -3,7 +3,7 @@
  * the server (VGM-034/035/036) owns the real numbers. Names mirror the server catalogs (a test keeps them in sync,
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
-import {isStickerName,type StickerName} from '../ui/sticker.ts';
+import {goldSticker,isStickerName,type StickerName} from '../ui/sticker.ts';
 import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
@@ -125,6 +125,8 @@ export function priceTag(id:string,level:number):PriceTag{
 }
 
 /** Sentence-case seal text: "Novo!" for a first pick, "Nv N" otherwise, "Evolução", "Lanche" for the coxinha. */
+/** An item's sticker at its level: a weapon at the dourada level wears its dourada edition (ui/sticker.ts goldSticker). */
+export const itemSticker=(id:string,level=1):StickerName=>goldSticker(itemDisplay(id).icon,level);
 export const levelTag=(id:string,level:number)=>priceTag(id,level).label;
 
 export const allItemDisplays=():readonly ItemDisplay[]=>items;

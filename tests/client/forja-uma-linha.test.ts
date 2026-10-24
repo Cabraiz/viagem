@@ -40,6 +40,8 @@ interface Screen {width:number;height:number;scale:1|1.25}
 const SIZES=[{width:667,height:375},{width:844,height:390},{width:1343,height:618}] as const;
 const PORTRAITS=[{width:390,height:844},{width:360,height:800}] as const;
 const SCALES=[1,1.25] as const;
+/** The portrait forge sits 16 px over the thumbs (camp.css), not THUMB_GAP: the phone's bigger stick (joystick-maior-inventario-direita). */
+const FORGE_THUMB_GAP=16;
 test('the text scales are the tokens\' (100%, and 125% under <html data-texto="125">)',()=>{
   assert.equal(token('--t-escala'),'1');assert.equal(token('--t-escala',':root[data-texto="125"]'),'1.25');
 });
@@ -75,8 +77,13 @@ const token=(name:string,selector=':root,::backdrop')=>{const d=TOKENS.filter(t=
 
 /** A CSS length expression in px at `s`: px, vh/svh/vw, calc/max/min, the tokens the forge uses, env() = 0 (no notch). */
 function length(expr:string,s:Screen):number{
+  // The phone (portrait, or lying down) takes tokens.css's touch block (joystick-maior-inventario-direita: stick and
+  // attack 20 % bigger); the desktop keeps :root's. --j is the stick's own (explore.css: --joystick, tight --joystick-justo).
+  const root=phoneAt(s)?PHONE_TOKENS:':root,::backdrop',pick=(n:string)=>TOKENS.some(t=>t.selector===root&&t.prop===n)?token(n,root):token(n);
   const vars:Record<string,string>={'--rh-t':token('--sa-t'),'--rh-l':token('--sa-l'),'--rh-r':token('--sa-r'),
-    '--botao-habilidade':token('--botao-habilidade'),'--t-escala':String(s.scale)};
+    '--botao-habilidade':pick('--botao-habilidade'),'--joystick':pick('--joystick'),'--joystick-justo':pick('--joystick-justo'),
+    '--controle-fone':phoneAt(s)?token('--controle-fone',PHONE_TOKENS):'1','--t-escala':String(s.scale),
+    ...(expr.includes('var(--j)')?{'--j':cascade('.explore-stick','--j',s,EXPLORE)}:{})};
   let e=expr;
   for(let i=0;i<4;i++)e=e.replace(/var\((--[\w-]+)\)/g,(_,n:string)=>{
     const t=/^--t-(\d+)$/.exec(n);if(t){
@@ -106,6 +113,9 @@ const lineBox=(font:string,s:Screen)=>{const m=/(var\(--t-\d+\))\/([\d.]+)/.exec
 /** The widest tilt of a forge tag at `s` (camp.css --tilt on the odd and the even ones), in degrees. */
 const tilt=(s:Screen)=>Math.max(...['.rh .rh-forge-tag','.rh .rh-forge-tag:nth-child(even)'].map(t=>Math.abs(parseFloat(cascade(t,'--tilt',s)))));
 const portrait=(s:Screen)=>s.height>500&&s.height>s.width;
+/** The phone's sizes (portrait, or 500 px tall or less): every size here but the 1343x618 desktop. */
+const phoneAt=(s:Screen)=>portrait(s)||s.height<=500;
+const PHONE_TOKENS=':root:has(.rh[data-hud=fone],.explore-shell:not([data-input=mouse]))';
 /** How far a tag's tap area (::after, inset -N px 0) reaches past its border box, at `s`: an absolute box's inset counts
  * from the tag's padding box, inside its 2 px edge (inset -2px reached 0 px past the tag). */
 const reachOf=(s:Screen)=>{
@@ -233,8 +243,8 @@ for(const size of PORTRAITS)for(const scale of SCALES){
   test(`${name}: the forge sits on the thumbs, clear of the hero ± ${HERO_MARGIN} px`,()=>{
     const forge=windowAt('.rh-forge',CAMP,forgeBox(s).height,s),under=forge.y+forge.height;
     assert.ok(!crosses(forge,hero,HERO_MARGIN),`${name}: the window covers the hero (${span(forge)})`);
-    // THUMB_GAP over the taller thumb, and no higher: the hero's room is the window's height budget.
-    assert.ok(Math.abs(thumbTop-THUMB_GAP-under)<.01,`${name}: the window ends at ${under} px, the thumbs start at ${thumbTop}`);
+    // FORGE_THUMB_GAP over the taller thumb, and no higher: the hero's room is the window's height budget.
+    assert.ok(Math.abs(thumbTop-FORGE_THUMB_GAP-under)<.01,`${name}: the window ends at ${under} px, the thumbs start at ${thumbTop}`);
   });
   test(`${name}: Dona Cida's tray sits on the thumbs, clear of the hero ± ${HERO_MARGIN} px`,()=>{
     const b=cidaBox(s),tray=windowAt('.rh-cida',CIDA,b.height,s),under=tray.y+tray.height;

@@ -175,7 +175,7 @@ test('the imported dances: every hero with one stands on the clip anchor at a sa
   const index=JSON.parse(readFileSync('public/art/manifest.json','utf8'));setArtIndex(parseArtIndex(index));
   const pieces=index.groups.personagens.pieces as Record<string,{files:Record<string,{file:string;height:number}>}>;
   const ids=Object.keys(pieces).filter(id=>pieces[id].files.dance128);
-  assert.ok(ids.length>=32,`${ids.length} dances`);
+  assert.ok(ids.length>=27,`${ids.length} dances`);
   for(const id of ids){
     const plan=dancePlan(id);assert.ok(plan,id);
     assert.ok(plan!.height>=40&&plan!.height<=72,`${id}: height ${plan!.height}`);

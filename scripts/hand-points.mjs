@@ -30,11 +30,17 @@ const CELL=96;
 /** Measured and approved before the bots' classes (arma-na-mao): their tracking keeps the rules it had (no feet rule). */
 const LEGACY=new Set(['clt-cansado','viciado-em-bet']);
 /** The bots' classes whose walk128 and idle8 the tracking gets right (hands apart from bare skin elsewhere; checked by eye). */
-const AUTO=new Set(['faxineira','mendigo','passageira','roqueira']);
+const AUTO=new Set(['faxineira','mendigo','passageira']);
 /** M16 heroes measured by the rule (the outermost paw on the weapon side, per pose) and reviewed on the debug sheets. */
 const M16_AUTO=new Set(['gato-nada-pra-comer']);
 /** M16 heroes found by their navy WRISTBAND (wristOf): the maromba's bulky biceps is the outermost skin, not the fist. */
 const M16_SKIN=new Set(['maromba']);
+/**
+ * M16 heroes measured by the base rule (handOf: the outermost bare skin on the weapon side), reviewed on the debug sheets.
+ * The vendedor's head is big and bare (cheek, ear, neck): off the attack the hand hangs at the hip, so the search
+ * starts below the chin (40 % of the figure); in the attack the fist rises to the face and the search keeps the 22 %.
+ */
+const M16_BARE=new Set(['vendedor-praia']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
@@ -76,6 +82,9 @@ const OVERRIDES={
     // W and E punch with the far hand (the near one wears the watch): the weapon goes behind the body, out past it.
     ...(d==='W'||d==='E'?{behind:true}:{})}])),
   'clt-cansado:idle8':{2:[58,59],6:[50,56]},
+  // The vendedor's S punch toward the camera (7) and the guard at the chest (12, 13): the fist sits on the torso, the
+  // outermost skin is the cheek (marked by eye on the debug sheet, 24/10).
+  'vendedor-praia:attack16-S':{7:[40,54],12:[40,52],13:[38,50]},
   // The flinch (animacao-receber-dano): W keeps the near hand (the watch) of its rest, also while the far one flies up in
   // front (the rule takes the face or that far hand); N hides the right hand on the chest at the strongest recoil.
   'clt-cansado:hurt16-W':{0:[58,75],1:[58,68],2:[55,62],3:[57,72],4:[58,73],5:[58,74]},
@@ -109,12 +118,15 @@ const ids=(arg('--ids')??'viciado-em-bet').split(',');
 const sheetDir=arg('--sheet');
 
 
-/** The hand of one pose: outermost skin cluster on `side`, between the chin (the top for a back view: no face) and the knees. */
-export function handOf(px,side,back=false){
+/**
+ * The hand of one pose: outermost skin cluster on `side`, between the chin (the top for a back view: no face) and the knees.
+ * `chin`: where the search starts, as a fraction of the figure from the top (M16_BARE: below the big head off the attack).
+ */
+export function handOf(px,side,back=false,chin=back?0:.22){
   let top=CELL,bot=-1;
   for(let y=0;y<CELL;y++)for(let x=0;x<CELL;x++)if(px.alpha(x,y)>40){top=Math.min(top,y);bot=Math.max(bot,y);}
   if(bot<0)return undefined;
-  const h=bot-top,y0=Math.round(top+(back?0:h*.22)),y1=Math.round(bot-h*.27);
+  const h=bot-top,y0=Math.round(top+h*chin),y1=Math.round(bot-h*.27);
   let best;
   for(let y=y0;y<=y1;y++)for(let x=0;x<CELL;x++){
     if(!px.skin(x,y))continue;
@@ -230,6 +242,7 @@ async function measure(file,name,dir,fix,id){
     return pts.map((p,i)=>{if(p)return p;const a=pts.slice(0,i).reverse().find(Boolean)??pts.find(Boolean),b=pts.slice(i+1).find(Boolean)??a;
       return a?[...onBody(poses[i],[(a[0]+b[0])/2,(a[1]+b[1])/2]),1]:[...onBody(poses[i],[CELL/2,CELL*.6]),1];});
   }
+  if(M16_BARE.has(id))return poses.map(px=>handOf(px,SIDE[dir],false,name.startsWith('attack')?.22:.40));
   if(fix.front)return poses.map(px=>candidates(px).sort((a,b)=>SIDE[dir]*b.point[0]-SIDE[dir]*a.point[0])[0]?.point);
   if(name.includes('128-'))return trackSheet(poses,SIDE[dir],fix.pick)?.points??poses.map(()=>undefined);
   return poses.map(px=>handOf(px,SIDE[dir],BEHIND.has(dir)));
@@ -293,7 +306,7 @@ for(const id of ids){
     // The bots' classes: the tracking holds only for AUTO's walks and rest (reviewed pose by pose); every other sheet
     // needs its hand marked by eye (scripts/hand-mark.mjs, CLT_KEYS' method); until then none (the sticker at the side).
     const marked=OVERRIDES[`${id}:${name}`];
-    if(!LEGACY.has(id)&&!M16_AUTO.has(id)&&!(m16&&M16_SKIN.has(id))&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
+    if(!LEGACY.has(id)&&!M16_AUTO.has(id)&&!(m16&&(M16_SKIN.has(id)||M16_BARE.has(id)))&&!(name==='idle8'?marked:marked?.keys)&&!(AUTO.has(id)&&!name.startsWith('attack128-')))continue;
     const dir=idle8?undefined:m[1],src=path.join(ROOT,'public/art/sprites',f.file),fix=OVERRIDES[`${id}:${name}`]??{};
     const points=await measure(src,name,dir,fix,id);
     for(const [i,p] of Object.entries(fix))if(/^\d+$/.test(i))points[Number(i)]=p;

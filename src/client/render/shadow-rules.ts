@@ -3,8 +3,30 @@
  * The body's own frame, dark, flipped at the feet and laid on the ground away from the sun (light.ts: upper left, so
  * right-down), flattened: it follows the pose and what the body holds, frame by frame. It is the only shadow a figure
  * casts (the contact ellipse read as a "circle on the ground", 22/10), in every quality level.
+ *
+ * Enemies also get a contact shadow under the soles (card NEW-20261023-ORQ-inimigos-v5a-padrao, study V2): small, dark
+ * and soft, darker than the figure, so the feet sit on the snow. The old one (Breu 38 %, hard edge) was lighter than the
+ * body on the snow and read as a "circle"; the silhouette alone left the feet with no anchor (study V2b).
  */
 import {SUN_VIEW} from './light.ts';
+import type {EnemyFeet} from '../art/enemy-feet.ts';
+
+/** Contact width: × the measured footing (a little wider than the feet), and never under this share of the kind's width. */
+export const CONTACT_PAD=1.3,CONTACT_MIN=.35;
+/**
+ * Contact shadow width in screen px: the measured footing (`feet`, asleep = its lying one) × the cell's width on screen
+ * × CONTACT_PAD, at least CONTACT_MIN × `fallback` (the kind's width) and at most `fallback`. No row: `fallback`.
+ */
+export function contactWidth(feet:EnemyFeet|undefined,asleep:boolean,cellScreenW:number,fallback:number):number{
+  if(!feet||!(cellScreenW>0))return fallback;
+  const foot=(asleep?feet.sleepW??feet.footW:feet.footW)*cellScreenW*CONTACT_PAD;
+  return Math.min(fallback,Math.max(fallback*CONTACT_MIN,foot));
+}
+/**
+ * The enemies' contact shadow (study V2): a radial Breu blot, `alpha` at the centre, soft to 0 at the edge, in a w×h
+ * texture; drawn `width`× the contact width and `height`× it tall (flat on the ground, under the soles).
+ */
+export const CONTACT={w:64,h:24,color:[30,21,48] as const,alpha:.72,width:.95,height:.38} as const;
 
 /** The silhouette: length on the ground over the figure's height, its opacity. */
 export const SILHOUETTE={flatten:.38,alpha:.36} as const;

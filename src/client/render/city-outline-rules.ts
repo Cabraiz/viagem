@@ -94,7 +94,7 @@ export interface CellCrop {x:number;y:number;w:number;h:number}
  * cell. Horizontally it is SYMMETRIC around the cell's centre (x = min(left, cellW − right), less 1 px): Phaser 3.90
  * mirrors a flipped sprite inside its frame (MultiPipeline batchSprite: x += 2·displayOriginX − frame.realWidth), so a
  * copy whose figure sits off its slot's centre would jump sideways on every flip of a single sheet (porteiro +16 CSS
- * px, sensei −17). Centred, the flip maps every figure px exactly where the base cell's flip puts it.
+ * px). Centred, the flip maps every figure px exactly where the base cell's flip puts it.
  */
 export function cropOf(box:{left:number;top:number;right:number;bottom:number}|undefined,cellW:number,cellH:number):CellCrop|undefined{
   if(!box||!(box.right>box.left)||!(box.bottom>box.top))return undefined;

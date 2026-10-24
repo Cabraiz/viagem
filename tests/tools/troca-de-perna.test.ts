@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // @ts-expect-error plain ESM script without types
-import {MIRROR_MAX,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
+import {LEGS_BY_CLASS,MIRROR_MAX,gaitClips,measureClip,mirrorTest} from '../../scripts/troca-de-perna.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 /**
@@ -20,11 +20,11 @@ const reviewed:Record<string,{alterna:boolean,prova:string}>=JSON.parse(readFile
  * fixed one leaves the list (the test asks for that), a new one fails.
  */
 const KNOWN_SN=new Set([
-  'caca-promocao walk128-N','caca-promocao walk128-S','clt-cansado walk128-N','clt-cansado walk128-S',
+  'clt-cansado walk128-N','clt-cansado walk128-S',
   'coach walk128-N','coach walk128-S','concurseira walk128-N','concurseira walk128-S','faxineira walk128-N',
   'faxineira walk128-S','feirante walk128-N','feirante walk128-S','maromba walk128-N','maromba walk128-S',
   'mendigo walk128-N','mendigo walk128-S','passageira walk128-N','passageira walk128-S','pedreiro walk128-N',
-  'pedreiro walk128-S','roqueira walk128-N','roqueira walk128-S','streamer walk128-N','streamer walk128-S',
+  'pedreiro walk128-S','streamer walk128-N','streamer walk128-S',
   'universitario walk128-N','universitario walk128-S','viciado-em-bet walk128-N','viciado-em-bet walk128-S',
   'viciado-em-bet walk16-N','viciado-em-bet walk16-S','vizinha-fofoqueira walk128-N','vizinha-fofoqueira walk128-S',
 ]);
@@ -55,6 +55,14 @@ test('the mirror test: legs that change sides half a cycle later read alternatin
  * changes hip (card NEW-20261023-E7-maromba-troca-perna-se, legs transplanted from pose i+8).
  */
 const KNOWN_SIDE=new Set<string>([]);
+
+/**
+ * A class may measure a lower legs band only when something it wears hangs on ONE hip and so cannot mirror (ORQ, 24/10):
+ * the vendedor's cooler box sits at 55–74 % of the figure; below the shorts' hem (74 %) the legs still must alternate.
+ */
+test('the legs band per class: only the vendedor (cooler on the left hip), below the shorts',()=>{
+  assert.deepEqual(LEGS_BY_CLASS,{'vendedor-praia':.74});
+});
 
 const clips=gaitClips(manifest);
 const sn=clips.filter((c:{direction:string})=>c.direction==='S'||c.direction==='N');

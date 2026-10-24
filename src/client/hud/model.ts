@@ -45,6 +45,8 @@ export interface HudContext {
    * {t:'run'}, combat only), set by Hud.setMinerva; undefined: no minute this run.
    */
   minervaAteTick?:number;
+  /** The time to explore after a wave (inicio-no-uno-caixas-120: RunState.exploraDesdeTick/exploraAteTick), set by Hud.setExplora. */
+  explora?:{from:number;until:number};
 }
 
 /** Common shape of every DOM part of the HUD. */

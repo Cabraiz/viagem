@@ -7,10 +7,9 @@
  */
 import {ticks,type EnemyState,type SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
-import {baseHeroSpeed,clearSegment,moveDirection,type Point} from '../maps/index.ts';
+import {baseHeroSpeed,clearSegment,floorOf,moveDirection,onFloor,settleFloor,type Point} from '../maps/index.ts';
 import {kitFor,type ClassKit} from '../rules/index.ts';
 import type {Rng} from '../contract/index.ts';
-import {BLEED_OUT_TICKS,REVIVE_RADIUS} from './revive.ts';
 
 /** Local pickup cap for skill drops (D-003); integration swaps in budget.ts MAX_PICKUPS. */
 export const SKILL_PICKUP_CAP=250;
@@ -37,8 +36,6 @@ export interface SkillCast {
   outcome?:DiceOutcome; pickup?:string;
   /** Where the caster landed when the skill moved them. */
   movedTo?:Point;
-  /** Ally moved by the skill (Salva-Vidas) and where they landed. */
-  pulled?:{player:string;x:number;y:number};
   /** Hostile projectiles swatted (cone skills with clearShots). */
   blocked?:number;
 }
@@ -47,9 +44,10 @@ const canAct=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 /** Living enemies within radius, nearest first, ties by id (deterministic, D-004 death filter). */
-function enemiesNear(ctx:SimContext,at:Point,radius:number):EnemyState[]{
+function enemiesNear(ctx:SimContext,at:Point&{andar?:1},radius:number,floor=floorOf(at)):EnemyState[]{
+  // Only on `floor` (a viaduct's deck or the street: maps city/viaduct.ts), the caster's.
   return ctx.enemyIndex.query(at.x,at.y,radius,[])
-    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&dist(e,at)<=radius)
+    .filter(e=>e.hp>0&&ctx.enemies.get(e.id)===e&&floorOf(e)===floor&&dist(e,at)<=radius)
     .sort((a,b)=>dist(a,at)-dist(b,at)||(a.id<b.id?-1:a.id>b.id?1:0));
 }
 /** Standing players within radius (the caster included), sorted by id. */
@@ -67,7 +65,7 @@ const lasting=(p:SimPlayer,seconds:number)=>seconds*p.stats.duration;
 /** Seconds a found coxinha stays on the ground. */
 export const FOUND_PICKUP_SECONDS=10;
 
-interface Effect {hits:string[];helped:string[];outcome?:DiceOutcome;pickup?:string;movedTo?:Point;pulled?:{player:string;x:number;y:number};blocked?:number}
+interface Effect {hits:string[];helped:string[];outcome?:DiceOutcome;pickup?:string;movedTo?:Point;blocked?:number}
 /** Returns null when the skill has nothing to act on: no cooldown is spent. */
 type SkillFn=(ctx:SimContext,player:SimPlayer,source:string,rng:Rng)=>Effect|null;
 
@@ -75,7 +73,7 @@ type SkillFn=(ctx:SimContext,player:SimPlayer,source:string,rng:Rng)=>Effect|nul
 /** Tapped enemy if alive and within range, else the nearest living enemy in range. */
 function targetOf(ctx:SimContext,player:SimPlayer,range:number):EnemyState|undefined{
   const preferred=player.target?ctx.enemies.get(player.target):undefined;
-  return preferred&&preferred.hp>0&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
+  return preferred&&preferred.hp>0&&floorOf(preferred)===floorOf(player)&&dist(preferred,player)<=range?preferred:enemiesNear(ctx,player,range)[0];
 }
 /** Pushes an enemy away from `from` (or along `fallback` when on top). knock is a per-tick displacement that enemy-ai decays. */
 function knockAway(enemy:EnemyState,from:Point,fallback:Point,strength:number){
@@ -109,10 +107,11 @@ interface AdvanceSpec {steps:number;pushRadius:number;damage:number;knock:number
  * Each step is 0.1 s at the BASE hero walk (maps baseHeroSpeed), so the 2× walk (HERO_SPEED_MULT) leaves the dash length as tuned.
  */
 const advance=(spec:AdvanceSpec):SkillFn=>(ctx,player,source)=>{
-  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain);
-  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ctx.terrain,speed);if(next===at)break;at=next;}
+  // On the player's own floor (a viaduct's deck keeps a dash on it), settled after.
+  let at:Point={x:player.x,y:player.y};const speed=baseHeroSpeed(ctx.terrain),ground=onFloor(ctx.terrain,player.andar);
+  for(let i=0;i<spec.steps;i++){const next=moveDirection(at,player.facing,0.1,ground,speed);if(next===at)break;at=next;}
   const moved=at.x!==player.x||at.y!==player.y;
-  player.x=at.x;player.y=at.y;
+  player.x=at.x;player.y=at.y;settleFloor(ctx.terrain,player);
   const enemies=enemiesNear(ctx,player,area(player,spec.pushRadius)),hits:string[]=[];
   for(const enemy of enemies){
     hits.push(enemy.id);
@@ -167,7 +166,7 @@ const slowNearest=(spec:SlowNearestSpec):SkillFn=>(ctx,player,source)=>{
 };
 
 // ---------- New effects (VGM-044B: 6 of the 8 allowed) ----------
-interface ConeSpec {range:number;angle:number;damage:number;knock:number;slow?:number;clearShots?:boolean;shieldSelf?:number;shieldAllies?:{radius:number;seconds:number}}
+interface ConeSpec {range:number;angle:number;damage:number;knock:number;slow?:number;clearShots?:boolean;shieldSelf?:number}
 /** Arc in front of the caster (facing): damage, push and optional slow; can swat hostile shots and shield. angle >= 2π is a full circle. */
 const cone=(spec:ConeSpec):SkillFn=>(ctx,player,source)=>{
   const range=area(player,spec.range),half=spec.angle/2;
@@ -188,10 +187,6 @@ const cone=(spec:ConeSpec):SkillFn=>(ctx,player,source)=>{
   const blocked=spec.clearShots?clearShots(ctx,inside):0;
   const helped:string[]=[];
   if(spec.shieldSelf){shield(ctx,player,spec.shieldSelf);helped.push(player.id);}
-  if(spec.shieldAllies)for(const ally of alliesNear(ctx,player,area(player,spec.shieldAllies.radius))){
-    shield(ctx,ally,spec.shieldAllies.seconds);
-    if(!helped.includes(ally.id))helped.push(ally.id);
-  }
   if(!hits.length&&!blocked&&!helped.length)return null;
   return spec.clearShots?{hits,helped,blocked}:{hits,helped};
 };
@@ -218,7 +213,7 @@ const burst=(spec:BurstSpec):SkillFn=>(ctx,player,source)=>{
     if(!target)return null;
     center={x:target.x,y:target.y};
   }
-  let candidates=enemiesNear(ctx,center,area(player,spec.radius));
+  let candidates=enemiesNear(ctx,center,area(player,spec.radius),floorOf(player));
   // Bosses ignore freezes (boss.ts), so freeze traps spend their limited targets on the others first.
   if(spec.freeze&&spec.maxTargets)candidates=[...candidates.filter(e=>!e.boss),...candidates.filter(e=>e.boss)];
   const enemies=candidates.slice(0,spec.maxTargets??Infinity);
@@ -242,7 +237,7 @@ const both=(first:SkillFn,second:SkillFn):SkillFn=>(ctx,player,source,rng)=>{
   return {...a,...b,hits:[...new Set([...a.hits,...b.hits])],helped:[...new Set([...a.helped,...b.helped])]};
 };
 /** Classes whose own skill refunds others; they are never refunded themselves (no refund loops). */
-export const REFUNDERS:ReadonlySet<string>=new Set(['pagodeiro','caca-promocao']);
+export const REFUNDERS:ReadonlySet<string>=new Set(['pagodeiro']);
 interface RallySpec {radius:number;heal?:number;shield?:number;refreshWeapons?:boolean;skillRefund?:number;mostHurt?:boolean}
 /**
  * Team support around the caster (caster included): heal, shield, weapons ready now, skill cooldown refund
@@ -271,8 +266,8 @@ const rally=(spec:RallySpec):SkillFn=>(ctx,player)=>{
   }
   return helped.length?{hits:[],helped}:null;
 };
-interface VolleySpec {targets:number;range:number;hits:number;damage:number;refreshWeapons?:boolean;freezeAfterCombo?:number}
-/** Quick hits on the tapped enemy first, then the nearest ones; can ready the caster's weapons or stun after a full combo. */
+interface VolleySpec {targets:number;range:number;hits:number;damage:number;refreshWeapons?:boolean}
+/** Quick hits on the tapped enemy first, then the nearest ones; can ready the caster's weapons. */
 const volley=(spec:VolleySpec):SkillFn=>(ctx,player,source)=>{
   const range=area(player,spec.range);
   const first=targetOf(ctx,player,range);
@@ -280,35 +275,11 @@ const volley=(spec:VolleySpec):SkillFn=>(ctx,player,source)=>{
   const targets=[first,...enemiesNear(ctx,player,range).filter(e=>e!==first)].slice(0,spec.targets);
   const hits:string[]=[];
   for(const enemy of targets){
-    let landed=0,killed=false;
-    for(let i=0;i<spec.hits&&!killed;i++){hits.push(enemy.id);landed++;killed=ctx.damageEnemy(enemy.id,spec.damage,player.id,source);}
-    if(!killed&&spec.freezeAfterCombo&&landed===spec.hits)freezeFor(ctx,enemy,player,spec.freezeAfterCombo);
+    let killed=false;
+    for(let i=0;i<spec.hits&&!killed;i++){hits.push(enemy.id);killed=ctx.damageEnemy(enemy.id,spec.damage,player.id,source);}
   }
   if(spec.refreshWeapons)refreshWeapons(ctx,player);
   return {hits,helped:spec.refreshWeapons?[player.id]:[]};
-};
-interface RescueSpec {range:number;pull:number;heal:number;shield:number}
-/**
- * Buoy to the most hurt standing ally in range (farthest on ties): pulls them toward the caster over walkable ground,
- * heals and shields. Nobody hurt = nothing happens. An ally rescuing a downed player is healed but not pulled away.
- */
-const rescue=(spec:RescueSpec):SkillFn=>(ctx,player)=>{
-  const ally=[...ctx.players.values()]
-    .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=spec.range)
-    .sort((a,b)=>hpRatio(a)-hpRatio(b)||dist(b,player)-dist(a,player)||byId(a,b))[0];
-  if(!ally)return null;
-  const rescuing=[...ctx.players.values()].some(p=>p.downed&&!p.eliminated&&dist(p,ally)<=REVIVE_RADIUS);
-  const d=dist(ally,player),pull=rescuing?0:Math.min(spec.pull,Math.max(0,d-0.8));
-  if(pull>0){
-    const ux=(player.x-ally.x)/d,uy=(player.y-ally.y)/d;
-    for(let moved=0;moved+0.1<=pull+1e-9;moved+=0.1){
-      const next={x:ally.x+ux*0.1,y:ally.y+uy*0.1};
-      if(!clearSegment(ally,next,ctx.terrain))break;
-      ally.x=next.x;ally.y=next.y;
-    }
-  }
-  heal(ally,spec.heal);shield(ctx,ally,spec.shield);
-  return {hits:[],helped:[ally.id],pulled:{player:ally.id,x:ally.x,y:ally.y}};
 };
 interface FetchSpec {range:number;heal:number}
 /** The pet fetches a coxinha next to the most hurt ally in range (caster included). Only during a wave, so it cannot be farmed. */
@@ -345,7 +316,7 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   // Range 8 and hit width 0.8 are travel, not area, so they ignore stats.area on purpose.
   motogirl(ctx,player,source){
     const ally=[...ctx.players.values()]
-      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8)
+      .filter(p=>p!==player&&canAct(p)&&p.hp<p.stats.maxHp&&dist(p,player)<=8&&floorOf(p)===floorOf(player))
       .sort((a,b)=>a.hp/a.stats.maxHp-b.hp/b.stats.maxHp||(a.id<b.id?-1:1))[0];
     if(!ally){
       if(player.hp>=player.stats.maxHp)return null;
@@ -356,16 +327,16 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
     // Land just short of the ally (not on top of them) when that spot is clear; the ally's own spot is the fallback.
     const back=Math.min(0.5,length);
     const landing=length>1e-6?{x:to.x-(to.x-from.x)/length*back,y:to.y-(to.y-from.y)/length*back}:to;
-    const end=clearSegment(to,landing,ctx.terrain)?landing:to;
+    const end=clearSegment(to,landing,onFloor(ctx.terrain,ally.andar))?landing:to;
     const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
-    for(const enemy of enemiesNear(ctx,mid,length/2+0.8)){
+    for(const enemy of enemiesNear(ctx,mid,length/2+0.8,floorOf(player))){
       // Distance from the enemy to the dash segment.
       const t=length?Math.max(0,Math.min(1,((enemy.x-from.x)*(to.x-from.x)+(enemy.y-from.y)*(to.y-from.y))/(length*length))):0;
       if(dist(enemy,{x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t})>0.8)continue;
       hits.push(enemy.id);
       ctx.damageEnemy(enemy.id,12,player.id,source);
     }
-    player.x=end.x;player.y=end.y;
+    player.x=end.x;player.y=end.y;settleFloor(ctx.terrain,player);
     if(length>1e-6)player.facing={x:(to.x-from.x)/length,y:(to.y-from.y)/length};
     heal(ally,25);
     return {hits,helped:[ally.id],movedTo:{...end}};
@@ -376,16 +347,11 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   pedreiro:cone({range:2.5,angle:2.2,damage:6,knock:0.7,clearShots:true,shieldSelf:1.5}),
   passageira:advance({steps:10,pushRadius:1.6,damage:6,knock:0.6,shield:{radius:0,base:1.2,perEnemy:0,max:1.2}}),
   porteiro:taunt({shield:1.5,radius:4.5,taunt:3.5,slow:3}),
-  goleira:cone({range:3,angle:2.6,damage:4,knock:0.5,clearShots:true,shieldAllies:{radius:3.5,seconds:1.2}}),
   // ----- Dano -----
   maromba:cone({range:2,angle:1.6,damage:40,knock:0.9}),
   streamer:volley({targets:4,range:7,hits:1,damage:14,refreshWeapons:true}),
-  roqueira:cone({range:5,angle:1,damage:22,knock:0.3}),
   universitario:volley({targets:6,range:6,hits:1,damage:8,refreshWeapons:true}),
-  sensei:volley({targets:1,range:3,hits:3,damage:12,freezeAfterCombo:1.2}),
   'rei-pastel':burst({at:'target',range:7,radius:2,damage:20,slow:3}),
-  'gamer-mobile':volley({targets:2,range:6,hits:2,damage:9,refreshWeapons:true}),
-  'rainha-bateria':burst({at:'self',radius:3.2,damage:16,knock:0.3}),
   // ----- Suporte -----
   'tio-do-churrasco':shelter({radius:4,heal:25,shield:0,findsPickup:false}),
   feirante:rally({radius:4,heal:10,refreshWeapons:true}),
@@ -394,12 +360,10 @@ const SKILLS:Readonly<Record<string,SkillFn>>={
   pagodeiro:rally({radius:5,heal:8,skillRefund:3}),
   merendeira:rally({radius:6,heal:35,shield:1,mostHurt:true}),
   'mae-pet':fetchFood({range:8,heal:30}),
-  'salva-vidas':rescue({range:9,pull:3,heal:10,shield:1.5}),
   // ----- Controle -----
   'tecnico-ti':burst({at:'self',radius:3.5,damage:4,freeze:0.8,slow:2.5}),
   faxineira:cone({range:3,angle:3.2,damage:10,knock:0.5,clearShots:true}),
   concurseira:burst({at:'target',range:7,radius:0.01,maxTargets:1,damage:10,freeze:1.5,annul:true}),
-  'caca-promocao':rally({radius:5,refreshWeapons:true,skillRefund:4}),
   gambiarreiro:burst({at:'self',radius:4,maxTargets:4,damage:3,freeze:2.5}),
   astrologa:slowNearest({radius:6,count:10,slow:4,damage:3}),
   'rei-arraia':cone({range:3,angle:Math.PI*2,damage:5,knock:0.7}),

@@ -7,8 +7,13 @@
 import type {EdgeKind,EdgeTarget} from './edges.ts';
 
 export const EDGE_KINDS_SHOWN:ReadonlySet<EdgeKind>=new Set<EdgeKind>(['caido','uno']);
+/**
+ * Keys shown whatever their kind: the Uno while the mission points at it (card inicio-no-uno-caixas-120, the user: a
+ * mark on the screen's edge pointing at the Uno when it leaves the screen; hud/city/edges.ts `uno`).
+ */
+export const EDGE_KEYS_SHOWN:ReadonlySet<string>=new Set(['uno']);
 /** The targets whose kind the game still points at (the others never reach the layout). */
-export const shownTargets=<T extends Pick<EdgeTarget,'kind'>>(targets:readonly T[]):T[]=>targets.filter(t=>EDGE_KINDS_SHOWN.has(t.kind));
+export const shownTargets=<T extends Pick<EdgeTarget,'kind'|'key'>>(targets:readonly T[]):T[]=>targets.filter(t=>EDGE_KINDS_SHOWN.has(t.kind)||EDGE_KEYS_SHOWN.has(t.key));
 
 /**
  * The fortify "Construir" button and its wall counter (D-052) are off the HUD (same card): the user is thinking of a

@@ -18,7 +18,7 @@
  *    alternate; their prize is the starter table (rollStarter: no item dominates). Dropped crates: they never respawn;
  *  - trail (the first minute's, same bug): for FIRST_MINUTE_S from the first step, a hero who has passed (within
  *    PASS_DIST, about the PC camera's half view) fewer crates than the pace (one at the start, then one more every
- *    FIRST_MINUTE_S / (FIRST_MINUTE_CRATES + 1) s) and has none of his trail crates waiting gets one TRAIL_AHEAD u ahead of
+ *    FIRST_MINUTE_S / (FIRST_MINUTE_CRATES + 2) s, inicio-no-uno: the last one due well before the end) and has none of his trail crates waiting gets one TRAIL_AHEAD u ahead of
  *    where he walks (options.trailSpot: open ground the heroes reach), never in another hero's view; one he leaves
  *    behind or TRAIL_MISS u away stops waiting (it stays on the map). Up to TRAIL_MAX a hero, start crates' prizes. So each
  *    hero who walks passes FIRST_MINUTE_CRATES in the first minute, whichever way he goes (static crates cannot: the
@@ -85,13 +85,17 @@ export function spreadPick(rng:Rng,points:readonly Point[],free:readonly number[
  */
 export const START_CRATES_PER_PLAYER=2,START_PLAYERS_MAX=6;
 export const START_CRATES_MIN=START_CRATES_PER_PLAYER,START_CRATES_MAX=START_CRATES_PER_PLAYER*START_PLAYERS_MAX;
-/** The first minute's pace (trail crates): FIRST_MINUTE_CRATES passed a hero in FIRST_MINUTE_S seconds. */
-export const FIRST_MINUTE_S=60,FIRST_MINUTE_CRATES=4;
+/**
+ * The first minute's pace (trail crates): FIRST_MINUTE_CRATES passed a hero in FIRST_MINUTE_S seconds. Card
+ * inicio-no-uno-caixas-120: the trail lasts the whole minuto de Minerva (120 s, ninhos.ts MINERVA_S) at the same pace
+ * (4 a minute), the time the mission gives to "busque o máximo de caixas".
+ */
+export const FIRST_MINUTE_S=120,FIRST_MINUTE_CRATES=8;
 /**
  * A hero passes a crate within PASS_DIST u (the PC camera shows ~8 u sideways, 9 up and down); a trail crate lands
  * TRAIL_AHEAD u ahead (out of his view, a few seconds at the 4 u/s walk), stops waiting TRAIL_MISS u away; TRAIL_MAX a hero.
  */
-export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS=30,TRAIL_MAX=8;
+export const PASS_DIST=8,TRAIL_AHEAD:readonly [number,number]=[12,18],TRAIL_MISS=30,TRAIL_MAX=16;
 /** A hero's heading follows his walk with this weight a tick (about a second's memory at 20 Hz). */
 const HEADING_KEEP=.9;
 /** A prize equal to the opener's last one is drawn again (same stream) up to this many times. */
@@ -387,7 +391,7 @@ export function createCrates(options:CratesOptions):Crates{
     const elapsed=ctx.tick-state.startTick;
     if(elapsed>=ticks(FIRST_MINUTE_S)){if(state.trail)delete state.trail;return;}
     const trail=state.trail??={},heroes=[...ctx.players.values()].filter(onMap);
-    const due=1+Math.floor(elapsed/ticks(FIRST_MINUTE_S/(FIRST_MINUTE_CRATES+1)));
+    const due=1+Math.floor(elapsed/ticks(FIRST_MINUTE_S/(FIRST_MINUTE_CRATES+2)));
     for(const p of heroes){
       const t=trail[p.id]??={passed:[],placed:0,hx:0,hy:0},last=state.seen[p.id];
       if(last){t.hx=t.hx*HEADING_KEEP+(p.x-last.x)*(1-HEADING_KEEP);t.hy=t.hy*HEADING_KEEP+(p.y-last.y)*(1-HEADING_KEEP);}

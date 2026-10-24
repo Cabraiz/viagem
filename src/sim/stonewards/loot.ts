@@ -28,6 +28,7 @@ import {isStanding} from '../revive.ts';
 import {AvenuePlanner} from '../city/avenues.ts';
 import {cityLayoutFrom,cityTerrainOf} from '../city/grid.ts';
 import {cityRunStart,deckOf} from '../city/tutorial.ts';
+import {cityUnoStart} from '../city/uno-start.ts';
 import {CITY_DISTANCE_SCALE,CRATE_BODY_RADIUS,RETURN_SLACK_SECONDS} from '../../rules/index.ts';
 import type {NodeInfo} from './resources.ts';
 import type {ResourceKind} from './state.ts';
@@ -92,6 +93,8 @@ export interface CityLoot {
    * ground, outside the base and off the viaduct; cell order, with the walk.
    */
   readonly aroundStart:readonly (Point&{walk:number})[];
+  /** The same around the Uno (sim/city/uno-start.ts cityUnoStart), where mode 'ninhos' spawns the team (inicio-no-uno). */
+  readonly aroundUno:readonly (Point&{walk:number})[];
   /** Walking distance (u) from p to the plaza (0 inside it); undefined when p is not on the hero field. */
   distanceToPlaza(p:Point):number|undefined;
   /**
@@ -172,25 +175,28 @@ function buildLoot(shared:CityTerrain,speed:number):CityLoot{
     const d=cost/STRAIGHT_COST*cs,p={x:Math.round((cx+.5)*cs*100)/100,y:Math.round((cy+.5)*cs*100)/100};
     if(d>=AROUND_PLAZA[0]&&d<=AROUND_PLAZA[1]&&walkable(p,city)&&!planner.insideBase(p))aroundPlaza.push(Object.freeze(p));
   }
-  const aroundStart:(Point&{walk:number})[]=[],start=cityRunStart(city);
   // The viaduct (mapa-175-com-viaduto): a start on the deck walks down its ramp first; the crates are on the street,
   // AROUND_START of walk from the ramp's foot (where the heroes come down; the deck itself is one straight corridor), never
   // under or beside the viaduct (the deck has no pickups: a crate under it would be out of reach from above and hidden
   // from below).
-  const deck=start.andar===1?deckOf(city,start):undefined,from=deck?floorPortal(deck,cs,0):start;
-  const fromStart=new FlowField(grid,[from],{wallPenalty:0});
-  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
-    const cost=fromStart.cellCost(cx,cy);
-    if(cost===UNREACHABLE)continue;
-    const walk=cost/STRAIGHT_COST*cs,x=Math.round((cx+.5)*cs*100)/100,y=Math.round((cy+.5)*cs*100)/100;
-    if(byViaduct(city,x,y))continue;
-    if(walk>=AROUND_START[0]&&walk<=AROUND_START[1]&&city.clearDisc(x,y,CRATE_BODY_RADIUS)&&!planner.insideBase({x,y}))
-      aroundStart.push(Object.freeze({x,y,walk:Math.round(walk*100)/100}));
-  }
+  const around=(start:Point&{andar?:1})=>{
+    const deck=start.andar===1?deckOf(city,start):undefined,from=deck?floorPortal(deck,cs,0):start;
+    const out:(Point&{walk:number})[]=[],fromStart=new FlowField(grid,[from],{wallPenalty:0});
+    for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
+      const cost=fromStart.cellCost(cx,cy);
+      if(cost===UNREACHABLE)continue;
+      const walk=cost/STRAIGHT_COST*cs,x=Math.round((cx+.5)*cs*100)/100,y=Math.round((cy+.5)*cs*100)/100;
+      if(byViaduct(city,x,y))continue;
+      if(walk>=AROUND_START[0]&&walk<=AROUND_START[1]&&city.clearDisc(x,y,CRATE_BODY_RADIUS)&&!planner.insideBase({x,y}))
+        out.push(Object.freeze({x,y,walk:Math.round(walk*100)/100}));
+    }
+    return Object.freeze(out);
+  };
+  const aroundStart=around(cityRunStart(city)),aroundUno=around(cityUnoStart(city));
   let farthestGood:Crate|undefined;
   for(const c of crates)if(c.tier==='good'&&(!farthestGood||c.seconds>farthestGood.seconds))farthestGood=c;
   return Object.freeze({
-    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,aroundPlaza:Object.freeze(aroundPlaza),aroundStart:Object.freeze(aroundStart),
+    crates:Object.freeze(crates),nodes:Object.freeze(crates.map(c=>c.node)),farthestGood,speed,aroundPlaza:Object.freeze(aroundPlaza),aroundStart,aroundUno,
     distanceToPlaza(p:Point){
       if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return undefined;
       const r=reach(p);

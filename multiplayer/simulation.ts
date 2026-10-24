@@ -3,7 +3,7 @@ import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
 import { worldSpawn,moveStep,floorOf,setFloor,statMoveSpeed, type Point } from '../src/maps/index.ts';
-import {SimWorld,stateHash,cityRunStart,type StampedEvent} from '../src/sim/index.ts';
+import {SimWorld,stateHash,cityRunStart,cityUnoStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
 import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOptions,type RunSystemsState,type WorldCheckpoint} from '../src/sim/index.ts';
@@ -478,9 +478,10 @@ export class Simulation {
   }
   /**
    * Where heroes spawn: in the city, the run's start down the road from the wreck (sim/city/tutorial.ts cityRunStart,
-   * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro); elsewhere the world's spawn point.
+   * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro); in mode 'ninhos' the whole team beside the Uno (sim/city/uno-start.ts,
+   * card inicio-no-uno-caixas-120); elsewhere the world's spawn point.
    */
-  private start():Point&{andar?:1}{return this.city?cityRunStart(this.city):worldSpawn(this.terrain);}
+  private start():Point&{andar?:1}{return this.city?this.mode==='ninhos'?cityUnoStart(this.city):cityRunStart(this.city):worldSpawn(this.terrain);}
   resetRun(){
     this.systems.dispose();
     // The old run's barricades go with it; the new run's stonewards raises its own.

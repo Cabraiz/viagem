@@ -66,6 +66,7 @@ test('each time to explore: "Você tem 2 minutos…" with the real length, big t
   assert.equal(at(from+s(10)).line?.big,false);
   const back=at(explora.until-s(RETURN_SECONDS));
   assert.equal(back.line?.key,'volta');assert.equal(back.pointUno,true);
+  assert.equal(back.line?.text,'Volte ao Uno.','the last seconds of a time to explore say come back, not the explore line (video etapa 3)');assert.equal(back.line?.urgent,true);
   assert.equal(at(explora.until).line,undefined,'the wave: nothing');
   // The next window opens big again, with its own length.
   const next={from:explora.until+s(80),until:explora.until+s(80+90)};

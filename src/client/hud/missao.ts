@@ -83,7 +83,7 @@ export class MissionTracker {
     }
     if(explora){
       const back=(explora.until-tick)/SIM_HZ<=RETURN_SECONDS;
-      return this.show(back?'volta':'explora',tick,back,explora.until,exploreText((explora.until-explora.from)/SIM_HZ));
+      return this.show(back?'volta':'explora',tick,back,explora.until,back?undefined:exploreText((explora.until-explora.from)/SIM_HZ));
     }
     // After the Minerva, once: the towers (only with a kit in hand), then "Eles vão atrás do Uno. Defenda.".
     if(this.sawMinerva&&this.after==='antes'){this.after=input.towerKit?'torres':'defenda';this.afterSince=tick;}

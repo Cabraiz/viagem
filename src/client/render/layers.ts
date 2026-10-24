@@ -33,7 +33,7 @@ import {sunlit} from './light-actors.ts';
 import {castContact,castSilhouette,contactImage,silhouetteImage} from './silhouette.ts';
 import {contactWidth} from './shadow-rules.ts';
 import {ENEMY_FEET} from '../art/enemy-feet.ts';
-import {ArsenalFx,CRATE_SHADOW_PX} from './arsenal-fx.ts';
+import {ArsenalFx} from './arsenal-fx.ts';
 import {FLOAT_PX,floatLegible,floatPose,floatSpin,projectileSticker,shotDrawScale} from './arsenal-rules.ts';
 import {thrownLook,throwLift,throwLiftSlope,type ThrownLook} from './shot-flight.ts';
 import {THROW_MS} from '../../rules/index.ts';
@@ -41,6 +41,7 @@ import type {HeldHand} from '../sprites/hand-points.ts';
 import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
 import {SHOT_BANDS} from './usable-glow-rules.ts';
+import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -52,6 +53,8 @@ export interface HordeRendererOptions{
   projector:Projector;
   /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
   cull?:boolean;
+  /** Card uno-bloqueio-corpo: the chaveiro's car as drawn (car-sort.ts): the critters near it sort against its footprint. */
+  carSort?:()=>CarSort|undefined;
   /** Card inimigos-querem-o-uno: a second camera's world view (the Uno's live window): what stands in it is drawn too. */
   alsoView?:()=>ViewRect|undefined;
   /** Screen-legibility multiplier for text, bars and markers (e.g. clamp(0.55/zoom,1,2.5) on a phone). Default 1. */
@@ -144,10 +147,12 @@ interface EnemyActor{
 }
 /** look: texture key (an XP pickup of the boleto rain is a boleto, VGM-053B); fall: it drops from the sky when it appears. */
 interface PickupActor{image:Image;shadow:Image;kind:string;look:string;fall:boolean;promo:boolean;value:number;born:number;phase:number;px:number;py:number;nx:number;ny:number;x:number;y:number;
-  /** D-051 (render/arsenal-fx.ts): the arsenal's texture is on (crate sheet, item sticker), drawn at `k` × its size; else 1. */
+  /** D-051 (render/arsenal-fx.ts): the arsenal's texture is on (crate's item, item sticker), drawn at `k` × its size; else 1. */
   k:number;arsenal:boolean;id:string;resource?:string;
   /** caixa-icone-torre-arma: a crate drawn as its item, floating; its coin turn (radians) and when it last turned. */
   float:boolean;spin:number;spunAt:number;
+  /** bau-antigo-ainda-visivel: a crate the arsenal cannot draw as its item yet (sticker loading, prize not known): not drawn. */
+  hidden:boolean;
   /** Event prizes: where the canopy test last ran (screen px) and its answer; undefined = run it on the next frame. */
   coverX?:number;coverY?:number;covered?:boolean;coverVersion?:number}
 interface ProjectileActor{image:Image;shadow:Image;look:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;angle:number;
@@ -389,7 +394,7 @@ export class HordeRenderer{
     this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),fall:false,promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
-      k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0}),showActor);
+      k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
     this.arsenal=new ArsenalFx(scene,{projector:options.projector,locate:options.locate,selfId:options.selfId,aim:options.aim,hand:options.hand,
       ...(options.cityOutlines?{cityOutlines:options.cityOutlines}:{}),...(options.coneFromScene?{coneFromScene:true}:{}),...(options.handsFromScene?{handsFromScene:true}:{}),...(options.auraFromScene?{auraFromScene:true}:{})});
     this.eyes=this.track(scene.add.graphics().setDepth(EYES_DEPTH).setName('horda-olhos'));
@@ -576,7 +581,7 @@ export class HordeRenderer{
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view),look=own?own.key:pickupLook(view.kind,view.resource);
     if(used.fresh||a.look!==look){a.image.setTexture(look,own?.frame).setOrigin(.5,own?.float?.5:own?.88:.92);a.kind=view.kind;a.look=look;}
-    a.arsenal=!!own;a.k=own?own.k:1;a.id=view.id;a.resource=view.resource;a.float=!!own?.float;
+    a.arsenal=!!own;a.k=own?own.k:1;a.id=view.id;a.resource=view.resource;a.float=!!own?.float;a.hidden=view.kind==='chest'&&!own;
     if(used.fresh){a.born=this.now;a.spunAt=this.now;a.spin=hashPhase(view.id)*TAU;a.phase=hashPhase(view.id);a.px=a.nx=a.x=view.x;a.py=a.ny=a.y=view.y;a.fall=look===FX.boleto&&!this.reduced;a.coverX=undefined;}
     else if(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>SNAP_UNITS){a.px=a.x=view.x;a.py=a.y=view.y;}
     else{a.px=a.x;a.py=a.y;}
@@ -622,7 +627,7 @@ export class HordeRenderer{
   // ---------- events ----------
   private handle(event:SimEvent,eventId:number){
     // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
-    if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined,!!c?.float);}
+    if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}
@@ -808,7 +813,7 @@ export class HordeRenderer{
       a.screenX=NaN;this.culledNow++;return;
     }
     if(a.culled){a.culled=false;a.image.setVisible(true);a.lit=false;}
-    const depth=this.depth(this.at);
+    const depth=carSortDepth(this.at,this.depth(this.at),this.options.carSort?.());
     // The pigeons' hover and flap only for what flies: a walker of the enxame role (drawn as 'pombos') stands on its feet.
     const flying=a.kind==='pombos'&&enemyArtFlies(a.art)!==false;
     let lift=a.kind==='pombos'&&!flying?0:art.hover*size*body,dx=0;
@@ -991,6 +996,9 @@ export class HordeRenderer{
     this.ground.lineStyle(3*b,0xffef94,.95).strokeEllipse(x,y,width*pulse,width*.46*pulse);
   }
   private drawPickup=(a:PickupActor)=>{
+    // The old chest (FX chest, the crate sheet) is never drawn: a crate shows only as its floating item.
+    if(a.image.visible===a.hidden){a.image.setVisible(!a.hidden);a.shadow.setVisible(!a.hidden);}
+    if(a.hidden)return;
     const f=this.frac,now=this.now,reduced=this.reduced;
     a.x=a.px+(a.nx-a.px)*f;a.y=a.py+(a.ny-a.py)*f;
     this.at.x=a.x;this.at.y=a.y;
@@ -1004,9 +1012,8 @@ export class HordeRenderer{
     }
     if(a.promo)scale*=PROMO_SCALE;
     else if(!reduced){
-      if(a.kind==='chest'){if(!a.float){scale=1+.07*Math.sin(now*.007+a.phase*TAU);rotation=Math.sin(now*.013+a.phase)*.04;}}
-      else if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
-      else y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
+      if(a.kind==='heal')rotation=Math.sin(now*.005+a.phase*TAU)*.2;
+      else if(a.kind!=='chest')y=-2.5*(1-Math.cos(now*.004+a.phase*TAU));
     }
     // Event prizes behind a canopy: lifted above the trees. The test runs again only when the prize moved 4 px on
     // screen (the magnet, a camera turn) or the trees changed (canopyVersion), not every frame for every boleto.
@@ -1018,7 +1025,7 @@ export class HordeRenderer{
     }
     const body=this.body;
     if(a.arsenal){
-      // D-051: the crate's frame follows the local opening (closed .. abrindo-6) and sits on its rarity ring; an item its ring.
+      // D-051: the crate's item floats over its ring; an item on the ground sits on its rarity ring.
       if(a.kind==='chest'&&a.float){
         // caixa-icone-torre-arma: the crate's item floats and turns like a coin, faster (and a little bigger) as it opens.
         const progress=this.arsenal.floatingCrate(a.id,a.x,a.y,a.value,q);
@@ -1026,7 +1033,6 @@ export class HordeRenderer{
         const pose=floatPose(now,a.phase,a.spin,reduced);
         const k=floatLegible(this.ui,body);y=-pose.lift*k;turn=pose.turn;scale=(1+.15*progress)*k;floatShadow=pose.shadow*k;
       }
-      else if(a.kind==='chest'){const ref=this.arsenal.crate(a.id,a.x,a.y,a.value,q);if(ref&&a.image.texture.key===ref.key&&a.image.frame.name!==String(ref.frame))a.image.setFrame(ref.frame);}
       else this.arsenal.item(a.resource,a.value,q);
     }
     a.image.setPosition(q.x,q.y+y*body).setDepth(lifted?PRIZE_LIFT_DEPTH:depth+1).setScale(scale*body*a.k*turn,scale*body*a.k).setRotation(rotation);
@@ -1035,8 +1041,7 @@ export class HordeRenderer{
     const outlines=this.options.cityOutlines;
     if(outlines&&!a.arsenal)outlines.show(a.image,outlines.variant(a.look,scale*body),a.look,undefined,.5,.92,scale*body,scale*body);
     if(a.kind==='chest'||a.kind==='item'||a.kind==='vehicle')this.glow.mark(a.id,a.image,this.css());
-    // The D-051 crate (its sheet) is 3× the old chest (rules/crate-size.ts), and so is its shadow.
-    const shadow=a.float?FLOAT_PX*.7*floatShadow*body:(a.kind==='chest'?a.arsenal?CRATE_SHADOW_PX:34:18)*scale*(1+y/60)*body;
+    const shadow=a.float?FLOAT_PX*.7*floatShadow*body:18*scale*(1+y/60)*body;
     a.shadow.setPosition(q.x,q.y).setScale(shadow/SHADOW_W,shadow*.42/SHADOW_H);
   };
   private drawProjectile=(a:ProjectileActor,id:string)=>{

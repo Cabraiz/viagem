@@ -1168,7 +1168,8 @@ export class Room {
     const snap=this.run.snapshot(),pause=snap.phase==='combat'?this.levelup.view(this.sim,this.lastNow):undefined;
     // The minuto de Minerva (mode 'ninhos'): its end tick while it lasts; one push when it shows, one when it goes.
     const until=snap.phase==='combat'?this.sim.run.nests?.state.minervaUntil:undefined;
-    const minerva=until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{};
+    const explore=snap.phase==='combat'?this.sim.run.nests?.exploring(this.sim.tick):undefined;
+    const minerva={...(until!==undefined&&this.sim.tick<until?{minervaAteTick:until}:{}),...(explore?{exploraDesdeTick:explore.from,exploraAteTick:explore.until}:{})};
     const view=snap.phase==='combat'?this.cena.view(this.lastNow):undefined,cena=view?{cena:view}:{};
     return pause?{...snap,...minerva,...cena,pause:{...pause,...this.sim.offerCharges()}}:{...snap,...minerva,...cena};
   }

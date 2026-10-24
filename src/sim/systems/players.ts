@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,isDown,moveStep,slipping,walkable,type Point} from '../../maps/index.ts';
+import {capStep,carBlock,isDown,moveStep,slipping,walkable,type CarPlace,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -52,11 +52,14 @@ export interface ManualCombat {attacking:Set<string>}
  * an offline player the room plays meanwhile (3g-rede-sem-teleporte): it walks on the room's inputs, whose seq is not
  * the person's (their ack stays where their own inputs left it). `stepCap` (D-052, the chaveiro's car): the most a player
  * may walk this tick (u), undefined for free; the step is cut along its own line (kept in place if that point is not walkable).
+ * `car` (card uno-bloqueio-corpo): the chaveiro's car, whose body every standing hero stays out of (maps carBlock, as the
+ * phone's replay), walking or not (the car rolled onto a hero standing still: out to its edge on this tick).
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
-  stepCap?:(playerId:string)=>number|undefined):SimSystem{
+  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined):SimSystem{
   return {id:'players',step(ctx){
     manual?.attacking.clear();
+    const body=car?.();
     for(const player of ctx.players.values()){
       const p=player as RunPlayer;
       // D-036: an effect that is over goes away (views and the owner's confirmed check only see live ones).
@@ -82,7 +85,7 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         const x0=p.x,y0=p.y;
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        const q=capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain);p.x=q.x;p.y=q.y;
+        const q=carBlock({x:x0,y:y0},capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;
@@ -93,6 +96,7 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         const al=input.aim?Math.hypot(input.aim.x,input.aim.y):0;
         if(manual&&input.attack&&input.aim&&al>1e-6)p.facing={x:input.aim.x/al,y:input.aim.y/al};
       }
+      else if(body){const q=carBlock(p,p,body,ctx.terrain);p.x=q.x;p.y=q.y;}
       if(!auto&&p.stats.regen>0&&p.hp<p.stats.maxHp)p.hp=Math.min(p.stats.maxHp,p.hp+p.stats.regen*STEP);
       // D-051: no class skill in the manual combat (the classes stay as looks and stats).
       if(input?.skill&&!manual){

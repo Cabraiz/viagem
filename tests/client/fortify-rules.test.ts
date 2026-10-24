@@ -1,9 +1,9 @@
 // D-052 slice 4 (render): the free build's grid, the ghost's colour, the hints near the car and the rope to the bumper.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CAR_RADIUS,CAR_ROPE} from '../../src/contract/index.ts';
+import {CAR_RADIUS,CAR_ROPE,CAR_ROPE_REST} from '../../src/contract/index.ts';
 import {CITY_BUILD_CELL} from '../../src/maps/build-sites.ts';
-import {NEST_BUILD_KEEP_OUT,buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,isGridPiece,ropeLine,
+import {NEST_BUILD_KEEP_OUT,buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,isGridPiece,ROPE_HANDS_BACK,ropeLine,ropeRest,
   needsFortify,structureRect} from '../../src/client/render/fortify-rules.ts';
 import {freeBarricadeSpan,isFreeBarricade} from '../../src/client/render/stonewards-rules.ts';
 
@@ -69,14 +69,26 @@ test('hints: the 3 free sites nearest to the car, none without a car', ()=>{
   assert.deepEqual(buildHints('muro',sites,{cell,structures:[]}),[]);
 });
 
-test('rope: to the bumper on the hero\'s side, sagging by the slack, taut at CAR_ROPE', ()=>{
+test('rope (puxar-uno-corda): always tied to the front bumper, from the hands a little behind the hero, sagging by the slack', ()=>{
   const car={x:10,y:10},half=1.3;
   const front=ropeLine({x:13,y:10},car,half);
   assert.equal(front.bx,10+half);assert.equal(front.by,10);
-  const back=ropeLine({x:7,y:10.5},car,half);
-  assert.equal(back.bx,10-half);
+  assert.ok(Math.abs(front.ax-(13-ROPE_HANDS_BACK))<1e-9,'the hands are behind the hero, toward the car');
+  const behind=ropeLine({x:7,y:10.5},car,half);
+  assert.equal(behind.bx,10+half,'a hero behind the car still holds the front rope');
+  const north=ropeLine({x:10,y:6},car,half,-Math.PI/2);
+  assert.ok(Math.abs(north.by-(10-half))<1e-9&&Math.abs(north.bx-10)<1e-9,'the nose turned north');
   assert.ok(ropeLine({x:10+half+1,y:10},car,half).sag>0);
-  assert.equal(ropeLine({x:10+half+CAR_ROPE,y:10},car,half).sag,0);
+  assert.equal(ropeLine({x:10+half+CAR_ROPE+ROPE_HANDS_BACK,y:10},car,half).sag,0);
+});
+
+test('free rope (puxar-uno-corda): lies on the ground from the front bumper to CAR_ROPE_REST ahead, along the nose', ()=>{
+  const half=1.3,pts=ropeRest({x:10,y:10},half,0);
+  assert.deepEqual(pts[0],{x:10+half,y:10});
+  assert.ok(Math.abs(pts.at(-1)!.x-(10+half+CAR_ROPE_REST))<1e-9&&Math.abs(pts.at(-1)!.y-10)<1e-9);
+  assert.ok(pts.some(p=>Math.abs(p.y-10)>.05),'it waves');
+  const south=ropeRest({x:0,y:0},half,Math.PI/2);
+  assert.ok(Math.abs(south.at(-1)!.y-(half+CAR_ROPE_REST))<1e-9&&Math.abs(south.at(-1)!.x)<1e-9);
 });
 
 test('a free barricade lies along its footprint (rot 0 along x, rot 1 along y), a plaza one across its mouth', ()=>{
@@ -86,9 +98,9 @@ test('a free barricade lies along its footprint (rot 0 along x, rot 1 along y), 
   assert.equal(isFreeBarricade({c:3}),true);assert.equal(isFreeBarricade({}),false);
 });
 
-test('the fortify layer is needed for a wall or a hero on the rope, not for a plain run', ()=>{
+test('the fortify layer is needed for a wall or the chaveiro car (its rope is always drawn), not for a plain run', ()=>{
   assert.equal(needsFortify({structures:[{kind:'vigia-do-predio'}]}),false);
   assert.equal(needsFortify({structures:[{kind:'muro'}]}),true);
-  assert.equal(needsFortify({structures:[],objective:{car:{x:0,y:0}}}),false);
+  assert.equal(needsFortify({structures:[],objective:{car:{x:0,y:0}}}),true);
   assert.equal(needsFortify({structures:[],objective:{car:{x:0,y:0,rope:'p1'}}}),true);
 });

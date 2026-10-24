@@ -104,9 +104,9 @@ body>:not(.hs-world):not(.rh):not(.hs-bar):not(.hs-phaser):not(.hs-hero){display
 .hs-mock{position:absolute;border:2px solid #fff8e9aa;background:#55466677;color:#fff9ed;font:700 12px system-ui;display:grid;place-items:center;text-shadow:0 1px 3px #302536}
 .hs-cam{top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));width:136px;height:44px;border-radius:15px}
 .hs-gear{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));width:48px;height:48px;border-radius:50%}
-.hs-stick{bottom:max(14px,env(safe-area-inset-bottom));left:max(14px,env(safe-area-inset-left));width:112px;height:112px;border-radius:50%}
+.hs-stick{bottom:max(14px,env(safe-area-inset-bottom));left:max(14px,env(safe-area-inset-left));width:var(--joystick,112px);height:var(--joystick,112px);border-radius:50%}
 .hs-attack{bottom:max(22px,env(safe-area-inset-bottom));right:max(18px,env(safe-area-inset-right));width:82px;height:82px;border-radius:50%}
-@media (max-height:500px){.hs-stick{width:96px;height:96px}}
+@media (max-height:500px){.hs-stick{width:var(--joystick-justo,96px);height:var(--joystick-justo,96px)}}
 .hs-bar{position:fixed;z-index:20;left:50%;bottom:2px;transform:translateX(-50%);display:flex;gap:4px;opacity:.85}
 .hs-bar button{font:600 10px system-ui;padding:2px 5px;border-radius:6px;border:1px solid #fff8;background:#302536cc;color:#fff}
 .hs-bar[hidden]{display:none}
@@ -117,8 +117,8 @@ body:has(.rh-result:not([hidden])) .hs-hero{display:none} /* the game's hero is 
 body:has(>.rh[data-coach-stick]) .hs-stick{border-color:var(--c-amarelo,#FFD23F);color:var(--c-amarelo,#FFD23F)}
 .hs-heroi .hs-cam,.hs-heroi .hs-world::after{display:none}
 .hs-heroi .hs-stick{left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom))}
-.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));width:var(--botao-habilidade);height:var(--botao-habilidade)}
-@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:96px;height:96px;left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom))}}
+.hs-heroi .hs-attack{right:max(24px,env(safe-area-inset-right));bottom:calc(max(24px,env(safe-area-inset-bottom)) + max(0px,var(--joystick,112px) - var(--botao-habilidade)) / 2);width:var(--botao-habilidade);height:var(--botao-habilidade)}
+@media (max-width:370px),(max-height:500px){.hs-heroi .hs-stick{width:var(--joystick-justo,96px);height:var(--joystick-justo,96px);left:max(18px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}.hs-heroi .hs-attack{right:max(18px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + max(0px,var(--joystick-justo,96px) - var(--botao-habilidade)) / 2)}}
 .hs-hero{position:fixed;z-index:6;width:56px;height:56px;box-sizing:border-box;border-radius:50% 50% 40% 40%;background:#f4c9a8;border:3px solid #6e5198;pointer-events:none}
 `;
 document.head.append(style);
@@ -280,7 +280,7 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -352,6 +352,9 @@ function load(next:HudScenario){
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
+  // `explora=<s>` (inicio-no-uno-caixas-120): a 120 s time to explore with s seconds left (the clock and the mission line).
+  const explora=Number(params.get('explora'));
+  hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
 load(scenario);
@@ -421,7 +424,8 @@ async function heroFeet(){
 /**
  * `heroi=1` (BUG-20261014-ORQ-forja-cobre-heroi-retrato): the hero's 56 px box where the round's camera puts it
  * (heroFeet; the city scenes always draw it), and the mock joystick and skill button where the phone's shell draws them
- * (explore.css: 112 px stick 24 px in; 96 px at 16/18 px when ≤ 370 px wide; the skill --botao-habilidade; no camera
+ * (explore.css: --joystick, 134 px on the phone, 24 px in; --joystick-justo, 115 px, at 16/18 px when ≤ 370 px wide or lying
+ * down; the skill --botao-habilidade centred on the stick's axis; no camera
  * buttons), so a print shows whether a window covers the hero. `body[data-hero]` holds the box.
  */
 const heroi=params.get('heroi')==='1';

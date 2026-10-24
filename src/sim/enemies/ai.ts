@@ -47,7 +47,14 @@ export interface StructureTarget extends Point {
    * closer than every player; absent: any distance, as before.
    */
   reach?:number;
+  /**
+   * Card uno-bloqueio-corpo (the car): how far `p` is from the body's edge (u), for a body that is not a disc; absent:
+   * the distance to the centre less `radius`.
+   */
+  gap?:(p:Point)=>number;
 }
+/** How far `p` is from structure `s`'s edge (its own gap, else its disc). */
+const structureGap=(s:StructureTarget,p:Point)=>s.gap?s.gap(p):Math.hypot(s.x-p.x,s.y-p.y)-s.radius;
 export interface EnemyAiOptions {
   /** Defaults to ctx.rng.fork('enemy-ai') on the first step. */
   rng?:Rng;
@@ -351,7 +358,7 @@ export class EnemyAi implements SimSystem {
         // Bancos: a lured critter goes for the bait unless a player is nearer; the structures wait meanwhile.
         bait=baitOf(memory,ctx.tick);
         if(bait){const d=Math.hypot(bait.x-e.x,bait.y-e.y);if(d<best){best=d;player=undefined;}else bait=undefined;}
-        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){if(s.blocking)continue;const d=Math.hypot(s.x-e.x,s.y-e.y)-s.radius;if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
+        else if(memory[SIEGE]===1&&huntStructures)for(const s of structures){if(s.blocking)continue;const d=structureGap(s,e);if(d<best&&!(s.reach!==undefined&&d>s.reach)){best=d;structure=s;player=undefined;}}
       }
       const target:Point|undefined=player??structure??bait??goal;
       // Joke, charge and aim only make sense against a live player; drop them when that player is gone

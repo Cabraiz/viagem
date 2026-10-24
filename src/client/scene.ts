@@ -36,10 +36,11 @@ import {ChaveiroRenderer} from './render/chaveiro/renderer.ts';
 import {UnoPip} from './render/chaveiro/pip.ts';
 import {PIP_KEEP_PX,peeking,pipWanted} from './render/chaveiro/pip-rules.ts';
 import {CAR_LOW,carLife} from './render/chaveiro/rules.ts';
-import {PushShifts,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
+import {PushShifts,pullDirection,pushContact,pushReach} from './render/chaveiro/push-contact.ts';
 import {FortifyRenderer,type GhostInput} from './render/fortify.ts';
 import {needsFortify,type CellRect} from './render/fortify-rules.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
+import {carSortDepth} from './render/chaveiro/car-sort.ts';
 import {BankRenderer} from './render/bancos/renderer.ts';
 import {ChaveiroTalk,type LooseEvent} from './render/chaveiro/talk.ts';
 import {talkSeed} from './render/chaveiro/lines.ts';
@@ -542,7 +543,7 @@ export class IslandScene extends Phaser.Scene {
       // Text, bars and markers keep a readable size if the zoom ever goes under ~0.55 (the follow zoom is ≥ 0.58: scale 1);
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
-        alsoView:()=>this.pip?.viewRect(),
+        alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
         tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
@@ -930,7 +931,8 @@ export class IslandScene extends Phaser.Scene {
   }
   private place(){
     const at=this.selfShift.x||this.selfShift.y?{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y}:this.position;
-    const p=this.project(at),depth=this.depth(at);
+    // Card uno-bloqueio-corpo: near the Uno, on its side of the car's footprint (car-sort.ts).
+    const p=this.project(at),depth=carSortDepth(at,this.depth(at),this.chaveiro?.carSort());
     // Canopies soften only when they cover the hero; feet still define scene depth.
     let covered=false;
     for(const prop of this.props){const hides=this.propCovers(prop,p,depth);covered||=hides&&!!prop.tree;prop.object.setAlpha(hides?.55:1);}
@@ -1038,8 +1040,10 @@ export class IslandScene extends Phaser.Scene {
     // Pushing the Uno (empurrar-uno): faces it with the push clip, drawn with the palms on it (place() adds the shift).
     const pose=this.chaveiro?.carPose(),meId=this.hooks.net?.id,push=pose&&meId&&pose.pushers.includes(meId)?pushContact(this.position,pose,this.intent,d=>pushReach(d,this.view)):undefined;
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
+    // On the rope (puxar-uno-corda): faces away from the bumper with the pull clip.
+    const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
-    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
+    this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.());
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
@@ -1350,7 +1354,7 @@ export class IslandScene extends Phaser.Scene {
     // Waiting room (D-025, UX review): six standing on the spawn turn their name fichas into one blot; each ficha that
     // would land on an earlier one steps one row down, so the names read as a short list under the group.
     const stagger=this.labelPhase()!=='combat'&&this.labelPhase()!=='interval',placedLabels:Point[]=[],zoomNow=this.cameras.main.zoom,city=this.cityMode;
-    const carPose=this.chaveiro?.carPose();
+    const carPose=this.chaveiro?.carPose(),carSort=this.chaveiro?.carSort();
     this.allyFeet=[];
     const feet=this.drawnFeet;feet.clear();feet.set(net.id,{x:this.position.x+this.selfShift.x,y:this.position.y+this.selfShift.y});
     for(const player of view.players){
@@ -1363,9 +1367,10 @@ export class IslandScene extends Phaser.Scene {
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
-      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir,player.hp);
+      const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
+      this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp);
       const drawnAt=shift.x||shift.y?{x:player.x+shift.x,y:player.y+shift.y}:player;
-      const q=this.project(drawnAt),depth=this.depth(drawnAt),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
+      const q=this.project(drawnAt),depth=carSortDepth(drawnAt,this.depth(drawnAt),carSort),covered=this.city?this.city.covers(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
       objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);

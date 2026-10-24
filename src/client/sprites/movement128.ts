@@ -6,7 +6,7 @@ export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
 export const MOVEMENT128_DURATION={walk:600,attack:1000} as const;
 export interface Movement128Plan {
-  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'hurt';direction?:HeroDirection;
+  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt';direction?:HeroDirection;
   columns:number;rows:number;frameCount:number;
   durationMs:number;loop:boolean;anchor:[number,number];height:number;figure:FigureBox;
   /** M16: the sheet is the drawn direction's mirror (E/NE/SE show W/NW/SW with flipX; `key` is the drawn sheet's). */
@@ -52,8 +52,8 @@ export function phaseContacts(p:RunPhase):readonly [number,number]{
   return c;
 }
 let version=-1;
-const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),hurt16=new Map<string,boolean>();
-function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();hurt16.clear();}}
+const plans=new Map<string,Movement128Plan|null>(),figures=new Map<string,FigureBox|undefined>(),m16=new Map<string,boolean>(),run16=new Map<string,boolean>(),push16=new Map<string,boolean>(),pull16=new Map<string,boolean>(),hurt16=new Map<string,boolean>();
+function current(){if(version!==artIndexVersion){version=artIndexVersion;plans.clear();figures.clear();m16.clear();run16.clear();push16.clear();pull16.clear();hurt16.clear();}}
 const box=(v:unknown):v is FigureBox=>{
   if(!v||typeof v!=='object')return false;
   const b=v as FigureBox;
@@ -98,16 +98,16 @@ export const movementIdle8Frame=(direction:HeroDirection)=>HERO_DIRECTIONS.index
  * read from the manifest: the side whose three sheets (walk, attack, idle) are there. A class uses M16 only when all 8
  * directions resolve to valid sheets, else R06 (or legacy).
  */
-export type Movement16Motion=DetailedMotion|'idle'|'run'|'push'|'hurt';
+export type Movement16Motion=DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt';
 /** The default drawn directions (the importer's and the doc's; a class may draw E, NE or SE instead). */
 export const MOVEMENT16_DIRECTIONS=['S','SW','W','NW','N'] as const;
 export type Movement16Direction=HeroDirection;
 /** Mirror pairs, the default drawn side first. */
 export const MOVEMENT16_PAIRS=[['W','E'],['NW','NE'],['SW','SE']] as const satisfies readonly (readonly [HeroDirection,HeroDirection])[];
 const PARTNER=Object.fromEntries(MOVEMENT16_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]])) as Partial<Record<HeroDirection,HeroDirection>>;
-export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,hurt:300} as const;
+export const MOVEMENT16_DURATION={walk:600,attack:1000,idle:2000,run:600,push:1000,pull:1000,hurt:300} as const;
 /** hurt (card animacao-receber-dano): 6 poses, the first and the last the rest pose, a flinch between. */
-export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],hurt:[3,2]} as const;
+export const MOVEMENT16_GRID={walk:[4,4],attack:[4,4],idle:[4,2],run:[4,4],push:[4,4],pull:[4,4],hurt:[3,2]} as const;
 const M16_MOTIONS=['walk','attack','idle'] as const;
 /**
  * Which drawn sheet `direction` shows for class `id`, and whether mirrored: its own when its three sheets are in the
@@ -117,7 +117,7 @@ export function movement16Source(id:string,direction:HeroDirection,motion?:Movem
   const partner=PARTNER[direction],files=artPiece('personagens',id)?.files;
   // An R06 class with a run, a push or a hurt only (corrida-clt, empurrar-uno, animacao-receber-dano): those sheets alone
   // say which side of each pair is drawn.
-  const only=(motion==='run'||motion==='push'||motion==='hurt')&&!!files&&!M16_MOTIONS.some(m=>Object.keys(files).some(k=>k.startsWith(`${m}16-`)));
+  const only=(motion==='run'||motion==='push'||motion==='pull'||motion==='hurt')&&!!files&&!M16_MOTIONS.some(m=>Object.keys(files).some(k=>k.startsWith(`${m}16-`)));
   const drawn=(d:HeroDirection)=>!!files&&(only?!!files[`${motion}16-${d}`]:M16_MOTIONS.every(m=>files[`${m}16-${d}`]));
   if(!partner||drawn(direction)||!drawn(partner))return {source:direction,flip:false};
   return {source:partner,flip:true};
@@ -138,7 +138,7 @@ export function movement16Plan(id:string,motion:Movement16Motion,direction:HeroD
   }
   const plan:Movement128Plan={key:`sprite16:${id}:${motion}:${source}`,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion,direction,
     columns,rows,frameCount,durationMs,loop,anchor:[.5,.875],height:f.height,figure:f.figure,flip,pivotX:f.pivotX,
-    ...((motion==='run'||motion==='push')&&validPhase(f.phase,frameCount)?{phase:f.phase}:{})};
+    ...((motion==='run'||motion==='push'||motion==='pull')&&validPhase(f.phase,frameCount)?{phase:f.phase}:{})};
   plans.set(lookup,plan);return plan;
 }
 /** True when every direction of walk, attack and idle resolves to a valid M16 sheet (its own or its pair's, mirrored). */
@@ -167,6 +167,17 @@ export function hasPush16(id:string){
 }
 /** The push clip of a class facing `direction` (its hands on the Uno's back), undefined for a class without one. */
 export const pushPlan=(id:string,direction:HeroDirection)=>hasPush16(id)?movement16Plan(id,'push',direction):undefined;
+/**
+ * True when a class has a valid pull (pull16, card puxar-uno-corda) in every direction, with its phase table: the rope's
+ * holder walks away from the car leaning forward, the fists behind its hips. Without one it walks (its run).
+ */
+export function hasPull16(id:string){
+  current();let complete=pull16.get(id);
+  if(complete===undefined)pull16.set(id,complete=(hasMovement16(id)||!!movementIdle8Plan(id))&&HERO_DIRECTIONS.every(d=>!!movement16Plan(id,'pull',d)?.phase));
+  return complete;
+}
+/** The pull clip of a class walking `direction` (away from the Uno, the rope behind it), undefined for a class without one. */
+export const pullPlan=(id:string,direction:HeroDirection)=>hasPull16(id)?movement16Plan(id,'pull',direction):undefined;
 /**
  * True when a class has a valid hurt (hurt16, card animacao-receber-dano) in every direction: an M16 class or an R06 one
  * (the CLT flinches on M16 hurt sheets, its rest stays R06).

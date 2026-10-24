@@ -1,7 +1,7 @@
 /**
  * D-052 slice 3 (card NEW-20261016-ORQ-carro-e-fortificacao-livre, HUD): the car's rope and the free build.
- * - "Puxar" (.rh-fort-puxar): a right-thumb circle left of the skill button, only near the car (model pullState);
- *   "Soltar" while this player holds the rope. A tap sends {t:'puxar',on}; the room's refusal shows in the row slot.
+ * - "Soltar" (.rh-fort-puxar): a right-thumb circle left of the skill button, only while this player holds the rope
+ *   (model pullState; puxar-uno-corda: the rope is taken by gesture). A tap sends {t:'puxar',on:false}; a refusal shows in the row slot.
  * - "Construir" (.rh-fort-construir): a circle above it with the wall counter ("12/40"). A tap opens the tray: the three
  *   pieces (Vigia, Muro, Barricada) with their price, Girar (the barricade and the 2×2 tower), the counter, Construir
  *   (touch: confirms the ghost) and Fechar.

@@ -3,7 +3,7 @@
  * since when the alarm sounds and the run ended (renderer clock), the moto's heading, and the route and stops, which
  * protocol 15 sends on the keyframe and when they change only (RouteMemo). Pure, so the state machine is tested.
  */
-import {carAxisHeading,headingOf,newlyFallen,PART_FALL_MS,alarmOn,HIT_MERGE_MS,HIT_POPS_MAX,HIT_POP_MS} from './rules.ts';
+import {headingOf,newlyFallen,PART_FALL_MS,alarmOn,HIT_MERGE_MS,HIT_POPS_MAX,HIT_POP_MS} from './rules.ts';
 import type {ChaveiroView} from './view.ts';
 
 /** Keeps the last route and stops seen, and fills a view that came without them. */
@@ -29,7 +29,10 @@ export class ChaveiroTracker {
   endedAt?:number;
   /** The moto's heading (radians), from its last move, or the route's first leg before it moved. */
   heading=0;
-  /** D-052, the car moves: the heading of its last move (the move's axis, rules.carAxisHeading); 0 before it moved. */
+  /**
+   * D-052, the car moves: where its nose points (radians). Card puxar-uno-corda: the room's (view.car.heading, absent =
+   * 0), so the rope drawn at the front bumper is the one the room lets a hero take.
+   */
   carHeading=0;
   /** How far the car rolled along its heading (units, negative backwards): its wheels turn by it. */
   carRoll=0;
@@ -65,9 +68,9 @@ export class ChaveiroTracker {
     if(this.motoAt)this.heading=headingOf(this.motoAt,view.moto,this.heading);
     else if(view.route&&view.route.length>1)this.heading=headingOf(view.route[0],view.route[1],this.heading);
     this.motoAt={x:view.moto.x,y:view.moto.y};
+    this.carHeading=view.car.heading??0;
     if(this.carAt){
       const dx=view.car.x-this.carAt.x,dy=view.car.y-this.carAt.y;
-      this.carHeading=carAxisHeading(this.carHeading,dx,dy);
       this.carRoll+=dx*Math.cos(this.carHeading)+dy*Math.sin(this.carHeading);
     }
     this.carAt={x:view.car.x,y:view.car.y};

@@ -55,6 +55,12 @@ export interface RunState {
    * (rules/chefao-onda.ts CENA). Present while it lasts; sent when it opens and at each whole second of leftMs.
    */
   cena?:RunCena;
+  /**
+   * Combat only, mode 'ninhos' (card inicio-no-uno-caixas-120): the time to explore after a wave (sim/ninhos/ninhos.ts
+   * NestsState.exploreFrom/exploreUntil, NEST_PACE.explore): its first tick and its end, when the next wave leaves.
+   * Present while the {t:'run'} tick is inside it; the HUD shows the same clock and "Você tem 2 minutos…".
+   */
+  exploraDesdeTick?:number;exploraAteTick?:number;
 }
 /**
  * The chefão's arrival (RunState.cena): who (a WAVE_BOSSES roster id: the name and the subtitle are the client's, rules),

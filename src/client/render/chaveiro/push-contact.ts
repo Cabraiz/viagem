@@ -28,6 +28,16 @@ export const PUSH_EASE=9;
 
 export interface CarPose {x:number;y:number;heading:number}
 
+/**
+ * Card puxar-uno-corda: the way a hero on the rope faces, away from the car's front bumper (CAR_HALF.l ahead along its
+ * heading), the rope behind it: unit, world, with `pull` set (CharacterSprites.animate plays its pull16). Undefined on
+ * the bumper.
+ */
+export function pullDirection(hero:Point,car:CarPose):{x:number;y:number;pull:true}|undefined{
+  const dx=hero.x-(car.x+Math.cos(car.heading)*CAR_HALF.l),dy=hero.y-(car.y+Math.sin(car.heading)*CAR_HALF.l),d=Math.hypot(dx,dy);
+  return d>1e-6?{x:dx/d,y:dy/d,pull:true}:undefined;
+}
+
 /** Where along the ray from `p` (local, unit `d`) it meets the box of half sizes (l, w); undefined when it misses. */
 function rayBox(px:number,py:number,dx:number,dy:number,l:number,w:number):number|undefined{
   let t0=-Infinity,t1=Infinity;

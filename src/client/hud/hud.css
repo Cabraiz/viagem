@@ -201,7 +201,7 @@
   --of-tilt-a:-1deg;--of-tilt-b:.8deg;--of-card:76px;
   /* Right of the team column (54 px, or its widest name: --rh-coluna, NEW-UX-nome-do-time-na-coluna) plus 8 px. */
   --of-left:max(62px,var(--rh-coluna,54px) + 8px);
-  position:absolute;z-index:1;left:calc(var(--rh-l) + var(--of-left));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  position:absolute;z-index:1;left:calc(var(--rh-l) + var(--of-left));right:var(--rh-r);bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px);
   width:max-content;max-width:calc(100vw - var(--rh-l) - var(--of-left) - var(--rh-r));margin-left:auto;padding:9px 6px 6px;border-radius:var(--r-janela);
   display:grid;grid-template-columns:minmax(0,auto) auto;grid-template-areas:'head head' 'fall fall' 'cards foot';align-items:stretch;
   background:var(--c-lilas);color:var(--c-papel);border:2px solid var(--c-breu);
@@ -359,7 +359,7 @@
    (24 px over the joystick), right of the team column and clear of the hero. */
 .rh-offer[data-mode=combat]{
   left:auto;right:var(--rh-r);max-width:calc(100vw - var(--rh-l) - 70px - var(--rh-r));margin:0;padding:5px;
-  bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px);
+  bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px + var(--inv-coluna,0px));
 }
 .rh-offer[data-mode=combat] :is(.rh-offer-head,.rh-offer-joke,.rh-offer-deadline,.rh-offer-foot){display:none}
 
@@ -386,7 +386,7 @@
   .rh:has(.rh-offer[data-mode=intermission]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
   /* D-050: the level-up pause's window is the same right column. */
   .rh:has(.rh-offer[data-mode=pause]:not([hidden])) .rh-stack{right:calc(var(--rh-r) + var(--of-w) + 8px)}
-  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px);max-width:calc(50vw - 44px - var(--rh-r))}
+  .rh-offer[data-mode=combat]{top:auto;left:auto;right:var(--rh-r);margin:0;padding:5px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade) + 24px + var(--inv-coluna,0px));max-width:calc(50vw - 44px - var(--rh-r))}
   .rh-offer-chip{right:calc(max(18px,env(safe-area-inset-right)) + var(--botao-habilidade) + 24px);bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--botao-habilidade)/2 - var(--chip)/2)}
 }
 
@@ -793,7 +793,7 @@
 .rh .rh-minimap.rh-mm{--mm-side:clamp(124px,30vmin,210px);width:var(--mm-side);height:var(--mm-side);padding:0;border-radius:var(--r-etiqueta);background:var(--c-ficha);border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);overflow:hidden;cursor:crosshair;touch-action:none}
 /* Narrow screens (portrait phones): no room beside the hero up top, so bottom-left as in Warcraft 3, 24 px above the
    joystick (112 px at 24 px from the bottom: explore.css), below the hero's zone and the team column. */
-@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + 112px + 24px)}}
+@media (max-width:599px){.rh .rh-minimap.rh-mm{top:auto;right:auto;left:max(8px,env(safe-area-inset-left));bottom:calc(max(24px,env(safe-area-inset-bottom)) + var(--joystick) + 24px)}}
 .rh-mm-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
 .rh-mm-ping{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--c-papel);box-shadow:0 0 0 2px var(--c-breu);pointer-events:none;animation:rh-mm-ping 1.6s ease-out forwards}
 @keyframes rh-mm-ping{0%{transform:scale(.4);opacity:1}70%{opacity:.9}100%{transform:scale(2.6);opacity:0}}

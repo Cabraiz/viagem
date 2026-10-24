@@ -125,7 +125,12 @@ test('boss in the nests: it enrages 90 s after it arrives, not at once (the wave
 test('zueira in the nests: on the clock, the first after 60 s, then 100–140 s apart, at most 4; none in the rounds mode\'s round 1',()=>{
   const r=run('ninhos',5);addPlayer(r.world,'p1',PLAZA);
   const fired:number[]=[];
-  for(let i=0;i<ticks(12*60);i++){for(const e of r.world.step())if(e.type==='happening')fired.push(r.world.tick);}
+  for(let i=0;i<ticks(12*60);i++){
+    // The 1st wave's chefão (boss-fim-onda-1) holds the zueira's clock while he stands: beaten at once here.
+    const chefao=r.sys.chefao?.up()?r.sys.chefao.state.enemy:undefined;
+    if(chefao&&r.world.enemies.has(chefao))r.world.damageEnemy(chefao,r.world.enemies.get(chefao)!.hp+1);
+    for(const e of r.world.step())if(e.type==='happening')fired.push(r.world.tick);
+  }
   assert.ok(fired.length>=3&&fired.length<=CALMA.zueiraMax,`${fired.length} events`);
   assert.ok(fired[0]>=ticks(CALMA.zueiraFirstS),`the first at ${fired[0]}`);
   for(let i=1;i<fired.length;i++){

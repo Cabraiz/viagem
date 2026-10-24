@@ -46,5 +46,17 @@
  "maromba.run16-se.6f225d758e28.webp": {
   "alterna": true,
   "prova": "evidence NEW-20261023-E7-maromba-troca-perna-se: pernas transplantadas (pp/compor4.py: nas poses 0-4 e 13-15 as duas pernas inteiras da pose i+8 com os quadris trocados) e limpas no Codex (limpar/SE-run-L3); pernas ampliadas (pp/zL3-pares.png): nas poses 0-4 e 13-15 o pé da frente (ciano) sai do quadril da ESQUERDA e o de trás some atrás do short, nas 5-12 o da frente (vermelho) sai do da direita e o de trás aparece à esquerda; lateral |i-i+8| mediana 6,7 px (era 3,8)"
+ },
+ "vendedor-praia.run16-w.90c753af84c2.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-W-run-G-t1 girado R=3: chinelo marcador ciano (perna de longe, escurecida 0,7 pelo sombra.py) e vermelho trocam de frente a cada meia passada; contatos 0 e 8 com pés opostos"
+ },
+ "vendedor-praia.run16-nw.144d1d773de7.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-NW-run-G-t1 girado R=1: o pé da frente muda de quadril (lateral.py 4,2 px entre i e i+8)"
+ },
+ "vendedor-praia.run16-se.8a174da8df82.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-SE-run-G-t2 girado R=13 + sombra.py LONGE=red: pé da frente muda de quadril (lateral 3,1 px; contatos 11/13 px)"
  }
 }

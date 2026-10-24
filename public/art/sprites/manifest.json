@@ -7119,7 +7119,7 @@
           }
         },
         "pull16-NW": {
-          "file": "gato-nada-pra-comer.pull16-nw.31245636b9fa.webp",
+          "file": "gato-nada-pra-comer.pull16-nw.44478e25f577.webp",
           "cell": [
             96,
             96
@@ -7135,24 +7135,24 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 47.87,
+          "pivotX": 48.04,
           "figure": {
-            "left": 25,
-            "top": 28,
-            "right": 80,
+            "left": 24,
+            "top": 31,
+            "right": 82,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.pull16-nw.31245636b9fa.webp",
+              "file": "gato-nada-pra-comer.pull16-nw.44478e25f577.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "31245636b9fa7cff2a2829c117cb8df6f812b7178541e41b65ed0f36cbb6aed7"
+              "sha256": "44478e25f577f0dce00fb67c900593e56c8792eec1966a91c9d88ca43f8a8c5e"
             }
           ],
-          "sha256": "31245636b9fa7cff2a2829c117cb8df6f812b7178541e41b65ed0f36cbb6aed7",
+          "sha256": "44478e25f577f0dce00fb67c900593e56c8792eec1966a91c9d88ca43f8a8c5e",
           "phase": {
             "d": [
               0.03537,
@@ -7485,7 +7485,7 @@
           }
         },
         "pull16-W": {
-          "file": "gato-nada-pra-comer.pull16-w.a79573c6028c.webp",
+          "file": "gato-nada-pra-comer.pull16-w.1b493386698b.webp",
           "cell": [
             96,
             96
@@ -7501,42 +7501,42 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 49.82,
+          "pivotX": 49,
           "figure": {
-            "left": 22,
-            "top": 40,
-            "right": 78,
+            "left": 25,
+            "top": 39,
+            "right": 75,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.pull16-w.a79573c6028c.webp",
+              "file": "gato-nada-pra-comer.pull16-w.1b493386698b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a79573c6028c222b881d556e62e76f20e8d70320f7b959c492a014ee9a54f755"
+              "sha256": "1b493386698bf98658d9f0ae984df5d01563ed2f4f35d7dc451c50c2dd524045"
             }
           ],
-          "sha256": "a79573c6028c222b881d556e62e76f20e8d70320f7b959c492a014ee9a54f755",
+          "sha256": "1b493386698bf98658d9f0ae984df5d01563ed2f4f35d7dc451c50c2dd524045",
           "phase": {
             "d": [
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538,
-              0.03538
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184,
+              0.03184
             ],
             "v": [
               [
@@ -9007,7 +9007,7 @@
           "sha256": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc"
         }
       },
-      "sha256": "fb0e4375777a9e4cda13aa5d8ac0757b535d02822f90f65a6fab3ca7190b1b37"
+      "sha256": "4c7b363aab8a4375cd925cc6064f5c18cb3ddba3b73cb1547f57baba262880f8"
     },
     "goleira": {
       "kind": "dir8",

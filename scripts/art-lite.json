@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2217,
-  "bytes": 1545461174,
-  "liteBytes": 504171942,
+  "files": 2219,
+  "bytes": 1545579558,
+  "liteBytes": 504239520,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19085,13 +19085,13 @@
    "psnr": 40.7,
    "shownPsnr": 40.6
   },
-  "sprites/gato-nada-pra-comer.pull16-nw.31245636b9fa.webp": {
-   "source": "31245636b9fa7cff2a2829c117cb8df6f812b7178541e41b65ed0f36cbb6aed7",
-   "lite": "e80115a803ce4994c8b2510d7279e4f0c3da43c36b9c85324e3e15b205ca9c07",
-   "bytes": 66118,
-   "liteBytes": 36266,
+  "sprites/gato-nada-pra-comer.pull16-nw.44478e25f577.webp": {
+   "source": "44478e25f577f0dce00fb67c900593e56c8792eec1966a91c9d88ca43f8a8c5e",
+   "lite": "e63d8399b423adc69aa40a90c5d278f039e9de1daca82b5064e2821984889b86",
+   "bytes": 64472,
+   "liteBytes": 36368,
    "psnr": 41.5,
-   "shownPsnr": 40.3
+   "shownPsnr": 40.5
   },
   "sprites/gato-nada-pra-comer.pull16-nw.90b7361e4350.webp": {
    "source": "90b7361e43500b4b700a906f2ce1907cc0214b0c937acec8579b94c6fe15587b",
@@ -19133,6 +19133,14 @@
    "psnr": 41.8,
    "shownPsnr": 40.5
   },
+  "sprites/gato-nada-pra-comer.pull16-w.1b493386698b.webp": {
+   "source": "1b493386698bf98658d9f0ae984df5d01563ed2f4f35d7dc451c50c2dd524045",
+   "lite": "58e2298c4a3b4632fdd0ba4f8ccae5d932fbd674eb6f8b6828644fece187aab6",
+   "bytes": 53912,
+   "liteBytes": 31210,
+   "psnr": 42.1,
+   "shownPsnr": 40.9
+  },
   "sprites/gato-nada-pra-comer.pull16-w.69ed430f58ae.webp": {
    "source": "69ed430f58aee64e469d24bf1e27eb364ec6b383884a1d23ffdcceae9a8b7a9e",
    "lite": "5895ec0dd7ae12ff7c41aa319c30bff309deeea418ed4599503ba30063898e58",
@@ -19140,14 +19148,6 @@
    "liteBytes": 29944,
    "psnr": 42.6,
    "shownPsnr": 40.3
-  },
-  "sprites/gato-nada-pra-comer.pull16-w.a79573c6028c.webp": {
-   "source": "a79573c6028c222b881d556e62e76f20e8d70320f7b959c492a014ee9a54f755",
-   "lite": "d95906af58d0089cec6cde17f2ac820f671848e602114afbcc7bd478ad0ccc6e",
-   "bytes": 51420,
-   "liteBytes": 29828,
-   "psnr": 42.7,
-   "shownPsnr": 40.2
   },
   "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
    "source": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",

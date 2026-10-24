@@ -1496,9 +1496,11 @@ export class IslandScene extends Phaser.Scene {
       if(!(this.field instanceof CityTerrain))return;
       const art=this.cityArt();
       const city=this.city=new CityLayer(this,cityRenderAsset(this.field.asset),{depthOf:this.cityDepthOf,art});
+      // No Uno on the deck (ORQ 24/10, with inicio-no-uno): the team spawns beside the real Uno, the chaveiro's car on the
+      // plaza; the deck keeps its pile-up at the closed end and is a base on the second floor.
       const field=this.field,viaduct=this.viaduct=field.asset.viaducts.length?new ViaductLayer(this,field.asset.viaducts,field.asset.unitsPerCell,
         {depthOf:this.cityDepthOf,groundPx:(x,y)=>elevation(x,y,field),sheet:id=>art.decor[id],
-          blocks:field.asset.blocks.flatMap(b=>b.rects)},CITY_GROUND_DEPTH+3,field.asset.points.inicio):undefined;
+          blocks:field.asset.blocks.flatMap(b=>b.rects)},CITY_GROUND_DEPTH+3):undefined;
       city.setActorScale(this.actorScale);
       city.setEconomy(this.economy);city.setStill(qualityProfile(this.quality).still);
       // A map switch into the city: its ground arrives after the first chunks, which are rebuilt with it.

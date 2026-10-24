@@ -179,7 +179,7 @@ function playerRunOk(run:unknown){
   if(hand!==undefined&&!(Number.isSafeInteger(hand)&&(hand as number)>=0&&(hand as number)<Math.max(1,slots)))return false;
   if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
-  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil','rideUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil','rideUntil','downUntil','knockUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
   // Veículos: a ride is a known vehicle.
   if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
@@ -641,7 +641,7 @@ export class Simulation {
     const p=this.players.get(id);
     if(!p)return own;
     const from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
-    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
+    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity,p.downUntil??-Infinity);
     const touched=end>-Infinity&&(from===undefined||end>from);
     const liveAck=this.liveAck.get(id);
     if(touched||liveAck!==undefined&&own.ack<liveAck){this.liveAck.set(id,Math.max(liveAck??0,p.ack));return undefined;}
@@ -899,7 +899,7 @@ export class Simulation {
     const events=this.world.step();
     // D-036: remember how far each slow or slip ran (the players system drops it once it is over; confirmed needs it).
     for(const p of this.players.values()){
-      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
+      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity,p.downUntil??-Infinity);
       if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
       // The moveSpeed stat changed (an offer, a weapon): the steps before now walked at the old one, so it counts as an
       // effect up to now (the phone's replay of them would take the new one).

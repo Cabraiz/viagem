@@ -17,6 +17,8 @@ const city:CityAsset=cityRenderAsset(maps);
 const W=city.width,H=city.height,CELL=city.cell;
 /** NEW-20261013-ORQ-cidade-escala-1-7: the asset (version 2) is the .w3x map × K; map lengths and block heights below are × K. */
 const K=CITY_MAP_SCALE;
+/** Spots of the .w3x map on asset v4 (NEW-20261023-ORQ-mapa-175-com-viaduto): × K, then the compaction's 192 → 110 cells. */
+const AT=K*110/192;
 
 /** Deterministic LCG in [0,1). */
 const rng=(seed:number)=>()=>((seed=Math.imul(seed,1664525)+1013904223>>>0)/0x100000000);
@@ -146,7 +148,7 @@ test('ground: water from the samples, rubble on blocked ground, no street or cob
   assert.ok(/^[spirwc]+$/.test(city.ground));
 });
 
-test('ground: the plaza around the praça is cobble, with the fountain water in it',()=>{
+test('ground: the plaza around the praça is cobble (asset v4: its fountains and their water were dropped)',()=>{
   const p=maps.points,mouths=[p.bocas.N,p.bocas.S,p.bocas.L,p.bocas.O];
   const x0=Math.min(...mouths.map(m=>m.x))/CELL-PLAZA_PAD_CELLS,x1=Math.max(...mouths.map(m=>m.x))/CELL+PLAZA_PAD_CELLS;
   const y0=Math.min(...mouths.map(m=>m.y))/CELL-PLAZA_PAD_CELLS,y1=Math.max(...mouths.map(m=>m.y))/CELL+PLAZA_PAD_CELLS;
@@ -158,7 +160,8 @@ test('ground: the plaza around the praça is cobble, with the fountain water in 
     if(coverOf[cy*W+cx]<0&&g!=='w'&&g!=='r'){open++;if(g==='c')cobble++;}
   }
   assert.ok(open>100&&cobble/open>0.95,`${cobble}/${open} open plaza cells are cobble`);
-  assert.ok(wet>0,'the fountain shows as water inside the plaza');
+  // mapa-175-com-viaduto: the plaza 1.75× smaller lost its fountains with their basins (scripts/compactar-cidade.ts PLAZA_DROP).
+  assert.equal(wet,0,'no fountain water left in the plaza');
   // Near the praça itself.
   const pcx=p.praca.x/CELL,pcy=p.praca.y/CELL;
   let near=0,nearC=0;
@@ -183,14 +186,16 @@ test('ground: the four avenues of the cross (mouth → spawn) are packed snow, a
       if(g==='c'||g==='w'||g==='r'||coverOf[i]>=0)continue; // the plaza, water, blocked ground
       open++;if(g==='p')packed++;
     }
-    assert.ok(open>40&&packed/open>0.95,`avenue ${name}: ${packed}/${open} open cells are packed snow`);
+    // Asset v4 (mapa-175-com-viaduto): the avenues are 1.75× shorter (was > 40 open cells each).
+    assert.ok(open>20&&packed/open>0.95,`avenue ${name}: ${packed}/${open} open cells are packed snow`);
   }
   assert.ok(AVENUE_HALF_WIDTH_CELLS>=1);
   // The ring road: a few cells inside the north edge, below the north spawn, most open cells are packed snow.
   const row=Math.floor(p.spawnN.y/CELL)+3;
   let open=0,packed=0;
   for(let cx=0;cx<W;cx++){const g=letter(cx,row);if(coverOf[row*W+cx]<0&&'spc'.includes(g)){open++;if(g==='p')packed++;}}
-  assert.ok(open>100&&packed/open>0.8,`ring row ${row}: ${packed}/${open}`);
+  // Asset v4: 110 cells a row (was 192, > 100 open).
+  assert.ok(open>60&&packed/open>0.8,`ring row ${row}: ${packed}/${open}`);
   const counts:Record<string,number>={};
   for(const g of city.ground)counts[g]=(counts[g]??0)+1;
   assert.ok(counts.s>counts.p&&counts.p>counts.c,`fresh snow dominates, then streets, then the plaza: ${JSON.stringify(counts)}`);
@@ -222,7 +227,8 @@ test('props: kinds mapped, radius clamped, ids stable, none inside a block',()=>
     assert.equal(coverOf[Math.floor(q.y/CELL)*W+Math.floor(q.x/CELL)],-1,`${q.id} inside a block`);
     kinds.add(q.kind);
   }
-  assert.ok(city.props.length>50,`${city.props.length} props`);
+  // Asset v4: ~1/3 of the ground, the stacks dedup'd (PROP_DEDUP): ~30 drawn (was > 50 on the 1.7× city).
+  assert.ok(city.props.length>25,`${city.props.length} props`);
   for(const k of ['crate','barrel','bench','lamp'])assert.ok(kinds.has(k),`generic props spread over ${k}`);
 });
 
@@ -233,12 +239,12 @@ test('props (proporcoes-postes-predios): one per spot — no two closer than PRO
     assert.ok(d>=Math.max(PROP_STACK,0.45),`${a.id} (${a.kind}) and ${b.id} (${b.kind}) stacked`);
     if(a.kind===b.kind)assert.ok(d>=PROP_DEDUP[a.kind],`${a.id} and ${b.id} (${a.kind}) stacked`);
   }
-  // The .w3x stacks 5 lamps within 1 u by the start (× K on the 1.7× map): one stays, the one first in source order.
-  const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3*K,p.y-160*K)<1.25*K);
+  // The .w3x stacks 5 lamps within 1 u by the start (× AT on asset v4): one stays, the one first in source order.
+  const lamps=city.props.filter(p=>p.kind==='lamp'&&Math.hypot(p.x-98.3*AT,p.y-160*AT)<1.25*AT);
   assert.equal(lamps.length,1);
   // The same stack also hashes copies to barrel, crate and bench: those go with it.
   assert.deepEqual(city.props.filter(p=>Math.hypot(p.x-lamps[0].x,p.y-lamps[0].y)<PROP_STACK).map(p=>p.id),[lamps[0].id]);
-  const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3*K,p.y-160*K)<1.5*K&&p.kind==='prop');
+  const sources=maps.props.map((p,i)=>({p,i})).filter(({p})=>Math.hypot(p.x-98.3*AT,p.y-160*AT)<1.5*AT&&p.kind==='prop');
   assert.ok(sources.length>=3,'the source does stack them');
 });
 

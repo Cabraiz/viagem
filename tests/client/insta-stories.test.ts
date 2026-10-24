@@ -11,10 +11,10 @@ const main=readFileSync(new URL('../../src/main.ts',import.meta.url),'utf8');
 const pub=(url:string)=>new URL(`../../public${url}`,import.meta.url);
 const COM_STORIES=INSTA_PERFIS.filter(p=>storiesDe(p.id).length>0);
 
-test('each of the four heroes has 3-4 stories with a short sticker, their art in WebP + lite',()=>{
-  // tela-vendedor-praia: the vendedor and the aposentado have a profile but no stories yet (their photo opens nothing).
-  assert.deepEqual(Object.keys(INSTA_STORIES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba']);
-  assert.deepEqual(storiesDe('vendedor-praia'),[]);assert.deepEqual(storiesDe('aposentado'),[]);
+test('each of the six heroes has 3-4 stories with a short sticker, their art in WebP + lite',()=>{
+  // NEW-20261024-ORQ-stories-vendedor-aposentado: the vendedor and the aposentado too, every profile opens its stories.
+  assert.deepEqual(Object.keys(INSTA_STORIES),['viciado-em-bet','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','aposentado']);
+  assert.deepEqual(COM_STORIES.map(p=>p.id),INSTA_PERFIS.map(p=>p.id));
   for(const p of COM_STORIES){
     const lista=storiesDe(p.id);
     assert.ok(lista.length>=3&&lista.length<=4,`${p.id}: ${lista.length}`);

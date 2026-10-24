@@ -289,7 +289,7 @@ let eventId=0;
 /** D-051: 8 nests, the first 2 fallen (`ninhos=…`). */
 const FAKE_NESTS=Array.from({length:8},(_,i)=>({id:`ninho-${i}`,kind:'ninho',x:10+i,y:10,hp:i<2?0:40,maxHp:40,phase:i<2?'destruido':'dormindo'}));
 /** The game's arrow rule (arrows.ts: only the caído); `setas=todas` shows every kind, for the old layout audits. */
-const shownHere=<T extends {kind:EdgeKind}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
+const shownHere=<T extends {kind:EdgeKind;key:string}>(targets:readonly T[]):T[]=>params.get('setas')==='todas'?[...targets]:shownTargets(targets);
 function load(next:HudScenario){
   scenario=next;tick=1000;
   view=named(fakeView(scenario,players,tick));
@@ -365,6 +365,9 @@ function load(next:HudScenario){
   // `minerva=<s>` (relogio-minerva): the Minuto de Minerva clock with s seconds left, as the room's minervaAteTick.
   const minerva=Number(params.get('minerva'));
   hud.setMinerva(minerva>0?tick+Math.round(minerva*SIM_HZ):undefined);
+  // `explora=<s>` (inicio-no-uno-caixas-120): a 120 s time to explore with s seconds left (the clock and the mission line).
+  const explora=Number(params.get('explora'));
+  hud.setExplora(explora>0?{from:tick-Math.round((120-Math.min(120,explora))*SIM_HZ),until:tick+Math.round(explora*SIM_HZ)}:undefined);
 }
 
 load(scenario);
@@ -572,9 +575,9 @@ if(cidade)void (async()=>{
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
   // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
   const P=terrain.asset.points;
-  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_MAP_SCALE they are the same places on the 1.7×
+  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) they are the same places on the 1.7×
   // map (NEW-20261013-ORQ-cidade-escala-1-7). The asset's points (P) are already in its units.
-  const {CITY_MAP_SCALE:S}=await import('../../rules/index.ts');
+  const {CITY_DISTANCE_SCALE:S}=await import('../../rules/index.ts');
   const at=(x:number,y:number)=>({x:x*S,y:y*S});
   const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};

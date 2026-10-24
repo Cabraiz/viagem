@@ -12,7 +12,7 @@
  * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
 import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
-import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
 import {SIEGE_FLAG} from '../stonewards/wall.ts';
@@ -84,17 +84,20 @@ export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
 
 /**
  * Planner layout from the asset's points: spawns ← spawnN/S/L/O, mouths ← bocas, plaza (fallback seed) ← praca; mapScale
- * ← rules CITY_MAP_SCALE (the asset is the .w3x city × that scale since its version 2, NEW-20261013-ORQ-cidade-escala-1-7).
- * mouthRadius (the barricade goals) ← the widest barricade disc (stonewards sealRadii) + a hero radius + half a cell:
- * the first walkable cells past the disc. The discs grew more than the map (2.2 / 1.95 u, not 1.7 / 1.7: the slack a
- * seal may leave is a hero's), so MOUTH_RADIUS × CITY_MAP_SCALE (2.55 u) missed the N/S avenue cells (2.81 u out).
+ * ← rules CITY_DISTANCE_SCALE (the asset's distances over the .w3x city: × CITY_MAP_SCALE since its version 2,
+ * NEW-20261013-ORQ-cidade-escala-1-7, ÷ CITY_COMPACT since version 4, NEW-20261023-ORQ-mapa-175-com-viaduto).
+ * mouthRadius (the barricade goals) ← the widest barricade disc (stonewards sealRadii) + a hero radius + a cell: the
+ * first walkable cells past the disc. The discs grew more than the map (2.2 / 1.95 u, not 1.7 / 1.7: the slack a seal
+ * may leave is a hero's), so MOUTH_RADIUS × CITY_MAP_SCALE (2.55 u) missed the N/S avenue cells (2.81 u out); half a
+ * cell past the disc was not enough either on asset v4: a mouth point near its cell's edge left the L ring with no open
+ * cell outside, and the bodies of the L avenue went for the S barricade.
  */
 export function cityLayoutFrom(terrain:CityTerrain,grid:FlowGrid=cityFlowGrid(terrain)):CityLayout{
   const p=terrain.asset.points, pt=(q:{x:number;y:number}):FlowPoint=>({x:q.x,y:q.y});
   const seals=blockingCity(terrain)?Object.values(sealRadii(terrain)).filter((r):r is number=>r!==null):[];
   return {
-    grid,plaza:pt(p.praca),mapScale:CITY_MAP_SCALE,
-    ...(seals.length?{mouthRadius:Math.max(...seals)+RADIUS+terrain.asset.unitsPerCell/2}:{}),
+    grid,plaza:pt(p.praca),mapScale:CITY_DISTANCE_SCALE,
+    ...(seals.length?{mouthRadius:Math.max(...seals)+RADIUS+terrain.asset.unitsPerCell}:{}),
     mouths:{N:pt(p.bocas.N),S:pt(p.bocas.S),L:pt(p.bocas.L),O:pt(p.bocas.O)},
     spawns:{N:pt(p.spawnN),S:pt(p.spawnS),L:pt(p.spawnL),O:pt(p.spawnO)},
   };
@@ -291,7 +294,8 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
     const cells=l.scratch, built=l.built;
     let n=0;
     for(const p of ctx.players.values()){
-      if(!chased(p))continue;
+      // A hero on a viaduct's deck is not on this ground: the bodies that hunt it walk to the ramp (enemies/ai.ts).
+      if(!chased(p)||p.andar===1)continue;
       const cx=Math.floor((p.x-ox)/cs), cy=Math.floor((p.y-oy)/cs);
       if(cx>=0&&cy>=0&&cx<field.width&&cy<field.height)cells[n++]=cx+cy*field.width;
     }
@@ -432,7 +436,9 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
   };
   const run=(ctx:SimContext,e:EnemyState,target:Point,out:SteerOut,hero:boolean)=>{
     out.fit=0;
-    if(e.memory?.retreat===1)return false;
+    // The fields are the ground's: a body on a deck walks its straight line (enemies/ai.ts).
+    if(e.memory?.retreat===1||e.andar===1)return false;
+
     if(e.memory?.[PLAZA_HOLD_FLAG]===1){
       if(!holdReleased(ctx,e))return hold(e,target,out);
       e.memory[PLAZA_HOLD_FLAG]=0;

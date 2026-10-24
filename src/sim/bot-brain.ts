@@ -63,7 +63,7 @@ import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
-import {heroSpeed,walkable,type Point} from '../maps/index.ts';
+import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import type {StonewardsState} from './stonewards/state.ts';
@@ -102,6 +102,12 @@ export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 export const SIEGE_REACH=4;
 /** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
 export const NEST_THREAT_RADIUS=40;
+/**
+ * Mode 'ninhos' with the car (inicio-no-uno-caixas-120 bench): a critter this close to the car keeps the bots off the
+ * crates (planLoot's lull only looks around the bot: with the start and its crates beside the Uno, six bots stood at
+ * crates 8-25 u off while the first wave took the car in 60 s).
+ */
+export const LOOT_CAR_THREAT=12;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
@@ -195,8 +201,11 @@ export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,l
 
 export interface BrainInput {
   view:RunView;selfId:string;
-  /** Where the client predicts it is (CoopClient.predicted), like the scene's camera. */
-  at:Point;
+  /**
+   * Where the client predicts it is (CoopClient.predicted), like the scene's camera; `andar` 1 on a viaduct's deck
+   * (maps city/viaduct.ts): the bot walks the deck straight and leaves it by the ramp.
+   */
+  at:Point&{andar?:1};
   /** Bot index in the room (spreads the gather nodes and the orbit). */
   index:number;
   terrain?:TerrainField;
@@ -253,9 +262,10 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
 /**
  * D-051 runner: with at least RUNNER_TEAM standing, the bot of index RUNNER_INDEX (a roamer) fetches crates within
  * LOOT_RADIUS_RUN during the wave too, like a person whose friends hold the wall (the 16/10 bench: the far dourada and
- * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs.
+ * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs. 60 u on the 1.7× city, 34 since
+ * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
-export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=60;
+export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -277,7 +287,8 @@ export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;
  * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
  * (nearest to the point among the standing bots that do not push and do not forge); 'carro' (D-052): a person moves
- * the car and this is one of the CAR_HELP_BOTS free bots nearest to it. `at`: where to go.
+ * the car and this is one of the CAR_HELP_BOTS free bots nearest to it (those already leaning behind it first). `at`:
+ * where to go.
  */
 export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField,nests?:boolean):ObjectiveTask|undefined{
   const o=view.objective;
@@ -315,8 +326,11 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   const heading=carHeading(view,bots);
   if(heading){
     const car={x:o.car.x,y:o.car.y};
-    const helpers=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE))
-      .slice(0,CAR_HELP_BOTS).map(p=>p.id);
+    // A bot already leaning behind the car (carHelp's push zone) keeps its place before one nearer to the body: the car
+    // rolling toward a free bot ahead made it the nearer one, and the helper pushing went off while it circled to the back.
+    const behind=(p:PlayerRunView)=>{const at=positionOf(p)!,d=dist(at,car);return d<=CAR_HELP_NEAR&&d>1e-6&&-((at.x-car.x)*heading.x+(at.y-car.y)*heading.y)/d>=CAR_LEAN_DOT;};
+    const free=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE));
+    const helpers=[...free.filter(behind),...free.filter(p=>!behind(p))].slice(0,CAR_HELP_BOTS).map(p=>p.id);
     const i=helpers.indexOf(selfId);
     if(i>=0){
       const task:ObjectiveTask={kind:'carro',at:car,heading,side:i===0?1:-1};
@@ -548,7 +562,21 @@ export function decide(input:BrainInput):Decision{
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
-  const way=(to:Point,chase?:Chase):Point|undefined=>{
+  const way=(to:Point&{andar?:number},chase?:Chase):Point|undefined=>{
+    // The viaduct (mapa-175-com-viaduto): the streets' fields are the ground's. On the deck the bot walks straight (a
+    // corridor with one ramp); to the other floor it goes to the ramp first (straight down it, along the streets up).
+    const decks=city?.asset.viaducts;
+    if(city&&decks?.length){
+      const from=at.andar===1?1:0,goalFloor=to.andar===1?1:0;
+      if(goalFloor!==from){
+        const u=city.asset.unitsPerCell,v=decks.reduce((a,b)=>dist(floorPortal(a,u,goalFloor),at)<=dist(floorPortal(b,u,goalFloor),at)?a:b);
+        const portal=floorPortal(v,u,goalFloor);
+        if(from===1)return toward(at,portal);
+        const out={x:0,y:0},goal=botRoute(city,at,portal,out);
+        return goal===-2?undefined:goal<0?toward(at,portal):out;
+      }
+      if(from===1)return toward(at,to);
+    }
     const out={x:0,y:0},goal=city?botRoute(city,at,to,out,chase?memory[chase]??-1:-1):-1;
     if(goal===-2)return undefined;
     if(goal<0)return toward(at,to);
@@ -601,7 +629,8 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  if(input.combat==='manual'){
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;
@@ -913,7 +942,7 @@ function finish(decision:Decision,input:BrainInput):Decision{
     memory.unstickUntil=tick+.8*HZ;memory.lastMoveTick=tick;memory.lastPos=at;
     decision.direction=memory.unstick;decision.mode='unstick';return decision;
   }
-  decision.direction=clearPath(at,decision.direction,terrain);
+  decision.direction=clearPath(at,decision.direction,onFloor(terrain,at.andar));
   return decision;
 }
 

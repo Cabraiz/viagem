@@ -174,11 +174,12 @@ export class ChaveiroRenderer {
 
   /**
    * Card empurrar-uno: where the car is drawn (its centre and the heading of this frame) and who pushes it (the movers
-   * but the rope's holder), for the pushers' hands on it (push-contact.ts); undefined without a car.
+   * but the rope's holder), for the pushers' hands on it (push-contact.ts); undefined without a car. `puller` (puxar-uno-
+   * corda): the rope's holder while it moves the car (one of the movers), drawn pulling (pullDirection).
    */
-  carPose():{x:number;y:number;heading:number;pushers:readonly string[]}|undefined{
-    const car=this.state.view?.car;
-    return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope)};
+  carPose():{x:number;y:number;heading:number;pushers:readonly string[];puller?:string}|undefined{
+    const car=this.state.view?.car,puller=car?.rope!==undefined&&car.movers?.includes(car.rope)?car.rope:undefined;
+    return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope),...(puller!==undefined?{puller}:{})};
   }
 
   /**

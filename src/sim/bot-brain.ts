@@ -49,12 +49,15 @@
  * CAR_HELP_BOTS standing bots nearest to it (within CAR_HELP_RANGE, none on another task) lean on it and push the same
  * way (carHeading: the people's pull). The bot never picks where the car goes; with nobody moving it, nobody helps
  * (the sim also counts a bot only along with a person). The other bots fight around the car as before.
+ * Card puxar-uno-corda: the first helper takes the rope instead (task rope) when it is free, the car goes nose first
+ * (the heading within CAR_ROPE_BOT_DOT of the nose) and the rope's end is nearer to it than its spot behind the car:
+ * it walks to the end and on along the heading, the way a person takes it (the sim's gesture). The others push.
  * D-051 manual combat (BrainInput.combat 'manual'): the bot holds the attack (Decision.attack) whenever a critter is
  * within its equipped weapon's reach (attackReach) and never taps the skill; the room's auto aim picks the target. It
  * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {BASE_STATS,CAR_ID,CAR_PUSH_REACH,CAR_RADIUS,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import {BASE_STATS,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
@@ -160,6 +163,8 @@ export const PUSH_BOTS=2,PUSH_STAND=1.5;
  * within CAR_LEAN_DOT (cos) of the heading (the sim takes CAR_PUSH_DOT, .5).
  */
 export const CAR_HELP_BOTS=2,CAR_HELP_RANGE=20,CAR_LEAN=.5,CAR_SIDE=.6,CAR_LEAN_DOT=.8;
+/** puxar-uno-corda: a helper takes the rope only when the people take the car within this (cos) of its nose. */
+export const CAR_ROPE_BOT_DOT=.7;
 /**
  * D-047, a dead moto in the intermission (NEW-20261014-E2-chaveiro-time-cai-onda-4): the pushers go only when the trip
  * (to the moto, PUSH_TRIP_SECONDS there, back to the car; along the streets in the city) ends before the wave. The
@@ -273,7 +278,7 @@ export function homeOf(view:RunView,fallback:Point):Point{
   const w=view.structures.find(s=>s.kind==='muralha'||s.kind===CAR_ID);return w?{x:w.x,y:w.y}:fallback;
 }
 /** An objective task: 'carro' (D-052) also carries where the people take the car and the side this helper leans on. */
-export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;heading:Point;side:1|-1};
+export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;heading:Point;side:1|-1;rope?:{nose:Point;tip:Point;held:boolean}};
 /**
  * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
@@ -319,7 +324,22 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
     const helpers=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE))
       .slice(0,CAR_HELP_BOTS).map(p=>p.id);
     const i=helpers.indexOf(selfId);
-    if(i>=0)return {kind:'carro',at:car,heading,side:i===0?1:-1};
+    if(i>=0){
+      const task:ObjectiveTask={kind:'carro',at:car,heading,side:i===0?1:-1};
+      // puxar-uno-corda: one helper pulls when the rope is free (or on a helper already) and the car goes nose first:
+      // the helper holding it, else the one nearest to the rope's end among those it is nearer to than their spot
+      // behind the car.
+      const c=o.car,h=c.heading??0;
+      const forward=Math.cos(h)*heading.x+Math.sin(h)*heading.y>=CAR_ROPE_BOT_DOT;
+      if(forward&&(c.rope===undefined||helpers.includes(c.rope))){
+        const tip=ropeTip(c),behind={x:car.x-heading.x*(CAR_RADIUS+CAR_LEAN),y:car.y-heading.y*(CAR_RADIUS+CAR_LEAN)};
+        const at=(id:string)=>positionOf(ready.find(p=>p.id===id)!)!;
+        const puller=c.rope??helpers.filter(id=>dist(at(id),tip)<dist(at(id),behind)).sort((a,b)=>dist(at(a),tip)-dist(at(b),tip)||(a<b?-1:1))[0];
+        if(puller===selfId)task.rope={nose:carNose(c),tip,held:c.rope===selfId};
+        else if(puller!==undefined)task.side=helpers.filter(id=>id!==puller).indexOf(selfId)===0?1:-1;
+      }
+      return task;
+    }
   }
   return undefined;
 }
@@ -411,14 +431,15 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
 export function carHeading(view:Pick<RunView,'objective'|'players'>,bots:readonly string[]):Point|undefined{
   const car=view.objective?.car;
   if(!car?.movers?.length)return undefined;
-  let x=0,y=0;
+  let x=0,y=0;const nose=carNose(car);
   for(const id of car.movers){
     if(bots.includes(id))continue;
     const p=view.players.find(q=>q.id===id),at=p&&positionOf(p);
     if(!at)continue;
-    const d=dist(at,car);if(d<1e-6)continue;
+    // The rope pulls from the front bumper toward its holder (puxar-uno-corda); a pusher leans toward the centre.
+    const from=id===car.rope?nose:car,d=dist(at,from);if(d<1e-6)continue;
     const sign=id===car.rope?1:-1;
-    x+=sign*(at.x-car.x)/d;y+=sign*(at.y-car.y)/d;
+    x+=sign*(at.x-from.x)/d;y+=sign*(at.y-from.y)/d;
   }
   const n=norm({x,y});
   return n.x||n.y?n:undefined;
@@ -795,8 +816,14 @@ export function decide(input:BrainInput):Decision{
  *   (never at it) toward the back;
  * - near, outside the ring: to the ring's flank on its side, a little behind the body.
  */
-function carHelp(at:Point,task:{at:Point;heading:Point;side:1|-1},go:(to:Point,weight?:number,chase?:Chase)=>Point):Point{
+function carHelp(at:Point,task:Extract<ObjectiveTask,{kind:'carro'}>,go:(to:Point,weight?:number,chase?:Chase)=>Point):Point{
   const car=task.at,h=task.heading,d=dist(at,car);
+  if(task.rope){
+    // puxar-uno-corda: to the rope's end, then on along the heading past the rope's length (the sim takes it then).
+    const {nose,tip,held}=task.rope,ahead={x:nose.x+h.x*(CAR_ROPE+.6),y:nose.y+h.y*(CAR_ROPE+.6)};
+    if(held||dist(at,tip)<=CAR_PULL_REACH*.6)return norm({x:ahead.x-at.x+h.x,y:ahead.y-at.y+h.y});
+    return dist(at,tip)>CAR_HELP_NEAR?norm(go(tip,1,'carGoal')):toward(at,tip);
+  }
   const rx=at.x-car.x,ry=at.y-car.y,lean=d>1e-6?-(rx*h.x+ry*h.y)/d:0;
   if(d<=CAR_HELP_NEAR&&lean>=CAR_LEAN_DOT)return h;
   // Its side of the car's line (the task's side when on the line): left of the heading is (−h.y, h.x).

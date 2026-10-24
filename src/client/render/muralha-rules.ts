@@ -17,10 +17,16 @@ import {damageStage} from './stonewards-rules.ts';
 
 /**
  * Height of the junk wall: 1 = the delivered art's height (card muralha-mais-alta: drawn 1.5× the stone wall's, muro-pedra,
- * so the jokes read), 1.2 = 20 % taller. The only knob: it scales the pieces vertically only, so their ends still meet
+ * so the jokes read), 1.2 = 20 % taller. It scales the pieces vertically only, so their ends still meet
  * the cell edges (past ~1.2 the art looks stretched: ask E3 for taller pieces).
  */
 export const MURALHA_ALTURA=1;
+/**
+ * Thickness of the junk wall (barricada-grossura-e-contorno, user 24/10: "mais gordinha", not longer): each straight
+ * piece is drawn twice, this share of the square's side behind the wall's line and in front of it (muralha.ts
+ * TRALHA_SHEETS.thick). 0 = the delivered art's thickness. The sim blocks the whole square, which spans it.
+ */
+export const MURALHA_GROSSURA=.12;
 /** Pieces in the sheets (meta.pecas): straight ones and pillars. */
 export const MURALHA_RETOS=10;
 export const MURALHA_PILARES=3;
@@ -83,6 +89,29 @@ export function muralhaPlan(s:MuralhaSquare,cells:ReadonlySet<string>,counts:Mur
   out.push({kind:'pilar',piece:pilarOf(c,r,pilares)});
   return out;
 }
+
+/**
+ * barricada-grossura-e-contorno (user, 24/10): the walls the squares make, by cellKey: squares touching on a side (`step`
+ * cells away) share a group number, so a whole wall wears one gold outline (usable-glow.ts WallGlow), with no seam where
+ * its squares meet.
+ */
+export function muralhaGroups(cells:ReadonlySet<string>,step=1):Map<string,number>{
+  const group=new Map<string,number>();
+  let next=0;
+  for(const start of cells){
+    if(group.has(start))continue;
+    const id=next++,stack=[start];group.set(start,id);
+    while(stack.length){
+      const [c,r]=stack.pop()!.split(',').map(Number);
+      for(const [dc,dr] of SIDES){
+        const key=cellKey(c+dc*step,r+dr*step);
+        if(cells.has(key)&&!group.has(key)){group.set(key,id);stack.push(key);}
+      }
+    }
+  }
+  return group;
+}
+const SIDES=[[1,0],[-1,0],[0,1],[0,-1]] as const;
 
 /** The damage row of a square by its life (undefined once down: nothing is drawn). */
 export function muralhaEstado(hp:number,maxHp:number):MuralhaEstado|undefined{

@@ -38,13 +38,19 @@ try{
   await p.evaluate(()=>document.getElementById('enter-island').click());
   await p.waitForFunction(()=>window.__partidaPronta===true,null,{timeout:300000,polling:1000});
   await sleep(6000);
+  // The level-up pause (D-050) holds the room: "Levar os indicados" whenever its window shows.
+  const takeOffer=()=>p.evaluate(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.offsetParent&&/Levar os indicados/.test(x.textContent??''));b?.click();return !!b;});
   const send=m=>p.evaluate(m=>{const s=window.__island.scene.hooks.net.socket;if(s?.readyState===1)s.send(JSON.stringify(m));},m);
-  const state=()=>p.evaluate(()=>{const net=window.__island.scene.hooks.net,feed=net.feed;
-    const me=net.predicted;let near=0;for(const e of feed.enemies.values())if(e.hp>0&&Math.hypot(e.x-me.x,e.y-me.y)<7)near++;
-    const notes=[...feed.pickups.values()].filter(x=>x.kind==='grana').map(x=>({x:x.x,y:x.y,value:x.value}));
+  const state=()=>p.evaluate(()=>{const net=window.__island.scene.hooks.net,view=net.feed.peek();
+    const me=net.predicted;let near=0;for(const e of view.enemies)if(e.hp>0&&Math.hypot(e.x-me.x,e.y-me.y)<12)near++;
+    const notes=view.pickups.filter(x=>x.kind==='grana').map(x=>({x:x.x,y:x.y,value:x.value}));
     return {me:{x:me.x,y:me.y},near,notes,grana:net.camp?.grana??null};});
-  // Wait for a crowd around the hero.
-  for(let i=0;i<60;i++){const s=await state();if(s.near>=6)break;await sleep(500);}
+  // Wait for a crowd around the hero (on screen: within 12 u). A level-up pause (D-050) holds the room and the lab horde:
+  // take the offer whenever its window shows.
+  for(let i=0;i<120;i++){
+    await takeOffer();
+    const s=await state();if(s.near>=6)break;await sleep(500);
+  }
   console.log('before',JSON.stringify(await state()));
   // Screencast: every frame with its timestamp.
   const cdp=await ctx.newCDPSession(p);const frames=[];
@@ -54,10 +60,17 @@ try{
   const t0=Date.now()/1000;
   await send({t:'lab',wipe:true});
   const marks=[{what:'wipe',t:t0}];
-  await sleep(2600);
-  const mid=await state();console.log('after 2.6 s',JSON.stringify(mid));
+  // The kills' XP may open another pause: the cédulas come 1 s of play after it closes.
+  let mid;for(let i=0;i<80;i++){await takeOffer();mid=await state();if(mid.notes.length)break;await sleep(250);}
+  await sleep(1600);mid=await state();console.log('after 2.6 s',JSON.stringify(mid));
   // Walk over the notes (lab moves), collecting them.
-  for(const n of mid.notes.slice(0,6)){await send({t:"lab",to:{x:n.x+1.3,y:n.y}});await sleep(700);}
+  // Beside each note (out of the magnet's 1.6 u: it spins on screen), then onto it (the magnet takes it).
+  const marksWalk=[];
+  for(const n of mid.notes.slice(0,4)){
+    await takeOffer();await send({t:"lab",to:{x:n.x+3.5,y:n.y}});marksWalk.push({what:'beside',t:Date.now()/1000});await sleep(1400);
+    await send({t:"lab",to:{x:n.x+.8,y:n.y}});marksWalk.push({what:'take',t:Date.now()/1000});await sleep(900);
+  }
+  marks.push(...marksWalk);
   await sleep(1200);
   await cdp.send('Page.stopScreencast');
   const end=await state();console.log('end',JSON.stringify(end));

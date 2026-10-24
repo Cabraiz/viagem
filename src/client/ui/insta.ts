@@ -75,8 +75,9 @@ export const gradeUrls=(id:string,liberado:boolean):string[]=>liberado?[1,2,3].m
 export const postUrl=(id:string,i:number)=>instaUrl(`post-${id}-${i+1}`);
 /** The top bar's logo: the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil). */
 export const logoUrl=(id:string)=>instaUrl(`logo-${id}`);
-/** The stories: every other hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). */
-export const storiesOf=(selectedId:string,ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>p.id!==selectedId&&ids.includes(p.id));
+/** The rings row: every hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). The chosen one
+ *  stays in it, marked (BUG-20261024-ORQ-aneis-herois-carrossel-infinito): a pick never reshuffles the row under the finger. */
+export const aneisOf=(ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>ids.includes(p.id));
 
 /**
  * The handle's size (insta.css: 64 card px of 734): the column beside the photo holds 335, 275 of them for the text
@@ -107,12 +108,16 @@ export const LINHA={
 // The bar is in the page from the start with no logo: main.ts renderInsta sets it, so the stadium never downloads one.
 export const barraHtml=()=>`<header class="insta-barra"><img class="insta-logo" alt="" decoding="async" draggable="false"><span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
 
-/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. */
-export function storyHtml(p:InstaPerfil,liberado:boolean):string{
-  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
+/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. A `copia` is
+ *  the endless row's second set (ui/insta-aneis.ts): tappable, but hidden from screen readers and out of the tab order. */
+export function storyHtml(p:InstaPerfil,liberado:boolean,copia=false):string{
+  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'}${copia?' aria-hidden="true" tabindex="-1"':''} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
     `<span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false">${liberado?'':img('icone-cadeado','insta-cadeado')}</span>`+
     `<span class="insta-story-nome">${esc(p.nome)}</span></button>`;
 }
+/** The rings row's track: the rings, then (`loop`: more than fit) the same rings again for the endless row. */
+export const aneisHtml=(perfis:readonly InstaPerfil[],liberado:(id:string)=>boolean,loop:boolean)=>
+  `<div class="insta-aneis-trilho">${perfis.map(p=>storyHtml(p,liberado(p.id))).join('')}${loop?perfis.map(p=>storyHtml(p,liberado(p.id),true)).join(''):''}</div>`;
 
 /**
  * The profile: photo with the badge, @handle with the badge, followers | following, the bio. A released hero's photo is

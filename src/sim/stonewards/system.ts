@@ -34,7 +34,8 @@ import {createWall,damageWall,placeWall,siegeStep,WALL_MAX_HP} from './wall.ts';
 import {blockingCity,createBarricades,damageBarricade,findBarricade,raiseDue,syncBarricades} from './barricades.ts';
 import {cityCrateValue,hasTeamLoot,teamLootValue,type CityBalance} from '../city/balance.ts';
 import {build as buildDefense,buildFree,damageDefense,defenseTargets,defensesStep,repair as repairDefense,upgrade as upgradeDefense,type FreeBuildContext,type TowerResult} from '../towers/system.ts';
-import {coletaStep,coletar as coletarTralha,destruir as destruirTralha,placeTralha,type ColetaOutcome} from '../towers/tralha.ts';
+import {coletaStep,coletar as coletarTralha,destruir as destruirTralha,placeTralha,type ColetaOutcome,type TralhaKind} from '../towers/tralha.ts';
+import {placeBarracas} from '../towers/barracas.ts';
 import {clearPieces,damagePiece,isPiece,pieceTargets,syncPieces,unoAlertStep,type FreeBuildHooks,type FreeOrder} from '../towers/free-build.ts';
 import {buildPlanFor,type BuildPlan} from '../towers/sites.ts';
 
@@ -115,10 +116,11 @@ export interface StonewardsOptions {
   freeBuild?:FreeBuildHooks;
   /**
    * barricada-construir part 2 (towers/tralha.ts): with the free build and a car, the map's barricadas are laid on the
-   * first step; `give` hands a collected square to the hero (a kit:barricada; false: no room), `carrying` counts the
-   * kits a hero has (CARREGA_MAX). Absent: no tralha (tests, the wall mode).
+   * first step, then the barracas (towers/barracas.ts, NEW-20261023-ORQ-barracas-no-caminho); `give` hands a collected
+   * piece to the hero (the kit of its kind; false: no room), `carrying` counts the kits a hero has (CARREGA_MAX).
+   * Absent: no tralha (tests, the wall mode).
    */
-  tralha?:{give(p:SimPlayer):boolean;carrying(p:SimPlayer):number};
+  tralha?:{give(p:SimPlayer,kind:TralhaKind):boolean;carrying(p:SimPlayer):number};
   /**
    * D-051 mode 'ninhos' (assemble.ts; card ninhos-rounds-fora): no intermission. The forge and the towers' orders open
    * through `gate` (ninhos/calma.ts: no critter awake near the player), the crates are gathered at any time and the
@@ -390,10 +392,13 @@ export function createStonewardsSystem(options:StonewardsOptions,state=createSto
       if(!state.wallDown){towerStep(ctx,state);defensesStep(ctx,state);if(contact)siegeStep(ctx,state);}
       // NEW-20261021-ORQ-barricada-construir: the car near a barricada sounds its alert; 6 s later, still near, it falls.
       if(!state.wallDown&&free?.car)unoAlertStep(ctx,options.terrain,state,free.car(ctx.tick),free.onTerrainChanged);
-      // barricada-construir part 2: the map's barricadas (once), then the coletas.
+      // barricada-construir part 2: the map's barricadas and barracas (once), then the coletas.
       if(options.tralha&&free?.car){
         const city=blockingCity(options.terrain),car=free.car(ctx.tick);
-        if(city&&car&&!state.defenses?.tralha?.placed)placeTralha(ctx,state,{city,car,moto:free.moto?.(ctx.tick),nests:free.nests?.(ctx.tick),onTerrainChanged:free.onTerrainChanged});
+        if(city&&car&&!(state.defenses?.tralha?.placed&&state.defenses.tralha.barracas)){
+          const world={city,car,moto:free.moto?.(ctx.tick),nests:free.nests?.(ctx.tick),onTerrainChanged:free.onTerrainChanged};
+          placeTralha(ctx,state,world);placeBarracas(ctx,state,world);
+        }
         const give=options.tralha.give;
         coletaOutcomes.push(...coletaStep(ctx,options.terrain,state,give,free.onTerrainChanged));
       }

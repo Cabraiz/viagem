@@ -22,7 +22,7 @@ import {cityLoot} from './stonewards/loot.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
-import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
+import {MURO_BLOCK_R,bashedAlways,blockingPieces,heroSlow,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
 import {holdsObra} from './towers/system.ts';
 import type {StonewardsState} from './stonewards/state.ts';
 import {createZueira,type ZueiraLab,type ZueiraState,type ZueiraSystem} from './zueira.ts';
@@ -288,9 +288,10 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // D-052 free build in every city run: the car's body, the moto and the living nests (D-051) the pieces keep clear
     // of (the chaveiro and the nests, created below; the wall mode has none of them).
     // barricada-construir part 2: the map's barricadas, collected into the inventory's kit:barricada (manual combat).
+    // NEW-20261023-ORQ-barracas-no-caminho: a barraca gives a kit:barraca; the hands hold one of either (CARREGA_MAX).
     ...(objective&&manual?{tralha:{
-      carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')?w.level:0),0),
-      give:(p:SimPlayer)=>{const own=p.build.weapons.find(w=>w.id===kitId('barricada'));if(own){own.level++;return true;}return addItem(p,{id:kitId('barricada'),level:1});},
+      carrying:(p:SimPlayer)=>p.build.weapons.reduce((n,w)=>n+(w.id===kitId('barricada')||w.id===kitId('barraca')?w.level:0),0),
+      give:(p:SimPlayer,kind:'barricada'|'barraca')=>{const id=kitId(kind),own=p.build.weapons.find(w=>w.id===id);if(own){own.level++;return true;}return addItem(p,{id,level:1});},
     }}:{}),
     ...(cityWorld?{freeBuild:objective?{
       car:()=>{const t=chaveiro?.targets().find(o=>o.id===CAR_ID);return t?{x:t.x,y:t.y,radius:t.radius}:undefined;},
@@ -331,7 +332,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     drag:e=>pieceDrag(stonewards.state,e),
     // NEW-20261021-ORQ-barricada-construir: a built piece is bashed only by a body cut off from the car (the wall's
     // spot without one); with a way around, the bodies walk it (the flow fields already route around the blockers).
-    ...(reach?{bashes:(e:EnemyState,id:string)=>!isPiece(stonewards.state,id)||!reach(e,chaveiro?.targets().find(o=>o.id===CAR_ID)??stonewards.state.wall)}:{}),
+    // NEW-20261023-ORQ-barracas-no-caminho: a barraca is bashed by every body pressed against it (the field leads through).
+    ...(reach?{bashes:(e:EnemyState,id:string)=>!isPiece(stonewards.state,id)||bashedAlways(stonewards.state,id)||!reach(e,chaveiro?.targets().find(o=>o.id===CAR_ID)??stonewards.state.wall)}:{}),
     structures:()=>chaveiro?[...chaveiro.targets(),...structureTargets(stonewards.state,false)]:structureTargets(stonewards.state),
     hitStructure:(ctx,id,amount,enemy)=>{
       if(chaveiro&&id===CAR_ID)chaveiro.hitCar(ctx,enemy);
@@ -488,7 +490,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
-      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id))),
+      // NEW-20261023-ORQ-barracas-no-caminho: and at half the step while on a barraca.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),at=>heroSlow(stonewards.state,at))),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,

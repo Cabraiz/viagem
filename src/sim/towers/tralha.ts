@@ -12,6 +12,8 @@
  *   or the square going first cancels. Done: the square is removed and the hero gets a kit:barricada (the kit's place
  *   builds it again, free, every free-build rule). CARREGA_MAX kits at most ('cheio'); one coleta per hero and per square.
  *   The outcomes of the tick are drained by the room ({t:'coleta'} to the collector).
+ * NEW-20261023-ORQ-barracas-no-caminho: the map's barracas (towers/barracas.ts) are collected and destroyed the same way;
+ * the coleta gives the kit of the piece's kind (kit:barraca).
  * Everything here is JSON-safe in TowersState.tralha (checkpoints, stateHash).
  */
 import {type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
@@ -28,7 +30,11 @@ export const TRALHA_OWNER='mapa';
 export const TRALHA_PREFIX='tralha';
 export type TralhaRefusal='player'|'nada'|'longe'|'cheio'|'ocupado';
 export interface Coleta {player:string;piece:string;until:number;hp:number;req?:number}
-export interface TralhaState {placed?:true;coletas?:Coleta[]}
+/** `barracas`: the map's barracas were laid (towers/barracas.ts placeBarracas). */
+export interface TralhaState {placed?:true;barracas?:true;coletas?:Coleta[]}
+/** The map pieces a hero collects or destroys (the barricada de tralha, the barraca). */
+export type TralhaKind='barricada'|'barraca';
+export const isTralhaKind=(kind:string):kind is TralhaKind=>kind==='barricada'||kind==='barraca';
 /** A coleta that ended this tick: done (the kit given) or why not. */
 export interface ColetaOutcome {player:string;piece:string;req?:number;ok:boolean;reason?:'apanhou'|'longe'|'sumiu'|'caiu'|'cheio'}
 
@@ -79,10 +85,10 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
   return laid;
 }
 
-/** The barricada square `id` a standing hero reaches, or why not. */
+/** The barricada square or barraca `id` a standing hero reaches, or why not. */
 function reachable(state:StonewardsState,p:SimPlayer|undefined,id:string):{piece:PieceState;index:number}|TralhaRefusal{
   if(!p||p.spectator||!isStanding(p))return 'player';
-  const list=tralhaOf(state)?.pieces??[],index=list.findIndex(q=>q.id===id&&q.kind==='barricada');
+  const list=tralhaOf(state)?.pieces??[],index=list.findIndex(q=>q.id===id&&isTralhaKind(q.kind));
   if(index<0)return 'nada';
   if(gap(pieceRectOf(list[index]),p)>TRALHA_REACH)return 'longe';
   return {piece:list[index],index};
@@ -116,9 +122,9 @@ export const coletasOf=(state:StonewardsState):readonly Coleta[]=>tralhaOf(state
 
 /**
  * Runs the coletas: cancelled by a hit, by walking out of reach, by falling or when the square is gone; done at `until`
- * (the square removed, `give` hands the kit: false = no room, 'cheio'). Returns this tick's outcomes.
+ * (the square removed, `give` hands the kit of its kind: false = no room, 'cheio'). Returns this tick's outcomes.
  */
-export function coletaStep(ctx:SimContext,terrain:TerrainField|undefined,state:StonewardsState,give:(p:SimPlayer)=>boolean,onTerrainChanged?:(rect:CellRect)=>void):ColetaOutcome[]{
+export function coletaStep(ctx:SimContext,terrain:TerrainField|undefined,state:StonewardsState,give:(p:SimPlayer,kind:TralhaKind)=>boolean,onTerrainChanged?:(rect:CellRect)=>void):ColetaOutcome[]{
   const t=tralhaOf(state)?.tralha,list=t?.coletas;
   if(!list?.length)return [];
   const out:ColetaOutcome[]=[];
@@ -130,7 +136,7 @@ export function coletaStep(ctx:SimContext,terrain:TerrainField|undefined,state:S
     if(got==='longe'||typeof got==='string'){end(c,false,'longe');return false;}
     if(p!.hp<c.hp){end(c,false,'apanhou');return false;}
     if(ctx.tick<c.until)return true;
-    if(!give(p!)){end(c,false,'cheio');return false;}
+    if(!give(p!,got.piece.kind as TralhaKind)){end(c,false,'cheio');return false;}
     tralhaOf(state)!.pieces!.splice(got.index,1);
     setMuro(terrain,got.piece,true,onTerrainChanged);
     ctx.emit({type:'structure',id:c.piece,hp:0,maxHp:got.piece.maxHp});

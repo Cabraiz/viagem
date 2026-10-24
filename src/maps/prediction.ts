@@ -94,6 +94,16 @@ export function capStep(from:Point,to:Point,cap:number|undefined,terrain:Terrain
   const q={x:from.x+(to.x-from.x)*cap/moved,y:from.y+(to.y-from.y)*cap/moved};
   return walkable(q,terrain)?q:{x:from.x,y:from.y};
 }
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho: a hero on a barraca walks `factor` (< 1) of the step from `from` to `to`, along
+ * its own line (kept in place if that point is not walkable); 1 or more leaves it whole. The room's players system and
+ * the phone's replay.
+ */
+export function slowStep(from:Point,to:Point,factor:number,terrain:TerrainField=defaultTerrain):Point{
+  if(!(factor<1))return to;
+  const f=Math.max(0,factor),q={x:from.x+(to.x-from.x)*f,y:from.y+(to.y-from.y)*f};
+  return walkable(q,terrain)?q:{x:from.x,y:from.y};
+}
 /** D-052: the cap of a hero among the car's movers (the room's moverCap, chaveiro/car.ts), else undefined (free). */
 export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):number|undefined{
   return car?.movers?.includes(id)?carSpeed(car.movers.length)/SIM_HZ:undefined;

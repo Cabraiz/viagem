@@ -39,7 +39,8 @@ function rig(seed=7){
   const sys=createStonewardsSystem({terrain,siegeContact:false,barricades:false,freeBuild:{car:()=>({...CAR,radius:CAR_R})},
     tralha:{carrying:kits,give:p=>{p.build.weapons.push({id:'kit:barricada',level:1});return true;}}});
   sys.step(ctx);
-  const squares=()=>(sys.state.defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER);
+  // barracas-no-caminho: the map's barracas (owner TRALHA_OWNER too) are another card's.
+  const squares=()=>(sys.state.defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER&&p.kind==='barricada');
   const stand=(id:string)=>{const p=squares().find(q=>q.id===id)!;ana.x=p.x+FREE_CELL;ana.y=p.y;};
   return {terrain,ctx,sys,ana,events,squares,stand,kits};
 }
@@ -48,7 +49,7 @@ test('the map\'s barricadas: laid once, rows away from the car, blockers that ne
   const g=rig(),laid=g.squares();
   assert.ok(laid.length>=TRALHA_GROUPS,`laid ${laid.length}`);
   assert.ok(laid.length<=TRALHA_GROUPS*TRALHA_GROUP_CELLS);
-  assert.equal(g.terrain.blockers().length,laid.length,'one blocker each');
+  assert.equal(g.terrain.blockers().filter(b=>!b.soft).length,laid.length,'one blocker each');
   // barricada-2x: 2×2 squares, the ones of a row side by side (2 cells apart, never overlapping).
   for(const p of laid)assert.deepEqual(pieceCells(p.kind),[2,2]);
   for(let i=1;i<laid.length;i++){

@@ -190,6 +190,8 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
+  // NEW-20261023-ORQ-barracas-no-caminho: the barraca's kit (KIT_IDS' end) and the barraca among the structures' kinds.
+  'kit:barraca','barraca',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;

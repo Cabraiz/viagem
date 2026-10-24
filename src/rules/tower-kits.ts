@@ -17,7 +17,7 @@ export const KIT_PREFIX='kit:';
 /** A crate gives a kit (of its rarity's tier) instead of its row's prize this often. */
 export const KIT_CHANCE=.25;
 /** Charges of a wall kit (each `place` lays one piece); a tower kit has one. */
-export const KIT_CHARGES:Readonly<Record<FreePiece,number>>=Object.freeze({muro:6,barricada:2});
+export const KIT_CHARGES:Readonly<Record<FreePiece,number>>=Object.freeze({muro:6,barricada:2,barraca:1});
 /** What a kit may build: every tower that stands on the grid (not the rail's Gustavão) and the wall pieces. */
 export type KitPiece=Exclude<DefenseId,'gustavao'>|FreePiece;
 const TOWER_KITS=DEFENSE_IDS.filter(id=>DEFENSES[id].size!==null) as Exclude<DefenseId,'gustavao'>[];
@@ -30,15 +30,17 @@ export const KIT_POOL:Readonly<Record<1|2|3|4|5,readonly KitPiece[]>>=Object.fre
   5:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===5)),
 });
 /** Every kit item id, in a fixed order (the protocol's DICT appends them). */
-export const KIT_IDS:readonly string[]=Object.freeze([...TOWER_KITS,'muro','barricada'].map(p=>`${KIT_PREFIX}${p}`));
+export const KIT_IDS:readonly string[]=Object.freeze([...TOWER_KITS,'muro','barricada','barraca'].map(p=>`${KIT_PREFIX}${p}`));
 const KIT_SET=new Set(KIT_IDS);
 
+/** A wall piece's kit (muro, barricada, barraca): its charges are KIT_CHARGES. */
+export const isWallKit=(piece:BuildPiece):piece is FreePiece=>piece==='muro'||piece==='barricada'||piece==='barraca';
 export const kitId=(piece:KitPiece)=>`${KIT_PREFIX}${piece}`;
 export const isKitId=(id:unknown):id is string=>typeof id==='string'&&KIT_SET.has(id);
 /** The piece a kit id builds, or undefined for anything else. */
 export const kitPiece=(id:unknown):KitPiece|undefined=>isKitId(id)?id.slice(KIT_PREFIX.length) as KitPiece:undefined;
 /** A fresh kit item: its charges as the level. */
-export const kitItem=(piece:KitPiece)=>({id:kitId(piece),level:piece==='muro'||piece==='barricada'?KIT_CHARGES[piece]:1});
+export const kitItem=(piece:KitPiece)=>({id:kitId(piece),level:isWallKit(piece)?KIT_CHARGES[piece]:1});
 /** The rarity a kit shows (its tower's tier; the wall pieces verde). */
-export const kitRarity=(piece:KitPiece):1|2|3|4|5=>piece==='muro'||piece==='barricada'?1:Math.min(5,DEFENSES[piece].tier) as 1|2|3|4|5;
-export const isTowerKit=(piece:BuildPiece):piece is Exclude<DefenseId,'gustavao'>=>piece!=='muro'&&piece!=='barricada'&&piece!=='gustavao';
+export const kitRarity=(piece:KitPiece):1|2|3|4|5=>isWallKit(piece)?1:Math.min(5,DEFENSES[piece].tier) as 1|2|3|4|5;
+export const isTowerKit=(piece:BuildPiece):piece is Exclude<DefenseId,'gustavao'>=>!isWallKit(piece)&&piece!=='gustavao';

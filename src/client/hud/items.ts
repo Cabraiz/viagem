@@ -4,7 +4,7 @@
  * without bundling the server modules); blurbs stay short so three lines fit a portrait card. Unknown ids fall back to a readable label.
  */
 import {isStickerName,type StickerName} from '../ui/sticker.ts';
-import {DEFENSES,KIT_CHARGES,KIT_IDS,kitPiece} from '../../rules/index.ts';
+import {DEFENSES,FREE_PIECE_DEFS,KIT_CHARGES,KIT_IDS,isWallKit,kitPiece} from '../../rules/index.ts';
 
 /** snack: one-shot choices that never enter the build (the coxinha offered when the build is full). */
 export type ItemDisplayKind='weapon'|'passive'|'evolution'|'snack';
@@ -96,8 +96,8 @@ const items:ItemDisplay[]=[
 ];
 // Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, Construir puts it ahead of the hero (hud/kit-place).
 for(const id of KIT_IDS){
-  const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
-  const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;
+  const piece=kitPiece(id)!,wall=isWallKit(piece);
+  const name=wall?FREE_PIECE_DEFS[piece].name:DEFENSES[piece].name;
   items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
     blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
 }

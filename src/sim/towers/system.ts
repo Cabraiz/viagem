@@ -261,14 +261,15 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     const piece=order.piece,rot=order.rot===1?1:0,wall=isFreePiece(piece);
     if(!wall&&piece!==ROOT_DEFENSE&&!(kit&&isTowerKit(piece)))return {ok:false,reason:'defense'};
     // barricada-construir part 2: a barricada is never bought, only placed from a collected kit (towers/tralha.ts).
-    if(piece==='barricada'&&!kit)return {ok:false,reason:'defense'};
+    // NEW-20261023-ORQ-barracas-no-caminho: so is a barraca (collected from the map).
+    if((piece==='barricada'||piece==='barraca')&&!kit)return {ok:false,reason:'defense'};
     const [w,h]=pieceCells(piece,rot),cell={c:order.c,r:order.r};
     if(!onGround(city,cell,w,h))return {ok:false,reason:'fora'};
     const rect=pieceRect(cell,w,h);
     for(const n of free.nests?.(ctx.tick)??[])if(rectDistance(rect,n)<CAR_NEST_KEEP_OUT)return {ok:false,reason:'ninho'};
     const car=free.car?.(ctx.tick);
     // NEW-20261021-ORQ-barricada-construir: a barricada keeps UNO_BUILD_CELLS cells off the car's body.
-    if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
+    if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'||piece==='barraca'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
     if(!withinReach(rect,p))return {ok:false,reason:'away'};

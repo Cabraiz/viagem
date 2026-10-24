@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,moveStep,slipping,type Point} from '../../maps/index.ts';
+import {capStep,moveStep,slipping,slowStep,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -51,9 +51,10 @@ export interface ManualCombat {attacking:Set<string>}
  * an offline player the room plays meanwhile (3g-rede-sem-teleporte): it walks on the room's inputs, whose seq is not
  * the person's (their ack stays where their own inputs left it). `stepCap` (D-052, the chaveiro's car): the most a player
  * may walk this tick (u), undefined for free; the step is cut along its own line (kept in place if that point is not walkable).
+ * `stepSlow` (NEW-20261023-ORQ-barracas-no-caminho): the step's multiplier from where the hero stands (a barraca: ×0.5).
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
-  stepCap?:(playerId:string)=>number|undefined):SimSystem{
+  stepCap?:(playerId:string)=>number|undefined,stepSlow?:(at:Point)=>number):SimSystem{
   return {id:'players',step(ctx){
     manual?.attacking.clear();
     for(const player of ctx.players.values()){
@@ -74,7 +75,9 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         const x0=p.x,y0=p.y;
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        const q=capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain);p.x=q.x;p.y=q.y;
+        const capped=capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain);
+        // NEW-20261023-ORQ-barracas-no-caminho: then the barraca's slow, from where the step started (maps slowStep).
+        const q=slowStep({x:x0,y:y0},capped,stepSlow?.({x:x0,y:y0})??1,ctx.terrain);p.x=q.x;p.y=q.y;
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;

@@ -11,7 +11,7 @@
  * their own (see citySteer). Everything here is for enemies, so it reads the terrain through `enemyTerrain` (the
  * barricades' blocker discs are solid for enemies only; heroes walk through them).
  */
-import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
+import {DIRS,FlowField,RADIUS,STRAIGHT_COST,UNREACHABLE,enemyTerrain,flowTerrain,walkable,type CellRect,type CityTerrain,type FlowGrid,type FlowPoint,type Point,type TerrainField} from '../../maps/index.ts';
 import {CITY_MAP_SCALE,SCALE_PROFILES,enemySpeed} from '../../rules/index.ts';
 import type {EnemyState,SimPlayer} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
@@ -45,7 +45,8 @@ export function cityTerrainOf(terrain:TerrainField|undefined):CityTerrain|undefi
 
 /** Walkable cells of the city at asset.unitsPerCell, by the hero rule at each cell centre (see the module doc). */
 export function cityFlowGrid(city:CityTerrain):CityFlowGrid{
-  const terrain=enemyTerrain(city), asset=terrain.asset, width=asset.cells.w, height=asset.cells.h, cellSize=asset.unitsPerCell;
+  // The barracas' soft blockers are not walls here (flowTerrain): the field leads through, the bodies bash them.
+  const terrain=flowTerrain(city), asset=terrain.asset, width=asset.cells.w, height=asset.cells.h, cellSize=asset.unitsPerCell;
   const cells=new Uint8Array(width*height), probe={x:0,y:0};
   const read=(x0:number,y0:number,x1:number,y1:number)=>{
     for(let cy=y0;cy<=y1;cy++)for(let cx=x0;cx<=x1;cx++){
@@ -260,7 +261,7 @@ export function citySteer(planner:AvenuePlanner&{readonly grid?:FlowGrid},opts:C
    * fits such a body only along its middle line, on the corners). The steer follows the cheaper of the two.
    */
   const wideLayers=(city:CityTerrain,k:number)=>{
-    const terrain=enemyTerrain(city), radius=WIDE_RADII[k], g=grid!, cs=g.cellSize;
+    const terrain=flowTerrain(city), radius=WIDE_RADII[k], g=grid!, cs=g.cellSize;
     return (radius<half?[0]:[0,half]).map(shift=>{
       const ox=(g.originX??0)-shift, oy=(g.originY??0)-shift, extra=shift?1:0;
       const on:FlowGrid={width:g.width+extra,height:g.height+extra,cellSize:cs,originX:ox,originY:oy,

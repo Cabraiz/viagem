@@ -160,6 +160,11 @@ export interface FreePieceDef {
   buildSeconds:number;
   /** True: solid to the enemies (the muro); false: they walk over it, slowed by `drag`. */
   blocks:boolean;
+  /**
+   * NEW-20261023-ORQ-barracas-no-caminho: a SOFT block (the barraca): solid to the enemies' bodies, unseen by their
+   * flow field, so the ones going to the Uno walk straight into it and bash it (always, not only when cut off).
+   */
+  soft?:true;
   /** Speed multiplier of an enemy standing on it (1: none). */
   drag:number;
 }
@@ -170,6 +175,10 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
   // NEW-20261022-ORQ-barricada-2x (user, 22/10): a square is BARRICADA_CELLS × BARRICADA_CELLS cells (2×2, twice as wide,
   // long and tall as before); its life stays 200 (one square, just bigger).
   barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  // NEW-20261023-ORQ-barracas-no-caminho (user, 23/10): the feira's barraca, rows of them across streets on the map;
+  // never bought (collected from the map and placed again from its kit, like the barricada). A soft block: the
+  // enemies bash it on their way to the Uno; the heroes walk through it at BARRACA_HERO_SLOW.
+  barraca:Object.freeze({id:'barraca',name:'Barraca',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:240,limit:40,buildSeconds:1,blocks:true,soft:true,drag:1}),
 });
 /**
  * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
@@ -187,7 +196,17 @@ export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
 export const TRALHA_GROUPS=6,TRALHA_GROUP_CELLS=5,COLETAR_SECONDS=1.5,DESTRUIR_PIX=2,CARREGA_MAX=1;
 /** How far (u, from the square's edge) a hero reaches a barricada square to collect or destroy it. */
 export const TRALHA_REACH=3;
-export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
+export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada'||v==='barraca';
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho: the map's rows of barracas "de ponta a ponta". BARRACA_ROWS rows are laid from
+ * the run's rng at the start, each across a street on the line from the car to a spawn (BARRACA_ROW_AT of the way),
+ * up to BARRACA_ROW_MAX squares from wall to wall; a row never shuts the car off a spawn or the moto. A hero whose
+ * body is on a barraca walks at BARRACA_HERO_SLOW × the step. Coletar/destruir and the kit as the barricada de tralha.
+ */
+export const BARRACA_ROWS=3,BARRACA_ROW_MAX=8,BARRACA_HERO_SLOW=.5;
+export const BARRACA_ROW_AT:readonly [number,number]=Object.freeze([.35,.7]) as readonly [number,number];
+/** The lonas the art has (public/art/city/base/barraca.webp rows lona-1..3): a barraca's lona from its id. */
+export const BARRACA_LONAS=3;
 /** NEW-20261022-ORQ-barricada-2x: the side of a barricada square in build-grid cells (its footprint is square). */
 export const BARRICADA_CELLS=FREE_PIECE_DEFS.barricada.footprint[0];
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */

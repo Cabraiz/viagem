@@ -11,6 +11,9 @@
  * ENEMIES only: the terrain itself (clearDisc, hence land/walkable/moveDirection for the heroes, the room bots and the
  * client prediction) ignores them; its `forEnemies()` view (`enemyTerrain` below: enemy movement, the flow grid) treats
  * a blocker disc as solid ground: a body disc overlapping it is not clear, touching it is.
+ * Soft blockers (NEW-20261023-ORQ-barracas-no-caminho, the barracas): solid to the enemies' bodies like the others, but
+ * the `forFlow()` view (the enemies' flow grid, `flowTerrain` below) does not see them: the field leads straight
+ * through, the body is stopped against the disc and bashes it.
  */
 import type {CityAsset,CityPoint} from '../city-asset.ts';
 import {checkCityHash,decodeCityAsset} from '../city-asset.ts';
@@ -58,7 +61,7 @@ function freeSquaresOf(asset:CityAsset):Uint8Array{
 }
 
 /** A blocking disc on a CityTerrain fork (world units): `id` names it (e.g. 'barricada-N'). */
-export interface CityBlocker {readonly id:string;readonly x:number;readonly y:number;readonly r:number}
+export interface CityBlocker {readonly id:string;readonly x:number;readonly y:number;readonly r:number;readonly soft?:true}
 
 export class CityTerrain {
   readonly asset:CityAsset;
@@ -79,6 +82,8 @@ export class CityTerrain {
   /** Active blocker discs by id; `sorted` caches blockers() until the next change. */
   private readonly blocking=new Map<string,CityBlocker>();
   private sorted:readonly CityBlocker[]=Object.freeze([]);
+  /** The hard ones of `sorted` (no soft flag): what the flow view sees. */
+  private hard:readonly CityBlocker[]=Object.freeze([]);
   /** Box around every blocker disc (world units; empty when none): `blocked` rejects a disc outside it at once. */
   private bx0=Infinity;private by0=Infinity;private bx1=-Infinity;private by1=-Infinity;
   private version=0;
@@ -86,6 +91,8 @@ export class CityTerrain {
   private relief:Float64Array|undefined=undefined;
   /** Cached `forEnemies()` view (created on first use). */
   private enemyView:CityTerrain|undefined=undefined;
+  /** Cached `forFlow()` view (created on first use). */
+  private flowView:CityTerrain|undefined=undefined;
   /** freeSquaresOf(asset), fetched on the first disc query. */
   private free:Uint8Array|undefined=undefined;
 
@@ -106,24 +113,26 @@ export class CityTerrain {
   fork():CityTerrain{
     const t=new CityTerrain(this.asset,this.signature,this.minHeight);
     for(const b of this.sorted)t.blocking.set(b.id,b);
-    t.sorted=this.sorted;t.bound();
+    t.sorted=this.sorted;t.hard=this.hard;t.bound();
     return t;
   }
   /**
    * Sets (or moves) the blocker disc `id`, or removes it with `undefined`. The disc is in world units; x, y must be
-   * finite and r > 0 (else RangeError). `blockerVersion` grows on every real change, not on a no-op.
+   * finite and r > 0 (else RangeError). `blockerVersion` grows on every real change, not on a no-op. `soft`: a soft
+   * blocker (the forFlow() view ignores it).
    */
-  setBlocker(id:string,shape:{x:number;y:number;r:number}|undefined):void{
+  setBlocker(id:string,shape:{x:number;y:number;r:number;soft?:boolean}|undefined):void{
     if(shape===undefined){
       if(!this.blocking.delete(id))return;
     }else{
       const {x,y,r}=shape;
       if(!(Number.isFinite(x)&&Number.isFinite(y)&&Number.isFinite(r)&&r>0))throw new RangeError(`blocker ${id}: bad disc (${x},${y},${r})`);
-      const old=this.blocking.get(id);
-      if(old&&old.x===x&&old.y===y&&old.r===r)return;
-      this.blocking.set(id,Object.freeze({id,x,y,r}));
+      const old=this.blocking.get(id),soft=shape.soft===true;
+      if(old&&old.x===x&&old.y===y&&old.r===r&&!!old.soft===soft)return;
+      this.blocking.set(id,Object.freeze(soft?{id,x,y,r,soft:true as const}:{id,x,y,r}));
     }
     this.sorted=Object.freeze([...this.blocking.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0));
+    this.hard=this.sorted.some(b=>b.soft)?Object.freeze(this.sorted.filter(b=>!b.soft)):this.sorted;
     this.bound();
     this.version++;
   }
@@ -153,18 +162,37 @@ export class CityTerrain {
         for(const b of base.sorted)if(d>0)d=Math.min(d,Math.hypot(x-b.x,y-b.y)-(r+b.r-TOUCH_EPS));
         return d>0?d:0;
       }},
-      setBlocker:{value:(id:string,shape:{x:number;y:number;r:number}|undefined)=>base.setBlocker(id,shape)},
+      setBlocker:{value:(id:string,shape:{x:number;y:number;r:number;soft?:boolean}|undefined)=>base.setBlocker(id,shape)},
       fork:{value:()=>base.fork()},
       enemyView:{value:view},
     });
     this.enemyView=view;
     return view;
   }
-  /** True when a disc of radius r (≥ 0) at (x,y) overlaps a blocker disc by more than TOUCH_EPS. */
-  private blocked(x:number,y:number,r:number):boolean{
+  /**
+   * The enemies' terrain without the soft blockers (their flow grid: city/grid.ts): like forEnemies() for the hard ones.
+   * Created once and cached; with no soft blocker it answers exactly as forEnemies().
+   */
+  forFlow():CityTerrain{
+    if(this.flowView)return this.flowView;
+    const base=this,view=Object.create(this.forEnemies()) as CityTerrain;
+    Object.defineProperties(view,{
+      clearDisc:{value:(x:number,y:number,r:number)=>base.clearDisc(x,y,r)&&!(base.hard.length&&base.blocked(x,y,r<=TOUCH_EPS?0:r,base.hard))},
+      clearReach:{value:(x:number,y:number,r:number)=>{
+        let d=base.clearReach(x,y,r);
+        for(const b of base.hard)if(d>0)d=Math.min(d,Math.hypot(x-b.x,y-b.y)-(r+b.r-TOUCH_EPS));
+        return d>0?d:0;
+      }},
+      forFlow:{value:()=>view},
+      flowView:{value:view},
+    });
+    this.flowView=view;
+    return view;
+  }
+  /** True when a disc of radius r (≥ 0) at (x,y) overlaps a blocker disc (of `list`: all of them) by more than TOUCH_EPS. */
+  private blocked(x:number,y:number,r:number,list:readonly CityBlocker[]=this.sorted):boolean{
     // Farther than r from the box of every disc: no overlap (it needs a centre distance under r + b.r).
     if(x+r<this.bx0||x-r>this.bx1||y+r<this.by0||y-r>this.by1)return false;
-    const list=this.sorted;
     for(let k=0;k<list.length;k++){
       const b=list[k],reach=r+b.r-TOUCH_EPS,dx=x-b.x,dy=y-b.y;
       if(reach>0&&dx*dx+dy*dy<reach*reach)return true;
@@ -263,6 +291,11 @@ export function enemyTerrain(terrain:TerrainField|undefined):TerrainField|undefi
 export function enemyTerrain(terrain:TerrainField|undefined):TerrainField|undefined{
   const view=(terrain as {forEnemies?:()=>TerrainField}|undefined)?.forEnemies;
   return typeof view==='function'?view.call(terrain):terrain;
+}
+
+/** The terrain as the enemies' flow grid reads it: a city's `forFlow()` view (soft blockers unseen), else enemyTerrain. */
+export function flowTerrain(terrain:CityTerrain):CityTerrain{
+  return typeof terrain.forFlow==='function'?terrain.forFlow():enemyTerrain(terrain);
 }
 
 /**

@@ -54,11 +54,17 @@ export function splitStanding(players:ReadonlyMap<string,SimPlayer>,amount:numbe
 export function payKill(players:ReadonlyMap<string,SimPlayer>,enemy:{boss?:boolean},amount:number,cursor:SplitCursor,by?:string,credit?:string){
   if(!(amount>0))return;
   if(enemy.boss){splitAmong(seatedPlayers(players),amount,cursor);return;}
+  const payee=killPayee(players,by,credit);
+  if(payee)addGrana(players.get(payee)!,amount);
+  else splitStanding(players,amount,cursor);
+}
+/** Who a (non-boss) kill pays: the killer, else the kill's credit, when that is a seated player still here; else nobody (a split). */
+export function killPayee(players:ReadonlyMap<string,SimPlayer>,by?:string,credit?:string):string|undefined{
   for(const id of [by,credit]){
     const p=id===undefined?undefined:players.get(id);
-    if(p&&!p.spectator){addGrana(p,amount);return;}
+    if(p&&!p.spectator)return id;
   }
-  splitStanding(players,amount,cursor);
+  return undefined;
 }
 
 /**

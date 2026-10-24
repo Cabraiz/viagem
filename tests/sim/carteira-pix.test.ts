@@ -13,6 +13,8 @@ import {createRunSystems} from '../../src/sim/assemble.ts';
 import {defensesStep} from '../../src/sim/towers/system.ts';
 import {payKill,splitAmong,vaquinha,walletOf} from '../../src/sim/wallet.ts';
 import {GRANA_PER_KILL} from '../../src/rules/index.ts';
+import {CEDULA_DELAY_SECONDS,CEDULA_WAIT_SECONDS} from '../../src/sim/progression.ts';
+import {ticks} from '../../src/contract/index.ts';
 import {Simulation,type SimCheckpoint} from '../../multiplayer/simulation.ts';
 import {RoomBots} from '../../multiplayer/room-bots.ts';
 
@@ -45,12 +47,15 @@ test('kill credit: the killer, else the credit (a tower\'s owner), else split am
   payKill(players,normal,1,cursor);assert.equal(purses(players).reduce((n,x)=>n+x,0),64,'nobody standing: still paid to a seat');
 });
 
-test('kill credit through the world: a tower kill pays its owner, never as their kill; the boss splits; nobody\'s kill splits',()=>{
+test('kill credit through the world: a tower kill\'s cédula flies to its owner, never as their kill; the boss splits at once; nobody\'s kill goes to the nearest hero',()=>{
   const players=new Map<string,SimPlayer>();
   const world=new SimWorld({terrain:defaultTerrain,seed:9,players,order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   const run=createRunSystems(world,{takeInput:()=>undefined,onOutcome:()=>{}});
   world.step();
-  const a=body('a',{x:5,y:5}),b=body('b',{x:5,y:6});players.set('a',a);players.set('b',b);
+  // Both heroes far from the kills (NEW-20261024-ORQ-tirar-drops-cedula-girando): nobody walks by the cédula, so after
+  // CEDULA_WAIT_SECONDS it flies by itself (only the pickups system runs here).
+  const a=body('a',{x:30,y:30}),b=body('b',{x:30,y:31});players.set('a',a);players.set('b',b);
+  const settle=(seconds:number)=>{for(let i=0;i<ticks(seconds);i++){world.tick++;run.progression.pickups.step(world);}};
   const enemy=(id:string,extra:Partial<EnemyState>={})=>{const e:EnemyState={id,kind:'bebado',x:6,y:5,hp:1,maxHp:1,speed:1,damage:1,radius:.4,xp:0,spawnTick:0,readyTick:0,...extra};world.enemies.set(id,e);return e;};
   // A ready Vigia of a's fires in the wave: the kill's Grana goes to a, the kill event names nobody.
   const st=run.stonewards.state;
@@ -58,16 +63,22 @@ test('kill credit through the world: a tower kill pays its owner, never as their
   enemy('t1');world.enemyIndex.rebuild(world.enemies.values());
   world.round.phase='wave';defensesStep(world,st);
   assert.equal(world.enemies.has('t1'),false,'the Vigia killed it');
-  assert.deepEqual([a.grana,b.grana],[GRANA_PER_KILL.normal,undefined]);
+  assert.deepEqual([a.grana,b.grana],[undefined,undefined],'nothing at once');
+  settle(CEDULA_DELAY_SECONDS);
+  const note=[...world.pickups.values()].find(p=>p.kind==='grana');
+  assert.ok(note&&note.value===GRANA_PER_KILL.normal&&note.owner==='a','the cédula, a second later, a\'s');
+  settle(CEDULA_WAIT_SECONDS+5);
+  assert.deepEqual([a.grana,b.grana],[GRANA_PER_KILL.normal,undefined],'flew to a');
   const kill=world.flush().find(e=>e.type==='kill');assert.ok(kill&&kill.type==='kill'&&kill.by===undefined,'not a\'s kill (stats, xp)');
-  // Nobody's kill (an explosion): split among the standing.
+  // Nobody's kill (an explosion): the nearest hero (a, a step closer) gets it all.
   enemy('n1',{elite:true});world.damageEnemy('n1',1e9);
-  assert.equal(walletOf(a)+walletOf(b),GRANA_PER_KILL.normal+GRANA_PER_KILL.elite);assert.ok(walletOf(b)>=2);
+  settle(CEDULA_DELAY_SECONDS+CEDULA_WAIT_SECONDS+5);
+  assert.deepEqual([walletOf(a),walletOf(b)],[GRANA_PER_KILL.normal+GRANA_PER_KILL.elite,0]);
   // The boss, last-hit by b: split anyway.
   const before=[walletOf(a),walletOf(b)];
   enemy('boss',{boss:true});world.damageEnemy('boss',1e9,'b');
   assert.deepEqual([walletOf(a)-before[0],walletOf(b)-before[1]],[GRANA_PER_KILL.boss/2,GRANA_PER_KILL.boss/2]);
-  assert.equal(st.splitCursor,1,'the elite\'s remainder moved the cursor');
+  assert.equal(st.splitCursor,0,'no remainder: the elite\'s cédula went whole to one hero');
   run.dispose();
 });
 

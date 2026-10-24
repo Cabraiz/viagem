@@ -316,9 +316,12 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // round-1 crumbs). cidade again for the vehicles (bancos-e-veiculos part 2: the vehicles' state, the parked ones as pickups
 // from firstS, the rides); ilha and infinito unchanged (no vehicles). cidade again for upgrades-megabonk (the heroes' shots
 // 3× slower, HERO_SHOT_SLOWDOWN, for 3× the time: the same reach); ilha and infinito unchanged (no shot in reach yet at 1500).
+// All three again for tirar-drops-cedula-girando (a kill's Grana is a 'grana' pickup a second later, the cédulas pending
+// in the progression state, instead of the wallet at once; no boleto rain in the zueira plan).
 // cidade again for mapa-175-com-viaduto (asset v4, the city 1.75× shorter, many more crates); ilha and infinito unchanged.
 // cidade again for its viaduct (etapa 3: the start on the deck, pillars and embankment solid); ilha and infinito unchanged.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'9bcca7fe4a663d04',ilha:'4ce386103fb9a83c',infinito:'31376210d13b4bb4'};
+// cidade again for the merge of both (the viaduct's city with the cédulas).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'7c66ebaa5b166e44',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

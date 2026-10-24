@@ -71,7 +71,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
+import {BANCO,BICO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
@@ -236,6 +236,8 @@ export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
   attack?:boolean;
+  /** Bicos: hold Trabalhar (standing still in a shop's ring, mode 'bank'). */
+  work?:boolean;
   /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
   inventory?:LootCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
@@ -348,8 +350,16 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
 export const BANK_REACH=40,BANK_BOTS=2;
 /** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
 export const BANK_GRANA_TARGET=30;
-/** A trip to an ATM is worth it for this many notes (BANCO.saqueS each); a bot already there stays while one more fits. */
-export const BANK_MIN_NOTES=2;
+/**
+ * A trip to a shop is worth it for this many notes (bicos: BICO.nota at BICO.porSegundo, 5 s each); a bot already there
+ * stays while one more fits.
+ */
+export const BANK_MIN_NOTES=1;
+/**
+ * Bicos: a bot in the ring works (Trabalhar, standing still) while no critter is within BICO_BOT_CLEAR (u) and the
+ * queue is under BICO_BOT_FILA; else it steps out (moving clocks out) and fights or dodges like before.
+ */
+export const BICO_BOT_CLEAR=12,BICO_BOT_FILA=2;
 /**
  * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
  * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
@@ -404,7 +414,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
       if(crate&&dist(at,crate)<d)continue;
     }
     const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
-    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
+    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BICO.nota/BICO.porSegundo;
     if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
     picks.push({id:p.id,bank:bank.id,d});
   }
@@ -637,6 +647,12 @@ export function decide(input:BrainInput):Decision{
   const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';
+    // Bicos: in the ring with the street clear and a short queue, it clocks in and stands still (the shift pays).
+    const shop=view.banks?.find(b=>b.id===bank.bank);
+    if(dist(at,bank.at)<=BANK_STAND&&(shop?.fila??0)<BICO_BOT_FILA&&!view.enemies.some(e=>dist(at,e)<=BICO_BOT_CLEAR)){
+      decision.direction={x:0,y:0};decision.work=true;
+      return finish(decision,input);
+    }
     if(dist(at,bank.at)>BANK_STAND)want=go(bank.at);
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);

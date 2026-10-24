@@ -8,8 +8,10 @@
  * `bicos=1` (card bancos-viram-bicos): the three in a row across the screen, a shop's width apart (the pixel-art
  * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
  */
-import {SIM_HZ,type BankState,type BankView,type EnemyView} from '../../contract/index.ts';
+import {SIM_HZ,type BankName,type BankState,type BankView,type BicoId,type EnemyView} from '../../contract/index.ts';
 import {BANCO} from '../../rules/index.ts';
+/** Each bank's gig here: one shop front each (24/7, call center, Compro Ouro). */
+const SANDBOX_BICO:Record<BankName,BicoId>={posto:'entregador','pao-duro':'telemarketing',juros:'compro-ouro'};
 
 type Pt={x:number;y:number};
 const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacando',bicho:'bicho',vazio:'sem-cedulas'};
@@ -42,7 +44,7 @@ export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
     view(now){
       const tick=Math.round(now/1000*SIM_HZ);
       const banks=states.map((state,i):BankView=>{
-        const base={id:`banco-${i}`,...at[i],name:names[i],state};
+        const base={id:`banco-${i}`,...at[i],name:names[i],state,bico:SANDBOX_BICO[names[i]]};
         if(state==='sacando')return {...base,saldo:30-BANCO.nota*(Math.floor(now/(BANCO.saqueS*1000))%14)};
         if(state==='bicho')return {...base,saldo:18-BANCO.nota*(Math.floor(now/(BANCO.bichoSaqueS*1000))%8)};
         if(state==='sem-cedulas')return {...base,saldo:0,until:tick+130*SIM_HZ};

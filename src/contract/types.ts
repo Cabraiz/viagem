@@ -20,7 +20,12 @@ export type WorldKind='ilha'|'infinito'|'cidade';
  */
 export interface PlayerInput {seq:number;x:number;y:number;attack:boolean;target?:string;skill?:boolean;
   /** The mouse's aim while attacking on a PC (a unit vector, one of the input's 32 directions; cone-ataque-melee). */
-  aim?:Point}
+  aim?:Point;
+  /**
+   * Bicos (rules/bicos.ts): Trabalhar held. Standing still in a shop's ring it clocks in (RunView.banks workers); moving
+   * or letting go clocks out. Present only when true.
+   */
+  work?:true}
 /**
  * D-051: how heroes fight. 'auto' (the default): every weapon of the build fires on its own and the skill casts.
  * 'manual' (Wild Rift): only the equipped weapon fires, while PlayerInput.attack is held, at the server's auto aim
@@ -232,6 +237,8 @@ export type SimEvent=
   /** A bank ran dry ('SEM CÉDULAS' until its refill) and when it is back with cash. */
   | {type:'bank-empty';bank:string;until:number}
   | {type:'bank-refill';bank:string}
+  /** Bicos (rules/bicos.ts): `player` clocked in at bank `bank` ('entrou'), out ('saiu') or the manager threw them out ('expulso'). */
+  | {type:'bico';bank:string;player:string;what:'entrou'|'saiu'|'expulso'}
   /**
    * Veículos (rules/veiculos.ts): `player` took a parked vehicle (pickup id `pickup`), the ride ran out ('acabou': the
    * time, the scooter's battery, the burpee done) or it ended early ('largou': moving the car, a fall).

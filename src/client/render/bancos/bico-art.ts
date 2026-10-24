@@ -10,12 +10,14 @@
  */
 import type {ArtIndex} from '../../art/manifest.ts';
 import {groupFileUrl} from '../../art/manifest.ts';
-import type {BankName} from '../../../contract/index.ts';
+import type {BicoId} from '../../../contract/index.ts';
+import {BICOS} from '../../../rules/index.ts';
 
-export const BICO_IDS=['24-7','call-center','aura-67','compro-ouro','colchoes','curso'] as const;
-export type BicoId=typeof BICO_IDS[number];
-/** Until the sim names each bank's bico (etapa 3), each bank keeps one shop. */
-export const BICO_OF_BANK:Readonly<Record<BankName,BicoId>>={posto:'24-7','pao-duro':'call-center',juros:'compro-ouro'};
+/** The shop fronts in the manifest (rules/bicos.ts BicoDef.arte: each gig opens in one of them). */
+export const SHOP_IDS=['24-7','call-center','aura-67','compro-ouro','colchoes','curso'] as const;
+export type ShopId=typeof SHOP_IDS[number];
+/** The shop a gig opens in (the room sends the gig: BankView.bico). */
+export const shopOf=(bico:BicoId):ShopId=>BICOS[bico]?.arte??'24-7';
 /** Game px per art pixel: the 24/7 comes out ~255 px wide, a lot of about 4×3 cells. */
 export const BICO_PX=1.1;
 /** Units from the bank's point (the rings' middle) back to the door's foot, along the front's normal. */

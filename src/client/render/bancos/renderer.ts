@@ -25,7 +25,7 @@ import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
 import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 import {TriBand} from '../city/tri-band.ts';
-import {BICO_OF_BANK,BICO_PX,bicoArt,bicoSpots,doorQuad,type BicoArt} from './bico-art.ts';
+import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -92,7 +92,7 @@ export class BankRenderer {
   private queueArt(){
     const index=artIndex();
     for(const name of BANK_NAMES)this.arts.set(name,bankArt(index,name));
-    for(const name of BANK_NAMES)this.bicos.set(name,bicoArt(index,BICO_OF_BANK[name]));
+    for(const id of SHOP_IDS)this.bicos.set(id,bicoArt(index,id));
     let queued=false;
     for(const art of this.bicos.values())if(art&&!this.scene.textures.exists(art.key)){this.scene.load.image(art.key,art.url);queued=true;}
     for(const s of bankSheets(index))if(!this.scene.textures.exists(s.key)){
@@ -109,13 +109,13 @@ export class BankRenderer {
     this.artIn.add(name);return art;
   }
 
-  /** The bank's shop once its texture is in. */
-  private bicoOf(name:string):BicoArt|undefined{
-    const art=this.bicos.get(name);if(!art)return undefined;
-    if(this.bicoIn.has(name))return art;
+  /** The shop of the bank's gig now (BankView.bico) once its texture is in. */
+  private bicoOf(b:Pick<BankView,'bico'>):BicoArt|undefined{
+    const id=shopOf(b.bico),art=this.bicos.get(id);if(!art)return undefined;
+    if(this.bicoIn.has(id))return art;
     if(!this.scene.textures.exists(art.key))return undefined;
     this.scene.textures.get(art.key).setFilter(Phaser.Textures.FilterMode.NEAREST);
-    this.bicoIn.add(name);return art;
+    this.bicoIn.add(id);return art;
   }
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
@@ -135,7 +135,7 @@ export class BankRenderer {
       live.add(b.id);
       const d=this.drawOf(b.id);
       const screen=screenOf(b,st.tick,time,reduced);
-      const bico=this.bicoOf(b.name);
+      const bico=this.bicoOf(b);
       this.drawGround(b,d,k,!bico);
       const depth=proj.depth(b.x,b.y),art=this.artOf(b.name);
       if(bico)this.drawBico(b,d,bico);
@@ -182,6 +182,8 @@ export class BankRenderer {
       if(d.art){d.art.body.destroy();d.art.tela.destroy();d.art.saque.destroy();d.art=undefined;}
     }
     const depth=proj.depth(spots.middle.x,spots.middle.y),bd=d.bico;
+    // The shop opened with another gig: its front changes.
+    if(bd.body.texture.key!==art.key)bd.body.setTexture(art.key);
     bd.body.setOrigin(art.anchor[0],art.anchor[1]).setScale(BICO_PX).setPosition(p.x,p.y).setDepth(depth);
     const working=b.state==='sacando';
     if(bd.doorKey!==`${art.id}|${working}`){
@@ -201,7 +203,7 @@ export class BankRenderer {
   }
   /** The top of what stands at the bank, screen px (the art's drawn top, else the figure's sign). */
   private topAt(b:BankView,fwd:number,left:number):Pt{
-    const bico=this.bicoOf(b.name);
+    const bico=this.bicoOf(b);
     if(bico){
       const proj=this.options.projector,s=bicoSpots(b.x,b.y,proj.view),p=proj.project(s.door.x,s.door.y,this.q);
       return {x:p.x,y:p.y-bico.anchor[1]*bico.cell[1]*BICO_PX+4};
@@ -213,7 +215,7 @@ export class BankRenderer {
   }
   /** Where the notes leave from: the screen overlay's middle with the art, else the figure's screen. */
   private screenAt(b:BankView):Pt{
-    const bico=this.bicoOf(b.name);
+    const bico=this.bicoOf(b);
     if(bico){
       const proj=this.options.projector,s=bicoSpots(b.x,b.y,proj.view),p=proj.project(s.door.x,s.door.y,this.q),q=doorQuad(bico);
       return {x:p.x+(q[0].x+q[2].x)/2,y:p.y+(q[0].y+q[2].y)/2};

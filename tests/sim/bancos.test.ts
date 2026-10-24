@@ -1,6 +1,8 @@
 /**
  * Bancos (card NEW-20261014-ORQ-bancos-e-veiculos, part 1; src/sim/bancos/system.ts, rules/bancos.ts BANCO): the
- * "Caixa 24 h que só dá nota de 2" on the REAL Cidade Nevada.
+ * "Caixa 24 h que só dá nota de 2" on the REAL Cidade Nevada, now the BICOS (card NEW-20261024-ORQ-bancos-viram-bicos,
+ * rules/bicos.ts BICO): Trabalhar in the ring clocks in, R$/s in notes of R$ 5, the queue cuts the pay and throws the
+ * shift out, a spent shift closes the shop and it opens again with another gig.
  *  - Placement: planBanks and an assembled city run, both modes (the chaveiro's route or the plaza as the anchor),
  *    deterministic from the seed, BANCO.count banks one per third of the map, the car and route distances; the island
  *    and the endless world have none.
@@ -17,7 +19,7 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {clearSegment,walkable,type Point} from '../../src/maps/world.ts';
-import {BANK_IDS,BASE_STATS,ticks,type EnemyState,type SimPlayer,type StampedEvent} from '../../src/contract/index.ts';
+import {BANK_IDS,BASE_STATS,BICO_IDS,SIM_HZ,ticks,type EnemyState,type SimPlayer,type StampedEvent} from '../../src/contract/index.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -27,8 +29,9 @@ import {cityLoot} from '../../src/sim/stonewards/loot.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {createEnemyAi} from '../../src/sim/enemies/ai.ts';
 import {planChaveiro} from '../../src/sim/chaveiro/system.ts';
-import {createBanks,distanceToPolyline,isPrime,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
+import {bicoPay,createBanks,distanceToPolyline,firstBicos,isPrime,nextBico,planBanks,ringCandidates,type BankPlace,type BanksSystem} from '../../src/sim/bancos/system.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
+import {BICO,BICOS} from '../../src/rules/bicos.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -42,21 +45,24 @@ const CAR=placeWall(city),PLAZA=PTS.praca;
 const LOOT=cityLoot(city)!.crates.map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}));
 /** What a run offers planBanks (assemble.ts): the street ring around the car first, the loot points as a fallback. */
 const CANDIDATES=[...ringCandidates(CAR,(x,y,r)=>city.clearDisc(x,y,r)),...LOOT];
-const SAQUE=ticks(BANCO.saqueS),BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
+/** Ticks per R$ 5 note of one hero alone in a shift (R$ 1/s). */
+const NOTA=Math.ceil(BICO.nota*1000/bicoPay('telemarketing',1,0));
+const BICHO_SAQUE=ticks(BANCO.bichoSaqueS),ISCA=ticks(BANCO.iscaS),RECARGA=ticks(BANCO.recargaS);
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 interface Got {tick:number;e:StampedEvent}
-interface Rig {world:SimWorld;sys:BanksSystem;purse:{grana:number};events:Got[];step(n?:number):Got[];bank(i?:number):BankPlace}
+/** work: each player's Trabalhar this tick as the players system hands it (absent: no input this tick). */
+interface Rig {world:SimWorld;sys:BanksSystem;purse:{grana:number};events:Got[];work:Map<string,boolean>;step(n?:number):Got[];bank(i?:number):BankPlace}
 function rig(seed=7,route?:readonly Point[]):Rig{
   const world=new SimWorld({terrain:city,seed,players:new Map<string,SimPlayer>(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
-  const purse={grana:0},events:Got[]=[];
-  const sys=createBanks({seed,candidates:CANDIDATES,car:CAR,plaza:PLAZA,...(route?{route}:{}),wallet:{add:n=>{purse.grana+=n;}}});
+  const purse={grana:0},events:Got[]=[],work=new Map<string,boolean>();
+  const sys=createBanks({seed,candidates:CANDIDATES,car:CAR,plaza:PLAZA,...(route?{route}:{}),wallet:{add:n=>{purse.grana+=n;}},work:id=>work.get(id)});
   const step=(n=1)=>{
     const got:Got[]=[];
     for(let i=0;i<n;i++){world.step();world.enemyIndex.rebuild(world.enemies.values());sys.step(world);for(const e of world.flush())got.push({tick:world.tick,e});}
     events.push(...got);return got;
   };
-  return {world,sys,purse,events,step,bank:(i=0)=>sys.places[i]};
+  return {world,sys,purse,events,work,step,bank:(i=0)=>sys.places[i]};
 }
 function addPlayer(world:SimWorld,id:string,p:Point){
   const player={id,classId:'x',hp:1e6,online:true,spectator:false,facing:{x:1,y:0},build:{weapons:[],passives:[]},
@@ -71,6 +77,9 @@ const at=(b:Point,dx:number,dy=0)=>({x:b.x+dx,y:b.y+dy});
 const cash=(got:readonly Got[],by?:'hero'|'enemy')=>got.filter(g=>g.e.type==='bank-cash'&&(!by||g.e.by===by));
 const ofType=(got:readonly Got[],type:string)=>got.filter(g=>g.e.type===type);
 const row=(r:Rig,i=0)=>r.sys.state.list[i];
+const bico=(got:readonly Got[])=>got.flatMap(g=>g.e.type==='bico'?[[g.e.player,g.e.what]]:[]);
+/** A hero in the ring with Trabalhar held. */
+function worker(r:Rig,id:string,p:Point){const h=addPlayer(r.world,id,p);r.work.set(id,true);return h;}
 const viewOf=(r:Rig,i=0)=>r.sys.view(r.world.tick)[i];
 /** Is there a start angle that puts each point in its own third (120°) around `c`? (The sim draws that angle.) */
 function onePerThird(points:readonly Point[],c:Point){
@@ -85,7 +94,7 @@ function onePerThird(points:readonly Point[],c:Point){
 // ---------- Placement ----------
 test('placement: 3 banks per seed, deterministic, ids and names, one per third, on the streets distCarro..distCarroMax from the car, desvio from the moto route (chaveiro) or the plaza (wall)',()=>{
   assert.equal(BANCO.count,3);
-  const seen=new Set<string>(),relaxed:string[]=[];
+  const seen=new Set<string>(),relaxed:string[]=[],noLot:string[]=[];
   for(let seed=1;seed<=24;seed++){
     const route=planChaveiro(seed,OPEN,ENTRANCES,CAR).route.points;
     for(const [mode,anchor] of [['chaveiro',{route}],['muralha',{plaza:PLAZA}]] as const){
@@ -96,6 +105,8 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
       assert.deepEqual([...a.map(p=>p.name)].sort(),[...BANK_IDS].sort());
       assert.equal(new Set(a.map(p=>`${p.x},${p.y}`)).size,3,'three different spots');
       for(const p of a)assert.ok(city.clearDisc(p.x,p.y,1.5),'on open street ground');
+      // Bicos: the whole shop fits (a BICO.lote disc clear) wherever the ring has such a spot in that third.
+      for(const p of a)if(!city.clearDisc(p.x,p.y,BICO.lote))noLot.push(`${mode} seed ${seed} ${p.id}`);
       assert.ok(onePerThird(a,CAR),`one per third of the map around the car (${mode} ${seed})`);
       for(const p of a){
         const fromAnchor='route' in anchor?distanceToPolyline(p,anchor.route):dist(p,anchor.plaza);
@@ -108,6 +119,7 @@ test('placement: 3 banks per seed, deterministic, ids and names, one per third, 
   assert.ok(seen.size>=12,`the seed moves the banks: ${seen.size} different layouts in 48`);
   // The fallback tiers (a third with no candidate that fits) must stay the exception on the real city.
   assert.deepEqual(relaxed,[],'every bank keeps the distance rules on the real city');
+  assert.deepEqual(noLot,[],'every shop has its lot on the real city');
 });
 
 test('placement in a run: the city has banks in both modes (route anchor with the chaveiro), the island and the endless world have none',()=>{
@@ -132,55 +144,100 @@ test('placement in a run: the city has banks in both modes (route anchor with th
   }
 });
 
-// ---------- The hero's withdrawal ----------
-test('hero withdrawal: a standing hero within 4 u takes R$ 2 every 3 s into the Grana; more heroes are not faster; out of reach or downed, nothing',()=>{
-  const r=rig(),b=r.bank();
-  addPlayer(r.world,'p1',at(b,BANCO.holdR-.1));
-  assert.equal(cash(r.step(SAQUE-1)).length,0,'nothing before 3 s');
-  assert.equal(row(r).state,'sacando');assert.equal(viewOf(r).state,'sacando');
-  const first=r.step(1);
-  assert.deepEqual(cash(first).map(g=>g.e),[{type:'bank-cash',bank:b.id,amount:BANCO.nota,by:'hero',eventId:(first[0].e as StampedEvent).eventId}]);
-  assert.equal(r.purse.grana,2);assert.equal(row(r).saldo,BANCO.saldo-2);assert.equal(r.sys.state.paid,2);
-  // The rate over 30 s: 10 notes, alone or with five friends at the ATM.
-  const alone=cash(r.step(ticks(30))).length;
-  assert.equal(alone,10);
-  const s=rig(),c=s.bank();
-  for(let k=0;k<6;k++)addPlayer(s.world,`p${k}`,at(c,0,-3+k));
-  assert.equal(cash(s.step(SAQUE+ticks(30))).length,11,'six heroes: the same rate');
-  assert.equal(s.purse.grana,22);
-  // The other banks did nothing.
-  assert.ok(cash(r.events).every(g=>g.e.type==='bank-cash'&&g.e.bank===b.id));
-  // Out of reach: nothing, 'aberto'.
-  const far=rig(),fb=far.bank();
-  addPlayer(far.world,'p1',at(fb,BANCO.holdR+.2));
-  assert.equal(cash(far.step(SAQUE*3)).length,0);assert.equal(row(far).state,'aberto');
-  // Downed: nothing.
-  const down=rig(),db=down.bank();
-  addPlayer(down.world,'p1',at(db,1)).downed=true;
-  assert.equal(cash(down.step(SAQUE*3)).length,0);assert.equal(row(down).state,'aberto');
+// ---------- The shift (bicos) ----------
+test('bicos: each shop has a gig, all different, drawn by the seed; the gig opens in its shop front',()=>{
+  for(let seed=1;seed<=30;seed++){
+    const a=firstBicos(seed,BANCO.count);
+    assert.deepEqual(firstBicos(seed,BANCO.count),a);
+    assert.equal(new Set(a).size,BANCO.count,`seed ${seed}: three different gigs`);
+    for(const b of a)assert.ok((BICO_IDS as readonly string[]).includes(b));
+  }
+  assert.ok(new Set(Array.from({length:30},(_,i)=>firstBicos(i+1,BANCO.count).join())).size>10,'the seed moves the gigs');
+  for(const id of BICO_IDS){assert.ok(BICOS[id].nome.length>0&&BICOS[id].frase.length>0,id);}
+  const r=rig();
+  assert.deepEqual(r.sys.view(0).map(v=>v.bico),firstBicos(7,BANCO.count));
 });
 
-test('hero withdrawal: "tem gente na fila" — a critter within 3 u stops it (the count waits), one 3.5 u away does not; the boss and a dead critter do not queue',()=>{
+test('shift: standing in the ring is not working; Trabalhar clocks in (bico entrou), R$ 5 every 5 s into the wallet; moving or letting go clocks out; no input keeps them in',()=>{
   const r=rig(),b=r.bank();
-  addPlayer(r.world,'p1',at(b,0,2));
-  r.step(SAQUE-5);
-  const q=addEnemy(r.world,'q',at(b,-(BANCO.filaR-.1)));
-  assert.equal(cash(r.step(SAQUE*3)).length,0,'the queue stops the notes');
+  const h=addPlayer(r.world,'p1',at(b,BANCO.holdR-.1));
+  assert.equal(cash(r.step(NOTA*2)).length,0,'in the ring without Trabalhar: nothing');
   assert.equal(row(r).state,'aberto');
-  assert.equal(cash(r.events,'enemy').length,0,'a hero at the ATM: the critter in the queue draws nothing');
-  // It leaves: the count resumes where it waited (5 ticks to go).
-  q.x=b.x-(BANCO.filaR+.5);
-  assert.equal(cash(r.step(4)).length,0);
-  assert.equal(cash(r.step(1),'hero').length,1,'the count waited, it did not restart');
-  // The boss and a dead critter right at the ATM do not queue.
-  const s=rig(),c=s.bank();
-  addPlayer(s.world,'p1',at(c,0,2));
-  addEnemy(s.world,'boss',at(c,-1),{boss:true,hp:1000,maxHp:1000});addEnemy(s.world,'dead',at(c,1),{hp:0});
-  assert.equal(cash(s.step(SAQUE)).length,1);
+  r.work.set('p1',true);
+  const first=r.step(1);
+  assert.deepEqual(bico(first),[['p1','entrou']]);
+  assert.equal(row(r).state,'sacando');assert.deepEqual(viewOf(r).workers,['p1']);
+  assert.equal(r.sys.working('p1'),b.id);
+  assert.ok((h.invulnerableUntil??0)>r.world.tick,'inside: no hit lands');
+  assert.equal(cash(r.step(NOTA-2)).length,0,'nothing before 5 s');
+  const note=r.step(1);
+  assert.deepEqual(cash(note).map(g=>g.e.type==='bank-cash'&&[g.e.bank,g.e.amount,g.e.by]),[[b.id,BICO.nota,'hero']]);
+  assert.equal(r.purse.grana,5);assert.equal(row(r).saldo,BICO.saldo-5);
+  // R$ 1/s: 4 more notes in 20 s.
+  assert.equal(cash(r.step(ticks(20))).length,4);
+  // No input this tick (the room had none): still in.
+  r.work.delete('p1');
+  assert.deepEqual(bico(r.step(5)),[]);assert.equal(r.sys.working('p1'),b.id);
+  // Moving (the players system hands false): out, and the pay stops.
+  r.work.set('p1',false);
+  assert.deepEqual(bico(r.step(1)),[['p1','saiu']]);
+  assert.equal(r.sys.working('p1'),undefined);assert.equal(viewOf(r).workers,undefined);assert.equal(row(r).state,'aberto');
+  assert.equal(cash(r.step(NOTA*2)).length,0);
+  // Out of the ring, downed: never clocks in.
+  const far=rig(),fb=far.bank();
+  worker(far,'p1',at(fb,BANCO.holdR+.2));
+  assert.equal(cash(far.step(NOTA*2)).length,0);assert.equal(row(far).state,'aberto');
+  const down=rig(),db=down.bank();
+  worker(down,'p1',at(db,1)).downed=true;
+  assert.equal(cash(down.step(NOTA*2)).length,0);assert.equal(row(down).state,'aberto');
+  // Pushed out of the ring while working: out.
+  const push=rig(),pb=push.bank(),ph=worker(push,'p1',at(pb,1));
+  push.step(3);ph.x=pb.x+BANCO.holdR+1;
+  assert.deepEqual(bico(push.step(1)),[['p1','saiu']]);
 });
 
+test('shift: two or more share the boss\'s money (R$ 0.6/s each); a player works one shop at a time',()=>{
+  const r=rig(),b=r.bank();
+  worker(r,'p1',at(b,1));worker(r,'p2',at(b,-1));
+  r.step(1);
+  assert.deepEqual(viewOf(r).workers,['p1','p2']);
+  const each=Math.ceil(BICO.nota*1000/bicoPay(row(r).bico,2,0));
+  assert.equal(bicoPay(row(r).bico,2,0),Math.round(BICO.dupla*1000/SIM_HZ));
+  r.step(each-2);
+  assert.equal(cash(r.events).length,0);
+  r.step(1);
+  assert.equal(cash(r.events,'hero').length,2,'one note each at 0.6/s');
+  assert.equal(r.purse.grana,10);
+});
+
+test('queue: each critter within 3 u cuts the pay by 25 % (fila in the view); 3 critters: the manager throws everyone out, slowed 1 s, kept out 3 s; the boss and the dead do not queue',()=>{
+  const r=rig(),b=r.bank();
+  const h=worker(r,'p1',at(b,0,1));
+  r.step(1);
+  const one=addEnemy(r.world,'q1',at(b,-(BANCO.filaR-.1)));
+  r.step(1);
+  assert.equal(viewOf(r).fila,1);
+  assert.equal(bicoPay(row(r).bico,1,1),Math.round(BICO.porSegundo*(1-(BICOS[row(r).bico].filaCorte??BICO.filaCorte))*1000/SIM_HZ));
+  assert.ok(bicoPay('telemarketing',1,1)<bicoPay('telemarketing',1,0));
+  assert.ok(bicoPay('fiscal',1,1)>bicoPay('telemarketing',1,1),'the Fiscal de Fila loses less to the queue');
+  // One 3.5 u away does not queue; the boss and a dead critter do not either.
+  addEnemy(r.world,'far',at(b,BANCO.filaR+.5));addEnemy(r.world,'boss',at(b,1),{boss:true,hp:1000,maxHp:1000});addEnemy(r.world,'dead',at(b,-1,0),{hp:0});
+  r.step(1);assert.equal(viewOf(r).fila,1);assert.deepEqual(viewOf(r).workers,['p1']);
+  assert.equal(cash(r.events,'enemy').length,0,'a shift at work: the critters draw nothing');
+  // Two more: out.
+  addEnemy(r.world,'q2',at(b,0,-1));addEnemy(r.world,'q3',at(b,1,-1));
+  const out=r.step(1);
+  assert.deepEqual(bico(out),[['p1','expulso']]);
+  assert.equal(r.sys.working('p1'),undefined);
+  assert.equal(h.slowUntil,r.world.tick+ticks(BICO.expulsoS));
+  // Still holding Trabalhar, the queue gone: kept out for 3 s, then back in.
+  for(const id of ['q1','q2','q3'])r.world.enemies.delete(id);
+  void one;
+  assert.deepEqual(bico(r.step(ticks(BICO.banidoS)-1)),[]);
+  assert.deepEqual(bico(r.step(1)),[['p1','entrou']]);
+});
 // ---------- The bait ----------
-test('bait: each hero note lures the critters within 20 u (not the boss) to the bank for 4 s; they walk there and forget it after',()=>{
+test('bait: each note of the shift lures the critters within 20 u (not the boss) to the bank for 4 s; they walk there and forget it after',()=>{
   const r=rig();
   // A lured critter: 6–12 u from an ATM on a clear straight walk (the rig has no city steer); the hero on the far side.
   let spot:Point|undefined,b=r.bank();
@@ -192,17 +249,17 @@ test('bait: each hero note lures the critters within 20 u (not the boss) to the 
     if(spot)break;
   }
   assert.ok(spot,'a clear spot near an ATM');
-  const away=dist(spot!,b),hero=addPlayer(r.world,'p1',at(b,-(spot!.x-b.x)/away,-(spot!.y-b.y)/away));
+  const away=dist(spot!,b),hero=worker(r,'p1',at(b,-(spot!.x-b.x)/away,-(spot!.y-b.y)/away));
   const near=addEnemy(r.world,'near',spot!),edge=addEnemy(r.world,'edge',at(b,BANCO.iscaR-.1,0)),out=addEnemy(r.world,'out',at(b,BANCO.iscaR+1,0));
   const boss=addEnemy(r.world,'boss',at(b,0,-10),{boss:true,hp:1000,maxHp:1000});
-  const got=r.step(SAQUE);
+  const got=r.step(NOTA);
   assert.equal(cash(got,'hero').length,1);
   const t=got.find(g=>g.e.type==='bank-cash')!.tick;
   assert.ok(got.every(g=>g.e.type!=='bank-cash'||g.e.bank===b.id));
   for(const e of [near,edge])assert.deepEqual([e.memory?.baitX,e.memory?.baitY,e.memory?.baitUntil],[b.x,b.y,t+ISCA],`${e.id} lured`);
   for(const e of [out,boss])assert.equal(e.memory?.baitUntil,undefined,`${e.id} not lured`);
   // The hero walks off (60 u): the bait is nearer than any player, the lured critter walks to the ATM.
-  hero.x=b.x+60;hero.y=b.y;
+  hero.x=b.x+60;hero.y=b.y;r.work.set('p1',false);
   r.world.enemies.delete('edge');r.world.enemies.delete('out');r.world.enemies.delete('boss');
   const ai=createEnemyAi({heroSpeed:10}),d0=dist(near,b);
   for(let k=0;k<ISCA-1;k++){r.world.step();r.world.enemyIndex.rebuild(r.world.enemies.values());ai.step(r.world);r.world.enemyIndex.rebuild(r.world.enemies.values());r.sys.step(r.world);r.world.flush();}
@@ -243,7 +300,7 @@ test('critter withdrawal: not with a hero within 4 u, not from 2.5 u, not the bo
   const r=rig(),b=r.bank();
   addEnemy(r.world,'e1',at(b,1));
   const p=addPlayer(r.world,'p1',at(b,0,BANCO.holdR-.2));
-  assert.equal(cash(r.step(BICHO_SAQUE*3)).length,0,'a hero at the ATM (and the critter is in its queue): nobody draws');
+  assert.equal(cash(r.step(BICHO_SAQUE*3)).length,0,'a hero in the ring (working or not): nobody draws');
   assert.equal(row(r).state,'aberto');assert.equal(viewOf(r).drawer,undefined);
   p.x=b.x+50;
   r.step(1);assert.equal(row(r).state,'bicho');
@@ -263,26 +320,31 @@ test('critter withdrawal: not with a hero within 4 u, not from 2.5 u, not the bo
 });
 
 // ---------- Empty and refill ----------
-test('empty and refill: the 20th note leaves "SEM CÉDULAS" for 150 s (bank-empty, until), nothing meanwhile, then R$ 40 again (bank-refill)',()=>{
-  const r=rig(),b=r.bank();
-  addPlayer(r.world,'p1',at(b,1));
-  r.step(SAQUE*(BANCO.saldo/BANCO.nota));
-  assert.equal(cash(r.events).length,20);assert.equal(r.purse.grana,BANCO.saldo);
+test('closed and open again: the shift\'s R$ 40 spent (8 notes), the shop closes 150 s (bank-empty, the shift out), then opens with ANOTHER gig, none of the other shops\'',()=>{
+  const r=rig(),b=r.bank(),was=row(r).bico;
+  worker(r,'p1',at(b,1));
+  r.step(1+NOTA*(BICO.saldo/BICO.nota));
+  assert.equal(cash(r.events).length,8);assert.equal(r.purse.grana,BICO.saldo);
   const empty=ofType(r.events,'bank-empty');
   assert.equal(empty.length,1);
   const until=empty[0].e.type==='bank-empty'?empty[0].e.until:NaN;
   assert.equal(until,empty[0].tick+RECARGA);
   assert.equal(empty[0].tick,cash(r.events).at(-1)!.tick,'with the last note');
-  assert.deepEqual(viewOf(r),{id:b.id,x:b.x,y:b.y,name:b.name,saldo:0,state:'sem-cedulas',until});
-  // 150 s with the hero still there: nothing.
+  assert.deepEqual(bico(r.events),[['p1','entrou'],['p1','saiu']]);
+  assert.deepEqual(viewOf(r),{id:b.id,x:b.x,y:b.y,name:b.name,saldo:0,state:'sem-cedulas',until,bico:was});
+  // 150 s with the hero still there and Trabalhar held: nothing.
   const wait=r.step(until-r.world.tick-1);
-  assert.equal(cash(wait).length,0);assert.equal(row(r).state,'sem-cedulas');
+  assert.equal(cash(wait).length,0);assert.equal(row(r).state,'sem-cedulas');assert.deepEqual(bico(wait),[]);
   const refill=r.step(1);
   assert.equal(refill[0]?.tick,until);
-  assert.deepEqual(refill.map(g=>g.e.type),['bank-refill']);
-  assert.equal(row(r).saldo,BANCO.saldo);assert.equal(row(r).state,'sacando');assert.equal(viewOf(r).until,undefined);
-  assert.equal(cash(r.step(SAQUE),'hero').length,1,'the hero draws again 3 s after the refill');
-  // A critter at an empty ATM: nothing.
+  assert.deepEqual(refill.map(g=>g.e.type),['bank-refill','bico']);
+  assert.equal(row(r).saldo,BICO.saldo);assert.equal(row(r).opened,1);
+  const now=row(r).bico;
+  assert.notEqual(now,was,'another gig');
+  assert.ok(!r.sys.state.list.slice(1).some(x=>x.bico===now),'not one another shop has');
+  assert.equal(now,nextBico(7,0,1,was,r.sys.state.list.slice(1).map(x=>x.bico)),'drawn by (seed, shop, times opened)');
+  assert.equal(row(r).state,'sacando','the hero holding Trabalhar starts the new shift');
+  // A critter at an empty shop: nothing.
   const s=rig(),c=s.bank();
   s.sys.state.list[0].saldo=2;
   addEnemy(s.world,'e1',at(c,1));
@@ -299,16 +361,17 @@ function assembled(seed:number,players:Map<string,SimPlayer>,objective:'chaveiro
   return {world,sys};
 }
 for(const objective of ['chaveiro',undefined] as const){
-  test(`checkpoint (${objective??'muralha'}): taken at an intermission mid-withdrawal and mid-refill, a fresh world plays on with the same state hash on every tick`,()=>{
+  test(`checkpoint (${objective??'muralha'}): taken at an intermission mid-shift and mid-refill, a fresh world plays on with the same state hash on every tick`,()=>{
     const SEED=21,players=new Map<string,SimPlayer>();
     const a=assembled(SEED,players,objective);
     for(let i=0;i<20*60*4&&!(a.world.round.index===2&&a.world.round.phase==='prepare');i++)a.world.step();
     assert.equal(a.world.round.index,2);assert.equal(a.world.round.phase,'prepare');
     const banks=a.sys.banks!,[b0,b1]=banks.places;
-    // p1 holds bank 1 mid-count; bank 2 is dry and refills inside the window; bank 3 is half empty.
-    addPlayer(a.world,'p1',at(b0,1));
-    for(let i=0;i<SAQUE+SAQUE/2;i++)a.world.step();
-    assert.ok(banks.state.list[0].saldo<BANCO.saldo&&banks.state.list[0].clock>0,'mid-withdrawal');
+    // p1 works bank 1 mid-note (in the shift since before: these runs take no input, so nobody clocks in or out);
+    // bank 2 is dry and refills inside the window; bank 3 is half empty.
+    addPlayer(a.world,'p1',at(b0,1));banks.state.list[0].workers=['p1'];
+    for(let i=0;i<NOTA+NOTA/2;i++)a.world.step();
+    assert.ok(banks.state.list[0].saldo<BICO.saldo&&(banks.state.list[0].earn?.p1??0)>0,'mid-shift');
     Object.assign(banks.state.list[1],{saldo:0,state:'sem-cedulas',until:a.world.tick+ticks(10),clock:0,held:0});
     banks.state.list[2].saldo=14;
     assert.equal(dist(b1,a.world.players.get('p1')!)>BANCO.holdR,true);
@@ -327,7 +390,7 @@ for(const objective of ['chaveiro',undefined] as const){
       assert.equal(stateHash({world:b.world.state(),systems:b.sys.state()}),stateHash({world:a.world.state(),systems:a.sys.state()}),`tick ${a.world.tick}`);
       notes+=ea.filter(e=>e.type==='bank-cash').length;refills+=ea.filter(e=>e.type==='bank-refill').length;
     }
-    assert.ok(notes>=5,`p1 kept withdrawing: ${notes} notes`);assert.equal(refills,1,'bank 2 refilled in the window');
+    assert.ok(notes>=3,`p1 kept working: ${notes} notes`);assert.equal(refills,1,'bank 2 refilled in the window');
     // The bank state moves the hash.
     const before=stateHash(a.sys.state());a.sys.banks!.state.list[2].saldo--;
     assert.notEqual(stateHash(a.sys.state()),before);
@@ -338,7 +401,7 @@ for(const objective of ['chaveiro',undefined] as const){
 test('bots in the wave: a full team (BANK_WAVE_MIN_UP standing) sends one bot per BANK_WAVE_PER to the nearest ATM, never the builder; a smaller team keeps the car',async()=>{
   const {bankTask,BANK_WAVE_MIN_UP,BANK_WAVE_PER,BANK_WAVE_REACH}=await import('../../src/sim/bot-brain.ts');
   const bot=(id:string,x:number,y:number)=>({id,online:true,spectator:false,downed:false,eliminated:false,hp:100,maxHp:100,x,y});
-  const bank=(id:string,x:number,y:number)=>({id,x,y,name:'juros' as const,saldo:40,state:'aberto' as const});
+  const bank=(id:string,x:number,y:number)=>({id,x,y,name:'juros' as const,saldo:40,state:'aberto' as const,bico:'telemarketing' as const});
   // The car at the origin; three ATMs 40–50 u out (straight, no terrain); six bots, b1 the builder.
   const banks=[bank('banco-1',45,0),bank('banco-2',-45,0),bank('banco-3',0,50)];
   const players=[bot('b1',44,0),bot('b2',40,0),bot('b3',-41,0),bot('b4',-30,0),bot('b5',0,2),bot('b6',2,2)],ids=players.map(p=>p.id);

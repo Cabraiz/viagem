@@ -39,7 +39,7 @@ import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,Proj
 import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CAR_INTEREST_RADIUS,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
-import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
+import {BANK_IDS,BICO_IDS,type BankName,type BankState,type BankView,type BicoId} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
 import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
@@ -105,6 +105,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
  * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
  * 34 given by the integration queue (tools/fila.mjs, lote 20261024-134734) to: NEW-20261023-ORQ-inicio-no-uno-caixas-120.
+ * Next (the queue numbers it) since the bicos (card NEW-20261024-ORQ-bancos-viram-bicos): each bank row carries its gig
+ * (`bico`), the players in the shift (`workers`) and its queue (`fila`); the `bico` event; the input segments' bit 8
+ * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
+ * banks block, an older room refuses the segments.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=34;
@@ -194,6 +198,9 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
+  // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS) and the `bico` event's `what`.
+  'telemarketing','aura-67','entregador','compro-ouro','colchao','coach','curso','influencer','pesquisa',
+  'entrou','saiu','expulso',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -555,6 +562,8 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bank-prime',[['bank','str'],['enemy','ref',false,'enemies']]],
   ['bank-empty',[['bank','str'],['until','tick']]],
   ['bank-refill',[['bank','str']]],
+  // Bicos: a player clocked in at a shop, out, or was thrown out by the manager.
+  ['bico',[['bank','str'],['player','ref'],['what','str']]],
   // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
   ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
 ];
@@ -622,6 +631,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   if(type==='moto'&&e.alone===false)delete e.alone;
   if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
   if(type==='bank-cash'&&e.by!=='hero'&&e.by!=='enemy')throw new FrameError('bad bank withdrawer');
+  if(type==='bico'&&e.what!=='entrou'&&e.what!=='saiu'&&e.what!=='expulso')throw new FrameError('bad bico event');
   if(type==='vehicle'&&(!isVehicleKind(e.kind)||e.what!=='pegou'&&e.what!=='acabou'&&e.what!=='largou'))throw new FrameError('bad vehicle event');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
@@ -738,32 +748,40 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
 /**
  * Flag bit 5 of the frame: u8 bits (1 dynamic part, 2 static part, 4 cleared) | dynamic? | static?. Sent only when it
  * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
- *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer) | [svar until-tick] | [uvar drawer's enemy wire id])*
+ *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer, 4 workers, 8 fila) | [svar until-tick] |
+ *     [uvar drawer's enemy wire id] | str bico | [uvar n, str player id*] | [uvar fila])*
  *   static:  uvar n, (str id | svar x*16 | svar y*16 | str name)*
  * The two lists are in the same order (the sim's). The drawer is the critter's client id (`e<wire id>`), like a ref.
  */
-const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2;
-const MAX_BANKS=16;
+const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2,BANK_WORKERS=4,BANK_FILA=8;
+const MAX_BANKS=16,MAX_WORKERS=8;
+const BICO_SET=new Set<string>(BICO_IDS);
 const BANK_STATES=new Set<string>(['aberto','sacando','bicho','sem-cedulas']);
 const BANK_NAMES=new Set<string>(BANK_IDS);
 const ENEMY_LABEL=/^e(\d{1,9})$/;
 /** The banks as the client ends up with them (quantized, the drawer as its client id). */
 function normBanks(list:readonly BankView[],drawer:(serverId:string)=>string):BankView[]{
   return list.slice(0,MAX_BANKS).map(b=>({id:clip(b.id),...pt16(b),name:b.name,saldo:uint(b.saldo),state:b.state,
-    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{})}));
+    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{}),
+    bico:b.bico,...(b.workers?.length?{workers:b.workers.slice(0,MAX_WORKERS).map(clip)}:{}),...(b.fila?{fila:uint(b.fila)}:{})}));
 }
 const sameBankStatic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&a.every((x,i)=>x.id===b[i].id&&x.x===b[i].x&&x.y===b[i].y&&x.name===b[i].name);
 const sameBankDynamic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&
-  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer);
+  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer&&x.bico===b[i].bico&&x.fila===b[i].fila&&
+    (x.workers?.length??0)===(b[i].workers?.length??0)&&(x.workers??[]).every((id,k)=>id===b[i].workers?.[k]));
 function writeBanks(w:Writer,list:readonly BankView[],bits:number,tick:number){
   w.u8(bits);
   if(bits&BANK_DYN){
     w.uvar(list.length);
     for(const b of list){
       const drawer=b.drawer!==undefined?ENEMY_LABEL.exec(b.drawer):null;
-      w.uvar(b.saldo);w.str(b.state);w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0));
+      w.uvar(b.saldo);w.str(b.state);
+      w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0)|(b.workers?.length?BANK_WORKERS:0)|(b.fila?BANK_FILA:0));
       if(b.until!==undefined)w.svar(b.until-tick);
       if(drawer)w.uvar(Number(drawer[1]));
+      w.str(b.bico);
+      if(b.workers?.length){w.uvar(b.workers.length);for(const id of b.workers)w.str(id);}
+      if(b.fila)w.uvar(b.fila);
     }
   }
   if(bits&BANK_STATIC){
@@ -780,9 +798,15 @@ function readBanks(r:Reader,tick:number,base:readonly BankView[]|undefined):Bank
     const rows=Array.from({length:r.count(MAX_BANKS)},()=>{
       const saldo=r.uvar(),state=r.str();
       if(!BANK_STATES.has(state))throw new FrameError('bad bank state');
-      const has=r.u8();if(has>3)throw new FrameError('bad bank flags');
+      const has=r.u8();if(has>15)throw new FrameError('bad bank flags');
       const until=has&BANK_UNTIL?tick+r.svar():undefined,drawer=has&BANK_DRAWER?`e${r.uvar()}`:undefined;
-      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{})};
+      const bico=r.str();if(!BICO_SET.has(bico))throw new FrameError('bad bico');
+      const workers=has&BANK_WORKERS?Array.from({length:r.count(MAX_WORKERS)},()=>r.str()):undefined;
+      if(workers&&!workers.length)throw new FrameError('empty bico shift');
+      const fila=has&BANK_FILA?r.uvar():undefined;
+      if(fila===0)throw new FrameError('empty bico queue');
+      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{}),bico:bico as BicoId,
+        ...(workers?{workers}:{}),...(fila!==undefined?{fila}:{})};
     });
     const old=next;
     next=rows.map((d,i)=>({id:old?.[i]?.id??'',x:old?.[i]?.x??0,y:old?.[i]?.y??0,name:old?.[i]?.name??BANK_IDS[0],...d}));

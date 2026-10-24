@@ -50,7 +50,20 @@ export type BankState='aberto'|'sacando'|'bicho'|'sem-cedulas';
 /** The banks' names (their text and numbers: rules/bancos.ts); never a real brand. */
 export const BANK_IDS=['pao-duro','juros','posto'] as const;
 export type BankName=typeof BANK_IDS[number];
-export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string}
+/**
+ * Bicos (card NEW-20261024-ORQ-bancos-viram-bicos; their names, lines and numbers: rules/bicos.ts BICOS): each bank's
+ * place is a shop with a gig, drawn by the seed and drawn again (another one) every time the shop opens. With it the
+ * states read: 'aberto' (open, nobody in), 'sacando' (heroes in the shift), 'bicho' (a critter takes the money),
+ * 'sem-cedulas' (closed until `until`: the shift's money is gone).
+ */
+export const BICO_IDS=['telemarketing','aura-67','entregador','compro-ouro','colchao','coach','fiscal','curso','influencer','pesquisa'] as const;
+export type BicoId=typeof BICO_IDS[number];
+/**
+ * bico: the gig the shop has now. workers: the players in the shift (PlayerInput.work; they are inside: no hits, no
+ * shots), absent when nobody. fila: the critters in its queue (each cuts the pay; rules/bicos.ts), absent when none.
+ */
+export interface BankView {id:string;x:number;y:number;name:BankName;saldo:number;state:BankState;until?:number;drawer?:string;
+  bico:BicoId;workers?:string[];fila?:number}
 
 /** The objective as the HUD and the bots see it (ObjectiveView; seconds rounded up, ticks absolute). */
 export interface ObjectiveView {

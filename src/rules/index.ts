@@ -27,6 +27,7 @@ export * from './towers.ts';
 export * from './tower-kits.ts';
 export * from './marks.ts';
 export * from './bancos.ts';
+export * from './bicos.ts';
 export * from './veiculos.ts';
 export * from './calma.ts';
 // D-051: the manual attack's target choice, shared by the server's weapons and the client's reticle.

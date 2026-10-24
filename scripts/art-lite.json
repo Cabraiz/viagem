@@ -6,13 +6,25 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3007,
-  "bytes": 2206429258,
-  "liteBytes": 763296490,
+  "files": 3008,
+  "bytes": 2211424668,
+  "liteBytes": 764685002,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
  "files": {
+  "city/base/barraca.webp": {
+   "source": "1f825b3b551299edd07a715836a8749abfd8044dd7a53da2413e17744375b4f2",
+   "lite": "4f47d7f843fef324d2c4e8c12f2b78c7974eb9c69699ae69e093212a8acd5179",
+   "bytes": 4995410,
+   "liteBytes": 1388512,
+   "liteCell": [
+    490,
+    550
+   ],
+   "psnr": 37.2,
+   "shownPsnr": 37.2
+  },
   "city/base/barricada.webp": {
    "source": "d1f3f887498f2fc5c8db25b7ae42fff8ac7eeee3e74a7ddfb28a07bef05635ae",
    "lite": "514cc35598f32fa74ae9ebf30bae7cfe786cf79b924b7166d43178a3e298630c",

@@ -9,6 +9,7 @@ import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import {ObraHold} from './obra-hold.ts';
+import {barracaSlow} from './barraca-slow.ts';
 import type {PlayerWireView} from '../../protocol/index.ts';
 import {InputBatcher,parseElenco} from '../../protocol/index.ts';
 import {parseEmote,parseSos,type EmoteNote,type SosPing} from '../fun/emotes.ts';
@@ -199,6 +200,8 @@ export class CoopClient {
   effects:MoveEffects={};
   /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
   stepCap:number|undefined;
+  /** NEW-20261023-ORQ-barracas-no-caminho: the barracas' slow from where a step starts (latest frame's barracas), else undefined. */
+  stepSlow:((at:Point)=>number)|undefined;
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
   /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
@@ -769,10 +772,10 @@ export class CoopClient {
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).
     const car=view.objective?.car;
-    this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
+    this.stepCap=this.obraHold.holding(view.structures)?0:carStepCap(car,this.id);this.stepSlow=barracaSlow(view.structures);this.handsBusy=!!car&&(car.rope===this.id||!!car.movers?.includes(this.id));
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap}):{x:self.x,y:self.y};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,slow:this.stepSlow}):{x:self.x,y:self.y};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -817,7 +820,7 @@ export class CoopClient {
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.stepSlow);}
     this.flushInput();
   }
   /**

@@ -21,9 +21,10 @@ import {damageStage} from '../render/stonewards-rules.ts';
  * `muralha`/`pilar`: the junk wall the free barricade squares wear (render/muralha-rules.ts; 2 views = the two diagonals).
  * `muro`/`muroPilar`: the cinder-block wall the built 'muro' segments wear (render/fortify.ts, card trocar-procedurais-por-arte).
  * `moto`: the chaveiro's moto with its riders and the chaveiro standing (render/chaveiro/moto-art.ts, same card).
+ * `barraca`: the feira stalls across the streets (NEW-20261023-ORQ-barracas-no-caminho), rows `lona-N:<estado>`, 2 views.
  */
 export const BASE_ART={wall:'muralha-acampamento',barricade:'barricada',crate:'caixa-saque',muralha:'muralha-tralha',pilar:'muralha-tralha-pilar',
-  muro:'muro-bloco',muroPilar:'muro-bloco-pilar',moto:'moto-chaveiro'} as const;
+  muro:'muro-bloco',muroPilar:'muro-bloco-pilar',moto:'moto-chaveiro',barraca:'barraca'} as const;
 export type BaseArtId=typeof BASE_ART[keyof typeof BASE_ART];
 const USED:readonly string[]=Object.values(BASE_ART);
 

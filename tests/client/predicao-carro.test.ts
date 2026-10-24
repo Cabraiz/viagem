@@ -47,8 +47,9 @@ test('the replay of pending steps walks at most the cap per tick (no snap-back w
 test('the client feeds the cap to both the replay and the live step, and drops the attack with busy hands', ()=>{
   const src=readFileSync(new URL('../../src/client/net/client.ts',import.meta.url),'utf8');
   assert.match(src,/this\.stepCap=this\.obraHold\.holding\(view\.structures\)\?0:carStepCap\(car,this\.id\)/);
-  assert.match(src,/cap:this\.stepCap\}/);
-  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap\)/);
+  // NEW-20261023-ORQ-barracas-no-caminho: the barracas' slow rides along with the cap (net/barraca-slow.ts).
+  assert.match(src,/cap:this\.stepCap,slow:this\.stepSlow\}/);
+  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap,this\.stepSlow\)/);
   assert.match(src,/this\.handsBusy=!!car&&\(car\.rope===this\.id\|\|!!car\.movers\?\.includes\(this\.id\)\)/);
   assert.match(src,/if\(this\.handsBusy\)attack=false;/);
   // The room uses the same cut (no drift between the phone and the room).

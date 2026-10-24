@@ -122,3 +122,23 @@ test('barricada-construir part 2: the map\'s tralha on the wire; {t:destruir} pa
   assert.ok(ana.build.weapons.some(w=>w.id==='kit:barricada'),'the kit in the inventory');
   assert.ok(!lastStructures(a.frames).some(x=>x.id===two.id&&x.hp>0),'the square left the map');
 });
+
+test('NEW-20261023-ORQ-barracas-no-caminho: the map\'s barracas on the wire (kind, cell, life); {t:coletar} gives a kit:barraca',async()=>{
+  const s=await cityWave({combat:'manual'}),{room,a,ana}=s,round=room.run.snapshot().round;
+  s.tick(2);
+  const barracas=lastStructures(a.frames).filter(x=>x.kind==='barraca');
+  assert.ok(barracas.length>=6,`barracas on the wire: ${barracas.length}`);
+  for(const b of barracas){
+    assert.ok(Number.isInteger(b.c)&&Number.isInteger(b.r),'its top-left cell');
+    assert.equal(b.maxHp,240);assert.equal(b.hp,240);
+    assert.ok(Math.abs(b.x-(b.c+1)*FREE_CELL)<.01&&Math.abs(b.y-(b.r+1)*FREE_CELL)<.01,'centred on its 2×2');
+  }
+  const one=barracas[0];
+  ana.x=(one.c+.5)*FREE_CELL+FREE_CELL;ana.y=(one.r+.5)*FREE_CELL;
+  say(room,a,{t:'coletar',round,req:8,id:one.id},s.t);
+  assert.equal(a.messages.findLast(m=>m.t==='coleta')!.ok,true);
+  s.tick(40);
+  assert.deepEqual(a.messages.findLast(m=>m.t==='coleta'),{t:'coleta',req:8,ok:true,done:true});
+  assert.ok(ana.build.weapons.some(w=>w.id==='kit:barraca'),'the kit in the inventory');
+  assert.ok(!lastStructures(a.frames).some(x=>x.id===one.id),'the barraca left the map');
+});

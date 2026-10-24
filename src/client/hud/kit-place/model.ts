@@ -13,7 +13,7 @@
  */
 import type {BuildRot} from '../../../contract/index.ts';
 import {RADIUS,walkable,type CityTerrain,type TerrainField} from '../../../maps/index.ts';
-import {kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
+import {isWallKit,kitPiece,pieceCells,type KitPiece} from '../../../rules/index.ts';
 import {cellRect,cellUnder,distToRect,ghostLook,ghostRefusal,type CellRect,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
 import {fortRefusalText} from '../fortify/model.ts';
@@ -133,7 +133,7 @@ export class KitPlace {
     if(this.pendingKeys().includes(key))return 'pending';
     const req=net.place(this.kit.slot,this.kit.piece,c,r,this.rot||undefined);
     if(req===undefined)return 'offline';
-    this.sent.set(req,{key,at:this.now(),tower:this.kit.piece!=='muro'&&this.kit.piece!=='barricada'});
+    this.sent.set(req,{key,at:this.now(),tower:!isWallKit(this.kit.piece)});
     return 'sent';
   }
   owns(req:number){return this.sent.has(req);}

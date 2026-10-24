@@ -39,7 +39,9 @@ export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
  * Where the replay stands: the frame's tick and the player's effects in it. Absent: no effects (plain walking).
  * `cap` (D-052, the car): the most this player may walk per tick while moving the car (carSpeed(movers)/SIM_HZ).
  */
-export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number}
+export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number;
+  /** NEW-20261023-ORQ-barracas-no-caminho: the step multiplier from where a step starts (the barracas: slowAmong). */
+  slow?:(at:Point)=>number}
 /** The slide direction on `tick`, or undefined when the player is not slipping then (or the vector is unusable). */
 export function slipping(effects:MoveEffects|undefined,tick:number):Point|undefined{
   const s=effects?.slip;
@@ -104,20 +106,32 @@ export function slowStep(from:Point,to:Point,factor:number,terrain:TerrainField=
   const f=Math.max(0,factor),q={x:from.x+(to.x-from.x)*f,y:from.y+(to.y-from.y)*f};
   return walkable(q,terrain)?q:{x:from.x,y:from.y};
 }
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho: `factor` while a hero's body (radius `radius`) at `p` overlaps one of `rects`
+ * (the barracas' footprints, u), else 1: the room's heroSlow (sim/towers/free-build.ts) on what the frames carry.
+ */
+export function slowAmong(rects:readonly {x:number;y:number;w:number;h:number}[],p:Point,factor:number,radius:number):number{
+  for(const r of rects){
+    const dx=Math.max(r.x-p.x,0,p.x-(r.x+r.w)),dy=Math.max(r.y-p.y,0,p.y-(r.y+r.h));
+    if(dx*dx+dy*dy<radius*radius)return factor;
+  }
+  return 1;
+}
 /** D-052: the cap of a hero among the car's movers (the room's moverCap, chaveiro/car.ts), else undefined (free). */
 export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):number|undefined{
   return car?.movers?.includes(id)?carSpeed(car.movers.length)/SIM_HZ:undefined;
 }
 /** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep. */
-export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number):Point {
+export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,slow?:(at:Point)=>number):Point {
   const to=tick===undefined?moveDirection(p,{x:input.x,y:input.y},STEP,terrain):moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
-  return capStep(p,to,cap,terrain);
+  const capped=capStep(p,to,cap,terrain);
+  return slow?slowStep(p,capped,slow(p),terrain):capped;
 }
 /**
  * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
  * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
  */
 export function reconcile(authoritative:Point,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):Point {
-  return pending.reduce((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap),{...authoritative});
+  return pending.reduce((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.slow),{...authoritative});
 }
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

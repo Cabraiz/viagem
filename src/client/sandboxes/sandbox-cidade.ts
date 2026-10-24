@@ -96,7 +96,7 @@ import {ENEMY_KINDS,PICKUP_KINDS} from '../render/keys.ts';
 import {heldHand} from '../sprites/hand-points.ts';
 import {ARSENAL_PUSH_MS,SANDBOX_ALLY,SANDBOX_SELF,allyAt,arsenalView} from './arsenal-view.ts';
 import {tokenColor} from '../ui/tokens.ts';
-import {queueBaseArt} from '../art/base-art.ts';
+import {baseArtKey,queueBaseArt} from '../art/base-art.ts';
 import {queueHordeArt} from '../art/horde-art.ts';
 import type {LiveNest} from '../render/city/live/nests.ts';
 import {TowerRenderer,queueTowerArt} from '../render/towers/towers.ts';
@@ -205,6 +205,12 @@ const tralhaShot=obra&&params.get('tralha')==='1';
  * and a lone square (the joints: halves + pillars).
  */
 const muralhaShot=obra?params.get('muralha'):null;
+/**
+ * `barracas=1` with obra=1 (NEW-20261023-ORQ-barracas-no-caminho): a row of barracas de feira across the street by the
+ * hero (the lonas by id): whole ones, a torn one (danificada) with its bar and a "-N", the tapped one in the gold
+ * outline, and the wreck (quebrada) of one that just fell. Two views pushed: the hit, then the fall.
+ */
+const barracasShot=obra&&params.get('barracas')==='1',BARRACA_SHOT_MS=200;
 /** `fala=` in the modo foto: the lines are said this long before the photo's clock (speakFoto). */
 const FOTO_TALK_AGO_MS=700;
 /** Modo foto (dev/foto.ts): the chaveiro's clock is fixed (`t`, ms), so the scene prints the same every time. */
@@ -277,6 +283,8 @@ class CitySandbox extends Phaser.Scene {
   private fortify?:FortifyRenderer;
   /** obra=1: the fortify view pushed (anda= moves its car). */
   private obraView?:RunView;
+  /** `barracas=1`: the view where b5 fell, pushed once its sheet is loaded; then the renderer's clock stays BARRACA_SHOT_MS on. */
+  private barracaFall?:RunView;private barracaClock?:number;
   /** regua=1: the ruler (Graphics) and its labels. */
   private ruler?:{g:Phaser.GameObjects.Graphics;labels:Phaser.GameObjects.Text[]};
   /** tele=1: the game's city-mode renderers. */
@@ -308,7 +316,7 @@ class CitySandbox extends Phaser.Scene {
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
     // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match; objetivo=1: the chaveiro's
     // painted moto and the built muro's sheets (BASE_ART.moto / .muro, card trocar-procedurais-por-arte).
-    if((muralhaShot||objective)&&!base&&!arsenal)queueBaseArt(this);
+    if((muralhaShot||barracasShot||objective)&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
     if(ninhos&&!arsenal)queueHordeArt(this);
   }
@@ -387,7 +395,11 @@ class CitySandbox extends Phaser.Scene {
     if(!stillHorde)this.moveHorde(dt);
     this.attack?.frame();
     this.tick(dt);
-    this.stone?.update(_t);
+    if(this.barracaFall&&this.textures.exists(baseArtKey('barraca'))){
+      // The fall a moment after the hit: the "-N" and the wreck are up, the hit flash is over; nothing ages after.
+      this.stone!.update(_t);this.stone!.push(this.barracaFall);this.barracaFall=undefined;this.barracaClock=_t+BARRACA_SHOT_MS;
+    }
+    this.stone?.update(this.barracaClock??_t);
     if(this.chaveiro){
       const now=fotoT??_t,t0=performance.now();
       // anda= or empurrando= in the modo foto (a fixed clock): the second before, so the car has turned to its move.
@@ -525,12 +537,20 @@ class CitySandbox extends Phaser.Scene {
       const [w,h]=footprintCells('barricada',rot),rect=cellRect(c,r,w,h,cell);
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
-    const structures=muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
+    const structures=barracasShot?this.barracaRow():muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
     const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
     this.stone??=new StonewardsRenderer(this,{projector,reduced:false,hero:()=>this.at,actorScale:()=>CITY_VIEW_SCALE,cell:()=>this.asset.cell});
+    if(barracasShot){
+      // The hit (b3 loses 60, b5 is about to fall), then the next view: b5 gone right after the hit (its wreck), b3 hit again.
+      const hit=(id:string,hp:number)=>structures.map(s=>s.id===id?{...s,hp}:s);
+      this.stone.push({...view,structures:hit('b5',30)});
+      this.barracaFall={...view,tick:tick+1,structures:hit('b3',110).filter(s=>s.id!=='b5')};
+      this.stone.outline='b1';
+      return;
+    }
     this.stone.push(view);
     if(tralhaShot){this.mountTralha(projector,structures.find(x=>x.id==='b1')!);return;}
     if(muralhaShot)return; // the junk wall alone, no ghost
@@ -556,6 +576,14 @@ class CitySandbox extends Phaser.Scene {
       ...[0,1,2,3,4].map(i=>bar(`t${i}`,hc+1+i,hr+1,0,200)),...[1,2].map(i=>bar(`u${i}`,hc+3,hr+1-i,1,200)),
       bar('so',hc-3,hr+2,1,200)];
     return [...row.map((d,i)=>bar(`w${i}`,hc+d,hr-2,0,200)),...row.map((d,i)=>bar(`d${i}`,hc+d,hr+2,0,i%2?40:110))];
+  }
+  /** `barracas=1`: six barracas side by side (2×2 each) across the street two cells ahead of the hero, all whole. */
+  private barracaRow():StructureView[]{
+    const cell=CITY_BUILD_CELL,n=BARRICADA_CELLS,hc=Math.round(this.at.x/cell),hr=Math.round(this.at.y/cell);
+    return [0,1,2,3,4,5].map(i=>{
+      const c=hc-6+i*n,r=hr-n-1;
+      return {id:`b${i}`,kind:'barraca',x:(c+n/2)*cell,y:(r+n/2)*cell,hp:240,maxHp:240,c,r};
+    });
   }
   /**
    * `tralha=1` with obra=1 (barricada-construir part 2): barricada b1 tapped: its gold outline, the two circles COLETAR /

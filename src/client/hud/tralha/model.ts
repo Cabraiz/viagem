@@ -16,10 +16,15 @@ export const INTERATIVO_COR=0xffd23f,INTERATIVO_CSS='var(--c-amarelo)';
 export interface TralhaNet {tralha(kind:'destruir'|'coletar',id:string):number|undefined}
 export type TralhaSquare=FortStructure&{untilTick?:number};
 
-/** The standing barricada square covering the cell under world point p (undefined: none); a square is BARRICADA_CELLS wide. */
+/** The map pieces a hero collects or destroys: the barricada de tralha and the barraca (NEW-20261023-ORQ-barracas-no-caminho). */
+export const isTralhaKind=(kind:string)=>kind==='barricada'||kind==='barraca';
+/**
+ * The standing barricada square or barraca covering the cell under world point p (undefined: none); both are
+ * BARRICADA_CELLS × BARRICADA_CELLS (the barraca's footprint is the same 2×2).
+ */
 export function squareAt(structures:readonly TralhaSquare[],p:{x:number;y:number},cell:number):TralhaSquare|undefined{
   const c=Math.floor(p.x/cell),r=Math.floor(p.y/cell),n=BARRICADA_CELLS;
-  return structures.find(s=>s.kind==='barricada'&&s.hp>0&&s.c!==undefined&&s.r!==undefined&&s.c<=c&&c<s.c+n&&s.r<=r&&r<s.r+n);
+  return structures.find(s=>isTralhaKind(s.kind)&&s.hp>0&&s.c!==undefined&&s.r!==undefined&&s.c<=c&&c<s.c+n&&s.r<=r&&r<s.r+n);
 }
 
 const REFUSALS:Readonly<Record<string,string>>={
@@ -42,12 +47,14 @@ export class TralhaPick {
   hover?:string;
   /** The coleta under way: its request and the sim tick it ends. */
   coleta?:{req:number;id:string;until:number;start:number};
-  private sent=new Map<number,{kind:'destruir'|'coletar';id:string}>();
+  /** The kind of the tapped piece ('barricada' or 'barraca'), for the answer's words. */
+  private selectedKind?:string;
+  private sent=new Map<number,{kind:'destruir'|'coletar';id:string;piece?:string}>();
 
   /** A tap on the map: selects the square under it (true: the tap was ours) or clears the selection. */
   tap(structures:readonly TralhaSquare[],p:{x:number;y:number},cell:number):boolean{
     const s=squareAt(structures,p,cell);
-    this.selected=s?.id;
+    this.selected=s?.id;this.selectedKind=s?.kind;
     return !!s;
   }
   /** The mouse over the map: the hovered square (the cursor turns into a hand there). */
@@ -73,7 +80,7 @@ export class TralhaPick {
     if(id===undefined)return 'none';
     const req=net.tralha(kind,id);
     if(req===undefined)return 'offline';
-    this.sent.set(req,{kind,id});
+    this.sent.set(req,{kind,id,piece:this.selectedKind});
     if(kind==='coletar')this.coleta={req,id,until:tick+COLETAR_SECONDS*SIM_HZ,start:tick};
     this.selected=undefined;
     return 'sent';
@@ -88,7 +95,7 @@ export class TralhaPick {
     if(a.t==='coleta'){
       if(a.ok&&a.until!==undefined&&this.coleta?.req===a.req)this.coleta.until=a.until;
       if(ended&&this.coleta?.req===a.req)this.coleta=undefined;
-      if(a.done)return 'Tralha na mão! Monta onde quiser';
+      if(a.done)return r.piece==='barraca'?'Barraca na mão! Monta onde quiser':'Tralha na mão! Monta onde quiser';
     }
     if(!a.ok)return tralhaRefusalText(a.reason);
     if(a.t==='destruiu')return `+R$ ${a.pix??DESTRUIR_PIX}: virou sucata`;

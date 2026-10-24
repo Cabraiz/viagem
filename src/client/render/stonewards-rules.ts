@@ -6,11 +6,36 @@ import type {NodeView,StructureView} from '../../contract/index.ts';
  * the wall 'muralha', a city barricade 'barricada' (cidade-06) or a forge tower 'torre-chinelo'. Any other kind is
  * not drawn (never as a tower: a barricade counted as a tower drew a sandal on every plaza mouth).
  */
-export type StructureRole='wall'|'barricade'|'tower';
-export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo';
+export type StructureRole='wall'|'barricade'|'tower'|'barraca';
+export const WALL_KIND='muralha',BARRICADE_KIND='barricada',TOWER_KIND='torre-chinelo',BARRACA_KIND='barraca';
 export function structureRole(kind:string):StructureRole|undefined{
-  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':undefined;
+  return kind===WALL_KIND?'wall':kind===BARRICADE_KIND?'barricade':kind===TOWER_KIND?'tower':kind===BARRACA_KIND?'barraca':undefined;
 }
+
+/**
+ * NEW-20261023-ORQ-barracas-no-caminho, the barraca's look (pure, tested). The art (public/art/city/base/barraca.webp)
+ * has BARRACA_LONAS lonas × inteira | danificada | quebrada, 2 views (the second mirrored: the other diagonal).
+ * - lona: from the id (every phone draws the same stall), 1..lonas;
+ * - state: inteira above DAMAGE_WHOLE of its life, danificada under it (the lona torn); quebrada is the wreck left on
+ *   the ground a moment after it falls (BARRACA_WRECK_MS: the room drops a fallen piece from the frames at once);
+ * - column: the view's parity turned by the id, so a row is not one stall copied and a camera turn flips them all.
+ */
+export function barracaHash(id:string){
+  let h=2166136261;
+  for(let i=0;i<id.length;i++)h=Math.imul(h^id.charCodeAt(i),16777619);
+  return h>>>0;
+}
+export const barracaLona=(id:string,lonas:number)=>`lona-${1+barracaHash(id)%Math.max(1,lonas)}`;
+export type BarracaEstado='inteira'|'danificada'|'quebrada';
+export const barracaEstado=(hp:number,maxHp:number):BarracaEstado=>{
+  const r=maxHp>0&&Number.isFinite(hp)?hp/maxHp:0;
+  return r<=0?'quebrada':r>DAMAGE_WHOLE?'inteira':'danificada';
+};
+export const barracaColumn=(view:number,id:string)=>((Math.round(view)+(barracaHash(id)>>>4))%2+2)%2;
+/** How long the wreck of a fallen barraca stays (ms; its last BARRACA_WRECK_FADE fade out), and how recent its last hit must be. */
+export const BARRACA_WRECK_MS=2600,BARRACA_WRECK_FADE=.4,BARRACA_HIT_RECENT_MS=1500;
+/** A barraca's "-N" pops: the hits summed per stall, at most one every BARRACA_POP_EVERY_MS. */
+export const BARRACA_POP_EVERY_MS=450;
 
 /** Life share under which the wall's bar turns Laranja Cone (and gains its notch). */
 export const WALL_LOW=.3;

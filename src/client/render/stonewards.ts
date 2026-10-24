@@ -14,12 +14,14 @@
  */
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
-import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {BARRACA_LONAS,BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
+import {BARRACA_HIT_RECENT_MS,BARRACA_POP_EVERY_MS,BARRACA_WRECK_FADE,BARRACA_WRECK_MS,barracaColumn,barracaEstado,barracaLona,type BarracaEstado} from './stonewards-rules.ts';
 import {HIT_FLASH_MS,WALL_LOW,barricadeBar,barricadeSpan,damageStage,freeBarricadeSpan,isFreeBarricade,gatheredSince,hpDropped,structureBarY,structureRole,wallBar,type DamageStage} from './stonewards-rules.ts';
 import {BASE_ART,BASE_ART_SCALED,applyBaseArt,baseFile,baseState,baseStateFrames} from '../art/base-art.ts';
+import {artPiece} from '../art/manifest.ts';
 
 export {WALL_LOW,gatheredSince,structureBarY,wallBar};
 import {token,tokenColor,whenFontsReady} from '../ui/tokens.ts';
@@ -49,7 +51,9 @@ const PILE_ROWS:Readonly<Record<DamageStage,readonly number[]>>={0:[5,4,3],1:[5,
 /** Share of Papel in the sandbags' colour by damage stage (the rest Pedra): darker as the life drops. */
 const PILE_LIGHT:Readonly<Record<DamageStage,number>>={0:1,1:.72,2:.5,3:.4};
 
-interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number}
+interface Pop {text:Phaser.GameObjects.Text;x:number;y:number;born:number;lift?:number}
+/** A fallen barraca's wreck (quebrada), kept on the ground BARRACA_WRECK_MS after the frames dropped it. */
+interface Wreck {s:StructureView;born:number}
 interface NodeMark {view:NodeView;label:Phaser.GameObjects.Text}
 
 export interface StonewardsRendererOptions {projector:Projector;reduced:boolean;
@@ -95,6 +99,11 @@ export class StonewardsRenderer {
   private marks=new Map<string,NodeMark>();
   private pops:Pop[]=[];
   private structures:StructureView[]=[];
+  /** NEW-20261023-ORQ-barracas-no-caminho: each barraca's last hit (renderer clock), its hits not yet popped, its last pop. */
+  private barracaHit=new Map<string,number>();private barracaOwed=new Map<string,number>();private barracaPopAt=new Map<string,number>();
+  /** The barracas of the last view (their wreck needs where they stood) and the wrecks on the ground. */
+  private barracaLast=new Map<string,StructureView>();private wrecks=new Map<string,Wreck>();
+  private barracaBars=new Map<string,Phaser.GameObjects.Graphics>();
   private prepare=false;
   /** D-047: the chaveiro objective runs: the Quadradão stands in the wall's place (render/chaveiro), the wall is not drawn. */
   private objective=false;
@@ -142,6 +151,7 @@ export class StonewardsRenderer {
     for(const [id,m] of this.marks)if(!seen.has(id)){m.label.destroy();this.marks.delete(id);}
     // A structure that lost life flashes briefly (never with reduced effects).
     if(!this.options.reduced)for(const id of hpDropped(this.lastHp,this.structures))this.flashUntil.set(id,this.now+HIT_FLASH_MS);
+    this.pushBarracas();
     this.lastHp=new Map(this.structures.map(s=>[s.id,s.hp]));
     for(const id of this.flashUntil.keys())if(!this.lastHp.has(id))this.flashUntil.delete(id);
     const of=(role:string)=>new Set(this.structures.filter(s=>structureRole(s.kind)===role).map(s=>s.id));
@@ -149,7 +159,8 @@ export class StonewardsRenderer {
     this.muralha.prune(of('barricade'));
     this.muralha.setSquares(this.structures.filter(s=>structureRole(s.kind)==='barricade'&&isFreeBarricade(s)));
     for(const id of [...this.pileKeys.keys()])if(!this.piles.has(id))this.pileKeys.delete(id);
-    prune(this.images,new Set([...this.lastHp.keys(),...[...this.marks.keys()].map(id=>`node:${id}`)]));
+    prune(this.barracaBars,of('barraca'));
+    prune(this.images,new Set([...this.lastHp.keys(),...[...this.marks.keys()].map(id=>`node:${id}`),...[...this.wrecks.keys()].map(id=>`wreck:${id}`)]));
   }
 
   /** After a view turn or a depth re-base: positions and depths are recomputed on the next update anyway. */
@@ -166,7 +177,9 @@ export class StonewardsRenderer {
     for(const s of this.structures){
       const role=structureRole(s.kind);
       if(role==='tower')this.drawTower(s,k,u);else if(role==='barricade')this.drawBarricade(s,wall,k,u);
+      else if(role==='barraca')this.drawBarraca(s,k,u);
     }
+    this.drawWrecks(u);
     this.drawPops(k);
     this.glow.end();
   }
@@ -176,6 +189,7 @@ export class StonewardsRenderer {
     for(const g of this.towers.values())g.destroy();this.towers.clear();
     for(const g of this.barricades.values())g.destroy();this.barricades.clear();
     for(const b of this.piles.values())b.destroy();this.piles.clear();this.pileKeys.clear();
+    for(const g of this.barracaBars.values())g.destroy();this.barracaBars.clear();this.wrecks.clear();
     for(const i of this.images.values())i.destroy();this.images.clear();
     this.muralha.destroy();this.glow.destroy();
     for(const m of this.marks.values())m.label.destroy();this.marks.clear();
@@ -459,12 +473,101 @@ export class StonewardsRenderer {
     const text=this.scene.add.text(0,0,`+${amount}`,{...this.labelStyle,fontSize:'21px'}).setOrigin(.5,1).setDepth(96000);
     this.pops.push({text,x:n.x,y:n.y,born:this.now});
   }
+
+  /**
+   * NEW-20261023-ORQ-barracas-no-caminho, per view: the barracas' hits (summed into "-N" pops), and the wreck of one
+   * the frames dropped right after a hit (fallen, not collected: a collected stall just goes).
+   */
+  private pushBarracas(){
+    const now=this.now,seen=new Set<string>();
+    for(const s of this.structures){
+      if(structureRole(s.kind)!=='barraca')continue;
+      seen.add(s.id);
+      const old=this.barracaLast.get(s.id);
+      if(old&&s.hp<old.hp){this.barracaHit.set(s.id,now);this.barracaOwed.set(s.id,(this.barracaOwed.get(s.id)??0)+old.hp-s.hp);}
+      this.barracaLast.set(s.id,s);
+    }
+    for(const [id,s] of this.barracaLast){
+      if(seen.has(id))continue;
+      const hit=this.barracaHit.get(id);
+      if(hit!==undefined&&now-hit<BARRACA_HIT_RECENT_MS){
+        const owed=(this.barracaOwed.get(id)??0)+s.hp;
+        this.wrecks.set(id,{s:{...s,hp:0},born:now});
+        if(owed>0)this.popHit(s,owed);
+      }
+      this.barracaLast.delete(id);this.barracaHit.delete(id);this.barracaOwed.delete(id);this.barracaPopAt.delete(id);
+    }
+    for(const [id,owed] of this.barracaOwed){
+      const s=this.barracaLast.get(id);
+      if(!s||owed<=0||now-(this.barracaPopAt.get(id)??-Infinity)<BARRACA_POP_EVERY_MS)continue;
+      this.popHit(s,owed);this.barracaOwed.set(id,0);this.barracaPopAt.set(id,now);
+    }
+  }
+  /** A "-N" over a hit barraca, in Laranja Cone (the damage it takes, readable from afar). */
+  private popHit(s:StructureView,amount:number){
+    const text=this.scene.add.text(0,0,`-${Math.round(amount)}`,{...this.labelStyle,fontSize:'22px',color:token('--c-cone')}).setOrigin(.5,1).setDepth(96000);
+    this.pops.push({text,x:s.x,y:s.y,born:this.now,lift:40});
+  }
+  /** The barraca sheet's px across one build cell (meta.celula), undefined without it. */
+  private barracaCelula(){
+    const c=artPiece('base',BASE_ART.barraca)?.meta?.celula;
+    return typeof c==='number'&&c>0?c:undefined;
+  }
+  /**
+   * The art of barraca `s` in `estado` under image key `key`, at its ground centre and scaled so one build cell of the
+   * sheet (meta.celula) spans one projected CITY_BUILD_CELL; undefined (hidden) without the art.
+   */
+  private barracaArt(key:string,s:StructureView,estado:BarracaEstado,u:number){
+    const celula=this.barracaCelula();
+    const img=celula?this.art(key,BASE_ART.barraca,`${barracaLona(s.id,BARRACA_LONAS)}:${estado}`,barracaColumn(this.options.projector.view,s.id),u):undefined;
+    if(!img||!celula){this.images.get(key)?.setVisible(false);return undefined;}
+    const a=this.project(s.x,s.y),ax=a.x,ay=a.y,bx=this.project(s.x+CITY_BUILD_CELL,s.y).x,cx=this.project(s.x,s.y+CITY_BUILD_CELL).x;
+    const k=(Math.abs(bx-ax)+Math.abs(cx-ax))/2/celula;
+    img.setScale(k).setPosition(ax,ay).setDepth(this.options.projector.depth(s.x,s.y)-BAR_OVER_ART);
+    return img;
+  }
+  /**
+   * A barraca (NEW-20261023-ORQ-barracas-no-caminho): the stall's art, inteira then danificada (the lona torn) by its
+   * life; the hit flash, the gold outline of the one under the mouse or tapped (hud/tralha), the usable glow, and a life
+   * bar over the awning while damaged. Without the art: a Papel square on its footprint (the bar still shows).
+   */
+  private drawBarraca(s:StructureView,k:number,u:number){
+    let g=this.barracaBars.get(s.id);
+    if(!g){g=this.scene.add.graphics().setName('base-barraca');this.barracaBars.set(s.id,g);}
+    g.clear();
+    const depth=this.options.projector.depth(s.x,s.y),p=this.project(s.x,s.y),x=p.x,y=p.y,flash=this.flashing(s.id);
+    g.setDepth(depth);
+    const side=CITY_BUILD_CELL*BARRICADA_CELLS,c0=s.c!==undefined?s.c*CITY_BUILD_CELL:s.x-side/2,r0=s.r!==undefined?s.r*CITY_BUILD_CELL:s.y-side/2;
+    const corners=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]].map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
+    const img=this.barracaArt(s.id,s,barracaEstado(s.hp,s.maxHp),u);
+    let top=y-40*k;
+    if(img){
+      if(flash)img.setTintFill(this.c.claro);else img.clearTint();
+      this.glow.mark(s.id,img,k);
+      const f=baseFile(BASE_ART.barraca)!,anchorY=f.anchor?.[1]??.75;
+      top=y-f.cell[1]*anchorY*img.scaleY*.8;
+    }else{
+      g.fillStyle(flash?this.c.claro:this.c.papel,.9).fillPoints(corners,true).lineStyle(2*k,this.c.breu,1).strokePoints(corners,true);
+    }
+    if(s.id===this.outline)g.lineStyle(5*k,this.c.breu,.6).strokePoints(corners,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(corners,true);
+    const bar=barricadeBar(s.hp,s.maxHp);
+    if(bar.show)this.drawBar(g,x-28*k,top-14*k,56*k,7*k,bar.fraction,bar.low,k);
+  }
+  /** The wrecks of fallen barracas: quebrada on their spot, fading out over their last BARRACA_WRECK_FADE. */
+  private drawWrecks(u:number){
+    for(const [id,w] of this.wrecks){
+      const age=this.now-w.born,key=`wreck:${id}`;
+      if(age>=BARRACA_WRECK_MS){this.images.get(key)?.destroy();this.images.delete(key);this.wrecks.delete(id);continue;}
+      const img=this.barracaArt(key,w.s,'quebrada',u),t=age/BARRACA_WRECK_MS;
+      img?.clearTint().setAlpha(t<1-BARRACA_WRECK_FADE?1:(1-t)/BARRACA_WRECK_FADE);
+    }
+  }
   private drawPops(k:number){
     this.pops=this.pops.filter(p=>{
       const age=this.now-p.born;
       if(age>=POP_MS){p.text.destroy();return false;}
       const q=this.project(p.x,p.y),t=age/POP_MS,rise=this.options.reduced?0:28*t;
-      p.text.setPosition(q.x,q.y-(70+rise)*k).setScale(k).setAlpha(t<.7?1:1-(t-.7)/.3);
+      p.text.setPosition(q.x,q.y-(70+(p.lift??0)+rise)*k).setScale(k).setAlpha(t<.7?1:1-(t-.7)/.3);
       return true;
     });
   }

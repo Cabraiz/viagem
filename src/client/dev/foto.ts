@@ -35,6 +35,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'chaveiro-falas-3':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000&fala=puxa,empurra&seed=3'),descricao:'falas do chaveiro: o Quadradão puxado na corda (puxa) e empurrado (empurra)'},
   'obra-livre':{...chaveiro('moto=entrega','&obra=1'),descricao:'D-052 placeholder: muros, barricadas livres, corda no carro, fantasma verde e dicas'},
   'muralha-tralha':{...chaveiro('moto=entrega','&obra=1&muralha=1'),descricao:'barricada-2x: a muralha de tralha, 2 fileiras de 5 quadrados 2×2 (inteiros atrás, avariados na frente)'},
+  'barracas':{...chaveiro('moto=entrega','&obra=1&barracas=1'),descricao:'barracas-no-caminho: fileira de barracas de feira (lonas pelo id), uma rasgada com barra e "-N", a tocada com contorno e os destroços de uma que caiu'},
   'muralha-juntas':{...chaveiro('moto=entrega','&obra=1&muralha=2'),descricao:'barricada-2x: L, T e um quadrado sozinho (meias peças + pilar)'},
   'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=120,140',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},

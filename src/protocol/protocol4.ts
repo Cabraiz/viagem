@@ -101,6 +101,8 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * Next (the queue numbers it) since the moveSpeed stat (card BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada):
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
+ * Next (the queue numbers it) since the barracas (card NEW-20261023-ORQ-barracas-no-caminho): 'kit:barraca' and the
+ * 'barraca' structure kind at the end of the DICT; an older decoder would read the new indexes as unknown strings.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=31;

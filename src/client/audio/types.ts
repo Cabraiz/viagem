@@ -22,7 +22,7 @@ export const FILE_SOUND_IDS=[
   'torre-construir','torre-pistola','torre-fuzil','torre-metralhadora','torre-rotativa','torre-sniper','torre-antimaterial','torre-rojao',
   'torre-morteiro','torre-foguete','torre-obus','torre-gustavao','torre-holofote','torre-arame','torre-antiaerea','torre-radar',
   'bicho-acerto','bicho-morte','chefe-acerto','chefe-morte','chefe-passo',
-  'bau-comum','bau-raro','bau-epico','bau-lendario',
+  'bau-comum','bau-raro','bau-epico','bau-lendario','caca-niquel',
   'coxinha','ima',
 ] as const;
 export type ProceduralId=typeof SOUND_IDS[number];

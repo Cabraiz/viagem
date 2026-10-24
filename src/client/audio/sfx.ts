@@ -49,6 +49,8 @@ export const SFX:Readonly<Record<SoundId,SfxSpec>>=Object.freeze({
   'torre-antiaerea':TOWER,'torre-radar':spec(900,0,.25),
   'bicho-acerto':spec(50,0,.3),'bicho-morte':spec(60,0,.4),'chefe-acerto':spec(120,1,.5),'chefe-morte':spec(0,3,.85),'chefe-passo':spec(250,1,.5),
   'bau-comum':spec(100,2,.65),'bau-raro':spec(100,2,.7),'bau-epico':spec(100,2,.75),'bau-lendario':spec(100,3,.8),
+  // The caça-níquel when my weapon turns dourada (caixa-gamble, hud/caca-niquel.ts): the jackpot over the chest.
+  'caca-niquel':spec(500,3,.85),
   coxinha:spec(60,1,.5),ima:spec(300,1,.55),
 });
 

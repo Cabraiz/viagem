@@ -6,6 +6,8 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
+import {ARENA,ArenaClock,arenaBoss} from './render/arena-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
 import {sunlit} from './render/light-actors.ts';
 import { classes, infinitoPoiName } from '../rules/index.ts';
@@ -999,6 +1001,38 @@ export class IslandScene extends Phaser.Scene {
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
+  /** The chefão's arena in the dark (boss-fim-onda-1, render/arena-rules.ts): built on the first chefão. */
+  private readonly arenaClock=new ArenaClock();
+  private arenaDark?:ArenaDark;
+  private readonly arenaSpots:ArenaSpotPx[]=[];
+  /** A circle of `radius` u around `at` as drawn (world px ellipse). */
+  private groundEllipse(at:Point,radius:number):ArenaSpotPx{
+    const c=this.project(at),u=this.project({x:at.x+radius,y:at.y}),v=this.project({x:at.x,y:at.y+radius});
+    return {x:c.x,y:c.y,rx:Math.hypot(u.x-c.x,v.x-c.x),ry:Math.hypot(u.y-c.y,v.y-c.y)};
+  }
+  /**
+   * While the 1st wave's chefão stands the map goes dark: only his arena, the own hero, the allies on their feet and the
+   * Uno stay lit (the user, 24/10: "fear avançada"). The fear's dark (alone) draws over it.
+   */
+  private drawArena(delta:number){
+    const net=this.hooks.net!,combat=net.run?.phase==='combat';
+    const boss=combat?arenaBoss(net.feed.enemies.values()):undefined;
+    if(!combat)this.arenaClock.reset();
+    if(!boss&&!this.arenaDark)return;
+    const frame=this.arenaClock.step(boss,delta);
+    if(frame.alpha<=0||!frame.at){this.arenaDark?.hide();return;}
+    // The light texture is clear to LIGHT_CORE of its radius: the arena's clear edge sits at ARENA.radius.
+    const out=this.arenaSpots,grow=1/LIGHT_CORE;out.length=0;
+    out.push(this.groundEllipse(frame.at,ARENA.radius*grow),this.groundEllipse(this.position,ARENA.heroLight*grow));
+    for(const p of net.feed.players.values()){
+      if(p.id===net.id||p.spectator||p.downed||p.eliminated||!(p.hp>0))continue;
+      const at=this.drawnFeet.get(p.id)??(p.x!==undefined&&p.y!==undefined?{x:p.x,y:p.y}:undefined);
+      if(at)out.push(this.groundEllipse(at,ARENA.allyLight*grow));
+    }
+    const car=this.chaveiro?.carPose();
+    if(car)out.push(this.groundEllipse(car,ARENA.unoLight*grow));
+    (this.arenaDark??=new ArenaDark(this)).draw({alpha:frame.alpha,spots:out});
+  }
   /** The vignette strength of the world shown (city, endless, island); economy mode hides it. */
   private applyGrade(){this.vignette?.set(isCityWorld(this.field)?'cidade':this.field.chunks?'infinito':'ilha',this.economy);}
   private readonly catchUp=new CatchUp();
@@ -1053,7 +1087,7 @@ export class IslandScene extends Phaser.Scene {
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
-      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);return;
+      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);this.drawArena(delta);return;
     }
     if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction(),keys=this.keyAxis();

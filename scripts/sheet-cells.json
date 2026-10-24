@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4277,
+  "sheets": 4293,
   "failing": 0,
   "frames": 0
  },
@@ -16868,6 +16868,46 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/clt-cansado.idle16-e.36cae497b789.webp": {
+   "sha": "d6046a826b841c47f92c105b93f03ef369456c6fbce0eed1e07c2aac9227210c",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-n.8f78da6fd8cb.webp": {
+   "sha": "86c6dd143396e2c16f81784e7af4842e688540685f2f3e0f26bbd652fc48337f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-ne.221f33477d0d.webp": {
+   "sha": "b59944202f47e4853a40b1aca39647fc4559c2db42b191b9a901ccd75f0e5865",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-nw.7f6c70e7d881.webp": {
+   "sha": "7eaf1cca416829ac2372be32f165ffa703310a5a7470616fb6ed3f232504b14d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-s.c6aba328d725.webp": {
+   "sha": "f4233905f23a4c0919e34f80740c21627b73b78743787d594314528fd1179445",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-se.c455bab2525d.webp": {
+   "sha": "3825c7198dfffb79f19d01473bbbbc280210fbae6cc4c3311a9067b7110cdb0f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-sw.cc3174cc7c7d.webp": {
+   "sha": "902f325f64385ba544ae5a4cbb4d36d4598a7502e606ba0c2ab20ab643d4761b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.idle16-w.bff4c31a21d7.webp": {
+   "sha": "18417e97000ce2064cc2d90736e6bba5078098acd1ef18951fbf241c056a2d1c",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/clt-cansado.idle8.15cf38519b49.webp": {
    "sha": "48d0206d9169602c5993e47a0b8f91d4d9ce1e38106db9831de19623a9021237",
    "ilhas": 0,
@@ -18663,28 +18703,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.idle16-n.f3225cfb6309.webp": {
-   "sha": "f87989ace4dad6c01fa58e95c6041f384b7bf8f568e51d223722e3d65d425624",
+  "lite/sprites/viciado-em-bet.idle16-n.7ad3b3c38974.webp": {
+   "sha": "19b6bbaf8159a2dcc07ad1fc0cbde8ba2ffacb03c53cd0e46da87282a55951ae",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.idle16-nw.1746c36825cc.webp": {
-   "sha": "b786769de268d62315977bf680cbb222ec2ecebfa2cdab550e4241c9869ea571",
+  "lite/sprites/viciado-em-bet.idle16-nw.c72981bcf34d.webp": {
+   "sha": "30ea0906a4057379f431bead0f29ea951d2410c786fb004ac98c81fd5141c389",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.idle16-s.5129f7e6ecfc.webp": {
-   "sha": "ebca53a505e83ac49fa6e1fa39aafd4e6f42e146407b79f1b082e9136ade0bfe",
+  "lite/sprites/viciado-em-bet.idle16-s.ee01578e879c.webp": {
+   "sha": "67ca780055e5449edcf58254bdd1a00cec840a7a7d379d9dfb924ac87765cac3",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.idle16-se.06441542a0a8.webp": {
-   "sha": "0db780c4868910b242d55ffb6e651f5e0ffb5ed52535ee3c540b7a50dd5268d2",
+  "lite/sprites/viciado-em-bet.idle16-se.6d0e91ad8945.webp": {
+   "sha": "0ef75c03ffc579a81bf04f959cc2c88bb0a32213624a6800f3188feb1a23ca44",
    "ilhas": 0,
    "fails": []
   },
-  "lite/sprites/viciado-em-bet.idle16-w.03657852a60e.webp": {
-   "sha": "e7220627355d44b5876560a79dea9002464942c5227f6ef1f499f91c74e505be",
+  "lite/sprites/viciado-em-bet.idle16-w.68507c0fe622.webp": {
+   "sha": "9bb57ea714a0421288638cc95fd775085529127fc8986c13f6f68108af64973a",
    "ilhas": 0,
    "fails": []
   },
@@ -19230,6 +19270,46 @@
   },
   "sprites/clt-cansado.hurt16-w.3c12efcc5ab1.webp": {
    "sha": "3c12efcc5ab18ca96f0d5c348f9c940f1f72788af4b8bd37f58fd6ed809ff799",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-e.36cae497b789.webp": {
+   "sha": "36cae497b789ed271c3b57e3ace3b4d969ad221f038a8a49a19f7f29407b000b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-n.8f78da6fd8cb.webp": {
+   "sha": "8f78da6fd8cba53d4c21ecb69a002aaeceed463cd7683b06bbae16ed4df60086",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-ne.221f33477d0d.webp": {
+   "sha": "221f33477d0db4e5985dd98d2953e36bc6e7077b023f1607d955f6eb31a02333",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-nw.7f6c70e7d881.webp": {
+   "sha": "7f6c70e7d88100368d38307674d5272aaea6016fb1b222d07d3320734f629515",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-s.c6aba328d725.webp": {
+   "sha": "c6aba328d7259f8f8c3fa4559d3dec60df62187658226fdc8e5ffdb0970f9d2e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-se.c455bab2525d.webp": {
+   "sha": "c455bab2525d45bd8fc9466b078cf2a7153020ab0f3a6c92d92c05265c6307bc",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-sw.cc3174cc7c7d.webp": {
+   "sha": "cc3174cc7c7d3307fdb04f58e60e2c9ce730dd92011c265d06c8997749500e55",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.idle16-w.bff4c31a21d7.webp": {
+   "sha": "bff4c31a21d7fa007a99758544fc0295fa5136b2cb286066c4f1a09f1b829d18",
    "ilhas": 0,
    "fails": []
   },
@@ -21133,28 +21213,28 @@
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.idle16-n.f3225cfb6309.webp": {
-   "sha": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7",
+  "sprites/viciado-em-bet.idle16-n.7ad3b3c38974.webp": {
+   "sha": "7ad3b3c38974d469067a5bc746ce969dbf8e198fc14d356320f0b0f7d08a75fd",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.idle16-nw.1746c36825cc.webp": {
-   "sha": "1746c36825cc72e62acbdfa0ba9e6922c85d6f0ca67d048b63bdbd583f971c84",
+  "sprites/viciado-em-bet.idle16-nw.c72981bcf34d.webp": {
+   "sha": "c72981bcf34d76e930ac49b95ec11de3d2440b0749e6d8e7b39c280fa59ac8a3",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.idle16-s.5129f7e6ecfc.webp": {
-   "sha": "5129f7e6ecfcbcd1cbdeeae93e731f3570701a29f76ca0d327dd5bb196f37eca",
+  "sprites/viciado-em-bet.idle16-s.ee01578e879c.webp": {
+   "sha": "ee01578e879ca752dde92f243b3bbd75bf92be715588ac8d86b046f97f096705",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.idle16-se.06441542a0a8.webp": {
-   "sha": "06441542a0a8f4b8eb143fe8945d4d6bec7c7c7fac894b0a22cc8d10b12d7644",
+  "sprites/viciado-em-bet.idle16-se.6d0e91ad8945.webp": {
+   "sha": "6d0e91ad8945886f6f5dd4fa91d74cb60e25a2d0459f747a9ae204716fb66747",
    "ilhas": 0,
    "fails": []
   },
-  "sprites/viciado-em-bet.idle16-w.03657852a60e.webp": {
-   "sha": "03657852a60e6dd2206f52abed94f52783d80690df4114d3d184c93a580abcb2",
+  "sprites/viciado-em-bet.idle16-w.68507c0fe622.webp": {
+   "sha": "68507c0fe622261389ac9808ada33a8fa9e9b8b5761dc7ec3e95cc737fe47522",
    "ilhas": 0,
    "fails": []
   },

@@ -3347,6 +3347,294 @@
           ],
           "sha256": "3c12efcc5ab18ca96f0d5c348f9c940f1f72788af4b8bd37f58fd6ed809ff799"
         },
+        "idle16-E": {
+          "file": "clt-cansado.idle16-e.36cae497b789.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 35,
+            "top": 16,
+            "right": 71,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-e.36cae497b789.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "36cae497b789ed271c3b57e3ace3b4d969ad221f038a8a49a19f7f29407b000b"
+            }
+          ],
+          "sha256": "36cae497b789ed271c3b57e3ace3b4d969ad221f038a8a49a19f7f29407b000b"
+        },
+        "idle16-N": {
+          "file": "clt-cansado.idle16-n.8f78da6fd8cb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 37,
+            "top": 15,
+            "right": 72,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-n.8f78da6fd8cb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "8f78da6fd8cba53d4c21ecb69a002aaeceed463cd7683b06bbae16ed4df60086"
+            }
+          ],
+          "sha256": "8f78da6fd8cba53d4c21ecb69a002aaeceed463cd7683b06bbae16ed4df60086"
+        },
+        "idle16-NE": {
+          "file": "clt-cansado.idle16-ne.221f33477d0d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 36,
+            "top": 16,
+            "right": 73,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-ne.221f33477d0d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "221f33477d0db4e5985dd98d2953e36bc6e7077b023f1607d955f6eb31a02333"
+            }
+          ],
+          "sha256": "221f33477d0db4e5985dd98d2953e36bc6e7077b023f1607d955f6eb31a02333"
+        },
+        "idle16-NW": {
+          "file": "clt-cansado.idle16-nw.7f6c70e7d881.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 36,
+            "top": 15,
+            "right": 73,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-nw.7f6c70e7d881.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "7f6c70e7d88100368d38307674d5272aaea6016fb1b222d07d3320734f629515"
+            }
+          ],
+          "sha256": "7f6c70e7d88100368d38307674d5272aaea6016fb1b222d07d3320734f629515"
+        },
+        "idle16-S": {
+          "file": "clt-cansado.idle16-s.c6aba328d725.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 40,
+            "top": 15,
+            "right": 75,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-s.c6aba328d725.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c6aba328d7259f8f8c3fa4559d3dec60df62187658226fdc8e5ffdb0970f9d2e"
+            }
+          ],
+          "sha256": "c6aba328d7259f8f8c3fa4559d3dec60df62187658226fdc8e5ffdb0970f9d2e"
+        },
+        "idle16-SE": {
+          "file": "clt-cansado.idle16-se.c455bab2525d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 34,
+            "top": 15,
+            "right": 69,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-se.c455bab2525d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c455bab2525d45bd8fc9466b078cf2a7153020ab0f3a6c92d92c05265c6307bc"
+            }
+          ],
+          "sha256": "c455bab2525d45bd8fc9466b078cf2a7153020ab0f3a6c92d92c05265c6307bc"
+        },
+        "idle16-SW": {
+          "file": "clt-cansado.idle16-sw.cc3174cc7c7d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 40,
+            "top": 15,
+            "right": 75,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-sw.cc3174cc7c7d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "cc3174cc7c7d3307fdb04f58e60e2c9ce730dd92011c265d06c8997749500e55"
+            }
+          ],
+          "sha256": "cc3174cc7c7d3307fdb04f58e60e2c9ce730dd92011c265d06c8997749500e55"
+        },
+        "idle16-W": {
+          "file": "clt-cansado.idle16-w.bff4c31a21d7.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 38,
+            "top": 16,
+            "right": 74,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-w.bff4c31a21d7.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "bff4c31a21d7fa007a99758544fc0295fa5136b2cb286066c4f1a09f1b829d18"
+            }
+          ],
+          "sha256": "bff4c31a21d7fa007a99758544fc0295fa5136b2cb286066c4f1a09f1b829d18"
+        },
         "idle8": {
           "file": "clt-cansado.idle8.15cf38519b49.webp",
           "cell": [
@@ -5492,7 +5780,7 @@
           "sha256": "b28327639cc8e51016fe9bff54b1c105ea41175078a7178ee12eeeebd9f1255a"
         }
       },
-      "sha256": "2fa9d0b0ac879347916aa9bd63ff9b158ee1cf4a07da21ade38c419b768de982"
+      "sha256": "07bceab8cfbfbadeca226b5c8cb9188e0a280a42d2ddc56733f00a5e550918b4"
     },
     "coach": {
       "kind": "dir8",
@@ -21345,14 +21633,14 @@
           "sha256": "956ef6be581856d155b1de4e8d8ec378b21034efad82c48c61a1b592589e0b45"
         },
         "idle16-N": {
-          "file": "viciado-em-bet.idle16-n.f3225cfb6309.webp",
+          "file": "viciado-em-bet.idle16-n.7ad3b3c38974.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -21361,34 +21649,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 46.9,
+          "pivotX": 46.96,
           "figure": {
             "left": 30,
-            "top": 20,
+            "top": 18,
             "right": 64,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-n.f3225cfb6309.webp",
+              "file": "viciado-em-bet.idle16-n.7ad3b3c38974.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7"
+              "frameCount": 16,
+              "sha256": "7ad3b3c38974d469067a5bc746ce969dbf8e198fc14d356320f0b0f7d08a75fd"
             }
           ],
-          "sha256": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7"
+          "sha256": "7ad3b3c38974d469067a5bc746ce969dbf8e198fc14d356320f0b0f7d08a75fd"
         },
         "idle16-NW": {
-          "file": "viciado-em-bet.idle16-nw.1746c36825cc.webp",
+          "file": "viciado-em-bet.idle16-nw.c72981bcf34d.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -21397,34 +21685,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 49.71,
+          "pivotX": 49.81,
           "figure": {
-            "left": 33,
-            "top": 20,
-            "right": 63,
+            "left": 30,
+            "top": 19,
+            "right": 64,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-nw.1746c36825cc.webp",
+              "file": "viciado-em-bet.idle16-nw.c72981bcf34d.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "1746c36825cc72e62acbdfa0ba9e6922c85d6f0ca67d048b63bdbd583f971c84"
+              "frameCount": 16,
+              "sha256": "c72981bcf34d76e930ac49b95ec11de3d2440b0749e6d8e7b39c280fa59ac8a3"
             }
           ],
-          "sha256": "1746c36825cc72e62acbdfa0ba9e6922c85d6f0ca67d048b63bdbd583f971c84"
+          "sha256": "c72981bcf34d76e930ac49b95ec11de3d2440b0749e6d8e7b39c280fa59ac8a3"
         },
         "idle16-S": {
-          "file": "viciado-em-bet.idle16-s.5129f7e6ecfc.webp",
+          "file": "viciado-em-bet.idle16-s.ee01578e879c.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -21433,34 +21721,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 52.09,
+          "pivotX": 52.1,
           "figure": {
             "left": 34,
-            "top": 20,
+            "top": 19,
             "right": 70,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-s.5129f7e6ecfc.webp",
+              "file": "viciado-em-bet.idle16-s.ee01578e879c.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "5129f7e6ecfcbcd1cbdeeae93e731f3570701a29f76ca0d327dd5bb196f37eca"
+              "frameCount": 16,
+              "sha256": "ee01578e879ca752dde92f243b3bbd75bf92be715588ac8d86b046f97f096705"
             }
           ],
-          "sha256": "5129f7e6ecfcbcd1cbdeeae93e731f3570701a29f76ca0d327dd5bb196f37eca"
+          "sha256": "ee01578e879ca752dde92f243b3bbd75bf92be715588ac8d86b046f97f096705"
         },
         "idle16-SE": {
-          "file": "viciado-em-bet.idle16-se.06441542a0a8.webp",
+          "file": "viciado-em-bet.idle16-se.6d0e91ad8945.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -21469,34 +21757,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 42.04,
+          "pivotX": 42.11,
           "figure": {
-            "left": 26,
-            "top": 20,
-            "right": 58,
+            "left": 25,
+            "top": 19,
+            "right": 59,
             "bottom": 76
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-se.06441542a0a8.webp",
+              "file": "viciado-em-bet.idle16-se.6d0e91ad8945.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "06441542a0a8f4b8eb143fe8945d4d6bec7c7c7fac894b0a22cc8d10b12d7644"
+              "frameCount": 16,
+              "sha256": "6d0e91ad8945886f6f5dd4fa91d74cb60e25a2d0459f747a9ae204716fb66747"
             }
           ],
-          "sha256": "06441542a0a8f4b8eb143fe8945d4d6bec7c7c7fac894b0a22cc8d10b12d7644"
+          "sha256": "6d0e91ad8945886f6f5dd4fa91d74cb60e25a2d0459f747a9ae204716fb66747"
         },
         "idle16-W": {
-          "file": "viciado-em-bet.idle16-w.03657852a60e.webp",
+          "file": "viciado-em-bet.idle16-w.68507c0fe622.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -21505,24 +21793,24 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 51.27,
+          "pivotX": 51.29,
           "figure": {
-            "left": 35,
-            "top": 20,
-            "right": 64,
+            "left": 32,
+            "top": 19,
+            "right": 67,
             "bottom": 76
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-w.03657852a60e.webp",
+              "file": "viciado-em-bet.idle16-w.68507c0fe622.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "03657852a60e6dd2206f52abed94f52783d80690df4114d3d184c93a580abcb2"
+              "frameCount": 16,
+              "sha256": "68507c0fe622261389ac9808ada33a8fa9e9b8b5761dc7ec3e95cc737fe47522"
             }
           ],
-          "sha256": "03657852a60e6dd2206f52abed94f52783d80690df4114d3d184c93a580abcb2"
+          "sha256": "68507c0fe622261389ac9808ada33a8fa9e9b8b5761dc7ec3e95cc737fe47522"
         },
         "idle8": {
           "file": "viciado-em-bet.idle8.f8c45d75d0f1.webp",
@@ -23849,7 +24137,7 @@
           "sha256": "d7a393898e4455b159ea081e1130088c0f1d5a6f94b6e784a5656f4ef6067a89"
         }
       },
-      "sha256": "dcc6e6271384aeb9dae2a10ed77002f27188710c417a2ea1450379200d229561"
+      "sha256": "03bf7d70c6508b723b3c5f37c6e85bbfe7823e5aa5bb67a86ca0a52e6ebd190a"
     },
     "vizinha-fofoqueira": {
       "kind": "dir8",

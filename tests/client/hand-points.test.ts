@@ -31,8 +31,9 @@ sharp.cache(false);sharp.concurrency(1);
  */
 const HELD=Object.keys(manifest.groups.personagens.pieces).filter(id=>Object.keys(filesOf(id)).some(n=>/^walk(16|128)-/.test(n)));
 const shown=(id:string)=>{
-  const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
-  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n))
+  // An R06 class that breathes (parado-respiracao-herois: the CLT) rests on its idle16 in the 8 directions, not the idle8.
+  const files=filesOf(id),m16=Object.keys(files).some(n=>n.startsWith('walk16-')),idle16=!m16&&Object.keys(files).some(n=>n.startsWith('idle16-'));
+  return Object.entries(files).filter(([n])=>m16?/^(walk|attack|idle|run)16-/.test(n):idle16?/^(walk|attack)128-|^(run|idle)16-/.test(n):/^(walk|attack)128-|^idle8$|^run16-/.test(n))
 };
 /** 1280×720 (DPR 1, city): the 96 px figure draws ≈45 px (56 × HERO_DRAW_SCALE), a figure ~50 cell px tall: ≈0.9 screen px a cell px. */
 const SCREEN_PER_CELL=45/50;
@@ -43,8 +44,9 @@ test('every sheet the game shows any hero has its hand in each frame, inside the
   assert.equal(HELD.length,16,HELD.join());
   for(const id of HELD){
     const sheets=shown(id);
-    // M16 (viciado, gato, maromba, vendedor, aposentado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs.
-    assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'||id==='maromba'||id==='vendedor-praia'||id==='aposentado'?20:id==='clt-cansado'?22:17,`${id}: the sheets it shows`);
+    // M16 (viciado, gato, maromba, vendedor, aposentado): walk, attack, idle and run in 5 directions; R06: walk128 and attack128 in 8, idle8, run16 in 5 if it runs;
+    // the CLT breathes on idle16 in 8 instead of its idle8.
+    assert.equal(sheets.length,id==='viciado-em-bet'||id==='gato-nada-pra-comer'||id==='maromba'||id==='vendedor-praia'||id==='aposentado'?20:id==='clt-cansado'?29:17,`${id}: the sheets it shows`);
     // The M16 rest: 8 poses (held) or 16 (breathing, card parado-respiracao-herois), as its entry says.
     for(const [name,f] of sheets){
       const sheet=HAND_POINTS[f.file],frames=name==='idle8'?8:name.includes('128-')?128:name.startsWith('idle')?f.frames:16;

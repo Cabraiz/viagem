@@ -1,6 +1,7 @@
 /* The Minuto de Minerva clock (hud/minerva.ts): first row of the announcement slot (.rh-stack), ONLY an analog clock on
    a paper disc (card inicio-no-uno-caixas-120: no title, no seconds): the hand walks back to 12 and the lilac sector of
-   the time left shrinks with it. The last 10 s pulse in Laranja Cone; at zero the face flashes cone and leaves. */
+   the time left shrinks with it. The last 10 s turn Laranja Cone (one grow-and-back when they start; the urgency stays
+   in the colour, design §2.5); at zero the face flashes cone and leaves. */
 .rh-minerva{display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box;
   background:var(--c-papel);border:3px solid var(--c-breu);border-radius:50%;box-shadow:var(--s-1);
   pointer-events:none;transform-origin:50% 50%}
@@ -12,7 +13,7 @@
 .rh-minerva-tick-big{stroke-width:5}
 .rh-minerva-hand line{stroke:var(--c-cone);stroke-width:5;stroke-linecap:round}
 .rh-minerva-pin{fill:var(--c-breu)}
-.rh-minerva-urgente{animation:rh-minerva-pulso .5s ease-in-out infinite alternate}
+.rh-minerva-urgente{animation:rh-minerva-pulso .5s ease-in-out 2 alternate}
 .rh-minerva-urgente .rh-minerva-rim{fill:color-mix(in srgb,var(--c-cone) 22%,var(--c-papel-claro))}
 .rh-minerva-urgente .rh-minerva-slice{fill:color-mix(in srgb,var(--c-cone) 55%,transparent)}
 @keyframes rh-minerva-pulso{from{transform:scale(1)}to{transform:scale(1.12)}}

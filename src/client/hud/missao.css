@@ -10,7 +10,7 @@
   font:400 var(--t-16)/1.15 var(--f-botao);color:var(--c-breu);background:var(--c-papel);
   border:3px solid var(--c-breu);border-radius:var(--r-ficha);box-shadow:var(--s-1);pointer-events:none}
 .rh-missao-urgente{background:var(--c-cone)}
-.rh-missao-grande.rh-missao-urgente{animation:rh-missao-entra .3s ease-out both,rh-missao-pulso .5s ease-in-out .3s infinite alternate}
+.rh-missao-grande.rh-missao-urgente{animation:rh-missao-entra .3s ease-out both,rh-missao-pulso .5s ease-in-out .3s 2 alternate}
 @keyframes rh-missao-entra{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 @keyframes rh-missao-pulso{from{transform:scale(1)}to{transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){.rh-missao-grande,.rh-missao-grande.rh-missao-urgente{animation:none}}

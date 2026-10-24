@@ -38,13 +38,15 @@
 .rh-perfil-img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 22%;opacity:0;transition:opacity .15s}
 .rh-perfil[data-foto=ok] .rh-perfil-img{opacity:1}
 
-/* The speech balloon: white, rounded, a thin rim, its tail at the bottom-left towards the face. */
-.rh-perfil-balao{position:absolute;top:6%;right:5%;max-width:52%;margin:0;padding:2.6cqw 3.8cqw;border-radius:5.5cqw;background:#fff;color:#16131A;
-  font:500 6cqw/1.2 'Inter',var(--f-sistema);text-align:center;box-shadow:0 0 0 1px rgba(30,21,48,.22)}
-/* The tail: a rim triangle and a white one 1 px inside it, the white one covering the balloon's rim where they meet. */
-.rh-perfil-balao::before,.rh-perfil-balao::after{content:'';position:absolute;left:16%;width:6cqw;height:4.4cqw;clip-path:polygon(0 0,100% 0,8% 100%)}
-.rh-perfil-balao::before{bottom:-4.4cqw;background:rgba(30,21,48,.32)}
-.rh-perfil-balao::after{bottom:calc(-4.4cqw + 1.5px);left:calc(16% + 1px);width:calc(6cqw - 2.5px);background:#fff}
+/* The speech balloon, measured on the mockup's card (cropped at its edges) and the game's card at the same width: warm white, very round corners, near
+   the photo's top-right corner, black semibold text in two balanced lines (Inter 400 thickened by a stroke: the mockup's
+   iOS-like letter sits between the 400 and 800 files we ship), a short tail curving down-left from the bottom-left.
+   The rim and the soft shadow are drop-shadows of the whole shape, so they run round the tail with no seam. */
+.rh-perfil-balao{position:absolute;top:.4%;right:1%;box-sizing:border-box;max-width:48cqw;margin:0;padding:6cqw 3.2cqw 6.4cqw;border-radius:8.8cqw;
+  background:#FDFAF9;color:#0B0B0E;font:400 6.4cqw/1.13 'Inter',var(--f-sistema);letter-spacing:-.015em;-webkit-text-stroke:.068em currentColor;
+  text-align:center;text-wrap:balance;filter:drop-shadow(0 0 .7px rgba(40,6,24,.95)) drop-shadow(0 1px 2.5px rgba(60,8,32,.4))}
+.rh-perfil-balao::after{content:'';position:absolute;left:11%;bottom:calc(1px - 4.6cqw);width:8.6cqw;height:4.6cqw;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10' preserveAspectRatio='none'%3E%3Cpath d='M2 0C2.3 4 1.6 7.4 0 10C6.5 8.8 13.5 5 20 0Z' fill='%23FDFAF9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat}
 
 .rh-perfil-info{padding:3.4cqw 2cqw 0}
 .rh-perfil-nome{margin:0;font:800 7.6cqw/1.15 'Inter',var(--f-sistema);color:#16131A;letter-spacing:-.01em}

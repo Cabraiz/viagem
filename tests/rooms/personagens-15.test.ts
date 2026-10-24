@@ -23,11 +23,11 @@ type TestPeer=ReturnType<typeof peer>;
 const say=(room:Room,p:Peer,m:object,now:number)=>room.receive(p,JSON.stringify(m),now);
 const join=(room:Room,p:TestPeer,name:string,classId:string,now:number)=>{room.connect(p,now);say(room,p,{t:'join',protocol:ROOM_PROTOCOL,name,classId},now);return p.messages.findLast(m=>m.t==='welcome').id as string;};
 
-test('the menu's list is the 13 with R06 art, the gato, the vendedor and the aposentado, in the roster's order; the 13 others stay in the data',()=>{
+test('the menu\'s list is the 13 with R06 art, the gato, the vendedor and the aposentado, in the roster\'s order; the 13 others stay in the data',()=>{
   assert.deepEqual([...PLAYABLE_CLASS_IDS].sort(),[...PLAYABLE].sort());
   assert.deepEqual(playableClasses.map(c=>c.id),classes.map(c=>c.id).filter(id=>PLAYABLE.includes(id)));
   assert.equal(classes.length,29,'only the 7 of legado/ were deleted');
-  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu's search sees the 16 only');
+  assert.deepEqual(filterClasses('','Todas').map(c=>c.id),playableClasses.map(c=>c.id),'the menu\'s search sees the 16 only');
   for(const role of roles)for(const c of filterClasses('',role))assert.ok(PLAYABLE.includes(c.id),`${role}: ${c.id}`);
   assert.deepEqual([...BOT_CLASS_IDS].sort(),[...R06].sort(),'the gato, the vendedor and the aposentado are never bots');
   assert.equal(playableClassId('cidadao-comum'),playableClasses[0].id);assert.equal(playableClassId('aposentado'),'aposentado');assert.equal(playableClassId('coach'),'coach');

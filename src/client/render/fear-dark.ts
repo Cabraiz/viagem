@@ -24,7 +24,9 @@ export const DARK_RAMP=[.06,.13] as const;
 export const SPOT_CLEAR=.92,SPOT_WARM=.3;
 /** The arrow's distance from the hero (camera px): a little outside the body, inside the clear circle when it is small. */
 export const ARROW_RING_PX={min:58,max:120} as const;
-const ARROW_PX=34;
+const ARROW_PX=46;
+/** The arrow's fill: the lamp's warm light, deeper so it reads on snow. */
+const ARROW_FILL=0xFFB22E;
 
 /** A safe spot as drawn: centre in world px and its ground ellipse's half axes (world px). */
 export interface FearSpotPx {x:number;y:number;rx:number;ry:number}
@@ -67,7 +69,7 @@ function makeTextures(scene:Phaser.Scene){
   if(!tex.exists(ARROW_KEY)){
     // Pointing right (+x): two dots, then a notched chevron; warm lamp fill, Breu edge.
     const t=tex.createCanvas(ARROW_KEY,ARROW_SIZE,ARROW_SIZE)!,ctx=t.getContext(),k=ARROW_SIZE/48;
-    ctx.lineJoin='round';ctx.lineWidth=3*k;ctx.strokeStyle=`rgb(${rgbOf(CITY_PALETTE.breu)})`;ctx.fillStyle=`rgb(${rgbOf(LAMP_LIGHT.color)})`;
+    ctx.lineJoin='round';ctx.lineWidth=3*k;ctx.strokeStyle=`rgb(${rgbOf(CITY_PALETTE.breu)})`;ctx.fillStyle=`rgb(${rgbOf(ARROW_FILL)})`;
     for(const [x,r] of [[7,3],[16,3.6]] as const){ctx.beginPath();ctx.arc(x*k,24*k,r*k,0,Math.PI*2);ctx.fill();ctx.stroke();}
     ctx.beginPath();ctx.moveTo(24*k,11*k);ctx.lineTo(44*k,24*k);ctx.lineTo(24*k,37*k);ctx.lineTo(29*k,24*k);ctx.closePath();ctx.fill();ctx.stroke();
     t.refresh();

@@ -13,8 +13,12 @@ import {FEAR_SECONDS,FEAR_SHOW_SECONDS,FEAR_FINAL_SECONDS,FEAR_ALLY_RADIUS,FEAR_
 
 export interface Pt {x:number;y:number}
 
-/** The clear circle around the hero (fraction of the screen's half diagonal): first dark, start of the last stretch, end. */
-export const FEAR_HOLE={start:.8,final:.3,end:.15} as const;
+/**
+ * The clear circle around the hero (fraction of the screen's half diagonal): first dark, start of the last stretch, end.
+ * The dark is full a little over twice that far out (render/fear-dark.ts DARK_RAMP): at the start the corners already
+ * read dark, at the end only a small circle is left.
+ */
+export const FEAR_HOLE={start:.42,final:.22,end:.11} as const;
 /** The dark's opacity at the same three moments. */
 export const FEAR_ALPHA={start:.55,final:.93,end:.985} as const;
 /** The dark fades in over this long after FEAR_SHOW_SECONDS (s): no pop. */

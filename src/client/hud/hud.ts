@@ -35,7 +35,7 @@ import {createKillcam,type KillcamPart} from './killcam.ts';
 import {createMinerva} from './minerva.ts';
 import {createMission,MissionTracker,type MissionPart} from './missao.ts';
 import './missao.css';
-import {isTowerKit,kitPiece} from '../../rules/tower-kits.ts';
+import {isTowerKit,kitPiece} from '../../rules/index.ts';
 import './camp.css';
 import {createCida,type CidaAnswer,type CidaPart} from './cida.ts';
 import {createInventory,type InventoryCommand,type InventoryPart} from './inventory.ts';

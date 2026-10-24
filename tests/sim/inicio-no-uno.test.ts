@@ -16,6 +16,7 @@ import {cityRunStart} from '../../src/sim/city/tutorial.ts';
 import {UNO_START_CLEAR,cityUnoStart,startSlots} from '../../src/sim/city/uno-start.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {MINERVA_S,NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
+import {CAR_REPAIR_SHARE} from '../../src/sim/chaveiro/system.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -67,4 +68,20 @@ test('the minuto de Minerva is 120 s and the first wave leaves 150–180 s after
     assert.equal(nests.minervaUntil,start+ticks(120));
     assert.ok(nests.nextWave!>=start+ticks(150)&&nests.nextWave!<=start+ticks(180),`seed ${seed}: first wave at ${(nests.nextWave!-start)/20} s`);
   }
+});
+
+test('the first wave ends by waveCap at the latest even with its map share still dripping; each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit (inimigos-querem-o-uno)',()=>{
+  const sim=new Simulation(7,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
+  sim.add('p0','P0','cidadao-comum');sim.resetRun();
+  let now=1000;sim.step(now+=50);
+  const nests=sim.run.nests!,car=sim.run.chaveiro!.state.car;
+  const first=nests.state.nextWave!;
+  while(sim.world.tick<=first)sim.step(now+=50);
+  assert.ok(nests.state.drip&&nests.state.drip.left>NEST_PACE.waveCap,'1p wave 1: a share longer than the cap');
+  // The wave's bodies die as they come and the car took a beating: the window opens at the cap and repairs it.
+  car.hits=Math.round(car.limit*.6);const before=car.hits;
+  while(sim.world.tick<first+ticks(NEST_PACE.waveCap)+ticks(1)&&!nests.exploring(sim.world.tick)){sim.world.enemies.clear();sim.step(now+=50);}
+  assert.deepEqual(nests.exploring(sim.world.tick),{from:first+ticks(NEST_PACE.waveCap),until:first+ticks(NEST_PACE.waveCap+NEST_PACE.explore)});
+  assert.equal(nests.state.drip,undefined,'the rest of the share stays asleep');
+  assert.equal(car.hits,before-Math.round(CAR_REPAIR_SHARE*car.limit));
 });

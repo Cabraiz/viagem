@@ -465,6 +465,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // inicio-no-uno-caixas-120: a wave is over (the time to explore opens) with calm at the car and no boss up
         // (boss-fim-onda-1: the boss at the end of wave 1 holds it until he falls).
         calm:ctx=>!(boss.state.bossId&&!boss.state.defeated)&&calmAround(ctx.enemies.values(),chaveiro!.state.car,CALMA.checkpointR),
+        // inimigos-querem-o-uno: each time to explore gives the Uno back CAR_REPAIR_SHARE of its limit.
+        onExplore:ctx=>{chaveiro!.repair(ctx);},
         recruit:(ctx,route,count,tune)=>sono?.recruit(ctx,route,count,tune)??0,
         clear:(x,y,r)=>city.clearDisc(x,y,r),
         // A fallen nest pays the team, split among the seated like the boss (carteira-e-pix).

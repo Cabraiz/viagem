@@ -70,7 +70,7 @@ const PLAN:NestPlan={seed:1,players:1,nests:[
 /** 50 plan bodies (the rig fixes mapShare at .1: a quota of 5). */
 const PLAN_BODIES=50;
 const DOOR:WaveEntrance={id:'N',x:10,y:0,route:[{x:10,y:0},{x:50,y:50}]};
-function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR],extra:Pick<NestsOptions,'calm'|'onWave'>={}){
+function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR],extra:Pick<NestsOptions,'calm'|'onWave'|'onExplore'>={}){
   const world=new SimWorld({terrain:city.fork(),seed:5,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
   addPlayer(world,'p1',{x:0,y:0});
   const woke:[string,NestCause][]=[],crates:string[]=[],fell:string[]=[],recruited:[readonly Point[],number][]=[];let grana=0,dead=0;
@@ -141,9 +141,9 @@ test('the time to explore (inicio-no-uno-caixas-120): a wave over (no besieger u
   assert.deepEqual(r.nests.exploring(r.world.tick),{from:second+ticks(NEST_PACE.waveCap),until:second+ticks(NEST_PACE.waveCap+NEST_PACE.explore)},'the cap');
 }));
 
-test('the time to explore waits for options.calm (the boss up, a fight at the car); onWave says when a wave left and ran out',()=>rawPace(()=>{
+test('the time to explore waits for options.calm (the boss up, a fight at the car); onWave says when a wave left and ran out; onExplore when the time to explore opens',()=>rawPace(()=>{
   let calm=false;const said:string[]=[];
-  const r=rig(300,[DOOR],{calm:()=>calm,onWave:(_ctx,i,phase)=>{said.push(`${i}:${phase}`);}});
+  const r=rig(300,[DOOR],{calm:()=>calm,onWave:(_ctx,i,phase)=>{said.push(`${i}:${phase}`);},onExplore:ctx=>{said.push(`explora@${ctx.tick}`);}});
   r.world.step();
   const first=r.nests.state.nextWave!;
   until(r,first+1);
@@ -153,7 +153,7 @@ test('the time to explore waits for options.calm (the boss up, a fight at the ca
   calm=true;
   until(r,r.world.tick+ticks(1)+1);
   assert.ok(r.nests.exploring(r.world.tick),'calm: the time to explore');
-  assert.deepEqual(said.slice(0,2),['0:saiu','0:escoou']);
+  assert.deepEqual(said,['0:saiu','0:escoou',`explora@${r.nests.state.exploreFrom}`],'onExplore once, when it opens');
 }));
 
 test('the kills: map bodies killed since the last wave come off its quota; past the quota they shrink the outside group (never under the floor)',()=>rawPace(()=>{

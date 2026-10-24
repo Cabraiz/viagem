@@ -172,6 +172,8 @@ export interface NestsOptions {
    * drip left, at once when it had none). For boss-fim-onda-1 (E1).
    */
   onWave?(ctx:SimContext,index:number,phase:'saiu'|'escoou'):void;
+  /** The time to explore opened (a wave over): assemble.ts gives the Uno back a share (chaveiro repair, inimigos-querem-o-uno). */
+  onExplore?(ctx:SimContext):void;
   /**
    * Wakes up to `count` sleeping plan bodies nearest `route`, besieging the car, each passed to `tune` (NEST_PACE's
    * march, hp, damage); returns how many woke (the sono).
@@ -348,12 +350,17 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
   /** Checked once a second while a wave is open: over (or past waveCap) → the time to explore, then the next wave. */
   function waveOver(ctx:SimContext){
     const open=state.waveOpen;
-    if(open===undefined||state.drip)return;
-    const since=ctx.tick-open;
+    if(open===undefined)return;
+    const since=ctx.tick-open,capped=since>=ticks(NEST_PACE.waveCap);
+    // A map share still dripping holds the wave open, but never past waveCap: there the rest stays asleep (as when the
+    // next wave replaces a drip), or a big share (1p wave 1: ~340 bodies at 1 a second) would never let it end.
+    if(state.drip&&!capped)return;
     if(since<ticks(NEST_PACE.waveMin)||since%ticks(1)!==0)return;
-    if(since<ticks(NEST_PACE.waveCap)&&(besieged(ctx)||options.calm?.(ctx)===false))return;
+    if(!capped&&(besieged(ctx)||options.calm?.(ctx)===false))return;
+    if(state.drip){delete state.drip;options.onWave?.(ctx,state.sent-1,'escoou');}
     delete state.waveOpen;
     state.exploreFrom=ctx.tick;state.exploreUntil=state.nextWave=ctx.tick+ticks(NEST_PACE.explore);
+    options.onExplore?.(ctx);
   }
 
   function fall(ctx:SimContext,nest:NestRun){
@@ -391,8 +398,11 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
       // A checkpoint from before the waves (nests on their own timers): the first wave now, the quota from the plan.
       if(state.nextWave===undefined){state.nextWave=ctx.tick;state.quota??=plan?Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan)):0;state.deadAt??=options.mapDead?.()??0;}
       if(ctx.tick>=state.nextWave)sendWave(ctx);
-      else if(state.drip&&(ctx.tick-state.drip.tick)%ticks(1)===0)drip(ctx);
-      else waveOver(ctx);
+      else{
+        // Both on the same tick: a drip batch lands on the wave's whole seconds, the same ones waveOver checks.
+        if(state.drip&&(ctx.tick-state.drip.tick)%ticks(1)===0)drip(ctx);
+        waveOver(ctx);
+      }
       save();
     },
   };

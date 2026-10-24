@@ -8,6 +8,7 @@
  *
  *   node scripts/prova-passos.mjs <out-prefix> [--dist dist] [--url https://viagem.cyou/] [--segundos 24]
  *   node scripts/prova-passos.mjs <out-prefix> --medir <log.json>   (the measure again, from a recorded log)
+ *   --gpu swiftshader: software WebGL (a d3d11 tab here froze its frames after ~10 s, main as well).
  *   --dist <dir>: this branch's build served at the production origin (the rooms worker only accepts it).
  * A step is heard at its play + the scheduling lead + the take's crunch + the context's output latency.
  */
@@ -49,7 +50,7 @@ if(again){const m=measure(JSON.parse(await readFile(again,'utf8')));writeFileSyn
 const VIDEO=`${OUT}-video`;mkdirSync(VIDEO,{recursive:true});
 try{
   release=await claimSlot({locks:'D:/Gits/viagem-board/locks',prefix:'browser',count:2,label:'E6 prova passos'});
-  browser=await chromium.launch({args:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist','--autoplay-policy=no-user-gesture-required']});
+  browser=await chromium.launch({args:['--enable-gpu',`--use-angle=${arg('gpu','d3d11')}`,'--ignore-gpu-blocklist','--autoplay-policy=no-user-gesture-required']});
   const ctx=await browser.newContext({viewport:{width:1280,height:720},deviceScaleFactor:1,serviceWorkers:'block',recordVideo:{dir:VIDEO,size:{width:1280,height:720}}});
   await ctx.addInitScript(()=>{
     try{localStorage.setItem('viagem:solo-bots:v1','0');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}
@@ -93,8 +94,11 @@ try{
   if(DIST){
     await ctx.route('https://viagem.cyou/**',async route=>{
       const u=new URL(route.request().url());let f=resolve(DIST,'.'+decodeURIComponent(u.pathname));if(u.pathname.endsWith('/'))f=resolve(f,'index.html');
+      // Only the code from the build (html, js, css): art and sounds come from production as in the run before (a
+      // match served whole from disk froze its frames after ~10 s on main as well, card som-passos-fora-do-eixo).
+      if(!['.html','.js','.mjs','.css'].includes(extname(f)))return route.continue();
       try{const body=await readFile(f);await route.fulfill({status:200,body,headers:{'content-type':TYPES[extname(f)]??'application/octet-stream','cache-control':'no-store'}});}
-      catch{await route.fulfill({status:404,body:'not found'});}
+      catch{await route.continue();}
     });
   }
   const page=await ctx.newPage();const born=Date.now();const errors=[];globalThis.__page=page;globalThis.__errors=errors;
@@ -110,8 +114,8 @@ try{
   // A click unlocks the engine (a gesture); then every frame logs the hero's pose.
   const box=await page.evaluate(()=>{const s=window.__perfScene,cam=s.cameras.main,a=s.project(s.position);return {x:(a.x-cam.worldView.x)*cam.zoom,y:(a.y-cam.worldView.y)*cam.zoom};});
   await page.mouse.click(box.x,box.y+2);await sleep(300);
-  await page.evaluate(()=>{const poses=window.__poses=[];const loop=()=>{const a=window.__perfScene?.actor;
-    if(a)poses.push({t:performance.now(),key:a.texture.key,frame:Number(a.frame.name),x:window.__perfScene.position.x,y:window.__perfScene.position.y});requestAnimationFrame(loop);};requestAnimationFrame(loop);});
+  await page.evaluate(()=>{const poses=window.__poses=[];const loop=()=>{requestAnimationFrame(loop);try{const s=window.__perfScene,a=s?.actor;
+    if(a){const g=s.sprites?.gait?.(a);poses.push({t:performance.now(),key:a.texture.key,frame:Number(a.frame.name),x:s.position?.x,y:s.position?.y,...(g?{cycles:g.cycles,contacts:g.contacts}:{})});}}catch(e){window.__poseError=String(e);}};requestAnimationFrame(loop);});
   console.log('partida aberta em',((Date.now()-born)/1000).toFixed(1),'s; gravador:',await page.evaluate(()=>!!window.__rec));
   const DIRS=[['KeyW'],['KeyW','KeyD'],['KeyD'],['KeyS','KeyD'],['KeyS'],['KeyS','KeyA'],['KeyA'],['KeyW','KeyA']];
   const t0=Date.now();let i=0;
@@ -123,7 +127,7 @@ try{
     await sleep(500);
     if(i%4===0)await clear();
   }
-  const log=await page.evaluate(()=>({poses:window.__poses,plays:window.__plays,latency:window.__rec?((window.__rec.ctx.baseLatency??0)+(window.__rec.ctx.outputLatency??0)):null}));
+  const log=await page.evaluate(()=>({poseError:window.__poseError,poses:window.__poses,plays:window.__plays,latency:window.__rec?((window.__rec.ctx.baseLatency??0)+(window.__rec.ctx.outputLatency??0)):null}));
   const rec=await page.evaluate(()=>new Promise(res=>{const R=window.__rec;if(!R)return res(null);
     R.rec.onstop=async()=>{const b=new Blob(R.chunks,{type:'audio/webm'});const buf=new Uint8Array(await b.arrayBuffer());let s='';for(let i=0;i<buf.length;i+=0x8000)s+=String.fromCharCode(...buf.subarray(i,i+0x8000));res({wall:R.wall,b64:btoa(s)});};
     R.rec.stop();}));

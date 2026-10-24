@@ -106,24 +106,30 @@ test('on screen: a run in every direction steps exactly when the drawn pose reac
 test('the output latency is made up ahead: each step sounds that long before its pose, never more than MAX_LEAD_CYCLES',()=>{
   const p=realPhase(ID,'W'),contacts=phaseContacts(p),lead=60,{plays,tick}=listen(lead);
   const rate=2/1000;// cycles per ms (a run's ~2 cycles a second)
-  const at=(cycles:number,since=0):Gait=>({cycles,contacts,since});
-  for(let t=0;t<=3000;t+=16)tick(t,[{id:'me',gait:at(t*rate),local:true,gain:1,alive:true}]);
+  const at=(cycles:number,since=0,time=since):Gait=>({cycles,contacts,since,at:time});
+  // The HUD also ticks on a network view, between two drawn frames (the same gait again, a few ms later): the pace is
+  // the drawing's, so those ticks never push the steps earlier (in the game they came up to 75 ms early).
+  for(let t=0;t<=3000;t+=16){
+    const g=at(t*rate,0,t);
+    tick(t,[{id:'me',gait:g,local:true,gain:1,alive:true}]);
+    tick(t+3,[{id:'me',gait:g,local:true,gain:1,alive:true}]);
+  }
   // The contacts' times, then each step's lead over its contact.
   const times:number[]=[];for(let k=0;k<7;k++)for(const c of contacts)times.push((k+c)/rate);
   for(const s of plays.slice(1)){
     const next=times.filter(c=>c>=s.at-16).sort((a,b)=>a-b)[0];
-    assert.ok(next-s.at<=lead+16&&next-s.at>=lead-16,`a step ${(next-s.at).toFixed(0)} ms before its contact (lead ${lead})`);
+    assert.ok(next-s.at<=lead+3&&next-s.at>=lead-19,`a step ${(next-s.at).toFixed(0)} ms before its contact (lead ${lead})`);
   }
   assert.ok(MAX_LEAD_CYCLES*1000/rate/1000>=.05);
   // A walk restarts (attack, stop): its first step at once; the minimum gap holds.
-  const n=plays.length;tick(3010,[{id:'me',gait:at(0,3010),local:true,gain:1,alive:true}]);
+  const n=plays.length;tick(3020,[{id:'me',gait:at(0,3020),local:true,gain:1,alive:true}]);
   assert.equal(plays.length,n,`within MIN_STEP_MS (${MIN_STEP_MS}) of the last`);
   tick(3400,[{id:'me',gait:at(0,3400),local:true,gain:1,alive:true}]);
   assert.equal(plays.length,n+1,'a new walk opens on a planted foot');
 });
 
 test('allies are quieter with distance and come from their side of the screen; a downed figure is silent',()=>{
-  const {plays,tick}=listen(),g:Gait={cycles:.01,contacts:[0,.5],since:0};
+  const {plays,tick}=listen(),g:Gait={cycles:.01,contacts:[0,.5],since:0,at:0};
   tick(0,[{id:'ally',gait:g,gain:allyGain(6),alive:true,side:-1},{id:'b',gait:g,gain:allyGain(3),alive:true,side:.5},{id:'down',gait:g,gain:1,alive:false}]);
   assert.equal(plays.length,2);
   assert.ok(plays[0].gain<.4&&plays[0].pan<-.5,'left of the screen, quieter');

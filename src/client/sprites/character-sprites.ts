@@ -21,11 +21,11 @@ interface HandFrame {url:string;frame:number;ox:number;oy:number;scale:number;fl
 /** CharacterSprites.handPose: the hand point of the pose shown and how its frame sits on screen (`geom`: the city copy shown). */
 export interface HandPose {point:HandPoint;ox:number;oy:number;scale:number;flip:boolean;direction:HeroDirection;geom?:VariantGeometry}
 /**
- * A walk as drawn (card som-passos-fora-do-eixo): the cycles walked since it started (`since`, the scene's clock), and the
- * points of the cycle (0..1) where the sheet shown plants a foot: the run and push phase tables' (phaseContacts), else
- * pose 0 and the middle pose of a looping clip (LOOP_CONTACTS).
+ * A walk as drawn (card som-passos-fora-do-eixo): the cycles walked since it started (`since`, the scene's clock) up to
+ * the frame drawn at `at` (same clock), and the points of the cycle (0..1) where the sheet shown plants a foot: the run
+ * and push phase tables' (phaseContacts), else pose 0 and the middle pose of a looping clip (LOOP_CONTACTS).
  */
-export interface Gait {cycles:number;contacts:readonly number[];since:number}
+export interface Gait {cycles:number;contacts:readonly number[];since:number;at:number}
 export const LOOP_CONTACTS:readonly number[]=[0,.5];
 const MOTIONS=Object.keys(SPRITE_CLIPS) as Motion[];
 
@@ -303,7 +303,7 @@ export class CharacterSprites {
     if(motion==='walk'){
       const figurePx=96*this.viewScale*HERO_DRAW_SCALE,phase=detailed?.phase;
       state.cycles+=phase?walkCycles(dx,dy,view,figurePx,phaseStride(phase),1):heroRuns(id)?walkCycles(dx,dy,view,figurePx,RUN_STRIDE,1):walkCycles(dx,dy,view,figurePx);
-      state.gait={cycles:state.cycles,contacts:phase?phaseContacts(phase):LOOP_CONTACTS,since:state.phaseStarted!};
+      state.gait={cycles:state.cycles,contacts:phase?phaseContacts(phase):LOOP_CONTACTS,since:state.phaseStarted!,at:this.scene.time.now};
     }else state.gait=undefined;
     if(detailed){
       const cache=this.detailed??=movement128Textures(this.scene,this.city);

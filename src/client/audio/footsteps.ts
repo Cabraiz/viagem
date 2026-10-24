@@ -58,6 +58,7 @@ export interface StepFigure {
   /** Where the figure is across the screen (-1 left … 1 right, Scene.screenSide): an ally's step comes from there. */
   side?:number;
 }
+/** `at` the drawn frame's time (Gait.at) and `rate` the walk's cycles a ms on that clock. */
 interface Track {since:number;cycles:number;at:number;rate:number;ahead:number;lastStep:number}
 interface StepAudio {play(id:SoundId,opts?:PlayOptions):boolean;readonly latencyMs?:number}
 
@@ -85,12 +86,13 @@ export class Footsteps {
       if(!t||t.since!==g.since){
         // A walk starts on pose 0, a foot on the ground: its first step sounds at once.
         const lastStep=t?.lastStep??-Infinity;
-        t={since:g.since,cycles:g.cycles,at:now,rate:0,ahead:g.cycles,lastStep};this.tracks.set(f.id,t);
+        t={since:g.since,cycles:g.cycles,at:g.at,rate:0,ahead:g.cycles,lastStep};this.tracks.set(f.id,t);
         crossed=1;
       }else{
-        const dt=now-t.at;
-        if(dt>0&&g.cycles>=t.cycles){const rate=(g.cycles-t.cycles)/dt;t.rate=t.rate>0?t.rate*.6+rate*.4:rate;}
-        t.cycles=g.cycles;t.at=now;
+        // The pace on the drawing's own clock, one sample a drawn frame: a tick between two frames (the HUD also ticks on
+        // a network view) saw a whole frame's walk over a few ms and played the steps up to 75 ms early.
+        const dt=g.at-t.at;
+        if(dt>0&&g.cycles>=t.cycles){const rate=(g.cycles-t.cycles)/dt;t.rate=t.rate>0?t.rate*.6+rate*.4:rate;t.cycles=g.cycles;t.at=g.at;}
         const ahead=g.cycles+Math.min(MAX_LEAD_CYCLES,t.rate*lead);
         crossed=contactsCrossed(t.ahead,ahead,g.contacts);
         if(ahead>t.ahead)t.ahead=ahead;

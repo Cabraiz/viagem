@@ -46,6 +46,8 @@ import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
+import './perfis.css';
+import {createProfiles,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -96,6 +98,14 @@ export interface RunHudOptions {
   input?:InputKind;
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
+  /**
+   * The enemies' profile cards (card nome-inimigo-rede-social, hud/perfis.ts): their clock (performance.now by default;
+   * the sandbox's frozen scenes stop it) and where the phone remembers the kinds it already met (localStorage by default).
+   */
+  profileClock?():number;
+  profileStorage?:Pick<Storage,'getItem'|'setItem'>;
+  /** false: no profile cards (the HUD sandbox's other scenes). */
+  profiles?:boolean;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -137,6 +147,8 @@ export class RunHud {
   private readonly camp:CampPart;
   /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
   private readonly killcam:KillcamPart;
+  /** A new enemy kind's dating-app profile, a fan of them when several come at once (hud/perfis.ts). */
+  readonly profiles:ProfilesPart;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
   private topSlot?:Rect;
   /** Bumps on window resize or when a HUD part changes size (ResizeObserver): cached boxes are read again only then. */
@@ -219,8 +231,11 @@ export class RunHud {
     stack.append(minerva.el,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
+    // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
+    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,storage:options.profileStorage,off:options.profiles===false,
+      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden});
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,profiles];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,profiles.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),

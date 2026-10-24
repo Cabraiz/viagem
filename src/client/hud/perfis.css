@@ -1,0 +1,65 @@
+/*
+ * "Inimigo novo" as a dating-app profile (hud/perfis.ts): a white card in the top band's right corner, left of the
+ * minimap on the desktop, under the top band on the phone. Several pile up as a fan around their bottom edge.
+ * Generic app look (no real brand): the heroes' Insta palette (tokens.css --insta-*), the game's cartaz font for the name.
+ */
+.rh .rh-perfis{--perfil-w:clamp(150px,min(19vw,34vh),208px);position:absolute;z-index:var(--z-hud);top:calc(var(--rh-t) + 64px);right:var(--rh-r);
+  width:var(--perfil-w);pointer-events:none}
+.rh:has(>.rh-minimap) .rh-perfis{right:calc(var(--rh-r) + clamp(124px,30vmin,210px) + 18px)}
+.rh .rh-perfis.rh-perfis-espera{visibility:hidden}
+/* The phone's HUD keeps its minimap on the left (fone.css) or by the joystick: the card takes the right corner. */
+.rh[data-hud=fone]:has(>.rh-minimap) .rh-perfis,.rh[data-hud=fone] .rh-perfis{right:max(8px,var(--rh-r))}
+@media (max-width:599px){
+  /* Phone upright: the minimap went down by the joystick; the card hangs under the top band, on the right. */
+  .rh .rh-perfis,.rh:has(>.rh-minimap) .rh-perfis{--perfil-w:min(37vw,148px);top:calc(var(--rh-t) + 96px);right:max(8px,var(--rh-r))}
+  .rh-perfil-foto{aspect-ratio:1/.92}
+  /* A tight fan around the bottom-right corner: the older cards never reach the hero in the middle of the screen. */
+  .rh-perfil{--fan-k:.35;transform-origin:100% 100%}
+}
+
+.rh-perfil{position:absolute;top:0;right:0;width:100%;box-sizing:border-box;border-radius:var(--r-insta);background:var(--insta-fundo);color:var(--insta-texto);
+  box-shadow:0 0 0 2px var(--c-breu),0 6px 0 rgba(30,21,48,.35);overflow:hidden;font-family:var(--f-sistema);
+  transform-origin:50% 100%;opacity:0;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1) + 46px),var(--fan-y,0px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1) + 8deg)) scale(.92);
+  transition:transform .26s cubic-bezier(.2,1.4,.4,1),opacity .18s ease-out}
+.rh-perfil.rh-perfil-in{opacity:1;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1)),var(--fan-y,0px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1)))}
+.rh-perfil[data-sai=tempo]{opacity:0;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1)),calc(var(--fan-y,0px) - 14px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1))) scale(.96);transition-duration:.3s}
+.rh-perfil[data-sai=passar]{opacity:0;transform:translate(-150%,24px) rotate(-26deg);transition:transform .32s ease-in,opacity .32s ease-in}
+.rh-perfil[data-saindo]{opacity:0;transform:translate(150%,24px) rotate(24deg);transition:transform .32s ease-in,opacity .32s ease-in}
+
+.rh-perfil-foto{position:relative;aspect-ratio:1/1.08;background:var(--perfil-cor,var(--c-lilas))}
+.rh-perfil-img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 18%;opacity:0;transition:opacity .15s}
+.rh-perfil[data-foto=ok] .rh-perfil-img{opacity:1}
+.rh-perfil-recado{position:absolute;top:7px;right:7px;max-width:68%;margin:0;padding:5px 8px;border-radius:12px 12px 3px 12px;background:#fff;color:var(--insta-texto);
+  font:600 calc(11px * var(--t-escala,1))/1.2 var(--f-sistema);box-shadow:0 0 0 1.5px var(--c-breu),0 2px 0 rgba(30,21,48,.3)}
+
+.rh-perfil-info{padding:7px 9px 4px}
+.rh-perfil-nome{margin:0;font:400 calc(16px * var(--t-escala,1))/1.05 var(--f-sistema);color:var(--insta-texto)}
+.rh-perfil-nome b{font:400 calc(18px * var(--t-escala,1))/1 var(--f-cartaz);letter-spacing:.01em}
+.rh-perfil-dist{display:flex;align-items:center;gap:4px;margin:3px 0 0;font:500 calc(11px * var(--t-escala,1))/1.2 var(--f-sistema);color:var(--insta-cinza)}
+.rh-perfil-dist::before{content:'';width:7px;height:7px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--insta-curtir);flex:none}
+.rh-perfil-bio{margin:4px 0 0;font:500 calc(11.5px * var(--t-escala,1))/1.25 var(--f-sistema)}
+.rh-perfil-tags{display:flex;flex-wrap:wrap;gap:3px;margin:5px 0 0;padding:0;list-style:none}
+.rh-perfil-tags li{padding:2px 6px;border-radius:var(--r-pilula,999px);background:var(--insta-chip);border:1px solid var(--insta-linha);font:600 calc(10px * var(--t-escala,1))/1.2 var(--f-sistema)}
+
+.rh-perfil-botoes{display:flex;justify-content:center;gap:20px;padding:2px 0 7px}
+.rh-perfil-botoes button{width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.rh-perfil-botoes button:active{transform:scale(.9)}
+.rh-perfil-botoes img{display:block;width:100%;height:100%;filter:drop-shadow(0 2px 0 rgba(30,21,48,.3))}
+
+.rh-perfil-match{position:absolute;left:50%;top:34%;padding:3px 10px;border:3px solid var(--c-cartolina);border-radius:8px;color:var(--c-cartolina);background:rgba(251,250,248,.86);
+  font:400 calc(24px * var(--t-escala,1))/1 var(--f-cartaz);letter-spacing:.03em;white-space:nowrap;opacity:0;transform:translate(-50%,-50%) rotate(-14deg) scale(1.6);
+  transition:opacity .12s,transform .2s cubic-bezier(.2,1.6,.4,1)}
+.rh-perfil[data-sai=curtir] .rh-perfil-match{opacity:1;transform:translate(-50%,-50%) rotate(-14deg) scale(1)}
+
+/* Phone on its side: a short screen, so the card lies down too (photo on the left), above the Atacar button. */
+@media (max-height:460px){
+  .rh .rh-perfis,.rh:has(>.rh-minimap) .rh-perfis{--perfil-w:min(300px,38vw);top:calc(var(--rh-t) + 52px)}
+  .rh-perfil{--fan-k:.4;display:grid;grid-template-columns:40% 1fr;grid-template-rows:1fr auto;transform-origin:100% 100%}
+  .rh-perfil-foto{grid-row:1/3;aspect-ratio:auto;min-height:100%}
+  .rh-perfil-recado{left:6px;right:auto;max-width:none;top:auto;bottom:6px;font-size:calc(10px * var(--t-escala,1))}
+  .rh-perfil-info{padding:6px 8px 0}
+  .rh-perfil-tags li:nth-child(n+3){display:none}
+  .rh-perfil-botoes{padding:2px 0 6px}
+  .rh-perfil-botoes button{width:32px;height:32px}
+}
+@media (prefers-reduced-motion:reduce){.rh-perfil,.rh-perfil-match{transition:none}}

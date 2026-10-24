@@ -131,7 +131,8 @@ test('the top bar shows the letreiro of the profile on screen, and it changes wi
   assert.ok(!existsSync(pub(`${INSTA_ART}logo.webp`)),'the old fixed logo (always the viciado) is gone');
   // renderInsta sets it with the profile (a story's tap renders the new one).
   assert.match(main,/insta\.logo\.src=logoUrl\(perfil\.id\);insta\.logo\.alt=perfil\.letreiro;/);
-  assert.match(css,/\.insta-logo \{ display: block; height: calc\(var\(--u\) \* 140\); width: auto; max-width: calc\(var\(--u\) \* 480\);/,'one height for every hero');
+  // One size for every hero's canvas (scripts/insta-logo-medida.mjs LOGO_CAIXA, LOGO_H): the lightest's drawing 112 tall.
+  assert.match(css,/\.insta-logo \{ display: block; height: calc\(var\(--u\) \* 112 \* 200 \/ 168\); width: auto; margin: calc\(var\(--u\) \* \(62 - 112 \* 100 \/ 168\)\)/,'one height for every hero');
 });
 
 test('a grid photo opens as a post: header, the 3 photos side by side, actions, likes, a caption each',()=>{

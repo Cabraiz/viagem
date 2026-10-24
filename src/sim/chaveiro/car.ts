@@ -22,8 +22,8 @@
  *   attack (busy: the weapons system skips them); the rope holder never attacks, taut or not.
  * Everything kept is on the ChaveiroState's car (JSON-safe): movers, rope and the rope holder's hp at the last step.
  */
-import {CAR_HALF_LENGTH,CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,CAR_ROPE_LET_GO_S,
-  CAR_ROPE_TURN,SIM_HZ,carNose,carSpeed,ropeTip,ticks,CAR_HALF_WIDTH,carGap,carPushOut,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
+import {CAR_HALF_LENGTH,CAR_HALF_WIDTH,CAR_NEST_KEEP_OUT,CAR_PULL_REACH,CAR_PUSH_DOT,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,CAR_ROPE_KEEP_DOT,
+  CAR_ROPE_LET_GO_S,CAR_ROPE_TURN,SIM_HZ,carGap,carNose,carPushOut,carSpeed,ropeTip,ticks,type EnemyState,type PullResult,type SimPlayer} from '../../contract/index.ts';
 import {RADIUS as PLAYER_RADIUS,maskSurface,walkable,type Point} from '../../maps/index.ts';
 import type {SimContext} from '../context.ts';
 import {isStanding} from '../revive.ts';

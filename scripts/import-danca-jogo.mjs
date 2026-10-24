@@ -15,6 +15,12 @@
  *   node scripts/import-danca-jogo.mjs                validate and report (no writes)
  *   node scripts/import-danca-jogo.mjs --write        write the sheets, the personagens manifest and the index
  *   node scripts/import-danca-jogo.mjs --ids a,b      only these heroes
+ *   node scripts/import-danca-jogo.mjs --input <dir> --ids gato-nada-pra-comer,maromba [--write]
+ *
+ * --input (stage 3: the gato and the new maromba, drawn by Codex): `<dir>/<id>.png` (128 cells of 768×512, `columns`×`rows`)
+ * and `<id>.meta.json` in the menu dance's shape, plus `restFrames`: the standing poses. Their median height is the
+ * `height` (a dance with the arms over the head would otherwise draw the body smaller than the idle), times
+ * `heightPerFigure` when given: the idle's manifest height over its figure's, so the standing pose draws as tall as the idle.
  */
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -59,8 +65,8 @@ export function boxOf(rgba,w,h){
  * The source window (integer px, `size` square) mapped onto the 96 px cell: the body column at its centre, the ground
  * at the anchor, the median pose TARGET tall unless a pose would cross the cell's edge (MARGIN px kept).
  */
-export function windowOf(boxes){
-  const height=median(boxes.map(b=>b.bottom-b.top)),ground=median(boxes.map(b=>b.bottom)),column=median(boxes.map(b=>(b.left+b.right)/2));
+export function windowOf(boxes,rest=boxes){
+  const height=median(rest.map(b=>b.bottom-b.top)),ground=median(boxes.map(b=>b.bottom)),column=median(boxes.map(b=>(b.left+b.right)/2));
   const ax=CELL*ANCHOR[0],ay=CELL*ANCHOR[1];
   let s=TARGET/height;
   for(const b of boxes){
@@ -82,21 +88,29 @@ async function cellOf(rgba,win){
   return sharp(out,{raw:{width:size,height:size,channels:4}}).resize(CELL,CELL,{kernel:'lanczos3'}).raw().toBuffer();
 }
 
-export async function importDance({outRoot=ROOT,ids,write=false}={}){
+/** A Codex dance of --input: its sheet as the one page of a menu-shaped dance, and its standing poses. */
+async function inputDance(dir,id){
+  const meta=JSON.parse(await readFile(path.join(dir,`${id}.meta.json`),'utf8'));
+  assert.ok(meta.columns*meta.rows>=meta.frames&&meta.restFrames?.length,`${id}: input meta with columns, rows and restFrames`);
+  return {...meta,pages:[{file:`${id}.png`,columns:meta.columns,rows:meta.rows,firstFrame:0,frameCount:meta.frames}]};
+}
+
+export async function importDance({outRoot=ROOT,ids,write=false,input}={}){
   const index=await readIndex(path.join(outRoot,'public/art/manifest.json')),manifestFile=path.join(outRoot,SPEC.output,'manifest.json');
   const previous=await readManifest(manifestFile);
   assert.ok(index?.groups?.menu&&previous,'menu and personagens groups required');
   const menuDir=path.join(outRoot,index.groups.menu.output);
   const all=Object.keys(index.groups.menu.pieces).filter(id=>previous.pieces[id]&&!SKIP.has(id));
+  assert.ok(!input||ids,'--input needs --ids');
   const chosen=ids??all;
   const report=[],entries={};
   for(const id of chosen){
-    const dance=index.groups.menu.pieces[id]?.files?.dance;
+    const dance=input?await inputDance(input,id):index.groups.menu.pieces[id]?.files?.dance;
     assert.ok(dance&&dance.frames===FRAMES&&dance.cell[0]===SRC[0]&&dance.cell[1]===SRC[1],`${id}: 128-pose menu dance required`);
     assert.ok(previous.pieces[id],`${id}: personagens piece required`);
-    const cells=await poses(dance,menuDir),boxes=cells.map(c=>boxOf(c,SRC[0],SRC[1]));
+    const cells=await poses(dance,input??menuDir),boxes=cells.map(c=>boxOf(c,SRC[0],SRC[1]));
     assert.ok(boxes.every(Boolean),`${id}: empty pose`);
-    const win=windowOf(boxes),sheet=Buffer.alloc(COLUMNS*CELL*ROWS*CELL*4);
+    const win=windowOf(boxes,dance.restFrames?.map(k=>boxes[k])??boxes),sheet=Buffer.alloc(COLUMNS*CELL*ROWS*CELL*4);
     for(let k=0;k<FRAMES;k++){
       const cell=await cellOf(cells[k],win),ox=k%COLUMNS*CELL,oy=Math.floor(k/COLUMNS)*CELL;
       for(let y=0;y<CELL;y++)cell.copy(sheet,((oy+y)*COLUMNS*CELL+ox)*4,y*CELL*4,(y+1)*CELL*4);
@@ -109,7 +123,8 @@ export async function importDance({outRoot=ROOT,ids,write=false}={}){
       const b=boxOf(c,CELL,CELL);assert.ok(b,`${id}: pose ${k} vanished in the cell`);
       figure=figure?{left:Math.min(figure.left,b.left),top:Math.min(figure.top,b.top),right:Math.max(figure.right,b.right),bottom:Math.max(figure.bottom,b.bottom)}:b;
     }
-    const height=+(win.height*CELL/win.size).toFixed(2);
+    // An --input dance may carry its idle's `height` over the idle figure's (the Chad maromba's head stands over its 56).
+    const height=+(win.height*CELL/win.size*(dance.heightPerFigure??1)).toFixed(2);
     const encoded=await sharp(sheet,{raw:{width:COLUMNS*CELL,height:ROWS*CELL,channels:4}}).webp(WEBP).toBuffer();
     const sha=SHA(encoded),file=`${id}.dance128.${sha.slice(0,12)}.webp`;
     report.push({id,height,window:win,figure,file,bytes:encoded.length});
@@ -117,7 +132,7 @@ export async function importDance({outRoot=ROOT,ids,write=false}={}){
       await writeAtomic(path.join(outRoot,SPEC.output,file),encoded);
       const durationMs=Math.round(FRAMES/dance.fps*1000);
       entries[id]={kind:previous.pieces[id].kind,files:{dance128:{file,cell:[CELL,CELL],frames:FRAMES,fps:dance.fps,durationMs,loop:true,anchor:[...ANCHOR],
-        height,figure,source:{group:'menu',pages:dance.pages.map(p=>p.file)},
+        height,figure,source:input?{input:'codex',pages:dance.pages.map(p=>p.file),...(dance.source?{drawn:dance.source}:{})}:{group:'menu',pages:dance.pages.map(p=>p.file)},
         pages:[{file,columns:COLUMNS,rows:ROWS,firstFrame:0,frameCount:FRAMES,sha256:sha}],sha256:sha}},
         ...(previous.pieces[id].meta?{meta:previous.pieces[id].meta}:{})};
     }
@@ -132,7 +147,7 @@ export async function importDance({outRoot=ROOT,ids,write=false}={}){
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   sharp.cache(false);sharp.concurrency(1);
-  const args=process.argv.slice(2),i=args.indexOf('--ids');
-  const report=await importDance({write:args.includes('--write'),...(i>=0?{ids:args[i+1].split(',')}:{})});
+  const args=process.argv.slice(2),i=args.indexOf('--ids'),j=args.indexOf('--input');
+  const report=await importDance({write:args.includes('--write'),...(i>=0?{ids:args[i+1].split(',')}:{}),...(j>=0?{input:path.resolve(args[j+1])}:{})});
   console.log(`${report.length} dances ${args.includes('--write')?'imported':'validated'}`);
 }

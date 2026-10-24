@@ -181,5 +181,7 @@ test('the imported dances: every hero with one stands on the clip anchor at a sa
     assert.ok(plan!.height>=40&&plan!.height<=72,`${id}: height ${plan!.height}`);
     assert.ok(readFileSync(`public${plan!.url}`).length<600_000,`${id}: lite copy under 600 KB`);
   }
-  assert.equal(pieces.maromba?.files.dance128,undefined,'the old maromba dance is not the new maromba (stage 3 draws it)');
+  // Stage 3: the gato and the new maromba dance from Codex sheets (import-danca-jogo --input), not the old menu drawing.
+  for(const id of ['gato-nada-pra-comer','maromba'])
+    assert.equal((pieces[id]?.files.dance128 as unknown as {source?:{input?:string}}|undefined)?.source?.input,'codex',`${id}: its own dance`);
 });

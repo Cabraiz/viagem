@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2240,
-  "bytes": 1569570124,
-  "liteBytes": 517968718,
+  "files": 2242,
+  "bytes": 1570067446,
+  "liteBytes": 518778806,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19173,6 +19173,14 @@
    "psnr": 39.6,
    "shownPsnr": 40.7
   },
+  "sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
+   "source": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4",
+   "lite": "38cc5feb40da9d8b36ea6f8e09862b1b60e64b07bcf5d744622124b1a8fcb170",
+   "bytes": 261414,
+   "liteBytes": 405692,
+   "psnr": 38.1,
+   "shownPsnr": 39.2
+  },
   "sprites/gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp": {
    "source": "026b8fb2bea7c3666552dd4fb70bc4124bfa1dfe6b48635605a8233e7dab824a",
    "lite": "b85f4a0af6ce0e7896175d17c7514e9f190b2784bc4bc0f46e0c34ee8c1d45f8",
@@ -19572,6 +19580,14 @@
    "liteBytes": 37028,
    "psnr": 38.2,
    "shownPsnr": 41
+  },
+  "sprites/maromba.dance128.576e79362713.webp": {
+   "source": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f",
+   "lite": "14d2e95cc14de918839d7f9d993b08384dd1096d42f0627e96d05c7f90f3e153",
+   "bytes": 235908,
+   "liteBytes": 404396,
+   "psnr": 36.1,
+   "shownPsnr": 39.7
   },
   "sprites/maromba.dir4.webp": {
    "source": "5d324cc50d38309336bed71e41899ee0fa5521d6788b348aea3219a85c0d120c",

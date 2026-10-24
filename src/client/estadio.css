@@ -272,5 +272,16 @@ html:has(.estadio), html:has(.estadio) body { height: 100%; overflow: hidden; }
   .estadio-fileira, .estadio-nome { max-width: 520px; }
 }
 
+/* teclado-cobre-nome-bora (the user, 24/10: "o 'bora' e o input text deveriam ficar cima do teclado"): while the phone's
+   keyboard is up on the name field, the column is the box the keyboard leaves (ui/teclado.ts writes --tec-top / --tec-h
+   from the visual viewport). Its bottom, the field then BORA!, sits right above the keys; what does not fit slides up
+   out of it (overflow on the start side). The title box would only be cut there, so it steps out. */
+.estadio .estadio-escolha[data-teclado] {
+  top: var(--tec-top); bottom: auto; height: var(--tec-h); justify-content: flex-end; overflow: hidden;
+  padding-top: 0; padding-bottom: 8px;
+}
+.estadio .estadio-escolha[data-teclado] > .estadio-caixa-titulo { display: none; }
+.estadio:has(.estadio-escolha[data-teclado]) .menu-privacidade { display: none; }
+
 #enter-island { display: block; width: 100%; margin: 12px auto; }
 #explore-error { color: var(--c-papel); font-size: 13px; text-align: center; }

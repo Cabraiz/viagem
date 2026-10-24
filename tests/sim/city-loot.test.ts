@@ -28,7 +28,7 @@ import {createStonewardsSystem,HORN_LEAD,HORN_LEAD_CITY,MAX_PREPARE_TICKS,type S
 import {GATHER_REACH,MAX_GATHER_DISTANCE,NODE_CAPACITY,WORK_PER_UNIT,nodesNear,nodeValue,type NodeInfo} from '../../src/sim/stonewards/resources.ts';
 import type {ResourceKind} from '../../src/sim/stonewards/state.ts';
 import {LOOT_FAR_SECONDS,LOOT_NEAR_SECONDS,lootHeroSpeed} from '../../src/sim/stonewards/loot.ts';
-import {CITY_MAP_SCALE} from '../../src/rules/scale.ts';
+import {CITY_DISTANCE_SCALE} from '../../src/rules/scale.ts';
 import {CAMP_RADIUS,RETURN_SLACK_SECONDS,returnTicks} from '../../src/rules/stonewards.ts';
 import {STONEWARDS_INTERMISSION_SECONDS} from '../../src/sim/assemble.ts';
 import * as zueiraCidade from '../../src/rules/zueira-cidade.ts';
@@ -58,10 +58,10 @@ const realSeconds=(p:Point)=>walkSeconds(p)*BASE/HERO;
 const centerField=new FlowField(P.grid,[P.plazaCenter]);
 const TIER_SLACK=.25;
 /**
- * Tier bounds (s at the base walk): 10 / 15 s on the .w3x-sized city, × CITY_MAP_SCALE since the map grew 1.7×
- * (NEW-20261013-ORQ-cidade-escala-1-7: every walk from the plaza is 1.7× longer, the crates keep their places).
+ * Tier bounds (s at the base walk): 10 / 15 s on the .w3x-sized city, × CITY_DISTANCE_SCALE: the map grew 1.7×
+ * (NEW-20261013-ORQ-cidade-escala-1-7), then its distances got 1.75× shorter (NEW-20261023-ORQ-mapa-175-com-viaduto).
  */
-const NEAR_S=10*CITY_MAP_SCALE,FAR_S=15*CITY_MAP_SCALE;
+const NEAR_S=10*CITY_DISTANCE_SCALE,FAR_S=15*CITY_DISTANCE_SCALE;
 /** Farthest a crate may sit from its candidate: the centre of a neighbouring cell (a candidate whose own cell centre the hero rule closes). */
 const NEIGHBOUR_CELL=CS*1.5*Math.SQRT2+1e-6;
 const KINDS:readonly ResourceKind[]=['coco','pedra'];
@@ -228,9 +228,9 @@ test('crates: the NodeInfo shape nodeViews reads, capacity 1, on walkable cells 
 });
 
 // ---------- 3. tiers ----------
-test('tiers by walk time from the plaza at the base hero speed: value grows near → good → far, good crates exist at 17–25.5 s (10–15 s × CITY_MAP_SCALE)',t=>{
+test('tiers by walk time from the plaza at the base hero speed: value grows near → good → far, good crates exist at 9.7–14.6 s (10–15 s × CITY_DISTANCE_SCALE)',t=>{
   assert.equal(lootHeroSpeed(city),BASE,'the tiers stay on the base walk');
-  assert.deepEqual([LOOT_NEAR_SECONDS,LOOT_FAR_SECONDS],[NEAR_S,FAR_S],'tier bounds × CITY_MAP_SCALE');assert.equal(HERO,BASE*HERO_SPEED_MULT,'the heroes walk 2×');
+  assert.deepEqual([LOOT_NEAR_SECONDS,LOOT_FAR_SECONDS],[NEAR_S,FAR_S],'tier bounds × CITY_DISTANCE_SCALE');assert.equal(HERO,BASE*HERO_SPEED_MULT,'the heroes walk 2×');
   const tiers:Record<'near'|'good'|'far',NodeInfo[]>={near:[],good:[],far:[]};
   for(const n of allCrates()){
     const s=walkSeconds(n);
@@ -344,8 +344,8 @@ test('city horn: heroes idle since the intermission started (no stick, no crate)
   // so a person left there stays idle.
   // S: the walk at the base hero speed (the spawn's distance); R: the real (2×) walk the horn times.
   const spawn=city.asset.points.inicio,S=walkSeconds(spawn),R=realSeconds(spawn);
-  // 30–60 s on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7): the spawn is 1.7× farther.
-  assert.ok(S>30*CITY_MAP_SCALE&&S<60*CITY_MAP_SCALE,`the spawn is ${S.toFixed(1)} s of walk from the plaza`);
+  // 30–60 s on the .w3x-sized city, × CITY_DISTANCE_SCALE (× 1.7 since cidade-escala-1-7, ÷ 1.75 since mapa-175-com-viaduto).
+  assert.ok(S>30*CITY_DISTANCE_SCALE&&S<60*CITY_DISTANCE_SCALE,`the spawn is ${S.toFixed(1)} s of walk from the plaza`);
   const nearest=Math.min(...allCrates().map(n=>dist(n,spawn)-n.radius));
   assert.ok(nearest>GATHER_REACH+3,`no crate within reach of the spawn (nearest edge ${nearest.toFixed(1)} u)`);
   /** One intermission with `afk` at the spawn and a hero in the plaza; `act(hero, ticks since start)` may shove or steer afk. */
@@ -585,7 +585,10 @@ test('assembled city run: crates in the frame nodes, 6 heroes on 6 crates, inter
   assert.ok(end0-start<=MAX_PREPARE_TICKS);
   // Six crates far apart (different blocks), one hero on each.
   const picked:NodeInfo[]=[];
-  for(const n of [...allCrates()].sort((a,b)=>walkSeconds(a)-walkSeconds(b)))if(picked.length<6&&isolated(n)&&picked.every(q=>dist(q,n)>2*MAX_GATHER_DISTANCE+4))picked.push(n);
+  // Not one a bank took the place of (sim/bancos: the run hides those; asset v4 has twice the loot points, so a bank
+  // now often stands on a near one).
+  const banked=s.run.banks?.crates??new Set<string>();
+  for(const n of [...allCrates()].sort((a,b)=>walkSeconds(a)-walkSeconds(b)))if(picked.length<6&&!banked.has(n.id)&&isolated(n)&&picked.every(q=>dist(q,n)>2*MAX_GATHER_DISTANCE+4))picked.push(n);
   assert.equal(picked.length,6);
   const heroes=[...s.players.values()];
   heroes.forEach((p,i)=>Object.assign(p,{x:picked[i].x,y:picked[i].y}));

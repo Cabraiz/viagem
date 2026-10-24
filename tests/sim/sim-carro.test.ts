@@ -101,7 +101,10 @@ test('push needs reach, aim and a real stick: far, sideways, away, a light touch
 });
 
 test('the body keeps to the mask: pushed into the building north it does not move; along the street it slides',()=>{
-  const r=rig(),c=r.sys.state.car,y0=c.y;
+  // Asset v4 (mapa-175-com-viaduto): the plaza lost the fountain north of the car, so the car starts 0.5 u south of the
+  // plaza's north wall (its bottom edge at row 52, 77.792 u), west of mouth N.
+  const r=rig(),c=r.sys.state.car;c.x=75;c.y=77.792+CAR_RADIUS+.5;const y0=c.y;
+  assert.ok(city.clearDisc(c.x,c.y,CAR_RADIUS)&&!city.clearDisc(c.x,c.y-.9,CAR_RADIUS),'0.5 u south of the wall');
   pushers(r,2,NORTH).run(SIM_HZ*2);
   assert.ok(city.clearDisc(c.x,c.y,CAR_RADIUS),'still on the street');
   assert.ok(y0-c.y<.5+1e-9,`went ${y0-c.y} u north into a building 0.5 u away`);

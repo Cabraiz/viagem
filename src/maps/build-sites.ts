@@ -35,9 +35,10 @@ export const MIN_SITES=12,MAX_SITES=16;
 export const BASE_KEEP_OUT=3;
 /**
  * No footprint within this of a city mouth: the barricade seal grows up to BARRICADE_MAX_R (sim/stonewards/barricades.ts),
- * 4 u × CITY_MAP_SCALE 1.7 = 6.8 u since cidade-escala-1-7 (maps may not import rules/sim: the same value, kept by hand).
+ * 4 u × CITY_DISTANCE_SCALE (1.7 ÷ 1.75) = 3.886 u since mapa-175-com-viaduto (was 6.8 u on the 1.7× city; maps may not
+ * import rules/sim: the same value, kept by hand).
  */
-export const MOUTH_KEEP_OUT=6.8;
+export const MOUTH_KEEP_OUT=4*1.7/1.75;
 /** No footprint within this of the players' spawn point. */
 export const SPAWN_KEEP_OUT=1.5;
 
@@ -54,12 +55,17 @@ export const SPAWN_KEEP_OUT=1.5;
  * sites: its bodies are at the wall at once, where the team fights.
  */
 const CITY_CELLS:readonly (readonly [number,number,BuildSize])[]=[
-  [93,84,3],[114,96,3],[76,96,3],[89,88,3],[114,100,3],[76,100,3],
-  [87,84,3],[103,84,3],[87,111,3],[107,111,3],[81,111,3],[113,111,3],
-  [78,93,2],[115,93,2],[78,104,2],[115,104,2],
+  [53,47,3],[66,56,3],[44,53,3],[50,49,3],[66,58,3],[42,58,3],
+  [48,48,3],[59,48,3],[50,63,3],[61,63,3],[46,63,3],[65,63,3],
+  [44,51,2],[64,51,2],[44,59,2],[65,60,2],
 ];
-/** The rail: cells x 63..74, y 94..97 on the west avenue; its route (row 98) and rows 98..102 stay free. */
-const CITY_RAIL={x0:63,y0:94,length:12,width:4};
+/*
+ * Asset v4 (mapa-175-com-viaduto, the city 1.75× shorter): the same sites in the same order and sizes, each taken to its
+ * mapped cell and, where that no longer passed validateBuildPlan (the plaza shrank, the towers did not), moved to the
+ * nearest cell (≤ 6) that does.
+ */
+/** The rail: cells x 34..45, y 54..57 on the west avenue (v4: its mapped cells, 2 west so it clears the O mouth). */
+const CITY_RAIL={x0:34,y0:54,length:12,width:4};
 
 // Endless camp, relative to the base: per quadrant a 2×2 on the diagonal and two 1×1 flanking it. Every corner is
 // within 8.02 u of the base, inside the ground no seed can block (obstacle centres beyond BASE_CLEAR = 9, radius ≤ 0.62,

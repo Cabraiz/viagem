@@ -47,7 +47,8 @@ export const OBJETOS_2:readonly string[]=['banca-jornal','barraca-feira','cacamb
 export const POSTES:readonly (readonly [string,number])[]=[['poste-concreto-1',3],['poste-concreto-2',3],['poste-concreto-3',3],
   ['poste-aceso-amarelo-1',1],['poste-aceso-amarelo-2',1],['poste-gato-1',1],['poste-gato-2',1],['luminaria-quebrada-pisca-1',.5],['luminaria-quebrada-pisca-2',.5]];
 
-export const POLE_SPACING=4,LUGAR_SPACING=22,OBJECT_DENSITY=.35,BROKEN_SHARE=.2;
+/** LUGAR_SPACING: cells between two places with life, a map distance (22 on the 1.7× city, ÷ 1.75 since asset v4). */
+export const POLE_SPACING=4,LUGAR_SPACING=13,OBJECT_DENSITY=.35,BROKEN_SHARE=.2;
 /**
  * Pieces the art import refused (E8, importar-cenario-novo 16/10: problems in the art, asked back from the artist):
  * never placed, so no cell turns into an invisible wall waiting for art that will not come. A family whose variants are

@@ -26,8 +26,9 @@
  * Everything is deterministic (lines from streams derived from the director's rng, spots in cell order) and the
  * director's TutorialState is JSON-safe.
  */
-import {DIRS,FlowField,HERO_SPEED_MULT,RADIUS,STRAIGHT_COST,UNREACHABLE,type CityTerrain,type FlowPoint,type Point} from '../../maps/index.ts';
-import {CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
+import {DIRS,FlowField,HERO_SPEED_MULT,RADIUS,STRAIGHT_COST,UNREACHABLE,floorPortal,onRamp,overDeck,rampFoot,type CityTerrain,type CityViaduct,type FlowPoint,type Point} from '../../maps/index.ts';
+
+import {CITY_DISTANCE_SCALE,CITY_MAP_SCALE,ELITE_HP,playerScale,type RoundPlan} from '../../rules/index.ts';
 import {ticks} from '../../contract/index.ts';
 import type {Mouth} from './avenues.ts';
 
@@ -55,22 +56,30 @@ export const TUTORIAL_PLAN=Object.freeze({
  * rows, this far apart): cityRunStart keeps all of them on open ground.
  */
 export const START_SLOT_SPREAD=.7;
-const startMemo=new WeakMap<object,Point>();
+const startMemo=new WeakMap<object,Point&{andar?:1}>();
 /**
  * Where a city run starts (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): on the heroes' street route from the
- * wreck (asset `inicio`) to the plaza, at the point whose walk left is the whole route ÷ CITY_MAP_SCALE, the walk this
+ * wreck (asset `inicio`) to the plaza, at the point whose walk left is the whole route ÷ CITY_DISTANCE_SCALE, the walk this
  * tutorial was tuned for on the .w3x-sized city (≈ 76 of 129 u, ≈ 19 s at the city hero's walk). The 1.7× city made
  * the walk 1.7× longer (the tutorial went from 22 to 35 s and round 1, with the group behind chasing the team the whole
  * way, ran into its 90 s cap); the asset's points stay where they are: the wreck is still `inicio` (the minimap's start
- * mark, the search centre of the group behind), the team starts down the road from it.
+ * mark, the search centre of the group behind), the team starts down the road from it. On asset v4 (the distances 1.75×
+ * shorter, mapa-175-com-viaduto) the whole route (~83 u) is about that walk already, so the team starts by the wreck.
  * Route: a flow field to the plaza point on one cell per asset cell, walkable by the hero rule at the cell centre
  * (clearDisc, which the barricades never block for heroes). From the first route cell within that walk, the first one
  * where all six spawn slots (START_SLOT_SPREAD) stand on open ground. Once per asset; `inicio` when no route exists.
+ * On a deck (the Uno on the viaduct, mapa-175-com-viaduto etapa 3): `inicio` itself, on floor 1 (andar), the deck and
+ * the ramp down to the plaza being the tuned walk (~58 u).
  */
-export function cityRunStart(city:CityTerrain):Point{
+export function cityRunStart(city:CityTerrain):Point&{andar?:1}{
   const known=startMemo.get(city.asset);
   if(known)return {...known};
   const a=city.asset,cs=a.unitsPerCell,{inicio,praca}=a.points;
+  if(a.viaducts.some(v=>overDeck(v,cs,inicio.x,inicio.y))){
+    const start=Object.freeze({x:inicio.x,y:inicio.y,andar:1 as const});
+    startMemo.set(a,start);
+    return {...start};
+  }
   const field=new FlowField({width:a.cells.w,height:a.cells.h,cellSize:cs,walkable:(cx,cy)=>city.clearDisc((cx+.5)*cs,(cy+.5)*cs,RADIUS)},[praca]);
   const slotsFit=(x:number,y:number)=>{
     for(let row=0;row<2;row++)for(let col=-1;col<=1;col++)if(!city.clearDisc(x+col*START_SLOT_SPREAD,y+row*START_SLOT_SPREAD,RADIUS))return false;
@@ -79,7 +88,7 @@ export function cityRunStart(city:CityTerrain):Point{
   let start:Point={x:inicio.x,y:inicio.y};
   const total=field.costAt(inicio.x,inicio.y);
   if(total!==UNREACHABLE){
-    const walk=total/CITY_MAP_SCALE;
+    const walk=total/CITY_DISTANCE_SCALE;
     let cx=Math.floor(inicio.x/cs),cy=Math.floor(inicio.y/cs);
     for(let i=0;i<a.cells.w*a.cells.h;i++){
       const cost=field.cellCost(cx,cy),x=(cx+.5)*cs,y=(cy+.5)*cs;
@@ -95,16 +104,25 @@ export function cityRunStart(city:CityTerrain):Point{
 
 /** Index of each tutorial group in the plan (the plan lists them in this order). */
 export const TUTORIAL_BEHIND=0,TUTORIAL_WELCOME=1;
-/** Mouths the plaza group may use: never S, the avenue the team walks in by. */
-export const TUTORIAL_MOUTHS:readonly Mouth[]=Object.freeze(['N','L','O'] as Mouth[]);
+/**
+ * Mouths the plaza group may use: never the avenue the team walks in by, the mouth nearest the start (S from the
+ * helicopter by the south edge; N from the Uno on the viaduct, mapa-175-com-viaduto). In N, S, L, O order.
+ */
+export function tutorialMouths(city:CityTerrain):Mouth[]{
+  const {inicio,bocas}=city.asset.points,all:Mouth[]=['N','S','L','O'];
+  const team=all.reduce((a,b)=>Math.hypot(bocas[b].x-inicio.x,bocas[b].y-inicio.y)<Math.hypot(bocas[a].x-inicio.x,bocas[a].y-inicio.y)?b:a);
+  return all.filter(m=>m!==team);
+}
 /**
  * A spot behind the team is at least this much farther from the plaza (path u) than the hero farthest from it: a few
  * steps behind a hero, not a map length (kept by NEW-20261013-ORQ-cidade-escala-1-7).
  */
 export const BEHIND_MARGIN=2;
 /**
- * Spots behind the team are searched within this radius (u) of the wreck (a map length: 40 u on the .w3x-sized city, ×
- * CITY_MAP_SCALE, NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept).
+ * Spots behind the team are searched within this radius (u) of the wreck (40 u on the .w3x-sized city, × CITY_MAP_SCALE,
+ * NEW-20261013-ORQ-cidade-escala-1-7); members stand this far apart (u, bodies: kept). Not shortened with the city's
+ * distances (mapa-175-com-viaduto): the spots must stay out of the camera, which kept its size, and at 39 u the wreck
+ * by the south edge had almost none (round 1's first contact went from ~22 to ~43 s).
  */
 export const BEHIND_RADIUS=40*CITY_MAP_SCALE,BEHIND_GAP=.8;
 /**
@@ -187,4 +205,57 @@ export function behindSpots(candidates:readonly BehindCandidate[],count:number,t
     out.push({x:c.x,y:c.y});
   }
   return out;
+}
+
+/**
+ * The viaduct (mapa-175-com-viaduto etapa 3): the deck a point stands over (the run's start, the Uno), or undefined.
+ * The group behind the team then comes over the pile-up at the deck's closed end: its spots are deck cells, on floor 1.
+ */
+export function deckOf(city:CityTerrain,p:Point):CityViaduct|undefined{
+  return city.asset.viaducts.find(v=>overDeck(v,city.asset.unitsPerCell,p.x,p.y));
+}
+/** Walk (u) from a point on viaduct `v`'s deck or ramp to the plaza: down the ramp (straight, along its axis), then the plaza field from its foot. */
+export function deckToPlaza(city:CityTerrain,v:CityViaduct,plazaField:FlowField,p:Point):number{
+  const u=city.asset.unitsPerCell,foot=rampFoot(v,u),down=floorPortal(v,u,0),c=plazaField.costAt(down.x,down.y);
+  return Math.hypot(p.x-foot.x,p.y-foot.y)+(c===UNREACHABLE?Infinity:plazaUnits(plazaField,c));
+}
+/**
+ * Deck cells of `v` within BEHIND_RADIUS of the wreck (their centres, nearest to the wreck first; ties: cell order),
+ * with their walk to the plaza down the ramp (deckToPlaza): the candidates of the group behind a team that starts on
+ * the deck. Ramp cells are not candidates (the group comes from the closed end, behind the team).
+ */
+export function deckBehindCandidates(city:CityTerrain,v:CityViaduct,plazaField:FlowField,wreck:Point):BehindCandidate[]{
+  const u=city.asset.unitsPerCell,[c0,r0,w,h]=v.deck,out:BehindCandidate[]=[];
+  for(let r=r0;r<r0+h;r++)for(let c=c0;c<c0+w;c++){
+    const x=(c+.5)*u,y=(r+.5)*u,d=Math.hypot(x-wreck.x,y-wreck.y);
+    if(d>BEHIND_RADIUS)continue;
+    out.push({x,y,fromWreck:d,toPlaza:deckToPlaza(city,v,plazaField,{x,y})});
+  }
+  return out.sort((a,b)=>a.fromWreck-b.fromWreck);
+}
+/**
+ * The way to the plaza from `p` on its own floor, into `out` (a unit vector, or zero at the goal): the plaza field
+ * `field` on the ground; on a viaduct's deck (andar 1), straight to the foot of its ramp (deck and ramp are one straight
+ * corridor), the field from there. For walkers that follow the route (the judges and the scripted heroes of the tests,
+ * the benches).
+ */
+export function floorRoute(city:CityTerrain,field:FlowField,p:Point&{andar?:number},out:Point):void{
+  if(p.andar===1){
+    const v=city.asset.viaducts.find(w=>overDeck(w,city.asset.unitsPerCell,p.x,p.y)||onRamp(w,city.asset.unitsPerCell,p.x,p.y))??city.asset.viaducts[0];
+    if(v){
+      const q=floorPortal(v,city.asset.unitsPerCell,0),dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
+      out.x=d>1e-9?dx/d:0;out.y=d>1e-9?dy/d:0;
+      return;
+    }
+  }
+  field.directionAt(p.x,p.y,out);
+}
+/** Walk (u) from `p` to the plaza on its own floor: deckToPlaza on a deck, the plaza field's cost on the ground (Infinity unreachable). */
+export function floorToPlaza(city:CityTerrain,field:FlowField,p:Point&{andar?:number}):number{
+  if(p.andar===1){
+    const v=city.asset.viaducts.find(w=>overDeck(w,city.asset.unitsPerCell,p.x,p.y)||onRamp(w,city.asset.unitsPerCell,p.x,p.y))??city.asset.viaducts[0];
+    if(v)return deckToPlaza(city,v,field,p);
+  }
+  const c=field.costAt(p.x,p.y);
+  return c===UNREACHABLE?Infinity:plazaUnits(field,c);
 }

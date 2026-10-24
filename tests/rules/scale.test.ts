@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {
-  WC3_UNIT,WC3_CELL,CITY_MAP_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
+  WC3_UNIT,WC3_CELL,CITY_MAP_SCALE,CITY_DISTANCE_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES,scaleProfile,isMapId,wc3ToUnits,unitsToWc3,cellsToUnits,unitsToCells,
   heroWidthCells,enemySpeed,relativeRadius,traversalSeconds,convertSpeed,cameraOrientation,visibleWidthUnits,zoomFor,
   floorWidthUnits,
 } from '../../src/rules/scale.ts';
@@ -90,7 +90,7 @@ test('the city asset format and the scale profile agree on the cell size (drift 
   near(Math.round(UNITS_PER_CELL*K*1000)/1000,city.cell,1e-12,'UNITS_PER_CELL × CITY_MAP_SCALE = cidade-nevada map cell (1.496)');
 });
 
-test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is (25–38 s) × CITY_MAP_SCALE',t=>{
+test('real cidade-nevada asset (when imported): same cell size, straight start → plaza walk is (25–38 s) × CITY_DISTANCE_SCALE',t=>{
   const url=new URL('../../public/maps/cidade-nevada.json',import.meta.url);
   // Only a missing file skips; a present asset with a wrong scale or missing points fails.
   if(!existsSync(url)){t.skip('asset not imported yet');return;}
@@ -102,8 +102,9 @@ test('real cidade-nevada asset (when imported): same cell size, straight start �
   assert.ok(ok(start)&&ok(plaza),'asset has points.inicio and points.praca');
   // The doc's ~33 s (9,600 WC3 u) was an estimate: the real straight line already measures more.
   // The source start→boss line is ~34.4 s; the importer moves inicio ~1.9 u off the wreck for clearance (cidade-01).
-  // × CITY_MAP_SCALE since the asset's version 2 (cidade-escala-1-7): ~61 s at the base walk (~31 s at the 2× hero walk).
-  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25*K,38*K,'asset inicio → praca seconds');
+  // × CITY_MAP_SCALE since the asset's version 2 (cidade-escala-1-7): ~61 s at the base walk (~31 s at the 2× hero walk);
+  // ÷ CITY_COMPACT since version 4 (mapa-175-com-viaduto): ~36 s at the base walk.
+  within(traversalSeconds(Math.hypot(start.x-plaza.x,start.y-plaza.y),city),25*CITY_DISTANCE_SCALE,38*CITY_DISTANCE_SCALE,'asset inicio → praca seconds');
 });
 
 test('zoom per orientation: faithful 18 / 10–11 cells, narrowed by the 56 px floor (D-030)',()=>{

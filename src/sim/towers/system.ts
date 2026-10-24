@@ -46,7 +46,7 @@ import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
 import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
-import {RADIUS} from '../../maps/index.ts';
+import {RADIUS,floorOf} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import type {TralhaState} from './tralha.ts';
 import {defenseRectOf,discHits,FREE_CELL,freeCity,locks,onGround,pieceRect,pieceRectOf,piecesOf,rectsOverlap,setMuro,standingPieces,
@@ -437,7 +437,8 @@ export function defensesStep(ctx:SimContext,state:StonewardsState){
       area:base.area*boost.area,shots:base.shots+boost.amount}:base;
     const range=def.range*(1+radarBonus(state,d,ctx.tick));
     ctx.enemyIndex.query(d.x,d.y,range,found);
-    const pool=found.filter(e=>alive(e)&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
+    // The towers stand on the ground: a body on a viaduct's deck (maps city/viaduct.ts) is out of their reach.
+    const pool=found.filter(e=>alive(e)&&floorOf(e)===0&&reaches(def,e)&&Math.hypot(e.x-d.x,e.y-d.y)>=def.minRange).sort(byDistance(d));
     if(!pool.length)continue;
     d.fireTick=ctx.tick+def.cooldown;d.shots=((d.shots??0)+1)&255;
     if(def.target==='aura'){hitArea(ctx,def,d,range,d.owner);continue;}
@@ -470,7 +471,8 @@ function densest(pool:readonly EnemyState[],area:number):EnemyState{
 function hitArea(ctx:SimContext,def:DefenseDef,at:Point,radius:number,owner:string){
   // A blast lands on the sleepers too (D-051, they wake); the towers still aim at the awake only (defensesStep).
   const victims=queryHittable(ctx,at.x,at.y,radius,[]);
-  const list=victims.filter(e=>e.hp>0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+  const list=victims.filter(e=>e.hp>0&&floorOf(e)===0&&(ctx.enemies.has(e.id)||ctx.sleepers?.has(e.id))&&reaches(def,e)).sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0);
+
   for(const e of list)hit(ctx,def,e,owner);
 }
 function hit(ctx:SimContext,def:DefenseDef,e:EnemyState,owner:string){

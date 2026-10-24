@@ -12,6 +12,8 @@ import {applyEvents,emptyTally,nestTally,resetTally,type HudContext,type HudPart
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
+import {createFearRow,type FearRow} from './fear.ts';
+import type {FearFrame} from '../render/fear-rules.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
 import {createCacaNiquel} from './caca-niquel.ts';
@@ -200,6 +202,8 @@ export class RunHud {
   private obraOpen=false;
   /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
   private readonly topEl:HTMLElement;private readonly teamEl:HTMLElement;
+  /** Fear (card fear-escuridao-sozinho, hud/fear.ts): the notice in the slot, the dimmed portraits and the sound. */
+  private readonly fear:FearRow;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
@@ -227,7 +231,8 @@ export class RunHud {
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    this.fear=createFearRow(parent.ownerDocument,team.el);
+    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,this.fear.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
     // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
@@ -643,7 +648,13 @@ export class RunHud {
 
   get view(){return this.last;}
 
+  /** One frame of the fear (the scene's hooks.fear); `far` the allies out of reach while alone. */
+  setFear(frame:FearFrame,far:readonly string[]){
+    if(this.el.hidden||this.el.classList.contains('rh-ended')){this.fear.clear();return;}
+    this.fear.frame(frame,far);
+  }
   destroy(){
+    this.fear.destroy();
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
     removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();

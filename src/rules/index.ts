@@ -35,3 +35,5 @@ export * from './attack-target.ts';
 export * from './thrown.ts';
 // Card boss-fim-onda-1: the chefão at the end of the 1st wave (who, the scene's clock), sim, room and client.
 export * from './chefao-onda.ts';
+// Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): alone, the dark closes in; shared by the sim and the vignette.
+export * from './fear.ts';

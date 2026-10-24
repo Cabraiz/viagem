@@ -70,7 +70,7 @@ export function soundForEvent(event:SimEvent,localPlayer?:string):SoundId|undefi
         // Zueira: a vehicle honks like a clown car.
         case 'vehicle':return 'buzina';
         case 'item':return 'ui-carta';
-        // A boleto of the rain (the only XP on the ground, D-054) and the resources clink.
+        // The kill's cédula (NEW-20261024-ORQ-tirar-drops-cedula-girando) and the resources clink like coins.
         default:return 'gema';
       }
     case 'levelup':return 'nivel';

@@ -38,12 +38,16 @@ function walk(from:Point,dir:(p:Point)=>Point,seconds:number,stop:(p:Point)=>boo
 }
 const followArrow=(p:Point)=>route.direction(p);
 /**
- * NEW-20261013-ORQ-cidade-escala-1-7: the city is the .w3x map × K (asset version 2), so the hand-picked spots below are
- * their 169 u map positions × K. The walk keeps its speed, so the walks are longer (still within the time limits).
+ * Map lengths of the .w3x city on the real asset: × 1.7 since cidade-escala-1-7 (asset v2), then the compaction's
+ * mapping since asset v4 (NEW-20261023-ORQ-mapa-175-com-viaduto, 192 → 110 cells).
  */
-const K=CITY_MAP_SCALE,scaled=(x:number,y:number):Point=>({x:x*K,y:y*K});
-/** Where a straight walk to the plaza parks: from the road south of the block ≈(103,148) × K, it presses into its south face. */
-const straight=walk(scaled(104,157),toPlaza,20);
+const K=CITY_MAP_SCALE*110/192;
+/**
+ * Where a straight walk to the plaza parks. It started on the road south of the block ≈(103,148) × K and pressed into its
+ * south face; asset v4 (mapa-175-com-viaduto) pressed that road into the map's edge, so it starts at the wreck now and
+ * parks against the first block on the bearing.
+ */
+const straight=walk(P.inicio,toPlaza,20);
 
 test('the plaza test is the planner\'s insideBase, cell by cell (client copy, no sim import in the bundle)',()=>{
   const planner=cityPlanner(terrain),cs=terrain.asset.unitsPerCell;
@@ -65,7 +69,8 @@ test('following the arrow from the wreck reaches the plaza in under 45 s; the st
   assert.ok(run.trail.length-1<=40,`in ${run.trail.length-1} s`);
   const direct=walk(P.inicio,toPlaza,45);
   assert.ok(!direct.reached,'the straight bearing from the wreck never gets there');
-  assert.ok(!straight.reached&&Math.hypot(straight.end.x-103*K,straight.end.y-154*K)<2*K,`straight from the road parks at the block (${straight.end.x.toFixed(1)},${straight.end.y.toFixed(1)})`);
+  const last=straight.trail.slice(-3);
+  assert.ok(!straight.reached&&Math.hypot(last[2].x-last[0].x,last[2].y-last[0].y)<.5,`straight from the wreck parks at a block (${straight.end.x.toFixed(1)},${straight.end.y.toFixed(1)})`);
 });
 
 test('along the real route the arrow points at the next street segment and never into a wall',()=>{
@@ -88,21 +93,24 @@ test('along the real route the arrow points at the next street segment and never
   assert.ok(checked>=8,`${checked} points checked`);
 });
 
-test('at the stuck spot ≈(103,148) × K the arrow leads out where the straight bearing hits the wall',()=>{
+test('where the straight walk parks, the arrow leads out where the straight bearing hits the wall',()=>{
   const at=straight.end,d=route.direction(at),s=toPlaza(at);
   assert.ok(!clearSegment(at,{x:at.x+s.x*.5,y:at.y+s.y*.5},terrain),'the straight bearing walks into the block');
   assert.ok(clearSegment(at,{x:at.x+d.x*.5,y:at.y+d.y*.5},terrain),'the arrow does not');
   assert.ok(angle(d,s)>45,`the arrow turns away from the straight bearing (${angle(d,s).toFixed(0)}°)`);
   assert.ok(Math.abs(screenBearing(d,0)-screenBearing(s,0))>30,'and so does its sticker on screen');
   assert.ok(walk(at,followArrow,45).reached,'following it from there reaches the plaza');
-  // The dead-end yard inside that block (open to the south): every spot points back out, south, along walkable ground.
-  for(const p of [scaled(104.5,149.5),scaled(105,151),scaled(105.5,152.5)]){
-    assert.ok(walkable(p,terrain),`${p.x},${p.y} is in the yard`);
-    const q=route.direction(p);
-    assert.ok(q.y>0,`at ${p.x},${p.y} the arrow leads out of the yard (${q.x.toFixed(2)},${q.y.toFixed(2)})`);
-    assert.ok(clearSegment(p,{x:p.x+q.x*.5,y:p.y+q.y*.5},terrain));
-    assert.ok(walk(p,followArrow,45).reached,`from ${p.x},${p.y} the arrow reaches the plaza`);
+  // Around it (the open ground within 2 u, a ring every 45°): every arrow leads along walkable ground to the plaza (it
+  // was the dead-end yard inside that block on the 1.7× city).
+  let around=0;
+  for(let a=0;a<8;a++){
+    const p={x:at.x+Math.cos(a*Math.PI/4)*2,y:at.y+Math.sin(a*Math.PI/4)*2};
+    if(!walkable(p,terrain))continue;
+    around++;const q=route.direction(p);
+    assert.ok(clearSegment(p,{x:p.x+q.x*.5,y:p.y+q.y*.5},terrain),`at ${p.x.toFixed(1)},${p.y.toFixed(1)} the arrow keeps to open ground`);
+    assert.ok(walk(p,followArrow,45).reached,`from ${p.x.toFixed(1)},${p.y.toFixed(1)} the arrow reaches the plaza`);
   }
+  assert.ok(around>=3,`${around} open spots around it`);
 });
 
 test('the distance is the walk left, in whole meters, and goes down along the route',()=>{

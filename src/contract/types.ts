@@ -103,6 +103,11 @@ export interface SimPlayer extends Point {
   /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
   grana?:number;
   /**
+   * Fear (rules/fear.ts, sim/fear.ts): ticks of dark built up alone, 0..FEAR_TICKS; at FEAR_TICKS the hero falls.
+   * Absent = 0 (and in the runs without the fear system, so their digests stay).
+   */
+  fear?:number;
+  /**
    * D-051, manual combat only (server-side, never on the wire): the enemy whose hit last landed on this player and the
    * tick (core damagePlayer), for the auto aim's "who is hitting me" rule. Absent with the automatic weapons, so no
    * digest of the default game moves.
@@ -110,6 +115,8 @@ export interface SimPlayer extends Point {
   lastHitBy?:{id:string;tick:number};
   /** D-051, manual combat only (server-side): the auto aim's current target, kept by its hysteresis (rules/attack-target.ts). */
   autoTarget?:string;
+  /** The floor (maps city/viaduct.ts): 1 on a viaduct's deck, absent on the ground. Shared with the client's prediction. */
+  andar?:1;
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
@@ -127,15 +134,23 @@ export interface EnemyState extends Point {
   knock?:Point; phase?:number;
   /** Small numeric scratch for behaviors; keep JSON-safe. */
   memory?:Record<string,number>;
+  /** The floor (maps city/viaduct.ts): 1 on a viaduct's deck, absent on the ground. */
+  andar?:1;
 }
 
 /**
- * D-054: 'xp' is only the zueira's boleto rain (resource 'boleto'): a kill's XP goes straight to the team, no gems.
+ * D-054: a kill's XP goes straight to the team, no gems; 'xp' was only the zueira's boleto rain (resource 'boleto'),
+ * retired by NEW-20261024-ORQ-tirar-drops-cedula-girando: no 'xp' pickup is made any more (the kind stays on the wire).
  * D-051: 'item' is an inventory item on the ground (resource = item id, value = its level: rarity or stack); in the
  * manual combat a 'chest' is a crate whose value is its rarity (1 verde .. 5 lendária), opened by standing next to it.
  */
 /** 'vehicle' (Veículos): a parked vehicle, its VehicleKind in `resource`; the vehicles system takes it, never the pickups one. */
-export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle';
+/**
+ * 'grana' (NEW-20261024-ORQ-tirar-drops-cedula-girando): a kill's Grana as a spinning cédula, value = R$; it appears
+ * CEDULA_DELAY_SECONDS after the kill where the enemy fell, whoever walks by takes it into their wallet, and after
+ * CEDULA_WAIT_SECONDS it flies to its `owner` (sim/progression.ts).
+ */
+export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle'|'grana';
 export interface PickupState extends Point {
   id:string; kind:PickupKind; value:number; resource?:string;
   spawnTick:number; expiresTick?:number;
@@ -151,6 +166,8 @@ export interface PickupState extends Point {
    * they took a weapon of its colour); the encoder leaves it out of their frames and their bots skip it.
    */
   hiddenFor?:string[];
+  /** 'grana' only (server-side): who the kill paid (the killer, a tower's owner); the cédula flies to them when nobody took it. */
+  owner?:string;
 }
 
 export interface ProjectileState extends Point {
@@ -158,6 +175,8 @@ export interface ProjectileState extends Point {
   damage:number; pierce:number; untilTick:number; hostile:boolean;
   /** Enemy (or player) ids already hit, prevents double damage per pass. */
   hit:string[];
+  /** The floor it flies on (its shooter's, maps city/viaduct.ts): it only hits bodies on the same floor. Absent: the ground. */
+  andar?:1;
 }
 
 /** Telegraphed danger zone; damage applies at fireTick on the server. */
@@ -168,7 +187,10 @@ export interface Telegraph {
   kind?:TelegraphKind;
   /** boss-fim-onda-1: it throws whoever it hits this far (u), away from its centre (a line: along it). Absent: no throw. */
   push?:number;
+  /** The floor it lands on (its owner's, maps city/viaduct.ts): it only hurts bodies on the same floor. Absent: the ground. */
+  andar?:1;
 }
+
 
 // ---------- Team progression ----------
 export interface TeamProgress {xp:number;level:number;nextXp:number}

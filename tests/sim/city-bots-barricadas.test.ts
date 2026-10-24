@@ -16,7 +16,7 @@ import {LEASH,ROAM_IN,decide,newMemory} from '../../src/sim/bot-brain.ts';
 import {botRoute,botRouteDistance,dropBotRoutes} from '../../src/sim/city/bot-routes.ts';
 import {BARRICADE_MAX_R} from '../../src/sim/stonewards/barricades.ts';
 import type {RunView} from '../../src/contract/view.ts';
-import {CITY_MAP_SCALE} from '../../src/rules/index.ts';
+import {CITY_DISTANCE_SCALE} from '../../src/rules/index.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -50,8 +50,8 @@ test('city bot: a gem past the lure band is no lure (no pacing at the band edge)
 test('bot routes walk through the barricades (blockers stop enemies only), the same on every fork',()=>{
   const fork=city.fork();
   for(const m of ['N','S','L','O'] as const)fork.setBlocker(`barricada-${m}`,{x:P.bocas[m].x,y:P.bocas[m].y,r:BARRICADE_MAX_R});
-  // 6 u south of mouth S on the .w3x-sized city (past BARRICADE_MAX_R), × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
-  const from={x:P.bocas.S.x,y:P.bocas.S.y+6*CITY_MAP_SCALE};
+  // 6 u south of mouth S on the .w3x-sized city (past BARRICADE_MAX_R), × the distance scale (CITY_DISTANCE_SCALE).
+  const from={x:P.bocas.S.x,y:P.bocas.S.y+6*CITY_DISTANCE_SCALE};
   assert.ok(walkable(from,fork)&&walkable(P.bocas.S,fork),'heroes stand south of and on the S mouth (blockers ignored)');
   assert.equal(fork.forEnemies().clearDisc(P.bocas.S.x,P.bocas.S.y,.22),false,'the S mouth is closed to enemies');
   dropBotRoutes(city);

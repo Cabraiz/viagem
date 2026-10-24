@@ -15,6 +15,7 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
@@ -35,7 +36,7 @@ import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type Objecti
 import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
 import {cityUnoStart} from './city/uno-start.ts';
-import {addGrana,payKill,seatedPlayers,splitAmong} from './wallet.ts';
+import {addGrana,killPayee,payKill,seatedPlayers,splitAmong} from './wallet.ts';
 import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './bancos/system.ts';
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
@@ -118,6 +119,11 @@ export interface RunSystemsOptions {
    * the automatic weapons and the skills, exactly as before, until the E6 weapons and the balance pass.
    */
   combat?:CombatMode;
+  /**
+   * Fear (card NEW-20261023-ORQ-fear-escuridao-sozinho, sim/fear.ts): alone for 60 s, the dark takes the hero. Default:
+   * on with the manual combat (the game the rooms play since D-051), off otherwise, so the old worlds' runs and digests stay.
+   */
+  fear?:boolean;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -234,6 +240,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const cp=options.checkpoint?structuredClone(options.checkpoint):undefined;
   // D-051 manual combat: the level cards are passives only (MANUAL_ITEMS) and chests are crates (no walking open).
   const progression=createProgression({catalog:options.combat==='manual'?MANUAL_ITEMS:ITEMS,seed:world.seed,onBuildChange:(_ctx,p)=>{refreshStats(p);},
+    // A cédula with no room on the ground: paid like the kill would have been (read through `stonewards`, created below).
+    payGrana:(ctx,amount,owner)=>{payKill(ctx.players,{},amount,stonewards.state,owner);},
     ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
@@ -507,6 +515,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
+  const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
+    base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
 
   // D-051 manual combat: the inventory (sim/inventory.ts); the old kit-torre is one team ficha, a kit de torre
   // (torre-pela-caixa) its piece built for free on the grid.
@@ -544,7 +555,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // Veículos: the parked vehicles and the rides, in the same slot (no new system id).
       vehicles?.step(ctx);
     }},
-    progression.progression,revive,
+    // Fear steps in the revive slot (no new system id), right before it: a hero the dark takes counts for the defeat now.
+    progression.progression,fear?{id:revive.id,step(ctx:SimContext){fear.step(ctx);revive.step(ctx);}} satisfies SimSystem:revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
     // Card boss-fim-onda-1: while the chefão stands the chaveiro's ETA holds too (holdChaveiroClock).
@@ -560,9 +572,12 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     // The anão's belt explodes (telegraphed; enemies it kills come back here as their own, queued kills: D-011).
     enemyAi.onKill(ctx,enemy);
     zueira.noteKill(enemy,by,ctx.tick);
-    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world: the killer,
-    // a tower's owner (credit), else split among the standing seats; the boss always split among every seat.
-    payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
+    // D-047/D-048, NEW-20261014-ORQ-carteira-e-pix: every kill pays Grana into a wallet, in every world. Since
+    // NEW-20261024-ORQ-tirar-drops-cedula-girando it falls as a cédula a second later (progression.ts dropGrana): whoever
+    // walks by takes it, else it flies to the killer, a tower's owner (credit) or the nearest hero. The boss is still
+    // split among every seat at once.
+    if(enemy.boss)payKill(ctx.players,enemy,granaPerKill(enemy),stonewards.state,by,credit);
+    else progression.dropGrana(ctx,enemy,granaPerKill(enemy),killPayee(ctx.players,by,credit));
     for(const ally of ctx.players.values())if(!ally.spectator)(ally as RunPlayer).score=((ally as RunPlayer).score??0)+KILL_SCORE;
     // Decide on the killing blow: the boss onDefeated hook only runs on the next step, after revive could call a defeat.
     if(enemy.boss&&!chaveiro){bossDown=true;onOutcome('victory');}

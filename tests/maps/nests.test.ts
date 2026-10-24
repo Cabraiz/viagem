@@ -11,7 +11,7 @@ import {fileURLToPath} from 'node:url';
 import {
   CityTerrain,decodeCityAsset,worldBase,CITY_NEST_POOL,cityNestPlan,drawNests,validateNestPlan,routeDistance,quadrantOf,
   buildingNestSize,scaleSleepers,NEST_COUNT,NEST_FROM_CAR,NEST_FROM_ROUTE,NEST_FROM_START,NEST_YARD_RADIUS,POPULATION,TRAINING_FROM_CAR,
-  TRAINING_MEMBERS,SPREAD,fieldTarget,FIELD_BODIES,LOOSE_FROM_CAR,LOOSE_FROM_START,spreadGap,localGap,citySafePlaces,safePlaceAt,
+  TRAINING_MEMBERS,SPREAD,fieldTarget,FIELD_BODIES,LOOSE_FROM_CAR,LOOSE_FROM_START,spreadGap,localGap,citySafePlaces,safePlaceAt,SAFE_MIN_CELLS,
   type NestPlan,
 } from '../../src/maps/index.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
@@ -69,12 +69,13 @@ function closestPair(plan:NestPlan){
 }
 
 test('card monstros-espalhados: today\'s total per room (FIELD_BODIES × the player scale), no two bodies closer than the plan\'s gap, for 1 to 6 players', () => {
-  assert.deepEqual([1,4,6].map(n=>fieldTarget(n)),[FIELD_BODIES,4930,5950]);
+  assert.deepEqual([1,4,6].map(n=>fieldTarget(n)),[FIELD_BODIES,1189,1435]);
   assert.equal(SPREAD.gap,0,'the game draws the gap from the target');
   for(const seed of SEEDS.slice(0,4))for(const players of [1,3,6]){
     const plan=cityNestPlan(city,seed,{players,routes:ROUTES,start});
     assert.ok(plan.gap!<=spreadGap(players)&&plan.gap!>spreadGap(players)*.8,`gap ${plan.gap}`);
-    // The user (22/10): today's horde, spread: 1p 3400, 4p 4930, 6p 5950.
+    // The user (22/10): today's horde, spread: 1p 3400, 4p 4930, 6p 5950 on the 1.7× city; the same density on the city
+    // 1.75× shorter (mapa-175-com-viaduto, at today's gap): 1p 820, 4p 1189, 6p 1435.
     assert.equal(sleepersOf(plan)+looseOf(plan),fieldTarget(players),`seed ${seed}, ${players}: the total of today`);
     const d=closestPair(plan);
     assert.ok(d>=plan.gap!-1e-9,`seed ${seed}, ${players}: par a ${d.toFixed(2)} u (gap ${plan.gap})`);
@@ -94,7 +95,7 @@ test('card monstros-espalhados: the field fills the city evenly, no clumps and n
     // A disc of radius gap/2 holds at most one body when they stand a gap apart; 3 u is under that.
     if(all.filter(p=>Math.hypot(p.x-x,p.y-y)<=Math.min(3,plan.gap!/2-.01)).length>1)crowd++;
   }
-  assert.ok(checked>200,`${checked} pontos`);
+  assert.ok(checked>100,`${checked} pontos`);
   // A spot can be open ground cut off from the car (a closed yard): a few holes are walls, not the draw.
   assert.ok(holes/checked<.03,`${holes} buracos em ${checked}`);
   assert.equal(crowd,0,'nenhum bolo');
@@ -103,7 +104,7 @@ test('card monstros-espalhados: the field fills the city evenly, no clumps and n
 test('card monstros-espalhados: the city has safe places (one narrow opening each) and no body is ever inside one, for any seed', () => {
   const safe=citySafePlaces(city);
   assert.ok(safe.length>=5,`${safe.length} lugares seguros`);
-  for(const s of safe)assert.ok(s.area>=40&&s.cells.size===s.area);
+  for(const s of safe)assert.ok(s.area>=SAFE_MIN_CELLS&&s.cells.size===s.area);
   assert.equal(safePlaceAt(city,{x:car.x,y:car.y}),undefined,'the plaza is not a safe place');
   for(const seed of SEEDS.slice(0,6)){
     const plan=cityNestPlan(city,seed,{players:seed%6+1,routes:ROUTES,start});
@@ -117,7 +118,7 @@ test('more players or a bigger population pack the field tighter; population 1 i
   const one=cityNestPlan(city,seed,{routes:ROUTES,start}),six=cityNestPlan(city,seed,{players:6,routes:ROUTES,start});
   const light=cityNestPlan(city,seed,{routes:ROUTES,start,population:1});
   assert.ok(count(six)>count(one)*1.3,`6 jogadores ${count(six)} × 1 jogador ${count(one)}`);
-  assert.equal(count(light),fieldTarget(1,1),`população 1: ${count(light)}`);assert.equal(fieldTarget(1,1),170);
+  assert.equal(count(light),fieldTarget(1,1),`população 1: ${count(light)}`);assert.equal(fieldTarget(1,1),41);
   assert.equal(light.population,1);assert.equal(one.population,undefined);
   assert.equal(POPULATION,20);
   // Every nest keeps some sleepers in its yard (its wake, its groups' exits).

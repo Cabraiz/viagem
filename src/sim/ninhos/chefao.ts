@@ -132,15 +132,23 @@ export function createChefao(options:ChefaoOptions,restore?:ChefaoState):ChefaoS
   const {seed:_seed,who:_who,nests,entrances,car,tuning:base,...bossOptions}=options;
   const state:ChefaoState=restore?structuredClone(restore):{who:who.id,boss:{defeated:false,lastX:0,lastY:0,minions:[],pending:[]}};
   state.who=who.id;
-  // A checkpoint keeps no live enemy: one taken while he stood brings him back (called again on the next step).
-  if(state.called!==undefined&&!state.boss.defeated&&state.boss.bossId!==undefined){
-    delete state.called;delete state.enemy;delete state.x;delete state.y;
-    state.boss={defeated:false,lastX:0,lastY:0,minions:[],pending:[],...(state.boss.rng!==undefined?{rng:state.boss.rng}:{})};
-  }
   const boss=createBoss({...bossOptions,kind:who.id,lines:waveBossLines(who),tuning:waveBossTuning({...BOSS_TUNING,...base})});
   boss.restore(state.boss);
   // The controller's state object is the one the checkpoint stores.
   state.boss=boss.state;
+  // A checkpoint keeps no live enemy: one taken while he stood brings him back. The state is restored as stored (a
+  // restore is lossless); the first step after it finds his body gone and calls him again.
+  let resumed=!!restore&&state.called!==undefined&&!state.boss.defeated&&state.boss.bossId!==undefined;
+  function lostBody(ctx:SimContext){
+    if(!resumed)return;
+    resumed=false;
+    if(state.enemy!==undefined&&ctx.enemies.has(state.enemy))return;
+    delete state.called;delete state.enemy;delete state.x;delete state.y;
+    // restore() assigns over the live object: his old bossId (and line, solo) would stay and read as a kill.
+    const rng=state.boss.rng,live=boss.state as unknown as Record<string,unknown>;for(const k of Object.keys(live))delete live[k];
+    boss.restore({defeated:false,lastX:0,lastY:0,minions:[],pending:[],...(rng!==undefined?{rng}:{})});
+    state.boss=boss.state;
+  }
 
   /** A lab's summon (not kept by a checkpoint). */
   let forced=false;
@@ -162,6 +170,7 @@ export function createChefao(options:ChefaoOptions,restore?:ChefaoState):ChefaoS
   return {
     id:'chefao',state,who,boss,
     step(ctx){
+      lostBody(ctx);
       if(state.called===undefined)call(ctx,forced);
       boss.step(ctx);
     },

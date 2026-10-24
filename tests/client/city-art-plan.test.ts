@@ -12,7 +12,7 @@ import sharp from 'sharp';
 import {parseArtIndex,type ArtIndex} from '../../src/client/art/manifest.ts';
 import {
   ART_CELL,CITY_ART_HEIGHT,FILL_MAX_AREA,GROUND_FROM_MANIFEST,LOT_UNIT,MOUND_HEIGHT,blockArt,buildCityArtPlan,cityArtOptions,fillLots,
-  fountainLot,lotCells,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
+  FOUNTAIN_SEARCH_CELLS,fountainLot,lotCells,moundPiece,pieceFamily,planHasArt,planHasBuildingArt,planLots,PROP_WORLD_SCALE,propSheet,sheetHeight,type BlockArt,type CityArtPlan,
 } from '../../src/client/render/city/art-plan.ts';
 import type {CityAsset,CityBlock} from '../../src/client/render/city/asset.ts';
 import {blockPieces} from '../../src/client/render/city/chunks.ts';
@@ -268,7 +268,8 @@ test('fill pass: the real city has no building cell left for the procedural colu
       for(const l of art.lots.slice(lots.length)){filled+=l.w*l.h;assert.ok(l.a*l.b<=FILL_MAX_AREA&&l.height>=b.height);}
       mounds+=exactCover(b,art);
     }
-    assert.ok(cells>1000,name);
+    // Asset v4 (mapa-175-com-viaduto): the buildings kept their size, the rubble shrank with the distances (was > 1000).
+    assert.ok(cells>600,`${name}: ${cells} building and rubble cells`);
     assert.ok(left>0,`${name}: planLots alone leaves cells (no 1×1 intact piece)`);
     assert.equal(filled,left,`${name}: every one gets a 1×1 / 1×2 piece`);
     assert.equal(mounds,0,`${name}: none left even for the mound`);
@@ -364,28 +365,16 @@ test('a manifest with art but no building sheets keeps the procedural columns (n
   assert.equal(planHasBuildingArt(buildCityArtPlan(demoIndex(),{enabled:false})),false);
 });
 
-test('the praça fountain: no fill lot, planned lot or mound lands on its footprint (bug: a ruin over the basin)', ()=>{
-  const asset=realCity();
-  for(const height of ['b','a'] as const){
-    const plan=repoPlan(height),f=fountainLot(asset,plan);
-    assert.ok(f,'the repo manifest places the fountain');
-    const under=lotCells(f);
-    let touched=0,blocksNear=0;
-    for(const b of asset.blocks){
-      if(b.x+b.w<=f.x||f.x+f.w<=b.x||b.y+b.h<=f.y||f.y+f.h<=b.y)continue;
-      blocksNear++;
-      const art=blockArt(b,plan,under);
-      for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))touched++;
-      for(const m of art.mounds)if(under(m.x,m.y))touched++;
-    }
-    assert.equal(touched,0,`height ${height}: ${touched} cells of art over the fountain`);
-    // Without the reservation the old code did put art there (the bug this guards against), when a block meets it.
-    if(blocksNear){
-      let before=0;
-      for(const b of asset.blocks){const art=blockArt(b,plan);for(const l of art.lots)for(let y=l.y;y<l.y+l.h;y++)for(let x=l.x;x<l.x+l.w;x++)if(under(x,y))before++;for(const m of art.mounds)if(under(m.x,m.y))before++;}
-      assert.ok(before>0,'the fixture reproduces the bug without the reservation');
-    }
-  }
+test('the praça fountain: asset v4 dropped it with its basin, so no fountain art stands on the base point',()=>{
+  // mapa-175-com-viaduto (scripts/compactar-cidade.ts PLAZA_DROP): the plaza 1.75× smaller holds the base, its four
+  // mouths and the build sites, not the three frozen fountains; their basins' water went with them. With the water
+  // left, fountainLot put the fountain over the base point, and the Uno and the team stood on it (etapa 5 print).
+  const asset=realCity(),P=asset.points.praca,pcx=Math.floor((P.x-asset.origin.x)/asset.cell),pcy=Math.floor((P.y-asset.origin.y)/asset.cell);
+  for(const height of ['b','a'] as const)assert.equal(fountainLot(asset,repoPlan(height)),undefined,`height ${height}`);
+  let water=0;
+  for(let cy=pcy-FOUNTAIN_SEARCH_CELLS;cy<=pcy+FOUNTAIN_SEARCH_CELLS;cy++)for(let cx=pcx-FOUNTAIN_SEARCH_CELLS;cx<=pcx+FOUNTAIN_SEARCH_CELLS;cx++)
+    if(asset.ground[cy*asset.width+cx]==='w')water++;
+  assert.equal(water,0,'no water around the base point');
 });
 
 test('reserved cells: blockArt without a reservation is unchanged', ()=>{

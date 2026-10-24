@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,carBlock,isDown,moveStep,slipping,walkable,type CarPlace,type Point} from '../../maps/index.ts';
+import {capStep,carBlock,floorOf,floorOn,isDown,moveStep,onFloor,setFloor,slipping,walkable,type CarPlace,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -34,7 +34,8 @@ const STEP=1/SIM_HZ;
 export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number){
   const effects=tick===undefined?undefined:p,slide=slipping(effects,tick??0);
   if(isDown(effects,tick??0))return;
-  Object.assign(p,moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain));
+  const q=moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain);
+  p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
   if(slide)return;
   const length=Math.hypot(input.x,input.y);
   if(Number.isFinite(length)&&length>=.01)p.facing={x:input.x/length,y:input.y/length};
@@ -72,7 +73,8 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       // boss-fim-onda-1, the Tank's punch: the throw carries the body (walls and water stop it), then the fall ends.
       if(p.knock&&ctx.tick<(p.knockUntil??-Infinity)&&!p.downed){
         const q={x:p.x+p.knock.x,y:p.y+p.knock.y};
-        if(walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}else{delete p.knock;delete p.knockUntil;}
+        const floor=floorOf(p);
+        if(walkable(q,onFloor(ctx.terrain,floor))){p.x=q.x;p.y=q.y;setFloor(p,floorOn(ctx.terrain,q.x,q.y,floor));}else{delete p.knock;delete p.knockUntil;}
       }else if(p.knock||p.knockUntil!==undefined){delete p.knock;delete p.knockUntil;}
       if(p.downUntil!==undefined&&ctx.tick>=p.downUntil)delete p.downUntil;
       const down=isDown(p,ctx.tick);
@@ -82,10 +84,10 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(input&&!auto)p.ack=input.seq;
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
-        const x0=p.x,y0=p.y;
+        const from={x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        const q=carBlock({x:x0,y:y0},capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;
+        const q=carBlock(from,capStep(from,p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;

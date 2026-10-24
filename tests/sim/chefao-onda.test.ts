@@ -19,7 +19,7 @@ import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {BASE_STATS,type EnemyState,type EnemyView,type SimPlayer} from '../../src/contract/index.ts';
 import {BOSS_FOCUS_R,bossFocus} from '../../src/sim/bot-brain.ts';
-import {SimWorld} from '../../src/sim/core.ts';
+import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems,type RunSystemsState} from '../../src/sim/assemble.ts';
@@ -126,7 +126,8 @@ test('beaten: a dourada crate where he fell and up() false; the checkpoint keeps
   for(const p of world.players.values())resumedWorld.players.set(p.id,structuredClone(p));
   for(const e of [...resumedWorld.enemies.values()])resumedWorld.enemies.delete(e.id);
   const resumed=run({world:resumedWorld,checkpoint:cp});
-  assert.equal(resumed.sys.chefao!.up(),false);
+  assert.equal(stateHash(resumed.sys.state().chefao),stateHash(cp.chefao),'the restore is lossless');
+  assert.equal(resumed.sys.chefao!.up(),true,'he still stands (the clock stays held) until his body is called again');
   resumedWorld.step();
   assert.equal(bossesOf(resumedWorld).length,1,'back after the restore');assert.equal(resumed.sys.chefao!.up(),true);
   // The kill.

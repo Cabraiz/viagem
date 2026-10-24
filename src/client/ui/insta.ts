@@ -248,6 +248,33 @@ export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object
       {tipo:'texto',fonte:'moderna',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['Domingo:','21 marmitas','prontas.'],x:50,y:46},
       {tipo:'hashtag',tag:'#MARMITAFIT',cor:'rosa',x:64,y:80,giro:-3}]},
   ],
+  // NEW-20261024-ORQ-stories-vendedor-aposentado: the same viewer and looks for the two heroes of the second menu screen.
+  'vendedor-praia':[
+    {quando:'10 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'branco',fundo:'laranja',linhas:['OLHA A ÁGUA!','OLHA O MATE!'],x:40,y:66,giro:-5,tam:1.5},
+      {tipo:'hashtag',tag:'#PRAIALOTADA',cor:'amarelo',x:38,y:84,giro:4}]},
+    {quando:'6 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['Pix aprovado.','Mate entregue.'],x:52,y:50},
+      {tipo:'curtidas',n:8,x:76,y:84}]},
+    {quando:'3 h',camadas:[
+      {tipo:'enquete',pergunta:'O FISCAL VOLTOU. E AGORA?',a:'Corre!',b:'Finge de turista',x:50,y:74}]},
+    {quando:'40 min',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'sombra',cor:'branco',linhas:['Última geladinha','do dia.'],x:50,y:60,tam:1.1},
+      {tipo:'pergunta',pergunta:'Quem leva a última?',x:50,y:80}]},
+  ],
+  'aposentado':[
+    {quando:'11 h',camadas:[
+      {tipo:'texto',fonte:'maquina',jeito:'caixa',cor:'preto',fundo:'branco',alinhar:'esquerda',linhas:['5h da manhã.','O peixe dorme.','Eu não.'],x:36,y:72},
+      {tipo:'hashtag',tag:'#MADRUGADOR',cor:'azul',x:64,y:86,giro:-4}]},
+    {quando:'8 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'preto',fundo:'amarelo',linhas:['O MONSTRO','DO LAGO.'],x:46,y:60,giro:-4,tam:1.6},
+      {tipo:'curtidas',n:2,x:26,y:82}]},
+    {quando:'4 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'preto',fundo:'branco',linhas:['Como desvira','essa câmera?'],x:50,y:22}]},
+    {quando:'25 min',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'faixa',cor:'branco',fundo:'roxo',linhas:['Só descansando','os olhos.'],x:50,y:64},
+      {tipo:'hashtag',tag:'#CAPÍTULOFINAL',cor:'rosa',x:60,y:82,giro:3}]},
+  ],
 });
 export const storiesDe=(id:string):readonly InstaStory[]=>INSTA_STORIES[id]??[];
 /** Story k (from 0) of a hero: requested only when the viewer opens (ui/insta-stories.ts), never with the profile. */

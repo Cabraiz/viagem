@@ -13,7 +13,7 @@ import {FREE_PIECES,isBuildRot} from '../src/contract/index.ts';
 import {createEnemy,isEnemyKind,isDefenseId} from '../src/sim/index.ts';
 import {addTelegraph} from '../src/sim/index.ts';
 import {CAR_ID,CIDA_ITEM_IDS,MAX_WEAPONS,PIX_GAP_MS,TELEGRAPH_KINDS,type CombatMode,type ObjectiveKind,type PixResult,type PullResult,type TelegraphKind} from '../src/contract/index.ts';
-import {walkable,worldBase} from '../src/maps/index.ts';
+import {onFloor,setFloor,walkable,worldBase} from '../src/maps/index.ts';
 import {sha256Hex} from '../src/protocol/index.ts';
 import {downPlayer,ITEMS} from '../src/sim/index.ts';
 import {SOS_COOLDOWN_MS,SOS_SLACK_MS,EMOTE_COOLDOWN_MS,EMOTE_SLACK_MS,isEmoteId,MARK_ID,MARK_COOLDOWN_MS,relayMark} from '../src/rules/index.ts';
@@ -938,12 +938,16 @@ export class Room {
     if(tg)addTelegraph(this.sim.world,{shape:'circle',x:tg.x,y:tg.y,radius:1.8,damage:0,owner:'env:lab',
       ...(TELEGRAPH_KINDS.includes(tgKind as TelegraphKind)?{kind:tgKind as TelegraphKind}:{})},50);
     const at=lab(m.spawn),kind=typeof m.kind==='string'?m.kind:'';
-    if(at&&isEnemyKind(kind)&&kind!=='chefe'&&walkable(at,this.sim.terrain))createEnemy(this.sim.world,kind,at);
+    // `spawn.andar` 1: the critter stands on a viaduct's deck (mapa-175-com-viaduto proofs).
+    const atFloor=(m.spawn as {andar?:unknown}|undefined)?.andar===1?1:0;
+    if(at&&isEnemyKind(kind)&&kind!=='chefe'&&walkable(at,onFloor(this.sim.terrain,atFloor))){const e=createEnemy(this.sim.world,kind,at);if(e&&atFloor===1)e.andar=1;}
     const to=m.to;
     // Within LAB_REACH of the base (the endless world is walkable almost everywhere: no lab jump to the far chunks).
     // Measured from where the lab put the team (LAB_OFFSET moves everyone away from the world's base).
     const b=worldBase(this.sim.terrain),o=this.labOffset,base={x:b.x+(o?.x??0),y:b.y+(o?.y??0)};
-    if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&Math.hypot(to.x-base.x,to.y-base.y)<=LAB_REACH&&walkable(to,this.sim.terrain)){p.x=to.x;p.y=to.y;this.sim.setOnline(id,true);}
+    // The viaduct (mapa-175-com-viaduto): `to.andar` 1 puts the hero on a deck (walkable there), else on the ground.
+    const floor=to?.andar===1?1:0;
+    if(to&&Number.isFinite(to.x)&&Number.isFinite(to.y)&&Math.hypot(to.x-base.x,to.y-base.y)<=LAB_REACH&&walkable(to,onFloor(this.sim.terrain,floor))){p.x=to.x;p.y=to.y;setFloor(p,floor);this.sim.setOnline(id,true);}
   }
   /**
    * "Me salva" (UX-resgate-e-ping): a caído in combat asks for help; the room relays {t:'sos',id,x,y,tick} once to

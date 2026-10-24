@@ -2,7 +2,7 @@ import {TerrainField,DEFAULT_SEED,TERRAIN_VERSION,CityTerrain,type WorldKind} fr
 import {CHUNK_VERSION} from '../src/maps/index.ts';
 import type {FrameInput,WorldDescriptor} from '../src/protocol/index.ts';
 import {GRACE_MS,MAX_PLAYERS,emptyStats,packEnemy,packPlayer,packStats,wireHp,wireRound as round,type EnemyWire,type Player,type PlayerExtraWire,type RunStats,type Snapshot} from '../src/protocol/index.ts';
-import { worldSpawn,moveStep,statMoveSpeed, type Point } from '../src/maps/index.ts';
+import { worldSpawn,moveStep,floorOf,setFloor,statMoveSpeed, type Point } from '../src/maps/index.ts';
 import {SimWorld,stateHash,cityRunStart,cityUnoStart,type StampedEvent} from '../src/sim/index.ts';
 import {SpatialHash} from '../src/sim/index.ts';
 import {coastalSpawnPoints} from '../src/sim/index.ts';
@@ -10,8 +10,8 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt} from '../src/sim/index.ts';
-import {CALMA,refreshStats} from '../src/rules/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {CALMA,FEAR_TICKS,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -90,7 +90,8 @@ const STEP_TICKS_KEPT=64;
 const ATTACK_ANIMATION_TICKS=12;
 /** D-051: a nest counts as seen (StructureView.seen, the minimap's fog) once a player comes this near (u): well on screen either way the phone is held. */
 const NEST_SEEN_RADIUS=24;
-const spawnSlot=(slot:number,at:Point)=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7});
+/** A spawn slot around `at`, on its floor (the run's start may be on the viaduct's deck, sim/city/tutorial.ts cityRunStart). */
+const spawnSlot=(slot:number,at:Point&{andar?:1})=>({x:at.x+(slot%3-1)*.7,y:at.y+Math.floor(slot/3)*.7,...(at.andar===1?{andar:1 as const}:{})});
 /**
  * Seat fields a checkpoint never carries (E5-checkpoint-por-round): who sits there and its connection (the restored
  * seat's own), the tap target (an enemy id of the cut round) and what equip/refreshStats derive from class and build.
@@ -184,6 +185,8 @@ function playerRunOk(run:unknown){
   if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
   if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
+  // Fear (sim/fear.ts): whole ticks of dark, 0..FEAR_TICKS.
+  if(run.fear!==undefined&&!(Number.isSafeInteger(run.fear)&&(run.fear as number)>=0&&(run.fear as number)<=FEAR_TICKS))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
 }
 /** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
@@ -378,6 +381,9 @@ export class Simulation {
       const sim=kind==='cidade'?new Simulation(DEFAULT_SEED,{world:'cidade',terrain:this.city,...objective}):new Simulation(DEFAULT_SEED,{world:kind,...objective});
       sim.add('shape',SHAPE_CLASS,SHAPE_CLASS);
       const capture=sim.capture();sim.systems.dispose();
+      // The viaduct (mapa-175-com-viaduto): a seat holds `andar` only while on a deck (the city's start is on one); like
+      // the effects that come and go, it is not part of the shape (a checkpoint on the street has none).
+      for(const p of capture.players)delete (p.run as {andar?:unknown}).andar;
       // pot: the same run written before the wallets (NEW-20261014-ORQ-carteira-e-pix): the team's Grana in the
       // stonewards state, no split cursor. legacy: before the single pile of material (D-048), balance {coco, pedra},
       // and the Grana in the chaveiro's state (when the run has one; none at all before D-047). migrateCheckpoint.
@@ -484,7 +490,7 @@ export class Simulation {
    * NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro); in mode 'ninhos' the whole team beside the Uno (sim/city/uno-start.ts,
    * card inicio-no-uno-caixas-120); elsewhere the world's spawn point.
    */
-  private start():Point{return this.city?this.mode==='ninhos'?cityUnoStart(this.city):cityRunStart(this.city):worldSpawn(this.terrain);}
+  private start():Point&{andar?:1}{return this.city?this.mode==='ninhos'?cityUnoStart(this.city):cityRunStart(this.city):worldSpawn(this.terrain);}
   resetRun(){
     this.systems.dispose();
     // The old run's barricades go with it; the new run's stonewards raises its own.
@@ -507,6 +513,9 @@ export class Simulation {
   private equip(p:ServerPlayer){
     p.classBonus=classBonusOf(p.classId);p.build=startingBuild(p.classId);p.weaponReady={};p.facing={...DEFAULT_FACING};
     delete p.target;delete p.downed;delete p.eliminated;delete p.invulnerableUntil;resetSkill(p);
+    // The floor comes with the spawn slot (the start may be on the viaduct's deck).
+    delete p.andar;
+
     // D-051 (manual combat): who hit me and the auto aim's pick belong to the run that ended.
     delete p.lastHitBy;delete p.autoTarget;
     // The agiota's devendo mark holds an absolute tick (D-002 extra field); a rematch restarts the clock at 0.
@@ -522,7 +531,8 @@ export class Simulation {
     const slots=Array.from({length:6},(_,i)=>spawnSlot(i,this.start()));
     const spawn=slots.find(s=>[...this.players.values()].every(p=>Math.hypot(p.x-s.x,p.y-s.y)>.3))??this.start();
     const p={...spawn,id,name,classId,hp:0,ack:0,online:true,score:0,spectator:false,stats:{...BASE_STATS}} as ServerPlayer;
-    this.equip(p);
+    this.equip(p);setFloor(p,floorOf(spawn));
+
     this.players.set(id,p);this.track(id).reset(0);this.trackReset(id);return p;
   }
   /**
@@ -622,8 +632,9 @@ export class Simulation {
       return tick===undefined?undefined:moveStep(at,{x:input.x,y:input.y},tick,p,this.terrain);
     });
     if(!to)return;
-    p.x=to.x;p.y=to.y;
+    p.x=to.x;p.y=to.y;setFloor(p,floorOf(to));
   }
+
   /**
    * Skill tap from the client (see InputTrack.tap); false when refused (offline, spectator, stale or repeated id, or
    * D-051's manual combat, which has no skill).
@@ -985,7 +996,10 @@ export class Simulation {
       enemies:[...w.enemies.values()],pickups:[...w.pickups.values()],projectiles:[...w.projectiles.values()],telegraphs:[...w.telegraphs.values()],
       structures:this.structureViews(),nodes:this.nodeViews(false),camp:this.campView(),
       players:[...this.players.values()].map(p=>({id:p.id,name:p.name,classId:p.classId,hp:p.hp,maxHp:p.stats.maxHp,online:p.online,spectator:p.spectator,
-        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p)})),
+        downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p),
+        // The ride too (bot-loot.ts vehicleGoal): without it a riding bot walked to a parked vehicle the sim never gives
+        // a rider, and dithered on top of it (city-room-bots, mapa-175-com-viaduto).
+        ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{})})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],
@@ -1004,10 +1018,10 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews(playerId,false)],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews(playerId,false)],
       // caixa-gamble: a crate this player no longer sees (PickupState.hiddenFor) is not in his view.
       pickups:[...w.pickups.values()].filter(p=>!p.hiddenFor?.includes(playerId)).map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
-      projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
+      projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(playerId),
       players:[...this.players.values()].map(p=>({
@@ -1017,6 +1031,8 @@ export class Simulation {
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...(p.grana!==undefined?{grana:p.grana}:{}),
+        ...fearView(p),
+        ...(p.andar===1?{andar:1 as const}:{}),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
@@ -1034,10 +1050,10 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{})})),...this.sleeperViews()],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews()],
       // caixa-gamble: hiddenFor rides along (server-side only): the encoder leaves the crate out of those players' frames.
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource,...(p.hiddenFor?{hiddenFor:p.hiddenFor}:{})})),
-      projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile})),
+      projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),
       telegraphs:[...w.telegraphs.values()].map(telegraphView),
       structures:this.structureViews(),nodes:this.nodeViews(),camp:this.campView(),
       players:[...this.players.values()].map(p=>{
@@ -1047,9 +1063,11 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
-          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),
+          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...fearView(p),
           // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).
           ...(p.grana!==undefined?{grana:p.grana}:{}),
+          // The viaduct: on a deck (it drives the phone's prediction and the lift of the sprite).
+          ...(p.andar===1?{andar:1 as const}:{}),
         };
       }),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
@@ -1075,6 +1093,11 @@ export class Simulation {
 export type {SimEvent};
 
 /** D-047 Dona Cida's sweets still running on `tick` (a finished one costs no bytes). */
+/** The wire's fear (PlayerRunView.fear, sim/fear.ts): the dark 0..1, absent at 0. */
+export function fearView(p:SimPlayer):{fear?:number}{
+  const v=fearOf(p);
+  return v===undefined?{}:{fear:v};
+}
 /** The wire's moveSpeed (PlayerRunView.moveSpeed): stats.moveSpeed as the walk takes it, absent when 1. */
 export function moveSpeedOf(p:SimPlayer):{moveSpeed?:number}{
   const v=statMoveSpeed(p);

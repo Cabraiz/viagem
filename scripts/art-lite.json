@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3007,
-  "bytes": 2206436474,
-  "liteBytes": 763299374,
+  "bytes": 2206429258,
+  "liteBytes": 763296490,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -3074,10 +3074,10 @@
    "shownPsnr": 45.1
   },
   "enemies-pc/agiota/throw.webp": {
-   "source": "9d9cba0a2d707d99a0f28e6ab3a440047fb51b4b572876019cab12d0f76ce8ee",
-   "lite": "47773956cca4cd405c272d99a1cd02ce6497dcd9f312a5b93f675cf10072e8d5",
-   "bytes": 499008,
-   "liteBytes": 185986,
+   "source": "355d85fb731d1a8f8467ba64f9284dd04af2d577391f7c0a6d4bca463de096c1",
+   "lite": "776335c7fecad2fdda0b9a9bb678dc2cea69d7362edcd10dbd258175a5d0fe2a",
+   "bytes": 499062,
+   "liteBytes": 185876,
    "liteCell": [
     109,
     109
@@ -6878,10 +6878,10 @@
    "shownPsnr": 47.8
   },
   "enemies-pc/elite/tio-pave-picole-death.webp": {
-   "source": "855a38fed16f92da05f1fc55d85a0af29952e2e5941caa90a90986945f98c054",
-   "lite": "6d9097bc4f57d0d22277c2c3d4a8768238f7ffaafb042d7656113a030545b894",
-   "bytes": 1386220,
-   "liteBytes": 550340,
+   "source": "4429d14735e2207acfe244d1968344488e23b7e92fda38e56c2bbbb0b77a3773",
+   "lite": "33df60de3c69169438acf258b554d59d9d88876f3ca7ab506dafc9ca461dbbc7",
+   "bytes": 1386184,
+   "liteBytes": 550376,
    "liteCell": [
     124,
     124
@@ -6890,16 +6890,16 @@
    "shownPsnr": 41.7
   },
   "enemies-pc/elite/tio-pave-picole-hit.webp": {
-   "source": "a484d3484e4cf3f8946df6bab636137741e8710d7b98d09702cd18a00a3618b6",
-   "lite": "535d0510cc6f80dcb3400182c23883bea03b82b0fbc6f9fe05550c8f21086805",
-   "bytes": 276720,
-   "liteBytes": 110186,
+   "source": "df774f1d9dfe5460f09c2dba598f867630f6196fadeddc843b47fa0c46215988",
+   "lite": "a080a8074dc30941cbd78714d518ac197004144d47c0e687391e1663794d4185",
+   "bytes": 274244,
+   "liteBytes": 109062,
    "liteCell": [
     124,
     124
    ],
    "psnr": 42.2,
-   "shownPsnr": 40.4
+   "shownPsnr": 40.6
   },
   "enemies-pc/elite/tio-pave-picole-idle.webp": {
    "source": "f566e6026117605f2741aa92b6f24aa166033c03f601704f66c89e0178da74a9",
@@ -8906,10 +8906,10 @@
    "shownPsnr": 43.5
   },
   "enemies-pc/juiz-vendido/death.webp": {
-   "source": "a50a7d680cfb8c5ba5b46fb5fd1df5602b50e52cab18b4e680e5fecd659e510b",
-   "lite": "09bdabee8fd0b6963186391b14805a674a9d4aa42dc5156c8ed1d53701f29aec",
-   "bytes": 584740,
-   "liteBytes": 277846,
+   "source": "546c41c6ebcf52146295f5455cc78a27d137febb02bc958236061bcdd98c93db",
+   "lite": "f0917f826529dfd08a1b1e2b04d263f1fe2f5fb010cf062db66814ab5b81590b",
+   "bytes": 583538,
+   "liteBytes": 277878,
    "liteCell": [
     106,
     106
@@ -11522,10 +11522,10 @@
    "shownPsnr": 44.5
   },
   "enemies-pc/revendedora-de-catalogo/throw.webp": {
-   "source": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
-   "lite": "ae762a4b99f63007c346a1fa7e3f6439000af67d1f4d3f8617cd467997e3c0f2",
-   "bytes": 488872,
-   "liteBytes": 185898,
+   "source": "80f28fbdbe85ae062e1633ea72d007f31c321492bb212861ea7d00ba37742367",
+   "lite": "ad0884fbd35f86e1d4b4dadf50252badeb664df906ca4535e6e74a60508a8509",
+   "bytes": 488924,
+   "liteBytes": 185246,
    "liteCell": [
     106,
     106
@@ -13594,10 +13594,10 @@
    "shownPsnr": 49.4
   },
   "enemies/agiota/throw.webp": {
-   "source": "9d9cba0a2d707d99a0f28e6ab3a440047fb51b4b572876019cab12d0f76ce8ee",
-   "lite": "24b730c8d7802b9b66945c480fb7d0e7034e540f727d8f09657bd273dbb4c843",
-   "bytes": 499008,
-   "liteBytes": 114736,
+   "source": "355d85fb731d1a8f8467ba64f9284dd04af2d577391f7c0a6d4bca463de096c1",
+   "lite": "b0366958926bf6bced2a0f32ca1bf7e2deed0db90221688bb0c5d1ab4c6eab3b",
+   "bytes": 499062,
+   "liteBytes": 114850,
    "liteCell": [
     78,
     78
@@ -18382,10 +18382,10 @@
    "shownPsnr": 45.6
   },
   "enemies/elite/tio-pave-picole-death.webp": {
-   "source": "855a38fed16f92da05f1fc55d85a0af29952e2e5941caa90a90986945f98c054",
-   "lite": "34faded97a085b471e60c093a8867bbfffdd75a30398512497c78798e5433f62",
-   "bytes": 1386220,
-   "liteBytes": 329928,
+   "source": "4429d14735e2207acfe244d1968344488e23b7e92fda38e56c2bbbb0b77a3773",
+   "lite": "6f32cbf449d027e57384925da9b822795cb46685ac187b1216b075f873202b0a",
+   "bytes": 1386184,
+   "liteBytes": 330134,
    "liteCell": [
     90,
     90
@@ -18394,16 +18394,16 @@
    "shownPsnr": 39.5
   },
   "enemies/elite/tio-pave-picole-hit.webp": {
-   "source": "a484d3484e4cf3f8946df6bab636137741e8710d7b98d09702cd18a00a3618b6",
-   "lite": "3a81cf31631ade82f1d57a2b964fcb51964ab25bb51fc5a18e42a8fe3d45f971",
-   "bytes": 276720,
-   "liteBytes": 69528,
+   "source": "df774f1d9dfe5460f09c2dba598f867630f6196fadeddc843b47fa0c46215988",
+   "lite": "980583f69ff6e1998122c571765c1a0ad0b505e8b8aa5c43e8cbbd639d45bcc2",
+   "bytes": 274244,
+   "liteBytes": 69336,
    "liteCell": [
     90,
     90
    ],
    "psnr": 41.2,
-   "shownPsnr": 38
+   "shownPsnr": 38.3
   },
   "enemies/elite/tio-pave-picole-idle.webp": {
    "source": "f566e6026117605f2741aa92b6f24aa166033c03f601704f66c89e0178da74a9",
@@ -20954,15 +20954,15 @@
    "shownPsnr": 40.1
   },
   "enemies/juiz-vendido/death.webp": {
-   "source": "a50a7d680cfb8c5ba5b46fb5fd1df5602b50e52cab18b4e680e5fecd659e510b",
-   "lite": "9714e9b7f5b6e1bce913e9478d858636dfc6e60fb78808333544e88123b4696e",
-   "bytes": 584740,
-   "liteBytes": 187392,
+   "source": "546c41c6ebcf52146295f5455cc78a27d137febb02bc958236061bcdd98c93db",
+   "lite": "6f7bd8a80fc06a50e89082ed8ecc002e034089c5503bc2267db234e90e9e01af",
+   "bytes": 583538,
+   "liteBytes": 186190,
    "liteCell": [
     77,
     77
    ],
-   "psnr": 37.7,
+   "psnr": 37.6,
    "shownPsnr": 37.7
   },
   "enemies/juiz-vendido/hit.webp": {
@@ -24274,10 +24274,10 @@
    "shownPsnr": 49.9
   },
   "enemies/revendedora-de-catalogo/throw.webp": {
-   "source": "38b323dfc163a35f6b29744fdb32628c0203147eee08cdfb1474a5c0fd5ff912",
-   "lite": "c69b5eac53b50280258d23fa00b921ba49ea3c1a2f229cd556431095b0107a31",
-   "bytes": 488872,
-   "liteBytes": 120156,
+   "source": "80f28fbdbe85ae062e1633ea72d007f31c321492bb212861ea7d00ba37742367",
+   "lite": "cc71bb1dc9d08638921dd8aefc8549d193bff15e42e63fdf18bec0153e724873",
+   "bytes": 488924,
+   "liteBytes": 120164,
    "liteCell": [
     77,
     77

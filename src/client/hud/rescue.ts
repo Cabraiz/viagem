@@ -111,7 +111,9 @@ export class RescueBoard {
   /** The heroes' footsteps and the boss's (audio/footsteps.ts), counted every frame. */
   private stepper?:{steps:Footsteps;figures:StepFigure[]};
   constructor(options:RescueOptions){
-    this.net=options.net;this.hud=options.hud;this.scene=options.scene;
+    this.net=options.net;this.hud=options.hud;
+    // A scene already torn down (a defeat closing the island, a stop) is no scene: its cameras are gone (BUG resgate-hud-apos-derrota).
+    this.scene=()=>{const scene=options.scene();return scene?.live===false?undefined:scene;};
     const b=this.button=document.createElement('button');b.type='button';b.id='coop-sos';b.hidden=true;
     b.setAttribute('aria-label','Me salva: chama a turma até você');
     b.innerHTML=`<svg class="sos-ring" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" pathLength="100"/></svg>${icon('boia',{size:40})}<span>Me salva</span>`;
@@ -120,7 +122,7 @@ export class RescueBoard {
     b.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)this.ask();});
     options.actions.append(b);
     this.net.onSos=ping=>this.ping(ping);
-    const loop=()=>{this.tick();this.frame=requestAnimationFrame(loop);};this.frame=requestAnimationFrame(loop);
+    const loop=()=>{if(this.dead)return;this.tick();if(!this.dead)this.frame=requestAnimationFrame(loop);};this.frame=requestAnimationFrame(loop);
   }
   /** The local caído asks for help: the room checks the fall and the 3 s gate again and relays the position. */
   ask(now=performance.now()){
@@ -148,6 +150,7 @@ export class RescueBoard {
   }
   /** Each authoritative view (after the HUD took it): spawn warnings, fall and rescue lines, the rescuer's buzz. */
   view(view:RunView){
+    if(this.dead)return;
     this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
     // The match's sounds (audio/events.ts): the local hero's hits, shots, kills and pickups, and the team's moments.
     const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events,this.net.id);
@@ -342,5 +345,7 @@ export class RescueBoard {
     // Only the kinds the game still points at (arrows.ts: the downed ally); the groups' memory keeps working.
     this.cityTargets=shownTargets(targets);this.groupKeys=groupKeys;
   }
-  destroy(){this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
+  /** Destroyed: a late room view or a frame already queued draws nothing (the island may be gone). */
+  private dead=false;
+  destroy(){this.dead=true;this.alarmLoop?.stop();for(const t of this.timers)clearTimeout(t);cancelAnimationFrame(this.frame);this.net.onSos=()=>{};this.button.remove();}
 }

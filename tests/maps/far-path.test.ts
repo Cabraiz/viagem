@@ -15,8 +15,9 @@ if(!decoded.ok)throw new Error(decoded.error);
 const city=new CityTerrain(decoded.asset,'t');
 const walkOk=(start:{x:number;y:number},route:{x:number;y:number}[],t:CityTerrain|TerrainField)=>{let a=start;for(const b of route){if(!clearSegment(a,b,t))return false;a=b;}return true;};
 
-test('across the city: from the crashed helicopter to the far north spawn, where findPath gives up', () => {
-  const P=decoded.asset.points,start=P.inicio,target=P.spawnN;
+// The start is the Uno on the viaduct's deck since mapa-175-com-viaduto, by spawn N: the far walk is from spawn S.
+test('across the city: from the far south spawn to the far north spawn, where findPath gives up', () => {
+  const P=decoded.asset.points,start=P.spawnS,target=P.spawnN;
   assert.deepEqual(findPath(start,target,city),[],'too far for the local box');
   const route=farPath(start,target,city);
   assert.ok(route.length>1,`${route.length} waypoints`);

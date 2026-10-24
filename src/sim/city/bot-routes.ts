@@ -24,7 +24,7 @@
  * the grid, routes are per asset: every room (each on its own fork of the city) shares one grid and the LRU.
  */
 import {CityTerrain,DIRS,FlowField,STRAIGHT_COST,UNREACHABLE,walkable,type CityAsset,type Point} from '../../maps/index.ts';
-import {CITY_MAP_SCALE} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE} from '../../rules/index.ts';
 import {cityFlowGrid,type CityFlowGrid} from './grid.ts';
 
 /** Flow fields the bots keep (LRU, all cities of the isolate): home, one crate per bot slot, two moving targets. */
@@ -33,9 +33,9 @@ export const BOT_ROUTE_FIELDS=8;
 export const BOT_ROUTE_BYTES_PER_CELL=27;
 /**
  * Within this (u) of the target with a clear straight segment, the bot walks straight (no field). A stretch of street
- * (12 u on the .w3x-sized city), so it grows with the map (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_MAP_SCALE, 20.4 u).
+ * (12 u on the .w3x-sized city), so it grows with the map (NEW-20261013-ORQ-cidade-escala-1-7: × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto), 20.4 u).
  */
-export const BOT_ROUTE_DIRECT=12*CITY_MAP_SCALE;
+export const BOT_ROUTE_DIRECT=12*CITY_DISTANCE_SCALE;
 /** Closer than this (u) the bot always walks straight (it is there; a field would point at a cell centre). */
 export const BOT_ROUTE_NEAR=1.2;
 /** A target on a closed cell (a crate against a wall, the wall's own point) routes to the nearest open cell within this ring (cells). */

@@ -14,7 +14,7 @@
  * - Repair: the forge's 'reparo' with a barricade id (forge.ts). A fallen one is rebuilt only when no body overlaps it.
  */
 import {RADIUS,walkable,type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
-import {CITY_MAP_SCALE} from '../../rules/index.ts';
+import {CITY_DISTANCE_SCALE} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import type {BarricadeState,StonewardsState} from './state.ts';
 
@@ -23,22 +23,22 @@ export const BARRICADE_MOUTHS:readonly BarricadeMouth[]=Object.freeze(['N','S','
 export const BARRICADE_MAX_HP=300;
 /**
  * Search range of the seal radius (u). The range spans the mouths, a map length: [1, 4] u on the .w3x-sized city, ×
- * CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7) → [1.7, 6.8]. The step stays .25 u: it is how finely the disc
+ * CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7) → [0.97, 3.89]. The step stays .25 u: it is how finely the disc
  * fits its mouth, and the slack a sealing disc may leave is a person's (the hero walk rule), which did not grow.
  */
-export const BARRICADE_MIN_R=1*CITY_MAP_SCALE,BARRICADE_MAX_R=4*CITY_MAP_SCALE,BARRICADE_R_STEP=.25;
+export const BARRICADE_MIN_R=1*CITY_DISTANCE_SCALE,BARRICADE_MAX_R=4*CITY_DISTANCE_SCALE,BARRICADE_R_STEP=.25;
 /**
  * While sizing one mouth, the other three count as closed by their "mouth line": the cells within this distance of
- * their mouth point, the planner's own base wall (city/avenues.ts mouthHalfWidth default, 2.6 × CITY_MAP_SCALE).
+ * their mouth point, the planner's own base wall (city/avenues.ts mouthHalfWidth default, 2.6 × CITY_DISTANCE_SCALE).
  */
-export const OTHER_MOUTH_LINE=2.6*CITY_MAP_SCALE;
+export const OTHER_MOUTH_LINE=2.6*CITY_DISTANCE_SCALE;
 /** Lattice step (u) of the fine seal check: half a walkable sample, finer than any gap a hero fits through (person-sized: kept). */
 const FINE_STEP=.11;
 /**
  * The fine check floods this far (u) around the box of the 4 mouths; a point FINE_OUTSIDE u past that box has left
- * the plaza. Map lengths: 2 / 1 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * the plaza. Map lengths: 2 / 1 u on the .w3x-sized city, × CITY_DISTANCE_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
  */
-const FINE_MARGIN=2*CITY_MAP_SCALE,FINE_OUTSIDE=1*CITY_MAP_SCALE;
+const FINE_MARGIN=2*CITY_DISTANCE_SCALE,FINE_OUTSIDE=1*CITY_DISTANCE_SCALE;
 
 export const barricadeId=(mouth:BarricadeMouth)=>`barricada-${mouth}`;
 
@@ -91,9 +91,9 @@ const nearAny=(x:number,y:number,points:readonly Point[],d:number)=>points.some(
  * may sit on a mouth line (the real praca is ≈4.1 u from mouth S). Undefined when there is none.
  * The real centroid falls inside the fountain: the nearest walkable spot to it is a pocket inside the fountain that a
  * hero cannot leave, from which the fine check never leaked (so it sealed at any radius); the praca is in the plaza.
- * SEED_REACH is a map length: 8 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * SEED_REACH is a map length: 8 u on the .w3x-sized city, × CITY_DISTANCE_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
  */
-const SEED_STEP=.11,SEED_REACH=8*CITY_MAP_SCALE;
+const SEED_STEP=.11,SEED_REACH=8*CITY_DISTANCE_SCALE;
 function plazaSeed(city:CityTerrain):Point|undefined{
   const b=city.asset.points.bocas,mouths=[b.N,b.S,b.L,b.O],mid={x:(b.N.x+b.S.x+b.L.x+b.O.x)/4,y:(b.N.y+b.S.y+b.L.y+b.O.y)/4};
   if(!nearAny(mid.x,mid.y,mouths,OTHER_MOUTH_LINE)&&walkable(mid,city))return mid;

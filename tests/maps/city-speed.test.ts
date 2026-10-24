@@ -14,6 +14,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityAsField} from '../../src/maps/city/terrain.ts';
 import {decodeCityAsset} from '../../src/maps/city-asset.ts';
 import {cityMapScale} from '../../src/maps/city/relief.ts';
+import {CITY_DISTANCE_SCALE} from '../../src/rules/scale.ts';
 import {defaultTerrain,type TerrainField} from '../../src/maps/terrain/field.ts';
 import {DEFAULT_SEED,TerrainField} from '../../src/maps/terrain/field.ts';
 import {CITY_HERO_SPEED,HERO_SPEED_MULT,RADIUS,SPAWN,SPEED,baseHeroSpeed,clearSegment,heroSpeed,moveAlong,moveDirection,walkable,type Point} from '../../src/maps/world.ts';
@@ -224,8 +225,11 @@ test('real city: walking start → plaza along the streets takes (16.5–20 s) �
   assert.equal(ticks,Math.ceil(routeLength/(CITY_WALK*STEP)-1e-9));
   // The street itself is the tuned 33–40 s at the base speed; the 2× walk halves it.
   const base=routeLength/CITY_HERO_SPEED;
-  assert.ok(base>=33*K&&base<=40*K,`start → plaza at the base speed ${base.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
-  assert.ok(seconds>=16.5*K&&seconds<=20*K+STEP,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_WALK} u/s)`);
+  // v4 (mapa-175-com-viaduto): the distances × CITY_DISTANCE_SCALE (1.7 ÷ 1.75); the walls kept their width, so the
+  // street around them is up to 10 % longer than the scale alone (the bound 44 s instead of 40 s).
+  const D=CITY_DISTANCE_SCALE;
+  assert.ok(base>=33*D&&base<=44*D,`start → plaza at the base speed ${base.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_HERO_SPEED} u/s)`);
+  assert.ok(seconds>=16.5*D&&seconds<=22*D+STEP,`start → plaza ${seconds.toFixed(1)} s (${routeLength.toFixed(1)} u at ${CITY_WALK} u/s)`);
   // At the endless map's walk the same street would be a noticeably shorter walk: the city proportion is real.
   assert.ok(routeLength/WALK<seconds*.7);
 });

@@ -114,6 +114,11 @@ export function linkWatch(watch:WatchLink|undefined){link=watch;}
 export const chunkFailed=(e:unknown)=>!!link?.chunkFailed(e);
 /** True once the page is reloading for a new version: only then may a caller skip leaving the room (the resume rejoins). */
 export const reloadUnderway=()=>reloading||!!link?.reloading;
+/**
+ * "Atualizar agora" and the pull-to-refresh (BUG-20261024-ORQ-arrastar-atualiza-versao-nova): the watch's tap (resume
+ * saved, guard recorded, reload); without a watch, a plain reload.
+ */
+export function updateNow(target:{reload():void}=location){if(link)link.update();else reloadPage(target);}
 /** The reload the watch calls: marks the page as leaving so nothing re-shows the notice while it unloads. */
 export function reloadPage(target:{reload():void}){reloading=true;target.reload();}
 

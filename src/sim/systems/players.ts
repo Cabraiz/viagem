@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,carBlock,moveStep,slipping,type CarPlace,type Point} from '../../maps/index.ts';
+import {capStep,carBlock,floorOf,moveStep,setFloor,slipping,type CarPlace,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -33,7 +33,8 @@ const STEP=1/SIM_HZ;
  */
 export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number){
   const effects=tick===undefined?undefined:p,slide=slipping(effects,tick??0);
-  Object.assign(p,moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain));
+  const q=moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain);
+  p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
   if(slide)return;
   const length=Math.hypot(input.x,input.y);
   if(Number.isFinite(length)&&length>=.01)p.facing={x:input.x/length,y:input.y/length};
@@ -74,10 +75,10 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(input&&!auto)p.ack=input.seq;
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
-        const x0=p.x,y0=p.y;
+        const from={x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        const q=carBlock({x:x0,y:y0},capStep({x:x0,y:y0},p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;
+        const q=carBlock(from,capStep(from,p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;

@@ -12,7 +12,7 @@ export {icon,type IconName} from '../../ui/icon.ts';
 export {DEFAULT_MAP as PROTOCOL_DEFAULT_MAP,type MapId} from '../../../protocol/index.ts';
 export {SIM_HZ,type BankName,type BankState} from '../../../contract/index.ts';
 export {BANK_SHORT} from '../../../rules/index.ts';
-export {CITY_MAP_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES} from '../../../rules/index.ts';
+export {CITY_MAP_SCALE,CITY_COMPACT,CITY_DISTANCE_SCALE,CIDADE_NEVADA_WC3,SCALE_PROFILES} from '../../../rules/index.ts';
 export {FlowField,DIRS,UNREACHABLE,walkable,type FlowGrid,type FlowPoint,type CityTerrain} from '../../../maps/index.ts';
 // D-047 (chaveiro): the objective as the render reads it and whether the moto needs the team (render/chaveiro).
 export {motoNeedsTeam} from '../../render/chaveiro/rules.ts';

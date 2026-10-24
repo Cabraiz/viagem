@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ALARM_HIT_BOOST,ALARM_LOOP_S,ALARM_MAX,ALARM_RADIUS_U,AlarmLoop,alarmLevel,alarmSamples} from '../../src/client/audio/alarm.ts';
+import {ALARM_HIT_BOOST,ALARM_LOOP_S,ALARM_MAX,ALARM_RADIUS_U,ALARM_FILE,ALARM_FILE_WAIT_MS,AlarmLoop,alarmLevel,alarmSamples} from '../../src/client/audio/alarm.ts';
 
 test('level: silent beyond the radius (no bed), rises toward the car, louder while hit, never above 1',()=>{
   assert.equal(alarmLevel(ALARM_RADIUS_U,false),0);assert.equal(alarmLevel(ALARM_RADIUS_U+50,true),0);
@@ -53,4 +53,33 @@ test('the loop: no voice while silent, joins the effects bus once audible, follo
   const n=log.length;loop.update(false,6,false);assert.equal(log.length,n,'nothing more');
   // Locked (before the first gesture): nothing at all.
   const locked=fakeAudio();new AlarmLoop({...locked.audio,unlocked:false}).update(true,1,true);assert.deepEqual(locked.log,[]);
+});
+
+test('the TangoFlux file: fetched once in the browser format, plays when decoded; synthesized when it fails or is slow',async()=>{
+  const decoded={file:true};
+  const withFile=(load:(url:string)=>Promise<ArrayBuffer>)=>{
+    const f=fakeAudio(),urls:string[]=[],sources:unknown[]=[];let now=0;
+    const ctx=f.audio.context as unknown as Record<string,unknown>;
+    ctx.decodeAudioData=async()=>decoded;
+    const make=ctx.createBufferSource as ()=>Record<string,unknown>;
+    ctx.createBufferSource=()=>{const s=make();sources.push(s);return s;};
+    const loop=new AlarmLoop(f.audio,{format:'webm',nowMs:()=>now,loadFile:url=>{urls.push(url);return load(url);}});
+    return {...f,loop,urls,sources,tick:(ms:number)=>{now+=ms;}};
+  };
+  const ok=withFile(async()=>new ArrayBuffer(8));
+  ok.loop.update(true,ALARM_RADIUS_U+5,false);
+  assert.deepEqual(ok.urls,[`${ALARM_FILE}.webm`],'asked as soon as the objective runs, before it is audible');
+  await new Promise(r=>setImmediate(r));
+  ok.loop.update(true,6,false);ok.loop.update(true,5,false);
+  assert.equal(ok.urls.length,1,'once');
+  assert.equal((ok.sources[0] as {buffer:unknown}).buffer,decoded,'the file plays');
+  const slow=withFile(()=>new Promise(()=>{}));
+  slow.loop.update(true,6,false);
+  assert.equal(slow.sources.length,0,'waits for the file a moment, in silence');
+  slow.tick(ALARM_FILE_WAIT_MS);slow.loop.update(true,6,false);
+  assert.equal(slow.sources.length,1,'then the synthesized loop');
+  assert.notEqual((slow.sources[0] as {buffer:unknown}).buffer,decoded);
+  const bad=withFile(async()=>{throw new Error('404');});
+  bad.loop.update(true,6,false);await new Promise(r=>setImmediate(r));bad.loop.update(true,6,false);
+  assert.equal(bad.sources.length,1,'failed: the synthesized loop at once');
 });

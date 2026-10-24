@@ -38,6 +38,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'muralha-juntas':{...chaveiro('moto=entrega','&obra=1&muralha=2'),descricao:'barricada-2x: L, T e um quadrado sozinho (meias peças + pilar)'},
   'obra-livre-recusa':{...chaveiro('moto=entrega','&obra=1&fantasma=carro'),descricao:'D-052 placeholder: fantasma vermelho em cima do carro'},
   'ninhos':{sandbox:'cidade',query:'mapa=real&tele=1&ninhos=1&hero=120,140',descricao:'D-051: ninho dormindo (bando dormindo), ativo (bando acordando) e destruído'},
+  'corda-livre':{...chaveiro('moto=entrega','&obra=1&corda=livre'),descricao:'puxar-uno-corda: a corda caída no chão na frente do Uno, o laço na ponta'},
+  'corda-empurrando':{...chaveiro('moto=entrega','&empurrando=-40&t=1000'),descricao:'puxar-uno-corda: empurrando o Uno, a corda caída na frente'},
   'carro-andando':{...chaveiro('moto=entrega','&obra=1&anda=-40&t=1000'),descricao:'D-052: o carro puxado na corda, virado para o movimento, rodas girando'},
   'acucar':{sandbox:'cidade',query:'mapa=real&tele=1&acucar=1',descricao:'bichos açucarados (brilho rosa)'},
   'cidade-regua':{sandbox:'cidade',query:'mapa=real&regua=1&hero=156,74',descricao:'cidade com a régua em alturas de herói, ao lado de uma casa'},

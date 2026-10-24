@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
-import {abasHtml, barraHtml, chipsHtml, gradeHtml, gradeUrls, handleFit, INSTA_ART, INSTA_PERFIS, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, perfilUrl, postTelaHtml, postUrl, storiesOf, storyHtml} from '../../src/client/ui/insta.ts';
+import {abasHtml, barraHtml, chipsHtml, gradeHtml, gradeUrls, handleFit, INSTA_ART, INSTA_PERFIS, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, perfilUrl, postTelaHtml, postUrl, aneisOf, storyHtml} from '../../src/client/ui/insta.ts';
 import {gestoOf, SWIPE} from '../../src/client/ui/insta-post.ts';
 import {STADIUM_TALL_QUERY} from '../../src/client/ui/stadium.ts';
 import {getClass, isLiberado, PLAYABLE_CLASS_IDS} from '../../src/rules/index.ts';
@@ -52,12 +52,11 @@ test('a released hero shows exactly 3 photos; a locked one shows none (a private
   assert.match(main,/gradeHtml\(perfil,isLiberado\(perfil\.id\)\)/);
 });
 
-test('the stories are the other heroes with a profile; a locked one has the lock over his face',()=>{
+test('the rings are every hero with a profile, the chosen one too; a locked one has the lock over his face',()=>{
   const ids=INSTA_PERFIS.map(p=>p.id);
-  assert.deepEqual(storiesOf('gato-nada-pra-comer',ids).map(p=>p.nome),['VICIADO','CLT','MAROMBA','VENDEDOR','APOSENTADO']);
-  assert.deepEqual(storiesOf('viciado-em-bet',ids).map(p=>p.nome),['CLT','GATO','MAROMBA','VENDEDOR','APOSENTADO']);
-  assert.equal(storiesOf('feirante',ids).length,6);
-  assert.deepEqual(storiesOf('viciado-em-bet',['viciado-em-bet','maromba']).map(p=>p.id),['maromba'],'only heroes this build has');
+  // BUG-20261024-ORQ-aneis-herois-carrossel-infinito: the chosen one stays in the row (marked), see insta-aneis.test.ts.
+  assert.deepEqual(aneisOf([...ids,'feirante']).map(p=>p.nome),['VICIADO','CLT','GATO','MAROMBA','VENDEDOR','APOSENTADO']);
+  assert.deepEqual(aneisOf(['viciado-em-bet','maromba']).map(p=>p.id),['viciado-em-bet','maromba'],'only heroes this build has');
   const maromba=instaPerfil('maromba')!;
   assert.match(storyHtml(maromba,false),/data-bloqueado[^>]*aria-label="MAROMBA \(em breve\)"/);
   assert.match(storyHtml(maromba,false),/icone-cadeado/);

@@ -26,6 +26,7 @@ import {MOTO_POSE_STATE,applyMotoArt,imageBounds,motoColumn} from './moto-art.ts
 import {TriBand} from '../city/tri-band.ts';
 import {CAR_PARTS,type ChaveiroView} from './view.ts';
 import {UsableGlow} from '../usable-glow.ts';
+import {inFrontOfCar,towardViewer,type CarSort} from './car-sort.ts';
 import {UNO_CELL,UNO_FOOT,UNO_KEY,UNO_SCALE,UNO_URL,unoBox,unoFootY,unoFrame} from './uno-art.ts';
 import {HEIGHT_PX} from '../city/projection.ts';
 import type {Speaker} from './lines.ts';
@@ -120,6 +121,8 @@ export class ChaveiroRenderer {
   private lastTime?:number;
   /** The car's heading drawn this frame (radians, in HEADING_STEPS): the rope (fortify.ts) hooks to its bumpers. */
   carHeading=0;
+  /** Card uno-bloqueio-corpo: the car as drawn this frame, for the figures sorted against its footprint (car-sort.ts). */
+  private sort:CarSort|undefined;
   /** The drawn moto (its lap with the alarm) and the chaveiro when he stands apart (delivering, opening), last frame. */
   private drawn={moto:{x:0,y:0,lift:0},chaveiro:{x:0,y:0,lift:0},car:{x:0,y:0,lift:0},tio:{x:0,y:0,lift:0},shown:false};
   private readonly c={breu:0,papel:0,cone:0,cartolina:0,lilas:0,claro:0};
@@ -172,13 +175,16 @@ export class ChaveiroRenderer {
     return this.uno;
   }
 
+  /** Card uno-bloqueio-corpo: the car as drawn on the last frame (car-sort.ts), undefined without one. */
+  carSort():CarSort|undefined{return this.sort;}
   /**
    * Card empurrar-uno: where the car is drawn (its centre and the heading of this frame) and who pushes it (the movers
-   * but the rope's holder), for the pushers' hands on it (push-contact.ts); undefined without a car.
+   * but the rope's holder), for the pushers' hands on it (push-contact.ts); undefined without a car. `puller` (puxar-uno-
+   * corda): the rope's holder while it moves the car (one of the movers), drawn pulling (pullDirection).
    */
-  carPose():{x:number;y:number;heading:number;pushers:readonly string[]}|undefined{
-    const car=this.state.view?.car;
-    return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope)};
+  carPose():{x:number;y:number;heading:number;pushers:readonly string[];puller?:string}|undefined{
+    const car=this.state.view?.car,puller=car?.rope!==undefined&&car.movers?.includes(car.rope)?car.rope:undefined;
+    return car&&{x:car.x,y:car.y,heading:this.carHeading,pushers:(car.movers??[]).filter(id=>id!==car.rope),...(puller!==undefined?{puller}:{})};
   }
 
   /**
@@ -202,7 +208,7 @@ export class ChaveiroRenderer {
     const st=this.state,view=st.view;
     this.label.setVisible(false);this.deliveryText.setVisible(false);
     for(const t of this.popTexts)t.setVisible(false);
-    if(!view){this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
+    if(!view){this.sort=undefined;this.puffs=[];this.frozenCar.hide();this.frozenMoto.hide();this.frozenOpener.hide();this.frozenFallen.hide();this.motoImg.setVisible(false);this.standImg.setVisible(false);this.delivery?.band.setVisible(false);this.uno?.setVisible(false);this.glow?.begin(time);this.glow?.end();this.carTurn=this.carHeading=0;this.drawn.shown=false;return;}
     const k=1/Math.max(.05,this.scene.cameras.main.zoom),reduced=this.options.reduced,proj=this.options.projector;
     // The car turns toward its move (eased; at once with reduced effects), frozen in HEADING_STEPS like the moto; the
     // side facing the screen shows its wheels turning by how far it rolled.
@@ -229,9 +235,10 @@ export class ChaveiroRenderer {
     const ended=st.endedAt!==undefined?time-st.endedAt:0;
     const shake=engineShake(time,reduced,alarm),hazard=hazardLit(alarm,time)||(reduced&&alarm);
     const trunk=view.ended==='victory'?Math.round(trunkOpen(ended)*20)/20:0;
-    // Sorted at its centre (not its front corner): critters hitting its sides and back stay in front of it, a figure
-    // behind its centre line goes under it (the car is long; the sim's critters hit it from all around).
+    // Sorted at its centre; the figures near it are sorted against its footprint instead (car-sort.ts, card
+    // uno-bloqueio-corpo: behind its rear half one was drawn over the lataria).
     const carDepth=proj.depth(view.car.x,view.car.y),carAt=proj.project(view.car.x,view.car.y,this.q);
+    this.sort={x:view.car.x,y:view.car.y,heading:carH,depth:carDepth,toward:towardViewer(proj.view)};
     const carX=carAt.x+shake.x,carY=carAt.y+shake.y;
     const uno=this.unoImage();let unoTop:{x:number;y:number;width:number;height:number}|undefined;
     if(uno){
@@ -244,7 +251,7 @@ export class ChaveiroRenderer {
       const frame=unoFrame(carH,proj.view),footY=carY+unoFootY(carH,proj.view);
       unoTop=unoBox(frame,carX,footY);
       uno.setFrame(frame).setScale(UNO_SCALE).setPosition(carX,footY).setDepth(carDepth).setTint(tint).setVisible(true);
-      uno.setAlpha(this.coversBox(unoTop,carDepth)?COVER_ALPHA:1);
+      uno.setAlpha(this.coversBox(unoTop,carDepth,this.sort)?COVER_ALPHA:1);
       const glow=this.glow??=new UsableGlow(this.scene,reduced);glow.begin(time);
       if(!view.ended)glow.mark('uno',uno,k);
       glow.end();
@@ -387,9 +394,11 @@ export class ChaveiroRenderer {
     return h.x>ax+b.x0&&h.x<ax+b.x1&&h.y-30>ay+b.y0&&h.y-10<ay+b.y1;
   }
   /** The same for a figure drawn as an image: `b` its bounds on the screen (world px). */
-  private coversBox(b:{x:number;y:number;width:number;height:number},depth:number){
+  private coversBox(b:{x:number;y:number;width:number;height:number},depth:number,car?:CarSort){
     const hero=this.options.hero?.();if(!hero)return false;
-    if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
+    // The Uno: the hero behind its footprint (car-sort.ts), as the hero is drawn; else behind its centre.
+    const front=car&&inFrontOfCar(hero,car);
+    if(front===undefined?this.options.projector.depth(hero.x,hero.y)>=depth:front)return false;
     const h=this.options.projector.project(hero.x,hero.y,{x:0,y:0});
     return h.x>b.x&&h.x<b.x+b.width&&h.y-30>b.y&&h.y-10<b.y+b.height;
   }

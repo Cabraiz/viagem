@@ -30,7 +30,7 @@
  * Everything in ChaveiroState is JSON-safe (systems.state(), checkpoints, stateHash); the route is rebuilt.
  */
 import type {FlowGrid,Point} from '../../maps/index.ts';
-import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
+import {CAR_ID,CAR_PARTS,CAR_RADIUS,CIDA_ITEMS,MOTO_ID,Rng,carGap,ticks,type CidaBuyResult,type CidaItemId,type EnemyState,type MotoMode,
   type ObjectiveCause,type ObjectiveResult,type ObjectiveStopKind,type ObjectiveView,type PullResult,type SimPlayer,type VaquinhaShare} from '../../contract/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {SimContext} from '../context.ts';
@@ -99,8 +99,12 @@ type Task='anda'|'lombada'|'entrega'|'morta'|'abrindo';
 export interface ChaveiroStop {kind:ObjectiveStopKind;s:number}
 /** JSON-safe objective state (RunSystemsState.chaveiro). */
 export interface ChaveiroState {
-  /** movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step. */
-  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number};
+  /**
+   * movers, rope, ropeHp: D-052 (car.ts), who moves it now, who holds the rope and their hp at the last step; heading,
+   * ropeIdle, ropeShy(Until): card puxar-uno-corda, the nose (radians, absent = 0), the ticks the holder went without
+   * pulling, and who a hit knocked off it (no gesture until then).
+   */
+  car:{x:number;y:number;hits:number;limit:number;parts:number;alarmUntil:number;movers?:string[];rope?:string;ropeHp?:number;heading?:number;ropeIdle?:number;ropeShy?:string;ropeShyUntil?:number};
   /**
    * s: u along the route; mode: what is shown (MotoMode: 'volta' while the alarm sounds, 'tombo' while it is down, else
    * the task); task: what he is doing underneath; left: ticks left of a timed task (morta's by-itself, entrega,
@@ -178,7 +182,7 @@ export interface ChaveiroSystem {
   /** Runs once a tick (assemble.ts: right after the 'structures' system). */
   step(ctx:SimContext):void;
   /** Siege targets: the car until the end, the moto while it rides (with MOTO_LURE_REACH). */
-  targets():{id:string;x:number;y:number;radius:number;reach?:number}[];
+  targets():{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[];
   /** An enemy's (or the boss's) contact with the car. */
   hitCar(ctx:SimContext,enemy:EnemyState):void;
   /** Gives back `share` of the car's limit in hits (not below 0); the parts that fell stay down. */
@@ -467,7 +471,8 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
     },
     targets(){
       if(state.ended)return [];
-      const out:{id:string;x:number;y:number;radius:number;reach?:number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS}];
+      // Card uno-bloqueio-corpo: the critters hit the car from its box's edge (carGap), not the old disc's.
+      const out:{id:string;x:number;y:number;radius:number;reach?:number;gap?:(p:Point)=>number}[]=[{id:CAR_ID,x:car.x,y:car.y,radius:CAR_RADIUS,gap:p=>carGap(car,p)}];
       if(riding()){const p=at(moto.s);out.push({id:MOTO_ID,x:p.x,y:p.y,radius:MOTO_RADIUS,reach:MOTO_LURE_REACH});}
       return out;
     },
@@ -543,7 +548,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
         stops:stops.map(o=>{const q=pointAt(route,o.s);return {kind:o.kind,x:q.x,y:q.y,s:o.s};}),
         etaS:Math.ceil(eta(tick)),alarmUntil:car.alarmUntil,grana:options.wallet.seated().reduce((n,p)=>n+walletOf(p),0),budget:state.budget,stock:[...state.cida.stock],
         ...(delivery?{delivery}:{}),
-        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{})},
+        car:{x:car.x,y:car.y,hits:car.hits,limit:car.limit,parts:car.parts,...(car.movers?.length?{movers:[...car.movers]}:{}),...(car.rope!==undefined?{rope:car.rope}:{}),...(car.heading?{heading:car.heading}:{})},
         ...(state.ended?{ended:state.ended}:{}),
       };
     },

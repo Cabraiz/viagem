@@ -33,6 +33,11 @@ export interface CityEdgeInput {
   moto?:{x:number;y:number;mode:MotoMode};
   /** Bancos (card bancos-e-veiculos): the run's ATMs (ObjectiveView.banks). */
   banks?:readonly CityBank[];
+  /**
+   * inicio-no-uno-caixas-120: the Uno (ObjectiveView.car) gets the base's arrow while the mission points at it (the
+   * Minerva, the last seconds of a time to explore; urgent: Cone, "Volte ao Uno."). Key 'uno' (arrows.ts shows it).
+   */
+  uno?:{x:number;y:number;urgent:boolean};
   /** Card inimigos-querem-o-uno: the car, and whether it took a hit in the last UNO_HIT_MS (its arrow shows only then). */
   car?:{x:number;y:number;hit:boolean};
 }
@@ -102,6 +107,9 @@ export function cityEdgeTargets(input:CityEdgeInput):{targets:CityEdgeTarget[];g
   const bank=bankForArrow(input.banks,hero,isOnScreen);
   if(bank)targets.push({key:`banco:${bank.id}`,kind:'banco',screen:locate(bank),world:{x:bank.x,y:bank.y},distance:dist(bank),
     name:bank.state==='bicho'?`Bicho sacando no ${BANK_SHORT[bank.name]}`:`Banco ${BANK_SHORT[bank.name]}: R$ ${bank.saldo}`,...(bank.state==='bicho'?{danger:true}:{})});
+  // The Uno while the mission points at it (inicio-no-uno-caixas-120); the hit arrow above (same key) wins.
+  const uno=input.uno;
+  if(uno&&!car?.hit&&!isOnScreen(uno))targets.push({key:'uno',kind:'base',screen:locate(uno),world:{x:uno.x,y:uno.y},distance:dist(uno),name:'Uno',...(uno.urgent?{danger:true}:{})});
   // Base: in the intermission when the plaza is out of view (Cone with the seconds after the horn); in a wave only after a hit on the wall.
   const plaza={x:map.plaza.x,y:map.plaza.y};
   if((input.phase==='prepare'||input.wallHitRecently)&&!isOnScreen(plaza)){

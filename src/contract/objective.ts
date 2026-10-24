@@ -108,6 +108,41 @@ const unitHeading=(heading=0)=>({x:Math.cos(heading),y:Math.sin(heading)});
 export const carNose=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading);return {x:car.x+h.x*CAR_NOSE,y:car.y+h.y*CAR_NOSE};};
 /** The free end of the rope lying on the ground ahead of the bumper. */
 export const ropeTip=(car:{x:number;y:number;heading?:number})=>{const h=unitHeading(car.heading),d=CAR_NOSE+CAR_ROPE_REST;return {x:car.x+h.x*d,y:car.y+h.y*d};};
+/**
+ * Card BUG-20261024-ORQ-uno-bloqueio-corpo-em-cima (user, 24/10: "uma pessoa meio que flutua no Uno, tem que ter melhor
+ * block nele"): the car's body is the Uno's footprint, a box CAR_HALF_LENGTH along the heading and CAR_HALF_WIDTH across
+ * it (the renderer's CAR_HALF), not the CAR_RADIUS disc (which left 0.3 u of bumper outside it at each end). Heroes and
+ * critters stand clear of the box (carPushOut), pushers lean on it and critters hit it from its edge (carGap). The
+ * disc stays where the car itself meets the world (walls, structures, nests, the build rules).
+ */
+export const CAR_HALF_LENGTH=1.32,CAR_HALF_WIDTH=.58;
+type CarPlace={x:number;y:number;heading?:number};
+/** `p` in the car's frame: along the heading (l) and across it (w). */
+function carLocal(car:CarPlace,p:{x:number;y:number}){
+  const c=Math.cos(car.heading??0),s=Math.sin(car.heading??0),rx=p.x-car.x,ry=p.y-car.y;
+  return {l:rx*c+ry*s,w:-rx*s+ry*c,c,s};
+}
+/** How far `p` is from the car's body (u, 0 on or inside it). */
+export function carGap(car:CarPlace,p:{x:number;y:number}):number{
+  const q=carLocal(car,p);
+  return Math.hypot(Math.max(0,Math.abs(q.l)-CAR_HALF_LENGTH),Math.max(0,Math.abs(q.w)-CAR_HALF_WIDTH));
+}
+/**
+ * Where a body of `radius` at `p` stands clear of the car: `p` itself when it already is, else the nearest point
+ * `radius` off the box (out through the shallower side from inside it).
+ */
+export function carPushOut(car:CarPlace,p:{x:number;y:number},radius:number):{x:number;y:number}{
+  const q=carLocal(car,p),ol=Math.abs(q.l)-CAR_HALF_LENGTH,ow=Math.abs(q.w)-CAR_HALF_WIDTH;
+  let l=q.l,w=q.w;
+  if(ol>0||ow>0){
+    // Outside the box: off its nearest point, radius away.
+    const dl=Math.max(0,ol)*Math.sign(q.l),dw=Math.max(0,ow)*Math.sign(q.w),d=Math.hypot(dl,dw);
+    if(d>=radius)return p;
+    l=q.l-dl+dl/d*radius;w=q.w-dw+dw/d*radius;
+  }else if(ol>ow)l=(q.l<0?-1:1)*(CAR_HALF_LENGTH+radius);
+  else w=(q.w<0?-1:1)*(CAR_HALF_WIDTH+radius);
+  return {x:car.x+l*q.c-w*q.s,y:car.y+l*q.s+w*q.c};
+}
 /** Players on the wire's movers list at most (the encoder keeps the first ones). */
 export const MAX_CAR_MOVERS=8;
 /**

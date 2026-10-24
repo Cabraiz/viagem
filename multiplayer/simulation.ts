@@ -1042,7 +1042,7 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
-          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),
+          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...fearView(p),
           // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).
           ...(p.grana!==undefined?{grana:p.grana}:{}),
         };

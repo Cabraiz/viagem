@@ -9,6 +9,7 @@ import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 import {CAR_ID} from '../../src/contract/index.ts';
 import {FEAR_BASE_RADIUS,FEAR_SOURCE,FEAR_TICKS} from '../../src/rules/index.ts';
+import {FrameDecoder,FrameEncoder,WireIds} from '../../src/protocol/protocol4.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -46,4 +47,13 @@ test('next to the Uno nothing builds; the automatic-combat city has no fear',()=
   const old=room(),o=car(old);
   for(let i=0;i<200;i++){hold(old,o.x+30,o.y);old.step();}
   assert.equal(old.players.get('a')!.fear,undefined);
+});
+
+test('the dark reaches the phone: the room protocol 4 frame carries the fear (not only the JSON view)',()=>{
+  const sim=room('manual'),c=car(sim),x=c.x+FEAR_BASE_RADIUS+3,y=c.y;
+  for(let i=0;i<FEAR_TICKS/4;i++){hold(sim,x,y);sim.step();}
+  const r=new FrameDecoder().decode(new FrameEncoder(new WireIds(),{viewer:'a'}).encode(sim.frame()));
+  assert.ok(r.ok);
+  const fear=r.view.players.find(p=>p.id==='a')?.fear;
+  assert.ok(fear!==undefined&&Math.abs(fear-.25)<.01,`a quarter of the dark on the wire (${fear})`);
 });

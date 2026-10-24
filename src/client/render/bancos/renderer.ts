@@ -18,14 +18,15 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
-import {BANCO,BANK_SHORT} from '../../../rules/index.ts';
+import {BANCO} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
-import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 import {TriBand} from '../city/tri-band.ts';
 import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
+import {bicoTag,type BicoTagLook} from '../../hud/bicos.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -40,7 +41,9 @@ const ART_TOP_PAD=.17;
 /** The ground's frozen pieces, in the order the one Graphics drew them: hold ring, saldo ring, shadow. */
 const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 
-export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
+export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined;
+  /** Bicos: a player's name on the shop's tag ("Você" for the local one); absent: "1 no turno". */
+  nameOf?:(id:string)=>string}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
@@ -238,10 +241,11 @@ export class BankRenderer {
     this.draws.clear();
   }
 
-  private tagStyle(look:'normal'|'bicho'|'vazio'){
-    return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},
-      color:look==='bicho'?token('--c-breu'):token('--c-papel'),
-      backgroundColor:look==='bicho'?token('--c-cone'):look==='vazio'?token('--c-breu'):this.ficha()};
+  private tagStyle(look:BicoTagLook){
+    // Bicos: a shift on is "a favor" (Cartolina, the interaction colour of the ring and the button).
+    return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},align:'center',
+      color:look==='bicho'||look==='turno'?token('--c-breu'):token('--c-papel'),
+      backgroundColor:look==='bicho'?token('--c-cone'):look==='turno'?token('--c-cartolina'):look==='vazio'?token('--c-breu'):this.ficha()};
   }
   /**
    * --c-ficha (Breu at 88 %) as rgba: the token is a color-mix(), which a canvas fillStyle may not take (the tag's body
@@ -324,11 +328,10 @@ export class BankRenderer {
     const p=this.options.projector.project(x,y,this.q),h=this.options.projector.project(hero.x,hero.y,{x:0,y:0}),b=faceBounds(faces);
     return h.x>p.x+b.x0&&h.x<p.x+b.x1&&h.y-30>p.y+b.y0&&h.y-10<p.y+b.y1;
   }
-  /** The tag over the sign: "Pão-Duro: R$ 32", "Pão-Duro: bicho sacando!" or "Pão-Duro sem cédulas: 2:10". */
+  /** The tag over the shop (hud/bicos.ts bicoTag): its gig and saldo, who is on the shift, the robbery, the closed sign. */
   private drawTag(b:BankView,d:BankDraw,k:number){
-    const short=BANK_SHORT[b.name],s=emptySeconds(b,this.state.tick);
-    const look=b.state==='bicho'?'bicho':b.state==='sem-cedulas'?'vazio':'normal';
-    const text=b.state==='bicho'?`${short}: bicho sacando!`:b.state==='sem-cedulas'?`${short} sem cédulas${s?`: ${clock(s)}`:''}`:`${short}: R$ ${b.saldo}`;
+    const nameOf=this.options.nameOf;
+    const {look,text}=bicoTag(b,emptySeconds(b,this.state.tick),id=>nameOf?.(id)??'1');
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
     const p=this.topAt(b,-.2*M,.5*M);

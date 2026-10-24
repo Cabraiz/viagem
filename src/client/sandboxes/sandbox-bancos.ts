@@ -7,6 +7,8 @@
  * `banco=aberto|sacando|bicho|vazio` puts all three in that state instead. Deterministic from the clock only.
  * `bicos=1` (card bancos-viram-bicos): the three in a row across the screen, a shop's width apart (the pixel-art
  * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
+ * With it `turno=0` (etapa 4): the middle one open, the hero in its ring (the button says Trabalhar); `turno=1`: the hero
+ * ('voce') inside its shift (gone through the door, the button "No turno", the tag "Você no turno").
  */
 import {SIM_HZ,type BankName,type BankState,type BankView,type BicoId,type EnemyView} from '../../contract/index.ts';
 import {BANCO} from '../../rules/index.ts';
@@ -34,7 +36,8 @@ export interface FakeBanks {
 
 export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
   const all=STATES[params.get('banco')??''],row=params.get('bicos')==='1';
-  const states=AROUND.map((_,i)=>all??(row?ROW_STATES:DEFAULT)[i]);
+  const turno=row?params.get('turno'):null;
+  const states=AROUND.map((_,i)=>all??(i===1&&turno!==null?turno==='1'?'sacando':'aberto':(row?ROW_STATES:DEFAULT)[i]));
   const at=(row?ROW:AROUND).map(o=>({x:+(hero.x+o.x).toFixed(3),y:+(hero.y+o.y).toFixed(3)}));
   const names=['pao-duro','juros','posto'] as const;
   const enemies:EnemyView[]=[];
@@ -45,6 +48,7 @@ export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
       const tick=Math.round(now/1000*SIM_HZ);
       const banks=states.map((state,i):BankView=>{
         const base={id:`banco-${i}`,...at[i],name:names[i],state,bico:SANDBOX_BICO[names[i]]};
+        if(state==='sacando'&&turno==='1'&&i===1)return {...base,workers:['voce'],saldo:32};
         if(state==='sacando')return {...base,saldo:30-BANCO.nota*(Math.floor(now/(BANCO.saqueS*1000))%14)};
         if(state==='bicho')return {...base,saldo:18-BANCO.nota*(Math.floor(now/(BANCO.bichoSaqueS*1000))%8)};
         if(state==='sem-cedulas')return {...base,saldo:0,until:tick+130*SIM_HZ};

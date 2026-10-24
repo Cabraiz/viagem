@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 2202,
-  "bytes": 1544651334,
-  "liteBytes": 503708556,
+  "files": 2217,
+  "bytes": 1545461174,
+  "liteBytes": 504171942,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -19077,6 +19077,78 @@
    "psnr": 41.4,
    "shownPsnr": 42.3
   },
+  "sprites/gato-nada-pra-comer.pull16-n.8bb0b9447751.webp": {
+   "source": "8bb0b94477510e938e6c679d63f5af23b10b4d48465ef0f498b222bdefb5de21",
+   "lite": "86f98c82efe72444dd9771e1955359290a12c75cdf9d199981c1257b1aa5bf7f",
+   "bytes": 58828,
+   "liteBytes": 32008,
+   "psnr": 40.7,
+   "shownPsnr": 40.6
+  },
+  "sprites/gato-nada-pra-comer.pull16-nw.31245636b9fa.webp": {
+   "source": "31245636b9fa7cff2a2829c117cb8df6f812b7178541e41b65ed0f36cbb6aed7",
+   "lite": "e80115a803ce4994c8b2510d7279e4f0c3da43c36b9c85324e3e15b205ca9c07",
+   "bytes": 66118,
+   "liteBytes": 36266,
+   "psnr": 41.5,
+   "shownPsnr": 40.3
+  },
+  "sprites/gato-nada-pra-comer.pull16-nw.90b7361e4350.webp": {
+   "source": "90b7361e43500b4b700a906f2ce1907cc0214b0c937acec8579b94c6fe15587b",
+   "lite": "4af295f6d62b2bd95a49f2e7d1171af0340dafcbd2cda99effb9b32d3ef1bb6e",
+   "bytes": 47376,
+   "liteBytes": 26920,
+   "psnr": 43.3,
+   "shownPsnr": 41.2
+  },
+  "sprites/gato-nada-pra-comer.pull16-nw.b5eb72966a50.webp": {
+   "source": "b5eb72966a50db453de6bbd999b0718c0f6f0ee9ba2c0d75dc8adb65df2b3209",
+   "lite": "cd8cc26a2ed121476cc6f08cc8d07a7b19767fa5c19c4db5bc5c57f11f640ae2",
+   "bytes": 46320,
+   "liteBytes": 26948,
+   "psnr": 43.3,
+   "shownPsnr": 41.2
+  },
+  "sprites/gato-nada-pra-comer.pull16-s.4d8b7c54bbdf.webp": {
+   "source": "4d8b7c54bbdf42db1b329f93c70e8e6cec6cbdb135a859f938ed6701557e400f",
+   "lite": "60dda7f32c0bff81c56126c3e335a6ecb605798b2c6157488e4751178995b895",
+   "bytes": 58536,
+   "liteBytes": 32154,
+   "psnr": 41,
+   "shownPsnr": 40.3
+  },
+  "sprites/gato-nada-pra-comer.pull16-s.b002c776eacf.webp": {
+   "source": "b002c776eacfddae20bcff20a13e3187020f6e31655d1fc4305cc22918b335bb",
+   "lite": "44020fb8e8a8a01f42c21922b3450097dfcabdd0373a66fcf115fa6711f98835",
+   "bytes": 58254,
+   "liteBytes": 31842,
+   "psnr": 40.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.pull16-se.419458bfb158.webp": {
+   "source": "419458bfb158456455b842dd6627b163d522354b3a79e994627435312603cc3f",
+   "lite": "8984a5b774b6f5ffd956861ecf76f223c6a8100363d76f04effc3035a5d0d23b",
+   "bytes": 54406,
+   "liteBytes": 30882,
+   "psnr": 41.8,
+   "shownPsnr": 40.5
+  },
+  "sprites/gato-nada-pra-comer.pull16-w.69ed430f58ae.webp": {
+   "source": "69ed430f58aee64e469d24bf1e27eb364ec6b383884a1d23ffdcceae9a8b7a9e",
+   "lite": "5895ec0dd7ae12ff7c41aa319c30bff309deeea418ed4599503ba30063898e58",
+   "bytes": 51560,
+   "liteBytes": 29944,
+   "psnr": 42.6,
+   "shownPsnr": 40.3
+  },
+  "sprites/gato-nada-pra-comer.pull16-w.a79573c6028c.webp": {
+   "source": "a79573c6028c222b881d556e62e76f20e8d70320f7b959c492a014ee9a54f755",
+   "lite": "d95906af58d0089cec6cde17f2ac820f671848e602114afbcc7bd478ad0ccc6e",
+   "bytes": 51420,
+   "liteBytes": 29828,
+   "psnr": 42.7,
+   "shownPsnr": 40.2
+  },
   "sprites/gato-nada-pra-comer.push16-n.11a332597dc4.webp": {
    "source": "11a332597dc428d5830a20a0ab63a589f8d7948b577012676ec35213de6d0fc3",
    "lite": "882656ac81c1be9074ceeef1bc8e6475b11dc3bbc2476692790a71f0bf27864b",
@@ -19484,6 +19556,54 @@
    "liteBytes": 20426,
    "psnr": 39.9,
    "shownPsnr": 43.5
+  },
+  "sprites/maromba.pull16-n.6caf660c1f7b.webp": {
+   "source": "6caf660c1f7bad96b18833bc66d427ebe6a3990ac603cf9829f031429bc73658",
+   "lite": "c0193c6015821fccc7a0de89147da076b1117ab05911a2d19d8aa7d89d1b5337",
+   "bytes": 51360,
+   "liteBytes": 30428,
+   "psnr": 39.2,
+   "shownPsnr": 42.2
+  },
+  "sprites/maromba.pull16-n.e614246a7aca.webp": {
+   "source": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650",
+   "lite": "86c32185dc8105e133198f25afd5d740084f51d5af20e43ced39bbe72d662aea",
+   "bytes": 56766,
+   "liteBytes": 32274,
+   "psnr": 38.7,
+   "shownPsnr": 41.8
+  },
+  "sprites/maromba.pull16-nw.d76399bb4812.webp": {
+   "source": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f",
+   "lite": "667f97ee03469ee1d32ea977c478765af1f4cd3997345d021524a6599d35b28d",
+   "bytes": 61848,
+   "liteBytes": 35012,
+   "psnr": 39.4,
+   "shownPsnr": 42.5
+  },
+  "sprites/maromba.pull16-s.4b943fbf0a83.webp": {
+   "source": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e",
+   "lite": "96a4a712250582fdcc23164ea03e0997b2537bc33a639275f47fc997bb7bdc07",
+   "bytes": 49144,
+   "liteBytes": 28830,
+   "psnr": 38.7,
+   "shownPsnr": 42.6
+  },
+  "sprites/maromba.pull16-se.0de4fbde928d.webp": {
+   "source": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799",
+   "lite": "14f7adb8af2169cdb915738b5fec3ed2f5df60b6be9336345d4caa830d6739ec",
+   "bytes": 47200,
+   "liteBytes": 29200,
+   "psnr": 39.2,
+   "shownPsnr": 42.6
+  },
+  "sprites/maromba.pull16-w.5d910382cd71.webp": {
+   "source": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d",
+   "lite": "8c41743ba34ea3228571ecbb08a04d04055f933633902bfe6e7705a3ead95e8a",
+   "bytes": 50704,
+   "liteBytes": 30850,
+   "psnr": 39.7,
+   "shownPsnr": 42.9
   },
   "sprites/maromba.push16-n.d8725566eb99.webp": {
    "source": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",

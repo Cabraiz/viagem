@@ -27,8 +27,11 @@
  *  - opening: a standing player (hasInventory) within OPEN_REACH who did not move this tick fills OPEN_SECONDS of its
  *    rarity, on the nearest crate; moving or losing hp starts over. From the roxa up, starting to open makes noise
  *    (hooks.onNoise, OPEN_NOISE_RADIUS): the lock creaks and calls the enemies around;
- *  - the prize never repeats the opener's last crate prize (the user, 22/10: "sem repetir a mesma arma em sequência"):
- *    the same per-crate stream draws again, up to PRIZE_REDRAWS times, then the other kind (otherPrize);
+ *  - the prize is rolled when the crate appears (card caixa-icone-torre-arma, the user 23/10: "vamos pôr o item
+ *    flutuando e girando"): its item id is the record's `item` and the pickup's `resource`, which the client shows
+ *    spinning over the spot; opening gives that item, a weapon at the crate's rarity of that moment. It avoids repeating
+ *    (the user, 22/10: "sem repetir a mesma arma em sequência"): a trail crate its hero's last prize, any other the last
+ *    item that appeared; the same per-crate stream draws again, up to PRIZE_REDRAWS times, then the other kind (otherPrize);
  *  - the prize (rollCrate: a kit de torre of the crate's tier with KIT_CHANCE, else a weapon of its rarity, rollPrize) rolls on a per-crate stream (seed, crate id, tick), so no other draw shifts it; items go into
  *    the inventory (add) and what does not fit lands on the ground beside the crate (dropItem). A crate gives only a
  *    weapon or a kit (BUG-20261022-ORQ-bau-so-arma-ou-torre, the user: "os baús não deveriam dropar algo sem ser arma
@@ -37,7 +40,7 @@
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
-import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem} from '../rules/index.ts';
+import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
 import {add,dropItem,hasInventory} from './inventory.ts';
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
@@ -118,6 +121,8 @@ export interface CrateRecord {
   start?:true;
   /** Index of the map point a placed crate sits on. */
   point?:number;
+  /** The item it gives and shows (the pickup's resource); absent in an older checkpoint: rolled when opened. */
+  item?:string;
 }
 /** JSON-safe. */
 export interface CratesState {
@@ -137,6 +142,8 @@ export interface CratesState {
   rng:number;
   /** Per player: the key (prizeKey) of his last crate prize; absent in an older checkpoint. */
   last?:Record<string,string>;
+  /** The item of the last crate that appeared (the next one avoids it). */
+  lastItem?:string;
   /** The first step's tick (the first minute's clock); absent in an older checkpoint: no trail. */
   startTick?:number;
   /** Per player, the first minute: crates passed (ids), his waiting trail crate, how many he got, his walk heading. */
@@ -268,6 +275,21 @@ export function otherPrize(rng:Rng,rarity:Rarity,start:boolean,last:string):Priz
 }
 /** What a "the same prize again" check compares: the item's id. */
 export const prizeKey=(prize:Prize)=>prize.items[0]?.id??'nada';
+/**
+ * A crate's prize item (rollCrate, or rollStarter for a first-minute crate) on `stream`, other than `avoid`: up to
+ * PRIZE_REDRAWS redraws, then the other kind (otherPrize).
+ */
+export function drawPrize(stream:Rng,rarity:Rarity,start:boolean,avoid?:string):Prize{
+  const draw=()=>start?rollStarter(stream,rarity):rollCrate(stream,rarity);
+  let prize=draw();
+  for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===avoid;i++)prize=draw();
+  return avoid!==undefined&&prizeKey(prize)===avoid?otherPrize(stream,rarity,start,avoid):prize;
+}
+/** The item a crate shows, given at `rarity` (the crate's when opened): a kit as it comes, a weapon at that rarity. */
+export function prizeItem(id:string,rarity:Rarity):OwnedItem{
+  const kit=kitPiece(id);
+  return kit?kitItem(kit):weaponItem(id,rarity);
+}
 
 export function createCrates(options:CratesOptions):Crates{
   const {seed,points,startPoints=[],hooks={}}=options;
@@ -277,8 +299,14 @@ export function createCrates(options:CratesOptions):Crates{
   points.map((p,i)=>({s:p.seconds,i})).sort((a,b)=>a.s-b.s||a.i-b.i).forEach(({i},rank)=>{tierOf[i]=Math.min(2,Math.floor(rank*3/points.length));});
   const scratch:string[]=[];
 
-  function addCrate(ctx:SimContext,at:Point,record:CrateRecord):PickupState{
+  /** Rolls the item a new crate gives and shows (on its own stream: no other draw shifts it), other than `avoid`. */
+  function stock(pickup:PickupState,record:CrateRecord,avoid=state.lastItem){
+    const item=prizeKey(drawPrize(new Rng(seed).fork(`premio:${pickup.id}`),record.rarity,!!record.start,avoid));
+    record.item=item;pickup.resource=item;state.lastItem=item;
+  }
+  function addCrate(ctx:SimContext,at:Point,record:CrateRecord,avoid?:string):PickupState{
     const pickup:PickupState={id:ctx.nextId(CRATE_ID_PREFIX),kind:'chest',value:record.rarity,x:at.x,y:at.y,spawnTick:ctx.tick};
+    stock(pickup,record,avoid??state.lastItem);
     ctx.pickups.set(pickup.id,pickup);
     state.crates[pickup.id]=record;
     return pickup;
@@ -336,7 +364,7 @@ export function createCrates(options:CratesOptions):Crates{
       const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
       const at=options.trailSpot(p,heading,ahead,rng);
       if(!at||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
-      t.waiting=addCrate(ctx,at,{rarity:t.placed++%2?2:1,origin:'dropped',start:true}).id;
+      t.waiting=addCrate(ctx,at,{rarity:t.placed++%2?2:1,origin:'dropped',start:true},state.last?.[p.id]).id;
     }
     for(const id in trail)if(!ctx.players.has(id))delete trail[id];
   }
@@ -376,7 +404,8 @@ export function createCrates(options:CratesOptions):Crates{
       if(pickup.kind!=='chest'||state.crates[pickup.id])continue;
       const rarity:Rarity=isRarity(pickup.value)&&pickup.value>1?pickup.value:pickup.id.startsWith(BOSS_CHEST_PREFIX)?5:roll(rng,ELITE_ODDS);
       pickup.value=rarity;
-      state.crates[pickup.id]={rarity,origin:'dropped'};
+      const record:CrateRecord=state.crates[pickup.id]={rarity,origin:'dropped'};
+      stock(pickup,record);
     }
   }
 
@@ -392,20 +421,24 @@ export function createCrates(options:CratesOptions):Crates{
     return best;
   }
 
+  /**
+   * The rarity a crate gives when `p` opens it: today the crate's own (the one it shows). The single place the
+   * caixa-gamble draw (rarity at opening, a floor per player) takes over.
+   */
+  function rarityAtOpen(_ctx:SimContext,_p:SimPlayer,record:CrateRecord):Rarity{return record.rarity;}
+
   function open(ctx:SimContext,p:SimPlayer,crate:PickupState){
-    const record=state.crates[crate.id];
+    const record=state.crates[crate.id],rarity=rarityAtOpen(ctx,p,record);
     ctx.pickups.delete(crate.id);
     delete state.crates[crate.id];
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
-    // Never the opener's last prize again: the same stream draws again (up to PRIZE_REDRAWS times), then the other kind.
-    const stream=new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),draw=()=>record.start?rollStarter(stream,record.rarity):rollCrate(stream,record.rarity);
+    // The item it showed; a crate from an older checkpoint rolls now, never the opener's last prize.
     const last=(state.last??={})[p.id];
-    let prize=draw();
-    for(let i=0;i<PRIZE_REDRAWS&&prizeKey(prize)===last;i++)prize=draw();
-    if(prizeKey(prize)===last)prize=otherPrize(stream,record.rarity,!!record.start,last);
+    const prize:Prize=record.item?{items:[prizeItem(record.item,rarity)]}
+      :drawPrize(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),rarity,!!record.start,last);
     state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
-    ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:record.rarity});
+    ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:rarity});
   }
 
   function openStep(ctx:SimContext){

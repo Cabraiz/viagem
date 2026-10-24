@@ -374,7 +374,7 @@ Atributos: 1 / 3 / 3 / 5.
 
 > Ele não morde. Normalmente.
 
-## 32. Aposentado da Praça
+## 32. Aposentado
 
 **Controle** · Experiência não falta.
 

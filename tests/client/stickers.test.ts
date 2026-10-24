@@ -58,7 +58,7 @@ const ART_PENDING=new Set<string>(['corneta']);
  * Drawings shared on purpose: a legendary is the old weapon (or its evolution) at its best, with its art; the inventory's
  * coxinha is the heal's; the wall kits (torre-pela-caixa) wear the kit box until they get their own.
  */
-const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal','kit:muro':'kit-torre','kit:barricada':'kit-torre','kit:barraca':'kit-torre',
+const SAME_ART:Readonly<Record<string,string>>={coxinha:'heal','kit:muro':'kit-torre','kit:barricada':'kit-torre',
   // Pack 12 (arsenal-completo-no-bau): the weapon and the tome of the same Pack drawing (rules/passives.ts; the
   // Bombinha 'pente' tome already wore the traque's).
   baladeira:'estilingue','tampa-voadora':'tampa-de-panela','nuvem-de-incenso':'defumador','galho-de-arruda':'arruda',traque:'pente'};

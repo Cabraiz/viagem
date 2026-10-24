@@ -98,7 +98,7 @@ const items:ItemDisplay[]=[
 for(const id of KIT_IDS){
   const piece=kitPiece(id)!,wall=isWallKit(piece);
   const name=wall?FREE_PIECE_DEFS[piece].name:DEFENSES[piece].name;
-  items.push({id,kind:'snack',name:`Kit ${name}`,icon:wall?'kit-torre':`torre-${piece}` as StickerName,
+  items.push({id,kind:'snack',name:`Kit ${name}`,icon:piece==='barraca'?'kit-barraca':wall?'kit-torre':`torre-${piece}` as StickerName,
     blurb:wall?`Toque e ponha ${KIT_CHARGES[piece]} no chão.`:'Toque e ponha a torre no chão.',joke:'Torre na caixa.'});
 }
 const byId=new Map(items.map(item=>[item.id,item]));

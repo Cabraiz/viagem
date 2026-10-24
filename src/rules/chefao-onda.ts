@@ -55,8 +55,11 @@ export const WAVE_BOSS=Object.freeze({
   /**
    * The user, 23/10: "tamanho 2× a 3× o atual" (a roster chefe draws 3 heroes tall, client art/horde-art.ts ROLE_HEIGHT).
    * His drawing × this; his body (radius) and his charge's width × it too, his slam, stamp and sweep × (1 + it) / 2.
+   * The user, 24/10, after the 2× and 3× prints: "Ponha 3x pelo meme".
    */
-  drawScale:2,
+  drawScale:3,
+  /** The user, 24/10: with one player (alone, a fall is the defeat) his hits × this. */
+  soloDamage:.5,
 });
 /** The arrival scene (ms of the room's wall clock): go to him, hold on him, come back. */
 export const CENA=Object.freeze({goMs:600,holdMs:2000,backMs:600,totalMs:3200});

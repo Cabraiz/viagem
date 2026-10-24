@@ -63,6 +63,7 @@ export function waveBossTuning(base:Readonly<BossTuning>=BOSS_TUNING,drawScale:n
   for(const k of ['slamDamage','fineDamage','chargeDamage','coneDamage'] as const)t[k]=Math.round(base[k]*d);
   t.radius=base.radius*s;t.chargeWidth=base.chargeWidth*s;
   t.slamRadius=base.slamRadius*area;t.fineRadius=base.fineRadius*area;t.coneRange=base.coneRange*area;
+  t.soloDamage=WAVE_BOSS.soloDamage;
   return t;
 }
 /** His lines for the boss controller's keys: the barks in the fight, the death lines at the end. */

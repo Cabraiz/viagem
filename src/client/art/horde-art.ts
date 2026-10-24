@@ -8,7 +8,7 @@
  * and imports Phaser as a type, so this module loads without Phaser.
  */
 import type Phaser from 'phaser';
-import {artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
+import {HD_ENEMIES,artIndex,artPages,artPiece,artUrl,type ArtFile,type ArtGroupId,type ArtPage,type ArtPiece} from './manifest.ts';
 import {ELITE_SCALE,ENEMY_ART,ENEMY_KINDS,FX,PICKUP_SIZE,enemyTexture,pickupTexture,type EnemyKind} from '../render/keys.ts';
 import {BOSS_PHASE2,actionDuration,deathAlpha,onceColumn} from './horde-actions.ts';
 import {queueFramesArt} from './frames-art.ts';
@@ -233,6 +233,8 @@ export function enemyPieceLoads(id:string):ArtLoad[]{
     const pages=artPages(file);
     pages.forEach((page,i)=>{
       const url=artUrl('inimigos',page.file);if(!url||!validCell(file))return;
+      // The chefão's approved file (manifest.ts HD_ENEMIES): HD at his size; everyone else's lite copy.
+      if(HD_ENEMIES.has(id)){out.push({key:enemyArtKey(id,name,i,pages.length),url,cell:file.cell});return;}
       const lite=liteEnemyUrl(url);if(file.liteCell)LITE_ONLY.add(lite);
       out.push({key:enemyArtKey(id,name,i,pages.length),url:lite,cell:file.cell});
     });
@@ -493,6 +495,13 @@ export function setWaveBossDraw(scale:number){waveBossDraw=scale>=1&&scale<=4?sc
 if(typeof location!=='undefined'&&import.meta.env?.DEV){const k=Number(new URLSearchParams(location.search).get('chefaoEscala'));if(k)setWaveBossDraw(k);}
 /** The chefão's extra scale for art `id` (1 for every other art). */
 const waveBossK=(id:string)=>WAVE_BOSS_IDS.includes(id)?waveBossDraw:1;
+/**
+ * The ground shadow's length × this for art `id` (render/silhouette.ts castSilhouette): the chefão's, as long as a
+ * WAVE_BOSS_SHADOW-times-bigger figure's would be, never a streak across the street (the user, 24/10: "corrige a
+ * sombra dele quando ele tiver grande"); 1 for everyone else.
+ */
+export const WAVE_BOSS_SHADOW=1.2;
+export const artShadowLength=(id:string|undefined)=>id&&WAVE_BOSS_IDS.includes(id)?Math.min(1,WAVE_BOSS_SHADOW/waveBossDraw):1;
 /** Target figure height (world px) of enemy art `id` (a roster id or a legacy kind, by its role). */
 export const artTargetHeight=(id:string)=>HERO_FIGURE_PX*(ROLE_HEIGHT[roleOf(id) as EnemyRole]??DEFAULT_HEIGHT)*waveBossK(id);
 /** Alpha of the figure's mass (≥ 0.5): the rim's soft edge and stray specks do not count. */

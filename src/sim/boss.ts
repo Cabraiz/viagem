@@ -33,6 +33,8 @@ export interface BossTuning {
   coneDamage:number; coneRange:number; coneAngle:number; coneDelay:number; coneCount:number; coneEvery:number; coneTurn:number;
   recovery:number; recovery2:number; summonEvery:number; summonCount:number; minionCap:number;
   phase2Speed:number; enragedSpeed:number; enragedDamage:number; enragedCooldown:number; barkEvery:number;
+  /** × every hit when the boss came to a single player (absent: 1). The 1st wave's chefão only (boss-fim-onda-1). */
+  soloDamage?:number;
 }
 /** Durations in ticks. Numbers are first-pass values; VGM-051 tunes them with bot runs. */
 export const BOSS_TUNING:Readonly<BossTuning>=Object.freeze({
@@ -142,7 +144,9 @@ export const BOSS_SIEGE_REACH=2.6,BOSS_SIEGE_EVERY=ticks(3);
 export interface PendingSummon {kind:string;x:number;y:number;atTick:number}
 /** A key line (spawn, phase, enrage, defeat) the global limiter refused; retried each tick until `until`. */
 export interface QueuedLine {key:BossLineKey;until:number}
-export interface BossState {bossId?:string;defeated:boolean;lastX:number;lastY:number;minions:string[];pending:PendingSummon[];queued?:QueuedLine;rng?:number}
+export interface BossState {bossId?:string;defeated:boolean;lastX:number;lastY:number;minions:string[];pending:PendingSummon[];queued?:QueuedLine;rng?:number;
+  /** He came to a single player (tuning.soloDamage applies). */
+  solo?:boolean}
 export interface BossController extends SimSystem {
   readonly state:BossState;
   readonly tuning:Readonly<BossTuning>;
@@ -247,7 +251,8 @@ export function createBoss(options:BossOptions={}):BossController {
     const players=[...ctx.players.values()].filter(inRun);
     const hpScale=options.hpScale?.(ctx)??1;
     const hpTuning=hpScale!==1&&hpScale>0&&Number.isFinite(hpScale)?{...tuning,baseHp:tuning.baseHp*hpScale}:tuning;
-    const maxHp=bossMaxHp(Math.max(players.length,options.scalePlayers?.(ctx)??0),hpTuning);
+    const count=Math.max(players.length,options.scalePlayers?.(ctx)??0),maxHp=bossMaxHp(count,hpTuning);
+    if(count<=1&&tuning.soloDamage!==undefined&&tuning.soloDamage!==1)state.solo=true;
     const bodies=[...ctx.players.values()].filter(bodyPresent);
     // The director passes a coastal point; fall back to a safe inland one if it is not walkable.
     // Spots for enemy bodies use the enemy view (cidade-06): never inside a barricade disc.
@@ -354,7 +359,7 @@ export function createBoss(options:BossOptions={}):BossController {
     }
   }
 
-  const scale=(boss:EnemyState,damage:number)=>Math.round(damage*(enraged(boss)?tuning.enragedDamage:1));
+  const scale=(boss:EnemyState,damage:number)=>Math.round(damage*(enraged(boss)?tuning.enragedDamage:1)*(state.solo?tuning.soloDamage??1:1));
   const recovery=(boss:EnemyState)=>Math.round(((boss.phase??1)>=PHASE_ASSEMBLY?tuning.recovery2:tuning.recovery)*(enraged(boss)?tuning.enragedCooldown:1));
 
   function act(ctx:SimContext,boss:EnemyState,targets:readonly SimPlayer[]){

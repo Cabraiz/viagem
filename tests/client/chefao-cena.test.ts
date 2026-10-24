@@ -105,3 +105,22 @@ test('his size (the user: 2× to 3×): body and charge × drawScale, the areas o
   assert.ok(WAVE_BOSS.drawScale>=2&&WAVE_BOSS.drawScale<=3);
   assert.equal(waveBossTuning().radius,BOSS_TUNING.radius*WAVE_BOSS.drawScale);
 });
+
+test('his art in HD (the approved files, not the lite copies) and a ground shadow that stays short at his size',async()=>{
+  const {HD_ENEMIES,parseArtIndex,setArtIndex}=await import('../../src/client/art/manifest.ts');
+  const {enemyPieceLoads,artShadowLength}=await import('../../src/client/art/horde-art.ts');
+  const {readFileSync}=await import('node:fs');
+  assert.deepEqual([...HD_ENEMIES].sort(),[...WAVE_BOSSES.map(b=>b.id)].sort());
+  setArtIndex(parseArtIndex(JSON.parse(readFileSync('public/art/manifest.json','utf8'))));
+  try{
+    for(const b of WAVE_BOSSES){
+      const loads=enemyPieceLoads(b.id);
+      assert.ok(loads.length,b.id);
+      for(const l of loads){assert.ok(l.url.startsWith('/art/enemies/')&&!l.url.includes('/lite/'),l.url);assert.equal(l.cell[1],384,l.url);}
+      assert.ok(artShadowLength(b.id)<1&&artShadowLength(b.id)>0);
+    }
+    // Everyone else: still the lite copies, the shadow as long as the figure.
+    assert.ok(enemyPieceLoads('bebado').every(l=>l.url.includes('/lite/')));
+    assert.equal(artShadowLength('bebado'),1);
+  }finally{setArtIndex(parseArtIndex({version:2,groups:{}}));}
+});

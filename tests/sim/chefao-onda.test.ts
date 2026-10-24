@@ -157,3 +157,18 @@ test('a lab summon: he comes on the next step even before the wave left, once; a
   // His body follows his drawing (WAVE_BOSS.drawScale).
   assert.equal(bossesOf(world)[0].radius,waveBossTuning().radius);
 });
+
+test('alone (the user, 24/10: "pancadas ×0,5 solo"), his telegraphed hits are WAVE_BOSS.soloDamage of the team fight',()=>{
+  const hits=(players:number)=>{
+    const {world,sys}=run({seed:5,players});
+    sys.chefao!.summon();world.step();
+    const [b]=bossesOf(world);let k=0;for(const p of world.players.values()){p.x=b.x+3+k*.4;p.y=b.y+1;k++;}
+    const seen:number[]=[];
+    for(let i=0;i<20*30&&seen.length<3;i++){world.step();for(const t of world.telegraphs.values())if(t.owner===sys.chefao!.state.enemy&&!seen.includes(t.damage))seen.push(t.damage);}
+    return {solo:!!sys.chefao!.state.boss.solo,max:Math.max(...seen)};
+  };
+  const one=hits(1),three=hits(3);
+  assert.equal(one.solo,true);assert.equal(three.solo,false);
+  assert.ok(Number.isFinite(one.max)&&Number.isFinite(three.max),'he swung in both');
+  assert.ok(one.max<=Math.ceil(three.max*WAVE_BOSS.soloDamage)+1,`solo ${one.max} vs team ${three.max}`);
+});

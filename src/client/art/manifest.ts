@@ -80,6 +80,12 @@ function liteFile(file:ArtFile):ArtFile{
   const {liteCell,...rest}=file;
   return isCell(liteCell)&&liteCell[0]<=file.cell[0]&&liteCell[1]<=file.cell[1]?{...rest,cell:[liteCell[0],liteCell[1]],liteCell}:rest;
 }
+/**
+ * Enemies drawn from their approved files, not the lite copies: the 1st wave's chefão (rules WAVE_BOSS_IDS; the user,
+ * 24/10: "pixelagem para ficar hd" at 3×). One of them loads per match (~30 MB against ~8 MB lite). Kept here as plain
+ * ids (this module imports nothing); tests/client/chefao-cena.test.ts checks it against the rules.
+ */
+export const HD_ENEMIES:ReadonlySet<string>=new Set(['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha']);
 function parsePiece(value:unknown,lite=false):ArtPiece|undefined{
   if(!isObject(value)||typeof value.kind!=='string'||!isObject(value.files))return undefined;
   const files:Record<string,ArtFile>=Object.create(null);
@@ -99,7 +105,7 @@ export function parseArtIndex(value:unknown):ArtIndex{
   for(const [id,g] of safeEntries(value.groups)){
     if(!isObject(g)||typeof g.output!=='string'||!/^public\/art\/[a-z0-9/_-]+$/.test(g.output)||g.output.includes('..')||!isObject(g.pieces))continue;
     const pieces:Record<string,ArtPiece>=Object.create(null);
-    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos');if(piece)pieces[pid]=piece;}
+    for(const [pid,p] of safeEntries(g.pieces)){const piece=parsePiece(p,id==='inimigos'&&!HD_ENEMIES.has(pid));if(piece)pieces[pid]=piece;}
     groups[id]={output:g.output,pieces};
   }
   return {version:2,groups};

@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -829,7 +829,7 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true);
+    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art));
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}

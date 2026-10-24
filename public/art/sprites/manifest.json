@@ -9091,7 +9091,7 @@
           "sha256": "67248bad4ed02e235a8869c404831f6fc5729d7075bf759e3c3a4a580f1147a3"
         },
         "attack16-N": {
-          "file": "maromba.attack16-n.579800de41b5.webp",
+          "file": "maromba.attack16-n.1fdc5ddb97e1.webp",
           "cell": [
             96,
             96
@@ -9107,27 +9107,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.81,
+          "pivotX": 48.11,
           "figure": {
             "left": 25,
-            "top": 23,
+            "top": 21,
             "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-n.579800de41b5.webp",
+              "file": "maromba.attack16-n.1fdc5ddb97e1.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64"
+              "sha256": "1fdc5ddb97e1b4ab7e6fb279b9e6bd5a18fb53ea9821c65c1f44994d3dda952e"
             }
           ],
-          "sha256": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64"
+          "sha256": "1fdc5ddb97e1b4ab7e6fb279b9e6bd5a18fb53ea9821c65c1f44994d3dda952e"
         },
         "attack16-NW": {
-          "file": "maromba.attack16-nw.e1a1efc886e5.webp",
+          "file": "maromba.attack16-nw.15c2c52c9911.webp",
           "cell": [
             96,
             96
@@ -9143,27 +9143,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.81,
+          "pivotX": 47.75,
           "figure": {
-            "left": 20,
-            "top": 24,
-            "right": 69,
+            "left": 21,
+            "top": 19,
+            "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-nw.e1a1efc886e5.webp",
+              "file": "maromba.attack16-nw.15c2c52c9911.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726"
+              "sha256": "15c2c52c9911041d60974c3995de0285658cabf60fc6eac779ca37577382a552"
             }
           ],
-          "sha256": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726"
+          "sha256": "15c2c52c9911041d60974c3995de0285658cabf60fc6eac779ca37577382a552"
         },
         "attack16-S": {
-          "file": "maromba.attack16-s.7e3df22fec11.webp",
+          "file": "maromba.attack16-s.8f397e6547ec.webp",
           "cell": [
             96,
             96
@@ -9179,27 +9179,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.66,
+          "pivotX": 48.05,
           "figure": {
             "left": 27,
-            "top": 26,
+            "top": 20,
             "right": 68,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-s.7e3df22fec11.webp",
+              "file": "maromba.attack16-s.8f397e6547ec.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183"
+              "sha256": "8f397e6547eca5192db0bafdf3e4caeeddb2a177a07834c6e652f6e495d91cb6"
             }
           ],
-          "sha256": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183"
+          "sha256": "8f397e6547eca5192db0bafdf3e4caeeddb2a177a07834c6e652f6e495d91cb6"
         },
         "attack16-SE": {
-          "file": "maromba.attack16-se.e39e2a9588ec.webp",
+          "file": "maromba.attack16-se.0b6342ebef9c.webp",
           "cell": [
             96,
             96
@@ -9215,27 +9215,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.82,
+          "pivotX": 47.51,
           "figure": {
             "left": 27,
-            "top": 25,
-            "right": 72,
+            "top": 18,
+            "right": 73,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-se.e39e2a9588ec.webp",
+              "file": "maromba.attack16-se.0b6342ebef9c.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b"
+              "sha256": "0b6342ebef9c39e7daf2b6bdaaf8c8efc32d2a3eb58169249d152599593516af"
             }
           ],
-          "sha256": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b"
+          "sha256": "0b6342ebef9c39e7daf2b6bdaaf8c8efc32d2a3eb58169249d152599593516af"
         },
         "attack16-W": {
-          "file": "maromba.attack16-w.f2811360776b.webp",
+          "file": "maromba.attack16-w.7207972c9673.webp",
           "cell": [
             96,
             96
@@ -9251,24 +9251,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.91,
+          "pivotX": 47.44,
           "figure": {
-            "left": 18,
-            "top": 24,
-            "right": 74,
+            "left": 19,
+            "top": 19,
+            "right": 75,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-w.f2811360776b.webp",
+              "file": "maromba.attack16-w.7207972c9673.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34"
+              "sha256": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a"
             }
           ],
-          "sha256": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34"
+          "sha256": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a"
         },
         "dance128": {
           "file": "maromba.dance128.576e79362713.webp",
@@ -9391,7 +9391,7 @@
           "sha256": "2f60bf672bd00a976cf1ca9e5478ecc4ae4abc0240eab523bb64a44447f7e821"
         },
         "hurt16-N": {
-          "file": "maromba.hurt16-n.4d2142762c9f.webp",
+          "file": "maromba.hurt16-n.e66010cdb65e.webp",
           "cell": [
             96,
             96
@@ -9410,24 +9410,24 @@
           "pivotX": 47.8,
           "figure": {
             "left": 22,
-            "top": 26,
+            "top": 21,
             "right": 74,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-n.4d2142762c9f.webp",
+              "file": "maromba.hurt16-n.e66010cdb65e.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261"
+              "sha256": "e66010cdb65eb943013b3629f3817d2a0a61ddb3f3de8fd501c7367529011f05"
             }
           ],
-          "sha256": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261"
+          "sha256": "e66010cdb65eb943013b3629f3817d2a0a61ddb3f3de8fd501c7367529011f05"
         },
         "hurt16-NW": {
-          "file": "maromba.hurt16-nw.d7b8baf86dbd.webp",
+          "file": "maromba.hurt16-nw.d5abc0244a35.webp",
           "cell": [
             96,
             96
@@ -9446,24 +9446,24 @@
           "pivotX": 47.79,
           "figure": {
             "left": 24,
-            "top": 25,
-            "right": 70,
+            "top": 20,
+            "right": 72,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-nw.d7b8baf86dbd.webp",
+              "file": "maromba.hurt16-nw.d5abc0244a35.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931"
+              "sha256": "d5abc0244a3549a0e5224370cc3c8f0ec9e6dec347d26a322323418abcb00dbf"
             }
           ],
-          "sha256": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931"
+          "sha256": "d5abc0244a3549a0e5224370cc3c8f0ec9e6dec347d26a322323418abcb00dbf"
         },
         "hurt16-S": {
-          "file": "maromba.hurt16-s.cfabf768ea8c.webp",
+          "file": "maromba.hurt16-s.13bc5329735f.webp",
           "cell": [
             96,
             96
@@ -9482,24 +9482,24 @@
           "pivotX": 48.2,
           "figure": {
             "left": 23,
-            "top": 25,
+            "top": 19,
             "right": 74,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-s.cfabf768ea8c.webp",
+              "file": "maromba.hurt16-s.13bc5329735f.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd"
+              "sha256": "13bc5329735f890856f08e80ce9f9e896d1576aec3ad904f8e0081cfc66a8de5"
             }
           ],
-          "sha256": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd"
+          "sha256": "13bc5329735f890856f08e80ce9f9e896d1576aec3ad904f8e0081cfc66a8de5"
         },
         "hurt16-SE": {
-          "file": "maromba.hurt16-se.7b72721c4f50.webp",
+          "file": "maromba.hurt16-se.bbc38e0c30bf.webp",
           "cell": [
             96,
             96
@@ -9517,25 +9517,25 @@
           "height": 56,
           "pivotX": 48.13,
           "figure": {
-            "left": 25,
-            "top": 25,
+            "left": 22,
+            "top": 19,
             "right": 69,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-se.7b72721c4f50.webp",
+              "file": "maromba.hurt16-se.bbc38e0c30bf.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721"
+              "sha256": "bbc38e0c30bf018d4a4973ce380d7a06a475a812dcc449a1bc90e8259143f6f2"
             }
           ],
-          "sha256": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721"
+          "sha256": "bbc38e0c30bf018d4a4973ce380d7a06a475a812dcc449a1bc90e8259143f6f2"
         },
         "hurt16-W": {
-          "file": "maromba.hurt16-w.7b70bb99d302.webp",
+          "file": "maromba.hurt16-w.ba4bc5a50f3c.webp",
           "cell": [
             96,
             96
@@ -9554,24 +9554,24 @@
           "pivotX": 47.96,
           "figure": {
             "left": 29,
-            "top": 25,
-            "right": 71,
+            "top": 19,
+            "right": 73,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-w.7b70bb99d302.webp",
+              "file": "maromba.hurt16-w.ba4bc5a50f3c.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e"
+              "sha256": "ba4bc5a50f3c2d92b2ae8d1297e342b0f5586fce68c1bf7046450823a1e4b73c"
             }
           ],
-          "sha256": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e"
+          "sha256": "ba4bc5a50f3c2d92b2ae8d1297e342b0f5586fce68c1bf7046450823a1e4b73c"
         },
         "idle16-N": {
-          "file": "maromba.idle16-n.f24cd648ed40.webp",
+          "file": "maromba.idle16-n.e81973b32b79.webp",
           "cell": [
             96,
             96
@@ -9587,27 +9587,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.82,
           "figure": {
             "left": 26,
-            "top": 26,
+            "top": 21,
             "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-n.f24cd648ed40.webp",
+              "file": "maromba.idle16-n.e81973b32b79.webp",
               "columns": 4,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 8,
-              "sha256": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07"
+              "sha256": "e81973b32b792d0a65f353837f4006349292dcd01eba0b37d741a1a9eb8dc180"
             }
           ],
-          "sha256": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07"
+          "sha256": "e81973b32b792d0a65f353837f4006349292dcd01eba0b37d741a1a9eb8dc180"
         },
         "idle16-NW": {
-          "file": "maromba.idle16-nw.5864e1ae74fc.webp",
+          "file": "maromba.idle16-nw.4d6a781daa29.webp",
           "cell": [
             96,
             96
@@ -9623,27 +9623,99 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.79,
+          "pivotX": 47.25,
           "figure": {
             "left": 27,
-            "top": 26,
+            "top": 20,
             "right": 64,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-nw.5864e1ae74fc.webp",
+              "file": "maromba.idle16-nw.4d6a781daa29.webp",
               "columns": 4,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 8,
-              "sha256": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069"
+              "sha256": "4d6a781daa298423eb958ba35b3a6c5e220c9435713710b842744920c675ed5c"
             }
           ],
-          "sha256": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069"
+          "sha256": "4d6a781daa298423eb958ba35b3a6c5e220c9435713710b842744920c675ed5c"
         },
         "idle16-S": {
-          "file": "maromba.idle16-s.891ba88573ea.webp",
+          "file": "maromba.idle16-s.d391c57cc339.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.23,
+          "figure": {
+            "left": 27,
+            "top": 20,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.idle16-s.d391c57cc339.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "d391c57cc339d77ee25e3cd19bc849099fa5e5cf08cdb572b8cbaeeb1cadc115"
+            }
+          ],
+          "sha256": "d391c57cc339d77ee25e3cd19bc849099fa5e5cf08cdb572b8cbaeeb1cadc115"
+        },
+        "idle16-SE": {
+          "file": "maromba.idle16-se.46d9b5ad7845.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 8,
+          "durationMs": 2000,
+          "fps": 4,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 30,
+            "top": 19,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.idle16-se.46d9b5ad7845.webp",
+              "columns": 4,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 8,
+              "sha256": "46d9b5ad7845a2d2f8cb27b500ccb5c0593ba81b0f8d4f383ff52245e804e318"
+            }
+          ],
+          "sha256": "46d9b5ad7845a2d2f8cb27b500ccb5c0593ba81b0f8d4f383ff52245e804e318"
+        },
+        "idle16-W": {
+          "file": "maromba.idle16-w.ad12bee652ad.webp",
           "cell": [
             96,
             96
@@ -9661,94 +9733,22 @@
           "height": 56,
           "pivotX": 48.2,
           "figure": {
-            "left": 27,
-            "top": 26,
-            "right": 70,
+            "left": 31,
+            "top": 19,
+            "right": 65,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-s.891ba88573ea.webp",
+              "file": "maromba.idle16-w.ad12bee652ad.webp",
               "columns": 4,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 8,
-              "sha256": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98"
+              "sha256": "ad12bee652ad64e07391866a31b868574f0cec2cfd2b691d05043c28045ca36e"
             }
           ],
-          "sha256": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98"
-        },
-        "idle16-SE": {
-          "file": "maromba.idle16-se.c49298a25375.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 48.13,
-          "figure": {
-            "left": 30,
-            "top": 25,
-            "right": 67,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.idle16-se.c49298a25375.webp",
-              "columns": 4,
-              "rows": 2,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866"
-            }
-          ],
-          "sha256": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866"
-        },
-        "idle16-W": {
-          "file": "maromba.idle16-w.8887992091be.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.96,
-          "figure": {
-            "left": 34,
-            "top": 25,
-            "right": 62,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.idle16-w.8887992091be.webp",
-              "columns": 4,
-              "rows": 2,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd"
-            }
-          ],
-          "sha256": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd"
+          "sha256": "ad12bee652ad64e07391866a31b868574f0cec2cfd2b691d05043c28045ca36e"
         },
         "idle8": {
           "file": "maromba.idle8.e728a4403de7.webp",
@@ -9785,7 +9785,7 @@
           "sha256": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5"
         },
         "pull16-N": {
-          "file": "maromba.pull16-n.e614246a7aca.webp",
+          "file": "maromba.pull16-n.3091533b75c2.webp",
           "cell": [
             96,
             96
@@ -9801,24 +9801,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.97,
+          "pivotX": 48.01,
           "figure": {
             "left": 32,
-            "top": 26,
+            "top": 21,
             "right": 65,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-n.e614246a7aca.webp",
+              "file": "maromba.pull16-n.3091533b75c2.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650"
+              "sha256": "3091533b75c25883f716b41acf7734483413633b14b5e627985a65f48b3a2501"
             }
           ],
-          "sha256": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650",
+          "sha256": "3091533b75c25883f716b41acf7734483413633b14b5e627985a65f48b3a2501",
           "phase": {
             "d": [
               0.01619,
@@ -9907,7 +9907,7 @@
           }
         },
         "pull16-NW": {
-          "file": "maromba.pull16-nw.d76399bb4812.webp",
+          "file": "maromba.pull16-nw.09c45336623a.webp",
           "cell": [
             96,
             96
@@ -9923,24 +9923,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.84,
+          "pivotX": 45.33,
           "figure": {
-            "left": 25,
-            "top": 25,
+            "left": 22,
+            "top": 19,
             "right": 71,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-nw.d76399bb4812.webp",
+              "file": "maromba.pull16-nw.09c45336623a.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f"
+              "sha256": "09c45336623aab0977db669ea51de6b56652d466ea0275b6c5c5a55d86371dce"
             }
           ],
-          "sha256": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f",
+          "sha256": "09c45336623aab0977db669ea51de6b56652d466ea0275b6c5c5a55d86371dce",
           "phase": {
             "d": [
               0.03238,
@@ -10029,7 +10029,7 @@
           }
         },
         "pull16-S": {
-          "file": "maromba.pull16-s.4b943fbf0a83.webp",
+          "file": "maromba.pull16-s.961fada90b0d.webp",
           "cell": [
             96,
             96
@@ -10045,24 +10045,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.99,
+          "pivotX": 47.88,
           "figure": {
             "left": 31,
-            "top": 33,
+            "top": 27,
             "right": 66,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-s.4b943fbf0a83.webp",
+              "file": "maromba.pull16-s.961fada90b0d.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e"
+              "sha256": "961fada90b0d1d66a345e96882af4a7a62a6265a0e9736da15cfcad3a061bd55"
             }
           ],
-          "sha256": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e",
+          "sha256": "961fada90b0d1d66a345e96882af4a7a62a6265a0e9736da15cfcad3a061bd55",
           "phase": {
             "d": [
               0.01619,
@@ -10151,7 +10151,7 @@
           }
         },
         "pull16-SE": {
-          "file": "maromba.pull16-se.0de4fbde928d.webp",
+          "file": "maromba.pull16-se.0d2c5fa97f8f.webp",
           "cell": [
             96,
             96
@@ -10167,24 +10167,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.82,
+          "pivotX": 51.1,
           "figure": {
             "left": 27,
-            "top": 34,
-            "right": 72,
+            "top": 28,
+            "right": 73,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.pull16-se.0de4fbde928d.webp",
+              "file": "maromba.pull16-se.0d2c5fa97f8f.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799"
+              "sha256": "0d2c5fa97f8f5800982502a46ae4dde5a530d814b35924842e966b95631f45e7"
             }
           ],
-          "sha256": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799",
+          "sha256": "0d2c5fa97f8f5800982502a46ae4dde5a530d814b35924842e966b95631f45e7",
           "phase": {
             "d": [
               0.03219,
@@ -10273,7 +10273,7 @@
           }
         },
         "pull16-W": {
-          "file": "maromba.pull16-w.5d910382cd71.webp",
+          "file": "maromba.pull16-w.b445f0a7b99b.webp",
           "cell": [
             96,
             96
@@ -10289,24 +10289,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.68,
+          "pivotX": 45.88,
           "figure": {
-            "left": 27,
-            "top": 34,
+            "left": 25,
+            "top": 29,
             "right": 70,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-w.5d910382cd71.webp",
+              "file": "maromba.pull16-w.b445f0a7b99b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d"
+              "sha256": "b445f0a7b99bbcc41ae6648c502d2562689f181c310aa22334cb0364d1869193"
             }
           ],
-          "sha256": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d",
+          "sha256": "b445f0a7b99bbcc41ae6648c502d2562689f181c310aa22334cb0364d1869193",
           "phase": {
             "d": [
               0.03235,
@@ -10395,7 +10395,7 @@
           }
         },
         "push16-N": {
-          "file": "maromba.push16-n.d8725566eb99.webp",
+          "file": "maromba.push16-n.3bfaf3aa823f.webp",
           "cell": [
             96,
             96
@@ -10414,21 +10414,21 @@
           "pivotX": 47.89,
           "figure": {
             "left": 30,
-            "top": 28,
+            "top": 23,
             "right": 66,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-n.d8725566eb99.webp",
+              "file": "maromba.push16-n.3bfaf3aa823f.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13"
+              "sha256": "3bfaf3aa823f1463ebe4d5506da45427b5cdc2c428e317ba4f1a2bae3680af71"
             }
           ],
-          "sha256": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+          "sha256": "3bfaf3aa823f1463ebe4d5506da45427b5cdc2c428e317ba4f1a2bae3680af71",
           "phase": {
             "d": [
               0.01975,
@@ -10517,7 +10517,7 @@
           }
         },
         "push16-NW": {
-          "file": "maromba.push16-nw.0f77e22201ae.webp",
+          "file": "maromba.push16-nw.55fdf622eacf.webp",
           "cell": [
             96,
             96
@@ -10533,24 +10533,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 42.37,
+          "pivotX": 41.32,
           "figure": {
             "left": 16,
-            "top": 22,
+            "top": 17,
             "right": 69,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.push16-nw.0f77e22201ae.webp",
+              "file": "maromba.push16-nw.55fdf622eacf.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca"
+              "sha256": "55fdf622eacf04fe2f51ad05fe0ffc27ee8088ec44b37a0c11fccbfcc1f4408b"
             }
           ],
-          "sha256": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+          "sha256": "55fdf622eacf04fe2f51ad05fe0ffc27ee8088ec44b37a0c11fccbfcc1f4408b",
           "phase": {
             "d": [
               0.03469,
@@ -10639,7 +10639,7 @@
           }
         },
         "push16-S": {
-          "file": "maromba.push16-s.2b213760a6a4.webp",
+          "file": "maromba.push16-s.9efe99678fa2.webp",
           "cell": [
             96,
             96
@@ -10655,24 +10655,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.89,
+          "pivotX": 47.82,
           "figure": {
             "left": 25,
-            "top": 30,
+            "top": 24,
             "right": 71,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.push16-s.2b213760a6a4.webp",
+              "file": "maromba.push16-s.9efe99678fa2.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae"
+              "sha256": "9efe99678fa204a9aea05d03cb08c6daef280dc5fd712cc077a58b6c3d74a990"
             }
           ],
-          "sha256": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+          "sha256": "9efe99678fa204a9aea05d03cb08c6daef280dc5fd712cc077a58b6c3d74a990",
           "phase": {
             "d": [
               0.02344,
@@ -10761,7 +10761,7 @@
           }
         },
         "push16-SE": {
-          "file": "maromba.push16-se.a58b009d8f03.webp",
+          "file": "maromba.push16-se.65de7cfd6be0.webp",
           "cell": [
             96,
             96
@@ -10777,24 +10777,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 50.93,
+          "pivotX": 49.47,
           "figure": {
             "left": 26,
-            "top": 29,
+            "top": 24,
             "right": 75,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-se.a58b009d8f03.webp",
+              "file": "maromba.push16-se.65de7cfd6be0.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec"
+              "sha256": "65de7cfd6be038a583786dea73ebf67f05964c6266309e5e72d6df5b40e652a0"
             }
           ],
-          "sha256": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+          "sha256": "65de7cfd6be038a583786dea73ebf67f05964c6266309e5e72d6df5b40e652a0",
           "phase": {
             "d": [
               0.03169,
@@ -10883,7 +10883,7 @@
           }
         },
         "push16-W": {
-          "file": "maromba.push16-w.197425478ad3.webp",
+          "file": "maromba.push16-w.4913a052e14b.webp",
           "cell": [
             96,
             96
@@ -10899,24 +10899,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 46.58,
+          "pivotX": 47.3,
           "figure": {
             "left": 28,
-            "top": 31,
+            "top": 25,
             "right": 72,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-w.197425478ad3.webp",
+              "file": "maromba.push16-w.4913a052e14b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133"
+              "sha256": "4913a052e14b728e6e9477d77379f8bcb7b8a09778effa7025fb693acc8ee65e"
             }
           ],
-          "sha256": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+          "sha256": "4913a052e14b728e6e9477d77379f8bcb7b8a09778effa7025fb693acc8ee65e",
           "phase": {
             "d": [
               0.03399,
@@ -11005,7 +11005,7 @@
           }
         },
         "run16-N": {
-          "file": "maromba.run16-n.12858ddc378f.webp",
+          "file": "maromba.run16-n.3c414594fdec.webp",
           "cell": [
             96,
             96
@@ -11021,24 +11021,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.83,
+          "pivotX": 47.74,
           "figure": {
             "left": 30,
-            "top": 20,
+            "top": 15,
             "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-n.12858ddc378f.webp",
+              "file": "maromba.run16-n.3c414594fdec.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca"
+              "sha256": "3c414594fdec051d48bcc61381621f93797e440ae67e67bca6176e2cf8980674"
             }
           ],
-          "sha256": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
+          "sha256": "3c414594fdec051d48bcc61381621f93797e440ae67e67bca6176e2cf8980674",
           "phase": {
             "d": [
               0.12494,
@@ -11127,7 +11127,7 @@
           }
         },
         "run16-NW": {
-          "file": "maromba.run16-nw.6d2ea649fe99.webp",
+          "file": "maromba.run16-nw.63889ef3afbb.webp",
           "cell": [
             96,
             96
@@ -11143,24 +11143,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.29,
           "figure": {
-            "left": 30,
-            "top": 29,
+            "left": 29,
+            "top": 23,
             "right": 69,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-nw.6d2ea649fe99.webp",
+              "file": "maromba.run16-nw.63889ef3afbb.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664"
+              "sha256": "63889ef3afbb7dced5a6dd40c97a482376a55ac871022b6dda2d713e7c5c5875"
             }
           ],
-          "sha256": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664",
+          "sha256": "63889ef3afbb7dced5a6dd40c97a482376a55ac871022b6dda2d713e7c5c5875",
           "phase": {
             "d": [
               0.24915,
@@ -11249,7 +11249,7 @@
           }
         },
         "run16-S": {
-          "file": "maromba.run16-s.225e468b2c87.webp",
+          "file": "maromba.run16-s.5086ccb4f0d1.webp",
           "cell": [
             96,
             96
@@ -11265,24 +11265,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.83,
+          "pivotX": 47.8,
           "figure": {
             "left": 29,
-            "top": 24,
+            "top": 18,
             "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-s.225e468b2c87.webp",
+              "file": "maromba.run16-s.5086ccb4f0d1.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392"
+              "sha256": "5086ccb4f0d1f263620f44936c38443ab10fdd9bdb5156fc088c2db40b2caac1"
             }
           ],
-          "sha256": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392",
+          "sha256": "5086ccb4f0d1f263620f44936c38443ab10fdd9bdb5156fc088c2db40b2caac1",
           "phase": {
             "d": [
               0.13141,
@@ -11371,7 +11371,7 @@
           }
         },
         "run16-SE": {
-          "file": "maromba.run16-se.6f225d758e28.webp",
+          "file": "maromba.run16-se.10d3358a5fef.webp",
           "cell": [
             96,
             96
@@ -11387,24 +11387,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.11,
+          "pivotX": 48.28,
           "figure": {
             "left": 26,
-            "top": 27,
+            "top": 21,
             "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-se.6f225d758e28.webp",
+              "file": "maromba.run16-se.10d3358a5fef.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0"
+              "sha256": "10d3358a5fef1e49934bb0caf72f7d5f246f8e1a41c0175266993f711c17ce90"
             }
           ],
-          "sha256": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0",
+          "sha256": "10d3358a5fef1e49934bb0caf72f7d5f246f8e1a41c0175266993f711c17ce90",
           "phase": {
             "d": [
               0.22906,
@@ -11493,7 +11493,7 @@
           }
         },
         "run16-W": {
-          "file": "maromba.run16-w.dc71e9155576.webp",
+          "file": "maromba.run16-w.eb743615b7df.webp",
           "cell": [
             96,
             96
@@ -11509,24 +11509,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.76,
+          "pivotX": 47.89,
           "figure": {
             "left": 28,
-            "top": 28,
+            "top": 23,
             "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-w.dc71e9155576.webp",
+              "file": "maromba.run16-w.eb743615b7df.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce"
+              "sha256": "eb743615b7dfb638d15b3136144358498c5009cf37526999469033e9f4706154"
             }
           ],
-          "sha256": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",
+          "sha256": "eb743615b7dfb638d15b3136144358498c5009cf37526999469033e9f4706154",
           "phase": {
             "d": [
               0.07895,
@@ -11895,7 +11895,151 @@
           "sha256": "01b7d9ebc7949eaf2ecd10c406d38c08fb7495750d777848689fbbdae28b83d2"
         },
         "walk16-N": {
-          "file": "maromba.walk16-n.2064a9e3a3ce.webp",
+          "file": "maromba.walk16-n.1ee91b381b5c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.92,
+          "figure": {
+            "left": 28,
+            "top": 18,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-n.1ee91b381b5c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1ee91b381b5c7064351f205673d38741ebe263ff38e54bf0ccf5eb9c692a7a5b"
+            }
+          ],
+          "sha256": "1ee91b381b5c7064351f205673d38741ebe263ff38e54bf0ccf5eb9c692a7a5b"
+        },
+        "walk16-NW": {
+          "file": "maromba.walk16-nw.4a5ca042213a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.41,
+          "figure": {
+            "left": 27,
+            "top": 20,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-nw.4a5ca042213a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "4a5ca042213ae688db4c6f0cde811c197e5ef40110e851c01068910c1d6d63ef"
+            }
+          ],
+          "sha256": "4a5ca042213ae688db4c6f0cde811c197e5ef40110e851c01068910c1d6d63ef"
+        },
+        "walk16-S": {
+          "file": "maromba.walk16-s.689e99276410.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.74,
+          "figure": {
+            "left": 29,
+            "top": 19,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-s.689e99276410.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "689e99276410779b00bc34a78d0dafd1c7283f5729b90ecf308fd4717576ff0c"
+            }
+          ],
+          "sha256": "689e99276410779b00bc34a78d0dafd1c7283f5729b90ecf308fd4717576ff0c"
+        },
+        "walk16-SE": {
+          "file": "maromba.walk16-se.b09c916abf33.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.89,
+          "figure": {
+            "left": 30,
+            "top": 18,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-se.b09c916abf33.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b09c916abf33c736d1c4ef4561b063898c1c20392c200d9dc4803deb1e62c6b0"
+            }
+          ],
+          "sha256": "b09c916abf33c736d1c4ef4561b063898c1c20392c200d9dc4803deb1e62c6b0"
+        },
+        "walk16-W": {
+          "file": "maromba.walk16-w.53580a84eda6.webp",
           "cell": [
             96,
             96
@@ -11913,169 +12057,25 @@
           "height": 56,
           "pivotX": 47.86,
           "figure": {
-            "left": 28,
-            "top": 24,
-            "right": 69,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-n.2064a9e3a3ce.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b"
-            }
-          ],
-          "sha256": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b"
-        },
-        "walk16-NW": {
-          "file": "maromba.walk16-nw.d19eb025bd84.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 48.02,
-          "figure": {
-            "left": 27,
-            "top": 26,
-            "right": 67,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-nw.d19eb025bd84.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2"
-            }
-          ],
-          "sha256": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2"
-        },
-        "walk16-S": {
-          "file": "maromba.walk16-s.b6994bfb245d.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.85,
-          "figure": {
             "left": 29,
-            "top": 25,
-            "right": 67,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-s.b6994bfb245d.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98"
-            }
-          ],
-          "sha256": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98"
-        },
-        "walk16-SE": {
-          "file": "maromba.walk16-se.a15dd2319ab3.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.96,
-          "figure": {
-            "left": 30,
-            "top": 25,
-            "right": 65,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-se.a15dd2319ab3.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0"
-            }
-          ],
-          "sha256": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0"
-        },
-        "walk16-W": {
-          "file": "maromba.walk16-w.a77ac0004cd3.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.85,
-          "figure": {
-            "left": 30,
-            "top": 23,
+            "top": 18,
             "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.walk16-w.a77ac0004cd3.webp",
+              "file": "maromba.walk16-w.53580a84eda6.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395"
+              "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
             }
           ],
-          "sha256": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395"
+          "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
         }
       },
-      "sha256": "667cb8a568a1481a1f90cb0e674ff5a729fd1a924527cb3a489e32e808f368b7"
+      "sha256": "d1bd19900adb8b07de8f749ad2e93fbf67f79db5f0204b2b18114c9b91f5e88e"
     },
     "mendigo": {
       "kind": "dir8",

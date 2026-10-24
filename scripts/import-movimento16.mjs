@@ -2,7 +2,9 @@
 // ONE side of each pair W×E, NW×NE, SW×SE, chosen per class by the folders delivered (plano B: viciado draws W, NW, SE);
 // the game mirrors it into the other side (src/client/sprites/movement128.ts movement16Source). Never replaces
 // R06, dance or legacy files: a class without the 15 sheets keeps them. Dry-run is the default.
-//   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--motions push] [--write] [--report x.json]
+//   node scripts/import-movimento16.mjs --input <arte-entrada> [--ids viciado-em-bet] [--motions push] [--body-height 112] [--write] [--report x.json]
+// --body-height (card maromba-cabeca-proporcao): the scale reference in native px instead of the idle-S figure height, for
+// a head enlarged on purpose (the game draws 96/height: a taller head counted in it would shrink the whole hero).
 // --motions (card empurrar-uno): only these optional motions (run, push, pull, hurt) of each class, the rest of its sheets untouched.
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile,rename,rm,access} from 'node:fs/promises';
@@ -173,9 +175,10 @@ async function checkGamePoses(encoded,motion,label){
 }
 
 /** Validates every selected class before writing; merges its 15 M16 keys into the personagens piece (R06 stays). */
-export async function importMovement16({input,outRoot=ROOT,ids,write=false,motions}={}){
+export async function importMovement16({input,outRoot=ROOT,ids,write=false,motions,bodyHeight}={}){
   assert.ok(input,'explicit input directory required');input=path.resolve(input);outRoot=path.resolve(outRoot);
   assert.ok(Array.isArray(ids)&&ids.length>0&&ids.every(safeId)&&new Set(ids).size===ids.length,'--ids: unique safe character IDs required');
+  assert.ok(bodyHeight===undefined||Number.isInteger(bodyHeight),'--body-height: native px (integer)');
   assert.ok(motions===undefined||Array.isArray(motions)&&motions.length>0&&motions.every(m=>OPTIONAL_MOTIONS.includes(m)),`--motions: some of ${OPTIONAL_MOTIONS.join(', ')}`);
   const manifestFile=path.join(outRoot,SPEC.output,'manifest.json'),indexFile=path.join(outRoot,'public/art/manifest.json');
   const previous=await readManifest(manifestFile),index=await readIndex(indexFile);
@@ -202,7 +205,7 @@ export async function importMovement16({input,outRoot=ROOT,ids,write=false,motio
     }
     // The scale reference is the first rest pose facing S (alpha > 20, native px), shared by the 15 sheets; a run alone
     // keeps the R06 rest's (idle8 height, 96 px cells), the run drawn at that scale; a walk alone the M16 rest's.
-    const height=only?(old?.files?.['idle16-S']?.height??old?.files?.idle8?.height)*2:walk?old.files['idle16-S'].height*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
+    const height=bodyHeight!==undefined?bodyHeight:only?(old?.files?.['idle16-S']?.height??old?.files?.idle8?.height)*2:walk?old.files['idle16-S'].height*2:clips.find(c=>c.motion==='idle'&&c.direction==='S').firstFrameHeight;
     assert.ok(Number.isFinite(height)&&height>=8&&height<=192,`${id}: M16 idle-S standing height required`);
     records.push({id,height,runOnly:only,walkOnly:walk,alone,motions:imported,bootstrap:!old,drawn,mirrored:Object.fromEntries(MOVEMENT16_META.pairs.map(([a,b])=>drawn.includes(a)?[b,a]:[a,b])),clips,outputs:[]});
   }
@@ -254,9 +257,9 @@ export function parseMovement16Args(args){
   for(let i=0;i<args.length;i++){
     const arg=args[i];if(arg==='--write')result.write=true;
     else if(arg==='--dry-run')result.write=false;
-    else if(['--input','--report','--ids','--out','--motions'].includes(arg)){
+    else if(['--input','--report','--ids','--out','--motions','--body-height'].includes(arg)){
       const value=args[++i];assert.ok(value&&!value.startsWith('--'),`${arg} needs a value`);
-      if(arg==='--ids')result.ids=value.split(',');else if(arg==='--motions')result.motions=value.split(',');else if(arg==='--out')result.outRoot=value;else result[arg.slice(2)]=value;
+      if(arg==='--ids')result.ids=value.split(',');else if(arg==='--motions')result.motions=value.split(',');else if(arg==='--out')result.outRoot=value;else if(arg==='--body-height')result.bodyHeight=Number(value);else result[arg.slice(2)]=value;
     }else throw new Error(`unknown option: ${arg}`);
   }
   assert.ok(result.input,'--input required');assert.ok(result.ids,'--ids required (e.g. --ids viciado-em-bet)');return result;

@@ -114,9 +114,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
  * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
  * the players (the client's vignette); an older decoder would refuse the player mask.
+ * 37 given by the integration queue (tools/fila.mjs, lote 20261024-225935) to: NEW-20261023-ORQ-fear-escuridao-sozinho.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=36;
+export const PROTOCOL_VERSION=37;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

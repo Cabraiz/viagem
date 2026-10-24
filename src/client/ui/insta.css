@@ -219,12 +219,12 @@
 .insta-sv:not(.letras) .insta-sv-camadas { visibility: hidden; }
 .insta-st {
   position: absolute; margin: 0; translate: -50% -50%; rotate: var(--giro, 0deg); white-space: nowrap; text-align: center;
-  font-size: clamp(10px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
+  font-size: clamp(10px, calc(var(--sv-h) * .034 * var(--tam, 1)), 96px); line-height: 1.25; color: var(--st-cor, var(--insta-st-branco));
 }
 /* Texts: the 4 letters, and the 3 ways of the "A" button (a band per line, bare with a shadow, one box). */
 .insta-st-texto[data-alinhar="esquerda"] { text-align: left; }
 .insta-st-texto[data-fonte="classica"] { font-family: var(--f-insta-classica); font-weight: 800; }
-.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(10px, calc(var(--sv-h) * .026 * var(--tam, 1)), 96px); }
+.insta-st-texto[data-fonte="moderna"] { font-family: var(--f-insta-moderna); font-weight: 800; font-size: clamp(10px, calc(var(--sv-h) * .03 * var(--tam, 1)), 96px); }
 .insta-st-texto[data-fonte="forte"] { font-family: var(--f-insta-forte); font-weight: 400; line-height: 1.02; }
 .insta-st-texto[data-fonte="maquina"] { font-family: var(--f-insta-maquina); font-weight: 700; }
 .insta-st-texto[data-jeito="faixa"] { line-height: 1.45; }

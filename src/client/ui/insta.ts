@@ -198,11 +198,11 @@ export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object
   ],
   'clt-cansado':[
     {quando:'12 h',camadas:[
-      {tipo:'texto',fonte:'moderna',jeito:'sombra',cor:'branco',linhas:['Cardio diário:','ônibus das 6h.'],x:50,y:18,tam:.9},
+      {tipo:'texto',fonte:'moderna',jeito:'sombra',cor:'branco',linhas:['Cardio diário:','ônibus das 6h.'],x:50,y:16},
       {tipo:'hashtag',tag:'#VIDADECLT',cor:'azul',x:32,y:82,giro:-5}]},
     {quando:'7 h',camadas:[
       {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'preto',fundo:'amarelo',linhas:['Fila do micro-ondas:','40 min.'],x:50,y:16},
-      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'rosa',linhas:['Almoço: 5.'],x:50,y:26,tam:1.15}]},
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'rosa',linhas:['Almoço: 5.'],x:60,y:25,giro:3,tam:1.15}]},
     {quando:'3 h',camadas:[
       {tipo:'texto',fonte:'classica',jeito:'sombra',cor:'branco',linhas:['17h59.','Ele chegou','com mais papel.'],x:50,y:62,tam:1.1},
       {tipo:'pergunta',pergunta:'Me dá uma desculpa pra ir embora',x:50,y:82}]},
@@ -212,7 +212,7 @@ export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object
   ],
   'gato-nada-pra-comer':[
     {quando:'9 h',camadas:[
-      {tipo:'texto',fonte:'forte',jeito:'sombra',cor:'branco',linhas:['NÃO TEM','NADA','PRA COMER.'],x:50,y:42,giro:-4,tam:2.2},
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'preto',fundo:'branco',linhas:['NÃO TEM','NADA','PRA COMER.'],x:50,y:42,giro:-4,tam:2},
       {tipo:'hashtag',tag:'#PASSANDOFOME',cor:'laranja',x:62,y:82,giro:3}]},
     {quando:'6 h',camadas:[
       {tipo:'enquete',pergunta:'POTE VAZIO. DENUNCIO?',a:'Denuncia!',b:'Enche o pote',x:50,y:73}]},

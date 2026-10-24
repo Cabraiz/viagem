@@ -27,7 +27,7 @@ import {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeD
 export {DEFAULT_CONE_ANGLE,DEFAULT_LINE_WIDTH,telegraphHits,type TelegraphShapeData};
 import type {SimPlayer,Telegraph} from '../contract/index.ts';
 import type {SimContext,SimSystem} from './context.ts';
-import {applyTelegraphEffect} from './player-effects.ts';
+import {applyTelegraphEffect,applyTelegraphPush} from './player-effects.ts';
 
 /** Minimum warning before any telegraph deals damage: 0.8 s. */
 export const MIN_TELEGRAPH_TICKS=ticks(.8);
@@ -84,7 +84,12 @@ export function createTelegraphSystem():SimSystem{
       ctx.telegraphs.delete(t.id);
       if(ownerGone(ctx,t.owner))continue;
       const hit=[...ctx.players.values()].filter(p=>canBeHit(p)&&telegraphHits(t,p,RADIUS));
-      for(const p of hit){applyTelegraphEffect(p,t,ctx.tick);ctx.damagePlayer(p.id,t.damage,t.owner);}
+      for(const p of hit){
+        applyTelegraphEffect(p,t,ctx.tick);
+        // boss-fim-onda-1: the Tank's punch; the phones hear it (the shake, and no predicted steps while down).
+        if(applyTelegraphPush(p,t,ctx.tick))ctx.emit({type:'knock',player:p.id,untilTick:p.downUntil!});
+        ctx.damagePlayer(p.id,t.damage,t.owner);
+      }
     }
   }};
 }

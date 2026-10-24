@@ -60,6 +60,11 @@ export const WAVE_BOSS=Object.freeze({
   drawScale:3,
   /** The user, 24/10: with one player (alone, a fall is the defeat) his hits × this. */
   soloDamage:.5,
+  /**
+   * The user, 24/10: "ele bate na gente e a gente é empurrado igual ao gigante do L4D2": his slam throws whoever it hits
+   * this far (u, away from where it landed), his charge farther (along it); then a short fall (contract KNOCK_*).
+   */
+  slamPush:5,chargePush:6,
 });
 /** The arrival scene (ms of the room's wall clock): go to him, hold on him, come back. */
 export const CENA=Object.freeze({goMs:600,holdMs:2000,backMs:600,totalMs:3200});

@@ -3,7 +3,7 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,moveStep,slipping,type Point} from '../../maps/index.ts';
+import {capStep,isDown,moveStep,slipping,walkable,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
@@ -33,6 +33,7 @@ const STEP=1/SIM_HZ;
  */
 export function movePlayer(p:SimPlayer,input:PlayerInput,terrain:TerrainField,tick?:number){
   const effects=tick===undefined?undefined:p,slide=slipping(effects,tick??0);
+  if(isDown(effects,tick??0))return;
   Object.assign(p,moveStep(p,{x:input.x,y:input.y},tick??0,effects,terrain));
   if(slide)return;
   const length=Math.hypot(input.x,input.y);
@@ -65,6 +66,13 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(p.fastUntil!==undefined&&ctx.tick>=p.fastUntil)delete p.fastUntil;
       if(p.mightUntil!==undefined&&ctx.tick>=p.mightUntil)delete p.mightUntil;
       if(p.guardUntil!==undefined&&ctx.tick>=p.guardUntil)delete p.guardUntil;
+      // boss-fim-onda-1, the Tank's punch: the throw carries the body (walls and water stop it), then the fall ends.
+      if(p.knock&&ctx.tick<(p.knockUntil??-Infinity)&&!p.downed){
+        const q={x:p.x+p.knock.x,y:p.y+p.knock.y};
+        if(walkable(q,ctx.terrain)){p.x=q.x;p.y=q.y;}else{delete p.knock;delete p.knockUntil;}
+      }else if(p.knock||p.knockUntil!==undefined){delete p.knock;delete p.knockUntil;}
+      if(p.downUntil!==undefined&&ctx.tick>=p.downUntil)delete p.downUntil;
+      const down=isDown(p,ctx.tick);
       const auto=!p.online&&!!autopilot?.(p.id);
       if((!p.online&&!auto)||p.spectator)continue;
       const input=takeInput(p.id);
@@ -79,7 +87,7 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;
         // D-051: the attack held (or the press the input track kept) fires the equipped weapon this tick.
-        if(manual&&input.attack)manual.attacking.add(p.id);
+        if(manual&&input.attack&&!down)manual.attacking.add(p.id);
         // BUG-20261023-ORQ-tiro-na-direcao-mobile: attacking with an aim (the phone's aim stick, the mouse) turns the hero
         // to it, so a later tap without one fires where the body last looked.
         const al=input.aim?Math.hypot(input.aim.x,input.aim.y):0;

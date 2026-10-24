@@ -172,3 +172,27 @@ test('alone (the user, 24/10: "pancadas ×0,5 solo"), his telegraphed hits are W
   assert.ok(Number.isFinite(one.max)&&Number.isFinite(three.max),'he swung in both');
   assert.ok(one.max<=Math.ceil(three.max*WAVE_BOSS.soloDamage)+1,`solo ${one.max} vs team ${three.max}`);
 });
+
+test('the Tank\'s punch: a push telegraph throws the hero away from it, then down a moment (no walk, no attack); the slam pushes, the Síndico\'s does not',async()=>{
+  const {addTelegraph}=await import('../../src/sim/telegraphs.ts');
+  const {KNOCK_TICKS,KNOCK_DOWN_TICKS}=await import('../../src/sim/player-effects.ts');
+  const {world}=run({seed:7});
+  const p=[...world.players.values()][0];
+  const at={x:p.x,y:p.y},from={x:p.x-1,y:p.y};
+  addTelegraph(world,{shape:'circle',x:from.x,y:from.y,radius:3,damage:1,owner:'env:test',push:5},1);
+  for(let i=0;i<60&&p.downUntil===undefined;i++){at.x=p.x;at.y=p.y;world.step();}
+  assert.ok(p.downUntil!==undefined&&p.knockUntil!==undefined,'thrown');
+  for(let i=0;i<KNOCK_TICKS+1;i++)world.step();
+  const flew=Math.hypot(p.x-at.x,p.y-at.y);
+  assert.ok(flew>3.5&&flew<=5.2,`flew ${flew.toFixed(2)} u`);
+  assert.ok(p.x>at.x,'away from where it landed');
+  // Down: a held stick does not move him (the shared step; the phone predicts the same).
+  const {moveStep}=await import('../../src/maps/index.ts');
+  assert.deepEqual(moveStep({x:p.x,y:p.y},{x:1,y:0},world.tick,p,world.terrain),{x:p.x,y:p.y});
+  for(let i=0;i<KNOCK_DOWN_TICKS+1;i++)world.step();
+  assert.equal(p.downUntil,undefined,'up again');
+  assert.notDeepEqual(moveStep({x:p.x,y:p.y},{x:1,y:0},world.tick,p,world.terrain),{x:p.x,y:p.y});
+  // His tuning: the slam and the charge push; the final boss's (BOSS_TUNING) does not.
+  const t=waveBossTuning();assert.equal(t.slamPush,WAVE_BOSS.slamPush);assert.equal(t.chargePush,WAVE_BOSS.chargePush);
+  const {BOSS_TUNING}=await import('../../src/sim/boss.ts');assert.equal(BOSS_TUNING.slamPush,undefined);
+});

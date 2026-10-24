@@ -197,6 +197,8 @@ export class CoopClient {
    * k-th pending input on tick this.tick+1+k with them (maps/prediction.ts), exactly like the room, so no snap-back.
    */
   effects:MoveEffects={};
+  /** boss-fim-onda-1: down after a chefão's throw until this tick ({type:'knock'}); -Infinity when not. */
+  private downUntil=-Infinity;
   /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
   stepCap:number|undefined;
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
@@ -573,7 +575,7 @@ export class CoopClient {
       const terrain=terrainFor(m.world);
       if(typeof terrain==='string'){this.fail(ws,terrain);return;}
       this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.remoteClock.reset();this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.remoteClock.reset();this.effects={};this.downUntil=-Infinity;this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -722,7 +724,7 @@ export class CoopClient {
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.downUntil=-Infinity;this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};
@@ -765,7 +767,10 @@ export class CoopClient {
     }
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
-    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil,
+    // boss-fim-onda-1: a chefão threw this hero ({type:'knock'}): down until then, no predicted steps.
+    for(const e of view.events)if(e.type==='knock'&&e.player===this.id)this.downUntil=Math.max(this.downUntil,e.untilTick);
+    if(this.downUntil<=view.tick)this.downUntil=-Infinity;
+    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil,...(this.downUntil>view.tick?{downUntil:this.downUntil}:{}),
       ...(wire.moveSpeed!==undefined?{stats:{moveSpeed:wire.moveSpeed}}:{})}:{};
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).

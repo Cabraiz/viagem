@@ -721,6 +721,20 @@ export class IslandScene extends Phaser.Scene {
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
     this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);
   }
+  /** The chefão's throw (boss-fim-onda-1, the Tank's punch) the last frame: until when this hero was down. */
+  private downSeen=-Infinity;private tilted=false;
+  /**
+   * Thrown by a chefão's pancada (net effects.downUntil): the screen shakes once as the punch lands, and the hero lies
+   * tilted on the ground while down (both without the shake under reduced motion).
+   */
+  private thrown(){
+    const net=this.hooks.net,until=net?.effects.downUntil;
+    if(!net||!this.actor)return;
+    if(until!==undefined&&until>this.downSeen){this.downSeen=until;if(!this.reduced)this.cameras.main.shake(280,.014);}
+    const down=until!==undefined&&net.tick<until;
+    if(down){this.actor.setRotation(this.actor.flipX?1.1:-1.1);this.tilted=true;}
+    else if(this.tilted){this.actor.setRotation(0);this.tilted=false;}
+  }
   /** Re-places everything drawn once in world px (props, signs, shadows) after a view turn or a depth re-base. */
   private reproject(){
     for(const prop of this.props){const p=this.project(prop.point);prop.object.setPosition(p.x,p.y).setDepth(this.depth(prop.point));if(prop.tree)(prop.object as Phaser.GameObjects.Image).setFrame(this.view);}
@@ -983,6 +997,7 @@ export class IslandScene extends Phaser.Scene {
     this.selfShift=this.pushShifts.step(meId??'',push?.shift,delta);
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir,self?.hp,this.hooks.aimStick?.());
+    this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);

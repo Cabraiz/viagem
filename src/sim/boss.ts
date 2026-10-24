@@ -35,6 +35,8 @@ export interface BossTuning {
   phase2Speed:number; enragedSpeed:number; enragedDamage:number; enragedCooldown:number; barkEvery:number;
   /** × every hit when the boss came to a single player (absent: 1). The 1st wave's chefão only (boss-fim-onda-1). */
   soloDamage?:number;
+  /** The Tank's punch (boss-fim-onda-1): his slam and his charge throw whoever they hit this far (u). Absent: no throw. */
+  slamPush?:number; chargePush?:number;
 }
 /** Durations in ticks. Numbers are first-pass values; VGM-051 tunes them with bot runs. */
 export const BOSS_TUNING:Readonly<BossTuning>=Object.freeze({
@@ -426,7 +428,7 @@ export function createBoss(options:BossOptions={}):BossController {
     const r=stream(ctx);
     if((boss.phase??1)<PHASE_ASSEMBLY){
       const t=r.pick(targets);
-      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada'},tuning.slamDelay);
+      const tg=addTelegraph(ctx,{shape:'circle',x:t.x,y:t.y,radius:tuning.slamRadius,damage:scale(boss,tuning.slamDamage),owner:boss.id,kind:'pancada',...(tuning.slamPush?{push:tuning.slamPush}:{})},tuning.slamDelay);
       say(ctx,boss,'slam');windup(ctx,boss,tg.fireTick);return;
     }
     const pool=[...targets];let fireTick=ctx.tick;
@@ -456,7 +458,7 @@ export function createBoss(options:BossOptions={}):BossController {
     while(reach+.25<=tuning.chargeLength&&clearSegment(boss,{x:boss.x+ux*(reach+.25),y:boss.y+uy*(reach+.25)},ctx.terrain))reach+=.25;
     if(reach<2)return false;
     const delay=(boss.phase??1)>=PHASE_ASSEMBLY?tuning.chargeDelay2:tuning.chargeDelay;
-    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida'},delay);
+    const tg=addTelegraph(ctx,{shape:'line',x:boss.x,y:boss.y,dx:ux,dy:uy,radius:reach,width:tuning.chargeWidth,damage:scale(boss,tuning.chargeDamage),owner:boss.id,kind:'investida',...(tuning.chargePush?{push:tuning.chargePush}:{})},delay);
     const m=boss.memory!;
     Object.assign(m,{act:ACT_DASH,dashAt:tg.fireTick,fromX:boss.x,fromY:boss.y,toX:boss.x+ux*reach,toY:boss.y+uy*reach,next:tg.fireTick+dashTicks+recovery(boss)});
     say(ctx,boss,'charge');

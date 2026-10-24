@@ -104,6 +104,8 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
  * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
+ * Next (the queue numbers it) since the cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the 'grana' pickup
+ * kind (a kill's Grana on the ground) and its string at the end of the DICT; an older client would draw a parcel.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=33;
@@ -193,6 +195,8 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
+  // Cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the kill's Grana as a pickup kind.
+  'grana',
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;

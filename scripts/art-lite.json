@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3082,
-  "bytes": 2212997262,
-  "liteBytes": 767881198,
+  "bytes": 2213046818,
+  "liteBytes": 767929004,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28278,12 +28278,12 @@
    "shownPsnr": 48.2
   },
   "menu/insta/story-maromba-1.webp": {
-   "source": "7e7c478729eb4862588e359915f29dfe45066a884b9c44d4b5024c0ea8bbd3ac",
-   "lite": "08ba9fcfb0b2b29dae4eed76f5c6c55c554621cd4c16e749e98d7809cb280f1d",
-   "bytes": 91140,
-   "liteBytes": 82524,
-   "psnr": 45.1,
-   "shownPsnr": 47.6
+   "source": "d8a240df2d2302cc2db9a464bc740cb5779dfdf79553b691df5ae6613e8f9d33",
+   "lite": "6cf1afd8af469e0b396bf0ff318ae478f205808ce370939a6f5c1df1ed5bb022",
+   "bytes": 122018,
+   "liteBytes": 113762,
+   "psnr": 44.9,
+   "shownPsnr": 47.8
   },
   "menu/insta/story-maromba-2.webp": {
    "source": "20788abf9394a2594030f28eccbac64bfe110ec4b1762adcd91b018dbc80838a",
@@ -28294,12 +28294,12 @@
    "shownPsnr": 47.2
   },
   "menu/insta/story-maromba-3.webp": {
-   "source": "776dd9dd96e46aad6d1ccab3bf11ab6b3c90a5f49032404cba4536940926eb88",
-   "lite": "1cc864c2ab5016cf46574aa4560debb85ada6f29971d3f7b090b84f170f5b7e8",
-   "bytes": 71824,
-   "liteBytes": 65298,
-   "psnr": 46.2,
-   "shownPsnr": 48.4
+   "source": "658d2f55040a7f8c93933402b55801cb9169b75e30451d9d8a1ceb3c785184e1",
+   "lite": "c878699960d6d7ea5d5ee37987adbe2f3c4c37d9837bb766b3f8d7aadb0b0be9",
+   "bytes": 90502,
+   "liteBytes": 81866,
+   "psnr": 45.1,
+   "shownPsnr": 47.5
   },
   "menu/insta/story-maromba-4.webp": {
    "source": "1511a42d932af89a04a206f398c44b53072e5b10a69222d4d9b29c4ac25a8953",

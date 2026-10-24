@@ -16,6 +16,7 @@ import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {TerrainField} from '../../src/maps/terrain/field.ts';
 import type {Point} from '../../src/maps/world.ts';
 import {BASE_STATS,CAR_ID,Rng,CIDA_ITEMS,SIM_HZ,ticks,type EnemyState,type SimPlayer,type StampedEvent} from '../../src/contract/index.ts';
+import {CEDULA_DELAY_SECONDS} from '../../src/sim/progression.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -303,7 +304,8 @@ test('Dona Cida: the team buys near the moto (refusals: away, stock, grana, phas
 
 test('the bill: kills pay the wallets (1/5/50), abrindo 15 s at the car, victory with budget, paid and debt (the vaquinha)',()=>{
   // D-048 + carteira-e-pix: the kill pays a wallet (assemble's onKill), with or without the objective; the chaveiro
-  // reads the wallets for his bill.
+  // reads the wallets for his bill. NEW-20261024-ORQ-tirar-drops-cedula-girando: the boss's at once, the others as a
+  // cédula a second later, taken by the hero standing there.
   assert.deepEqual({...GRANA_PER_KILL},{normal:1,elite:5,boss:50});
   for(const objective of [true,false]){
     const world=new SimWorld({terrain:city.fork(),seed:3,players:new Map(),order:RUN_ORDER,enemyIndex:new SpatialHash<EnemyState>()});
@@ -312,7 +314,9 @@ test('the bill: kills pay the wallets (1/5/50), abrindo 15 s at the car, victory
     const solo=addPlayer(world,'solo',{x:1,y:1}),g0=solo.grana??0;
     addEnemy(world,'k1',{x:1,y:1});addEnemy(world,'k2',{x:1,y:1},{elite:true});addEnemy(world,'k3',{x:1,y:1},{boss:true});
     for(const id of ['k1','k2','k3'])assert.equal(world.damageEnemy(id,1e9),true,id);
-    assert.equal((solo.grana??0)-g0,56,`objective ${objective}`);
+    assert.equal((solo.grana??0)-g0,50,`objective ${objective}: the boss at once`);
+    for(let i=0;i<ticks(CEDULA_DELAY_SECONDS)+2;i++)world.step();
+    assert.equal((solo.grana??0)-g0,56,`objective ${objective}: the cédulas taken`);
     if(objective)assert.equal(run.objectiveView()!.grana,solo.grana,'the chaveiro reads the wallets');
     run.dispose();
   }

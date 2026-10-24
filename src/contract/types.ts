@@ -122,12 +122,18 @@ export interface EnemyState extends Point {
 }
 
 /**
- * D-054: 'xp' is only the zueira's boleto rain (resource 'boleto'): a kill's XP goes straight to the team, no gems.
+ * D-054: a kill's XP goes straight to the team, no gems; 'xp' was only the zueira's boleto rain (resource 'boleto'),
+ * retired by NEW-20261024-ORQ-tirar-drops-cedula-girando: no 'xp' pickup is made any more (the kind stays on the wire).
  * D-051: 'item' is an inventory item on the ground (resource = item id, value = its level: rarity or stack); in the
  * manual combat a 'chest' is a crate whose value is its rarity (1 verde .. 5 lendária), opened by standing next to it.
  */
 /** 'vehicle' (Veículos): a parked vehicle, its VehicleKind in `resource`; the vehicles system takes it, never the pickups one. */
-export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle';
+/**
+ * 'grana' (NEW-20261024-ORQ-tirar-drops-cedula-girando): a kill's Grana as a spinning cédula, value = R$; it appears
+ * CEDULA_DELAY_SECONDS after the kill where the enemy fell, whoever walks by takes it into their wallet, and after
+ * CEDULA_WAIT_SECONDS it flies to its `owner` (sim/progression.ts).
+ */
+export type PickupKind='xp'|'heal'|'chest'|'resource'|'item'|'vehicle'|'grana';
 export interface PickupState extends Point {
   id:string; kind:PickupKind; value:number; resource?:string;
   spawnTick:number; expiresTick?:number;
@@ -143,6 +149,8 @@ export interface PickupState extends Point {
    * they took a weapon of its colour); the encoder leaves it out of their frames and their bots skip it.
    */
   hiddenFor?:string[];
+  /** 'grana' only (server-side): who the kill paid (the killer, a tower's owner); the cédula flies to them when nobody took it. */
+  owner?:string;
 }
 
 export interface ProjectileState extends Point {

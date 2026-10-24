@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CityTerrain,CITY_NEST_POOL,citySafePlaces,decodeCityAsset,type Point} from '../../src/maps/index.ts';
-import {PLAZA_DROP,SOURCE_COMMIT,compactedAsset,sourceAsset} from '../../scripts/compactar-cidade.ts';
+import {PLAZA_DROP,SOURCE_COMMIT,compactedAsset,sourceAsset,sourceAvailable} from '../../scripts/compactar-cidade.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const TEXT=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
@@ -26,13 +26,15 @@ const reached=(()=>{
   return {seen,count:queue.length,all};
 })();
 const onCity=(p:Point)=>reached.seen[Math.floor(p.x/u)+Math.floor(p.y/u)*m]===1;
+/** The two tests that read the source city need SOURCE_COMMIT, which the shallow CI checkout lacks: they skip there. */
+const NO_SOURCE=sourceAvailable()?false:`SOURCE_COMMIT ${SOURCE_COMMIT} not in this checkout (shallow clone)`;
 
-test('scripts/compactar-cidade.ts writes exactly the committed asset (from the 1.7× city of SOURCE_COMMIT)',async()=>{
+test('scripts/compactar-cidade.ts writes exactly the committed asset (from the 1.7× city of SOURCE_COMMIT)',{skip:NO_SOURCE},async()=>{
   const {text}=await compactedAsset();
   assert.equal(text,TEXT,`run: node --experimental-strip-types scripts/compactar-cidade.ts (source ${SOURCE_COMMIT})`);
 });
 
-test('every base is still there: every block of the 1.7× city (but the plaza fountains and a few slivers), on the same cell',async()=>{
+test('every base is still there: every block of the 1.7× city (but the plaza fountains and a few slivers), on the same cell',{skip:NO_SOURCE},async()=>{
   const src=await sourceAsset(),U=src.unitsPerCell;
   assert.equal(asset.unitsPerCell,U,'the cell keeps its size');
   assert.equal(m,Math.round(src.cells.w/1.75));

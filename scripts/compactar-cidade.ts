@@ -477,6 +477,12 @@ export async function compactText():Promise<{text:string;log:Record<string,numbe
   return {text:encodeCityAsset(out.data),log:out.log};
 }
 
+/** Whether this checkout has SOURCE_COMMIT (the CI checkout is shallow: it has not). */
+export function sourceAvailable():boolean{
+  try{execFileSync('git',['cat-file','-e',`${SOURCE_COMMIT}^{commit}`],{cwd:root('.'),stdio:'ignore'});return true;}
+  catch{return false;}
+}
+
 /** The source asset: SOURCE_COMMIT's, without its decor. */
 export async function sourceAsset():Promise<CityAsset>{
   const {undecorate}=await import('./cenario-cidade.ts');

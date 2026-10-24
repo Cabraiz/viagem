@@ -874,10 +874,10 @@
    abaixo do minimapa (o botão de ataque fica embaixo). Celular (data-hud=fone): em cima à direita, abaixo da engrenagem
    e da faixa do time. Toque: a câmera olha o Uno por um instante. */
 .rh-pip{--pip-w:240px;--pip-h:150px;position:absolute;right:var(--rh-r);top:calc(var(--rh-t) + 64px + clamp(124px,30vmin,210px) + 16px);
-  display:flex;flex-direction:column;gap:4px;padding:3px;margin:0;width:calc(var(--pip-w) + 6px);background:var(--c-breu);
+  display:flex;flex-direction:column;gap:4px;padding:3px;margin:0;width:calc(var(--pip-w) + 6px);background:transparent;
   border:2px solid var(--c-papel);border-radius:var(--r-etiqueta);box-shadow:0 0 0 2px var(--c-breu),var(--s-2);pointer-events:auto;cursor:pointer;touch-action:none}
 .rh-pip[hidden]{display:none}
-.rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:inset 0 0 0 2px var(--c-cone)}
+.rh-pip-view{display:block;width:var(--pip-w);height:var(--pip-h);border-radius:0;box-shadow:0 0 0 3px var(--c-breu),inset 0 0 0 2px var(--c-cone)}
 .rh-pip-bar{display:block;height:8px;border-radius:var(--r-etiqueta);background:var(--c-breu);box-shadow:inset 0 0 0 1px var(--c-papel);overflow:hidden}
 .rh-pip-bar>i{display:block;height:100%;width:100%;background:var(--c-cartolina)}
 .rh-pip-low .rh-pip-bar>i{background:var(--c-cone)}

@@ -10,7 +10,9 @@ export const PIP_HIDE_MS=3000;
 /** On screen but this far from the hero (world units) still counts as far: the player cannot see who is hitting it. */
 export const PIP_FAR_U=16;
 /** The window's camera zoom against the main camera's: a little wider, so the car and the critters around it fit. */
-export const PIP_ZOOM_K=.7;
+export const PIP_ZOOM_K=.5;
+/** The window looks this far (world px) above the car's ground point: the body, its bar and the numbers are centred. */
+export const PIP_LIFT_PX=46;
 /** A tap on the window: the main camera looks at the car this long, then comes back to the hero. */
 export const PEEK_MS=1600;
 /** Half side (world px) of the square around the car whose city chunks stay built while the objective runs. */

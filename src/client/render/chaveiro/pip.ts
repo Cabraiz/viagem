@@ -6,7 +6,7 @@
  * A tap on the frame calls `onTap` (the scene swings the main camera to the car for a moment).
  */
 import Phaser from 'phaser';
-import {PIP_RECT_MS,pipViewport,pipZoom} from './pip-rules.ts';
+import {PIP_LIFT_PX,PIP_RECT_MS,pipViewport,pipZoom} from './pip-rules.ts';
 
 export interface UnoPipOptions {
   onTap:()=>void;
@@ -70,7 +70,7 @@ export class UnoPip {
       }
     }
     cam.setBackgroundColor(this.scene.cameras.main.backgroundColor.color32);
-    cam.setZoom(pipZoom(frame.mainZoom)).centerOn(frame.car.x,frame.car.y).setVisible(true);
+    cam.setZoom(pipZoom(frame.mainZoom)).centerOn(frame.car.x,frame.car.y-PIP_LIFT_PX).setVisible(true);
   }
 
   /** The window camera's world view while it shows (the horde draws what stands in it too), else undefined. */

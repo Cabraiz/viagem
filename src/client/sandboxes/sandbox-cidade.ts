@@ -339,7 +339,7 @@ class CitySandbox extends Phaser.Scene {
     }
     if(pipOn&&this.chaveiro){
       const root=document.createElement('div');root.className='rh';root.dataset.hud=params.get('hud')??(innerWidth<768?'fone':'mesa');
-      Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'5'});document.body.append(root);
+      Object.assign(root.style,{position:'fixed',inset:'0',pointerEvents:'none',zIndex:'6'});host.append(root);
       void import('../hud/hud.css');
       this.pip=new UnoPip(this,{onTap:()=>{}});
     }
@@ -837,6 +837,8 @@ class CitySandbox extends Phaser.Scene {
       heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
       move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
+      uno:()=>this.chaveiro?.renderer.hitState(),
       /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */
       fixar:(on=true)=>{cameraFixed=on;},
       /** With the loop asleep (freeze), one game frame of `dt` ms: frame-exact takes (the screenshot never runs a frame). */

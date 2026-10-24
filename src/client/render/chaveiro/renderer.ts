@@ -49,7 +49,9 @@ export interface ChaveiroRendererOptions {projector:Projector;reduced:boolean;
   hero?:()=>Pt|undefined}
 
 /** A smoke puff, drawn with its figure (so a building in front hides it too). */
-interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number;moto:boolean}
+interface Puff {x:number;y:number;z:number;born:number;dark:boolean;drift:number;moto:boolean;
+  /** The hood's smoke under CAR_LOW (card inimigos-querem-o-uno): bigger and thicker than the exhaust's. */
+  big?:boolean}
 /** Car faces cached by look (parts, hazard, trunk step, wrecked, view): the car is redrawn every frame, its boxes rarely change. */
 const CAR_CACHE_MAX=48;
 /** The ground's frozen pieces, in the order the one Graphics drew them: the delivery ring under the shadows, the fallen parts over. */
@@ -246,6 +248,8 @@ export class ChaveiroRenderer {
       const glow=this.glow??=new UsableGlow(this.scene,reduced);glow.begin(time);
       if(!view.ended)glow.mark('uno',uno,k);
       glow.end();
+      // Its smoke puffs (the exhaust, the hood under CAR_LOW) and falling parts draw just over it: at depth 0 the city hid them.
+      this.car.setDepth(carDepth+.01).setAlpha(1);
       if(fallingBits){
         const boxes:Box[]=[];
         for(const [bit,at] of this.state.falling)if(fallingBits&bit)boxes.push(...fallingPart(CAR_PARTS[Math.log2(bit)],(time-at)/PART_FALL_MS));
@@ -451,14 +455,15 @@ export class ChaveiroRenderer {
     if(!view.ended&&carLife(view.car)<CAR_LOW&&time-this.lastLowPuff>=LOW_SMOKE_MS){
       this.lastLowPuff=time;
       const hood=this.local(view.car.x,view.car.y,this.carHeading,1.3*M,Math.sin(time*.01)*.3*M);
-      this.puffs.push({x:hood.x,y:hood.y,z:1.1*M,born:time,dark:true,drift:Math.cos(time*.7)*.4,moto:false});
+      this.puffs.push({x:hood.x,y:hood.y,z:1.1*M,born:time,dark:true,drift:Math.cos(time*.7)*.4,moto:false,big:true});
     }
     this.puffs=this.puffs.filter(p=>time-p.born<SMOKE_LIFE_MS);
     const v=this.options.projector.view;
     for(const p of this.puffs){
       const t=(time-p.born)/SMOKE_LIFE_MS,s=this.options.projector.project(p.x,p.y,this.q),o=isoOffset(p.drift*t*M,0,p.z+t*1.1*M,v);
       const color=p.dark?mix(this.c.breu,this.c.papel,.25):mix(this.c.papel,0xffffff,.4);
-      (p.moto?this.moto:this.car).fillStyle(color,(1-t)*.55).fillCircle(s.x+o.x,s.y+o.y,(4+10*t)*Math.max(.6,k*.8));
+      const big=p.big?2.2:1,alpha=p.big?.8:.55,ink=p.big?mix(this.c.breu,this.c.papel,.12):color;
+      (p.moto?this.moto:this.car).fillStyle(ink,(1-t)*alpha).fillCircle(s.x+o.x,s.y+o.y,(4+10*t)*big*Math.max(.6,k*.8));
     }
   }
   /** The alarm's sound waves: Cone arcs growing off the roof. */

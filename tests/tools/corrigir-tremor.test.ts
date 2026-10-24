@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {correcaoQuadro,moverCelula,marcados} from '../../scripts/corrigir-tremor.mjs';
+import {correcaoQuadro,moverCelula,marcados,naBorda} from '../../scripts/corrigir-tremor.mjs';
 import {medirQuadro} from '../../scripts/medir-tremor.mjs';
 
 const q=(cx:number,base=100,altura=80)=>({cx,base,altura,pex:cx,topo:base-altura+1,largura:30,cy:base-altura/2,escala:40});
@@ -33,4 +33,12 @@ test('moverCelula leva o pé (cx, base) até o lugar pedido sem mudar o desenho'
   const antes=medirQuadro(cel,w,0,0,w,h)!;
   const depois=medirQuadro(await moverCelula(cel,w,h,{dx:12,dy:-3,s:1},antes.cx,antes.base),w,0,0,w,h)!;
   assert.equal(depois.cx,antes.cx+12);assert.equal(depois.base,antes.base-3);assert.equal(depois.altura,antes.altura);
+});
+
+test('naBorda conta o que encosta na borda da célula: o quadro movido para fora dela foi cortado',async()=>{
+  const w=20,h=20,cel=Buffer.alloc(w*h*4);
+  for(let y=5;y<15;y++)for(let x=5;x<15;x++)cel[(y*w+x)*4+3]=255;
+  assert.equal(naBorda(cel,w,h),0);
+  const movido=await moverCelula(cel,w,h,{dx:8,dy:0,s:1},10,14);
+  assert.ok(naBorda(movido,w,h)>0);
 });

@@ -73,9 +73,18 @@ export async function moverCelula(cel,w,h,{dx,dy,s},ax,ay){
 const paginas=file=>{const f=Math.max(1,file.frames??1),d=Math.max(1,file.directions??1);
   return file.pages??[{file:file.file,columns:f,rows:d,firstFrame:0,frameCount:f*d}];};
 
+/** Pixels visíveis na borda da célula: o quadro movido que passa a encostar nela foi cortado. */
+export function naBorda(cel,w,h,alfa=32){
+  let n=0;
+  for(let i=0;i<w;i++)n+=(cel[i*4+3]>alfa)+(cel[((h-1)*w+i)*4+3]>alfa);
+  for(let j=0;j<h;j++)n+=(cel[(j*w)*4+3]>alfa)+(cel[(j*w+w-1)*4+3]>alfa);
+  return n;
+}
+
 /** Aplica o plano (quadro global → {c, âncora}) às páginas de `file`, de `dirIn` para `saida`; âncora e deslocamento
- * escalam pela célula (as camadas elite/ podem ter outra célula que a base). Devolve as páginas regravadas. */
-async function aplicarPlano(dirIn,saida,file,plano,celBase){
+ * escalam pela célula (as camadas elite/ podem ter outra célula que a base). Com `cortes`, o quadro que encostaria na
+ * borda fica como estava e entra no conjunto (a camada não o move). Devolve as páginas regravadas. */
+async function aplicarPlano(dirIn,saida,file,plano,celBase,cortes){
   const [w,h]=file.cell,k=w/celBase,gravadas=[];
   for(const p of paginas(file)){
     const dst=join(saida,p.file);mkdirSync(dirname(dst),{recursive:true});
@@ -88,7 +97,9 @@ async function aplicarPlano(dirIn,saida,file,plano,celBase){
       if((x0+w)>info.width||(y0+h)>info.height)continue;
       const cel=Buffer.alloc(w*h*4);
       for(let y=0;y<h;y++)data.copy(cel,y*w*4,((y0+y)*info.width+x0)*4,((y0+y)*info.width+x0+w)*4);
+      if(cortes?.has(g))continue;
       const novo=await moverCelula(cel,w,h,{dx:c.dx*k,dy:Math.round(c.dy*k),s:c.s},ax*k,ay*k);
+      if(cortes&&naBorda(novo,w,h)>naBorda(cel,w,h)+2){cortes.add(g);continue;}
       for(let y=0;y<h;y++)novo.copy(data,((y0+y)*info.width+x0)*4,y*w*4,(y+1)*w*4);
     }
     await sharp(data,{raw:{width:info.width,height:info.height,channels:4}}).webp(LOSSLESS).toFile(dst);
@@ -115,11 +126,15 @@ export async function corrigirFolha(dirArte,saida,file,anim,lista,camadas=[]){
     }
   }
   if(!plano.size)return {feitos,paginas:[]};
-  const gravadas=await aplicarPlano(dirArte,saida,file,plano,file.cell[0]);
+  const cortes=new Set(),gravadas=await aplicarPlano(dirArte,saida,file,plano,file.cell[0],cortes);
+  // Quadro que sairia cortado não é corrigido (nem a camada dele).
+  for(const g of cortes)plano.delete(g);
+  const fora=new Set([...cortes].map(g=>`${Math.floor(g/frames)}|${g%frames}`));
+  feitos.splice(0,feitos.length,...feitos.filter(f=>!fora.has(`${f.dir}|${f.quadro}`)));
   for(const cam of camadas){
     // A camada da 2ª passada em diante já está na saída.
     const dirCam=existsSync(join(saida,paginas(cam)[0].file))?saida:dirArte;
-    if((cam.frames??1)===frames&&(cam.directions??1)===(file.directions??1))gravadas.push(...await aplicarPlano(dirCam,saida,cam,plano,file.cell[0]));
+    if(plano.size&&(cam.frames??1)===frames&&(cam.directions??1)===(file.directions??1))gravadas.push(...await aplicarPlano(dirCam,saida,cam,plano,file.cell[0]));
   }
   return {feitos,paginas:gravadas};
 }
@@ -177,12 +192,15 @@ async function main(){
       // Carimbo também nas folhas sem nada a corrigir: a rodada seguinte não as remede à toa.
       if(noLugar)for(const p of paginas(file))carimbo.files[p.file]=sha256(readFileSync(join(dirArte,p.file)));
     }
-    if(noLugar&&mexidas.size){
+    // Todas as páginas da peça, não só as regravadas agora: uma folha devolvida ao original (git checkout) para
+    // refazer fica com o sha velho no manifest se a trava de corte barrar todos os quadros dela.
+    if(noLugar&&man.pieces[id]){
       const mp=man.pieces[id];
       for(const file of Object.values(mp.files)){
         const pgs=paginas(file);
-        for(const p of pgs)if(mexidas.has(p.file)){
-          const h=sha256(readFileSync(join(dirArte,p.file)));p.sha256=h;
+        for(const p of pgs){
+          if(!existsSync(join(dirArte,p.file)))continue;
+          const h=sha256(readFileSync(join(dirArte,p.file)));if(p.sha256===h)continue;p.sha256=h;
           if(sombra?.files[p.file])sombra.files[p.file]=h;
           if(carimbo.files[p.file])carimbo.files[p.file]=h;
         }

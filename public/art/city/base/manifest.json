@@ -27,6 +27,60 @@
       },
       "sha256": "1a885e5c39af934dbef11137497e0bb666370bfd0b0955016614278fe7173a4a"
     },
+    "barraca": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "barraca.webp",
+          "cell": [
+            490,
+            550
+          ],
+          "views": 2,
+          "rows": [
+            "lona-1:inteira",
+            "lona-1:danificada",
+            "lona-1:quebrada",
+            "lona-2:inteira",
+            "lona-2:danificada",
+            "lona-2:quebrada",
+            "lona-3:inteira",
+            "lona-3:danificada",
+            "lona-3:quebrada"
+          ],
+          "anchor": [
+            0.5,
+            0.727273
+          ],
+          "pages": [
+            {
+              "file": "barraca.webp",
+              "columns": 6,
+              "rows": 3,
+              "firstFrame": 0,
+              "frameCount": 18,
+              "sha256": "1f825b3b551299edd07a715836a8749abfd8044dd7a53da2413e17744375b4f2"
+            }
+          ],
+          "sha256": "1f825b3b551299edd07a715836a8749abfd8044dd7a53da2413e17744375b4f2"
+        }
+      },
+      "sha256": "b7483c9114224504eef4e9196101f25e5a6565020016344b267519b21f5f9385",
+      "meta": {
+        "lonas": [
+          "lona-1",
+          "lona-2",
+          "lona-3"
+        ],
+        "estados": [
+          "inteira",
+          "danificada",
+          "quebrada"
+        ],
+        "celula": 110,
+        "origem": "arte-entrada/cenario/base/barraca (Codex sobre molde.py, E2, card barracas-no-caminho); recorte por scripts/import-barraca.mjs"
+      }
+    },
     "barricada": {
       "kind": "views",
       "files": {

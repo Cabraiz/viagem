@@ -46,10 +46,11 @@ export const MOTO_RIDE_SECONDS=420;
 /**
  * balanco-6p-facil: the riding time by room size (1..6 players), mode 'ninhos' only (ChaveiroOptions.ride). Six bots
  * won 16/16, the Uno untouched (~0.3 hits of 224), with the car open after 2-3 waves at ~10 min; no wave knob took them
- * off it, so a bigger room waits longer for him (more waves before the car opens). 1p-3p as before.
+ * off it, so a bigger room waits longer for him (more waves before the car opens): 6p 900 s, with NEST_PACE.crowd
+ * (6p 9/16 at ~17 min; the ride alone, even 1080 s, left 15/16). 1p-3p as before.
  * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
  */
-export const CHAVEIRO_PACE={ride:[420,420,420,520,620,720] as number[]};
+export const CHAVEIRO_PACE={ride:[420,420,420,580,740,900] as number[]};
 /** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
 export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
 /**

@@ -1,7 +1,8 @@
 /**
  * balanco-6p-facil (card NEW-20261025-ORQ-balanco-6p-facil): the chaveiro rides longer for a bigger room (mode 'ninhos',
  * ChaveiroOptions.ride = CHAVEIRO_PACE.ride), read at the first step from the players then in the run, like the Uno's
- * limit; 1p-3p ride MOTO_RIDE_SECONDS as before and keep no state.ride (no state hash moves). On the REAL Cidade Nevada.
+ * limit; 1p-3p ride MOTO_RIDE_SECONDS as before and keep no state.ride (no state hash moves). With it NEST_PACE.crowd:
+ * a big room's wave bodies march faster and carry more hp and damage, 1p-3p × 1. On the REAL Cidade Nevada.
  * D-031: no wall-clock asserts.
  */
 import test from 'node:test';
@@ -17,6 +18,7 @@ import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {CHAVEIRO_PACE,MOTO_RIDE_SECONDS,createChaveiro,rideSecondsFor,type ChaveiroState} from '../../src/sim/chaveiro/system.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
+import {NEST_PACE,crowd} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
 const loaded=await cityTerrainFrom(readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8'),(JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string}).hash);
@@ -77,4 +79,14 @@ test('a checkpoint keeps the ride: restored on a fresh world, the moto rides on 
   const c=rig(3,ride);c.step(1);
   c.world.players.set('late',{...c.world.players.get('p0')!,id:'late'});c.world.players.set('late2',{...c.world.players.get('p0')!,id:'late2'});
   c.step(10);assert.equal(c.sys.state.ride,undefined);
+});
+
+test('NEST_PACE.crowd: 1p-3p bodies as before (× 1); a bigger room never meets weaker ones, six the strongest',()=>{
+  for(const k of ['march','hp','damage'] as const){
+    assert.equal(NEST_PACE.crowd[k].length,6,k);
+    for(const n of [1,2,3])assert.equal(crowd(k,n),1,`${k} ${n}p`);
+    for(let n=2;n<=6;n++)assert.ok(crowd(k,n)>=crowd(k,n-1),`${k} ${n}p ≥ ${n-1}p`);
+    assert.ok(crowd(k,6)>1,`${k} 6p: ${crowd(k,6)}`);
+    assert.equal(crowd(k,0),crowd(k,1));assert.equal(crowd(k,9),crowd(k,6));
+  }
 });

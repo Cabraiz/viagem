@@ -40,7 +40,8 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *  - andando: a lap through the eight directions, the walk and its turns;
  *  - uno: short steps out and back around the spawn; when the Uno's edge arrow shows (the stick's steps do not cancel
  *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time;
- *  - matches (nome-inimigo-rede-social): the uno steps with ?matches=sempre (every kill of the hero is a match), and the
+ *  - matches (nome-inimigo-rede-social): the uno steps with ?matches=demo (three matches from the start, every kill of the
+ *    hero one more; round 1 has no weapon), and the
  *    first time the flame shows it is tapped: the compact card in the GIF and in match.png. Not part of "todos".
  */
 export const ROTEIROS=Object.freeze({
@@ -253,7 +254,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
     const cdp=await ctx.newCDPSession(p).catch(()=>undefined);
-    try{r.entrouMs=await entrar(p,base,o.modo,roteiro==='matches'?'matches=sempre':'');}
+    try{r.entrouMs=await entrar(p,base,o.modo,roteiro==='matches'?'matches=demo':'');}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
     // seconds more on a phone; then the camera's first second out of the GIF.

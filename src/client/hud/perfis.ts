@@ -140,6 +140,8 @@ export interface ProfilesOptions {
   rng?():number;
   /** No matches at all (the HUD sandbox's other scenes). */
   off?:boolean;
+  /** Matches the run starts with (?matches=demo: the CI recording sees the flame and the card with no kill needed). */
+  demo?:readonly Match[];
   /**
    * What the compact card and the flame must never cover (perfil-nao-cobre: the hero, the Uno, the allies, the mission
    * band) and the useful area whose corners the card may move to (zones.ts), CSS px; without them it stays in place.
@@ -168,6 +170,7 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
   for(const type of ['pointerdown','pointerup','touchstart','mousedown'] as const)flame.addEventListener(type,e=>e.stopPropagation());
   const live=el(doc,'p','rh-matches-aviso',root);live.setAttribute('role','status');live.setAttribute('aria-live','polite');
   const slot=el(doc,'div','rh-perfil-slot',root);
+  let demo=options.demo;
   let card:HTMLElement|undefined,openedAt=0,closeTimer:ReturnType<typeof setTimeout>|undefined,place:ProfilePlace|undefined,lastEvent=-1;
   const close=()=>{clearTimeout(closeTimer);closeTimer=undefined;card?.remove();card=undefined;place=undefined;slot.style.transform='';};
   /** Moves the open card off what it would cover (placeProfiles); no place: it closes. */
@@ -208,6 +211,7 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
     el:root,book,flame,
     update(view,ctx:HudContext){
       if(options.off)return;
+      if(demo){for(const m of demo){book.add(m);hop(m);}demo=undefined;}
       for(const e of view.events??[]){
         if(e.eventId<=lastEvent)continue;
         lastEvent=e.eventId;

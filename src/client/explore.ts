@@ -74,11 +74,15 @@ import {INPUT_TEXTS,InputKindWatch,coopNotice,finePointer,focusLost,hotkeyOf} fr
 import {HUD_SWITCH} from './hud/arrows.ts';
 import {adBreakThen,soloRoom} from './ads/ads.ts';
 import {CenaClock} from './render/chefao-cena.ts';
+import type {Match} from './hud/perfis.ts';
 
 /** Label of the result button when the room refuses another run (042a R2: not enough room lifetime left). */
 const REMATCH_REFUSED='Criem uma sala nova';
 /** Center banner while the socket stays down past RECONNECT_BANNER_MS (the client retries on its own). */
 const RECONNECTING='Reconectando à turma…';
+/** ?matches=sempre|demo → the HUD's dice and starting matches (hud/perfis.ts); anything else: the real ones. */
+const matchesFlag=(flag:string|null):{profileRng?:()=>number;profileDemo?:readonly Match[]}=>
+  flag==='sempre'?{profileRng:()=>0}:flag==='demo'?{profileRng:()=>0,profileDemo:[{kind:'bebado',distance:12,tilt:-3},{kind:'pombos',distance:7,tilt:2.5},{kind:'tio-pave',distance:31,tilt:-1.5}]}:{};
 
 let active=false;
 export async function openExploration(hero:HeroClass,name:string,net?:CoopClient){
@@ -170,8 +174,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    // ?matches=sempre (gravar-partida's matches roteiro): every kill of the hero is a match (hud/perfis.ts MatchBook).
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,...(new URLSearchParams(location.search).get('matches')==='sempre'?{profileRng:()=>0}:{}),onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
+    // ?matches=sempre: every kill of the hero is a match (hud/perfis.ts MatchBook); ?matches=demo (gravar-partida's matches
+    // roteiro): the same, and the run starts with three, so the flame and its card show with no kill (round 1 has no weapon).
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,...matchesFlag(new URLSearchParams(location.search).get('matches')),onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
       // waits on this player's vote (a room of friends never waits on someone's ad). Off or blocked = runs at once.
       onRematch:()=>{if(net&&soloRoom(net.run?.members,net.id))adBreakThen('revanche',()=>net?.rematch());else net?.rematch();},
       onExit:()=>adBreakThen('sair',()=>close()),critterIcon:kind=>controller?.scene.critterIcon(kind),

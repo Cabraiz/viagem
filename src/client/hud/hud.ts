@@ -56,7 +56,7 @@ import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
 import './perfis.css';
-import {createProfiles,type ProfilesPart} from './perfis.ts';
+import {createProfiles,type Match,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -113,6 +113,8 @@ export interface RunHudOptions {
    */
   profileClock?():number;
   profileRng?():number;
+  /** Matches the run starts with (?matches=demo, the CI recording). */
+  profileDemo?:readonly Match[];
   /** false: no matches (the HUD sandbox's other scenes). */
   profiles?:boolean;
   /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
@@ -256,7 +258,7 @@ export class RunHud {
     // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
     const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
     // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
-    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,rng:options.profileRng,off:options.profiles===false,
+    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,rng:options.profileRng,demo:options.profileDemo,off:options.profiles===false,
       blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden),
       // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
       guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],

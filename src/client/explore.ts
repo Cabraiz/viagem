@@ -808,6 +808,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       },
       // The kill-cam picture of the HUD (VGM-053B): the scene draws its second camera there.
       killcamRect:()=>hud?.killcamRect(),
+      // Fear (card fear-escuridao-sozinho): the notice, the dimmed portraits and the sound of the dark.
+      fear:(frame,far)=>hud?.setFear(frame,far),
       quality:quality.level,slow,
       // The player's zoom (camera-zoom-out-e-roda): saved per browser, once the wheel or the pinch rests.
       zoom:startZoom(desktopZoom,economyStore()),zoomLocked:desktopZoom,zoomChanged:k=>{clearTimeout(zoomSave);zoomSave=setTimeout(()=>saveZoom(economyStore(),k),400);},

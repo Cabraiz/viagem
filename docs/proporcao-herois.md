@@ -5,7 +5,7 @@ Card NEW-20261024-ORQ-maromba-cabeca-proporcao. Em 24/10 o usuário disse que a 
 ## As duas regras
 
 1. **A mesma cabeça em todas as ações.** Toda folha (andar, corrida, ataque, empurrar, dano) desenha a cabeça do tamanho da cabeça do parado, com ±4 % de folga. A medida é o molde da cabeça do parado encaixado em cada quadro. Ferramentas: `scripts/proporcao.mjs` e `tests/tools/proporcao.test.ts`.
-2. **A razão de cada herói, e a faixa dos humanos.** Esta regra vale para o parado visto de frente (S, SE e N), pela mediana dos quadros:
+2. **A razão de cada herói, e a faixa dos humanos.** Esta regra vale para o parado visto de frente (S, SE e N), pela mediana dos quadros (no parado que respira, de 16 quadros, só o quadro 0: os outros esticam o tronco e abrem os ombros, e a cabeça pareceria menor):
    - **cab/alt** é a altura da cabeça, do topo até o último trecho estreito do pescoço, dividida pela altura da figura;
    - **cab/ombro** é a largura da cabeça dividida pela dos ombros.
 
@@ -21,6 +21,7 @@ O perfil (W/NW) não entra na medida, porque de lado o queixo não estreita e a 
 | clt-cansado | 0,41 | 0,81 | idle8 (R06) |
 | maromba | 0,38 | 0,73 | Chad +25 % (dose do usuário, 24/10): a cabeça escalada em todas as folhas M16; antes 0,31/0,57 |
 | vendedor-praia | 0,45 | 1,11 | M16 do card vendedor-aposentado (24/10), no teto da faixa humana |
+| aposentado | 0,34 | 0,86 | mesmo card, declarado como medido: idoso de cabeça pequena, abaixo da faixa humana (`small`) |
 | gato-nada-pra-comer | 0,28 | 0,61 | `animal` |
 
 Os heróis R06 que só têm `idle8` (coach, pedreiro…) aparecem com `node scripts/proporcao-herois.mjs --todos`, mas o teste não os cobra: vários ficam em 0,28–0,33 e só vão ser corrigidos quando ganharem folha M16.

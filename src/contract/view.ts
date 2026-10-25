@@ -83,6 +83,8 @@ export interface PlayerRunView {
   andar?:1;
   /** stats.moveSpeed when it is not 1 (class, weapon, tênis, the offer): the phone's prediction walks with it. */
   moveSpeed?:number;
+  /** Fear (rules/fear.ts): the dark around this hero, 0..1 (1 = consumed); absent = 0. The client's vignette draws it. */
+  fear?:number;
 }
 /**
  * Run counters the server keeps per player (NEW-20261009-N2-award-stats-server): every client gets the same numbers,

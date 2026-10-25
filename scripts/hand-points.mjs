@@ -39,8 +39,9 @@ const M16_SKIN=new Set(['maromba']);
  * M16 heroes measured by the base rule (handOf: the outermost bare skin on the weapon side), reviewed on the debug sheets.
  * The vendedor's head is big and bare (cheek, ear, neck): off the attack the hand hangs at the hip, so the search
  * starts below the chin (40 % of the figure); in the attack the fist rises to the face and the search keeps the 22 %.
+ * The aposentado (card aposentado-arte-8-direcoes) the same: bare arms, the white beard down to the chest.
  */
-const M16_BARE=new Set(['vendedor-praia']);
+const M16_BARE=new Set(['vendedor-praia','aposentado']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
@@ -85,6 +86,9 @@ const OVERRIDES={
   // The vendedor's S punch toward the camera (7) and the guard at the chest (12, 13): the fist sits on the torso, the
   // outermost skin is the cheek (marked by eye on the debug sheet, 24/10).
   'vendedor-praia:attack16-S':{7:[40,54],12:[40,52],13:[38,50]},
+  // The aposentado's W wind-up (0, 1) and recovery (15): the fist is on the belly / at the chin, the outermost skin is
+  // the nose or the far elbow (marked by eye on the debug sheet, 24/10).
+  'aposentado:attack16-W':{0:[45,62],1:[43,50],15:[46,64]},
   // The flinch (animacao-receber-dano): W keeps the near hand (the watch) of its rest, also while the far one flies up in
   // front (the rule takes the face or that far hand); N hides the right hand on the chest at the strongest recoil.
   'clt-cansado:hurt16-W':{0:[58,75],1:[58,68],2:[55,62],3:[57,72],4:[58,73],5:[58,74]},

@@ -15,6 +15,7 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
@@ -115,6 +116,11 @@ export interface RunSystemsOptions {
    * the automatic weapons and the skills, exactly as before, until the E6 weapons and the balance pass.
    */
   combat?:CombatMode;
+  /**
+   * Fear (card NEW-20261023-ORQ-fear-escuridao-sozinho, sim/fear.ts): alone for 60 s, the dark takes the hero. Default:
+   * on with the manual combat (the game the rooms play since D-051), off otherwise, so the old worlds' runs and digests stay.
+   */
+  fear?:boolean;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -488,6 +494,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
+  const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
+    base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
 
   // D-051 manual combat: the inventory (sim/inventory.ts); the old kit-torre is one team ficha, a kit de torre
   // (torre-pela-caixa) its piece built for free on the grid.
@@ -518,7 +527,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // Veículos: the parked vehicles and the rides, in the same slot (no new system id).
       vehicles?.step(ctx);
     }},
-    progression.progression,revive,
+    // Fear steps in the revive slot (no new system id), right before it: a hero the dark takes counts for the defeat now.
+    progression.progression,fear?{id:revive.id,step(ctx:SimContext){fear.step(ctx);revive.step(ctx);}} satisfies SimSystem:revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
     chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro?.step(ctx);banks?.step(ctx);}} satisfies SimSystem:stonewards,

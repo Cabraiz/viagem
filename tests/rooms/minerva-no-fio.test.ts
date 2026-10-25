@@ -42,7 +42,9 @@ const runs=(p:ReturnType<typeof peer>)=>p.messages.filter(m=>m.t==='run');
 
 test('ninhos room: {t:\'run\'} carries minervaAteTick through the first minute of combat (one push), then drops it',async()=>{
   let {room,a,t}=await solo({mode:'ninhos',combat:'manual'});
-  const tick=()=>{say(room,a,{t:'ping',at:t},t);room.advance(t+=50);};
+  // The Fear (card fear-escuridao-sozinho) would take this hero, alone for the whole minute: keep the dark away.
+  const calm=()=>{for(const p of room.sim.players.values())delete p.fear;};
+  const tick=()=>{calm();say(room,a,{t:'ping',at:t},t);room.advance(t+=50);};
   const until=room.sim.run.nests!.state.minervaUntil!;
   assert.equal(until,room.sim.run.nests!.state.startTick!+ticks(MINERVA_S));
   const last=runs(a).at(-1)!;

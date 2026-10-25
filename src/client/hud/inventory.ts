@@ -87,6 +87,7 @@ const REFUSALS:Readonly<Record<string,string>>={
   slot:'Esse espaço tá vazio',
   player:'Agora não dá',
   pickup:'O item sumiu',
+  owned:'Você já tem esse',
 };
 export const inventoryRefusalText=(reason:string|undefined)=>REFUSALS[reason??'']??'Não deu';
 

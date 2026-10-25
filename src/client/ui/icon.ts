@@ -25,7 +25,9 @@ export const ICON_NAMES=['config','girar','bussola','agulha','aviao','fechar','p
   // Ficha de torre (D-048): the team's one material pile shows as fichas (torre) and a price in material (material, a crate).
   'torre','material',
   // Bancos (card bancos-e-veiculos): o Caixa 24 h com a nota de 2, na seta de borda e no minimapa (provisório; 'caixa-eletronico', o adesivo de arte 'banco' é da UI).
-  'caixa-eletronico'] as const;
+  'caixa-eletronico',
+  // torre-limite-rebocar-sem-arma: the rope on the action button ("Rebocar"/"Soltar" near the Uno's rope).
+  'corda'] as const;
 export type IconName=typeof ICON_NAMES[number];
 /** Tamanhos do adesivo (§2.4): 24, 32 e 48 px; 40 é o do botão de habilidade. */
 export type IconSize=24|32|40|48;

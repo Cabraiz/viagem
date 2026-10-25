@@ -323,7 +323,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // cidade again for the merge of both (the viaduct's city with the cédulas).
 // cidade again for the bicos (bancos-viram-bicos: each bank row's gig in the state, the shops placed on a clear lot first);
 // ilha and infinito unchanged (no banks). cidade again for its merge with the viaduct's city and the cédulas.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'d19d984546770e0f',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
+// cidade again for projetil-mais-rapido (HERO_SHOT_SLOWDOWN 3 → 2: the heroes' shots 1.5× faster, same reach; with 3 the
+// tree gives d19d984546770e0f); ilha and infinito unchanged.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'cb3a540f77f4c307',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

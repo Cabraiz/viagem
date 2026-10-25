@@ -11,7 +11,7 @@ import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
 import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
-import {CALMA,FEAR_TICKS,refreshStats} from '../src/rules/index.ts';
+import {CALMA,FEAR_TICKS,kitItem,kitPiece,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -164,6 +164,9 @@ function itemsOk(list:unknown,kind:'weapon'|'passive',max:number,repeats=false){
   if(!Array.isArray(list)||list.length>max)return false;
   const seen=new Set<string>();
   for(const item of list){
+    // A kit de torre (torre-pela-caixa) is no catalog item: its level is the charges left, 1..its kit's.
+    const piece=kind==='weapon'&&isObject(item)?kitPiece(item.id):undefined;
+    if(piece){if(!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>kitItem(piece).level)return false;continue;}
     const def=isObject(item)&&typeof item.id==='string'?ITEMS.get(item.id):undefined;
     if(!def||(kind==='passive')!==(def.kind==='passive')||!repeats&&seen.has(def.id)||!Number.isSafeInteger(item.level)||(item.level as number)<1||(item.level as number)>def.maxLevel)return false;
     seen.add(def.id);

@@ -1,0 +1,435 @@
+{
+ "label": "depois-idleseconds60-2",
+ "web": "http://127.0.0.1:4207",
+ "cpu": 4,
+ "bots": 4,
+ "gpu": false,
+ "idle": true,
+ "viewport": "393x873@3",
+ "canvas": {
+  "w": 393,
+  "h": 873,
+  "cssW": 393,
+  "cssH": 873
+ },
+ "seconds": 65.3,
+ "timeToMenuMs": 646,
+ "timeToPlayMs": 8051,
+ "all": {
+  "fps": 18.1,
+  "frameMs": {
+   "p50": 50,
+   "p95": 100.1,
+   "p99": 233.3,
+   "max": 899.9
+  },
+  "over50": 383,
+  "over100": 60,
+  "over250": 8,
+  "busyShare": 0.97,
+  "longTasks": 231,
+  "longTaskMs": 20234
+ },
+ "phases": {
+  "inicio": {
+   "secs": 8,
+   "busyShare": 1.06,
+   "scriptMsPerS": 906.4,
+   "styleMsPerS": 34.6,
+   "layoutMsPerS": 4.5,
+   "fps": 12.8,
+   "frameMs": {
+    "p50": 50,
+    "p95": 216.6,
+    "p99": 250,
+    "max": 899.9
+   },
+   "over50": 49,
+   "over100": 21,
+   "over250": 1,
+   "loaf": 61,
+   "loafMs": 8857.2
+  },
+  "perfil": {
+   "secs": 3,
+   "busyShare": 1.08,
+   "scriptMsPerS": 818.3,
+   "styleMsPerS": 25.4,
+   "layoutMsPerS": 23.9,
+   "fps": 13.3,
+   "frameMs": {
+    "p50": 66.7,
+    "p95": 183.4,
+    "p99": 200,
+    "max": 200
+   },
+   "over50": 29,
+   "over100": 8,
+   "over250": 0,
+   "loaf": 31,
+   "loafMs": 2746
+  },
+  "janela": {
+   "secs": 16,
+   "busyShare": 1.08,
+   "scriptMsPerS": 903.3,
+   "styleMsPerS": 23.1,
+   "layoutMsPerS": 9.2,
+   "fps": 16.4,
+   "frameMs": {
+    "p50": 50,
+    "p95": 166.7,
+    "p99": 500,
+    "max": 816.6
+   },
+   "over50": 106,
+   "over100": 27,
+   "over250": 7,
+   "loaf": 122,
+   "loafMs": 13154.9
+  },
+  "jogo": {
+   "secs": 33,
+   "busyShare": 1.04,
+   "scriptMsPerS": 923.9,
+   "styleMsPerS": 9.8,
+   "layoutMsPerS": 5.9,
+   "fps": 23.5,
+   "frameMs": {
+    "p50": 50,
+    "p95": 83.3,
+    "p99": 100,
+    "max": 116.7
+   },
+   "over50": 199,
+   "over100": 4,
+   "over250": 0,
+   "loaf": 250,
+   "loafMs": 15597.2
+  }
+ },
+ "loafSplit": {
+  "n": 464,
+  "ms": 40355.3,
+  "scriptMs": 33561.2,
+  "renderMs": 28656.4,
+  "styleLayoutMs": 1358.3
+ },
+ "topScripts": [
+  {
+   "k": "FrameRequestCallback | t | /assets/phaser-MYEJnGOu.js:141491",
+   "n": 464,
+   "ms": 24394,
+   "layout": 240.1
+  },
+  {
+   "k": "DOMWebSocket.onmessage | ? | /assets/client-BbQLKeO1.js:13557",
+   "n": 339,
+   "ms": 6651.3,
+   "layout": 30.6
+  },
+  {
+   "k": "FrameRequestCallback | o | /assets/projector-BcYi5PQN.js:50443",
+   "n": 87,
+   "ms": 1010.2,
+   "layout": 0
+  },
+  {
+   "k": "FrameRequestCallback | n | /assets/explore-BYvmau3Q.js:20609",
+   "n": 72,
+   "ms": 902.6,
+   "layout": 0
+  },
+  {
+   "k": "PerformanceObserverCallback | ? | :-1",
+   "n": 11,
+   "ms": 115.1,
+   "layout": 0
+  },
+  {
+   "k": "Response.blob.then | ? | :2467",
+   "n": 8,
+   "ms": 104.8,
+   "layout": 0
+  },
+  {
+   "k": "TimerHandler:setInterval | D | /assets/chaveiro-extras-BTzP4qBW.js:21766",
+   "n": 6,
+   "ms": 75.6,
+   "layout": 0
+  },
+  {
+   "k": "XMLHttpRequest.onload | onLoad | /assets/phaser-MYEJnGOu.js:529347",
+   "n": 3,
+   "ms": 73.4,
+   "layout": 0
+  },
+  {
+   "k": "TimerHandler:setInterval | Y | /assets/lobby-Cipfs3Zw.js:16562",
+   "n": 4,
+   "ms": 64,
+   "layout": 0
+  },
+  {
+   "k": "TimerHandler:setTimeout | ? | /assets/chaveiro-extras-BTzP4qBW.js:16865",
+   "n": 4,
+   "ms": 51.8,
+   "layout": 0.8
+  },
+  {
+   "k": "Window.fetch.then | ? | :2398",
+   "n": 3,
+   "ms": 36.8,
+   "layout": 0
+  },
+  {
+   "k": "TimerHandler:setTimeout | ? | /assets/client-BbQLKeO1.js:24846",
+   "n": 3,
+   "ms": 36.7,
+   "layout": 0
+  },
+  {
+   "k": "TimerHandler:setInterval | ? | /assets/client-BbQLKeO1.js:18297",
+   "n": 2,
+   "ms": 23.9,
+   "layout": 0
+  },
+  {
+   "k": "Promise.resolve | ? | :2693",
+   "n": 1,
+   "ms": 11.2,
+   "layout": 0
+  },
+  {
+   "k": "FrameRequestCallback | ? | :-1",
+   "n": 1,
+   "ms": 9.8,
+   "layout": 0
+  }
+ ],
+ "uploads": {
+  "n": 694,
+  "ms": 1173.5,
+  "over8ms": 32,
+  "byGroup": {
+   "/art/lite/city/decor": {
+    "n": 93,
+    "ms": 238.2,
+    "mb": 168.5
+   },
+   "HTMLCanvasElement": {
+    "n": 166,
+    "ms": 97.6,
+    "mb": 3
+   },
+   "/art/lite/towers/guarnicao-do-predio": {
+    "n": 1,
+    "ms": 90.7,
+    "mb": 21.5
+   },
+   "/art/lite/enemies/elite": {
+    "n": 30,
+    "ms": 72,
+    "mb": 38
+   },
+   "/art/lite/enemies/rei-do-boteco": {
+    "n": 6,
+    "ms": 63.7,
+    "mb": 45.4
+   },
+   "/art/lite/enemies/pombo-rei": {
+    "n": 6,
+    "ms": 55.4,
+    "mb": 41.5
+   },
+   "/art/city/decor": {
+    "n": 23,
+    "ms": 49.8,
+    "mb": 18.5
+   },
+   "/art/lite/sprites/vizinha-fofoqueira": {
+    "n": 8,
+    "ms": 48.5,
+    "mb": 36
+   },
+   "/art/lite/enemies/influencer": {
+    "n": 5,
+    "ms": 29.2,
+    "mb": 8.3
+   },
+   "/art/lite/sprites/maromba": {
+    "n": 8,
+    "ms": 26.7,
+    "mb": 23.6
+   },
+   "ImageBitmap": {
+    "n": 21,
+    "ms": 25.8,
+    "mb": 21.7
+   },
+   "/art/lite/enemies/espetinho-suspeito": {
+    "n": 5,
+    "ms": 24.7,
+    "mb": 13.4
+   },
+   "/art/lite/towers/ninho-de-metralhadora": {
+    "n": 1,
+    "ms": 23.2,
+    "mb": 16.9
+   },
+   "/art/lite/enemies/robo-de-atendimento": {
+    "n": 6,
+    "ms": 22.2,
+    "mb": 12.9
+   },
+   "/art/lite/city/buildings": {
+    "n": 9,
+    "ms": 20.6,
+    "mb": 12.7
+   },
+   "/art/lite/towers/obuseiro": {
+    "n": 2,
+    "ms": 19.1,
+    "mb": 12.9
+   },
+   "/art/lite/enemies/caixa-eletronico": {
+    "n": 5,
+    "ms": 19,
+    "mb": 15
+   },
+   "/art/lite/sprites/streamer": {
+    "n": 3,
+    "ms": 18.8,
+    "mb": 13.5
+   },
+   "/art/lite/enemies/estagiario-imortal": {
+    "n": 5,
+    "ms": 18.7,
+    "mb": 12
+   },
+   "/art/lite/enemies/seguranca-de-shopping": {
+    "n": 5,
+    "ms": 16.2,
+    "mb": 13.3
+   },
+   "/art/lite/towers/atiradores-do-telhado": {
+    "n": 1,
+    "ms": 16.1,
+    "mb": 10.5
+   },
+   "/art/lite/enemies/tio-pave": {
+    "n": 6,
+    "ms": 15,
+    "mb": 10.4
+   },
+   "/art/lite/towers/ninho-do-sniper": {
+    "n": 1,
+    "ms": 14.3,
+    "mb": 11.8
+   },
+   "/art/lite/enemies/carimbador": {
+    "n": 6,
+    "ms": 14.2,
+    "mb": 7.6
+   },
+   "/art/lite/towers/antiaerea-quadrupla": {
+    "n": 2,
+    "ms": 14.1,
+    "mb": 6.6
+   },
+   "/art/lite/enemies/subsindico": {
+    "n": 5,
+    "ms": 13.5,
+    "mb": 11.8
+   },
+   "/art/lite/enemies/bebado": {
+    "n": 5,
+    "ms": 12.2,
+    "mb": 6.1
+   },
+   "/art/lite/enemies/flanelinha-interdimensional": {
+    "n": 5,
+    "ms": 12,
+    "mb": 9.1
+   },
+   "/art/lite/enemies/moco-do-gas": {
+    "n": 4,
+    "ms": 10.7,
+    "mb": 5
+   },
+   "/art/lite/towers/equipe-antimaterial": {
+    "n": 1,
+    "ms": 10.2,
+    "mb": 12.5
+   },
+   "/art/fx/explosao-m": {
+    "n": 2,
+    "ms": 8.9,
+    "mb": 5
+   },
+   "/art/lite/towers/posto-de-radar": {
+    "n": 2,
+    "ms": 8,
+    "mb": 7.7
+   },
+   "/art/fx/fogos-estouro": {
+    "n": 2,
+    "ms": 7.1,
+    "mb": 5
+   },
+   "/art/lite/towers/morteiro": {
+    "n": 1,
+    "ms": 5.8,
+    "mb": 4.6
+   },
+   "/art/lite/towers/arame-e-sirene": {
+    "n": 1,
+    "ms": 4.4,
+    "mb": 2.3
+   },
+   "(canvas)": {
+    "n": 141,
+    "ms": 3.2,
+    "mb": 300.3
+   },
+   "/art/lite/towers/lanca-foguetes": {
+    "n": 1,
+    "ms": 3.2,
+    "mb": 6.8
+   },
+   "/art/lite/enemies/barata-voadora": {
+    "n": 4,
+    "ms": 3.2,
+    "mb": 2.3
+   },
+   "/art/lite/city/props": {
+    "n": 3,
+    "ms": 2.6,
+    "mb": 2
+   },
+   "/art/lite/enemies/pombos": {
+    "n": 4,
+    "ms": 2.2,
+    "mb": 1.4
+   }
+  }
+ },
+ "gpuTexMB": {
+  "now": 912.6,
+  "peak": 917.1,
+  "textures": 732
+ },
+ "heapMB": {
+  "min": 28.4,
+  "max": 90.4,
+  "last": 69
+ },
+ "nodes": {
+  "min": 3766,
+  "max": 3960
+ },
+ "rounds": [
+  "Onda 1"
+ ],
+ "errors": []
+}

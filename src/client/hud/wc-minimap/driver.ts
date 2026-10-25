@@ -5,6 +5,7 @@
  */
 import {cameraQuad,cityFrame,windowFrame,type MiniFrame,type Pt} from './geometry.ts';
 import {cityTerrainImage,endlessTerrainImage,islandTerrainImage,type TerrainImage} from './terrain.ts';
+import {cityArtTerrain} from './art.ts';
 import {isAsleep} from '../../render/wake-rules.ts';
 import {teamColor,type MmAlly,type MmEnemy,type MmExtra,type MmStructure,type WcMinimap} from './minimap.ts';
 import type {CityAsset as MapsCityAsset,TerrainField} from '../../../maps/index.ts';
@@ -16,7 +17,8 @@ export const ENDLESS_SPAN=110,ENDLESS_REBUILD=ENDLESS_SPAN/4,ENDLESS_UNIT=.75;
 /** A wall hit in the last this many ms blinks the base. */
 export const BASE_HIT_BLINK_MS=1500;
 
-export interface MmPlayer {id:string;x:number;y:number;online:boolean;spectator?:boolean}
+/** `classId`: the hero, for their face on the minimap (art.ts). */
+export interface MmPlayer {id:string;x:number;y:number;online:boolean;spectator?:boolean;classId?:string}
 export interface MmState {downed?:unknown;eliminated?:boolean}
 /** `ninho` (D-051): drawn only once `seen` (the fog: someone in the team has seen it), its roof by `size`. */
 export interface MmStructureView {kind:string;x:number;y:number;phase?:string;size?:string;seen?:boolean}
@@ -29,8 +31,9 @@ export interface DriverInput {
 }
 
 /** How the terrain images are made (canvas in the browser; the tests pass stand-ins). */
-export interface TerrainImages {city:typeof cityTerrainImage;endless:typeof endlessTerrainImage;island:typeof islandTerrainImage}
-const IMAGES:TerrainImages={city:cityTerrainImage,endless:endlessTerrainImage,island:islandTerrainImage};
+/** `cityArt`: the painted city, preferred to `city` once it has loaded (art.ts). */
+export interface TerrainImages {city:typeof cityTerrainImage;endless:typeof endlessTerrainImage;island:typeof islandTerrainImage;cityArt?:typeof cityArtTerrain}
+const IMAGES:TerrainImages={city:cityTerrainImage,endless:endlessTerrainImage,island:islandTerrainImage,cityArt:cityArtTerrain};
 
 export class WcMinimapDriver {
   private readonly images:TerrainImages;
@@ -45,7 +48,7 @@ export class WcMinimapDriver {
   colorOf(id:string){return teamColor(this.players,id);}
   frameFor(input:Pick<DriverInput,'terrain'|'city'|'view'|'self'>):{frame:MiniFrame;terrain:TerrainImage;border?:{x:number;y:number;w:number;h:number}}{
     const {terrain,city,view,self}=input;
-    if(city)return {frame:cityFrame(city.size,MM_SIDE,view,city.playable),terrain:this.images.city(city),border:city.playable};
+    if(city)return {frame:cityFrame(city.size,MM_SIDE,view,city.playable),terrain:this.images.cityArt?.(city)??this.images.city(city),border:city.playable};
     if(terrain.chunks){
       let e=this.endless;
       if(!e||e.terrain!==terrain||Math.hypot(self.x-e.center.x,self.y-e.center.y)>ENDLESS_REBUILD){
@@ -63,11 +66,13 @@ export class WcMinimapDriver {
     this.last={x:me.x,y:me.y};
     this.players=input.players;
     let n=0;
+    let selfClass:string|undefined;
     for(const p of input.players){
+      if(p.id===input.selfId)selfClass=p.classId;
       if(p.id===input.selfId||p.spectator)continue;
       const st=input.states.get(p.id);if(st?.eliminated)continue;
       const downed=!!st?.downed;if(!downed&&!p.online)continue;
-      const a=this.allies[n]??={x:0,y:0,color:''};n++;a.x=p.x;a.y=p.y;a.color=this.colorOf(p.id);a.downed=downed||undefined;
+      const a=this.allies[n]??={x:0,y:0,color:''};n++;a.x=p.x;a.y=p.y;a.color=this.colorOf(p.id);a.downed=downed||undefined;a.classId=p.classId;
     }
     this.allies.length=n;
     let m=0;
@@ -87,7 +92,7 @@ export class WcMinimapDriver {
     }
     this.structures.length=s;
     input.minimap.render({frame,terrain,border,camera:input.corners.length===4?cameraQuad(input.corners,frame):undefined,
-      self:{x:me.x,y:me.y,dx:this.heading.x,dy:this.heading.y},allies:this.allies,enemies:this.enemies,structures:this.structures,
+      self:{x:me.x,y:me.y,dx:this.heading.x,dy:this.heading.y,classId:selfClass},allies:this.allies,enemies:this.enemies,structures:this.structures,
       extras:input.extras,nowMs:input.nowMs});
   }
 }

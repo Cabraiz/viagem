@@ -7,16 +7,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SIM_HZ} from '../../src/contract/index.ts';
-import {DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,RETURN_SECONDS,TOWERS_MAX_S,durationText,exploreText} from '../../src/client/hud/missao.ts';
+import {DEFEND_MS,MISSION_BIG_MS,MISSION_TEXT,MissionTracker,RETURN_SECONDS,TOWERS_MAX_S} from '../../src/client/hud/missao.ts';
 
 const s=(n:number)=>Math.round(n*SIM_HZ);
 const START=40,MINERVA_END=START+s(120);
 
-test('the copy: pt-BR, short, no forced exclamation; the window length as people say it',()=>{
-  assert.equal(MISSION_TEXT.minerva,'Busque o máximo de caixas e volte ao Uno antes do tempo acabar.');
+test('the copy: pt-BR, short (one row on the phone), no forced exclamation',()=>{
+  assert.equal(MISSION_TEXT.minerva,'Junte caixas e volte ao Uno.');
   for(const line of Object.values(MISSION_TEXT))assert.doesNotMatch(line,/!/);
-  assert.equal(exploreText(120),'Você tem 2 minutos para buscar mais caixas. Vá em dupla.');
-  assert.deepEqual([60,90,120,150,45].map(durationText),['1 minuto','1 minuto e meio','2 minutos','2 minutos e meio','45 segundos']);
+  assert.equal(MISSION_TEXT.explora,'Junte mais caixas, em dupla.');
+  // One row on a 393 px phone (item 6): short lines, the top's clock says the time.
+  for(const line of Object.values(MISSION_TEXT))assert.ok(line.length<=31,`${line} (${line.length})`);
 });
 
 test('the Minerva: big for MISSION_BIG_MS, then small; "Volte ao Uno." (urgent, big again) in its last 20 s; the Uno pointed the whole time',()=>{
@@ -57,20 +58,20 @@ test('no kit at the end of the Minerva: straight to "Eles vão atrás do Uno. De
   assert.equal(b.step({tick:MINERVA_END+s(TOWERS_MAX_S),towerKit:true,playing:true}).line?.key,'defenda');
 });
 
-test('each time to explore: "Você tem 2 minutos…" with the real length, big then small, the Uno pointed only in its last 20 s with "Volte ao Uno."',()=>{
+test('each time to explore: "Junte mais caixas, em dupla.", big then small, the Uno pointed only in its last 20 s with "Volte ao Uno."',()=>{
   const m=new MissionTracker(),from=5000,explora={from,until:from+s(120)};
   const at=(tick:number)=>m.step({tick,explora,towerKit:false,playing:true});
   const open=at(from);
-  assert.deepEqual(open.line,{key:'explora',text:'Você tem 2 minutos para buscar mais caixas. Vá em dupla.',big:true,urgent:false});
+  assert.deepEqual(open.line,{key:'explora',text:'Junte mais caixas, em dupla.',big:true,urgent:false});
   assert.equal(open.pointUno,false);
   assert.equal(at(from+s(10)).line?.big,false);
   const back=at(explora.until-s(RETURN_SECONDS));
   assert.equal(back.line?.key,'volta');assert.equal(back.pointUno,true);
   assert.equal(back.line?.text,'Volte ao Uno.','the last seconds of a time to explore say come back, not the explore line (video etapa 3)');assert.equal(back.line?.urgent,true);
   assert.equal(at(explora.until).line,undefined,'the wave: nothing');
-  // The next window opens big again, with its own length.
+  // The next window opens big again.
   const next={from:explora.until+s(80),until:explora.until+s(80+90)};
-  assert.equal(m.step({tick:next.from,explora:next,towerKit:false,playing:true}).line?.text,'Você tem 1 minuto e meio para buscar mais caixas. Vá em dupla.');
+  assert.equal(m.step({tick:next.from,explora:next,towerKit:false,playing:true}).line?.big,true);
 });
 
 test('a spectator or someone out sees no mission; a rematch (the tick back to 0) starts it over',()=>{

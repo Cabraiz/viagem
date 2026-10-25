@@ -48,6 +48,16 @@ export interface LootPlan {
 
 const dist=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 
+/**
+ * NEW-20261025-ORQ-uno-caminho-caixas-vender (c): a bot leaves a crate to a person (online, on the map, not a bot) who
+ * sees it (not in its server-only hiddenFor) and stands within BOT_LEAVES_CRATE u of it.
+ */
+export const BOT_LEAVES_CRATE=40;
+export function forAPerson(players:readonly (PlayerRunView&{x?:number;y?:number})[],crate:Pick<PickupState,'x'|'y'|'hiddenFor'>,me:string):boolean{
+  return players.some(p=>p.id!==me&&!p.bot&&p.online&&!p.spectator&&!p.eliminated&&!crate.hiddenFor?.includes(p.id)
+    &&p.x!==undefined&&p.y!==undefined&&Math.hypot(p.x-crate.x,p.y-crate.y)<BOT_LEAVES_CRATE);
+}
+
 export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:PlayerRunView,at:Point,radius=LOOT_RADIUS):LootPlan{
   const plan:LootPlan={};
   const inv=me.weapons,hand=me.hand??0;
@@ -71,7 +81,7 @@ export function planLoot(view:Pick<RunView,'players'|'pickups'|'enemies'>,me:Pla
   for(const k of pickups){
     const d=dist(k,at);
     if(d>=goalDist)continue;
-    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
+    if(k.kind==='chest'){if(armed&&k.value<=1||(k as PickupState).hiddenFor?.includes(me.id)||forAPerson(view.players,k as PickupState,me.id))continue;goal={at:{x:k.x,y:k.y},stand:true,id:k.id};goalDist=d;}
     else if(k.kind==='item'&&k.resource&&!(k as PickupState).hiddenFor?.includes(me.id)&&weaponScore({id:k.resource,level:k.value})>handScore){goal={at:{x:k.x,y:k.y},stand:false,id:k.id};goalDist=d;}
   }
   if(!goal)return plan;

@@ -18,7 +18,7 @@ import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
 import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
-import {createCrates,type Crates,type CratesState} from './crates.ts';
+import {VISIBLE_FLOOR,createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
 import {heroBodiesPass} from './bodies.ts';
@@ -373,7 +373,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   if(cp)enemyAi.restore(cp.enemyAi);
   // D-051 manual combat: crates on the city's loot points (none elsewhere: only drops), the boss's is a lendária. A crate
   // gives only a weapon or a kit de torre (bau-so-arma-ou-torre), straight into the opener's inventory.
-  const crates:Crates|undefined=manual?createCrates({seed:world.seed,
+  const crates:Crates|undefined=manual?createCrates({seed:world.seed,visibleFloor:VISIBLE_FLOOR,
     points:cityLoot(world.terrain)?.crates.map(c=>({x:c.node.x,y:c.node.y,seconds:c.seconds}))??[],
     // inicio-no-uno: in mode 'ninhos' the team spawns beside the Uno, so the first crates sit around it.
     startPoints:(nestMode?cityLoot(world.terrain)?.aroundUno:cityLoot(world.terrain)?.aroundStart)??[],

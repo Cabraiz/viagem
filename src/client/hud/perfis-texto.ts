@@ -5,7 +5,7 @@
  * The name is the roster's (rules/enemy-roster.ts). Humor: design/HUMOR-ADULT-SWIM.md (D-047); no real person, brand,
  * song or anything sexual. Bio ≤ 66 chars, recado ≤ 28 (tests/client/perfis.test.ts).
  * Lote 1: the P0 of rounds 1–3, the P0 mini-bosses and the P0 bosses (22). Lote 2: the other P0 with art (47).
- * Lote 3: the P1 with art (63).
+ * Lote 3: the P1 with art (63). Lote 4: the P2 with art (27).
  */
 export interface PerfilTexto {
   /** "47", or a joke in place of the number ("vence hoje"). */
@@ -169,4 +169,40 @@ grauzeiro:{idade:'19',bio:'Só ando numa roda. A outra é pra ocasião especial.
 'boitata-de-sacolinha':{idade:'lixo de 500 anos',bio:'Lenda da mata feita de sacolinha. Cada uma demora 400 anos.',recado:'leva uma sacolinha?'},
 'mapinguari-do-shopping':{idade:'lenda (e cliente)',bio:'Saí da floresta pro shopping. A boca na barriga é pra promoção.',recado:'tá tudo 70% off?'},
 'sogra-tita':{idade:'não interessa',bio:'Você não é bom o suficiente. Mas fica pro almoço.',recado:'cortou o cabelo, é?'},
+  // Lote 4 (P2) — Corredores
+'cobrador-fantasma':{idade:'morto desde 2009',bio:'Morri cobrando. Você ainda me deve R$ 37,50 de 2009.',recado:'lembra de mim? e da dívida?'},
+'lagartixa-de-terno':{idade:'31 (o rabo: 2 semanas)',bio:'Subo pelas paredes da firma. Meu rabo foi promovido antes de mim.',recado:'vamos alinhar na parede?'},
+'maratonista-eterno':{idade:'71 (largou com 23)',bio:'Larguei em 1978. Ninguém avisou que acabou. Não paro pra date.',recado:'corre comigo? não paro'},
+'mico-da-dentadura':{idade:'6 (os dentes, 80)',bio:'Os dentes são do seu avô. O sorriso é todo meu.',recado:'sorri pra mim, vai'},
+'noivo-em-fuga':{idade:'42 (15 de fuga)',bio:'Procuro algo casual. Muito casual. Sem altar, sem véu, sem mão.',recado:'você não é ela, né?'},
+'quati-influencer':{idade:'3 (2 mi de seguidores)',bio:'Roubo seu lanche e posto. Você vira conteúdo, eu viro trend.',recado:'me marca na foto'},
+'rolo-lava-rapido':{idade:'R$ 15 a ducha',bio:'Esfrego com carinho. Muito carinho. Sem parar. Por favor, saia.',recado:'quer cera também?'},
+  // Kamikazes
+'carrinho-da-vo':{idade:'83 (da vó)',bio:'Rodo a feira desde 1962 atrás do tomate perfeito. Você é ele?',recado:'cuidado, eu atropelo'},
+  // Palhaços
+'fa-de-novela':{idade:'58 (capítulo 9.412)',bio:'Já fui sequestrada, trocada na maternidade e tive amnésia. Na TV.',recado:'você é a gêmea má?'},
+leiloeiro:{idade:'lance inicial: 45',bio:'Me vendo barato. Quem dá mais? Ninguém? Dou-lhe uma...',recado:'dou-lhe uma, dou-lhe duas'},
+'servidor-fossilizado':{idade:'67 (34 de casa)',bio:'Atendo das 10h às 10h15. Tem que trazer a xerox autenticada.',recado:'volta amanhã, querida'},
+'sommelier-de-ipa':{idade:'34',bio:'Sinto notas de manga, maracujá e superioridade moral.',recado:'isso aí é cerveja?'},
+  // Suporte
+'animador-necromante':{idade:'40 (morto há 3)',bio:'Animo festa infantil e defunto. A diferença é o bolo.',recado:'cadê a alegria, galera?'},
+'bandeirinha-existencial':{idade:'44',bio:'Vivi impedido a vida toda. Ergo a bandeira e ninguém olha.',recado:'tá impedido, meu bem'},
+'contador-de-almas':{idade:'contando...',bio:'Sua alma tá no vermelho desde 2015. Vamos conversar.',recado:'e a nota da sua alma?'},
+'homem-wifi':{idade:'5 (2 barrinhas)',bio:'Conexão forte, sinal fraco. Se cair, desliga e liga de novo.',recado:'a senha tá atrás de mim'},
+'podcaster-de-garagem':{idade:'38 (ep. 412)',bio:'Tenho 3 ouvintes. Dois são minha mãe em aparelhos diferentes.',recado:'cê já ouviu meu podcast?'},
+'promotor-infinito':{idade:'29 (turno de 14 h)',bio:'Só um pedacinho. Mais um. Mais um. Você não sai daqui.',recado:'prova só um pedacinho'},
+  // Arremessadores
+'coelho-falsificado':{idade:'1 (Páscoa de 2019)',bio:'Chocolate 100% gordura vegetal. Orelha comprada no camelô.',recado:'é chocolate, juro'},
+'geladeira-do-feijao':{idade:'27 (e a porta mole)',bio:'Pote de sorvete por fora, feijão por dentro. Igual a mim.',recado:'fecha a porta, menino!'},
+'noiva-da-quadrilha':{idade:'22',bio:'Casei com um espantalho. Ele fugiu. Aceito propostas no arraiá.',recado:'quer casar? é rapidinho'},
+  // Atiradores
+'bebedouro-da-fofoca':{idade:'20 litros',bio:'Sei tudo de todo mundo da firma. Inclusive de você.',recado:'senta que lá vem fofoca'},
+  // Brutamontes
+'cupim-mansao':{idade:'120 (a casa)',bio:'Morava num casarão. Comi o casarão. Procuro onde morar.',recado:'sua casa é de madeira?'},
+'engenheiro-obra-parada':{idade:'64 (a obra: 30)',bio:'Entrego mês que vem. Desde 1995. Falta só o resto.',recado:'semana que vem fica pronto'},
+manobrista:{idade:'35',bio:'Estaciono qualquer coisa em qualquer vaga. Inclusive você.',recado:'deixa a chave comigo'},
+  // Invocadores
+'rapa-da-prefeitura':{idade:'48 (de carteira)',bio:'Apreendo mercadoria, coração e guarda-chuva. Sem nota, sem amor.',recado:'isso aí tem alvará?'},
+  // Enxame
+'domino-humano':{idade:'50 (cada um)',bio:'Se eu cair, cai a fila inteira. Por isso não me apaixono.',recado:'não encosta em mim!'},
 });

@@ -89,6 +89,7 @@ import {unprojectView} from '../projection.ts';
 import {StonewardsRenderer} from '../render/stonewards.ts';
 import {YouMarkers} from '../render/you.ts';
 import {MapLabel} from '../render/map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from '../render/enemy-name-rules.ts';
 import {destinationMark} from '../render/city-edge-rules.ts';
 import {CityOutlines} from '../render/city-outline.ts';
 import {cityGroundLuminance} from '../render/city-outline-rules.ts';
@@ -171,6 +172,11 @@ const outlinesOn=params.get('contorno')!=='0';
 // elenco=1: every legacy kind; elenco=a,b,c: those roster ids (BUG sombra-longe: the shadow study's line-up).
 const castIds=params.get('elenco')?.split(',').filter(id=>id&&id!=='1')??[];
 const cast=tele&&params.has('elenco');
+/**
+ * nome-inimigo-rede-social, etapa 7: `elite=a,b` makes those cast ids elites and `chefao=id` a boss (the name ficha over
+ * the bar, render/enemy-name-rules.ts); `caido=<kind>` hangs "Te derrubou: X" under the caído ficha, as the scene does.
+ */
+const eliteIds=params.get('elite')?.split(',')??[],bossId=params.get('chefao'),fallenBy=fallenByText(params.get('caido')??undefined);
 /** veiculos=1 (bancos-e-veiculos, part 2): the three parked vehicles by the hero, and the hero riding the cart (its chip). */
 const veiculos=tele&&params.get('veiculos')==='1';
 /**
@@ -700,7 +706,7 @@ class CitySandbox extends Phaser.Scene {
     if(veiculos)view.pickups.push(...VEHICLE_KINDS.map((kind,i)=>({id:`v${i}`,kind:'vehicle' as const,resource:kind,x:x-2.4+i*2.4,y:y+2.2,value:i})));
     horde.push(nests?nests.asleep:cast?withCast(view,x,y):view);
     const you=new YouMarkers(this,reducedMotion,this.outlines);you.setCity(true);you.showArrow(-1e9);
-    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true)];
+    const labels=limpo?[]:[new MapLabel(this,'Concursei').setCity(true),new MapLabel(this,'Tia, 18 s').setCity(true).setSos(true),...(fallenBy?[new MapLabel(this,fallenBy).setCity(true)]:[])];
     const destination=this.add.graphics().setDepth(100000);
     this.lab={horde,projector,you,labels,destination,view,pushed:-1,...(nests?{nests}:{})};
     this.markDestination();
@@ -818,6 +824,7 @@ class CitySandbox extends Phaser.Scene {
     const q=lab.projector.project(this.at.x+3.5,this.at.y+.5,{x:0,y:0}),r=lab.projector.project(this.at.x-3.5,this.at.y-1,{x:0,y:0});
     lab.labels[0]?.anchor(q.x,q.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
     lab.labels[1]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE,96401).draw(zoom,true);
+    lab.labels[2]?.anchor(r.x,r.y+15*CITY_VIEW_SCALE+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,zoom),96401).draw(zoom,true);
   }
   /** The game's city zoom for this viewport (or the `cells` override), then the camera onto the hero. */
   private fit(){
@@ -944,7 +951,7 @@ function withCast(view:RunView,x:number,y:number):RunView{
   const at=(i:number,r:number)=>({x:x+Math.cos(i/n*Math.PI*2)*r,y:y+Math.sin(i/n*Math.PI*2)*r});
   return {...view,
     // ferido=1: the cast is hurt, so the health bars (efeitos/barra-vida-*) show.
-    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:!castIds.length&&i===kinds.length-1,...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
+    enemies:[...view.enemies,...kinds.map((kind,i)=>({id:`c${i}`,kind,elite:(!castIds.length&&i===kinds.length-1)||eliteIds.includes(kind),...(kind===bossId?{boss:true}:{}),...at(i,2.6),hp:params.has('ferido')?1+i%4:5,maxHp:5}))],
     pickups:[...view.pickups,...PICKUP_KINDS.map((kind,i)=>({id:`p${i}`,kind,...at(kinds.length+i,1.7),value:1}))]};
 }
 

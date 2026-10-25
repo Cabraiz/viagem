@@ -23,6 +23,7 @@ test('design lint: each rule catches its case and lets the tokens through',()=>{
   assert.deepEqual(rules('.a{border-radius:999px}'),['radius']);
   assert.deepEqual(rules('.a{border-radius:var(--r-janela) var(--r-janela) 0 0}'),[]);
   assert.deepEqual(rules('.a{border-radius:50%}'),[]);
+  assert.deepEqual(rules('.a{border-radius:var(--r-perfil-foto)}'),[]);
   assert.deepEqual(rules('.a{box-shadow:0 3px 12px var(--c-sombra)}'),['shadow']);
   assert.deepEqual(rules('.a{box-shadow:var(--s-1),inset 0 0 0 2px var(--c-papel)}'),[]);
   assert.deepEqual(rules('.a{--rh-shadow:0 3px 12px var(--c-breu)}'),['shadow']);

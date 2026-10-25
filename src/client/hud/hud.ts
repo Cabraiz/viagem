@@ -55,6 +55,8 @@ import {createCenaPart} from './chefao-cena.ts';
 import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
+import './perfis.css';
+import {createProfiles,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -105,6 +107,14 @@ export interface RunHudOptions {
   input?:InputKind;
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
+  /**
+   * The enemies' profile cards (card nome-inimigo-rede-social, hud/perfis.ts): their clock (performance.now by default;
+   * the sandbox's frozen scenes stop it) and where the phone remembers the kinds it already met (localStorage by default).
+   */
+  profileClock?():number;
+  profileStorage?:Pick<Storage,'getItem'|'setItem'>;
+  /** false: no profile cards (the HUD sandbox's other scenes). */
+  profiles?:boolean;
   /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
   cena?:CenaClock;
 }
@@ -148,6 +158,8 @@ export class RunHud {
   private readonly camp:CampPart;
   /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
   private readonly killcam:KillcamPart;
+  /** A new enemy kind's dating-app profile, a fan of them when several come at once (hud/perfis.ts). */
+  readonly profiles:ProfilesPart;
   /** The mission line (inicio-no-uno-caixas-120, hud/missao.ts): big in the middle, then a row of the slot. */
   private readonly mission:MissionPart;private readonly missionTracker=new MissionTracker();private unoArrowNow:{urgent:boolean}|undefined;
   /** Banner box measured in its normal (top) slot, so the low slot can be left once the hero walks away. */
@@ -241,8 +253,11 @@ export class RunHud {
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
     // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
     const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
-    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[])];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
+    // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
+    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,storage:options.profileStorage,off:options.profiles===false,
+      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden)});
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),

@@ -41,6 +41,7 @@ const FOTOS=[
   ['cidade-praca','&torres=1&hero=100,124','ao lado das torres (A3 atrás do prédio)'],
   ['sombra','','sombras do elenco'],
   ['cidade-regua','','herói ao lado da casa (silhueta)'],
+  ['minimapa','&perfis=3','perfis de inimigo novo em leque'],
 ];
 const KEYS={N:['KeyW'],NE:['KeyW','KeyD'],E:['KeyD'],SE:['KeyS','KeyD'],S:['KeyS'],SW:['KeyS','KeyA'],W:['KeyA'],NW:['KeyW','KeyA']};
 /**
@@ -375,7 +376,7 @@ async function match(browser,base){
 async function openMenu(p,base,label){
   matchPages.set(p,{base,label,left:4});
   await p.addInitScript(LATENCY);
-  await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
+  await p.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud,.rh-perfis{display:none!important}';document.head.append(s);});});
   await p.goto(`${base}/?perf=1`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
 }

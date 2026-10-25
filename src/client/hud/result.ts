@@ -209,6 +209,8 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
 
   const grid=el('div','rh-result-grid',root);
 
+  // The enemies the local hero killed that became matches (hud/perfis.ts fillResult); hidden with none.
+  const matches=el('section','rh-result-matches',root);matches.hidden=true;matches.setAttribute('aria-label','Seus matches');
   const actions=el('div','rh-result-actions',root);
   const rematch=el('button','rh-result-btn rh-result-rematch',actions);rematch.type='button';
   // The owner's "Arrumar turma" (D-025): the cards trade their prizes for "Expulsar" / "Tirar bot", plus "Adicionar bot".
@@ -426,7 +428,7 @@ export function createResultScreen(options:{onRematch():void;onExit?():void;onKi
   landscape?.addEventListener('change',onTurn);
 
   return {
-    el:root,
+    el:root,matches,
     show(result:MapRunResult,ctx:HudContext,nests?:{down:number;total:number}){
       const headline=resultHeadline(result);
       root.dataset.outcome=result.victory?'victory':'defeat';

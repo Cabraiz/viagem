@@ -21,9 +21,9 @@ on:
         description: 'branch or full 40-char sha to record'
         required: true
       roteiro:
-        description: 'parado, andando (8 directions), uno (short steps beside the Uno) or todos'
+        description: 'parado, andando (8 directions), uno (short steps beside the Uno), matches (uno with every kill a match, the flame tapped), nomes (the enemy-name photo, then parado) or todos'
         type: choice
-        options: [parado, andando, uno, todos]
+        options: [parado, andando, uno, matches, nomes, todos]
         default: parado
       tela:
         description: 'celular (390x844@3), pc (1335x620) or ambas'

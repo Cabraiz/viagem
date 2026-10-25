@@ -162,15 +162,18 @@ function named<T extends {players:{name:string}[]}>(v:T):T{
 let tick=1000,forgeReq=0,cidaReq=0;
 let view:RunView=named(fakeView(scenario,players,tick));
 /**
- * The enemies' profile cards (card nome-inimigo-rede-social, hud/perfis.ts): `perfis=1..3` puts that many new kinds by the
- * hero (`perfil=<id>,<id>` picks them), with a fresh memory on each load (frozen: the cards stay). Off in every other scene.
+ * The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts): `perfis=1..12` gives that many matches (the flame
+ * and its counter; `perfil=<id>,<id>` picks the kinds), `perfis-abre=1` opens the last one (the compact card; frozen: it
+ * stays), and the result scene shows them as stickers. Off in every other scene.
  */
-const perfis=Math.max(0,Math.min(3,Number(params.get('perfis'))||0));
-const PERFIS_SANDBOX=(params.get('perfil')?.split(',')??['tio-pave','pombos','boleto-vivo']).slice(0,perfis);
-const perfisMemory=new Map<string,string>();
+const PERFIS_KINDS=['tio-pave','pombos','boleto-vivo','bebado','sogra-tita','coach','agiota','influencer','motoboy','chefe-pizza','cunhado-sabe-tudo','pombo-rei'];
+const perfis=Math.max(0,Math.min(12,Number(params.get('perfis'))||0));
+const PERFIS_SANDBOX=(params.get('perfil')?.split(',')??PERFIS_KINDS).slice(0,perfis);
+/** Fixed distances and leans: the prints never change between loads. */
+const PERFIS_DIST=[12,7,1240,31,4,88,15,260,9,43,3,560],PERFIS_TILT=[-3,2.5,-1.5,3.5,-2.5,1,-4,2,-1,3,-3.5,1.5];
 const hud=new RunHud(document.body,{
   localId:'p1',worldRescue:bordas||cidade||!!pausa,
-  profiles:perfis>0,profileStorage:{getItem:k=>perfisMemory.get(k)??null,setItem:(k,v)=>{perfisMemory.set(k,v);}},
+  profiles:perfis>0,
   ...(perfis&&frozen?{profileClock:()=>0}:{}),
   // The pause's frozen scenes (modo foto): its clock stands still, so the seconds and the bar print the same every time.
   ...(pausa&&frozen?{pauseClock:()=>0}:{}),
@@ -327,11 +330,9 @@ function load(next:HudScenario){
     view={...view,players:view.players.map(p=>p.id==='p1'?{...p,weapons:INV_FIXTURE[inv],hand:1}:p)};
     if(inv==='cheio')view.pickups=[...view.pickups,{id:'item-1',kind:'item',x:INV_HERO.x+.6,y:INV_HERO.y,value:5,resource:'chinelo-lendario'}];
   }
-  if(perfis){
-    const at=FIXTURE_HERO[scenario]??{x:0,y:0};
-    view={...view,enemies:[...view.enemies,...PERFIS_SANDBOX.map((kind,i)=>({id:`perfil-${i}`,kind,x:at.x+3+i*2,y:at.y+1+i,hp:10,maxHp:10}))]};
-  }
   hud.hideResult();hud.setHero(inv?{...INV_HERO,...FIXTURE_HERO[scenario]}:FIXTURE_HERO[scenario]);hud.update(view);
+  PERFIS_SANDBOX.forEach((kind,i)=>hud.profiles.add({kind,distance:PERFIS_DIST[i]??10,tilt:PERFIS_TILT[i]??0}));
+  if(perfis&&params.has('perfis-abre')){(hud.profiles.el.querySelector('.rh-matches') as HTMLButtonElement|null)?.click();hud.update(view);}
   // A wave with the wall going from 54% to 22%: the "Muralha em 25%" notice, as a real hit would bring it.
   if(scenario==='camp-wave'){hud.update({...view,structures:view.structures.map(s=>({...s,hp:324}))});hud.update(view);}
   // ?vergonha=nenhuma drops the shame notice, ?vergonha=cedo makes it the early fall (its "Round 1" / "Onda 1" / no number).

@@ -121,6 +121,35 @@ export function fanPose(index:number,count:number){
   return {rot:-9*index,x:-14*index,y:4*index};
 }
 
+/** Clearance (CSS px) kept between the card and what it must not cover. */
+export const GUARD_MARGIN_PX=12;
+/** The card's size when no corner fits it whole: the same corners again at this scale, then no card. */
+export const SMALL_SCALE=.72;
+/** Gap (CSS px) between a moved card and the useful area's edge. */
+const EDGE_PX=8;
+/** Where the fan goes (card perfil-nao-cobre): offset from its CSS place and scale (transform-origin top left). */
+export interface ProfilePlace {spot:'canto'|'esquerda'|'baixo'|'baixo-esquerda';dx:number;dy:number;scale:number}
+type Box={x:number;y:number;width:number;height:number};
+const hits=(a:Box,b:Box,m:number)=>a.x<b.x+b.width+m&&b.x-m<a.x+a.width&&a.y<b.y+b.height+m&&b.y-m<a.y+a.height;
+/**
+ * The first place whose box crosses none of `guards` (the hero, the Uno, the allies, the mission band): the CSS place
+ * (`home`, the top band's right corner), then the useful area's other corners (top left, bottom right, bottom left),
+ * then the same at SMALL_SCALE; undefined when none fits (the fan waits off screen). `prefer` (the last place) is tried
+ * first, so the card does not hop between corners while it still fits where it is.
+ */
+export function placeProfiles(home:Box,useful:Box,guards:readonly Box[],prefer?:ProfilePlace['spot'],margin=GUARD_MARGIN_PX):ProfilePlace|undefined{
+  const spots:ProfilePlace['spot'][]=['canto','esquerda','baixo','baixo-esquerda'];
+  if(prefer)spots.sort((a,b)=>(b===prefer?1:0)-(a===prefer?1:0));
+  for(const scale of [1,SMALL_SCALE])for(const spot of spots){
+    const w=home.width*scale,h=home.height*scale,right=spot==='canto'||spot==='baixo',low=spot==='baixo'||spot==='baixo-esquerda';
+    const x=right?home.x+home.width-w:useful.x+EDGE_PX;
+    const y=low?useful.y+useful.height-EDGE_PX-h:home.y;
+    const box={x,y,width:w,height:h};
+    if(!guards.some(g=>hits(box,g,margin)))return {spot,dx:x-home.x,dy:y-home.y,scale};
+  }
+  return undefined;
+}
+
 const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:string,parent?:HTMLElement)=>{
   const node=doc.createElement(tag);node.className=className;parent?.append(node);return node;
 };
@@ -137,6 +166,12 @@ export interface ProfilesOptions {
   storage?:Store;
   /** No cards at all (the HUD sandbox's other scenes: their prints never change with what the browser met before). */
   off?:boolean;
+  /**
+   * What the fan must never cover (perfil-nao-cobre: the hero, the Uno, the allies, the mission band) and the useful
+   * area whose corners it may move to (zones.ts), CSS px; without them it stays in its CSS place.
+   */
+  guards?():readonly Box[]|undefined;
+  useful?():Box|undefined;
 }
 export interface ProfilesPart extends HudPart {readonly deck:ProfileDeck}
 
@@ -172,6 +207,21 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
     return node;
   };
   let lastCards:readonly DeckCard[]=[];
+  let place:ProfilePlace|undefined,noRoom=false;
+  /** Moves the fan off what it would cover (placeProfiles); no place: hidden, its clock standing still. */
+  const settle=()=>{
+    const front=root.firstElementChild as HTMLElement|null,parent=root.offsetParent as HTMLElement|null;
+    const guards=options.guards?.(),useful=options.useful?.();
+    if(!front||!parent||!guards||!useful){noRoom=false;return;}
+    const p=parent.getBoundingClientRect(),home={x:p.left+root.offsetLeft,y:p.top+root.offsetTop,width:root.offsetWidth,height:front.offsetHeight};
+    // The fan's back cards lean out to the left and up: more clearance per card behind the front one.
+    const behind=Math.max(0,lastCards.filter(c=>!c.leaving).length-1);
+    place=placeProfiles(home,useful,guards,place?.spot,GUARD_MARGIN_PX+24*behind);noRoom=!place;
+    const transform=place&&(place.dx||place.dy||place.scale!==1)?`translate(${Math.round(place.dx)}px,${Math.round(place.dy)}px) scale(${place.scale})`:'';
+    if(root.style.transform!==transform)root.style.transform=transform;
+    root.classList.toggle('rh-perfis-fora',noRoom);
+    if(place)root.dataset.lugar=`${place.spot}${place.scale<1?'-menor':''}`;else delete root.dataset.lugar;
+  };
   const paint=()=>{
     const cards=lastCards,live=new Set<number>();
     const staying=cards.filter(c=>!c.leaving);
@@ -196,11 +246,12 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
     update(view,_ctx:HudContext){
       if(options.off)return;
       const blocked=options.blocked();
-      const step=deck.step({enemies:view.enemies,hero:options.hero()},now(),blocked);
+      const step=deck.step({enemies:view.enemies,hero:options.hero()},now(),blocked||noRoom);
       for(const kind of step.spotted){const p=perfilOf(kind);if(p)load(p.foto);}
       lastCards=step.cards;
       root.classList.toggle('rh-perfis-espera',blocked);
       paint();
+      if(!root.hidden)settle();else noRoom=false;
     },
     destroy(){root.remove();nodes.clear();},
   };

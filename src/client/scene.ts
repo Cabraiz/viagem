@@ -1392,6 +1392,18 @@ export class IslandScene extends Phaser.Scene {
     const cam=this.cameras.main,b=this.figureWorldBox(watched?.image??this.actor,classId??this.hooks.classId);
     return {x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom};
   }
+  /**
+   * What a floating HUD card must never cover (perfil-nao-cobre): the hero (or the one watched), the Uno and every ally
+   * drawn, CSS px like heroScreenRect.
+   */
+  guardScreenRects(){
+    const cam=this.cameras.main,out:{x:number;y:number;width:number;height:number}[]=[];
+    const screen=(b:{x:number;y:number;width:number;height:number})=>({x:(b.x-cam.worldView.x)*cam.zoom,y:(b.y-cam.worldView.y)*cam.zoom,width:b.width*cam.zoom,height:b.height*cam.zoom});
+    const hero=this.heroScreenRect();if(hero)out.push(hero);
+    const uno=this.chaveiro?.unoWorldBox();if(uno)out.push(screen(uno));
+    for(const [id,a] of this.remoteActors)if(a.image.visible)out.push(screen(this.figureWorldBox(a.image,this.hooks.net?.players.get(id)?.classId??this.hooks.classId)));
+    return out;
+  }
   /** The hero's drawn figure in world px (all its animation frames together); the whole frame until the sheet loads. */
   private heroWorldBox(){return this.figureWorldBox(this.actor,this.hooks.classId);}
   private figureWorldBox(a:Phaser.GameObjects.Sprite,classId:string){

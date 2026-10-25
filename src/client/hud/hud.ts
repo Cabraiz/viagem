@@ -181,6 +181,8 @@ export class RunHud {
   private readonly coachRow:CoachPart;
   private coachShow?:CoachShow;
   private hero?:{x:number;y:number};
+  /** What the profile cards must not cover on screen (scene.guardScreenRects), fed by guardProfiles. */
+  private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
   private readonly forgeEl:HTMLElement;
@@ -255,7 +257,10 @@ export class RunHud {
     const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
     // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
     const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,storage:options.profileStorage,off:options.profiles===false,
-      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden)});
+      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden),
+      // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
+      guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],
+      useful:()=>this.zones().useful});
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
@@ -579,6 +584,8 @@ export class RunHud {
    * Keeps the center banner off the hero (UX checklist B2: hero rect ±40 px). The banner moves to the low slot
    * while its top slot would cross the hero, and comes back when the top slot is clear again.
    */
+  /** The hero, the Uno and the allies on screen (scene.guardScreenRects): the profile cards keep off them (perfil-nao-cobre). */
+  guardProfiles(rects:readonly Rect[]|undefined){this.profileGuards=rects;}
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);

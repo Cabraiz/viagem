@@ -679,6 +679,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
               const back=backOnline.frame(net.connected,now,run);
               if(back){backRow.querySelector('strong')!.textContent=back;hud.queueRow(backRow,BACK_ONLINE_ROW_MS);}
               hud.avoidHero(controller?.scene.heroScreenRect());
+              hud.guardProfiles(controller?.scene.guardScreenRects());
               // Stonewards (VGM-046B): where the hero is (the forge opens in the camp) and the base's bearing on screen (horn arrow).
               const wall=hud.view?.structures.find(s=>s.kind==='muralha'),heroBox=controller?.scene.heroScreenRect();
               let bearing:number|undefined;

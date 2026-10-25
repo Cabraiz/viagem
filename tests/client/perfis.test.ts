@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {FAN_MAX,LEAVE_MS,MATCH_MS,NEAR_M,PERFIS_KEY,PROFILE_MS,ProfileDeck,fanPose,loadSeen,perfilOf,saveSeen,type DeckInput} from '../../src/client/hud/perfis.ts';
+import {FAN_MAX,GUARD_MARGIN_PX,LEAVE_MS,MATCH_MS,NEAR_M,PERFIS_KEY,PROFILE_MS,ProfileDeck,SMALL_SCALE,fanPose,loadSeen,perfilOf,placeProfiles,saveSeen,type DeckInput} from '../../src/client/hud/perfis.ts';
 import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
@@ -123,4 +123,25 @@ test('the phone remembers the kinds it met (and a broken or missing storage neve
   store.set(PERFIS_KEY,'{broken');
   assert.ok(loadSeen(storage) instanceof Set);
   assert.doesNotThrow(()=>saveSeen(new Set(['x']),{getItem:()=>{throw new Error('off');},setItem:()=>{throw new Error('off');}}));
+});
+
+// perfil-nao-cobre: the user's phone print had the card over the Uno, the hero and the mission band.
+test('the card never covers the hero, the Uno, the allies or the mission band: another corner, then smaller, then none',()=>{
+  const cross=(a:{x:number;y:number;width:number;height:number},b:typeof a,m:number)=>a.x<b.x+b.width+m&&b.x-m<a.x+a.width&&a.y<b.y+b.height+m&&b.y-m<a.y+a.height;
+  const boxOf=(home:{x:number;y:number;width:number;height:number},p:{dx:number;dy:number;scale:number})=>({x:home.x+p.dx,y:home.y+p.dy,width:home.width*p.scale,height:home.height*p.scale});
+  // 390×844 as in the print: the card under the top band on the right; the useful area between the band and the thumbs.
+  const home={x:210,y:140,width:172,height:226},useful={x:0,y:120,width:390,height:560};
+  const band={x:40,y:240,width:310,height:50},uno={x:180,y:340,width:110,height:130},hero={x:170,y:410,width:44,height:60};
+  assert.deepEqual(placeProfiles(home,useful,[]),{spot:'canto',dx:0,dy:0,scale:1},'nothing in the way: its usual place');
+  const p=placeProfiles(home,useful,[hero,uno,band]);
+  assert.ok(p,'a place');
+  for(const g of [hero,uno,band])assert.ok(!cross(boxOf(home,p),g,GUARD_MARGIN_PX),`${p.spot} crosses ${JSON.stringify(g)}`);
+  assert.equal(p.spot,'baixo','the band blocks both top corners: the bottom right, above the thumbs');
+  assert.equal(placeProfiles(home,useful,[hero,uno,band],'baixo')?.spot,'baixo','it stays where it fits');
+  // Every full-size corner is taken: the same corners at SMALL_SCALE.
+  const wall=[{x:0,y:200,width:390,height:270}];
+  const small=placeProfiles(home,useful,wall);
+  assert.equal(small?.scale,SMALL_SCALE);
+  for(const g of wall)assert.ok(!cross(boxOf(home,small!),g,GUARD_MARGIN_PX));
+  assert.equal(placeProfiles(home,useful,[{x:0,y:0,width:390,height:844}]),undefined,'no room anywhere: no card');
 });

@@ -9,7 +9,9 @@
 .rh .rh-perfis{--perfil-w:clamp(150px,min(19vw,36vh),236px);position:absolute;z-index:var(--z-hud);top:calc(var(--rh-t) + 64px);right:var(--rh-r);
   width:var(--perfil-w);container-type:inline-size;pointer-events:none}
 .rh:has(>.rh-minimap) .rh-perfis{right:calc(var(--rh-r) + clamp(124px,30vmin,210px) + 18px)}
-.rh .rh-perfis.rh-perfis-espera{visibility:hidden}
+.rh .rh-perfis.rh-perfis-espera,.rh .rh-perfis.rh-perfis-fora{visibility:hidden}
+/* perfil-nao-cobre: moved by placeProfiles (an inline translate + scale) off the hero, the Uno, the allies and the mission band. */
+.rh .rh-perfis{transform-origin:0 0;transition:transform .22s ease-out}
 /* The phone's HUD keeps its minimap on the left (fone.css) or by the joystick: the card takes the right corner. */
 .rh[data-hud=fone]:has(>.rh-minimap) .rh-perfis,.rh[data-hud=fone] .rh-perfis{right:max(8px,var(--rh-r))}
 @media (max-width:599px){
@@ -64,4 +66,4 @@
   transition:opacity .12s,transform .2s cubic-bezier(.2,1.6,.4,1)}
 .rh-perfil[data-sai=curtir] .rh-perfil-match{opacity:1;transform:translate(-50%,-50%) rotate(-14deg) scale(1)}
 
-@media (prefers-reduced-motion:reduce){.rh-perfil,.rh-perfil-match{transition:none}}
+@media (prefers-reduced-motion:reduce){.rh .rh-perfis,.rh-perfil,.rh-perfil-match{transition:none}}

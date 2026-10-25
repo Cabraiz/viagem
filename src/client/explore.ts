@@ -170,7 +170,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(EMOTE_BAR){emotes=new EmoteBar($('.explore-layout'),{playerId:net.id,onEmote:id=>{net.emote(id);}});emotes.root.hidden=true;}
     const debug=document.createElement('details');debug.className='coop-debug';debug.innerHTML='<summary>Conexão da sala</summary><span id="coop-diagnostics"></span><br/><button id="coop-reconnect">Testar reconexão</button>';$('.explore-layout').append(debug);
     // The run HUD (VGM-040) replaces the old .coop-run strip: ready lives in the waiting room, rematch on the result screen.
-    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
+    // ?matches=sempre (gravar-partida's matches roteiro): every kill of the hero is a match (hud/perfis.ts MatchBook).
+    hud=new RunHud($('.explore-layout'),{localId:net.id,worldRescue:true,cena,...(new URLSearchParams(location.search).get('matches')==='sempre'?{profileRng:()=>0}:{}),onChoose:(offer,index)=>net.choose(offer,index),onSkip:offer=>net.skipOffer(offer),onReroll:offer=>net.rerollOffer(offer),// Ads (anuncios-h5-games): an interstitial only here, on the result: "Sair", and the rematch when no other human
       // waits on this player's vote (a room of friends never waits on someone's ad). Off or blocked = runs at once.
       onRematch:()=>{if(net&&soloRoom(net.run?.members,net.id))adBreakThen('revanche',()=>net?.rematch());else net?.rematch();},
       onExit:()=>adBreakThen('sair',()=>close()),critterIcon:kind=>controller?.scene.critterIcon(kind),

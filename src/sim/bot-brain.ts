@@ -49,18 +49,21 @@
  * CAR_HELP_BOTS standing bots nearest to it (within CAR_HELP_RANGE, none on another task) lean on it and push the same
  * way (carHeading: the people's pull). The bot never picks where the car goes; with nobody moving it, nobody helps
  * (the sim also counts a bot only along with a person). The other bots fight around the car as before.
+ * Card puxar-uno-corda: the first helper takes the rope instead (task rope) when it is free, the car goes nose first
+ * (the heading within CAR_ROPE_BOT_DOT of the nose) and the rope's end is nearer to it than its spot behind the car:
+ * it walks to the end and on along the heading, the way a person takes it (the sim's gesture). The others push.
  * D-051 manual combat (BrainInput.combat 'manual'): the bot holds the attack (Decision.attack) whenever a critter is
  * within its equipped weapon's reach (attackReach) and never taps the skill; the room's auto aim picks the target. It
  * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {BASE_STATS,CAR_ID,CAR_PUSH_REACH,CAR_RADIUS,DELIVERY_MARK_SECONDS} from '../contract/index.ts';
+import {BASE_STATS,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
 import {RECIPES,CAMP_RADIUS,TOWER_TOKENS,UNITS_PER_TOKEN,canPay,forgePrice,priceOf,returnTicks,tokensOf,type RecipeId} from '../rules/index.ts';
 import {MAX_TOWERS} from './stonewards/forge.ts';
-import {heroSpeed,walkable,type Point} from '../maps/index.ts';
+import {floorPortal,heroSpeed,onFloor,walkable,type Point} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 import {cityTerrainOf} from './city/grid.ts';
 import type {StonewardsState} from './stonewards/state.ts';
@@ -68,9 +71,9 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
+import {BANCO,BICO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
-import {planBarraca,type BarracaCommand,type BarracaMemory} from './bot-barracas.ts';
+import {BARRACA_REACH_CALM,planBarraca,type BarracaCommand,type BarracaMemory} from './bot-barracas.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
@@ -98,8 +101,23 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/** Card boss-fim-onda-1: a boss (the chefão of the 1st wave, the final one) this close to the car: every bot goes for him. */
+export const BOSS_FOCUS_R=16;
+/** The boss the bots focus: alive and within BOSS_FOCUS_R of the car (mode 'ninhos', the chaveiro); the nearest such. */
+export function bossFocus(enemies:readonly EnemyView[],car:Point|undefined):EnemyView|undefined{
+  if(!car)return undefined;
+  let best:EnemyView|undefined;
+  for(const e of enemies)if(e.boss&&e.hp>0&&dist(e,car)<=BOSS_FOCUS_R&&(!best||dist(e,car)<dist(best,car)))best=e;
+  return best;
+}
 /** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
 export const NEST_THREAT_RADIUS=40;
+/**
+ * Mode 'ninhos' with the car (inicio-no-uno-caixas-120 bench): a critter this close to the car keeps the bots off the
+ * crates (planLoot's lull only looks around the bot: with the start and its crates beside the Uno, six bots stood at
+ * crates 8-25 u off while the first wave took the car in 60 s).
+ */
+export const LOOT_CAR_THREAT=12;
 /**
  * How close the bot walks to a critter at the car (the chaveiro; at the wall it stays DANGER+.2): DANGER+.2, or, with
  * only orbit weapons (the chinelo the run starts with: it hits within its `area`), inside that ring (ninhos-padrao:
@@ -155,6 +173,8 @@ export const PUSH_BOTS=2,PUSH_STAND=1.5;
  * within CAR_LEAN_DOT (cos) of the heading (the sim takes CAR_PUSH_DOT, .5).
  */
 export const CAR_HELP_BOTS=2,CAR_HELP_RANGE=20,CAR_LEAN=.5,CAR_SIDE=.6,CAR_LEAN_DOT=.8;
+/** puxar-uno-corda: a helper takes the rope only when the people take the car within this (cos) of its nose. */
+export const CAR_ROPE_BOT_DOT=.7;
 /**
  * D-047, a dead moto in the intermission (NEW-20261014-E2-chaveiro-time-cai-onda-4): the pushers go only when the trip
  * (to the moto, PUSH_TRIP_SECONDS there, back to the car; along the streets in the city) ends before the wave. The
@@ -191,8 +211,11 @@ export const newMemory=(index=0):BrainMemory=>({lastMoveTick:0,unstickUntil:-1,l
 
 export interface BrainInput {
   view:RunView;selfId:string;
-  /** Where the client predicts it is (CoopClient.predicted), like the scene's camera. */
-  at:Point;
+  /**
+   * Where the client predicts it is (CoopClient.predicted), like the scene's camera; `andar` 1 on a viaduct's deck
+   * (maps city/viaduct.ts): the bot walks the deck straight and leaves it by the ramp.
+   */
+  at:Point&{andar?:1};
   /** Bot index in the room (spreads the gather nodes and the orbit). */
   index:number;
   terrain?:TerrainField;
@@ -226,6 +249,10 @@ export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
   attack?:boolean;
+  /** Bicos: hold Trabalhar (standing still in a shop's ring, mode 'bank'). */
+  work?:boolean;
+  /** Card boss-fim-onda-1: the chosen target (PlayerInput.target): a boss near the car (bossFocus). */
+  target?:string;
   /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
   inventory?:LootCommand|BarracaCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
@@ -249,9 +276,10 @@ export const LOOT_DETOUR=1.4,LOOT_SPARE_SECONDS=7;
 /**
  * D-051 runner: with at least RUNNER_TEAM standing, the bot of index RUNNER_INDEX (a roamer) fetches crates within
  * LOOT_RADIUS_RUN during the wave too, like a person whose friends hold the wall (the 16/10 bench: the far dourada and
- * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs.
+ * lendária crates stayed shut while six bots fought with verde pistols). A solo never runs. 60 u on the 1.7× city, 34 since
+ * mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
  */
-export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=60;
+export const RUNNER_INDEX=1,RUNNER_TEAM=3,LOOT_RADIUS_RUN=34;
 export function attackReach(me:Pick<PlayerRunView,'weapons'|'hand'>,at:Point,enemies:readonly EnemyView[]):boolean{
   const owned=equippedWeapon({weapons:me.weapons,passives:[],...(me.hand!==undefined?{hand:me.hand}:{})}),def=owned?weaponCatalog.get(owned.id):undefined;
   if(!owned||!def)return false;
@@ -268,12 +296,13 @@ export function homeOf(view:RunView,fallback:Point):Point{
   const w=view.structures.find(s=>s.kind==='muralha'||s.kind===CAR_ID);return w?{x:w.x,y:w.y}:fallback;
 }
 /** An objective task: 'carro' (D-052) also carries where the people take the car and the side this helper leans on. */
-export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;heading:Point;side:1|-1};
+export type ObjectiveTask={kind:'push'|'clear';at:Point}|{kind:'carro';at:Point;heading:Point;side:1|-1;rope?:{nose:Point;tip:Point;held:boolean}};
 /**
  * D-047: this bot's objective task, or none. 'push': the moto is dead and this is one of the PUSH_BOTS standing bots
  * nearest to it (ties by id); 'clear': a delivery is DELIVERY_MARK_SECONDS ahead or less and this is the freest bot
  * (nearest to the point among the standing bots that do not push and do not forge); 'carro' (D-052): a person moves
- * the car and this is one of the CAR_HELP_BOTS free bots nearest to it. `at`: where to go.
+ * the car and this is one of the CAR_HELP_BOTS free bots nearest to it (those already leaning behind it first). `at`:
+ * where to go.
  */
 export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],forger?:string|null,terrain?:TerrainField,nests?:boolean):ObjectiveTask|undefined{
   const o=view.objective;
@@ -311,10 +340,28 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   const heading=carHeading(view,bots);
   if(heading){
     const car={x:o.car.x,y:o.car.y};
-    const helpers=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE))
-      .slice(0,CAR_HELP_BOTS).map(p=>p.id);
+    // A bot already leaning behind the car (carHelp's push zone) keeps its place before one nearer to the body: the car
+    // rolling toward a free bot ahead made it the nearer one, and the helper pushing went off while it circled to the back.
+    const behind=(p:PlayerRunView)=>{const at=positionOf(p)!,d=dist(at,car);return d<=CAR_HELP_NEAR&&d>1e-6&&-((at.x-car.x)*heading.x+(at.y-car.y)*heading.y)/d>=CAR_LEAN_DOT;};
+    const free=byDistance(car,ready.filter(p=>!pushers.includes(p.id)&&p.id!==clearer&&dist(positionOf(p)!,car)<=CAR_HELP_RANGE));
+    const helpers=[...free.filter(behind),...free.filter(p=>!behind(p))].slice(0,CAR_HELP_BOTS).map(p=>p.id);
     const i=helpers.indexOf(selfId);
-    if(i>=0)return {kind:'carro',at:car,heading,side:i===0?1:-1};
+    if(i>=0){
+      const task:ObjectiveTask={kind:'carro',at:car,heading,side:i===0?1:-1};
+      // puxar-uno-corda: one helper pulls when the rope is free (or on a helper already) and the car goes nose first:
+      // the helper holding it, else the one nearest to the rope's end among those it is nearer to than their spot
+      // behind the car.
+      const c=o.car,h=c.heading??0;
+      const forward=Math.cos(h)*heading.x+Math.sin(h)*heading.y>=CAR_ROPE_BOT_DOT;
+      if(forward&&(c.rope===undefined||helpers.includes(c.rope))){
+        const tip=ropeTip(c),behind={x:car.x-heading.x*(CAR_RADIUS+CAR_LEAN),y:car.y-heading.y*(CAR_RADIUS+CAR_LEAN)};
+        const at=(id:string)=>positionOf(ready.find(p=>p.id===id)!)!;
+        const puller=c.rope??helpers.filter(id=>dist(at(id),tip)<dist(at(id),behind)).sort((a,b)=>dist(at(a),tip)-dist(at(b),tip)||(a<b?-1:1))[0];
+        if(puller===selfId)task.rope={nose:carNose(c),tip,held:c.rope===selfId};
+        else if(puller!==undefined)task.side=helpers.filter(id=>id!==puller).indexOf(selfId)===0?1:-1;
+      }
+      return task;
+    }
   }
   return undefined;
 }
@@ -323,8 +370,18 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
 export const BANK_REACH=40,BANK_BOTS=2;
 /** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
 export const BANK_GRANA_TARGET=30;
-/** A trip to an ATM is worth it for this many notes (BANCO.saqueS each); a bot already there stays while one more fits. */
-export const BANK_MIN_NOTES=2;
+/**
+ * A trip to a shop is worth it for this many notes (bicos: BICO.nota at BICO.porSegundo, 2.5 s each); a bot already there
+ * stays while one more fits.
+ */
+export const BANK_MIN_NOTES=1;
+/**
+ * Bicos: a bot in the ring works (Trabalhar, standing still) while no critter is within BICO_BOT_CLEAR (u) and the
+ * queue is under BICO_BOT_FILA; else it steps out (moving clocks out) and fights or dodges like before.
+ * Etapa 5: 12 → 6 u (inside nobody hits it; with the nests' critters all over the city, 12 u kept the 6p team's bot
+ * out of the shop: 10.9 → 18.7 % of the Grana at R$ 1/s).
+ */
+export const BICO_BOT_CLEAR=6,BICO_BOT_FILA=2;
 /**
  * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
  * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
@@ -379,7 +436,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
       if(crate&&dist(at,crate)<d)continue;
     }
     const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
-    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
+    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BICO.nota/BICO.porSegundo;
     if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
     picks.push({id:p.id,bank:bank.id,d});
   }
@@ -406,14 +463,15 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
 export function carHeading(view:Pick<RunView,'objective'|'players'>,bots:readonly string[]):Point|undefined{
   const car=view.objective?.car;
   if(!car?.movers?.length)return undefined;
-  let x=0,y=0;
+  let x=0,y=0;const nose=carNose(car);
   for(const id of car.movers){
     if(bots.includes(id))continue;
     const p=view.players.find(q=>q.id===id),at=p&&positionOf(p);
     if(!at)continue;
-    const d=dist(at,car);if(d<1e-6)continue;
+    // The rope pulls from the front bumper toward its holder (puxar-uno-corda); a pusher leans toward the centre.
+    const from=id===car.rope?nose:car,d=dist(at,from);if(d<1e-6)continue;
     const sign=id===car.rope?1:-1;
-    x+=sign*(at.x-car.x)/d;y+=sign*(at.y-car.y)/d;
+    x+=sign*(at.x-from.x)/d;y+=sign*(at.y-from.y)/d;
   }
   const n=norm({x,y});
   return n.x||n.y?n:undefined;
@@ -525,10 +583,27 @@ export function decide(input:BrainInput):Decision{
   const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain,input.nests):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
+  // Card boss-fim-onda-1: a boss at the car is everyone's target (the room's aim takes him first when in reach).
+  const focus=input.nests&&view.objective?bossFocus(view.enemies,homeOf(view,at)):undefined;
+  if(focus)decision.target=focus.id;
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
-  const way=(to:Point,chase?:Chase):Point|undefined=>{
+  const way=(to:Point&{andar?:number},chase?:Chase):Point|undefined=>{
+    // The viaduct (mapa-175-com-viaduto): the streets' fields are the ground's. On the deck the bot walks straight (a
+    // corridor with one ramp); to the other floor it goes to the ramp first (straight down it, along the streets up).
+    const decks=city?.asset.viaducts;
+    if(city&&decks?.length){
+      const from=at.andar===1?1:0,goalFloor=to.andar===1?1:0;
+      if(goalFloor!==from){
+        const u=city.asset.unitsPerCell,v=decks.reduce((a,b)=>dist(floorPortal(a,u,goalFloor),at)<=dist(floorPortal(b,u,goalFloor),at)?a:b);
+        const portal=floorPortal(v,u,goalFloor);
+        if(from===1)return toward(at,portal);
+        const out={x:0,y:0},goal=botRoute(city,at,portal,out);
+        return goal===-2?undefined:goal<0?toward(at,portal):out;
+      }
+      if(from===1)return toward(at,to);
+    }
     const out={x:0,y:0},goal=city?botRoute(city,at,to,out,chase?memory[chase]??-1:-1):-1;
     if(goal===-2)return undefined;
     if(goal<0)return toward(at,to);
@@ -581,13 +656,14 @@ export function decide(input:BrainInput):Decision{
   // D-051 manual combat (bot-loot.ts): eat, hold the best weapon, and in a lull open the nearest crate (standing by it)
   // or walk over a better weapon. A crate or a weapon nearby goes before gathering and the forge; a fight or a fallen
   // friend before them all (planLoot only loots in a lull).
-  if(input.combat==='manual'){
+  const carThreat=!!input.nests&&!!view.objective&&!prepare&&view.enemies.some(e=>e.hp>0&&dist(e,view.objective!.car)<LOOT_CAR_THREAT);
+  if(input.combat==='manual'&&!carThreat){
     const runner=index===RUNNER_INDEX&&view.players.filter(p=>!p.downed&&!p.eliminated).length>=RUNNER_TEAM;
     const loot=planLoot(view,me,at,prepare?LOOT_RADIUS_CALM:runner?LOOT_RADIUS_RUN:LOOT_RADIUS);
     if(loot.command)decision.inventory=loot.command;
     // NEW-20261023-ORQ-barracas-no-caminho (bot-barracas.ts): in a lull, a barraca of the map's rows to the Uno's side.
     // Eating and the best weapon first (their command wins); the barraca's walk before the crates.
-    const barraca=!task?planBarraca(view,me,at,index,memory,terrain,input.teamBots,prepare?LOOT_RADIUS_CALM:LOOT_RADIUS):undefined;
+    const barraca=!task?planBarraca(view,me,at,index,memory,terrain,input.teamBots,prepare?BARRACA_REACH_CALM:LOOT_RADIUS):undefined;
     if(barraca&&(!loot.command||loot.command.t==='kit')){
       decision.mode='barraca';
       if(barraca.command)decision.inventory=barraca.command;else if(loot.command?.t==='kit')delete decision.inventory;
@@ -621,6 +697,12 @@ export function decide(input:BrainInput):Decision{
   const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';
+    // Bicos: in the ring with the street clear and a short queue, it clocks in and stands still (the shift pays).
+    const shop=view.banks?.find(b=>b.id===bank.bank);
+    if(dist(at,bank.at)<=BANK_STAND&&(shop?.fila??0)<BICO_BOT_FILA&&!view.enemies.some(e=>dist(at,e)<=BICO_BOT_CLEAR)){
+      decision.direction={x:0,y:0};decision.work=true;
+      return finish(decision,input);
+    }
     if(dist(at,bank.at)>BANK_STAND)want=go(bank.at);
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
@@ -757,7 +839,8 @@ export function decide(input:BrainInput):Decision{
   }else{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
-    const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
+    // Card boss-fim-onda-1: a boss at the car before them (bossFocus).
+    const siege=focus??nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
     // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
     // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the
@@ -765,7 +848,9 @@ export function decide(input:BrainInput):Decision{
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
-    if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
+    // City: not into a wall (a critter in sight past a building's corner had the bot push its edge for seconds).
+    const chase=target&&toward(at,target,siege?1.2:.7),open=!chase||!city||walkable({x:at.x+chase.x/(siege?1.2:.7)*.8,y:at.y+chase.y/(siege?1.2:.7)*.8},terrain);
+    if(target&&open&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,chase!);
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));
@@ -800,8 +885,14 @@ export function decide(input:BrainInput):Decision{
  *   (never at it) toward the back;
  * - near, outside the ring: to the ring's flank on its side, a little behind the body.
  */
-function carHelp(at:Point,task:{at:Point;heading:Point;side:1|-1},go:(to:Point,weight?:number,chase?:Chase)=>Point):Point{
+function carHelp(at:Point,task:Extract<ObjectiveTask,{kind:'carro'}>,go:(to:Point,weight?:number,chase?:Chase)=>Point):Point{
   const car=task.at,h=task.heading,d=dist(at,car);
+  if(task.rope){
+    // puxar-uno-corda: to the rope's end, then on along the heading past the rope's length (the sim takes it then).
+    const {nose,tip,held}=task.rope,ahead={x:nose.x+h.x*(CAR_ROPE+.6),y:nose.y+h.y*(CAR_ROPE+.6)};
+    if(held||dist(at,tip)<=CAR_PULL_REACH*.6)return norm({x:ahead.x-at.x+h.x,y:ahead.y-at.y+h.y});
+    return dist(at,tip)>CAR_HELP_NEAR?norm(go(tip,1,'carGoal')):toward(at,tip);
+  }
   const rx=at.x-car.x,ry=at.y-car.y,lean=d>1e-6?-(rx*h.x+ry*h.y)/d:0;
   if(d<=CAR_HELP_NEAR&&lean>=CAR_LEAN_DOT)return h;
   // Its side of the car's line (the task's side when on the line): left of the heading is (−h.y, h.x).
@@ -898,7 +989,7 @@ function finish(decision:Decision,input:BrainInput):Decision{
     memory.unstickUntil=tick+.8*HZ;memory.lastMoveTick=tick;memory.lastPos=at;
     decision.direction=memory.unstick;decision.mode='unstick';return decision;
   }
-  decision.direction=clearPath(at,decision.direction,terrain);
+  decision.direction=clearPath(at,decision.direction,onFloor(terrain,at.andar));
   return decision;
 }
 

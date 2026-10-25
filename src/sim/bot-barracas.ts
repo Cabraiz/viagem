@@ -25,6 +25,12 @@ import {LOOT_SAFE} from './bot-loot.ts';
 export const BARRACA_DROP_RING=5.6,BARRACA_HOME=9,BARRACA_HOME_MAX=8,BARRACA_DROP_MOVED=2;
 /** u from the drop point the bot sets the kit within, and from a barraca's centre it collects from (TRALHA_REACH is 3 u from the edge). */
 export const BARRACA_DROP_STAND=1.2,BARRACA_STAND=2.2;
+/**
+ * u a barraca is worth the walk from in a lull (planBarraca's `radius` there): the rows lie .35–.7 of the way from a nest to
+ * the car, 30–65 u on the compact map (mapa-175-com-viaduto), past the loot's LOOT_RADIUS_CALM (23 u); at heroSpeed (~4 u/s)
+ * the trip there and back by the streets fits a 60 s lull (bot-brain CALM_WINDOW_S).
+ */
+export const BARRACA_REACH_CALM=70;
 /** How many sources (nearest living nests) the bots' drop points spread over. */
 const DROP_SOURCES=3;
 const HZ=20;

@@ -18,8 +18,11 @@ import {OPEN_REACH} from './crates.ts';
 import {INVENTORY_SLOTS,TAKE_REACH,isKitItem} from './inventory.ts';
 import type {Point} from '../maps/index.ts';
 
-/** LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather). */
-export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=40;
+/**
+ * LOOT_RADIUS in combat; LOOT_RADIUS_CALM in an intermission (the bots walk to the same loot points to gather): 40 u on the
+ * 1.7× city, 23 since mapa-175-com-viaduto (the distances ÷ CITY_COMPACT).
+ */
+export const EAT_BELOW=.4,LOOT_SAFE=6,LOOT_RADIUS=14,LOOT_RADIUS_CALM=23;
 const VERDE_PISTOL={id:'pistola',level:1},BARRACA_KIT=kitId('barraca');
 /** Crowd patterns (a cone, a zone, an orbit) count this much more than one target at a time. */
 const CROWD=1.5;

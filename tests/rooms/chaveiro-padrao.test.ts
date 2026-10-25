@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {register} from 'node:module';
 import {Room,OWNER_GAP_MS,type Peer} from '../../multiplayer/room.ts';
+import {NEST_COUNT} from '../../src/maps/nests.ts';
 import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {FrameDecoder} from '../../src/protocol/protocol4.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
@@ -76,7 +77,7 @@ test('D-051: mode ninhos (?modo=ninhos) plays the nests with the chaveiro: the f
   const {room,all}=await solo({mode:'ninhos'});
   assert.equal(room.run.snapshot().phase,'combat');
   assert.equal(room.sim.mode,'ninhos');assert.equal(room.sim.objective,'chaveiro');
-  assert.equal(room.sim.run.nests?.state.nests.length,8);
+  assert.equal(room.sim.run.nests?.state.nests.length,NEST_COUNT);
   assert.ok(all.at(-1)!.kinds.includes('ninho'),'the phone holds the nests');
   const wall=await solo({mode:'ninhos',objective:false});
   assert.equal(wall.room.sim.mode,undefined,'no nests without the chaveiro');

@@ -18,6 +18,7 @@
 import type {CityAsset,CityPoint} from '../city-asset.ts';
 import {checkCityHash,decodeCityAsset} from '../city-asset.ts';
 import {cityRelief,sampleRelief} from './relief.ts';
+import {deckSamples,floorAfter,surfaceHeight,type Floor} from './viaduct.ts';
 import type {WorldKind} from '../../contract/index.ts';
 import type {TerrainField} from '../terrain/field.ts';
 
@@ -36,11 +37,16 @@ const freeSquares=new WeakMap<CityAsset,Uint8Array>();
 function freeSquaresOf(asset:CityAsset):Uint8Array{
   let f=freeSquares.get(asset);
   if(f)return f;
-  const w=asset.samples.w,h=asset.samples.h;
-  f=new Uint8Array(w*h);
+  f=chamfer(asset.samples.w,asset.samples.h,asset.walkable);
+  freeSquares.set(asset,f);
+  return f;
+}
+/** freeSquaresOf over any w × h sample predicate. */
+function chamfer(w:number,h:number,walkable:(x:number,y:number)=>boolean):Uint8Array{
+  const f=new Uint8Array(w*h);
   // Two-pass chamfer distance with unit weights on all 8 neighbors (exact for Chebyshev); outside the grid is 0.
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    if(!asset.walkable(x,y))continue;
+    if(!walkable(x,y))continue;
     const up=y>0?y*w-w:-1;
     let m=x>0&&up>=0?f[up+x-1]:0;
     if(up>=0){m=Math.min(m,f[up+x]);m=Math.min(m,x+1<w?f[up+x+1]:0);}else m=0;
@@ -56,8 +62,18 @@ function freeSquaresOf(asset:CityAsset):Uint8Array{
     m=Math.min(m,x+1<w?f[i+1]:0);
     if(m+1<f[i])f[i]=m+1;
   }
-  freeSquares.set(asset,f);
   return f;
+}
+/** The deck floor of an asset (city/viaduct.ts deckSamples) and its free squares: a pure memo, shared by every fork. */
+interface DeckMask {readonly bits:Uint8Array;readonly free:Uint8Array}
+const deckMasks=new WeakMap<CityAsset,DeckMask>();
+function deckMaskOf(asset:CityAsset):DeckMask{
+  let d=deckMasks.get(asset);
+  if(d)return d;
+  const {w,h}=asset.samples,bits=deckSamples(asset.viaducts,w,h,Math.round(asset.unitsPerCell/asset.samples.step));
+  d={bits,free:chamfer(w,h,(x,y)=>bits[y*w+x]===1)};
+  deckMasks.set(asset,d);
+  return d;
 }
 
 /** A blocking disc on a CityTerrain fork (world units): `id` names it (e.g. 'barricada-N'). */
@@ -95,6 +111,9 @@ export class CityTerrain {
   private flowView:CityTerrain|undefined=undefined;
   /** freeSquaresOf(asset), fetched on the first disc query. */
   private free:Uint8Array|undefined=undefined;
+  /** Cached deck views (onDeck): the heroes' and the enemies' (blockers solid). */
+  private deckHero:CityTerrain|undefined=undefined;
+  private deckEnemy:CityTerrain|undefined=undefined;
 
   /** `minHeight` is internal (fork): the lowest corner already scanned for this asset. */
   constructor(asset:CityAsset,hash:string,minHeight?:number){
@@ -165,6 +184,7 @@ export class CityTerrain {
       setBlocker:{value:(id:string,shape:{x:number;y:number;r:number;soft?:boolean}|undefined)=>base.setBlocker(id,shape)},
       fork:{value:()=>base.fork()},
       enemyView:{value:view},
+      onDeck:{value:()=>base.deckView(true)},
     });
     this.enemyView=view;
     return view;
@@ -189,6 +209,43 @@ export class CityTerrain {
     this.flowView=view;
     return view;
   }
+  /**
+   * The same terrain as a body on the deck floor (floor 1, city/viaduct.ts) sees it: clearDisc/clearReach (hence
+   * walkable, moveDirection, moveSafely through it) read the deck mask (the decks and their ramps) instead of the
+   * ground. The enemies' view's onDeck() also keeps the blockers solid. Cached; every other read goes to this terrain.
+   */
+  onDeck():CityTerrain{return this.deckView(false);}
+  private deckView(enemy:boolean):CityTerrain{
+    const known=enemy?this.deckEnemy:this.deckHero;
+    if(known)return known;
+    const base=this,view=Object.create(this) as CityTerrain,mask=deckMaskOf(this.asset);
+    const walk=(sx:number,sy:number)=>sx>=0&&sy>=0&&sx<base.sw&&sy<base.sh&&mask.bits[sy*base.sw+sx]===1;
+    Object.defineProperties(view,{
+      clearDisc:{value:(x:number,y:number,r:number)=>base.discOn(walk,mask.free,x,y,r)&&!(enemy&&base.sorted.length&&base.blocked(x,y,r<=TOUCH_EPS?0:r))},
+      clearReach:{value:(x:number,y:number,r:number)=>{
+        let d=base.reachOn(mask.free,x,y,r);
+        if(enemy)for(const b of base.sorted)if(d>0)d=Math.min(d,Math.hypot(x-b.x,y-b.y)-(r+b.r-TOUCH_EPS));
+        return d>0?d:0;
+      }},
+      setBlocker:{value:(id:string,shape:{x:number;y:number;r:number}|undefined)=>base.setBlocker(id,shape)},
+      fork:{value:()=>base.fork()},
+      forEnemies:{value:()=>base.deckView(true)},
+      onDeck:{value:()=>view},
+      deckFloor:{value:1},
+    });
+    if(enemy)this.deckEnemy=view;else this.deckHero=view;
+    return view;
+  }
+  /** 1 on a deck view (onDeck), 0 on the ground. */
+  readonly deckFloor:Floor=0;
+  /** The floor of a body of floor `floor` after it moved to (x, y) (city/viaduct.ts floorAfter). */
+  floorAt(x:number,y:number,floor:Floor):Floor{
+    return this.asset.viaducts.length?floorAfter(this.asset.viaducts,this.asset.unitsPerCell,x,y,floor):0;
+  }
+  /** Height (u) over the ground of the surface under a body of floor `floor` at (x, y) (city/viaduct.ts surfaceHeight). */
+  surfaceAt(x:number,y:number,floor:Floor):number{
+    return this.asset.viaducts.length?surfaceHeight(this.asset.viaducts,this.asset.unitsPerCell,x,y,floor):0;
+  }
   /** True when a disc of radius r (≥ 0) at (x,y) overlaps a blocker disc (of `list`: all of them) by more than TOUCH_EPS. */
   private blocked(x:number,y:number,r:number,list:readonly CityBlocker[]=this.sorted):boolean{
     // Farther than r from the box of every disc: no overlap (it needs a centre distance under r + b.r).
@@ -207,20 +264,28 @@ export class CityTerrain {
    */
   clearDisc(x:number,y:number,r:number):boolean{
     if(!(Number.isFinite(x)&&Number.isFinite(y)&&r>=0))return false;
-    const s=this.step,a=this.asset;
+    const a=this.asset;
     if(r<=TOUCH_EPS)return a.walkableAt(x,y); // a point, not a disc
+    return this.discOn(a.walkable,this.free??=freeSquaresOf(a),x,y,r);
+  }
+  /** clearDisc over the sample predicate `walk` and its free squares `f` (the ground's, or the deck's). */
+  private discOn(walk:(sx:number,sy:number)=>boolean,f:Uint8Array,x:number,y:number,r:number):boolean{
+    if(!(Number.isFinite(x)&&Number.isFinite(y)&&r>=0))return false;
+    const s=this.step;
+    // A point, not a disc (the same nudge as the asset's walkableAt).
+    if(r<=TOUCH_EPS)return walk(Math.floor(x/s+1e-9),Math.floor(y/s+1e-9));
     const reach=r-TOUCH_EPS,r2=reach*reach;
     const sx0=Math.floor((x-reach)/s),sx1=Math.floor((x+reach)/s),sy0=Math.floor((y-reach)/s),sy1=Math.floor((y+reach)/s);
     if(sx0<0||sy0<0||sx1>=this.sw||sy1>=this.sh)return false;
     // Fast accept: every sample of the box lies within the walkable square around the centre's sample.
-    const cx=Math.floor(x/s),cy=Math.floor(y/s),f=this.free??=freeSquaresOf(a);
+    const cx=Math.floor(x/s),cy=Math.floor(y/s);
     if(Math.max(cx-sx0,sx1-cx,cy-sy0,sy1-cy)<f[cy*this.sw+cx])return true;
     for(let sy=sy0;sy<=sy1;sy++){
       // Nearest point of the sample row band to the centre, on y.
       const dy=y<sy*s?sy*s-y:y>(sy+1)*s?y-(sy+1)*s:0;
       for(let sx=sx0;sx<=sx1;sx++){
         const dx=x<sx*s?sx*s-x:x>(sx+1)*s?x-(sx+1)*s:0;
-        if(dx*dx+dy*dy<r2&&!a.walkable(sx,sy))return false;
+        if(dx*dx+dy*dy<r2&&!walk(sx,sy))return false;
       }
     }
     return true;
@@ -231,12 +296,16 @@ export class CityTerrain {
    * the samples it already knows are clear (same answers, fewer reads). Walls only; the enemy view adds the blockers.
    */
   clearReach(x:number,y:number,r:number):number{
+    return this.reachOn(this.free??=freeSquaresOf(this.asset),x,y,r);
+  }
+  /** clearReach over the free squares `free` (the ground's, or the deck's). */
+  private reachOn(free:Uint8Array,x:number,y:number,r:number):number{
     if(!(Number.isFinite(x)&&Number.isFinite(y)&&r>TOUCH_EPS))return 0;
     const s=this.step,cx=Math.floor(x/s),cy=Math.floor(y/s);
     if(cx<0||cy<0||cx>=this.sw||cy>=this.sh)return 0;
     // Every sample nearer than f to (cx, cy) is walkable; a disc's sample box stays inside while it moves by at most
     // (f − 1)·s − reach on each axis (its centre sample is within one step of (x, y) there).
-    const f=(this.free??=freeSquaresOf(this.asset))[cy*this.sw+cx],d=(f-1)*s-(r-TOUCH_EPS);
+    const f=free[cy*this.sw+cx],d=(f-1)*s-(r-TOUCH_EPS);
     return d>0?d:0;
   }
   /** Island-style `land`: here "the ground under a body of radius `margin` is walkable". */
@@ -299,7 +368,8 @@ export function flowTerrain(terrain:CityTerrain):CityTerrain{
 }
 
 /**
- * The city wherever a TerrainField is expected (Simulation, SimContext, world.ts, prediction). Compile-time proof that
+ * The city wherever a TerrainField is expected
+ (Simulation, SimContext, world.ts, prediction). Compile-time proof that
  * CityTerrain has TerrainField's whole shape: if either side changes, this stops type-checking.
  */
 export function cityAsField(terrain:CityTerrain):TerrainField{return terrain;}

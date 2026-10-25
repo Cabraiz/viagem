@@ -2,6 +2,7 @@
 // combat) a hero who walks the first minute passes at least FIRST_MINUTE_CRATES crates (within PASS_DIST, about the PC
 // camera's half view), whichever way he goes; the start crates sit around where the heroes spawn (they sat by the
 // plaza, ~76 u of walk away and out of the frames' interest radius, so the phone got none), on open ground.
+// Card inicio-no-uno-caixas-120: the team spawns beside the Uno (cityUnoStart) and the trail lasts the 120 s Minerva.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -9,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {FlowField} from '../../src/maps/flowfield.ts';
 import {heroSpeed,walkable,type Point} from '../../src/maps/world.ts';
-import {cityAsField} from '../../src/maps/index.ts';
+import {cityAsField,floorPortal,overDeck,UNREACHABLE} from '../../src/maps/index.ts';
 import {Rng,SIM_HZ,ticks,INTEREST_RADIUS} from '../../src/contract/index.ts';
 import {CRATE_BODY_RADIUS} from '../../src/rules/crate-size.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
@@ -18,7 +19,8 @@ import {ROOM_PROTOCOL} from '../../src/protocol/room.ts';
 import {FrameDecoder} from '../../src/protocol/protocol4.ts';
 import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import {cityFlowGrid} from '../../src/sim/city/grid.ts';
-import {cityRunStart} from '../../src/sim/city/tutorial.ts';
+import {cityUnoStart} from '../../src/sim/city/uno-start.ts';
+import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {cityLoot,AROUND_START} from '../../src/sim/stonewards/loot.ts';
 import {FIRST_MINUTE_CRATES,FIRST_MINUTE_S,PASS_DIST,START_CRATES_PER_PLAYER} from '../../src/sim/crates.ts';
 
@@ -27,16 +29,29 @@ const cityText=readFileSync(fromRoot('public/maps/cidade-nevada.json'),'utf8');
 const manifest=JSON.parse(readFileSync(fromRoot('public/maps/cidade-nevada.manifest.json'),'utf8')) as {hash:string;version:number};
 const loaded=await cityTerrainFrom(cityText,manifest.hash);
 if(!loaded.ok)throw new Error(loaded.error);
-const city=loaded.terrain,field=cityAsField(city),grid=cityFlowGrid(city),start=cityRunStart(city),P=city.asset.points;
+const city=loaded.terrain,field=cityAsField(city),start=cityUnoStart(city),P=city.asset.points;
+// The walkers keep clear of the Uno (it stands where it starts: nobody pushes it): the room puts a hero walking into its
+// body back at the body's edge (uno-bloqueio-corpo), and the v4 plaza (mapa-175-com-viaduto) is narrow enough that the
+// straight way north from the spawn crosses the car.
+const car=placeWall(city),CAR_CLEAR=1.6,city0=cityFlowGrid(city);
+const grid={...city0,walkable:(cx:number,cy:number)=>city0.walkable(cx,cy)&&Math.hypot((cx+.5)*city0.cellSize-car.x,(cy+.5)*city0.cellSize-car.y)>CAR_CLEAR};
 const step=heroSpeed(field)/SIM_HZ;
 const fields=new Map<string,FlowField>();
 const toward=(p:Point)=>{const k=`${Math.round(p.x)},${Math.round(p.y)}`;let f=fields.get(k);if(!f){f=new FlowField(grid,[p]);fields.set(k,f);}return f;};
-const open=(p:Point)=>walkable(p,city);
+const open=(p:Point)=>walkable(p,city)&&Math.hypot(p.x-car.x,p.y-car.y)>CAR_CLEAR-.5;
+// Asset v4 (mapa-175-com-viaduto): the bases are mazes, an open spot may be walled off from the street (a walker sent
+// there stands still for the minute); and the wreck's point (inicio) is on the viaduct's deck, which the ground walker
+// reaches by the ramp: the wreck walker heads for the ramp's foot.
+const cs=city.asset.unitsPerCell,fromStart=new FlowField(city0,[start]);
+const reachable=(p:Point)=>open(p)&&fromStart.cellCost(Math.floor(p.x/cs),Math.floor(p.y/cs))!==UNREACHABLE;
+const deck=city.asset.viaducts.find(v=>overDeck(v,cs,P.inicio.x,P.inicio.y)),wreck=deck?floorPortal(deck,cs,0):P.inicio;
 
 /** Where a walker heads next (from where he is): the patterns of the card, "reto / em volta da praça" and a wanderer. */
 type Pattern=(at:Point,rng:Rng)=>Point;
 const around=(c:Point,r:number):Pattern=>at=>{
-  if(Math.hypot(at.x-c.x,at.y-c.y)>r+4)return c;
+  // From afar, the ring's point toward the walker (the centre may be the Uno's, which the walkers keep clear of).
+  const d=Math.hypot(at.x-c.x,at.y-c.y);
+  if(d>r+4){const q={x:c.x+(at.x-c.x)/d*r,y:c.y+(at.y-c.y)/d*r};return open(q)?q:c;}
   const a=Math.atan2(at.y-c.y,at.x-c.x)+.8;
   for(let k=0;k<8;k++){const p={x:c.x+Math.cos(a+k*.3)*r,y:c.y+Math.sin(a+k*.3)*r};if(open(p))return p;}
   return c;
@@ -46,11 +61,11 @@ const PATTERNS:Record<string,()=>Pattern>={
   // Straight down the road to the plaza, then around it.
   praca:()=>around(P.praca,20),
   // Back to the wreck first, then to the plaza.
-  destroco:()=>{let back=true;const plaza=around(P.praca,20);return (at,rng)=>{if(back&&Math.hypot(at.x-P.inicio.x,at.y-P.inicio.y)<3)back=false;return back?P.inicio:plaza(at,rng);};},
+  destroco:()=>{let back=true;const plaza=around(P.praca,20);return (at,rng)=>{if(back&&Math.hypot(at.x-wreck.x,at.y-wreck.y)<3)back=false;return back?wreck:plaza(at,rng);};},
   // Around the spawn.
   volta:()=>around(start,22),
   // Anywhere: a random open spot 15..55 u off, again and again.
-  vaga:()=>(at,rng)=>{for(;;){const a=rng.next()*2*Math.PI,r=15+rng.next()*40,p={x:at.x+Math.cos(a)*r,y:at.y+Math.sin(a)*r};if(open(p))return p;}},
+  vaga:()=>(at,rng)=>{for(;;){const a=rng.next()*2*Math.PI,r=15+rng.next()*40,p={x:at.x+Math.cos(a)*r,y:at.y+Math.sin(a)*r};if(reachable(p))return p;}},
 };
 
 function match(seed:number,players:number){
@@ -72,7 +87,8 @@ function walk(seed:number,patterns:readonly Pattern[]){
       toward(h.goal).directionAt(h.p.x,h.p.y,dir);
       const next={x:h.p.x+dir.x*step,y:h.p.y+dir.y*step};
       if((dir.x||dir.y)&&open(next)){h.p.x=next.x;h.p.y=next.y;}else h.goal=h.pattern(h.p,rng);
-      h.p.hp=h.p.stats.maxHp;
+      // Walkers alone past 60 s (card fear-escuridao-sozinho): the dark would take them; this test is the crates'.
+      h.p.hp=h.p.stats.maxHp;delete h.p.fear;
     }
     m.step();
     for(const c of (m.s as unknown as {world:{pickups:Map<string,{kind:string;id:string;x:number;y:number}>}}).world.pickups.values()){
@@ -85,8 +101,9 @@ function walk(seed:number,patterns:readonly Pattern[]){
 
 test('the start crates sit around the spawn: in the frames from the first one, on open ground, not piled up',async()=>{
   const loot=cityLoot(field)!;
-  assert.ok(loot.aroundStart.length>=50,`${loot.aroundStart.length} start spots`);
-  assert.ok(loot.aroundStart.every(p=>p.walk>=AROUND_START[0]&&p.walk<=AROUND_START[1]&&city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)));
+  // Asset v4 (mapa-175-com-viaduto): the streets are narrower, fewer cells hold the 3× crate's disc (was ≥ 50).
+  assert.ok(loot.aroundUno.length>=30,`${loot.aroundUno.length} start spots`);
+  assert.ok(loot.aroundUno.every(p=>p.walk>=AROUND_START[0]&&p.walk<=AROUND_START[1]&&city.clearDisc(p.x,p.y,CRATE_BODY_RADIUS)));
   for(const seed of [1,2,3]){
     const m=match(seed,1);m.step();
     const near=m.chests().filter(k=>Math.hypot(k.x-start.x,k.y-start.y)<=AROUND_START[1]);
@@ -114,9 +131,11 @@ test(`a hero who walks the first minute passes at least ${FIRST_MINUTE_CRATES} c
   }
 });
 
+// inicio-no-uno-caixas-120: in 120 s the wreck walker is back circling the plaza beside the plaza walker (one view, so
+// they share the trail crates): the third one wanders off instead.
 test('a team of three walking apart: each one passes his own',()=>{
   for(const seed of [5,6]){
-    const passed=walk(seed,[PATTERNS.praca(),PATTERNS.vaga(),PATTERNS.destroco()]);
+    const passed=walk(seed,[PATTERNS.praca(),PATTERNS.vaga(),PATTERNS.vaga()]);
     passed.forEach((set,i)=>assert.ok(set.size>=FIRST_MINUTE_CRATES,`seed ${seed}, hero ${i}: ${set.size}`));
   }
 });

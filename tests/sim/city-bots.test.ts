@@ -29,7 +29,7 @@ import {SIM_HZ,ticks,type SimEvent} from '../../src/contract/types.ts';
 import {cityPlanner} from '../../src/sim/city/grid.ts';
 import {BOT_ROUTE_BYTES_PER_CELL,BOT_ROUTE_FIELDS,botRoute,botRouteFields,botRouteGoal,botRouteStats} from '../../src/sim/city/bot-routes.ts';
 import {LEFT_BEHIND_KEY} from '../../src/sim/stonewards/system.ts';
-import {TUTORIAL_PLAN} from '../../src/sim/city/tutorial.ts';
+import {TUTORIAL_PLAN,floorToPlaza} from '../../src/sim/city/tutorial.ts';
 import {FLEE_CAP_SECONDS} from '../../src/sim/director.ts';
 
 // ---------- The real city ----------
@@ -41,7 +41,8 @@ if(!loaded.ok)throw new Error(loaded.error);
 const city=loaded.terrain;
 /** The judge: an independent planner ("in the plaza" = insideBase, street distance = its plaza field). */
 const JUDGE=cityPlanner(city);
-const toPlaza=(p:Point)=>{const c=JUDGE.plazaField.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*JUDGE.plazaField.cellSize;};
+// On its own floor: a bot on the viaduct's deck (the run's start since mapa-175-com-viaduto) walks down its ramp first.
+const toPlaza=(p:Point&{andar?:number})=>floorToPlaza(city,JUDGE.plazaField,p);
 const secs=(t:number)=>`${(t/SIM_HZ).toFixed(1)} s`;
 const fmt=(p:Point)=>`(${p.x.toFixed(1)},${p.y.toFixed(1)})`;
 const CLASSES=['cidadao-comum','clt-cansado','feirante'];

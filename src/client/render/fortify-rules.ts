@@ -8,11 +8,12 @@
  *   over a piece already standing); green otherwise. 'tranca' and 'fora' need the sim's flow field and walk mesh: the
  *   room's refusal (ghostLook's `answer`) paints those red.
  * - Hints (proposal §2): the old fixed build sites become a faint ghost on the 3 free ones nearest to the car.
- * - The rope (contract: car.rope): from the hero holding it to the car's bumper on the hero's side, sagging with the
+ * - The rope (contract: car.rope; card puxar-uno-corda): tied to the car's FRONT bumper, from there to the hands of the
+ *   hero holding it, or lying on the ground ahead (ropeRest) while nobody does, sagging with the
  *   slack left of CAR_ROPE.
  * The fields are read by shape (c/r/rot on the structures, car.rope) so this works before and after the contract lands.
  */
-import {CAR_RADIUS,CAR_ROPE,type FreeBuildRefusal} from '../../contract/index.ts';
+import {CAR_RADIUS,CAR_ROPE,CAR_ROPE_REST,type FreeBuildRefusal} from '../../contract/index.ts';
 import {DEFENSES,FREE_PIECE_DEFS,type DefenseId} from '../../rules/index.ts';
 
 /** How close to a living nest nothing is built (proposal §2; the room refuses with 'ninho'). */
@@ -88,22 +89,36 @@ export function buildHints(piece:string,sites:readonly {x:number;y:number}[],ctx
   return out;
 }
 
+/** The hands hold the rope this far (u) behind the hero's centre, toward the car (a puller leans away from it). */
+export const ROPE_HANDS_BACK=.22;
 /**
- * The rope from the hero (a) to the car's bumper (b): the car lies along `heading` with half length `half`; the bumper
- * is the end on the hero's side. `sag` (u, downward on screen) grows with the slack left of CAR_ROPE; a taut rope is
- * straight.
+ * The rope from the hero's hands (a) to the car's front bumper (b): the car lies along `heading` (its nose) with half
+ * length `half`. `sag` (u, downward on screen) grows with the slack left of CAR_ROPE; a taut rope is straight.
  */
 export function ropeLine(hero:{x:number;y:number},car:{x:number;y:number},half:number,heading=0){
-  const hx=Math.cos(heading),hy=Math.sin(heading),side=(hero.x-car.x)*hx+(hero.y-car.y)*hy>=0?1:-1;
-  const bx=car.x+hx*half*side,by=car.y+hy*half*side,len=Math.hypot(hero.x-bx,hero.y-by);
-  return {ax:hero.x,ay:hero.y,bx,by,len,sag:Math.max(0,CAR_ROPE-len)*.35};
+  const bx=car.x+Math.cos(heading)*half,by=car.y+Math.sin(heading)*half,d=Math.hypot(hero.x-bx,hero.y-by);
+  const back=d>1e-6?Math.min(ROPE_HANDS_BACK,d/2)/d:0,ax=hero.x+(bx-hero.x)*back,ay=hero.y+(by-hero.y)*back;
+  const len=Math.hypot(ax-bx,ay-by);
+  return {ax,ay,bx,by,len,sag:Math.max(0,CAR_ROPE-len)*.35};
+}
+/**
+ * The free rope lying on the ground (card puxar-uno-corda): world points from the front bumper (first, the knot) to
+ * its end CAR_ROPE_REST u ahead (last, the loop a hero takes), waving a little to each side so it reads as a rope.
+ * `n` segments; the sim's end (contract ropeTip) is the same spot measured from the body's centre.
+ */
+export function ropeRest(car:{x:number;y:number},half:number,heading=0,n=12):{x:number;y:number}[]{
+  const hx=Math.cos(heading),hy=Math.sin(heading),out:{x:number;y:number}[]=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n,along=half+CAR_ROPE_REST*t,wave=Math.sin(t*Math.PI*2)*.16*Math.min(1,t*3);
+    out.push({x:car.x+hx*along-hy*wave,y:car.y+hy*along+hx*wave});
+  }
+  return out;
 }
 
-/** A snapshot that needs the fortify layer: a wall segment standing or fallen, or a hero on the car's rope. */
+/** A snapshot that needs the fortify layer: a wall segment standing or fallen, or the chaveiro's car (its rope). */
 export function needsFortify(view:{structures:readonly {kind:string}[];objective?:unknown}){
   if(view.structures.some(s=>s.kind==='muro'))return true;
-  const car=(view.objective as {car?:{rope?:string}}|undefined)?.car;
-  return !!car?.rope;
+  return !!(view.objective as {car?:unknown}|undefined)?.car;
 }
 
 /**

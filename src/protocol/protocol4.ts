@@ -39,7 +39,7 @@ import type {CampView,EnemyView,NodeView,OfferView,PickupView,PlayerRunView,Proj
 import type {TelegraphKind} from '../contract/index.ts';
 import {ASLEEP_PER_VIEWER,AWAKE_PER_VIEWER,CAR_INTEREST_RADIUS,CIDA_ITEM_IDS,INTEREST_HYSTERESIS,INTEREST_RADIUS,TELEGRAPH_KINDS,visibleOffset} from '../contract/index.ts';
 import type {MotoMode,ObjectiveStopKind,ObjectiveView} from '../contract/index.ts';
-import {BANK_IDS,type BankName,type BankState,type BankView} from '../contract/index.ts';
+import {BANK_IDS,BICO_IDS,type BankName,type BankState,type BankView,type BicoId} from '../contract/index.ts';
 import {isVehicleKind} from '../contract/index.ts';
 import {MAX_CAR_MOVERS} from '../contract/index.ts';
 
@@ -103,11 +103,30 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * `moveSpeed` on the players (it drives the prediction); an older decoder would refuse the player mask.
  * 31 given by the integration queue (tools/fila.mjs, lote 20261023-155052) to: BUG-20261023-ORQ-oferta-velocidade-nao-faz-nada.
  * 32 given by the integration queue (tools/fila.mjs, lote 20261024-065144) to: NEW-20261023-ORQ-inimigos-querem-o-uno.
- * Next (the queue numbers it) since the barracas (card NEW-20261023-ORQ-barracas-no-caminho): 'kit:barraca' and the
- * 'barraca' structure kind at the end of the DICT; an older decoder would read the new indexes as unknown strings.
+ * 33 given by the integration queue (tools/fila.mjs, lote 20261024-085841) to: NEW-20261023-ORQ-puxar-uno-corda.
+ * 34 given by the integration queue (tools/fila.mjs, lote 20261024-134734) to: NEW-20261023-ORQ-inicio-no-uno-caixas-120.
+ * Next (the queue numbers it) since the cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the 'grana' pickup
+ * kind (a kill's Grana on the ground) and its string at the end of the DICT; an older client would draw a parcel.
+ * 35 given by the integration queue (tools/fila.mjs, lote 20261024-164948) to: NEW-20261024-ORQ-tirar-drops-cedula-girando.
+ * Next (the queue numbers it) since the viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): `andar` (floor 1,
+ * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
+ * would refuse the masks.
+ * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
+ * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
+ * the players (the client's vignette); an older decoder would refuse the player mask.
+ * 37 given by the integration queue (tools/fila.mjs, lote 20261024-225935) to: NEW-20261023-ORQ-fear-escuridao-sozinho.
+ * 38 given by the integration queue (tools/fila.mjs, lote 20261025-001535) to: NEW-20261023-ORQ-boss-fim-onda-1.
+ * Next (the queue numbers it) since the bicos (card NEW-20261024-ORQ-bancos-viram-bicos): each bank row carries its gig
+ * (`bico`), the players in the shift (`workers`) and its queue (`fila`); the `bico` event; the input segments' bit 8
+ * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
+ * banks block, an older room refuses the segments.
+ * 39 given by the integration queue (tools/fila.mjs, lote 20261025-042005) to: NEW-20261024-ORQ-bancos-viram-bicos.
+ * Next (the queue numbers it) since the barracas (card NEW-20261023-ORQ-barracas-no-caminho): the 'barraca' structure
+ * kind (soft, it slows the heroes: an older phone would mispredict them) and the 'kit:barraca' kit. The DICT is full
+ * (254), so both travel as inline strings (until NEW-20261025-ORQ-dict-protocolo-cheio).
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=32;
+export const PROTOCOL_VERSION=39;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -194,8 +213,14 @@ export const DICT:readonly string[]=[
   'kit:vigia-do-predio','kit:vigias-armados','kit:atiradores-do-telhado','kit:ninho-de-metralhadora','kit:guarnicao-do-predio',
   'kit:ninho-do-sniper','kit:equipe-antimaterial','kit:rojao-de-festa','kit:morteiro','kit:lanca-foguetes','kit:obuseiro',
   'kit:holofote','kit:arame-e-sirene','kit:antiaerea-quadrupla','kit:posto-de-radar','kit:muro','kit:barricada',
-  // NEW-20261023-ORQ-barracas-no-caminho: the barraca's kit (KIT_IDS' end) and the barraca among the structures' kinds.
-  'kit:barraca','barraca',
+  // Cédulas (card NEW-20261024-ORQ-tirar-drops-cedula-girando): the kill's Grana as a pickup kind.
+  'grana',
+  // Bicos (card NEW-20261024-ORQ-bancos-viram-bicos): the gigs (BICO_IDS; telemarketing, coach and influencer are
+  // already here as critters, fiscal too) and the `bico` event's `what`. The dictionary is now at 254 of 255.
+  'aura-67','entregador','compro-ouro','colchao','curso','pesquisa',
+  'entrou','saiu','expulso',
+  // NEW-20261023-ORQ-barracas-no-caminho: 'barraca' and 'kit:barraca' did not fit; they travel inline until the
+  // DICT grows past 255 (card NEW-20261025-ORQ-dict-protocolo-cheio).
 ];
 const DICT_INDEX=new Map(DICT.map((s,i)=>[s,i]));
 const INLINE_STRING=255;
@@ -326,6 +351,8 @@ const str:Codec<string>={write:(w,v)=>w.str(v),read:r=>r.str(),norm:v=>clip(v),e
 const bool:Codec<boolean>={write:(w,v)=>w.u8(v?1:0),read:r=>r.u8()===1,norm:v=>!!v,eq:same};
 /** A flag that is only ever true or absent (EnemyView.sugar): optional(trueFlag) is its presence byte, no value byte. */
 const trueFlag:Codec<true>={write:()=>{},read:()=>true,norm:()=>true,eq:same};
+/** The viaduct's floor (andar): only ever 1 or absent, like trueFlag (optional(deckFlag) is its presence byte). */
+const deckFlag:Codec<1>={write:()=>{},read:()=>1,norm:()=>1,eq:same};
 function optional<V>(c:Codec<V>):Codec<V|undefined>{
   return {
     write:(w,v,f)=>{if(v===undefined)w.u8(0);else{w.u8(1);c.write(w,v,f);}},
@@ -407,7 +434,11 @@ const SCHEMAS:Record<SectionKey,Schema>={
   // Fields that change every frame come first, so the usual mask (nudge + ack + hp + stats) fits one byte.
   players:{prefix:'',fields:{
     ack:c(optional(count)),hp:c(count),stats:c(contribution),downed:c(downed),attackTick:c(optional(tickRel)),
-    x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
+    x:c(optional(posX)),y:c(optional(posY)),
+    // Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): the dark 0..1 in 1/255 steps, one change every ~0.24 s alone. Next
+    // to x/y, so a hero walking alone keeps the two-byte mask they already had.
+    fear:c(optional(unit)),
+    skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
     online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
     name:c(str),classId:c(str),
     // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
@@ -422,6 +453,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     ride:c(optional(str)),rideUntil:c(optional(tickRel)),
     // oferta-velocidade: stats.moveSpeed when not 1, in thousandths (it drives the phone's prediction too).
     moveSpeed:c(optional(milli)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1 (it drives the phone's prediction and the sprite's lift).
+    andar:c(optional(deckFlag)),
   }},
   enemies:{prefix:'e',fields:{
     kind:c(str),x:c(posX),y:c(posY),hp:c(count),maxHp:c(count),elite:c(optional(bool)),boss:c(optional(bool)),phase:c(optional(count)),
@@ -431,9 +464,13 @@ const SCHEMAS:Record<SectionKey,Schema>={
     asleep:c(optional(trueFlag)),
     // Bancos: it robbed an ATM into a Cliente Prime (the crown).
     prime:c(optional(trueFlag)),
+    // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
+    andar:c(optional(deckFlag)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
-  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool)},extrapolate:true},
+  projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),
+    // The viaduct (mapa-175-com-viaduto): flying on a deck, floor 1.
+    andar:c(optional(deckFlag))},extrapolate:true},
   telegraphs:{prefix:'t',fields:{
     shape:c(str),x:c(posX),y:c(posY),radius:c(radius),dx:c(optional(vel)),dy:c(optional(vel)),width:c(optional(radius)),fireTick:c(tickRel),
     kind:c(telegraphKind),
@@ -557,8 +594,13 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bank-prime',[['bank','str'],['enemy','ref',false,'enemies']]],
   ['bank-empty',[['bank','str'],['until','tick']]],
   ['bank-refill',[['bank','str']]],
+  // Bicos: a player clocked in at a shop, out, or was thrown out by the manager.
+  ['bico',[['bank','str'],['player','ref'],['what','str']]],
   // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
   ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
+  // boss-fim-onda-1: a chefão's pancada threw a hero, down until untilTick (the phone stops predicting its steps; the
+  // player section has no field bit left for it).
+  ['knock',[['player','ref'],['untilTick','tick']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -624,6 +666,7 @@ function readEvent(r:Reader,eventId:number,f:FrameCtx,players:Table):WireEvent{
   if(type==='moto'&&e.alone===false)delete e.alone;
   if(type==='buy'&&!CIDA_SET.has(e.item as string))throw new FrameError('bad cida item');
   if(type==='bank-cash'&&e.by!=='hero'&&e.by!=='enemy')throw new FrameError('bad bank withdrawer');
+  if(type==='bico'&&e.what!=='entrou'&&e.what!=='saiu'&&e.what!=='expulso')throw new FrameError('bad bico event');
   if(type==='vehicle'&&(!isVehicleKind(e.kind)||e.what!=='pegou'&&e.what!=='acabou'&&e.what!=='largou'))throw new FrameError('bad vehicle event');
   if(type==='skill'&&e.outcome!==undefined&&e.outcome!=='flop'&&e.outcome!=='hit'&&e.outcome!=='miracle')throw new FrameError('bad dice outcome');
   return e as unknown as WireEvent;
@@ -647,7 +690,10 @@ interface World {tick:number;tables:Record<SectionKey,Table>;objective?:Objectiv
  *   static: uvar n, (svar x*16, svar y*16)* route | uvar m, (str kind, svar x*16, svar y*16, uvar s*16)* stops
  */
 const OBJ_DYN=1,OBJ_STATIC=2,OBJ_CLEAR=4;
-const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32;
+const OBJ_PUSH=1,OBJ_DELIVERY=2,OBJ_VICTORY=4,OBJ_DEFEAT=8,OBJ_MOVERS=16,OBJ_ROPE=32,OBJ_HEADING=64;
+/** Card puxar-uno-corda: the car's nose travels in 256 steps per turn (1.4°); step 0 (east) is left out. */
+const headingByte=(h:number)=>((Math.round(finite(h)/(Math.PI*2)*256)%256)+256)%256;
+const byteHeading=(b:number)=>(b>128?b-256:b)/256*Math.PI*2;
 /** Objective positions travel at 1/16 unit. */
 export const OBJECTIVE_POS_SCALE=16;
 const MAX_ROUTE_POINTS=512,MAX_STOPS=64,MAX_STOCK=8;
@@ -665,7 +711,8 @@ function normObjective(v:ObjectiveView):ObjectiveView{
     etaS:uint(v.etaS),alarmUntil:Math.round(finite(v.alarmUntil)),grana:uint(v.grana),budget:uint(v.budget),stock:v.stock.slice(0,MAX_STOCK).map(uint),
     ...(v.delivery?{delivery:{...pt16(v.delivery),etaS:uint(v.delivery.etaS)}}:{}),
     car:{...pt16(v.car),hits:uint(v.car.hits),limit:uint(v.car.limit),parts:uint(v.car.parts),
-      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{})},
+      ...(v.car.movers?.length?{movers:v.car.movers.slice(0,MAX_CAR_MOVERS)}:{}),...(v.car.rope!==undefined?{rope:v.car.rope}:{}),
+      ...(v.car.heading!==undefined&&headingByte(v.car.heading)?{heading:byteHeading(headingByte(v.car.heading))}:{})},
     ...(v.ended?{ended:v.ended}:{}),
   };
 }
@@ -677,13 +724,13 @@ const sameDynamic=(a:ObjectiveView,b:ObjectiveView)=>a.kind===b.kind&&a.moto.x==
   a.stock.length===b.stock.length&&a.stock.every((n,i)=>n===b.stock[i])&&a.ended===b.ended&&
   (a.delivery===undefined?b.delivery===undefined:b.delivery!==undefined&&a.delivery.x===b.delivery.x&&a.delivery.y===b.delivery.y&&a.delivery.etaS===b.delivery.etaS)&&
   a.car.x===b.car.x&&a.car.y===b.car.y&&a.car.hits===b.car.hits&&a.car.limit===b.car.limit&&a.car.parts===b.car.parts&&
-  a.car.rope===b.car.rope&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
+  a.car.rope===b.car.rope&&a.car.heading===b.car.heading&&(a.car.movers?.length??0)===(b.car.movers?.length??0)&&(a.car.movers??[]).every((id,i)=>id===b.car.movers?.[i]);
 function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
   w.u8(bits);
   if(bits&OBJ_DYN){
     w.str(v.kind);w.svar(q16(v.moto.x));w.svar(q16(v.moto.y));w.str(v.moto.mode);
     w.u8((v.moto.push!==undefined?OBJ_PUSH:0)|(v.delivery?OBJ_DELIVERY:0)|(v.ended==='victory'?OBJ_VICTORY:0)|(v.ended==='defeat'?OBJ_DEFEAT:0)|
-      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0));
+      (v.car.movers?.length?OBJ_MOVERS:0)|(v.car.rope!==undefined?OBJ_ROPE:0)|(v.car.heading!==undefined&&headingByte(v.car.heading)?OBJ_HEADING:0));
     w.uvar(v.etaS);w.svar(v.alarmUntil-tick);w.uvar(v.grana);w.uvar(v.budget);
     w.uvar(v.stock.length);for(const n of v.stock)w.uvar(n);
     if(v.moto.push!==undefined)w.u8(unitByte(v.moto.push));
@@ -691,6 +738,7 @@ function writeObjective(w:Writer,v:ObjectiveView,bits:number,tick:number){
     w.svar(q16(v.car.x));w.svar(q16(v.car.y));w.uvar(v.car.hits);w.uvar(v.car.limit);w.uvar(v.car.parts);
     if(v.car.movers?.length){w.uvar(v.car.movers.length);for(const id of v.car.movers)w.str(id);}
     if(v.car.rope!==undefined)w.str(v.car.rope);
+    if(v.car.heading!==undefined&&headingByte(v.car.heading))w.u8(headingByte(v.car.heading));
   }
   if(bits&OBJ_STATIC){
     w.uvar(v.route.length);for(const p of v.route){w.svar(q16(p.x));w.svar(q16(p.y));}
@@ -707,7 +755,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const kind=r.str(),mx=pos(),my=pos(),mode=r.str();
     if(kind!=='chaveiro')throw new FrameError('unknown objective');
     if(!MOTO_MODES.has(mode))throw new FrameError('bad moto mode');
-    const has=r.u8();if(has>63||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
+    const has=r.u8();if(has>127||(has&OBJ_VICTORY&&has&OBJ_DEFEAT))throw new FrameError('bad objective flags');
     const etaS=r.uvar(),alarmUntil=tick+r.svar(),grana=r.uvar(),budget=r.uvar();
     const stock=Array.from({length:r.count(MAX_STOCK)},()=>r.uvar());
     const push=has&OBJ_PUSH?r.u8()/255:undefined;
@@ -715,6 +763,7 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
     const car:ObjectiveView['car']={x:pos(),y:pos(),hits:r.uvar(),limit:r.uvar(),parts:r.uvar()};
     if(has&OBJ_MOVERS)car.movers=Array.from({length:r.count(MAX_CAR_MOVERS)},()=>r.str());
     if(has&OBJ_ROPE)car.rope=r.str();
+    if(has&OBJ_HEADING){const b=r.u8();if(!b)throw new FrameError('bad car heading');car.heading=byteHeading(b);}
     next={kind,moto:{x:mx,y:my,mode:mode as MotoMode,...(push!==undefined?{push}:{})},route:next?.route??[],stops:next?.stops??[],
       etaS,alarmUntil,grana,budget,stock,...(delivery?{delivery}:{}),car,
       ...(has&OBJ_VICTORY?{ended:'victory' as const}:has&OBJ_DEFEAT?{ended:'defeat' as const}:{})};
@@ -734,32 +783,40 @@ function readObjective(r:Reader,tick:number,base:ObjectiveView|undefined):Object
 /**
  * Flag bit 5 of the frame: u8 bits (1 dynamic part, 2 static part, 4 cleared) | dynamic? | static?. Sent only when it
  * differs from the baseline's (every full frame has both parts); the decoder keeps the baseline's otherwise.
- *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer) | [svar until-tick] | [uvar drawer's enemy wire id])*
+ *   dynamic: uvar n, (uvar saldo | str state | u8 has (1 until, 2 drawer, 4 workers, 8 fila) | [svar until-tick] |
+ *     [uvar drawer's enemy wire id] | str bico | [uvar n, str player id*] | [uvar fila])*
  *   static:  uvar n, (str id | svar x*16 | svar y*16 | str name)*
  * The two lists are in the same order (the sim's). The drawer is the critter's client id (`e<wire id>`), like a ref.
  */
-const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2;
-const MAX_BANKS=16;
+const BANK_DYN=1,BANK_STATIC=2,BANK_CLEAR=4,BANK_UNTIL=1,BANK_DRAWER=2,BANK_WORKERS=4,BANK_FILA=8;
+const MAX_BANKS=16,MAX_WORKERS=8;
+const BICO_SET=new Set<string>(BICO_IDS);
 const BANK_STATES=new Set<string>(['aberto','sacando','bicho','sem-cedulas']);
 const BANK_NAMES=new Set<string>(BANK_IDS);
 const ENEMY_LABEL=/^e(\d{1,9})$/;
 /** The banks as the client ends up with them (quantized, the drawer as its client id). */
 function normBanks(list:readonly BankView[],drawer:(serverId:string)=>string):BankView[]{
   return list.slice(0,MAX_BANKS).map(b=>({id:clip(b.id),...pt16(b),name:b.name,saldo:uint(b.saldo),state:b.state,
-    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{})}));
+    ...(b.until!==undefined?{until:Math.round(finite(b.until))}:{}),...(b.drawer!==undefined?{drawer:drawer(b.drawer)}:{}),
+    bico:b.bico,...(b.workers?.length?{workers:b.workers.slice(0,MAX_WORKERS).map(clip)}:{}),...(b.fila?{fila:uint(b.fila)}:{})}));
 }
 const sameBankStatic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&a.every((x,i)=>x.id===b[i].id&&x.x===b[i].x&&x.y===b[i].y&&x.name===b[i].name);
 const sameBankDynamic=(a:readonly BankView[],b:readonly BankView[])=>a.length===b.length&&
-  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer);
+  a.every((x,i)=>x.saldo===b[i].saldo&&x.state===b[i].state&&x.until===b[i].until&&x.drawer===b[i].drawer&&x.bico===b[i].bico&&x.fila===b[i].fila&&
+    (x.workers?.length??0)===(b[i].workers?.length??0)&&(x.workers??[]).every((id,k)=>id===b[i].workers?.[k]));
 function writeBanks(w:Writer,list:readonly BankView[],bits:number,tick:number){
   w.u8(bits);
   if(bits&BANK_DYN){
     w.uvar(list.length);
     for(const b of list){
       const drawer=b.drawer!==undefined?ENEMY_LABEL.exec(b.drawer):null;
-      w.uvar(b.saldo);w.str(b.state);w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0));
+      w.uvar(b.saldo);w.str(b.state);
+      w.u8((b.until!==undefined?BANK_UNTIL:0)|(drawer?BANK_DRAWER:0)|(b.workers?.length?BANK_WORKERS:0)|(b.fila?BANK_FILA:0));
       if(b.until!==undefined)w.svar(b.until-tick);
       if(drawer)w.uvar(Number(drawer[1]));
+      w.str(b.bico);
+      if(b.workers?.length){w.uvar(b.workers.length);for(const id of b.workers)w.str(id);}
+      if(b.fila)w.uvar(b.fila);
     }
   }
   if(bits&BANK_STATIC){
@@ -776,9 +833,15 @@ function readBanks(r:Reader,tick:number,base:readonly BankView[]|undefined):Bank
     const rows=Array.from({length:r.count(MAX_BANKS)},()=>{
       const saldo=r.uvar(),state=r.str();
       if(!BANK_STATES.has(state))throw new FrameError('bad bank state');
-      const has=r.u8();if(has>3)throw new FrameError('bad bank flags');
+      const has=r.u8();if(has>15)throw new FrameError('bad bank flags');
       const until=has&BANK_UNTIL?tick+r.svar():undefined,drawer=has&BANK_DRAWER?`e${r.uvar()}`:undefined;
-      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{})};
+      const bico=r.str();if(!BICO_SET.has(bico))throw new FrameError('bad bico');
+      const workers=has&BANK_WORKERS?Array.from({length:r.count(MAX_WORKERS)},()=>r.str()):undefined;
+      if(workers&&!workers.length)throw new FrameError('empty bico shift');
+      const fila=has&BANK_FILA?r.uvar():undefined;
+      if(fila===0)throw new FrameError('empty bico queue');
+      return {saldo,state:state as BankState,...(until!==undefined?{until}:{}),...(drawer!==undefined?{drawer}:{}),bico:bico as BicoId,
+        ...(workers?{workers}:{}),...(fila!==undefined?{fila}:{})};
     });
     const old=next;
     next=rows.map((d,i)=>({id:old?.[i]?.id??'',x:old?.[i]?.x??0,y:old?.[i]?.y??0,name:old?.[i]?.name??BANK_IDS[0],...d}));
@@ -873,7 +936,7 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn','knock',
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
@@ -1182,9 +1245,13 @@ export class FrameEncoder {
 
 /** Mask bits: 0 = moved a little (two i8 position deltas follow), 1 = new entity, then one bit per field. */
 const NUDGE=1,NEW=2,FIELD_BIT=2;
-/** At most 29 fields per schema, so masks stay inside 31-bit integers (`>>>` and `1<<`). */
-const bit=(field:number)=>1<<(field+FIELD_BIT);
-const has=(mask:number,field:number)=>((mask>>>(field+FIELD_BIT))&1)===1;
+/**
+ * Field bits by arithmetic, not `1<<` / `>>>` (31-bit): the players passed 29 fields with the viaduct's `andar` after
+ * `moveSpeed` (mapa-175-com-viaduto), and 1<<31 is negative. Masks are varints, exact up to 2^53 (~50 fields); the bytes
+ * of a mask under 2^31 are the same as before. NUDGE and NEW stay in the low bits (`mask&NEW` keeps them exact).
+ */
+const bit=(field:number)=>2**(field+FIELD_BIT);
+const has=(mask:number,field:number)=>Math.floor(mask/2**(field+FIELD_BIT))%2===1;
 /**
  * Writes one section and returns the client's resulting table. Layout: removed ids (gap*2 + left-interest bit),
  * then upserts as (id gap, mask, [player id if new], [i8 dx, i8 dy if moved a little], changed fields).
@@ -1258,7 +1325,8 @@ function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[
   for(let i=0;i<n;i++){
     const gap=r.uvar();if(!gap)throw new FrameError('ids out of order');
     const id=last+=gap,mask=r.uvar();
-    if(mask>=bit(keys.length))throw new FrameError('bad field mask');
+    // 2** and not bit(): with 29 fields 1<<31 is negative and every mask would be refused.
+    if(mask>=2**(keys.length+FIELD_BIT))throw new FrameError('bad field mask');
     const prev=client.get(id);
     if(!(mask&NEW)&&!prev)throw new FrameError('delta for unknown entity');
     // `client` is this frame's copy (advance): update in place. A bad frame is dropped whole, so nothing leaks.

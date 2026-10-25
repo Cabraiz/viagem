@@ -75,8 +75,9 @@ export const gradeUrls=(id:string,liberado:boolean):string[]=>liberado?[1,2,3].m
 export const postUrl=(id:string,i:number)=>instaUrl(`post-${id}-${i+1}`);
 /** The top bar's logo: the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil). */
 export const logoUrl=(id:string)=>instaUrl(`logo-${id}`);
-/** The stories: every other hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). */
-export const storiesOf=(selectedId:string,ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>p.id!==selectedId&&ids.includes(p.id));
+/** The rings row: every hero with a profile, in INSTA_PERFIS order (`ids` = the heroes this build has). The chosen one
+ *  stays in it, marked (BUG-20261024-ORQ-aneis-herois-carrossel-infinito): a pick never reshuffles the row under the finger. */
+export const aneisOf=(ids:readonly string[]):InstaPerfil[]=>INSTA_PERFIS.filter(p=>ids.includes(p.id));
 
 /**
  * The handle's size (insta.css: 64 card px of 734): the column beside the photo holds 335, 275 of them for the text
@@ -107,12 +108,16 @@ export const LINHA={
 // The bar is in the page from the start with no logo: main.ts renderInsta sets it, so the stadium never downloads one.
 export const barraHtml=()=>`<header class="insta-barra"><img class="insta-logo" alt="" decoding="async" draggable="false"><span class="insta-acoes"><span class="insta-sino">${LINHA.sino}</span><button type="button" class="insta-menu" aria-label="Configurações" aria-haspopup="dialog">${LINHA.menu}</button></span></header>`;
 
-/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. */
-export function storyHtml(p:InstaPerfil,liberado:boolean):string{
-  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
+/** One story: the face in the gradient ring, the name under it; a locked hero gets the lock over his face. A `copia` is
+ *  the endless row's second set (ui/insta-aneis.ts): tappable, but hidden from screen readers and out of the tab order. */
+export function storyHtml(p:InstaPerfil,liberado:boolean,copia=false):string{
+  return `<button type="button" class="insta-story" data-hero="${p.id}"${liberado?'':' data-bloqueado'}${copia?' aria-hidden="true" tabindex="-1"':''} aria-label="${esc(p.nome)}${liberado?'':' (em breve)'}">`+
     `<span class="insta-anel"><img class="insta-rosto" src="${perfilUrl(p.id)}" alt="" decoding="async" draggable="false">${liberado?'':img('icone-cadeado','insta-cadeado')}</span>`+
     `<span class="insta-story-nome">${esc(p.nome)}</span></button>`;
 }
+/** The rings row's track: the rings, then (`loop`: more than fit) the same rings again for the endless row. */
+export const aneisHtml=(perfis:readonly InstaPerfil[],liberado:(id:string)=>boolean,loop:boolean)=>
+  `<div class="insta-aneis-trilho">${perfis.map(p=>storyHtml(p,liberado(p.id))).join('')}${loop?perfis.map(p=>storyHtml(p,liberado(p.id),true)).join(''):''}</div>`;
 
 /**
  * The profile: photo with the badge, @handle with the badge, followers | following, the bio. A released hero's photo is
@@ -242,6 +247,33 @@ export const INSTA_STORIES:Readonly<Record<string,readonly InstaStory[]>>=Object
     {quando:'30 min',camadas:[
       {tipo:'texto',fonte:'moderna',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['Domingo:','21 marmitas','prontas.'],x:50,y:46},
       {tipo:'hashtag',tag:'#MARMITAFIT',cor:'rosa',x:64,y:80,giro:-3}]},
+  ],
+  // NEW-20261024-ORQ-stories-vendedor-aposentado: the same viewer and looks for the two heroes of the second menu screen.
+  'vendedor-praia':[
+    {quando:'10 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'branco',fundo:'laranja',linhas:['OLHA A ÁGUA!','OLHA O MATE!'],x:40,y:66,giro:-5,tam:1.5},
+      {tipo:'hashtag',tag:'#PRAIALOTADA',cor:'amarelo',x:38,y:84,giro:4}]},
+    {quando:'6 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'branco',fundo:'verde',linhas:['Pix aprovado.','Mate entregue.'],x:52,y:50},
+      {tipo:'curtidas',n:8,x:76,y:84}]},
+    {quando:'3 h',camadas:[
+      {tipo:'enquete',pergunta:'O FISCAL VOLTOU. E AGORA?',a:'Corre!',b:'Finge de turista',x:50,y:74}]},
+    {quando:'40 min',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'sombra',cor:'branco',linhas:['Última geladinha','do dia.'],x:50,y:60,tam:1.1},
+      {tipo:'pergunta',pergunta:'Quem leva a última?',x:50,y:80}]},
+  ],
+  'aposentado':[
+    {quando:'11 h',camadas:[
+      {tipo:'texto',fonte:'maquina',jeito:'caixa',cor:'preto',fundo:'branco',alinhar:'esquerda',linhas:['5h da manhã.','O peixe dorme.','Eu não.'],x:36,y:72},
+      {tipo:'hashtag',tag:'#MADRUGADOR',cor:'azul',x:64,y:86,giro:-4}]},
+    {quando:'8 h',camadas:[
+      {tipo:'texto',fonte:'forte',jeito:'faixa',cor:'preto',fundo:'amarelo',linhas:['O MONSTRO','DO LAGO.'],x:46,y:60,giro:-4,tam:1.6},
+      {tipo:'curtidas',n:2,x:26,y:82}]},
+    {quando:'4 h',camadas:[
+      {tipo:'texto',fonte:'classica',jeito:'faixa',cor:'preto',fundo:'branco',linhas:['Como desvira','essa câmera?'],x:50,y:22}]},
+    {quando:'25 min',camadas:[
+      {tipo:'texto',fonte:'moderna',jeito:'faixa',cor:'branco',fundo:'roxo',linhas:['Só descansando','os olhos.'],x:50,y:64},
+      {tipo:'hashtag',tag:'#CAPÍTULOFINAL',cor:'rosa',x:60,y:82,giro:3}]},
   ],
 });
 export const storiesDe=(id:string):readonly InstaStory[]=>INSTA_STORIES[id]??[];

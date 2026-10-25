@@ -92,8 +92,8 @@ test('grid rules: the ghost sees a barraca\'s 2×2 as occupied', ()=>{
   assert.equal(ghostRefusal(cellRect(6,6,1,1,cell),{cell,structures}),undefined);
 });
 
-test('wire and art: the kit and the kind by dictionary, the sheet a lite base piece with its lonas', ()=>{
-  assert.ok(DICT.includes('barraca')&&DICT.includes('kit:barraca'));
+test('wire and art: the kit and the kind inline (the DICT is full), the sheet a lite base piece with its lonas', ()=>{
+  assert.ok(!DICT.includes('barraca')&&!DICT.includes('kit:barraca')&&DICT.length<255);
   assert.ok(KIT_IDS.includes('kit:barraca'));
   assert.equal(BASE_ART.barraca,'barraca');
   assert.ok(BASE_LITE_PIECES.includes('barraca'));

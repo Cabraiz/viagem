@@ -14,13 +14,17 @@ import { formatRoomCode, inviteCode } from './client/ui/invite.ts';
 import { fitName } from './client/ui/nick.ts';
 import { hasNewArt, letreiroAltoOf, letreiroOf, plaqueText, titleFit, titleLines } from './client/ui/apelidos.ts';
 import { CONFIRM_TEXT, etapaOf, nameKey, showEtapa } from './client/ui/menu-etapa.ts';
-import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, type ResumeIntent } from './client/ui/update-toast.ts';
+import { manterAcimaDoTeclado } from './client/ui/teclado.ts';
+import { chunkFailed, inMatchOf, linkWatch, opening, reloadPage, resumeOf, saveResume, showUpdateToast, takeResume, updateNow, type ResumeIntent } from './client/ui/update-toast.ts';
+import { startPullToRefresh } from './client/ui/pull-refresh.ts';
 import './client/ui/update-toast.css';
+import './client/ui/pull-refresh.css';
 import './client/ui/cadeado.css';
 import './client/ui/insta.css';
-import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, storiesOf, storyHtml } from './client/ui/insta.ts';
+import { abasHtml, barraHtml, chipsHtml, gradeHtml, INSTA_QUERY, instaPerfil, logoUrl, perfilHtml, aneisHtml, aneisOf } from './client/ui/insta.ts';
 import { abrirPost, fecharPost } from './client/ui/insta-post.ts';
 import { abrirStories, fecharStories } from './client/ui/insta-stories.ts';
+import { emLoop, montarAneis } from './client/ui/insta-aneis.ts';
 import { miniaturaOf } from './client/ui/miniatura.ts';
 import { BOTS_MAX, BOTS_MIN, botsLabel, islandFlag, readBots, saveBots, soloErrorText } from './client/ui/solo-plan.ts';
 import { autoFullscreen, isFullscreen, lockMatchOrientation, paintButton, showButton, toggleFullscreen, unlockOrientation, type TelaCheiaEnv } from './client/ui/tela-cheia.ts';
@@ -29,8 +33,14 @@ mountIcons();
 // Out of a match the page reloads by itself and comes back where it was (resume); in a match only the notice shows.
 const session=()=>{try{return sessionStorage;}catch{return undefined;}};
 const storage=()=>{try{return localStorage;}catch{return undefined;}};
-linkWatch(startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
-  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))}));
+const versionWatch=startVersionWatch({win:window,current:__BUILD_ID__,fetchVersion:()=>fetchBuildId(),inMatch:()=>inMatchOf(document),
+  reload:()=>reloadPage(location),onAvailable:()=>showUpdateToast(document),beforeReload:()=>saveResume(session(),resumeOf(document,Date.now()))});
+linkWatch(versionWatch);
+// arrastar-atualiza-versao-nova: a page from the HTTP cache (an old SW, or the browser's own) may be an older build than
+// the site: ask once at startup, so it reloads into the new one before the rooms refuse it (the watch's guard stops loops).
+void versionWatch.check();
+// ...and in the menus, pulling down reloads (the browser's own pull-to-refresh is off: fullscreen, installed app, html overflow).
+startPullToRefresh({doc:document,win:window,inMatch:()=>inMatchOf(document),refresh:()=>updateNow()});
 // Art v2 (NEW-20261012-ORQ-importar-arte-b-ligacao): the index is fetched in the background, never blocking the menu;
 // the game and the horde sandbox await it (bounded) before Phaser preloads. Late or failed = SVG/procedural stays.
 void startArt();
@@ -332,7 +342,9 @@ const insta={stories:document.querySelector<HTMLElement>('.insta-stories')!,perf
   chips:document.querySelector<HTMLElement>('.insta-chips')!,grade:document.querySelector<HTMLElement>('.insta-grade')!,
   logo:document.querySelector<HTMLImageElement>('.insta-logo')!};
 const instaIds=classes.map(hero=>hero.id);
-let instaShown='';
+let instaShown='',instaAneis='';
+// The heroes' rings: one endless row a finger drags (ui/insta-aneis.ts); drawn again only when the heroes or locks change.
+const aneis=montarAneis(insta.stories);
 // Whose stories were watched this visit: his ring goes grey (ui/insta.ts perfilHtml).
 const instaVistos=new Set<string>();
 function renderInsta() {
@@ -341,7 +353,14 @@ function renderInsta() {
   instaShown=selected.id;
   // The top bar's logo is the letreiro of the profile on screen (BUG-20261023-ORQ-instagram-letreiro-do-perfil).
   insta.logo.src=logoUrl(perfil.id);insta.logo.alt=perfil.letreiro;
-  insta.stories.innerHTML=storiesOf(selected.id,instaIds).map(p=>storyHtml(p,isLiberado(p.id))).join('');
+  const perfis=aneisOf(instaIds),assinatura=perfis.map(p=>`${p.id}${isLiberado(p.id)?'':'!'}`).join();
+  if(instaAneis!==assinatura){
+    instaAneis=assinatura;
+    insta.stories.innerHTML=aneisHtml(perfis,isLiberado,emLoop(perfis.length));
+    aneis.montou(perfis.length,perfis.indexOf(perfil));
+  }
+  insta.stories.querySelectorAll<HTMLElement>('[data-hero]').forEach(anel=>{if(anel.dataset.hero===perfil.id)anel.setAttribute('aria-current','true');else anel.removeAttribute('aria-current');});
+  aneis.mostrar(perfis.indexOf(perfil));
   insta.perfil.innerHTML=perfilHtml(perfil,isLiberado(perfil.id),instaVistos.has(perfil.id));
   insta.chips.innerHTML=chipsHtml(perfil);
   insta.grade.innerHTML=gradeHtml(perfil,isLiberado(perfil.id));
@@ -358,6 +377,8 @@ function fitHandle() {
 insta.stories.addEventListener('click',event=>{
   const story=(event.target as HTMLElement|null)?.closest<HTMLButtonElement>('[data-hero]');
   if(!story) return;
+  // The half ring at the edge comes fully into view, also when it is the one already chosen.
+  aneis.mostrar(aneisOf(instaIds).findIndex(p=>p.id===story.dataset.hero));
   if(etapaOf(etapa)==='nome') showEtapa(etapa,'escolher');
   selected=getClass(story.dataset.hero!)!;
   renderSelected(true);
@@ -430,6 +451,8 @@ function backToRow() {
   rowList.querySelector<HTMLElement>(`[data-hero="${selected.id}"]`)?.focus({preventScroll:true});
 }
 document.getElementById('trocar')!.addEventListener('click',backToRow);
+// The phone's keyboard never covers the field and BORA! (teclado-cobre-nome-bora): the column takes what it leaves.
+manterAcimaDoTeclado(etapa.section,nameInput);
 nameInput.addEventListener('keydown',event=>{
   const key=nameKey(event);
   if(!key) return;

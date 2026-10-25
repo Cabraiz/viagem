@@ -180,7 +180,10 @@ test('assembled run: a hero walks through a barraca at half the step; the critte
   ana.x=home.x;ana.y=home.y;
   // Into the waves with both heroes held just behind the middle of a row (the critters chase them; E4's "ir ao Uno" is
   // another card): no critter's centre deep inside a standing barraca's disc; the ones on the far side bash through.
-  const row=laid.filter(p=>p.cell.r===b.cell.r||p.cell.c===b.cell.c),mid=row[Math.floor(row.length/2)];
+  // The longest row (the compact map's streets are narrower: some rows are a square or two).
+  const lines=new Map<string,PieceState[]>();
+  for(const p of laid)for(const k of [`r${p.cell.r}`,`c${p.cell.c}`])lines.set(k,[...lines.get(k)??[],p]);
+  const row=[...lines.values()].sort((x,y)=>y.length-x.length)[0],mid=row[Math.floor(row.length/2)];
   const across=row.every(p=>p.cell.r===mid.cell.r),behind={x:mid.x+(across?0:2.4),y:mid.y+(across?2.4:0)};
   const hold=()=>{for(const p of a.world.players.values()){p.x=behind.x;p.y=behind.y;}};
   const bashed=new Set<string>();let inside=0,seen=0,closest=Infinity;

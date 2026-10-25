@@ -16,6 +16,7 @@ export * from './enemies/catalog.ts';
 export * from './player-effects.ts';
 export * from './progression.ts';
 export * from './revive.ts';
+export * from './fear.ts';
 export * from './run.ts';
 export * from './shame.ts';
 export * from './skills.ts';
@@ -40,5 +41,6 @@ export * from './wallet.ts';
 export {ITEMS} from './items.ts';
 export type {InventoryResult,InventoryRefusal,KitOrder,PlaceResult} from './inventory.ts';
 export {cityRunStart,START_SLOT_SPREAD} from './city/tutorial.ts';
+export {cityUnoStart,startSlots,UNO_START_CLEAR} from './city/uno-start.ts';
 // D-051 mode 'ninhos' without rounds: the calm (rules/calma.ts) as the sim reads it.
 export * from './ninhos/calma.ts';

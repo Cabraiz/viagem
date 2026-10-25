@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PUSH_REACH,PUSH_REACH_SCREEN,PUSH_SHIFT_MAX,PushShifts,pushContact,pushReach} from '../../src/client/render/chaveiro/push-contact.ts';
+import {PUSH_REACH,PUSH_REACH_SCREEN,PUSH_SHIFT_MAX,PushShifts,pullDirection,pushContact,pushReach} from '../../src/client/render/chaveiro/push-contact.ts';
 import {CAR_HALF} from '../../src/client/render/chaveiro/figures.ts';
 
 const near=(a:number,b:number,eps=1e-9)=>Math.abs(a-b)<eps;
@@ -77,4 +77,17 @@ test('the reach goes by the screen direction of the push and turns with the came
   // a reach function: the palms land on the car with it
   const car={x:0,y:0,heading:0},hero={x:-(CAR_HALF.l+1),y:0},c=pushContact(hero,car,{x:1,y:0},()=>.3)!;
   assert.ok(near(hero.x+c.shift.x+.3,-CAR_HALF.l));
+});
+
+test('pullDirection (puxar-uno-corda): the rope holder faces away from the front bumper, at any heading', ()=>{
+  for(let k=0;k<8;k++){
+    const h=k*Math.PI/4,car={x:3,y:-2,heading:h},bx=car.x+Math.cos(h)*CAR_HALF.l,by=car.y+Math.sin(h)*CAR_HALF.l;
+    // straight ahead of the nose: along the heading
+    const ahead=pullDirection({x:bx+Math.cos(h)*2,y:by+Math.sin(h)*2},car)!;
+    assert.ok(Math.abs(ahead.x-Math.cos(h))<1e-9&&Math.abs(ahead.y-Math.sin(h))<1e-9&&ahead.pull);
+    // off to a side: unit, from the bumper to the hero
+    const side=pullDirection({x:bx-Math.sin(h)*1.5,y:by+Math.cos(h)*1.5},car)!;
+    assert.ok(Math.abs(Math.hypot(side.x,side.y)-1)<1e-9);assert.ok(Math.abs(side.x+Math.sin(h))<1e-9&&Math.abs(side.y-Math.cos(h))<1e-9);
+  }
+  assert.equal(pullDirection({x:CAR_HALF.l,y:0},{x:0,y:0,heading:0}),undefined);
 });

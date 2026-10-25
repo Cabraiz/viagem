@@ -47,11 +47,13 @@ test('the replay of pending steps walks at most the cap per tick (no snap-back w
 test('the client feeds the cap to both the replay and the live step, and drops the attack with busy hands', ()=>{
   const src=readFileSync(new URL('../../src/client/net/client.ts',import.meta.url),'utf8');
   assert.match(src,/this\.stepCap=this\.obraHold\.holding\(view\.structures\)\?0:carStepCap\(car,this\.id\)/);
-  // NEW-20261023-ORQ-barracas-no-caminho: the barracas' slow rides along with the cap (net/barraca-slow.ts).
-  assert.match(src,/cap:this\.stepCap,slow:this\.stepSlow\}/);
-  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap,this\.stepSlow\)/);
+  // uno-bloqueio-corpo: the car's body (a box by its heading) rides along with the cap.
+  // NEW-20261023-ORQ-barracas-no-caminho: and the barracas' slow after it (net/barraca-slow.ts).
+  assert.match(src,/cap:this\.stepCap,car:this\.carBody,slow:this\.stepSlow\}/);
+  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap,this\.carBody,this\.stepSlow\)/);
   assert.match(src,/this\.handsBusy=!!car&&\(car\.rope===this\.id\|\|!!car\.movers\?\.includes\(this\.id\)\)/);
   assert.match(src,/if\(this\.handsBusy\)attack=false;/);
   // The room uses the same cut (no drift between the phone and the room).
-  assert.match(readFileSync(new URL('../../src/sim/systems/players.ts',import.meta.url),'utf8'),/capStep\(\{x:x0,y:y0\},p,stepCap\?\.\(p\.id\),ctx\.terrain\)/);
+  // (`from` carries the floor since mapa-175-com-viaduto: the cut point keeps the step's own floor.)
+  assert.match(readFileSync(new URL('../../src/sim/systems/players.ts',import.meta.url),'utf8'),/capStep\(from,p,stepCap\?\.\(p\.id\),ctx\.terrain\)/);
 });

@@ -201,7 +201,7 @@ export class RoomBots {
       }
       // Each bot sees its own wallet as the camp's Grana (NEW-20261014-ORQ-carteira-e-pix), like a phone sees its own.
       const own={...view,...(view.camp?{camp:{...view.camp,grana:sim.granaOf(mind.id)}}:{}),offers:sim.offers(mind.id)};
-      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
+      const d=decide({view:own,selfId:mind.id,at:{x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})},index:mind.slot,terrain:sim.terrain,memory:mind.memory,forger,escort,
         // D-047: the chaveiro objective's tasks (push the dead moto, clear the next delivery) are shared out among the bots.
         // Bancos: so are the ATMs (bankTask), in both city modes.
         ...(view.objective||view.banks?{teamBots:minds.map(m=>m.id)}:{}),
@@ -210,7 +210,7 @@ export class RoomBots {
         ...(sim.mode==='ninhos'?{nests:true as const}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
-      sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
+      sim.setBotInput(mind.id,d.direction,d.cast,d.attack,d.work,d.target);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       // D-051 manual combat: the bot's inventory (an autopilot leaves the person's alone, like their offers).
       if(d.inventory&&this.chooses){

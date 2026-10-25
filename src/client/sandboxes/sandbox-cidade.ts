@@ -80,8 +80,8 @@ import {spriteCatalog} from '../sprites/sprite-catalog.ts';
 import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts';
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
-import {HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {CAR_ROPE,HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
+import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isPlayableClass,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -106,12 +106,13 @@ import {ChaveiroRenderer} from '../render/chaveiro/renderer.ts';
 import {FortifyRenderer} from '../render/fortify.ts';
 import {buildHints,cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal} from '../render/fortify-rules.ts';
 import {CAR_HALF} from '../render/chaveiro/figures.ts';
-import {PushShifts,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
+import {PushShifts,pullDirection,pushContact,pushReach} from '../render/chaveiro/push-contact.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
+import {workShop,workingIn} from '../hud/bicos.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
 import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
@@ -131,7 +132,8 @@ const cellsOverride=Number(params.get('cells'))||undefined;
 /** `zoom=k`: the player's zoom factor (camera-zoom.ts; default the game's ZOOM_DEFAULT, `zoom=1` the old framing). */
 const zoomK=params.get('zoom')==='pc'?ZOOM_DESKTOP:clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
 const wanted=params.get('class')??'cidadao-comum';
-const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
+// Any playable class (the gato has only M16 sheets, no legacy catalog entry: parado-respiracao-herois) or a legacy one.
+const classId=spriteCatalog[wanted]||isPlayableClass(wanted)?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:params.get('torres')==='lista'?2:0;
 /** torres=lista: the kinds to stand next to the hero (`tipos=a,b`), pronta, on a ring of 2.4 u from the north. */
 const towerList=(params.get('tipos')??'').split(',').filter(k=>k in TOWER_LOOK) as TowerKind[];
@@ -206,6 +208,16 @@ const carMoves=obra&&params.has('anda');
  * its back, drawn as the game draws a pusher (scene.ts: pushContact, the push16 clip facing the car, palms on it).
  */
 const pushing=objective&&params.has('empurrando');
+/** `puxando=1` with empurrando= (puxar-uno-corda): the hero pulls the rolling car on its rope, ahead of the nose (pull16). */
+const pulling=pushing&&params.get('puxando')==='1';
+/**
+ * `junto=<classe>` with empurrando= (puxar-uno-corda): a second hero on the other end of the car, drawn as the game draws
+ * it: it pushes at the back while the hero pulls (puxando=1), or holds the rope and pulls while the hero pushes (a helper,
+ * as a bot takes the free rope). sandbox-chaveiro.ts adds it (`junto`) to the movers.
+ */
+const mateClass=pushing&&spriteCatalog[params.get('junto')??'']?params.get('junto')!:undefined;
+/** `corda=livre` with obra=1 (puxar-uno-corda): nobody on the rope, it lies on the ground ahead of the front bumper. */
+const freeRope=params.get('corda')==='livre';
 /** `tralha=1` with obra=1 (barricada-construir part 2): a tapped barricada de tralha (outline, circles, coleta bar). */
 const tralhaShot=obra&&params.get('tralha')==='1';
 /**
@@ -262,6 +274,9 @@ class CitySandbox extends Phaser.Scene {
   private asset!:CityAsset;
   private hero!:Phaser.GameObjects.Sprite;
   private ally?:Phaser.GameObjects.Sprite;
+  private mate?:Phaser.GameObjects.Sprite;
+  private mateAt={x:0,y:0};
+  private mateShift={x:0,y:0};
   /** The hero's cast silhouette, as in the game (render/silhouette.ts, card sombra-silhueta). */
   private shadow!:Phaser.GameObjects.Image;
   /** empurrando=: the hero's drawn shift onto the car (the game's PushShifts). */
@@ -270,6 +285,9 @@ class CitySandbox extends Phaser.Scene {
   private outlines=new CityOutlines(this,{active:()=>outlinesOn,zoom:()=>this.cameras.main.zoom,
     groundLuminance:(x,y)=>this.asset?cityGroundLuminance(this.asset,x,y):undefined});
   private sprites=new CharacterSprites(this,this.outlines);
+  /** window.__cidade.cair() (vendedor-aposentado-arte-8-direcoes, prova): the hero drawn as the game draws a caído
+   * (scene.ts: hp 0, alive false, turned −90°, alpha .85), so the fall shows in the GIFs. */
+  private fallen=false;
   /** window.__cidade.step's clock (ms). */
   private stepAt?:number;
   /** The hero's swings so far (window.__cidade.golpe(): one more plays the attack clip; card arma-na-mao-viciado proofs). */
@@ -289,6 +307,8 @@ class CitySandbox extends Phaser.Scene {
     /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
     talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
+  /** acao=1: the action button (bancos=1 turns it into Trabalhar in a shop's ring). */
+  private skill?:SkillButton;
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
   /** obra=1: the fortify view pushed (anda= moves its car). */
@@ -319,6 +339,7 @@ class CitySandbox extends Phaser.Scene {
     this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{})});
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
+    if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(towersParam)queueTowerArt(this);
     if(base)queueBaseArt(this); // the manifest is loaded before the game starts (see the bottom of this file)
@@ -374,6 +395,7 @@ class CitySandbox extends Phaser.Scene {
     this.sprites.animate(this.hero,classId,this.at.x,this.at.y,0,true,this.view);
     // arsenal=1: the ally standing at its crate (sandboxes/arsenal-view.ts), so its opening shows.
     if(arsenal)this.ally=this.add.sprite(0,0,'__DEFAULT');
+    if(mateClass)this.mate=this.add.sprite(0,0,'__DEFAULT');
     this.spawnHorde();
     if(acao)void this.mountAttack();
     if(centre)this.mountBase(centre);
@@ -382,6 +404,7 @@ class CitySandbox extends Phaser.Scene {
     if(kitParam)this.mountKit();
     if(bancos)this.mountBanks();
     if(obra&&this.chaveiro)this.mountObra();
+    else if(pushing&&this.chaveiro)this.mountRope();
     this.fit();
     this.scale.on('resize',()=>{this.fit();});
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
@@ -401,16 +424,30 @@ class CitySandbox extends Phaser.Scene {
   update(_t:number,dt:number){
     frames.push(dt);if(frames.length>240)frames.shift();
     if(this.fpsLabel&&frames.length%30===0)this.fpsLabel.textContent=`${meter.fps().toFixed(0)} fps · ${enemies} bichos`;
-    let push:ReturnType<typeof pushContact>;
+    let push:ReturnType<typeof pushContact>,pull:ReturnType<typeof pullDirection>;
     if(pushing&&this.chaveiro){
       // the hero walks with the car, just behind its back (inside the room's reach); the drawing puts its palms on it
-      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=CAR_HALF.l+.6;
+      const car=this.chaveiro.fake.view(fotoT??_t).view.car,h=(Number(params.get('empurrando'))||0)*Math.PI/180,back=pulling?-(CAR_HALF.l+CAR_ROPE):CAR_HALF.l+.6;
       this.at={x:car.x-Math.cos(h)*back,y:car.y-Math.sin(h)*back};
       const pose=this.chaveiro.renderer.carPose();
-      push=pose?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      // puxando=1: the rope taut ahead of the nose, the hero facing away from the bumper (scene.ts: pullDirection)
+      push=pose&&!pulling?pushContact(this.at,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+      if(pulling&&pose)pull=pullDirection(this.at,pose);
       this.pushShift=this.pushShifts.step('voce',push?.shift,dt);
+      if(this.mate&&mateClass){
+        // junto=: the other end, the other role (pushing at the back while the hero pulls, on the rope while it pushes)
+        const mb=pulling?CAR_HALF.l+.6:-(CAR_HALF.l+CAR_ROPE);this.mateAt={x:car.x-Math.cos(h)*mb,y:car.y-Math.sin(h)*mb};
+        const mp=pose&&pulling?pushContact(this.mateAt,pose,{x:Math.cos(h),y:Math.sin(h)},d=>pushReach(d,this.view)):undefined;
+        const ml=pose&&!pulling?pullDirection(this.mateAt,pose):undefined;
+        this.mateShift=this.pushShifts.step('junto',mp?.shift,dt);
+        this.sprites.animate(this.mate,mateClass,this.mateAt.x,this.mateAt.y,0,true,this.view,undefined,mp?.dir??ml);
+      }
     }
-    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,true,this.view,undefined,push?.dir,danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
+    // anda= (puxar-uno-corda): the hero on the rope ahead of the car, drawn pulling (its pull16) along the swing's axis.
+    const ha=Number(params.get('anda'))*Math.PI/180||0;if(carMoves)pull={x:Math.cos(ha),y:Math.sin(ha),pull:true};
+    const fell=this.fallen;
+    this.sprites.animate(this.hero,classId,this.at.x,this.at.y,this.swings,!fell,this.view,undefined,push?.dir??pull,fell?0:danoMs?1e6-Math.floor((fotoT??_t)/danoMs):undefined);
+    if(fell)this.hero.setAngle(-90).setAlpha(.85);else if(this.hero.angle)this.hero.setAngle(0).setAlpha(1);
     if(pushing)this.place();
     if(this.ally){const a=allyAt(this.at.x,this.at.y);this.sprites.animate(this.ally,'merendeira',a.x,a.y,0,true,this.view);}
     if(!stillHorde)this.moveHorde(dt);
@@ -428,6 +465,7 @@ class CitySandbox extends Phaser.Scene {
       this.chaveiro.warmed=true;
       const {view,tick}=this.chaveiro.fake.view(now);this.chaveiro.renderer.push(view,tick);this.chaveiro.renderer.update(now);
       if(carMoves&&this.fortify)this.pullCar(view.car);
+      else if(pushing&&this.fortify&&this.obraView)this.fortify.push({...this.obraView,objective:{...this.obraView.objective!,car:view.car}});
       if(this.pip){
         const hit=this.chaveiro.renderer.hitState(),cam=this.cameras.main,proj=this.cityProjector().project(view.car.x,view.car.y,{x:0,y:0});
         const wanted=!!hit&&pipWanted({live:!hit.ended,now,carOnScreen:cam.worldView.contains(proj.x,proj.y),distance:Math.hypot(view.car.x-this.at.x,view.car.y-this.at.y),
@@ -460,7 +498,7 @@ class CitySandbox extends Phaser.Scene {
    */
   private mountBanks(){
     const fake=fakeBanks(params,this.at),projector=this.cityProjector();
-    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at});
+    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id});
     let horde:HordeRenderer|undefined;
     if(this.decoded&&fake.enemies.length){
       const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
@@ -485,6 +523,10 @@ class CitySandbox extends Phaser.Scene {
     const {banks,tick}=b.fake.view(now);
     b.renderer.push(banks,tick);b.renderer.update(now);
     b.horde?.update(now,16);
+    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; inside the shift the hero is gone through the door.
+    const inside=workingIn(banks,'voce'),shop=inside??workShop(banks,this.at);
+    this.skill?.setWork(shop?{bico:shop.bico,inside:!!inside}:undefined);
+    if(inside)this.hero.setAlpha(0);
   }
   /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
   private mountObjective(placeHero:boolean){
@@ -548,6 +590,14 @@ class CitySandbox extends Phaser.Scene {
     const feet=project(this.at.x,this.at.y,groundZ(this.asset,this.at.x,this.at.y),this.view);
     this.hero.setPosition(feet.x,feet.y);
   }
+  /** empurrando= (puxar-uno-corda): only the fortify layer's rope, free on the ground ahead of the pushed car. */
+  private mountRope(){
+    const projector=this.cityProjector(),fake=this.chaveiro!.fake.view(0).view;
+    this.fortify=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell:CITY_BUILD_CELL,playerAt:id=>pulling&&id==='voce'?this.at:mateClass&&!pulling&&id==='junto'?this.mateAt:undefined,carHeading:()=>this.chaveiro?.renderer.carHeading??0});
+    const view={tick:100,team:{xp:0,level:1,nextXp:5},structures:[],players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
+      objective:fake} as unknown as RunView;
+    this.fortify.push(view);this.obraView=view;
+  }
   /** `obra=1`: the fortify layer (walls, rope, ghost, hints) and the free barricades in Stonewards around the fake car. */
   private mountObra(){
     const projector=this.cityProjector(),cell=CITY_BUILD_CELL,car=this.chaveiro!.fake.view(0).view.car;
@@ -566,7 +616,7 @@ class CitySandbox extends Phaser.Scene {
       return {id,kind:'barricada',x:rect.cx,y:rect.cy,hp,maxHp:200,c,r,...(rot?{rot}:{}),...(alert?{untilTick:tick+3*SIM_HZ}:{})};
     };
     const structures=barracasShot?this.barracaRow():muralhaShot?this.muralhaSquares(bar):[...walls,bar('b0',c0+4,r0-2,0,200,true),bar('b1',c0-2,r0+2,1,110),bar('b2',c0+9,r0+3,0,0)];
-    const objectiveView={...this.chaveiro!.fake.view(0).view,car:{...car,rope:'voce'}};
+    const objectiveView={...this.chaveiro!.fake.view(0).view,car:freeRope?{...car}:{...car,rope:'voce'}};
     const view={tick,team:{xp:0,level:1,nextXp:5},structures,players:[],offers:[],events:[],projectiles:[],telegraphs:[],enemies:[],pickups:[],
       objective:objectiveView} as unknown as RunView;
     this.fortify.push(view);this.obraView=view;
@@ -810,7 +860,7 @@ class CitySandbox extends Phaser.Scene {
     const slot=document.createElement('div');slot.className='cidade-acao';slot.innerHTML=SKILL_HTML;
     slot.style.cssText='position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));z-index:9';
     host.append(slot);
-    const button=slot.querySelector<HTMLButtonElement>('#coop-attack')!,skill=new SkillButton(button,classId);skill.setCombat('manual');
+    const button=slot.querySelector<HTMLButtonElement>('#coop-attack')!,skill=this.skill=new SkillButton(button,classId);skill.setCombat('manual');
     let chosen:string|undefined;
     const toScreen=(p:{x:number;y:number})=>{
       const w=project(p.x,p.y,groundZ(this.asset,p.x,p.y),this.view),cam=this.cameras.main,r=this.game.canvas.getBoundingClientRect();
@@ -864,9 +914,9 @@ class CitySandbox extends Phaser.Scene {
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);
     (window as unknown as {__cidade:unknown}).__cidade={...meter,ground:()=>(this.layer?.groundSettled()??true)&&!this.load.isLoading(),outlines:()=>this.outlines.stats(),relief:()=>this.layer?.reliefStats(),zoom,view:this.view,classId,scale:CITY_VIEW_SCALE,base:base?basePhase:false,
-      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,at:this.at,
+      heroPx:HERO_WORLD_PX*CITY_VIEW_SCALE*zoom,torres:()=>this.towers?.live(),towersStats:()=>this.towers?.labStats(),towersHidden:(what:string)=>{if(this.towers){this.towers.labHidden=what;if(!what)this.towers.labShow();}},shake:()=>this.towers?.shakeNow()??0,towerCount:this.defenses.length,defenses:()=>this.defenses,volleys:()=>({fired:this.fired,drawn:this.towers?.volleysDrawn??0}),hidden:this.hidden,heroCovered:()=>this.layer?.covers(this.at.x,this.at.y)??false,freeze:()=>this.game.loop.sleep(),golpe:()=>++this.swings,cair:(on=true)=>{this.fallen=on;},at:this.at,
       /** Walk proofs (passo-sem-deslizar): moves the hero and its follow camera like a game frame. */
-      move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,
+      move:(x:number,y:number)=>{this.at.x=x;this.at.y=y;this.place();},hero:this.hero,mate:this.mate,
       /** objetivo=1 (inimigos-querem-o-uno): the car, its hits and when it last took one (the renderer clock). */
       uno:()=>this.chaveiro?.renderer.hitState(),
       /** camera=fixa: from now on the camera stays put (the hero walks across a still ground). */
@@ -902,6 +952,7 @@ class CitySandbox extends Phaser.Scene {
     layer.update({camera:{x:cam.x,y:cam.y,w:cam.width,h:cam.height},view:this.view,dtMs:dt,hero:{...this.at,z},...(also?{also}:{})});
     const d=layer.actorDepth(this.at.x,this.at.y,z);this.hero.setDepth(d);castSilhouette(this.shadow,this.hero,this.hero.x,this.hero.y,true,d-1);
     if(this.ally){const at=allyAt(this.at.x,this.at.y),az=groundZ(this.asset,at.x,at.y),q=project(at.x,at.y,az,this.view);this.ally.setPosition(q.x,q.y).setDepth(layer.actorDepth(at.x,at.y,az));}
+    if(this.mate){const at=this.mateAt,s=this.mateShift,az=groundZ(this.asset,at.x,at.y),q=project(at.x+s.x,at.y+s.y,az,this.view),md=layer.actorDepth(at.x,at.y,az);this.mate.setPosition(q.x,q.y).setDepth(md);}
     for(const w of this.horde){
       const wz=groundZ(this.asset,w.x,w.y),p=project(w.x,w.y,wz,this.view);
       w.image.setPosition(p.x,p.y).setDepth(layer.actorDepth(w.x,w.y,wz));

@@ -35,16 +35,40 @@
   "alterna": true,
   "prova": "evidence NEW-20261023-E3-gato-troca-perna-nw: corpo do NW-run-t10 + pantufas recompostas numa corrida com voo e troca (pp/compor.py GFIX=1: chão parado, rascunho ppx2), limpo pelo Codex sem mover as pantufas (limpar/NW-run-L3); pp/ppx2-L3-0-8.png (poses 0/4/8/12, rascunho × Codex): a de perto lidera em 0-1 e 10-15, a de longe em 2-9 (compor.json, no mundo), lateral |i-i+8| mediana 8,3 px; 5 poses no ar, passada 3 alturas por ciclo"
  },
- "maromba.run16-w.dc71e9155576.webp": {
+ "maromba.run16-w.eb743615b7df.webp": {
   "alterna": true,
-  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-W-run-G-t7, pernas ampliadas (f2/W-t7-zoom.png): pose 0 o tênis ciano (direita, de longe) à frente e o braço da munhequeira de perto à frente, pose 8 o vermelho (esquerda, de perto) à frente e o braço de perto atrás; manequim AMP40/KNEE28 com a constituição do maromba (BUILD_M), regra de ordem das pernas, faixa do short, BUILD"
+  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-W-run-G-t7, pernas ampliadas (f2/W-t7-zoom.png): pose 0 o tênis ciano (direita, de longe) à frente e o braço da munhequeira de perto à frente, pose 8 o vermelho (esquerda, de perto) à frente e o braço de perto atrás; manequim AMP40/KNEE28 com a constituição do maromba (BUILD_M), regra de ordem das pernas, faixa do short, BUILD; cabeça Chad +25 % (card maromba-cabeca-proporcao, evidence enxerto/enxertar.py): só a cabeça escalada acima do maxilar, pernas iguais às de maromba.run16-w.dc71e9155576.webp"
  },
- "maromba.run16-nw.6d2ea649fe99.webp": {
+ "maromba.run16-nw.63889ef3afbb.webp": {
   "alterna": true,
-  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-NW-run-G-t2, contato ampliado (f2/NW-t2-zoom.png): na pose 4 o pé da frente (vermelho) sai do quadril da esquerda, na 12 o da frente (ciano) do quadril da direita; lateral |i-i+8| mediana 11 px (f2/lateral.py)"
+  "prova": "evidence NEW-20261023-ORQ-maromba-animacoes-completas: f2/gerar/mar-NW-run-G-t2, contato ampliado (f2/NW-t2-zoom.png): na pose 4 o pé da frente (vermelho) sai do quadril da esquerda, na 12 o da frente (ciano) do quadril da direita; lateral |i-i+8| mediana 11 px (f2/lateral.py); cabeça Chad +25 % (card maromba-cabeca-proporcao, evidence enxerto/enxertar.py): só a cabeça escalada acima do maxilar, pernas iguais às de maromba.run16-nw.6d2ea649fe99.webp"
  },
- "maromba.run16-se.6f225d758e28.webp": {
+ "maromba.run16-se.10d3358a5fef.webp": {
   "alterna": true,
-  "prova": "evidence NEW-20261023-E7-maromba-troca-perna-se: pernas transplantadas (pp/compor4.py: nas poses 0-4 e 13-15 as duas pernas inteiras da pose i+8 com os quadris trocados) e limpas no Codex (limpar/SE-run-L3); pernas ampliadas (pp/zL3-pares.png): nas poses 0-4 e 13-15 o pé da frente (ciano) sai do quadril da ESQUERDA e o de trás some atrás do short, nas 5-12 o da frente (vermelho) sai do da direita e o de trás aparece à esquerda; lateral |i-i+8| mediana 6,7 px (era 3,8)"
+  "prova": "evidence NEW-20261023-E7-maromba-troca-perna-se: pernas transplantadas (pp/compor4.py: nas poses 0-4 e 13-15 as duas pernas inteiras da pose i+8 com os quadris trocados) e limpas no Codex (limpar/SE-run-L3); pernas ampliadas (pp/zL3-pares.png): nas poses 0-4 e 13-15 o pé da frente (ciano) sai do quadril da ESQUERDA e o de trás some atrás do short, nas 5-12 o da frente (vermelho) sai do da direita e o de trás aparece à esquerda; lateral |i-i+8| mediana 6,7 px (era 3,8); cabeça Chad +25 % (card maromba-cabeca-proporcao, evidence enxerto/enxertar.py): só a cabeça escalada acima do maxilar, pernas iguais às de maromba.run16-se.6f225d758e28.webp"
+ },
+ "vendedor-praia.run16-w.90c753af84c2.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-W-run-G-t1 girado R=3: chinelo marcador ciano (perna de longe, escurecida 0,7 pelo sombra.py) e vermelho trocam de frente a cada meia passada; contatos 0 e 8 com pés opostos"
+ },
+ "vendedor-praia.run16-nw.144d1d773de7.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-NW-run-G-t1 girado R=1: o pé da frente muda de quadril (lateral.py 4,2 px entre i e i+8)"
+ },
+ "vendedor-praia.run16-se.8a174da8df82.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-vendedor-aposentado-arte-8-direcoes: vendedor/f2/final-run (origem.txt), ven-SE-run-G-t2 girado R=13 + sombra.py LONGE=red: pé da frente muda de quadril (lateral 3,1 px; contatos 11/13 px)"
+ },
+ "aposentado.run16-w.1f89451acf13.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-aposentado-arte-8-direcoes: aposentado/f2/final-run (origem.txt), apo-W-run-G-t1 girado R=6 + sombra.py: sandália marcadora vermelha na frente nos quadros 0-4 e 12-15, ciano (perna de longe, escurecida 0,7) nos 6-10"
+ },
+ "aposentado.run16-nw.3689aaeeeaa6.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-aposentado-arte-8-direcoes: aposentado/f2/final-run (origem.txt), apo-NW-run-G-t1 girado R=1: o pé da frente muda de quadril (lateral.py 12,3 px entre i e i+8)"
+ },
+ "aposentado.run16-se.c0fb6c470784.webp": {
+  "alterna": true,
+  "prova": "evidence NEW-20261024-ORQ-aposentado-arte-8-direcoes: aposentado/f2/final-run (origem.txt), apo-SE-run-G-t1 girado R=1 + sombra.py LONGE=red: o pé da frente muda de quadril (lateral 6,5 px)"
  }
 }

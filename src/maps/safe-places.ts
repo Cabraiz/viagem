@@ -15,12 +15,16 @@ import type {Point} from '../contract/index.ts';
 
 /** A cell is open when a disc this wide fits at its centre (u): the widest body of the roster (nests SLEEPER_CLEAR). */
 export const SAFE_BODY=.5;
+/*
+ * Asset v4 (mapa-175-com-viaduto): the rooms and yards are 1.75× narrower on the same cell, so the three measures follow
+ * (3, 40, 8 on the 1.7× city): 21 safe places there, 23 here.
+ */
 /** Clearance (cells, Chebyshev) of a "wide" cell: gaps narrower than ~2·SAFE_WIDE−1 cells split the open ground. */
-export const SAFE_WIDE=3;
-/** The smallest pocket that counts (cells; 1.496 u each side on the Cidade Nevada: ~90 u²). */
-export const SAFE_MIN_CELLS=40;
+export const SAFE_WIDE=2;
+/** The smallest pocket that counts (cells; 1.496 u each side on the Cidade Nevada: ~34 u²). */
+export const SAFE_MIN_CELLS=15;
 /** An opening longer than this (cells) is no "aberturinha": the pocket is part of the street. */
-export const SAFE_OPENING_CELLS=8;
+export const SAFE_OPENING_CELLS=5;
 
 export interface SafePlace {
   readonly id:string;

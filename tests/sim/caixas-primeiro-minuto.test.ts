@@ -87,7 +87,8 @@ function walk(seed:number,patterns:readonly Pattern[]){
       toward(h.goal).directionAt(h.p.x,h.p.y,dir);
       const next={x:h.p.x+dir.x*step,y:h.p.y+dir.y*step};
       if((dir.x||dir.y)&&open(next)){h.p.x=next.x;h.p.y=next.y;}else h.goal=h.pattern(h.p,rng);
-      h.p.hp=h.p.stats.maxHp;
+      // Walkers alone past 60 s (card fear-escuridao-sozinho): the dark would take them; this test is the crates'.
+      h.p.hp=h.p.stats.maxHp;delete h.p.fear;
     }
     m.step();
     for(const c of (m.s as unknown as {world:{pickups:Map<string,{kind:string;id:string;x:number;y:number}>}}).world.pickups.values()){

@@ -37,7 +37,7 @@ test('every figure casts its frame, never the ellipse; in every quality; it fade
   // Enemies: no contact shadow in the actor, the silhouette always on (economy, flyers), and on their death animation.
   const enemy=layers.slice(layers.indexOf('interface EnemyActor{'),layers.indexOf('}',layers.indexOf('interface EnemyActor{')));
   assert.doesNotMatch(enemy,/shadow:Image/);
-  assert.match(layers,/castSilhouette\(a\.sil,a\.image,q\.x,q\.y,true\)/);
+  assert.match(layers,/castSilhouette\(a\.sil,a\.image,q\.x,q\.y,true(,undefined,artShadowLength\(a\.art\))?\)/);
   assert.match(layers,/castSilhouette\(d\.sil,d\.image,gx,gy,alive\)/);
   assert.doesNotMatch(layers,/fx\.silhouettes/);
   // The hero and the allies: the frame on the ground, no ellipse, in every world and quality.

@@ -123,12 +123,17 @@ export const wallOf=(structures:readonly StructureView[])=>structures.find(s=>s.
  * the intermission's countdown before the next wave ("12 s", urgent at 5 s and under, like the round chip); none in a
  * wave. `aria`: the same in words, for the screen reader (the bar's picture is aria-hidden).
  */
-export interface BarClock {icon:'moto'|'relogio';text:string;aria:string;urgent:boolean;
+export interface BarClock {icon:'moto'|'relogio'|'cadeado';text:string;aria:string;urgent:boolean;
+  /** The chaveiro's clock stopped by the chefão (hud/chaveiro.ts ChaveiroClock.held): the padlock, the number grey. */
+  held?:boolean;
   /** D-051 nests mode: the nests still standing ("6/8") after the clock. */
   nests?:string}
 export function barClock(view:RunView):BarClock|undefined{
   const round=roundInfo(view),nests=nestCount(view);
-  if(round?.chaveiro)return {icon:'moto',text:round.chaveiro.clock,aria:nests?`${round.chaveiro.aria}. ${nests.aria}`:round.chaveiro.aria,urgent:false,...(nests?{nests:nests.text}:{})};
+  if(round?.chaveiro){
+    const c=round.chaveiro;
+    return {icon:c.held?'cadeado':'moto',text:c.clock,aria:nests?`${c.aria}. ${nests.aria}`:c.aria,urgent:false,...(c.held?{held:true}:{}),...(nests?{nests:nests.text}:{})};
+  }
   // The nests mode has no intermission: no countdown to show.
   if(nests)return undefined;
   if(round?.phase==='prepare'&&round.countdown!==undefined)return {icon:'relogio',text:`${round.countdown} s`,aria:round.detail,urgent:round.countdown<=5};
@@ -216,11 +221,12 @@ export function createCamp(options:CampOptions):CampPart{
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
   let lastClock:string|undefined;
   const paintClock=(view:RunView)=>{
-    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.nests??''}`:'';
+    const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
     if(key===lastClock)return;
     lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;}
-    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;}
+    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+      if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
+    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;delete clock.dataset.parado;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{

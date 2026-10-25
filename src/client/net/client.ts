@@ -198,6 +198,8 @@ export class CoopClient {
    * k-th pending input on tick this.tick+1+k with them (maps/prediction.ts), exactly like the room, so no snap-back.
    */
   effects:MoveEffects={};
+  /** boss-fim-onda-1: down after a chefão's throw until this tick ({type:'knock'}); -Infinity when not. */
+  private downUntil=-Infinity;
   /** D-052: the most this hero walks per tick while moving the car (latest frame's car.movers), else undefined. */
   stepCap:number|undefined;
   /** Card uno-bloqueio-corpo: the chaveiro's car of the last frame, whose body the replay keeps the hero out of (as the room). */
@@ -576,7 +578,7 @@ export class CoopClient {
       const terrain=terrainFor(m.world);
       if(typeof terrain==='string'){this.fail(ws,terrain);return;}
       this.terrain=terrain;this.map=map;this.mapLoad=undefined;this.mapWait=undefined;
-      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.remoteClock.reset();this.effects={};this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
+      clearTimeout(this.joinTimer);this.id=m.id;this.token=m.token;this.pending=[];this.samples=[];this.remoteClock.reset();this.effects={};this.downUntil=-Infinity;this.tick=0;this.connected=true;this.attempts=0;this.droppedAt=0;this.welcomedAt=Date.now();
       // Reconnection: a fresh encoder on the room side, so the decoder starts over (D-018); the full frame follows.
       this.feed.reset();this.backlog.reset();this.ackSeq=this.ackSent=0;this.badFullFrames=0;clearTimeout(this.ackTimer);this.ackTimer=undefined;
       this.setRun(m.run,m.tick);this.batcher.reset(Number.isSafeInteger(m.ack)?m.ack:0);this.initialized=true;
@@ -725,7 +727,7 @@ export class CoopClient {
   private forgetToken(){try{sessionStorage.removeItem(`viagem:room:${this.code}`);}catch{}}
   private setRun(run:RunState,tick:unknown){
     // A new run (rematch): its clock starts over, so the old tick and D-036 effects would mislead the prediction.
-    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
+    if(this.run&&run.round!==this.run.round){this.pending=[];this.samples=[];this.remoteClock.reset();this.batcher.reset(0);this.feed.setOffers([]);this.effects={};this.downUntil=-Infinity;this.obraHold.reset();this.tick=0;this.resumedNotice=undefined;}
     this.runBase={run,tick:Number.isSafeInteger(tick)?tick as number:this.tick};
     const was=this.run?.phase;
     this.run={...run,members:run.members.map(m=>({...m}))};
@@ -756,7 +758,8 @@ export class CoopClient {
     this.tick=view.tick;
     // D-050: in a level-up pause the tick stands still while the frames keep coming; measured, that would read as a
     // backlog of the whole pause (N27 catch-up drawing one frame every 2.5 s).
-    if(this.run?.phase==='combat'&&!this.run.pause)this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
+    // The chefão's arrival scene (boss-fim-onda-1) holds the tick the same way.
+    if(this.run?.phase==='combat'&&!this.run.pause&&!this.run.cena)this.backlog.frame(view.tick,performance.now());else this.backlog.reset();
     this.players.clear();
     for(const p of view.players)this.players.set(p.id,toPlayer(p as PlayerWireView));
     // In combat elapsed/remaining move one per simulation tick; the room only pushes the run when something else changes.
@@ -767,7 +770,10 @@ export class CoopClient {
     }
     const self=this.players.get(this.id);
     const wire=view.players.find(p=>p.id===this.id) as PlayerWireView|undefined;
-    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil,
+    // boss-fim-onda-1: a chefão threw this hero ({type:'knock'}): down until then, no predicted steps.
+    for(const e of view.events)if(e.type==='knock'&&e.player===this.id)this.downUntil=Math.max(this.downUntil,e.untilTick);
+    if(this.downUntil<=view.tick)this.downUntil=-Infinity;
+    this.effects=wire?{slowUntil:wire.slowUntil,slipUntil:wire.slipUntil,slip:wire.slip,fastUntil:wire.fastUntil,ride:wire.ride,rideUntil:wire.rideUntil,...(this.downUntil>view.tick?{downUntil:this.downUntil}:{}),
       ...(wire.moveSpeed!==undefined?{stats:{moveSpeed:wire.moveSpeed}}:{})}:{};
     // D-052: moving the car (car.movers) this hero walks at the car's speed, as the room cuts it; on the rope or among the
     // movers the hands are busy (no attack).
@@ -816,7 +822,7 @@ export class CoopClient {
   input(direction:Point,skill:boolean,target?:string,attack=false,aim?:Point,work=false){
     if(!this.connected||this.run?.phase!=='combat'||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN||this.pending.length>=MAX_PENDING)return;
     // D-050: in a level-up pause the hero stands (the room does not step; a held direction would walk on after it).
-    if(this.run?.pause){direction={x:0,y:0};skill=false;target=undefined;attack=false;work=false;}
+    if(this.run?.pause||this.run?.cena){direction={x:0,y:0};skill=false;target=undefined;attack=false;work=false;}
     // D-052: pushing or pulling the car, the hands are busy (the room does not fire either).
     if(this.handsBusy)attack=false;
     // Inside a shop nobody fires (the room's weapons are busy): Trabalhar takes the attack's place.
@@ -832,7 +838,7 @@ export class CoopClient {
    * {t:'cast',seq:id,ok,readyTick} (onCast). Returns the tap id, or undefined when there is nothing to tap into.
    */
   cast(){
-    if(!this.connected||this.run?.phase!=='combat'||this.run.pause||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
+    if(!this.connected||this.run?.phase!=='combat'||this.run.pause||this.run.cena||this.players.get(this.id)?.spectator||this.socket?.readyState!==WebSocket.OPEN)return undefined;
     const id=++this.castId;this.out(this.socket,{t:'cast',round:this.run.round,id});return id;
   }
   /** Tap ids only grow (the room refuses a repeated one), across reconnections too. */

@@ -35,7 +35,10 @@
  *    (stragglers after an intermission, a roamer pulled home) → plaza field, and (b) stuck (moved < STUCK_MOVE u in
  *    STUCK_TICKS while pushing) → plaza field for UNSTICK_TICKS when outside the base;
  *  - stuck anywhere else (crate walks, round 1): a perpendicular nudge for UNSTICK_TICKS, alternating sides;
- *  - downed / eliminated bots: untouched (the brain asks for help).
+ *  - downed / eliminated bots: untouched (the brain asks for help);
+ *  - on a viaduct's deck (andar 1, mapa-175-com-viaduto): the fields are the ground's, so every walk on a field goes
+ *    straight to the ramp's foot instead (CityNavigator.deckExit; the deck is a corridor whose only way off is the ramp,
+ *    as the brain walks it). On the ground field the deck bot pushed into the deck's side (BUG-20261024-ORQ-viaduto-bot-preso-rampa).
  * The stick is re-aimed every tick (the brain decides every BOT_THINK_EVERY ticks; its last direction is kept).
  *
  * Per run it records: outcome and cause, round reached / died, ticks, per round (wave start, first enemy of the round
@@ -85,7 +88,7 @@ import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
-import {FlowField,SPREAD,STRAIGHT_COST,UNREACHABLE,clearSegment,heroSpeed,type Point} from '../src/maps/index.ts';
+import {FlowField,SPREAD,STRAIGHT_COST,UNREACHABLE,clearSegment,floorPortal,heroSpeed,type CityViaduct,type Point} from '../src/maps/index.ts';
 import {cityFlowGrid,cityPlanner} from '../src/sim/city/grid.ts';
 import {cityLoot,type Crate} from '../src/sim/stonewards/loot.ts';
 import {remainingOf} from '../src/sim/stonewards/resources.ts';
@@ -504,12 +507,20 @@ export class CityNavigator {
    * seed 16's bots to seed 15's crates (16 won alone and lost after 15). A field depends only on its goal cell.
    */
   private crates=new Map<number,FlowField>();
+  private readonly viaducts:readonly CityViaduct[];private readonly unit:number;
   constructor(city:CityTerrain){
     this.grid=cityFlowGrid(city);
+    this.viaducts=city.asset.viaducts;this.unit=city.asset.unitsPerCell;
     const planner=cityPlanner(city),goals:Point[]=[],cs=this.grid.cellSize;
     for(let cy=0;cy<this.grid.height;cy++)for(let cx=0;cx<this.grid.width;cx++)if(planner.plazaField.cellCost(cx,cy)===0)goals.push({x:(cx+.5)*cs,y:(cy+.5)*cs});
     this.plaza=new FlowField(this.grid,goals);
     this.insideBase=p=>planner.insideBase(p);
+  }
+  /** On a deck (andar 1): the way to the ground, straight to the nearest ramp's foot; undefined on the ground. */
+  deckExit(p:Point&{andar?:number}):Point|undefined{
+    if(p.andar!==1||!this.viaducts.length)return undefined;
+    const exits=this.viaducts.map(v=>floorPortal(v,this.unit,0)),to=exits.reduce((a,b)=>dist(a,p)<=dist(b,p)?a:b);
+    return norm({x:to.x-p.x,y:to.y-p.y});
   }
   crateField(_id:string,at:Point):FlowField{
     const cs=this.grid.cellSize,key=Math.floor(at.x/cs)+Math.floor(at.y/cs)*this.grid.width;
@@ -669,7 +680,9 @@ export class NavDriver {
     for(const c of list.slice(0,PICK_TRIES))if(fits(c)){this.boxes.set(id,c.id);this.trips++;return c;}
     return undefined;
   }
-  private field(f:FlowField,p:Point,fallback:Point):Point{
+  private field(f:FlowField,p:Point&{andar?:number},fallback:Point):Point{
+    const exit=this.nav.deckExit(p);
+    if(exit)return exit;
     const d=f.directionAt(p.x,p.y);
     return Math.hypot(d.x,d.y)>1e-6?{x:d.x,y:d.y}:fallback;
   }

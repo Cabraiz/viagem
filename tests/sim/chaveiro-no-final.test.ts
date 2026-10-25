@@ -46,11 +46,14 @@ function perfectRun(seed:number){
     for(const [id,e] of world.enemies){
       if(!e.boss&&(Math.hypot(e.x-car.x,e.y-car.y)<6||Math.hypot(e.x-m.x,e.y-m.y)<ENTREGA_RADIUS+2))world.enemies.delete(id);
     }
+    // The 1st wave's chefão (boss-fim-onda-1) stops the time while he stands: a perfect team beats him at once.
+    const chefao=sys.chefao?.up()?sys.chefao.state.enemy:undefined;
+    if(chefao&&world.enemies.has(chefao))world.damageEnemy(chefao,world.enemies.get(chefao)!.hp+1);
     const wasAt=ch.state.moto.stop;
     world.step();
     if(world.tick===1)firstEta=ch.eta(world.tick);
     if(wasAt===lastEntrega&&ch.state.moto.stop>lastEntrega&&leftLast===null)leftLast=world.tick;
-    if(bossTick===null&&[...world.enemies.values()].some(e=>e.boss))bossTick=world.tick;
+    if(bossTick===null&&[...world.enemies.values()].some(e=>e.boss&&e.id!==sys.chefao?.state.enemy))bossTick=world.tick;
   }
   return {ch,outcomes,bossTick,leftLast,firstEta,end:ch.state.endTick};
 }

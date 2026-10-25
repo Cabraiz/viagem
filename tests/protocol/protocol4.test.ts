@@ -1843,3 +1843,15 @@ test('card inimigos-querem-o-uno: the awake critters by a far car come too (the 
   v.objective={...v.objective,ended:'defeat'};
   assert.deepEqual(run(),['e-near'],'the run ended: only the viewer\'s area');
 });
+
+test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 it is gone on the phone too',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.players[0]={...view.players[0],fear:.5};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.ok(Math.abs(r.view.players.find(p=>p.id==='uuid-0')!.fear!-.5)<=.5/255);
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.players[0]={...view.players[0],fear:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.fear,undefined);
+});

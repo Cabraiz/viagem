@@ -50,7 +50,7 @@ test('watching: the depth origin follows the watched friend and a turned phone r
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   // Anchored on the dead body, everything near a far friend sorted under the ground layers (depth −10 000): invisible.
   const rebase=scene.match(/private rebaseDepth\(force=false\)\{[\s\S]*?\n  \}/)?.[0]??'';
-  assert.match(rebase,/at=this\.watchPoint\?\?this\.position/);
+  assert.match(rebase,/at=(near\?\?)?this\.watchPoint\?\?this\.position/);
   assert.match(rebase,/this\.depthOrigin=\{x:Math\.round\(at\.x\),y:Math\.round\(at\.y\)\}/);
   // Phaser 3.90 misses the size after screen.orientation 'change': the parent's real size refreshes the scale again.
   assert.match(scene,/new ResizeObserver\([\s\S]{0,300}s\.getParentBounds\(\);s\.refresh\(\);/);

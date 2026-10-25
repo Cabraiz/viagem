@@ -12,11 +12,12 @@
  *   the facing is unusable; nothing when both are degenerate (on SLIP_GRID, so the wire carries it exactly);
  * - falling, getting up (revive) and a rematch clear every effect (clearMoveEffects).
  */
-import {PLAYER_SLIP_SECONDS,PLAYER_SLOW_SECONDS,ticks} from '../contract/index.ts';
+import {KNOCK_DOWN_SECONDS,KNOCK_SECONDS,PLAYER_SLIP_SECONDS,PLAYER_SLOW_SECONDS,ticks} from '../contract/index.ts';
 import type {Point,SimPlayer,Telegraph,VehicleKind} from '../contract/index.ts';
 
 export const SLOW_TICKS=ticks(PLAYER_SLOW_SECONDS);
 export const SLIP_TICKS=ticks(PLAYER_SLIP_SECONDS);
+export const KNOCK_TICKS=ticks(KNOCK_SECONDS),KNOCK_DOWN_TICKS=ticks(KNOCK_DOWN_SECONDS);
 /**
  * The slide direction is kept on the wire's grid (protocol 4 sends it like a velocity, in 1/VEL_SCALE = 1/256 steps,
  * tests/sim/player-effects.test.ts checks they agree): the phone decodes the very vector the room slides along, so
@@ -42,9 +43,27 @@ export function applyTelegraphEffect(p:SimPlayer,t:Pick<Telegraph,'kind'|'x'|'y'
   return true;
 }
 
+/**
+ * boss-fim-onda-1, the Tank's punch: telegraph `t` with a push throws `p` (away from a circle's centre; along a line's
+ * direction), Telegraph.push u over KNOCK_TICKS, then down KNOCK_DOWN_TICKS more. Same rules as the effects above (not
+ * on someone who cannot be hit or is invulnerable); a new throw replaces the last. Returns whether it threw.
+ */
+export function applyTelegraphPush(p:SimPlayer,t:Pick<Telegraph,'shape'|'x'|'y'|'dx'|'dy'|'push'>,tick:number):boolean{
+  if(!(t.push!==undefined&&t.push>0))return false;
+  if(p.spectator||p.downed||p.eliminated||!(p.hp>0)||tick<(p.invulnerableUntil??0))return false;
+  const along=t.shape==='line'?unit({x:t.dx??0,y:t.dy??0}):undefined;
+  const dir=along??unit({x:p.x-t.x,y:p.y-t.y})??unit(p.facing);
+  if(!dir)return false;
+  const per=t.push/KNOCK_TICKS;
+  p.knock={x:dir.x*per,y:dir.y*per};p.knockUntil=tick+1+KNOCK_TICKS;p.downUntil=tick+1+KNOCK_TICKS+KNOCK_DOWN_TICKS;
+  return true;
+}
+
 /** Drops every D-036 effect (fall, revive, rematch): an absolute tick must not outlive the moment it belongs to. */
 export function clearMoveEffects(p:SimPlayer){
   delete p.slowUntil;delete p.slipUntil;delete p.slip;
+  // boss-fim-onda-1: a throw and its fall end too.
+  delete p.knock;delete p.knockUntil;delete p.downUntil;
   // D-047 Dona Cida's sweets end too (a fall, a rematch: their absolute ticks belong to that moment and that run).
   if(p.fastUntil!==undefined)delete p.fastUntil;
   if(p.mightUntil!==undefined)delete p.mightUntil;

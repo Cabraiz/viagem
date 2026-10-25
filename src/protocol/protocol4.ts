@@ -112,13 +112,17 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * a viaduct's deck) on the players (it drives the phone's prediction), the enemies and the projectiles; an older decoder
  * would refuse the masks.
  * 36 given by the integration queue (tools/fila.mjs, lote 20261024-185252) to: NEW-20261023-ORQ-mapa-175-com-viaduto.
+ * Next (the queue numbers it) since the fear (card NEW-20261023-ORQ-fear-escuridao-sozinho): `fear` (0..1, one byte) on
+ * the players (the client's vignette); an older decoder would refuse the player mask.
+ * 37 given by the integration queue (tools/fila.mjs, lote 20261024-225935) to: NEW-20261023-ORQ-fear-escuridao-sozinho.
+ * 38 given by the integration queue (tools/fila.mjs, lote 20261025-001535) to: NEW-20261023-ORQ-boss-fim-onda-1.
  * Next (the queue numbers it) since the bicos (card NEW-20261024-ORQ-bancos-viram-bicos): each bank row carries its gig
  * (`bico`), the players in the shift (`workers`) and its queue (`fila`); the `bico` event; the input segments' bit 8
  * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
  * banks block, an older room refuses the segments.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=36;
+export const PROTOCOL_VERSION=38;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */
@@ -424,7 +428,11 @@ const SCHEMAS:Record<SectionKey,Schema>={
   // Fields that change every frame come first, so the usual mask (nudge + ack + hp + stats) fits one byte.
   players:{prefix:'',fields:{
     ack:c(optional(count)),hp:c(count),stats:c(contribution),downed:c(downed),attackTick:c(optional(tickRel)),
-    x:c(optional(posX)),y:c(optional(posY)),skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
+    x:c(optional(posX)),y:c(optional(posY)),
+    // Fear (NEW-20261023-ORQ-fear-escuridao-sozinho): the dark 0..1 in 1/255 steps, one change every ~0.24 s alone. Next
+    // to x/y, so a hero walking alone keeps the two-byte mask they already had.
+    fear:c(optional(unit)),
+    skillTick:c(optional(tickRel)),skillReadyTick:c(optional(tickRel)),
     online:c(bool),spectator:c(bool),eliminated:c(optional(bool)),maxHp:c(count),weapons:c(items),passives:c(items),
     name:c(str),classId:c(str),
     // D-036: movement effects, last (they change only when a burp or a poop lands; absent travels as nothing).
@@ -584,6 +592,9 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bico',[['bank','str'],['player','ref'],['what','str']]],
   // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
   ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
+  // boss-fim-onda-1: a chefão's pancada threw a hero, down until untilTick (the phone stops predicting its steps; the
+  // player section has no field bit left for it).
+  ['knock',[['player','ref'],['untilTick','tick']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -919,7 +930,7 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn','knock',
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).
@@ -1308,7 +1319,8 @@ function readSection(r:Reader,schema:Schema,client:Table,f:FrameCtx,left:string[
   for(let i=0;i<n;i++){
     const gap=r.uvar();if(!gap)throw new FrameError('ids out of order');
     const id=last+=gap,mask=r.uvar();
-    if(mask>=bit(keys.length))throw new FrameError('bad field mask');
+    // 2** and not bit(): with 29 fields 1<<31 is negative and every mask would be refused.
+    if(mask>=2**(keys.length+FIELD_BIT))throw new FrameError('bad field mask');
     const prev=client.get(id);
     if(!(mask&NEW)&&!prev)throw new FrameError('delta for unknown entity');
     // `client` is this frame's copy (advance): update in place. A bad frame is dropped whole, so nothing leaks.

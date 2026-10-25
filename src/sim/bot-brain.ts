@@ -100,6 +100,15 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/** Card boss-fim-onda-1: a boss (the chefão of the 1st wave, the final one) this close to the car: every bot goes for him. */
+export const BOSS_FOCUS_R=16;
+/** The boss the bots focus: alive and within BOSS_FOCUS_R of the car (mode 'ninhos', the chaveiro); the nearest such. */
+export function bossFocus(enemies:readonly EnemyView[],car:Point|undefined):EnemyView|undefined{
+  if(!car)return undefined;
+  let best:EnemyView|undefined;
+  for(const e of enemies)if(e.boss&&e.hp>0&&dist(e,car)<=BOSS_FOCUS_R&&(!best||dist(e,car)<dist(best,car)))best=e;
+  return best;
+}
 /** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
 export const NEST_THREAT_RADIUS=40;
 /**
@@ -241,6 +250,8 @@ export interface Decision {
   attack?:boolean;
   /** Bicos: hold Trabalhar (standing still in a shop's ring, mode 'bank'). */
   work?:boolean;
+  /** Card boss-fim-onda-1: the chosen target (PlayerInput.target): a boss near the car (bossFocus). */
+  target?:string;
   /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
   inventory?:LootCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
@@ -569,6 +580,9 @@ export function decide(input:BrainInput):Decision{
   const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain,input.nests):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
+  // Card boss-fim-onda-1: a boss at the car is everyone's target (the room's aim takes him first when in reach).
+  const focus=input.nests&&view.objective?bossFocus(view.enemies,homeOf(view,at)):undefined;
+  if(focus)decision.target=focus.id;
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
@@ -811,7 +825,8 @@ export function decide(input:BrainInput):Decision{
   }else{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
-    const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
+    // Card boss-fim-onda-1: a boss at the car before them (bossFocus).
+    const siege=focus??nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
     // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
     // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the

@@ -8,15 +8,18 @@ import {fileURLToPath} from 'node:url';
 import {FAN_MAX,LEAVE_MS,MATCH_MS,NEAR_M,PERFIS_KEY,PROFILE_MS,ProfileDeck,fanPose,loadSeen,perfilOf,saveSeen,type DeckInput} from '../../src/client/hud/perfis.ts';
 import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
+import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
 
 const has=(k:string)=>!!perfilOf(k);
 const at=(kind:string,x=2,y=0,extra:Partial<DeckInput['enemies'][number]>={})=>({kind,x,y,...extra});
 const hero={x:0,y:0};
 const kinds=(deck:ProfileDeck)=>deck.shown.filter(c=>!c.leaving).map(c=>c.kind);
 
-test('lote 1: 22 profiles, each a roster kind with its photo; the texts fit the card',()=>{
+test('lotes 1–2: every P0 kind with art has a profile with its photo; the texts fit the card',()=>{
   const ids=Object.keys(PERFIS_TEXTO);
-  assert.equal(ids.length,22);
+  assert.equal(ids.length,69);
+  const p0=ROSTER.filter(e=>e.priority==='P0'&&ENEMY_ART_IDS.includes(e.id)).map(e=>e.id);
+  assert.deepEqual(p0.filter(id=>!ids.includes(id)),[],'P0 with art and no profile');
   for(const id of ids){
     const p=perfilOf(id);
     assert.ok(p,`${id} is in the roster`);

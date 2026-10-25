@@ -164,7 +164,7 @@ test('bicos: each shop has a gig, all different, drawn by the seed; the gig open
   assert.deepEqual(r.sys.view(0).map(v=>v.bico),firstBicos(7,BANCO.count));
 });
 
-test('shift: standing in the ring is not working; Trabalhar clocks in (bico entrou), R$ 5 every 5 s into the wallet; moving or letting go clocks out; no input keeps them in',()=>{
+test('shift: standing in the ring is not working; Trabalhar clocks in (bico entrou), R$ 5 a note (every BICO.nota/porSegundo s) into the wallet; moving or letting go clocks out; no input keeps them in',()=>{
   const r=rig(),b=r.bank();
   const h=addPlayer(r.world,'p1',at(b,BANCO.holdR-.1));
   assert.equal(cash(r.step(NOTA*2)).length,0,'in the ring without Trabalhar: nothing');
@@ -175,12 +175,12 @@ test('shift: standing in the ring is not working; Trabalhar clocks in (bico entr
   assert.equal(row(r).state,'sacando');assert.deepEqual(viewOf(r).workers,['p1']);
   assert.equal(r.sys.working('p1'),b.id);
   assert.ok((h.invulnerableUntil??0)>r.world.tick,'inside: no hit lands');
-  assert.equal(cash(r.step(NOTA-2)).length,0,'nothing before 5 s');
+  assert.equal(cash(r.step(NOTA-2)).length,0,'nothing before the first note');
   const note=r.step(1);
   assert.deepEqual(cash(note).map(g=>g.e.type==='bank-cash'&&[g.e.bank,g.e.amount,g.e.by]),[[b.id,BICO.nota,'hero']]);
   assert.equal(r.purse.grana,5);assert.equal(row(r).saldo,BICO.saldo-5);
-  // R$ 1/s: 4 more notes in 20 s.
-  assert.equal(cash(r.step(ticks(20))).length,4);
+  // BICO.porSegundo: the notes of 15 s (6 at R$ 2/s; under the shift's saldo left).
+  assert.equal(cash(r.step(ticks(15))).length,Math.floor(15*BICO.porSegundo/BICO.nota));
   // No input this tick (the room had none): still in.
   r.work.delete('p1');
   assert.deepEqual(bico(r.step(5)),[]);assert.equal(r.sys.working('p1'),b.id);

@@ -370,15 +370,17 @@ export const BANK_REACH=40,BANK_BOTS=2;
 /** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
 export const BANK_GRANA_TARGET=30;
 /**
- * A trip to a shop is worth it for this many notes (bicos: BICO.nota at BICO.porSegundo, 5 s each); a bot already there
+ * A trip to a shop is worth it for this many notes (bicos: BICO.nota at BICO.porSegundo, 2.5 s each); a bot already there
  * stays while one more fits.
  */
 export const BANK_MIN_NOTES=1;
 /**
  * Bicos: a bot in the ring works (Trabalhar, standing still) while no critter is within BICO_BOT_CLEAR (u) and the
  * queue is under BICO_BOT_FILA; else it steps out (moving clocks out) and fights or dodges like before.
+ * Etapa 5: 12 → 6 u (inside nobody hits it; with the nests' critters all over the city, 12 u kept the 6p team's bot
+ * out of the shop: 10.9 → 18.7 % of the Grana at R$ 1/s).
  */
-export const BICO_BOT_CLEAR=12,BICO_BOT_FILA=2;
+export const BICO_BOT_CLEAR=6,BICO_BOT_FILA=2;
 /**
  * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
  * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
@@ -834,7 +836,9 @@ export function decide(input:BrainInput):Decision{
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
-    if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
+    // City: not into a wall (a critter in sight past a building's corner had the bot push its edge for seconds).
+    const chase=target&&toward(at,target,siege?1.2:.7),open=!chase||!city||walkable({x:at.x+chase.x/(siege?1.2:.7)*.8,y:at.y+chase.y/(siege?1.2:.7)*.8},terrain);
+    if(target&&open&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,chase!);
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));

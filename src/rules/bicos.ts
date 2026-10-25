@@ -27,7 +27,7 @@ export interface BicoDef {
 
 export const BICOS:Readonly<Record<BicoId,BicoDef>>=Object.freeze({
   telemarketing:{nome:'Telemarketing',frase:'Oferecendo cartão de crédito pra quem está sendo devorado. Meta: 40 ligações.',arte:'call-center'},
-  'aura-67':{nome:'Farmar Aura 67',frase:'Fica parado de óculos escuros. Cada segundo vale +67 de aura e R$ 1.',arte:'aura-67'},
+  'aura-67':{nome:'Farmar Aura 67',frase:'Fica parado de óculos escuros. Cada segundo vale +67 de aura e R$ 2.',arte:'aura-67'},
   entregador:{nome:'Entregador de App',frase:'Entrega um lanche frio a 3 quarteirões. Avaliação: 1 estrela, "demorou".',arte:'24-7'},
   'compro-ouro':{nome:'Plaquinha Compro Ouro',frase:'Segura a placa no fim do mundo. Ninguém vende ouro, todo mundo grita.',arte:'compro-ouro'},
   colchao:{nome:'Testador de Colchão',frase:'Dorme em serviço com carteira assinada. Os bichos respeitam quem está deitado.',arte:'colchoes'},
@@ -44,6 +44,10 @@ export const BICO_EXPULSO='O gerente te botou pra fora';
 /**
  * The numbers (R$, seconds; places and radii are BANCO's). The bench (etapa 5) tunes them: target, the gigs give 25–35 %
  * of a run's Grana, like the ATMs did.
+ * Etapa 5 (bench-city-run, 16 seeds × 1,3,6, main dfae424): the ATM paid whoever walked by, a gig pays only who stops,
+ * so porSegundo went 1 → 2 (dupla .6 → 1.2). Production mode (chaveiro + ninhos + manual) 31.4/23.2/23.8 % of the Grana
+ * (1p/3p/6p) against the ATMs' 25/21/28.3 %; the default flags 13.5/34.7/27.6 % against 9.2/18.5/20.7 %
+ * (evidence/NEW-20261024-ORQ-bancos-viram-bicos/bench-bicos*.json; 1, 1.5 and 1.8 R$/s beside it).
  * - porSegundo: R$/s of one hero alone in a shift; dupla: R$/s EACH when two or more work it ("o chefe divide o salário").
  * - nota: the pay goes into the wallet in notes of this much (and each note lures the critters around, BANCO.iscaR).
  * - saldo: R$ in a shift; spent, the shop closes for BANCO.recargaS and opens with another gig.
@@ -53,7 +57,7 @@ export const BICO_EXPULSO='O gerente te botou pra fora';
  *   any of its 4 turns); the ring points with it come first (sim/bancos planBanks), the others only as a fallback.
  */
 export const BICO=Object.freeze({
-  porSegundo:1,dupla:.6,nota:5,saldo:40,
+  porSegundo:2,dupla:1.2,nota:5,saldo:40,
   filaCorte:.25,filaExpulsa:3,
   expulsoS:1,banidoS:3,
   lote:4,

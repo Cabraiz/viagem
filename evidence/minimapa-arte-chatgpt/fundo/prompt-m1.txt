@@ -1,0 +1,10 @@
+Use your image generation tool to create ONE square image, 1024x1024, and save it as fundo-m1-t1.png in the current folder. Do not inspect files, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+
+The attached image is the EXACT city plan of a game map, seen straight from above. Repaint it as a beautiful game minimap of a snowy city at night, keeping the layout IDENTICAL: same size, same position of every block, street, wall and opening, pixel for pixel; do not add, remove, move or round any shape.
+- Every DARK purple area = buildings and walls: paint as dark slate-purple rooftops (#3b3456 family), flat, with a subtle lighter rim, seen straight from above.
+- Every LIGHT area = walkable snow streets and yards: soft white-lilac snow (#eef0f7), with faint footprint/tyre texture.
+- The orange rectangle in the centre = the town plaza: warm orange cobblestones.
+- Blue spots = frozen water / fountains: light icy blue.
+- The thin grey vertical strip near the top = an elevated viaduct: light grey concrete deck with a dark edge.
+- The outer dark border stays plain dark purple.
+Strict orthographic top-down view, no perspective, no 3D walls, no shadows longer than 2 px, flat painted cartoon style with clean edges, no text, no icons, no characters.

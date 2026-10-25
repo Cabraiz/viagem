@@ -66,6 +66,7 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'carro-obra':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=obra-muro',descricao:'D-052 HUD: a bandeja de Construir aberta (Muro escolhido)'},
   'perfil-inimigo':{sandbox:'hud',query:'state=wave&frozen=1&perfis=3&perfis-abre=1',descricao:'nome-inimigo-rede-social: toque no foguinho, o último match em cartão compacto'},
   'matches-foguinho':{sandbox:'hud',query:'state=wave&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: o foguinho com o contador de matches, abaixo da engrenagem'},
+  'nome-elite-chefao':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=tio-pave,agiota,bebado,coach,mapinguari-do-shopping&elite=tio-pave,agiota&chefao=mapinguari-do-shopping&caido=agiota&ferido=1',descricao:'nome-inimigo-rede-social, etapa 7: o nome do perfil sobre elite e chefão e "Te derrubou: X" sob a ficha de caído'},
   'matches-resultado':{sandbox:'hud',query:'state=result&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: "Seus matches" no resultado, figurinhas tortas'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.

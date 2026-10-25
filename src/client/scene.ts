@@ -61,6 +61,7 @@ import {token,tokenColor} from './ui/tokens.ts';
 import {YouMarkers,ALLY_DEPTH,SELF_DEPTH,type HeroMark} from './render/you.ts';
 import {arrowTrigger,canopyCovers,effectOn,facingFrom,rideChip} from './render/you-rules.ts';
 import {MapLabel,allyLabelText,mapLabelVisible,placeYieldsToSos} from './render/map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,fallenByText} from './render/enemy-name-rules.ts';
 import {secondsLeft} from './hud/model.ts';
 import {DownedLayer,type DownedMark} from './render/downed.ts';
 import {ZueiraFx} from './render/zueira-fx.ts';
@@ -373,6 +374,9 @@ export class IslandScene extends Phaser.Scene {
   private zueira?:ZueiraFx;
   /** The local caído's own ficha ("Você, 18 s") under its body: the counter left the top banner. */
   private selfLabel?:MapLabel;
+  /** "Te derrubou: X" under the own caído ficha (render/enemy-name-rules.ts), and its ficha. */
+  private fallenBy?:string;
+  private fallenLabel?:MapLabel;
   /**
    * Screen area left for play once the HUD zones are out (UX-zonas-tela), CSS px in viewport coordinates: the edge arrows
    * ride its rim; the follow camera centres the hero on it only beside a panel (framing.ts framesBeside).
@@ -608,7 +612,7 @@ export class IslandScene extends Phaser.Scene {
       this.zueira=new ZueiraFx(this,{reduced:this.reduced,project:p=>this.project(p),depth:p=>this.depth(p),tickMs:STEP*1000,actorScale:()=>this.actorScale,
         setBlackout:level=>this.horde?.setBlackout(level),
         killcamRect:()=>{const r=this.hooks.killcamRect?.();return r&&{x:Math.round(r.x-this.canvasOffset.x),y:Math.round(r.y-this.canvasOffset.y),width:Math.round(r.width),height:Math.round(r.height)};}});
-      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;};
+      const release=()=>{this.chaveiro?.destroy();this.chaveiro=undefined;this.pip?.destroy();this.pip=undefined;this.peekSince=undefined;this.talk=undefined;this.fortify?.destroy();this.fortify=undefined;this.banks?.destroy();this.banks=undefined;this.zueira?.destroy();this.zueira=undefined;this.horde?.destroy();this.horde=undefined;this.stone?.destroy();this.stone=undefined;this.towers?.destroy();this.towers=undefined;this.you?.destroy();this.you=undefined;this.downedLayer?.destroy();this.downedLayer=undefined;this.selfLabel?.destroy();this.selfLabel=undefined;this.fallenLabel?.destroy();this.fallenLabel=undefined;this.fallenBy=undefined;};
       this.events.once('shutdown',release);this.events.once('destroy',release);
     }
     this.rebaseDepth(true);this.fit();this.place();
@@ -878,6 +882,8 @@ export class IslandScene extends Phaser.Scene {
   focusPoint():Point{return this.watchPoint??this.position;}
   /** A line over a player's head (falls, rescues, "Segura aí"), through the horde's balloon budget. */
   say(id:string,line:string){this.horde?.say(id,line);}
+  /** The kind behind the local hero's latest fall (hud/cause.ts): its name goes under the caído ficha as "Te derrubou: X". */
+  fallenFrom(kind:string|undefined){this.fallenBy=fallenByText(kind);}
   /** D-051: the attack button's choice (a drag let go on an enemy), or undefined to go back to the auto aim. */
   /** The ground point (world u) under the mouse, or undefined for a finger or a mouse that never moved (the auto aim). */
   private mouseGround():Point|undefined{
@@ -1569,6 +1575,12 @@ export class IslandScene extends Phaser.Scene {
       const label=this.selfLabel??=new MapLabel(this,'');const q=this.project(this.position);
       label.setSos(selfDown).setCity(this.cityMode).setText(allyLabelText('Você',{downed:selfDown},selfDown?secondsLeft(mine!.downed!.bleedOutTick,this.viewTick):undefined))
         .anchor(q.x,q.y+15*this.heroScale,SELF_DEPTH+1).draw(this.cameras.main.zoom,selfDown);
+      // Who got you (card nome-inimigo-rede-social, etapa 7): the profile's name in a second ficha right under it.
+      if(this.fallenBy||this.fallenLabel){
+        const by=this.fallenLabel??=new MapLabel(this,'');
+        by.setCity(this.cityMode).setText(this.fallenBy??'').anchor(q.x,q.y+15*this.heroScale+(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)/Math.max(.05,this.cameras.main.zoom),SELF_DEPTH+1)
+          .draw(this.cameras.main.zoom,selfDown&&!!this.fallenBy);
+      }
     }
     // The weapons in the hands, now that the hero and the allies stand on this frame's spot and pose (arma-flutua).
     this.horde?.hands();

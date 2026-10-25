@@ -171,6 +171,7 @@ export class RescueBoard {
       if(e.type==='downed'){
         // What got you (UX-voce-e-dano f) left the banner: it is the caído's first line over the body.
         const kind=this.hud.tally.causes.last.get(e.player),line=kind?causeCopy(kind).line:undefined;
+        if(e.player===this.net.id)this.scene()?.fallenFrom(kind);
         if(line)this.scene()?.say(e.player,line);else this.say(e.player,'down',e.eventId);
       }else if(e.type==='revived'){
         this.pings.forget(e.player);

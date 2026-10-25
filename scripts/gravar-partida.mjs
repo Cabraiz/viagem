@@ -43,6 +43,9 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *  - matches (nome-inimigo-rede-social): the uno steps with ?matches=demo (three matches from the start, every kill of the
  *    hero one more; round 1 has no weapon), and the
  *    first time the flame shows it is tapped: the compact card in the GIF and in match.png. Not part of "todos".
+ *  - nomes (nome-inimigo-rede-social, etapa 7): first the photo scene FOTO_NOMES (src/client/dev/foto.ts: elites and a
+ *    chefão with the profile's name over the bar, "Te derrubou: X" under a caído ficha) in nomes.png, then the parado
+ *    steps in a real match (an elite or a fall there shows the same fichas). Not part of "todos".
  */
 export const ROTEIROS=Object.freeze({
   parado:s=>[{ms:s*1000}],
@@ -54,7 +57,10 @@ export const ROTEIROS=Object.freeze({
     return out;
   },
   matches:s=>ROTEIROS.uno(s),
+  nomes:s=>ROTEIROS.parado(s),
 });
+/** The photo scene the nomes roteiro prints first. */
+export const FOTO_NOMES='nome-elite-chefao';
 /** "todos": the roteiros every sheet records (matches is asked by name). */
 export const TODOS=Object.freeze(['parado','andando','uno']);
 /** The keys of a direction (MOVE_KEYS in desktop-input.ts): any vector, snapped to the eight the keys can make. */
@@ -115,7 +121,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -254,6 +260,14 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
     const cdp=await ctx.newCDPSession(p).catch(()=>undefined);
+    if(roteiro==='nomes'){
+      // Modo foto (dev/foto.ts): the page says window.__fotoPronta once the frame is final.
+      try{
+        await p.goto(`${base}/?foto=${FOTO_NOMES}`,{waitUntil:'load',timeout:90000});
+        await p.waitForFunction(()=>window.__fotoPronta===true,null,{timeout:90000});
+        await p.screenshot({path:join(dir,'nomes.png'),timeout:30000});r.foto=FOTO_NOMES;
+      }catch(e){r.erros.push(`foto ${FOTO_NOMES}: ${String(e.message??e).split('\n')[0]}`);await p.screenshot({path:join(dir,'nomes.png'),timeout:30000}).catch(()=>{});}
+    }
     try{r.entrouMs=await entrar(p,base,o.modo,roteiro==='matches'?'matches=demo':'');}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few

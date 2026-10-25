@@ -1835,6 +1835,27 @@ test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, 
   assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
 });
 
+// ---------- Card NEW-20261025-ORQ-heroi-empurra-inimigos: a solid body's radius on the enemies ----------
+test('heroi-empurra-inimigos: the radius of a solid body round-trips in thousandths, absent stays absent, and stays on the next frame',()=>{
+  const view=busyWorld(new Rng(11),10).view;
+  view.enemies[0]={...view.enemies[0],radius:.3681};
+  view.enemies[1]={...view.enemies[1],radius:1.035};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const first=enc.encode(view);
+  const r=dec.decode(first);assert.ok(r.ok,!r.ok?r.error:'');
+  const by=new Map(r.view.enemies.map(e=>[e.x.toFixed(1)+','+e.y.toFixed(1),e]));
+  const at=(e:{x:number;y:number})=>by.get(e.x.toFixed(1)+','+e.y.toFixed(1))!;
+  assert.equal(at(view.enemies[0]).radius,.368);
+  assert.equal(at(view.enemies[1]).radius,1.035);
+  assert.equal(r.view.enemies.filter(e=>e.radius!==undefined).length,2,'the rest walk through (no radius)');
+  enc.ack(r.seq,r.ack.event);
+  // The next frame (same bodies, same radii): the radius costs nothing more, and the phone keeps it.
+  const again={...view,tick:view.tick+2};
+  const plain={...again,enemies:again.enemies.map(({radius:_,...e},i)=>i<2?{...e,radius:view.enemies[i]!.radius}:e)};
+  const d=dec.decode(enc.encode(plain));assert.ok(d.ok,!d.ok?d.error:'');
+  assert.equal(d.view.enemies.filter(e=>e.radius!==undefined).length,2);
+});
+
 test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
   const view=busyWorld(new Rng(5),10).view;
   view.players[0]={...view.players[0],moveSpeed:1.35};

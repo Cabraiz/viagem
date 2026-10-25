@@ -24,6 +24,7 @@
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
 import {heroSpeed,moveDirection,RADIUS,SPEED,walkable} from './world.ts';
 import {floorOf,floorOn,onFloor,type Floor} from './city/viaduct.ts';
+import {bodyBlock,shoveWhereWalkable,type Body} from './bodies.ts';
 import {BURPEE_TICKS,CART_TURN,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,RIDE_MULT,SIM_HZ,carPushOut,carSpeed} from '../contract/index.ts';
 import type {PlayerInput,Point,VehicleKind} from '../contract/index.ts';
 type Input=PlayerInput;
@@ -44,7 +45,12 @@ export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
  */
 export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number;
   /** Card uno-bloqueio-corpo: the chaveiro's car in the frame (ObjectiveView.car): the steps stand clear of its body (carBlock). */
-  car?:CarPlace}
+  car?:CarPlace;
+  /**
+   * Card heroi-empurra-inimigos: copies of the solid bodies near the hero in the frame (EnemyView with its radius); the
+   * replay pushes them as the room pushes the enemies (bodies.ts bodyBlock), and keeps them pushed for the next steps.
+   */
+  bodies?:Body[]}
 /** The car's place as the room and the frame have it (heading absent = 0). */
 export interface CarPlace {x:number;y:number;heading?:number}
 /**
@@ -131,21 +137,26 @@ export function carBlock(from:FloorPoint,to:FloorPoint,car:CarPlace|undefined,te
   if(walkable(q,onFloor(terrain,0)))return {x:q.x,y:q.y};
   return carPushOut(car,from,RADIUS)===from?onto(from,floorOf(from)):to;
 }
-/** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep; `car` as carBlock. */
-export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace):FloorPoint {
+/**
+ * One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep;
+ * `bodies` (card heroi-empurra-inimigos) as bodyBlock, the phone's copies pushed where walkable; `car` as carBlock.
+ */
+export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace,bodies?:Body[]):FloorPoint {
   let to:FloorPoint;
   if(tick===undefined){
     const floor=floorOf(p),q=moveDirection(p,{x:input.x,y:input.y},STEP,onFloor(terrain,floor));
     to=onto(q,floorOn(terrain,q.x,q.y,floor));
   }else to=moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
-  return carBlock(p,capStep(p,to,cap,terrain),car,terrain);
+  to=capStep(p,to,cap,terrain);
+  if(bodies?.length)to=bodyBlock(p,to,bodies,terrain,shoveWhereWalkable(terrain));
+  return carBlock(p,to,car,terrain);
 }
 /**
  * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
  * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
  */
 export function reconcile(authoritative:FloorPoint,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):FloorPoint {
-  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car),onto(authoritative,floorOf(authoritative)));
+  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car,clock?.bodies),onto(authoritative,floorOf(authoritative)));
 }
 
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

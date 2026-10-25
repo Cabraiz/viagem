@@ -21,6 +21,7 @@ import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
 import {cityLoot} from './stonewards/loot.ts';
 import {add as addItem,drop as dropSlot,equip as equipSlot,hasInventory,inventorySystem,manualStartingBuild,place as placeKit,placeNear as placeKitNear,take as takeItem,use as useSlot,type InventoryHooks,type InventoryResult,type KitOrder,type PlaceResult} from './inventory.ts';
+import {heroBodiesPass} from './bodies.ts';
 import {playersSystem,type ManualCombat,type PlayerInput,type RunPlayer} from './systems/players.ts';
 import {createStonewardsSystem,structureTargets,type StonewardsSystem} from './stonewards/system.ts';
 import {MURO_BLOCK_R,blockingPieces,isPiece,pieceDrag,reachMap} from './towers/free-build.ts';
@@ -532,11 +533,13 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     buildKit:(ctx,p,piece,order,requestId)=>stonewards.buildKit(ctx,p.id,{piece,c:order.c,r:order.r,...(order.rot===1?{rot:1 as const}:{})},requestId)};
 
   world.clearSystems();
+  const bodyScratch:EnemyState[]=[];
   for(const system of [
     ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();work.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
       // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
-      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car)),
+      // Card heroi-empurra-inimigos: and pushes the enemies it walks into, never walking through one.
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car,true)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     // Card boss-fim-onda-1: the chefão stops the time; while he stands the nests hold their clock (no wave, no drip).
@@ -547,7 +550,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     }} satisfies SimSystem,
     zueira,enemyAi,
     // Card boss-fim-onda-1: the chefão of the 1st wave steps in the boss's slot (no new system id).
-    chefao?{id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao!.step(ctx);}} satisfies SimSystem:boss,
+    // Card heroi-empurra-inimigos: once every enemy moved (same slot, no new system id), none stands inside a hero.
+    {id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao?.step(ctx);heroBodiesPass(ctx,options.autopilot,bodyScratch);}} satisfies SimSystem,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id),
       // BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack goes off toward the aim/facing even into the air; bots keep the target rule.
       free:(id:string)=>!options.bot?.(id)&&!options.autopilot?.(id)}}:{}),

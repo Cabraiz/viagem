@@ -34,6 +34,7 @@ export {FREE_CELL,MURO_BLOCK_R,freeCity,type FreeOrder,type PieceState} from './
 export {TRALHA_OWNER,type ColetaOutcome} from './towers/tralha.ts';
 export * from './towers/bot-spots.ts';
 export * from './systems/players.ts';
+export * from './bodies.ts';
 export * from './telegraphs.ts';
 export * from './zueira.ts';
 export * from './wallet.ts';

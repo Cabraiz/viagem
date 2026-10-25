@@ -2,10 +2,10 @@ import {perfNow,perfSpan} from '../dev/perf-flag.ts';
 import {defaultTerrain,cityTerrainFor} from '../../maps/index.ts';
 import {terrainFor} from './terrain.ts';
 import {loadCity} from './city-asset-loader.ts';
-import {STEP,carStepCap,reconcile,simulate,type CarPlace,type FloorPoint} from '../../maps/index.ts';
+import {STEP,carStepCap,reconcile,simulate,type Body,type CarPlace,type FloorPoint} from '../../maps/index.ts';
 import {ROOM_PROTOCOL,GRACE_MS,REPLACED_MESSAGE,UPDATE_NEEDED,INFINITO_REF,MAP_TEXT,PIX_ANSWER_MS,clientCatalog,parseWelcomeMap,parsePixed,checkClientMap,readMapRef,
   type Input,type Player,type MapRef,type MapId,type MapCatalog} from '../../protocol/index.ts';
-import type {BuildRot,CombatMode,PixResult,RunState} from '../../contract/index.ts';
+import type {BuildRot,CombatMode,EnemyView,PixResult,RunState} from '../../contract/index.ts';
 import type { Point,MoveEffects } from '../../maps/index.ts';
 import {FrameRunFeed} from './run-feed.ts';
 import {ObraHold} from './obra-hold.ts';
@@ -55,6 +55,29 @@ export const AWAY_CLOSE=4010;
 export const KEEPALIVE_MS=4000;
 /** Steps predicted without an ack before the client stops stepping (a stalled link: 2 s). */
 const MAX_PENDING=40;
+/**
+ * Card heroi-empurra-inimigos: the solid bodies the prediction copies, within this of the hero (u): the pending steps'
+ * walk (MAX_PENDING × the fastest ride) plus the largest body (maps BODY_REACH) fit well inside.
+ */
+export const BODY_COPY_REACH=12;
+/**
+ * Copies of the frame's solid bodies near `at` (EnemyView with a radius, awake), into `out` (reused objects). The
+ * replay pushes the copies, never the feed's enemies.
+ */
+export function nearBodies(enemies:readonly EnemyView[],at:{x:number;y:number},out:Body[]=[]):Body[]{
+  let n=0;
+  for(const e of enemies){
+    if(!(e.radius!==undefined&&e.radius>0)||e.asleep||Math.abs(e.x-at.x)>BODY_COPY_REACH||Math.abs(e.y-at.y)>BODY_COPY_REACH)continue;
+    const b=out[n]??(out[n]={x:0,y:0});
+    b.x=e.x;b.y=e.y;b.radius=e.radius;
+    if(e.elite)b.elite=true;else delete b.elite;
+    if(e.boss)b.boss=true;else delete b.boss;
+    if(e.andar===1)b.andar=1;else delete b.andar;
+    n++;
+  }
+  out.length=n;
+  return out;
+}
 /** The room closes a connection whose character went to a newer one (another tab or network) with this code: never retried. */
 export const REPLACED_CLOSE=4009;
 /**
@@ -204,6 +227,11 @@ export class CoopClient {
   stepCap:number|undefined;
   /** Card uno-bloqueio-corpo: the chaveiro's car of the last frame, whose body the replay keeps the hero out of (as the room). */
   private carBody:CarPlace|undefined;
+  /**
+   * Card heroi-empurra-inimigos: copies of the solid enemies near this hero in the last frame; the replay and the next
+   * predicted steps push them as the room does (maps bodies.ts), so walking into a crowd does not snap back.
+   */
+  private bodies:Body[]=[];
   /** D-052: on the car's rope or among its movers (latest frame): the hands are busy, no attack. */
   handsBusy=false;
   /** D-052: this hero's accepted free obras; while one is building the hero holds still (stepCap 0, obra-hold.ts). */
@@ -782,7 +810,9 @@ export class CoopClient {
     this.carBody=car&&{x:car.x,y:car.y,...(car.heading!==undefined?{heading:car.heading}:{})};
     if(self){
       const from=this.predicted,cast=(self.skillTick??0)!==this.lastSkillTick;this.lastSkillTick=self.skillTick??0;
-      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
+      this.batcher.catchUp(self.ack);this.pending=this.pending.filter(i=>i.seq>self.ack);
+      this.bodies=nearBodies(view.enemies,self,this.bodies);
+      this.predicted=self.hp?reconcile(self,this.pending,this.terrain,{tick:view.tick,effects:this.effects,cap:this.stepCap,car:this.carBody,bodies:this.bodies}):{x:self.x,y:self.y,...(self.andar===1?{andar:1 as const}:{})};
       // Only in combat (the hero walks only then) and not on the first frame of this client (the start point is a placeholder).
       if(this.placed&&this.run?.phase==='combat'&&(from.x!==this.predicted.x||from.y!==this.predicted.y))this.onReconcile?.(from,this.predicted,cast);
       this.placed=true;
@@ -830,7 +860,7 @@ export class CoopClient {
     const {input,active}=this.batcher.step(direction,skill,target,attack,aim,work);
     // Standing still moves nobody and the room does not step it: only moving or casting steps wait for an ack.
     // The k-th pending input lands on tick this.tick+1+k (D-036 effects; see reconcile).
-    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody);}
+    if(active){this.pending.push(input);if(this.players.get(this.id)?.hp)this.predicted=simulate(this.predicted,input,this.terrain,this.tick+this.pending.length,this.effects,this.stepCap,this.carBody,this.bodies);}
     this.flushInput();
   }
   /**

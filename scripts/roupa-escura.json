@@ -1,0 +1,182 @@
+{
+ "nota": "Fracos do ranking (NEW-20261023-ORQ-inimigos-fortes-x-fracos: > 35 % marrom/pele). roupa: grupos do k-means (j, ver o carimbo public/art/enemies/roupa-escura.json) no lugar da escolha automática; destaque: {grupos, cor}; fora: motivo de a peça ficar como está; pular: animações que ficam.",
+ "pecas": {
+  "agiota": {
+   "roupa": [
+    2,
+    6
+   ]
+  },
+  "alambiqueiro": {
+   "roupa": [
+    4,
+    3
+   ],
+   "destaque": {
+    "grupos": [
+     5
+    ],
+    "cor": "#2f6fd6"
+   }
+  },
+  "anao-molotov": {
+   "roupa": [
+    0,
+    1,
+    4
+   ]
+  },
+  "balao-rancoroso": {
+   "fora": "balão (objeto): sem roupa; o escuro mancha a borracha"
+  },
+  "bebado": {
+   "roupa": [
+    4,
+    6,
+    5
+   ],
+   "destaque": {
+    "grupos": [
+     2
+    ],
+    "cor": "#2f6fd6"
+   }
+  },
+  "boleto-vivo": {
+   "fora": "boleto (papel): sem roupa; o escuro mancha o papel"
+  },
+  "bolo-vivo": {
+   "fora": "bolo: sem roupa; o escuro mancha a cobertura"
+  },
+  "carrinho-da-vo": {},
+  "chefe": {
+   "roupa": [
+    3,
+    4
+   ]
+  },
+  "coach": {
+   "roupa": [
+    0,
+    1,
+    6
+   ]
+  },
+  "cobrador-fantasma": {
+   "roupa": [
+    1,
+    3,
+    6
+   ],
+   "destaque": {
+    "grupos": [
+     5
+    ],
+    "cor": "#7a3fc8"
+   }
+  },
+  "cupim-mansao": {},
+  "fa-de-novela": {
+   "roupa": [
+    1,
+    3,
+    6
+   ]
+  },
+  "flanelinha-interdimensional": {
+   "roupa": [
+    1,
+    4,
+    6
+   ]
+  },
+  "fogueteiro": {
+   "fora": "roupa já escura; o vermelho é o foguete (assinatura)"
+  },
+  "forrozeiro-centrifugo": {
+   "roupa": [
+    2,
+    4
+   ],
+   "destaque": {
+    "grupos": [
+     1,
+     3
+    ],
+    "cor": "#1f9e8f"
+   }
+  },
+  "frango-de-academia": {
+   "roupa": [
+    2,
+    3
+   ],
+   "destaque": {
+    "grupos": [
+     0
+    ],
+    "cor": "#2f6fd6"
+   }
+  },
+  "garcom-equilibrista": {
+   "fora": "roupa já escura; o marrom é a torre de copos (assinatura)"
+  },
+  "glitter-senciente": {
+   "fora": "criatura de glitter: sem roupa; escurecer mancha o brilho"
+  },
+  "grampeador-carente": {
+   "fora": "grampeador (objeto): sem roupa"
+  },
+  "moco-do-gas": {},
+  "noel-derretendo": {
+   "fora": "o vermelho é a roupa do Noel (identidade)"
+  },
+  "o-grande-credor": {
+   "fora": "corpo de blocos marrons, sem roupa: o escuro fica em manchas (braços claros, tronco escuro)"
+  },
+  "palhaco-de-aniversario": {},
+  "primo-do-violao": {
+   "roupa": [
+    1,
+    6
+   ],
+   "nota": "sem destaque: o marrom que sobra é o violão (assinatura)"
+  },
+  "promotor-infinito": {
+   "roupa": [
+    1,
+    6
+   ]
+  },
+  "quadrilheiro": {
+   "fora": "camisa xadrez: o software deixa manchas; o par é de palha"
+  },
+  "rei-do-boteco": {
+   "fora": "roupa já escura; o vermelho é o balcão (assinatura)"
+  },
+  "sommelier-de-ipa": {
+   "roupa": [
+    3
+   ],
+   "destaque": {
+    "grupos": [
+     1
+    ],
+    "cor": "#1f9e8f"
+   }
+  },
+  "subsindico": {
+   "fora": "corpo de papelão, sem roupa: nada para escurecer"
+  },
+  "tia-do-pudim": {},
+  "tijolo-pai": {
+   "fora": "tijolo (objeto): sem roupa; o escuro mancha o tijolo"
+  },
+  "tio-do-isopor": {
+   "fora": "regata no tom da pele (o software não separa); o isopor azul já é o destaque"
+  },
+  "tio-pave": {},
+  "torcedor-fanatico": {},
+  "trenzinho-da-festa": {}
+ }
+}

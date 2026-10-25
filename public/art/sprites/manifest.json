@@ -215,6 +215,48 @@
           ],
           "sha256": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96"
         },
+        "dance128": {
+          "file": "aposentado.dance128.b2d18b849abb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 18,
+            "top": 18,
+            "right": 91,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "aposentado-p1.webp",
+              "aposentado-p2.webp",
+              "aposentado-p3.webp",
+              "aposentado-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "aposentado.dance128.b2d18b849abb.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
+            }
+          ],
+          "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
+        },
         "dir4": {
           "file": "aposentado.dir4.webp",
           "cell": [
@@ -647,7 +689,7 @@
           "sha256": "581a04ffd51934f6ba129dd76a4ba58cabecdecc2c4826c2b0c9d9ffec1aa1c7"
         },
         "pull16-N": {
-          "file": "aposentado.pull16-n.f86d2a03069a.webp",
+          "file": "aposentado.pull16-n.437ec276c005.webp",
           "cell": [
             96,
             96
@@ -663,24 +705,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.83,
+          "pivotX": 47.5,
           "figure": {
-            "left": 30,
-            "top": 14,
+            "left": 29,
+            "top": 19,
             "right": 67,
-            "bottom": 89
+            "bottom": 88
           },
           "pages": [
             {
-              "file": "aposentado.pull16-n.f86d2a03069a.webp",
+              "file": "aposentado.pull16-n.437ec276c005.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67"
+              "sha256": "437ec276c0056a80b51a93c8232590097201b50277c26cd723df72a02eb4d977"
             }
           ],
-          "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
+          "sha256": "437ec276c0056a80b51a93c8232590097201b50277c26cd723df72a02eb4d977",
           "phase": {
             "d": [
               0.01886,
@@ -891,7 +933,7 @@
           }
         },
         "pull16-S": {
-          "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+          "file": "aposentado.pull16-s.f7b7862398bd.webp",
           "cell": [
             96,
             96
@@ -907,24 +949,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.01,
+          "pivotX": 47.75,
           "figure": {
             "left": 31,
             "top": 27,
             "right": 65,
-            "bottom": 89
+            "bottom": 87
           },
           "pages": [
             {
-              "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+              "file": "aposentado.pull16-s.f7b7862398bd.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc"
+              "sha256": "f7b7862398bd485759baceddda82061d8ec2814e8dc6cfa6b27e7b521f66c7bb"
             }
           ],
-          "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc",
+          "sha256": "f7b7862398bd485759baceddda82061d8ec2814e8dc6cfa6b27e7b521f66c7bb",
           "phase": {
             "d": [
               0.0173,
@@ -1257,7 +1299,7 @@
           }
         },
         "push16-N": {
-          "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+          "file": "aposentado.push16-n.a9faad5d4075.webp",
           "cell": [
             96,
             96
@@ -1273,24 +1315,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.17,
+          "pivotX": 48,
           "figure": {
-            "left": 30,
-            "top": 26,
+            "left": 29,
+            "top": 28,
             "right": 67,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+              "file": "aposentado.push16-n.a9faad5d4075.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f"
+              "sha256": "a9faad5d4075db93bcf5e3494279795172107d81b76b4acbd7b47a8ccccf015d"
             }
           ],
-          "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f",
+          "sha256": "a9faad5d4075db93bcf5e3494279795172107d81b76b4acbd7b47a8ccccf015d",
           "phase": {
             "d": [
               0.0097,
@@ -2655,51 +2697,9 @@
             }
           ],
           "sha256": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54"
-        },
-        "dance128": {
-          "file": "aposentado.dance128.b2d18b849abb.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 128,
-          "fps": 3.5555555555555554,
-          "durationMs": 36000,
-          "loop": true,
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 63.93,
-          "figure": {
-            "left": 18,
-            "top": 18,
-            "right": 91,
-            "bottom": 86
-          },
-          "source": {
-            "group": "menu",
-            "pages": [
-              "aposentado-p1.webp",
-              "aposentado-p2.webp",
-              "aposentado-p3.webp",
-              "aposentado-p4.webp"
-            ]
-          },
-          "pages": [
-            {
-              "file": "aposentado.dance128.b2d18b849abb.webp",
-              "columns": 16,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 128,
-              "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
-            }
-          ],
-          "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
         }
       },
-      "sha256": "53c70772f9f96a10158214211a6be7bd0c4a93ff81bd74cea29002ffd57bb84d"
+      "sha256": "49266cbc6261b4076b8f2c38c4ac10f7bf15cd22824b85ac48744372334399f5"
     },
     "astrologa": {
       "kind": "dir8",
@@ -10721,22 +10721,22 @@
           "sha256": "c6e4bd971aaa685a7e6f45e484ce33f9bf1dad593123856ea56250a4204e2c8b",
           "phase": {
             "d": [
-              0.02,
-              0.27899,
+              0.131,
+              0.131,
               0.0297,
-              0.02,
-              0.02,
-              0.27899,
-              0.27899,
-              0.02,
-              0.02,
-              0.27899,
+              0.131,
+              0.131,
+              0.131,
+              0.131,
+              0.131,
+              0.131,
+              0.131,
               0.0297,
-              0.02,
-              0.02,
-              0.27899,
-              0.27899,
-              0.02
+              0.131,
+              0.131,
+              0.131,
+              0.131,
+              0.131
             ],
             "v": [
               [
@@ -10843,20 +10843,20 @@
           "sha256": "cdd9cb8851447d3f4055907a9d86b2c85bec455e826b1b71afc5edf322b549ca",
           "phase": {
             "d": [
-              0.48613,
+              0.35295,
               0.0215,
               0.0731,
               0.043,
-              0.02,
-              0.48613,
-              0.48613,
-              0.48613,
+              0.35295,
+              0.35295,
+              0.35295,
+              0.35295,
               0.0989,
               0.0387,
               0.0559,
               0.0602,
-              0.02,
-              0.48613,
+              0.35295,
+              0.35295,
               0.0989,
               0.0258
             ],
@@ -10965,22 +10965,22 @@
           "sha256": "67035aa11ade725a854ff04b140cc22efff74f09b7d28d70240157d868f1fce1",
           "phase": {
             "d": [
-              0.02,
-              0.02,
-              0.02,
+              0.12837,
+              0.12837,
+              0.12837,
               0.04808,
-              0.39929,
-              0.39929,
-              0.02,
-              0.02,
-              0.02,
-              0.02,
-              0.02,
+              0.12837,
+              0.12837,
+              0.12837,
+              0.12837,
+              0.12837,
+              0.12837,
+              0.12837,
               0.04808,
-              0.39929,
-              0.39929,
-              0.02,
-              0.02
+              0.12837,
+              0.12837,
+              0.12837,
+              0.12837
             ],
             "v": [
               [
@@ -11087,19 +11087,19 @@
           "sha256": "41da07dc107de0420a14aba1dcee9a27147fc0490cd71aea224af9541124bf03",
           "phase": {
             "d": [
-              0.02,
+              0.26388,
               0.03797,
-              0.33356,
-              0.33356,
-              0.33356,
-              0.33356,
+              0.26388,
+              0.26388,
+              0.26388,
+              0.26388,
               0.13079,
-              0.02,
+              0.26388,
               0.05485,
               0.13079,
-              0.33356,
-              0.33356,
-              0.33356,
+              0.26388,
+              0.26388,
+              0.26388,
               0.02953,
               0.18564,
               0.04219
@@ -11209,22 +11209,22 @@
           "sha256": "ab6967f5204bcea2ce35af7bdd8106ee56919617beeb9fc8d9d4e893f66bbbe1",
           "phase": {
             "d": [
-              0.57226,
-              0.57226,
-              0.57226,
+              0.29613,
+              0.29613,
+              0.29613,
               0.04717,
-              0.02,
+              0.29613,
               0.0566,
-              0.02,
-              0.57226,
-              0.57226,
-              0.02,
-              0.02,
+              0.29613,
+              0.29613,
+              0.29613,
+              0.29613,
+              0.29613,
               0.09434,
-              0.02,
+              0.29613,
               0.0283,
-              0.02,
-              0.57226
+              0.29613,
+              0.29613
             ],
             "v": [
               [
@@ -19496,6 +19496,48 @@
           ],
           "sha256": "2c7a98219d03062f593a24d88f0cde2aa81cbd853a00bdb6d5af9852d4235301"
         },
+        "dance128": {
+          "file": "vendedor-praia.dance128.932b5398d729.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 12,
+            "top": 18,
+            "right": 76,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "vendedor-praia-p1.webp",
+              "vendedor-praia-p2.webp",
+              "vendedor-praia-p3.webp",
+              "vendedor-praia-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.dance128.932b5398d729.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
+            }
+          ],
+          "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
+        },
         "dir4": {
           "file": "vendedor-praia.dir4.webp",
           "cell": [
@@ -20172,7 +20214,7 @@
           }
         },
         "pull16-S": {
-          "file": "vendedor-praia.pull16-s.ed34a837b65e.webp",
+          "file": "vendedor-praia.pull16-s.06d2c0e5e442.webp",
           "cell": [
             96,
             96
@@ -20191,21 +20233,21 @@
           "pivotX": 47.91,
           "figure": {
             "left": 30,
-            "top": 31,
+            "top": 33,
             "right": 66,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "vendedor-praia.pull16-s.ed34a837b65e.webp",
+              "file": "vendedor-praia.pull16-s.06d2c0e5e442.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98"
+              "sha256": "06d2c0e5e442cc066e919cad8d45d06a2dbb7b638fa81bd73b67da4f32e027c3"
             }
           ],
-          "sha256": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98",
+          "sha256": "06d2c0e5e442cc066e919cad8d45d06a2dbb7b638fa81bd73b67da4f32e027c3",
           "phase": {
             "d": [
               0.01395,
@@ -20538,7 +20580,7 @@
           }
         },
         "push16-N": {
-          "file": "vendedor-praia.push16-n.e4f244d22f49.webp",
+          "file": "vendedor-praia.push16-n.779da9c3b85b.webp",
           "cell": [
             96,
             96
@@ -20554,42 +20596,42 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 49.61,
+          "pivotX": 47.25,
           "figure": {
-            "left": 32,
-            "top": 26,
-            "right": 69,
+            "left": 28,
+            "top": 28,
+            "right": 68,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "vendedor-praia.push16-n.e4f244d22f49.webp",
+              "file": "vendedor-praia.push16-n.779da9c3b85b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7"
+              "sha256": "779da9c3b85b6f7094aa3b6d4b223b03f77e7f4868b27f94b86ba82fcba72491"
             }
           ],
-          "sha256": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7",
+          "sha256": "779da9c3b85b6f7094aa3b6d4b223b03f77e7f4868b27f94b86ba82fcba72491",
           "phase": {
             "d": [
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108,
-              0.0108
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852,
+              0.00852
             ],
             "v": [
               [
@@ -21936,51 +21978,9 @@
             }
           ],
           "sha256": "4b8747a23b1113032f1109a0a56a3ec23a99aea68c03b0e2ce0a30d8fa992f6b"
-        },
-        "dance128": {
-          "file": "vendedor-praia.dance128.932b5398d729.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 128,
-          "fps": 3.5555555555555554,
-          "durationMs": 36000,
-          "loop": true,
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 64,
-          "figure": {
-            "left": 12,
-            "top": 18,
-            "right": 76,
-            "bottom": 86
-          },
-          "source": {
-            "group": "menu",
-            "pages": [
-              "vendedor-praia-p1.webp",
-              "vendedor-praia-p2.webp",
-              "vendedor-praia-p3.webp",
-              "vendedor-praia-p4.webp"
-            ]
-          },
-          "pages": [
-            {
-              "file": "vendedor-praia.dance128.932b5398d729.webp",
-              "columns": 16,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 128,
-              "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
-            }
-          ],
-          "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
         }
       },
-      "sha256": "8800e9445b2e04af35a599407f0b007ad7a13222c53f3ad16756c32ca3c2b78f"
+      "sha256": "ad67921058045f9e5caa64959cbc8bb1a0a58d5ae17afc1b46971a02e338b04a"
     },
     "viciado-em-bet": {
       "kind": "dir8",

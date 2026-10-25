@@ -25,7 +25,11 @@ export const BUILT_SHARE=.2;
 const GROUND_HEX:Record<string,string>={s:MM_COLORS.snow,p:MM_COLORS.packed,i:MM_COLORS.ice,w:MM_COLORS.water,r:MM_COLORS.rubble,c:MM_COLORS.cobble};
 
 /** An image of the terrain whose pixel (u, v) is the world point origin + (u, v)·unit. */
-export interface TerrainImage {readonly canvas:HTMLCanvasElement|OffscreenCanvas;readonly origin:Pt;readonly unit:number;readonly width:number;readonly height:number}
+export interface TerrainImage {
+  readonly canvas:HTMLCanvasElement|OffscreenCanvas|HTMLImageElement;readonly origin:Pt;readonly unit:number;readonly width:number;readonly height:number;
+  /** Painted art (art.ts): drawn smoothed. Without it, nearest (crisp cells like an RTS map). */
+  readonly smooth?:boolean;
+}
 
 const rgb=(hex:string)=>[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
 function canvas(w:number,h:number):HTMLCanvasElement|OffscreenCanvas{

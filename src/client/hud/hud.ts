@@ -56,7 +56,7 @@ import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
 import './perfis.css';
-import {createProfiles,type ProfilesPart} from './perfis.ts';
+import {createProfiles,type Match,type ProfilesPart} from './perfis.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
 import './fone.css';
 import {teamColumnVar} from './fone-layout.ts';
@@ -108,12 +108,14 @@ export interface RunHudOptions {
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
   /**
-   * The enemies' profile cards (card nome-inimigo-rede-social, hud/perfis.ts): their clock (performance.now by default;
-   * the sandbox's frozen scenes stop it) and where the phone remembers the kinds it already met (localStorage by default).
+   * The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts): the compact card's clock (performance.now by
+   * default; the sandbox's frozen scenes stop it) and the dice (Math.random by default).
    */
   profileClock?():number;
-  profileStorage?:Pick<Storage,'getItem'|'setItem'>;
-  /** false: no profile cards (the HUD sandbox's other scenes). */
+  profileRng?():number;
+  /** Matches the run starts with (?matches=demo, the CI recording). */
+  profileDemo?:readonly Match[];
+  /** false: no matches (the HUD sandbox's other scenes). */
   profiles?:boolean;
   /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
   cena?:CenaClock;
@@ -158,7 +160,7 @@ export class RunHud {
   private readonly camp:CampPart;
   /** Kill-cam of the round's last critter (VGM-053B), in the announcement slot. */
   private readonly killcam:KillcamPart;
-  /** A new enemy kind's dating-app profile, a fan of them when several come at once (hud/perfis.ts). */
+  /** The enemies the local hero killed that became matches: the flame and its counter, the result's stickers (hud/perfis.ts). */
   readonly profiles:ProfilesPart;
   /** The mission line (inicio-no-uno-caixas-120, hud/missao.ts): big in the middle, then a row of the slot. */
   private readonly mission:MissionPart;private readonly missionTracker=new MissionTracker();private unoArrowNow:{urgent:boolean}|undefined;
@@ -181,6 +183,8 @@ export class RunHud {
   private readonly coachRow:CoachPart;
   private coachShow?:CoachShow;
   private hero?:{x:number;y:number};
+  /** What the profile cards must not cover on screen (scene.guardScreenRects), fed by guardProfiles. */
+  private profileGuards?:readonly Rect[];
   private readonly chip:HTMLButtonElement;
   private readonly offerEl:HTMLElement;
   private readonly forgeEl:HTMLElement;
@@ -254,8 +258,11 @@ export class RunHud {
     // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
     const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
     // The new enemy's profile (nome-inimigo-rede-social): hides under any window that holds the screen.
-    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,storage:options.profileStorage,off:options.profiles===false,
-      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden)});
+    const profiles=this.profiles=createProfiles(parent.ownerDocument,{hero:()=>this.hero,now:options.profileClock,rng:options.profileRng,demo:options.profileDemo,off:options.profiles===false,
+      blocked:()=>!!this.ctx.pause||this.el.classList.contains('rh-ended')||!offer.el.hidden||(!!cena&&!cena.veil.hidden),
+      // perfil-nao-cobre: never over the hero, the Uno, the allies (guardProfiles) nor the mission's band and row.
+      guards:()=>this.profileGuards&&[...this.profileGuards,...[this.mission.band,this.mission.row].filter(el=>!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};}).filter(r=>r.width>0&&r.height>0)],
+      useful:()=>this.zones().useful});
     this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[]),profiles];this.topEl=top.el;this.teamEl=team.el;
     this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,profiles.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
@@ -273,7 +280,7 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,profiles.flame,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>this.writeColumn());
@@ -514,6 +521,7 @@ export class RunHud {
     this.objective.reset();this.objectiveWant=undefined;this.objectiveRow.render(undefined);
     // D-051: in the nests mode the round line counts the nests that fell (the last view still has them).
     this.result.show(result,this.ctx,nestTally(this.last));
+    this.profiles.fillResult(this.result.matches);
   }
 
   /** Hides the result and starts a fresh tally: call on rematch so awards and kills do not carry over. */
@@ -579,6 +587,8 @@ export class RunHud {
    * Keeps the center banner off the hero (UX checklist B2: hero rect ±40 px). The banner moves to the low slot
    * while its top slot would cross the hero, and comes back when the top slot is clear again.
    */
+  /** The hero, the Uno and the allies on screen (scene.guardScreenRects): the profile cards keep off them (perfil-nao-cobre). */
+  guardProfiles(rects:readonly Rect[]|undefined){this.profileGuards=rects;}
   avoidHero(hero:Rect|undefined,margin=HERO_MARGIN_PX){
     if(!hero)return;
     this.veil(hero,margin);
@@ -673,6 +683,7 @@ export class RunHud {
   /** New run (rematch): clears the per-run tally; event de-duplication keeps working across runs. */
   reset(){
     resetTally(this.tally);
+    this.profiles.reset();
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
     this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);this.dropRow(this.bicoRow);this.bicoEvent=-1;

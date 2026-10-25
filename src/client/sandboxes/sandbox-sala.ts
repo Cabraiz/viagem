@@ -1,6 +1,6 @@
 /**
  * Waiting-room sandbox (cidade-09): `?sandbox=sala&papel=dono|convidado&players=1..6[&fase=countdown|combate][&mapa=cidade-nevada]
- * [&baixando=0.4][&offline=1][&liberada=1]`. The real waiting room (lobby.ts mountWaitingRoom) with the map selector, over a
+ * [&baixando=0.4][&offline=1][&liberada=1]`. The real waiting room (lobby.ts mountWaitingRoom; no map selector since topo-sem-icone-contagem-exploracao), over a
  * mock island inside the explore shell's real markup (camera buttons, gear, joystick, skill button, the controls etiqueta)
  * with explore.css/coop.css, so overlaps and the phase's controls (controls-phase.ts) look as in production in portrait
  * and landscape. `fase=combate` shows the round's controls in the same boxes (the waiting window hides, as in the room).

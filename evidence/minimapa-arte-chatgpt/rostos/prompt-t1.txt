@@ -1,0 +1,13 @@
+Use your image generation tool to create ONE image, 1536x1024, and save it as rostos-t1.png in the current folder. Do not inspect files, do not run code, do not check with PIL. Save exactly the image YOU generate in this run; never copy any other file from ~/.codex/generated_images.
+
+The attached image is only a STYLE and CHARACTER reference (read who each character is; do not copy, edit or reuse any part of it).
+
+Make a sheet of 6 game MINIMAP ICONS in a 3 columns x 2 rows grid, one centered in each 512x512 cell, same order as the reference:
+1 top-left: man with a blue baseball cap and purple shirt, tan skin.
+2 top-middle: tired office worker, messy brown hair, rectangular black glasses, light blue shirt.
+3 top-right: grey tabby cat with big sad yellow eyes, pink bathrobe collar.
+4 bottom-left: muscular guy, short black curly hair, white headband, dark tank top.
+5 bottom-middle: old man, straw hat with green band, big white beard.
+6 bottom-right: beach vendor, straw hat with sunglasses on it, short curly hair, yellow vest.
+
+Each icon: the head seen straight from the front plus a sliver of shoulders, fitting inside an imaginary circle of about 420 px. Flat cartoon, very simplified, big shapes, only the one or two signature traits above, strong saturated colours, THICK dark purple-black outline (#1d1830) around the whole silhouette, no gradients, no tiny details: it must stay readable when shrunk to 14 pixels. Same style for all six. Background: flat pure green #00FF00 everywhere, no circles, no frames, no shadows, no text.

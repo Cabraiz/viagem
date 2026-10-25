@@ -154,7 +154,7 @@ test("review 3–4: the bar's clock — the intermission countdown (urgent at 5 
   const late=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*4}));
   assert.equal(late?.urgent,true,'≤ 5 s: urgent, like the round chip');
   const moto=barClock(viewOf({phase:'prepare',phaseEndsTick:SIM_HZ*12},{ended:false,etaS:532,moto:{mode:'anda'} as never}));
-  assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:'moto',text:'8:52'},"the chaveiro's clock wins");
+  assert.deepEqual(moto&&{icon:moto.icon,text:moto.text},{icon:undefined,text:'8:52'},"the chaveiro's clock wins, no moto before it (topo-sem-icone)");
   assert.match(moto!.aria,/Chaveiro chega em 8:52/);
   // D-051 nests (ninhos-rounds-fora): the clock plus the nests still standing, and no intermission countdown at all.
   const nest=(hp:number)=>({id:`n${hp}`,kind:'ninho',x:0,y:0,hp,maxHp:40,phase:hp?'dormindo':'destruido'});

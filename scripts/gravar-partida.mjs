@@ -11,7 +11,7 @@
 // node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
-// Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
+// Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
 // (≤ 10 lines). The coach's hints and the economy question start as already seen (as the ORQ's prod prints did), so
 // the match is in view; --com-dicas keeps them. A level-up offer that opens during the roteiro gets its first card
 // (the match pauses on it: the walk would stop under the cards); --sem-escolha leaves it open to record it. Exit 0 ok; 1 the game failed (no entry, a pageerror; with --zero-erros any console error; the site not
@@ -187,8 +187,8 @@ async function waitBuild(url,want,minutes){
 }
 
 /** menu → hero → SELECIONAR → name → BORA! → Jogar sozinho → the match (scene.ts window.__partidaPronta). ms to enter. */
-async function entrar(p,base,modo,extra=''){
-  const t0=Date.now(),q=MODOS[modo];
+async function entrar(p,base,modo,dir,extra=''){
+  const t0=Date.now(),q=MODOS[modo];let salaShot=false;
   await p.goto(`${base}/${extra?(q?`${q}&${extra}`:`?${extra}`):q}`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   // #confirm says SELECIONAR (locks the hero), then BORA! (the name step, menu-etapa.ts); the dialog opens on the second.
@@ -201,9 +201,11 @@ async function entrar(p,base,modo,extra=''){
       // A build older than the signal: the match HUD on screen (smoke-prod's fallback).
       const old=window.__partidaPronta===undefined&&(drawn('.rh-mm-canvas')||drawn('.ch-minimap')||/\bRound \d+\/\d+/.test(document.body.innerText));
       const loading=document.querySelector('.explore-loading')?.textContent?.trim()||'';
-      return {entered:window.__partidaPronta===true||old,said:document.getElementById('explore-error')?.textContent||(/Não foi possível|não baixou/i.test(loading)?loading:'')};
-    }).catch(()=>({entered:false,said:''}));
+      return {entered:window.__partidaPronta===true||old,sala:drawn('.coop-wait:not([hidden])'),said:document.getElementById('explore-error')?.textContent||(/Não foi possível|não baixou/i.test(loading)?loading:'')};
+    }).catch(()=>({entered:false,sala:false,said:''}));
     if(st.entered)return Date.now()-t0;
+    // The waiting room on its way (sala.png, card topo-sem-icone-contagem-exploracao): once, the moment it shows.
+    if(!salaShot&&dir&&st.sala){salaShot=true;await p.screenshot({path:join(dir,'sala.png'),timeout:30000}).catch(()=>{});}
     if(st.said)throw new Error(`não entrou: "${st.said.trim().slice(0,120)}"`);
     if(Date.now()-t0>ENTER_MS)throw new Error(`não entrou em ${ENTER_MS/1000} s`);
     await sleep(1000);
@@ -268,7 +270,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
         await p.screenshot({path:join(dir,'nomes.png'),timeout:30000});r.foto=FOTO_NOMES;
       }catch(e){r.erros.push(`foto ${FOTO_NOMES}: ${String(e.message??e).split('\n')[0]}`);await p.screenshot({path:join(dir,'nomes.png'),timeout:30000}).catch(()=>{});}
     }
-    try{r.entrouMs=await entrar(p,base,o.modo,roteiro==='matches'?'matches=demo':'');}
+    try{r.entrouMs=await entrar(p,base,o.modo,dir,roteiro==='matches'?'matches=demo':'');}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
     // seconds more on a phone; then the camera's first second out of the GIF.

@@ -17,8 +17,11 @@ import {fileURLToPath} from 'node:url';
 const require=createRequire(import.meta.url);
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const SPRITES=path.join(ROOT,'public/art/sprites');
-/** A looping gait: the M16 walk/run and the R06 walk (attack and idle don't stride). */
-export const GAIT=/^(walk16|run16|walk128)-(\w+)$/;
+/**
+ * A looping gait: the M16 walk/run, the R06 walk and the push and pull of the Uno (two steps each; card
+ * auditoria-troca-perna). Attack and idle don't stride.
+ */
+export const GAIT=/^(walk16|run16|walk128|push16|pull16)-(\w+)$/;
 /** mirror/same at most this: the run16 S/N that change legs read 0.09–0.14; a one-leg gait reads ≥ 1. */
 export const MIRROR_MAX=.6;
 /** The legs band: from this share of the figure's height (top 0) down to its feet. */
@@ -90,13 +93,52 @@ export function gaitClips(manifest,ids){
 /** Measures one clip: the S/N mirror test (side and diagonal: undefined, they go by the reviewed list). */
 export async function measureClip(clip){
   if(clip.direction!=='S'&&clip.direction!=='N')return undefined;
-  const fr=await frames(path.join(SPRITES,clip.file),clip.frames,clip.cell);
-  return {...mirrorTest(fr,clip.cell,clip.pivotX,LEGS_BY_CLASS[clip.id]??LEGS)};
+  const fr=await frames(path.join(SPRITES,clip.file),clip.frames,clip.cell),legs=LEGS_BY_CLASS[clip.id]??LEGS;
+  // Half a pixel either way (card auditoria-troca-perna): a 2nd half made by mirroring the 1st across the cell (the S/N
+  // push and pull, "meia passada + espelho") turns about column 47.5, which round(2·48 − x) never hits (0.93 → 0).
+  return [0,-.5,.5].map(o=>mirrorTest(fr,clip.cell,clip.pivotX+o,legs)).reduce((a,b)=>b.ratio<a.ratio?b:a);
+}
+
+/**
+ * Card BUG-20261025-ORQ-auditoria-troca-perna (the user, 25/10: the gato running right "sem a troca de perna, parece
+ * deslizando"): a phase table picks the pose by the ground walked, so a pose's share of the stride is its share of the
+ * time on screen. The gato's five run16 tables came from its first assembler, which gave 0.02 to every pose on the
+ * ground without a receding foot and threw the rest of the cycle into the few airborne ones: on the W run 6 airborne
+ * poses held 91 % of the stride (0.57 figure heights each, frozen while the body glided) and the 10 on the ground, where
+ * the legs change, flashed by. The maromba's assembler already splits the rest evenly between every pose without a
+ * planted foot, as every other class's table does. Planted poses keep d = foot travel / height (the foot stays put).
+ */
+/** The poses without a planted foot (v [0, 0]): their d must be equal. */
+export const flightPoses=phase=>phase.v.flatMap(([x,y],i)=>x||y?[]:[i]);
+/** max/min of the d of the poses without a planted foot (1 = shared evenly; the gato's W run read 28.6). */
+export function flightSpread(phase){
+  const d=flightPoses(phase).map(i=>phase.d[i]);
+  return d.length?+(Math.max(...d)/Math.min(...d)).toFixed(2):1;
+}
+/** At most this flight spread (rounding of the 5-decimal d). */
+export const FLIGHT_SPREAD_MAX=1.01;
+/** The table with the stride's rest (stride − planted d) split evenly between the poses without a planted foot. */
+export function evenFlights(phase){
+  const flights=flightPoses(phase);if(!flights.length)return phase;
+  const stride=phase.d.reduce((a,b)=>a+b,0),stance=phase.d.reduce((a,x,i)=>flights.includes(i)?a:a+x,0);
+  const each=+((stride-stance)/flights.length).toFixed(5);
+  return {...phase,d:phase.d.map((x,i)=>flights.includes(i)?each:x)};
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const i=process.argv.indexOf('--ids'),ids=i>0?process.argv[i+1].split(','):undefined;
   const manifest=JSON.parse(fs.readFileSync(path.join(SPRITES,'manifest.json'),'utf8'));
+  // --fase: rewrites the run16 phase tables whose poses without a planted foot do not share the stride evenly.
+  if(process.argv.includes('--fase')){
+    const {GROUPS}=await import('./art-v2/spec.mjs'),{writeIndex}=await import('./art-v2/convert.mjs');let fixed=0;
+    for(const [id,piece] of Object.entries(manifest.pieces))for(const [key,f] of Object.entries(piece.files)){
+      if(!/^run16-/.test(key)||!f.phase||(ids&&!ids.includes(id))||flightSpread(f.phase)<=FLIGHT_SPREAD_MAX)continue;
+      console.log(`${id} ${key}`.padEnd(34),'voo max/min',flightSpread(f.phase),'→',flightSpread(f.phase=evenFlights(f.phase)));fixed++;
+    }
+    if(fixed){fs.writeFileSync(path.join(SPRITES,'manifest.json'),`${JSON.stringify(manifest,null,2)}
+`);await writeIndex({personagens:GROUPS.personagens},{outRoot:ROOT});}
+    process.exit(0);
+  }
   for(const clip of gaitClips(manifest,ids)){
     const m=await measureClip(clip);if(!m)continue;
     console.log(`${clip.id} ${clip.key}`.padEnd(34),'same',String(m.same).padStart(7),'mirror',String(m.mirror).padStart(7),'ratio',String(m.ratio).padStart(5),m.ratio<=MIRROR_MAX?'alterna':'NÃO alterna');

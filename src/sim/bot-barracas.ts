@@ -31,6 +31,12 @@ export const BARRACA_DROP_STAND=1.2,BARRACA_STAND=2.2;
  * the trip there and back by the streets fits a 60 s lull (bot-brain CALM_WINDOW_S).
  */
 export const BARRACA_REACH_CALM=70;
+/**
+ * The haul is one bot's job, in a team of BARRACA_TEAM or more living heroes: the last of `teamBots` (the bench at 0/3/6
+ * rows, 25/10: with every free bot hauling, the 1p and 3p teams worked the bicos for 31 % / 23 % of their Grana with no
+ * rows, 9 % / 10 % with 3, 0 % / 3 % with 6). A kit:barraca already in hand is set by whoever holds it.
+ */
+export const BARRACA_TEAM=3;
 /** How many sources (nearest living nests) the bots' drop points spread over. */
 const DROP_SOURCES=3;
 const HZ=20;
@@ -87,6 +93,8 @@ export function planBarraca(view:Pick<RunView,'tick'|'players'|'enemies'|'struct
     return {mode:'barraca',goal:{at:there,reach:BARRACA_DROP_STAND,id:'barraca-drop'},...(dist(from,there)<=BARRACA_DROP_STAND?{command:{t:'kit',slot}}:{})};
   }
   delete memory.barracaDrop;
+  const team=view.players.filter(p=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0).length;
+  if(team<BARRACA_TEAM||!teamBots?.length||teamBots[teamBots.length-1]!==me.id)return undefined;
   // The hands hold one tralha kit at most (CARREGA_MAX): a kit:barricada goes first (bot-loot places it).
   if(inv.some(i=>TRALHA_KITS.has(i.id)))return undefined;
   const barracas=view.structures.filter(living);

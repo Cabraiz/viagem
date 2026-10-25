@@ -10,7 +10,7 @@ import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import type {MapRef} from '../../src/protocol/map-select.ts';
 import {CAR_ID} from '../../src/contract/index.ts';
 import {piecesOf} from '../../src/sim/towers/free-build.ts';
-import {BARRACA_HOME,planBarraca,barracaDrop,BARRACA_DROP_RING} from '../../src/sim/bot-barracas.ts';
+import {BARRACA_HOME,BARRACA_TEAM,planBarraca,barracaDrop,BARRACA_DROP_RING} from '../../src/sim/bot-barracas.ts';
 import {kitId} from '../../src/rules/index.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
@@ -41,7 +41,8 @@ test('the room bots carry a barraca of the map rows to the Uno in a lull',async(
   const near=()=>piecesOf(state).filter(p=>p.kind==='barraca'&&Math.hypot(p.x-car.x,p.y-car.y)<=BARRACA_HOME).map(p=>p.id);
   const before=new Set(near()),rows=piecesOf(state).filter(p=>p.kind==='barraca').length;
   assert.ok(rows>0,'the map has its rows');
-  for(let i=0;i<120*20&&room.bots.barracas<1;i++){
+  // One hauler (BARRACA_TEAM) and rows 30–65 u out: up to four minutes of lulls and waves.
+  for(let i=0;i<240*20&&room.bots.barracas<1;i++){
     if(i%20===0)say(room,a,{t:'ack',seq:0},t);
     room.advance(t+=50);
   }
@@ -55,15 +56,20 @@ test('planBarraca: a free bot goes to the nearest barraca it is the nearest free
   const car={id:'c1',kind:CAR_ID,x:50,y:50,hp:1,maxHp:1},row={id:'b1',kind:'barraca',x:70,y:50,hp:240,maxHp:240};
   const me={id:'bot-1',online:true,hp:100,maxHp:100,weapons:[{id:'faca',level:1}],x:66,y:50} as any;
   const other={id:'bot-2',online:true,hp:100,maxHp:100,weapons:[{id:'faca',level:1}],x:90,y:50} as any;
-  const view={tick:100,enemies:[],players:[me,other],structures:[car,row]} as any,memory:any={};
-  const plan=planBarraca(view,me,me,0,memory,undefined,['bot-1','bot-2'],40)!;
+  const ana={id:'ana',online:true,hp:100,maxHp:100,weapons:[{id:'faca',level:1}],x:52,y:50} as any;
+  const view={tick:100,enemies:[],players:[me,other,ana],structures:[car,row]} as any,memory:any={},BOTS=['bot-2','bot-1'];
+  // The haul is the last bot's, in a team of BARRACA_TEAM: not the first bot's, not in a team of two.
+  assert.equal(planBarraca(view,me,me,0,{},undefined,['bot-1','bot-2'],40),undefined,'not the last bot');
+  assert.equal(planBarraca({...view,players:[me,other]},me,me,0,{},undefined,BOTS,40),undefined,'a team of two');
+  assert.equal(BARRACA_TEAM,3);
+  const plan=planBarraca(view,me,me,0,memory,undefined,BOTS,40)!;
   assert.equal(plan.goal?.id,'b1');assert.equal(plan.command,undefined,'too far to collect');
   // The other bot is nearer: this one leaves it.
-  assert.equal(planBarraca({...view,players:[me,{...other,x:71}]},me,me,0,{},undefined,['bot-1','bot-2'],40),undefined);
+  assert.equal(planBarraca({...view,players:[me,{...other,x:71},ana]},me,me,0,{},undefined,BOTS,40),undefined);
   // In reach: the coleta, once (again only when it would have ended).
   const close={...me,x:68.5};
-  assert.deepEqual(planBarraca(view,close,close,0,memory,undefined,['bot-1','bot-2'],40)!.command,{t:'coletar',piece:'b1'});
-  assert.equal(planBarraca(view,close,close,0,memory,undefined,['bot-1','bot-2'],40)!.command,undefined);
+  assert.deepEqual(planBarraca(view,close,close,0,memory,undefined,BOTS,40)!.command,{t:'coletar',piece:'b1'});
+  assert.equal(planBarraca(view,close,close,0,memory,undefined,BOTS,40)!.command,undefined);
   // A critter near: no barraca business.
   assert.equal(planBarraca({...view,enemies:[{id:'e',x:67,y:50,hp:5}]},me,me,0,{},undefined,['bot-1'],40),undefined);
   // With the kit: the drop point on the ring toward the source (no city: straight), the kit set once there.

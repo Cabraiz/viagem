@@ -10,7 +10,7 @@ import {formatRoomCode,isRoomCode,readRoomCode,shareLink} from './ui/invite.ts';
 import {fitName,NAME_MAX} from './ui/nick.ts';
 import {chunkFailed,reloadUnderway} from './ui/update-toast.ts';
 import {CITY_PLAYABLE,CITY_SOON,type MapId,type MapRef,type RoomCreateOptions} from '../protocol/index.ts';
-import {initialSelector,selectorReducer,mountMapSelector,mapChangedNews,downloadText,selectorRects,SELECTOR_TEXT,DEFAULT_MAP,NEWS_MS,GUEST_HINT_MS,
+import {selectorReducer,mapChangedNews,downloadText,DEFAULT_MAP,NEWS_MS,
   type SelectorState,type SelectorEvent,type Orientation} from './hud/city/index.ts';
 import {assetsParaPartida,matchKey} from './preload/match-assets.ts';
 import {createPreloader,preloadDone} from './preload/preloader.ts';
@@ -322,54 +322,19 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
   host.append(panel);
   let membersKey='',wasReady=new Set<string>();
   // Who owned the room last time we looked, and the names seen (the one who left is gone from the run state).
-  // The news strip (.coop-wait-owner) also carries the map news and, in landscape, the selector's hints.
+  // The news strip (.coop-wait-owner) also carries the map news.
   let ownerSeen:string|undefined,ownerNews:{text:string;until:number}|undefined;
-  // From a tap: shown at once (update); from inside update(): `refresh` false, the line is drawn further down.
-  let updating=false;
-  const say=(text:string,ms:number,refresh=true)=>{ownerNews={text,until:now()+ms};if(refresh&&!updating)update();};
-  // Map selector (cidade-09): portrait, in the window under the code row; landscape, its own small window in the column
-  // opposite the notch (selectorRects), outside the panel. The owner picks, the room decides ({t:'map'}).
-  const mapSlot=document.createElement('div');mapSlot.className='coop-wait-map';
-  $('.coop-wait-code').after(mapSlot);
-  // Safe-area insets for the landscape window (the same env() the panel's CSS reads).
-  const probe=document.createElement('div');probe.setAttribute('aria-hidden','true');
-  probe.style.cssText='position:fixed;inset:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
-  host.append(probe);
-  const soon=soonMaps(options.cityPlayable);
+  // Said from inside update(): the line is drawn further down.
+  const say=(text:string,ms:number)=>{ownerNews={text,until:now()+ms};};
+  // No map choice in the room (card topo-sem-icone-contagem-exploracao, the user 25/10: "remova Cidade Nevada e Mapa
+  // infinito"): the room opens on ROOM_DEFAULT_MAP; the endless map stays reachable by URL (solo plan, sandbox).
   const viewport=()=>({width:innerWidth,height:innerHeight});
   let orientation=lobbyOrientation(viewport()),mapSeen:MapId|undefined,loadFailed:string|undefined;
-  let selector:SelectorState={...initialSelector(false,roomMapId(client)),soon};
-  const dispatch=(event:SelectorEvent)=>{const out=selectorReducer(selector,event);selector=out.state;if(out.send)client.setMap?.(out.send);mapControl.update(selector,orientation);};
-  const mapControl=mountMapSelector(mapSlot,{state:selector,orientation,now,
-    onPick:(map,nowMs)=>{
-      dispatch({type:'tap',map,nowMs});
-      // Landscape has no hint line: each tap on "em breve" says it again on the room's line (the hint repeats only once).
-      if(orientation==='landscape'&&selector.notice&&soon[map])say(selector.notice,NEWS_MS);
-    },
-    onEvent:dispatch,
-    onHint:text=>say(text,text===SELECTOR_TEXT.guest?GUEST_HINT_MS:NEWS_MS)});
-  const placeMap=()=>{
-    const landscape=orientation==='landscape';
-    mapSlot.classList.toggle('is-window',landscape);mapSlot.dataset.orientation=orientation;
-    if(!landscape){
-      if(mapSlot.parentElement!==panel)$('.coop-wait-code').after(mapSlot);
-      // 12 px under the code row: the segments' stickers stand 10 px over their top edge, clear of the share button.
-      if(mapSlot.dataset.css!=='portrait'){mapSlot.dataset.css='portrait';mapSlot.style.cssText='margin:12px 0 0';}
-      return;
-    }
-    if(mapSlot.parentElement!==host)host.append(mapSlot);
-    const style=getComputedStyle(probe),px=(v:string)=>parseFloat(v)||0;
-    const safe={top:px(style.paddingTop),right:px(style.paddingRight),bottom:px(style.paddingBottom),left:px(style.paddingLeft)};
-    const {selector:box}=selectorRects(viewport(),safe),origin=host.getBoundingClientRect();
-    const css=`position:absolute;z-index:var(--z-hud);left:${box.x-origin.left}px;top:${box.y-origin.top}px;margin:0;pointer-events:auto`;
-    if(mapSlot.dataset.css!==css){mapSlot.dataset.css=css;mapSlot.style.cssText=css;}
-  };
-  placeMap();
   const names=new Map<string,string>();
   // Only touch text that changed, so the polite live region is not re-announced every poll.
   const setText=(el:HTMLElement,text:string)=>{if(el.textContent!==text)el.textContent=text;};
   const update=()=>{
-    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();return;}
+    if(!panel.isConnected||!host.isConnected){clearInterval(timer);clearTimeout(disarm);stopPreload();panel.remove();return;}
     const view=waitingRoomView(client.run,client.players,client.id);lastView=view;
     // The match is on: a slow connection now fetches the decoration too (it held it back to give P0/P1 the bandwidth).
     if(client.run?.phase==='combat')preloader?.release();
@@ -381,9 +346,9 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
     // Stopped for good (kicked, another tab, version): the terminal window says why; nothing here answers any more.
     const off=!view.visible||!!client.fatal;
-    putHidden(panel,off);putHidden(mapSlot,off);
+    putHidden(panel,off);
     if(!view.visible)return;
-    // The map selector follows the room: owner, countdown, connection, the room's map and its download.
+    // The room's map and its download (the preload and the ready button follow it).
     const roomMap=roomMapId(client),load=client.mapLoad;
     const selfClass=view.members.find(m=>m.self)?.classId??client.classId;
     if(preloader&&selfClass){
@@ -393,15 +358,11 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
     const preload=preloader?.progress();
     if(menuHold&&preload&&preloadDone(preload)){menuHold();menuHold=undefined;}
-    if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS,false);
+    if(mapSeen!==undefined&&roomMap!==mapSeen)say(mapNews(roomMap),NEWS_MS);
     mapSeen=roomMap;
-    if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS,false);
+    if(load?.failed&&load.failed!==loadFailed)say(load.failed,NEWS_MS);
     loadFailed=load?.failed;
-    const nextOrientation=lobbyOrientation(viewport());
-    const next=syncSelector(selector,{canManage:view.canManage,countdown:view.phase==='countdown',connected:client.connected,map:roomMap,download:mapLoadText(load)});
-    // (The control may hand a landscape hint to say() from here: drawn below, no nested update.)
-    if(next!==selector||nextOrientation!==orientation){selector=next;orientation=nextOrientation;updating=true;try{mapControl.update(selector,orientation);}finally{updating=false;}}
-    placeMap();
+    orientation=lobbyOrientation(viewport());
     panel.dataset.phase=view.phase;
     // After a restart of the room the run is gone (VGM-047, UX onda 5): the news goes on top, as a ficha, in place of
     // the headline, and the waiting joke is suspended until the next run starts.
@@ -415,7 +376,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     if(ownerNews?.until===Infinity&&!host.querySelector('.explore-loading:not([hidden])'))ownerNews.until=now()+OWNER_NEWS_MS;
     const ownerLine=$('.coop-wait-owner'),showNews=!!ownerNews&&now()<ownerNews.until;
     ownerLine.hidden=!showNews;if(showNews)setText(ownerLine,ownerNews!.text);
-    // A fuller window (4+, the selector inside in portrait): for its 4 s the news takes the headline's place, like the
+    // A fuller window (4+): for its 4 s the news takes the headline's place, like the
     // restart notice does, and in portrait the line under the chips too, so the window never scrolls the ready button away.
     const tightNews=showNews&&view.phase!=='countdown'&&view.members.length>=4;
     if(tightNews)$('.coop-wait-headline').hidden=true;
@@ -423,9 +384,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     // The team's makeup takes the joke's place; for the owner it takes turns with the hint (WAITING_LINE_SECONDS each).
     const makeup=compositionLine(view.members),turn=Math.floor((now()-started)/1000/WAITING_LINE_SECONDS)%2===1;
     setText($('.coop-wait-line'),view.phase==='countdown'||news?'':hint&&!(makeup&&turn)?OWNER_HINT:makeup??waitingLine((now()-started)/1000));
-    // Portrait, a guest in a fuller room: the selector's fixed line ("Quem escolhe o mapa é o dono da sala.") takes the
-    // joke's place, so the window fits without scrolling and the ready button stays in view (cidade-09).
-    $('.coop-wait-line').hidden=jokeYields(orientation,view)||tightNews&&orientation==='portrait';
+    $('.coop-wait-line').hidden=tightNews&&orientation==='portrait';
     botButton.hidden=!view.canManage||view.seatsLeft<1||view.selfSpectator;
     panel.classList.toggle('is-owner',view.canManage);
     setText($('.coop-wait-count'),view.seconds!==undefined?String(view.seconds):'');
@@ -491,7 +450,7 @@ export function mountWaitingRoom(host:HTMLElement,client:Pick<CoopClient,'code'|
     }
   };
   const timer=setInterval(update,200);update();
-  return {panel,update,dispose(){clearInterval(timer);stopPreload();mapControl.destroy();mapSlot.remove();probe.remove();panel.remove();}};
+  return {panel,update,dispose(){clearInterval(timer);stopPreload();panel.remove();}};
 }
 
 /** `room` fills the code (an invite's ?sala=, main.ts); with `autoJoin` the lobby enters it by itself (invite link, or back from a version reload). */

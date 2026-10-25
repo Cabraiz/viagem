@@ -46,7 +46,7 @@ test("the chefão up (boss-fim-onda-1): the clock is held, padlock and grey on t
   assert.deepEqual({icon:bar.icon,held:bar.held},{icon:'cadeado',held:true});
   assert.equal(roundInfo(up({...chefao,hp:0}))!.chaveiro!.held,false,'he fell: it runs');
   assert.equal(roundInfo(up({...chefao,kind:'sindico'}))!.chaveiro!.held,false,'the final boss does not hold it');
-  assert.equal(barClock(up({...chefao,hp:0}))!.icon,'moto');
+  assert.equal(barClock(up({...chefao,hp:0}))!.icon,undefined,'running: no sticker (topo-sem-icone-contagem-exploracao)');
 });
 
 test('the round chip: "Onda N" plus his clock while the objective runs, "Round N/10" without it or once it ended',()=>{

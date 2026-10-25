@@ -59,6 +59,11 @@ export interface HudPart {
 
 export const clamp01=(value:number)=>Number.isFinite(value)?Math.min(1,Math.max(0,value)):0;
 export const secondsLeft=(untilTick:number,tick:number)=>Math.max(0,Math.ceil((untilTick-tick)/SIM_HZ));
+/**
+ * The time to explore at `tick` (card topo-sem-icone-contagem-exploracao): the whole seconds left (120, 119…), or
+ * undefined outside the window (HudContext.explora). The top's clock shows this number in place of the chaveiro's m:ss.
+ */
+export const exploraLeft=(tick:number,explora:HudContext['explora'])=>explora&&tick>=explora.from&&tick<explora.until?secondsLeft(explora.until,tick):undefined;
 /** One clock format for a caído everywhere (team strip, edge arrow, map ficha): "27 s" (design onda 6 M2, UX aresta 1). */
 export const secondsText=(seconds:number)=>`${seconds} s`;
 /**

@@ -2,9 +2,10 @@
  * Top of the run HUD (VGM-040): round chip ("Round N/10" + critters or interval countdown),
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
-import {putHidden,putIconNumber,putTextData} from './dom-put.ts';
+import {putData,putHidden,putIconNumber,putTextData} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
-import {bossInfo,nestCount,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
+import {bossInfo,exploraLeft,nestCount,nestsMode,roundInfo,xpFraction,type HudContext,type HudPart} from './model.ts';
+import type {ChaveiroClock} from './chaveiro.ts';
 import {MARQUEE_MS} from './zones.ts';
 import {HAPPENING_COPY} from '../fun/zueira.ts';
 import {icon} from '../ui/icon.ts';
@@ -18,7 +19,8 @@ export function createTopBar():HudPart{
   // Not a live region: the countdown changes every second. Round changes are announced by the marquee.
   const chip=el('div','rh-round',root);
   const label=el('strong','rh-round-label',chip),eta=el('span','rh-round-eta',chip),detail=el('span','rh-round-detail',chip);
-  // D-047: the chaveiro's clock ("Onda 3 · [moto] 9:48"), only while the objective runs.
+  // D-047: the chaveiro's clock ("Onda 3 · 9:48", no moto since topo-sem-icone-contagem-exploracao), only while the
+  // objective runs; in the time to explore, the seconds left ("120", "119"…).
   eta.hidden=true;
   const xp=el('div','rh-xp',root);
   const level=el('span','rh-xp-level',xp);
@@ -33,11 +35,11 @@ export function createTopBar():HudPart{
   // Last written values: update runs for every view, but these change rarely.
   const last=new Map<string,string>();
   const put=(key:string,value:string,write:(value:string)=>void)=>{if(last.get(key)!==value){last.set(key,value);write(value);}};
-  return {el:root,update(view:RunView){
-    const round=roundInfo(view);
+  return {el:root,update(view:RunView,ctx:HudContext){
+    const round=roundInfo(view),explora=exploraLeft(view.tick,ctx.explora);
     // D-051 nests: no waves, so no "Onda N" and no critter count; the chip keeps only the chaveiro's clock.
     const nests=!!round?.nests;
-    putHidden(chip,!round||(nests&&!round.chaveiro));
+    putHidden(chip,!round||(nests&&!round.chaveiro&&explora===undefined));
     put('nests',String(nests),()=>{label.hidden=detail.hidden=nests;if(nests)chip.dataset.modo='ninhos';else delete chip.dataset.modo;});
     if(round){
       put('label',round.label,v=>{label.textContent=v;});
@@ -54,17 +56,18 @@ export function createTopBar():HudPart{
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
       // D-051 nests: the nests still standing go to screen readers only (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: no "6/8" on screen).
-      const clock=round.chaveiro,count=nests?nestCount(view):undefined;
+      const count=nests?nestCount(view):undefined;
+      const clock:Pick<ChaveiroClock,'clock'|'aria'|'held'>|undefined=explora!==undefined?{clock:String(explora),aria:`Exploração: faltam ${explora} s`,held:false}:round.chaveiro;
       put('eta',clock?`${clock.clock}|${clock.aria}|${clock.held}|${count?.text??''}`:'',()=>{
         putHidden(eta,!clock);
         // The chefão up (boss-fim-onda-1): a padlock and the number grey, the clock stopped until he falls.
         if(clock?.held)eta.dataset.parado='';else delete eta.dataset.parado;
         // Built once; each second only the words and the number change in place (dom-put.ts putTextData, no new node).
         if(clock){
-          chip.dataset.objetivo='chaveiro';
+          putData(chip,'objetivo','chaveiro');
           if(eta.childElementCount!==2)eta.innerHTML='<span class="rh-sr"></span><span aria-hidden="true"></span>';
           putTextData(eta.firstElementChild!,`${clock.aria}${count?`. ${count.aria}`:''}`);
-          putIconNumber(eta.lastElementChild as HTMLElement,icon(clock.held?'cadeado':'moto'),clock.clock,'<i class="rh-round-sep"></i>');
+          putIconNumber(eta.lastElementChild as HTMLElement,clock.held?icon('cadeado'):'',clock.clock,'<i class="rh-round-sep"></i>');
         }
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });

@@ -121,9 +121,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * (Trabalhar held, protocol/input-track.ts); their strings at the end of the DICT. An older decoder would misread the
  * banks block, an older room refuses the segments.
  * 39 given by the integration queue (tools/fila.mjs, lote 20261025-042005) to: NEW-20261024-ORQ-bancos-viram-bicos.
+ * 40 given by the integration queue (tools/fila.mjs, lote 20261025-074625) to: NEW-20261025-ORQ-dict-protocolo-cheio.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=39;
+export const PROTOCOL_VERSION=40;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

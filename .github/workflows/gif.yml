@@ -37,6 +37,8 @@ on:
       pedido:
         description: 'request id (tools/gif-ci.mjs fills it in)'
         default: ''
+  push:
+    branches: ['vgm/cicd-gif-prints']
   workflow_run:
     workflows: ['Publish viagem (rooms Worker + frontend)']
     types: [completed]
@@ -49,7 +51,7 @@ env:
   NODE_VERSION: '26.9.0'
 jobs:
   gif:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -96,9 +98,9 @@ jobs:
         working-directory: game
         env:
           PLAYWRIGHT_MODULE: ${{ github.workspace }}/game/node_modules/playwright
-          ROTEIRO: ${{ inputs.roteiro || 'parado' }}
-          TELA: ${{ inputs.tela || 'celular' }}
-          SEGUNDOS: ${{ inputs.segundos || '20' }}
+          ROTEIRO: ${{ inputs.roteiro || 'todos' }}
+          TELA: ${{ inputs.tela || 'ambas' }}
+          SEGUNDOS: ${{ inputs.segundos || '12' }}
           MODO: ${{ inputs.modo || 'normal' }}
         run: |
           set +e
@@ -118,7 +120,7 @@ jobs:
           if-no-files-found: ignore
 
   site:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -144,7 +146,7 @@ jobs:
         run: npx playwright install-deps chromium
       - id: sha
         env:
-          SHA: ${{ github.event.workflow_run.head_sha }}
+          SHA: ${{ github.event.workflow_run.head_sha || '79854879cde4' }}
         run: echo "short=${SHA:0:12}" >> "$GITHUB_OUTPUT"
       # The Pages CDN keeps version.json up to 10 min: --build waits for it (12 min) before playing.
       - name: Print do site (1 = não entrou, erro de página ou build errado; 2 = infra, tentada mais uma vez)

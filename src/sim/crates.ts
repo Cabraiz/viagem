@@ -50,6 +50,13 @@
  *    the nearest other rarities (prizePools), so a crate never jams; a live crate whose item somebody just got draws
  *    another one (restock). Only when every item is held by someone (several players) does a crate keep a held item,
  *    and then its holders neither see nor open it (hiddenTo, the same hiddenFor). Items on the ground: inventory.ts.
+ *  - the floor (NEW-20261025-ORQ-uno-caminho-caixas-vender, the user 25/10: "rodei pelo mapa e só achei 3 caixas"; with
+ *    the hiding above a player who had opened 4-6 crates saw 9-24 of the 50-60 alive): every VISIBLE_FLOOR_S a player on
+ *    the map who sees fewer than VISIBLE_FLOOR crates gets the ones he lacks, on a free map point at least
+ *    RESPAWN_MIN_DIST from every player (spreadPick), its colour bumped past the ones he took (a dropped crate: it never
+ *    respawns nor counts to the cap), while the map holds fewer than FLOOR_LIVE_MAX crates;
+ *  - the trail also runs in every exploration interval (round phase 'prepare', after the first minute): one crate passed
+ *    every EXPLORE_PACE_S of the interval, counted afresh in each one.
  * All the bookkeeping is the JSON-safe CratesState (a room checkpoint resumes the same placements and rolls).
  */
 import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
@@ -122,6 +129,10 @@ export const NOISY_RARITY=3,OPEN_NOISE_RADIUS=10;
 export const GOLD_HIDDEN_CHANCE=.05,GOLD_HIDDEN_FROM:readonly Rarity[]=[1,2,3],GOLD_RARITY:Rarity=4;
 /** Colours of weapon crates a player stops seeing after opening one that showed that colour (the user 24/10: verde and azul). */
 export const HIDE_AFTER_TAKEN:readonly Rarity[]=[1,2];
+/** The floor (see the header): crates each player sees on the map at least, checked this often (s), up to this many alive. */
+export const VISIBLE_FLOOR=16,VISIBLE_FLOOR_S=1,FLOOR_LIVE_MAX=60;
+/** The exploration intervals' trail: one crate passed every this many seconds of the interval (the ORQ, 25/10). */
+export const EXPLORE_PACE_S=20;
 /** Pickup id prefix of the crates this module places or drops (not CRATE_PREFIX 'caixa-': those are the gather nodes). */
 export const CRATE_ID_PREFIX='bau';
 /**
@@ -170,6 +181,8 @@ export interface CratesState {
   crates:Record<string,CrateRecord>;
   /** Ticks when an opened placed crate comes back (ascending). */
   respawns:number[];
+  /** The tick the current exploration interval's trail started (absent outside one). */
+  exploreTick?:number;
   /** Per player: the crate being opened and the standing ticks so far. */
   opening:Record<string,{crate:string;ticks:number}>;
   /** Per player: position and hp seen at the last step (moved / hurt since). */
@@ -192,6 +205,8 @@ export const createCratesState=(seed:number):CratesState=>({placed:false,crates:
 export interface CratesOptions {
   /** Room seed: placements, adoptions and prizes all derive from it. */
   seed:number;
+  /** The floor (see the header): crates each player sees at least; absent or 0: none (assemble passes VISIBLE_FLOOR). */
+  visibleFloor?:number;
   /** Where placed crates sit, with the walk time from the plaza (city: cityLoot(terrain).crates). Empty: none placed. */
   points:readonly {x:number;y:number;seconds:number}[];
   /**
@@ -442,10 +457,14 @@ export function createCrates(options:CratesOptions):Crates{
   /** The first minute: who passed which crate, and a trail crate ahead of a hero behind the pace. */
   function trailStep(ctx:SimContext,rng:Rng){
     if(state.startTick===undefined)return;
-    const elapsed=ctx.tick-state.startTick;
-    if(elapsed>=ticks(FIRST_MINUTE_S)){if(state.trail)delete state.trail;return;}
+    const first=ctx.tick-state.startTick<ticks(FIRST_MINUTE_S),explore=!first&&ctx.round.phase==='prepare';
+    if(!explore&&state.exploreTick!==undefined){delete state.exploreTick;delete state.trail;}
+    if(!first&&!explore){if(state.trail)delete state.trail;return;}
+    // A new exploration interval: its own count (the first minute's trail is over).
+    if(explore&&state.exploreTick===undefined){state.exploreTick=ctx.tick;delete state.trail;}
+    const elapsed=ctx.tick-(first?state.startTick:state.exploreTick!);
     const trail=state.trail??={},heroes=[...ctx.players.values()].filter(onMap);
-    const due=1+Math.floor(elapsed/ticks(FIRST_MINUTE_S/(FIRST_MINUTE_CRATES+2)));
+    const due=first?Math.min(FIRST_MINUTE_CRATES,1+Math.floor(elapsed/ticks(FIRST_MINUTE_S/(FIRST_MINUTE_CRATES+2)))):1+Math.floor(elapsed/ticks(EXPLORE_PACE_S));
     for(const p of heroes){
       const t=trail[p.id]??={passed:[],placed:0,hx:0,hy:0},last=state.seen[p.id];
       if(last){t.hx=t.hx*HEADING_KEEP+(p.x-last.x)*(1-HEADING_KEEP);t.hy=t.hy*HEADING_KEEP+(p.y-last.y)*(1-HEADING_KEEP);}
@@ -458,7 +477,7 @@ export function createCrates(options:CratesOptions):Crates{
       // Missed: opened by someone, passed, left TRAIL_MISS u away or behind him (he turned).
       if(t.waiting&&(!waiting||t.passed.includes(t.waiting)||Math.hypot(waiting.x-p.x,waiting.y-p.y)>TRAIL_MISS
         ||(speed>1e-3&&(waiting.x-p.x)*t.hx+(waiting.y-p.y)*t.hy<0)))delete t.waiting;
-      if(t.waiting||!options.trailSpot||t.placed>=TRAIL_MAX||t.passed.length>=Math.min(due,FIRST_MINUTE_CRATES)||speed<1e-3||!canOpen(p))continue;
+      if(t.waiting||!options.trailSpot||t.placed>=TRAIL_MAX||t.passed.length>=due||speed<1e-3||!canOpen(p))continue;
       const heading={x:t.hx/speed,y:t.hy/speed},ahead=TRAIL_AHEAD[0]+rng.next()*(TRAIL_AHEAD[1]-TRAIL_AHEAD[0]);
       const at=options.trailSpot(p,heading,ahead,rng);
       if(!at||heroes.some(o=>o!==p&&Math.hypot(o.x-at.x,o.y-at.y)<TRAIL_AHEAD[0]))continue;
@@ -467,6 +486,26 @@ export function createCrates(options:CratesOptions):Crates{
       t.waiting=addCrate(ctx,at,{rarity,origin:'dropped',start:true},state.last?.[p.id]).id;
     }
     for(const id in trail)if(!ctx.players.has(id))delete trail[id];
+  }
+
+  /** The floor (see the header): one more crate for each player who sees fewer than VISIBLE_FLOOR. */
+  function floorStep(ctx:SimContext,rng:Rng){
+    const floor=options.visibleFloor??0;
+    if(!floor||state.startTick===undefined||(ctx.tick-state.startTick)%ticks(VISIBLE_FLOOR_S)!==0)return;
+    const players=[...ctx.players.values()].filter(onMap);
+    for(const p of players)for(;;){
+      let live=0,seen=0;
+      for(const id in state.crates)if(ctx.pickups.has(id)){live++;if(!hiddenTo(p,state.crates[id]))seen++;}
+      if(live>=FLOOR_LIVE_MAX)return;
+      if(seen>=floor)break;
+      const used=usedPoints();
+      const free=points.map((_,i)=>i).filter(i=>!used.has(i)&&players.every(o=>Math.hypot(o.x-points[i].x,o.y-points[i].y)>=RESPAWN_MIN_DIST));
+      if(!free.length)return;
+      const point=spreadPick(rng,points,free,livePlaced(ctx));
+      let rarity=shifted(roll(rng,TIER_ODDS[tierOf[point]]),stageShift(ctx.round));
+      while(rarity<GOLD_RARITY&&state.took?.[p.id]?.includes(rarity))rarity=rarity+1 as Rarity;
+      addCrate(ctx,points[point],{rarity,origin:'dropped',point});
+    }
   }
 
   /** Placed crates follow the round's stage (the pickup's value is what the HUD and the bots see). */
@@ -613,6 +652,7 @@ export function createCrates(options:CratesOptions):Crates{
       respawn(ctx,rng);
       restage(ctx);
       trailStep(ctx,rng);
+      floorStep(ctx,rng);
       openStep(ctx);
       restock(ctx);
       hide(ctx);

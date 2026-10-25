@@ -64,8 +64,10 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'carro-puxar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=perto',descricao:'D-052 HUD: Puxar perto do carro e Construir com o contador de muros'},
   'carro-soltar':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=corda',descricao:'D-052 HUD: Soltar (na corda)'},
   'carro-obra':{sandbox:'hud',query:'state=wave&frozen=1&mapa=cidade&heroi=1&carro=obra-muro',descricao:'D-052 HUD: a bandeja de Construir aberta (Muro escolhido)'},
-  'perfil-inimigo':{sandbox:'hud',query:'state=wave&frozen=1&perfis=1',descricao:'nome-inimigo-rede-social: o perfil de app de namoro do inimigo novo (Tio do Pavê)'},
-  'perfis-leque':{sandbox:'hud',query:'state=wave&frozen=1&perfis=3',descricao:'nome-inimigo-rede-social: 3 inimigos novos seguidos, os perfis em leque'},
+  'perfil-inimigo':{sandbox:'hud',query:'state=wave&frozen=1&perfis=3&perfis-abre=1',descricao:'nome-inimigo-rede-social: toque no foguinho, o último match em cartão compacto'},
+  'matches-foguinho':{sandbox:'hud',query:'state=wave&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: o foguinho com o contador de matches, abaixo da engrenagem'},
+  'nome-elite-chefao':{sandbox:'cidade',query:'mapa=real&tele=1&elenco=tio-pave,agiota,bebado,coach,mapinguari-do-shopping&elite=tio-pave,agiota&chefao=mapinguari-do-shopping&caido=agiota&ferido=1',descricao:'nome-inimigo-rede-social, etapa 7: o nome do perfil sobre elite e chefão e "Te derrubou: X" sob a ficha de caído'},
+  'matches-resultado':{sandbox:'hud',query:'state=result&frozen=1&perfis=5',descricao:'nome-inimigo-rede-social: "Seus matches" no resultado, figurinhas tortas'},
   'resultado':{sandbox:'hud',query:'state=result&frozen=1',descricao:'tela de resultado'},
   // D-050: the team's level-up pause (4 players): the combat offer open with the title and the bar above it.
   'pausa-escolhendo':{sandbox:'hud',query:'pausa=escolhendo&frozen=1&heroi=1',descricao:'pausa do level-up: oferta aberta, 10 s, esperando você, Tia e Bruninha'},
@@ -74,6 +76,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
   'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Morteiro (roxa) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
   'kit-obra':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro',descricao:'torre-pela-caixa: o Morteiro do kit em obra e o fantasma verde do próximo'},
+  'kit-barricada':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada',descricao:'barricada-tocar-no-mapa: o fantasma da barricada = a própria arte (amarelo) sobre a pegada 2×1'},
+  'kit-barricada-giro':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada&giro=1',descricao:'barricada-tocar-no-mapa: o mesmo fantasma girado (arrastou no outro eixo)'},
   'kit-recusa':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro&fantasma=ocupado',descricao:'torre-pela-caixa: o fantasma vermelho em cima da obra'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
   // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").

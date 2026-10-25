@@ -11,7 +11,7 @@
 // node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
-// Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
+// Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
 // (≤ 10 lines). The coach's hints and the economy question start as already seen (as the ORQ's prod prints did), so
 // the match is in view; --com-dicas keeps them. A level-up offer that opens during the roteiro gets its first card
 // (the match pauses on it: the walk would stop under the cards); --sem-escolha leaves it open to record it. Exit 0 ok; 1 the game failed (no entry, a pageerror; with --zero-erros any console error; the site not
@@ -39,7 +39,13 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *  - parado: the hero still where the team spawns (beside the Uno, inicio-no-uno);
  *  - andando: a lap through the eight directions, the walk and its turns;
  *  - uno: short steps out and back around the spawn; when the Uno's edge arrow shows (the stick's steps do not cancel
- *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time.
+ *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time;
+ *  - matches (nome-inimigo-rede-social): the uno steps with ?matches=demo (three matches from the start, every kill of the
+ *    hero one more; round 1 has no weapon), and the
+ *    first time the flame shows it is tapped: the compact card in the GIF and in match.png. Not part of "todos".
+ *  - nomes (nome-inimigo-rede-social, etapa 7): first the photo scene FOTO_NOMES (src/client/dev/foto.ts: elites and a
+ *    chefão with the profile's name over the bar, "Te derrubou: X" under a caído ficha) in nomes.png, then the parado
+ *    steps in a real match (an elite or a fall there shows the same fichas). Not part of "todos".
  */
 export const ROTEIROS=Object.freeze({
   parado:s=>[{ms:s*1000}],
@@ -50,7 +56,13 @@ export const ROTEIROS=Object.freeze({
     for(let i=0;left>0;i++){const st=loop[i%loop.length],ms=Math.min(st.ms,left);out.push({...st,ms});left-=ms;}
     return out;
   },
+  matches:s=>ROTEIROS.uno(s),
+  nomes:s=>ROTEIROS.parado(s),
 });
+/** The photo scene the nomes roteiro prints first. */
+export const FOTO_NOMES='nome-elite-chefao';
+/** "todos": the roteiros every sheet records (matches is asked by name). */
+export const TODOS=Object.freeze(['parado','andando','uno']);
 /** The keys of a direction (MOVE_KEYS in desktop-input.ts): any vector, snapped to the eight the keys can make. */
 export const keysOf=dir=>{
   if(!dir)return [];
@@ -71,7 +83,7 @@ export function parseOpts(argv){
     if(VALUE_FLAGS.has(name)){flags[name]=argv[++i];if(flags[name]===undefined)throw new Error(`--${name} sem valor`);}
     else flags[name]=true;
   }
-  const list=(v,all,what)=>{const out=v==='todos'||v==='ambas'?Object.keys(all):String(v).split(',');for(const x of out)if(!(x in all))throw new Error(`${what} desconhecido: ${x} (${Object.keys(all).join(', ')})`);return out;};
+  const list=(v,all,what)=>{const out=v==='todos'?[...TODOS]:v==='ambas'?Object.keys(all):String(v).split(',');for(const x of out)if(!(x in all))throw new Error(`${what} desconhecido: ${x} (${Object.keys(all).join(', ')})`);return out;};
   const num=(v,def,min,max,what)=>{const n=v===undefined?def:Number(v);if(!(Number.isFinite(n)&&n>=min&&n<=max))throw new Error(`--${what}: ${min} a ${max}, veio ${v}`);return n;};
   if(flags.modo!==undefined&&!(flags.modo in MODOS))throw new Error(`modo desconhecido: ${flags.modo}`);
   if(flags.url!==undefined&&!/^https?:\/\/[^/]+/.test(flags.url))throw new Error(`--url inválida: ${flags.url}`);
@@ -109,7 +121,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -175,9 +187,9 @@ async function waitBuild(url,want,minutes){
 }
 
 /** menu → hero → SELECIONAR → name → BORA! → Jogar sozinho → the match (scene.ts window.__partidaPronta). ms to enter. */
-async function entrar(p,base,modo){
-  const t0=Date.now();
-  await p.goto(`${base}/${MODOS[modo]}`,{waitUntil:'load',timeout:90000});
+async function entrar(p,base,modo,dir,extra=''){
+  const t0=Date.now(),q=MODOS[modo];let salaShot=false;
+  await p.goto(`${base}/${extra?(q?`${q}&${extra}`:`?${extra}`):q}`,{waitUntil:'load',timeout:90000});
   await p.waitForSelector('.class-card',{state:'attached',timeout:60000});
   // #confirm says SELECIONAR (locks the hero), then BORA! (the name step, menu-etapa.ts); the dialog opens on the second.
   await p.evaluate(()=>{const n=document.getElementById('nickname');n.value='Gravador';n.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('.class-card').click();const c=document.getElementById('confirm');c.click();if(!document.getElementById('confirmation').open)c.click();});
@@ -189,9 +201,11 @@ async function entrar(p,base,modo){
       // A build older than the signal: the match HUD on screen (smoke-prod's fallback).
       const old=window.__partidaPronta===undefined&&(drawn('.rh-mm-canvas')||drawn('.ch-minimap')||/\bRound \d+\/\d+/.test(document.body.innerText));
       const loading=document.querySelector('.explore-loading')?.textContent?.trim()||'';
-      return {entered:window.__partidaPronta===true||old,said:document.getElementById('explore-error')?.textContent||(/Não foi possível|não baixou/i.test(loading)?loading:'')};
-    }).catch(()=>({entered:false,said:''}));
+      return {entered:window.__partidaPronta===true||old,sala:drawn('.coop-wait:not([hidden])'),said:document.getElementById('explore-error')?.textContent||(/Não foi possível|não baixou/i.test(loading)?loading:'')};
+    }).catch(()=>({entered:false,sala:false,said:''}));
     if(st.entered)return Date.now()-t0;
+    // The waiting room on its way (sala.png, card topo-sem-icone-contagem-exploracao): once, the moment it shows.
+    if(!salaShot&&dir&&st.sala){salaShot=true;await p.screenshot({path:join(dir,'sala.png'),timeout:30000}).catch(()=>{});}
     if(st.said)throw new Error(`não entrou: "${st.said.trim().slice(0,120)}"`);
     if(Date.now()-t0>ENTER_MS)throw new Error(`não entrou em ${ENTER_MS/1000} s`);
     await sleep(1000);
@@ -232,7 +246,7 @@ async function escolher(p,tela){
 
 /** One roteiro on one screen, in a fresh browser: the result for the summary (falha set when it failed). */
 async function gravar(chromium,base,o,roteiro,tela,dir){
-  const t=TELAS[tela],r={roteiro,tela,modo:o.modo,erros:[],quadros:0,duracaoMs:0,entrouMs:0,gifKB:0,escolhas:0,voltas:0,fpsJogo:0,falha:''};
+  const t=TELAS[tela],r={roteiro,tela,modo:o.modo,erros:[],quadros:0,duracaoMs:0,entrouMs:0,gifKB:0,escolhas:0,voltas:0,fpsJogo:0,match:'',falha:''};
   mkdirSync(dir,{recursive:true});
   let browser;
   try{browser=await chromium.launch({args:launchArgs()});}
@@ -248,7 +262,15 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
     const cdp=await ctx.newCDPSession(p).catch(()=>undefined);
-    try{r.entrouMs=await entrar(p,base,o.modo);}
+    if(roteiro==='nomes'){
+      // Modo foto (dev/foto.ts): the page says window.__fotoPronta once the frame is final.
+      try{
+        await p.goto(`${base}/?foto=${FOTO_NOMES}`,{waitUntil:'load',timeout:90000});
+        await p.waitForFunction(()=>window.__fotoPronta===true,null,{timeout:90000});
+        await p.screenshot({path:join(dir,'nomes.png'),timeout:30000});r.foto=FOTO_NOMES;
+      }catch(e){r.erros.push(`foto ${FOTO_NOMES}: ${String(e.message??e).split('\n')[0]}`);await p.screenshot({path:join(dir,'nomes.png'),timeout:30000}).catch(()=>{});}
+    }
+    try{r.entrouMs=await entrar(p,base,o.modo,dir,roteiro==='matches'?'matches=demo':'');}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
     // seconds more on a phone; then the camera's first second out of the GIF.
@@ -266,7 +288,12 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     for(const st of steps){
       if(o.escolher&&await escolher(p,tela))r.escolhas++;
       let go=st.dir;
-      if(roteiro==='uno'){
+      if(roteiro==='matches'&&!r.match){
+        // The flame (hud/perfis.ts .rh-matches) shows at the first match: one tap opens the compact card.
+        const n=await p.evaluate(()=>{const f=document.querySelector('.rh-matches:not([hidden])');if(!f)return '';f.click();return f.textContent??'';}).catch(()=>'');
+        if(n){r.match=n;await sleep(400);await p.screenshot({path:join(dir,'match.png'),timeout:30000}).catch(()=>{});}
+      }
+      if(roteiro==='uno'||roteiro==='matches'){
         // hud/edges.ts: the Uno's arrow is kind 'uno' (taking hits) or 'base' (the mission points at it).
         const arrow=await p.evaluate(()=>{const a=document.querySelector('.rh-edge:not([hidden])[data-kind="uno"]')??document.querySelector('.rh-edge:not([hidden])[data-kind="base"]'),b=a?.getBoundingClientRect();return b&&b.width?{x:b.left+b.width/2,y:b.top+b.height/2}:null;}).catch(()=>null);
         if(arrow){go=toward({x:t.viewport.width/2,y:t.viewport.height/2},arrow);r.voltas++;}

@@ -45,7 +45,7 @@ import {CRATE_BODY_RADIUS,EVOLVE_PRICE,TOWER_REPAIR_PRICE} from '../../rules/ind
 import {payFrom,walletOf} from '../wallet.ts';
 import type {CellRect} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,type FreeBuildRefusal,type FreePiece} from '../../contract/index.ts';
-import {CAR_BUILD_GAP,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
+import {CAR_BUILD_GAP,KIT_PLACE_REACH,UNO_BUILD_CELLS,FREE_PIECE_DEFS,isFreePiece,isTowerKit,pieceCells} from '../../rules/index.ts';
 import {RADIUS,floorOf} from '../../maps/index.ts';
 import type {CalmGate} from '../ninhos/calma.ts';
 import type {TralhaState} from './tralha.ts';
@@ -127,7 +127,7 @@ export function siteRect(plan:BuildPlan,siteId:string):Rect|undefined{
 }
 const defenseRect=(plan:BuildPlan,d:DefenseState):Rect=>d.cell?defenseRectOf(d):siteRect(plan,d.site)??{x:d.x-d.r,y:d.y-d.r,w:2*d.r,h:2*d.r};
 /** True when the player stands within BUILD_REACH of `rect` (the reach rule). */
-export function withinReach(rect:Rect,p:Point):boolean{return rectDistance(rect,p)<=BUILD_REACH;}
+export function withinReach(rect:Rect,p:Point,reach=BUILD_REACH):boolean{return rectDistance(rect,p)<=reach;}
 const near=(ctx:SimContext,playerId:string,rect:Rect)=>{const p=ctx.players.get(playerId);return !!p&&withinReach(rect,p);};
 
 /** `calm` (D-051 mode 'ninhos', ninhos/calma.ts): the gate instead of the intermission. */
@@ -271,7 +271,8 @@ export function buildFree(ctx:SimContext,state:StonewardsState,plan:BuildPlan,pl
     if(car&&rectDistance(rect,car)<car.radius+(piece==='barricada'?UNO_BUILD_CELLS*FREE_CELL:CAR_BUILD_GAP))return {ok:false,reason:'carro'};
     if(taken(ctx,state,rect,free,undefined,playerId))return {ok:false,reason:'ocupado'};
     if(wall?standingPieces(state,piece)>=FREE_PIECE_DEFS[piece].limit:standingDefenses(state).length>=DEFENSE_LIMIT)return {ok:false,reason:'limite'};
-    if(!withinReach(rect,p))return {ok:false,reason:'away'};
+    // barricada-tocar-no-mapa: a kit is placed by a tap on the map, KIT_PLACE_REACH away.
+    if(!withinReach(rect,p,kit?KIT_PLACE_REACH:BUILD_REACH))return {ok:false,reason:'away'};
     const root=wall?DEFENSES[ROOT_DEFENSE]:DEFENSES[piece],price=kit?0:wall?FREE_PIECE_DEFS[piece].price:root.cost,short=wall?'grana' as const:'balance' as const;
     if(wall?walletOf(p)<price:state.balance.units<price)return {ok:false,reason:short};
     if(piece==='muro'&&locks(city,state,cell,car??state.wall,free.moto?.(ctx.tick)))return {ok:false,reason:'tranca'};

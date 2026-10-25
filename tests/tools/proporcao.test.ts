@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,SEAM_MAX_BY_CLIP,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
@@ -86,4 +86,9 @@ test('hurt16 (animacao-receber-dano): the rest → flinch → rest joins are gat
   // a tiny join over a still clip is no seam (SEAM_FLOOR)
   assert.deepEqual(verdict(m(clip(1,1,3,.05))),[]);
   assert.deepEqual(verdict(m(clip(1.06,1,.7))),['x hurt16-S head 1.06 (±4%)']);
+});
+
+// Card BUG-20261025-ORQ-vendedor-push-pull-sn: a seam over SEAM_MAX only for these clips, with the reason in proporcao.mjs.
+test('loop seams accepted over SEAM_MAX: only the vendedor push N and pull S (the leg change, half a stride + mirror)',()=>{
+  assert.deepEqual(SEAM_MAX_BY_CLIP,{'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
 });

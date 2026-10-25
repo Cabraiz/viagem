@@ -1002,7 +1002,9 @@ export class Simulation {
         downed:p.downed,eliminated:p.eliminated,weapons:p.build.weapons,passives:p.build.passives,...handOf(p),skillReadyTick:p.skillReadyTick,x:p.x,y:p.y,grana:walletOf(p),
         // The ride too (bot-loot.ts vehicleGoal): without it a riding bot walked to a parked vehicle the sim never gives
         // a rider, and dithered on top of it (city-room-bots, mapa-175-com-viaduto).
-        ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{})})),
+        ...(p.ride!==undefined?{ride:p.ride,rideUntil:p.rideUntil}:{}),...(p.andar===1?{andar:1 as const}:{}),
+        // uno-caminho-caixas-vender (c): the bots leave the people's crates (bot-loot.ts forAPerson).
+        ...(this.bots.has(p.id)?{bot:true}:{})})),
       ...(this.systems.chaveiro?{objective:this.systems.chaveiro.view(w.tick)}:{}),
       ...(this.systems.banks?{banks:this.systems.banks.view(w.tick)}:{}),
       offers:[],events:[],

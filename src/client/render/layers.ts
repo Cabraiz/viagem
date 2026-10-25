@@ -43,6 +43,8 @@ import {CULL_MARGIN_CSS,inView,type ViewRect} from './cull.ts';
 import {UsableGlow} from './usable-glow.ts';
 import {SHOT_BANDS} from './usable-glow-rules.ts';
 import {carSortDepth,type CarSort} from './chaveiro/car-sort.ts';
+import {MapLabel} from './map-labels.ts';
+import {ENEMY_NAME_GAP_CSS,ENEMY_NAME_H_CSS,enemyNameTag} from './enemy-name-rules.ts';
 
 type Pt={x:number;y:number};
 type Image=Phaser.GameObjects.Image;
@@ -117,6 +119,8 @@ interface EnemyActor{
   /** The soft dark contact shadow under the soles (shadow-rules.ts CONTACT, card inimigos-v5a-padrao) and its width (0: a flyer). */
   contact:Image;contactW:number;
   barBg:Image;barFill:Image;barKey:string;id:string;kind:EnemyKind;elite:boolean;boss:boolean;hp:number;maxHp:number;hitAt:number;
+  /** The profile's name over an elite's or a boss's bar (enemy-name-rules.ts), undefined for the rest. */
+  name:string|undefined;
   /** Imported art id (art/horde-art.ts enemyArtId: the roster id, or the legacy kind's) and the acting loop (phase-look.ts actAnim). */
   art:string;act:string|undefined;
   /** D-051: a nest's sleeper (EnemyView asleep, render/wake-rules.ts): loops `sleep`, plays `wake` when it stops. */
@@ -216,6 +220,8 @@ export const PROMO_SCALE=1.6;
  * pacote-bugs-ux): a prize of an event is never hidden by the scenery. Under critters' bars, balloons, heroes and danger.
  */
 export const PRIZE_LIFT_DEPTH=93900;
+/** The elite's or boss's name ficha (plate, then text +1): over the hp bars (95000/95001). */
+const NAME_DEPTH=95002;
 
 const DAMAGE_STYLE:TextStyle={fontFamily:FONT,fontSize:'24px',fontStyle:'900',color:'#ffffff',stroke:'#2b2233',strokeThickness:5};
 const CRIT_STYLE:TextStyle={fontFamily:FONT,fontSize:'32px',fontStyle:'900',color:'#ffd84a',stroke:'#3a2440',strokeThickness:6};
@@ -332,6 +338,9 @@ export class HordeRenderer{
   private arsenal:ArsenalFx;
   private now=0;
   private ui=1;
+  /** Name fichas of the elites and bosses drawn (by enemy id), and the ids drawn this frame. */
+  private names=new Map<string,MapLabel>();
+  private namesSeen=new Set<string>();
   /** options.actorScale, read once per frame (1 on the island and the endless map). */
   private body=1;
   /** contorno-usavel-wc3: the Warcraft 3 gold outline on what can be picked up (crates, items, vehicles) and on the player's shot. */
@@ -398,7 +407,7 @@ export class HordeRenderer{
     // The contact shadow: over the silhouette (darkest at the soles), still under every body.
     const contact=()=>this.track(contactImage(scene,-9978));
     const showText=(o:{text:Text},active:boolean)=>{o.text.setVisible(active).setActive(active);if(!active)o.text.setAlpha(1).setScale(1).setRotation(0);};
-    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,
+    this.enemies=new KeyedPool<EnemyActor>(()=>({image:image(enemyTexture('bebado'))(),sil:silhouette(),contact:contact(),contactW:0,barBg:bar(FX.bar,95000),barFill:bar(FX.barFill,95001),barKey:FX.bar,id:'',kind:'bebado',elite:false,boss:false,hp:1,maxHp:1,hitAt:-1e9,name:undefined,
       px:0,py:0,nx:0,ny:0,x:0,y:0,phase:0,flashAt:-1e9,flashing:false,lit:false,litFlip:false,culled:false,screenX:NaN,flip:false,moving:false,ax:NaN,ay:NaN,walking:false,bossPhase:1,look:LOOK_NONE,sugar:false,prime:false,tex:enemyTexture('bebado'),tint:undefined,art:'',act:undefined,asleep:false,fit:1,accent:undefined}),showEnemy);
     this.pickups=new KeyedPool<PickupActor>(()=>({image:image(pickupLook('xp'))(),shadow:shadow(),kind:'xp',look:pickupLook('xp'),promo:false,value:1,born:0,phase:0,px:0,py:0,nx:0,ny:0,x:0,y:0,
       k:1,arsenal:false,id:'',float:false,spin:0,spunAt:0,hidden:false}),showActor);
@@ -475,7 +484,9 @@ export class HordeRenderer{
     this.arsenal.begin(timeMs,this.body,this.reduced);
     this.drawTelegraphs();
     this.view=this.scene.cameras.main.worldView;this.alsoView=this.options.alsoView?.();this.cullMargin=CULL_MARGIN_CSS*this.css();this.culledNow=0;
+    this.namesSeen.clear();
     this.enemies.forEach(this.drawEnemy);
+    for(const [id,label] of this.names)if(!this.namesSeen.has(id)){label.destroy();this.names.delete(id);}
     this.pickups.forEach(this.drawPickup);
     this.projectiles.forEach(this.drawProjectile);
     this.glow.end();
@@ -549,6 +560,7 @@ export class HordeRenderer{
     this.enemies.clear();this.pickups.clear();this.projectiles.clear();this.telegraphs.clear();
     this.numberByTarget.clear();this.recentHits.clear();this.numbers.clear();this.pops.clear();this.poofs.clear();this.stars.clear();this.bubbles.clear();this.warnings.clear();this.deaths.clear();this.lastDeathPopAt=-Infinity;
     this.art.destroy();this.arsenal.destroy();this.glow.destroy();
+    for(const label of this.names.values())label.destroy();this.names.clear();
     for(const object of this.objects)object.destroy();
     this.objects.length=0;
   }
@@ -590,6 +602,7 @@ export class HordeRenderer{
     if(used.fresh||!(Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)<=SNAP_UNITS))a.ax=NaN;
     a.moving=ENEMY_WALK.leash?leashMoving(a,view.x,view.y):Math.abs(view.x-a.nx)+Math.abs(view.y-a.ny)>.002;
     a.nx=view.x;a.ny=view.y;a.hp=view.hp;a.maxHp=view.maxHp;a.boss=!!view.boss||kind==='chefe';a.bossPhase=kind==='chefe'?view.phase??1:1;
+    a.name=enemyNameTag(view.kind,!!view.elite,a.boss);
   }
   private syncPickup(view:PickupView){
     const used=this.pickups.use(view.id),a=used.item,own=this.arsenal.pickupLook(view);
@@ -869,6 +882,7 @@ export class HordeRenderer{
     castContact(a.contact,a.image,q.x,q.y,a.contactW,true);
     // Bars only where they matter: recently hit, elite, boss or the tapped target.
     if(barVisible(a,now,a.id===this.targetId,this.recentHits.has(a.id)))this.drawBar(q.x,q.y-this.barLift(a),a);
+    if(a.name)this.drawName(a,q.x,q.y-this.barLift(a));
     else if(a.barBg.visible){a.barBg.setVisible(false);a.barFill.setVisible(false);}
     if(a.id===this.targetId)this.drawRing(q.x,q.y,art.width*size*fit*.8*body);
     if(a.look!==LOOK_NONE||a.sugar||a.prime)this.drawPhase(a,q.x,q.y,eyeX,eyeY,size*fit);
@@ -981,6 +995,17 @@ export class HordeRenderer{
   private ellipseAxes={rx:0,ry:0};
   private sparkle:SparkleFrame={dx:0,dy:0,r:0,alpha:0};
   private barLift(a:EnemyActor){return ENEMY_ART[a.kind].bar*(a.elite?ELITE_SCALE:1)*a.fit*this.enemyBody;}
+  /**
+   * The profile's name (card nome-inimigo-rede-social, etapa 7) in a map ficha over the bar of an elite or a boss: constant
+   * screen size, its bottom ENEMY_NAME_GAP_CSS over the bar's top. One ficha per named enemy on screen, dropped with it.
+   */
+  private drawName(a:EnemyActor,x:number,barTop:number){
+    let label=this.names.get(a.id);
+    if(!label){label=new MapLabel(this.scene,a.name!);this.names.set(a.id,label);}
+    const css=this.css(),border=3*(a.elite&&!a.boss?Math.sqrt(this.ui/this.enemyBody):1)*this.enemyBody;
+    label.setText(a.name!).anchor(x,barTop-border-(ENEMY_NAME_H_CSS+ENEMY_NAME_GAP_CSS)*css,NAME_DEPTH).draw(this.scene.cameras.main.zoom,true);
+    this.namesSeen.add(a.id);
+  }
   /** Two pooled images per enemy (frame + cropped tinted fill): no Graphics triangulation per frame. */
   private drawBar(x:number,y:number,a:EnemyActor){
     // Bars stay proportional to the body, or they hide the horde (× the actor scale in the city; sqrt(ui) has it once).

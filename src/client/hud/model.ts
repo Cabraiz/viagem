@@ -59,6 +59,18 @@ export interface HudPart {
 
 export const clamp01=(value:number)=>Number.isFinite(value)?Math.min(1,Math.max(0,value)):0;
 export const secondsLeft=(untilTick:number,tick:number)=>Math.max(0,Math.ceil((untilTick-tick)/SIM_HZ));
+/**
+ * The time to explore at `tick` (card topo-sem-icone-contagem-exploracao): the whole seconds left (120, 119…), or
+ * undefined outside it. Both windows count, as the big clock does (minerva.ts): the Minuto de Minerva at the start (its
+ * mission is the boxes too, the user's print) and each time to explore after a wave. The top's clock shows this number
+ * in place of the chaveiro's m:ss.
+ */
+export type ExploraWindows=Pick<HudContext,'minervaAteTick'|'explora'>;
+export function exploraLeft(tick:number,w:ExploraWindows|undefined):number|undefined{
+  if(w?.minervaAteTick!==undefined&&tick<w.minervaAteTick)return secondsLeft(w.minervaAteTick,tick);
+  const e=w?.explora;
+  return e&&tick>=e.from&&tick<e.until?secondsLeft(e.until,tick):undefined;
+}
 /** One clock format for a caído everywhere (team strip, edge arrow, map ficha): "27 s" (design onda 6 M2, UX aresta 1). */
 export const secondsText=(seconds:number)=>`${seconds} s`;
 /**

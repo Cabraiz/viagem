@@ -39,6 +39,7 @@ import {icon} from '../ui/icon.ts';
 import {wallOf} from './camp.ts';
 import {secondsLeft} from './model.ts';
 import {chaveiroExtras} from './chaveiro-extras.ts';
+import {crateExtras} from './crate-extras.ts';
 import {vehicleLine} from '../../rules/index.ts';
 import {bankExtras} from './bancos.ts';
 import {objectiveOf,RouteMemo,cityAssetOf,cityMapInfo,trackMouths,screenCorners,hornSeconds,cityEdgeTargets,layoutCityEdges,cityMustPoint,relocateCityTargets,WALL_HIT_MS,UNO_HIT_MS,
@@ -171,6 +172,7 @@ export class RescueBoard {
       if(e.type==='downed'){
         // What got you (UX-voce-e-dano f) left the banner: it is the caído's first line over the body.
         const kind=this.hud.tally.causes.last.get(e.player),line=kind?causeCopy(kind).line:undefined;
+        if(e.player===this.net.id)this.scene()?.fallenFrom(kind);
         if(line)this.scene()?.say(e.player,line);else this.say(e.player,'down',e.eventId);
       }else if(e.type==='revived'){
         this.pings.forget(e.player);
@@ -276,7 +278,7 @@ export class RescueBoard {
       selfId:net.id,self:scene.ghosting()?.at??net.predicted,players,states:this.states,enemies:net.feed.enemies.values(),structures:this.last?.structures??[],
       corners:screenCorners(locate,focus,viewportSize()),wallHitAt:this.wallHitAt,
       // D-047: the chaveiro's route ahead, delivery, car and moto (route and stops kept between keyframes).
-      extras:[...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
+      extras:[...crateExtras(this.last?.pickups),...chaveiroExtras(this.chaveiroRoute.fill(objectiveOf(this.last))),...bankExtras(this.last?.banks)]});
   }
   /** What the player sees: the viewport minus the HUD over it, read twice a second and on every layout change. */
   private seen(now:number,zones:ScreenZones){

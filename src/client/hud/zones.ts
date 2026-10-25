@@ -274,7 +274,8 @@ export function measureZoneInput(doc:Document=document,windows:readonly string[]
   const phonePortrait=(hud as HTMLElement|null)?.dataset.hud==='fone'&&orientationOf(viewport)==='portrait';
   return {
     viewport,
-    status:[...all('.explore-camera button'),rectOf(q('.explore-config')),...all('.rh-top>*'),...(phonePortrait?[minimap]:[])],
+    // The matches' flame (hud/perfis.ts) sits under the gear on the phone: the announcement slot starts below it.
+    status:[...all('.explore-camera button'),rectOf(q('.explore-config')),rectOf(q('.rh-matches')),...all('.rh-top>*'),...(phonePortrait?[minimap]:[])],
     // The phone's fan lives in the band (.rh-top>.rh-team, a status row above): it is not the team column nor its floor.
     team:union(all('.rh-member:not(.rh-top .rh-member)')),joystick:rectOf(q('.explore-stick')),skill:rectOf(q('#coop-attack'))??rectOf(q('#coop-sos')),
     emote:rectOf(q('.fun-emote-toggle')),chip:rectOf(q('.rh-offer-chip')),cida:rectOf(q('.rh-cida-btn')),safe:hud?safeInsets(hud):undefined,

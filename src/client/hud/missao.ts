@@ -2,9 +2,11 @@
  * The mission line (card NEW-20261023-ORQ-inicio-no-uno-caixas-120, the user 23/10: "começa o jogo, a pessoa não sabe
  * o que fazer"): one short sentence at a time, in a big band for MISSION_BIG_MS when it changes, then small and fixed
  * while it holds; both are rows of the announcement slot right under the clock (never over it, whatever the slot's top).
- *  - The minuto de Minerva: "Busque o máximo de caixas e volte ao Uno antes do tempo acabar.";
- *  - each time to explore after a wave: "Você tem 2 minutos para buscar mais caixas. Vá em dupla." (the window's real
- *    length; the Fear runs then too, the user 24/10: explore in pairs or come back to the Uno, card fear-escuridao-sozinho);
+ *  - The minuto de Minerva: "Junte caixas e volte ao Uno.";
+ *  - each time to explore after a wave: "Junte mais caixas, em dupla." (the Fear runs then too, the user 24/10: explore
+ *    in pairs or come back to the Uno, card fear-escuridao-sozinho);
+ *  Each line fits one row on a 393 px phone at the band's size (card topo-sem-icone-contagem-exploracao item 6): the top's
+ *  clock counts the seconds (120, 119…), so the lines no longer say the time;
  *  - the last RETURN_SECONDS of either: "Volte ao Uno." (urgent; the Uno's edge arrow too, hud/rescue.ts);
  *  - after the Minerva, once a run, only while the player has not done it: "Ponha as torres perto do Uno." while a kit
  *    de torre is in the inventory (at most TOWERS_MAX_S), then "Eles vão atrás do Uno. Defenda." (big, DEFEND_MS, then gone).
@@ -22,19 +24,12 @@ export const TOWERS_MAX_S=30;
 export const DEFEND_MS=4000;
 
 export const MISSION_TEXT=Object.freeze({
-  minerva:'Busque o máximo de caixas e volte ao Uno antes do tempo acabar.',
+  minerva:'Junte caixas e volte ao Uno.',
+  explora:'Junte mais caixas, em dupla.',
   volta:'Volte ao Uno.',
   torres:'Ponha as torres perto do Uno.',
   defenda:'Eles vão atrás do Uno. Defenda.',
 });
-/** "2 minutos", "1 minuto", "1 minuto e meio", "45 segundos": a window's length as people say it. */
-export function durationText(seconds:number):string{
-  const s=Math.max(1,Math.round(seconds));
-  if(s%60===0)return s===60?'1 minuto':`${s/60} minutos`;
-  if(s%60===30&&s>60)return `${Math.floor(s/60)} minuto${s>=120?'s':''} e meio`;
-  return `${s} segundos`;
-}
-export const exploreText=(seconds:number)=>`Você tem ${durationText(seconds)} para buscar mais caixas. Vá em dupla.`;
 
 export type MissionKey='minerva'|'explora'|'volta'|'torres'|'defenda';
 export interface MissionInput {
@@ -83,7 +78,7 @@ export class MissionTracker {
     }
     if(explora){
       const back=(explora.until-tick)/SIM_HZ<=RETURN_SECONDS;
-      return this.show(back?'volta':'explora',tick,back,explora.until,back?undefined:exploreText((explora.until-explora.from)/SIM_HZ));
+      return this.show(back?'volta':'explora',tick,back,explora.until);
     }
     // After the Minerva, once: the towers (only with a kit in hand), then "Eles vão atrás do Uno. Defenda.".
     if(this.sawMinerva&&this.after==='antes'){this.after=input.towerKit?'torres':'defenda';this.afterSince=tick;}

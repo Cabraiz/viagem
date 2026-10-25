@@ -1,0 +1,7 @@
+seed 1, 3 bots: min | vivas | p0 vê | p0 passou (acum) | p0 abriu | bots abriram | p0 já viu (acum)
+  1 | 39 | 18 | 8 | 7 | 6 | 51 | andou 205 u em (118,89)
+  2 | 37 | 16 | 11 | 10 | 10 | 56 | andou 421 u em (15,113)
+  3 | 36 | 16 | 15 | 14 | 13 | 62 | andou 577 u em (32,50)
+  4 | 37 | 16 | 19 | 17 | 14 | 66 | andou 769 u em (46,55)
+  5 | 37 | 16 | 22 | 21 | 14 | 70 | andou 980 u em (86,98)
+  6 | 42 | 20 | 23 | 21 | 14 | 74 | andou 1035 u em (77,145)

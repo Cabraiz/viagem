@@ -7,8 +7,8 @@
  },
  "summary": {
   "files": 3165,
-  "bytes": 2235696620,
-  "liteBytes": 781633000,
+  "bytes": 2235690364,
+  "liteBytes": 781630828,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28657,13 +28657,13 @@
    "psnr": 39.7,
    "shownPsnr": 44.3
   },
-  "sprites/aposentado.pull16-n.f86d2a03069a.webp": {
-   "source": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
-   "lite": "fb4e7c6660151965f612c00c47b25b0c662597261718a3d03f83b7547ed6255f",
-   "bytes": 69724,
-   "liteBytes": 37386,
-   "psnr": 39.1,
-   "shownPsnr": 42.1
+  "sprites/aposentado.pull16-n.437ec276c005.webp": {
+   "source": "437ec276c0056a80b51a93c8232590097201b50277c26cd723df72a02eb4d977",
+   "lite": "85754863b5469c3a80210d6aa533c77d9846729e715dd42b3738bc4a7a8b3e09",
+   "bytes": 68380,
+   "liteBytes": 36968,
+   "psnr": 39.3,
+   "shownPsnr": 42.2
   },
   "sprites/aposentado.pull16-nw.4ec66f679327.webp": {
    "source": "4ec66f6793271f093656a0a19fe59dab5148e49f8fc9a2bf29662ed0dd9ffe2a",
@@ -28673,13 +28673,13 @@
    "psnr": 39.9,
    "shownPsnr": 41.4
   },
-  "sprites/aposentado.pull16-s.2ea61d40ab73.webp": {
-   "source": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc",
-   "lite": "c0a138edd3f71136152e21c8d4f377826a4e9c56f943f62573fa6aa586cc7231",
-   "bytes": 53056,
-   "liteBytes": 30164,
-   "psnr": 38.7,
-   "shownPsnr": 43.3
+  "sprites/aposentado.pull16-s.f7b7862398bd.webp": {
+   "source": "f7b7862398bd485759baceddda82061d8ec2814e8dc6cfa6b27e7b521f66c7bb",
+   "lite": "5e0636f36f0eac20efa590c04501171332cfd61ce4f7f6ea11ecac6257286c7d",
+   "bytes": 52952,
+   "liteBytes": 29972,
+   "psnr": 38.9,
+   "shownPsnr": 43
   },
   "sprites/aposentado.pull16-se.7d5a96f3ff99.webp": {
    "source": "7d5a96f3ff9944aabc77d869c5b395ecf289abe2f53b5f21ec667aa7c50b2b53",
@@ -28697,11 +28697,11 @@
    "psnr": 40.1,
    "shownPsnr": 42.8
   },
-  "sprites/aposentado.push16-n.9592e9d1b0fb.webp": {
-   "source": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f",
-   "lite": "6577256429c82d4f6fdb4376ba4bc20953682bf785d869c220c0962d8b67bd97",
-   "bytes": 54522,
-   "liteBytes": 31290,
+  "sprites/aposentado.push16-n.a9faad5d4075.webp": {
+   "source": "a9faad5d4075db93bcf5e3494279795172107d81b76b4acbd7b47a8ccccf015d",
+   "lite": "eb18b8ef8f229886917c810bfb895c81dd78cdac204775681ad97b9b86018206",
+   "bytes": 54426,
+   "liteBytes": 31108,
    "psnr": 40.8,
    "shownPsnr": 43.2
   },
@@ -31993,13 +31993,13 @@
    "psnr": 36.8,
    "shownPsnr": 40.2
   },
-  "sprites/vendedor-praia.pull16-s.ed34a837b65e.webp": {
-   "source": "ed34a837b65e7e6b91ed9f54ffe409c7f4728577d8020f3b033891cf86042e98",
-   "lite": "d14e37bd48776d4428834e0b6429b9a2f86fd5592b9e2d7b55be21f8f6ea8d02",
-   "bytes": 55230,
-   "liteBytes": 31588,
-   "psnr": 36.5,
-   "shownPsnr": 40
+  "sprites/vendedor-praia.pull16-s.06d2c0e5e442.webp": {
+   "source": "06d2c0e5e442cc066e919cad8d45d06a2dbb7b638fa81bd73b67da4f32e027c3",
+   "lite": "da63e6c91b5738cad868a93e4edb6b4e91128303fb729dfffaca4046df934269",
+   "bytes": 54420,
+   "liteBytes": 31182,
+   "psnr": 36.4,
+   "shownPsnr": 40.1
   },
   "sprites/vendedor-praia.pull16-se.df2823bedab2.webp": {
    "source": "df2823bedab2c0afa72c2f28320243b74528abff62b3ca94d80c844a0eda4366",
@@ -32017,13 +32017,13 @@
    "psnr": 37,
    "shownPsnr": 40.1
   },
-  "sprites/vendedor-praia.push16-n.e4f244d22f49.webp": {
-   "source": "e4f244d22f49514ec1c0d71c27a73275f048ee33bb73673b5c27fd0b3742f7f7",
-   "lite": "3c9de4a3317ef944367cb8459c1d58b3e31a18021cad0da3fee6f3bdf0fe4db3",
-   "bytes": 61558,
-   "liteBytes": 35296,
+  "sprites/vendedor-praia.push16-n.779da9c3b85b.webp": {
+   "source": "779da9c3b85b6f7094aa3b6d4b223b03f77e7f4868b27f94b86ba82fcba72491",
+   "lite": "8c8c0abf2e23200e601aff7c4e79ca97e9b7f4847e08d54e38ab03b39a233f6a",
+   "bytes": 57656,
+   "liteBytes": 34322,
    "psnr": 36.8,
-   "shownPsnr": 39.5
+   "shownPsnr": 39.6
   },
   "sprites/vendedor-praia.push16-nw.359c7f8056c5.webp": {
    "source": "359c7f8056c53d37bc6362707b83e44c5d3b9f3c0bfd8896a2443b9617fe024a",

@@ -174,6 +174,11 @@ export class ChaveiroRenderer {
     if(!this.uno&&this.scene.textures.exists(UNO_KEY))this.uno=this.scene.add.image(0,0,UNO_KEY,0).setOrigin(.5,UNO_FOOT).setName('chaveiro-uno');
     return this.uno;
   }
+  /** The Uno as drawn (world px), so HUD cards keep clear of it (perfil-nao-cobre); undefined while hidden or not loaded. */
+  unoWorldBox(){
+    const u=this.uno;if(!u?.visible)return undefined;
+    const b=u.getBounds();return {x:b.x,y:b.y,width:b.width,height:b.height};
+  }
 
   /** Card uno-bloqueio-corpo: the car as drawn on the last frame (car-sort.ts), undefined without one. */
   carSort():CarSort|undefined{return this.sort;}

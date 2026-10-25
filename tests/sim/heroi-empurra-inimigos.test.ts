@@ -1,7 +1,7 @@
 /**
  * Card NEW-20261025-ORQ-heroi-empurra-inimigos (user, 25/10: "deveria ter hitbox e não eu simplesmente passando por
  * dentro deles, nem que seja empurrando eles"): heroes and awake enemies are solid (maps/bodies.ts, sim/bodies.ts).
- *  - a hero walking into a common body pushes it and keeps most of the walk; an elite gives less, the boss almost
+ *  - a hero walking into a common body pushes it and keeps almost all the walk; an elite about half, the boss almost
  *    nothing (but something); the hero never ends a step inside a body;
  *  - the phone's replay (maps reconcile with clock.bodies) takes the very same steps as the room;
  *  - in a real run (enemy AI, crowd push, the end-of-tick pass) no solid body stands inside a hero after any tick, a
@@ -54,16 +54,16 @@ const gap=(p:Point,e:EnemyState)=>Math.hypot(p.x-e.x,p.y-e.y)-RADIUS-e.radius;
 
 test('masses: a common gives way, an elite less, the boss almost nothing; never all of it',()=>{
   const common:Body={x:0,y:0,radius:.37},big:Body={x:0,y:0,radius:.6},elite:Body={x:0,y:0,radius:.5,elite:true},boss:Body={x:0,y:0,radius:1.04,boss:true};
-  assert.ok(heroShare(common)<.3,`common ${heroShare(common)}`);
+  assert.ok(heroShare(common)<.12,`common ${heroShare(common)}`);
   assert.ok(heroShare(big)>heroShare(common),'a bigger common is heavier');
-  assert.ok(heroShare(elite)>.55&&heroShare(elite)<.85,`elite ${heroShare(elite)}`);
+  assert.ok(heroShare(elite)>.3&&heroShare(elite)<.6,`elite ${heroShare(elite)}`);
   assert.equal(heroShare(boss),HERO_SHARE_MAX,'the boss: the cap');
   assert.ok(bodyMass(boss)>bodyMass(elite)&&bodyMass(elite)>bodyMass(common));
 });
 
 for(const [name,setup,min,max] of [
-  ['common',(e:EnemyState)=>e,.6,.85],
-  ['elite',(e:EnemyState)=>{e.elite=true;e.radius*=1.35;return e;},.15,.5],
+  ['common',(e:EnemyState)=>e,.85,.97],
+  ['elite',(e:EnemyState)=>{e.elite=true;e.radius*=1.35;return e;},.4,.7],
   ['boss',(e:EnemyState)=>{e.boss=true;e.radius=1.04;return e;},.05,.15],
 ] as const){
   test(`room: walking into a still ${name}, the hero pushes it, never stands inside it, and keeps ${min}..${max} of the walk; the phone replays the same`,()=>{

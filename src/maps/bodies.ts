@@ -26,8 +26,11 @@ type FloorPoint=Point&{andar?:1};
 /**
  * Masses (a hero is 1): a common body of BODY_REF_RADIUS is BODY_MASS.common, bigger or smaller ones by their area
  * (clamped to BODY_AREA_MIN..MAX), an elite BODY_MASS.elite and the boss BODY_MASS.boss, by the same area.
+ * Bench (CI, chaveiro/manual/ninhos, 16 seeds; main 8072e25 1p 1/16, 3p 5/16, 6p 8/16): common .35 / elite 1.6 gave
+ * 1/4/5 (the team caught in the crowd), .15 / .8 gave 0/6/5, these .08 / .4 give 1/6/7: a common barely slows the
+ * hero (still never walked through), an elite about halves the walk, the chefão holds it.
  */
-export const BODY_MASS=Object.freeze({common:.35,elite:1.6,boss:9});
+export const BODY_MASS=Object.freeze({common:.08,elite:.4,boss:9});
 /** A common enemy's radius (the bêbado's .32 × ENEMY_RADIUS_SCALE 1.15). */
 export const BODY_REF_RADIUS=.37;
 export const BODY_AREA_MIN=.5,BODY_AREA_MAX=3;

@@ -99,11 +99,11 @@ test('walking into a strip of critters, the frames pull the prediction less than
     assert.ok(pushing>40,`the hero pushed bodies for ${pushing} ticks`);
     const p95=(a:number[])=>[...a].sort((x,y)=>x-y)[Math.floor(a.length*.95)]??0;
     console.log(`[corpos] p95 with bodies ${p95(snaps).toFixed(3)} u, walk-through ${p95(ghostSnaps).toFixed(3)} u`);
-    // Measured (island, the hero's 2× walk, 0.3 u a step; 4 rows of 40 immortal critters, 60 ms each way): with the
-    // bodies mean 0.049 u, p95 0.17; walking through 0.091 / 0.18. What is left is the critters' own walk toward the
-    // hero since the frame (the copies stand still), mostly backward: a slower walk the scene's fade absorbs.
+    // Measured (island, the hero's 2× walk, 0.3 u a step; 4 rows of 40 immortal critters, 60 ms each way; BODY_MASS
+    // common .08): with the bodies mean 0.010 u, p95 0.031; walking through 0.019 / 0.049 (at common .35 it was 0.049 /
+    // 0.17). What is left is the critters' own walk toward the hero since the frame (the copies stand still).
     assert.ok(mean(snaps)<.65*mean(ghostSnaps),`the bodies' replay pulls less than walking through (${mean(snaps)} vs ${mean(ghostSnaps)})`);
-    assert.ok(p95(snaps)<=p95(ghostSnaps)&&p95(snaps)<=.2,`95 % of the frames pull the hero at most ${p95(snaps)} u`);
+    assert.ok(p95(snaps)<=p95(ghostSnaps)&&p95(snaps)<=.08,`95 % of the frames pull the hero at most ${p95(snaps)} u`);
   }finally{
     client.leave();
     (performance as any).now=realNow;

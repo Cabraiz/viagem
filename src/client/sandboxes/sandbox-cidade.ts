@@ -345,7 +345,8 @@ class CitySandbox extends Phaser.Scene {
     if(arsenal){queueHordeArt(this);if(!base)queueBaseArt(this);}
     // muralha=: the junk wall sheets (base-art BASE_ART.muralha / .pilar), like the match; objetivo=1: the chaveiro's
     // painted moto and the built muro's sheets (BASE_ART.moto / .muro, card trocar-procedurais-por-arte).
-    if((muralhaShot||objective)&&!base&&!arsenal)queueBaseArt(this);
+    // kit=barricada (barricada-tocar-no-mapa): its ghost is the junk wall's art too.
+    if((muralhaShot||objective||kitParam==='barricada')&&!base&&!arsenal)queueBaseArt(this);
     // ninhos=1: the critters' art (sleep and wake are art actions).
     if(ninhos&&!arsenal)queueHordeArt(this);
   }
@@ -715,11 +716,15 @@ class CitySandbox extends Phaser.Scene {
   /** `kit=<peça>`: the kit's ghost (hud/kit-place KitPlace, the room's footprint) beside the kit's obra. */
   private mountKit(){
     const c=this.asset.cell,cell=CITY_BUILD_CELL,projector=this.cityProjector();
-    this.fortify??=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:()=>undefined});
+    // barricada-tocar-no-mapa: a kit de torre's ghost is the tower's own art (the sandbox's tower renderer).
+    this.fortify??=new FortifyRenderer(this,{projector,reduced:reducedMotion,cell,playerAt:()=>undefined,
+      towerGhost:g=>g?this.towers?.setGhost({...g,kind:g.kind as TowerKind})??false:(this.towers?.setGhost(null),false)});
     const obra={x:this.at.x+KIT_OBRA.dx*c,y:this.at.y+KIT_OBRA.dy*c};
     const structures=isTowerKit(kitParam!)?[{id:'kit-obra',kind:kitParam!,x:obra.x,y:obra.y,hp:100}]:[];
     const place=new KitPlace(()=>0);
-    place.start(0,`kit:${kitParam}`,undefined,cell);
+    place.start(0,`kit:${kitParam}`);
+    // barricada-tocar-no-mapa: `giro=1` shows the barricade turned (the drag's other axis).
+    if(params.get('giro')==='1')place.turn();
     place.point(params.get('fantasma')==='ocupado'?obra:{x:this.at.x+KIT_GHOST.dx*c,y:this.at.y+KIT_GHOST.dy*c},cell);
     this.fortify.setGhost(place.ghost({cell,structures}));
   }

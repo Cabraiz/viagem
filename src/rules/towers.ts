@@ -169,7 +169,9 @@ export const FREE_PIECE_DEFS:Readonly<Record<FreePiece,FreePieceDef>>=Object.fre
   // enemies (they walk around it and bash it only when it shuts them off the car). R$ 5 a square: the old 2×1's price per cell.
   // NEW-20261022-ORQ-barricada-2x (user, 22/10): a square is BARRICADA_CELLS × BARRICADA_CELLS cells (2×2, twice as wide,
   // long and tall as before); its life stays 200 (one square, just bigger).
-  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,2]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
+  // NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "o cubo laranja está maior do que a barricada"): the piece is
+  // what the art is, a wall 2 cells long and 1 thick, turned by rot (0 along x, 1 along y).
+  barricada:Object.freeze({id:'barricada',name:'Barricada',footprint:Object.freeze([2,1]) as readonly [number,number],price:5,hp:200,limit:40,buildSeconds:1,blocks:true,drag:1}),
 });
 /**
  * NEW-20261021-ORQ-barricada-construir, in build-grid cells (FREE_CELL): no barricada within UNO_BUILD_CELLS of the
@@ -187,8 +189,14 @@ export const UNO_BUILD_CELLS=3,UNO_ALERT_CELLS=2,UNO_ALERT_SECONDS=6;
 export const TRALHA_GROUPS=6,TRALHA_GROUP_CELLS=5,COLETAR_SECONDS=1.5,DESTRUIR_PIX=2,CARREGA_MAX=1;
 /** How far (u, from the square's edge) a hero reaches a barricada square to collect or destroy it. */
 export const TRALHA_REACH=3;
+/**
+ * NEW-20261025-ORQ-barricada-tocar-no-mapa (user, 25/10: "não gostei de eu ter que me mexer para pôr a barricada"): a kit
+ * from the inventory (a barricada, a kit de torre) is placed by a tap on the map, this far (u) from the hero to the
+ * footprint's edge, not BUILD_REACH. The nest keep-out (CAR_NEST_KEEP_OUT) still holds, so no nest is shut from afar.
+ */
+export const KIT_PLACE_REACH=8;
 export const isFreePiece=(v:unknown):v is FreePiece=>v==='muro'||v==='barricada';
-/** NEW-20261022-ORQ-barricada-2x: the side of a barricada square in build-grid cells (its footprint is square). */
+/** NEW-20261022-ORQ-barricada-2x: a barricada's length in build-grid cells (barricada-tocar-no-mapa: 1 cell thick). */
 export const BARRICADA_CELLS=FREE_PIECE_DEFS.barricada.footprint[0];
 /** A piece's cells W×H at `rot` (towers: their size square, whatever the rot). */
 export function pieceCells(piece:BuildPiece,rot:0|1=0):readonly [number,number]{

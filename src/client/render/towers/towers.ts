@@ -345,7 +345,28 @@ export class TowerRenderer {
     }
     return moved;
   }
+  /** barricada-tocar-no-mapa: the kit de torre's ghost, its own art (the ready row) translucent and tinted. */
+  private ghostImg?:Phaser.GameObjects.Image;
+  /**
+   * The ghost of a kit de torre at world (x,y) (its footprint's centre), tinted `color`; null hides it. False when its
+   * art is not loaded (it is asked for; the caller draws the box meanwhile).
+   */
+  setGhost(g:{kind:TowerKind;x:number;y:number;color:number}|null):boolean{
+    const art=g?towerArt(g.kind):undefined,file=art?.base;
+    if(!g||!file||!this.scene.textures.exists(towerBaseKey(g.kind))){
+      this.ghostImg?.setVisible(false);
+      if(g&&file)this.o.needArt?.(g.kind);
+      return false;
+    }
+    const img=this.ghostImg??=this.scene.add.image(0,0,'__DEFAULT').setName('torre-fantasma');
+    const p=this.o.world.project(g.x,g.y,0,this.p),anchor=file.anchor??[.5,.85],view=this.o.world.view();
+    img.setTexture(towerBaseKey(g.kind)).setOrigin(anchor[0],anchor[1]).setPosition(p.x,p.y).setScale(this.artScale/textureRatio(file))
+      .setFrame(baseFrame('pronta',view,Math.max(1,Math.min(4,file.views??4)),Array.isArray(file.rows)?file.rows:undefined))
+      .setAlpha(.72).setTint(g.color).setDepth(1e6+1).setVisible(true);
+    return true;
+  }
   destroy(){
+    this.ghostImg?.destroy();this.ghostImg=undefined;
     for(const t of this.towers.values())this.drop(t);
     this.towers.clear();this.glow?.destroy();this.bake.destroy();this.ground.destroy();this.shade.destroy();
     for(const img of this.fxImages)img.destroy();this.fxImages.length=0;

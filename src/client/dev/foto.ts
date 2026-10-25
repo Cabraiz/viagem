@@ -76,6 +76,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'inventario':{sandbox:'hud',query:'state=wave&frozen=1&inv=meio',descricao:'D-051: inventário com 3 itens (arma na mão, coxinha ×2)'},
   'kit-hud':{sandbox:'hud',query:'state=wave&frozen=1&inv=kit&kit=1',descricao:'torre-pela-caixa: o kit Morteiro (roxa) e o de muro ×6 nos slots, a barra "pôr torre" aberta'},
   'kit-obra':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro',descricao:'torre-pela-caixa: o Morteiro do kit em obra e o fantasma verde do próximo'},
+  'kit-barricada':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada',descricao:'barricada-tocar-no-mapa: o fantasma da barricada = a própria arte (amarelo) sobre a pegada 2×1'},
+  'kit-barricada-giro':{sandbox:'cidade',query:'mapa=real&torres=1&kit=barricada&giro=1',descricao:'barricada-tocar-no-mapa: o mesmo fantasma girado (arrastou no outro eixo)'},
   'kit-recusa':{sandbox:'cidade',query:'mapa=real&torres=1&kit=morteiro&fantasma=ocupado',descricao:'torre-pela-caixa: o fantasma vermelho em cima da obra'},
   'inventario-cheio':{sandbox:'hud',query:'state=wave&frozen=1&inv=cheio',descricao:'D-051: 6 slots cheios e o botão Trocar'},
   // D-051 (ninhos-rounds-fora): the nests mode's top, in a fight and in a calm (no "Onda N", no "Intervalo").

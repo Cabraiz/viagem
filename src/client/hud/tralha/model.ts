@@ -5,7 +5,7 @@
  *   and red already mean ally and enemy) and the two circles COLETAR / DESTRUIR over it; the car's red alert glow wins;
  * - the requests sent and the room's answers in words, and the coleta's bar (until, in sim ticks).
  */
-import {BARRICADA_CELLS,COLETAR_SECONDS,DESTRUIR_PIX} from '../../../rules/index.ts';
+import {COLETAR_SECONDS,DESTRUIR_PIX,pieceCells} from '../../../rules/index.ts';
 import {SIM_HZ} from '../../../contract/index.ts';
 import type {FortStructure} from '../../render/fortify-rules.ts';
 import type {TralhaAnswer} from '../../net/client.ts';
@@ -16,10 +16,17 @@ export const INTERATIVO_COR=0xffd23f,INTERATIVO_CSS='var(--c-amarelo)';
 export interface TralhaNet {tralha(kind:'destruir'|'coletar',id:string):number|undefined}
 export type TralhaSquare=FortStructure&{untilTick?:number};
 
-/** The standing barricada square covering the cell under world point p (undefined: none); a square is BARRICADA_CELLS wide. */
+/**
+ * The standing barricada covering the cell under world point p (undefined: none); a piece is BARRICADA_CELLS long and 1
+ * thick, along its rot (barricada-tocar-no-mapa).
+ */
 export function squareAt(structures:readonly TralhaSquare[],p:{x:number;y:number},cell:number):TralhaSquare|undefined{
-  const c=Math.floor(p.x/cell),r=Math.floor(p.y/cell),n=BARRICADA_CELLS;
-  return structures.find(s=>s.kind==='barricada'&&s.hp>0&&s.c!==undefined&&s.r!==undefined&&s.c<=c&&c<s.c+n&&s.r<=r&&r<s.r+n);
+  const c=Math.floor(p.x/cell),r=Math.floor(p.y/cell);
+  return structures.find(s=>{
+    if(s.kind!=='barricada'||s.hp<=0||s.c===undefined||s.r===undefined)return false;
+    const [w,h]=pieceCells('barricada',s.rot===1?1:0);
+    return s.c<=c&&c<s.c+w&&s.r<=r&&r<s.r+h;
+  });
 }
 
 const REFUSALS:Readonly<Record<string,string>>={

@@ -14,7 +14,7 @@
  */
 import Phaser from 'phaser';
 import type {NodeView,RunView,StructureView} from '../../contract/index.ts';
-import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS} from '../../rules/index.ts';
+import {BARRICADA_CELLS,CAMP_RADIUS,TOWER_SECONDS,pieceCells} from '../../rules/index.ts';
 import {CITY_BUILD_CELL} from '../../maps/index.ts';
 import {SIM_HZ} from '../../contract/index.ts';
 import type {Projector,Pt} from './projector.ts';
@@ -340,7 +340,9 @@ export class StonewardsRenderer {
     }
     // barricada-construir part 2: the square under the mouse or tapped wears the gold outline (the alert's red wins).
     if(!alert&&isFreeBarricade(s)&&s.id===this.outline){
-      const c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,side=CITY_BUILD_CELL*BARRICADA_CELLS,pts=[[c0,r0],[c0+side,r0],[c0+side,r0+side],[c0,r0+side]]
+      // barricada-tocar-no-mapa: the piece's own footprint (2 cells long, 1 thick, along its rot).
+      const [fw,fh]=pieceCells('barricada',s.rot===1?1:0),c0=s.c!*CITY_BUILD_CELL,r0=s.r!*CITY_BUILD_CELL,sw=CITY_BUILD_CELL*fw,sh=CITY_BUILD_CELL*fh;
+      const pts=[[c0,r0],[c0+sw,r0],[c0+sw,r0+sh],[c0,r0+sh]]
         .map(([wx,wy])=>{const q=this.project(wx,wy);return {x:q.x,y:q.y};});
       g.lineStyle(5*k,this.c.breu,.6).strokePoints(pts,true).lineStyle(3*k,INTERATIVO_COR,1).strokePoints(pts,true);
     }

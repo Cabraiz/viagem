@@ -1249,7 +1249,9 @@ export class IslandScene extends Phaser.Scene {
     const net=this.hooks.net;
     if(!this.fortify&&this.projector&&net)this.fortify=new FortifyRenderer(this,{projector:this.projector,reduced:this.reduced,
       cell:(this.buildPlan??=buildPlanFor(this.field)).cell,
-      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0});
+      playerAt:id=>id===net.id?this.position:net.players.get(id),carHeading:()=>this.chaveiro?.carHeading??0,
+      // barricada-tocar-no-mapa: a kit de torre's ghost is the tower's art (the renderer is made for it if need be).
+      towerGhost:g=>g?(this.towers??this.makeTowers()).setGhost({...g,kind:g.kind as TowerKind}):(this.towers?.setGhost(null),false)});
     return this.fortify;
   }
   /**

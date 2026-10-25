@@ -15,7 +15,7 @@ import {fileURLToPath} from 'node:url';
 import {CityTerrain,cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {FlowField,UNREACHABLE,cityAsField,type FlowGrid,type Point} from '../../src/maps/index.ts';
 import {BASE_STATS,CAR_RADIUS,type EnemyState,type SimPlayer} from '../../src/contract/index.ts';
-import {BARRICADA_CELLS} from '../../src/rules/index.ts';
+import {pieceCells} from '../../src/rules/index.ts';
 import {SimWorld} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
@@ -23,7 +23,7 @@ import {cityFlowGrid} from '../../src/sim/city/grid.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
 import {createChaveiro} from '../../src/sim/chaveiro/system.ts';
 import {seatedPlayers} from '../../src/sim/wallet.ts';
-import {blockDisc,pieceRectOf,type PieceState} from '../../src/sim/towers/free-build.ts';
+import {blockDiscs,pieceRectOf,type PieceState} from '../../src/sim/towers/free-build.ts';
 import {TRALHA_OWNER,againstWall,carStillPasses} from '../../src/sim/towers/tralha.ts';
 import {Simulation} from '../../multiplayer/simulation.ts';
 
@@ -41,7 +41,8 @@ function tralhaOf(seed:number):PieceState[]{
   s.add('p0','P0','cidadao-comum');s.resetRun();s.step(1000);
   return ((s.run.stonewards.state as unknown as {defenses?:{pieces?:PieceState[]}}).defenses?.pieces??[]).filter(p=>p.owner===TRALHA_OWNER);
 }
-const discOf=(p:PieceState):Disc=>blockDisc(p.cell,BARRICADA_CELLS,BARRICADA_CELLS);
+/** A piece's blocker discs (barricada-tocar-no-mapa: 3 along its long side). */
+const discsOf=(p:PieceState):Disc[]=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,w,h);};
 
 /** A flow grid of the car's centre: a cell is open when the body (+ a little room) fits there, off every disc. */
 const CELL=.75,ROOM=.25;
@@ -98,8 +99,8 @@ test('the map\'s tralha leans on the walls and leaves the Uno room to drive past
     assert.ok(pieces.length>=8,`seed ${seed}: ${pieces.length} squares`);
     pieces.forEach((p,i)=>{
       assert.ok(againstWall(city,pieceRectOf(p)),`seed ${seed}: ${p.id} in the middle of the street`);
-      const others=pieces.filter((_,j)=>j!==i).map(discOf);
-      assert.ok(carStillPasses(city,others,discOf(p)),`seed ${seed}: ${p.id} shuts the street to the Uno`);
+      const others=pieces.filter((_,j)=>j!==i).flatMap(discsOf);
+      assert.ok(carStillPasses(city,others,discsOf(p)),`seed ${seed}: ${p.id} shuts the street to the Uno`);
     });
   }
 });
@@ -110,7 +111,7 @@ test('the Uno, pushed from where it starts, reaches the plaza, the mouths and th
   const reachableBare=targets.filter(([,p])=>from(bare,p).cellCost(Math.floor(CAR.x/CELL),Math.floor(CAR.y/CELL))!==UNREACHABLE);
   assert.ok(reachableBare.length>=7,`the bare map: ${reachableBare.map(([n])=>n).join(', ')}`);
   for(const seed of SEEDS.slice(0,2)){
-    const discs=laid.get(seed)!.map(discOf),grid=carGrid(discs);
+    const discs=laid.get(seed)!.flatMap(discsOf),grid=carGrid(discs);
     for(const [name,goal] of reachableBare){
       const field=from(grid,goal);
       assert.notEqual(field.cellCost(Math.floor(CAR.x/CELL),Math.floor(CAR.y/CELL)),UNREACHABLE,`seed ${seed}: the tralha cuts the Uno off ${name}`);

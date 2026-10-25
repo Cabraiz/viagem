@@ -3,13 +3,13 @@
  * are PieceState kind 'barricada' (free-build.ts: blockers to the enemies, bashed only when a body is cut off from the
  * car, the car's 6 s alert); the map's own have owner TRALHA_OWNER.
  * - Laid once (TowersState.tralha.placed), on the first step of a city run with the car: TRALHA_GROUPS straight rows of
- *   up to TRALHA_GROUP_CELLS squares (BARRICADA_CELLS × BARRICADA_CELLS cells each, barricada-2x), each on the line from the car to a spawn (the run's rng: where on it, which way the
- *   row runs). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
+ *   up to TRALHA_GROUP_CELLS pieces (BARRICADA_CELLS cells long and 1 thick, barricada-tocar-no-mapa), end to end, each
+ *   on the line from the car to a spawn (the run's rng: where on it, which way the row runs; the pieces turned along it). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
  *   body, within CAR_NEST_KEEP_OUT of a living nest or where it would lock the car off a spawn or the moto (free-build
  *   locks). So the map never starts shut.
  * - Out of the Uno's way (NEW-20261025-ORQ-uno-caminho-caixas-vender, the user 25/10: "esses entulhos e essa barreira só
  *   atrapalham na parte de mover o Uno"): the line car → spawn runs down the avenues the car is pushed along, and to the
- *   car's body every square is its blocker disc (1.5 u, free-build blockDisc), so a row across a street shut it. A
+ *   car's body every piece is its blocker discs (free-build blockDiscs), so a row across a street shut it. A
  *   square now goes only against a wall (a solid sample within TRALHA_WALL_GAP u of its edge, the start searched up to
  *   TRALHA_SEARCH_CELLS cells off the line), its row runs the way that lays more squares (along the wall), and the car
  *   still drives past it with TRALHA_CAR_MARGIN u to spare (carStillPasses: around the square, no stretch of street the
@@ -29,7 +29,7 @@ import type {StonewardsState} from '../stonewards/state.ts';
 import {isStanding} from '../revive.ts';
 import {addGrana} from '../wallet.ts';
 import {towersOf} from './system.ts';
-import {FREE_CELL,blockDisc,locks,onGround,pieceRect,pieceRectOf,rectsOverlap,setMuro,type PieceState} from './free-build.ts';
+import {FREE_CELL,blockDiscs,locks,onGround,pieceRect,pieceRectOf,rectsOverlap,setMuro,type PieceState} from './free-build.ts';
 
 export const TRALHA_OWNER='mapa';
 /** A square goes against a wall: a solid sample within this (u) of its edge (see the header). */
@@ -68,7 +68,10 @@ const PROBE=.5,PASS_BOX=9;
  * every stretch of street the car's body (CAR_RADIUS + TRALHA_CAR_MARGIN, on the hero mask, off every disc) reached
  * from the box's edge before is still one stretch reaching the edge after. Pure.
  */
-export function carStillPasses(city:CityTerrain,discs:readonly {x:number;y:number;r:number}[],extra:{x:number;y:number;r:number}):boolean{
+export function carStillPasses(city:CityTerrain,discs:readonly {x:number;y:number;r:number}[],piece:{x:number;y:number;r:number}|readonly {x:number;y:number;r:number}[]):boolean{
+  const extras=Array.isArray(piece)?piece:[piece as {x:number;y:number;r:number}];
+  // The box is centred on the piece (its discs' mean centre).
+  const extra={x:extras.reduce((a,d)=>a+d.x,0)/extras.length,y:extras.reduce((a,d)=>a+d.y,0)/extras.length};
   const R=CAR_RADIUS+TRALHA_CAR_MARGIN,n=Math.ceil(2*PASS_BOX/PROBE),x0=extra.x-PASS_BOX,y0=extra.y-PASS_BOX;
   const near=discs.filter(d=>Math.abs(d.x-extra.x)<PASS_BOX+d.r+R&&Math.abs(d.y-extra.y)<PASS_BOX+d.r+R);
   const ground=new Uint8Array(n*n);
@@ -82,7 +85,7 @@ export function carStillPasses(city:CityTerrain,discs:readonly {x:number;y:numbe
       if(!ground[k])return false;
       if(!withExtra)return true;
       const x=x0+(k%n+.5)*PROBE,y=y0+(Math.floor(k/n)+.5)*PROBE;
-      return (x-extra.x)**2+(y-extra.y)**2>=(extra.r+R)**2;
+      return extras.every(d=>(x-d.x)**2+(y-d.y)**2>=(d.r+R)**2);
     };
     for(let k=0;k<n*n;k++){
       if(out[k]||!ok(k))continue;
@@ -124,15 +127,16 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
   const rng=ctx.rng.fork('tralha'),def=FREE_PIECE_DEFS.barricada,keep=car.radius+(UNO_BUILD_CELLS+1)*FREE_CELL,n=BARRICADA_CELLS;
   const pieces=towers.pieces??=[];
   let laid=0;
-  const fits=(cell:{c:number;r:number})=>{
-    if(!onGround(city,cell,n,n))return false;
-    const rect=pieceRect(cell,n,n);
+  const fits=(cell:{c:number;r:number},rot:0|1)=>{
+    const [w,h]=pieceCells('barricada',rot);
+    if(!onGround(city,cell,w,h))return false;
+    const rect=pieceRect(cell,w,h);
     if(gap(rect,car)<keep)return false;
     if(pieces.some(p=>rectsOverlap(pieceRectOf(p),rect)))return false;
     for(const n of world.nests??[])if(gap(rect,n)<CAR_NEST_KEEP_OUT)return false;
     if(!againstWall(city,rect))return false;
-    if(!carStillPasses(city,pieces.map(p=>{const [w,h]=pieceCells(p.kind,p.rot??0);return blockDisc(p.cell,w,h);}),blockDisc(cell,n,n)))return false;
-    return !locks(city,state,cell,car,world.moto,n,n);
+    if(!carStillPasses(city,pieces.flatMap(p=>{const [pw,ph]=pieceCells(p.kind,p.rot??0);return blockDiscs(p.kind,p.cell,pw,ph);}),blockDiscs('barricada',cell,w,h)))return false;
+    return !locks(city,state,cell,car,world.moto,w,h,'barricada');
   };
   for(let g=0;g<TRALHA_GROUPS;g++){
     const s=spawns[g%spawns.length],t=rng.range(.3,.7),across=rng.chance(.5);
@@ -142,17 +146,18 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
     for(let k=0;k<=TRALHA_SEARCH_CELLS&&!start;k++)for(let dr=-k;dr<=k&&!start;dr++)for(let dc=-k;dc<=k&&!start;dc++){
       if(Math.max(Math.abs(dc),Math.abs(dr))!==k)continue;
       const o={c:c0+dc,r:r0+dr};
-      if(fits(o))start=o;
+      if(fits(o,across?0:1))start=o;
     }
     if(!start)continue;
-    // The row runs the way that lays more squares (the drawn way on a tie): along the wall it leans on.
-    const rowOf=(along:boolean)=>{let k=1;while(k<TRALHA_GROUP_CELLS&&fits({c:start!.c+(along?k*n:0),r:start!.r+(along?0:k*n)}))k++;return k;};
-    const way=rowOf(!across)>rowOf(across)?!across:across;
+    // The row runs the way that lays more pieces (the drawn way on a tie): along the wall it leans on, each piece turned
+    // along it (rot 0: its long side along x).
+    const rowOf=(along:boolean)=>{let k=0;while(k<TRALHA_GROUP_CELLS&&fits({c:start!.c+(along?k*n:0),r:start!.r+(along?0:k*n)},along?0:1))k++;return k;};
+    const way=rowOf(!across)>rowOf(across)?!across:across,rot:0|1=way?0:1;
     for(let i=0;i<TRALHA_GROUP_CELLS;i++){
       const cell={c:start.c+(way?i*n:0),r:start.r+(way?0:i*n)};
-      if(!fits(cell))break;
-      const rect=pieceRect(cell,n,n);
-      const p:PieceState={id:ctx.nextId(TRALHA_PREFIX),kind:'barricada',cell,owner:TRALHA_OWNER,x:rect.x+rect.w/2,y:rect.y+rect.h/2,
+      if(!fits(cell,rot))break;
+      const rect=pieceRect(cell,...pieceCells('barricada',rot));
+      const p:PieceState={id:ctx.nextId(TRALHA_PREFIX),kind:'barricada',cell,...(rot?{rot}:{}),owner:TRALHA_OWNER,x:rect.x+rect.w/2,y:rect.y+rect.h/2,
         hp:def.hp,maxHp:def.hp,startTick:ctx.tick,readyTick:ctx.tick};
       pieces.push(p);setMuro(city,p,false,world.onTerrainChanged);laid++;
     }

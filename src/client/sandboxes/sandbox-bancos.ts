@@ -5,9 +5,15 @@
  *  - Juros & Juros: a critter robs it (bicho), a note every BANCO.bichoSaqueS from 18; the robber is a Cliente Prime;
  *  - Caixa do Posto: empty ("SEM CÉDULAS"), full again in 2:10.
  * `banco=aberto|sacando|bicho|vazio` puts all three in that state instead. Deterministic from the clock only.
+ * `bicos=1` (card bancos-viram-bicos): the three in a row across the screen, a shop's width apart (the pixel-art
+ * shops are ~6 cells wide), the hero in the middle one's ring at work (sacando), the others open and robbed.
+ * With it `turno=0` (etapa 4): the middle one open, the hero in its ring (the button says Trabalhar); `turno=1`: the hero
+ * ('voce') inside its shift (gone through the door, the button "No turno", the tag "Você no turno").
  */
-import {SIM_HZ,type BankState,type BankView,type EnemyView} from '../../contract/index.ts';
+import {SIM_HZ,type BankName,type BankState,type BankView,type BicoId,type EnemyView} from '../../contract/index.ts';
 import {BANCO} from '../../rules/index.ts';
+/** Each bank's gig here: one shop front each (24/7, call center, Compro Ouro). */
+const SANDBOX_BICO:Record<BankName,BicoId>={posto:'entregador','pao-duro':'telemarketing',juros:'compro-ouro'};
 
 type Pt={x:number;y:number};
 const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacando',bicho:'bicho',vazio:'sem-cedulas'};
@@ -17,6 +23,9 @@ const STATES:Readonly<Record<string,BankState>>={aberto:'aberto',sacando:'sacand
  */
 const AROUND:readonly Pt[]=[{x:-3.6,y:-1.2},{x:1.5,y:4.5},{x:3.4,y:4.2}];
 const DEFAULT:readonly BankState[]=['sacando','bicho','sem-cedulas'];
+/** bicos=1: same screen row (x+y), 7 units apart along the screen's x (x−y); the middle one at the hero. */
+const ROW:readonly Pt[]=[{x:-3.5,y:3.5},{x:0,y:0},{x:3.5,y:-3.5}];
+const ROW_STATES:readonly BankState[]=['aberto','sacando','bicho'];
 
 export interface FakeBanks {
   /** The banks at `now` (ms) and the sim tick it stands for. */
@@ -26,9 +35,10 @@ export interface FakeBanks {
 }
 
 export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
-  const all=STATES[params.get('banco')??''];
-  const states=AROUND.map((_,i)=>all??DEFAULT[i]);
-  const at=AROUND.map(o=>({x:+(hero.x+o.x).toFixed(3),y:+(hero.y+o.y).toFixed(3)}));
+  const all=STATES[params.get('banco')??''],row=params.get('bicos')==='1';
+  const turno=row?params.get('turno'):null;
+  const states=AROUND.map((_,i)=>all??(i===1&&turno!==null?turno==='1'?'sacando':'aberto':(row?ROW_STATES:DEFAULT)[i]));
+  const at=(row?ROW:AROUND).map(o=>({x:+(hero.x+o.x).toFixed(3),y:+(hero.y+o.y).toFixed(3)}));
   const names=['pao-duro','juros','posto'] as const;
   const enemies:EnemyView[]=[];
   states.forEach((s,i)=>{if(s==='bicho')enemies.push({id:`prime-${i}`,kind:'agiota',x:at[i].x+1.1,y:at[i].y+.5,hp:8,maxHp:8,prime:true});});
@@ -37,7 +47,8 @@ export function fakeBanks(params:URLSearchParams,hero:Pt):FakeBanks{
     view(now){
       const tick=Math.round(now/1000*SIM_HZ);
       const banks=states.map((state,i):BankView=>{
-        const base={id:`banco-${i}`,...at[i],name:names[i],state};
+        const base={id:`banco-${i}`,...at[i],name:names[i],state,bico:SANDBOX_BICO[names[i]]};
+        if(state==='sacando'&&turno==='1'&&i===1)return {...base,workers:['voce'],saldo:32};
         if(state==='sacando')return {...base,saldo:30-BANCO.nota*(Math.floor(now/(BANCO.saqueS*1000))%14)};
         if(state==='bicho')return {...base,saldo:18-BANCO.nota*(Math.floor(now/(BANCO.bichoSaqueS*1000))%8)};
         if(state==='sem-cedulas')return {...base,saldo:0,until:tick+130*SIM_HZ};

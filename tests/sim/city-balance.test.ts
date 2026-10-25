@@ -321,7 +321,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // cidade again for mapa-175-com-viaduto (asset v4, the city 1.75× shorter, many more crates); ilha and infinito unchanged.
 // cidade again for its viaduct (etapa 3: the start on the deck, pillars and embankment solid); ilha and infinito unchanged.
 // cidade again for the merge of both (the viaduct's city with the cédulas).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'7c66ebaa5b166e44',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
+// cidade again for the bicos (bancos-viram-bicos: each bank row's gig in the state, the shops placed on a clear lot first);
+// ilha and infinito unchanged (no banks). cidade again for its merge with the viaduct's city and the cédulas.
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'d19d984546770e0f',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

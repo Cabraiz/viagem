@@ -44,6 +44,7 @@ import {createInventory,type InventoryCommand,type InventoryPart} from './invent
 import './inventory.css';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
+import {BICO_LINE_MS,bicoLine} from './bicos.ts';
 import {icon} from '../ui/icon.ts';
 import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
@@ -198,6 +199,8 @@ export class RunHud {
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
   /** Bancos: the row "Bicho sacando no …!" (hud/bancos.ts BankAlert). */
   private readonly bankRow:HTMLElement;private readonly bankAlert=new BankAlert();
+  /** Bicos: the row of the local player's own shift, and the last room event it read. */
+  private readonly bicoRow:HTMLElement;private bicoEvent=-1;
   /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
   private obraOpen=false;
   /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
@@ -226,6 +229,7 @@ export class RunHud {
     const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open,kitSlot:()=>options.kitSlot?.()},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
+    const bicoRow=this.bicoRow=document.createElement('div');bicoRow.className='rh-chaveiro-motivo rh-bico';bicoRow.setAttribute('role','status');bicoRow.hidden=true;
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
@@ -330,6 +334,7 @@ export class RunHud {
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.stepReason(view);
     this.stepBanks(view);
+    this.stepBicos(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);
@@ -461,6 +466,18 @@ export class RunHud {
     if(!step.show)return;
     const row=this.bankRow;row.innerHTML=icon('caixa-eletronico');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);
+  }
+  /** Bicos (hud/bicos.ts bicoLine): the local player's own shift, entering (the gig's joke) or thrown out (the manager). */
+  private stepBicos(view:RunView){
+    let line:string|undefined;
+    for(const e of view.events??[]){
+      if(e.eventId<=this.bicoEvent)continue;
+      this.bicoEvent=e.eventId;
+      if(e.type==='bico')line=bicoLine(e,this.ctx.localId,view.banks)??line;
+    }
+    if(!line||this.el.classList.contains('rh-ended'))return;
+    const row=this.bicoRow;row.innerHTML=icon('caixa-eletronico');row.append(line);
+    this.queueRow(row,BICO_LINE_MS,{answer:true});
   }
   /** The reason row on screen now (the sandbox and the acceptance scripts). */
   get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
@@ -643,7 +660,7 @@ export class RunHud {
     resetTally(this.tally);
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
-    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);
+    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);this.dropRow(this.bicoRow);this.bicoEvent=-1;
   }
 
   get view(){return this.last;}

@@ -12,10 +12,11 @@
  */
 import {SIM_HZ} from '../../contract/index.ts';
 import {kitFor} from '../../rules/index.ts';
-import type {CombatMode,PlayerRunView} from '../../contract/index.ts';
+import type {BicoId,CombatMode,PlayerRunView} from '../../contract/index.ts';
 import {icon} from '../ui/icon.ts';
 import {sticker,stickerOrIcon,type StickerName} from '../ui/sticker.ts';
 import {itemDisplay} from './items.ts';
+import {WORKING_WORD,WORK_WORD,workLabel,workingLabel} from './bicos.ts';
 
 /** How long a note ("ainda não", "sem alvo") replaces the word on the button. */
 export const NOTE_MS=1200;
@@ -114,6 +115,8 @@ export class SkillButton {
   private handIcon:StickerName|''='';
   /** The selected kit de torre (construir-no-botao), undefined with a weapon. */
   private kit?:string;
+  /** Bicos: 'oferta|<bico>' or 'dentro|<bico>' while the slot is Trabalhar, undefined otherwise. */
+  private work?:string;
   private readonly classId:string;
   constructor(el:HTMLButtonElement,classId:string){
     this.el=el;this.classId=classId;
@@ -157,6 +160,29 @@ export class SkillButton {
     this.paint();
   }
   get building(){return this.kit!==undefined;}
+  /**
+   * Bicos (hud/bicos.ts): standing in an open shop's ring the slot says Trabalhar in the interaction colour
+   * (`data-work=oferta`), inside the shift "No turno" (`data-work=dentro`); undefined goes back to Atacar or Construir.
+   */
+  setWork(work:{bico:BicoId;inside:boolean}|undefined){
+    const look=work?(work.inside?'dentro':'oferta'):undefined,key=work?`${look}|${work.bico}`:undefined;
+    if(key===this.work)return;
+    const was=this.work;this.work=key;
+    if(look)this.el.dataset.work=look;else delete this.el.dataset.work;
+    const old=this.el.querySelector('.skillbtn-icon'),options={size:40,className:'skillbtn-icon'} as const;
+    if(work){
+      this.el.setAttribute('aria-label',work.inside?workingLabel(work.bico):workLabel(work.bico));
+      if(old&&!was)old.outerHTML=icon('caixa-eletronico',options);
+    }else{
+      const face=actionFace(this.combat,this.classId,'',this.kit);
+      this.el.setAttribute('aria-label',face.label);
+      if(old)old.outerHTML=face.icon?sticker(face.icon,options):this.combat==='manual'?stickerOrIcon('atacar','chinelo',options):icon('sacola',options);
+      this.handIcon='';
+      if(!this.kit&&this.combat==='manual')this.showHand(attackIconOf(this.player)??'');
+    }
+    this.paint();
+  }
+  get working(){return this.work!==undefined;}
   /** Attack button pressed or let go (manual combat): `data-held` for the CSS. */
   setHeld(held:boolean){if(held)this.el.dataset.held='';else delete this.el.dataset.held;}
   /** A tap on the button: sends through `send` (CoopClient.cast) unless the skill is still cooling. */
@@ -176,7 +202,7 @@ export class SkillButton {
   /** Each authoritative view: the local player's cooldown. */
   update(player:PlayerRunView|undefined,tick:number,now:number){
     this.player=player;this.tick=tick;
-    if(this.combat==='manual'&&!this.kit)this.showHand(attackIconOf(player)??'');
+    if(this.combat==='manual'&&!this.kit&&!this.work)this.showHand(attackIconOf(player)??'');
     if(this.answered&&(player?.skillReadyTick??0)>=this.answered.readyTick)this.answered=undefined;
     this.refresh(now);
   }
@@ -206,6 +232,6 @@ export class SkillButton {
     this.el.dataset.noteKind=note===NOTE_NO_TARGET?'sem-alvo':note===NOTE_COOLING?'ainda-nao':'';
     this.fill.style.strokeDashoffset=String(RING*(1-s.progress));
     this.time.textContent=s.mode==='cooling'?String(s.seconds):'';
-    this.word.textContent=note||(this.kit?BUILD_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);
+    this.word.textContent=note||(this.work?(this.work.startsWith('dentro')?WORKING_WORD:WORK_WORD):this.kit?BUILD_WORD:this.attackMode?ATTACK_WORD:SKILL_WORD);
   }
 }

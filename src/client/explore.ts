@@ -45,6 +45,7 @@ import {FortifyHud} from './hud/fortify/fortify.ts';
 import {FORT_AIM_FIRST,FortBuild,construirEm,fortCounts,pullRefusalText,pullState} from './hud/fortify/model.ts';
 import {buildHints} from './render/fortify-rules.ts';
 import {KitPlace,kitGround,kitRefusalText} from './hud/kit-place/model.ts';
+import {WorkLatch,workShop,workingIn} from './hud/bicos.ts';
 import {TralhaPick} from './hud/tralha/model.ts';
 import {TralhaHud} from './hud/tralha/tralha.ts';
 import {objectiveOf} from './render/chaveiro/view.ts';
@@ -131,6 +132,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
    * the hero and the attack button says Construir (buildNow); the kit again or a weapon goes back to Atacar.
    */
   const kitPlace=new KitPlace();let buildNow:()=>void=()=>undefined,kitShown=false;
+  /** Bicos (hud/bicos.ts): in an open shop's ring the attack button is Trabalhar; a tap clocks in, moving clocks out. */
+  const workLatch=new WorkLatch();
   let tralhaHud:TralhaHud|undefined;const tralhaPick=new TralhaPick();
   /** The client stopped for good: its reason and a reload button replace "Reconectando…" (UX onda 4, B13). */
   let fatalShown:string|undefined;
@@ -494,6 +497,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     if(hotkey.kind==='turn'){shell.querySelector<HTMLButtonElement>(`[data-turn="${hotkey.turn}"]:not(:disabled)`)?.click();return;}
     if(hotkey.kind==='skill'){
       // D-051: Space held is the attack (keyup lets go); otherwise one press casts the skill. A kit selected: Construir.
+      if(skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled)workLatch.tap(performance.now());return;}
       if(kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}
       if(attackBtn?.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'espaco');return;}
       if(castSkill&&!$<HTMLButtonElement>('#coop-attack').disabled)castSkill();return;
@@ -505,10 +509,12 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
   if(net){
     const onBuild=(e:Event)=>{
       const button=(e.target as Element|null)?.closest?.('#coop-attack') as HTMLButtonElement|null;
-      if(!kitPlace.active||!button||button.disabled)return;
+      const work=!!skill?.working;
+      if(!(work||kitPlace.active)||!button||button.disabled)return;
       if(e.type==='pointerdown'&&(e as PointerEvent).button!==0)return;
       if(e.type==='click'&&(e as MouseEvent).detail!==0){e.stopImmediatePropagation();return;}
-      e.stopImmediatePropagation();e.preventDefault();pause(false);buildNow();
+      e.stopImmediatePropagation();e.preventDefault();pause(false);
+      if(work)workLatch.tap(performance.now());else buildNow();
     };
     window.addEventListener('pointerdown',onBuild,{capture:true,signal});
     window.addEventListener('click',onBuild,{capture:true,signal});
@@ -604,10 +610,10 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
     controller=createIsland($('.explore-canvas'),{
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
-      attacking:()=>!!attackBtn?.take(),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
+      attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
       aimStick:()=>attackBtn?.aim(),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
-      attackHold:down=>{if(down&&kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
+      attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&kitPlace.active){if(!$<HTMLButtonElement>('#coop-attack').disabled)buildNow();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},
       visual:(animation,frame,sheets)=>{const canvas=$('.explore-canvas');putData(canvas,'spriteAnimation',animation);putData(canvas,'spriteFrame',frame);putData(canvas,'spriteSheets',String(sheets));},
       position:p=>{
@@ -731,6 +737,14 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
                     bodies:[...[...net.players.values()].filter(p=>p.id!==net.id&&!p.spectator&&p.hp>0),...[...net.feed.enemies.values()].filter(e=>e.hp>0&&!e.asleep)]},net.predicted),[]);
                 }else if(!fortBuild.open)scene.setBuildGhost(null);
                 skill?.setBuild(kitPlace.kit?.id,!shown||!!kitPlace.blocked);
+                // Bicos: standing in an open shop's ring (or inside it) the button is Trabalhar; a kit selected keeps Construir.
+                const banks=view?.banks,inside=workingIn(banks,net.id),shop=inside??workShop(banks,net.predicted);
+                // The level-up pause or the offer only hide it (the shift goes on after the card).
+                const offered=available&&!kitPlace.active&&!!shop;
+                workLatch.view(!!inside,offered,performance.now());
+                const face=offered&&shown&&!run.pause&&shop?{bico:shop.bico,inside:!!inside||workLatch.asked}:undefined;
+                skill?.setWork(face);
+                if(face&&attackBtn?.press.held)attackBtn.clear();
               }
               // barricada-construir part 2: the tralha's circles over the tapped square, the coleta's bar, the gold outline.
               if(tralhaHud&&controller){

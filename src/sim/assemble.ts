@@ -276,6 +276,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
   // D-052: the sticks of this tick (who pushes the chaveiro's car, read by its step later in the same tick). Transient too.
   const sticks=new Map<string,{x:number;y:number}>();
+  // Bicos: this tick's Trabalhar per player who sent an input (held and standing still), read by the banks' step. Transient.
+  const work=new Map<string,boolean>();
   // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
   const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
   world.recordLastHit=!!manual;
@@ -284,7 +286,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const nestMode=!!objective&&options.mode==='ninhos';
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
-    if(input&&Math.hypot(input.x,input.y)>=.01){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
+    const moving=!!input&&Math.hypot(input.x,input.y)>=.01;
+    if(input&&moving){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
+    if(input)work.set(id,!!input.work&&!moving);
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
@@ -510,7 +514,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
     banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
-      wallet:{add:(n,to)=>{addGrana(to,n);}}},cp?.banks);
+      wallet:{add:(n,to)=>{addGrana(to,n);}},work:id=>work.get(id)},cp?.banks);
     // Veículos: in both city modes too (a ride ends on moving the car).
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
@@ -527,7 +531,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();work.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
       // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
       playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car)),
@@ -545,7 +549,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id),
       // BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack goes off toward the aim/facing even into the air; bots keep the target rule.
       free:(id:string)=>!options.bot?.(id)&&!options.autopilot?.(id)}}:{}),
-      ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+      // Bicos: nobody fires from inside a shop.
+      ...(chaveiro||banks?{busy:(id:string)=>!!chaveiro?.busy(id)||banks?.working(id)!==undefined}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     {id:'pickups',step(ctx:SimContext){
       progression.pickups.step(ctx);
       // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the

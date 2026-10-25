@@ -788,8 +788,10 @@ export function playRun(o:RunOptions):RunRecord{
   const setStick=sim.setBotInput.bind(sim),forge=sim.forge.bind(sim);
   // D-051: the brain's attack button (manual combat) is held through the wrapper's re-aimed sticks.
   const attacks=new Map<string,boolean>();
-  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d,false,attacks.get(id)??false));
-  sim.setBotInput=(id,d,skill=false,attack=false)=>{driver.brainSaid(id,d);attacks.set(id,attack);setStick(id,d,skill,attack);};
+  // Bicos: the brain's Trabalhar (standing in a shop's ring) is held through the re-aimed sticks the same way.
+  const works=new Map<string,boolean>();
+  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d,false,attacks.get(id)??false,works.get(id)??false));
+  sim.setBotInput=(id,d,skill=false,attack=false,work=false)=>{driver.brainSaid(id,d);attacks.set(id,attack);works.set(id,work);setStick(id,d,skill,attack,work);};
   const purchases:RunRecord['forge']['list']=[];
   const rounds:RoundRecord[]=[],inter:IntermissionRecord[]=[];
   let cur:RoundRecord|undefined,curInter:IntermissionRecord|undefined;

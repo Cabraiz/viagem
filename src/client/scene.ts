@@ -113,6 +113,8 @@ export interface SceneHooks {
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
    */
   attacking?:()=>boolean;
+  /** Bicos (hud/bicos.ts WorkLatch): one input step's Trabalhar, given that step's direction (moving lets it go). */
+  working?:(direction:Point)=>boolean;
   /** D-051 manual combat: a click or tap on an enemy chose it; the button attacks it once. Absent: only the target. */
   enemyPicked?:(id:string)=>void;
   /** D-051: the right mouse button pressed (true) or let go (false) holds the attack like Space. Absent: no manual attack. */
@@ -1280,9 +1282,14 @@ export class IslandScene extends Phaser.Scene {
   /** Bancos (card bancos-e-veiculos): the run's ATMs (RunView.banks, the city in both modes); built on the first view that has them. */
   private pushBanks(view:RunView){
     if(!view.banks?.length&&!this.banks)return;
-    if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position});
+    if(!this.banks&&this.projector)this.banks=new BankRenderer(this,{projector:this.projector,reduced:this.reduced,hero:()=>this.watchPoint??this.position,
+      nameOf:id=>{const net=this.hooks.net;return id===net?.id?'Você':net?.players.get(id)?.name??'Alguém';}});
     this.banks?.push(view.banks,view.tick,view.events);
+    this.shopWorkers.clear();
+    for(const b of view.banks??[])for(const id of b.workers??[])this.shopWorkers.add(id);
   }
+  /** Bicos: the players inside a shop now (RunView.banks workers): they went in through the door, nobody draws them. */
+  private readonly shopWorkers=new Set<string>();
   /** A new snapshot for the defenses: their views (TowerFeed: inferred volleys) and the live enemies they aim at. */
   private pushTowers(view:RunView,time:number){
     if(!this.towers&&!hasTowers(view.structures))return; // no defense yet: nothing built, nothing walked
@@ -1446,7 +1453,9 @@ export class IslandScene extends Phaser.Scene {
       this.intent=net.players.get(net.id)?.hp&&net.run?.phase==='combat'?direction:{x:0,y:0};
       // The skill goes by its own tap message (net.cast); the D-051 attack rides the step (segment bit 1).
       const aim=mouse?{x:mouse.x-net.predicted.x,y:mouse.y-net.predicted.y}:this.hooks.aimStick?.();
-      net.input(direction,false,this.attackTarget,!frozen&&!out&&!!this.hooks.attacking?.(),aim);this.accumulator-=STEP;
+      // Bicos: Trabalhar rides the step too (moving lets it go: hud/bicos.ts WorkLatch).
+      const work=!frozen&&!out&&!!this.hooks.working?.(direction);
+      net.input(direction,false,this.attackTarget,!work&&!frozen&&!out&&!!this.hooks.attacking?.(),aim,work);this.accumulator-=STEP;
       this.steps.push(net.predicted);
     }
     // Between the last two predicted steps at the accumulator's fraction: moves every frame, never in 50 ms stairs.
@@ -1471,6 +1480,8 @@ export class IslandScene extends Phaser.Scene {
     const mine=net.feed.players.get(net.id),selfDown=!!mine?.downed&&!mine.eliminated;
     // A caído lies down (UX-resgate-e-ping): turned on its feet, still opaque enough to be found; out/watching fades.
     this.actor.setAlpha(selfDown?.85:!net.players.get(net.id)?.spectator&&(net.players.get(net.id)?.hp??100)>0?1:.4).setAngle(selfDown?-90:0);
+    // Bicos: inside the shop the hero is gone through its door (the silhouette follows the body's alpha).
+    if(this.shopWorkers.has(net.id))this.actor.setAlpha(0);
     const marks=this.downedMarks;marks.length=0;
     if(selfDown)marks.push({id:net.id,at:this.position,progress:mine!.downed!.progress});
     const ids=new Set(view.players.filter(p=>p.id!==net.id).map(p=>p.id));
@@ -1501,7 +1512,8 @@ export class IslandScene extends Phaser.Scene {
       const own=this.depth(drawnAt),q=this.project(drawnAt),depth=player.andar===1?own:carSortDepth(drawnAt,own,carSort),covered=this.city?this.city.covers(player.x,player.y)||player.andar!==1&&!!this.viaduct?.under(player.x,player.y):this.treeCovers(q,depth);
       feet.set(player.id,{x:drawnAt.x,y:drawnAt.y});
       const st=net.feed.players.get(player.id),down=!!st?.downed&&!st.eliminated;
-      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
+      const inShop=this.shopWorkers.has(player.id);
+      objects.image.setPosition(q.x,q.y).setDepth(this.city?depth:covered?depth+1:ALLY_DEPTH).setAlpha(inShop?0:down?.85:!player.spectator&&player.online&&player.hp?1:.4).setAngle(down?-90:0);
       if(down)marks.push({id:player.id,at:{x:player.x,y:player.y},progress:st!.downed!.progress});
       objects.ring.setPosition(q.x,q.y).setDepth(depth-1);
       // Each ally casts its frame on the ground like the hero (card sombra-silhueta), in every world and quality.

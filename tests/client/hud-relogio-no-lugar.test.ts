@@ -44,6 +44,6 @@ test('the top band\'s clocks use them (no innerHTML per second)',()=>{
   const camp=readFileSync(new URL('../../src/client/hud/camp.ts',import.meta.url),'utf8');
   assert.match(top,/putIconNumber\(eta\.lastElementChild/);
   assert.match(top,/putIconNumber\(detail\.lastElementChild/);
-  assert.match(camp,/putIconNumber\(clockPicture,icon\(bar\.icon\),bar\.text\)/);
+  assert.match(camp,/putIconNumber\(clockPicture,bar\.icon\?icon\(bar\.icon\):'',bar\.text\)/);
   assert.doesNotMatch(top+camp,/<b>\$\{(clock\.clock|bar\.text)\}<\/b>/);
 });

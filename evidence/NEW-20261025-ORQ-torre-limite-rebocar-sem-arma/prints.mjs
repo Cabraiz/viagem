@@ -73,7 +73,12 @@ try{
       const aim=(to)=>page.evaluate(to=>{const s=window.__perfScene,cam=s.cameras.main,p=s.position;const a=s.project(p),b=s.project(to);
         const hx=(a.x-cam.worldView.x)*cam.zoom,hy=(a.y-cam.worldView.y)*cam.zoom,dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1,k=Math.min(160,l*cam.zoom);
         return {x:hx+dx/l*k,y:hy+dy/l*k};},to);
-      for(let i=0;i<60;i++){const s=await state();if(s.dTip<1)break;const t=await aim(s.tip);await page.mouse.click(t.x,t.y);await sleep(400);}
+      // Around the car (its body blocks the straight way): beside it, beside the rope's end, then the end itself.
+      const pos=()=>page.evaluate(()=>({x:window.__perfScene.position.x,y:window.__perfScene.position.y}));
+      const c0=s0.car,hx=Math.cos(c0.heading),hy=Math.sin(c0.heading),p0=await pos();
+      const side=((p0.x-c0.x)*-hy+(p0.y-c0.y)*hx)>=0?1:-1,px=-hy*side,py=hx*side;
+      const ways=[{x:c0.x+px*2.6,y:c0.y+py*2.6},{x:s0.tip.x+px*1.4+hx*.6,y:s0.tip.y+py*1.4+hy*.6},{x:s0.tip.x+hx*.5,y:s0.tip.y+hy*.5}];
+      for(const [n,w] of ways.entries())for(let i=0;i<30;i++){const p=await pos();if(Math.hypot(p.x-w.x,p.y-w.y)<(n===2?.6:.9))break;const t=await aim(w);await page.mouse.click(t.x,t.y);await sleep(350);}
       await sleep(800);
       const s1=await state();
       say('na ponta:',JSON.stringify({d:s1.dTip?.toFixed(2),botao:s1.word,tow:s1.tow}));

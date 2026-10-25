@@ -648,7 +648,8 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
           // D-050: the level-up pause zeroes the attack like the rest of the input (a press there is not kept for later).
           if(net.run?.pause)attackBtn?.clear();
           // D-052: pushing or pulling the car the hands are busy (net.handsBusy): the button dims and a held press lets go.
-          const busy=manual&&net.handsBusy,attackEl=find<HTMLButtonElement>('#coop-attack');
+          // torre-limite-rebocar-sem-arma: on the rope the button is Soltar (skill.towing), never dimmed.
+          const busy=manual&&net.handsBusy&&!skill?.towing,attackEl=find<HTMLButtonElement>('#coop-attack');
           if(attackEl.classList.contains('explore-attack-ocupado')!==busy){attackEl.classList.toggle('explore-attack-ocupado',busy);if(busy)attackBtn?.clear();}
           attackBtn?.frame();
           const run=net.run,member=run?.members.find(p=>p.id===net.id);

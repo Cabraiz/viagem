@@ -468,7 +468,11 @@ export class IslandScene extends Phaser.Scene {
     if(!this.load.isLoading())this.load.start();
   }
   private iconsAsked=new Set<string>();
+  /** False once the scene is stopped or destroyed (its cameras and sprites are gone): the DOM HUD's frames skip it. */
+  live=false;
   create(){
+    this.live=true;
+    const gone=()=>{this.live=false;};this.events.once('shutdown',gone);this.events.once('destroy',gone);
     // ?perf=1 (BUG-20261014-ORQ-engasgo-andando-celular): Phaser's logic step and its render, charged to each frame.
     if(perf.on){
       const ev=Phaser.Core.Events,game=this.game.events;let t=0;
@@ -863,7 +867,8 @@ export class IslandScene extends Phaser.Scene {
   }
   /** Where a world point is across the camera: -1 its left edge, 0 the centre, 1 the right (a sound's pan). */
   screenSide(p:Point){
-    const view=this.cameras.main.worldView,q=this.project(p);
+    const view=this.cameras?.main?.worldView;if(!view)return 0;
+    const q=this.project(p);
     return view.width>0?Math.max(-1,Math.min(1,(q.x-view.centerX)/(view.width/2))):0;
   }
   /** What the camera follows (world units): the hero, or the teammate watched while out. Distances count from here. */

@@ -36,7 +36,7 @@ export function createTopBar():HudPart{
   const last=new Map<string,string>();
   const put=(key:string,value:string,write:(value:string)=>void)=>{if(last.get(key)!==value){last.set(key,value);write(value);}};
   return {el:root,update(view:RunView,ctx:HudContext){
-    const round=roundInfo(view),explora=exploraLeft(view.tick,ctx.explora);
+    const round=roundInfo(view),explora=exploraLeft(view.tick,ctx);
     // D-051 nests: no waves, so no "Onda N" and no critter count; the chip keeps only the chaveiro's clock.
     const nests=!!round?.nests;
     putHidden(chip,!round||(nests&&!round.chaveiro&&explora===undefined));

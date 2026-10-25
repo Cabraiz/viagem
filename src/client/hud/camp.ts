@@ -23,7 +23,7 @@ import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
 import {icon,type IconName} from '../ui/icon.ts';
 import {sticker,type StickerName} from '../ui/sticker.ts';
-import {exploraLeft,fallLine,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
+import {exploraLeft,fallLine,type ExploraWindows,nestCount,roundInfo,secondsLeft,type HudContext,type HudPart} from './model.ts';
 import {writeFallLine} from './offer.ts';
 import {watchOverflow} from './overflow.ts';
 import {fichasText,forgePriceLabel,granaText} from './price.ts';
@@ -130,10 +130,10 @@ export interface BarClock {
   held?:boolean;
   /** D-051 nests mode: the nests still standing ("6/8") after the clock. */
   nests?:string}
-export function barClock(view:RunView,explora?:HudContext['explora']):BarClock|undefined{
+export function barClock(view:RunView,windows?:ExploraWindows):BarClock|undefined{
   const round=roundInfo(view),nests=nestCount(view);
   // The time to explore (card topo-sem-icone-contagem-exploracao): the seconds left as a bare number, "120", "119"…
-  const left=exploraLeft(view.tick,explora);
+  const left=exploraLeft(view.tick,windows);
   if(left!==undefined)return {text:String(left),aria:`Exploração: faltam ${left} s`,urgent:false};
   if(round?.chaveiro){
     const c=round.chaveiro;
@@ -225,8 +225,8 @@ export function createCamp(options:CampOptions):CampPart{
   const clock=el('span','rh-camp-relogio',wallRow);clock.hidden=true;
   const clockWords=el('span','rh-sr',clock),clockPicture=el('span','rh-camp-relogio-ficha',clock);clockPicture.setAttribute('aria-hidden','true');
   let lastClock:string|undefined;
-  const paintClock=(view:RunView,window:HudContext['explora'])=>{
-    const bar=barClock(view,window),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
+  const paintClock=(view:RunView,w:ExploraWindows)=>{
+    const bar=barClock(view,w),key=bar?`${bar.icon??''}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
     if(key===lastClock)return;
     lastClock=key;putHidden(clock,!bar);readout.classList.toggle('rh-camp-com-relogio',!!bar);
     if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,bar.icon?icon(bar.icon):'',bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
@@ -298,7 +298,7 @@ export function createCamp(options:CampOptions):CampPart{
   const fall=el('p','rh-window-fall rh-forge-fall',head);fall.hidden=true;fall.setAttribute('role','status');
   const overflow=watchOverflow(list);
 
-  let last:RunView|undefined,ctxId='',explora:HudContext['explora'],hero:HeroSpot|undefined,bocas:CityBocas|undefined;
+  let last:RunView|undefined,ctxId='',windows:ExploraWindows={},hero:HeroSpot|undefined,bocas:CityBocas|undefined;
   let dismissed=false,stint=-1,lastPlace='',yielded=false;
   /** Where the hero stands now (render): in the camp, and the barricade he can repair (city only). */
   let home=false,spot:BarricadeSpot<StructureView>|undefined;
@@ -352,7 +352,7 @@ export function createCamp(options:CampOptions):CampPart{
     putHidden(readout,!camp);
     if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
-    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,explora);
+    paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,windows);
     const money=granaReadout(camp.grana);
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
@@ -425,7 +425,7 @@ export function createCamp(options:CampOptions):CampPart{
 
   return {
     el:forge,readout,notice,forge,
-    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;explora=ctx.explora;render();},
+    update(view:RunView,ctx:HudContext){last=view;ctxId=ctx.localId;windows={minervaAteTick:ctx.minervaAteTick,explora:ctx.explora};render();},
     setHero(at){hero=at;if(last)render();},
     setBocas(next){bocas=next;},
     yieldTo(obra){if(yielded===obra)return;yielded=obra;if(last)render();},

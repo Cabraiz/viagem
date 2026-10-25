@@ -122,6 +122,8 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * banks block, an older room refuses the segments.
  * 39 given by the integration queue (tools/fila.mjs, lote 20261025-042005) to: NEW-20261024-ORQ-bancos-viram-bicos.
  * 40 given by the integration queue (tools/fila.mjs, lote 20261025-074625) to: NEW-20261025-ORQ-dict-protocolo-cheio.
+ * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
+ * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
  * The join handshake refuses other versions with the update message.
  */
 export const PROTOCOL_VERSION=40;
@@ -476,6 +478,8 @@ const SCHEMAS:Record<SectionKey,Schema>={
     prime:c(optional(trueFlag)),
     // The viaduct (mapa-175-com-viaduto): on a deck, floor 1.
     andar:c(optional(deckFlag)),
+    // Card heroi-empurra-inimigos: a solid body's radius in thousandths (it drives the phone's prediction); sent once.
+    radius:c(optional(milli)),
   }},
   pickups:{prefix:'k',fields:{kind:c(str),x:c(posX),y:c(posY),value:c(count),resource:c(optional(str))}},
   projectiles:{prefix:'p',fields:{source:c(str),x:c(posX),y:c(posY),vx:c(vel),vy:c(vel),radius:c(radius),hostile:c(bool),

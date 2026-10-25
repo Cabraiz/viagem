@@ -471,7 +471,9 @@ function bossDigest(world:'ilha'|'infinito'){
 // Both re-recorded for balanco-pos-1-7's enemy radius × ENEMY_RADIUS_SCALE 1.15 (the boss's, every body's and the
 // enemy-ai's neighbour reach, which is the boss's radius; were
 // ilha 75a2225f4fc40291, infinito e2d8811cc8c12ed9), the one change allowed to move them.
-const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'251d5c145e1bf470',infinito:'dba3b8b9445b3997'};
+// Both again for heroi-empurra-inimigos (heroes and critters solid to each other; were ilha 251d5c145e1bf470,
+// infinito dba3b8b9445b3997).
+const BOSS_BASELINE:Readonly<Record<string,string>>={ilha:'92b01b33f393b4b0',infinito:'f9a988a142cc53f7'};
 test('island and endless untouched: the assembled boss run matches the digest recorded before cidade-05c',()=>{
   const got={ilha:bossDigest('ilha'),infinito:bossDigest('infinito')};
   console.log(`[cidade-05c] island/endless boss digests: ${JSON.stringify(got)}`);

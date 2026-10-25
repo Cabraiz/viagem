@@ -141,3 +141,13 @@ test('gif.yml: read-only, its own name (not "Prints"), both triggers, the record
   assert.match(yml,/name: site-\$\{\{ steps\.sha\.outputs\.short \}\}/);
   assert.match(yml,/run-name: .*format\('GIF \{0\}/,'the request id in the run name (runOfPedido)');
 });
+
+test('gravar: tremorOf counts the drawn hero stepping back against its walk, and those in contact',()=>{
+  const rows:[number,number,number][]=[];
+  for(let i=0;i<40;i++)rows.push([i*.05-(i===25?.1:0),0,i>20?0:1]);
+  const t=gravar.tremorOf(rows);
+  assert.equal(t.recuos,1);assert.equal(t.recuosContato,1);assert.ok(Math.abs(t.maxRecuo-.05)<1e-9,`${t.maxRecuo}`);
+  assert.ok(t.quadros>=28&&t.contato>=18);
+  // Standing still is not a walk: no frames counted.
+  assert.equal(gravar.tremorOf(Array.from({length:30},()=>[1,1,0])).quadros,0);
+});

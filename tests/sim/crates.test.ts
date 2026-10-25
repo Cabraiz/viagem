@@ -309,6 +309,28 @@ test('caixa-icone-torre-arma: a crate from an older checkpoint (no item) still r
   assert.ok(p.build.weapons.length>1||isKitId(crates.state.last!.a));
 });
 
+test('torre-limite-rebocar-sem-arma: an empty-handed hero opening a kit crate gets a weapon of its rarity (a start crate: a starter weapon); armed, the kit as shown',()=>{
+  let unarmed=0,armed=0;
+  for(let seed=1;seed<=60&&(unarmed<4||armed<4);seed++){
+    const ctx=makeCtx(seed),crates=createCrates({seed,points:line(30),startPoints:line(8).map(p=>({x:p.x,y:200})),goldChance:0});
+    addPlayer(ctx,'far',-500,-500);crates.step(ctx);
+    const c=chests(ctx).find(k=>isKitId(k.resource));
+    if(!c)continue;
+    const record=crates.state.crates[c.id],empty=seed%2===0;
+    const p=addPlayer(ctx,'b',c.x,c.y,empty?{build:{weapons:[],passives:[],hand:0}}:{});
+    run(ctx,crates,1+ticks(3));
+    assert.ok(!ctx.pickups.has(c.id),'opened');
+    if(empty){
+      unarmed++;
+      assert.equal(p.build.weapons.length,1);
+      const got=p.build.weapons[0].id,pool=record.start?STARTER_WEAPONS:CRATE_WEAPONS[record.rarity];
+      assert.ok(pool.includes(got),`${got}: a weapon of a ${record.start?'start':record.rarity} crate, not ${c.resource}`);
+      assert.equal(p.build.hand,0,'in the hand');
+    }else{armed++;assert.equal(p.build.weapons[1]?.id,c.resource,'armed: the kit it showed');}
+  }
+  assert.ok(unarmed>=4&&armed>=4,`${unarmed} unarmed, ${armed} armed`);
+});
+
 test('the placed crates scale with the players: 12 + 4 a player, up to MAX_CRATES; the cap is kept for the run',()=>{
   // The user 23/10 ("bem mais caixas pelo mapa"): a solo 16 (was 4), six 36 (was 16).
   assert.deepEqual([0,1,2,3,6,8].map(crateCap),[16,16,20,24,36,40]);

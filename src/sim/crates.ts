@@ -50,7 +50,7 @@ import type {OwnedItem,PickupState,Point,SimPlayer} from '../contract/index.ts';
 import {Rng,ticks} from '../contract/index.ts';
 import {CRATE_OPEN_RADIUS,KIT_CHANCE,KIT_POOL,isKitId,kitItem,kitPiece} from '../rules/index.ts';
 import type {SimContext} from './context.ts';
-import {add,dropItem,hasInventory} from './inventory.ts';
+import {add,dropItem,hasInventory,isWeaponItem} from './inventory.ts';
 import {ARSENAL_WEAPONS,isRarity,legendaryId,type Rarity} from './weapons/arsenal.ts';
 import {WEAPON_IDS} from './weapons/catalog.ts';
 
@@ -506,8 +506,14 @@ export function createCrates(options:CratesOptions):Crates{
     if(record.origin==='placed')state.respawns.push(ctx.tick+ticks(RESPAWN_SECONDS));
     // The item it showed; a crate from an older checkpoint rolls now, never the opener's last prize.
     const last=(state.last??={})[p.id];
-    const prize:Prize=record.item?{items:[prizeItem(record.item,rarity)]}
+    let prize:Prize=record.item?{items:[prizeItem(record.item,rarity)]}
       :drawPrize(new Rng(seed).fork(`premio:${crate.id}:${ctx.tick}`),rarity,!!record.start,last);
+    // torre-limite-rebocar-sem-arma (ORQ 25/10): who opens a crate with no weapon (the heroes start empty-handed) always
+    // gets a weapon: a kit turns into a weapon of the crate's rarity (the first minute's from STARTER_WEAPONS).
+    if(!p.build.weapons.some(isWeaponItem)&&prize.items.every(i=>!isWeaponItem(i))){
+      const rng=new Rng(seed).fork(`sem-arma:${crate.id}`);
+      prize=record.start?{items:[weaponItem(rng.pick(STARTER_WEAPONS),rarity)]}:rollPrize(rng,rarity);
+    }
     state.last[p.id]=prizeKey(prize);
     for(const item of prize.items)if(!add(p,item))dropItem(ctx,crate,item);
     ctx.emit({type:'pickup',player:p.id,pickup:crate.id,kind:'chest',value:rarity});

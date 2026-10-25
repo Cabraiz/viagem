@@ -1,0 +1,43 @@
+# Weekly cleanup of the remote's leftover branches (NEW-20261025-ORQ-cicd-smokes-bench, step 3): tools/limpa-branches.mjs
+# deletes vgm/* already in main with no commit for 7 days, and fila/* and bench/* older than 24 h. main and any other
+# prefix are never touched; each delete is leased on the head it saw. The list (deleted, refused) is the artifact
+# `limpeza-branches`. By hand (workflow_dispatch) it only lists unless `apagar` is checked. It deletes branches only:
+# it builds, deploys and publishes nothing.
+name: Limpeza de branches
+on:
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      apagar:
+        description: 'apagar de fato (desmarcado: só a lista)'
+        type: boolean
+        default: false
+permissions:
+  contents: write   # git push --delete with the run token
+concurrency:
+  group: limpeza-branches
+  cancel-in-progress: false
+jobs:
+  limpar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every branch's head and history (no blobs): the ages and the "already in main" test. The credentials stay
+          # for the deletes.
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '26.9.0'
+      - name: Branches to delete
+        run: node tools/limpa-branches.mjs ${{ (github.event_name == 'schedule' || inputs.apagar) && '--apagar' || '' }} --out limpeza/lista.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: limpeza-branches
+          path: limpeza
+          retention-days: 90
+          if-no-files-found: ignore

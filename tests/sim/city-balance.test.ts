@@ -325,7 +325,9 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // ilha and infinito unchanged (no banks). cidade again for its merge with the viaduct's city and the cédulas.
 // cidade again for projetil-mais-rapido (HERO_SHOT_SLOWDOWN 3 → 2: the heroes' shots 1.5× faster, same reach; with 3 the
 // tree gives d19d984546770e0f); ilha and infinito unchanged.
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'cb3a540f77f4c307',ilha:'09475752fe8ebda3',infinito:'e8a933970d5f9a17'};
+// All three again for sem-coxinha-no-chao (no coxinha from kills nor from the retired flash sale; the zueira plan has
+// one kind, so its shuffle draws one roll less).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'03051496163afc32',ilha:'bdb1de954ee88405',infinito:'0f9bc3d21069b917'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

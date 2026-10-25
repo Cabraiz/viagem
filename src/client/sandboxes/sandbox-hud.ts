@@ -617,9 +617,9 @@ if(cidade)void (async()=>{
   // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
   const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
   const banks:BankView[]|undefined=params.get('bancos')==='1'?[
-    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
-    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
-    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ},
+    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0',bico:'compro-ouro'},
+    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto',bico:'telemarketing'},
+    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ,bico:'entregador'},
   ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
     grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;

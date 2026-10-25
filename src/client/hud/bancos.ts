@@ -6,7 +6,7 @@
  *   robbery, and not again for the same bank within BANK_ALERT_REPEAT_MS).
  */
 import type {BankView} from '../../contract/index.ts';
-import {BANK_SHORT} from '../../rules/index.ts';
+import {bicoRobberyText} from './bicos.ts';
 import type {MmExtra} from './wc-minimap/minimap.ts';
 import {token} from '../ui/tokens.ts';
 
@@ -25,7 +25,8 @@ export function bankExtras(banks:readonly BankView[]|undefined):MmExtra[]{
   const c=BANK_MM_COLORS;
   return (banks??[]).map(b=>({kind:'banco',x:b.x,y:b.y,color:b.state==='bicho'?c.bicho:b.state==='sem-cedulas'||b.saldo<=0?c.vazio:c.cheio}));
 }
-export const robberyText=(b:Pick<BankView,'name'>)=>`Bicho sacando no ${BANK_SHORT[b.name]}!`;
+/** Bicos: the shop's gig names the robbery ("Bicho no caixa do Telemarketing!", hud/bicos.ts). */
+export const robberyText=(b:Pick<BankView,'bico'>)=>bicoRobberyText(b);
 
 /** Calls a robbery once when it starts (a bank turning 'bicho'), at most once per BANK_ALERT_REPEAT_MS per bank. */
 export class BankAlert {

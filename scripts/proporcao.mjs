@@ -188,15 +188,17 @@ export async function measureClass(manifest,id,dir=SPRITES){
   for(const d of DIRS){
     const r=restOf(files,d);if(!r)continue;
     const idle=r.clip,all=await cells(path.join(dir,idle.file),Math.max(...r.frames)+1),rest=r.frames.map(i=>all[i]),restShapes=rest.map(a=>shape(a));
-    const r0=restShapes[0],restH=median(restShapes.map(s=>s.H)),restArea=median(restShapes.map(s=>s.area));
-    const band=Math.round(restH*.25),restTorso=median(restShapes.map(s=>torsoWidth(s,band)));
+    // A breathing rest (card parado-respiracao-herois) stands up to ~4 % taller as it breathes in: the reference is its
+    // lowest pose, breathed out, the pose the actions are drawn from (a held rest: all its poses are that one).
+    const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
+    const band=Math.round(restH*.25),restTorso=torsoWidth(low,band);
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
     for(const motion of ['idle','walk','run','push','pull','hurt']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
       const rows=frames.map((a,i)=>{
-        const sh=shapes[i],head=headScale(rest[0],r0,a,sh);
+        const sh=shapes[i],head=headScale(rest0,r0,a,sh);
         const stance=motion!=='run'||!clip.phase||clip.phase.v[i].some(v=>v!==0);
         return {frame:i,stance,head:+(head.scale*k).toFixed(3),headIou:head.iou,height:+(sh.H*k/restH).toFixed(3),
           torso:+(torsoWidth(sh,Math.round(band/k))*k/restTorso).toFixed(3),area:+(Math.sqrt(sh.area/restArea)*k).toFixed(3)};
@@ -204,7 +206,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
       entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
         torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{}),
-        ...(motion==='hurt'?{joins:joins(rest[0],r0,frames,shapes)}:{})};
+        ...(motion==='hurt'?{joins:joins(rest0,r0,frames,shapes)}:{})};
     }
     out.dirs[d]=entry;
   }

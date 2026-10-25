@@ -119,5 +119,5 @@ test('only the local hero\'s melee swing lays it, from the fire event (nothing n
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   assert.match(scene,/aim:\(\)=>this\.mouseGround\(\)/);
   assert.match(scene,/return !p\|\|p\.wasTouch\|\|!p\.time\?undefined/,'a finger: no aim (the phone keeps the auto aim)');
-  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,[^)]*\),aim\)/,'the same mouse goes to the sim');
+  assert.match(scene,/net\.input\(direction,false,this\.attackTarget,[^)]*\),aim(,work)?\)/,'the same mouse goes to the sim');
 });

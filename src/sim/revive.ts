@@ -23,7 +23,7 @@ export function isStanding(p:SimPlayer){
  * Does not look at invulnerableUntil: the core's damagePlayer already applies invulnerability
  * (D-001, core.ts damagePlayer) before calling onPlayerZero, and this is the hp-0 transition itself.
  */
-export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string){
+export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string,cause?:string){
   if(player.spectator||player.downed||player.eliminated)return false;
   player.hp=0;
   player.target=undefined;
@@ -32,9 +32,10 @@ export function downPlayer(ctx:SimContext,player:SimPlayer,by?:string){
   clearMoveEffects(player);
   player.downed={sinceTick:ctx.tick,bleedOutTick:ctx.tick+BLEED_OUT_TICKS,progress:0};
   // `by` is the enemy id that dealt the last hit (contact, telegraph owner or projectile owner); its kind names the cause.
-  // A hazard that outlives its thrower (`env:molotov:<id>`, D-033) names the kind behind it.
-  const source=by===undefined?undefined:ctx.enemies.get(by)?.kind??hazardKind(by);
-  ctx.emit(by===undefined?{type:'downed',player:player.id}:source===undefined?{type:'downed',player:player.id,by}:{type:'downed',player:player.id,by,source});
+  // A hazard that outlives its thrower (`env:molotov:<id>`, D-033) names the kind behind it. `cause` names a fall with
+  // no enemy behind it (the fear's FEAR_SOURCE, sim/fear.ts).
+  const source=cause??(by===undefined?undefined:ctx.enemies.get(by)?.kind??hazardKind(by));
+  ctx.emit({type:'downed',player:player.id,...(by!==undefined?{by}:{}),...(source!==undefined?{source}:{})});
   return true;
 }
 

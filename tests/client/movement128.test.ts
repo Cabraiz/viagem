@@ -287,7 +287,7 @@ test('renderer holds the last oblique rest/walk/attack while a clip decodes and 
   }finally{if(previous)Object.defineProperty(globalThis,'Image',previous);else Reflect.deleteProperty(globalThis,'Image');}
 });
 
-test('a figure off camera asks for no legacy sheet: it holds its pose; on camera, dead, the legacy pose still loads',()=>{
+test('a figure off camera asks for no legacy sheet: it holds its pose; on camera, dead, it lies as its rest, no legacy pose',()=>{
   setArtIndex(parseArtIndex(manifest({idle8:idle8()})));const loads:string[]=[],events=new EventEmitter();
   const scene={events,time:{now:0},textures:{exists:()=>false},cameras:{main:{worldView:{left:0,right:400,top:0,bottom:800}}},
     load:{spritesheet:(key:string)=>loads.push(key),once(){},on(){},isLoading:()=>false,start(){},list:{size:0}}};
@@ -300,7 +300,8 @@ test('a figure off camera asks for no legacy sheet: it holds its pose; on camera
   renderer.animate(sprite as never,'aposentado',0,0);renderer.animate(sprite as never,'aposentado',1,0);
   assert.deepEqual(loads,[],'no dir4/dir4c for a figure the camera cannot see');assert.equal(sprite.texture.key,'stand-in');assert.ok(sprite.stops>0);
   sprite.x=200;sprite.y=400;renderer.animate(sprite as never,'aposentado',1,0,0,false);
-  assert.deepEqual(loads,['sprite:aposentado:dir4','sprite:aposentado:dir4c'],'a dead figure on camera still loads its legacy pose');
+  // Card parado-respiracao-herois: the caído is its rest (turned by the scene), not the older legacy drawing.
+  assert.deepEqual(loads,[],'a dead figure on camera shows its rest clip, no legacy sheet');
 });
 
 test('movement128Visible (Q6): an unrotated sprite is tested from its size and origin, the box getBounds would give, without calling it',async()=>{

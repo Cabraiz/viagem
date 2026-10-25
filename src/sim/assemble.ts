@@ -15,6 +15,7 @@ import {createProjectileSystem} from './projectiles.ts';
 import {createTelegraphSystem} from './telegraphs.ts';
 import {createProgression,type Progression,type ProgressionState} from './progression.ts';
 import {createReviveSystem,downPlayer,type ReviveSystem} from './revive.ts';
+import {createFearSystem} from './fear.ts';
 import {UNITS_PER_TOKEN,kitId,refreshStats} from '../rules/index.ts';
 import {ITEMS,MANUAL_ITEMS} from './items.ts';
 import {createCrates,type Crates,type CratesState} from './crates.ts';
@@ -30,7 +31,7 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
@@ -40,7 +41,8 @@ import {createBanks,ringCandidates,type BanksState,type BanksSystem} from './ban
 import type {BankView} from '../contract/index.ts';
 import {createVehicles,type VehiclesState,type VehiclesSystem} from './veiculos/system.ts';
 import {calmGate} from './ninhos/calma.ts';
-import {CALMA,calmAround} from '../rules/index.ts';
+import {createChefao,holdChaveiroClock,holdWaveClock,type ChefaoState,type ChefaoSystem} from './ninhos/chefao.ts';
+import {CALMA,WAVE_BOSS,calmAround} from '../rules/index.ts';
 import {CITY_BALANCE,MANUAL_CITY_BALANCE,hasTeamBossHp,hasTeamDamage,teamBossHp,teamDamage,type CityBalance} from './city/balance.ts';
 
 export type RunOutcomeKind='victory'|'defeat';
@@ -70,6 +72,8 @@ export interface RunSystemsOptions {
   reconnectGraceTicks?:number;
   /** Lab only (LAB_ZUEIRA): replaces the seed's plan of zueira events (VGM-053B). */
   zueiraLab?:ZueiraLab;
+  /** Mode 'ninhos': forces the chefão of the 1st wave (a WAVE_BOSSES roster id: labs, tests); default the seed's draw. */
+  chefao?:string;
   /** Lab only (LAB_DOURADA): the caixa-gamble's hidden dourada chance instead of GOLD_HIDDEN_CHANCE (1 = always, for a video). */
   goldLab?:number;
   /** City: the plaza barricades (cidade-06, default on). Off only for travel/reach measurements in tests. */
@@ -115,6 +119,11 @@ export interface RunSystemsOptions {
    * the automatic weapons and the skills, exactly as before, until the E6 weapons and the balance pass.
    */
   combat?:CombatMode;
+  /**
+   * Fear (card NEW-20261023-ORQ-fear-escuridao-sozinho, sim/fear.ts): alone for 60 s, the dark takes the hero. Default:
+   * on with the manual combat (the game the rooms play since D-051), off otherwise, so the old worlds' runs and digests stay.
+   */
+  fear?:boolean;
 }
 /** JSON-safe state of the stateful systems (RunSystems.state()): what a room checkpoint stores. */
 export interface RunSystemsState {
@@ -133,6 +142,8 @@ export interface RunSystemsState {
   /** D-051, only in mode 'ninhos' (absent otherwise): the nests and their sleepers (absent until the first step). */
   ninhos?:NestsState;
   sono?:SonoState;
+  /** Card boss-fim-onda-1, only in mode 'ninhos' (absent otherwise): the chefão at the end of the 1st wave. */
+  chefao?:ChefaoState;
 }
 export interface RunSystems {
   director:Director;progression:Progression;boss:BossController;enemyAi:EnemyAi;revive:ReviveSystem;
@@ -148,6 +159,8 @@ export interface RunSystems {
   nests?:NestsSystem;
   /** D-051: their sleepers (ninhos/sono.ts), from the first step of a run in mode 'ninhos'. */
   sono():Sono|undefined;
+  /** Card boss-fim-onda-1: the chefão at the end of the 1st wave (ninhos/chefao.ts), mode 'ninhos' only. */
+  chefao?:ChefaoSystem;
   /** D-047: the objective as the HUD and the bots see it; undefined without one. */
   objectiveView():ObjectiveView|undefined;
   /** D-051 manual combat's crates (sim/crates.ts): dropCrate for the nests, opening() for the HUD; absent otherwise. */
@@ -236,7 +249,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
   const zueiraClock=!!cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos';
   const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures(),
-    ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated}}:{})});
+    ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated||!!chefao?.up()}}:{})});
   // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
   if(cp)Object.assign(zueira.state,cp.zueira);
   let director:Director|undefined;
@@ -251,6 +264,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   let vehicles:VehiclesSystem|undefined;
   // D-051: the nests of mode 'ninhos' (created with the chaveiro, below).
   let nests:NestsSystem|undefined,sono:Sono|undefined;
+  // Card boss-fim-onda-1: the chefão at the end of the 1st wave (created with the nests, below).
+  let chefao:ChefaoSystem|undefined;
   const runEnded=()=>chaveiro?chaveiro.state.ended!==undefined:bossDown||director!.state.stage==='done';
   // City balance knobs (cidade-11): only on a city terrain; the island and the endless world never see them.
   const cityBalance=cityTerrainOf(world.terrain)?options.cityBalance??(options.combat==='manual'?MANUAL_CITY_BALANCE:CITY_BALANCE):undefined;
@@ -261,6 +276,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const steered=new Set<string>(),cityWorld=!!cityTerrainOf(world.terrain);
   // D-052: the sticks of this tick (who pushes the chaveiro's car, read by its step later in the same tick). Transient too.
   const sticks=new Map<string,{x:number;y:number}>();
+  // Bicos: this tick's Trabalhar per player who sent an input (held and standing still), read by the banks' step. Transient.
+  const work=new Map<string,boolean>();
   // D-051: who holds the attack on this tick (players → weapons, same tick); only in the manual combat.
   const manual:ManualCombat|undefined=options.combat==='manual'?{attacking:new Set<string>()}:undefined;
   world.recordLastHit=!!manual;
@@ -269,7 +286,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const nestMode=!!objective&&options.mode==='ninhos';
   const takeInput=cityWorld?(id:string)=>{
     const input=options.takeInput(id);
-    if(input&&Math.hypot(input.x,input.y)>=.01){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
+    const moving=!!input&&Math.hypot(input.x,input.y)>=.01;
+    if(input&&moving){steered.add(id);sticks.set(id,{x:input.x,y:input.y});}
+    if(input)work.set(id,!!input.work&&!moving);
     return input;
   }:options.takeInput;
   const stonewards=createStonewardsSystem({
@@ -419,6 +438,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
       // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
       ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
+      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
+      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
@@ -474,6 +495,18 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
         // A fallen nest pays the team, split among the seated like the boss (carteira-e-pix).
         pay:n=>{splitAmong(seatedPlayers(world.players),n,stonewards.state);},
       },cp?.ninhos);
+      // Card boss-fim-onda-1: the chefão when the 1st wave's last body leaves, its fight the final boss's (his own numbers).
+      chefao=createChefao({seed:world.seed,...(options.chefao!==undefined?{who:options.chefao}:{}),
+        nests:()=>nests?.state,entrances:ENTRANCES.map((e,i)=>({id:e,x:entrances[e].x,y:entrances[e].y,route:routes[i]})),car,
+        ...(crates?{dropChest:(ctx:SimContext,at:{x:number;y:number})=>{crates.dropCrate(ctx,at,WAVE_BOSS.crate);}}:{}),
+        summon:(ctx,kind,at)=>hasRoom(ctx.enemies,MAX_ENEMIES)&&isEnemyKind(kind)?inCity(createEnemy(ctx,kind,at,1)):undefined,
+        minionKinds:()=>director?.bossMinionKinds(),
+        ...(bossSteer?{steer:bossSteer.hero,speedMap:citySpeed}:{}),
+        say:(ctx,enemy,lines,key)=>enemyAi.say(ctx,enemy,lines,key),
+        scalePlayers:ctx=>director?.scalePlayers(ctx)??1,
+        enrageAfterTicks:ticks(CALMA.bossEnrageS),
+        siege:()=>chaveiro?.targets().find(t=>t.id===CAR_ID),hitSiege:(ctx:SimContext,id:string,b:EnemyState)=>{if(id===CAR_ID)chaveiro?.hitCar(ctx,b);},
+      },cp?.chefao);
     }
   }
   // Bancos: the city's ATMs, in both modes (after the chaveiro: its route is their anchor), never on the island or the endless map.
@@ -483,11 +516,14 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     const ring=ringCandidates({x:wall.x,y:wall.y},(x,y,r)=>cityTerrain.clearDisc(x,y,r));
     banks=createBanks({seed:world.seed,candidates:[...ring,...(loot?.crates??[]).map(c=>({id:c.node.id,x:c.node.x,y:c.node.y}))],car:{x:wall.x,y:wall.y},
       ...(chaveiro?{route:chaveiro.route.points}:{}),plaza:cityTerrain.asset.points.praca,
-      wallet:{add:(n,to)=>{addGrana(to,n);}}},cp?.banks);
+      wallet:{add:(n,to)=>{addGrana(to,n);}},work:id=>work.get(id)},cp?.banks);
     // Veículos: in both city modes too (a ride ends on moving the car).
     vehicles=createVehicles({seed:world.seed,clear:(x,y,r)=>cityTerrain.clearDisc(x,y,r),...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})},cp?.veiculos);
   }
   const revive=createReviveSystem({onTeamDefeated:()=>onOutcome('defeat'),runEnded,reconnectGraceTicks:options.reconnectGraceTicks,...(cp?{revives:cp.revives}:{})});
+  // Fear: the Uno (the chaveiro's car) is company, else the base (the wall).
+  const fear=(options.fear??options.combat==='manual')?createFearSystem({runEnded,bot:options.bot,autopilot:options.autopilot,
+    base:()=>{const car=chaveiro?.targets().find(t=>t.id===CAR_ID);return car?{x:car.x,y:car.y}:{x:stonewards.state.wall.x,y:stonewards.state.wall.y};}}):undefined;
 
   // D-051 manual combat: the inventory (sim/inventory.ts); the old kit-torre is one team ficha, a kit de torre
   // (torre-pela-caixa) its piece built for free on the grid.
@@ -497,18 +533,26 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
 
   world.clearSystems();
   for(const system of [
-    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();players.step(ctx);}}))(
+    ((players:SimSystem):SimSystem=>({id:players.id,step(ctx){steered.clear();sticks.clear();work.clear();players.step(ctx);}}))(
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
       // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
       playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
-    {id:'director',step(ctx:SimContext){director!.step(ctx);nests?.step(ctx);sono?.step(ctx);applyEliteExtras(ctx);}} satisfies SimSystem,
-    zueira,enemyAi,boss,
+    // Card boss-fim-onda-1: the chefão stops the time; while he stands the nests hold their clock (no wave, no drip).
+    {id:'director',step(ctx:SimContext){
+      director!.step(ctx);
+      if(nests&&chefao?.up())holdWaveClock(nests.state);else nests?.step(ctx);
+      sono?.step(ctx);applyEliteExtras(ctx);
+    }} satisfies SimSystem,
+    zueira,enemyAi,
+    // Card boss-fim-onda-1: the chefão of the 1st wave steps in the boss's slot (no new system id).
+    chefao?{id:boss.id,step(ctx:SimContext){boss.step(ctx);chefao!.step(ctx);}} satisfies SimSystem:boss,
     createWeaponSystem({cap:MAX_PROJECTILES,...(manual?{manual:{attacking:(id:string)=>manual.attacking.has(id),
       // BUG-20261023-ORQ-tiro-na-direcao-mobile: a person's attack goes off toward the aim/facing even into the air; bots keep the target rule.
       free:(id:string)=>!options.bot?.(id)&&!options.autopilot?.(id)}}:{}),
-      ...(chaveiro?{busy:(id:string)=>chaveiro!.busy(id)}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
+      // Bicos: nobody fires from inside a shop.
+      ...(chaveiro||banks?{busy:(id:string)=>!!chaveiro?.busy(id)||banks?.working(id)!==undefined}:{})}),createProjectileSystem({cap:MAX_PROJECTILES}),createTelegraphSystem(),
     {id:'pickups',step(ctx:SimContext){
       progression.pickups.step(ctx);
       // D-051 (same slot, no new system id): everyone gets the inventory (the Faca de Pão) on their first tick in the
@@ -518,10 +562,16 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // Veículos: the parked vehicles and the rides, in the same slot (no new system id).
       vehicles?.step(ctx);
     }},
-    progression.progression,revive,
+    // Fear steps in the revive slot (no new system id), right before it: a hero the dark takes counts for the defeat now.
+    progression.progression,fear?{id:revive.id,step(ctx:SimContext){fear.step(ctx);revive.step(ctx);}} satisfies SimSystem:revive,
     // D-047: the chaveiro steps right after the structures (same slot of the order, no new system id).
     // Bancos: the banks step in the same slot, after the chaveiro (no new system id).
-    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){stonewards.step(ctx);chaveiro?.step(ctx);banks?.step(ctx);}} satisfies SimSystem:stonewards,
+    // Card boss-fim-onda-1: while the chefão stands the chaveiro's ETA holds too (holdChaveiroClock).
+    chaveiro||banks?{id:stonewards.id,step(ctx:SimContext){
+      stonewards.step(ctx);
+      if(chaveiro&&chefao?.up())holdChaveiroClock(chaveiro.state);else chaveiro?.step(ctx);
+      banks?.step(ctx);
+    }} satisfies SimSystem:stonewards,
   ])world.register(system);
 
   const offKill=world.onKill((enemy,by,ctx,credit)=>{
@@ -542,7 +592,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
   const offZero=world.onPlayerZero((player:SimPlayer,source,ctx)=>{downPlayer(ctx,player,source);});
 
   return {
-    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),sono:()=>sono,...(banks?{banks}:{}),...(vehicles?{vehicles}:{}),
+    director,progression,boss,enemyAi,revive,stonewards,zueira,...(avenues?{avenues}:{}),...(chaveiro?{chaveiro}:{}),...(nests?{nests}:{}),...(chefao?{chefao}:{}),sono:()=>sono,...(banks?{banks}:{}),...(vehicles?{vehicles}:{}),
     objectiveView:()=>chaveiro?.view(world.tick),
     bankViews:()=>banks?.view(world.tick),
     ...(crates?{crates}:{}),
@@ -555,7 +605,7 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       placeNear:(id,slot)=>{const p=world.players.get(id);return p?placeKitNear(world,p,slot,inventoryHooks):{ok:false,reason:'player'};},
     } satisfies RunSystems['inventory']}:{}),
     state:()=>({director:director!.state,progression:progression.state,boss:boss.state,enemyAi:enemyAi.state(),revives:[...revive.revives],stonewards:stonewards.state,zueira:zueira.state,
-      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),
+      ...(chaveiro?{chaveiro:chaveiro.state}:{}),...(crates?{crates:crates.state}:{}),...(nests?{ninhos:nests.state}:{}),...(chefao?{chefao:chefao.state}:{}),...(sono?{sono:sono.state}:{}),...(banks?{banks:banks.state}:{}),...(vehicles?{veiculos:vehicles.state}:{})}),
     dispose(){offKill();offZero();if(sono&&world.sleepers===sono.sleepers)world.sleepers=undefined;if(damageScale&&world.playerDamageScale===damageScale)world.playerDamageScale=undefined;world.recordLastHit=false;},
   };
 }

@@ -39,8 +39,9 @@ const M16_SKIN=new Set(['maromba']);
  * M16 heroes measured by the base rule (handOf: the outermost bare skin on the weapon side), reviewed on the debug sheets.
  * The vendedor's head is big and bare (cheek, ear, neck): off the attack the hand hangs at the hip, so the search
  * starts below the chin (40 % of the figure); in the attack the fist rises to the face and the search keeps the 22 %.
+ * The aposentado (card aposentado-arte-8-direcoes) the same: bare arms, the white beard down to the chest.
  */
-const M16_BARE=new Set(['vendedor-praia']);
+const M16_BARE=new Set(['vendedor-praia','aposentado']);
 /** Which side the weapon hand is on, per drawn direction (−1 screen-left, +1 screen-right). */
 const SIDE={S:-1,N:1,W:-1,NW:-1,SE:1,E:1,NE:1,SW:-1};
 /** Back-facing directions: the hand is in front of the hero, so the weapon goes behind the body. */
@@ -82,9 +83,22 @@ const OVERRIDES={
     // W and E punch with the far hand (the near one wears the watch): the weapon goes behind the body, out past it.
     ...(d==='W'||d==='E'?{behind:true}:{})}])),
   'clt-cansado:idle8':{2:[58,59],6:[50,56]},
+  // Its breathing rest (parado-respiracao-herois): the idle8's poses, the hands below the hip, where nothing moves.
+  'clt-cansado:idle16-W':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[58,59]])),
+  'clt-cansado:idle16-E':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[50,56]])),
+  // The gato's SE breathing rest: the paw rule flips between the paw and the sash knot as the shoulders open; the paw
+  // stays where the rest has it (frame 0, behind the sleeve).
+  'gato-nada-pra-comer:idle16-SE':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[65.8,60,1]])),
+  // The maromba's S and N breathing rest: the wristband sits at the hip line and the rule finds it only half the breath
+  // (the weapon would flip in front ↔ behind); the fist stays where the rest has it (S frame 0; N where it is found).
+  'maromba:idle16-S':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[29.1,62.4]])),
+  'maromba:idle16-N':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[66.7,62.3]])),
   // The vendedor's S punch toward the camera (7) and the guard at the chest (12, 13): the fist sits on the torso, the
   // outermost skin is the cheek (marked by eye on the debug sheet, 24/10).
   'vendedor-praia:attack16-S':{7:[40,54],12:[40,52],13:[38,50]},
+  // The aposentado's W wind-up (0, 1) and recovery (15): the fist is on the belly / at the chin, the outermost skin is
+  // the nose or the far elbow (marked by eye on the debug sheet, 24/10).
+  'aposentado:attack16-W':{0:[45,62],1:[43,50],15:[46,64]},
   // The flinch (animacao-receber-dano): W keeps the near hand (the watch) of its rest, also while the far one flies up in
   // front (the rule takes the face or that far hand); N hides the right hand on the chest at the strongest recoil.
   'clt-cansado:hurt16-W':{0:[58,75],1:[58,68],2:[55,62],3:[57,72],4:[58,73],5:[58,74]},
@@ -98,7 +112,7 @@ const OVERRIDES={
   'clt-cansado:walk128-E':{},
   'viciado-em-bet:walk16-W':{1:hidden([44.7,49.4],[46.6,42.4],.25),2:hidden([44.7,49.4],[46.6,42.4],.5),3:hidden([44.7,49.4],[46.6,42.4],.75),
     8:hidden([43.7,42.5],[42.9,47.9],.5)},
-  'viciado-em-bet:idle16-W':Object.fromEntries(Array.from({length:8},(_,i)=>[i,[46,56,1]])),
+  'viciado-em-bet:idle16-W':Object.fromEntries(Array.from({length:16},(_,i)=>[i,[46,56,1]])),
 };
 
 // The bots' attack fists marked by eye (scripts/hand-mark.mjs): scripts/hand-keys/<id>.json, {sheet: {keys, behind?}}.
@@ -295,13 +309,14 @@ const table=fs.existsSync(OUT)?JSON.parse(fs.readFileSync(OUT,'utf8').slice(HEAD
 for(const id of ids){
   const files=manifest.groups.personagens.pieces[id]?.files??{};
   for(const key of Object.keys(table))if(key.startsWith(`${id}.`))delete table[key];
-  const m16=Object.keys(files).some(n=>n.startsWith('walk16-'));
+  const m16=Object.keys(files).some(n=>n.startsWith('walk16-')),idle16=!m16&&Object.keys(files).some(n=>n.startsWith('idle16-'));
   for(const [name,f] of Object.entries(files)){
     // The sheets the game shows (movement128.ts movementPlan): M16 when the class has it (5 drawn directions), else R06
     // (walk128/attack128 in the 8 directions, idle8 one pose per direction, and run16 when it runs).
     // An R06 class that runs (corrida-clt) shows its run16 (5 drawn directions) instead of the walk128; hurt16 (animacao-
     // receber-dano) is the flinch either kind shows when hit at rest.
-    const m=(m16?/^(?:walk|attack|idle|run|hurt)16-(\w+)$/:/^(?:(?:walk|attack)128|run16|hurt16)-(\w+)$/).exec(name),idle8=!m16&&name==='idle8';
+    // An R06 class that breathes (parado-respiracao-herois: the CLT) rests on its idle16 in the 8 directions, not the idle8.
+    const m=(m16?/^(?:walk|attack|idle|run|hurt)16-(\w+)$/:/^(?:(?:walk|attack)128|run16|hurt16|idle16)-(\w+)$/).exec(name),idle8=!m16&&!idle16&&name==='idle8';
     if(!m&&!idle8)continue;
     // The bots' classes: the tracking holds only for AUTO's walks and rest (reviewed pose by pose); every other sheet
     // needs its hand marked by eye (scripts/hand-mark.mjs, CLT_KEYS' method); until then none (the sticker at the side).

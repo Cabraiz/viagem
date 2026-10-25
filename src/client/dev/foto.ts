@@ -49,6 +49,8 @@ export const FOTO_CENAS:Readonly<Record<string,FotoCena>>=Object.freeze({
   'cidade-praca':{sandbox:'cidade',query:'mapa=real&hero=95,100',descricao:'a praça e o chafariz'},
   'bancos':{sandbox:'cidade',query:'mapa=real&bancos=1&hero=156,74',descricao:'bancos: um pagando (nota no ar), um roubado por Cliente Prime, um SEM CÉDULAS'},
   'veiculos':{sandbox:'cidade',query:'mapa=real&tele=1&veiculos=1&hero=95,100',descricao:'veículos: patinete, carrinho e crossfiteiro estacionados; o herói no carrinho (chip com 60 % da corrida)'},
+  'bicos-trabalhar':{sandbox:'cidade',query:'mapa=real&bancos=1&bicos=1&turno=0&acao=1&hero=156,74',descricao:'bicos (etapa 4): o herói no anel da loja aberta, o botão Atacar vira Trabalhar na cor de interação'},
+  'bicos-turno':{sandbox:'cidade',query:'mapa=real&bancos=1&bicos=1&turno=1&acao=1&hero=156,74',descricao:'bicos (etapa 4): o herói no turno (sumiu na porta acesa), "Você no turno" na placa, o botão No turno'},
   'bancos-aberto':{sandbox:'cidade',query:'mapa=real&bancos=1&banco=aberto&hero=156,74',descricao:'bancos: os três cheios, ninguém no caixa'},
   'arsenal':{sandbox:'cidade',query:'mapa=real&tele=1&arsenal=1&hero=112,182',descricao:'D-051: caixas por raridade (uma abrindo, uma estourando), itens no chão, arma na mão e o tiro (arma=pistola|escopeta|…; padrão: as 7 em ciclo)'},
   'ataque-mira':{sandbox:'cidade',query:'mapa=real&hero=95,100&n=8&parado=1&acao=1&arrasto=-40,-50',descricao:'ataque manual (D-051): arrasto do botão Atacar, linha amarela e retícula'},

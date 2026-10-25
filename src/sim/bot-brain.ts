@@ -71,7 +71,7 @@ import {DEFENSES,DEFENSE_LIMIT,GUSTAVAO_LIMIT,ROOT_DEFENSE,childrenOf,pickChild,
 import type {BuildPlan} from './towers/sites.ts';
 import {BUILD_REACH,TOWER_REPAIR_COST} from './towers/system.ts';
 import {PUSH_RADIUS,PUSH_SECONDS} from './chaveiro/system.ts';
-import {BANCO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
+import {BANCO,BICO,CALMA,REVIVE_TICKS,calmAround} from '../rules/index.ts';
 import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
@@ -100,6 +100,15 @@ export const REPAIR_BELOW=.95;
 export const FORGE_REACH=Math.min(2.5,CAMP_RADIUS-1);
 /** Critters this close to the wall are besieging it: the guards go for them first. */
 export const SIEGE_REACH=4;
+/** Card boss-fim-onda-1: a boss (the chefão of the 1st wave, the final one) this close to the car: every bot goes for him. */
+export const BOSS_FOCUS_R=16;
+/** The boss the bots focus: alive and within BOSS_FOCUS_R of the car (mode 'ninhos', the chaveiro); the nearest such. */
+export function bossFocus(enemies:readonly EnemyView[],car:Point|undefined):EnemyView|undefined{
+  if(!car)return undefined;
+  let best:EnemyView|undefined;
+  for(const e of enemies)if(e.boss&&e.hp>0&&dist(e,car)<=BOSS_FOCUS_R&&(!best||dist(e,car)<dist(best,car)))best=e;
+  return best;
+}
 /** Mode 'ninhos': a critter this close to the car keeps the bots from a delivery-clearing trip (objectiveTask). */
 export const NEST_THREAT_RADIUS=40;
 /**
@@ -239,6 +248,10 @@ export interface Decision {
   direction:Point;cast:boolean;sos:boolean;forge?:RecipeId;choose?:{offer:string;index:number};
   /** D-051 manual combat only: hold the attack button (a critter is within the equipped weapon's reach). */
   attack?:boolean;
+  /** Bicos: hold Trabalhar (standing still in a shop's ring, mode 'bank'). */
+  work?:boolean;
+  /** Card boss-fim-onda-1: the chosen target (PlayerInput.target): a boss near the car (bossFocus). */
+  target?:string;
   /** D-051 manual combat only: an inventory command (bot-loot.ts: eat, the best weapon to the hand, "Trocar"). */
   inventory?:LootCommand;
   /** Tower defense order for the structures system's build/upgrade (only with BrainInput.towers). */
@@ -356,8 +369,18 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
 export const BANK_REACH=40,BANK_BOTS=2;
 /** Bancos, wall mode (no chaveiro's bill): the Grana (R$) under which the bots go to an ATM. */
 export const BANK_GRANA_TARGET=30;
-/** A trip to an ATM is worth it for this many notes (BANCO.saqueS each); a bot already there stays while one more fits. */
-export const BANK_MIN_NOTES=2;
+/**
+ * A trip to a shop is worth it for this many notes (bicos: BICO.nota at BICO.porSegundo, 2.5 s each); a bot already there
+ * stays while one more fits.
+ */
+export const BANK_MIN_NOTES=1;
+/**
+ * Bicos: a bot in the ring works (Trabalhar, standing still) while no critter is within BICO_BOT_CLEAR (u) and the
+ * queue is under BICO_BOT_FILA; else it steps out (moving clocks out) and fights or dodges like before.
+ * Etapa 5: 12 → 6 u (inside nobody hits it; with the nests' critters all over the city, 12 u kept the 6p team's bot
+ * out of the shop: 10.9 → 18.7 % of the Grana at R$ 1/s).
+ */
+export const BICO_BOT_CLEAR=6,BICO_BOT_FILA=2;
 /**
  * Bancos in the wave: the ATMs stand ≥ 35 u from the car (≈ 63 u by the streets), a trip no 30 s intermission holds, so
  * the decision "banco ou moto?" is also made in combat. With at least BANK_WAVE_MIN_UP standing players, a bot (never
@@ -412,7 +435,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
       if(crate&&dist(at,crate)<d)continue;
     }
     const there=d<=BANCO.holdR?0:walk(at,bank),back=walk(bank,home);
-    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BANCO.saqueS;
+    const stay=(d<=BANCO.holdR?1:BANK_MIN_NOTES)*BICO.nota/BICO.porSegundo;
     if(!Number.isFinite(there+back)||((there+back)/speed+stay+BANK_MARGIN_SECONDS)*HZ>left)continue;
     picks.push({id:p.id,bank:bank.id,d});
   }
@@ -559,6 +582,9 @@ export function decide(input:BrainInput):Decision{
   const task=input.teamBots?objectiveTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain,input.nests):undefined;
   // D-047: the bot clearing a delivery fights around its point (its anchor) instead of the car.
   const home=task?.kind==='clear'?task.at:homeOf(view,at),round=view.round,prepare=round?.phase==='prepare';
+  // Card boss-fim-onda-1: a boss at the car is everyone's target (the room's aim takes him first when in reach).
+  const focus=input.nests&&view.objective?bossFocus(view.enemies,homeOf(view,at)):undefined;
+  if(focus)decision.target=focus.id;
   // The way to a place (unit): straight, or along the streets in the city; undefined when the streets do not lead
   // there. `chase`: a moving target, whose goal cell is kept in memory (BrainMemory.rescueGoal and the like).
   const city=cityTerrainOf(terrain);
@@ -659,6 +685,12 @@ export function decide(input:BrainInput):Decision{
   const bank=!task&&input.teamBots?bankTask(view,selfId,input.teamBots,input.forger===undefined?forgerId(view):input.forger,terrain):undefined;
   if(bank){
     decision.mode='bank';
+    // Bicos: in the ring with the street clear and a short queue, it clocks in and stands still (the shift pays).
+    const shop=view.banks?.find(b=>b.id===bank.bank);
+    if(dist(at,bank.at)<=BANK_STAND&&(shop?.fila??0)<BICO_BOT_FILA&&!view.enemies.some(e=>dist(at,e)<=BICO_BOT_CLEAR)){
+      decision.direction={x:0,y:0};decision.work=true;
+      return finish(decision,input);
+    }
     if(dist(at,bank.at)>BANK_STAND)want=go(bank.at);
     want=add(want,repel(view.enemies,at,.8));
     decision.direction=norm(want);
@@ -795,7 +827,8 @@ export function decide(input:BrainInput):Decision{
   }else{
     decision.mode='fight';
     // Critters at the wall first (it falls for good), else one near home and not on top of us: weapons have range.
-    const siege=nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
+    // Card boss-fim-onda-1: a boss at the car before them (bossFocus).
+    const siege=focus??nearest(view.enemies.filter(e=>dist(e,home)<SIEGE_REACH&&dist(e,at)<ENGAGE+4),at);
     // City: only what is in plain sight (a critter or a pickup behind a planter would pin the bot against it).
     // City: a lure the bot can answer without leaving the band where lures count (out < -ROAM_IN): a critter whose
     // stand-off point (DANGER+.6 short of it) or a pickup that lies there. One past it (a gem 7 u from the wall, before D-054) pulled the
@@ -803,7 +836,9 @@ export function decide(input:BrainInput):Decision{
     const target=siege??nearestSeen(view.enemies.filter(e=>dist(e,anchor)<(b?leash-ROAM_IN+DANGER+.6:leash+3)&&dist(e,at)<ENGAGE),at);
     // City: a critter or a pickup lures the bot only well inside the leash; at its edge it holds (weapons have range).
     const roam=!b||!homing&&out<-ROAM_IN;
-    if(target&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,toward(at,target,siege?1.2:.7));
+    // City: not into a wall (a critter in sight past a building's corner had the bot push its edge for seconds).
+    const chase=target&&toward(at,target,siege?1.2:.7),open=!chase||!city||walkable({x:at.x+chase.x/(siege?1.2:.7)*.8,y:at.y+chase.y/(siege?1.2:.7)*.8},terrain);
+    if(target&&open&&(siege||roam)&&dist(target,at)>(siege?input.nests&&view.objective?siegeStand(me.weapons):DANGER+.2:DANGER+.6))want=add(want,chase!);
     // Pickups: hearts when hurt, everything else when nothing is close.
     const pickup=nearestSeen(view.pickups.filter(p=>dist(p,at)<6&&(p.kind!=='heal'||hpShare<.8)&&dist(p,anchor)<(b?leash-ROAM_IN:leash+4)),at);
     if(pickup&&roam&&close.length<2)want=add(want,toward(at,pickup,hpShare<.5&&pickup.kind==='heal'?1.6:.9));

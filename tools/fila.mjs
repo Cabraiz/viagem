@@ -9,6 +9,8 @@
 //   node tools/fila.mjs publicar <lote>                          (after `npm run deploy:rooms` when the lote needs it:
 //                                                                 a --worker entry, or a map/protocol change, CONTRACT_PATHS)
 //   node tools/fila.mjs cancelar <lote>
+// lote and publicar refuse to run when tools/fila.mjs (or wt-rm/wt-guarda) differs from <remote>/<base>: run the queue from
+// an up-to-date worktree of the main (--repo stays the main checkout); --qualquer-versao to try a new queue on purpose.
 // Options for tests and the simulation: --repo <main checkout> --board <board dir> --wt <worktree root> --remote origin
 // --base main --protocol-file src/protocol/protocol4.ts --protocol-json public/multiplayer.json --no-modules
 // --disco "<free GB>,<total GB>" (a simulated drive; tools/wt-guarda.mjs: no lote below 25 GB free, a warning above 85%).
@@ -37,7 +39,7 @@ function parse(argv){
     const a=argv[i];
     if(!a.startsWith('--')){o._.push(a);continue;}
     const k=a.slice(2);
-    if(['worker','protocol','no-modules','dry'].includes(k))o.flags.add(k);
+    if(['worker','protocol','no-modules','dry','qualquer-versao'].includes(k))o.flags.add(k);
     else o[k]=argv[++i];
   }
   // The main checkout, also when the tool runs from a worktree (D:/Gits/viagem-wt/x): the parent of git's common dir.
@@ -58,6 +60,29 @@ const writeJson=(p,v)=>{mkdirSync(dirname(p),{recursive:true});const tmp=`${p}.$
 export function mainCheckout(dir){
   const r=spawnSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:dir,encoding:'utf8'});
   return r.status===0?dirname(r.stdout.trim()):dir;
+}
+/**
+ * The queue's own files. A lote or a publish run by another copy is refused (BUG-20261024-ORQ-fila-base-arquivo-novo: the
+ * Orquestrador ran the main checkout's fila.mjs, left at 14/10 while the main moved on 1272 commits; without the filter of
+ * 1a82e778 the base ran tests/maps/mapa-175.test.ts, which it does not have, and lote 20261024-183205 said "a main já falha").
+ */
+export const TOOL_FILES=['tools/fila.mjs','tools/wt-rm.mjs','tools/wt-guarda.mjs'];
+/** The TOOL_FILES under `root` that differ from <remote>/<base> in opt.repo (a file the base does not have is skipped). */
+export function staleTools(opt,root=SELF_ROOT){
+  const lf=(s)=>s.replace(/\r\n/g,'\n').trim();
+  return TOOL_FILES.filter(f=>{
+    const there=spawnSync('git',['show',`${opt.remote}/${opt.base}:${f}`],{cwd:opt.repo,encoding:'utf8',maxBuffer:64<<20});
+    if(there.status!==0)return false;
+    const here=join(root,f);
+    return !existsSync(here)||lf(readFileSync(here,'utf8'))!==lf(there.stdout);
+  });
+}
+/** Fetches, then throws when this copy of the queue is not the base's (--qualquer-versao: trying a new queue on purpose). */
+function exigeFilaAtual(opt){
+  if(opt.flags.has('qualquer-versao'))return;
+  tryGit(opt.repo,'fetch','-q',opt.remote);
+  const old=staleTools(opt);
+  if(old.length)throw new Error(`${old.join(', ')} de ${SELF_ROOT} não é o da ${opt.remote}/${opt.base}: rode a fila de uma worktree atualizada da ${opt.remote}/${opt.base} (node <worktree>/tools/fila.mjs ...; a --repo continua sendo a main checkout), ou --qualquer-versao para testar uma fila nova`);
 }
 const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'').replace('T','-');
 const log=(...a)=>console.log('[fila]',...a);
@@ -341,6 +366,7 @@ function answer(opt,entry,result){
 
 function lote(opt){
   const lockDir=join(opt.board,'fila','.lote');
+  exigeFilaAtual(opt);
   // BUG-20261022-ORQ-disco-cheio-guarda: a lote makes up to four checkouts; below 25 GB free it does not start (the
   // Orquestrador gets a note; above 85% of use, a warning). --disco "<free GB>,<total GB>" simulates the drive.
   exigeEspaco(opt.board,opt.wt,'abrir o lote',{fake:opt.disco});
@@ -478,6 +504,7 @@ function rmdirSyncSafe(dir){try{for(const f of readdirSync(dir))rmSync(join(dir,
 
 function publicar(opt){
   const id=opt._[1],p=join(opt.board,'fila','lotes',`${id}.json`);
+  exigeFilaAtual(opt);
   if(!existsSync(p))throw new Error(`lote ${id} não existe`);
   const state=readJson(p);
   if(state.estado!=='aguardando-worker'&&state.estado!=='pronto-para-push')throw new Error(`lote ${id} está ${state.estado}: não publico`);

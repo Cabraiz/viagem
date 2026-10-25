@@ -206,7 +206,7 @@ export class RoomBots {
         ...(sim.mode==='ninhos'?{nests:true as const}:{}),
         ...(builder===mind.id&&towers?{towers}:{})});
       this.modes.set(mind.id,d.mode);
-      sim.setBotInput(mind.id,d.direction,d.cast,d.attack);
+      sim.setBotInput(mind.id,d.direction,d.cast,d.attack,d.work,d.target);
       if(d.choose&&this.chooses)sim.choose(mind.id,d.choose.offer,d.choose.index);
       // D-051 manual combat: the bot's inventory (an autopilot leaves the person's alone, like their offers).
       if(d.inventory&&this.chooses){

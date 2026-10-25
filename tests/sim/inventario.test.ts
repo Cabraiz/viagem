@@ -1,5 +1,5 @@
 // D-051 inventory (NEW-20261014-ORQ-armas-caixas-inventario, proposal §3): the manual combat's 6 slots on a real
-// Simulation. Everyone starts with the Faca de Pão in the hand; equip / use / drop / take; items walked over; the
+// Simulation. Everyone starts empty-handed (torre-limite-rebocar-sem-arma); the other tests hand a Faca de Pão; equip / use / drop / take; items walked over; the
 // level cards are passives only; the hand's weapon is the one that fires.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,19 +13,26 @@ import {UNITS_PER_TOKEN} from '../../src/rules/index.ts';
 import {setRosterOnlyWithArt} from '../../src/rules/enemy-rotation.ts';
 setRosterOnlyWithArt(false);
 
-function manual(players=1){
+function manual(players=1,faca=true){
   const s=new Simulation(7,{combat:'manual'});
   for(let i=0;i<players;i++)s.add(`p${i}`,`P${i}`,'cidadao-comum');
   s.resetRun();
   let now=1000;
   const step=(n=1)=>{for(let i=0;i<n;i++)s.step(now+=50);};
   step();
+  // The heroes start empty-handed; these tests were written around a Faca de Pão in slot 0, the hand.
+  if(faca)for(const p of s.players.values())p.build.weapons.push({id:'faca',level:1});
   return {s,step,p:(id='p0')=>s.players.get(id)!,world:(s as unknown as {world:Parameters<typeof dropItem>[0]}).world};
 }
 
-test('everyone starts the manual combat with the Faca de Pão in the hand; the automatic game is untouched',()=>{
-  const {p}=manual(2);
-  for(const id of ['p0','p1']){assert.deepEqual(p(id).build.weapons,[{id:'faca',level:1}]);assert.equal(p(id).build.hand,0);}
+test('torre-limite-rebocar-sem-arma: everyone starts the manual combat empty-handed (no Faca); the first weapon goes to the hand; the automatic game is untouched',()=>{
+  const {s,step,p,world}=manual(2,false);
+  for(const id of ['p0','p1']){assert.deepEqual(p(id).build.weapons,[],`${id} starts with no weapon`);assert.equal(p(id).build.hand,0);}
+  assert.deepEqual(s.inventory('p0',{t:'drop',slot:0}),{ok:false,reason:'slot'},'nothing to drop');
+  dropItem(world,p(),{id:'coxinha',level:1});step();
+  dropItem(world,p(),{id:'pistola',level:2});step();
+  assert.deepEqual(p().build.weapons.map(i=>i.id),['coxinha','pistola']);
+  assert.equal(p().build.hand,1,'the first weapon picked up is in the hand');
   const auto=new Simulation(7,{});auto.add('a','A','cidadao-comum');auto.resetRun();auto.step(1050);
   assert.equal(auto.players.get('a')!.build.hand,undefined,'no inventory with the automatic weapons');
   assert.notEqual(auto.players.get('a')!.build.weapons[0].id,'faca');
@@ -147,7 +154,7 @@ test('city, manual combat: the crates stand on the loot points; standing by one 
   const me=s.players.get('p0')!,crate=crates.sort((a,b)=>a.value-b.value)[0];
   for(let i=0;i<80&&s.view('p0').pickups.some(k=>k.id===crate.id);i++){me.x=crate.x+.5;me.y=crate.y;me.hp=me.stats.maxHp;s.step(now+=50);}
   assert.equal(s.view('p0').pickups.some(k=>k.id===crate.id),false,'opened by standing next to it');
-  const got=me.build.weapons.length>1||s.view('p0').pickups.some(k=>k.kind==='item')||(me.grana??0)>0;
+  const got=me.build.weapons.length>0||s.view('p0').pickups.some(k=>k.kind==='item')||(me.grana??0)>0;
   assert.ok(got,'a prize came out');
   assert.equal(s.view('p0').players[0].hand,me.build.hand);
 });

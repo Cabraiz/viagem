@@ -96,7 +96,8 @@ function liteFile(file:ArtFile,pc:boolean):ArtFile{
 }
 /**
  * Enemies drawn from their approved files, not the lite copies: the 1st wave's chefão (rules WAVE_BOSS_IDS; the user,
- * 24/10: "pixelagem para ficar hd" at 3×). One of them loads per match (~30 MB against ~8 MB lite). Kept here as plain
+ * 24/10: "pixelagem para ficar hd" at 3×). ~30 MB to download but ~390 MB of GPU memory once decoded on a phone, so
+ * none loads at the opening: art/chefao-art.ts loads the run's one before he comes and frees him once he falls. Kept here as plain
  * ids (this module imports nothing); tests/client/chefao-cena.test.ts checks it against the rules.
  */
 export const HD_ENEMIES:ReadonlySet<string>=new Set(['o-grande-credor','dj-do-fim-do-mundo','mapinguari-do-shopping','boitata-de-sacolinha']);

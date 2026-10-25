@@ -759,6 +759,17 @@ test('velocidade: pierce and homing shots resolve to HERO_SHOT_SPEED_MULT × the
   assert.equal(R('pombo',1,{duration:1.5}).durationTicks,Math.round(3*1.5/M*SIM_HZ));
 });
 
+test('projetil-mais-rapido: the starting boleto and pombo fly 1.5 × the 3×-slow speed (HERO_SHOT_SLOWDOWN 2) with the same reach',()=>{
+  assert.equal(HERO_SHOT_SLOWDOWN,2);
+  for(const id of ['boleto','pombo']){
+    const row=weaponLevel(def(id),1),w=R(id,1),before=row.speed*PROJECTILE_SPEED_MULT/3;
+    assert.ok(Math.abs(w.speed/before-1.5)<1e-12,`${id}: ${w.speed} u/s, 1.5 × ${before}`);
+    assert.ok(Math.abs(w.speed*w.durationTicks/SIM_HZ-row.speed*row.duration)<=w.speed/SIM_HZ+1e-9,`${id}: same reach`);
+  }
+  // The Estilingue (stats.speed) still multiplies on top of the faster start.
+  assert.ok(Math.abs(R('boleto',1,{speed:3}).speed/R('boleto',1).speed-3)<1e-12);
+});
+
 test('velocidade: a fired boleto flies at the heroes shot speed and still covers its tuned reach before it expires',()=>{
   const ctx=makeCtx();addPlayer(ctx,'p1',12,12,[['boleto',1]]);
   const w=R('boleto',1),row=weaponLevel(def('boleto'),1);

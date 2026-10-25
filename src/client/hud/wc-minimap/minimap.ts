@@ -187,6 +187,12 @@ export class WcMinimap {
         if(glyph)ctx.drawImage(glyph.image,p.x-glyph.size/2,p.y+.5*unit-glyph.size/2,glyph.size,glyph.size);
         continue;
       }
+      if(x.kind==='caixa'){
+        // Caixas (hud/crate-extras.ts): a small square in the rarity's colour, a Breu edge (under the allies and the hero).
+        const h=2.2*unit;
+        ctx.fillStyle=x.color??'#3EAA4F';ctx.fillRect(p.x-h,p.y-h,2*h,2*h);ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.strokeRect(p.x-h,p.y-h,2*h,2*h);
+        continue;
+      }
       ctx.beginPath();ctx.arc(p.x,p.y,3*unit,0,Math.PI*2);ctx.fillStyle=x.color??'#ff9f43';ctx.fill();ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.stroke();
     }
     for(const al of input.allies){

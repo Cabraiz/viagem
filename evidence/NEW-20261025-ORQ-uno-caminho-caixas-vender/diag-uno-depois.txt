@@ -1,0 +1,9 @@
+  seed 1: 22 quadrados de tralha; o carro perde 101 u² (1.7 % da área dele)
+  seed 2: 15 quadrados de tralha; o carro perde 58 u² (1.0 % da área dele)
+  seed 3: 13 quadrados de tralha; o carro perde 57 u² (1.0 % da área dele)
+  seed 4: 21 quadrados de tralha; o carro perde 92 u² (1.6 % da área dele)
+  seed 5: 14 quadrados de tralha; o carro perde 69 u² (1.2 % da área dele)
+  seed 6: 11 quadrados de tralha; o carro perde 66 u² (1.1 % da área dele)
+  seed 7: 18 quadrados de tralha; o carro perde 88 u² (1.5 % da área dele)
+  seed 8: 16 quadrados de tralha; o carro perde 68 u² (1.2 % da área dele)
+tralha: 130 quadrados em 8 partidas, 0 no meio da rua (sem parede a 1 u); o carro perde em média 75 u²

@@ -11,6 +11,25 @@ import {fromMini,imageTransform,insideMini,toMini,type MiniFrame,type Pt} from '
 import {MM_COLORS,type TerrainImage} from './terrain.ts';
 
 /** Player colours by join order: the dot on the minimap and the outer ring of the portrait in the team strip (team.ts). */
+/**
+ * The bank's "$", drawn once per size in its own canvas (BUG-20261025-ORQ-celular-travando): setting the minimap
+ * canvas's `font` made the page recompute its styles (the HUD writes some every frame) for every bank of every paint,
+ * ~1 s a minute on a phone (Chrome trace, 25/10). An OffscreenCanvas has no page styles to wait for.
+ */
+const glyphs=new Map<string,{image:CanvasImageSource;size:number}|null>();
+/** The glyph for a `px` font under the canvas's scale `k` (drawn at k× so it lands 1:1 on the device pixels); size in px. */
+export function dollarGlyph(px:number,k=1){
+  const scale=Math.max(.25,Math.round(k*100)/100),key=`${px}@${scale}`;
+  let glyph=glyphs.get(key);
+  if(glyph===undefined){
+    glyph=null;
+    const side=Math.ceil(px*1.4*scale),canvas=typeof OffscreenCanvas==='function'?new OffscreenCanvas(side,side):undefined;
+    const g=canvas?.getContext('2d');
+    if(canvas&&g){g.fillStyle='#1d1830';g.font=`bold ${px*scale}px sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText('$',side/2,side/2);glyph={image:canvas,size:side/scale};}
+    glyphs.set(key,glyph);
+  }
+  return glyph;
+}
 export const ALLY_COLORS=Object.freeze(['#ffd23f','#3ec1d3','#ff7aa2','#8be04e','#b38cff','#ff9f43']);
 /** A player's colour: by their place in the run's player list (join order), the same on the minimap and the strip. */
 export function teamColor(players:readonly {id:string}[],id:string):string{
@@ -142,7 +161,8 @@ export class WcMinimap {
         // Bancos (hud/bancos.ts): a "$" square in the bank's colour, a Breu edge.
         const h=4*unit;
         ctx.fillStyle=x.color??'#7ED957';ctx.fillRect(p.x-h,p.y-h,2*h,2*h);ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.strokeRect(p.x-h,p.y-h,2*h,2*h);
-        ctx.fillStyle='#1d1830';ctx.font=`bold ${Math.round(7*unit)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',p.x,p.y+.5*unit);
+        const px=Math.round(7*unit),glyph=dollarGlyph(px,k);
+        if(glyph)ctx.drawImage(glyph.image,p.x-glyph.size/2,p.y+.5*unit-glyph.size/2,glyph.size,glyph.size);
         continue;
       }
       ctx.beginPath();ctx.arc(p.x,p.y,3*unit,0,Math.PI*2);ctx.fillStyle=x.color??'#ff9f43';ctx.fill();ctx.lineWidth=1*unit;ctx.strokeStyle='#1d1830';ctx.stroke();

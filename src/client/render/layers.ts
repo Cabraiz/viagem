@@ -50,6 +50,8 @@ type Text=Phaser.GameObjects.Text;
 type TextStyle=Phaser.Types.GameObjects.Text.TextStyle;
 
 export interface HordeRendererOptions{
+  /** Each kill event's kind, after its death is drawn (scene.ts: a fallen chefão's sheets go, art/chefao-art.ts). */
+  onKill?:(kind:string)=>void;
   /** Allocation-free camera projection; the host updates projector.view on rotation, then calls refresh(). */
   projector:Projector;
   /** Off-camera culling of the horde (render/cull.ts); default on. Off only for the sandbox's A/B (`?cull=0`). */
@@ -661,7 +663,7 @@ export class HordeRenderer{
         }
         break;
       }
-      case 'kill':this.recentHits.delete(event.enemy);this.spawnDeath(event.kind,event.enemy,event.x,event.y);break;
+      case 'kill':this.recentHits.delete(event.enemy);this.spawnDeath(event.kind,event.enemy,event.x,event.y);this.options.onKill?.(event.kind);break;
       case 'spawn-warning':{
         const w=this.warnings.spawn();
         w.born=this.now;w.x=event.x;w.y=event.y;w.atTick=event.atTick;w.size=1+Math.min(.5,event.count*.04);

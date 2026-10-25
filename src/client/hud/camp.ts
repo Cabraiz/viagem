@@ -17,7 +17,7 @@
  * Pure DOM over RunView plus what explore.ts knows on the client (the hero's predicted spot, the base's direction on
  * screen); every number comes from the room. Names always through textContent.
  */
-import {putAttr,putData,putHidden,putText} from './dom-put.ts';
+import {putAttr,putData,putHidden,putIconNumber,putText,putTextData} from './dom-put.ts';
 import {CAR_ID} from '../../contract/index.ts';
 import type {CampView,RunView,StructureView} from '../../contract/index.ts';
 import {CAMP_RADIUS,FORGE_REFUSALS,RECIPES,RECIPE_IDS,canPay,forgePrice,tokenProgress,tokensOf,type RecipeId} from '../../rules/index.ts';
@@ -224,9 +224,9 @@ export function createCamp(options:CampOptions):CampPart{
     const bar=barClock(view),key=bar?`${bar.icon}|${bar.text}|${bar.aria}|${bar.urgent}|${bar.held??''}|${bar.nests??''}`:'';
     if(key===lastClock)return;
     lastClock=key;clock.hidden=!bar;readout.classList.toggle('rh-camp-com-relogio',!!bar);
-    if(bar){clockWords.textContent=bar.aria;clockPicture.innerHTML=`${icon(bar.icon)}<b>${bar.text}</b>`;if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
+    if(bar){putTextData(clockWords,bar.aria);putIconNumber(clockPicture,icon(bar.icon),bar.text);if(bar.urgent)clock.dataset.urgente='';else delete clock.dataset.urgente;
       if(bar.held)clock.dataset.parado='';else delete clock.dataset.parado;}
-    else{clockWords.textContent='';clockPicture.textContent='';delete clock.dataset.urgente;delete clock.dataset.parado;}
+    else{putTextData(clockWords,'');putText(clockPicture,'');delete clock.dataset.urgente;delete clock.dataset.parado;}
   };
   /** The bar and the number (baseBar: the wall, or the chaveiro's car); the only DOM the car swap touches. */
   const paintBaseBar=(bar:BaseBar,down:boolean)=>{

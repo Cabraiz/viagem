@@ -11,7 +11,10 @@
  *  - place(slot, cell): a kit de torre (torre-pela-caixa, rules tower-kits.ts) builds its piece on the build grid
  *    through the hooks (towers/system.ts buildFree with `kit`: free, every other rule of the free build); an accepted
  *    one spends a charge (the slot empties at 0), a refused one keeps the kit;
- *  - the system picks up items walked over while a slot is free (a full inventory needs take, the "Trocar" button).
+ *  - the system picks up items walked over while a slot is free (a full inventory needs take, the "Trocar" button);
+ *  - one of each (BUG-20261025-ORQ-caixa-sem-item-repetido, the user 25/10: "eu não deveria ver uma panela azul se peguei
+ *    panela verde"): who owns a weapon or a kit (owns: itemKey, any rarity) neither takes nor sees it on the ground (the
+ *    item pickup's server-only hiddenFor names him; take refuses 'owned'). Consumables stack as before.
  * Every command answers a refusal reason or ok; nothing changes on a refusal.
  */
 import type {OwnedItem,PickupState,PlayerBuild,SimPlayer} from '../contract/index.ts';
@@ -37,7 +40,7 @@ export const ITEM_GROUND_SECONDS=120;
  */
 export const manualStartingBuild=():PlayerBuild=>({weapons:[],passives:[],hand:0});
 
-export type InventoryRefusal='player'|'slot'|'not-weapon'|'not-consumable'|'last-weapon'|'full'|'far'|'pickup'|'unusable';
+export type InventoryRefusal='player'|'slot'|'not-weapon'|'not-consumable'|'last-weapon'|'full'|'far'|'pickup'|'unusable'|'owned';
 export type InventoryResult={ok:true}|{ok:false;reason:InventoryRefusal};
 const no=(reason:InventoryRefusal):InventoryResult=>({ok:false,reason});
 const OK:InventoryResult={ok:true};
@@ -46,6 +49,16 @@ export const isWeaponItem=(item:OwnedItem|undefined)=>!!item&&!!getWeapon(item.i
 export const isConsumableItem=(item:OwnedItem|undefined)=>!!item&&isConsumableId(item.id);
 /** Whether the player is in the manual combat's inventory (build.hand set). */
 export const hasInventory=(p:{build:PlayerBuild})=>p.build.hand!==undefined;
+const LEGENDARY_SUFFIX='-lendario';
+/** What "the same item" compares (caixa-sem-item-repetido): the id, a legendary as the weapon it comes from. */
+export const itemKey=(id:string)=>id.endsWith(LEGENDARY_SUFFIX)?id.slice(0,-LEGENDARY_SUFFIX.length):id;
+/** The keys (itemKey) of the weapons and kits this player holds; consumables do not count (they stack). */
+export function ownedKeys(p:{build:PlayerBuild},into=new Set<string>()):Set<string>{
+  for(const item of p.build.weapons)if(!isConsumableId(item.id))into.add(itemKey(item.id));
+  return into;
+}
+/** Whether this player already holds this weapon or kit in any rarity (a consumable never counts). */
+export const owns=(p:{build:PlayerBuild},id:string)=>!isConsumableId(id)&&p.build.weapons.some(item=>itemKey(item.id)===itemKey(id));
 const live=(p:SimPlayer)=>!p.spectator&&!p.eliminated&&!p.downed&&p.hp>0;
 
 /** The hand's slot made valid: a weapon slot (the current one if still a weapon, else the first weapon), or 0. */
@@ -189,6 +202,7 @@ export function take(ctx:SimContext,p:SimPlayer,pickupId:string):InventoryResult
   const pickup=ctx.pickups.get(pickupId);
   if(!pickup||pickup.kind!=='item'||!pickup.resource)return no('pickup');
   if(Math.hypot(pickup.x-p.x,pickup.y-p.y)>TAKE_REACH)return no('far');
+  if(owns(p,pickup.resource))return no('owned');
   const item={id:pickup.resource,level:pickup.value};
   if(add(p,item)){ctx.pickups.delete(pickupId);emitTake(ctx,p,pickup);return OK;}
   // A stack that fitted in part: what is left stays on the ground (and swaps below like a whole one).
@@ -208,6 +222,15 @@ export function take(ctx:SimContext,p:SimPlayer,pickupId:string):InventoryResult
 }
 const emitTake=(ctx:SimContext,p:SimPlayer,pickup:PickupState)=>ctx.emit({type:'pickup',player:p.id,pickup:pickup.id,kind:'item',value:pickup.value});
 
+/** An item on the ground: its server-only hiddenFor names the players who already own it (absent when nobody). */
+function hideOwned(ctx:SimContext,pickup:PickupState){
+  let who:string[]|undefined;
+  if(pickup.resource)for(const p of ctx.players.values())if(owns(p,pickup.resource))(who??=[]).push(p.id);
+  const had=pickup.hiddenFor;
+  if(!who){if(had)delete pickup.hiddenFor;return;}
+  if(!had||had.length!==who.length||had.some((q,i)=>q!==who![i]))pickup.hiddenFor=who;
+}
+
 /**
  * Picks up the items players walk over while they have room, and clears items past their time. Manual combat only
  * (assemble wires it). Stats do not depend on the inventory (the passives of the level cards make them).
@@ -224,12 +247,14 @@ export function inventorySystem():SimSystem{
       if(pickup.dropper!==undefined&&(!dropper||Math.hypot(pickup.x-dropper.x,pickup.y-dropper.y)>WALK_PICKUP*2))delete pickup.dropper;
       for(const p of ctx.players.values()){
         if(p.id===pickup.dropper||!hasInventory(p)||!live(p)||Math.hypot(pickup.x-p.x,pickup.y-p.y)>WALK_PICKUP)continue;
+        if(owns(p,pickup.resource!))continue;
         const item={id:pickup.resource!,level:pickup.value};
         if(add(p,item)){scratch.push(pickup.id);emitTake(ctx,p,pickup);break;}
         pickup.value=item.level;
       }
     }
     for(const id of scratch)ctx.pickups.delete(id);
+    for(const pickup of ctx.pickups.values())if(pickup.kind==='item')hideOwned(ctx,pickup);
   }};
 }
 

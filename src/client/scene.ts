@@ -32,7 +32,8 @@ import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {heldHand} from './sprites/hand-points.ts';
-import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
+import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt,releaseEnemyArt} from './art/horde-art.ts';
+import {ChefaoArtPlan,chefaoDeferred} from './art/chefao-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -168,6 +169,8 @@ export class IslandScene extends Phaser.Scene {
   private hooks:SceneHooks;
   /** The last {t:'elenco'} list whose art was queued (horde-art.ts queueEnemyArt). */
   private elenco?:readonly string[];
+  /** The HD chefões' sheets on demand (art/chefao-art.ts): not at the opening, freed once they fall. */
+  private readonly chefaoArt=new ChefaoArtPlan();
   private view=0;
   private landscape?:TerrainLayer;
   /** Tears the ground down (its own shutdown teardown, run early): a world swap builds the new world's ground. */
@@ -579,7 +582,7 @@ export class IslandScene extends Phaser.Scene {
       // in the city they and the critters are scaled by CITY_VIEW_SCALE, so they keep their CSS size under the city zoom.
       this.horde=new HordeRenderer(this,{projector:this.projector,uiScale:()=>hordeUiScale(this.cameras.main.zoom,this.actorScale),actorScale:()=>this.actorScale,reduced:this.reduced,
         alsoView:()=>this.pip?.viewRect(),carSort:()=>this.chaveiro?.carSort(),
-        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,
+        tickMs:STEP*1000,pushMs:PUSH_MS,selfId:()=>net.id||undefined,onKill:kind=>this.chefaoArt.killed(kind,performance.now()),
         locate:id=>id===net.id?net.predicted:net.players.get(id),
         // The melee aim cone follows the mouse (the ground under it); a finger leaves it on the swing's direction.
         aim:()=>this.mouseGround()??this.stickGround(),
@@ -1146,6 +1149,18 @@ export class IslandScene extends Phaser.Scene {
     if(this.paused||net.run?.phase!=='combat'){this.fpsWatch.reset();return;}
     if(this.fpsWatch.frame(time-last))this.hooks.slow?.();
   }
+  private stepChefaoArt(){
+    const net=this.hooks.net;if(!net||!this.elenco)return;
+    const run=net.run,now=performance.now();
+    const {load,release}=this.chefaoArt.step({elenco:this.elenco,combat:run?.phase==='combat',nowMs:now,tick:net.tick,
+      ...(run?.minervaAteTick!==undefined?{minervaAteTick:run.minervaAteTick}:{}),...(run?.cena?{cenaWho:run.cena.who}:{})});
+    for(const id of load)queueEnemyArt(this,id);
+    for(const id of release){
+      // Another of his kind still stands (a mini-chefe of the same art): later.
+      if([...net.feed.enemies.values()].some(e=>e.kind===id&&e.hp>0))this.chefaoArt.killed(id,now);
+      else releaseEnemyArt(this,id);
+    }
+  }
   update(_time:number,delta:number){
     this.watchFrames(_time);
     if(this.rightHeld){const pointer=this.input.mousePointer;if(this.paused||!pointer?.rightButtonDown())this.rightAttack(false);}
@@ -1153,7 +1168,9 @@ export class IslandScene extends Phaser.Scene {
     // while the city's near art is held (~15 MB of enemies in Phaser's first-in first-out loader held the relief
     // albedo, and the bandwidth, behind them: partida-abre-com-P0). They come right after the cover goes, as before.
     const elenco=this.hooks.net?.elenco;
-    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)queueEnemyArt(this,id);}
+    // The HD chefões (~390 MB each) wait for their moment instead (art/chefao-art.ts, BUG-20261025-ORQ-celular-travando).
+    if(elenco&&elenco!==this.elenco&&!this.cityHeld){this.elenco=elenco;for(const id of elenco)if(!chefaoDeferred(id))queueEnemyArt(this,id);}
+    if(this.elenco)this.stepChefaoArt();
     this.vignette?.update();
     this.landscape?.update(_time,this.reduced||this.paused||document.hidden);
     if(!this.actor)return;

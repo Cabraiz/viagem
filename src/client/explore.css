@@ -1,6 +1,10 @@
 .explore-shell{position:fixed;inset:0;width:100vw;max-width:none;height:100dvh;max-height:none;box-sizing:border-box;margin:0;padding:0;border:0;border-radius:0;background:var(--cena-agua);color:var(--c-lilas);box-shadow:none;overscroll-behavior:contain}
 /* The class page remains intact behind the modal; its scrollbar is not game UI. */
 html:has(.explore-shell[open]){scrollbar-width:none}
+/* The menu under the match is never seen (the modal covers the screen) but was restyled with every DOM write of the HUD
+   that reached <html> through a :has() rule (BUG-20261025-ORQ-celular-travando, Chrome invalidation trace): its subtree
+   skips style and layout while the match is open, and comes back as it was when the shell closes. */
+html:has(.explore-shell[open]) main.estadio{content-visibility:hidden}
 .explore-shell::backdrop{background:var(--c-lilas)}
 .explore-layout{position:relative;width:100%;height:100%}
 .explore-stage{position:absolute;inset:0;isolation:isolate;background:var(--cena-agua);overflow:hidden}

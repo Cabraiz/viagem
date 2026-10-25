@@ -305,6 +305,16 @@ export function queueEnemyArt(scene:Phaser.Scene,id:string):boolean{
   if(queued&&!scene.load.isLoading())scene.load.start();
   return queued;
 }
+/**
+ * Lets the textures of enemy art `id` go (art/chefao-art.ts: a chefão's ~390 MB once he fell): every page's key, and the
+ * id may be asked again (queueEnemyArt loads it back when he shows up). True when something was removed.
+ */
+export function releaseEnemyArt(scene:Phaser.Scene,id:string):boolean{
+  asked.get(scene)?.delete(id);deferred.get(scene)?.delete(id);
+  let removed=false;
+  for(const l of enemyPieceLoads(id))if(scene.textures.exists(l.key)){scene.textures.remove(l.key);removed=true;}
+  return removed;
+}
 /** Frame 0 of `from` drawn into a new canvas texture `key` of `size`: contain-fit and centred, or stretched ('fill'). */
 function bakeFrame(scene:Phaser.Scene,from:string,cell:[number,number],key:string,[w,h]:readonly [number,number],fit:'contain'|'fill'){
   if(scene.textures.exists(key)||!scene.textures.exists(from))return;

@@ -6,11 +6,13 @@
  *   CAR_PUSH_DOT, at least PUSH_MIN_INPUT long). No command: lean on it and walk. A helper (a room bot, a player on the
  *   room's autopilot) only helps: it counts while a person moves the car (a bot walking home never drags it away).
  * - Pull (card puxar-uno-corda): the rope is tied to the front bumper (carNose) and its free end lies on the ground
- *   ahead (ropeTip). A standing hero within CAR_PULL_REACH of that end whose stick points away from the bumper (cos >=
- *   CAR_PUSH_DOT) takes it, one hero at a time (a person takes it from a helper); {t:'puxar'} (pull()) still hooks it
- *   by hand near the body or the end. It pulls while taut (the hero CAR_ROPE or more from the bumper) and drops when the
- *   hero takes a hit, falls, leaves, gets ROPE_SLACK past its length, or goes CAR_ROPE_LET_GO_S without pulling (the
- *   stick away from the bumper, cos >= CAR_ROPE_KEEP_DOT). A helper on the rope pulls only along with a person.
+ *   ahead (ropeTip), one hero at a time. A person takes it only by hand (torre-limite-rebocar-sem-arma, the user, 25/10:
+ *   "a corda só pode ser ativada se eu chegar perto e clicar"): {t:'puxar'} (pull(), the HUD's "Rebocar") near the body
+ *   or the end, also from a helper holding it, and keeps it until "Soltar". A helper (bot, autopilot) still takes it by
+ *   gesture: standing within CAR_PULL_REACH of the end with its stick away from the bumper (cos >= CAR_PUSH_DOT), and
+ *   lets it go after CAR_ROPE_LET_GO_S without pulling (the stick away from the bumper, cos >= CAR_ROPE_KEEP_DOT). It
+ *   pulls while taut (the hero CAR_ROPE or more from the bumper) and drops when the holder takes a hit, falls, leaves or
+ *   gets ROPE_SLACK past its length. A helper on the rope pulls only along with a person.
  * - The heading (the nose): a move with a taut rope turns it toward the move at CAR_ROPE_TURN rad/s at most; a push
  *   alone takes the push's axis (the car may roll backwards: it never turns more than 90 degrees for a push).
  * - The car goes the way the movers point (the sum of their unit pushes and taut ropes) at carSpeed(movers); it slides
@@ -30,7 +32,7 @@ import {isStanding} from '../revive.ts';
 
 /** The rope slips off this far (u) past its length (a blocked car, a hero faster for a tick). */
 export const ROPE_SLACK=1;
-/** A hero knocked off the rope (a hit) may take it again by gesture after this (s). */
+/** A helper knocked off the rope (a hit) may take it again by gesture after this (s). */
 export const ROPE_SHY_SECONDS=1;
 /** A stick shorter than this does not push. */
 export const PUSH_MIN_INPUT=.3;
@@ -71,23 +73,22 @@ function awayDot(s:Point,nose:Point,p:Point){
 /** The signed smallest turn from `from` to `to` (radians, -pi..pi). */
 const angleDiff=(to:number,from:number)=>((to-from)%(Math.PI*2)+Math.PI*3)%(Math.PI*2)-Math.PI;
 /**
- * The rope by gesture: the holder lets it go after CAR_ROPE_LET_GO_S without pulling; with the rope free (or on a
- * helper, for a person), a standing hero at its free end walking away from the bumper takes it (the nearest; ties by id).
+ * The rope by gesture, helpers only (a person taps "Rebocar": pullCar): a helper holder lets it go after
+ * CAR_ROPE_LET_GO_S without pulling; with the rope free, a standing helper at its free end walking away from the bumper
+ * takes it (the nearest; ties by id).
  */
 function ropeGesture(ctx:SimContext,car:CarBody,world:CarWorld){
-  const nose=carNose(car);
-  if(car.rope!==undefined){
+  const nose=carNose(car),helper=(id:string)=>!!world.helper?.(id);
+  if(car.rope!==undefined&&helper(car.rope)){
     const holder=ctx.players.get(car.rope)!,s=stick(world,car.rope);
     if(s&&awayDot(s,nose,holder)>=CAR_ROPE_KEEP_DOT)car.ropeIdle=0;
     else if((car.ropeIdle=(car.ropeIdle??0)+1)>=ticks(CAR_ROPE_LET_GO_S))dropRope(car);
   }
-  const heldByHelper=car.rope!==undefined&&!!world.helper?.(car.rope);
-  if(car.rope!==undefined&&!heldByHelper)return;
+  if(car.rope!==undefined)return;
   if(car.ropeShy!==undefined&&ctx.tick>=(car.ropeShyUntil??0)){delete car.ropeShy;delete car.ropeShyUntil;}
   const tip=ropeTip(car);let best:SimPlayer|undefined,bestD=Infinity;
   for(const p of ctx.players.values()){
-    if(p.id===car.rope||p.id===car.ropeShy||!isStanding(p))continue;
-    if(heldByHelper&&world.helper?.(p.id))continue;
+    if(p.id===car.rope||p.id===car.ropeShy||!isStanding(p)||!helper(p.id))continue;
     const d=Math.hypot(p.x-tip.x,p.y-tip.y),s=stick(world,p.id);
     if(d>CAR_PULL_REACH||!s||awayDot(s,nose,p)<CAR_PUSH_DOT)continue;
     if(d<bestD||d===bestD&&best&&p.id<best.id){best=p;bestD=d;}
@@ -211,12 +212,15 @@ function turn(car:CarBody,dx:number,dy:number,roped:boolean){
   if(h===0)delete car.heading;else car.heading=h;
 }
 
-/** {t:'puxar'} past the room's checks (phase, round, pause) and the duplicate: hook (`on`) or drop the rope. */
-export function pullCar(car:CarBody,player:SimPlayer|undefined,on:boolean):PullResult{
+/**
+ * {t:'puxar'} past the room's checks (phase, round, pause) and the duplicate: hook (`on`) or drop the rope. A person
+ * (not a `helper`) takes it from a helper holding it.
+ */
+export function pullCar(car:CarBody,player:SimPlayer|undefined,on:boolean,helper?:(id:string)=>boolean):PullResult{
   if(!player||!isStanding(player))return {ok:false,reason:'fase'};
   if(!on){if(car.rope===player.id)dropRope(car);return {ok:true};}
   if(car.rope===player.id)return {ok:true};
-  if(car.rope!==undefined)return {ok:false,reason:'ocupado'};
+  if(car.rope!==undefined&&!(helper?.(car.rope)&&!helper(player.id)))return {ok:false,reason:'ocupado'};
   const tip=ropeTip(car);
   if(gapTo(car,player)>CAR_PULL_REACH&&Math.hypot(player.x-tip.x,player.y-tip.y)>CAR_PULL_REACH)return {ok:false,reason:'longe'};
   car.rope=player.id;car.ropeHp=player.hp;car.ropeIdle=0;

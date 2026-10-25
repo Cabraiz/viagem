@@ -1,16 +1,15 @@
 /**
  * D-052 slice 3 (card NEW-20261016-ORQ-carro-e-fortificacao-livre, HUD), pure rules kept apart from the DOM so node
  * tests import them:
- * - The rope button: card puxar-uno-corda, the rope is taken by walking away from the car at its end (no button, like
- *   a push), so only "Soltar" shows, while this player is on the rope. It only sends {t:'puxar',on:false} and shows
- *   what the room says back.
+ * - The rope button: "Soltar" while this player is on the rope ({t:'puxar',on:false}); the rope is taken on the action
+ *   button (towFace: torre-limite-rebocar-sem-arma, Atacar turns "Rebocar" at the rope's end).
  * - The free build ("Construir"): the piece picked (the tower root, a wall segment, a barricade), its rot, the cell under
  *   the finger or the mouse, and the ghost's colour (render/fortify-rules: local check, the room's answer for that very
  *   cell wins). One {t:'build',piece,c,r,rot?} per confirm; a dragged wall sends one per new cell.
  * - The wall counter: free walls standing over WALL_LIMIT (proposal §2), barricades over BARRICADE_LIMIT.
  * The limits and prices are the approved proposal's; the room (slice 2) is the judge and answers 'limite'.
  */
-import {type BuildRot,type FreeBuildRefusal,type PullRefusal} from '../../../contract/index.ts';
+import {CAR_PULL_REACH,ropeTip,type BuildRot,type FreeBuildRefusal,type PullRefusal} from '../../../contract/index.ts';
 import {DEFENSE_LIMIT,FREE_PIECE_DEFS} from '../../../rules/index.ts';
 import {cellRect,cellUnder,footprintCells,ghostLook,ghostRefusal,type CellRect,type FortStructure,type GhostContext} from '../../render/fortify-rules.ts';
 import type {GhostInput} from '../../render/fortify.ts';
@@ -31,16 +30,38 @@ export const FORT_AIM_FIRST='Arraste no mapa primeiro';
 /** A request without an answer stops counting as pending after this. */
 export const FORT_PENDING_MS=3000;
 
-interface CarLike {x:number;y:number;movers?:readonly string[];rope?:string}
+interface CarLike {x:number;y:number;movers?:readonly string[];rope?:string;heading?:number}
 export interface PullState {show:boolean;on:boolean;label:'Puxar'|'Soltar';pushing:boolean}
 /**
- * The rope button for this player: on the rope → "Soltar" (shown anywhere); off it nothing (puxar-uno-corda: the rope
- * is taken by gesture at its end). `pushing`: this player moves the car without the rope (the HUD says "Empurrando").
+ * The rope button for this player: on the rope → "Soltar" (shown anywhere); off it nothing (the rope is taken on the
+ * action button: towFace). `pushing`: this player moves the car without the rope (the HUD says "Empurrando").
  */
 export function pullState(car:CarLike|undefined,me:string,_hero?:{x:number;y:number}):PullState{
   if(!car)return {show:false,on:false,label:'Puxar',pushing:false};
   const on=car.rope===me,pushing=!on&&!!car.movers?.includes(me);
   return {show:on,on,label:on?'Soltar':'Puxar',pushing};
+}
+
+/**
+ * How near (u) a live enemy keeps the action button on Atacar at the rope's end, when the hand holds a weapon
+ * (torre-limite-rebocar-sem-arma: the fight first; empty hands always tow).
+ */
+export const TOW_ENEMY_FIRST=2;
+export type TowFace='rebocar'|'soltar';
+/**
+ * The action button's rope face (torre-limite-rebocar-sem-arma, the user, 25/10: "a corda só pode ser ativada se eu
+ * chegar perto e clicar em atacar, porque o atacar vai se tornar rebocar"): on the rope → "soltar"; standing within
+ * CAR_PULL_REACH of the free end (free, or held by a bot: a person takes it from a bot) → "rebocar", unless the hand
+ * holds a weapon and a live enemy is within TOW_ENEMY_FIRST; otherwise undefined (Atacar as usual).
+ */
+export function towFace(car:CarLike|undefined,me:string,hero:{x:number;y:number}|undefined,o:{bot?:(id:string)=>boolean;armed?:boolean;enemies?:Iterable<{x:number;y:number;hp:number}>}={}):TowFace|undefined{
+  if(!car||!hero)return undefined;
+  if(car.rope===me)return 'soltar';
+  if(car.rope!==undefined&&!o.bot?.(car.rope))return undefined;
+  const tip=ropeTip(car);
+  if(Math.hypot(hero.x-tip.x,hero.y-tip.y)>CAR_PULL_REACH)return undefined;
+  if(o.armed&&o.enemies)for(const e of o.enemies)if(e.hp>0&&Math.hypot(e.x-hero.x,e.y-hero.y)<=TOW_ENEMY_FIRST)return undefined;
+  return 'rebocar';
 }
 
 /** The free pieces standing (built with a cell: the city's old barricades have none). */

@@ -2,7 +2,7 @@
  * Top of the run HUD (VGM-040): round chip ("Round N/10" + critters or interval countdown),
  * team XP bar with level, boss bar, and the animated round marquee with its absurd name.
  */
-import {putHidden} from './dom-put.ts';
+import {putHidden,putIconNumber,putTextData} from './dom-put.ts';
 import type {RunView} from '../../contract/index.ts';
 import {bossInfo,nestCount,nestsMode,roundInfo,xpFraction,type HudPart} from './model.ts';
 import {MARQUEE_MS} from './zones.ts';
@@ -48,7 +48,9 @@ export function createTopBar():HudPart{
         detail.title=round.detail;
         if(n===undefined){detail.textContent=round.detail;return;}
         // The words for screen readers (a span's aria-label is not read): a hidden copy, the sticker and number hidden.
-        detail.innerHTML=`<span class="rh-sr">${round.detail}</span><span aria-hidden="true">${icon(round.phase==='prepare'?'relogio':'onda')}<b>${round.phase==='prepare'?`${n} s`:n}</b></span>`;
+        if(detail.childElementCount!==2)detail.innerHTML='<span class="rh-sr"></span><span aria-hidden="true"></span>';
+        putTextData(detail.firstElementChild!,round.detail);
+        putIconNumber(detail.lastElementChild as HTMLElement,icon(round.phase==='prepare'?'relogio':'onda'),round.phase==='prepare'?`${n} s`:String(n));
       });
       put('phase',round.phase,v=>{chip.dataset.phase=v;});
       // D-051 nests: the nests still standing go to screen readers only (BUG-20261023-ORQ-hud-tirar-nivel-e-ninhos: no "6/8" on screen).
@@ -57,7 +59,13 @@ export function createTopBar():HudPart{
         putHidden(eta,!clock);
         // The chefão up (boss-fim-onda-1): a padlock and the number grey, the clock stopped until he falls.
         if(clock?.held)eta.dataset.parado='';else delete eta.dataset.parado;
-        if(clock){chip.dataset.objetivo='chaveiro';eta.innerHTML=`<span class="rh-sr">${clock.aria}${count?`. ${count.aria}`:''}</span><span aria-hidden="true"><i class="rh-round-sep"></i>${icon(clock.held?'cadeado':'moto')}<b>${clock.clock}</b></span>`;}
+        // Built once; each second only the words and the number change in place (dom-put.ts putTextData, no new node).
+        if(clock){
+          chip.dataset.objetivo='chaveiro';
+          if(eta.childElementCount!==2)eta.innerHTML='<span class="rh-sr"></span><span aria-hidden="true"></span>';
+          putTextData(eta.firstElementChild!,`${clock.aria}${count?`. ${count.aria}`:''}`);
+          putIconNumber(eta.lastElementChild as HTMLElement,icon(clock.held?'cadeado':'moto'),clock.clock,'<i class="rh-round-sep"></i>');
+        }
         else{delete chip.dataset.objetivo;eta.textContent='';}
       });
       chip.classList.toggle('rh-urgent',!nests&&round.phase==='prepare'&&(round.countdown??99)<=5);

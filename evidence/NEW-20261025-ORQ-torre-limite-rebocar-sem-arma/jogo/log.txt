@@ -1,0 +1,6 @@
+worker http://127.0.0.1:8790
+início: {"armas":[],"mao":0,"botao":"Sem arma"}
+na ponta: {"d":"0.43","botao":"Rebocar","tow":"rebocar"}
+depois do toque: {"corda":true,"botao":"Soltar","tow":"soltar"}
+puxando: {"corda":true,"andou":"7.63","botao":"Soltar"}
+erros: 0 

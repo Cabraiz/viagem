@@ -49,32 +49,45 @@ try{
   await touch('touchStart',slot.x,slot.y);await p.waitForTimeout(80);await touch('touchEnd');await p.waitForTimeout(300);
   report.push({step:'item tocado',aviso:await say()});
   await film(900,'toca no item: "toque no mapa"');
-  // 2) Toca no mapa ~5 u do herói, segura e arrasta para girar, solta.
-  const try1=[[5,0],[0,5],[-5,0],[0,-5],[4,4],[-4,4]];
+  // The ghost's look as the scene draws it ('ok' | 'bloqueado'; null: none) and the world point under a screen point.
+  const look=()=>p.evaluate(()=>window.__island.scene.fortify?.ghost?.look??null);
+  const worldAt=(x,y)=>p.evaluate(([x,y])=>window.__island.scene.worldAt(x,y),[x,y]);
+  const heroAt=await screenOf(hero0.x,hero0.y);
+  const spots=[[0,-170],[0,170],[-120,-110],[120,-110],[-120,140],[120,140],[-140,0],[140,0],[60,-220],[-60,220]];
+  // A press that comes out yellow (else let go at once, unfilmed: a red tap builds nothing).
+  const pressOk=async(x,y)=>{await touch('touchStart',x,y);await p.waitForTimeout(200);if(await look()==='ok')return true;await touch('touchEnd');await p.waitForTimeout(250);return false;};
+  // 2) Toca no mapa longe do herói, segura e arrasta para girar, solta.
   let built1;
-  for(const [dx,dy] of try1){
-    const at=await screenOf(hero0.x+dx,hero0.y+dy),before=(await bars()).length;
-    if(at.x<20||at.x>392||at.y<120||at.y>700)continue;
-    await touch('touchStart',at.x,at.y);await film(500,'toca no mapa: fantasma ali');
+  for(const [sx,sy] of spots){
+    const at={x:heroAt.x+sx,y:heroAt.y+sy};if(at.y<130||at.y>690||at.x<20||at.x>392)continue;
+    const before=(await bars()).length;
+    if(!await pressOk(at.x,at.y))continue;
+    const w=await worldAt(at.x,at.y),dist=Math.hypot(w.x-hero0.x,w.y-hero0.y);
+    await film(600,`toca no mapa a ${dist.toFixed(1)} u: fantasma ali`);
     // Drag toward world +y (the other axis): the ghost turns, stays where the finger landed.
-    const to=await screenOf(hero0.x+dx,hero0.y+dy+1.6);
+    const to=await screenOf(w.x,w.y+1.6);
     for(let s=1;s<=8;s++){await touch('touchMove',at.x+(to.x-at.x)*s/8,at.y+(to.y-at.y)*s/8);await shot('segura e arrasta: gira');await p.waitForTimeout(40);}
+    const lookTurned=await look();
     await film(500,'segura e arrasta: gira');
-    await touch('touchEnd');await p.waitForTimeout(700);
-    const now=await bars();
-    report.push({step:`solta em +${dx},+${dy}`,construiu:now.length>before,aviso:await say(),barricadas:now});
+    await touch('touchEnd');await p.waitForTimeout(800);
+    const now=await bars(),made=now.filter(b=>!before||!now.slice(0,before).some(o=>o.id===b.id));
+    report.push({step:`segura e gira a ${dist.toFixed(1)} u`,lookTurned,construiu:now.length>before,aviso:await say(),nova:now.at(-1)});
     await film(900,'solta: constrói (o herói não andou)');
     if(now.length>before){built1=now.at(-1);break;}
   }
-  // 3) Toque curto em outro lugar (sem girar), ~7 u.
+  // 3) Toque curto em outro lugar, arrastando no outro eixo de volta ao primeiro giro.
   let built2;
-  for(const [dx,dy] of [[-7,0],[0,-7],[7,0],[0,7],[-5,-5],[5,-5]]){
-    const at=await screenOf(hero0.x+dx,hero0.y+dy),before=(await bars()).length;
-    if(at.x<20||at.x>392||at.y<120||at.y>700)continue;
-    await touch('touchStart',at.x,at.y);await film(300,'toque curto a 7 u');await touch('touchEnd');await p.waitForTimeout(700);
+  for(const [sx,sy] of spots.slice().reverse()){
+    const at={x:heroAt.x+sx,y:heroAt.y+sy};if(at.y<130||at.y>690||at.x<20||at.x>392)continue;
+    const before=(await bars()).length;
+    if(!await pressOk(at.x,at.y))continue;
+    const w=await worldAt(at.x,at.y),to=await screenOf(w.x+1.6,w.y);
+    await film(300,'outro lugar: arrasta no outro eixo');
+    for(let s=1;s<=6;s++){await touch('touchMove',at.x+(to.x-at.x)*s/6,at.y+(to.y-at.y)*s/6);await shot('outro lugar: arrasta no outro eixo');await p.waitForTimeout(40);}
+    await touch('touchEnd');await p.waitForTimeout(800);
     const now=await bars();
-    report.push({step:`toque curto em +${dx},+${dy}`,construiu:now.length>before,aviso:await say()});
-    await film(700,'toque curto: constrói sem girar');
+    report.push({step:`segundo a ${Math.hypot(w.x-hero0.x,w.y-hero0.y).toFixed(1)} u`,construiu:now.length>before,aviso:await say(),nova:now.at(-1)});
+    await film(800,'solta: constrói');
     if(now.length>before){built2=now.at(-1);break;}
   }
   // 4) Em cima da barricada recém-posta: vermelho, não constrói (diz por quê). The kit may be gone (2 used): give one more.

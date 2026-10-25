@@ -28,8 +28,10 @@ export const PROJECTILE_SPEED_MULT=.5;
  * and homing weapons, the flung sandals) fly HERO_SHOT_SLOWDOWN × slower than PROJECTILE_SPEED_MULT made them and live
  * HERO_SHOT_SLOWDOWN × longer, so they still reach as far; the "velocidade do projétil" upgrade buys the speed back. The
  * enemies' shots (the agiota's boleto, a reflected shot) keep PROJECTILE_SPEED_MULT.
+ * Card projetil-mais-rapido (usuário 25/10: "50% mais rápido no início"): 3 → 2, so a fresh hero's shots fly 1.5 × as
+ * fast (and live 2/3 as long: the same reach); the Estilingue still multiplies on top.
  */
-export const HERO_SHOT_SLOWDOWN=3;
+export const HERO_SHOT_SLOWDOWN=2;
 /** The heroes' travelling shots: PROJECTILE_SPEED_MULT / HERO_SHOT_SLOWDOWN × the tuned speed, for the inverse × the time. */
 export const HERO_SHOT_SPEED_MULT=PROJECTILE_SPEED_MULT/HERO_SHOT_SLOWDOWN;
 /** All pickups (heal, chests, resources, items, the zueira's boletos). */

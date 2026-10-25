@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync,readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
 import {treeCatalog} from '../../src/maps/tree-catalog.ts';
 import {spriteCatalog} from '../../src/client/sprites/sprite-catalog.ts';
 import {treeUrl,spriteUrl,thumbUrl,iconKey,originalUrl,STAND_IN_KEY} from '../../src/client/sprites/art-urls.ts';
@@ -160,4 +161,12 @@ test('the menu (BUG-20261022-ORQ-art-lite-menu): every file the page loads from 
   const urls=new Set(sources.flatMap(f=>readFileSync(f,'utf8').match(/\/art\/lite\/menu\/[\w\-/]+\.webp/g)??[]));
   assert.ok(urls.size>=2,[...urls].join(', '));
   for(const url of urls)assert.ok(lite.includes(url.slice('/art/lite/menu/'.length)),`${url}: the page loads a copy art-lite does not make (MENU_LITE in scripts/art-lite.mjs)`);
+});
+
+// BUG-20261025-ORQ-art-lite-chefoes-velho: the enemies' liteCell/pcCell follow rules the script reads from the game
+// (artTargetHeight, WAVE_BOSS.drawScale, HD_ENEMIES); a lote that changes those and not the copies went green here
+// while `art-lite --check` failed. Its enemy-cell step runs on every --kinds (~1 s with the smallest family).
+test('art-lite --check is green: every enemy liteCell/pcCell is what the script derives from the game as it is now (else: node scripts/art-lite.mjs)',()=>{
+  const run=spawnSync(process.execPath,['scripts/art-lite.mjs','--check','--kinds','menu'],{encoding:'utf8'});
+  assert.equal(run.status,0,run.stderr.trim().split('\n').slice(-3).join('\n'));
 });

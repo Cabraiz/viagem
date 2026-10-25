@@ -96,7 +96,7 @@ test('scene.ts: the preload takes only the city ground; the rest streams from th
 });
 
 test("scene.ts: the run's enemies wait for the near city art (they held the albedo behind them in the loader)",()=>{
-  assert.match(read('scene.ts'),/if\(elenco&&elenco!==this\.elenco&&!this\.cityHeld\)\{this\.elenco=elenco;for\(const id of elenco\)queueEnemyArt\(this,id\);\}/);
+  assert.match(read('scene.ts'),/if\(elenco&&elenco!==this\.elenco&&!this\.cityHeld\)\{this\.elenco=elenco;for\(const id of elenco\)if\(!chefaoDeferred\(id\)\)queueEnemyArt\(this,id\);\}/);
 });
 
 test('city-layer: late art is rebuilt one chunk per update, only off screen; dropped chunks leave the queue; the modo foto waits',()=>{

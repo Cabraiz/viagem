@@ -18,7 +18,7 @@ class El {
   get lastElementChild(){return [...this.kids].reverse().find(k=>k instanceof El)??null;}
   get textContent():string{return this.kids.map(k=>k instanceof El?k.textContent:k.nodeValue).join('');}
   set textContent(v:string){this.kids=v?[new Txt(v)]:[];}
-  set innerHTML(html:string){this.builds++;const b=new El('b');b.kids=[new Txt('')];this.kids=html.includes('<img')?[new El('img'),b]:[b];}
+  set innerHTML(html:string){this.builds++;const b=new El('b');b.kids=[new Txt(/<b>(.*)<\/b>/.exec(html)?.[1]??'')];this.kids=html.includes('<img')?[new El('img'),b]:[b];}
 }
 
 test('putTextData changes the text node\'s data, never the node',()=>{

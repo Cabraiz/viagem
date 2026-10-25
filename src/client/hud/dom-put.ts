@@ -28,7 +28,7 @@ const iconOf=new WeakMap<HTMLElement,string>();
 export function putIconNumber(host:HTMLElement,iconMarkup:string,text:string,prefix=''){
   const markup=prefix+iconMarkup;
   let b=host.lastElementChild;
-  if(iconOf.get(host)!==markup||!b||b.tagName!=='B'){host.innerHTML=`${markup}<b></b>`;iconOf.set(host,markup);b=host.lastElementChild!;}
+  if(iconOf.get(host)!==markup||!b||b.tagName!=='B'){host.innerHTML=`${markup}<b>${text}</b>`;iconOf.set(host,markup);return;}
   putTextData(b,text);
 }
 

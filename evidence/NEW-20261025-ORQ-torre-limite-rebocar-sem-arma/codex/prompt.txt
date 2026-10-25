@@ -1,0 +1,5 @@
+Generate ONE image with the image generation tool and save exactly the image YOU generate in this run as out.png in the current directory; never copy any other file from ~/.codex/generated_images. Do not inspect, do not run code, do not check with PIL.
+
+The attached image shows 3 cartoon game UI stickers (a roll of duct tape, a hand holding a bread knife, a treasure chest) on flat green. Use it ONLY to read the style: do not copy, edit or reuse any part of it.
+
+Draw ONE new sticker in that exact same style (painted cartoon, soft shading, thick dark brown outline, slightly 3/4 view, warm colours): a thick braided TOW ROPE, beige/tan twisted strands, loosely coiled in one or two loops, with one end hanging out and finished by a small grey metal TOW HOOK. It must read clearly as "rope for towing a car" at 48 px. One object, centred, filling about 80 % of a square image. Flat pure green #00FF00 background, no shadow on the background, no text, no frame. Square image.

@@ -4,7 +4,7 @@
  * CONSUMABLE_STACK); `build.hand` is the slot of the weapon in the hand. Nobody loses the inventory on falling.
  *  - equip(slot): a weapon goes to the hand; swapping costs SWAP_TICKS without firing;
  *  - use(slot): a consumable takes effect and one leaves the stack;
- *  - drop(slot): the item goes to the ground as an 'item' pickup anyone takes (the last weapon stays: no empty hands);
+ *  - drop(slot): the item goes to the ground as an 'item' pickup anyone takes (the last weapon stays once there is one);
  *  - add(item): stacks a consumable, else takes a free slot; false when the six are full;
  *  - take(pickup): an item on the ground within TAKE_REACH: added, or with the six full, swapped with the hand's
  *    weapon (a weapon) or the last consumable slot (a consumable), which lands where the taken one was;
@@ -30,9 +30,12 @@ export const SWAP_TICKS=ticks(.3);
 export const TAKE_REACH=1.2,WALK_PICKUP=.6;
 /** Ground items last this long (then they are gone, like an XP gem). */
 export const ITEM_GROUND_SECONDS=120;
-/** The manual combat's starting inventory (answer 3: the Faca de Pão for everyone). */
-export const MANUAL_START_WEAPON='faca';
-export const manualStartingBuild=():PlayerBuild=>({weapons:[{id:MANUAL_START_WEAPON,level:1}],passives:[],hand:0});
+/**
+ * The manual combat's starting inventory: empty hands (torre-limite-rebocar-sem-arma, the user, 25/10: "não deveríamos
+ * começar com arma na mão"; it was the Faca de Pão for everyone). The hand is set (the inventory exists) on an empty
+ * slot: Atacar fires nothing until the first crate's weapon (add → fixHand puts it in the hand).
+ */
+export const manualStartingBuild=():PlayerBuild=>({weapons:[],passives:[],hand:0});
 
 export type InventoryRefusal='player'|'slot'|'not-weapon'|'not-consumable'|'last-weapon'|'full'|'far'|'pickup'|'unusable';
 export type InventoryResult={ok:true}|{ok:false;reason:InventoryRefusal};

@@ -544,7 +544,7 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       const key=requestId===undefined?undefined:`${playerId}:${requestId}`;
       if(key!==undefined&&state.handled.includes(key))return {ok:false,reason:'duplicate'};
       if(state.ended)return {ok:false,reason:'fase'};
-      const result=pullCar(car,ctx.players.get(playerId),on);
+      const result=pullCar(car,ctx.players.get(playerId),on,carWorld.helper);
       if(result.ok)remember(key);
       return result;
     },

@@ -124,9 +124,10 @@ import {MAX_CAR_MOVERS} from '../contract/index.ts';
  * 40 given by the integration queue (tools/fila.mjs, lote 20261025-074625) to: NEW-20261025-ORQ-dict-protocolo-cheio.
  * Next (the queue numbers it) since the solid bodies (card NEW-20261025-ORQ-heroi-empurra-inimigos): `radius` on the
  * enemies (a solid body's, it drives the phone's prediction); an older decoder would refuse the enemy mask.
+ * 41 given by the integration queue (tools/fila.mjs, lote 20261025-225211) to: NEW-20261025-ORQ-heroi-empurra-inimigos.
  * The join handshake refuses other versions with the update message.
  */
-export const PROTOCOL_VERSION=40;
+export const PROTOCOL_VERSION=41;
 const MAGIC=0x56;
 export const POS_SCALE=512,VEL_SCALE=256,RADIUS_SCALE=256;
 /** Positions are clamped to ±POS_LIMIT units (the endless world ends at ±1 000 000, chunks.ts WORLD_LIMIT). */

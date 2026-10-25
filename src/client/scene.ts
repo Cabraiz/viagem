@@ -22,6 +22,7 @@ import {CityArtStream,NEAR_ART_CAP_MS} from './render/city/art-stream.ts';
 import {artIndex} from './art/manifest.ts';
 import {projectView,unprojectView,viewDepth,screenDirection,rotateVector,normalizeView,rotationLocked} from './projection.ts';
 import {treeCatalog,type TreeArt} from '../maps/index.ts';
+import {Cheers,danceAllowed} from './sprites/hero-dance.ts';
 import {CharacterSprites,type Gait} from './sprites/character-sprites.ts';
 import {CityOutlines} from './render/city-outline.ts';
 import {cityGroundLuminance} from './render/city-outline-rules.ts';
@@ -356,6 +357,10 @@ export class IslandScene extends Phaser.Scene {
   private facing=Math.PI/2;
   /** Where the local hero means to walk (world units, last step): its sprite faces this, not the reconciled position (sprites-4-direcoes). */
   private intent:Point={x:0,y:0};
+  /** Scene-clock time of the player's last input of any kind (card danca-no-jogo: it cuts the dance at once). */
+  private inputAt=-Infinity;
+  /** Who cheers now (danca-no-jogo etapa 2): fed by the run's events, read by the dance cues. */
+  private cheers=new Cheers();
   /** Caídos in the world: rescue ring, progress and light column (UX-resgate-e-ping). */
   private downedLayer?:DownedLayer;
   private downedMarks:DownedMark[]=[];
@@ -538,6 +543,11 @@ export class IslandScene extends Phaser.Scene {
         globalThis.removeEventListener?.('blur',forget);document.removeEventListener?.('visibilitychange',forget);this.pinch.reset();};
       this.events.once('shutdown',off);this.events.once('destroy',off);
     }
+    // Any touch, click or key, on the map or on the HUD, cuts the hero's dance and restarts its wait (danca-no-jogo).
+    const poke=()=>{this.inputAt=this.time.now;};
+    globalThis.addEventListener?.('pointerdown',poke,true);globalThis.addEventListener?.('keydown',poke,true);
+    const unpoke=()=>{globalThis.removeEventListener?.('pointerdown',poke,true);globalThis.removeEventListener?.('keydown',poke,true);};
+    this.events.once('shutdown',unpoke);this.events.once('destroy',unpoke);
     this.cursors=this.input.keyboard?.createCursorKeys();
     this.keys=this.input.keyboard?.addKeys('W,A,S,D') as typeof this.keys;
     this.scale.on('resize',this.fit,this);
@@ -571,6 +581,7 @@ export class IslandScene extends Phaser.Scene {
         coneFromScene:true,
         // The weapon in the hand (card arma-na-mao-viciado): on the hand of the pose the hero's sprite shows.
         hand:id=>heldHand(this.sprites,id===net.id?this.actor:this.remoteActors.get(id)?.image),
+        away:id=>{const s=id===net.id?this.actor:this.remoteActors.get(id)?.image;return !!s&&this.sprites.dancing(s);},
         // …drawn by the scene once every hero is placed and animated (end of updateCoop): on this frame's pose and spot.
         handsFromScene:true,
         // …and the Defumador's smoke on the feet as drawn (the smoothed hero, the buffered allies), not at locate().
@@ -1151,6 +1162,9 @@ export class IslandScene extends Phaser.Scene {
     // On the rope (puxar-uno-corda): faces away from the bumper with the pull clip.
     const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
+    // A held stick or attack button is input too, every frame it is held (the dance waits for the hands off).
+    if(this.intent.x||this.intent.y||this.hooks.aimStick?.()||this.hooks.attacking?.())this.inputAt=this.time.now;
+    this.sprites.danceCue(this.actor,{allowed:meId?danceAllowed(this.hooks.net?.feed.players.get(meId),this.horde?.tick??0):true,poke:this.inputAt,...(meId?{cheer:this.cheers.of(meId)}:{})});
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.());
     this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
@@ -1409,6 +1423,7 @@ export class IslandScene extends Phaser.Scene {
       // waits for this flag, not for a HUD element that a HUD card may move or hide.
       if(runView.round&&runView.tick>0&&!matchSignalled){matchSignalled=true;(window as unknown as {__partidaPronta?:boolean}).__partidaPronta=true;}
       if(arrowTrigger(runView.events,net.id))this.you?.showArrow(time);
+      this.cheers.push(this.time.now,runView.events,runView.players.map(p=>{const at=net.players.get(p.id);return {id:p.id,x:at?.x??NaN,y:at?.y??NaN,bot:!!p.bot};}),runView.enemies);
       this.horde?.push(runView);this.stone?.push(runView);this.zueira?.push(runView);this.pushTowers(runView,time);this.pushChaveiro(runView,time);this.pushFortify(runView);this.pushBanks(runView);this.pushNests(runView);
       this.hooks.runView?.(runView);
     }else if(net.feed.offersVersion!==this.offersVersion){
@@ -1476,6 +1491,9 @@ export class IslandScene extends Phaser.Scene {
       // Joined before its icon was here (N27: icons of the room's classes only): the icon replaces the silhouette once in.
       else if(objects.image.texture.key===STAND_IN_KEY&&this.textures.exists(`class:${player.classId}`))objects.image.setTexture(`class:${player.classId}`).setDisplaySize(100*k,100*k);
       const push=carPose?.pushers.includes(player.id)?pushContact(player,carPose,undefined,d=>pushReach(d,this.view)):undefined,shift=this.pushShifts.step(player.id,push?.shift,delta);
+      // An ally dances too when it has stood still for a while (danca-no-jogo): its moves and swings show it. A room bot
+      // dances only when it cheers (a round won, the team's level-up, a big enemy down near it).
+      this.sprites.danceCue(objects.image,{allowed:danceAllowed(net.feed.players.get(player.id),this.horde?.tick??0),idle:!net.feed.players.get(player.id)?.bot,cheer:this.cheers.of(player.id)});
       const pull=carPose?.puller===player.id?pullDirection(player,carPose):undefined;
       this.sprites.animate(objects.image,player.classId,player.x,player.y,player.attackTick??0,player.hp>0&&player.online,this.view,undefined,push?.dir??pull,player.hp);
       // The floor travels with the drawn point (a hero on a viaduct's deck is lifted onto it, above the ground car).

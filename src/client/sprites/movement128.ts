@@ -6,7 +6,7 @@ export type DetailedMotion='walk'|'attack';
 export const MOVEMENT128_FRAMES=128;
 export const MOVEMENT128_DURATION={walk:600,attack:1000} as const;
 export interface Movement128Plan {
-  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt';direction?:HeroDirection;
+  key:string;url:string;original:string;motion:DetailedMotion|'idle'|'run'|'push'|'pull'|'hurt'|'dance';direction?:HeroDirection;
   columns:number;rows:number;frameCount:number;
   durationMs:number;loop:boolean;anchor:[number,number];height:number;figure:FigureBox;
   /** M16: the sheet is the drawn direction's mirror (E/NE/SE show W/NW/SW with flipX; `key` is the drawn sheet's). */
@@ -73,6 +73,24 @@ export function movement128Plan(id:string,motion:DetailedMotion,direction:HeroDi
   }
   const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion,direction,
     columns:16,rows:8,frameCount:128,durationMs,loop:motion==='walk',anchor:[.5,.875],height:f.height,figure:f.figure};
+  plans.set(key,plan);return plan;
+}
+/**
+ * The hero's dance (card danca-no-jogo, scripts/import-danca-jogo.mjs): the menu's 128 frontal poses on a 16×8 sheet of
+ * 96 px cells, the ground on the anchor and `height` the median pose, so it draws 96/height like a rest. One sheet for
+ * every direction (the dance faces the camera). A manifest plan only: asking never downloads it.
+ */
+export function dancePlan(id:string):Movement128Plan|undefined{
+  current();const key=`sprite128:${id}:dance`;
+  if(plans.has(key))return plans.get(key)??undefined;
+  const f=artPiece('personagens',id)?.files.dance128,p=f?.pages?.[0],original=f?.file&&artUrl('personagens',f.file);
+  if(!f||!original||f.cell[0]!==96||f.cell[1]!==96||f.frames!==128||f.pages?.length!==1||!p||p.file!==f.file||p.columns!==16||
+    p.rows!==8||p.firstFrame!==0||p.frameCount!==128||f.loop!==true||typeof f.durationMs!=='number'||!(f.durationMs>0)||
+    f.anchor?.[0]!==.5||f.anchor[1]!==.875||typeof f.height!=='number'||!Number.isFinite(f.height)||f.height<4||f.height>96||!box(f.figure)){
+    plans.set(key,null);return;
+  }
+  const plan:Movement128Plan={key,original,url:original.replace('/art/sprites/','/art/lite/sprites/'),motion:'dance',columns:16,rows:8,
+    frameCount:128,durationMs:f.durationMs,loop:true,anchor:[.5,.875],height:f.height,figure:f.figure};
   plans.set(key,plan);return plan;
 }
 /** One resting pose per direction, in the same oblique camera and coordinate system as the detailed motions. */

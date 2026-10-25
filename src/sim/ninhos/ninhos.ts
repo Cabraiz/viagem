@@ -57,6 +57,8 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - alive: no wave while this many enemies are alive (it waits RETRY_SECONDS);
  *  - minerva: the minuto de Minerva (s, MINERVA_S);
  *  - first: [min, max] seconds from the end of the minuto de Minerva to the first wave;
+ *  - firstLate: seconds added to that window (pair: 1 player → 6 players), so a small team gets back to the Uno before
+ *    the first wave reaches it;
  *  - warm: for the first `warm` seconds the outside group is × warmScale and the waves play the round row `warmRow`
  *    (the light round 1: time to level and gather); nestRound (2..9 by f) after it;
  *  - size: × the outside group (over playerScale's count);
@@ -77,7 +79,10 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // 1p 0/16 and 6p 2/16 (the car fell). The pace that keeps every body (the user: "sem diminuir número de inimigos"):
 // period 90/60 s, the first wave 90–120 s after the minuto de Minerva, 1–3 recruits a second, march × .85 on 1p.
 // inicio-no-uno-caixas-120: minerva 60 → 120 s and first 90–120 → 30–60 s (the first wave at the same 150–180 s).
-export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],alive:[8,60] as [number,number],
+// balanco-mapa-175 (production bench, chaveiro + ninhos + manual, 16 seeds): on the city 1.75× shorter the first wave
+// reached the Uno before a solo bot was back, and the Uno fell ~4 min in (1p 4/16 → 0/16). firstLate 1p +60 s (first wave
+// 210–240 s after the start for a solo, 150–180 s for six as before): 1p 3/16; march .65 instead: 2/16. Same bodies.
+export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
   trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
   explore:120,waveMin:20,waveCap:150};
@@ -234,7 +239,7 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     state.quota=Math.round(pace(NEST_PACE.mapShare,state.players)*bodiesOf(plan));
     state.deadAt=0;
     state.minervaUntil=ctx.tick+ticks(NEST_PACE.minerva);
-    state.nextWave=state.minervaUntil+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1]));
+    state.nextWave=state.minervaUntil+ticks(random().range(NEST_PACE.first[0],NEST_PACE.first[1])+pace(NEST_PACE.firstLate,state.players));
     save();
   }
 

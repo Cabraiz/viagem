@@ -24,7 +24,7 @@ import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
 import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
+import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,pace,
   wavePeriod,waveShares,type NestCause,type NestsOptions,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -86,11 +86,11 @@ function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR],extra:Pick<
 }
 const until=(r:ReturnType<typeof rig>,tick:number)=>{while(r.world.tick<tick)r.world.step();};
 
-test('a wave: FIRST_EXIT s after the Minerva, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over',()=>rawPace(()=>{
+test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
-  const start=r.nests.state.startTick!,first=r.nests.state.nextWave!;
-  assert.ok(first>=start+ticks(FIRST_EXIT[0])&&first<=start+ticks(FIRST_EXIT[1]),`first wave ${first}`);
+  const start=r.nests.state.startTick!,first=r.nests.state.nextWave!,late=pace(NEST_PACE.firstLate,r.nests.state.players);
+  assert.ok(first>=start+ticks(FIRST_EXIT[0]+late)&&first<=start+ticks(FIRST_EXIT[1]+late),`first wave ${first}`);
   assert.equal(r.nests.state.quota,Math.round(PLAN_BODIES*NEST_PACE.mapShare[0]));
   for(const n of r.nests.state.nests)assert.equal(n.hp,n.maxHp);
   until(r,first+1);
@@ -264,7 +264,9 @@ function assembled(seed:number,players:Map<string,SimPlayer>,options:{objective?
 }
 const stepRun=(r:Run,n=1)=>{for(let i=0;i<n;i++)r.events.push(...r.world.step());};
 
-test('assembled mode ninhos: no round from the director, a wave (map, nests, outside), NEST_COUNT nests at their hp, a checkpoint plays on',()=>{
+test('assembled mode ninhos: no round from the director, a wave (map, nests, outside), NEST_COUNT nests at their hp, a checkpoint plays on',t=>{
+  // The assembly, not the timing: the first wave in FIRST_EXIT, no firstLate (balanco-mapa-175: +48 s for 2 players).
+  const late=NEST_PACE.firstLate;NEST_PACE.firstLate=[0,0];t.after(()=>{NEST_PACE.firstLate=late;});
   const SEED=21,players=new Map<string,SimPlayer>();
   const a=assembled(SEED,players);
   const car=a.sys.chaveiro!.state.car;

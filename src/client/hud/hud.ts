@@ -278,7 +278,7 @@ export class RunHud {
     for(const panel of [offer.el,offer.chip,this.result.el,top.el,team.el,alerts.el,this.coachRow.el,this.objectiveRow.el])for(const type of ['pointerdown','pointerup','touchstart','mousedown','click'] as const)panel.addEventListener(type,event=>event.stopPropagation());
     parent.append(this.el);
     addEventListener('resize',this.relayout);
-    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
+    if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(this.relayout);for(const part of [top.el,team.el,stack,profiles.flame,offer.el,camp.forge,camp.readout,cida.panel,cida.button,...(this.wc?[this.wc.el]:[])])this.observer.observe(part);
       // NEW-UX-nome-do-time-na-coluna: the portrait column is as wide as its widest name; the windows and the announcement
       // slot start right of it (hud.css --rh-coluna), so a 9-letter name never goes under the offer or the forge.
       this.columnObserver=new ResizeObserver(()=>this.writeColumn());

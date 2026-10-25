@@ -1,19 +1,15 @@
-// The new enemy's dating-app profile (card nome-inimigo-rede-social, hud/perfis.ts): once per kind, near the hero (the
-// boss from anywhere), PROFILE_MS on screen without pausing anything, a fan of at most FAN_MAX when several come in a
-// row, the clock standing still under a window, ✕/✓ to throw it away; the texts' limits and one photo per profile.
+// The enemies' matches (card nome-inimigo-rede-social, hud/perfis.ts, the user's option D): only a kill of the LOCAL
+// hero counts, MATCH_CHANCE of them, never the same kind twice, at most MATCH_CAP; the distance at the kill as "a 12 m" /
+// "a 1,2 km"; the compact card never over the hero, the Uno, the allies or the mission band; the texts' limits and one
+// photo per profile.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {FAN_MAX,GUARD_MARGIN_PX,LEAVE_MS,MATCH_MS,NEAR_M,PERFIS_KEY,PROFILE_MS,ProfileDeck,SMALL_SCALE,fanPose,loadSeen,perfilOf,placeProfiles,saveSeen,type DeckInput} from '../../src/client/hud/perfis.ts';
+import {GUARD_MARGIN_PX,MATCH_CAP,MATCH_CHANCE,METROS_POR_UNIDADE,MatchBook,SMALL_SCALE,TILT_DEG,distanciaTexto,perfilOf,placeProfiles} from '../../src/client/hud/perfis.ts';
 import {PERFIS_TEXTO} from '../../src/client/hud/perfis-texto.ts';
 import {ROSTER} from '../../src/rules/index.ts';
 import {ENEMY_ART_IDS} from '../../src/rules/enemy-art-ids.ts';
-
-const has=(k:string)=>!!perfilOf(k);
-const at=(kind:string,x=2,y=0,extra:Partial<DeckInput['enemies'][number]>={})=>({kind,x,y,...extra});
-const hero={x:0,y:0};
-const kinds=(deck:ProfileDeck)=>deck.shown.filter(c=>!c.leaving).map(c=>c.kind);
 
 test('lotes 1–4: every kind with art has a profile with its photo; the texts fit the card',()=>{
   const ids=Object.keys(PERFIS_TEXTO);
@@ -33,103 +29,72 @@ test('lotes 1–4: every kind with art has a profile with its photo; the texts f
   assert.equal(perfilOf('pernilongo-vampiro'),undefined,'a kind still without art has no card yet');
 });
 
-test('first time near the hero: its card; the same kind never again; far, asleep or without a profile: none',()=>{
-  const deck=new ProfileDeck(has);
-  assert.deepEqual(deck.step({enemies:[at('tio-pave',NEAR_M+1)],hero},0).cards,[],'too far');
-  assert.deepEqual(deck.step({enemies:[at('tio-pave',1,0,{asleep:true})],hero},10).cards,[],'asleep on the map');
-  assert.deepEqual(deck.step({enemies:[at('pernilongo-vampiro',1)],hero},20).cards,[],'no profile yet');
-  assert.deepEqual(kinds(deck),[]);
-  deck.step({enemies:[at('tio-pave',NEAR_M)],hero},30);
-  assert.deepEqual(kinds(deck),['tio-pave']);
-  assert.equal(deck.shown[0].distance,NEAR_M);
-  deck.step({enemies:[at('tio-pave',1),at('tio-pave',2)],hero},40);
-  assert.equal(deck.shown.length,1,'two of the same kind: one card');
-  deck.step({enemies:[],hero},30+PROFILE_MS);
-  deck.step({enemies:[at('tio-pave',1)],hero},30+PROFILE_MS+LEAVE_MS);
-  assert.deepEqual(deck.shown,[],'met once: never again');
+test('the numbers the user asked for: 1 in 6 kills, 12 per match, ±4°, 1 world unit = 1 m',()=>{
+  assert.equal(MATCH_CHANCE,1/6);
+  assert.equal(MATCH_CAP,12);
+  assert.equal(TILT_DEG,4);
+  assert.equal(METROS_POR_UNIDADE,1);
 });
 
-test('the boss gets its card from anywhere; without a hero every kind counts as near',()=>{
-  const deck=new ProfileDeck(has);
-  deck.step({enemies:[at('chefe',80,0,{boss:true})],hero},0);
-  assert.deepEqual(kinds(deck),['chefe']);
-  const free=new ProfileDeck(has);
-  free.step({enemies:[at('pombos',500)]},0);
-  assert.deepEqual(kinds(free),['pombos']);
+test('distance: whole metres under a kilometre, kilometres with one decimal and a comma from there',()=>{
+  assert.equal(distanciaTexto(0),'a 0 m');
+  assert.equal(distanciaTexto(12.4),'a 12 m');
+  assert.equal(distanciaTexto(12.5),'a 13 m');
+  assert.equal(distanciaTexto(999.4),'a 999 m');
+  assert.equal(distanciaTexto(999.6),'a 1,0 km','rounds to 1000 m: kilometres');
+  assert.equal(distanciaTexto(1240),'a 1,2 km');
+  assert.equal(distanciaTexto(12_345),'a 12,3 km');
+  assert.equal(distanciaTexto(-3),'a 0 m');
 });
 
-test('PROFILE_MS on screen, then it leaves; the photo of a far kind is loaded ahead (spotted, once)',()=>{
-  const deck=new ProfileDeck(has);
-  assert.deepEqual(deck.step({enemies:[at('bebado',40)],hero},0).spotted,['bebado']);
-  assert.deepEqual(deck.step({enemies:[at('bebado',40)],hero},10).spotted,[]);
-  deck.step({enemies:[at('bebado',3)],hero},100);
-  deck.step({enemies:[at('bebado',3)],hero},100+PROFILE_MS-1);
-  assert.deepEqual(kinds(deck),['bebado']);
-  deck.step({enemies:[at('bebado',3)],hero},100+PROFILE_MS);
-  assert.equal(deck.shown[0].leaving,'tempo');
-  deck.step({enemies:[],hero},100+PROFILE_MS+LEAVE_MS);
-  assert.deepEqual(deck.shown,[]);
+const kill=(kind:string,by:string|undefined,x=3,y=4)=>({kind,by,x,y});
+/** Dice that give these values in turn. */
+const dice=(...values:number[])=>{let i=0;return ()=>values[i++%values.length];};
+
+test('a match is a kill of the LOCAL hero, of a kind with a profile, when the dice say so',()=>{
+  const yes=new MatchBook(undefined,dice(0,.5));
+  assert.equal(yes.kill(kill('tio-pave','p2'),'p1',{x:0,y:0}),undefined,'an ally\'s kill');
+  assert.equal(yes.kill(kill('tio-pave',undefined),'p1',{x:0,y:0}),undefined,'nobody\'s (a tower, the car)');
+  assert.equal(yes.kill(kill('pernilongo-vampiro','p1'),'p1',{x:0,y:0}),undefined,'no profile');
+  assert.equal(yes.kill(kill('tio-pave','p1'),'',{x:0,y:0}),undefined,'no local hero');
+  const m=yes.kill(kill('tio-pave','p1'),'p1',{x:0,y:0});
+  assert.deepEqual(m,{kind:'tio-pave',distance:5,tilt:0},'5 m away (3-4-5), the lean from the second die (.5 → 0°)');
+  assert.equal(yes.matches.length,1);
+  // The dice: MATCH_CHANCE is the edge.
+  const no=new MatchBook(undefined,()=>MATCH_CHANCE);
+  assert.equal(no.kill(kill('tio-pave','p1'),'p1'),undefined,'a die at MATCH_CHANCE is a no');
+  const edge=new MatchBook(undefined,dice(MATCH_CHANCE-1e-9,.9999));
+  assert.equal(edge.kill(kill('tio-pave','p1'),'p1')?.tilt,TILT_DEG,'just under is a yes; the lean at its edge');
 });
 
-test('several in a row: a fan of at most FAN_MAX, newest in front; the rest wait their turn',()=>{
-  const deck=new ProfileDeck(has);
-  const five=['bebado','pombos','tio-pave','boleto-vivo','bot-de-curtida'].map((k,i)=>at(k,1+i));
-  deck.step({enemies:five,hero},0);
-  assert.equal(FAN_MAX,3);
-  assert.deepEqual(kinds(deck),['tio-pave','pombos','bebado'],'the newest first (in front)');
-  deck.step({enemies:five,hero},PROFILE_MS);
-  deck.step({enemies:five,hero},PROFILE_MS+1);
-  assert.deepEqual(kinds(deck),['bot-de-curtida','boleto-vivo'],'the next two take the freed places');
-  assert.deepEqual(fanPose(0,3),{rot:0,x:0,y:0});
-  assert.ok(fanPose(1,3).rot<0&&fanPose(2,3).rot<fanPose(1,3).rot,'older cards turn further, as in a hand');
-  assert.deepEqual(fanPose(0,1),{rot:0,x:0,y:0});
-});
-
-test('under a window (offer, pause, result) the clock stands still and no card opens; it never pauses the match itself',()=>{
-  const deck=new ProfileDeck(has);
-  deck.step({enemies:[at('bebado',1)],hero},0);
-  deck.step({enemies:[at('bebado',1)],hero},1000);
-  deck.step({enemies:[at('bebado',1),at('pombos',1)],hero},1001,true);
-  deck.step({enemies:[at('bebado',1),at('pombos',1)],hero},60000,true);
-  assert.deepEqual(kinds(deck),['bebado'],'pombos waits for the window to close');
-  assert.equal(deck.shown[0].shownMs,1000);
-  deck.step({enemies:[at('bebado',1),at('pombos',1)],hero},60001);
-  assert.equal(deck.shown.find(c=>c.kind==='bebado')?.shownMs,1001,'time under the window does not count');
-  assert.deepEqual(kinds(deck),['pombos','bebado']);
-});
-
-test('✕ throws the card at once, ✓ after the "DEU MATCH" stamp',()=>{
-  const deck=new ProfileDeck(has);
-  deck.step({enemies:[at('bebado',1),at('pombos',1)],hero},0);
-  const [pombos,bebado]=deck.shown;
-  deck.dismiss(pombos.id,'curtir');deck.dismiss(bebado.id,'passar');
-  deck.step({enemies:[],hero},LEAVE_MS);
-  assert.deepEqual(deck.shown.map(c=>[c.kind,c.leaving]),[['pombos','curtir']],'✕ gone, ✓ still stamping');
-  deck.step({enemies:[],hero},MATCH_MS+LEAVE_MS);
-  assert.deepEqual(deck.shown,[]);
-});
-
-test('the phone remembers the kinds it met (and a broken or missing storage never throws)',()=>{
-  const store=new Map<string,string>();
-  const storage={getItem:(k:string)=>store.get(k)??null,setItem:(k:string,v:string)=>{store.set(k,v);}};
-  let saved:ReadonlySet<string>|undefined;
-  const deck=new ProfileDeck(has,loadSeen(storage),seen=>{saved=seen;saveSeen(seen,storage);});
-  deck.step({enemies:[at('bebado',1)],hero},0);
-  assert.deepEqual([...saved??[]],['bebado']);
-  assert.deepEqual(JSON.parse(store.get(PERFIS_KEY)??'[]'),['bebado']);
-  const again=new ProfileDeck(has,loadSeen(storage));
-  again.step({enemies:[at('bebado',1)],hero},0);
-  assert.deepEqual(again.shown,[]);
-  store.set(PERFIS_KEY,'{broken');
-  assert.ok(loadSeen(storage) instanceof Set);
-  assert.doesNotThrow(()=>saveSeen(new Set(['x']),{getItem:()=>{throw new Error('off');},setItem:()=>{throw new Error('off');}}));
+test('rarely: about 1 in 6 of the hero\'s kills over many, never the same kind twice, at most MATCH_CAP',()=>{
+  // A seeded dice (LCG) over 600 eligible kills of new kinds: the share is near 1/6.
+  let s=7;const rng=()=>((s=(s*1103515245+12345)%2147483648)/2147483648);
+  const kinds=Object.keys(PERFIS_TEXTO);
+  let made=0;
+  for(let run=0;run<60;run++){
+    const book=new MatchBook(undefined,rng);
+    for(let i=0;i<10;i++)if(book.kill(kill(kinds[(run*10+i)%kinds.length],'p1'),'p1'))made++;
+  }
+  assert.ok(made>=70&&made<=130,`${made} of 600 (1/6 = 100)`);
+  // Always yes: the same kind once, then the cap.
+  const book=new MatchBook(undefined,()=>0);
+  assert.ok(book.kill(kill('bebado','p1'),'p1'));
+  assert.equal(book.kill(kill('bebado','p1'),'p1'),undefined,'the same profile never again');
+  for(const kind of kinds.slice(0,40))book.kill(kill(kind,'p1'),'p1');
+  assert.equal(book.matches.length,MATCH_CAP);
+  assert.equal(new Set(book.matches.map(m=>m.kind)).size,MATCH_CAP,'all different');
+  for(const m of book.matches)assert.ok(Math.abs(m.tilt)<=TILT_DEG);
+  book.reset();
+  assert.equal(book.matches.length,0,'a new match starts with none');
+  assert.ok(book.kill(kill('bebado','p1'),'p1'),'and the kind may match again in it');
 });
 
 // perfil-nao-cobre: the user's phone print had the card over the Uno, the hero and the mission band.
 test('the card never covers the hero, the Uno, the allies or the mission band: another corner, then smaller, then none',()=>{
   const cross=(a:{x:number;y:number;width:number;height:number},b:typeof a,m:number)=>a.x<b.x+b.width+m&&b.x-m<a.x+a.width&&a.y<b.y+b.height+m&&b.y-m<a.y+a.height;
   const boxOf=(home:{x:number;y:number;width:number;height:number},p:{dx:number;dy:number;scale:number})=>({x:home.x+p.dx,y:home.y+p.dy,width:home.width*p.scale,height:home.height*p.scale});
-  // 390×844 as in the print: the card under the top band on the right; the useful area between the band and the thumbs.
+  // 390×844 as in the print: the card under the flame on the right; the useful area between the band and the thumbs.
   const home={x:210,y:140,width:172,height:226},useful={x:0,y:120,width:390,height:560};
   const band={x:40,y:240,width:310,height:50},uno={x:180,y:340,width:110,height:130},hero={x:170,y:410,width:44,height:60};
   assert.deepEqual(placeProfiles(home,useful,[]),{spot:'canto',dx:0,dy:0,scale:1},'nothing in the way: its usual place');

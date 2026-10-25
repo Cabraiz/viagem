@@ -51,7 +51,9 @@ export interface Match {kind:string;
 export class MatchBook {
   private list:Match[]=[];
   private readonly kinds=new Set<string>();
-  constructor(private readonly has:(kind:string)=>boolean=kind=>!!perfilOf(kind),private readonly rng:()=>number=Math.random){}
+  private readonly has:(kind:string)=>boolean;
+  private readonly rng:()=>number;
+  constructor(has:(kind:string)=>boolean=kind=>!!perfilOf(kind),rng:()=>number=Math.random){this.has=has;this.rng=rng;}
   get matches():readonly Match[]{return this.list;}
   /** A kill: a new match, or undefined (someone else's kill, no profile, already matched, the cap, or the dice said no). */
   kill(e:Pick<KillEvent,'kind'|'by'|'x'|'y'>,localId:string,hero?:{x:number;y:number}):Match|undefined{
@@ -147,6 +149,8 @@ export interface ProfilesOptions {
 }
 export interface ProfilesPart extends HudPart {
   readonly book:MatchBook;
+  /** The flame with the count (the HUD observes its size: shown or not, it moves the announcement slot). */
+  readonly flame:HTMLElement;
   /** The result's "Seus matches" (hidden with none); the photos load here. */
   fillResult(section:HTMLElement):void;
   /** A new match (rematch): no matches, no flame. */
@@ -201,7 +205,7 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
     live.textContent=`Deu match com ${perfilOf(m.kind)?.name??m.kind}`;
   };
   return {
-    el:root,book,
+    el:root,book,flame,
     update(view,ctx:HudContext){
       if(options.off)return;
       for(const e of view.events??[]){
@@ -223,8 +227,9 @@ export function createProfiles(doc:Document,options:ProfilesOptions):ProfilesPar
       el(doc,'h3','rh-result-matches-titulo',section).textContent=list.length===1?'Seu match':`Seus ${list.length} matches`;
       const row=el(doc,'div','rh-result-matches-lista',section);
       for(const m of list){
-        const node=profileCard(doc,m,'rh-perfil-figurinha',(how,n)=>{n.dataset.sai=n.dataset.sai===how?'':how;});
-        node.style.setProperty('--tilt',`${m.tilt}deg`);row.append(node);
+        // Its own size container: the card's sizes are container units of its parent (as the compact card's slot).
+        const box=el(doc,'div','rh-perfil-figurinha-cx',row);box.style.setProperty('--tilt',`${m.tilt}deg`);
+        box.append(profileCard(doc,m,'rh-perfil-figurinha',(how,n)=>{n.dataset.sai=n.dataset.sai===how?'':how;}));
       }
     },
     reset(){book.reset();close();paintCount();flame.classList.remove('rh-matches-pulo');lastEvent=-1;},

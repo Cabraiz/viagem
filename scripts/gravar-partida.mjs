@@ -252,6 +252,9 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:tela-cheia:v1','off');}catch{}});
     // economy.ts ECONOMY_KEY (the question answered "no"), hud/coach.ts COACH_KEY (the first hints seen).
     if(!o.dicas)await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
+    // empurra: the scene is only on window in a build with the perf switch (scene.ts __perfScene); its meter stays hidden.
+    if(roteiro==='empurra')await ctx.addInitScript(()=>{try{sessionStorage.setItem('viagem:perf','1');}catch{}
+      document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
     const p=await ctx.newPage();
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
@@ -263,12 +266,12 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     await p.waitForFunction(()=>{const l=document.querySelector('.explore-loading');return !l||l.closest('[hidden]')||!l.getBoundingClientRect().width;},null,{timeout:60000}).catch(()=>{});
     await sleep(1500);
     // empurra: the 1st wave's solid bodies near the hero (the phone's copies, client.ts bodies), before the GIF starts.
-    const nearest=()=>p.evaluate(()=>{const s=window.__island?.scene,n=s?.hooks?.net,me=n?.predicted;if(!me)return null;let best=null,bd=Infinity,count=0;
+    const nearest=()=>p.evaluate(()=>{const s=window.__perfScene??window.__island?.scene,n=s?.hooks?.net,me=n?.predicted;if(!me)return null;let best=null,bd=Infinity,count=0;
       for(const b of n.bodies??[]){const d=Math.hypot(b.x-me.x,b.y-me.y);if(d<10)count++;if(d<bd){bd=d;best=b;}}
       if(!best)return null;const a=s.project(me),c=s.project(best);return {d:bd,count,dir:{x:c.x-a.x,y:c.y-a.y}};}).catch(()=>null);
     if(roteiro==='empurra'){
       const until=Date.now()+EMPURRA_WAIT_MS;
-      for(;;){if(o.escolher)await escolher(p,tela);const n=await nearest();if(n&&n.d<12&&n.count>=2)break;if(Date.now()>until){r.falha='nenhuma onda perto do herói';return r;}await sleep(2000);}
+      for(;;){if(o.escolher)await escolher(p,tela);const n=await nearest();if(n&&n.d<12&&n.count>=2)break;if(Date.now()>until){r.falha=`nenhuma onda perto do herói (${JSON.stringify(n)})`;await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}await sleep(2000);}
     }
     await p.screenshot({path:join(dir,'inicio.png'),timeout:30000}).catch(()=>{});
     // The GIF's frames from the compositor's screencast (CDP), not page.screenshot: on CI's software GL a screenshot

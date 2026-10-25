@@ -15,7 +15,8 @@ import type {PlayerRunView,RunPause,RunView} from '../../contract/index.ts';
 import {teamOrder,type HudContext,type HudPart} from './model.ts';
 import {railName} from '../../rules/index.ts';
 import {crosses,type Rect} from './zones.ts';
-import {viewportSize} from './box-cache.ts';
+import {afterPaint,viewportSize,type Schedule} from './box-cache.ts';
+import {putTextData} from './dom-put.ts';
 
 /**
  * The pause as the room sends it (D-050, src/contract/run.ts RunPause): leftMs of the deadline, the deadline's whole
@@ -32,6 +33,11 @@ export const PAUSE_URGENT_MS=3000;
 export const PAUSE_TICK_MS=200;
 /** Names spelled out in "Esperando: …"; past them, "e mais N". */
 export const PAUSE_NAMES_MAX=3;
+/**
+ * The title's place is checked again this often while a pause lasts (a window or a row of the slot resizing), besides
+ * whenever what decides it changes. The check reads the layout after the paint (box-cache afterPaint), never in the tick.
+ */
+export const PAUSE_PLACE_MS=1000;
 /** Gap (CSS px) between the title box and the offer's cards, and the screen's edges. */
 export const PAUSE_GAP=8;
 
@@ -185,6 +191,8 @@ const el=<K extends keyof HTMLElementTagNameMap>(doc:Document,tag:K,className:st
 export interface PausePartHost {root:HTMLElement;offer:HTMLElement;top:HTMLElement;
   /** The clock (performance.now by default; the sandbox's frozen scenes stop it). */
   now?():number;
+  /** When the title's place is measured again (afterPaint by default; tests run it at once). */
+  schedule?:Schedule;
 }
 
 /** The roster of the pause from the view's players, in the strip's order (teamOrder: this phone first, then by id). */
@@ -208,15 +216,16 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   const live=el(doc,'span','rh-sr');live.setAttribute('aria-live','polite');
   const clock=new PauseClock(),now=()=>host.now?.()??performance.now();
   let last:PauseView|undefined,shown=false,spot='',bar='',secs=-1,roster:PauseMember[]=[],localId='';
-  let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',paints=0;
+  let timer:ReturnType<typeof setInterval>|undefined,destroyed=false,placed='',placedAt=-Infinity,pending=false;
   const render=(view:PauseView|undefined)=>{
     const announce=pauseAnnouncement(last,view);
     if(announce)live.textContent=announce;
     // Over: everything hides, and the live region empties (no stale "Falta você!" for the virtual cursor).
-    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';placed='';bar='';secs=-1;live.textContent='';}last=undefined;return;}
+    if(!view){if(shown){shown=false;dim.hidden=true;box.hidden=true;delete box.dataset.urgente;spot='';placed='';placedAt=-Infinity;bar='';secs=-1;live.textContent='';}last=undefined;return;}
     if(!shown){shown=true;dim.hidden=false;box.hidden=false;}
-    if(title.textContent!==view.title)title.textContent=view.title;
-    if(line.textContent!==view.line)line.textContent=view.line;
+    // The text node changes in place (dom-put putTextData): a new node each second made Chrome check the page's :has()
+    // rules up to <html> and restyle the whole document, which the place's read then paid for (BUG-20261025-ORQ-levelup-pausa-mede-1s).
+    putTextData(title,view.title);putTextData(line,view.line);
     // Laranja Cone with a pulse at ≤ 3 s, never by colour alone (the seconds say it too).
     if(('urgente' in box.dataset)!==view.urgent){if(view.urgent)box.dataset.urgente='';else delete box.dataset.urgente;}
     const scale=`scaleX(${view.fraction.toFixed(3)})`;
@@ -227,13 +236,21 @@ export function createPausePart(doc:Document,host:PausePartHost):HudPart&{dim:HT
   /**
    * Above the offer window (or under the top band once it closed), clear of the minimap and of the announcement slot's
    * rows (pauseSpot). Measured only when what decides it may have changed (the box's text, the window shown or not, the
-   * screen) and once a second (a window or a row resizing), never on every paint.
+   * screen) and every PAUSE_PLACE_MS (a window or a row resizing), never on every paint; and, but for the pause's first
+   * place (the box must not show a frame at the corner), after the paint: read in the tick, right after the HUD wrote,
+   * the boxes made the browser recalculate style and layout there (50–130 ms on a 4× phone, card levelup-pausa-mede-1s).
    */
   const place=(view:PauseView)=>{
     const screen=viewportSize(),key=`${view.title.length}|${view.line}|${view.urgent}|${host.offer.hidden}|${screen.width}x${screen.height}`;
-    const due=++paints%5===0;// once a second at PAUSE_TICK_MS
-    if(key===placed&&!due)return;
-    placed=key;
+    const t=now();
+    if(key===placed&&Math.abs(t-placedAt)<PAUSE_PLACE_MS)return;
+    placed=key;placedAt=t;
+    if(!spot){measure();return;}
+    if(pending)return;
+    pending=true;(host.schedule??afterPaint)(()=>{pending=false;if(shown&&!destroyed)measure();});
+  };
+  const measure=()=>{
+    const screen=viewportSize();
     const rect=(node:Element|null)=>{if(!node||(node as HTMLElement).hidden)return undefined;const r=node.getBoundingClientRect();return r.width?{x:r.left,y:r.top,width:r.width,height:r.height}:undefined;};
     const top=rect(host.top),minimap=rect(host.root.querySelector('.rh-minimap'));
     const rows=[...host.root.querySelectorAll('.rh-stack>:not([hidden])')].map(rect).filter((r):r is Rect=>!!r&&r.height>0);

@@ -161,7 +161,7 @@ function shorthandSize(value){
 // The one tracking the user ordered (selecionar-espacamento, 22/10: "aumente o espaçamento entre as letras em 2x"): the
 // stadium's SELECIONAR, painted to match the generated button art. Keyed by file + exact selector, nothing else.
 const TRACKING_OK=new Set(['src/client/estadio.css .estadio .estadio-confirmar-texto']);
-const RADIUS_PART=/^(var\(--r-[a-z]+\)|50%|0|0px|inherit|initial)$/;
+const RADIUS_PART=/^(var\(--r-[a-z]+(-[a-z]+)*\)|50%|0|0px|inherit|initial)$/;
 
 export function lintCss(file,css){
   const v=[];

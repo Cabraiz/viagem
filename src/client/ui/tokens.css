@@ -117,6 +117,13 @@
   --insta-st-enquete:#262626;--insta-st-campo:#EFEFEF;--insta-st-linha:#DBDBDB;--insta-st-cinza:#8E8E8E;
   --insta-st-sombra-texto:0 1px 6px color-mix(in srgb,var(--insta-st-preto) 55%,transparent);
   --insta-st-sombra-sticker:0 2px 10px color-mix(in srgb,var(--insta-st-preto) 25%,transparent);
+  /* Cartão de app de namoro do inimigo novo (NEW-20261024-ORQ-nome-inimigo-rede-social, mockup 8 que o usuário
+     escolheu): papel creme, balão branco morno, tinta quase preta, o "MATCH" verde. Só hud/perfis.css .rh-perfil*.
+     O contorno e a sombra macia do balão são da referência (o usuário mandou copiar o balão igual). */
+  --perfil-papel:#FBF7F3;--perfil-tinta:#16131A;--perfil-texto:#2C2832;--perfil-icone:#55505C;
+  --perfil-balao:#FDFAF9;--perfil-balao-tinta:#0B0B0E;--perfil-match:#2DB84B;
+  --perfil-sombra:0 0 0 1px color-mix(in srgb,var(--c-breu) 16%,transparent),0 3px 0 color-mix(in srgb,var(--c-breu) 22%,transparent);
+  --perfil-balao-sombra:drop-shadow(0 0 .7px rgba(40,6,24,.95)) drop-shadow(0 1px 2.5px rgba(60,8,32,.4));
 
   /* ---------- Tipo (§2.2) ---------- */
   --f-cartaz:'Londrina Solid',sans-serif;      /* voz de cartaz: oferta, faixa, "Vitória!", números grandes, wordmark */
@@ -127,6 +134,7 @@
   --f-insta-moderna:'Archivo Expanded',var(--f-insta-classica);
   --f-insta-forte:'Bebas Neue',var(--f-cartaz);
   --f-insta-maquina:'Courier Prime',var(--f-sistema);
+  --f-perfil:'Inter',var(--f-sistema); /* só o cartão de app de namoro (hud/perfis.css) */
   /* Multiplicador de texto 100/125% (UX-acessibilidade): <html data-texto="125">. */
   --t-escala:1;
   --t-13:calc(13px * var(--t-escala));
@@ -152,6 +160,8 @@
   --r-pilula:999px;  /* só o menu do estádio (menu-estadio): classe, nome e "Selecionar", como na referência aprovada */
   --r-insta:16px;    /* só o SELECIONAR do perfil no celular em pé (selecao-mobile-instagram), como na referência */
   --r-faixa:.22em;   /* só a faixa por linha do texto dos stories: canto levemente redondo, cresce com a letra */
+  /* Só o cartão de app de namoro (hud/perfis.css): cantos que crescem com a largura do cartão (unidades do contêiner). */
+  --r-perfil:7cqw;--r-perfil-foto:4.5cqw;--r-perfil-balao:8.8cqw;--r-perfil-match:3cqw;
 
   /* ---------- Sombras duras e contorno ---------- */
   --s-1:0 3px 0 var(--c-breu);

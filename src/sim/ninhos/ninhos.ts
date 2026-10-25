@@ -71,7 +71,9 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
  *  - perNest: [min, max] bodies born in each live nest per wave;
  *  - floor: the outside group never shrinks below this share of itself, whatever the kills past the quota;
  *  - ramp: the seconds f takes from 0 to 1 (period, outside group, the round row);
- *  - explore: the time to explore after a wave is over (s); waveMin, waveCap: a wave holds it at least / at most (s).
+ *  - explore: the time to explore after a wave is over (s); waveMin, waveCap: a wave holds it at least / at most (s);
+ *  - crowd: × march, hp and damage of a wave's body by room size (1..6 players, on top of march/hp/damage), so a big
+ *    room meets stronger bodies while 1p-3p stay as before (a pair would move 3p too).
  * Mutable only for the bench's grid (bench-city-run --nest-pace); the game never writes it.
  */
 // Bench (seeds 1-16, 1p and 6p, evidence/NEW-20261022-ORQ-monstros-espalhados/bench): with the quota at 10 % of today's
@@ -82,10 +84,16 @@ export const OUTSIDE_GROUP:readonly (readonly [number,number])[]=Object.freeze([
 // balanco-mapa-175 (production bench, chaveiro + ninhos + manual, 16 seeds): on the city 1.75× shorter the first wave
 // reached the Uno before a solo bot was back, and the Uno fell ~4 min in (1p 4/16 → 0/16). firstLate 1p +60 s (first wave
 // 210–240 s after the start for a solo, 150–180 s for six as before): 1p 3/16; march .65 instead: 2/16. Same bodies.
+// balanco-6p-facil (production bench, 6p × 16): six bots won 16/16 with the Uno untouched, the car open after 2-3 waves.
+// The chaveiro's ride alone (CHAVEIRO_PACE.ride, 6p 420 → 1080 s) left 15/16 at 23.5 min, and so did march / size alone;
+// the bodies' hp is what bites: ride 900 + march 1.25 + hp 2 + damage 1.3 on 6p → 9/16 (7 losses: 6 team, 1 car).
+const CROWD={march:[1,1,1,1.083,1.167,1.25] as number[],hp:[1,1,1,1.333,1.667,2] as number[],damage:[1,1,1,1.1,1.2,1.3] as number[]};
 export const NEST_PACE={period:[90,60] as [number,number],minerva:MINERVA_S,first:[30,60] as [number,number],firstLate:[60,0] as [number,number],alive:[8,60] as [number,number],
   warm:180,warmScale:.4,warmRow:1,ramp:NEST_RUN_SECONDS,size:[1,1.85] as [number,number],mapShare:[.1,.1] as [number,number],
   trickle:[1,3] as [number,number],march:[.85,1] as [number,number],hp:1,damage:1,perNest:[1,3] as [number,number],floor:.5,
-  explore:120,waveMin:20,waveCap:150};
+  explore:120,waveMin:20,waveCap:150,crowd:CROWD};
+/** NEST_PACE.crowd's factor `k` for a room of `players` (1..6). */
+export const crowd=(k:keyof typeof CROWD,players:number)=>NEST_PACE.crowd[k][clampPlayers(players)-1]??1;
 /** The first wave's window (s): NEST_PACE.first. */
 export const FIRST_EXIT:readonly [number,number]=NEST_PACE.first;
 export const pace=(pair:readonly [number,number],players:number)=>pair[0]+(pair[1]-pair[0])*(clampPlayers(players)-1)/5;
@@ -297,10 +305,11 @@ export function createNests(options:NestsOptions,restore?:NestsState):NestsSyste
     (e.memory??={}).tuned=1;
     // Foco (enemies/foco.ts): most of the wave goes for the Uno, the rest hunts the players.
     assignFoco(e);
-    const march=pace(NEST_PACE.march,state.players);
+    const march=pace(NEST_PACE.march,state.players)*crowd('march',state.players);
     if(march!==1)e.speed*=march;
-    if(NEST_PACE.hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*NEST_PACE.hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*NEST_PACE.hp)));}
-    if(NEST_PACE.damage!==1)e.damage*=NEST_PACE.damage;
+    const hp=NEST_PACE.hp*crowd('hp',state.players),damage=NEST_PACE.damage*crowd('damage',state.players);
+    if(hp!==1){e.maxHp=Math.max(1,Math.round(e.maxHp*hp));e.hp=Math.min(e.maxHp,Math.max(1,Math.round(e.hp*hp)));}
+    if(damage!==1)e.damage*=damage;
   }
   /** Lets the next batch of a wave's map share out (NEST_PACE.trickle a second, from its entrance's route). */
   function drip(ctx:SimContext){

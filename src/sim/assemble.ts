@@ -31,7 +31,7 @@ import type {AvenuePlanner} from './city/avenues.ts';
 import {cityPlanner,citySteer,cityTerrainOf} from './city/grid.ts';
 import {CityTerrain,baseHeroSpeed,cityNestPlan,safePlaceAt,type NestPlan,type NestSize} from '../maps/index.ts';
 import {citySpeed} from './city/speed.ts';
-import {ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
+import {CHAVEIRO_PACE,ENTRANCES,createChaveiro,planChaveiro,type ChaveiroState,type ChaveiroSystem} from './chaveiro/system.ts';
 import {CAR_ID,MOTO_ID,Rng,ticks,type CombatMode,type ObjectiveKind,type ObjectiveView} from '../contract/index.ts';
 import {NEST_PACE,NEST_TARGET,ROLE_WEIGHT,createNests,type NestsState,type NestsSystem} from './ninhos/ninhos.ts';
 import {NOISE,createSono,type AmbientNoise,type Sono,type SonoState} from './ninhos/sono.ts';
@@ -438,6 +438,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       spawnBoss:(ctx,at)=>{boss.spawnBoss(ctx,nests?.bossSpot()??at);},
       // chaveiro-no-final: in mode 'ninhos' the car opens only once the nests' ramp is over (the end at the peak).
       ...(nestMode?{finalNotBefore:NEST_PACE.ramp}:{}),
+      // balanco-6p-facil: and his ride follows the room (a bigger one waits longer for him).
+      ...(nestMode?{ride:CHAVEIRO_PACE.ride}:{}),
       // D-052: the car moves on the sticks of this tick, around the standing structures and the living nests (D-051).
       input:id=>sticks.get(id),blocks:()=>structureTargets(stonewards.state,false),
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],

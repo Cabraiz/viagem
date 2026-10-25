@@ -347,6 +347,9 @@ export class Simulation {
       },
       autopilot:id=>this.autopilot.has(id),
       bot:id=>this.bots.has(id),
+      // heroi-empurra-inimigos: a step a body changed counts as an effect up to the next tick (confirmed): the phone's
+      // replay starts from where the room has the bodies now, so while it pushes its frames go live.
+      onBodyBlock:id=>this.effectEnd.set(id,Math.max(this.effectEnd.get(id)??-Infinity,this.world.tick+1)),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The

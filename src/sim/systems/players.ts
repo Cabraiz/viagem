@@ -58,10 +58,11 @@ export interface ManualCombat {attacking:Set<string>}
  * `car` (card uno-bloqueio-corpo): the chaveiro's car, whose body every standing hero stays out of (maps carBlock, as the
  * phone's replay), walking or not (the car rolled onto a hero standing still: out to its edge on this tick).
  * `bodies` (card heroi-empurra-inimigos): every step a hero takes pushes the solid enemies it walks into and stops at
- * their edge (maps bodyBlock, as the phone's replay), before the car's block.
+ * their edge (maps bodyBlock, as the phone's replay), before the car's block; a function is also told whose step a
+ * body changed.
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
-  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean):SimSystem{
+  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean|((playerId:string)=>void)):SimSystem{
   const near:EnemyState[]=[];
   return {id:'players',step(ctx){
     const shove=bodies?enemyShove(ctx.terrain):undefined;
@@ -94,7 +95,7 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
         let q=capStep(from,p,stepCap?.(p.id),ctx.terrain);
-        if(shove)q=bodyBlock(from,q,bodiesNear(ctx,q.x,q.y,near),ctx.terrain,shove);
+        if(shove){const free=q;q=bodyBlock(from,q,bodiesNear(ctx,q.x,q.y,near),ctx.terrain,shove);if(q!==free&&typeof bodies==='function')bodies(p.id);}
         q=carBlock(from,q,body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).

@@ -46,13 +46,13 @@ export const standingHero=(p:SimPlayer,autopilot?:(id:string)=>boolean)=>
 const enemyOnly=(b:Body)=>b.boss?heroShare(b):0;
 
 /** After the enemies moved: no body stands inside a standing hero (see the header). */
-export function heroBodiesPass(ctx:SimContext,autopilot?:(id:string)=>boolean,scratch:EnemyState[]=[]){
+export function heroBodiesPass(ctx:SimContext,autopilot?:(id:string)=>boolean,scratch:EnemyState[]=[],moved?:(id:string)=>void){
   const shove=enemyShove(ctx.terrain);
   for(const p of ctx.players.values()){
     if(!standingHero(p,autopilot))continue;
     const near=bodiesNear(ctx,p.x,p.y,scratch);
     if(!near.length)continue;
     const q=bodyBlock(p,p,near,ctx.terrain,shove,enemyOnly);
-    if(q.x!==p.x||q.y!==p.y){p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));}
+    if(q.x!==p.x||q.y!==p.y){p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));moved?.(p.id);}
   }
 }

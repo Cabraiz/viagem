@@ -110,6 +110,25 @@ export function sheetFrames(total,n=8){
   return Array.from({length:n},(_,i)=>Math.round(i*(total-1)/(n-1)));
 }
 
+/**
+ * empurra: the hero as drawn, frame by frame ([x, y, gap to the nearest solid body]): a "recuo" is a frame whose step
+ * goes back against the walk of the 10 frames before it by more than RECUO_U (the tremor of a prediction snapping back).
+ * Counted everywhere and in contact (gap < CONTATO_U).
+ */
+export const RECUO_U=.004,CONTATO_U=.08;
+export function tremorOf(rows){
+  let quadros=0,contato=0,recuos=0,recuosContato=0,max=0;
+  for(let i=11;i<rows.length;i++){
+    const [x,y,gap]=rows[i],[px,py]=rows[i-1],[ax,ay]=rows[i-11];
+    const wx=px-ax,wy=py-ay,wl=Math.hypot(wx,wy);
+    if(wl<.05)continue;// standing: no walk to go back against
+    quadros++;const touch=gap<CONTATO_U;if(touch)contato++;
+    const back=-((x-px)*wx+(y-py)*wy)/wl;
+    if(back>RECUO_U){recuos++;if(touch)recuosContato++;max=Math.max(max,back);}
+  }
+  return {quadros,contato,recuos,recuosContato,maxRecuo:+max.toFixed(3)};
+}
+
 /** One line per recording, at most 10 (the run's summary and the board line). */
 export function resumoLinhas(results,{origem=''}={}){
   const lines=results.map(r=>{
@@ -117,7 +136,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.tremor?` · tremor: ${r.tremor.recuos} recuo(s) em ${r.tremor.quadros} quadros andando (${r.tremor.recuosContato} de ${r.tremor.contato} encostado, máx ${r.tremor.maxRecuo} u)`:''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -274,6 +293,9 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
       for(;;){if(o.escolher)await escolher(p,tela);const n=await nearest();if(n&&n.d<12&&n.count>=2)break;if(Date.now()>until){r.falha=`nenhuma onda perto do herói (${JSON.stringify(n)})`;await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}await sleep(2000);}
     }
     await p.screenshot({path:join(dir,'inicio.png'),timeout:30000}).catch(()=>{});
+    // empurra: every drawn frame, the hero as drawn (scene.displayed) and its gap to the nearest solid body (tremorOf).
+    if(roteiro==='empurra')await p.evaluate(()=>{const w=window,out=w.__tremor=[];const tick=()=>{const s=w.__perfScene??w.__island?.scene,n=s?.hooks?.net,d=s?.displayed,me=n?.predicted;
+      if(d&&me){let gap=Infinity;for(const b of n.bodies??[])gap=Math.min(gap,Math.hypot(b.x-me.x,b.y-me.y)-b.radius-.22);out.push([d.x,d.y,gap]);}requestAnimationFrame(tick);};requestAnimationFrame(tick);}).catch(()=>{});
     // The GIF's frames from the compositor's screencast (CDP), not page.screenshot: on CI's software GL a screenshot
     // reads the frame back and holds the page ~3 s (0.2 frames/s, and a 12 s roteiro took 65 s). Only kept --fps apart.
     const all=[],start=Date.now();
@@ -294,6 +316,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
       await mover(p,cdp,tela,go,st.ms);elapsed+=st.ms;
       if(!midShot&&elapsed>=o.segundos*500){midShot=true;await p.screenshot({path:join(dir,'meio.png'),timeout:30000}).catch(()=>{});}
     }
+    if(roteiro==='empurra'){const rows=await p.evaluate(()=>window.__tremor??[]).catch(()=>[]);r.tremor=tremorOf(rows);writeFileSync(join(dir,'tremor.json'),JSON.stringify(r.tremor));}
     r.fpsJogo=await p.evaluate(()=>{const g=window.__gravarRaf;return g?Math.round(g.n/((performance.now()-g.t0)/1000)):0;}).catch(()=>0);
     if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
     const frames=pickFrames(all,o.fps);

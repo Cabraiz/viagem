@@ -244,3 +244,20 @@ test('smoke-note and annotate-json: files and annotations a later `test --smoke`
   assert.deepEqual(runs,[{key:'1-1',seed:1,players:1,outcome:'victory',digest:'z'}]);
   fs.rmSync(dir,{recursive:true,force:true});
 });
+
+test('smokesOf: build → smoke-prod, smoke-upgrade → smoke-upgrade; a skipped upgrade job outside fila/ is null; a job with no note is infra',async()=>{
+  const note=(title:string,s:object)=>[{title,message:JSON.stringify(s)}];
+  const ok=(kind:string)=>({kind,exit:0,ok:true,infra:false,skipped:false,linhas:[`smoke ${kind}: OK`]});
+  const api=(jobs:object[],notes:Record<number,object[]>)=>({get:async(p:string)=>{
+    if(p.includes('/jobs'))return {status:200,body:{jobs}};
+    const id=Number(/check-runs\/(\d+)\//.exec(p)![1]);return {status:200,body:notes[id]??[]};
+  }});
+  const run={id:1};
+  const vgm=await ci.smokesOf(api([{id:7,name:'build',conclusion:'success'},{id:8,name:'smoke-upgrade',conclusion:'skipped'}],{7:note('smoke-prod',ok('prod'))}),run,'vgm/x');
+  assert.deepEqual(vgm,{prod:ok('prod'),upgrade:null});
+  const fila=await ci.smokesOf(api([{id:7,name:'build',conclusion:'success'},{id:8,name:'smoke-upgrade',conclusion:'success'}],{7:note('smoke-prod',ok('prod')),8:note('smoke-upgrade',ok('upgrade'))}),run,'fila/1');
+  assert.deepEqual(fila,{prod:ok('prod'),upgrade:ok('upgrade')});
+  const lost=await ci.smokesOf(api([{id:7,name:'build',conclusion:'cancelled'}],{}),run,'fila/1');
+  assert.equal(lost.prod.infra,true);assert.match(lost.prod.linhas[0],/job build cancelled sem resumo/);
+  assert.equal(lost.upgrade.infra,true,'fila/ without the upgrade job: no answer, not a pass');
+});

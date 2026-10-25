@@ -350,11 +350,13 @@ async function cmdTest(o,api=createApi()){
  * A job that left no annotation (cancelled, or it died before its note step) is the machine's: exit 2, its conclusion.
  */
 export const SMOKE_JOBS={prod:'build',upgrade:'smoke-upgrade'};
-async function smokesOf(api,run,branch){
+export async function smokesOf(api,run,branch){
   const jobs=await jobsOf(api,run),out={};
   for(const [kind,name] of Object.entries(SMOKE_JOBS)){
     const job=jobs.find(j=>j.name===name);
-    if(!job){out[kind]=kind==='upgrade'&&!branch.startsWith('fila/')?null:smokeSummary(kind,'',{build:`job ${name} ausente`});continue;}
+    // Outside fila/** the upgrade job is listed as skipped (its `if`): no upgrade smoke, not a failure.
+    if(kind==='upgrade'&&!branch.startsWith('fila/')&&(!job||job.conclusion==='skipped')){out[kind]=null;continue;}
+    if(!job){out[kind]=smokeSummary(kind,'',{build:`job ${name} ausente`});continue;}
     const text=joinAnnotations(await annotationsOf(api,job.id),`smoke-${kind}`);
     let s=null;try{s=text?JSON.parse(text):null;}catch{/* a broken note: the machine's */}
     out[kind]=s??smokeSummary(kind,'',{build:`job ${name} ${job.conclusion??job.status} sem resumo`});

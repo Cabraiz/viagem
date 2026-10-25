@@ -199,7 +199,8 @@ export function applyEliteExtras(ctx:SimContext){
 }
 
 /**
- * Clearance of a prize from the wall's centre and from a tower (units); see createZueira's `blocked`. A standing city
+ * Clearance of a prize from the wall's centre and from a tower (units). No event drops a prize since the flash sale was
+ * retired (NEW-20261025-ORQ-sem-coxinha-no-chao); the discs stay (tested) for the next one. A standing city
  * barricade keeps prizes off its disc plus PRIZE_BARRICADE_MARGIN (cidade-06).
  */
 export const PRIZE_WALL_CLEAR=2,PRIZE_TOWER_CLEAR=1.2,PRIZE_BARRICADE_MARGIN=.3;
@@ -245,10 +246,9 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
     ...(options.combat==='manual'?{crates:true}:{})},cp?.progression);
   // Prizes never fall on the base (the wall's stone ring and tent are drawn ~1.3 u wide and ~3 u tall: 2 u around its
   // centre) nor on a tower (1.2 u): code review of pacote-bugs-ux. Read through `stonewards`, created just below.
-  let structures:()=>{x:number;y:number;radius:number}[]=()=>[];
   // D-051 mode 'ninhos' (the nests' own test below, nestMode): the events on the clock, never with the boss up.
   const zueiraClock=!!cityTerrainOf(world.terrain)&&options.objective==='chaveiro'&&options.mode==='ninhos';
-  const zueira=createZueira(world.seed,{lab:options.zueiraLab,blocked:()=>structures(),
+  const zueira=createZueira(world.seed,{lab:options.zueiraLab,
     ...(zueiraClock?{clock:{bossUp:()=>!!boss.state.bossId&&!boss.state.defeated||!!chefao?.up()}}:{})});
   // Zueira has no restore of its own: its state is plain data, read (rng included) from the first step on.
   if(cp)Object.assign(zueira.state,cp.zueira);
@@ -321,7 +321,6 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       nests:()=>nests?nests.state.nests.filter(n=>!n.down):[],
     }:{}}:{}),
   },cp?.stonewards);
-  structures=()=>prizeBlocks(stonewards.state);
   // City (cidade-05): one avenue planner for the director's spawns and the AI's steer along the avenues.
   const cityTerrain=cityTerrainOf(world.terrain),avenues=cityTerrain?cityPlanner(cityTerrain):undefined;
   const steer=avenues?citySteer(avenues,{terrain:cityTerrain}):undefined;

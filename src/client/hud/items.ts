@@ -94,7 +94,7 @@ const items:ItemDisplay[]=[
   {id:'bola-de-cristal',kind:'weapon',name:'Bola de Cristal da Cartomante',icon:'bola-de-cristal',blurb:'Lendária: raios caem do céu.',joke:'Ela viu chegando.'},
   {id:'cristal-quantico',kind:'weapon',name:'Cristal Quântico do Coach',icon:'cristal-quantico',blurb:'Lendária: pula seis vezes.',joke:'Vibra no dano.'},
 ];
-// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, Construir puts it ahead of the hero (hud/kit-place).
+// Kits de torre (torre-pela-caixa, rules/tower-kits.ts): a tap selects it, a tap on the map places it (hud/kit-place).
 for(const id of KIT_IDS){
   const piece=kitPiece(id)!,wall=piece==='muro'||piece==='barricada';
   const name=wall?(piece==='muro'?'Muro':'Barricada'):DEFENSES[piece].name;

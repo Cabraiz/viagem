@@ -3,8 +3,8 @@
  * are PieceState kind 'barricada' (free-build.ts: blockers to the enemies, bashed only when a body is cut off from the
  * car, the car's 6 s alert); the map's own have owner TRALHA_OWNER.
  * - Laid once (TowersState.tralha.placed), on the first step of a city run with the car: TRALHA_GROUPS straight rows of
- *   up to TRALHA_GROUP_CELLS squares (BARRICADA_CELLS × BARRICADA_CELLS cells each, barricada-2x), each on the line from the car to a spawn (the run's rng: where on it, which way the
- *   row runs). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
+ *   up to TRALHA_GROUP_CELLS pieces (BARRICADA_CELLS cells long and 1 thick, barricada-tocar-no-mapa), end to end, each
+ *   on the line from the car to a spawn (the run's rng: where on it, which way the row runs; the pieces turned along it). A square is skipped off walkable ground, over another piece, within UNO_BUILD_CELLS (+1) of the car's
  *   body, within CAR_NEST_KEEP_OUT of a living nest or where it would lock the car off a spawn or the moto (free-build
  *   locks). So the map never starts shut.
  * - destruir: a standing hero within TRALHA_REACH of any barricada square removes it at once and gets DESTRUIR_PIX R$.
@@ -16,7 +16,7 @@
  */
 import {type CellRect,type CityTerrain,type Point,type TerrainField} from '../../maps/index.ts';
 import {CAR_NEST_KEEP_OUT,ticks,type SimPlayer} from '../../contract/index.ts';
-import {BARRICADA_CELLS,CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,FREE_PIECE_DEFS,TRALHA_GROUPS,TRALHA_GROUP_CELLS,TRALHA_REACH,UNO_BUILD_CELLS} from '../../rules/index.ts';
+import {BARRICADA_CELLS,CARREGA_MAX,COLETAR_SECONDS,DESTRUIR_PIX,FREE_PIECE_DEFS,TRALHA_GROUPS,TRALHA_GROUP_CELLS,TRALHA_REACH,UNO_BUILD_CELLS,pieceCells} from '../../rules/index.ts';
 import type {SimContext} from '../context.ts';
 import type {StonewardsState} from '../stonewards/state.ts';
 import {isStanding} from '../revive.ts';
@@ -48,30 +48,31 @@ export function placeTralha(ctx:SimContext,state:StonewardsState,world:TralhaWor
   const rng=ctx.rng.fork('tralha'),def=FREE_PIECE_DEFS.barricada,keep=car.radius+(UNO_BUILD_CELLS+1)*FREE_CELL,n=BARRICADA_CELLS;
   const pieces=towers.pieces??=[];
   let laid=0;
-  const fits=(cell:{c:number;r:number})=>{
-    if(!onGround(city,cell,n,n))return false;
-    const rect=pieceRect(cell,n,n);
+  const fits=(cell:{c:number;r:number},rot:0|1)=>{
+    const [w,h]=pieceCells('barricada',rot);
+    if(!onGround(city,cell,w,h))return false;
+    const rect=pieceRect(cell,w,h);
     if(gap(rect,car)<keep)return false;
     if(pieces.some(p=>rectsOverlap(pieceRectOf(p),rect)))return false;
     for(const n of world.nests??[])if(gap(rect,n)<CAR_NEST_KEEP_OUT)return false;
-    return !locks(city,state,cell,car,world.moto,n,n);
+    return !locks(city,state,cell,car,world.moto,w,h,'barricada');
   };
   for(let g=0;g<TRALHA_GROUPS;g++){
-    const s=spawns[g%spawns.length],t=rng.range(.3,.7),across=rng.chance(.5);
+    const s=spawns[g%spawns.length],t=rng.range(.3,.7),across=rng.chance(.5),rot:0|1=across?0:1;
     const at={x:car.x+(s.x-car.x)*t,y:car.y+(s.y-car.y)*t};
     let start:{c:number;r:number}|undefined;
     const c0=Math.floor(at.x/FREE_CELL),r0=Math.floor(at.y/FREE_CELL);
     for(let k=0;k<=3&&!start;k++)for(let dr=-k;dr<=k&&!start;dr++)for(let dc=-k;dc<=k&&!start;dc++){
       if(Math.max(Math.abs(dc),Math.abs(dr))!==k)continue;
       const o={c:c0+dc,r:r0+dr};
-      if(fits(o))start=o;
+      if(fits(o,rot))start=o;
     }
     if(!start)continue;
     for(let i=0;i<TRALHA_GROUP_CELLS;i++){
       const cell={c:start.c+(across?i*n:0),r:start.r+(across?0:i*n)};
-      if(!fits(cell))break;
-      const rect=pieceRect(cell,n,n);
-      const p:PieceState={id:ctx.nextId(TRALHA_PREFIX),kind:'barricada',cell,owner:TRALHA_OWNER,x:rect.x+rect.w/2,y:rect.y+rect.h/2,
+      if(!fits(cell,rot))break;
+      const rect=pieceRect(cell,...pieceCells('barricada',rot));
+      const p:PieceState={id:ctx.nextId(TRALHA_PREFIX),kind:'barricada',cell,...(rot?{rot}:{}),owner:TRALHA_OWNER,x:rect.x+rect.w/2,y:rect.y+rect.h/2,
         hp:def.hp,maxHp:def.hp,startTick:ctx.tick,readyTick:ctx.tick};
       pieces.push(p);setMuro(city,p,false,world.onTerrainChanged);laid++;
     }

@@ -713,7 +713,9 @@ class CitySandbox extends Phaser.Scene {
     const obra={x:this.at.x+KIT_OBRA.dx*c,y:this.at.y+KIT_OBRA.dy*c};
     const structures=isTowerKit(kitParam!)?[{id:'kit-obra',kind:kitParam!,x:obra.x,y:obra.y,hp:100}]:[];
     const place=new KitPlace(()=>0);
-    place.start(0,`kit:${kitParam}`,undefined,cell);
+    place.start(0,`kit:${kitParam}`);
+    // barricada-tocar-no-mapa: `giro=1` shows the barricade turned (the drag's other axis).
+    if(params.get('giro')==='1')place.turn();
     place.point(params.get('fantasma')==='ocupado'?obra:{x:this.at.x+KIT_GHOST.dx*c,y:this.at.y+KIT_GHOST.dy*c},cell);
     this.fortify.setGhost(place.ghost({cell,structures}));
   }

@@ -54,12 +54,18 @@ test('gravar: keys of a direction are desktop-input.ts MOVE_KEYS',()=>{
   assert.deepEqual(gravar.keysOf({x:0,y:-1}),['KeyW']);
   assert.deepEqual(gravar.keysOf({x:1,y:1}),['KeyS','KeyD']);
   assert.deepEqual(gravar.keysOf({x:-1,y:0}),['KeyA']);
+  assert.deepEqual(gravar.keysOf({x:0.95,y:-0.1}),['KeyD'],'snapped: a small part is no key');
+  assert.deepEqual(gravar.keysOf({x:-3,y:-2.5}),['KeyW','KeyA']);
+  assert.deepEqual(gravar.toward({x:0,y:0},{x:3,y:4}),{x:0.6,y:0.8});
+  assert.equal(gravar.toward({x:5,y:5},{x:5,y:5}),undefined);
 });
 
 test('gravar: GIF delays follow the capture times, clamped; the sheet spreads its frames',()=>{
   assert.deepEqual(gravar.gifDelays([]),[]);
   assert.deepEqual(gravar.gifDelays([5]),[200]);
-  assert.deepEqual(gravar.gifDelays([0,200,410,2000,2005]),[200,210,1000,20,210]);
+  assert.deepEqual(gravar.gifDelays([0,200,410,2000,2005]),[200,210,1590,20,210]);
+  assert.deepEqual(gravar.gifDelays([0,9000]),[5000,5000]);
+  assert.deepEqual(gravar.pickFrames([0,16,33,150,210,260,420].map(t=>({t})),5).map((f:{t:number})=>f.t),[0,210,420],'5 frames/s at most');
   assert.deepEqual(gravar.sheetFrames(5),[0,1,2,3,4]);
   assert.deepEqual(gravar.sheetFrames(100),[0,14,28,42,57,71,85,99]);
 });
@@ -72,11 +78,12 @@ test('gravar: build ids of one commit',()=>{
 });
 
 test('gravar: the summary has at most 10 lines and says what failed',()=>{
-  const ok={roteiro:'andando',tela:'celular',modo:'normal',erros:[],quadros:50,duracaoMs:10000,entrouMs:9200,gifKB:4000,escolhas:1,falha:''};
-  assert.equal(gravar.resumoLinhas([ok])[0],'✅ andando celular: entrou em 9 s · 50 quadros (5.0/s) · gif 4000 KB · 1 carta(s) escolhida(s) · 0 erros');
+  const ok={roteiro:'andando',tela:'celular',modo:'normal',erros:[],quadros:50,duracaoMs:10000,entrouMs:9200,gifKB:4000,escolhas:1,fpsJogo:30,falha:''};
+  assert.equal(gravar.resumoLinhas([ok])[0],'✅ andando celular: entrou em 9 s · 50 quadros (5.0/s) · jogo a 30 fps · gif 4000 KB · 1 carta(s) escolhida(s) · 0 erros');
   assert.match(gravar.resumoLinhas([{...ok,erros:['console: x']}])[0],/^⚠️ .*1 erro\(s\): console: x/);
   assert.equal(gravar.resumoLinhas([{...ok,modo:'chaveiro',falha:'não entrou em 180 s'}])[0],'❌ andando celular chaveiro: não entrou em 180 s');
   assert.equal(gravar.resumoLinhas([ok],{origem:'https://viagem.cyou'})[0],'Partida solo em https://viagem.cyou');
+  assert.equal(gravar.resumoLinhas([{...ok,quadros:0,gifKB:0,escolhas:0,fpsJogo:0}])[0],'✅ andando celular: entrou em 9 s · 0 erros','prints only (--sem-gif)');
   const many=gravar.resumoLinhas(Array.from({length:14},()=>ok));
   assert.equal(many.length,10);
   assert.equal(many[9],'… e mais 5');

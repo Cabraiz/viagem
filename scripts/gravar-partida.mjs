@@ -38,7 +38,8 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  * The roteiros: steps {dir (undefined: still), ms} that fill `segundos`.
  *  - parado: the hero still where the team spawns (beside the Uno, inicio-no-uno);
  *  - andando: a lap through the eight directions, the walk and its turns;
- *  - uno: short steps out and back around the spawn, so the hero stays beside the Uno the whole time.
+ *  - uno: short steps out and back around the spawn; when the Uno's edge arrow shows (the stick's steps do not cancel
+ *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time.
  */
 export const ROTEIROS=Object.freeze({
   parado:s=>[{ms:s*1000}],
@@ -50,8 +51,14 @@ export const ROTEIROS=Object.freeze({
     return out;
   },
 });
-/** The keys of a direction (MOVE_KEYS in desktop-input.ts). */
-export const keysOf=dir=>!dir?[]:[...dir.y<0?['KeyW']:dir.y>0?['KeyS']:[],...dir.x>0?['KeyD']:dir.x<0?['KeyA']:[]];
+/** The keys of a direction (MOVE_KEYS in desktop-input.ts): any vector, snapped to the eight the keys can make. */
+export const keysOf=dir=>{
+  if(!dir)return [];
+  const len=Math.hypot(dir.x,dir.y)||1,x=dir.x/len,y=dir.y/len,cut=Math.sin(Math.PI/8);
+  return [...y<-cut?['KeyW']:y>cut?['KeyS']:[],...x>cut?['KeyD']:x<-cut?['KeyA']:[]];
+};
+/** From the screen's center toward a point (the Uno's edge arrow), unit length; undefined at the center. */
+export const toward=(from,to)=>{const dx=to.x-from.x,dy=to.y-from.y,len=Math.hypot(dx,dy);return len>1?{x:dx/len,y:dy/len}:undefined;};
 
 const VALUE_FLAGS=new Set(['roteiro','tela','segundos','fps','modo','dist','url','build','esperar-build']);
 /** argv → options (validated); throws on a bad value. */
@@ -75,10 +82,16 @@ export function parseOpts(argv){
     gif:!flags['sem-gif'],zeroErros:!!flags['zero-erros'],dicas:!!flags['com-dicas'],escolher:!flags['sem-escolha']};
 }
 
+/** The screencast's frames (it sends one per change, as fast as the page paints) kept at least 1000/fps ms apart. */
+export function pickFrames(frames,fps){
+  const out=[],gap=1000/fps-1;
+  for(const f of frames)if(!out.length||f.t-out.at(-1).t>=gap)out.push(f);
+  return out;
+}
 /** Per-frame GIF delays (ms) from the capture times: the real pace, so the GIF plays at the match's speed. */
 export function gifDelays(times){
   if(times.length<2)return times.map(()=>200);
-  const gaps=times.slice(1).map((t,i)=>Math.min(1000,Math.max(20,Math.round(t-times[i]))));
+  const gaps=times.slice(1).map((t,i)=>Math.min(5000,Math.max(20,Math.round(t-times[i]))));
   const sorted=[...gaps].sort((a,b)=>a-b);
   return [...gaps,sorted[Math.floor(sorted.length/2)]];
 }
@@ -96,7 +109,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s · ${r.quadros} quadros (${fps}/s)${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -219,19 +232,22 @@ async function escolher(p,tela){
 
 /** One roteiro on one screen, in a fresh browser: the result for the summary (falha set when it failed). */
 async function gravar(chromium,base,o,roteiro,tela,dir){
-  const t=TELAS[tela],r={roteiro,tela,modo:o.modo,erros:[],quadros:0,duracaoMs:0,entrouMs:0,gifKB:0,escolhas:0,falha:''};
+  const t=TELAS[tela],r={roteiro,tela,modo:o.modo,erros:[],quadros:0,duracaoMs:0,entrouMs:0,gifKB:0,escolhas:0,voltas:0,fpsJogo:0,falha:''};
   mkdirSync(dir,{recursive:true});
   let browser;
   try{browser=await chromium.launch({args:launchArgs()});}
   catch(e){throw new Infra(`o navegador não abriu: ${String(e).split('\n')[0]}`);}
   try{
     const ctx=await browser.newContext({viewport:t.viewport,deviceScaleFactor:t.deviceScaleFactor,isMobile:t.isMobile,hasTouch:t.hasTouch,...t.userAgent?{userAgent:t.userAgent}:{}});
+    // ui/tela-cheia.ts TELA_CHEIA_KEY 'off' (the player turned full screen off): a touch screen asks for it on BORA!, and
+    // a headless browser's full screen is its bare 800x600 window, which the screencast then records instead of the phone.
+    await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:tela-cheia:v1','off');}catch{}});
     // economy.ts ECONOMY_KEY (the question answered "no"), hud/coach.ts COACH_KEY (the first hints seen).
     if(!o.dicas)await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
     const p=await ctx.newPage();
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
-    const cdp=t.hasTouch?await ctx.newCDPSession(p).catch(()=>undefined):undefined;
+    const cdp=await ctx.newCDPSession(p).catch(()=>undefined);
     try{r.entrouMs=await entrar(p,base,o.modo);}
     catch(e){r.falha=String(e.message??e).split('\n')[0];await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}
     // The world drawn: the run's HUD comes first, over "Arrumando a ilha pra visita…" (.explore-loading) for a few
@@ -239,22 +255,28 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     await p.waitForFunction(()=>{const l=document.querySelector('.explore-loading');return !l||l.closest('[hidden]')||!l.getBoundingClientRect().width;},null,{timeout:60000}).catch(()=>{});
     await sleep(1500);
     await p.screenshot({path:join(dir,'inicio.png'),timeout:30000}).catch(()=>{});
-    const frames=[],start=Date.now();let done=false;
-    const capture=(async()=>{
-      while(!done){
-        const at=Date.now();
-        const buf=await p.screenshot({type:'jpeg',quality:75,scale:'css',timeout:10000}).catch(()=>undefined);
-        if(buf)frames.push({t:at,buf});
-        await sleep(Math.max(0,1000/o.fps-(Date.now()-at)));
-      }
-    })();
+    // The GIF's frames from the compositor's screencast (CDP), not page.screenshot: on CI's software GL a screenshot
+    // reads the frame back and holds the page ~3 s (0.2 frames/s, and a 12 s roteiro took 65 s). Only kept --fps apart.
+    const all=[],start=Date.now();
+    const onFrame=f=>{all.push({t:f.metadata.timestamp*1000,buf:Buffer.from(f.data,'base64')});cdp.send('Page.screencastFrameAck',{sessionId:f.sessionId}).catch(()=>{});};
+    if(o.gif&&cdp){cdp.on('Page.screencastFrame',onFrame);await cdp.send('Page.startScreencast',{format:'jpeg',quality:75,maxWidth:t.gifWidth,maxHeight:Math.ceil(t.viewport.height*t.gifWidth/t.viewport.width),everyNthFrame:1}).catch(()=>{});}
+    // The game's own pace (requestAnimationFrame), for the summary: CI has no GPU.
+    await p.evaluate(()=>{const w=window;w.__gravarRaf={n:0,t0:performance.now()};const tick=()=>{w.__gravarRaf.n++;requestAnimationFrame(tick);};requestAnimationFrame(tick);}).catch(()=>{});
     const steps=ROTEIROS[roteiro](o.segundos);let midShot=false,elapsed=0;
     for(const st of steps){
       if(o.escolher&&await escolher(p,tela))r.escolhas++;
-      await mover(p,cdp,tela,st.dir,st.ms);elapsed+=st.ms;
+      let go=st.dir;
+      if(roteiro==='uno'){
+        // hud/edges.ts: the Uno's arrow is kind 'uno' (taking hits) or 'base' (the mission points at it).
+        const arrow=await p.evaluate(()=>{const a=document.querySelector('.rh-edge:not([hidden])[data-kind="uno"]')??document.querySelector('.rh-edge:not([hidden])[data-kind="base"]'),b=a?.getBoundingClientRect();return b&&b.width?{x:b.left+b.width/2,y:b.top+b.height/2}:null;}).catch(()=>null);
+        if(arrow){go=toward({x:t.viewport.width/2,y:t.viewport.height/2},arrow);r.voltas++;}
+      }
+      await mover(p,cdp,tela,go,st.ms);elapsed+=st.ms;
       if(!midShot&&elapsed>=o.segundos*500){midShot=true;await p.screenshot({path:join(dir,'meio.png'),timeout:30000}).catch(()=>{});}
     }
-    done=true;await capture;
+    r.fpsJogo=await p.evaluate(()=>{const g=window.__gravarRaf;return g?Math.round(g.n/((performance.now()-g.t0)/1000)):0;}).catch(()=>0);
+    if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
+    const frames=pickFrames(all,o.fps);
     r.duracaoMs=Date.now()-start;r.quadros=frames.length;
     await p.screenshot({path:join(dir,'fim.png'),timeout:30000}).catch(()=>{});
     if(o.gif&&frames.length){
@@ -266,7 +288,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
       const pick=sheetFrames(frames.length),h=Math.round(t.viewport.height*w/t.viewport.width),cols=Math.min(t.sheetCols,pick.length),rows=Math.ceil(pick.length/cols);
       const label=s=>Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="26"><rect width="64" height="26" fill="#000" fill-opacity=".6"/><text x="6" y="19" font-family="sans-serif" font-size="16" fill="#fff">${s}</text></svg>`);
       await sharp({create:{width:cols*w,height:rows*h,channels:3,background:'#000'}})
-        .composite(pick.flatMap((i,k)=>[{input:small[i],left:(k%cols)*w,top:Math.floor(k/cols)*h},{input:label(`${((frames[i].t-start)/1000).toFixed(1)} s`),left:(k%cols)*w,top:Math.floor(k/cols)*h}]))
+        .composite(pick.flatMap((i,k)=>[{input:small[i],left:(k%cols)*w,top:Math.floor(k/cols)*h},{input:label(`${((frames[i].t-frames[0].t)/1000).toFixed(1)} s`),left:(k%cols)*w,top:Math.floor(k/cols)*h}]))
         .png().toFile(join(dir,'quadros.png'));
     }
     return r;

@@ -225,8 +225,10 @@ test('6d. scene: the defenses renderer is lazy (built on the first snapshot with
   const scene=readFileSync(new URL('../../src/client/scene.ts',import.meta.url),'utf8');
   assert.equal((scene.match(/new TowerRenderer\(/g)??[]).length,1,'built in one place');
   assert.match(scene,/private makeTowers\(\)\{\s*return this\.towers=new TowerRenderer\(/);
-  // The only caller of makeTowers runs after the no-defense early return (nothing built, no enemy walked).
-  assert.equal((scene.match(/this\.makeTowers\(\)/g)??[]).length,1);
+  // makeTowers runs after the no-defense early return (nothing built, no enemy walked), or for a kit de torre's ghost
+  // (barricada-tocar-no-mapa: the ghost is the tower's art), never otherwise.
+  assert.equal((scene.match(/this\.makeTowers\(\)/g)??[]).length,2);
+  assert.match(scene,/towerGhost:g=>g\?\(this\.towers\?\?this\.makeTowers\(\)\)\.setGhost\(/);
   assert.match(scene,/if\(!this\.towers&&!hasTowers\(view\.structures\)\)return;[^\n]*\n\s*const towers=this\.towers\?\?this\.makeTowers\(\);/);
   assert.match(scene,/towersInWorld\(\):boolean\{return !!this\.towers&&this\.towerFeed\.count>0;\}/);
   // Elsewhere the scene only reaches it through optional chaining or a local after a guard.

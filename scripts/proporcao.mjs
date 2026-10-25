@@ -236,6 +236,13 @@ export const PUSH_HEAD_UNREAD=['N'];
  * sheets read 0.80–1.02); the head keeps ±4 %.
  */
 export const PULL_MIN_HEIGHT=.78;
+/**
+ * Loop seams accepted over SEAM_MAX per clip, each with its reason (card BUG-20261025-ORQ-vendedor-push-pull-sn, ORQ 25/10:
+ * "a perna passa a trocar, que é o que o usuário pediu"). The vendedor's push N and pull S kept one leg in front; remade by
+ * half a stride + mirror (the cooler box put back on his left hip), they change legs, but no 8-pose window of the image
+ * tool's cycles ends where the mirror starts: the seam stays ~2× (the jump where the legs swap).
+ */
+export const SEAM_MAX_BY_CLIP=Object.freeze({'vendedor-praia push16-N':2.1,'vendedor-praia pull16-S':2.4});
 export function verdict(m,keys=GATED){
   const bad=[];
   for(const [d,e] of Object.entries(m.dirs))for(const [motion,c] of Object.entries(e.clips)){
@@ -252,7 +259,8 @@ export function verdict(m,keys=GATED){
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
     }
     if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);
-    if(c.loop&&c.loop.ratio>SEAM_MAX&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${SEAM_MAX}×)`);
+    const seamMax=SEAM_MAX_BY_CLIP[`${m.id} ${motion}16-${d}`]??SEAM_MAX;
+    if(c.loop&&c.loop.ratio>seamMax&&c.loop.seam>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} loop seam ${c.loop.seam} = ${c.loop.ratio}× the median step ${c.loop.median} (≤ ${seamMax}×)`);
   }
   return bad;
 }

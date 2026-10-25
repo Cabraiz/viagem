@@ -62,6 +62,12 @@
 #coop-attack[data-build=bloqueado] .skillbtn-face{filter:grayscale(1);opacity:.45}
 #coop-attack[data-build=bloqueado] .skillbtn-track{stroke:var(--c-lilas-escuro)}
 #coop-attack[data-build=bloqueado] .skillbtn-fill{stroke:transparent}
+/* Bicos (hud/bicos.ts): in an open shop's ring the slot is Trabalhar in the interaction colour (Cartolina, the ring on
+   the ground); inside the shift "No turno", pressed in, the ring still green. */
+#coop-attack[data-work]{background:var(--c-cartolina);color:var(--c-breu);text-shadow:none}
+#coop-attack[data-work] .skillbtn-fill{stroke:var(--c-papel)}
+#coop-attack[data-work=dentro]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
+#coop-attack[data-work=dentro] .skillbtn-word{color:var(--c-papel)}
 /* D-051 manual combat: the same slot is "Atacar". Held (finger, mouse or Space) = pressed look while it attacks; the
    aim stick is a fixed SVG over the map in viewport px (hud/attack-button.ts). */
 #coop-attack[data-held]{background:var(--c-lilas);transform:translateY(2px)}

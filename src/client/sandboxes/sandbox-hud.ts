@@ -562,9 +562,9 @@ if(cidade)void (async()=>{
   // On the south avenue, 35 u south of the plaza: the plaza, the groups, the caído and the east mouth are off screen.
   // The tutorial (cidade-08): the hero at `ponto` of round 1's walk, the team at the wreck.
   const P=terrain.asset.points;
-  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_MAP_SCALE they are the same places on the 1.7×
+  // The fixture's spots were picked on the .w3x-scale map (169 u): × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) they are the same places on the 1.7×
   // map (NEW-20261013-ORQ-cidade-escala-1-7). The asset's points (P) are already in its units.
-  const {CITY_MAP_SCALE:S}=await import('../../rules/index.ts');
+  const {CITY_DISTANCE_SCALE:S}=await import('../../rules/index.ts');
   const at=(x:number,y:number)=>({x:x*S,y:y*S});
   const SPOTS:Record<string,{x:number;y:number}>={inicio:P.inicio,travado:at(103.1,154.2),patio:at(104.5,149.5),meio:at(89.3,113),praca:P.praca};
   const spot=(text:string|null)=>{const xy=(text??'').split(',').map(Number);return xy.length===2&&xy.every(Number.isFinite)?{x:xy[0],y:xy[1]}:SPOTS[text??'']??P.inicio;};
@@ -604,9 +604,9 @@ if(cidade)void (async()=>{
   // The objective as the room sends it (protocol 15): the fake's moto, car and route plus Dona Cida's numbers.
   const stock=(params.get('estoque')??'4,4,4').split(',').map(n=>Math.max(0,Number(n)|0));
   const banks:BankView[]|undefined=params.get('bancos')==='1'?[
-    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0'},
-    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto'},
-    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ},
+    {id:'banco-0',...at(84,70),name:'juros',saldo:18,state:'bicho',drawer:'n0',bico:'compro-ouro'},
+    {id:'banco-1',...at(45,118),name:'pao-duro',saldo:40,state:'aberto',bico:'telemarketing'},
+    {id:'banco-2',...at(112,150),name:'posto',saldo:0,state:'sem-cedulas',until:tick+130*SIM_HZ,bico:'entregador'},
   ]:undefined;
   const objective=chaveiro?{kind:'chaveiro' as const,...chaveiro,route:[...(chaveiro.route??[])],stops:[...(chaveiro.stops??[])],
     grana:Math.max(0,Number(params.get('grana')??40)|0),budget:120+8*chaveiro.car.hits,stock:[0,1,2].map(i=>stock[i]??4)}:undefined;

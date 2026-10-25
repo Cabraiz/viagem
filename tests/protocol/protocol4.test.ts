@@ -1458,13 +1458,16 @@ test('D-009 with the chaveiro objective and 12 defenses firing: 6 clients x 300 
 import type {BankView} from '../../src/contract/objective.ts';
 import {BANK_IDS} from '../../src/contract/objective.ts';
 import {INTEREST_RADIUS as BANK_INTEREST} from '../../src/contract/offscreen.ts';
-/** Three banks at `tick`: one paying (saldo falls every 3 s), one robbed by `drawer`, one dry until its refill. */
+/**
+ * Three banks at `tick`: one paying (saldo falls every 3 s) with two in the shift and one critter in its queue (bicos),
+ * one robbed by `drawer`, one dry until its refill.
+ */
 function banksAt(tick:number,drawer='e-7'):BankView[]{
   const paid=Math.floor((tick-1000)/60)*2;
   return [
-    {id:'banco-1',x:92.43,y:63.11,name:'pao-duro',saldo:Math.max(0,40-paid),state:'sacando'},
-    {id:'banco-2',x:214.7,y:140.21,name:'juros',saldo:12,state:'bicho',drawer},
-    {id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:0,state:'sem-cedulas',until:7800},
+    {id:'banco-1',x:92.43,y:63.11,name:'pao-duro',saldo:Math.max(0,40-paid),state:'sacando',bico:'telemarketing',workers:['uuid-0','bot-2'],fila:1},
+    {id:'banco-2',x:214.7,y:140.21,name:'juros',saldo:12,state:'bicho',drawer,bico:'aura-67'},
+    {id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:0,state:'sem-cedulas',until:7800,bico:'compro-ouro'},
   ];
 }
 function sameBanks(got:readonly BankView[]|undefined,want:readonly BankView[],ids:WireIds,label:string){
@@ -1474,6 +1477,7 @@ function sameBanks(got:readonly BankView[]|undefined,want:readonly BankView[],id
     assert.equal(b.id,w.id);assert.equal(b.name,w.name);assert.equal(b.saldo,w.saldo);assert.equal(b.state,w.state);assert.equal(b.until,w.until,`${label}: until`);
     assert.ok(near16(b.x,w.x)&&near16(b.y,w.y),`${label}: place ${i}`);
     assert.equal(b.drawer,w.drawer===undefined?undefined:ids.label('enemies',w.drawer),`${label}: the drawer as its wire id`);
+    assert.equal(b.bico,w.bico,`${label}: the gig`);assert.deepEqual(b.workers,w.workers,`${label}: the shift`);assert.equal(b.fila,w.fila,`${label}: the queue`);
   });
 }
 
@@ -1509,7 +1513,9 @@ test('bancos: the banks block round-trips (1/16 u, the drawer as its wire id), g
     view.tick=1000+t;
     view.banks=banksAt(view.tick,t>200?'e-9':'e-7');
     // The dry one refills halfway.
-    if(t>=300)view.banks[2]={id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:40,state:'aberto'};
+    if(t>=300)view.banks[2]={id:'banco-3',x:151.04,y:238.6,name:'posto',saldo:40,state:'aberto',bico:'fiscal'};
+    // Bicos: the shift changes (one leaves, the queue goes) and the block follows.
+    if(t>=400){const {fila:_,...rest}=view.banks[0];view.banks[0]={...rest,workers:['bot-2']};}
     const bytes=enc.encode(view),r=dec.decode(bytes);assert.ok(r.ok,!r.ok?r.error:'');enc.ack(r.seq,r.ack.event);
     sameBanks(r.view.banks,view.banks,enc.ids,`tick ${view.tick}`);deltas.push(bytes.length);
   }
@@ -1528,6 +1534,7 @@ test('bancos: a forged banks block (a state or a name that is not a bank\'s) is 
   const swap=(from:string,to:string)=>{const copy=bytes.slice(),at=copy.indexOf(DICT.indexOf(from));assert.ok(at>0,from);copy[at]=DICT.indexOf(to);return copy;};
   assert.equal(dec.decode(swap('sacando','chaveiro')).ok,false,'a state that is not a BankState');
   assert.equal(dec.decode(swap('pao-duro','chaveiro')).ok,false,'a name that is not a bank');
+  assert.equal(dec.decode(swap('aura-67','chaveiro')).ok,false,'a gig that is not a BicoId');
   assert.ok(dec.decode(bytes).ok,'the real frame still decodes after the refused ones');
 });
 
@@ -1560,6 +1567,19 @@ test('bancos: prime on the enemies and the four bank events round-trip; a note i
   assert.deepEqual(scoped({x:92+BANK_INTEREST*3,y:64}),['bank-prime:banco-2','bank-empty:banco-3','bank-refill:banco-3']);
   // A 'by' that is neither is refused.
   const forged=new FrameEncoder();forged.pushEvents([{type:'bank-cash',bank:'banco-1',amount:2,by:'boss' as 'hero'}]);
+  assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false);
+});
+
+test('bicos: the bico event (in, out, thrown out) round-trips with the player as their id; a what that is none of them is refused',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.banks=banksAt(view.tick);
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const events:SimEvent[]=[{type:'bico',bank:'banco-1',player:'uuid-0',what:'entrou'},{type:'bico',bank:'banco-1',player:'uuid-1',what:'saiu'},
+    {type:'bico',bank:'banco-1',player:'uuid-0',what:'expulso'}];
+  enc.pushEvents(events);
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.deepEqual(r.view.events.filter(e=>e.type==='bico').map(e=>{const {eventId:_,...rest}=e as typeof e&{eventId:number};return rest;}),events);
+  const forged=new FrameEncoder();forged.pushEvents([{type:'bico',bank:'banco-1',player:'uuid-0',what:'demitido' as 'saiu'}]);
   assert.equal(new FrameDecoder().decode(forged.encode(busyWorld(new Rng(5),1).view)).ok,false);
 });
 
@@ -1772,6 +1792,23 @@ test('kits de torre (torre-pela-caixa): the kit items round-trip in the inventor
   const item=res.view.pickups.find(k=>k.kind==='item')!;assert.deepEqual([item.resource,item.value],['kit:obuseiro',1]);
 });
 
+// ---------- The viaduct (card NEW-20261023-ORQ-mapa-175-com-viaduto, etapa 3): andar on players, enemies and shots ----------
+test('viaduto: andar (floor 1) on players, enemies and projectiles round-trips, and clears when they come down',()=>{
+  const view=busyWorld(new Rng(7),10).view;
+  view.players[0]={...view.players[0],andar:1};
+  view.enemies[0]={...view.enemies[0],andar:1};
+  view.projectiles[0]={...view.projectiles[0],andar:1};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.deepEqual(r.view.players.filter(p=>p.andar===1).map(p=>p.id),[view.players[0].id]);
+  assert.equal(r.view.enemies.filter(e=>e.andar===1).length,1);
+  assert.equal(r.view.projectiles.filter(p=>p.andar===1).length,1);
+  const down={...view,tick:view.tick+2,players:view.players.map(({andar:_,...p})=>p),enemies:view.enemies.map(({andar:_,...e})=>e),
+    projectiles:view.projectiles.map(({andar:_,...p})=>p)};
+  const d=dec.decode(enc.encode(down));assert.ok(d.ok,!d.ok?d.error:'');
+  assert.equal(d.view.players.filter(p=>p.andar===1).length+d.view.enemies.filter(e=>e.andar===1).length+d.view.projectiles.filter(p=>p.andar===1).length,0,'the flags clear');
+});
+
 test('oferta-velocidade: the moveSpeed stat on the players round-trips in thousandths; back at 1 it is gone on the phone too',()=>{
   const view=busyWorld(new Rng(5),10).view;
   view.players[0]={...view.players[0],moveSpeed:1.35};
@@ -1805,4 +1842,16 @@ test('card inimigos-querem-o-uno: the awake critters by a far car come too (the 
   assert.deepEqual(run({awake:1}),['e-car'],'over the cap the car\'s go first');
   v.objective={...v.objective,ended:'defeat'};
   assert.deepEqual(run(),['e-near'],'the run ended: only the viewer\'s area');
+});
+
+test('fear: the dark 0..1 on the players round-trips in 1/255 steps; back at 0 it is gone on the phone too',()=>{
+  const view=busyWorld(new Rng(5),10).view;
+  view.players[0]={...view.players[0],fear:.5};
+  const enc=new FrameEncoder(),dec=new FrameDecoder();
+  const r=dec.decode(enc.encode(view));assert.ok(r.ok,!r.ok?r.error:'');
+  assert.ok(Math.abs(r.view.players.find(p=>p.id==='uuid-0')!.fear!-.5)<=.5/255);
+  enc.ack(r.seq,r.ack.event);
+  view.tick+=2;view.players[0]={...view.players[0],fear:undefined};
+  const r2=dec.decode(enc.encode(view));assert.ok(r2.ok);
+  assert.equal(r2.view.players.find(p=>p.id==='uuid-0')!.fear,undefined);
 });

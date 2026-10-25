@@ -19,15 +19,16 @@ export const STREET_PASSES=40;
 /**
  * Snow undulation: peak height (u, never below the source ground) and wavelength (cells). The height is for the .w3x
  * cell (UNITS_PER_CELL 0.88 u); undulationHeight scales it with the asset's map scale like the asset's own heights
- * (NEW-20261013-ORQ-cidade-escala-1-7: version 2 is × 1.7), so the bumps keep their slope.
+ * (NEW-20261013-ORQ-cidade-escala-1-7: version 2 is × 1.7), so the bumps keep their slope. The wavelength is a map
+ * distance: 14 cells on the 1.7× city, 8 since its distances are 1.75× shorter (asset v4, mapa-175-com-viaduto).
  */
-export const UNDULATION_HEIGHT=2.4,UNDULATION_CELLS=14;
+export const UNDULATION_HEIGHT=2.4,UNDULATION_CELLS=8;
 /** Map scale of an asset: its cell over the .w3x cell (1 for a version-1 import, 1.7 for the Cidade Nevada version 2). */
 export const cityMapScale=(asset:Pick<CityAsset,'unitsPerCell'>)=>asset.unitsPerCell/UNITS_PER_CELL;
 /** Peak snow undulation (u) on this asset: UNDULATION_HEIGHT × its map scale. */
 export const undulationHeight=(asset:Pick<CityAsset,'unitsPerCell'>)=>UNDULATION_HEIGHT*cityMapScale(asset);
-/** Undulation fades in over this many cells away from walls/buildings, the streets and the water. */
-export const UNDULATION_FADE_CELLS=8;
+/** Undulation fades in over this many cells away from walls/buildings, the streets and the water (8 before asset v4: ÷ 1.75). */
+export const UNDULATION_FADE_CELLS=5;
 /** Street zones, same shape as render/city/from-maps.ts draws them ('c' plaza, 'p' avenues and the ring road). */
 export const STREET_PLAZA_PAD_CELLS=1,STREET_PLAZA_RADIUS_CELLS=3,STREET_AVENUE_HALF_WIDTH_CELLS=2,STREET_RING_CELLS=4;
 

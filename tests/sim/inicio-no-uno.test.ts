@@ -15,7 +15,7 @@ import {Simulation} from '../../multiplayer/simulation.ts';
 import {cityRunStart} from '../../src/sim/city/tutorial.ts';
 import {UNO_START_CLEAR,cityUnoStart,startSlots} from '../../src/sim/city/uno-start.ts';
 import {placeWall} from '../../src/sim/stonewards/wall.ts';
-import {MINERVA_S,NEST_PACE} from '../../src/sim/ninhos/ninhos.ts';
+import {MINERVA_S,NEST_PACE,pace} from '../../src/sim/ninhos/ninhos.ts';
 import {CAR_REPAIR_SHARE} from '../../src/sim/chaveiro/system.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -57,16 +57,17 @@ test('the rounds mode keeps the walk from the wreck (cityRunStart, far from the 
   assert.ok(Math.hypot(p.x-car.x,p.y-car.y)>20);
 });
 
-test('the minuto de Minerva is 120 s and the first wave leaves 150–180 s after the start (as with the 60 s one)',()=>{
+test('the minuto de Minerva is 120 s and the first wave leaves 150–180 s after the start for six (as with the 60 s one), 210–240 s for a solo (balanco-mapa-175)',()=>{
   assert.equal(MINERVA_S,120);assert.equal(NEST_PACE.minerva,120);
-  assert.deepEqual(NEST_PACE.first,[30,60]);
+  assert.deepEqual(NEST_PACE.first,[30,60]);assert.deepEqual(NEST_PACE.firstLate,[60,0]);
+  assert.equal(pace(NEST_PACE.firstLate,1),60);assert.equal(pace(NEST_PACE.firstLate,6),0);
   for(const seed of [1,2,3,4,5]){
     const sim=new Simulation(seed,{world:'cidade',terrain:field,cityStructures:true,objective:'chaveiro',mode:'ninhos',combat:'manual'});
     sim.add('p0','P0','cidadao-comum');sim.resetRun();
     let now=1000;sim.step(now+=50);
     const nests=sim.run.nests!.state,start=nests.startTick!;
     assert.equal(nests.minervaUntil,start+ticks(120));
-    assert.ok(nests.nextWave!>=start+ticks(150)&&nests.nextWave!<=start+ticks(180),`seed ${seed}: first wave at ${(nests.nextWave!-start)/20} s`);
+    assert.ok(nests.nextWave!>=start+ticks(210)&&nests.nextWave!<=start+ticks(240),`seed ${seed}: first wave at ${(nests.nextWave!-start)/20} s`);
   }
 });
 
@@ -77,7 +78,10 @@ test('the first wave ends by waveCap at the latest even with its map share still
   const nests=sim.run.nests!,car=sim.run.chaveiro!.state.car;
   const first=nests.state.nextWave!;
   while(sim.world.tick<=first)sim.step(now+=50);
-  assert.ok(nests.state.drip&&nests.state.drip.left>NEST_PACE.waveCap,'1p wave 1: a share longer than the cap');
+  // Asset v4 (mapa-175-com-viaduto, the same density on a city 1.75× shorter): wave 1's share is 81 for one player (141
+  // for six), under the cap; the cap is what this test checks, so the share is made longer than it here.
+  assert.ok(nests.state.drip,'1p wave 1 drips its share');
+  nests.state.drip!.left=Math.max(nests.state.drip!.left,NEST_PACE.waveCap+30);
   // The wave's bodies die as they come and the car took a beating: the window opens at the cap and repairs it.
   car.hits=Math.round(car.limit*.6);const before=car.hits;
   while(sim.world.tick<first+ticks(NEST_PACE.waveCap)+ticks(1)&&!nests.exploring(sim.world.tick)){sim.world.enemies.clear();sim.step(now+=50);}

@@ -50,10 +50,21 @@ export interface RunState {
    */
   minervaAteTick?:number;
   /**
+   * Combat only, mode 'ninhos' (card boss-fim-onda-1): the chefão's arrival scene. The room does not step the sim while
+   * it lasts (like `pause`: nobody moves nor takes damage); every phone takes its camera to him and back
+   * (rules/chefao-onda.ts CENA). Present while it lasts; sent when it opens and at each whole second of leftMs.
+   */
+  cena?:RunCena;
+  /**
    * Combat only, mode 'ninhos' (card inicio-no-uno-caixas-120): the time to explore after a wave (sim/ninhos/ninhos.ts
    * NestsState.exploreFrom/exploreUntil, NEST_PACE.explore): its first tick and its end, when the next wave leaves.
    * Present while the {t:'run'} tick is inside it; the HUD shows the same clock and "Você tem 2 minutos…".
    */
   exploraDesdeTick?:number;exploraAteTick?:number;
 }
+/**
+ * The chefão's arrival (RunState.cena): who (a WAVE_BOSSES roster id: the name and the subtitle are the client's, rules),
+ * his enemy id and where he appeared, the scene's clock (ms) and the tick it froze on.
+ */
+export interface RunCena {who:string;enemy:string;x:number;y:number;leftMs:number;totalMs:number;tick:number}
 export interface RunPause {leftMs:number;totalMs:number;level:number;waiting:string[];skips?:Record<string,number>;rerolls?:Record<string,number>}

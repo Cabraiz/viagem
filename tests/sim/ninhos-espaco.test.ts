@@ -56,7 +56,8 @@ test('ninhos: a crowd dropped on one spot spreads out to SPACING_GAP between eve
 
 test('ninhos: an awake critter steps off a sleeper it stands on, and off a hero (never inside one, still at contact range)',()=>{
   const {world,sys}=run('ninhos');
-  const sleeper=[...sys.sono()!.bodies].map(b=>world.sleepers!.get(b.id)!).find(Boolean)!;
+  // One with room around it (asset v4's yards are 1.75× smaller: the first one may stand by a wall).
+  const sleeper=[...sys.sono()!.bodies].map(b=>world.sleepers!.get(b.id)!).find(s=>s&&city.clearDisc(s.x,s.y,2))!;
   const e=createEnemy(world,'bebado',{x:sleeper.x+.05,y:sleeper.y},1);e.speed=0;
   for(let t=0;t<120;t++)world.step();
   assert.ok(world.sleepers!.has(sleeper.id),'it sleeps on');

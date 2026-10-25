@@ -21,7 +21,7 @@
  */
 import type {TerrainField} from '../maps/index.ts';
 import {FlowField,RADIUS,SPEED,STRAIGHT_COST,UNREACHABLE,clearSegment,enemyTerrain,heroSpeed,isLand,walkable,worldBase,worldSpawn,type FlowGrid,type Point} from '../maps/index.ts';
-import {CITY_MAP_SCALE,MAX_ENEMIES,roleOf} from '../rules/index.ts';
+import {CITY_DISTANCE_SCALE,MAX_ENEMIES,roleOf} from '../rules/index.ts';
 import {RECYCLE_DISTANCE,RING_INNER,RING_OUTER,RING_SLACK,offscreenDistance,visibleAtDefault,visibleFrom,type CameraHint} from '../contract/index.ts';
 import {SIEGE_FLAG} from './stonewards/wall.ts';
 import {moveSafely} from './enemies/ai.ts';
@@ -33,7 +33,7 @@ import {CITY_ENEMY_SPEED,PLAZA_HOLD_FLAG,cityTerrainOf,type CityFlowGrid} from '
 import {CIDADE_TUTORIAL,CIDADE_TUTORIAL_SAY,ELITE_SIZE,RETREAT_LINES,ROUND_COUNT,ROUND_NAMES,drawRotation,drawTheme,isRotation,planRound,roundRoster,
   type RoundPlan,type RoundRoster,type RoundTheme,type Rotation,type SpawnGroup} from '../rules/index.ts';
 import {BAND_CADENCE,BAND_DAMAGE,SUMMON,enemyDef,hashUnit} from './enemies/catalog.ts';
-import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_MOUTHS,TUTORIAL_WELCOME,behindCandidates,behindSpots,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
+import {BEHIND_TRIES,INTRO_WINDOW_SECONDS,TUTORIAL_BEHIND,TUTORIAL_WELCOME,tutorialMouths,behindCandidates,behindSpots,deckBehindCandidates,deckOf,deckToPlaza,plazaUnits,tutorialPlan,type BehindCandidate,type TutorialState} from './city/tutorial.ts';
 import {applyCityBalance,roundKnobs,type CityBalance} from './city/balance.ts';
 
 /** Builds an enemy of a catalog kind at a point with an hp multiplier (VGM-031). May insert it into ctx.enemies itself. */
@@ -152,7 +152,9 @@ interface PendingSpawn {members:string[];elite?:boolean;boss?:boolean;solo?:bool
   /** City: ticks this part lands behind its group's cadence slot (cityWarn); its bodies run in by that much (CITY_RUN_IN_SPEED). */
   late?:number;
   /** City tutorial (cidade-08): searches the group behind the team already made without a hidden spot (BEHIND_TRIES). */
-  tries?:number}
+  tries?:number;
+  /** The viaduct (mapa-175-com-viaduto): its bodies land on a deck (floor 1), the tutorial's group behind a team that starts there. */
+  andar?:1}
 type SpawnRequest=Omit<PendingSpawn,'x'|'y'|'atTick'|'retry'|'points'|'warnTick'|'late'>;
 /** capTick (endless): hard end of a flight that keeps being extended while someone sees the enemy. */
 interface Retreat {id:string;x:number;y:number;untilTick:number;capTick?:number}
@@ -286,14 +288,14 @@ const FLEE_SPEED=4.5,FLEE_TIME_FACTOR=3;
 /**
  * City retreat (cidade-05): a body walking back up its avenue is gone within CITY_EXIT_REACH of the avenue end or
  * CITY_GONE_DISTANCE from the plaza, once hidden from everyone (v2); FLEE_CAP_SECONDS is the liveness cap.
- * CITY_EXIT_REACH is a map length: 2 u on the .w3x-sized city, × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * CITY_EXIT_REACH is a map length: 2 u on the .w3x-sized city, × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7).
  * CITY_GONE_DISTANCE is not (NEW-20261014-ORQ-balanco-pos-1-7-e-chaveiro, part A): it only has to put the body out of the
  * plaza block (its mouths are 18.7–21.5 u from the plaza point on the 1.7× city) and off the screens, which the hidden
  * check already asks (the widest camera reaches 16.7 u along an avenue from a hero at the wall, which did not grow).
  * × 1.7 (42.5 u) made every timed-out round's retreat walk ~17 u more off screen, ~19 s instead of ~11 s at the retreat
  * pace (≥ 2.25 u/s), and the next intermission waited for it; 25 u again.
  */
-export const CITY_EXIT_REACH=2*CITY_MAP_SCALE,CITY_GONE_DISTANCE=25;
+export const CITY_EXIT_REACH=2*CITY_DISTANCE_SCALE,CITY_GONE_DISTANCE=25;
 /**
  * City round timer (v2): a wave that times out lasts at least until the slowest member of the last group could reach
  * the plaza (or the team, where it stood when the wave started, if that is farther), plus this many seconds to fight
@@ -870,13 +872,13 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
   function tutorialRound(ctx:SimContext,index=ctx.round.index){return index===1&&!!state.tutorial&&city(ctx);}
   const standing=(p:SimPlayer)=>p.online&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
   /**
-   * Round start of the tutorial: the plaza group's mouth (one of TUTORIAL_MOUTHS with a route, by rng; it counts as
+   * Round start of the tutorial: the plaza group's mouth (one of tutorialMouths with a route, by rng; it counts as
    * used, so round 2 prefers another) and the warning ticks: the group behind at its `at`, the plaza group at the
    * planner's warning for an arrival welcomeArrival s into the wave. The wave lasts its cap (plan.durationTicks).
    */
   function planTutorial(ctx:SimContext){
-    const plan=state.plan!,routes=TUTORIAL_MOUTHS.filter(m=>planner!.route(m));
-    const mouth=routes.length?random().pick(routes):TUTORIAL_MOUTHS[0];
+    const mouths=tutorialMouths(cityTerrainOf(ctx.terrain)!),plan=state.plan!,routes=mouths.filter(m=>planner!.route(m));
+    const mouth=routes.length?random().pick(routes):mouths[0];
     const uses:Record<Mouth,number>={N:0,S:0,L:0,O:0};uses[mouth]=1;
     const avenues=state.avenues={round:plan.index,mode:'normal',open:[mouth],alternate:0,uses};
     const warnAt=plan.groups.map(g=>g.at),welcome=plan.groups[TUTORIAL_WELCOME];
@@ -895,20 +897,25 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
    * BEHIND_TRIES searches in all, then they are dropped (the round no longer waits for them until the cap).
    */
   function behindWarn(ctx:SimContext,spawn:SpawnRequest,delay:number){
-    const field=planner!.plazaField,wreck=cityTerrainOf(ctx.terrain)?.asset.points.inicio??worldSpawn(ctx.terrain);
-    behind??=behindCandidates(field,wreck,p=>planner!.insideBase(p));
+    const field=planner!.plazaField,cityT=cityTerrainOf(ctx.terrain),wreck=cityT?.asset.points.inicio??worldSpawn(ctx.terrain);
+    // The viaduct: a team that starts on the deck (the Uno) is trailed by a group that comes over the pile-up at the
+    // deck's closed end, on the deck (floor 1); the walks to the plaza on the deck go down its ramp (deckToPlaza).
+    const deck=cityT?deckOf(cityT,wreck):undefined;
+    behind??=deck?deckBehindCandidates(cityT!,deck,field,wreck):behindCandidates(field,wreck,p=>planner!.insideBase(p));
     let team=0;
     for(const p of ctx.players.values()){
       if(!standing(p))continue;
+      if(deck&&p.andar===1){team=Math.max(team,deckToPlaza(cityT!,deck,field,p));continue;}
       const c=field.costAt(p.x,p.y);
       if(c!==UNREACHABLE)team=Math.max(team,plazaUnits(field,c));
     }
-    // Closest to the team by path (the round timer's team field), so the group trails the heroes it chases.
-    const near=cityTeamField(ctx),toTeam=near?(p:Point)=>{const c=near.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*near.cellSize;}:undefined;
+    // Closest to the team by path (the round timer's team field), so the group trails the heroes it chases; on the deck
+    // (a straight corridor) the straight line.
+    const near=cityTeamField(ctx),toTeam=deck?undefined:near?(p:Point)=>{const c=near.costAt(p.x,p.y);return c===UNREACHABLE?Infinity:c/STRAIGHT_COST*near.cellSize;}:undefined;
     const players=viewers(ctx),points=behindSpots(behind,spawn.members.length,team,p=>planner!.hiddenFrom(players,p),toTeam);
     if(points.length){
       const members=spawn.members.slice(0,points.length),p=points[0],atTick=ctx.tick+delay+warning;
-      state.pending.push({...spawn,members,x:p.x,y:p.y,atTick,points});
+      state.pending.push({...spawn,members,x:p.x,y:p.y,atTick,points,...(deck?{andar:1 as const}:{})});
       ctx.emit({type:'spawn-warning',x:p.x,y:p.y,atTick,count:members.length});
     }
     const tries=(spawn.tries??0)+1;
@@ -1045,7 +1052,9 @@ export function createDirector(options:DirectorOptions,restore?:DirectorState):D
       const enemy=options.createEnemy(ctx,entry.members[i],p,(entry.elite?plan.eliteHp:entry.solo?plan.miniHp??plan.eliteHp:plan.hp)*(tune?.hp??1));
       if(!enemy)continue;
       if(!ctx.enemies.has(enemy.id))ctx.enemies.set(enemy.id,enemy);
+      if(entry.andar===1)enemy.andar=1;
       enemy.speed*=plan.speed;enemy.radius*=plan.size*(entry.elite?ELITE_SIZE:1);
+
       // City (cidade-05c v2): the one conversion to the city's speeds, on the effective speed (after plan.speed).
       if(isCity)enemy.speed=citySpeedOf(enemy.speed);
       if(entry.elite)enemy.elite=true;

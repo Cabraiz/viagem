@@ -15,6 +15,7 @@ import {clientCatalog} from '../../src/protocol/map-catalog.ts';
 import type {MapRef} from '../../src/protocol/map-select.ts';
 import {BANK_IDS,ticks,type BankView,type EnemyView,type RunView} from '../../src/contract/index.ts';
 import {BANCO} from '../../src/rules/bancos.ts';
+import {BICO} from '../../src/rules/bicos.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../public/maps/cidade-nevada.manifest.json',import.meta.url),'utf8'));
 const cityText=readFileSync(new URL('../../public/maps/cidade-nevada.json',import.meta.url),'utf8');
@@ -86,25 +87,26 @@ for(const [mode,options] of [['chaveiro (default)',{}],['muralha (objective:fals
       assert.equal(b.saldo,BANCO.saldo);assert.equal(b.state,'aberto');
     }
     for(const s of seen.slice(seen.indexOf(firstFrame)))assert.equal(s.view.banks?.length,3,'every later frame still holds them');
-    // Ana stands at bank 1: after 3 s the phone sees 'sacando', R$ 38 and a bank-cash by 'hero'.
-    const b0=places[0],ana=sim.players.get(r.ana)!;
-    const hold=()=>{ana.x=b0.x+1;ana.y=b0.y;ana.hp=ana.stats.maxHp;ana.downed=false;};
+    // Ana works at bank 1 (bicos: in the shift since before, the room hands her no input so she stays in): after two
+    // notes the phone sees 'sacando', her in the shift, R$ 30 and a bank-cash by 'hero'.
+    const b0=places[0],ana=sim.players.get(r.ana)!,row0=sim.run.banks.state.list[0];
+    const hold=()=>{ana.x=b0.x+1;ana.y=b0.y;ana.hp=ana.stats.maxHp;ana.downed=false;if(!row0.workers?.includes(r.ana))row0.workers=[r.ana];};
     // Clear the critters near the ATM so nobody queues (the wave goes on elsewhere).
     const clear=()=>{for(const e of sim.world.enemies.values())if(Math.hypot(e.x-b0.x,e.y-b0.y)<BANCO.filaR+2&&!e.boss)sim.world.enemies.delete(e.id);};
     const from=seen.length;
-    for(let i=0;i<ticks(BANCO.saqueS)*2+4;i++){hold();clear();r.advance(1);}
+    for(let i=0;i<ticks(BICO.nota/BICO.porSegundo)*2+4;i++){hold();clear();r.advance(1);}
     const after=seen.slice(from);
-    assert.ok(after.length>=ticks(BANCO.saqueS),`the phone kept getting frames: ${after.length}`);
+    assert.ok(after.length>=ticks(BICO.nota/BICO.porSegundo),`the phone kept getting frames: ${after.length}`);
     const last=after.at(-1)!.view.banks!.find(b=>b.id===b0.id)!;
-    assert.equal(last.state,'sacando');
-    assert.ok(last.saldo<=BANCO.saldo-2*BANCO.nota,`two notes out: R$ ${last.saldo}`);
+    assert.equal(last.state,'sacando');assert.deepEqual(last.workers,[r.ana]);assert.equal(last.bico,row0.bico);
+    assert.ok(last.saldo<=BICO.saldo-2*BICO.nota,`two notes out: R$ ${last.saldo}`);
     const cashEvents=after.flatMap(s=>s.view.events).filter(e=>e.type==='bank-cash');
-    assert.ok(cashEvents.some(e=>e.type==='bank-cash'&&e.bank===b0.id&&e.by==='hero'&&e.amount===BANCO.nota),'the bank-cash event reaches the phone');
+    assert.ok(cashEvents.some(e=>e.type==='bank-cash'&&e.bank===b0.id&&e.by==='hero'&&e.amount===BICO.nota),'the bank-cash event reaches the phone');
     // The other banks are as the sim has them.
     for(const b of after.at(-1)!.view.banks!){const i=places.findIndex(p=>p.id===b.id),row=sim.run.banks.state.list[i];assert.deepEqual([b.saldo,b.state],[row.saldo,row.state],b.id);}
     assert.ok(after.some(s=>!s.full),'delta frames carry the change');
     // A critter made Cliente Prime wears the crown on the phone.
-    ana.x=b0.x+30;
+    ana.x=b0.x+30;delete row0.workers;
     let prime:string|undefined;
     for(let i=0;i<ticks(30)&&!prime;i++){
       r.advance(1);

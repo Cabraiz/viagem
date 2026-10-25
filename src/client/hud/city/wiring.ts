@@ -4,7 +4,7 @@
  * opened (inferred from the spawn warnings), the world corners of what the screen shows (the WC3 minimap's camera
  * rectangle) and the horn's seconds. No DOM: rescue.ts and the HUD sandbox call these.
  */
-import {CITY_MAP_SCALE,SIM_HZ} from './deps.ts';
+import {CITY_DISTANCE_SCALE,SIM_HZ} from './deps.ts';
 import type {CityMapInfo,MouthId} from './map-info.ts';
 
 interface P {readonly x:number;readonly y:number}
@@ -38,15 +38,15 @@ export function cityMapInfo(asset:CityAssetLike):CityMapInfo{
 
 /**
  * A spawn warning this close (world units) to an avenue (its gate → its end) comes in through that avenue's mouth. A map
- * length: 10 u on the .w3x map × CITY_MAP_SCALE (NEW-20261013-ORQ-cidade-escala-1-7).
+ * length: 10 u on the .w3x map × CITY_DISTANCE_SCALE (CITY_MAP_SCALE ÷ CITY_COMPACT, mapa-175-com-viaduto) (NEW-20261013-ORQ-cidade-escala-1-7).
  */
-export const AVENUE_MATCH=10*CITY_MAP_SCALE;
+export const AVENUE_MATCH=10*CITY_DISTANCE_SCALE;
 /**
  * A warning this close (world units) to a mouth's gate is at the plaza's entrance, not on the avenue: the planner's mouth
- * line radius (src/sim/city/avenues.ts mouthHalfWidth, 2.6 u × CITY_MAP_SCALE = 4.42 u), whose groups stand past it; a
+ * line radius (src/sim/city/avenues.ts mouthHalfWidth, 2.6 u × CITY_DISTANCE_SCALE = 2.53 u), whose groups stand past it; a
  * boss minion summoned 2.5 u from a boss at the gate is not a mouth.
  */
-export const GATE_RADIUS=2.6*CITY_MAP_SCALE;
+export const GATE_RADIUS=2.6*CITY_DISTANCE_SCALE;
 /** Doc §3: a mouth stays active until 3 s after its critters come out (`atTick`). */
 export const MOUTH_TAIL_TICKS=3*SIM_HZ;
 const toSegment=(p:P,a:P,b:P)=>{

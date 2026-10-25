@@ -23,12 +23,15 @@
  */
 import {defaultTerrain,type TerrainField} from './terrain/field.ts';
 import {heroSpeed,moveDirection,RADIUS,SPEED,walkable} from './world.ts';
+import {floorOf,floorOn,onFloor,type Floor} from './city/viaduct.ts';
 import {BURPEE_TICKS,CART_TURN,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT,RIDE_MULT,SIM_HZ,carPushOut,carSpeed} from '../contract/index.ts';
 import type {PlayerInput,Point,VehicleKind} from '../contract/index.ts';
 type Input=PlayerInput;
 export const STEP = 1 / 20;
 /** D-036 effect state of a player (SimPlayer and PlayerRunView carry the same fields). */
 export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
+  /** boss-fim-onda-1: thrown by a chefão's pancada and down on the ground while tick < downUntil: no step moves. */
+  downUntil?:number;
   /** D-047 Dona Cida's brigadeiro: walking × CIDA_FAST_MULT while tick < fastUntil (on top of a slow; not the slide). */
   fastUntil?:number;
   /** Veículos: the vehicle ridden while tick < rideUntil (contract vehicles.ts). */
@@ -44,7 +47,15 @@ export interface MoveClock {tick:number;effects?:MoveEffects;cap?:number;
   car?:CarPlace}
 /** The car's place as the room and the frame have it (heading absent = 0). */
 export interface CarPlace {x:number;y:number;heading?:number}
+/**
+ * A position with its floor (maps city/viaduct.ts; NEW-20261023-ORQ-mapa-175-com-viaduto): every step below collides on
+ * the floor it starts on and returns the floor it ends on (the ramp switches it), so the room and the phone agree.
+ */
+export type FloorPoint=Point&{andar?:1};
+const onto=(q:Point,floor:Floor):FloorPoint=>floor===1?{x:q.x,y:q.y,andar:1}:{x:q.x,y:q.y};
 /** The slide direction on `tick`, or undefined when the player is not slipping then (or the vector is unusable). */
+/** boss-fim-onda-1: thrown or down after a throw at `tick` (the room moves the body; the stick does nothing). */
+export const isDown=(effects:MoveEffects|undefined,tick:number)=>tick<(effects?.downUntil??-Infinity);
 export function slipping(effects:MoveEffects|undefined,tick:number):Point|undefined{
   const s=effects?.slip;
   if(!s||!(tick<(effects!.slipUntil??-Infinity)))return undefined;
@@ -77,26 +88,31 @@ const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
  * while slipping (any direction that walks: the slide's own is taken), else a walk, slowed while slowed. A step without
  * a direction (the attack or the skill held in place) stands, slipping or not. Collision-safe like moveDirection.
  */
-export function moveStep(p:Point,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):Point{
+export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
+  if(isDown(effects,tick))return p;
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return p;
-  const slide=slipping(effects,tick);
+  const slide=slipping(effects,tick),floor=floorOf(p),ground=onFloor(terrain,floor);
   // The world's hero speed (city 1.99 u/s, D-026); slip keeps its ratio to walking so the city stays in proportion.
   const walk=heroSpeed(terrain);
-  if(slide)return moveDirection(p,slide,STEP,terrain,PLAYER_SLIP_SPEED*walk/SPEED);
-  const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects);
-  const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
-  return moveDirection(p,turned,STEP,terrain,speed);
+  let q:Point;
+  if(slide)q=moveDirection(p,slide,STEP,ground,PLAYER_SLIP_SPEED*walk/SPEED);
+  else{
+    const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects);
+    const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
+    q=moveDirection(p,turned,STEP,ground,speed);
+  }
+  return onto(q,floorOn(terrain,q.x,q.y,floor));
 }
 /**
  * D-052, a hero moving the car walks at most `cap` u this tick (the room's players system and the phone's replay): the
  * step from `from` to `to` is cut along its own line, and kept in place if that point is not walkable.
  */
-export function capStep(from:Point,to:Point,cap:number|undefined,terrain:TerrainField=defaultTerrain):Point{
+export function capStep(from:FloorPoint,to:FloorPoint,cap:number|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
   const moved=Math.hypot(to.x-from.x,to.y-from.y);
   if(cap===undefined||!(moved>cap))return to;
-  const q={x:from.x+(to.x-from.x)*cap/moved,y:from.y+(to.y-from.y)*cap/moved};
-  return walkable(q,terrain)?q:{x:from.x,y:from.y};
+  const q={x:from.x+(to.x-from.x)*cap/moved,y:from.y+(to.y-from.y)*cap/moved},floor=floorOf(from);
+  return walkable(q,onFloor(terrain,floor))?onto(q,floorOn(terrain,q.x,q.y,floor)):onto(from,floor);
 }
 /** D-052: the cap of a hero among the car's movers (the room's moverCap, chaveiro/car.ts), else undefined (free). */
 export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):number|undefined{
@@ -105,25 +121,31 @@ export function carStepCap(car:{movers?:readonly string[]}|undefined,id:string):
 /**
  * Card uno-bloqueio-corpo (the room's players system and the phone's replay): a hero ending a step at `to` inside the
  * car's body (its box, carPushOut, PLAYER radius) stands at the box's edge instead; kept at `from` if that edge is not
- * walkable and `from` was clear of the body. Without a car, `to`.
+ * walkable and `from` was clear of the body. Without a car, `to`. The car is on the ground: a hero on a viaduct's deck
+ * (floor 1) walks over it.
  */
-export function carBlock(from:Point,to:Point,car:CarPlace|undefined,terrain:TerrainField=defaultTerrain):Point{
-  if(!car)return to;
+export function carBlock(from:FloorPoint,to:FloorPoint,car:CarPlace|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
+  if(!car||floorOf(to)===1)return to;
   const q=carPushOut(car,to,RADIUS);
   if(q===to)return to;
-  if(walkable(q,terrain))return q;
-  return carPushOut(car,from,RADIUS)===from?{x:from.x,y:from.y}:to;
+  if(walkable(q,onFloor(terrain,0)))return {x:q.x,y:q.y};
+  return carPushOut(car,from,RADIUS)===from?onto(from,floorOf(from)):to;
 }
 /** One input step; with `tick`/`effects` (D-036), the step the room takes on that tick; `cap` (D-052) as capStep; `car` as carBlock. */
-export function simulate(p:Point,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace):Point {
-  const to=tick===undefined?moveDirection(p,{x:input.x,y:input.y},STEP,terrain):moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
+export function simulate(p:FloorPoint,input:Input,terrain:TerrainField=defaultTerrain,tick?:number,effects?:MoveEffects,cap?:number,car?:CarPlace):FloorPoint {
+  let to:FloorPoint;
+  if(tick===undefined){
+    const floor=floorOf(p),q=moveDirection(p,{x:input.x,y:input.y},STEP,onFloor(terrain,floor));
+    to=onto(q,floorOn(terrain,q.x,q.y,floor));
+  }else to=moveStep(p,{x:input.x,y:input.y},tick,effects,terrain);
   return carBlock(p,capStep(p,to,cap,terrain),car,terrain);
 }
 /**
  * Replays the unacknowledged inputs over the room's position; with `clock`, input k lands on tick clock.tick+1+k (D-036)
  * and walks at most clock.cap per tick (D-052: the frame says this hero moves the car).
  */
-export function reconcile(authoritative:Point,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):Point {
-  return pending.reduce((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car),{...authoritative});
+export function reconcile(authoritative:FloorPoint,pending:Input[],terrain:TerrainField=defaultTerrain,clock?:MoveClock):FloorPoint {
+  return pending.reduce<FloorPoint>((p,i,k)=>simulate(p,i,terrain,clock?clock.tick+1+k:undefined,clock?.effects,clock?.cap,clock?.car),onto(authoritative,floorOf(authoritative)));
 }
+
 export function interpolate(a:Point,b:Point,t:number):Point { const n=Math.max(0,Math.min(1,t));return {x:a.x+(b.x-a.x)*n,y:a.y+(b.y-a.y)*n}; }

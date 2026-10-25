@@ -15,15 +15,16 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import type {Point} from '../../src/maps/world.ts';
-import type {NestPlan} from '../../src/maps/nests.ts';
+import {NEST_COUNT,type NestPlan} from '../../src/maps/nests.ts';
 import {BASE_STATS,ticks,type EnemyState,type SimPlayer,type StampedEvent} from '../../src/contract/index.ts';
 import {SimWorld,stateHash} from '../../src/sim/core.ts';
 import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
+import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
-import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
+import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,pace,
   wavePeriod,waveShares,type NestCause,type NestsOptions,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
 
 const fromRoot=(path:string)=>fileURLToPath(new URL(`../../${path}`,import.meta.url));
@@ -85,11 +86,11 @@ function rig(maxEnemies=300,entrances:readonly WaveEntrance[]=[DOOR],extra:Pick<
 }
 const until=(r:ReturnType<typeof rig>,tick:number)=>{while(r.world.tick<tick)r.world.step();};
 
-test('a wave: FIRST_EXIT s after the Minerva, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over',()=>rawPace(()=>{
+test('a wave: FIRST_EXIT (+ firstLate by room size) s after the Minerva, the map share recruited along the entrance\'s route, 1–3 born in each live nest, the outside group at the avenue end, all besieging; the next only after it is over',()=>rawPace(()=>{
   const r=rig();
   r.world.step();
-  const start=r.nests.state.startTick!,first=r.nests.state.nextWave!;
-  assert.ok(first>=start+ticks(FIRST_EXIT[0])&&first<=start+ticks(FIRST_EXIT[1]),`first wave ${first}`);
+  const start=r.nests.state.startTick!,first=r.nests.state.nextWave!,late=pace(NEST_PACE.firstLate,r.nests.state.players);
+  assert.ok(first>=start+ticks(FIRST_EXIT[0]+late)&&first<=start+ticks(FIRST_EXIT[1]+late),`first wave ${first}`);
   assert.equal(r.nests.state.quota,Math.round(PLAN_BODIES*NEST_PACE.mapShare[0]));
   for(const n of r.nests.state.nests)assert.equal(n.hp,n.maxHp);
   until(r,first+1);
@@ -263,7 +264,9 @@ function assembled(seed:number,players:Map<string,SimPlayer>,options:{objective?
 }
 const stepRun=(r:Run,n=1)=>{for(let i=0;i<n;i++)r.events.push(...r.world.step());};
 
-test('assembled mode ninhos: no round from the director, a wave (map, nests, outside), 8 nests at their hp, a checkpoint plays on',()=>{
+test('assembled mode ninhos: no round from the director, a wave (map, nests, outside), NEST_COUNT nests at their hp, a checkpoint plays on',t=>{
+  // The assembly, not the timing: the first wave in FIRST_EXIT, no firstLate (balanco-mapa-175: +48 s for 2 players).
+  const late=NEST_PACE.firstLate;NEST_PACE.firstLate=[0,0];t.after(()=>{NEST_PACE.firstLate=late;});
   const SEED=21,players=new Map<string,SimPlayer>();
   const a=assembled(SEED,players);
   const car=a.sys.chaveiro!.state.car;
@@ -271,7 +274,7 @@ test('assembled mode ninhos: no round from the director, a wave (map, nests, out
   assert.ok(a.sys.nests,'the nests are wired');
   stepRun(a);
   const nests=a.sys.nests!;
-  assert.equal(nests.state.players,2);assert.equal(nests.state.nests.length,8);
+  assert.equal(nests.state.players,2);assert.equal(nests.state.nests.length,NEST_COUNT);
   for(const n of nests.state.nests)assert.equal(n.maxHp,nestHp(n.size,2));
   assert.equal(a.world.round.phase,'wave');
   // The sleepers (E2's sono) come with the plan: every nest's and band's body asleep, out of ctx.enemies.
@@ -286,9 +289,10 @@ test('assembled mode ninhos: no round from the director, a wave (map, nests, out
   assert.equal(a.events.filter(e=>e.type==='round').length,0,'no round');
   stepRun(a,ticks(FIRST_EXIT[1]-FIRST_EXIT[0])+2);
   assert.ok(nests.state.sent>0&&nests.state.spawned>0,'a wave came by 90 s');
-  const out=[...a.world.enemies.values()],log=nests.state.log![0];
+  // boss-fim-onda-1: the 1st wave's chefão comes at the end of its exit with his own controller (to the Uno), not a wave body.
+  const all=[...a.world.enemies.values()],out=all.filter(e=>!WAVE_BOSS_IDS.includes(e.kind as never)),log=nests.state.log![0];
   assert.ok(out.length>0&&out.every(e=>e.memory?.[SIEGE_FLAG]===1),'every body of the wave besieges the car');
-  assert.ok(log.map>0&&log.nests>=8&&log.outside>0,`map ${log.map}, nests ${log.nests}, outside ${log.outside}`);
+  assert.ok(log.map>0&&log.nests>=NEST_COUNT&&log.outside>0,`map ${log.map}, nests ${log.nests}, outside ${log.outside}`);
   assert.equal(out.filter(e=>sono.bodies.some(b=>b.id===e.id)).length,log.map,'the map share: plan bodies woken');
   assert.equal(a.world.round.remaining,a.world.enemies.size);
   assert.ok(a.sys.state().ninhos,'the nests are in the checkpoint');
@@ -309,7 +313,8 @@ test('assembled mode ninhos: the first hit on a nest wakes its sleepers into the
   const car=a.sys.chaveiro!.state.car;
   addPlayer(a.world,'p1',{x:car.x+1.5,y:car.y});
   stepRun(a);
-  const nests=a.sys.nests!,sono=a.sys.sono()!,nest=nests.state.nests[0],id=nest.id,asleep=sono.asleepIn(id);
+  // A nest with sleepers (population 1 on asset v4 leaves some yards empty).
+  const nests=a.sys.nests!,sono=a.sys.sono()!,nest=nests.state.nests.find(n=>sono.asleepIn(n.id)>0)!,id=nest.id,asleep=sono.asleepIn(id);
   assert.ok(asleep>0);
   // The players' damage path (damageEnemy) reaches the nest through its target in the sleepers' index.
   assert.ok(a.world.sleepers!.has(`${NEST_TARGET}${id}`)||a.world.sleepers!.get(`${NEST_TARGET}${id}`),'the nest is a target');

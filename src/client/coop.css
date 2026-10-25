@@ -68,6 +68,11 @@
 #coop-attack[data-work] .skillbtn-fill{stroke:var(--c-papel)}
 #coop-attack[data-work=dentro]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
 #coop-attack[data-work=dentro] .skillbtn-word{color:var(--c-papel)}
+/* torre-limite-rebocar-sem-arma: at the Uno's rope end Atacar turns Rebocar (the interaction colour, like Trabalhar); on the rope, Soltar pressed in. */
+#coop-attack[data-tow]{background:var(--c-cartolina);color:var(--c-breu);text-shadow:none}
+#coop-attack[data-tow] .skillbtn-fill{stroke:var(--c-papel)}
+#coop-attack[data-tow=soltar]{background:color-mix(in srgb,var(--c-cartolina) 70%,var(--c-breu));transform:translateY(2px)}
+#coop-attack[data-tow=soltar] .skillbtn-word{color:var(--c-papel)}
 /* D-051 manual combat: the same slot is "Atacar". Held (finger, mouse or Space) = pressed look while it attacks; the
    aim stick is a fixed SVG over the map in viewport px (hud/attack-button.ts). */
 #coop-attack[data-held]{background:var(--c-lilas);transform:translateY(2px)}

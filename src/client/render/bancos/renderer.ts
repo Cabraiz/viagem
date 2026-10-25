@@ -7,6 +7,8 @@
  * - over it, a tag: the bank's short name and its saldo, "bicho sacando!" (Cone) or "SEM CÉDULAS m:ss";
  * - each withdrawal: a R$ 2 note flying out of the screen (green up for a hero, dark away for a critter) and the
  *   "RETIRE SEU DINHEIRO" beep, now and then one of the screen's lines instead (rules.ts BankTracker).
+ * Bicos (card bancos-viram-bicos, etapa 2): when the manifest has the bank's shop (bico-art.ts), the pixel-art building
+ * stands behind the rings instead of the kiosk, its door lit while a hero works inside.
  * Each kiosk draws at its own actor depth and fades while it covers the hero, like the chaveiro's figures. Pure
  * drawing: the scene pushes each view's banks and calls update every frame.
  */
@@ -16,13 +18,15 @@ import {token,tokenColor,whenFontsReady} from '../../ui/tokens.ts';
 import {LIT_SHADOW,lightEnabled} from '../light.ts';
 import {boxFaces,faceBounds,isoOffset,mix,M,type Face} from '../chaveiro/iso.ts';
 import type {BankView,StampedEvent} from '../../../contract/index.ts';
-import {BANCO,BANK_SHORT} from '../../../rules/index.ts';
+import {BANCO} from '../../../rules/index.ts';
 import {ATM_HALF,ATM_TOP,BANK_COLORS,SCREEN_AT,atmBoxes} from './figures.ts';
 import {artIndex} from '../../art/manifest.ts';
 import {ART_SCALE} from '../city/materials.ts';
 import {BANK_NAMES,bankArt,bankSheets,sacandoFrame,sheetFrame,telaOffset,type BankArt} from './art.ts';
-import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,clock,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
+import {BankTracker,BEEP_MS,LINE_MS,NOTE_MS,emptySeconds,groundKeys,groundPulse,saldoShare,screenOf,type FlyingNote} from './rules.ts';
 import {TriBand} from '../city/tri-band.ts';
+import {BICO_PX,SHOP_IDS,bicoArt,bicoSpots,doorQuad,shopOf,type BicoArt} from './bico-art.ts';
+import {bicoTag,type BicoTagLook} from '../../hud/bicos.ts';
 
 const LIGHT=lightEnabled();
 /** Tags, notes and balloons: over the figures, under the horde's bars (95000). */
@@ -37,7 +41,9 @@ const ART_TOP_PAD=.17;
 /** The ground's frozen pieces, in the order the one Graphics drew them: hold ring, saldo ring, shadow. */
 const HOLD_DEPTH=-9978,RING_DEPTH=-9977.999,SHADOW_DEPTH=-9977.998;
 
-export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined}
+export interface BankRendererOptions {projector:Projector;reduced:boolean;hero?:()=>Pt|undefined;
+  /** Bicos: a player's name on the shop's tag ("Você" for the local one); absent: "1 no turno". */
+  nameOf?:(id:string)=>string}
 
 interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Text;balloon:Phaser.GameObjects.Text;tagText:string;tagLook:string;
   /** What the figure was last drawn for (look, view, zoom, spot): the Graphics keeps its commands until this changes. */
@@ -49,7 +55,9 @@ interface BankDraw {figure:Phaser.GameObjects.Graphics;tag:Phaser.GameObjects.Te
    */
   ground:{hold?:TriBand;ring?:TriBand;shadow?:TriBand;keys:{hold:string;ring:string;shadow:string}};
   /** The imported art (kiosk, screen, slot), made when its textures are in. */
-  art?:{body:Phaser.GameObjects.Image;tela:Phaser.GameObjects.Image;saque:Phaser.GameObjects.Image}}
+  art?:{body:Phaser.GameObjects.Image;tela:Phaser.GameObjects.Image;saque:Phaser.GameObjects.Image};
+  /** The bico's shop (bico-art.ts) and its lit door, made when its texture is in. */
+  bico?:{body:Phaser.GameObjects.Image;door:Phaser.GameObjects.Graphics;doorKey:string}}
 
 export class BankRenderer {
   private scene:Phaser.Scene;
@@ -68,6 +76,9 @@ export class BankRenderer {
   /** Each bank's imported art (undefined: the provisional figure) and whether its textures are in. */
   private arts=new Map<string,BankArt|undefined>();
   private artIn=new Set<string>();
+  /** Each bank's shop (undefined: the kiosk) and whether its texture is in (filtered nearest, it is pixel art). */
+  private bicos=new Map<string,BicoArt|undefined>();
+  private bicoIn=new Set<string>();
 
   constructor(scene:Phaser.Scene,options:BankRendererOptions){
     this.scene=scene;this.options=options;
@@ -84,7 +95,9 @@ export class BankRenderer {
   private queueArt(){
     const index=artIndex();
     for(const name of BANK_NAMES)this.arts.set(name,bankArt(index,name));
+    for(const id of SHOP_IDS)this.bicos.set(id,bicoArt(index,id));
     let queued=false;
+    for(const art of this.bicos.values())if(art&&!this.scene.textures.exists(art.key)){this.scene.load.image(art.key,art.url);queued=true;}
     for(const s of bankSheets(index))if(!this.scene.textures.exists(s.key)){
       this.scene.load.spritesheet(s.key,s.url,{frameWidth:s.cell[0],frameHeight:s.cell[1]});queued=true;
     }
@@ -97,6 +110,15 @@ export class BankRenderer {
     const t=this.scene.textures;
     if(!t.exists(art.body.key)||!t.exists(art.sacando.key)||!Object.values(art.tela).every(s=>t.exists(s.key)))return undefined;
     this.artIn.add(name);return art;
+  }
+
+  /** The shop of the bank's gig now (BankView.bico) once its texture is in. */
+  private bicoOf(b:Pick<BankView,'bico'>):BicoArt|undefined{
+    const id=shopOf(b.bico),art=this.bicos.get(id);if(!art)return undefined;
+    if(this.bicoIn.has(id))return art;
+    if(!this.scene.textures.exists(art.key))return undefined;
+    this.scene.textures.get(art.key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    this.bicoIn.add(id);return art;
   }
 
   /** A new view: the run's banks (undefined or empty hides them) at the server tick. */
@@ -116,9 +138,11 @@ export class BankRenderer {
       live.add(b.id);
       const d=this.drawOf(b.id);
       const screen=screenOf(b,st.tick,time,reduced);
-      this.drawGround(b,d,k);
+      const bico=this.bicoOf(b);
+      this.drawGround(b,d,k,!bico);
       const depth=proj.depth(b.x,b.y),art=this.artOf(b.name);
-      if(art)this.drawArt(b,d,art,screen.look,depth);
+      if(bico)this.drawBico(b,d,bico);
+      else if(art)this.drawArt(b,d,art,screen.look,depth);
       else{
         d.figure.setDepth(depth);
         const faces=this.facesOf(b.name,screen.look,proj.view),p=proj.project(b.x,b.y,this.q);
@@ -150,6 +174,30 @@ export class BankRenderer {
     const alpha=this.artCovers(a.body,depth)?COVER_ALPHA:1;
     a.body.setAlpha(alpha);a.tela.setAlpha(alpha);a.saque.setAlpha(alpha);
   }
+  /** The shop behind the rings, door to the camera; its door glows (Cartolina, breathing) while a hero works inside. */
+  private drawBico(b:BankView,d:BankDraw,art:BicoArt){
+    const proj=this.options.projector,spots=bicoSpots(b.x,b.y,proj.view),p=proj.project(spots.door.x,spots.door.y,this.q);
+    if(!d.bico){
+      const sc=this.scene;
+      d.bico={body:sc.add.image(0,0,art.key),door:sc.add.graphics().setBlendMode(Phaser.BlendModes.ADD),doorKey:''};
+      d.figure.clear();d.figKey='';
+      // The kiosk's art may have come first: the shop takes its place.
+      if(d.art){d.art.body.destroy();d.art.tela.destroy();d.art.saque.destroy();d.art=undefined;}
+    }
+    const depth=proj.depth(spots.middle.x,spots.middle.y),bd=d.bico;
+    // The shop opened with another gig: its front changes.
+    if(bd.body.texture.key!==art.key)bd.body.setTexture(art.key);
+    bd.body.setOrigin(art.anchor[0],art.anchor[1]).setScale(BICO_PX).setPosition(p.x,p.y).setDepth(depth);
+    const working=b.state==='sacando';
+    if(bd.doorKey!==`${art.id}|${working}`){
+      bd.doorKey=`${art.id}|${working}`;bd.door.clear();
+      if(working)bd.door.fillStyle(this.c.cartolina,1).fillPoints(doorQuad(art),true);
+    }
+    const breath=this.options.reduced?.55:.45+.2*Math.sin(this.now*.006);
+    bd.door.setVisible(working).setPosition(p.x,p.y).setDepth(depth+.01).setAlpha(breath);
+    const alpha=this.artCovers(bd.body,depth)?COVER_ALPHA:1;
+    bd.body.setAlpha(alpha);
+  }
   private artCovers(body:Phaser.GameObjects.Image,depth:number){
     const hero=this.options.hero?.();if(!hero)return false;
     if(this.options.projector.depth(hero.x,hero.y)>=depth)return false;
@@ -158,6 +206,11 @@ export class BankRenderer {
   }
   /** The top of what stands at the bank, screen px (the art's drawn top, else the figure's sign). */
   private topAt(b:BankView,fwd:number,left:number):Pt{
+    const bico=this.bicoOf(b);
+    if(bico){
+      const proj=this.options.projector,s=bicoSpots(b.x,b.y,proj.view),p=proj.project(s.door.x,s.door.y,this.q);
+      return {x:p.x,y:p.y-bico.anchor[1]*bico.cell[1]*BICO_PX+4};
+    }
     const art=this.artOf(b.name);
     if(!art)return this.at(b.x,b.y,fwd,left,ATM_TOP+.15*M);
     const p=this.options.projector.project(b.x,b.y,this.q),s=ART_PX;
@@ -165,6 +218,11 @@ export class BankRenderer {
   }
   /** Where the notes leave from: the screen overlay's middle with the art, else the figure's screen. */
   private screenAt(b:BankView):Pt{
+    const bico=this.bicoOf(b);
+    if(bico){
+      const proj=this.options.projector,s=bicoSpots(b.x,b.y,proj.view),p=proj.project(s.door.x,s.door.y,this.q),q=doorQuad(bico);
+      return {x:p.x+(q[0].x+q[2].x)/2,y:p.y+(q[0].y+q[2].y)/2};
+    }
     const art=this.artOf(b.name);
     if(!art)return this.at(b.x,b.y,SCREEN_AT.fwd,SCREEN_AT.left,SCREEN_AT.z);
     const proj=this.options.projector,p=proj.project(b.x,b.y,this.q),s=ART_PX,o=telaOffset(art,proj.view);
@@ -174,6 +232,7 @@ export class BankRenderer {
     d.figure.destroy();d.tag.destroy();d.balloon.destroy();
     const g=d.ground;g.hold?.destroy();g.ring?.destroy();g.shadow?.destroy();
     if(d.art){d.art.body.destroy();d.art.tela.destroy();d.art.saque.destroy();}
+    if(d.bico){d.bico.body.destroy();d.bico.door.destroy();}
   }
 
   destroy(){
@@ -182,10 +241,11 @@ export class BankRenderer {
     this.draws.clear();
   }
 
-  private tagStyle(look:'normal'|'bicho'|'vazio'){
-    return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},
-      color:look==='bicho'?token('--c-breu'):token('--c-papel'),
-      backgroundColor:look==='bicho'?token('--c-cone'):look==='vazio'?token('--c-breu'):this.ficha()};
+  private tagStyle(look:BicoTagLook){
+    // Bicos: a shift on is "a favor" (Cartolina, the interaction colour of the ring and the button).
+    return {fontFamily:token('--f-sistema'),fontSize:'13px',fontStyle:'bold',padding:{x:6,y:2},align:'center',
+      color:look==='bicho'||look==='turno'?token('--c-breu'):token('--c-papel'),
+      backgroundColor:look==='bicho'?token('--c-cone'):look==='turno'?token('--c-cartolina'):look==='vazio'?token('--c-breu'):this.ficha()};
   }
   /**
    * --c-ficha (Breu at 88 %) as rgba: the token is a color-mix(), which a canvas fillStyle may not take (the tag's body
@@ -223,7 +283,7 @@ export class BankRenderer {
    * critter robs it; an empty ring when it has no notes; breathing while a hero is paid) and the kiosk's shadow. Each
    * piece is drawn once in the bank's local space and frozen (TriBand); per frame it only moves and the saldo ring scales.
    */
-  private drawGround(b:BankView,d:BankDraw,k:number){
+  private drawGround(b:BankView,d:BankDraw,k:number,shadow=true){
     const g=d.ground,keys=groundKeys(b,k,this.options.projector.view),p=this.options.projector.project(b.x,b.y,this.q),c=this.c;
     if(g.keys.hold!==keys.hold||!g.hold){
       g.keys.hold=keys.hold;g.hold?.destroy();
@@ -250,7 +310,8 @@ export class BankRenderer {
       }
       g.shadow=TriBand.make(this.scene,gr=>{gr.fillStyle(LIGHT?LIT_SHADOW.color:c.breu,LIGHT?LIT_SHADOW.alpha:.25).fillPoints(corners,true);}).setDepth(SHADOW_DEPTH);
     }
-    g.hold.setPosition(p.x,p.y);g.shadow.setPosition(p.x,p.y);
+    // The shop's art has its own contact shadow on its own snow; the kiosk's would be a dark slab in front of the door.
+    g.hold.setPosition(p.x,p.y);g.shadow.setPosition(p.x,p.y).setVisible(shadow);
     g.ring.setPosition(p.x,p.y).setScale(groundPulse(b,this.now,this.options.reduced));
   }
   private drawFaces(g:Phaser.GameObjects.Graphics,x:number,y:number,faces:readonly Face[],k:number){
@@ -267,11 +328,10 @@ export class BankRenderer {
     const p=this.options.projector.project(x,y,this.q),h=this.options.projector.project(hero.x,hero.y,{x:0,y:0}),b=faceBounds(faces);
     return h.x>p.x+b.x0&&h.x<p.x+b.x1&&h.y-30>p.y+b.y0&&h.y-10<p.y+b.y1;
   }
-  /** The tag over the sign: "Pão-Duro: R$ 32", "Pão-Duro: bicho sacando!" or "Pão-Duro sem cédulas: 2:10". */
+  /** The tag over the shop (hud/bicos.ts bicoTag): its gig and saldo, who is on the shift, the robbery, the closed sign. */
   private drawTag(b:BankView,d:BankDraw,k:number){
-    const short=BANK_SHORT[b.name],s=emptySeconds(b,this.state.tick);
-    const look=b.state==='bicho'?'bicho':b.state==='sem-cedulas'?'vazio':'normal';
-    const text=b.state==='bicho'?`${short}: bicho sacando!`:b.state==='sem-cedulas'?`${short} sem cédulas${s?`: ${clock(s)}`:''}`:`${short}: R$ ${b.saldo}`;
+    const nameOf=this.options.nameOf;
+    const {look,text}=bicoTag(b,emptySeconds(b,this.state.tick),id=>nameOf?.(id)??'1');
     if(d.tagLook!==look){d.tagLook=look;d.tag.setStyle(this.tagStyle(look));}
     if(d.tagText!==text){d.tagText=text;d.tag.setText(text);}
     const p=this.topAt(b,-.2*M,.5*M);

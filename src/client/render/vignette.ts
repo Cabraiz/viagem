@@ -12,6 +12,8 @@ export const VIGNETTE_DEPTH=9e8;
 
 export class Vignette {
   private image?:Phaser.GameObjects.Image;
+  private shown=false;
+  private covered=false;
   constructor(private scene:Phaser.Scene,search?:string){
     if(!lightEnabled(search))return;
     if(!scene.textures.exists(KEY)){
@@ -27,7 +29,9 @@ export class Vignette {
   /** The image (screen space): a second camera (the Uno's live window, chaveiro/pip.ts) ignores it. */
   get object():Phaser.GameObjects.Image|undefined{return this.image;}
   /** The map's strength; hidden in economy mode. */
-  set(world:LightWorld,economy:boolean){this.image?.setAlpha(GRADES[world].vignette).setVisible(!economy);}
+  set(world:LightWorld,economy:boolean){this.shown=!economy;this.image?.setAlpha(GRADES[world].vignette).setVisible(this.shown&&!this.covered);}
+  /** The fear's dark (render/fear-dark.ts) covers the screen: hidden under it (a full-screen layer nobody would see). */
+  cover(covered:boolean){if(covered===this.covered)return;this.covered=covered;this.image?.setVisible(this.shown&&!covered);}
   /** Every frame: covers the camera (scroll factor 0 still zooms around the centre, so undo the zoom). */
   update(){
     const img=this.image;if(!img?.visible)return;

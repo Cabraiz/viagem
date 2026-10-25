@@ -81,7 +81,7 @@ import {CITY_VIEW_SCALE,FollowCamera,cityZoom,hordeUiScale} from '../framing.ts'
 import {CITY_HERO_SPEED,CityTerrain,HERO_SPEED_MULT,decodeCityAsset,type TerrainField} from '../../maps/index.ts';
 import {TralhaHud} from '../hud/tralha/tralha.ts';
 import {CAR_ROPE,HERO_WORLD_PX,SIM_HZ,TILE_X,VEHICLE_KINDS,type NodeView,type RunView,type StructureView} from '../../contract/index.ts';
-import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isTowerKit,kitPiece} from '../../rules/index.ts';
+import {BANCO,BARRICADA_CELLS,SCALE_PROFILES,TOWER_SECONDS,isPlayableClass,isTowerKit,kitPiece} from '../../rules/index.ts';
 import {KitPlace} from '../hud/kit-place/model.ts';
 import {HordeRenderer} from '../render/layers.ts';
 import {Projector} from '../render/projector.ts';
@@ -112,6 +112,7 @@ import {BankRenderer} from '../render/bancos/renderer.ts';
 import {fakeBanks,type FakeBanks} from './sandbox-bancos.ts';
 import {fotoClock} from '../dev/foto.ts';
 import {SkillButton} from '../hud/skill.ts';
+import {workShop,workingIn} from '../hud/bicos.ts';
 import {AttackButton} from '../hud/attack-button.ts';
 import {SKILL_HTML} from '../controls-phase.ts';
 import {HERO_GAIT,WALK_TUNE} from '../sprites/sprite-motion.ts';
@@ -131,7 +132,8 @@ const cellsOverride=Number(params.get('cells'))||undefined;
 /** `zoom=k`: the player's zoom factor (camera-zoom.ts; default the game's ZOOM_DEFAULT, `zoom=1` the old framing). */
 const zoomK=params.get('zoom')==='pc'?ZOOM_DESKTOP:clampZoom(params.has('zoom')?Number(params.get('zoom')):ZOOM_DEFAULT);
 const wanted=params.get('class')??'cidadao-comum';
-const classId=spriteCatalog[wanted]?wanted:'cidadao-comum';
+// Any playable class (the gato has only M16 sheets, no legacy catalog entry: parado-respiracao-herois) or a legacy one.
+const classId=spriteCatalog[wanted]||isPlayableClass(wanted)?wanted:'cidadao-comum';
 const towersParam=params.get('torres')==='12'?12:params.get('torres')==='1'?1:params.get('torres')==='lista'?2:0;
 /** torres=lista: the kinds to stand next to the hero (`tipos=a,b`), pronta, on a ring of 2.4 u from the north. */
 const towerList=(params.get('tipos')??'').split(',').filter(k=>k in TOWER_LOOK) as TowerKind[];
@@ -299,6 +301,8 @@ class CitySandbox extends Phaser.Scene {
     /** `fala=` (card chaveiro-falas): the game's line timing, its balloons (the lab's horde with tele=1) and what it said. */
     talk?:{talk:ChaveiroTalk;horde?:HordeRenderer;said:(SaidLine&{at:number})[];last:number;start?:number}};
   /** bancos=1: the banks' renderer, the fake ATMs and the robbers' horde. */
+  /** acao=1: the action button (bancos=1 turns it into Trabalhar in a shop's ring). */
+  private skill?:SkillButton;
   private banks?:{renderer:BankRenderer;fake:FakeBanks;horde?:HordeRenderer;warmed:boolean};
   private fortify?:FortifyRenderer;
   /** obra=1: the fortify view pushed (anda= moves its car). */
@@ -482,7 +486,7 @@ class CitySandbox extends Phaser.Scene {
    */
   private mountBanks(){
     const fake=fakeBanks(params,this.at),projector=this.cityProjector();
-    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at});
+    const renderer=new BankRenderer(this,{projector,reduced:reducedMotion,hero:()=>this.at,nameOf:id=>id==='voce'?'Você':id});
     let horde:HordeRenderer|undefined;
     if(this.decoded&&fake.enemies.length){
       const hp=new Projector(this.view,this.decoded);hp.depthOverride=(x,y)=>this.layer?this.layer.actorDepth(x,y):0;
@@ -507,6 +511,10 @@ class CitySandbox extends Phaser.Scene {
     const {banks,tick}=b.fake.view(now);
     b.renderer.push(banks,tick);b.renderer.update(now);
     b.horde?.update(now,16);
+    // Bicos (etapa 4): in a shop's ring the action button says Trabalhar; inside the shift the hero is gone through the door.
+    const inside=workingIn(banks,'voce'),shop=inside??workShop(banks,this.at);
+    this.skill?.setWork(shop?{bico:shop.bico,inside:!!inside}:undefined);
+    if(inside)this.hero.setAlpha(0);
   }
   /** `objetivo=1`: the chaveiro renderer with the fake objective at the plaza (sandbox-chaveiro.ts); moves the hero to it. */
   private mountObjective(placeHero:boolean){
@@ -824,7 +832,7 @@ class CitySandbox extends Phaser.Scene {
     const slot=document.createElement('div');slot.className='cidade-acao';slot.innerHTML=SKILL_HTML;
     slot.style.cssText='position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));z-index:9';
     host.append(slot);
-    const button=slot.querySelector<HTMLButtonElement>('#coop-attack')!,skill=new SkillButton(button,classId);skill.setCombat('manual');
+    const button=slot.querySelector<HTMLButtonElement>('#coop-attack')!,skill=this.skill=new SkillButton(button,classId);skill.setCombat('manual');
     let chosen:string|undefined;
     const toScreen=(p:{x:number;y:number})=>{
       const w=project(p.x,p.y,groundZ(this.asset,p.x,p.y),this.view),cam=this.cameras.main,r=this.game.canvas.getBoundingClientRect();

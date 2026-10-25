@@ -35,7 +35,10 @@
  *    (stragglers after an intermission, a roamer pulled home) → plaza field, and (b) stuck (moved < STUCK_MOVE u in
  *    STUCK_TICKS while pushing) → plaza field for UNSTICK_TICKS when outside the base;
  *  - stuck anywhere else (crate walks, round 1): a perpendicular nudge for UNSTICK_TICKS, alternating sides;
- *  - downed / eliminated bots: untouched (the brain asks for help).
+ *  - downed / eliminated bots: untouched (the brain asks for help);
+ *  - on a viaduct's deck (andar 1, mapa-175-com-viaduto): the fields are the ground's, so every walk on a field goes
+ *    straight to the ramp's foot instead (CityNavigator.deckExit; the deck is a corridor whose only way off is the ramp,
+ *    as the brain walks it). On the ground field the deck bot pushed into the deck's side (BUG-20261024-ORQ-viaduto-bot-preso-rampa).
  * The stick is re-aimed every tick (the brain decides every BOT_THINK_EVERY ticks; its last direction is kept).
  *
  * Per run it records: outcome and cause, round reached / died, ticks, per round (wave start, first enemy of the round
@@ -85,7 +88,7 @@ import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {cityTerrainFrom} from '../src/maps/city/terrain.ts';
-import {FlowField,SPREAD,STRAIGHT_COST,UNREACHABLE,clearSegment,heroSpeed,type Point} from '../src/maps/index.ts';
+import {FlowField,SPREAD,STRAIGHT_COST,UNREACHABLE,clearSegment,floorPortal,heroSpeed,type CityViaduct,type Point} from '../src/maps/index.ts';
 import {cityFlowGrid,cityPlanner} from '../src/sim/city/grid.ts';
 import {cityLoot,type Crate} from '../src/sim/stonewards/loot.ts';
 import {remainingOf} from '../src/sim/stonewards/resources.ts';
@@ -100,7 +103,7 @@ import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
 import type {ObjectiveResult} from '../src/contract/index.ts';
-import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
+import {CHAVEIRO_PACE,ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
 import {NEST_PACE} from '../src/sim/ninhos/ninhos.ts';
 import {NOISE} from '../src/sim/ninhos/sono.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
@@ -504,12 +507,20 @@ export class CityNavigator {
    * seed 16's bots to seed 15's crates (16 won alone and lost after 15). A field depends only on its goal cell.
    */
   private crates=new Map<number,FlowField>();
+  private readonly viaducts:readonly CityViaduct[];private readonly unit:number;
   constructor(city:CityTerrain){
     this.grid=cityFlowGrid(city);
+    this.viaducts=city.asset.viaducts;this.unit=city.asset.unitsPerCell;
     const planner=cityPlanner(city),goals:Point[]=[],cs=this.grid.cellSize;
     for(let cy=0;cy<this.grid.height;cy++)for(let cx=0;cx<this.grid.width;cx++)if(planner.plazaField.cellCost(cx,cy)===0)goals.push({x:(cx+.5)*cs,y:(cy+.5)*cs});
     this.plaza=new FlowField(this.grid,goals);
     this.insideBase=p=>planner.insideBase(p);
+  }
+  /** On a deck (andar 1): the way to the ground, straight to the nearest ramp's foot; undefined on the ground. */
+  deckExit(p:Point&{andar?:number}):Point|undefined{
+    if(p.andar!==1||!this.viaducts.length)return undefined;
+    const exits=this.viaducts.map(v=>floorPortal(v,this.unit,0)),to=exits.reduce((a,b)=>dist(a,p)<=dist(b,p)?a:b);
+    return norm({x:to.x-p.x,y:to.y-p.y});
   }
   crateField(_id:string,at:Point):FlowField{
     const cs=this.grid.cellSize,key=Math.floor(at.x/cs)+Math.floor(at.y/cs)*this.grid.width;
@@ -669,7 +680,9 @@ export class NavDriver {
     for(const c of list.slice(0,PICK_TRIES))if(fits(c)){this.boxes.set(id,c.id);this.trips++;return c;}
     return undefined;
   }
-  private field(f:FlowField,p:Point,fallback:Point):Point{
+  private field(f:FlowField,p:Point&{andar?:number},fallback:Point):Point{
+    const exit=this.nav.deckExit(p);
+    if(exit)return exit;
     const d=f.directionAt(p.x,p.y);
     return Math.hypot(d.x,d.y)>1e-6?{x:d.x,y:d.y}:fallback;
   }
@@ -775,8 +788,10 @@ export function playRun(o:RunOptions):RunRecord{
   const setStick=sim.setBotInput.bind(sim),forge=sim.forge.bind(sim);
   // D-051: the brain's attack button (manual combat) is held through the wrapper's re-aimed sticks.
   const attacks=new Map<string,boolean>();
-  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d,false,attacks.get(id)??false));
-  sim.setBotInput=(id,d,skill=false,attack=false)=>{driver.brainSaid(id,d);attacks.set(id,attack);setStick(id,d,skill,attack);};
+  // Bicos: the brain's Trabalhar (standing in a shop's ring) is held through the re-aimed sticks the same way.
+  const works=new Map<string,boolean>();
+  const driver=new NavDriver(o.nav,sim,room,(id,d)=>setStick(id,d,false,attacks.get(id)??false,works.get(id)??false));
+  sim.setBotInput=(id,d,skill=false,attack=false,work=false)=>{driver.brainSaid(id,d);attacks.set(id,attack);works.set(id,work);setStick(id,d,skill,attack,work);};
   const purchases:RunRecord['forge']['list']=[];
   const rounds:RoundRecord[]=[],inter:IntermissionRecord[]=[];
   let cur:RoundRecord|undefined,curInter:IntermissionRecord|undefined;
@@ -990,7 +1005,7 @@ export function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;chaveiroPace?:typeof CHAVEIRO_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -1003,7 +1018,7 @@ function args(argv:readonly string[]){
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
-    nestPace:get('--nest-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
+    nestPace:get('--nest-pace'),chaveiroPace:get('--chaveiro-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -1041,6 +1056,8 @@ async function main(){
   const a=args(process.argv.slice(2));
   // balanco-ninhos: --nest-pace '{"gap":[30,10]}' overrides NEST_PACE for this bench (the grid; the game never does).
   if(a.nestPace)Object.assign(NEST_PACE,JSON.parse(a.nestPace));
+  // balanco-6p-facil: --chaveiro-pace '{"ride":[420,420,420,480,540,600]}' overrides the moto's ride by room size (mode 'ninhos').
+  if(a.chaveiroPace)Object.assign(CHAVEIRO_PACE,JSON.parse(a.chaveiroPace));
   // monstros-espalhados: --spread '{"gap":6}' overrides the field (maps/nests.ts SPREAD) for this bench.
   if(a.spread)Object.assign(SPREAD,JSON.parse(a.spread));
   // --alarm '{"r":20,"p":0.1}': the car alarm's noise (sono NOISE.alarm), for the grid only.
@@ -1067,7 +1084,7 @@ async function main(){
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
   if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,chaveiroPace:a.mode==='ninhos'?{ride:[...CHAVEIRO_PACE.ride]}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){

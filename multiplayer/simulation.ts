@@ -10,8 +10,8 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt} from '../src/sim/index.ts';
-import {CALMA,refreshStats} from '../src/rules/index.ts';
+import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {CALMA,FEAR_TICKS,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
 import type {CidaBuyResult,CombatMode,ObjectiveKind,ObjectiveResult,ObjectiveView,PixResult,PlayerBuild,PullResult,SimPlayer} from '../src/contract/index.ts';
@@ -180,11 +180,13 @@ function playerRunOk(run:unknown){
   if(hand!==undefined&&!(Number.isSafeInteger(hand)&&(hand as number)>=0&&(hand as number)<Math.max(1,slots)))return false;
   if(!itemsOk(build.weapons,'weapon',MAX_WEAPONS,hand!==undefined)||!itemsOk(build.passives,'passive',MAX_PASSIVES))return false;
   if(!isObject(run.weaponReady)||!Object.values(run.weaponReady).every(finite))return false;
-  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil','rideUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
+  for(const key of ['score','attackTick','skillTick','skillReadyTick','invulnerableUntil','slowUntil','slipUntil','fastUntil','mightUntil','guardUntil','rideUntil','downUntil','knockUntil'])if(run[key]!==undefined&&!finite(run[key]))return false;
   // Veículos: a ride is a known vehicle.
   if(run.ride!==undefined&&!isVehicleKind(run.ride))return false;
   // The wallet (NEW-20261014-ORQ-carteira-e-pix): whole R$, never negative.
   if(run.grana!==undefined&&!(Number.isSafeInteger(run.grana)&&(run.grana as number)>=0))return false;
+  // Fear (sim/fear.ts): whole ticks of dark, 0..FEAR_TICKS.
+  if(run.fear!==undefined&&!(Number.isSafeInteger(run.fear)&&(run.fear as number)>=0&&(run.fear as number)<=FEAR_TICKS))return false;
   return run.downed===undefined||isObject(run.downed)&&finite(run.downed.bleedOutTick)&&finite(run.downed.progress);
 }
 /** Shape of a stored SimCheckpoint (it came from storage: an older build or junk must not reach the systems). */
@@ -309,15 +311,22 @@ export class Simulation {
     if(down>c.down){c.down=down;c.last=w.tick;return true;}
     if(w.tick-c.last<ticks(CALMA.checkpointEveryS))return false;
     const boss=this.systems.boss.state;
-    if(boss.bossId&&!boss.defeated)return false;
+    if(boss.bossId&&!boss.defeated||this.systems.chefao?.up())return false;
     for(const p of this.players.values())if(isStanding(p)&&!calmAt(w,p.x,p.y,CALMA.checkpointR))return false;
     c.last=w.tick;return true;
   }
+  /** Dev labs (boss-fim-onda-1): the 1st wave's chefão comes on the next step (mode 'ninhos' only). */
+  summonChefao(){return !!this.systems.chefao?.summon();}
   get victory(){return this.result==='victory';}
   /** Systems of the current run (director, progression, boss, enemyAi, revive). */
   get run():RunSystems{return this.systems;}
-  /** The current run's rotation (D-040) as roster ids; [] until the director draws it on the run's first step. */
-  rotationIds():string[]{const r=this.systems.director.state.rotation;return r?rotationIds(r):[];}
+  /** The current run's rotation (D-040) as roster ids, [] until the director draws it on the run's first step; plus its chefão. */
+  rotationIds():string[]{
+    const r=this.systems.director.state.rotation,ids=r?[...rotationIds(r)]:[];
+    // boss-fim-onda-1: the run's chefão too (drawn from the seed), so every phone has his art before his arrival scene.
+    const c=this.systems.chefao;if(c&&!ids.includes(c.who.id))ids.push(c.who.id);
+    return ids;
+  }
   /** Room bots (D-025): played by the room, no socket; their stick goes through setBotInput, one step per tick. */
   readonly bots=new Set<string>();
   /**
@@ -585,10 +594,10 @@ export class Simulation {
    * The bot's stick for the next steps (held until changed), a one-shot skill tap and (D-051, manual combat) the attack
    * button, held until changed like the stick.
    */
-  setBotInput(id:string,direction:Point,skill=false,attack=false){
+  setBotInput(id:string,direction:Point,skill=false,attack=false,work=false,target?:string){
     if(!this.bots.has(id)&&!this.autopilot.has(id))return;
     const held=this.botInputs.get(id);
-    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill});
+    this.botInputs.set(id,{seq:0,x:direction.x,y:direction.y,attack,skill:skill||!!held?.skill,...(work?{work:true as const}:{}),...(target!==undefined?{target}:{})});
   }
   private track(id:string){let t=this.tracks.get(id);if(!t){t=new InputTrack();this.tracks.set(id,t);}return t;}
   /** Going offline or coming back: nothing held or queued survives, and the client restarts its steps at the ack. */
@@ -647,7 +656,7 @@ export class Simulation {
     const p=this.players.get(id);
     if(!p)return own;
     const from=this.stepTicks.get(id)?.find(s=>s.seq===own.ack+1)?.tick;
-    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
+    const end=Math.max(this.effectEnd.get(id)??-Infinity,p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity,p.downUntil??-Infinity);
     const touched=end>-Infinity&&(from===undefined||end>from);
     const liveAck=this.liveAck.get(id);
     if(touched||liveAck!==undefined&&own.ack<liveAck){this.liveAck.set(id,Math.max(liveAck??0,p.ack));return undefined;}
@@ -905,7 +914,7 @@ export class Simulation {
     const events=this.world.step();
     // D-036: remember how far each slow or slip ran (the players system drops it once it is over; confirmed needs it).
     for(const p of this.players.values()){
-      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity);
+      const end=Math.max(p.slowUntil??-Infinity,p.slipUntil??-Infinity,p.fastUntil??-Infinity,p.rideUntil??-Infinity,p.downUntil??-Infinity);
       if(end>(this.effectEnd.get(p.id)??-Infinity))this.effectEnd.set(p.id,end);
       // The moveSpeed stat changed (an offer, a weapon): the steps before now walked at the old one, so it counts as an
       // effect up to now (the phone's replay of them would take the new one).
@@ -1022,6 +1031,7 @@ export class Simulation {
         skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
         stats:{...this.statsOf(p.id),damage:Math.round(this.statsOf(p.id).damage)},
         ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...(p.grana!==undefined?{grana:p.grana}:{}),
+        ...fearView(p),
         ...(p.andar===1?{andar:1 as const}:{}),
       })),
       ...(this.systems.chaveiro?{objective:{...this.systems.chaveiro.view(w.tick),grana:this.viewerGrana(playerId)}}:{}),
@@ -1053,7 +1063,7 @@ export class Simulation {
           downed:p.downed?{progress:p.downed.progress,bleedOutTick:p.downed.bleedOutTick}:undefined,eliminated:p.eliminated||undefined,
           weapons:p.build.weapons,passives:p.build.passives,...handOf(p),stats:{...stats,damage:Math.round(stats.damage)},
           x:p.x,y:p.y,ack:p.ack,attackTick:p.attackTick||undefined,skillTick:p.skillTick||undefined,skillReadyTick:p.skillReadyTick||undefined,
-          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),
+          ...activeMoveEffects(p,w.tick),...activeBuffs(p,w.tick),...moveSpeedOf(p),...fearView(p),
           // carteira-e-pix: everyone's wallet (the encoder makes the camp's Grana each viewer's own).
           ...(p.grana!==undefined?{grana:p.grana}:{}),
           // The viaduct: on a deck (it drives the phone's prediction and the lift of the sprite).
@@ -1083,6 +1093,11 @@ export class Simulation {
 export type {SimEvent};
 
 /** D-047 Dona Cida's sweets still running on `tick` (a finished one costs no bytes). */
+/** The wire's fear (PlayerRunView.fear, sim/fear.ts): the dark 0..1, absent at 0. */
+export function fearView(p:SimPlayer):{fear?:number}{
+  const v=fearOf(p);
+  return v===undefined?{}:{fear:v};
+}
 /** The wire's moveSpeed (PlayerRunView.moveSpeed): stats.moveSpeed as the walk takes it, absent when 1. */
 export function moveSpeedOf(p:SimPlayer):{moveSpeed?:number}{
   const v=statMoveSpeed(p);

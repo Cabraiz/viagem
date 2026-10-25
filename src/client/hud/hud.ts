@@ -12,6 +12,8 @@ import {applyEvents,emptyTally,nestTally,resetTally,type HudContext,type HudPart
 import {createTopBar,createAnnouncer} from './topbar.ts';
 import {createOfferPanel} from './offer.ts';
 import {createTeamStrip,createReviveAlerts} from './team.ts';
+import {createFearRow,type FearRow} from './fear.ts';
+import type {FearFrame} from '../render/fear-rules.ts';
 import {createPix,PIX_TOAST_MS} from './pix.ts';
 import './pix.css';
 import {createCacaNiquel} from './caca-niquel.ts';
@@ -42,11 +44,15 @@ import {createInventory,type InventoryCommand,type InventoryPart} from './invent
 import './inventory.css';
 import {MotoReason,REASON_MS,liveObjective} from './chaveiro.ts';
 import {BankAlert,BANK_ALERT_MS} from './bancos.ts';
+import {BICO_LINE_MS,bicoLine} from './bicos.ts';
 import {icon} from '../ui/icon.ts';
 import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
+import './chefao-cena.css';
+import {createCenaPart} from './chefao-cena.ts';
+import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
@@ -99,6 +105,8 @@ export interface RunHudOptions {
   input?:InputKind;
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
+  /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
+  cena?:CenaClock;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -191,10 +199,14 @@ export class RunHud {
   private readonly reasonRow:HTMLElement;private readonly reason=new MotoReason();
   /** Bancos: the row "Bicho sacando no …!" (hud/bancos.ts BankAlert). */
   private readonly bankRow:HTMLElement;private readonly bankAlert=new BankAlert();
+  /** Bicos: the row of the local player's own shift, and the last room event it read. */
+  private readonly bicoRow:HTMLElement;private bicoEvent=-1;
   /** Who the forge yields to: the obra window (torres-ligar) or Dona Cida's tray. */
   private obraOpen=false;
   /** The top band and the team strip: on the phone the strip is a fan inside the band (setInput). */
   private readonly topEl:HTMLElement;private readonly teamEl:HTMLElement;
+  /** Fear (card fear-escuridao-sozinho, hud/fear.ts): the notice in the slot, the dimmed portraits and the sound. */
+  private readonly fear:FearRow;
 
   constructor(parent:HTMLElement,options:RunHudOptions){
     this.ctx={localId:options.localId,portrait:options.portrait??defaultPortrait,tally:this.tally,critterIcon:options.critterIcon,worldRescue:options.worldRescue,mood:id=>this.moods.active(id,performance.now())};
@@ -217,16 +229,20 @@ export class RunHud {
     const inventory=this.inventory=createInventory({onCommand:command=>options.onInventory?.(command)??false,cidaOpen:()=>cida.open,kitSlot:()=>options.kitSlot?.()},parent.ownerDocument);
     const reasonRow=this.reasonRow=document.createElement('div');reasonRow.className='rh-chaveiro-motivo';reasonRow.setAttribute('role','status');reasonRow.hidden=true;
     const bankRow=this.bankRow=document.createElement('div');bankRow.className='rh-chaveiro-motivo rh-banco-roubo';bankRow.setAttribute('role','status');bankRow.hidden=true;bankRow.dataset.urgente='true';
+    const bicoRow=this.bicoRow=document.createElement('div');bicoRow.className='rh-chaveiro-motivo rh-bico';bicoRow.setAttribute('role','status');bicoRow.hidden=true;
     // The base ficha is a status readout of the top band; the horn is a notice of the announcement slot.
     top.el.append(camp.readout);
     // The stack is the top band's announcement slot (UX-zonas-tela): the round/boss banner, then the one notice.
     // The coach's hint is the last row: it only shows while no other row holds the slot (VGM-056). The city's walk to
     // the plaza (cidade-08) sits right above it: the coach's hints wait for it, it waits for the rows above.
-    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
+    this.fear=createFearRow(parent.ownerDocument,team.el);
+    stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,this.fear.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
+    // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
+    const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[])];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),
@@ -318,6 +334,7 @@ export class RunHud {
     if(this.el.classList.contains('rh-offer-waits')!==wait)this.el.classList.toggle('rh-offer-waits',wait);
     this.stepReason(view);
     this.stepBanks(view);
+    this.stepBicos(view);
     this.turnRows();
     this.stepObjective();
     this.updateCoach(view);
@@ -449,6 +466,18 @@ export class RunHud {
     if(!step.show)return;
     const row=this.bankRow;row.innerHTML=icon('caixa-eletronico');row.append(step.show.text);row.dataset.banco=step.show.bank;
     this.queueRow(row,BANK_ALERT_MS);
+  }
+  /** Bicos (hud/bicos.ts bicoLine): the local player's own shift, entering (the gig's joke) or thrown out (the manager). */
+  private stepBicos(view:RunView){
+    let line:string|undefined;
+    for(const e of view.events??[]){
+      if(e.eventId<=this.bicoEvent)continue;
+      this.bicoEvent=e.eventId;
+      if(e.type==='bico')line=bicoLine(e,this.ctx.localId,view.banks)??line;
+    }
+    if(!line||this.el.classList.contains('rh-ended'))return;
+    const row=this.bicoRow;row.innerHTML=icon('caixa-eletronico');row.append(line);
+    this.queueRow(row,BICO_LINE_MS,{answer:true});
   }
   /** The reason row on screen now (the sandbox and the acceptance scripts). */
   get reasonShown(){return this.reasonRow.hidden?undefined:this.reasonRow.textContent??undefined;}
@@ -631,12 +660,18 @@ export class RunHud {
     resetTally(this.tally);
     this.objective.reset();
     this.reason.reset();this.dropRow(this.reasonRow);
-    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);
+    this.bankAlert.reset();delete this.bankRow.dataset.banco;this.dropRow(this.bankRow);this.dropRow(this.bicoRow);this.bicoEvent=-1;
   }
 
   get view(){return this.last;}
 
+  /** One frame of the fear (the scene's hooks.fear); `far` the allies out of reach while alone. */
+  setFear(frame:FearFrame,far:readonly string[]){
+    if(this.el.hidden||this.el.classList.contains('rh-ended')){this.fear.clear();return;}
+    this.fear.frame(frame,far);
+  }
   destroy(){
+    this.fear.destroy();
     // Leaving mid-run still was this phone's first run: what the coach showed counts as learned (VGM-056).
     this.coach.endRun();
     removeEventListener('resize',this.relayout);this.observer?.disconnect();this.columnObserver?.disconnect();

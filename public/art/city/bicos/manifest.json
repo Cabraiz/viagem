@@ -1,0 +1,246 @@
+{
+  "version": 2,
+  "group": "bicos",
+  "pieces": {
+    "bico-24-7": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-24-7.webp",
+          "cell": [
+            232,
+            211
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.362069,
+            0.805687
+          ],
+          "pages": [
+            {
+              "file": "bico-24-7.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "4fec91aec59625a61b6b6466085318e71cb0d30e747bb9a48aa2dd86c61554e4"
+            }
+          ],
+          "sha256": "4fec91aec59625a61b6b6466085318e71cb0d30e747bb9a48aa2dd86c61554e4"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          72,
+          164,
+          24,
+          36
+        ]
+      }
+    },
+    "bico-aura-67": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-aura-67.webp",
+          "cell": [
+            233,
+            212
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.369099,
+            0.820755
+          ],
+          "pages": [
+            {
+              "file": "bico-aura-67.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "b8b034b9b99836c441ab2584e84cdeac9e4bd360c6dbda77dc2a6aee6dace797"
+            }
+          ],
+          "sha256": "b8b034b9b99836c441ab2584e84cdeac9e4bd360c6dbda77dc2a6aee6dace797"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          74,
+          168,
+          24,
+          34
+        ]
+      }
+    },
+    "bico-call-center": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-call-center.webp",
+          "cell": [
+            230,
+            212
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.365217,
+            0.811321
+          ],
+          "pages": [
+            {
+              "file": "bico-call-center.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "0fdb1867b883a31257ba9430d8889f77510173f525fcc8ffbfe847dc041f51e2"
+            }
+          ],
+          "sha256": "0fdb1867b883a31257ba9430d8889f77510173f525fcc8ffbfe847dc041f51e2"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          72,
+          166,
+          24,
+          34
+        ]
+      }
+    },
+    "bico-colchoes": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-colchoes.webp",
+          "cell": [
+            164,
+            229
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.335366,
+            0.783843
+          ],
+          "pages": [
+            {
+              "file": "bico-colchoes.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "1e28491e6776d041a899bac31995576ac4b9c355ab0264d562872a3d7fedeb7f"
+            }
+          ],
+          "sha256": "1e28491e6776d041a899bac31995576ac4b9c355ab0264d562872a3d7fedeb7f"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          44,
+          174,
+          22,
+          36
+        ]
+      }
+    },
+    "bico-compro-ouro": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-compro-ouro.webp",
+          "cell": [
+            169,
+            229
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.325444,
+            0.783843
+          ],
+          "pages": [
+            {
+              "file": "bico-compro-ouro.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "07724c36049e2206394abcd42e39190c3376488c04c14e733908fbd4d71dd69f"
+            }
+          ],
+          "sha256": "07724c36049e2206394abcd42e39190c3376488c04c14e733908fbd4d71dd69f"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          44,
+          174,
+          22,
+          36
+        ]
+      }
+    },
+    "bico-curso": {
+      "kind": "views",
+      "files": {
+        "sheet": {
+          "file": "bico-curso.webp",
+          "cell": [
+            167,
+            229
+          ],
+          "views": 1,
+          "rows": [
+            "1"
+          ],
+          "anchor": [
+            0.317365,
+            0.775109
+          ],
+          "pages": [
+            {
+              "file": "bico-curso.webp",
+              "columns": 1,
+              "rows": 1,
+              "firstFrame": 0,
+              "frameCount": 1,
+              "sha256": "920cd6aba800df06a1a3df53c2e6089375d00535933519a184a440159f5a6601"
+            }
+          ],
+          "sha256": "920cd6aba800df06a1a3df53c2e6089375d00535933519a184a440159f5a6601"
+        }
+      },
+      "meta": {
+        "pixelArt": true,
+        "porta": [
+          42,
+          172,
+          22,
+          38
+        ]
+      }
+    }
+  }
+}

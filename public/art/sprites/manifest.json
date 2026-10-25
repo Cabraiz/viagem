@@ -35,6 +35,186 @@
     "aposentado": {
       "kind": "dir8",
       "files": {
+        "attack16-N": {
+          "file": "aposentado.attack16-n.33f7d65b44ca.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.93,
+          "figure": {
+            "left": 23,
+            "top": 22,
+            "right": 78,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-n.33f7d65b44ca.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "33f7d65b44cae597d618882da14d5a2c6eb45604133e94125d101522ca094749"
+            }
+          ],
+          "sha256": "33f7d65b44cae597d618882da14d5a2c6eb45604133e94125d101522ca094749"
+        },
+        "attack16-NW": {
+          "file": "aposentado.attack16-nw.6b50e6b35868.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.68,
+          "figure": {
+            "left": 17,
+            "top": 23,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-nw.6b50e6b35868.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "6b50e6b3586866553b6af07ae7e24dc7fa9f31a11a3113590007d0839196bdb3"
+            }
+          ],
+          "sha256": "6b50e6b3586866553b6af07ae7e24dc7fa9f31a11a3113590007d0839196bdb3"
+        },
+        "attack16-S": {
+          "file": "aposentado.attack16-s.83201f6755bc.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 23,
+            "top": 27,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-s.83201f6755bc.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "83201f6755bce12014bc7ea0ec03f8e25fb22da275b4d701bab40f8aa165e0cf"
+            }
+          ],
+          "sha256": "83201f6755bce12014bc7ea0ec03f8e25fb22da275b4d701bab40f8aa165e0cf"
+        },
+        "attack16-SE": {
+          "file": "aposentado.attack16-se.00989823152c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.59,
+          "figure": {
+            "left": 24,
+            "top": 23,
+            "right": 75,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-se.00989823152c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "00989823152cc1e08d35ecc274e41f41aefd9d7cbf76a032f4142770f66bf571"
+            }
+          ],
+          "sha256": "00989823152cc1e08d35ecc274e41f41aefd9d7cbf76a032f4142770f66bf571"
+        },
+        "attack16-W": {
+          "file": "aposentado.attack16-w.d8d3f9e066e6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.76,
+          "figure": {
+            "left": 19,
+            "top": 24,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.attack16-w.d8d3f9e066e6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96"
+            }
+          ],
+          "sha256": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96"
+        },
         "dir4": {
           "file": "aposentado.dir4.webp",
           "cell": [
@@ -105,13 +285,2467 @@
             }
           ],
           "sha256": "1b8ff8b8c9b6b737212a9a388a95f5e78e44f7d81000d1d59eacc0f7c27ee357"
+        },
+        "hurt16-N": {
+          "file": "aposentado.hurt16-n.e5fbc3b16d14.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.1,
+          "figure": {
+            "left": 22,
+            "top": 23,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-n.e5fbc3b16d14.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "e5fbc3b16d14d0df4c971bcf8bc356dfad1972e3c9a6b7cebe031e6e66572aa8"
+            }
+          ],
+          "sha256": "e5fbc3b16d14d0df4c971bcf8bc356dfad1972e3c9a6b7cebe031e6e66572aa8"
+        },
+        "hurt16-NW": {
+          "file": "aposentado.hurt16-nw.deeb7475f924.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.01,
+          "figure": {
+            "left": 22,
+            "top": 24,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-nw.deeb7475f924.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "deeb7475f924e18b68c35c78c41125214a1dbd82a8f963ea4aa34267d3b3a034"
+            }
+          ],
+          "sha256": "deeb7475f924e18b68c35c78c41125214a1dbd82a8f963ea4aa34267d3b3a034"
+        },
+        "hurt16-S": {
+          "file": "aposentado.hurt16-s.b42e6befd9c3.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.15,
+          "figure": {
+            "left": 24,
+            "top": 25,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-s.b42e6befd9c3.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "b42e6befd9c3c543c519ae4019a3acb1ac4b6bcd7c4e5dda7c77e7e5789d0069"
+            }
+          ],
+          "sha256": "b42e6befd9c3c543c519ae4019a3acb1ac4b6bcd7c4e5dda7c77e7e5789d0069"
+        },
+        "hurt16-SE": {
+          "file": "aposentado.hurt16-se.e832cd82a506.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.86,
+          "figure": {
+            "left": 24,
+            "top": 23,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-se.e832cd82a506.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "e832cd82a506268b1cc6fb64db873f4369a333d435600fd723f40f19a75321df"
+            }
+          ],
+          "sha256": "e832cd82a506268b1cc6fb64db873f4369a333d435600fd723f40f19a75321df"
+        },
+        "hurt16-W": {
+          "file": "aposentado.hurt16-w.89e56fd8f4e0.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 6,
+          "durationMs": 300,
+          "fps": 20,
+          "loop": false,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.87,
+          "figure": {
+            "left": 30,
+            "top": 26,
+            "right": 68,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.hurt16-w.89e56fd8f4e0.webp",
+              "columns": 3,
+              "rows": 2,
+              "firstFrame": 0,
+              "frameCount": 6,
+              "sha256": "89e56fd8f4e033dda22eccee87711297759c1cdab8596083161b1102baed6eae"
+            }
+          ],
+          "sha256": "89e56fd8f4e033dda22eccee87711297759c1cdab8596083161b1102baed6eae"
+        },
+        "idle16-N": {
+          "file": "aposentado.idle16-n.1a143b9db7a2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.07,
+          "figure": {
+            "left": 27,
+            "top": 22,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-n.1a143b9db7a2.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1a143b9db7a2e63c5d2bb0fc64b0f16b691e563aa84c337e4fec8fd5df5fbb5a"
+            }
+          ],
+          "sha256": "1a143b9db7a2e63c5d2bb0fc64b0f16b691e563aa84c337e4fec8fd5df5fbb5a"
+        },
+        "idle16-NW": {
+          "file": "aposentado.idle16-nw.7e7f6fa491fa.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.03,
+          "figure": {
+            "left": 27,
+            "top": 22,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-nw.7e7f6fa491fa.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "7e7f6fa491fa18092dbff0a5c7130c1da0d64adb2354a5ae1e97b883252a2fe0"
+            }
+          ],
+          "sha256": "7e7f6fa491fa18092dbff0a5c7130c1da0d64adb2354a5ae1e97b883252a2fe0"
+        },
+        "idle16-S": {
+          "file": "aposentado.idle16-s.f9f4da098fe1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.1,
+          "figure": {
+            "left": 27,
+            "top": 24,
+            "right": 70,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-s.f9f4da098fe1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "f9f4da098fe1058fcc70ceeaf7878ac18fbe5a51107742e9218eead864fdc95c"
+            }
+          ],
+          "sha256": "f9f4da098fe1058fcc70ceeaf7878ac18fbe5a51107742e9218eead864fdc95c"
+        },
+        "idle16-SE": {
+          "file": "aposentado.idle16-se.f0a75e5a6c01.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.83,
+          "figure": {
+            "left": 28,
+            "top": 22,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-se.f0a75e5a6c01.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "f0a75e5a6c018b3b86e5180db509382240c15af0606bd5cf66c2863573d6fc8b"
+            }
+          ],
+          "sha256": "f0a75e5a6c018b3b86e5180db509382240c15af0606bd5cf66c2863573d6fc8b"
+        },
+        "idle16-W": {
+          "file": "aposentado.idle16-w.581a04ffd519.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.86,
+          "figure": {
+            "left": 31,
+            "top": 23,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.idle16-w.581a04ffd519.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "581a04ffd51934f6ba129dd76a4ba58cabecdecc2c4826c2b0c9d9ffec1aa1c7"
+            }
+          ],
+          "sha256": "581a04ffd51934f6ba129dd76a4ba58cabecdecc2c4826c2b0c9d9ffec1aa1c7"
+        },
+        "pull16-N": {
+          "file": "aposentado.pull16-n.f86d2a03069a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.83,
+          "figure": {
+            "left": 30,
+            "top": 14,
+            "right": 67,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-n.f86d2a03069a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67"
+            }
+          ],
+          "sha256": "f86d2a03069ab6d74acc3cc838181eaefbc9d5820e636b6e82649d371cf44f67",
+          "phase": {
+            "d": [
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886,
+              0.01886
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-NW": {
+          "file": "aposentado.pull16-nw.4ec66f679327.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 25,
+            "top": 24,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-nw.4ec66f679327.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "4ec66f6793271f093656a0a19fe59dab5148e49f8fc9a2bf29662ed0dd9ffe2a"
+            }
+          ],
+          "sha256": "4ec66f6793271f093656a0a19fe59dab5148e49f8fc9a2bf29662ed0dd9ffe2a",
+          "phase": {
+            "d": [
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723,
+              0.04723
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-S": {
+          "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.01,
+          "figure": {
+            "left": 31,
+            "top": 27,
+            "right": 65,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-s.2ea61d40ab73.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc"
+            }
+          ],
+          "sha256": "2ea61d40ab7313709b4bc97ff440542d74f48e822263a36df263f9704cdee6dc",
+          "phase": {
+            "d": [
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173,
+              0.0173
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-SE": {
+          "file": "aposentado.pull16-se.7d5a96f3ff99.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.61,
+          "figure": {
+            "left": 25,
+            "top": 25,
+            "right": 77,
+            "bottom": 89
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-se.7d5a96f3ff99.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "7d5a96f3ff9944aabc77d869c5b395ecf289abe2f53b5f21ec667aa7c50b2b53"
+            }
+          ],
+          "sha256": "7d5a96f3ff9944aabc77d869c5b395ecf289abe2f53b5f21ec667aa7c50b2b53",
+          "phase": {
+            "d": [
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727,
+              0.03727
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "pull16-W": {
+          "file": "aposentado.pull16-w.90fbf5f87134.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 51.03,
+          "figure": {
+            "left": 21,
+            "top": 27,
+            "right": 77,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.pull16-w.90fbf5f87134.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "90fbf5f8713453dcab935b71d9c78920097327e9fe428d3e45914c0e87269431"
+            }
+          ],
+          "sha256": "90fbf5f8713453dcab935b71d9c78920097327e9fe428d3e45914c0e87269431",
+          "phase": {
+            "d": [
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838,
+              0.03838
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-N": {
+          "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.17,
+          "figure": {
+            "left": 30,
+            "top": 26,
+            "right": 67,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-n.9592e9d1b0fb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f"
+            }
+          ],
+          "sha256": "9592e9d1b0fb1c4ef003ff7681e3bec72ca2c7645564b9d0eb4550d5c096e25f",
+          "phase": {
+            "d": [
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097,
+              0.0097
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-NW": {
+          "file": "aposentado.push16-nw.69f6b2ae90a9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 42.37,
+          "figure": {
+            "left": 14,
+            "top": 22,
+            "right": 71,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-nw.69f6b2ae90a9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "69f6b2ae90a9c0ecc7d42f000fad1d1f6b3de9eca536d46c1a86422ae4039e72"
+            }
+          ],
+          "sha256": "69f6b2ae90a9c0ecc7d42f000fad1d1f6b3de9eca536d46c1a86422ae4039e72",
+          "phase": {
+            "d": [
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446,
+              0.03446
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-S": {
+          "file": "aposentado.push16-s.888e45d2c0dd.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.52,
+          "figure": {
+            "left": 24,
+            "top": 26,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-s.888e45d2c0dd.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "888e45d2c0dd8eea466c4a2ae225f06d4d778fcce10be17f17864af02a23eadb"
+            }
+          ],
+          "sha256": "888e45d2c0dd8eea466c4a2ae225f06d4d778fcce10be17f17864af02a23eadb",
+          "phase": {
+            "d": [
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618,
+              0.01618
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-SE": {
+          "file": "aposentado.push16-se.ab9663bb68a9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 52.9,
+          "figure": {
+            "left": 27,
+            "top": 26,
+            "right": 78,
+            "bottom": 88
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-se.ab9663bb68a9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ab9663bb68a91787478c9a9cbdcd3ec9f1a351967dea1680889b3552f5144d4a"
+            }
+          ],
+          "sha256": "ab9663bb68a91787478c9a9cbdcd3ec9f1a351967dea1680889b3552f5144d4a",
+          "phase": {
+            "d": [
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329,
+              0.02329
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "push16-W": {
+          "file": "aposentado.push16-w.848bb50f0713.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 1000,
+          "fps": 16,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 39.71,
+          "figure": {
+            "left": 15,
+            "top": 23,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "aposentado.push16-w.848bb50f0713.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "848bb50f071399ff3980668b43c765aa0b8e9b41bc4e17e3955c7e05e2a51570"
+            }
+          ],
+          "sha256": "848bb50f071399ff3980668b43c765aa0b8e9b41bc4e17e3955c7e05e2a51570",
+          "phase": {
+            "d": [
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715,
+              0.04715
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-N": {
+          "file": "aposentado.run16-n.c7c875baca98.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 26,
+            "top": 18,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-n.c7c875baca98.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c7c875baca98bfb9d01d32688ad5e873bc08e6490e7c99829ac04a3df72ac30b"
+            }
+          ],
+          "sha256": "c7c875baca98bfb9d01d32688ad5e873bc08e6490e7c99829ac04a3df72ac30b",
+          "phase": {
+            "d": [
+              0.13368,
+              0.13368,
+              0.05217,
+              0.13368,
+              0.02609,
+              0.13368,
+              0.2,
+              0.13368,
+              0.13368,
+              0.13368,
+              0.05217,
+              0.13368,
+              0.02609,
+              0.13368,
+              0.2,
+              0.13368
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                11.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                3
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                1.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                11.5
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-NW": {
+          "file": "aposentado.run16-nw.3689aaeeeaa6.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.74,
+          "figure": {
+            "left": 29,
+            "top": 21,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-nw.3689aaeeeaa6.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3689aaeeeaa6ab23b6b9c2bcddb770fda409a310c2829fe49a8c33186d2bca05"
+            }
+          ],
+          "sha256": "3689aaeeeaa6ab23b6b9c2bcddb770fda409a310c2829fe49a8c33186d2bca05",
+          "phase": {
+            "d": [
+              0.23366,
+              0.23366,
+              0.23366,
+              0.23366,
+              0.2159,
+              0.23366,
+              0.23366,
+              0.23366,
+              0.05783,
+              0.0694,
+              0.23366,
+              0.23366,
+              0.03855,
+              0.0347,
+              0.23366,
+              0.23366
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                11.2,
+                5.6
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                1.5
+              ],
+              [
+                3.6,
+                1.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                2,
+                1
+              ],
+              [
+                1.8,
+                0.9
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-S": {
+          "file": "aposentado.run16-s.272535c7d895.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.69,
+          "figure": {
+            "left": 29,
+            "top": 23,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-s.272535c7d895.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "272535c7d89596b35ba5d07e5b1e55714a58bca03ae864e41737431745b2fd22"
+            }
+          ],
+          "sha256": "272535c7d89596b35ba5d07e5b1e55714a58bca03ae864e41737431745b2fd22",
+          "phase": {
+            "d": [
+              0.12121,
+              0.12121,
+              0.12121,
+              0.09821,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.09821,
+              0.12121,
+              0.12121,
+              0.12121,
+              0.12121
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -5.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -5.5
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-SE": {
+          "file": "aposentado.run16-se.c0fb6c470784.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.85,
+          "figure": {
+            "left": 26,
+            "top": 21,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-se.c0fb6c470784.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c0fb6c4707841ff0b2e548d8d613ee9c52e097b8b8f5beba65dfa02b7793e0ef"
+            }
+          ],
+          "sha256": "c0fb6c4707841ff0b2e548d8d613ee9c52e097b8b8f5beba65dfa02b7793e0ef",
+          "phase": {
+            "d": [
+              0.2288,
+              0.2288,
+              0.10889,
+              0.2288,
+              0.2288,
+              0.2288,
+              0.03111,
+              0.2288,
+              0.05444,
+              0.2288,
+              0.2288,
+              0.04667,
+              0.2288,
+              0.2288,
+              0.2288,
+              0.2288
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -5.6,
+                -2.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -1.6,
+                -0.8
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -2.8,
+                -1.4
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                -2.4,
+                -1.2
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "run16-W": {
+          "file": "aposentado.run16-w.1f89451acf13.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.88,
+          "figure": {
+            "left": 26,
+            "top": 25,
+            "right": 73,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.run16-w.1f89451acf13.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1f89451acf13822f32da5fe00fd9633818648595b4a5d625a27f26c05a955c24"
+            }
+          ],
+          "sha256": "1f89451acf13822f32da5fe00fd9633818648595b4a5d625a27f26c05a955c24",
+          "phase": {
+            "d": [
+              0.27579,
+              0.27579,
+              0.02655,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.11504,
+              0.0531,
+              0.27579,
+              0.27579,
+              0.27579,
+              0.27579
+            ],
+            "v": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                1.5,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                6.5,
+                0
+              ],
+              [
+                3,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        },
+        "walk16-N": {
+          "file": "aposentado.walk16-n.b25e20405860.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.93,
+          "figure": {
+            "left": 25,
+            "top": 21,
+            "right": 71,
+            "bottom": 84
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-n.b25e20405860.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299"
+            }
+          ],
+          "sha256": "b25e2040586070f428e746b7bff51a27723a97b14d775e66d912ef9e437d7299"
+        },
+        "walk16-NW": {
+          "file": "aposentado.walk16-nw.513a46c525bb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.91,
+          "figure": {
+            "left": 29,
+            "top": 20,
+            "right": 66,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-nw.513a46c525bb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "513a46c525bb48f1ee90ae582b8893da91e80c48a12816a86eab3807cfd0e36a"
+            }
+          ],
+          "sha256": "513a46c525bb48f1ee90ae582b8893da91e80c48a12816a86eab3807cfd0e36a"
+        },
+        "walk16-S": {
+          "file": "aposentado.walk16-s.79f3a09ba058.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.75,
+          "figure": {
+            "left": 27,
+            "top": 26,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-s.79f3a09ba058.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "79f3a09ba0585c1c6a9e139bd4456fbb563af64565b0b469e87b6aa7ea81ba5a"
+            }
+          ],
+          "sha256": "79f3a09ba0585c1c6a9e139bd4456fbb563af64565b0b469e87b6aa7ea81ba5a"
+        },
+        "walk16-SE": {
+          "file": "aposentado.walk16-se.1e05d3d2cfda.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 30,
+            "top": 25,
+            "right": 66,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-se.1e05d3d2cfda.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1e05d3d2cfdaeb0430ffcb927a81d17152709a9ebddffd0deec8abfd9a3336ec"
+            }
+          ],
+          "sha256": "1e05d3d2cfdaeb0430ffcb927a81d17152709a9ebddffd0deec8abfd9a3336ec"
+        },
+        "walk16-W": {
+          "file": "aposentado.walk16-w.95d52ad4323c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.78,
+          "figure": {
+            "left": 27,
+            "top": 25,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "aposentado.walk16-w.95d52ad4323c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54"
+            }
+          ],
+          "sha256": "95d52ad4323cac5ea3974ac9f1ff4558e951f0f04a412861d0b9f5300a2a8b54"
+        },
+        "dance128": {
+          "file": "aposentado.dance128.b2d18b849abb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 18,
+            "top": 18,
+            "right": 91,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "aposentado-p1.webp",
+              "aposentado-p2.webp",
+              "aposentado-p3.webp",
+              "aposentado-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "aposentado.dance128.b2d18b849abb.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
+            }
+          ],
+          "sha256": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc"
         }
       },
-      "sha256": "14eabd111d751d1b4c2ac3ec6a88c2a369799dd7c70173cdc8e31e28ec7f06b7"
+      "sha256": "53c70772f9f96a10158214211a6be7bd0c4a93ff81bd74cea29002ffd57bb84d"
     },
     "astrologa": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "astrologa.dance128.7b131d77fb3f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 19,
+            "top": 13,
+            "right": 78,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "astrologa-p1.webp",
+              "astrologa-p2.webp",
+              "astrologa-p3.webp",
+              "astrologa-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "astrologa.dance128.7b131d77fb3f.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "7b131d77fb3f189099214d6f63c4f36ef524d21bfa6ea692b7effc1fad791663"
+            }
+          ],
+          "sha256": "7b131d77fb3f189099214d6f63c4f36ef524d21bfa6ea692b7effc1fad791663"
+        },
         "dir4": {
           "file": "astrologa.dir4.webp",
           "cell": [
@@ -184,11 +2818,53 @@
           "sha256": "faafac66631c0ba2fcb88a376f92884f7715cb1890c2db7918d6e2e9ddb3991f"
         }
       },
-      "sha256": "14223204ebe6732388e20767a838c075dc67552dd3f6e216dce379c284528e3f"
+      "sha256": "d7a1731dd663727d103a8834c7e2a010a61fca39a4215de291fa50f1e075d940"
     },
     "cidadao-comum": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "cidadao-comum.dance128.11d721e0d626.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.91,
+          "figure": {
+            "left": 22,
+            "top": 18,
+            "right": 81,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "cidadao-comum-p1.webp",
+              "cidadao-comum-p2.webp",
+              "cidadao-comum-p3.webp",
+              "cidadao-comum-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "cidadao-comum.dance128.11d721e0d626.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "11d721e0d626aa6be3c47920923e533b495c40aec0c62db39fc8695d0d223147"
+            }
+          ],
+          "sha256": "11d721e0d626aa6be3c47920923e533b495c40aec0c62db39fc8695d0d223147"
+        },
         "dir4": {
           "file": "cidadao-comum.dir4.webp",
           "cell": [
@@ -261,7 +2937,7 @@
           "sha256": "0beb70849ca06ed21db447d8a49d4cd8ec3db5a24539fee883f2fc0848f28455"
         }
       },
-      "sha256": "4eadbdcb0a07c26954ffe98bab2c091026ad752724d8cdd4115052173c80b356"
+      "sha256": "9956339860f24a3b423477285b3410eda70f92dcdfe74b2266a4ebcb9bc27df9"
     },
     "clt-cansado": {
       "kind": "dir8",
@@ -796,6 +3472,294 @@
             }
           ],
           "sha256": "3c12efcc5ab18ca96f0d5c348f9c940f1f72788af4b8bd37f58fd6ed809ff799"
+        },
+        "idle16-E": {
+          "file": "clt-cansado.idle16-e.36cae497b789.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 35,
+            "top": 16,
+            "right": 71,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-e.36cae497b789.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "36cae497b789ed271c3b57e3ace3b4d969ad221f038a8a49a19f7f29407b000b"
+            }
+          ],
+          "sha256": "36cae497b789ed271c3b57e3ace3b4d969ad221f038a8a49a19f7f29407b000b"
+        },
+        "idle16-N": {
+          "file": "clt-cansado.idle16-n.8f78da6fd8cb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 37,
+            "top": 15,
+            "right": 72,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-n.8f78da6fd8cb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "8f78da6fd8cba53d4c21ecb69a002aaeceed463cd7683b06bbae16ed4df60086"
+            }
+          ],
+          "sha256": "8f78da6fd8cba53d4c21ecb69a002aaeceed463cd7683b06bbae16ed4df60086"
+        },
+        "idle16-NE": {
+          "file": "clt-cansado.idle16-ne.221f33477d0d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 36,
+            "top": 16,
+            "right": 73,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-ne.221f33477d0d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "221f33477d0db4e5985dd98d2953e36bc6e7077b023f1607d955f6eb31a02333"
+            }
+          ],
+          "sha256": "221f33477d0db4e5985dd98d2953e36bc6e7077b023f1607d955f6eb31a02333"
+        },
+        "idle16-NW": {
+          "file": "clt-cansado.idle16-nw.7f6c70e7d881.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 36,
+            "top": 15,
+            "right": 73,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-nw.7f6c70e7d881.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "7f6c70e7d88100368d38307674d5272aaea6016fb1b222d07d3320734f629515"
+            }
+          ],
+          "sha256": "7f6c70e7d88100368d38307674d5272aaea6016fb1b222d07d3320734f629515"
+        },
+        "idle16-S": {
+          "file": "clt-cansado.idle16-s.c6aba328d725.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 40,
+            "top": 15,
+            "right": 75,
+            "bottom": 71
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-s.c6aba328d725.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c6aba328d7259f8f8c3fa4559d3dec60df62187658226fdc8e5ffdb0970f9d2e"
+            }
+          ],
+          "sha256": "c6aba328d7259f8f8c3fa4559d3dec60df62187658226fdc8e5ffdb0970f9d2e"
+        },
+        "idle16-SE": {
+          "file": "clt-cansado.idle16-se.c455bab2525d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 34,
+            "top": 15,
+            "right": 69,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-se.c455bab2525d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c455bab2525d45bd8fc9466b078cf2a7153020ab0f3a6c92d92c05265c6307bc"
+            }
+          ],
+          "sha256": "c455bab2525d45bd8fc9466b078cf2a7153020ab0f3a6c92d92c05265c6307bc"
+        },
+        "idle16-SW": {
+          "file": "clt-cansado.idle16-sw.cc3174cc7c7d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 40,
+            "top": 15,
+            "right": 75,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-sw.cc3174cc7c7d.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "cc3174cc7c7d3307fdb04f58e60e2c9ce730dd92011c265d06c8997749500e55"
+            }
+          ],
+          "sha256": "cc3174cc7c7d3307fdb04f58e60e2c9ce730dd92011c265d06c8997749500e55"
+        },
+        "idle16-W": {
+          "file": "clt-cansado.idle16-w.bff4c31a21d7.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 49,
+          "pivotX": 48,
+          "figure": {
+            "left": 38,
+            "top": 16,
+            "right": 74,
+            "bottom": 72
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.idle16-w.bff4c31a21d7.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "bff4c31a21d7fa007a99758544fc0295fa5136b2cb286066c4f1a09f1b829d18"
+            }
+          ],
+          "sha256": "bff4c31a21d7fa007a99758544fc0295fa5136b2cb286066c4f1a09f1b829d18"
         },
         "idle8": {
           "file": "clt-cansado.idle8.15cf38519b49.webp",
@@ -2940,9 +5904,51 @@
             }
           ],
           "sha256": "b28327639cc8e51016fe9bff54b1c105ea41175078a7178ee12eeeebd9f1255a"
+        },
+        "dance128": {
+          "file": "clt-cansado.dance128.b5f33e7db28e.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 21,
+            "top": 17,
+            "right": 78,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "clt-cansado-p1.webp",
+              "clt-cansado-p2.webp",
+              "clt-cansado-p3.webp",
+              "clt-cansado-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "clt-cansado.dance128.b5f33e7db28e.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308"
+            }
+          ],
+          "sha256": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308"
         }
       },
-      "sha256": "2fa9d0b0ac879347916aa9bd63ff9b158ee1cf4a07da21ade38c419b768de982"
+      "sha256": "7d60b7193e518aac73e52fd87b05c269593b118df2276766c2bc727eb529ccbe"
     },
     "coach": {
       "kind": "dir8",
@@ -3226,6 +6232,48 @@
             }
           ],
           "sha256": "14bff6b740c4ed9d5afb6900c3c2b0457093f8adef1517e2f4535aaf7fa5bc65"
+        },
+        "dance128": {
+          "file": "coach.dance128.b25bbf2b1dac.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.97,
+          "figure": {
+            "left": 15,
+            "top": 14,
+            "right": 82,
+            "bottom": 88
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "coach-p1.webp",
+              "coach-p2.webp",
+              "coach-p3.webp",
+              "coach-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "coach.dance128.b25bbf2b1dac.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "b25bbf2b1dac9e5e44ae3291b7726e781786364d69b0d9f1191a0095c428f5c5"
+            }
+          ],
+          "sha256": "b25bbf2b1dac9e5e44ae3291b7726e781786364d69b0d9f1191a0095c428f5c5"
         },
         "dir4": {
           "file": "coach.dir4.webp",
@@ -3613,7 +6661,7 @@
           "sha256": "0535b0f1bf98abd649f781fbfc8c283b7d4ca5d6d97b13fa5338021d0aa79d02"
         }
       },
-      "sha256": "2fe533cda0eac9d0a34ab4e658b37cfbf3c56eaafae07c956b70690da345f40a"
+      "sha256": "94bf8dbb3a66a9c8f06b81225929b0798af132e865c36eba756cf75e5c8b53ea"
     },
     "concurseira": {
       "kind": "dir8",
@@ -3897,6 +6945,48 @@
             }
           ],
           "sha256": "57fb7a174556f90d5e61fa46f25cc8c1c7f0817d8f6b747588dd3b509a816413"
+        },
+        "dance128": {
+          "file": "concurseira.dance128.30322bc89af2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 23,
+            "top": 17,
+            "right": 77,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "concurseira-p1.webp",
+              "concurseira-p2.webp",
+              "concurseira-p3.webp",
+              "concurseira-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "concurseira.dance128.30322bc89af2.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "30322bc89af28e52287cd92ab0d3d8e3be6f77fb2fb9f33c2914f583b25ec4ac"
+            }
+          ],
+          "sha256": "30322bc89af28e52287cd92ab0d3d8e3be6f77fb2fb9f33c2914f583b25ec4ac"
         },
         "dir4": {
           "file": "concurseira.dir4.webp",
@@ -4284,7 +7374,7 @@
           "sha256": "31222c9333d689884dd7a3549998757ed4c0e27967fb3fc78e0967ff5318dfef"
         }
       },
-      "sha256": "af55a37fd9765a912f1027d88abe969870986ba49c05fe9954c1c16a2c001e2c"
+      "sha256": "dab6963cebdc4c3492c60b9b62edb8357187c31499874bf8f1cf16ddd2e272ee"
     },
     "faxineira": {
       "kind": "dir8",
@@ -4568,6 +7658,48 @@
             }
           ],
           "sha256": "7571e61d68d6894a17ba7d3f21079b4d05279b8ce948a40ca2a4e156d95e0947"
+        },
+        "dance128": {
+          "file": "faxineira.dance128.a5741b8b0b33.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 19,
+            "top": 15,
+            "right": 79,
+            "bottom": 94
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "faxineira-p1.webp",
+              "faxineira-p2.webp",
+              "faxineira-p3.webp",
+              "faxineira-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "faxineira.dance128.a5741b8b0b33.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "a5741b8b0b338f8dba8dd526a4dd9ea837909ec116e7c7916b3cd3d04c99fe59"
+            }
+          ],
+          "sha256": "a5741b8b0b338f8dba8dd526a4dd9ea837909ec116e7c7916b3cd3d04c99fe59"
         },
         "dir4": {
           "file": "faxineira.dir4.webp",
@@ -4955,7 +8087,7 @@
           "sha256": "b6dda848024384d83c673246f8487dfdeab7c963c68684a0bbb426b520769ff0"
         }
       },
-      "sha256": "3aaefd669a6a8d851df3731b7681dfef94adf14906c3754cdd146692cf50bd78"
+      "sha256": "12fa4cd3dce675dbbb71ada96735a79c6a7fea97297bdd480cdabfdc39d46588"
     },
     "feirante": {
       "kind": "dir8",
@@ -5239,6 +8371,48 @@
             }
           ],
           "sha256": "c6c089ecd31d3bd0923a6313389e033e99b9c61ed681d7ddc48127ba0e0b7844"
+        },
+        "dance128": {
+          "file": "feirante.dance128.1e82816fd1cc.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 17,
+            "top": 17,
+            "right": 79,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "feirante-p1.webp",
+              "feirante-p2.webp",
+              "feirante-p3.webp",
+              "feirante-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "feirante.dance128.1e82816fd1cc.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "1e82816fd1ccaf02113261acd713e0bfbe5db35848ea44e122a62f70491e4664"
+            }
+          ],
+          "sha256": "1e82816fd1ccaf02113261acd713e0bfbe5db35848ea44e122a62f70491e4664"
         },
         "dir4": {
           "file": "feirante.dir4.webp",
@@ -5626,11 +8800,53 @@
           "sha256": "375a7f5ce67d4e2d897b0a02618662abbb967565ef0ffbecbc23a03c915d572c"
         }
       },
-      "sha256": "5daad1fc9f9a2e0d83c1ea79e7a895cbe3452c8edf617d78313b40f91fd046f4"
+      "sha256": "63c7bf2ec2599eeedc844b116f551c26e6d3208e4bff5117fa680161cbcd6a65"
     },
     "gambiarreiro": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "gambiarreiro.dance128.02f53c8b7791.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 12,
+            "top": 17,
+            "right": 84,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "gambiarreiro-p1.webp",
+              "gambiarreiro-p2.webp",
+              "gambiarreiro-p3.webp",
+              "gambiarreiro-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "gambiarreiro.dance128.02f53c8b7791.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "02f53c8b77917df77ef13de9b139b3bfd1125007c85d5aeb69116421dec742bc"
+            }
+          ],
+          "sha256": "02f53c8b77917df77ef13de9b139b3bfd1125007c85d5aeb69116421dec742bc"
+        },
         "dir4": {
           "file": "gambiarreiro.dir4.webp",
           "cell": [
@@ -5703,7 +8919,7 @@
           "sha256": "9d5d5d056805c8ed375c579313ff07d9eadb588a100803165861b58847a568ed"
         }
       },
-      "sha256": "db92d14f347798843c8b4d1a5d243ee7a645d2c08a07d1400a81a4438c25a116"
+      "sha256": "7c4586cfd84eee88ae8e8838ecb4530a842c64df17f75a39b1906d526e0304cb"
     },
     "gato-nada-pra-comer": {
       "kind": "dir8",
@@ -6069,14 +9285,14 @@
           "sha256": "45b0734d0223baca4bd189529c21990d43ae8f23a19ea0484ee4df46208626d6"
         },
         "idle16-N": {
-          "file": "gato-nada-pra-comer.idle16-n.5aaede5db316.webp",
+          "file": "gato-nada-pra-comer.idle16-n.9c58f7a47571.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -6085,34 +9301,34 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 48.17,
+          "pivotX": 48.21,
           "figure": {
-            "left": 23,
-            "top": 31,
-            "right": 74,
+            "left": 21,
+            "top": 29,
+            "right": 76,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.idle16-n.5aaede5db316.webp",
+              "file": "gato-nada-pra-comer.idle16-n.9c58f7a47571.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c"
+              "frameCount": 16,
+              "sha256": "9c58f7a47571dd417e86ea77215a2e1f5362c4a8e4fc0b3443b49d9f8fd23509"
             }
           ],
-          "sha256": "5aaede5db316f4b22640bb02a9d9dc06f27a95ef3f3287f8872ead6b8fa9952c"
+          "sha256": "9c58f7a47571dd417e86ea77215a2e1f5362c4a8e4fc0b3443b49d9f8fd23509"
         },
         "idle16-NW": {
-          "file": "gato-nada-pra-comer.idle16-nw.651957abad67.webp",
+          "file": "gato-nada-pra-comer.idle16-nw.26e0243054f5.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -6121,70 +9337,70 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 48.01,
-          "figure": {
-            "left": 24,
-            "top": 30,
-            "right": 70,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "gato-nada-pra-comer.idle16-nw.651957abad67.webp",
-              "columns": 4,
-              "rows": 2,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5"
-            }
-          ],
-          "sha256": "651957abad67fa0235c6a9d8112fe4539f91ebc625c0ff0ba1207ddad2ac2fd5"
-        },
-        "idle16-S": {
-          "file": "gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 52,
-          "pivotX": 48.1,
+          "pivotX": 48.09,
           "figure": {
             "left": 23,
-            "top": 30,
-            "right": 74,
+            "top": 28,
+            "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.idle16-s.6639cfe4a26a.webp",
+              "file": "gato-nada-pra-comer.idle16-nw.26e0243054f5.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6"
+              "frameCount": 16,
+              "sha256": "26e0243054f543a408a431b9739ce341e951b1218dee5abbb6fb4995db9fda59"
             }
           ],
-          "sha256": "6639cfe4a26aa79a51921ede88d7b19f28599eb51c3a94432e6a6a820361bed6"
+          "sha256": "26e0243054f543a408a431b9739ce341e951b1218dee5abbb6fb4995db9fda59"
+        },
+        "idle16-S": {
+          "file": "gato-nada-pra-comer.idle16-s.054f6df3e766.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.13,
+          "figure": {
+            "left": 21,
+            "top": 28,
+            "right": 76,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.idle16-s.054f6df3e766.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "054f6df3e766095cd94eb4dfbbee2ebb3e1afdcb833a629e4198850cbd1c358d"
+            }
+          ],
+          "sha256": "054f6df3e766095cd94eb4dfbbee2ebb3e1afdcb833a629e4198850cbd1c358d"
         },
         "idle16-SE": {
-          "file": "gato-nada-pra-comer.idle16-se.39c43413843d.webp",
+          "file": "gato-nada-pra-comer.idle16-se.12531a174519.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -6193,34 +9409,34 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 47.89,
+          "pivotX": 47.92,
           "figure": {
-            "left": 25,
-            "top": 29,
-            "right": 70,
+            "left": 23,
+            "top": 27,
+            "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.idle16-se.39c43413843d.webp",
+              "file": "gato-nada-pra-comer.idle16-se.12531a174519.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da"
+              "frameCount": 16,
+              "sha256": "12531a1745198ea5af6f69feb834154f60c0f3d2a876441cedaa6abbc97b1a50"
             }
           ],
-          "sha256": "39c43413843d9860c005b917c7916f7c43fc8fe3e3517d5104926c29ee6057da"
+          "sha256": "12531a1745198ea5af6f69feb834154f60c0f3d2a876441cedaa6abbc97b1a50"
         },
         "idle16-W": {
-          "file": "gato-nada-pra-comer.idle16-w.96fff0d71005.webp",
+          "file": "gato-nada-pra-comer.idle16-w.bc5ce212176a.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -6229,24 +9445,24 @@
             0.875
           ],
           "height": 52,
-          "pivotX": 48.17,
+          "pivotX": 48.22,
           "figure": {
-            "left": 28,
-            "top": 29,
+            "left": 27,
+            "top": 27,
             "right": 69,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "gato-nada-pra-comer.idle16-w.96fff0d71005.webp",
+              "file": "gato-nada-pra-comer.idle16-w.bc5ce212176a.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22"
+              "frameCount": 16,
+              "sha256": "bc5ce212176ae8f6ff0c20f4d6492a2351c24235b2082d5256b1c2a9d71387b3"
             }
           ],
-          "sha256": "96fff0d710052305b0d54836d89e13198ae33db5a9808988c6a2fac4ef344c22"
+          "sha256": "bc5ce212176ae8f6ff0c20f4d6492a2351c24235b2082d5256b1c2a9d71387b3"
         },
         "pull16-N": {
           "file": "gato-nada-pra-comer.pull16-n.8bb0b9447751.webp",
@@ -8257,13 +11473,104 @@
             }
           ],
           "sha256": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc"
+        },
+        "dance128": {
+          "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.89,
+          "figure": {
+            "left": 16,
+            "top": 17,
+            "right": 81,
+            "bottom": 84
+          },
+          "source": {
+            "input": "codex",
+            "pages": [
+              "gato-nada-pra-comer.png"
+            ],
+            "drawn": {
+              "A": "gato-A-t1",
+              "B": "gato-B-t1",
+              "ordem": "AABB",
+              "delta": 0.115,
+              "band": [
+                0.15,
+                0.55
+              ]
+            }
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
+            }
+          ],
+          "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
         }
       },
-      "sha256": "4c7b363aab8a4375cd925cc6064f5c18cb3ddba3b73cb1547f57baba262880f8"
+      "sha256": "d25e010fc432e942e51baca1532e5cb88e9c753fbd7e9bf5469a46334c61635c"
     },
     "mae-pet": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "mae-pet.dance128.8f0b47e68a7d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 26,
+            "top": 18,
+            "right": 76,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "mae-pet-p1.webp",
+              "mae-pet-p2.webp",
+              "mae-pet-p3.webp",
+              "mae-pet-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "mae-pet.dance128.8f0b47e68a7d.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "8f0b47e68a7d30144b341cabab0a44143dba571a8d059a1ecbcb6c77922f702f"
+            }
+          ],
+          "sha256": "8f0b47e68a7d30144b341cabab0a44143dba571a8d059a1ecbcb6c77922f702f"
+        },
         "dir4": {
           "file": "mae-pet.dir4.webp",
           "cell": [
@@ -8336,7 +11643,7 @@
           "sha256": "3cbb7b5849b708c12d92bff6e9d1bdc65ee8aa93d73043735f8188efd28e680d"
         }
       },
-      "sha256": "b99fc9de779948aad525aeda773f31d8863970da19ef865bf63a8714e9ec61b0"
+      "sha256": "b4802c4edde89c07c3f423402bcfa2d8bd7f6415b1c39e316b8b2bea5373cf8d"
     },
     "maromba": {
       "kind": "dir8",
@@ -8622,7 +11929,7 @@
           "sha256": "67248bad4ed02e235a8869c404831f6fc5729d7075bf759e3c3a4a580f1147a3"
         },
         "attack16-N": {
-          "file": "maromba.attack16-n.579800de41b5.webp",
+          "file": "maromba.attack16-n.1fdc5ddb97e1.webp",
           "cell": [
             96,
             96
@@ -8638,27 +11945,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.81,
+          "pivotX": 48.11,
           "figure": {
             "left": 25,
-            "top": 23,
+            "top": 21,
             "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-n.579800de41b5.webp",
+              "file": "maromba.attack16-n.1fdc5ddb97e1.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64"
+              "sha256": "1fdc5ddb97e1b4ab7e6fb279b9e6bd5a18fb53ea9821c65c1f44994d3dda952e"
             }
           ],
-          "sha256": "579800de41b53e25d3d2865a8767ba1c74073a5ee2e5ffa0dcec7f649a17ce64"
+          "sha256": "1fdc5ddb97e1b4ab7e6fb279b9e6bd5a18fb53ea9821c65c1f44994d3dda952e"
         },
         "attack16-NW": {
-          "file": "maromba.attack16-nw.e1a1efc886e5.webp",
+          "file": "maromba.attack16-nw.15c2c52c9911.webp",
           "cell": [
             96,
             96
@@ -8674,27 +11981,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.81,
+          "pivotX": 47.75,
           "figure": {
-            "left": 20,
-            "top": 24,
-            "right": 69,
+            "left": 21,
+            "top": 19,
+            "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-nw.e1a1efc886e5.webp",
+              "file": "maromba.attack16-nw.15c2c52c9911.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726"
+              "sha256": "15c2c52c9911041d60974c3995de0285658cabf60fc6eac779ca37577382a552"
             }
           ],
-          "sha256": "e1a1efc886e557e098203d7605b2cdf0831457c4f186bd0ec9658e502e963726"
+          "sha256": "15c2c52c9911041d60974c3995de0285658cabf60fc6eac779ca37577382a552"
         },
         "attack16-S": {
-          "file": "maromba.attack16-s.7e3df22fec11.webp",
+          "file": "maromba.attack16-s.8f397e6547ec.webp",
           "cell": [
             96,
             96
@@ -8710,27 +12017,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.66,
+          "pivotX": 48.05,
           "figure": {
             "left": 27,
-            "top": 26,
+            "top": 20,
             "right": 68,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-s.7e3df22fec11.webp",
+              "file": "maromba.attack16-s.8f397e6547ec.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183"
+              "sha256": "8f397e6547eca5192db0bafdf3e4caeeddb2a177a07834c6e652f6e495d91cb6"
             }
           ],
-          "sha256": "7e3df22fec11a051b4c761d3d1e45dc09ea16ff18056ceb074ed9d146f4a5183"
+          "sha256": "8f397e6547eca5192db0bafdf3e4caeeddb2a177a07834c6e652f6e495d91cb6"
         },
         "attack16-SE": {
-          "file": "maromba.attack16-se.e39e2a9588ec.webp",
+          "file": "maromba.attack16-se.0b6342ebef9c.webp",
           "cell": [
             96,
             96
@@ -8746,27 +12053,27 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.82,
+          "pivotX": 47.51,
           "figure": {
             "left": 27,
-            "top": 25,
-            "right": 72,
+            "top": 18,
+            "right": 73,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-se.e39e2a9588ec.webp",
+              "file": "maromba.attack16-se.0b6342ebef9c.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b"
+              "sha256": "0b6342ebef9c39e7daf2b6bdaaf8c8efc32d2a3eb58169249d152599593516af"
             }
           ],
-          "sha256": "e39e2a9588ec033b0534419b1d9f47a2c5a5d45061810141b1286d773f20072b"
+          "sha256": "0b6342ebef9c39e7daf2b6bdaaf8c8efc32d2a3eb58169249d152599593516af"
         },
         "attack16-W": {
-          "file": "maromba.attack16-w.f2811360776b.webp",
+          "file": "maromba.attack16-w.7207972c9673.webp",
           "cell": [
             96,
             96
@@ -8782,24 +12089,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.91,
+          "pivotX": 47.44,
           "figure": {
-            "left": 18,
-            "top": 24,
-            "right": 74,
+            "left": 19,
+            "top": 19,
+            "right": 75,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.attack16-w.f2811360776b.webp",
+              "file": "maromba.attack16-w.7207972c9673.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34"
+              "sha256": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a"
             }
           ],
-          "sha256": "f2811360776b8b6922b90e9e8f9b59d155ebe10102b53d38da7cdc4da748df34"
+          "sha256": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a"
         },
         "dir4": {
           "file": "maromba.dir4.webp",
@@ -8873,7 +12180,7 @@
           "sha256": "2f60bf672bd00a976cf1ca9e5478ecc4ae4abc0240eab523bb64a44447f7e821"
         },
         "hurt16-N": {
-          "file": "maromba.hurt16-n.4d2142762c9f.webp",
+          "file": "maromba.hurt16-n.e66010cdb65e.webp",
           "cell": [
             96,
             96
@@ -8892,24 +12199,24 @@
           "pivotX": 47.8,
           "figure": {
             "left": 22,
-            "top": 26,
+            "top": 21,
             "right": 74,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-n.4d2142762c9f.webp",
+              "file": "maromba.hurt16-n.e66010cdb65e.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261"
+              "sha256": "e66010cdb65eb943013b3629f3817d2a0a61ddb3f3de8fd501c7367529011f05"
             }
           ],
-          "sha256": "4d2142762c9fa8051d832c02fbc9c9a241395817098e7426567e4a90a8d81261"
+          "sha256": "e66010cdb65eb943013b3629f3817d2a0a61ddb3f3de8fd501c7367529011f05"
         },
         "hurt16-NW": {
-          "file": "maromba.hurt16-nw.d7b8baf86dbd.webp",
+          "file": "maromba.hurt16-nw.d5abc0244a35.webp",
           "cell": [
             96,
             96
@@ -8928,24 +12235,24 @@
           "pivotX": 47.79,
           "figure": {
             "left": 24,
-            "top": 25,
-            "right": 70,
+            "top": 20,
+            "right": 72,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-nw.d7b8baf86dbd.webp",
+              "file": "maromba.hurt16-nw.d5abc0244a35.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931"
+              "sha256": "d5abc0244a3549a0e5224370cc3c8f0ec9e6dec347d26a322323418abcb00dbf"
             }
           ],
-          "sha256": "d7b8baf86dbd5239c467507f104fad083e931adbf836495f46d00ef574e60931"
+          "sha256": "d5abc0244a3549a0e5224370cc3c8f0ec9e6dec347d26a322323418abcb00dbf"
         },
         "hurt16-S": {
-          "file": "maromba.hurt16-s.cfabf768ea8c.webp",
+          "file": "maromba.hurt16-s.13bc5329735f.webp",
           "cell": [
             96,
             96
@@ -8964,24 +12271,24 @@
           "pivotX": 48.2,
           "figure": {
             "left": 23,
-            "top": 25,
+            "top": 19,
             "right": 74,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-s.cfabf768ea8c.webp",
+              "file": "maromba.hurt16-s.13bc5329735f.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd"
+              "sha256": "13bc5329735f890856f08e80ce9f9e896d1576aec3ad904f8e0081cfc66a8de5"
             }
           ],
-          "sha256": "cfabf768ea8cce8ea698bea48c37c62ee3b386b07dd684b9f90fcd8900c312bd"
+          "sha256": "13bc5329735f890856f08e80ce9f9e896d1576aec3ad904f8e0081cfc66a8de5"
         },
         "hurt16-SE": {
-          "file": "maromba.hurt16-se.7b72721c4f50.webp",
+          "file": "maromba.hurt16-se.bbc38e0c30bf.webp",
           "cell": [
             96,
             96
@@ -8999,25 +12306,25 @@
           "height": 56,
           "pivotX": 48.13,
           "figure": {
-            "left": 25,
-            "top": 25,
+            "left": 22,
+            "top": 19,
             "right": 69,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-se.7b72721c4f50.webp",
+              "file": "maromba.hurt16-se.bbc38e0c30bf.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721"
+              "sha256": "bbc38e0c30bf018d4a4973ce380d7a06a475a812dcc449a1bc90e8259143f6f2"
             }
           ],
-          "sha256": "7b72721c4f506773e78e9dbb0797b0d3125121c950007f59427c08f2b77a6721"
+          "sha256": "bbc38e0c30bf018d4a4973ce380d7a06a475a812dcc449a1bc90e8259143f6f2"
         },
         "hurt16-W": {
-          "file": "maromba.hurt16-w.7b70bb99d302.webp",
+          "file": "maromba.hurt16-w.ba4bc5a50f3c.webp",
           "cell": [
             96,
             96
@@ -9036,31 +12343,31 @@
           "pivotX": 47.96,
           "figure": {
             "left": 29,
-            "top": 25,
-            "right": 71,
+            "top": 19,
+            "right": 73,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.hurt16-w.7b70bb99d302.webp",
+              "file": "maromba.hurt16-w.ba4bc5a50f3c.webp",
               "columns": 3,
               "rows": 2,
               "firstFrame": 0,
               "frameCount": 6,
-              "sha256": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e"
+              "sha256": "ba4bc5a50f3c2d92b2ae8d1297e342b0f5586fce68c1bf7046450823a1e4b73c"
             }
           ],
-          "sha256": "7b70bb99d302a6be4b6d16c433c949cd84a35d1b818ca617f44c9a8920c2f36e"
+          "sha256": "ba4bc5a50f3c2d92b2ae8d1297e342b0f5586fce68c1bf7046450823a1e4b73c"
         },
         "idle16-N": {
-          "file": "maromba.idle16-n.f24cd648ed40.webp",
+          "file": "maromba.idle16-n.5a1e7f951590.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -9069,34 +12376,106 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 25,
+            "top": 19,
+            "right": 71,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.idle16-n.5a1e7f951590.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "5a1e7f951590dcb8ebf49782412958a818b6985baae4001b1710606338892906"
+            }
+          ],
+          "sha256": "5a1e7f951590dcb8ebf49782412958a818b6985baae4001b1710606338892906"
+        },
+        "idle16-NW": {
+          "file": "maromba.idle16-nw.3db3393ddff9.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.29,
+          "figure": {
+            "left": 27,
+            "top": 18,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.idle16-nw.3db3393ddff9.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "3db3393ddff9bc5c548fa9292c13abdcf047d48c18f3ca807daf08f525d1dfef"
+            }
+          ],
+          "sha256": "3db3393ddff9bc5c548fa9292c13abdcf047d48c18f3ca807daf08f525d1dfef"
+        },
+        "idle16-S": {
+          "file": "maromba.idle16-s.5d112d66dfd2.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.22,
           "figure": {
             "left": 26,
-            "top": 26,
+            "top": 18,
             "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-n.f24cd648ed40.webp",
+              "file": "maromba.idle16-s.5d112d66dfd2.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07"
+              "frameCount": 16,
+              "sha256": "5d112d66dfd24ab6a96bef24eac6c43a49b4c46a2096926a6ae7c845d773de72"
             }
           ],
-          "sha256": "f24cd648ed4015bf86392f504a169bf4144d7da331bf4c53b9ce640f1a062e07"
+          "sha256": "5d112d66dfd24ab6a96bef24eac6c43a49b4c46a2096926a6ae7c845d773de72"
         },
-        "idle16-NW": {
-          "file": "maromba.idle16-nw.5864e1ae74fc.webp",
+        "idle16-SE": {
+          "file": "maromba.idle16-se.7c1463965f31.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -9105,34 +12484,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.79,
+          "pivotX": 47.72,
           "figure": {
-            "left": 27,
-            "top": 26,
-            "right": 64,
+            "left": 29,
+            "top": 17,
+            "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-nw.5864e1ae74fc.webp",
+              "file": "maromba.idle16-se.7c1463965f31.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069"
+              "frameCount": 16,
+              "sha256": "7c1463965f315f486c847d68f3601874afae370c495118a4599c5643fa9cdcfe"
             }
           ],
-          "sha256": "5864e1ae74fc5ed240da9a36e8f94f31f355330729c785976a021116c7a7f069"
+          "sha256": "7c1463965f315f486c847d68f3601874afae370c495118a4599c5643fa9cdcfe"
         },
-        "idle16-S": {
-          "file": "maromba.idle16-s.891ba88573ea.webp",
+        "idle16-W": {
+          "file": "maromba.idle16-w.1a2a8b85b04d.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -9143,94 +12522,22 @@
           "height": 56,
           "pivotX": 48.2,
           "figure": {
-            "left": 27,
-            "top": 26,
-            "right": 70,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.idle16-s.891ba88573ea.webp",
-              "columns": 4,
-              "rows": 2,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98"
-            }
-          ],
-          "sha256": "891ba88573eac022dbefa7d81ba2f8621cd8ca00013a26eca9547858d537fa98"
-        },
-        "idle16-SE": {
-          "file": "maromba.idle16-se.c49298a25375.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 48.13,
-          "figure": {
-            "left": 30,
-            "top": 25,
+            "left": 29,
+            "top": 17,
             "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.idle16-se.c49298a25375.webp",
+              "file": "maromba.idle16-w.1a2a8b85b04d.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866"
+              "frameCount": 16,
+              "sha256": "1a2a8b85b04dcabb6e8026ae822a2d2ade70362bf4134977345737de3546de04"
             }
           ],
-          "sha256": "c49298a25375c78ba2e222dca272d54dcbb8da4d71bcc8fe5101948ec23af866"
-        },
-        "idle16-W": {
-          "file": "maromba.idle16-w.8887992091be.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.96,
-          "figure": {
-            "left": 34,
-            "top": 25,
-            "right": 62,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.idle16-w.8887992091be.webp",
-              "columns": 4,
-              "rows": 2,
-              "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd"
-            }
-          ],
-          "sha256": "8887992091be5ffa75874a5946f1b4244c1c88264f16bc9139d33d3d6f0864cd"
+          "sha256": "1a2a8b85b04dcabb6e8026ae822a2d2ade70362bf4134977345737de3546de04"
         },
         "idle8": {
           "file": "maromba.idle8.e728a4403de7.webp",
@@ -9267,7 +12574,7 @@
           "sha256": "2b0e7eae31db8a32efddae87a22275f3958e6b92f42967cc761face589b5cfc5"
         },
         "pull16-N": {
-          "file": "maromba.pull16-n.e614246a7aca.webp",
+          "file": "maromba.pull16-n.3091533b75c2.webp",
           "cell": [
             96,
             96
@@ -9283,24 +12590,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.97,
+          "pivotX": 48.01,
           "figure": {
             "left": 32,
-            "top": 26,
+            "top": 21,
             "right": 65,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-n.e614246a7aca.webp",
+              "file": "maromba.pull16-n.3091533b75c2.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650"
+              "sha256": "3091533b75c25883f716b41acf7734483413633b14b5e627985a65f48b3a2501"
             }
           ],
-          "sha256": "e614246a7aca1a3c39524c1a3498fcc4e1d02e3b6f94077064c4036bab1a2650",
+          "sha256": "3091533b75c25883f716b41acf7734483413633b14b5e627985a65f48b3a2501",
           "phase": {
             "d": [
               0.01619,
@@ -9389,7 +12696,7 @@
           }
         },
         "pull16-NW": {
-          "file": "maromba.pull16-nw.d76399bb4812.webp",
+          "file": "maromba.pull16-nw.09c45336623a.webp",
           "cell": [
             96,
             96
@@ -9405,24 +12712,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.84,
+          "pivotX": 45.33,
           "figure": {
-            "left": 25,
-            "top": 25,
+            "left": 22,
+            "top": 19,
             "right": 71,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-nw.d76399bb4812.webp",
+              "file": "maromba.pull16-nw.09c45336623a.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f"
+              "sha256": "09c45336623aab0977db669ea51de6b56652d466ea0275b6c5c5a55d86371dce"
             }
           ],
-          "sha256": "d76399bb481286175ec6b93af311d3a85cff379fcf3dd7c97715279d5178857f",
+          "sha256": "09c45336623aab0977db669ea51de6b56652d466ea0275b6c5c5a55d86371dce",
           "phase": {
             "d": [
               0.03238,
@@ -9511,7 +12818,7 @@
           }
         },
         "pull16-S": {
-          "file": "maromba.pull16-s.4b943fbf0a83.webp",
+          "file": "maromba.pull16-s.961fada90b0d.webp",
           "cell": [
             96,
             96
@@ -9527,24 +12834,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.99,
+          "pivotX": 47.88,
           "figure": {
             "left": 31,
-            "top": 33,
+            "top": 27,
             "right": 66,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-s.4b943fbf0a83.webp",
+              "file": "maromba.pull16-s.961fada90b0d.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e"
+              "sha256": "961fada90b0d1d66a345e96882af4a7a62a6265a0e9736da15cfcad3a061bd55"
             }
           ],
-          "sha256": "4b943fbf0a838da2fa64ad061651ba84f51d8bd9560419f033b4ab721501bc1e",
+          "sha256": "961fada90b0d1d66a345e96882af4a7a62a6265a0e9736da15cfcad3a061bd55",
           "phase": {
             "d": [
               0.01619,
@@ -9633,7 +12940,7 @@
           }
         },
         "pull16-SE": {
-          "file": "maromba.pull16-se.0de4fbde928d.webp",
+          "file": "maromba.pull16-se.0d2c5fa97f8f.webp",
           "cell": [
             96,
             96
@@ -9649,24 +12956,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.82,
+          "pivotX": 51.1,
           "figure": {
             "left": 27,
-            "top": 34,
-            "right": 72,
+            "top": 28,
+            "right": 73,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.pull16-se.0de4fbde928d.webp",
+              "file": "maromba.pull16-se.0d2c5fa97f8f.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799"
+              "sha256": "0d2c5fa97f8f5800982502a46ae4dde5a530d814b35924842e966b95631f45e7"
             }
           ],
-          "sha256": "0de4fbde928d31b46f2043e1253210461ee1ead83d37a071b958c25a63ae8799",
+          "sha256": "0d2c5fa97f8f5800982502a46ae4dde5a530d814b35924842e966b95631f45e7",
           "phase": {
             "d": [
               0.03219,
@@ -9755,7 +13062,7 @@
           }
         },
         "pull16-W": {
-          "file": "maromba.pull16-w.5d910382cd71.webp",
+          "file": "maromba.pull16-w.b445f0a7b99b.webp",
           "cell": [
             96,
             96
@@ -9771,24 +13078,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.68,
+          "pivotX": 45.88,
           "figure": {
-            "left": 27,
-            "top": 34,
+            "left": 25,
+            "top": 29,
             "right": 70,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.pull16-w.5d910382cd71.webp",
+              "file": "maromba.pull16-w.b445f0a7b99b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d"
+              "sha256": "b445f0a7b99bbcc41ae6648c502d2562689f181c310aa22334cb0364d1869193"
             }
           ],
-          "sha256": "5d910382cd71e33c664a6b16a74d21f9cae4cb6b803a5e4cb2234995d0ccfc5d",
+          "sha256": "b445f0a7b99bbcc41ae6648c502d2562689f181c310aa22334cb0364d1869193",
           "phase": {
             "d": [
               0.03235,
@@ -9877,7 +13184,7 @@
           }
         },
         "push16-N": {
-          "file": "maromba.push16-n.d8725566eb99.webp",
+          "file": "maromba.push16-n.3bfaf3aa823f.webp",
           "cell": [
             96,
             96
@@ -9896,21 +13203,21 @@
           "pivotX": 47.89,
           "figure": {
             "left": 30,
-            "top": 28,
+            "top": 23,
             "right": 66,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-n.d8725566eb99.webp",
+              "file": "maromba.push16-n.3bfaf3aa823f.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13"
+              "sha256": "3bfaf3aa823f1463ebe4d5506da45427b5cdc2c428e317ba4f1a2bae3680af71"
             }
           ],
-          "sha256": "d8725566eb993a48828f5cb6e06f52cd89c71780437390d7e0884d767ca92e13",
+          "sha256": "3bfaf3aa823f1463ebe4d5506da45427b5cdc2c428e317ba4f1a2bae3680af71",
           "phase": {
             "d": [
               0.01975,
@@ -9999,7 +13306,7 @@
           }
         },
         "push16-NW": {
-          "file": "maromba.push16-nw.0f77e22201ae.webp",
+          "file": "maromba.push16-nw.55fdf622eacf.webp",
           "cell": [
             96,
             96
@@ -10015,24 +13322,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 42.37,
+          "pivotX": 41.32,
           "figure": {
             "left": 16,
-            "top": 22,
+            "top": 17,
             "right": 69,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.push16-nw.0f77e22201ae.webp",
+              "file": "maromba.push16-nw.55fdf622eacf.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca"
+              "sha256": "55fdf622eacf04fe2f51ad05fe0ffc27ee8088ec44b37a0c11fccbfcc1f4408b"
             }
           ],
-          "sha256": "0f77e22201ae189c1148a4f8db25ac250ef48d2ba39a864e4358af23a5c4b7ca",
+          "sha256": "55fdf622eacf04fe2f51ad05fe0ffc27ee8088ec44b37a0c11fccbfcc1f4408b",
           "phase": {
             "d": [
               0.03469,
@@ -10121,7 +13428,7 @@
           }
         },
         "push16-S": {
-          "file": "maromba.push16-s.2b213760a6a4.webp",
+          "file": "maromba.push16-s.9efe99678fa2.webp",
           "cell": [
             96,
             96
@@ -10137,24 +13444,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.89,
+          "pivotX": 47.82,
           "figure": {
             "left": 25,
-            "top": 30,
+            "top": 24,
             "right": 71,
             "bottom": 88
           },
           "pages": [
             {
-              "file": "maromba.push16-s.2b213760a6a4.webp",
+              "file": "maromba.push16-s.9efe99678fa2.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae"
+              "sha256": "9efe99678fa204a9aea05d03cb08c6daef280dc5fd712cc077a58b6c3d74a990"
             }
           ],
-          "sha256": "2b213760a6a4ba26d44fbd9888d5c8d39157c7c1233f468732748da5e47423ae",
+          "sha256": "9efe99678fa204a9aea05d03cb08c6daef280dc5fd712cc077a58b6c3d74a990",
           "phase": {
             "d": [
               0.02344,
@@ -10243,7 +13550,7 @@
           }
         },
         "push16-SE": {
-          "file": "maromba.push16-se.a58b009d8f03.webp",
+          "file": "maromba.push16-se.65de7cfd6be0.webp",
           "cell": [
             96,
             96
@@ -10259,24 +13566,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 50.93,
+          "pivotX": 49.47,
           "figure": {
             "left": 26,
-            "top": 29,
+            "top": 24,
             "right": 75,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-se.a58b009d8f03.webp",
+              "file": "maromba.push16-se.65de7cfd6be0.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec"
+              "sha256": "65de7cfd6be038a583786dea73ebf67f05964c6266309e5e72d6df5b40e652a0"
             }
           ],
-          "sha256": "a58b009d8f03fa74e7ab2664655ed0b51c13169691d20d7ae90ad5e59dad28ec",
+          "sha256": "65de7cfd6be038a583786dea73ebf67f05964c6266309e5e72d6df5b40e652a0",
           "phase": {
             "d": [
               0.03169,
@@ -10365,7 +13672,7 @@
           }
         },
         "push16-W": {
-          "file": "maromba.push16-w.197425478ad3.webp",
+          "file": "maromba.push16-w.4913a052e14b.webp",
           "cell": [
             96,
             96
@@ -10381,24 +13688,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 46.58,
+          "pivotX": 47.3,
           "figure": {
             "left": 28,
-            "top": 31,
+            "top": 25,
             "right": 72,
             "bottom": 87
           },
           "pages": [
             {
-              "file": "maromba.push16-w.197425478ad3.webp",
+              "file": "maromba.push16-w.4913a052e14b.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133"
+              "sha256": "4913a052e14b728e6e9477d77379f8bcb7b8a09778effa7025fb693acc8ee65e"
             }
           ],
-          "sha256": "197425478ad3d011cb0c204e287574c79ce33647ac487d2e4b8fc0486d021133",
+          "sha256": "4913a052e14b728e6e9477d77379f8bcb7b8a09778effa7025fb693acc8ee65e",
           "phase": {
             "d": [
               0.03399,
@@ -10487,7 +13794,7 @@
           }
         },
         "run16-N": {
-          "file": "maromba.run16-n.12858ddc378f.webp",
+          "file": "maromba.run16-n.3c414594fdec.webp",
           "cell": [
             96,
             96
@@ -10503,24 +13810,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.83,
+          "pivotX": 47.74,
           "figure": {
             "left": 30,
-            "top": 20,
+            "top": 15,
             "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-n.12858ddc378f.webp",
+              "file": "maromba.run16-n.3c414594fdec.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca"
+              "sha256": "3c414594fdec051d48bcc61381621f93797e440ae67e67bca6176e2cf8980674"
             }
           ],
-          "sha256": "12858ddc378f60ea52a9ab05497b3f84d92991ff2125aed988bb524ecf7f2aca",
+          "sha256": "3c414594fdec051d48bcc61381621f93797e440ae67e67bca6176e2cf8980674",
           "phase": {
             "d": [
               0.12494,
@@ -10609,7 +13916,7 @@
           }
         },
         "run16-NW": {
-          "file": "maromba.run16-nw.6d2ea649fe99.webp",
+          "file": "maromba.run16-nw.63889ef3afbb.webp",
           "cell": [
             96,
             96
@@ -10625,24 +13932,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.29,
           "figure": {
-            "left": 30,
-            "top": 29,
+            "left": 29,
+            "top": 23,
             "right": 69,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-nw.6d2ea649fe99.webp",
+              "file": "maromba.run16-nw.63889ef3afbb.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664"
+              "sha256": "63889ef3afbb7dced5a6dd40c97a482376a55ac871022b6dda2d713e7c5c5875"
             }
           ],
-          "sha256": "6d2ea649fe99878fe0b3a44db0232ac0557fb92fde25edefeeffe5f33663d664",
+          "sha256": "63889ef3afbb7dced5a6dd40c97a482376a55ac871022b6dda2d713e7c5c5875",
           "phase": {
             "d": [
               0.24915,
@@ -10731,7 +14038,7 @@
           }
         },
         "run16-S": {
-          "file": "maromba.run16-s.225e468b2c87.webp",
+          "file": "maromba.run16-s.5086ccb4f0d1.webp",
           "cell": [
             96,
             96
@@ -10747,24 +14054,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.83,
+          "pivotX": 47.8,
           "figure": {
             "left": 29,
-            "top": 24,
+            "top": 18,
             "right": 67,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-s.225e468b2c87.webp",
+              "file": "maromba.run16-s.5086ccb4f0d1.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392"
+              "sha256": "5086ccb4f0d1f263620f44936c38443ab10fdd9bdb5156fc088c2db40b2caac1"
             }
           ],
-          "sha256": "225e468b2c87f634cdf88984e205bfaac1bea8d6648288f7310e9d4a28b3e392",
+          "sha256": "5086ccb4f0d1f263620f44936c38443ab10fdd9bdb5156fc088c2db40b2caac1",
           "phase": {
             "d": [
               0.13141,
@@ -10853,7 +14160,7 @@
           }
         },
         "run16-SE": {
-          "file": "maromba.run16-se.6f225d758e28.webp",
+          "file": "maromba.run16-se.10d3358a5fef.webp",
           "cell": [
             96,
             96
@@ -10869,24 +14176,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.11,
+          "pivotX": 48.28,
           "figure": {
             "left": 26,
-            "top": 27,
+            "top": 21,
             "right": 70,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-se.6f225d758e28.webp",
+              "file": "maromba.run16-se.10d3358a5fef.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0"
+              "sha256": "10d3358a5fef1e49934bb0caf72f7d5f246f8e1a41c0175266993f711c17ce90"
             }
           ],
-          "sha256": "6f225d758e28d4d5775fcddaea9a06efaf423e382af1995965ba85751e9df9c0",
+          "sha256": "10d3358a5fef1e49934bb0caf72f7d5f246f8e1a41c0175266993f711c17ce90",
           "phase": {
             "d": [
               0.22906,
@@ -10975,7 +14282,7 @@
           }
         },
         "run16-W": {
-          "file": "maromba.run16-w.dc71e9155576.webp",
+          "file": "maromba.run16-w.eb743615b7df.webp",
           "cell": [
             96,
             96
@@ -10991,24 +14298,24 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.76,
+          "pivotX": 47.89,
           "figure": {
             "left": 28,
-            "top": 28,
+            "top": 23,
             "right": 71,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.run16-w.dc71e9155576.webp",
+              "file": "maromba.run16-w.eb743615b7df.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce"
+              "sha256": "eb743615b7dfb638d15b3136144358498c5009cf37526999469033e9f4706154"
             }
           ],
-          "sha256": "dc71e915557658c7221e1cdf5f466bd528fc39fffc6a0092e5748caf2407e5ce",
+          "sha256": "eb743615b7dfb638d15b3136144358498c5009cf37526999469033e9f4706154",
           "phase": {
             "d": [
               0.07895,
@@ -11377,7 +14684,151 @@
           "sha256": "01b7d9ebc7949eaf2ecd10c406d38c08fb7495750d777848689fbbdae28b83d2"
         },
         "walk16-N": {
-          "file": "maromba.walk16-n.2064a9e3a3ce.webp",
+          "file": "maromba.walk16-n.1ee91b381b5c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.92,
+          "figure": {
+            "left": 28,
+            "top": 18,
+            "right": 69,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-n.1ee91b381b5c.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1ee91b381b5c7064351f205673d38741ebe263ff38e54bf0ccf5eb9c692a7a5b"
+            }
+          ],
+          "sha256": "1ee91b381b5c7064351f205673d38741ebe263ff38e54bf0ccf5eb9c692a7a5b"
+        },
+        "walk16-NW": {
+          "file": "maromba.walk16-nw.4a5ca042213a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.41,
+          "figure": {
+            "left": 27,
+            "top": 20,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-nw.4a5ca042213a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "4a5ca042213ae688db4c6f0cde811c197e5ef40110e851c01068910c1d6d63ef"
+            }
+          ],
+          "sha256": "4a5ca042213ae688db4c6f0cde811c197e5ef40110e851c01068910c1d6d63ef"
+        },
+        "walk16-S": {
+          "file": "maromba.walk16-s.689e99276410.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.74,
+          "figure": {
+            "left": 29,
+            "top": 19,
+            "right": 67,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-s.689e99276410.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "689e99276410779b00bc34a78d0dafd1c7283f5729b90ecf308fd4717576ff0c"
+            }
+          ],
+          "sha256": "689e99276410779b00bc34a78d0dafd1c7283f5729b90ecf308fd4717576ff0c"
+        },
+        "walk16-SE": {
+          "file": "maromba.walk16-se.b09c916abf33.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 600,
+          "fps": 26.666666666666668,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.89,
+          "figure": {
+            "left": 30,
+            "top": 18,
+            "right": 65,
+            "bottom": 86
+          },
+          "pages": [
+            {
+              "file": "maromba.walk16-se.b09c916abf33.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b09c916abf33c736d1c4ef4561b063898c1c20392c200d9dc4803deb1e62c6b0"
+            }
+          ],
+          "sha256": "b09c916abf33c736d1c4ef4561b063898c1c20392c200d9dc4803deb1e62c6b0"
+        },
+        "walk16-W": {
+          "file": "maromba.walk16-w.53580a84eda6.webp",
           "cell": [
             96,
             96
@@ -11395,169 +14846,74 @@
           "height": 56,
           "pivotX": 47.86,
           "figure": {
-            "left": 28,
-            "top": 24,
-            "right": 69,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-n.2064a9e3a3ce.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b"
-            }
-          ],
-          "sha256": "2064a9e3a3ce55613df60dd73b62c31a87570bbb877f7196777fbed6cbe39b5b"
-        },
-        "walk16-NW": {
-          "file": "maromba.walk16-nw.d19eb025bd84.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 48.02,
-          "figure": {
-            "left": 27,
-            "top": 26,
-            "right": 67,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-nw.d19eb025bd84.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2"
-            }
-          ],
-          "sha256": "d19eb025bd8462c83d62d2424ef3115347056800cacae13ef7919fd0d8280af2"
-        },
-        "walk16-S": {
-          "file": "maromba.walk16-s.b6994bfb245d.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.85,
-          "figure": {
             "left": 29,
-            "top": 25,
-            "right": 67,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-s.b6994bfb245d.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98"
-            }
-          ],
-          "sha256": "b6994bfb245d9333a5c553b4e80ff90807d8e8e648b98e8f020382a544dedf98"
-        },
-        "walk16-SE": {
-          "file": "maromba.walk16-se.a15dd2319ab3.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.96,
-          "figure": {
-            "left": 30,
-            "top": 25,
-            "right": 65,
-            "bottom": 86
-          },
-          "pages": [
-            {
-              "file": "maromba.walk16-se.a15dd2319ab3.webp",
-              "columns": 4,
-              "rows": 4,
-              "firstFrame": 0,
-              "frameCount": 16,
-              "sha256": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0"
-            }
-          ],
-          "sha256": "a15dd2319ab3293f8eacb60792b2a6883d405e351958dd9e921c116c0ce2a5c0"
-        },
-        "walk16-W": {
-          "file": "maromba.walk16-w.a77ac0004cd3.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 16,
-          "durationMs": 600,
-          "fps": 26.666666666666668,
-          "loop": true,
-          "revision": 16,
-          "movementHands": "empty",
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 56,
-          "pivotX": 47.85,
-          "figure": {
-            "left": 30,
-            "top": 23,
+            "top": 18,
             "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "maromba.walk16-w.a77ac0004cd3.webp",
+              "file": "maromba.walk16-w.53580a84eda6.webp",
               "columns": 4,
               "rows": 4,
               "firstFrame": 0,
               "frameCount": 16,
-              "sha256": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395"
+              "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
             }
           ],
-          "sha256": "a77ac0004cd359da953ec25085a0e9ffca7a6621dcd3f19938b8b4317dad3395"
+          "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
+        },
+        "dance128": {
+          "file": "maromba.dance128.576e79362713.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 57.71,
+          "figure": {
+            "left": 19,
+            "top": 19,
+            "right": 76,
+            "bottom": 84
+          },
+          "source": {
+            "input": "codex",
+            "pages": [
+              "maromba.png"
+            ],
+            "drawn": {
+              "A": "maromba-A-t1",
+              "B": "maromba-B-t1",
+              "ordem": "AABB",
+              "delta": 0.045,
+              "band": [
+                0.15,
+                0.55
+              ]
+            }
+          },
+          "pages": [
+            {
+              "file": "maromba.dance128.576e79362713.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
+            }
+          ],
+          "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
         }
       },
-      "sha256": "97ca3e7f50852028da9f48497fb671879c4c6bbe71d5571022dc949ed7c1ea7e"
+      "sha256": "9d3c4687e6e584319f29051ed7914addbb31a4c20b3ef0a4864ccb291d1ef5ef"
     },
     "mendigo": {
       "kind": "dir8",
@@ -11841,6 +15197,48 @@
             }
           ],
           "sha256": "27fffd7fc6879a3053104f008a2cf06d3d1b082c1efeaa6493e7be91fae4adc2"
+        },
+        "dance128": {
+          "file": "mendigo.dance128.12335d584beb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 17,
+            "top": 18,
+            "right": 80,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "mendigo-p1.webp",
+              "mendigo-p2.webp",
+              "mendigo-p3.webp",
+              "mendigo-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "mendigo.dance128.12335d584beb.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8"
+            }
+          ],
+          "sha256": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8"
         },
         "dir4": {
           "file": "mendigo.dir4.webp",
@@ -12228,11 +15626,53 @@
           "sha256": "446ed4511d9b97590e298c20e2f8870e731f6a53b239a61756369846432b4400"
         }
       },
-      "sha256": "e57b4f3864b23478785b9ae3d6a962ec0f166f397d66f12a49f66a1f4d812c8f"
+      "sha256": "7d710bed1f044f19bd70b597a63d2e0d43f363958331aec3e93edf3413c0f30a"
     },
     "merendeira": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "merendeira.dance128.02d33efdf5dd.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 18,
+            "top": 18,
+            "right": 81,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "merendeira-p1.webp",
+              "merendeira-p2.webp",
+              "merendeira-p3.webp",
+              "merendeira-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "merendeira.dance128.02d33efdf5dd.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "02d33efdf5ddf88fea80e32ad6ce06765f96a0025ffaef323c7f63fb112fce2b"
+            }
+          ],
+          "sha256": "02d33efdf5ddf88fea80e32ad6ce06765f96a0025ffaef323c7f63fb112fce2b"
+        },
         "dir4": {
           "file": "merendeira.dir4.webp",
           "cell": [
@@ -12305,11 +15745,53 @@
           "sha256": "40ba0733ebc6cf4602c7a0a1080256110f3525ccadd02d4e0ebbdfbbdde52867"
         }
       },
-      "sha256": "5cbc86f907a75f4e6f2f02bd0b42245c83df9805e70f36e41e30e3b4ed28871e"
+      "sha256": "c555cf98d43954946ff5a2353a3ab80073382991b2f2d468b4836b4f58c89d59"
     },
     "motogirl": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "motogirl.dance128.ec6b9b91da79.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 20,
+            "top": 18,
+            "right": 77,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "motogirl-p1.webp",
+              "motogirl-p2.webp",
+              "motogirl-p3.webp",
+              "motogirl-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "motogirl.dance128.ec6b9b91da79.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "ec6b9b91da7987f1392d5fa79717e0ad1928b05047ec5d311d075c55ef6d380e"
+            }
+          ],
+          "sha256": "ec6b9b91da7987f1392d5fa79717e0ad1928b05047ec5d311d075c55ef6d380e"
+        },
         "dir4": {
           "file": "motogirl.dir4.webp",
           "cell": [
@@ -12382,11 +15864,53 @@
           "sha256": "ca4d48b4c9494fb33e545bd8ae1148fb45f00580ee0da777f764c3ec33480d27"
         }
       },
-      "sha256": "758a6cd3cc82b4cb99d03740cfb1a7c5b951e7da4e8beb82d450476ad8463fb0"
+      "sha256": "c4d85a4a75dda6ed7cdc71362c75c33cdad0fc223de5426bff3fd10765e67dac"
     },
     "pagodeiro": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "pagodeiro.dance128.3d629f0b7e96.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 20,
+            "top": 17,
+            "right": 73,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "pagodeiro-p1.webp",
+              "pagodeiro-p2.webp",
+              "pagodeiro-p3.webp",
+              "pagodeiro-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "pagodeiro.dance128.3d629f0b7e96.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "3d629f0b7e96aa2397bb150ac2fc1c0be962d504c95b1317a2b330ae44a72599"
+            }
+          ],
+          "sha256": "3d629f0b7e96aa2397bb150ac2fc1c0be962d504c95b1317a2b330ae44a72599"
+        },
         "dir4": {
           "file": "pagodeiro.dir4.webp",
           "cell": [
@@ -12459,7 +15983,7 @@
           "sha256": "193d9c77cab1e4bb56859803ac6981c67229c4e7742b648538664c3cfaaf3795"
         }
       },
-      "sha256": "d852809bc6870bed612084e9e3f310af27a57a196698e049ed393390c80c13d5"
+      "sha256": "dcb3f7f369dfb62e211d580b9c32bfd40a7617ed6add53e06de1a35f9fcc5030"
     },
     "passageira": {
       "kind": "dir8",
@@ -12743,6 +16267,48 @@
             }
           ],
           "sha256": "d96b6b9834644a1feff27d14303f7654a91df0aceae823a869612ecd64df0265"
+        },
+        "dance128": {
+          "file": "passageira.dance128.e35ba50d81fa.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 22,
+            "top": 18,
+            "right": 80,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "passageira-p1.webp",
+              "passageira-p2.webp",
+              "passageira-p3.webp",
+              "passageira-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "passageira.dance128.e35ba50d81fa.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "e35ba50d81fa766925dc8460563d5df1e5e5289541b5aca503d131c583d7d721"
+            }
+          ],
+          "sha256": "e35ba50d81fa766925dc8460563d5df1e5e5289541b5aca503d131c583d7d721"
         },
         "dir4": {
           "file": "passageira.dir4.webp",
@@ -13130,7 +16696,7 @@
           "sha256": "932b7b3f52a3f455be410525b19c1a02352d8b2206268e3105476cd8c632c050"
         }
       },
-      "sha256": "b60841557ffb6997beed28c0693b895e26d65e54e036fe0e7c5ebac088edf82f"
+      "sha256": "d0c33bb40119b6150812304f9b6c8b19f45672b66faeec95a1b583b6ee66b47c"
     },
     "pedreiro": {
       "kind": "dir8",
@@ -13414,6 +16980,48 @@
             }
           ],
           "sha256": "e5fcce9adbe79b1812cb29cbdd17dd47bad8ac65542d4b1dea989a3d3c3e3103"
+        },
+        "dance128": {
+          "file": "pedreiro.dance128.d2c2ed7b8098.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 17,
+            "top": 18,
+            "right": 81,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "pedreiro-p1.webp",
+              "pedreiro-p2.webp",
+              "pedreiro-p3.webp",
+              "pedreiro-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "pedreiro.dance128.d2c2ed7b8098.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "d2c2ed7b8098b505d3293b8ccd1056ea147ab2a218274ecf2e6cb7c61c4dfb71"
+            }
+          ],
+          "sha256": "d2c2ed7b8098b505d3293b8ccd1056ea147ab2a218274ecf2e6cb7c61c4dfb71"
         },
         "dir4": {
           "file": "pedreiro.dir4.webp",
@@ -13801,11 +17409,53 @@
           "sha256": "f1687879e5184cd05fdbb077dce35ce897ce34495e1b35da4bcd0a275e6a0fdd"
         }
       },
-      "sha256": "30b008a59be399deb30ad774062c7eafb62cb8ec52bec79f5cb69e03a313858c"
+      "sha256": "ef667e4d1d4505a1eec8824c80a36d0d426f054a2025c077604266bb7244a893"
     },
     "porteiro": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "porteiro.dance128.234e5c16cf6c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 13,
+            "top": 18,
+            "right": 74,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "porteiro-p1.webp",
+              "porteiro-p2.webp",
+              "porteiro-p3.webp",
+              "porteiro-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "porteiro.dance128.234e5c16cf6c.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "234e5c16cf6ccbece7cb8713a6c82b9058626af119bafb4f88b69af50f3915f6"
+            }
+          ],
+          "sha256": "234e5c16cf6ccbece7cb8713a6c82b9058626af119bafb4f88b69af50f3915f6"
+        },
         "dir4": {
           "file": "porteiro.dir4.webp",
           "cell": [
@@ -13878,11 +17528,53 @@
           "sha256": "7f1b395a0fd700361dd9bdc7cb3a174b5b7b4106fcecb349befc72a65bbd6125"
         }
       },
-      "sha256": "d8f8ad95d1824c69baf62d758cc9294c2fa17e09af2ac411a54510d2e834ca4f"
+      "sha256": "66e2797647c625dd5227a2d9ce5c13813d547c374519650196f3cbc38b5855ad"
     },
     "rei-arraia": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "rei-arraia.dance128.8e37f6a9d1c7.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 14,
+            "top": 18,
+            "right": 79,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "rei-arraia-p1.webp",
+              "rei-arraia-p2.webp",
+              "rei-arraia-p3.webp",
+              "rei-arraia-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "rei-arraia.dance128.8e37f6a9d1c7.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "8e37f6a9d1c74da97b98188c2a1ce5314456c8df5974dd5b5df7a9af056422d6"
+            }
+          ],
+          "sha256": "8e37f6a9d1c74da97b98188c2a1ce5314456c8df5974dd5b5df7a9af056422d6"
+        },
         "dir4": {
           "file": "rei-arraia.dir4.webp",
           "cell": [
@@ -13955,11 +17647,53 @@
           "sha256": "87991a9ae7e5a2a04a70f05954aa7a00c87df894c05f367d9bf3feba61d49f11"
         }
       },
-      "sha256": "38a22b41b4f25559064db332537b7d4d1a8d9f6b2f38cb4d77a1573b99669a35"
+      "sha256": "2edc0469a0b181ce33ef8fc604951f81abe6fd3e638d97cfc0629181e9933466"
     },
     "rei-pastel": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "rei-pastel.dance128.d423ab31a80d.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 17,
+            "top": 16,
+            "right": 78,
+            "bottom": 88
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "rei-pastel-p1.webp",
+              "rei-pastel-p2.webp",
+              "rei-pastel-p3.webp",
+              "rei-pastel-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "rei-pastel.dance128.d423ab31a80d.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "d423ab31a80d0d05eb5fb5f70b59a0274e00c91b0d19d4c12d100aaca7025e34"
+            }
+          ],
+          "sha256": "d423ab31a80d0d05eb5fb5f70b59a0274e00c91b0d19d4c12d100aaca7025e34"
+        },
         "dir4": {
           "file": "rei-pastel.dir4.webp",
           "cell": [
@@ -14032,7 +17766,7 @@
           "sha256": "d8d65dd2fd411b6a8a0e3fa777265ed017bddfe008979243a6658b5a60570538"
         }
       },
-      "sha256": "fb3cdc046b9a23c9698ad614e0356579192609884760b0d5d18ed06c8111318f"
+      "sha256": "6e094983cf2343ea597107808512162ae246d7cb462e5e66410f4fdc56f1e15a"
     },
     "streamer": {
       "kind": "dir8",
@@ -14316,6 +18050,48 @@
             }
           ],
           "sha256": "e4a77d058730543f7f27588ddf79ac58bbb45b0cb43cdffbcadc2e6b0f7c2096"
+        },
+        "dance128": {
+          "file": "streamer.dance128.7701e50a59af.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 16,
+            "top": 15,
+            "right": 87,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "streamer-p1.webp",
+              "streamer-p2.webp",
+              "streamer-p3.webp",
+              "streamer-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "streamer.dance128.7701e50a59af.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "7701e50a59af09ad7ee950efa6134d5ca70a6cbd72a5bd0244fbc082a1e3b297"
+            }
+          ],
+          "sha256": "7701e50a59af09ad7ee950efa6134d5ca70a6cbd72a5bd0244fbc082a1e3b297"
         },
         "dir4": {
           "file": "streamer.dir4.webp",
@@ -14703,11 +18479,53 @@
           "sha256": "40b93e1297240e50632b15bcdaf8aa8cccffe236af265f8e5855e14b19dddbc5"
         }
       },
-      "sha256": "82cfed9d04367f7ff28a892d56ff0e4419d967e4a2b7ba222b3d86bc5cfa5c4d"
+      "sha256": "e18b35dcddce859fa6fac785cca56807fbc9973db6afa1f7e6220c53a2d930b4"
     },
     "tecnico-ti": {
       "kind": "dir8",
       "files": {
+        "dance128": {
+          "file": "tecnico-ti.dance128.4401986a6d09.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 21,
+            "top": 19,
+            "right": 83,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "tecnico-ti-p1.webp",
+              "tecnico-ti-p2.webp",
+              "tecnico-ti-p3.webp",
+              "tecnico-ti-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "tecnico-ti.dance128.4401986a6d09.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "4401986a6d0980585b7d3ea8847150615327091e90350893621243438ee3907e"
+            }
+          ],
+          "sha256": "4401986a6d0980585b7d3ea8847150615327091e90350893621243438ee3907e"
+        },
         "dir4": {
           "file": "tecnico-ti.dir4.webp",
           "cell": [
@@ -14780,7 +18598,7 @@
           "sha256": "a3bc05c516d30338a6da33a60bd4b1878cca546ddcbcc7f66eab4c1458111e1d"
         }
       },
-      "sha256": "2973706a52d71cc0dc2ae3cd1fabb8175653ec543c2cfe462560a10927d88af9"
+      "sha256": "8f0314b02dea53111d0046177526b7ccd4a46d5845396519bc8797d9f6dbd368"
     },
     "universitario": {
       "kind": "dir8",
@@ -15064,6 +18882,48 @@
             }
           ],
           "sha256": "9b48fdc3702a909103ae42c74eeafc06b09da7a7d5f971e9b3853ef76ba2c839"
+        },
+        "dance128": {
+          "file": "universitario.dance128.8e598f1f1c1f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 12,
+            "top": 17,
+            "right": 76,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "universitario-p1.webp",
+              "universitario-p2.webp",
+              "universitario-p3.webp",
+              "universitario-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "universitario.dance128.8e598f1f1c1f.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "8e598f1f1c1ffa15640e745fc72a6d65811349d18ea27c88e061214411e75398"
+            }
+          ],
+          "sha256": "8e598f1f1c1ffa15640e745fc72a6d65811349d18ea27c88e061214411e75398"
         },
         "dir4": {
           "file": "universitario.dir4.webp",
@@ -15451,7 +19311,7 @@
           "sha256": "909b13a49c9d1cc7251b446f36fa9b81ccc6364a79b0bcd0e5694c8376f7e577"
         }
       },
-      "sha256": "c9057bda41a0589ffc43d98a64ca8d644dc2de433a2ecaeed7c50ccdb2adae96"
+      "sha256": "fa5e0b7f5ea4c3ea80adf58165f07a66b9b008f4fd0ebd202ff92d1121e7bcaa"
     },
     "vendedor-praia": {
       "kind": "dir8",
@@ -15724,7 +19584,7 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.98,
+          "pivotX": 48.03,
           "figure": {
             "left": 22,
             "top": 27,
@@ -15760,7 +19620,7 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.83,
           "figure": {
             "left": 23,
             "top": 25,
@@ -15796,7 +19656,7 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.14,
+          "pivotX": 48.2,
           "figure": {
             "left": 26,
             "top": 25,
@@ -15832,7 +19692,7 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.93,
+          "pivotX": 48.01,
           "figure": {
             "left": 27,
             "top": 24,
@@ -15868,7 +19728,7 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.83,
           "figure": {
             "left": 29,
             "top": 24,
@@ -15888,14 +19748,14 @@
           "sha256": "bd6d9c87398a1c3ce7a3662eb61531a36101b9deea047a723e70c026ee2107bd"
         },
         "idle16-N": {
-          "file": "vendedor-praia.idle16-n.a01271ec6a7b.webp",
+          "file": "vendedor-praia.idle16-n.47f176f36c65.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -15904,34 +19764,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.98,
+          "pivotX": 48.03,
           "figure": {
-            "left": 29,
-            "top": 26,
+            "left": 28,
+            "top": 24,
             "right": 68,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "vendedor-praia.idle16-n.a01271ec6a7b.webp",
+              "file": "vendedor-praia.idle16-n.47f176f36c65.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "a01271ec6a7bd7d7eaa0f4053ed75e2f7bd9e6a64e7de3fc702eacce67bbae8c"
+              "frameCount": 16,
+              "sha256": "47f176f36c658ef0ac0137d8f6451c7ba91bd6cb6d2551e77eedabb34046da8e"
             }
           ],
-          "sha256": "a01271ec6a7bd7d7eaa0f4053ed75e2f7bd9e6a64e7de3fc702eacce67bbae8c"
+          "sha256": "47f176f36c658ef0ac0137d8f6451c7ba91bd6cb6d2551e77eedabb34046da8e"
         },
         "idle16-NW": {
-          "file": "vendedor-praia.idle16-nw.3df2de804cab.webp",
+          "file": "vendedor-praia.idle16-nw.11147b05113e.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -15940,34 +19800,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.8,
+          "pivotX": 47.83,
           "figure": {
             "left": 27,
-            "top": 26,
-            "right": 64,
+            "top": 24,
+            "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "vendedor-praia.idle16-nw.3df2de804cab.webp",
+              "file": "vendedor-praia.idle16-nw.11147b05113e.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "3df2de804cab3cc095087c55933e6dffa870b6d7111fa51b3f1bd75f2255dd6c"
+              "frameCount": 16,
+              "sha256": "11147b05113eab75986ac39fc7ab9c4c1ffa84058e53974bd4a13694710600b9"
             }
           ],
-          "sha256": "3df2de804cab3cc095087c55933e6dffa870b6d7111fa51b3f1bd75f2255dd6c"
+          "sha256": "11147b05113eab75986ac39fc7ab9c4c1ffa84058e53974bd4a13694710600b9"
         },
         "idle16-S": {
-          "file": "vendedor-praia.idle16-s.66eb7104dfb0.webp",
+          "file": "vendedor-praia.idle16-s.92f9ba81ef42.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -15976,34 +19836,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 48.14,
+          "pivotX": 48.2,
           "figure": {
             "left": 28,
-            "top": 26,
+            "top": 24,
             "right": 69,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "vendedor-praia.idle16-s.66eb7104dfb0.webp",
+              "file": "vendedor-praia.idle16-s.92f9ba81ef42.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "66eb7104dfb0ff110fb344cf79bd241870d55cc122aae51ca55250f618a8889c"
+              "frameCount": 16,
+              "sha256": "92f9ba81ef4250e953c826a02b2490e9ee8cde128f94da10add2a472aee32437"
             }
           ],
-          "sha256": "66eb7104dfb0ff110fb344cf79bd241870d55cc122aae51ca55250f618a8889c"
+          "sha256": "92f9ba81ef4250e953c826a02b2490e9ee8cde128f94da10add2a472aee32437"
         },
         "idle16-SE": {
-          "file": "vendedor-praia.idle16-se.92b9c34f995a.webp",
+          "file": "vendedor-praia.idle16-se.afe577db8ef5.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -16012,34 +19872,34 @@
             0.875
           ],
           "height": 56,
-          "pivotX": 47.93,
+          "pivotX": 47.99,
           "figure": {
-            "left": 31,
-            "top": 25,
+            "left": 30,
+            "top": 23,
             "right": 68,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "vendedor-praia.idle16-se.92b9c34f995a.webp",
+              "file": "vendedor-praia.idle16-se.afe577db8ef5.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "92b9c34f995ab15bacd91c63ffab9a8a51a4877f3d613a0c807e6eeb048595b6"
+              "frameCount": 16,
+              "sha256": "afe577db8ef5cb63818f73c5baf77bfb907b4693d254aecbafa3d4c31fea064f"
             }
           ],
-          "sha256": "92b9c34f995ab15bacd91c63ffab9a8a51a4877f3d613a0c807e6eeb048595b6"
+          "sha256": "afe577db8ef5cb63818f73c5baf77bfb907b4693d254aecbafa3d4c31fea064f"
         },
         "idle16-W": {
-          "file": "vendedor-praia.idle16-w.ae72679d0dbb.webp",
+          "file": "vendedor-praia.idle16-w.d447ad2933a2.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -16050,22 +19910,22 @@
           "height": 56,
           "pivotX": 47.8,
           "figure": {
-            "left": 32,
-            "top": 25,
-            "right": 64,
+            "left": 30,
+            "top": 23,
+            "right": 66,
             "bottom": 86
           },
           "pages": [
             {
-              "file": "vendedor-praia.idle16-w.ae72679d0dbb.webp",
+              "file": "vendedor-praia.idle16-w.d447ad2933a2.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "ae72679d0dbbecfe7d78ca9c6764fe41493fc43eb1641cb338f6525a9bd0edff"
+              "frameCount": 16,
+              "sha256": "d447ad2933a2785f7b16c83f126447647720abfdc713f9ead2b04cdba85dfa1c"
             }
           ],
-          "sha256": "ae72679d0dbbecfe7d78ca9c6764fe41493fc43eb1641cb338f6525a9bd0edff"
+          "sha256": "d447ad2933a2785f7b16c83f126447647720abfdc713f9ead2b04cdba85dfa1c"
         },
         "pull16-N": {
           "file": "vendedor-praia.pull16-n.fe3908b26ca4.webp",
@@ -18076,9 +21936,51 @@
             }
           ],
           "sha256": "4b8747a23b1113032f1109a0a56a3ec23a99aea68c03b0e2ce0a30d8fa992f6b"
+        },
+        "dance128": {
+          "file": "vendedor-praia.dance128.932b5398d729.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 64,
+          "figure": {
+            "left": 12,
+            "top": 18,
+            "right": 76,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "vendedor-praia-p1.webp",
+              "vendedor-praia-p2.webp",
+              "vendedor-praia-p3.webp",
+              "vendedor-praia-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "vendedor-praia.dance128.932b5398d729.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
+            }
+          ],
+          "sha256": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149"
         }
       },
-      "sha256": "26dd1890f40f46f240d74cf2d6e4c386d30c1d2d97fcdb3c64fc87723f45ef8e"
+      "sha256": "8800e9445b2e04af35a599407f0b007ad7a13222c53f3ad16756c32ca3c2b78f"
     },
     "viciado-em-bet": {
       "kind": "dir8",
@@ -18795,14 +22697,14 @@
           "sha256": "956ef6be581856d155b1de4e8d8ec378b21034efad82c48c61a1b592589e0b45"
         },
         "idle16-N": {
-          "file": "viciado-em-bet.idle16-n.f3225cfb6309.webp",
+          "file": "viciado-em-bet.idle16-n.7ad3b3c38974.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -18811,34 +22713,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 46.9,
+          "pivotX": 46.96,
           "figure": {
             "left": 30,
-            "top": 20,
+            "top": 18,
             "right": 64,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-n.f3225cfb6309.webp",
+              "file": "viciado-em-bet.idle16-n.7ad3b3c38974.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7"
+              "frameCount": 16,
+              "sha256": "7ad3b3c38974d469067a5bc746ce969dbf8e198fc14d356320f0b0f7d08a75fd"
             }
           ],
-          "sha256": "f3225cfb63099905b4a593e3a445b5743c0502921fe27921e6475c7abf613cd7"
+          "sha256": "7ad3b3c38974d469067a5bc746ce969dbf8e198fc14d356320f0b0f7d08a75fd"
         },
         "idle16-NW": {
-          "file": "viciado-em-bet.idle16-nw.1746c36825cc.webp",
+          "file": "viciado-em-bet.idle16-nw.c72981bcf34d.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -18847,34 +22749,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 49.71,
+          "pivotX": 49.81,
           "figure": {
-            "left": 33,
-            "top": 20,
-            "right": 63,
+            "left": 30,
+            "top": 19,
+            "right": 64,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-nw.1746c36825cc.webp",
+              "file": "viciado-em-bet.idle16-nw.c72981bcf34d.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "1746c36825cc72e62acbdfa0ba9e6922c85d6f0ca67d048b63bdbd583f971c84"
+              "frameCount": 16,
+              "sha256": "c72981bcf34d76e930ac49b95ec11de3d2440b0749e6d8e7b39c280fa59ac8a3"
             }
           ],
-          "sha256": "1746c36825cc72e62acbdfa0ba9e6922c85d6f0ca67d048b63bdbd583f971c84"
+          "sha256": "c72981bcf34d76e930ac49b95ec11de3d2440b0749e6d8e7b39c280fa59ac8a3"
         },
         "idle16-S": {
-          "file": "viciado-em-bet.idle16-s.5129f7e6ecfc.webp",
+          "file": "viciado-em-bet.idle16-s.ee01578e879c.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -18883,34 +22785,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 52.09,
+          "pivotX": 52.1,
           "figure": {
             "left": 34,
-            "top": 20,
+            "top": 19,
             "right": 70,
             "bottom": 75
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-s.5129f7e6ecfc.webp",
+              "file": "viciado-em-bet.idle16-s.ee01578e879c.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "5129f7e6ecfcbcd1cbdeeae93e731f3570701a29f76ca0d327dd5bb196f37eca"
+              "frameCount": 16,
+              "sha256": "ee01578e879ca752dde92f243b3bbd75bf92be715588ac8d86b046f97f096705"
             }
           ],
-          "sha256": "5129f7e6ecfcbcd1cbdeeae93e731f3570701a29f76ca0d327dd5bb196f37eca"
+          "sha256": "ee01578e879ca752dde92f243b3bbd75bf92be715588ac8d86b046f97f096705"
         },
         "idle16-SE": {
-          "file": "viciado-em-bet.idle16-se.06441542a0a8.webp",
+          "file": "viciado-em-bet.idle16-se.6d0e91ad8945.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -18919,34 +22821,34 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 42.04,
+          "pivotX": 42.11,
           "figure": {
-            "left": 26,
-            "top": 20,
-            "right": 58,
+            "left": 25,
+            "top": 19,
+            "right": 59,
             "bottom": 76
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-se.06441542a0a8.webp",
+              "file": "viciado-em-bet.idle16-se.6d0e91ad8945.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "06441542a0a8f4b8eb143fe8945d4d6bec7c7c7fac894b0a22cc8d10b12d7644"
+              "frameCount": 16,
+              "sha256": "6d0e91ad8945886f6f5dd4fa91d74cb60e25a2d0459f747a9ae204716fb66747"
             }
           ],
-          "sha256": "06441542a0a8f4b8eb143fe8945d4d6bec7c7c7fac894b0a22cc8d10b12d7644"
+          "sha256": "6d0e91ad8945886f6f5dd4fa91d74cb60e25a2d0459f747a9ae204716fb66747"
         },
         "idle16-W": {
-          "file": "viciado-em-bet.idle16-w.03657852a60e.webp",
+          "file": "viciado-em-bet.idle16-w.68507c0fe622.webp",
           "cell": [
             96,
             96
           ],
-          "frames": 8,
-          "durationMs": 2000,
-          "fps": 4,
+          "frames": 16,
+          "durationMs": 3200,
+          "fps": 5,
           "loop": true,
           "revision": 16,
           "movementHands": "empty",
@@ -18955,24 +22857,24 @@
             0.875
           ],
           "height": 50.5,
-          "pivotX": 51.27,
+          "pivotX": 51.29,
           "figure": {
-            "left": 35,
-            "top": 20,
-            "right": 64,
+            "left": 32,
+            "top": 19,
+            "right": 67,
             "bottom": 76
           },
           "pages": [
             {
-              "file": "viciado-em-bet.idle16-w.03657852a60e.webp",
+              "file": "viciado-em-bet.idle16-w.68507c0fe622.webp",
               "columns": 4,
-              "rows": 2,
+              "rows": 4,
               "firstFrame": 0,
-              "frameCount": 8,
-              "sha256": "03657852a60e6dd2206f52abed94f52783d80690df4114d3d184c93a580abcb2"
+              "frameCount": 16,
+              "sha256": "68507c0fe622261389ac9808ada33a8fa9e9b8b5761dc7ec3e95cc737fe47522"
             }
           ],
-          "sha256": "03657852a60e6dd2206f52abed94f52783d80690df4114d3d184c93a580abcb2"
+          "sha256": "68507c0fe622261389ac9808ada33a8fa9e9b8b5761dc7ec3e95cc737fe47522"
         },
         "idle8": {
           "file": "viciado-em-bet.idle8.f8c45d75d0f1.webp",
@@ -21297,9 +25199,51 @@
             }
           ],
           "sha256": "d7a393898e4455b159ea081e1130088c0f1d5a6f94b6e784a5656f4ef6067a89"
+        },
+        "dance128": {
+          "file": "viciado-em-bet.dance128.30e5d49d3a7f.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.94,
+          "figure": {
+            "left": 18,
+            "top": 19,
+            "right": 79,
+            "bottom": 86
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "viciado-em-bet-p1.webp",
+              "viciado-em-bet-p2.webp",
+              "viciado-em-bet-p3.webp",
+              "viciado-em-bet-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "viciado-em-bet.dance128.30e5d49d3a7f.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d"
+            }
+          ],
+          "sha256": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d"
         }
       },
-      "sha256": "dcc6e6271384aeb9dae2a10ed77002f27188710c417a2ea1450379200d229561"
+      "sha256": "e3c115c914f057405d6554c99004ff68a8c1d49fcfd1219d819ebf5270cac786"
     },
     "vizinha-fofoqueira": {
       "kind": "dir8",
@@ -21583,6 +25527,48 @@
             }
           ],
           "sha256": "7b5875f88b8720f6ae19d4fa19629a90a2fca6d2bae5d99ec6c5de9af719d0c9"
+        },
+        "dance128": {
+          "file": "vizinha-fofoqueira.dance128.af9b1237c34c.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.93,
+          "figure": {
+            "left": 20,
+            "top": 15,
+            "right": 82,
+            "bottom": 87
+          },
+          "source": {
+            "group": "menu",
+            "pages": [
+              "vizinha-fofoqueira-p1.webp",
+              "vizinha-fofoqueira-p2.webp",
+              "vizinha-fofoqueira-p3.webp",
+              "vizinha-fofoqueira-p4.webp"
+            ]
+          },
+          "pages": [
+            {
+              "file": "vizinha-fofoqueira.dance128.af9b1237c34c.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "af9b1237c34cbe6957b70896d8c9398be8cf64bf1d6c2be4c1dbe334a757085b"
+            }
+          ],
+          "sha256": "af9b1237c34cbe6957b70896d8c9398be8cf64bf1d6c2be4c1dbe334a757085b"
         },
         "dir4": {
           "file": "vizinha-fofoqueira.dir4.webp",
@@ -21970,7 +25956,7 @@
           "sha256": "0777bb5e8976acfc13ea9307c3a365c5139a92ce10dca4dffe549492c1f60a7a"
         }
       },
-      "sha256": "490f18fdcc9d689772925858b63735e970a36b2754a87fc8a49ba87d061e8c63"
+      "sha256": "24e8ad75961aa9613b680067c0285c05e03904f7e3236ce7d1c8728c7027bb88"
     }
   }
 }

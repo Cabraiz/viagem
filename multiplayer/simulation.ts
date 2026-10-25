@@ -10,7 +10,7 @@ import {createRunSystems,type RunOutcomeKind,type RunSystems,type RunSystemsOpti
 import {ITEMS} from '../src/sim/index.ts';
 import {RUN_ORDER,DEFAULT_FACING,type PlayerInput,type RunPlayer} from '../src/sim/index.ts';
 import {classBonusOf,rotationIds,startingBuild} from '../src/rules/index.ts';
-import {resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
+import {bodyRadius,resetSkill,skillReadyTick,clearMoveEffects,activeMoveEffects,isSugared,isPrime,isStanding,calmAt,fearOf} from '../src/sim/index.ts';
 import {CALMA,FEAR_TICKS,kitItem,kitPiece,refreshStats} from '../src/rules/index.ts';
 import type {ChooseResult,OfferActionResult} from '../src/sim/index.ts';
 import {BASE_STATS,CAR_ID,MAX_PASSIVES,MAX_WEAPONS} from '../src/contract/index.ts';
@@ -350,6 +350,9 @@ export class Simulation {
       },
       autopilot:id=>this.autopilot.has(id),
       bot:id=>this.bots.has(id),
+      // heroi-empurra-inimigos: a step a body changed counts as an effect up to the next tick (confirmed): the phone's
+      // replay starts from where the room has the bodies now, so while it pushes its frames go live.
+      onBodyBlock:id=>this.effectEnd.set(id,Math.max(this.effectEnd.get(id)??-Infinity,this.world.tick+1)),
       // Inside a step the tick decides (victory beats a same-tick defeat); between ticks (commands) the first outcome stands.
       onOutcome:outcome=>{if(this.result)return;if(this.pending)this.pending[outcome]=true;else this.result=outcome;},
       // The run waits GRACE_MS for its last player standing who dropped (VGM-047), then it is a defeat (042a R1). The
@@ -1023,7 +1026,7 @@ export class Simulation {
     const w=this.world;
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews(playerId,false)],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{}),...bodyRadius(e)})),...this.sleeperViews(playerId,false)],
       // caixa-gamble: a crate this player no longer sees (PickupState.hiddenFor) is not in his view.
       pickups:[...w.pickups.values()].filter(p=>!p.hiddenFor?.includes(playerId)).map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),
@@ -1055,7 +1058,7 @@ export class Simulation {
     this.descriptor??=worldDescriptor(this.terrain);
     return {
       tick:w.tick,team:{...w.team},round:{...w.round},world:this.descriptor,
-      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{})})),...this.sleeperViews()],
+      enemies:[...[...w.enemies.values()].map(e=>({id:e.id,kind:e.kind,x:e.x,y:e.y,hp:e.hp,maxHp:e.maxHp,elite:e.elite,boss:e.boss,phase:e.phase,...(isSugared(e,w.tick)?{sugar:true as const}:{}),...(isPrime(e)?{prime:true as const}:{}),...(e.andar===1?{andar:1 as const}:{}),...bodyRadius(e)})),...this.sleeperViews()],
       // caixa-gamble: hiddenFor rides along (server-side only): the encoder leaves the crate out of those players' frames.
       pickups:[...w.pickups.values()].map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,value:p.value,resource:p.resource,...(p.hiddenFor?{hiddenFor:p.hiddenFor}:{})})),
       projectiles:[...w.projectiles.values()].map(p=>({id:p.id,source:p.source,x:p.x,y:p.y,vx:p.vx,vy:p.vy,radius:p.radius,hostile:p.hostile,...(p.andar===1?{andar:1 as const}:{})})),

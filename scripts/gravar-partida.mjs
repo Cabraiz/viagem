@@ -8,7 +8,7 @@
 //      the middle and the end at the screen's real density; quadros.png, 8 frames of the GIF side by side with their
 //      second (what an executor reads: Read shows a GIF's first frame only); every pageerror and console error in erros.txt.
 //      The snow changes the whole frame, so the GIF runs ~0.5 MB/s even lossy (interFrameMaxError).
-// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|todos] [--tela celular|pc|ambas] [--segundos 20]
+// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
 // Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,sala.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
@@ -45,7 +45,10 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *    first time the flame shows it is tapped: the compact card in the GIF and in match.png. Not part of "todos".
  *  - nomes (nome-inimigo-rede-social, etapa 7): first the photo scene FOTO_NOMES (src/client/dev/foto.ts: elites and a
  *    chefão with the profile's name over the bar, "Te derrubou: X" under a caído ficha) in nomes.png, then the parado
- *    steps in a real match (an elite or a fall there shows the same fichas). Not part of "todos".
+ *    steps in a real match (an elite or a fall there shows the same fichas). Not part of "todos";
+ *  - empurra (card heroi-empurra-inimigos): waits (out of the GIF, up to EMPURRA_WAIT_MS) for awake solid bodies near
+ *    the hero (the 1st wave), then walks into the nearest one, one second at a time, without attacking: the hero pushes
+ *    the crowd (solid bodies) and the GIF shows whether the phone's prediction shakes. Not in "todos" (it waits minutes).
  */
 export const ROTEIROS=Object.freeze({
   parado:s=>[{ms:s*1000}],
@@ -58,10 +61,13 @@ export const ROTEIROS=Object.freeze({
   },
   matches:s=>ROTEIROS.uno(s),
   nomes:s=>ROTEIROS.parado(s),
+  empurra:s=>{const out=[];for(let left=s*1000;left>0;left-=1000)out.push({dir:D.l,ms:Math.min(1000,left)});return out;},
 });
+/** empurra: how long to wait for the 1st wave's bodies (the minuto de Minerva 120 s + the first wave's 30–60 s). */
+export const EMPURRA_WAIT_MS=300000;
 /** The photo scene the nomes roteiro prints first. */
 export const FOTO_NOMES='nome-elite-chefao';
-/** "todos": the roteiros every sheet records (matches is asked by name). */
+/** "todos": the roteiros every sheet records (matches, nomes and empurra are asked by name). */
 export const TODOS=Object.freeze(['parado','andando','uno']);
 /** The keys of a direction (MOVE_KEYS in desktop-input.ts): any vector, snapped to the eight the keys can make. */
 export const keysOf=dir=>{
@@ -114,6 +120,27 @@ export function sheetFrames(total,n=8){
   return Array.from({length:n},(_,i)=>Math.round(i*(total-1)/(n-1)));
 }
 
+/**
+ * empurra: the hero as drawn, frame by frame ([x, y, gap to the nearest solid body, the stick's hold]): a "recuo" is a
+ * frame whose step goes back against the walk of the 10 frames before it by more than RECUO_U (the tremor of a
+ * prediction snapping back), within one hold of the stick (a turn or a release is not a tremor; rows without a hold
+ * id count as one hold). Counted everywhere and in contact (gap < CONTATO_U).
+ */
+export const RECUO_U=.004,CONTATO_U=.08;
+export function tremorOf(rows){
+  let quadros=0,contato=0,recuos=0,recuosContato=0,max=0;
+  for(let i=11;i<rows.length;i++){
+    const [x,y,gap,hold]=rows[i],[px,py]=rows[i-1],[ax,ay,,from]=rows[i-11];
+    if(hold===null||hold!==from)continue;// a turn or a release in the window
+    const wx=px-ax,wy=py-ay,wl=Math.hypot(wx,wy);
+    if(wl<.05)continue;// standing: no walk to go back against
+    quadros++;const touch=gap<CONTATO_U;if(touch)contato++;
+    const back=-((x-px)*wx+(y-py)*wy)/wl;
+    if(back>RECUO_U){recuos++;if(touch)recuosContato++;max=Math.max(max,back);}
+  }
+  return {quadros,contato,recuos,recuosContato,maxRecuo:+max.toFixed(3)};
+}
+
 /** One line per recording, at most 10 (the run's summary and the board line). */
 export function resumoLinhas(results,{origem=''}={}){
   const lines=results.map(r=>{
@@ -121,7 +148,7 @@ export function resumoLinhas(results,{origem=''}={}){
     if(r.falha)return `❌ ${what}: ${r.falha}`;
     const fps=r.quadros>1?(r.quadros/(r.duracaoMs/1000)).toFixed(1):'0';
     const err=r.erros.length?` · ${r.erros.length} erro(s): ${r.erros[0].slice(0,90)}`:' · 0 erros';
-    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${err}`;
+    return `${r.erros.length?'⚠️':'✅'} ${what}: entrou em ${(r.entrouMs/1000).toFixed(0)} s${r.quadros?` · ${r.quadros} quadros (${fps}/s)`:''}${r.fpsJogo?` · jogo a ${r.fpsJogo} fps`:''}${r.gifKB?` · gif ${r.gifKB} KB`:''}${r.escolhas?` · ${r.escolhas} carta(s) escolhida(s)`:''}${r.roteiro==='matches'?(r.match?` · foguinho ${r.match}, cartão aberto (match.png)`:' · nenhum match'):''}${r.roteiro==='nomes'?(r.foto?` · foto ${r.foto} (nomes.png)`:' · sem a foto'):''}${r.tremor?` · tremor: ${r.tremor.recuos} recuo(s) em ${r.tremor.quadros} quadros andando (${r.tremor.recuosContato} de ${r.tremor.contato} encostado, máx ${r.tremor.maxRecuo} u)`:''}${err}`;
   });
   const head=origem?[`Partida solo em ${origem}`]:[];
   const all=[...head,...lines];
@@ -258,6 +285,9 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:tela-cheia:v1','off');}catch{}});
     // economy.ts ECONOMY_KEY (the question answered "no"), hud/coach.ts COACH_KEY (the first hints seen).
     if(!o.dicas)await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
+    // empurra: the scene is only on window in a build with the perf switch (scene.ts __perfScene); its meter stays hidden.
+    if(roteiro==='empurra')await ctx.addInitScript(()=>{try{sessionStorage.setItem('viagem:perf','1');}catch{}
+      document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.perf-hud{display:none!important}';document.head.append(s);});});
     const p=await ctx.newPage();
     p.on('pageerror',e=>r.erros.push(`pageerror: ${String(e).slice(0,300)}`));
     p.on('console',m=>{if(m.type()==='error')r.erros.push(`console: ${m.text().slice(0,300)}`);});
@@ -276,7 +306,18 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     // seconds more on a phone; then the camera's first second out of the GIF.
     await p.waitForFunction(()=>{const l=document.querySelector('.explore-loading');return !l||l.closest('[hidden]')||!l.getBoundingClientRect().width;},null,{timeout:60000}).catch(()=>{});
     await sleep(1500);
+    // empurra: the 1st wave's solid bodies near the hero (the phone's copies, client.ts bodies), before the GIF starts.
+    const nearest=()=>p.evaluate(()=>{const s=window.__perfScene??window.__island?.scene,n=s?.hooks?.net,me=n?.predicted;if(!me)return null;let best=null,bd=Infinity,count=0;
+      for(const b of n.bodies??[]){const d=Math.hypot(b.x-me.x,b.y-me.y);if(d<10)count++;if(d<bd){bd=d;best=b;}}
+      if(!best)return null;const a=s.project(me),c=s.project(best);return {d:bd,count,dir:{x:c.x-a.x,y:c.y-a.y}};}).catch(()=>null);
+    if(roteiro==='empurra'){
+      const until=Date.now()+EMPURRA_WAIT_MS;
+      for(;;){if(o.escolher)await escolher(p,tela);const n=await nearest();if(n&&n.d<12&&n.count>=2)break;if(Date.now()>until){r.falha=`nenhuma onda perto do herói (${JSON.stringify(n)})`;await p.screenshot({path:join(dir,'falha.png'),timeout:30000}).catch(()=>{});return r;}await sleep(2000);}
+    }
     await p.screenshot({path:join(dir,'inicio.png'),timeout:30000}).catch(()=>{});
+    // empurra: every drawn frame, the hero as drawn (scene.displayed) and its gap to the nearest solid body (tremorOf).
+    if(roteiro==='empurra')await p.evaluate(()=>{const w=window,out=w.__tremor=[];const tick=()=>{const s=w.__perfScene??w.__island?.scene,n=s?.hooks?.net,d=s?.displayed,me=n?.predicted;
+      if(d&&me){let gap=Infinity;for(const b of n.bodies??[])gap=Math.min(gap,Math.hypot(b.x-me.x,b.y-me.y)-b.radius-.22);out.push([d.x,d.y,gap,w.__stick??null]);}requestAnimationFrame(tick);};requestAnimationFrame(tick);}).catch(()=>{});
     // The GIF's frames from the compositor's screencast (CDP), not page.screenshot: on CI's software GL a screenshot
     // reads the frame back and holds the page ~3 s (0.2 frames/s, and a 12 s roteiro took 65 s). Only kept --fps apart.
     const all=[],start=Date.now();
@@ -298,9 +339,14 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
         const arrow=await p.evaluate(()=>{const a=document.querySelector('.rh-edge:not([hidden])[data-kind="uno"]')??document.querySelector('.rh-edge:not([hidden])[data-kind="base"]'),b=a?.getBoundingClientRect();return b&&b.width?{x:b.left+b.width/2,y:b.top+b.height/2}:null;}).catch(()=>null);
         if(arrow){go=toward({x:t.viewport.width/2,y:t.viewport.height/2},arrow);r.voltas++;}
       }
+      if(roteiro==='empurra'){const n=await nearest();if(n&&Math.hypot(n.dir.x,n.dir.y)>1){go=n.dir;r.voltas++;}}
+      // empurra: which hold of the stick each drawn frame belongs to (tremorOf counts only within one hold).
+      if(roteiro==='empurra')await p.evaluate(k=>{window.__stick=k;},go?steps.indexOf(st):null).catch(()=>{});
       await mover(p,cdp,tela,go,st.ms);elapsed+=st.ms;
+      if(roteiro==='empurra')await p.evaluate(()=>{window.__stick=null;}).catch(()=>{});
       if(!midShot&&elapsed>=o.segundos*500){midShot=true;await p.screenshot({path:join(dir,'meio.png'),timeout:30000}).catch(()=>{});}
     }
+    if(roteiro==='empurra'){const rows=await p.evaluate(()=>window.__tremor??[]).catch(()=>[]);r.tremor=tremorOf(rows);writeFileSync(join(dir,'tremor.json'),JSON.stringify(r.tremor));}
     r.fpsJogo=await p.evaluate(()=>{const g=window.__gravarRaf;return g?Math.round(g.n/((performance.now()-g.t0)/1000)):0;}).catch(()=>0);
     if(cdp&&o.gif){await cdp.send('Page.stopScreencast').catch(()=>{});cdp.off('Page.screencastFrame',onFrame);}
     const frames=pickFrames(all,o.fps);

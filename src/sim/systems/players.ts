@@ -3,12 +3,14 @@
  * Weapons fire on their own (weapons system); damage, falls and revives go through core/revive. D-051 manual combat
  * (ManualCombat): who holds the attack this tick is noted for the weapons system and the class skill is ignored.
  */
-import {capStep,carBlock,floorOf,floorOn,isDown,moveStep,onFloor,setFloor,slipping,walkable,type CarPlace,type Point} from '../../maps/index.ts';
+import {bodyBlock,capStep,carBlock,floorOf,floorOn,isDown,moveStep,onFloor,setFloor,slipping,walkable,type CarPlace,type Point} from '../../maps/index.ts';
 import type {TerrainField} from '../../maps/index.ts';
 import {SIM_HZ,SYSTEM_ORDER} from '../../contract/index.ts';
 import type {PlayerInput,SimPlayer} from '../../contract/index.ts';
 import type {SimSystem} from '../context.ts';
 import {castSkill} from '../skills.ts';
+import {bodiesNear,enemyShove} from '../bodies.ts';
+import type {EnemyState} from '../../contract/index.ts';
 
 /** 'players' runs before the contract systems, so enemies react to this tick's positions. */
 /**
@@ -55,10 +57,15 @@ export interface ManualCombat {attacking:Set<string>}
  * may walk this tick (u), undefined for free; the step is cut along its own line (kept in place if that point is not walkable).
  * `car` (card uno-bloqueio-corpo): the chaveiro's car, whose body every standing hero stays out of (maps carBlock, as the
  * phone's replay), walking or not (the car rolled onto a hero standing still: out to its edge on this tick).
+ * `bodies` (card heroi-empurra-inimigos): every step a hero takes pushes the solid enemies it walks into and stops at
+ * their edge (maps bodyBlock, as the phone's replay), before the car's block; a function is also told whose step a
+ * body changed.
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
-  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined):SimSystem{
+  stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean|((playerId:string)=>void)):SimSystem{
+  const near:EnemyState[]=[];
   return {id:'players',step(ctx){
+    const shove=bodies?enemyShove(ctx.terrain):undefined;
     manual?.attacking.clear();
     const body=car?.();
     for(const player of ctx.players.values()){
@@ -87,7 +94,9 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
         const from={x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
         movePlayer(p,input,ctx.terrain,ctx.tick);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        const q=carBlock(from,capStep(from,p,stepCap?.(p.id),ctx.terrain),body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
+        let q=capStep(from,p,stepCap?.(p.id),ctx.terrain);
+        if(shove){const free=q;q=bodyBlock(from,q,bodiesNear(ctx,q.x,q.y,near),ctx.terrain,shove);if(q!==free&&typeof bodies==='function')bodies(p.id);}
+        q=carBlock(from,q,body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;
         // The mouse's aim while attacking (cone-ataque-melee): the melee swing goes there (weapons/system.ts fireCone).
         if(input.aim)p.aim=input.aim;else delete p.aim;

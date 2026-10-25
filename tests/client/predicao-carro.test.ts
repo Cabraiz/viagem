@@ -48,8 +48,9 @@ test('the client feeds the cap to both the replay and the live step, and drops t
   const src=readFileSync(new URL('../../src/client/net/client.ts',import.meta.url),'utf8');
   assert.match(src,/this\.stepCap=this\.obraHold\.holding\(view\.structures\)\?0:carStepCap\(car,this\.id\)/);
   // uno-bloqueio-corpo: the car's body (a box by its heading) rides along with the cap.
-  assert.match(src,/cap:this\.stepCap,car:this\.carBody\}/);
-  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap,this\.carBody\)/);
+  // heroi-empurra-inimigos: and the copies of the solid bodies near the hero.
+  assert.match(src,/cap:this\.stepCap,car:this\.carBody,bodies:this\.bodies\}/);
+  assert.match(src,/simulate\(this\.predicted,input,this\.terrain,this\.tick\+this\.pending\.length,this\.effects,this\.stepCap,this\.carBody,this\.bodies\)/);
   assert.match(src,/this\.handsBusy=!!car&&\(car\.rope===this\.id\|\|!!car\.movers\?\.includes\(this\.id\)\)/);
   assert.match(src,/if\(this\.handsBusy\)attack=false;/);
   // The room uses the same cut (no drift between the phone and the room).

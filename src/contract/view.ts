@@ -17,7 +17,12 @@ export interface EnemyView {id:string;kind:string;x:number;y:number;hp:number;ma
   /** Bancos: it robbed an ATM and became a Cliente Prime (rules/bancos.ts BANCO.primeVida, the crown). */
   prime?:true;
   /** The viaduct (maps city/viaduct.ts): on a deck (floor 1); absent on the ground. The client lifts it by the deck's height. */
-  andar?:1}
+  andar?:1;
+  /**
+   * Card heroi-empurra-inimigos: the body's radius (u) when it is solid to the heroes (maps bodies.ts: the phone's
+   * prediction pushes it like the room); absent for the flying and the asleep, which a hero walks through.
+   */
+  radius?:number}
 export interface PickupView {id:string;kind:PickupKind;x:number;y:number;value:number;resource?:string}
 export interface ProjectileView {id:string;source:string;x:number;y:number;vx:number;vy:number;radius:number;hostile:boolean;
   /** The viaduct: flying on a deck (floor 1); absent on the ground. */

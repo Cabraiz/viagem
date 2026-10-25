@@ -327,7 +327,8 @@ function potState(state:ReturnType<ReturnType<typeof createRunSystems>['state']>
 // tree gives d19d984546770e0f); ilha and infinito unchanged.
 // All three again for sem-coxinha-no-chao (no coxinha from kills nor from the retired flash sale; the zueira plan has
 // one kind, so its shuffle draws one roll less).
-const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'03051496163afc32',ilha:'bdb1de954ee88405',infinito:'0f9bc3d21069b917'};
+// All three again for the solid bodies (heroi-empurra-inimigos: a hero pushes the critters it walks into, in every world).
+const ASSEMBLED_BASELINE:Readonly<Record<string,string>>={cidade:'3ff98437d2a46b9e',ilha:'d29bcc1705e4b7fb',infinito:'771f924394ef0bc9'};
 
 test('assembled run: the city with NEUTRAL_CITY_BALANCE as before cidade-11, its default is CITY_BALANCE; island and endless ignore strong knobs',()=>{
   const c=assembled(city,4,4000,NEUTRAL_CITY_BALANCE);

@@ -6,7 +6,7 @@
  * phone replays its pending steps against copies of the bodies its frame carries (EnemyView.radius), moving them too.
  *
  * - The hero always takes at least 1 - HERO_SHARE_MAX of the walk into any body, so a crowd (a ring of 8) never holds
- *   a hero in place: every step pushes through.
+ *   a hero in place: every step pushes through. Nor does a body ever carry the hero past its own step (bodyBlock's cut).
  * - A body only moves where the enemies may stand (the room: moveSafely on the enemy view; the phone: the whole push if
  *   the spot is walkable there, else none). What the body could not take, the hero takes (back out of it).
  * - Bodies on another floor (the viaduct's deck) and bodies without a radius (asleep, flying, or an older frame) are
@@ -77,6 +77,19 @@ export function bodyBlock(from:FloorPoint,to:FloorPoint,bodies:readonly Body[],t
     const before=at;
     at=blockPass(from,at,bodies,terrain,shove,share);
     if(at===before)break;
+  }
+  // Never farther than the step itself (a body met sideways backs the hero out across the walk): one tick moves a hero
+  // at most one step (the room's input rule, protocol/input-track.ts), so the cut keeps the line from `from` to there.
+  const walk=Math.hypot(to.x-from.x,to.y-from.y),moved=Math.hypot(at.x-from.x,at.y-from.y);
+  if(at!==to&&moved>walk){
+    const k=walk/moved,q={x:from.x+(at.x-from.x)*k,y:from.y+(at.y-from.y)*k},floor=floorOf(to);
+    at=walkable(q,onFloor(terrain,floor))?(floorOn(terrain,q.x,q.y,floor)===1?{x:q.x,y:q.y,andar:1}:{x:q.x,y:q.y}):from;
+    // The cut may leave the hero a little inside a body: the bodies take that part (where they can go).
+    for(const b of bodies){
+      if(!solid(b)||floorOf(b)!==floorOf(at))continue;
+      const dx=at.x-b.x,dy=at.y-b.y,d=Math.hypot(dx,dy),overlap=RADIUS+b.radius!-d;
+      if(overlap>1e-9&&d>1e-6)shove(b,-dx/d*overlap,-dy/d*overlap);
+    }
   }
   return at;
 }

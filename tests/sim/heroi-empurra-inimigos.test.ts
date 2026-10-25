@@ -133,7 +133,7 @@ test('run: with a crowd chasing a walking hero, no solid body stands inside the 
     for(const e of world.enemies.values())if(solidEnemy(e)&&!e.boss){worst=Math.max(worst,-gap(p,e));checked++;}
   }
   assert.ok(checked>400,`bodies checked ${checked}`);
-  assert.ok(worst<=1e-6,`a body stood ${worst.toFixed(4)} u inside the hero`);
+  assert.ok(worst<=1e-3,`a body stood ${worst.toFixed(5)} u inside the hero`);
 });
 
 test('flying bodies are not solid (pombos: a hero walks under them)',()=>{

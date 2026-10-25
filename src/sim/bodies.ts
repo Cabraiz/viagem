@@ -3,12 +3,12 @@
  * - The players system (systems/players.ts) runs bodyBlock on every step a hero takes (the phone replays the same).
  * - heroBodiesPass, at the end of the boss's slot (after every enemy moved this tick: the enemy-ai's walk and crowd
  *   push, the boss, the chefão), puts back out of each standing hero the bodies that walked into one: the body takes
- *   it all (the hero stays where the phone predicted), except the boss, who shoves the hero by its share. A body a wall
- *   holds leaves the rest to the hero.
+ *   it all, the boss too (the room never moves a hero outside its step: the phone predicted it, and one tick moves a
+ *   hero at most one step, protocol/input-track.ts). A body a wall holds stays; the hero's next step backs out of it.
  * Not solid: the flying (pombos, voadores: a hero walks under them), the asleep (out of ctx.enemies), the dead; and
  * the downed, eliminated, spectating or offline heroes (enemies walk over a body on the ground).
  */
-import {BODY_REACH,RADIUS as PLAYER_RADIUS,bodyBlock,enemyTerrain,floorOf,heroShare,onFloor,settleFloor,setFloor,type Body,type Shove} from '../maps/index.ts';
+import {BODY_REACH,RADIUS as PLAYER_RADIUS,bodyBlock,enemyTerrain,floorOf,onFloor,settleFloor,setFloor,type Shove} from '../maps/index.ts';
 import type {TerrainField} from '../maps/index.ts';
 import type {EnemyState,SimPlayer} from '../contract/index.ts';
 import type {SimContext} from './context.ts';
@@ -43,7 +43,7 @@ export function bodiesNear(ctx:SimContext,x:number,y:number,out:EnemyState[]):En
 export const standingHero=(p:SimPlayer,autopilot?:(id:string)=>boolean)=>
   (p.online||!!autopilot?.(p.id))&&!p.spectator&&!p.downed&&!p.eliminated&&p.hp>0;
 
-const enemyOnly=(b:Body)=>b.boss?heroShare(b):0;
+const enemyOnly=()=>0;
 
 /** After the enemies moved: no body stands inside a standing hero (see the header). */
 export function heroBodiesPass(ctx:SimContext,autopilot?:(id:string)=>boolean,scratch:EnemyState[]=[],moved?:(id:string)=>void){

@@ -10,6 +10,28 @@ export const putHidden=(el:HTMLElement,hidden:boolean)=>{if(el.hidden!==hidden)e
 export const putAttr=(el:Element,name:string,value:string)=>{if(el.getAttribute(name)!==value)el.setAttribute(name,value);};
 export const putData=(el:HTMLElement,key:string,value:string)=>{if(el.dataset[key]!==value)el.dataset[key]=value;};
 
+/**
+ * Text in place (BUG-20261025-ORQ-celular-travando): an element holding one text node gets the node's data changed, no
+ * node is replaced. A node inserted anywhere makes Chrome check the page's :has() rules up to <html> (html:has(.estadio),
+ * .rh:has(…)…) and restyle the whole document, the menu under the match included: the HUD's clocks did it every second.
+ */
+export function putTextData(el:Node,text:string){
+  const only=el.firstChild;
+  if(only&&only===el.lastChild&&only.nodeType===3){if(only.nodeValue!==text)only.nodeValue=text;return;}
+  if(el.textContent!==text)el.textContent=text;
+}
+const iconOf=new WeakMap<HTMLElement,string>();
+/**
+ * `${prefix}${iconMarkup}<b>text</b>` in `host`: the markup is rebuilt only when the prefix or the icon changes; a new
+ * number (a clock's second) changes the <b>'s text in place (putTextData).
+ */
+export function putIconNumber(host:HTMLElement,iconMarkup:string,text:string,prefix=''){
+  const markup=prefix+iconMarkup;
+  let b=host.lastElementChild;
+  if(iconOf.get(host)!==markup||!b||b.tagName!=='B'){host.innerHTML=`${markup}<b></b>`;iconOf.set(host,markup);b=host.lastElementChild!;}
+  putTextData(b,text);
+}
+
 /** Smallest turn (degrees) worth a style write for an arrow that follows a bearing: under it the eye sees no change. */
 export const TURN_STEP_DEG=2;
 /** Whether `next` differs from `last` by at least TURN_STEP_DEG around the circle (undefined: never written). */

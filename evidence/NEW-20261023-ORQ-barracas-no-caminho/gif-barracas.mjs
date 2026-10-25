@@ -57,7 +57,13 @@ try{
     const hx=(a.x-cam.worldView.x)*cam.zoom,hy=(a.y-cam.worldView.y)*cam.zoom,dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;
     return {x:hx+dx/l*lead,y:hy+dy/l*lead};},[to,lead]).then(c=>page.mouse.click(c.x,c.y));
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-  const walkTo=async(to,near=1,ms=20000)=>{const end=Date.now()+ms;while(Date.now()<end){const w=await world();if(dist(w.me,to)<=near)return true;await clickToward(to);await sleep(350);}return false;};
+  // WASD toward `to` on the screen (a click on a barraca opens its Coletar/Destruir menu instead of walking).
+  let held=[];
+  const keysToward=to=>page.evaluate(to=>{const s=window.__perfScene,a=s.project(s.position),b=s.project(to),dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;
+    const k=[];if(dx>.38*l)k.push('KeyD');else if(dx<-.38*l)k.push('KeyA');if(dy>.38*l)k.push('KeyS');else if(dy<-.38*l)k.push('KeyW');return k;},to);
+  const hold=async keys=>{for(const k of held)if(!keys.includes(k))await page.keyboard.up(k);for(const k of keys)if(!held.includes(k))await page.keyboard.down(k);held=keys;};
+  const walkTo=async(to,near=1,ms=20000)=>{const end=Date.now()+ms;try{while(Date.now()<end){const w=await world();if(dist(w.me,to)<=near)return true;await hold(await keysToward(to));await sleep(120);}return false;}finally{await hold([]);}};
+  const wipe=()=>lab({wipe:true});
 
   // A row barraca near the Uno and the row's direction (its neighbours), the side toward the car.
   let w=await world();
@@ -71,20 +77,21 @@ try{
   say(`barraca ${b.id} a ${dist(b,w.car).toFixed(1)} u do Uno; fileira ${rowOf(b).length+1}+; lado do Uno = +perp`);
 
   // 1. passar-devagar: from the far side to the Uno's side, through the barraca; speed in 0.25 s steps.
-  await lab({to:side(-3.5)});await sleep(1500);
+  await wipe();await lab({to:side(-3.5)});await sleep(1500);
   let c0=now();const speeds=[];let last=(await world()).me,lt=Date.now();
-  for(let i=0;i<40;i++){
-    await clickToward(side(4));await sleep(250);
+  for(let i=0;i<60;i++){
+    await hold(await keysToward(side(4)));await sleep(250);
     const me=(await world()).me,dt=(Date.now()-lt)/1000,inside=dist(me,b)<1.4;
     speeds.push({inside,v:dist(me,last)/dt});last=me;lt=Date.now();
     if(dist(me,side(4))<1)break;
   }
+  await hold([]);
   const mean=xs=>xs.length?xs.reduce((a,v)=>a+v,0)/xs.length:0;
   say(`passar: fora ${mean(speeds.filter(s=>!s.inside&&s.v>.2).map(s=>s.v)).toFixed(2)} u/s, dentro ${mean(speeds.filter(s=>s.inside).map(s=>s.v)).toFixed(2)} u/s`);
   cuts.push({name:'passar-devagar',from:c0,to:now()+.5});
 
   // 2. pegar-colocar: Coletar by the barraca, then the kit from the backpack and Construir near the Uno.
-  await sleep(800);c0=now();
+  await wipe();await sleep(800);c0=now();
   await walkTo(side(1.6),.8);
   const col=page.locator('.rh-tralha-coletar');
   await col.waitFor({state:'visible',timeout:8000}).catch(()=>say('Coletar não apareceu'));
@@ -92,7 +99,7 @@ try{
   await sleep(2400);
   w=await world();say(`coleta: kit no slot ${w.kit}; ${w.barracas.some(x=>x.id===b.id)?'a barraca AINDA está lá':'a barraca saiu do mapa'}`);
   const drop={x:w.car.x+(b.x-w.car.x)/dist(b,w.car)*6,y:w.car.y+(b.y-w.car.y)/dist(b,w.car)*6};
-  await walkTo(drop,1,15000);
+  await wipe();await lab({to:drop});await sleep(1200);
   if(w.kit>=0){
     await page.locator(`.rh-inv-slot[data-slot="${w.kit}"]`).click().catch(()=>say('slot do kit não clicou'));await sleep(900);
     const build=page.getByRole('button',{name:/^Construir/});

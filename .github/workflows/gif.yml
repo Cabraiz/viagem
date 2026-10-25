@@ -7,6 +7,9 @@
 #  - site (workflow_run, after every "Publish viagem"): viagem.cyou on the phone, once its version.json is that commit's
 #    build: inicio/meio/fim.png and the console errors in the artifact site-<sha12>, which the ORQ downloads with
 #    `node tools/gif-ci.mjs site` (a line in the board's site-prints.md).
+# CI has no GPU: the game draws at 3-6 fps there (the summary says "jogo a N fps"; 53-58 on the PC), so the GIF shows
+# the scene, the HUD, the walk and its direction, not the animation's smoothness or the FPS (that stays a local check).
+# A 20 s roteiro takes ~60 s of wall clock (each step waits for the slow page); ~8 min per run with the build.
 # A separate workflow from prints.yml (the sheet of every vgm/** push): the board's vigia-prints.mjs delivers every run
 # named "Prints" to the branch's owner, and these runs have no folha-<sha>.
 name: GIF

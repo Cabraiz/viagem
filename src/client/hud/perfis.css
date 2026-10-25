@@ -1,39 +1,63 @@
 /*
- * "Inimigo novo" as a dating-app profile (hud/perfis.ts), laid out as the mockup the user chose (etapa 1, opção 8): a
- * cream card with the photo inset and rounded, a white speech balloon on the photo with its tail towards the face,
- * "Name, age" in Inter 800, the pin and the distance, the bio, and the two big round ChatGPT buttons (✕ and ♥).
- * Sizes follow the card's width (container units), so PC and phone keep the same proportions. Generic app look, no
- * real brand. In the top band's right corner: left of the minimap on the desktop, under the top band on the phone.
- * Several pile up as a fan around their bottom edge.
+ * The enemies' matches (hud/perfis.ts, the user's option D): during the match only a small flame with the count, beside
+ * the gear (left of it on the desktop, where the minimap sits under it; under it on the phone, whose minimap is on the
+ * left); a tap opens the last match as a compact card under it, moved by placeProfiles (an inline translate + scale)
+ * off the hero, the Uno, the allies and the mission band. On the result, "Seus matches": the same card as stickers.
+ * The card is the mockup the user chose (etapa 1, opção 8): a cream card with the photo inset and rounded, a white
+ * speech balloon on the photo with its tail towards the face, "Name, age" in Inter 800, the pin and the distance, the
+ * bio, and the two big round ChatGPT buttons (✕ and ♥). Sizes follow the card's width (container units). No real brand.
  */
-.rh .rh-perfis{--perfil-w:clamp(150px,min(19vw,36vh),236px);position:absolute;z-index:var(--z-hud);top:calc(var(--rh-t) + 64px);right:var(--rh-r);
-  width:var(--perfil-w);container-type:inline-size;pointer-events:none}
-.rh:has(>.rh-minimap) .rh-perfis{right:calc(var(--rh-r) + clamp(124px,30vmin,210px) + 18px)}
-.rh .rh-perfis.rh-perfis-espera,.rh .rh-perfis.rh-perfis-fora{visibility:hidden}
-/* perfil-nao-cobre: moved by placeProfiles (an inline translate + scale) off the hero, the Uno, the allies and the mission band. */
-.rh .rh-perfis{transform-origin:0 0;transition:transform .22s ease-out}
-/* The phone's HUD keeps its minimap on the left (fone.css) or by the joystick: the card takes the right corner. */
-.rh[data-hud=fone]:has(>.rh-minimap) .rh-perfis,.rh[data-hud=fone] .rh-perfis{right:max(8px,var(--rh-r))}
-@media (max-width:599px){
-  /* Phone upright: under the top band; a tight fan around the bottom-right corner never reaches the hero in the middle. */
-  .rh .rh-perfis,.rh:has(>.rh-minimap) .rh-perfis{--perfil-w:min(44vw,172px);top:calc(var(--rh-t) + 96px);right:max(8px,var(--rh-r))}
-  .rh-perfil{--fan-k:.35;transform-origin:100% 100%}
-}
-/* Phone on its side: a short screen, a smaller card that ends above the Atacar button. */
-@media (max-height:460px){
-  .rh .rh-perfis,.rh:has(>.rh-minimap) .rh-perfis{--perfil-w:clamp(144px,40vh,164px);top:calc(var(--rh-t) + 50px)}
-  .rh-perfil{--fan-k:.4;transform-origin:100% 100%}
-}
+.rh .rh-perfis{position:absolute;inset:0;z-index:var(--z-hud);pointer-events:none}
+.rh .rh-perfis.rh-perfis-espera{visibility:hidden}
+.rh-matches-aviso{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);margin:0}
+
+/* The flame: the gear's sibling (explore.css .explore-config: 48 px at max(18px, safe area); 12/14 px on small screens). */
+.rh-matches{--m-top:max(18px,env(safe-area-inset-top));--m-right:max(18px,env(safe-area-inset-right));
+  position:absolute;top:var(--m-top);right:calc(var(--m-right) + 58px);display:grid;place-items:center;width:44px;height:44px;margin-top:2px;padding:0;
+  border:2px solid var(--c-papel);border-radius:var(--r-janela);background:var(--c-ficha);box-shadow:var(--s-2);cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;transition:opacity .2s}
+.rh-matches[hidden]{display:none}
+.rh-matches svg{width:28px;height:28px}
+.rh-matches-fogo{fill:var(--c-cone)}
+.rh-matches-miolo{fill:var(--c-amarelo)}
+.rh-matches-n{position:absolute;right:-7px;bottom:-7px;min-width:20px;height:20px;box-sizing:border-box;padding:0 5px;border-radius:var(--r-pilula);
+  background:var(--c-cone);color:var(--c-breu);font:800 13px/20px var(--f-perfil);text-align:center}
+/* Over the hero, the Uno or an ally: see-through, never hiding them. */
+.rh-matches.rh-matches-veu{opacity:.25}
+@keyframes rh-matches-pulo{0%{transform:none}30%{transform:translateY(-9px) scale(1.12)}55%{transform:translateY(0) scale(.94)}75%{transform:translateY(-3px)}100%{transform:none}}
+.rh-matches.rh-matches-pulo{animation:rh-matches-pulo .55s ease-out}
+.rh[data-hud=fone] .rh-matches{right:calc(var(--m-right) + 2px);top:calc(var(--m-top) + 48px + 10px);margin:0}
+@media (max-width:370px),(max-height:500px){.rh-matches{--m-top:max(12px,env(safe-area-inset-top));--m-right:max(14px,env(safe-area-inset-right))}}
+
+/* The compact card (a tap on the flame): under the flame, right-aligned with it; left of the minimap on the desktop. */
+.rh-perfil-slot{--perfil-w:clamp(150px,min(17vw,34vh),210px);position:absolute;top:calc(var(--rh-t) + 64px);right:calc(var(--rh-r) + clamp(124px,30vmin,210px) + 18px);
+  width:var(--perfil-w);container-type:inline-size;transform-origin:0 0;transition:transform .22s ease-out}
+.rh[data-hud=fone] .rh-perfil-slot{--perfil-w:min(40vw,156px);top:calc(max(18px,env(safe-area-inset-top)) + 48px + 64px);right:max(8px,var(--rh-r))}
+@media (max-height:460px){.rh[data-hud=fone] .rh-perfil-slot{--perfil-w:clamp(132px,36vh,150px);top:calc(max(12px,env(safe-area-inset-top)) + 4px);right:calc(max(14px,env(safe-area-inset-right)) + 112px)}}
 
 .rh-perfil{position:absolute;top:0;right:0;width:100%;box-sizing:border-box;container-type:inline-size;padding:3.4%;border-radius:var(--r-perfil);
   background:var(--perfil-papel);color:var(--perfil-tinta);font-family:var(--f-perfil);
-  box-shadow:var(--perfil-sombra);
-  transform-origin:50% 100%;opacity:0;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1) + 46px),var(--fan-y,0px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1) + 8deg)) scale(.92);
-  transition:transform .26s cubic-bezier(.2,1.4,.4,1),opacity .18s ease-out}
-.rh-perfil.rh-perfil-in{opacity:1;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1)),var(--fan-y,0px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1)))}
-.rh-perfil[data-sai=tempo]{opacity:0;transform:translate(calc(var(--fan-x,0px) * var(--fan-k,1)),calc(var(--fan-y,0px) - 14px)) rotate(calc(var(--fan-rot,0deg) * var(--fan-k,1))) scale(.96);transition-duration:.3s}
-.rh-perfil[data-sai=passar]{opacity:0;transform:translate(-150%,24px) rotate(-26deg);transition:transform .32s ease-in,opacity .32s ease-in}
-.rh-perfil[data-saindo]{opacity:0;transform:translate(150%,24px) rotate(24deg);transition:transform .32s ease-in,opacity .32s ease-in}
+  box-shadow:var(--perfil-sombra);pointer-events:auto;
+  transform-origin:100% 0;opacity:0;transform:translateY(-10px) scale(.9);
+  transition:transform .22s cubic-bezier(.2,1.4,.4,1),opacity .16s ease-out}
+.rh-perfil.rh-perfil-in{opacity:1;transform:none}
+
+/* "Seus matches" on the result: a row of stickers between the players' cards and the buttons, scrolling sideways. */
+.rh-result:has(>.rh-result-matches:not([hidden])){grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"head" "shame" "grid" "matches" "actions"}
+.rh-result-matches{grid-area:matches;position:relative;z-index:1;min-width:0}
+.rh-result-matches[hidden]{display:none}
+.rh-result-matches-titulo{margin:0 0 2px;font:400 var(--t-16)/1.1 var(--f-botao);color:var(--c-papel);text-align:center}
+.rh-result-matches-lista{display:flex;gap:12px;overflow-x:auto;overscroll-behavior:contain;padding:8px 10px 12px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.rh-result-matches-lista:has(> :only-child),.rh-result-matches-lista:has(> :nth-child(2):last-child){justify-content:center}
+.rh-perfil.rh-perfil-figurinha{position:relative;top:auto;right:auto;flex:none;width:clamp(118px,31vw,150px);scroll-snap-align:center;
+  opacity:1;transform:rotate(var(--tilt,0deg));transform-origin:50% 50%}
+.rh-perfil-figurinha[data-sai=passar]{opacity:.55;filter:grayscale(1);transform:rotate(var(--tilt,0deg))}
+.rh-perfil-figurinha[data-sai=curtir]{transform:rotate(var(--tilt,0deg))}
+@media (max-height:500px){
+  .rh-result:has(>.rh-result-matches:not([hidden])){grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"head actions" "shame shame" "grid grid" "matches matches"}
+  .rh-perfil.rh-perfil-figurinha{width:clamp(104px,26vh,124px)}
+  .rh-result-matches-lista{padding-block:4px 6px}
+}
 
 /* The photo: inset, rounded, wider than tall as in the mockup (the face is in the portrait's upper part). */
 .rh-perfil-foto{position:relative;aspect-ratio:1.4/1;border-radius:var(--r-perfil-foto);overflow:hidden;background:var(--perfil-cor,var(--c-lilas))}
@@ -66,4 +90,5 @@
   transition:opacity .12s,transform .2s cubic-bezier(.2,1.6,.4,1)}
 .rh-perfil[data-sai=curtir] .rh-perfil-match{opacity:1;transform:translate(-50%,-50%) rotate(-14deg) scale(1)}
 
-@media (prefers-reduced-motion:reduce){.rh .rh-perfis,.rh-perfil,.rh-perfil-match{transition:none}}
+
+@media (prefers-reduced-motion:reduce){.rh-perfil-slot,.rh-perfil,.rh-perfil-match,.rh-matches{transition:none}.rh-matches.rh-matches-pulo{animation:none}}

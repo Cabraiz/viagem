@@ -322,7 +322,9 @@ export class CharacterSprites {
     // Resting long enough, it dances (danca-no-jogo) once its sheet is in; meanwhile the rest goes on.
     const danceStart=state.dance.update(this.scene.time.now,alive&&motion==='idle'&&!pushing&&!pulling&&hurt===undefined,this.cues.get(sprite));
     const dancing=seen&&!flinch?this.danceClip(sprite,state,id,danceStart):undefined;
-    const detailed=alive&&seen?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):movementPlan(id,motion,direction)):undefined;
+    // A caído (card parado-respiracao-herois) is its rest, breathing, turned −90° by the scene: the legacy sheet it fell
+    // back to was older art (another outfit, a fishing rod in hand).
+    const detailed=!seen?undefined:alive?dancing??flinch??(pushing?pushPlan(id,direction):pulling?pullPlan(id,direction):movementPlan(id,motion,direction)):movementPlan(id,'idle',direction);
     // The walk follows the ground walked (passo-sem-deslizar), every sheet alike: each draws its figure 96 px tall × the
     // view scale × HERO_DRAW_SCALE (detailed 96/height, legacy sheet.scale), and the cycle runs on while a clip loads.
     // A class that runs (run16, HERO_GAIT) keeps its foot locked (passo-3x-mais-lento): at its phase table's stride when
@@ -360,8 +362,8 @@ export class CharacterSprites {
         sprite.setOrigin(origin.x,origin.y).setScale(copy?scale*copy.geom.kx:scale,copy?scale*copy.geom.ky:scale).setFlipX(flip).setFlipY(false);
         setBareFrame(sprite,copy?{key:detailed.key,ox:flip?1-ax:ax,oy:ay,sx:scale,sy:scale}:undefined);
         // Both hands on the Uno (empurrar-uno) or on its rope (puxar-uno-corda): the weapon is put away at the hero's side
-        // (arsenal-fx), measured or not.
-        state.hand=pushing||pulling?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
+        // (arsenal-fx), measured or not. A caído lies turned: no hand fits (hand-points.ts).
+        state.hand=pushing||pulling||!alive?undefined:{url:detailed.original,frame,ox:ax,oy:ay,scale,flip,direction,...(copy?{geom:copy.geom}:{})};
         state.stream=detailed;state.shown=motion;state.side=direction;state.swingShown=motion==='attack'?swing.start:state.swingShown;cache.bind(sprite,detailed.key);return;
       }
       // A pending rest, turn or attack keeps the last oblique pose and its lease; a failed/missing clip uses legacy.

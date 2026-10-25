@@ -48,7 +48,6 @@ export const COLLECT_RADIUS=.6;
 export const PULL_RADIUS=1.2;
 /** Units per second a pulled pickup travels toward its collector. */
 export const HOMING_SPEED=12;
-export const HEAL_DROP_CHANCE=.02;
 /**
  * D-054: the round-1 crumbs' XP (VGM-056: 6 drops of 1 a short walk away, one more than the first level) in the endless
  * world, where the bêbados need ~25 s to arrive: paid with the first kill of round 1, or when its wave ends without
@@ -182,18 +181,15 @@ export function createProgression(options:ProgressionOptions,state:ProgressionSt
   const round1Due=(ctx:SimContext)=>!state.round1Paid&&directed(ctx)&&!!ctx.terrain.chunks&&ctx.round.index<=2;
   function payRound1(){state.round1Paid=true;return ROUND1_XP;}
 
-  /** A killed enemy: its XP to the team (killXp), a chest for elites and a small luck-scaled chance of coxinha. */
+  /** A killed enemy: its XP to the team (killXp) and a chest for elites. No coxinha falls any more (NEW-20261025-ORQ-sem-coxinha-no-chao). */
   function dropLoot(ctx:SimContext,enemy:EnemyState,by?:string):PickupState[]{
     killXp(ctx,enemy,by);
     const r=rngOf(ctx),collectors=sortedCollectors(ctx);
-    const luck=Math.max(0,(by?ctx.players.get(by)?.stats.luck:undefined)??1);
     const near=()=>({x:enemy.x+r.range(-DROP_SPREAD,DROP_SPREAD),y:enemy.y+r.range(-DROP_SPREAD,DROP_SPREAD)});
     const out:PickupState[]=[];
     if(enemy.elite&&!enemy.boss)out.push(addPickup(ctx,'chest',1,near(),collectors));
-    const heal=r.chance(HEAL_DROP_CHANCE*luck);
-    // The old ímã roll, drawn and dropped: the run's random stream stays as before D-054 (seeded runs and tests keep their story).
-    r.next();
-    if(heal)out.push(addPickup(ctx,'heal',HEAL_AMOUNT,near(),collectors,ctx.tick+ticks(DROP_LIFETIME_SECONDS)));
+    // The old coxinha and ímã rolls, drawn and dropped: the run's random stream stays as before (seeded runs and tests keep their story).
+    r.next();r.next();
     saveRng();
     return out;
   }

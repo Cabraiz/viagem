@@ -6,10 +6,10 @@ import type {HappeningKind} from '../../contract/index.ts';
 import type {ShameKey,ShameMoment} from '../../contract/index.ts';
 import {FEAR_SOURCE,entryLines} from '../../rules/index.ts';
 
-/** Street banner of an event (the round banner's faixa: title + one dry line). */
-export const HAPPENING_COPY:Readonly<Record<HappeningKind,{title:string;subtitle:string}>>={
+/** Street banner of an event (the round banner's faixa: title + one dry line). The flash sale is retired with its
+ * coxinhas (NEW-20261025-ORQ-sem-coxinha-no-chao): no banner, even if an old server still sends it. */
+export const HAPPENING_COPY:Readonly<Partial<Record<HappeningKind,{title:string;subtitle:string}>>>={
   boletos:{title:'Chuva de boleto!',subtitle:'Cata, que vira XP.'},
-  promo:{title:'Promoção relâmpago!',subtitle:'Coxinha grátis por 8 s.'},
   apagao:{title:'Apagão!',subtitle:'Os olhos no escuro são os bichos.'},
 };
 

@@ -38,7 +38,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mendigo',role:'Suporte',weapon:'guarda-chuva',
     classBonus:{luck:0.2,growth:0.08,regen:0.2},
     skill:{name:'Tesouro do Achados',cooldown:20,
-      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto e, no meio do round, ainda acha uma coxinha.'},
+      effect:'Monta um abrigo de papelão: cura e protege os aliados por perto.'},
     lines:['Isso aqui ainda dá jogo.','Papelão é tecnologia, confia.','Abrigo cinco estrelas, sem taxa de serviço.','Engenharia de reaproveitamento!'],
   },
   {
@@ -165,7 +165,7 @@ export const KITS:readonly ClassKit[]=Object.freeze([
     classId:'mae-pet',role:'Suporte',weapon:'pombo',
     classBonus:{growth:0.06,luck:0.1},
     skill:{name:'Cadê o Neném',cooldown:18,
-      effect:'O pet busca uma coxinha e larga ao lado do aliado mais machucado por perto. Só durante o round.'},
+      effect:'O pet leva um lanche ao aliado mais machucado por perto e cura na hora. Só durante o round.'},
     lines:['Vai, neném, busca pra mamãe!','Ele é dócil, só é carente.','Quem é o bebê mais lindo? É você!','Larga isso, menino! Larga!'],
   },
   {

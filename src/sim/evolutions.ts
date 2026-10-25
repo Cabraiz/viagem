@@ -7,7 +7,6 @@ import {ticks,type OwnedItem,type PlayerBuild,type SimPlayer} from '../contract/
 import type {SimContext} from './context.ts';
 import {PASSIVE_MAX_LEVEL,isPassiveId,type PassiveId} from '../rules/index.ts';
 import {refreshStats} from '../rules/index.ts';
-import {MAX_PICKUPS,hasRoom} from '../rules/index.ts';
 import {WEAPON_CATALOG,WEAPON_IDS,getWeapon} from './weapons/catalog.ts';
 import type {Rng} from '../contract/index.ts';
 
@@ -18,10 +17,8 @@ export const WEAPON_MAX_LEVEL=8;
 export const EVOLUTION_MAX_LEVEL=1;
 /** Chests opened before 2:00 of combat never evolve. */
 export const EVOLUTION_MIN_TICKS=ticks(120);
-/** Heal value of the coxinha dropped by a chest with nothing to give. */
+/** Life a chest with nothing to give heals on the spot (it no longer drops a coxinha: NEW-20261025-ORQ-sem-coxinha-no-chao). */
 export const CHEST_HEAL_VALUE=30;
-/** Seconds the chest coxinha stays on the ground (same as regular drops). */
-export const CHEST_HEAL_LIFETIME_SECONDS=30;
 
 export interface EvolutionRecipe {
   /** Evolved weapon id. */
@@ -58,8 +55,8 @@ export function eligibleEvolutions(build:PlayerBuild):EvolutionRecipe[]{
 export type ChestResult=
   | {kind:'evolve';from:string;to:string}
   | {kind:'upgrade';items:OwnedItem[]}
-  /** pickup is null when the pickup budget is full: the player is healed directly instead. */
-  | {kind:'heal';pickup:string|null};
+  /** The opener is healed on the spot; pickup is always null (no coxinha on the ground any more). */
+  | {kind:'heal';pickup:null};
 
 /** The class bonus always comes from SimPlayer.classBonus (D-005/D-006). */
 export interface ChestOptions {
@@ -86,8 +83,8 @@ function primaryEntries(items:readonly OwnedItem[]):OwnedItem[]{
  * Returns null (and changes nothing) if the chest is gone, is not a chest, or the player cannot open it,
  * so repeated or simultaneous opens of the same chest apply exactly one reward.
  * Reward: at most one evolution (base weapon becomes the evolved one, the passive stays); otherwise
- * 1 item level (3 with luck); with nothing to upgrade, a coxinha drops where the chest was.
- * Offline players cannot open chests. The coxinha emits no event: the pickups system reports it when collected.
+ * 1 item level (3 with luck); with nothing to upgrade, the opener heals CHEST_HEAL_VALUE on the spot.
+ * Offline players cannot open chests.
  */
 export function openChest(ctx:SimContext,player:SimPlayer,chestId:string,options:ChestOptions={}):ChestResult|null{
   const chest=ctx.pickups.get(chestId);
@@ -131,12 +128,6 @@ export function openChest(ctx:SimContext,player:SimPlayer,chestId:string,options
     return {kind:'upgrade',items};
   }
 
-  if(!hasRoom(ctx.pickups,MAX_PICKUPS)){
-    player.hp=Math.min(player.stats.maxHp,player.hp+CHEST_HEAL_VALUE);
-    return {kind:'heal',pickup:null};
-  }
-  const pickup=ctx.nextId('pickup');
-  ctx.pickups.set(pickup,{id:pickup,kind:'heal',value:CHEST_HEAL_VALUE,x:chest.x,y:chest.y,
-    spawnTick:ctx.tick,expiresTick:ctx.tick+ticks(CHEST_HEAL_LIFETIME_SECONDS)});
-  return {kind:'heal',pickup};
+  player.hp=Math.min(player.stats.maxHp,player.hp+CHEST_HEAL_VALUE);
+  return {kind:'heal',pickup:null};
 }

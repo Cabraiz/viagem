@@ -3,17 +3,21 @@
  * GitHub Actions from the PC without `gh` (NEW-20261014-ORQ-ci-github-shards-e-bench, D-049 items 1 and 5).
  *
  * Executor commands (git push + the public REST API, unauthenticated unless GITHUB_TOKEN is set):
- *   node tools/ci.mjs test <branch> [--push] [--json] [--timeout 20]
+ *   node tools/ci.mjs test <branch> [--push] [--json] [--smoke] [--timeout 20]
  *       waits for the CI run (.github/workflows/ci.yml) of the branch head sha; exit 0 green, 1 red, 2 infra.
- *       --json prints only {ok,failedFiles,url,sha,minutes}.
+ *       --json prints only {ok,failedFiles,url,sha,minutes}. --smoke adds `smoke: {prod, upgrade}` (the jobs' `smoke-prod`
+ *       / `smoke-upgrade` annotations, smokeSummary; upgrade only on fila/**, null elsewhere) — the queue's `--smoke ci`.
  *   node tools/ci.mjs bench <branch> [--seeds 1-16] [--players 1] [--world cidade] [--target 2/8]
- *       [--objective chaveiro] [--combat manual] [--cap-min 25] [--no-towers] [--timeout 120]
+ *       [--objective chaveiro] [--mode ninhos] [--combat manual] [--cap-min 25] [--no-towers] [--timeout 120]
+ *       [--out <file.json>] [--json]
  *       commits .bench.json on top of the branch head WITHOUT touching the working tree (plumbing, temporary index),
  *       pushes it to refs/heads/bench/<branch>-<stamp>, waits for .github/workflows/bench.yml, prints the aggregated
- *       table (annotation `bench-summary`) and deletes the temporary ref (always, best effort).
- *       Exit 0 pass (or no target), 1 fail, 2 infra.
+ *       table (annotation `bench-summary`) and deletes the temporary ref (always, best effort). --out writes the JSON
+ *       summary (benchJson: the local file's config + summary, each run without its long lists), --json prints it
+ *       instead of the table. tools/bench-ci.mjs is this command. Exit 0 pass (or no target), 1 fail, 2 infra.
  *   node tools/ci.mjs timings <branch>   rewrites tests/.timings.json from the last green CI run's `ci-timings`.
- * Workflow-side commands (used by the YAML): shard, report, bench-plan, annotate-run, gate, annotate-summary.
+ * Workflow-side commands (used by the YAML): shard, report, bench-plan, annotate-run, gate, annotate-summary, annotate-json,
+ * smoke-note.
  *
  * API budget (60 requests/hour per IP without a token, shared by every executor on the PC):
  *  - every GET goes through a disk cache shared by all executors (CI_CACHE_DIR, default
@@ -48,7 +52,7 @@ export class InfraError extends Error {}
 // Pure helpers (tests/tools/ci.test.ts)
 // ---------------------------------------------------------------------------------------------------------------
 
-const BOOL_FLAGS=new Set(['json','push','no-towers']);
+const BOOL_FLAGS=new Set(['json','push','no-towers','smoke']);
 /** argv → {cmd, args (positional), flags}; `--x v` takes a value unless x is a boolean flag; `--x=v` works too. */
 export function parseArgs(argv){
   const out={cmd:argv[0],args:[],flags:{}};
@@ -159,10 +163,14 @@ export function benchParams(raw){
   // D-051: the manual combat (the attack button, the arsenal, crates, inventory); absent = the automatic weapons.
   const combat=raw.combat||null;
   if(combat!==null&&combat!=='manual')throw new Error(`combat ${combat}: only 'manual'`);
+  // balanco-ninhos: the nests ride with the chaveiro only (bench-city-run refuses --mode without it).
+  const mode=raw.mode||null;
+  if(mode!==null&&mode!=='ninhos')throw new Error(`mode ${mode}: only 'ninhos'`);
+  if(mode!==null&&objective!=='chaveiro')throw new Error('mode ninhos needs objective chaveiro');
   const players=Array.isArray(raw.players)?raw.players.map(Number):parseRange(raw.players??'1');
   if(players.some(p=>p<1||p>6))throw new Error('players must be 1..6');
   const capMin=raw.capMin??raw.cap_min;
-  const p={world,seeds:Array.isArray(raw.seeds)?raw.seeds.map(Number):parseRange(raw.seeds??'1-16'),players,objective,combat,
+  const p={world,seeds:Array.isArray(raw.seeds)?raw.seeds.map(Number):parseRange(raw.seeds??'1-16'),players,objective,combat,mode,
     capMin:capMin===undefined||capMin===''||capMin===null?null:Number(capMin),towers:raw.towers!==false&&raw.towers!=='false',
     target:raw.target||null,branch:raw.branch||null,sha:raw.sha||null,base:raw.base||null};
   if(p.capMin!==null&&!(p.capMin>0))throw new Error('capMin must be > 0');
@@ -170,15 +178,41 @@ export function benchParams(raw){
   return p;
 }
 /** Hash of what changes the result (not branch/sha/base/target): the "before" artifact is keyed by base sha + this. */
-// `combat` joins only when manual, so every automatic bench keeps the hash (and the "before" artifact) it had.
+// `combat` and `mode` join only when set, so every earlier bench keeps the hash (and the "before" artifact) it had.
 export const paramsHash=p=>createHash('sha256').update(JSON.stringify({world:p.world,seeds:p.seeds,players:p.players,objective:p.objective,capMin:p.capMin,towers:p.towers,
-  ...(p.combat==='manual'?{combat:'manual'}:{})})).digest('hex').slice(0,12);
+  ...(p.combat==='manual'?{combat:'manual'}:{}),...(p.mode?{mode:p.mode}:{})})).digest('hex').slice(0,12);
 export const benchMatrix=p=>({include:p.seeds.flatMap(seed=>p.players.map(players=>({seed,players})))});
-export const benchArgs=p=>[...(p.objective?['--objective',p.objective]:[]),...(p.combat?['--combat',p.combat]:[]),...(p.capMin!==null?['--cap-min',String(p.capMin)]:[]),...(p.towers?[]:['--no-towers'])].join(' ');
+export const benchArgs=p=>[...(p.objective?['--objective',p.objective]:[]),...(p.mode?['--mode',p.mode]:[]),...(p.combat?['--combat',p.combat]:[]),...(p.capMin!==null?['--cap-min',String(p.capMin)]:[]),...(p.towers?[]:['--no-towers'])].join(' ');
 /** Run-job name in bench.yml (`run <seed>-<players>p`) → {seed,players}; null for other jobs. */
 export function runJobKey(name){
   const m=/^run (\d+)-(\d+)p$/.exec(name??'');
   return m?{seed:Number(m[1]),players:Number(m[2])}:null;
+}
+/** The fields of a run the JSON summary keeps (the rest — rounds, forge, perf… — stays in the run artifacts). */
+export const RUN_FIELDS=['key','seed','players','classes','outcome','cause','roundReached','diedRound','ticks','simMinutes','wallHpEnd','wallMaxHp','digest'];
+export const compactRun=r=>Object.fromEntries(RUN_FIELDS.filter(k=>r?.[k]!==undefined).map(k=>[k,r[k]]));
+/**
+ * The bench's JSON summary, the local file's shape (scripts/bench-city-run.ts OutFile: card, version, config, summary,
+ * runs) with each run compacted (compactRun), plus `ci` (where it ran). Travels in annotations: no token on the PC.
+ */
+export function benchJson(merged,ci={}){
+  const {runs=[],...rest}=merged??{};
+  return {...rest,runs:runs.map(compactRun),runsCompact:true,ci};
+}
+
+/**
+ * One smoke's result for the queue (`--smoke ci`, annotation `smoke-<kind>` + smoke-<kind>.json): exit 0 ok, 1 the
+ * game broke, 2 infrastructure (scripts/smoke-prod.mjs), and at most 10 lines — its verdict lines (`smoke …`), else the
+ * end of the log. No exit (the smoke step never ran): a failed build is the game's (1), anything else the machine's (2);
+ * `skipped` (no base to upgrade from) is a pass that says so.
+ */
+export function smokeSummary(kind,log,{exit='',build='',skipped=''}={}){
+  const lines=String(log??'').split(/\r?\n/).map(l=>l.trimEnd()).filter(l=>l.trim());
+  const verdict=lines.filter(l=>/^smoke\b/.test(l));
+  let code=exit===''||exit===null||exit===undefined?null:Number(exit),linhas=(verdict.length?verdict:lines.slice(-3)).slice(-10);
+  if(skipped){code=0;linhas=[`smoke ${kind}: pulado · ${skipped}`];}
+  else if(code===null){code=build==='failure'?1:2;linhas=[build==='failure'?'npm run build falhou':`o smoke ${kind} não rodou (um passo antes dele falhou: ${build||'?'})`,...linhas].slice(0,10);}
+  return {kind,exit:code,ok:code===0,infra:code===2,skipped:!!skipped,linhas:linhas.map(l=>l.slice(0,300))};
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -305,9 +339,27 @@ async function cmdTest(o,api=createApi()){
     }
   }
   const result={ok,failedFiles:[...failedFiles].sort(),url:run.html_url,sha,minutes:minutesOf(run)};
+  if(o.flags.smoke)result.smoke=await smokesOf(api,run,branch);
   if(o.flags.json)console.log(JSON.stringify(result));
   else console.log(`${ok?'CI green':'CI red'} in ${result.minutes} min: ${result.url}${ok?'':`\nfailed: ${result.failedFiles.join(' ')}`}`);
   return ok?0:1;
+}
+
+/**
+ * The smokes of a ci.yml run (`--smoke`): job `build` → smoke-prod, job `smoke-upgrade` (fila/** only) → smoke-upgrade.
+ * A job that left no annotation (cancelled, or it died before its note step) is the machine's: exit 2, its conclusion.
+ */
+export const SMOKE_JOBS={prod:'build',upgrade:'smoke-upgrade'};
+async function smokesOf(api,run,branch){
+  const jobs=await jobsOf(api,run),out={};
+  for(const [kind,name] of Object.entries(SMOKE_JOBS)){
+    const job=jobs.find(j=>j.name===name);
+    if(!job){out[kind]=kind==='upgrade'&&!branch.startsWith('fila/')?null:smokeSummary(kind,'',{build:`job ${name} ausente`});continue;}
+    const text=joinAnnotations(await annotationsOf(api,job.id),`smoke-${kind}`);
+    let s=null;try{s=text?JSON.parse(text):null;}catch{/* a broken note: the machine's */}
+    out[kind]=s??smokeSummary(kind,'',{build:`job ${name} ${job.conclusion??job.status} sem resumo`});
+  }
+  return out;
 }
 
 /** Commits .bench.json on top of `sha` without touching the working tree or the real index. */
@@ -327,7 +379,7 @@ async function cmdBench(o,api=createApi()){
   if(!branch)throw new Error('usage: bench <branch> --seeds 1-16 --players 1 [--world cidade] [--target 2/8]');
   const f=o.flags,sha=git('rev-parse','--verify',`${branch}^{commit}`);
   let base=null;try{base=git('merge-base',sha,'origin/main');}catch{}
-  const params=benchParams({world:f.world,seeds:f.seeds??'1-16',players:f.players??'1',objective:f.objective,combat:f.combat,capMin:f['cap-min'],
+  const params=benchParams({world:f.world,seeds:f.seeds??'1-16',players:f.players??'1',objective:f.objective,mode:f.mode,combat:f.combat,capMin:f['cap-min'],
     towers:!f['no-towers'],target:f.target,branch,sha,base});
   const stamp=new Date().toISOString().replace(/\D/g,'').slice(0,14);
   const ref=`bench/${branch.replace(/[^\w./-]/g,'-')}-${stamp}`;
@@ -344,6 +396,14 @@ async function cmdBench(o,api=createApi()){
     const notes=agg?await annotationsOf(api,agg.id):[];
     const summary=joinAnnotations(notes,'bench-summary'),verdict=JSON.parse(joinAnnotations(notes,'bench-verdict')??'null');
     if(!summary)throw new InfraError(`no bench-summary in ${run.html_url} (aggregate ${agg?.conclusion??'missing'})`);
+    if(f.out||f.json){
+      // The JSON summary (annotate-json: bench-json = the file without runs, bench-json-runs = the compact runs).
+      const head=JSON.parse(joinAnnotations(notes,'bench-json')??'null'),runs=JSON.parse(joinAnnotations(notes,'bench-json-runs')??'null');
+      if(!head)throw new InfraError(`no bench-json in ${run.html_url} (a bench.yml older than annotate-json?)`);
+      const file={...head,runs:runs??[],ci:{...head.ci,url:run.html_url,branch,sha,params:paramsHash(params)}};
+      if(f.out){fs.mkdirSync(path.dirname(path.resolve(f.out)),{recursive:true});fs.writeFileSync(path.resolve(f.out),JSON.stringify(file,null,1)+'\n');say(`written: ${path.resolve(f.out)}`);}
+      if(f.json){console.log(JSON.stringify(file));return verdict?.decision==='fail'?1:0;}
+    }
     console.log(summary);
     console.log(run.html_url);
     return verdict?.decision==='fail'?1:0;
@@ -451,8 +511,37 @@ function cmdAnnotateSummary(o){
   return 0;
 }
 
+/**
+ * Aggregate job: merged/bench-result.json → `bench-json` (the file without its runs) and `bench-json-runs` (the compact
+ * runs). Each title is printed by its own step (GitHub keeps 10 notices per step): `annotate-json <file> head|runs`.
+ */
+function cmdAnnotateJson(o){
+  const merged=readJson(o.args[0]);
+  if(!merged){console.log('::warning::annotate-json: no merged bench file');return 0;}
+  const {runs,...head}=benchJson(merged,{run:process.env.GITHUB_RUN_ID??null});
+  const part=o.args[1]??'head';
+  for(const l of noticeLines(part==='runs'?'bench-json-runs':'bench-json',JSON.stringify(part==='runs'?runs:head)))console.log(l);
+  return 0;
+}
+/**
+ * ci.yml, after a smoke step (`if: always()`): `smoke-note <prod|upgrade> <log> [--exit <code>] [--build <outcome>]
+ * [--skipped <why>]` writes smoke-<kind>.json next to the log and the `smoke-<kind>` annotation (smokeSummary). Exit 0.
+ */
+function cmdSmokeNote(o){
+  const [kind,log]=o.args;
+  if(!kind||!log)throw new Error('usage: smoke-note <prod|upgrade> <log> [--exit n] [--build outcome] [--skipped why]');
+  let text='';try{text=fs.readFileSync(log,'utf8');}catch{/* the smoke never ran */}
+  const s=smokeSummary(kind,text,{exit:o.flags.exit??'',build:o.flags.build??'',skipped:o.flags.skipped??''});
+  const full={...s,sha:process.env.GITHUB_SHA??null,run:process.env.GITHUB_RUN_ID??null};
+  fs.mkdirSync(path.dirname(path.resolve(log)),{recursive:true});
+  fs.writeFileSync(path.join(path.dirname(path.resolve(log)),`smoke-${kind}.json`),JSON.stringify(full,null,1)+'\n');
+  for(const l of noticeLines(`smoke-${kind}`,JSON.stringify(s)))console.log(l);
+  if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`**smoke ${kind}: ${s.ok?'OK':s.infra?'INFRA':'FALHOU'}** (exit ${s.exit})\n\n${s.linhas.map(l=>`- ${l}`).join('\n')}\n`);
+  return 0;
+}
+
 const COMMANDS={test:cmdTest,bench:cmdBench,timings:cmdTimings,shard:cmdShard,report:cmdReport,'bench-plan':cmdBenchPlan,
-  'annotate-run':cmdAnnotateRun,gate:cmdGate,'annotate-summary':cmdAnnotateSummary};
+  'annotate-run':cmdAnnotateRun,gate:cmdGate,'annotate-summary':cmdAnnotateSummary,'annotate-json':cmdAnnotateJson,'smoke-note':cmdSmokeNote};
 
 export async function main(argv){
   let o;

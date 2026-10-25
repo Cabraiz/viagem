@@ -172,3 +172,75 @@ test('D-051 bench: --combat manual reaches the run script and its own hash; ever
   assert.equal(ci.benchArgs(auto),"");assert.equal(ci.benchArgs(manual),'--combat manual');
   assert.throws(()=>ci.benchParams({world:'cidade',combat:'auto'}),/only 'manual'/);
 });
+
+test('NEW-20261025-ORQ-cicd-smokes-bench: --mode ninhos reaches the run script with its own hash, needs the chaveiro; every earlier bench keeps its hash',()=>{
+  const chav=ci.benchParams({seeds:'1-4',players:'1,3,6',objective:'chaveiro'});
+  const ninhos=ci.benchParams({seeds:'1-4',players:'1,3,6',objective:'chaveiro',mode:'ninhos'});
+  assert.equal(chav.mode,null);assert.equal(ninhos.mode,'ninhos');
+  assert.equal(ci.paramsHash(chav),ci.paramsHash({...chav,mode:null}),'no mode: the hash it had');
+  assert.notEqual(ci.paramsHash(ninhos),ci.paramsHash(chav));
+  assert.equal(ci.benchArgs(ninhos),'--objective chaveiro --mode ninhos');
+  assert.equal(ci.benchArgs(ci.benchParams({objective:'chaveiro',mode:'ninhos',combat:'manual'})),'--objective chaveiro --mode ninhos --combat manual');
+  assert.throws(()=>ci.benchParams({mode:'ninhos'}),/needs objective chaveiro/);
+  assert.throws(()=>ci.benchParams({objective:'chaveiro',mode:'x'}),/only 'ninhos'/);
+  // Dispatch inputs come as '' when unset.
+  assert.equal(ci.benchParams({mode:'',combat:'',objective:''}).mode,null);
+});
+
+test('bench JSON summary: the local file\'s shape (config, summary) with each run compacted; it fits the annotations',()=>{
+  const run=(seed:number)=>({key:`${seed}-1`,seed,players:1,classes:['a'],outcome:'defeat',cause:'wall',roundReached:5,diedRound:5,ticks:900,simMinutes:4.2,
+    wallHpEnd:0,wallMaxHp:100,digest:'d'+seed,rounds:Array.from({length:10},()=>({x:'y'.repeat(200)})),forge:{count:3},perf:{ms:9}});
+  const merged={card:'C',version:1,startedAt:'s',updatedAt:'u',config:{seeds:[1,2],players:[1],objective:'chaveiro',mode:'ninhos'},runs:[run(1),run(2)],summary:{runs:2}};
+  const j=ci.benchJson(merged,{run:'7'});
+  assert.deepEqual(Object.keys(j),['card','version','startedAt','updatedAt','config','summary','runs','runsCompact','ci']);
+  assert.deepEqual(j.config,merged.config);assert.deepEqual(j.summary,{runs:2});
+  assert.deepEqual(Object.keys(j.runs[0]),ci.RUN_FIELDS,'only the short fields');
+  assert.equal(j.runs[1].digest,'d2');assert.equal(j.runsCompact,true);assert.deepEqual(j.ci,{run:'7'});
+  // 48 runs compact stay inside one step's notices (10 × 3000 chars).
+  const many=ci.benchJson({...merged,runs:Array.from({length:48},(_,i)=>run(i+1))}).runs;
+  assert.ok(JSON.stringify(many).length<ci.CHUNK*ci.MAX_CHUNKS,`${JSON.stringify(many).length} chars`);
+});
+
+test('smoke summary for the queue: exit, verdict lines (≤10), a failed build is the game\'s, a smoke that never ran the machine\'s',()=>{
+  const log=['  rastro normal: [...]','  tempos normal#1 (s): {}','smoke normal: OK','smoke chaveiro: FALHOU · chunk: x.js: boom'].join('\r\n');
+  const red=ci.smokeSummary('prod',log,{exit:'1',build:'success'});
+  assert.deepEqual(red,{kind:'prod',exit:1,ok:false,infra:false,skipped:false,linhas:['smoke normal: OK','smoke chaveiro: FALHOU · chunk: x.js: boom']});
+  assert.equal(ci.smokeSummary('prod','smoke normal: OK',{exit:'0'}).ok,true);
+  const infra=ci.smokeSummary('upgrade','smoke upgrade (anterior, x): INFRA · não entrou',{exit:'2'});
+  assert.equal(infra.infra,true);assert.equal(infra.ok,false);
+  // No verdict line: the end of the log.
+  assert.deepEqual(ci.smokeSummary('prod','a\nb\nc\nd',{exit:'2'}).linhas,['b','c','d']);
+  const many=Array.from({length:14},(_,i)=>`smoke m${i}: OK`).join('\n');
+  assert.equal(ci.smokeSummary('prod',many,{exit:'0'}).linhas.length,10);
+  // The smoke step never ran.
+  const build=ci.smokeSummary('prod','',{exit:'',build:'failure'});
+  assert.equal(build.exit,1);assert.equal(build.infra,false);assert.deepEqual(build.linhas,['npm run build falhou']);
+  const pw=ci.smokeSummary('prod','',{exit:'',build:'success'});
+  assert.equal(pw.exit,2);assert.equal(pw.infra,true);
+  const skip=ci.smokeSummary('upgrade','',{exit:'',build:'skipped',skipped:'sem base anterior'});
+  assert.equal(skip.ok,true);assert.equal(skip.skipped,true);assert.match(skip.linhas[0],/pulado · sem base anterior/);
+});
+
+test('smoke-note and annotate-json: files and annotations a later `test --smoke` / `bench --out` joins back',async()=>{
+  const dir=tmp(),log=path.join(dir,'smoke-out','smoke.log');
+  fs.mkdirSync(path.dirname(log));fs.writeFileSync(log,'trace\nsmoke normal: FALHOU · pageerror: x\n');
+  const out:string[]=[],orig=console.log;console.log=(m:string)=>out.push(m);
+  const prevSummary=process.env.GITHUB_STEP_SUMMARY;delete process.env.GITHUB_STEP_SUMMARY;
+  try{
+    assert.equal(await ci.main(['smoke-note','prod',log,'--exit','1','--build','success']),0);
+    const merged=path.join(dir,'merged.json');
+    fs.writeFileSync(merged,JSON.stringify({card:'C',version:1,config:{seeds:[1]},runs:[{key:'1-1',seed:1,players:1,outcome:'victory',digest:'z',rounds:[1,2]}],summary:{runs:1}}));
+    assert.equal(await ci.main(['annotate-json',merged,'head']),0);
+    assert.equal(await ci.main(['annotate-json',merged,'runs']),0);
+  }finally{console.log=orig;if(prevSummary!==undefined)process.env.GITHUB_STEP_SUMMARY=prevSummary;}
+  const file=JSON.parse(fs.readFileSync(path.join(dir,'smoke-out','smoke-prod.json'),'utf8'));
+  assert.equal(file.exit,1);assert.deepEqual(file.linhas,['smoke normal: FALHOU · pageerror: x']);
+  // The lines as the API gives them back (title + message, unescaped).
+  const unesc=(s:string)=>s.replace(/%0A/g,'\n').replace(/%0D/g,'\r').replace(/%3A/g,':').replace(/%2C/g,',').replace(/%25/g,'%');
+  const api=out.map(l=>/^::notice title=([^:]*)::(.*)$/.exec(l)).filter(Boolean).map(m=>({title:unesc(m![1]),message:unesc(m![2])}));
+  assert.deepEqual(JSON.parse(ci.joinAnnotations(api,'smoke-prod')),{kind:'prod',exit:1,ok:false,infra:false,skipped:false,linhas:['smoke normal: FALHOU · pageerror: x']});
+  const head=JSON.parse(ci.joinAnnotations(api,'bench-json')),runs=JSON.parse(ci.joinAnnotations(api,'bench-json-runs'));
+  assert.deepEqual(head.summary,{runs:1});assert.equal(head.runs,undefined);
+  assert.deepEqual(runs,[{key:'1-1',seed:1,players:1,outcome:'victory',digest:'z'}]);
+  fs.rmSync(dir,{recursive:true,force:true});
+});

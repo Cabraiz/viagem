@@ -103,7 +103,7 @@ import type {SimEvent} from '../src/contract/index.ts';
 import {GRACE_MS,STEP_MS} from '../src/protocol/index.ts';
 import {NEST_CALM,Simulation} from '../multiplayer/simulation.ts';
 import type {ObjectiveResult} from '../src/contract/index.ts';
-import {ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
+import {CHAVEIRO_PACE,ENTREGA_CLEAN_SECONDS} from '../src/sim/chaveiro/system.ts';
 import {NEST_PACE} from '../src/sim/ninhos/ninhos.ts';
 import {NOISE} from '../src/sim/ninhos/sono.ts';
 /** A delivery that starts with at most this many ticks left was a clean one (ENTREGA_CLEAN_SECONDS). */
@@ -1003,7 +1003,7 @@ export function playRun(o:RunOptions):RunRecord{
 // ---------------------------------------------------------------------------------------------------------------
 
 interface OutFile {card:string;version:1;startedAt:string;updatedAt:string;
-  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
+  config:{objective?:'chaveiro'|null;combat?:'manual'|null;mode?:'ninhos'|null;nestPace?:typeof NEST_PACE|null;chaveiroPace?:typeof CHAVEIRO_PACE|null;spread?:typeof SPREAD|null;alarm?:{r:number;p:number;every:number}|null;nestCalm?:typeof NEST_CALM|null;seeds:number[];players:number[];capMin:number;knobs:unknown;knobsFile:string|null;knobRoute:KnobRoute;classes:string[];nav:Record<string,number>};
   runs:RunRecord[];summary:Summary|null}
 
 function args(argv:readonly string[]){
@@ -1016,7 +1016,7 @@ function args(argv:readonly string[]){
     objective:get('--objective')==='chaveiro'?'chaveiro' as const:undefined,
     combat:get('--combat')==='manual'?'manual' as const:undefined,
     mode:get('--mode')==='ninhos'?'ninhos' as const:undefined,
-    nestPace:get('--nest-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
+    nestPace:get('--nest-pace'),chaveiroPace:get('--chaveiro-pace'),spread:get('--spread'),alarm:get('--alarm'),nestCalm:get('--nest-calm'),
     merge:get('--merge'),before:get('--before'),outGiven:get('--out')!==undefined,
   };
 }
@@ -1054,6 +1054,8 @@ async function main(){
   const a=args(process.argv.slice(2));
   // balanco-ninhos: --nest-pace '{"gap":[30,10]}' overrides NEST_PACE for this bench (the grid; the game never does).
   if(a.nestPace)Object.assign(NEST_PACE,JSON.parse(a.nestPace));
+  // balanco-6p-facil: --chaveiro-pace '{"ride":[420,420,420,480,540,600]}' overrides the moto's ride by room size (mode 'ninhos').
+  if(a.chaveiroPace)Object.assign(CHAVEIRO_PACE,JSON.parse(a.chaveiroPace));
   // monstros-espalhados: --spread '{"gap":6}' overrides the field (maps/nests.ts SPREAD) for this bench.
   if(a.spread)Object.assign(SPREAD,JSON.parse(a.spread));
   // --alarm '{"r":20,"p":0.1}': the car alarm's noise (sono NOISE.alarm), for the grid only.
@@ -1080,7 +1082,7 @@ async function main(){
   if(!loaded.ok)throw new Error(loaded.error);
   const city=loaded.terrain,nav=new CityNavigator(city);
   if(a.mode&&a.objective!=='chaveiro')throw new Error('--mode ninhos needs --objective chaveiro (the nests only play with the chaveiro, D-051)');
-  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
+  const config:OutFile['config']={objective:a.objective??null,combat:a.combat??null,mode:a.mode??null,nestPace:a.mode==='ninhos'?{...NEST_PACE}:null,chaveiroPace:a.mode==='ninhos'?{ride:[...CHAVEIRO_PACE.ride]}:null,spread:a.mode==='ninhos'?{...SPREAD}:null,alarm:a.mode==='ninhos'?{...NOISE.alarm}:null,nestCalm:a.mode==='ninhos'?{...NEST_CALM}:null,seeds:a.seeds,players:a.players,capMin:a.capMin,knobs:knobs??null,knobsFile:a.knobs??null,knobRoute:a.knobs?route:'none',classes:CLASS_ROTATION,
     nav:{READ_SECONDS,HOME_MARGIN,CRATE_NEAR,FAR,STUCK_TICKS,STUCK_MOVE,UNSTICK_TICKS}};
   let file:OutFile={card:CARD,version:1,startedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),config,runs:[],summary:null};
   if(a.resume&&fs.existsSync(a.out)){

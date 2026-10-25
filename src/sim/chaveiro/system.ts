@@ -44,6 +44,15 @@ import {carBusy,moverCap,pullCar,stepCar} from './car.ts';
 /** Riding time of the whole route without stops: speed = route length / this (time-based, not heroSpeed). */
 export const MOTO_RIDE_SECONDS=420;
 /**
+ * balanco-6p-facil: the riding time by room size (1..6 players), mode 'ninhos' only (ChaveiroOptions.ride). Six bots
+ * won 16/16, the Uno untouched (~0.3 hits of 224), with the car open after 2-3 waves at ~10 min; no wave knob took them
+ * off it, so a bigger room waits longer for him (more waves before the car opens). 1p-3p as before.
+ * Mutable only for the bench's grid (bench-city-run --chaveiro-pace); the game never writes it.
+ */
+export const CHAVEIRO_PACE={ride:[420,420,420,520,620,720] as number[]};
+/** The riding time (s) for a room of `players` in `ride` (seconds by room size, 1..6). */
+export const rideSecondsFor=(ride:readonly number[],players:number)=>ride[Math.min(ride.length,Math.max(1,Math.round(players)))-1]??MOTO_RIDE_SECONDS;
+/**
  * The car's hit limit and the bill (R$): BUDGET_BASE plus BUDGET_PER_HIT per hit taken (balanco-pos-1-7 eco-v9,
  * Executor-6: 25 + 3/hit, so a clean run's bill is paid from the kills and a battered car still leaves a debt to joke about).
  */
@@ -132,6 +141,8 @@ export interface ChaveiroState {
   endTick?:number;
   /** Seconds he still needed when it ended. */
   endEta?:number;
+  /** balanco-6p-facil: the riding time (s) set at the first step from the room, only when it is not MOTO_RIDE_SECONDS. */
+  ride?:number;
   /** The vaquinha, once the result paid it (wallets already deducted): the result returns the same bill again. */
   vaquinha?:{grana:number;paid:number;debt:number;share:VaquinhaShare[]};
 }
@@ -173,6 +184,12 @@ export interface ChaveiroOptions {
    * (holdTick); a slower run never waits. Absent: no wait.
    */
   finalNotBefore?:number;
+  /**
+   * balanco-6p-facil: the riding time (s) by room size 1..6 (mode 'ninhos': CHAVEIRO_PACE.ride), read at the first step
+   * from the players then in the run, like the car's limit (a checkpoint keeps it in ChaveiroState.ride). Absent:
+   * MOTO_RIDE_SECONDS for every room. A bump keeps the span planned at MOTO_RIDE_SECONDS, crawled at LOMBADA_PACE.
+   */
+  ride?:readonly number[];
 }
 
 export interface ChaveiroSystem {
@@ -250,8 +267,11 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
   const plan=planChaveiro(options.seed,options.grid,options.entrances,options.car,restore?.route.from);
   const state=restore??createChaveiroState(options.car,plan.from);
   // The moto's pace and a bump's span come from the planned route; a replan (D-052) changes the way, not the pace.
-  const speed=plan.route.length/(MOTO_RIDE_SECONDS*SIM_HZ);
-  const bumpSpeed=speed*LOMBADA_PACE,bump=lombadaLength(plan.route.length);
+  // The pace follows the room at the first step (ChaveiroOptions.ride, kept in state.ride).
+  let speed=0,bumpSpeed=0;
+  const pace=()=>{speed=plan.route.length/((state.ride??MOTO_RIDE_SECONDS)*SIM_HZ);bumpSpeed=speed*LOMBADA_PACE;};
+  pace();
+  const bump=lombadaLength(plan.route.length);
   let route=plan.route,stops=plan.stops;
   // The moto's body keeps off a muro's blocker disc: the cells within both radii are shut to him.
   const muroReach=(options.muros?.radius??0)+MOTO_RADIUS;
@@ -451,7 +471,10 @@ export function createChaveiro(options:ChaveiroOptions,restore?:ChaveiroState):C
       if(state.startTick===null){
         state.startTick=ctx.tick;
         // The limit follows the room the run starts with (a checkpoint keeps it).
-        if(car.hits===0){let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;car.limit=carLimitFor(n);}
+        let n=0;for(const p of ctx.players.values())if(!p.spectator)n++;
+        if(car.hits===0)car.limit=carLimitFor(n);
+        const ride=options.ride?rideSecondsFor(options.ride,n):MOTO_RIDE_SECONDS;
+        if(ride!==MOTO_RIDE_SECONDS){state.ride=ride;pace();}
       }
       stepCar(ctx,car,carWorld,moto.task==='abrindo');
       replan(ctx);

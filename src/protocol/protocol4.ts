@@ -581,6 +581,9 @@ const EVENT_SPECS:[SimEvent['type'],EventField[]][]=[
   ['bank-refill',[['bank','str']]],
   // Veículos: a hero took a parked vehicle (the pickup), its ride ran out, or it ended early.
   ['vehicle',[['player','ref'],['kind','str'],['what','str'],['pickup','ref',true,'pickups']]],
+  // boss-fim-onda-1: a chefão's pancada threw a hero, down until untilTick (the phone stops predicting its steps; the
+  // player section has no field bit left for it).
+  ['knock',[['player','ref'],['untilTick','tick']]],
 ];
 const MOTO_MOMENTS=new Set<string>(['morta','tranco','lombada','entrega','tombo','volta','abrindo','chegou']);
 const CIDA_SET=new Set<string>(CIDA_ITEM_IDS);
@@ -901,7 +904,7 @@ function liveIds(list:readonly Entity[],tick:number){
   return hit.ids;
 }
 /** Events every client needs, wherever they happened (team progress, falls and revives, rounds, the wall). */
-const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn',
+const GLOBAL_EVENTS=new Set<string>(['levelup','offer','upgrade','evolve','downed','revived','eliminated','wave','round','structure','boss-phase','horn','knock',
   // The whole team lives the zueira event, and the kill-cam shows the last critter wherever it fell (VGM-053B).
   'happening','last-bicho',
   // D-047: the car and the moto are the whole team's business (the sale names a critter: judged like any other).

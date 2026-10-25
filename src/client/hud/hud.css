@@ -811,6 +811,8 @@
 .rh-round-eta>span[aria-hidden]{display:inline-flex;align-items:center;gap:3px}
 .rh-round-eta .ic{width:20px;height:20px}
 .rh-round-eta b{font:400 var(--t-21)/1 var(--f-cartaz);font-variant-numeric:tabular-nums}
+/* The chefão up (boss-fim-onda-1): the chaveiro's clock is stopped, a padlock and the number grey (topbar.ts, camp.ts). */
+.rh-round-eta[data-parado] b,.rh-camp-relogio[data-parado] b{color:var(--c-pedra)}
 .rh-round-sep{display:inline-block;width:6px}
 /* D-051 nests: the chip is the clock alone (no "Onda N" before it), so no separator. */
 .rh-round[data-modo="ninhos"] .rh-round-sep{display:none}

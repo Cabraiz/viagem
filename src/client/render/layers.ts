@@ -9,7 +9,7 @@ import {ENEMY_ART,ENEMY_TEXTURES,ELITE_SCALE,FX,enemyKind,enemyTexture,fallbackT
 import {ENEMY_DRAW_SCALE} from './draw-scale.ts';
 import {ensureHordeTextures} from './textures.ts';
 import {FramesPool,barArt,barFillWidth,markArt,markFrame,placeMark,sliceArt} from '../art/frames-art.ts';
-import {ENEMY_WALK,applyEnemyArt,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
+import {ENEMY_WALK,applyEnemyArt,artShadowLength,drawDeathArt,roundCostume,type RoundCostume,enemyArtActive,enemyArtFlies,enemyArtId,enemyArtRatio,enemyArtRow,hasDeathArt,playEnemyAction,queueEnemyArt,poofArt,poofSheetFrame,projectileFrame,projectileFrames,projectileLook,resetEnemyArt} from '../art/horde-art.ts';
 import {eventAction,projectileAction,type ActionCue,type ActionWorld} from '../art/horde-actions.ts';
 import type {CityOutlines} from './city-outline.ts';
 import {KeyedPool,Ring} from './pool.ts';
@@ -857,7 +857,7 @@ export class HordeRenderer{
     const fit=a.fit=enemyArtRatio(a.image);
     // The only shadow (card sombra-silhueta): the frame on screen laid on the ground from the feet; a flyer's from the
     // ground point under it, so the gap shows the height.
-    castSilhouette(a.sil,a.image,q.x,q.y,true);
+    castSilhouette(a.sil,a.image,q.x,q.y,true,undefined,artShadowLength(a.art));
     // Under the soles (study V2): as wide as the measured footing (art/enemy-feet.ts; asleep, the lying one), capped by
     // the kind's width; a flyer has none (the silhouette's gap shows its height).
     const feet=ENEMY_FEET[a.art],kindW=art.width*size*fit*.66*body;

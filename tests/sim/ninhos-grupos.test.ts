@@ -22,6 +22,7 @@ import {SpatialHash} from '../../src/sim/spatial.ts';
 import {RUN_ORDER} from '../../src/sim/systems/players.ts';
 import {createRunSystems,type RunSystems} from '../../src/sim/assemble.ts';
 import {SIEGE_FLAG} from '../../src/sim/stonewards/wall.ts';
+import {WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {createEnemy,isEnemyKind} from '../../src/sim/enemies/catalog.ts';
 import {FIRST_EXIT,MINERVA_S,NEST_GRANA,NEST_PACE,NEST_MEMORY,NEST_TARGET,RETRY_SECONDS,WAVE_MEMORY,createNests,nestHp,nestRound,outsideRange,
   wavePeriod,waveShares,type NestCause,type NestsOptions,type WaveEntrance} from '../../src/sim/ninhos/ninhos.ts';
@@ -286,7 +287,8 @@ test('assembled mode ninhos: no round from the director, a wave (map, nests, out
   assert.equal(a.events.filter(e=>e.type==='round').length,0,'no round');
   stepRun(a,ticks(FIRST_EXIT[1]-FIRST_EXIT[0])+2);
   assert.ok(nests.state.sent>0&&nests.state.spawned>0,'a wave came by 90 s');
-  const out=[...a.world.enemies.values()],log=nests.state.log![0];
+  // boss-fim-onda-1: the 1st wave's chefão comes at the end of its exit with his own controller (to the Uno), not a wave body.
+  const all=[...a.world.enemies.values()],out=all.filter(e=>!WAVE_BOSS_IDS.includes(e.kind as never)),log=nests.state.log![0];
   assert.ok(out.length>0&&out.every(e=>e.memory?.[SIEGE_FLAG]===1),'every body of the wave besieges the car');
   assert.ok(log.map>0&&log.nests>=NEST_COUNT&&log.outside>0,`map ${log.map}, nests ${log.nests}, outside ${log.outside}`);
   assert.equal(out.filter(e=>sono.bodies.some(b=>b.id===e.id)).length,log.map,'the map share: plan bodies woken');

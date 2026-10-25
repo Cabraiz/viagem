@@ -6,6 +6,8 @@ import Phaser from 'phaser';
 import {bitmapsAvailable,fetchBitmap,installUploadQueue,queueUpload} from './preload/upload-queue.ts';
 import {holdBackground} from './preload/background-hold.ts';
 import {Vignette} from './render/vignette.ts';
+import {ArenaDark,LIGHT_CORE,type ArenaSpotPx} from './render/arena-dark.ts';
+import {ARENA,ArenaClock,arenaBoss,spotScale} from './render/arena-rules.ts';
 import {FearDark,type FearSpotPx} from './render/fear-dark.ts';
 import {FEAR_BEAT_PULL,FearClock,safeSpots,type FearFrame} from './render/fear-rules.ts';
 import {isAsleep} from './render/wake-rules.ts';
@@ -29,7 +31,7 @@ import {SelfCorrection} from './net/smoothing.ts';
 import {SPAWN,landmarks,obstacles,findPath,moveAlong,moveDirection,clearSegment,worldSpawn,type Point,type Obstacle} from '../maps/index.ts';
 import {HordeRenderer} from './render/layers.ts';
 import {heldHand} from './sprites/hand-points.ts';
-import {liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
+import {artTargetHeight,liteOnly,queueEnemyArt,queueHordeArt} from './art/horde-art.ts';
 import {queueBaseArt} from './art/base-art.ts';
 import {SceneMarks} from './art/frames-art.ts';
 import {ALLY_RING_SIZE,ALLY_RING_WIDTH,AllyRings,critterIconSource} from './art/hud-art.ts';
@@ -70,6 +72,7 @@ import {castSilhouette,silhouetteImage} from './render/silhouette.ts';
 import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
+import type {CenaClock} from './render/chefao-cena.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
 export const SKILL_RANGE=2.8;
 
@@ -102,6 +105,8 @@ export interface SceneHooks {
   /** The hero's animation for tests and scripts, at most every VISUAL_HOOK_MS (it lists every texture to count the sheets). */
   visual?:(animation:string,frame:string,sheets:number)=>void;
   net?:CoopClient;
+  /** The chefão's arrival scene (render/chefao-cena.ts): the camera goes to him, holds and comes back. Absent: none. */
+  cena?:CenaClock;
   /**
    * D-051 manual combat: one input step's attack (hud/attack-button.ts take(): held, or tapped since the last step),
    * sent as PlayerInput.attack. Absent or false: no attack (the automatic weapons fire on their own).
@@ -193,6 +198,8 @@ export class IslandScene extends Phaser.Scene {
   private cityDepthOf=(key:number)=>key+viewDepth({x:0,y:0},this.view,this.depthOrigin)-viewDepth({x:0,y:0},this.view);
   /** Follow camera (D-019): centre of the camera in world px, smoothed, with look-ahead (framing.ts). */
   private follow=new FollowCamera();
+  /** The chefão whose arrival already shook the camera (once per scene). */
+  private shookFor?:string;
   private zoom=1;
   /**
    * World px multiplier of everything drawn at the endless map's size (hero, allies, enemies, rings, shadows):
@@ -737,11 +744,34 @@ export class IslandScene extends Phaser.Scene {
     const b=this.heroWorldBox(),size=this.watchPoint||peek?undefined:{width:b.width*this.zoom,height:b.height*this.zoom};
     // The hero as drawn (the interpolated prediction plus the reconcile glide, coop), not the bare prediction: the camera
     // centres what the player sees, so a correction slides the world, not the hero off the centre (camera-centro-heroi).
-    const focus=this.project(peek??this.watchPoint??this.position);
-    const c=this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size);
+    let focus=this.project(peek??this.watchPoint??this.position);
+    // A copy: the follow camera keeps its own centre on the hero (the scene's pull never feeds its smoothing back).
+    const c={...this.follow.step(focus,delta/1000,this.viewport(),this.zoom,this.framed(),size)};
+    // The chefão's arrival (boss-fim-onda-1): the camera eases over to him and back; a light shake as it lands on him.
+    const cena=this.hooks.cena?.frame(performance.now());
+    if(cena&&cena.weight>0){
+      // On his body's middle, not his feet (he stands several heroes tall).
+      const at=this.project({x:cena.cena.x,y:cena.cena.y}),w=cena.weight;at.y-=artTargetHeight(cena.cena.who)*this.actorScale*ENEMY_DRAW_SCALE*.45;
+      c.x+=(at.x-c.x)*w;c.y+=(at.y-c.y)*w;focus={x:focus.x+(at.x-focus.x)*w,y:focus.y+(at.y-focus.y)*w};
+      if(cena.hold&&this.shookFor!==cena.cena.enemy){this.shookFor=cena.cena.enemy;if(!this.reduced)this.cameras.main.shake(320,.006);}
+    }
     this.cameras.main.centerOn(c.x,c.y);
     // The ground under who the camera follows is always baked first (a jump to a far teammate spreads the rest).
     this.landscape?.follow(WATER_MARGIN,focus);this.syncProps();this.pumpTrees();this.updateCity(delta);
+  }
+  /** The chefão's throw (boss-fim-onda-1, the Tank's punch) the last frame: until when this hero was down. */
+  private downSeen=-Infinity;private tilted=false;
+  /**
+   * Thrown by a chefão's pancada (net effects.downUntil): the screen shakes once as the punch lands, and the hero lies
+   * tilted on the ground while down (both without the shake under reduced motion).
+   */
+  private thrown(){
+    const net=this.hooks.net,until=net?.effects.downUntil;
+    if(!net||!this.actor)return;
+    if(until!==undefined&&until>this.downSeen){this.downSeen=until;if(!this.reduced)this.cameras.main.shake(280,.014);}
+    const down=until!==undefined&&net.tick<until;
+    if(down){this.actor.setRotation(this.actor.flipX?1.1:-1.1);this.tilted=true;}
+    else if(this.tilted){this.actor.setRotation(0);this.tilted=false;}
   }
   /** Where the camera looks while a tap on the Uno's window holds (the car, world units), else undefined. */
   private peekCar():Point|undefined{
@@ -780,7 +810,10 @@ export class IslandScene extends Phaser.Scene {
    */
   private rebaseDepth(force=false){
     if(!this.field.chunks&&!this.city)return;
-    const o=this.depthOrigin,at=this.watchPoint??this.position;
+    // The chefão's arrival (boss-fim-onda-1): while the camera is mostly on him the origin goes to him (he would sort
+    // under the ground far from the hero), and back with the camera.
+    const cena=this.hooks.cena?.frame(performance.now()),near=cena&&cena.weight>=.5?{x:cena.cena.x,y:cena.cena.y}:undefined;
+    const o=this.depthOrigin,at=near??this.watchPoint??this.position;
     if(!force&&o&&Math.max(Math.abs(o.x-at.x),Math.abs(o.y-at.y))<DEPTH_REBASE_UNITS)return;
     this.depthOrigin={x:Math.round(at.x),y:Math.round(at.y)};
     if(this.actor)this.reproject();
@@ -994,6 +1027,50 @@ export class IslandScene extends Phaser.Scene {
     loop.fpsLimit=fps;loop.hasFpsLimit=true;loop._limitRate=this.catchUp.on?CATCH_UP_GATE_MS:frameGateMs(fps);
   }
   private vignette?:Vignette;
+  /** The chefão's arena in the dark (boss-fim-onda-1, render/arena-rules.ts): built on the first chefão. */
+  private readonly arenaClock=new ArenaClock();
+  private arenaDark?:ArenaDark;
+  private readonly arenaSpots:ArenaSpotPx[]=[];
+  /** A circle of `radius` u around `at` as drawn (world px ellipse). */
+  private groundEllipse(at:Point,radius:number):ArenaSpotPx{
+    const c=this.project(at),u=this.project({x:at.x+radius,y:at.y}),v=this.project({x:at.x,y:at.y+radius});
+    return {x:c.x,y:c.y,rx:Math.hypot(u.x-c.x,v.x-c.x),ry:Math.hypot(u.y-c.y,v.y-c.y)};
+  }
+  /**
+   * While the 1st wave's chefão stands the map goes dark: only his arena, the own hero, the allies on their feet and the
+   * Uno stay lit (the user, 24/10: "fear avançada"). The fear's dark (alone) draws over it.
+   */
+  private drawArena(delta:number){
+    const net=this.hooks.net!,combat=net.run?.phase==='combat';
+    const boss=combat?arenaBoss(net.feed.enemies.values()):undefined;
+    if(!combat)this.arenaClock.reset();
+    if(!boss&&!this.arenaDark)return;
+    const frame=this.arenaClock.step(boss,delta);
+    if(frame.alpha<=0||!frame.at){this.arenaDark?.hide();return;}
+    // Every radius is where its soft edge is half dark (the light texture is clear to LIGHT_CORE of its size).
+    const out=this.arenaSpots,grow=spotScale(LIGHT_CORE);out.length=0;
+    out.push(this.groundEllipse(frame.at,ARENA.radius*grow),this.groundEllipse(this.position,ARENA.heroLight*grow));
+    if(boss){
+      // His body: an upright ellipse over his drawing (he stands several heroes tall), as drawn, not eased.
+      const feet=this.project(boss),h=artTargetHeight(boss.kind)*this.actorScale*ENEMY_DRAW_SCALE;
+      out.push({x:feet.x,y:feet.y-h*.45,rx:h*ARENA.bodyLight*.6*grow,ry:h*ARENA.bodyLight*grow});
+    }
+    for(const p of net.feed.players.values()){
+      if(p.id===net.id||p.spectator||p.downed||p.eliminated||!(p.hp>0))continue;
+      const at=this.drawnFeet.get(p.id)??(p.x!==undefined&&p.y!==undefined?{x:p.x,y:p.y}:undefined);
+      if(at)out.push(this.groundEllipse(at,ARENA.allyLight*grow));
+    }
+    const car=this.chaveiro?.carPose();
+    if(car)out.push(this.groundEllipse(car,ARENA.unoLight*grow));
+    (this.arenaDark??=this.makeArenaDark()).draw({alpha:frame.alpha,spots:out});
+  }
+  /** Released with the scene (stop → 'shutdown', game.destroy → 'destroy'): a rematch builds a new one. */
+  private makeArenaDark(){
+    const dark=new ArenaDark(this);
+    const drop=()=>{dark.destroy();if(this.arenaDark===dark)this.arenaDark=undefined;this.arenaClock.reset();this.events.off('shutdown',drop);this.events.off('destroy',drop);};
+    this.events.once('shutdown',drop);this.events.once('destroy',drop);
+    return dark;
+  }
   /** Fear (card fear-escuridao-sozinho, render/fear-rules.ts): the clock and the dark, built on the first fear. */
   private readonly fearClock=new FearClock();
   private fearDark?:FearDark;
@@ -1075,6 +1152,7 @@ export class IslandScene extends Phaser.Scene {
     const pull=pose&&meId&&pose.puller===meId?pullDirection(this.position,pose):undefined;
     // While the aim stick aims, the body looks that way (twin-stick); the legs still walk where the left stick goes.
     this.sprites.animate(this.actor,this.hooks.classId,this.position.x,this.position.y,self?.attackTick??0,self?.hp!==0,this.view,this.intent,push?.dir??pull,self?.hp,this.hooks.aimStick?.());
+    this.thrown();
     if(this.hooks.visual&&(_time-this.visualAt>=VISUAL_HOOK_MS||_time<this.visualAt)){
       this.visualAt=_time;
       this.hooks.visual(this.actor.anims.currentAnim?.key??'fallback',String(this.actor.frame.name),this.textures.getTextureKeys().filter(k=>k.startsWith('sprite:')||k.startsWith('sprite128:')).length);
@@ -1083,7 +1161,7 @@ export class IslandScene extends Phaser.Scene {
     // drawn for a frame with the old origin across the buildings. Elsewhere the order is unchanged.
     if(this.hooks.net){
       if(this.city){this.rebaseDepth();this.updateCoop(_time,delta);}else{this.updateCoop(_time,delta);this.rebaseDepth();}
-      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);this.drawFear(_time,delta);return;
+      this.updateCamera(delta);this.shakeCamera();this.updatePip(_time);this.drawYou(_time);this.drawArena(delta);this.drawFear(_time,delta);return;
     }
     if(this.paused){this.followHold(_time,false);this.updateCamera(delta);this.drawYou(_time);return;}
     const axis=this.hooks.direction(),keys=this.keyAxis();

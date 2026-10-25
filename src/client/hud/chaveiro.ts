@@ -31,11 +31,16 @@ export const reais=(value:number)=>`R$ ${Math.max(0,Math.round(Number.isFinite(v
 /** The objective while it runs (absent, or ended: the round chip goes back to its plain form). */
 export const liveObjective=(view:{objective?:ObjectiveView}|undefined)=>view?.objective&&!view.objective.ended?view.objective:undefined;
 
-/** The round chip's chaveiro part: the clock and the words for the screen reader. */
-export interface ChaveiroClock {clock:string;seconds:number;aria:string}
-export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>):ChaveiroClock{
+/**
+ * The round chip's chaveiro part: the clock and the words for the screen reader. `held`: the 1st wave's chefão stands
+ * and the clock is stopped until he falls (card boss-fim-onda-1, ORQ 24/10; sim/ninhos/chefao.ts holdChaveiroClock):
+ * the number goes grey behind a padlock.
+ */
+export interface ChaveiroClock {clock:string;seconds:number;aria:string;held:boolean}
+export function chaveiroClock(objective:Pick<ObjectiveView,'etaS'|'moto'>,held=false):ChaveiroClock{
   const seconds=Math.max(0,Math.ceil(objective.etaS)),clock=etaClock(seconds);
-  return {clock,seconds,aria:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`};
+  const aria=held?`Relógio do chaveiro parado até o chefão cair: ${clock}`:objective.moto.mode==='abrindo'?`Chaveiro abrindo o carro: ${clock}`:`Chaveiro chega em ${clock}`;
+  return {clock,seconds,aria,held};
 }
 
 /**

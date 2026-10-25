@@ -49,6 +49,9 @@ import {stickerOrIcon} from '../ui/sticker.ts';
 import type {CidaItemId,PixResult} from '../../contract/index.ts';
 import {finePointer,type InputKind} from '../desktop-input.ts';
 import './pausa.css';
+import './chefao-cena.css';
+import {createCenaPart} from './chefao-cena.ts';
+import type {CenaClock} from '../render/chefao-cena.ts';
 import './minerva.css';
 import {createPausePart} from './pausa.ts';
 // Last: the phone's overrides (hud-mobile-minimo) win over hud.css, camp.css and cida.css at equal specificity.
@@ -101,6 +104,8 @@ export interface RunHudOptions {
   input?:InputKind;
   /** The level-up pause's clock (D-050, hud/pausa.ts); performance.now by default, the sandbox's frozen scenes stop it. */
   pauseClock?():number;
+  /** The chefão's arrival scene (render/chefao-cena.ts), shared with the camera: his name while it holds on him. */
+  cena?:CenaClock;
 }
 
 /** Runs inside the pick's tap, so it may unlock the audio engine (iOS needs a gesture) before the "tum". */
@@ -230,8 +235,10 @@ export class RunHud {
     stack.append(minerva.el,mission.band,mission.row,announcer.el,killcam.el,alerts.el,this.fear.el,camp.notice,this.objectiveRow.el,this.coachRow.el);this.stack=stack;this.alerts=alerts;
     // The level-up pause (D-050, hud/pausa.ts; reads ctx.pause): its veil under every part, its title right before the offer.
     const pausa=createPausePart(parent.ownerDocument,{root:this.el,offer:offer.el,top:top.el,now:options.pauseClock});
-    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory];this.topEl=top.el;this.teamEl=team.el;
-    this.el.append(pausa.dim,hurt.el,top.el,stack,team.el,pausa.el,offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live);
+    // The chefão's arrival (boss-fim-onda-1, hud/chefao-cena.ts): its veil under every part, the title over the strip.
+    const cena=options.cena&&createCenaPart(parent.ownerDocument,{clock:options.cena,phone:()=>this.el.dataset.hud==='fone'});
+    this.hurt=hurt;this.parts=[hurt,top,minerva,announcer,killcam,team,alerts,offer,camp,cida,pausa,inventory,...(cena?[cena]:[])];this.topEl=top.el;this.teamEl=team.el;
+    this.el.append(pausa.dim,...(cena?[cena.veil]:[]),hurt.el,top.el,stack,team.el,pausa.el,...(cena?[cena.el]:[]),offer.el,camp.forge,cida.panel,offer.chip,cida.button,inventory.el,this.result.el,pausa.live,...(cena?[cena.live]:[]));
     // Under the offer and the result (DOM order): arrows on the useful area's rim, the minimap in its corner.
     // The PIX balloon by a friend's portrait and its toasts (carteira-e-pix, hud/pix.ts): over the strip, under the result.
     const pix=createPix({root:this.el,send:(to,amount)=>options.onPix?.(to,amount),say:(row,mine)=>this.queueRow(row,PIX_TOAST_MS,{answer:mine}),

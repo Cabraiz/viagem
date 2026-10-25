@@ -15,11 +15,11 @@ const at=(kind:string,x=2,y=0,extra:Partial<DeckInput['enemies'][number]>={})=>(
 const hero={x:0,y:0};
 const kinds=(deck:ProfileDeck)=>deck.shown.filter(c=>!c.leaving).map(c=>c.kind);
 
-test('lotes 1–2: every P0 kind with art has a profile with its photo; the texts fit the card',()=>{
+test('lotes 1–3: every P0 and P1 kind with art has a profile with its photo; the texts fit the card',()=>{
   const ids=Object.keys(PERFIS_TEXTO);
-  assert.equal(ids.length,69);
-  const p0=ROSTER.filter(e=>e.priority==='P0'&&ENEMY_ART_IDS.includes(e.id)).map(e=>e.id);
-  assert.deepEqual(p0.filter(id=>!ids.includes(id)),[],'P0 with art and no profile');
+  assert.equal(ids.length,132);
+  const due=ROSTER.filter(e=>(e.priority==='P0'||e.priority==='P1')&&ENEMY_ART_IDS.includes(e.id)).map(e=>e.id);
+  assert.deepEqual(due.filter(id=>!ids.includes(id)),[],'P0/P1 with art and no profile');
   for(const id of ids){
     const p=perfilOf(id);
     assert.ok(p,`${id} is in the roster`);
@@ -30,14 +30,14 @@ test('lotes 1–2: every P0 kind with art has a profile with its photo; the text
     assert.ok(p.idade.length>0&&p.idade.length<=24,`${id}: idade`);
   }
   for(const b of ['curtir','passar'])assert.ok(existsSync(fileURLToPath(new URL(`../../public/art/perfis/botao-${b}.webp`,import.meta.url))));
-  assert.equal(perfilOf('sogra-tita'),undefined,'a kind of a later batch has no card yet');
+  assert.equal(perfilOf('noivo-em-fuga'),undefined,'a kind of a later batch has no card yet');
 });
 
 test('first time near the hero: its card; the same kind never again; far, asleep or without a profile: none',()=>{
   const deck=new ProfileDeck(has);
   assert.deepEqual(deck.step({enemies:[at('tio-pave',NEAR_M+1)],hero},0).cards,[],'too far');
   assert.deepEqual(deck.step({enemies:[at('tio-pave',1,0,{asleep:true})],hero},10).cards,[],'asleep on the map');
-  assert.deepEqual(deck.step({enemies:[at('sogra-tita',1)],hero},20).cards,[],'no profile yet');
+  assert.deepEqual(deck.step({enemies:[at('noivo-em-fuga',1)],hero},20).cards,[],'no profile yet');
   assert.deepEqual(kinds(deck),[]);
   deck.step({enemies:[at('tio-pave',NEAR_M)],hero},30);
   assert.deepEqual(kinds(deck),['tio-pave']);

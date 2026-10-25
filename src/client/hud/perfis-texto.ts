@@ -5,6 +5,7 @@
  * The name is the roster's (rules/enemy-roster.ts). Humor: design/HUMOR-ADULT-SWIM.md (D-047); no real person, brand,
  * song or anything sexual. Bio ≤ 66 chars, recado ≤ 28 (tests/client/perfis.test.ts).
  * Lote 1: the P0 of rounds 1–3, the P0 mini-bosses and the P0 bosses (22). Lote 2: the other P0 with art (47).
+ * Lote 3: the P1 with art (63).
  */
 export interface PerfilTexto {
   /** "47", or a joke in place of the number ("vence hoje"). */
@@ -92,4 +93,80 @@ grauzeiro:{idade:'19',bio:'Só ando numa roda. A outra é pra ocasião especial.
 'boneco-gigante':{idade:'3 m de altura',bio:'Danço sozinho desde que o cara de dentro fugiu.',recado:'abraço de 3 metros?'},
 'noel-derretendo':{idade:'70 (no calor, 80)',bio:'Ho ho ho. Tá 38 graus aqui dentro. Ho.',recado:'senta no meu colo não'},
 'capivara-blindada':{idade:'8',bio:'Nada me tira do sério. Nem você, nem um tanque.',recado:'tá tudo bem. senta.'},
+  // Lote 3: os P1 com arte. Corredores
+'rodinho-do-sinal':{idade:'38 (no sinal: 3 min)',bio:'Limpo seu vidro em 40 s. Minha alma tá suja desde 1998.',recado:'deixa eu limpar teu vidro'},
+'garcom-equilibrista':{idade:'29',bio:'Equilibro 30 garrafas e um coração partido. Os 10% são opcionais.',recado:'vai querer os 10%?'},
+'skatista-de-47':{idade:'47 (alma de 15)',bio:'Ainda acerto o ollie. A coluna é que não acerta mais.',recado:'tu viu essa manobra?'},
+'vendedor-de-caixao':{idade:'58',bio:'Consórcio de caixão em 120x. A última parcela é você.',recado:'já pensou no seu futuro?'},
+'cofre-mimico':{idade:'1952 (o segredo)',bio:'Por fora, sigiloso. Por dentro, um velhinho contando moedas.',recado:'adivinha a minha senha'},
+'fiscal-da-garagem':{idade:'61',bio:'Sua vaga tem 2,30 m. Seu carro, 2,31. Precisamos conversar.',recado:'tá fora da faixa, amor'},
+'peladeiro-de-vidro':{idade:'36 (joelho de 80)',bio:'Pelada todo sábado. Fisioterapia todo domingo.',recado:'passa a bola, devagar'},
+'frango-de-academia':{idade:'2 (anos de treino)',bio:'Treino peito e braço todo dia. Perna? Nunca ouvi falar.',recado:'repara no meu bíceps'},
+'glitter-senciente':{idade:'eterno',bio:'Uma vez na sua vida, nunca mais saio. Nem do tapete.',recado:'agora eu moro em você'},
+'buraco-de-rua':{idade:'desde a última eleição',bio:'Me prometeram asfalto em todo mandato. Sigo esperando, aberto.',recado:'cai em mim, vai'},
+  // Kamikazes
+'ciclista-de-lycra':{idade:'44',bio:'Pedalo 120 km por domingo pra tomar um café e voltar.',recado:'olha minha média'},
+'executivo-de-patinete':{idade:'35',bio:'Faço reunião, almoço e chego atrasado. Tudo de patinete.',recado:'te ligo em 5, tô em call'},
+'entregador-matrioska':{idade:'27 (e 19, e 12, e 6)',bio:'Entrego qualquer coisa. Até a mim mesmo, em versões menores.',recado:'pedido seu: eu mesmo'},
+'cafeteira-burnout':{idade:'12 (de expediente)',bio:'Trabalho das 6 às 23. Nunca limparam meu filtro.',recado:'mais um café? sério?'},
+'cadeira-giratoria':{idade:'viúva desde a demissão',bio:'O dono foi embora numa sexta. Eu fiquei girando.',recado:'senta aqui, só um pouco'},
+'madrinha-velociraptor':{idade:'34 (solteira)',bio:'Vou pegar o buquê. Quem estiver no caminho vira convidado ferido.',recado:'esse buquê é MEU'},
+'gamer-rage-quit':{idade:'22',bio:'Não perdi, foi o lag. Também não perdi as outras 40.',recado:'gg, vou desinstalar'},
+  // Palhaços
+'taxista-reclamao':{idade:'59',bio:'O ar quebrou em 2009. O assunto não acabou desde então.',recado:'e esse calor, hein?'},
+'filosofo-de-balcao':{idade:'52 (ou nada importa)',bio:'Já resolvi o universo três vezes. Sempre depois da quarta dose.',recado:'tu existe ou é ideia?'},
+'forrozeiro-centrifugo':{idade:'41',bio:'Rodo até furar o chão. Te levo junto se quiser.',recado:'bora rodar, morena?'},
+'palhaco-de-aniversario':{idade:'48 (cansado)',bio:'Faço cachorro de balão desde 1990. Ele também tá cansado.',recado:'quer um cachorrinho?'},
+'dancinha-viral':{idade:'17 (de trend)',bio:'Danço a trend antes dela existir. Depois que acaba, congelo.',recado:'grava eu, rápido'},
+  // Suporte
+'camelo-pirata':{idade:'pirata há 300 anos',bio:'Relógio original, cabo original, eu original. Tudo pirata.',recado:'três por dez, marujo'},
+'cobrador-do-busao':{idade:'49',bio:'Sou a catraca e a catraca sou eu. Pula e você vai ver.',recado:'tem trocado?'},
+'rh-sorridente':{idade:'32 (sorrindo)',bio:'Aqui somos uma família. Por isso não tem aumento.',recado:'bora alinhar expectativas'},
+'personal-gritao':{idade:'31',bio:'Mais uma série! Mais uma! Isso não era pergunta!',recado:'MAIS UMA, VAI!'},
+'homem-surdo':{idade:'45',bio:'Bato na barriga, o bairro inteiro sabe que cheguei.',recado:'TÔ CHEGANDO! BUM!'},
+  // Arremessadores
+'vendedor-de-bala':{idade:'morto há 40 anos',bio:'Bala de menta, bala de coco, bala de alma. Três por um real.',recado:'aceita uma balinha?'},
+'alambiqueiro':{idade:'60 (envelhecido)',bio:'Destilo desde menino. A tampa da minha cabeça já voou 3 vezes.',recado:'prova essa, é da boa'},
+'coco-que-vende-gente':{idade:'colhido ontem',bio:'Vendo gente na praia. Não pergunta de onde veio.',recado:'quer com canudinho?'},
+'tijolo-pai':{idade:'51',bio:'Construí essa família tijolo por tijolo. Literalmente.',recado:'filho meu não chora'},
+'revendedora-de-catalogo':{idade:'43',bio:'Tenho o batom, o perfume e o boleto. Paga em 5 vezes.',recado:'olha a promoção, linda'},
+'sapo-cururu':{idade:'12 (de brejo)',bio:'Canto na beira do rio. O rio pediu pra eu parar.',recado:'me beija, eu viro gente'},
+  // Atiradores
+'pichador-ninja':{idade:'24',bio:'Pinto uma porta na parede e atrás dela tem outra parede.',recado:'não me viu aqui'},
+'auditor-das-sombras':{idade:'exercício de 2007',bio:'Achei um erro de 3 centavos na sua vida. Vamos conversar.',recado:'cadê o comprovante?'},
+'zelador-hidraulico':{idade:'57',bio:'Conserto qualquer vazamento. Menos o do coração.',recado:'quer uma mangueirada?'},
+  // Brutamontes
+'homem-placa-do-fim':{idade:'o fim está próximo',bio:'O mundo acaba quinta. Remarcaram de novo pra quinta.',recado:'arrependa-se, amor'},
+'homem-galao':{idade:'20 litros',bio:'Mato a sede do escritório inteiro. Ninguém me troca.',recado:'aceita um copinho?'},
+'betoneira-ambulante':{idade:'35 (de obra)',bio:'Giro o dia inteiro. Parou de girar, endureci pra sempre.',recado:'quer ver eu girar?'},
+'ratazana-mafiosa':{idade:'7 (anos de rato)',bio:'O bueiro é meu. A esquina é minha. Você vai ser meu.',recado:'proposta irrecusável'},
+'caramujo-financiado':{idade:'faltam 360 parcelas',bio:'Casa própria nas costas. O banco ainda é dono do telhado.',recado:'fica pra jantar?'},
+'jacare-do-bueiro':{idade:'40 (no esgoto)',bio:'Moro no bueiro da sua rua. De chapéu, porque sou educado.',recado:'boa noite, madame'},
+'orelhao-zumbi':{idade:'em extinção',bio:'Ninguém me liga desde 2004. Ainda aceito ficha.',recado:'me liga, a cobrar mesmo'},
+  // Invocadores
+'despachante':{idade:'56 (com firma)',bio:'Resolvo seu documento em 3 dias. Úteis. De outro ano.',recado:'cadê o xerox?'},
+'corretor-de-imoveis':{idade:'39',bio:'Apartamento de 1 m² com vista pra outro apartamento.',recado:'é um ótimo investimento'},
+'reuniao-que-podia-ser-email':{idade:'1 h (podia ser 1 min)',bio:'Sou só 40 slides. Alguém me compartilha a tela?',recado:'tão me ouvindo?'},
+'vo-tricoteira':{idade:'86',bio:'Tricotei um suéter pra você. E pra cidade. E pro mundo.',recado:'tá magrinho, come'},
+'unboxer':{idade:'25',bio:'Abro caixa por profissão. Dentro de toda caixa tem outra caixa.',recado:'olha o que chegou!'},
+'marimbondo-sindical':{idade:'em obra desde 2011',bio:'A obra parou, os marimbondos entraram em greve, eu fiquei.',recado:'cuidado, eu pico'},
+  // Refletores
+'rei-do-camarote':{idade:'26 (de camarote)',bio:'Camarote na calçada, champanhe de garrafa pet. Sou rei.',recado:'tá na minha lista?'},
+'guru-do-linkedin':{idade:'24 (CEO de mim)',bio:'Acordo às 4h, choro às 5h, posto às 6h. Isso é liderança.',recado:'concorda? comenta SIM'},
+'cosplayer':{idade:'33',bio:'Faço cosplay do síndico. Ninguém pediu. Ficou idêntico.',recado:'barulho depois das 22h?'},
+  // Enxame
+'grampeador-carente':{idade:'escritório de 1987',bio:'Grampeio tudo que amo. Por isso ninguém fica.',recado:'me deixa te grampear?'},
+'trenzinho-da-festa':{idade:'18 (cada um)',bio:'Somos um só, de todos os tamanhos. Entra no trem.',recado:'olha o trenzinho!'},
+  // Voadores
+'ex-que-voltou':{idade:'o mesmo de sempre',bio:'Mudei. Não mudei nada. Mas tô aqui de novo.',recado:'oi... tá acordada?'},
+'drone-ansioso':{idade:'8 % de bateria',bio:'Voo alto e entro em pânico. Pouso em árvore e choro.',recado:'tá todo mundo bem?'},
+'urubu-fiscal':{idade:'48',bio:'Rodeio sua vida, esperando uma falha. Tenho paciência.',recado:'tá com nota fiscal?'},
+  // Mini-chefes
+'tia-do-pudim':{idade:'62 (dona do almoço)',bio:'Trago pudim pra todo almoço. O pudim não me larga mais.',recado:'come mais um pedaço'},
+'bate-estaca':{idade:'15 t',bio:'Me apaixonei por um poste. Bato no chão até ele me notar.',recado:'poste, me nota, por favor'},
+'gerente-regional':{idade:'50 (meta batida)',bio:'Bato a meta com o estagiário. O estagiário não bate mais nada.',recado:'tem um minutinho?'},
+  // Chefes
+'boitata-de-sacolinha':{idade:'lixo de 500 anos',bio:'Lenda da mata feita de sacolinha. Cada uma demora 400 anos.',recado:'leva uma sacolinha?'},
+'mapinguari-do-shopping':{idade:'lenda (e cliente)',bio:'Saí da floresta pro shopping. A boca na barriga é pra promoção.',recado:'tá tudo 70% off?'},
+'sogra-tita':{idade:'não interessa',bio:'Você não é bom o suficiente. Mas fica pro almoço.',recado:'cortou o cabelo, é?'},
 });

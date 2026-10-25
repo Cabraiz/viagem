@@ -11,7 +11,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 // @ts-expect-error -- a plain .mjs tool, no types
-import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt,childEnv,ownTestRun} from '../../tools/fila.mjs';
+import {main,ordered,failedFilesFromTap,smokeGist,contractFiles,printsSheet,isGeneratedArt,childEnv,ownTestRun,staleTools,TOOL_FILES} from '../../tools/fila.mjs';
 
 const git=(cwd:string,...args:string[])=>execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const PROTOCOL=`/**\n * 16 since the 1.7× city.\n * The join handshake refuses other versions with the update message.\n */\nexport const PROTOCOL_VERSION=16;\n`;
@@ -252,6 +252,30 @@ test('a failing test file only the culprit branch adds: the main and the earlier
     assert.deepEqual(state.devolvidos.map((d:{card:string})=>d.card),['NEW-teste-novo']);
     const back=JSON.parse(readFileSync(join(w.board,'fila/resultados/NEW-teste-novo.json'),'utf8'));
     assert.deepEqual(back.falhas,['tests/novo.test.ts']);
+  }finally{w.cleanup();}
+});
+
+test('a lote run by a copy of the queue that is not the main one is refused (BUG-20261024-ORQ-fila-base-arquivo-novo)',()=>{
+  const w=world();
+  try{
+    // The main checkout left at 14/10: its fila.mjs had no filter for a file only the branch adds (lote 20261024-183205).
+    const here=fileURLToPath(new URL('../..',import.meta.url));
+    mkdirSync(join(w.repo,'tools'));
+    for(const f of TOOL_FILES)writeFileSync(join(w.repo,f),readFileSync(join(here,f),'utf8'));
+    git(w.repo,'add','-A');git(w.repo,'commit','-qm','tools');git(w.repo,'push','-q','origin','main');
+    const opt={repo:w.repo,remote:'origin',base:'main'};
+    assert.deepEqual(staleTools(opt,here),[],'the same queue as the main (CRLF or LF)');
+    assert.deepEqual(staleTools(opt,w.repo),[]);
+    writeFileSync(join(w.repo,'tools/fila.mjs'),'// a fila de 14/10\n');
+    git(w.repo,'commit','-qam','fila velha');git(w.repo,'push','-q','origin','main');
+    assert.deepEqual(staleTools(opt,here),['tools/fila.mjs']);
+    w.branch('vgm/boa','src/boa.ts','export const boa=1;\n');
+    main(['pronto','NEW-boa','--branch','vgm/boa',...w.opts]);
+    assert.throws(()=>main(['lote',...w.opts]),/tools\/fila\.mjs de .* não é o da origin\/main: rode a fila de uma worktree atualizada/);
+    assert.equal(existsSync(join(w.board,'fila/.lote')),false,'no lote opened');
+    assert.throws(()=>main(['publicar','20261024-183205',...w.opts]),/não é o da origin\/main/);
+    const state=main(['lote',...w.opts,'--qualquer-versao']);
+    assert.deepEqual(state.integrados.map((e:{card:string})=>e.card),['NEW-boa'],'--qualquer-versao: a new queue tried on purpose');
   }finally{w.cleanup();}
 });
 

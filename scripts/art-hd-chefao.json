@@ -1,0 +1,516 @@
+{
+ "version": 1,
+ "anims": [
+  "idle",
+  "walk",
+  "slam"
+ ],
+ "screens": {
+  "pc": {
+   "cell": 768,
+   "maxSide": 8192
+  },
+  "celular": {
+   "cell": 512,
+   "maxSide": 4096
+  }
+ },
+ "pieces": {
+  "o-grande-credor": {
+   "idle": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/pc/idle.webp",
+       "columns": 10,
+       "rows": 5,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      3717620
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/celular/idle.webp",
+       "columns": 8,
+       "rows": 6,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      2216720
+     ]
+    }
+   },
+   "walk": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/pc/walk.webp",
+       "columns": 10,
+       "rows": 7,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      4826688
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/celular/walk.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      2864140
+     ]
+    }
+   },
+   "slam": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/pc/slam.webp",
+       "columns": 10,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 80
+      }
+     ],
+     "bytes": [
+      5514836
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "o-grande-credor/celular/slam-p1.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      },
+      {
+       "file": "o-grande-credor/celular/slam-p2.webp",
+       "columns": 8,
+       "rows": 2,
+       "firstFrame": 64,
+       "frameCount": 16
+      }
+     ],
+     "bytes": [
+      2684668,
+      679072
+     ]
+    }
+   }
+  },
+  "dj-do-fim-do-mundo": {
+   "idle": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/pc/idle.webp",
+       "columns": 10,
+       "rows": 5,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      2693764
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/celular/idle.webp",
+       "columns": 8,
+       "rows": 6,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      1520012
+     ]
+    }
+   },
+   "walk": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/pc/walk.webp",
+       "columns": 10,
+       "rows": 7,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      4013306
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/celular/walk.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      2296076
+     ]
+    }
+   },
+   "slam": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/pc/slam.webp",
+       "columns": 10,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 80
+      }
+     ],
+     "bytes": [
+      4623638
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "dj-do-fim-do-mundo/celular/slam-p1.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      },
+      {
+       "file": "dj-do-fim-do-mundo/celular/slam-p2.webp",
+       "columns": 8,
+       "rows": 2,
+       "firstFrame": 64,
+       "frameCount": 16
+      }
+     ],
+     "bytes": [
+      2128896,
+      533470
+     ]
+    }
+   }
+  },
+  "mapinguari-do-shopping": {
+   "idle": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/pc/idle.webp",
+       "columns": 10,
+       "rows": 5,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      2635072
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/celular/idle.webp",
+       "columns": 8,
+       "rows": 6,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      1522006
+     ]
+    }
+   },
+   "walk": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/pc/walk.webp",
+       "columns": 10,
+       "rows": 7,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      3468910
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/celular/walk.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      1989010
+     ]
+    }
+   },
+   "slam": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/pc/slam.webp",
+       "columns": 10,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 80
+      }
+     ],
+     "bytes": [
+      4080850
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "mapinguari-do-shopping/celular/slam-p1.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      },
+      {
+       "file": "mapinguari-do-shopping/celular/slam-p2.webp",
+       "columns": 8,
+       "rows": 2,
+       "firstFrame": 64,
+       "frameCount": 16
+      }
+     ],
+     "bytes": [
+      1913932,
+      459416
+     ]
+    }
+   }
+  },
+  "boitata-de-sacolinha": {
+   "idle": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/pc/idle.webp",
+       "columns": 10,
+       "rows": 5,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      3400142
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/celular/idle.webp",
+       "columns": 8,
+       "rows": 6,
+       "firstFrame": 0,
+       "frameCount": 48
+      }
+     ],
+     "bytes": [
+      2072512
+     ]
+    }
+   },
+   "walk": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/pc/walk.webp",
+       "columns": 10,
+       "rows": 7,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      4860986
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/celular/walk.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      }
+     ],
+     "bytes": [
+      2983406
+     ]
+    }
+   },
+   "slam": {
+    "pc": {
+     "cell": [
+      768,
+      768
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/pc/slam.webp",
+       "columns": 10,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 80
+      }
+     ],
+     "bytes": [
+      4900982
+     ]
+    },
+    "celular": {
+     "cell": [
+      512,
+      512
+     ],
+     "pages": [
+      {
+       "file": "boitata-de-sacolinha/celular/slam-p1.webp",
+       "columns": 8,
+       "rows": 8,
+       "firstFrame": 0,
+       "frameCount": 64
+      },
+      {
+       "file": "boitata-de-sacolinha/celular/slam-p2.webp",
+       "columns": 8,
+       "rows": 2,
+       "firstFrame": 64,
+       "frameCount": 16
+      }
+     ],
+     "bytes": [
+      2308286,
+      584862
+     ]
+    }
+   }
+  }
+ }
+}

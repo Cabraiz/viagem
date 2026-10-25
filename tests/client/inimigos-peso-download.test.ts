@@ -5,9 +5,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
+import {HD_ENEMIES,parseArtIndex,setArtIndex} from '../../src/client/art/manifest.ts';
 import {existsSync} from 'node:fs';
-import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteEnemyUrl,liteOnly,unusedEnemyFile} from '../../src/client/art/horde-art.ts';
+import {artTargetHeight,enemyPieceLoads,HERO_FIGURE_PX,liteEnemyUrl,liteOnly,setWaveBossDraw,unusedEnemyFile} from '../../src/client/art/horde-art.ts';
+import {WAVE_BOSS,WAVE_BOSS_IDS} from '../../src/rules/index.ts';
 import {critterSheetFrame} from '../../src/client/art/hud-art.ts';
 import {bootArt} from '../../src/client/ui/art-boot.ts';
 import {ELITE_SCALE} from '../../src/client/render/keys.ts';
@@ -47,7 +48,11 @@ test('a smaller copy keeps LITE_TEXELS (0.9) texels per CSS px of its figure as 
   for(const [id,fig] of Object.entries<any>(lite.enemyFigures)){
     const piece=enemies.pieces[id],f=Object.values<any>(piece.files).find(x=>x.cell[1]===fig.cell[1]);
     if(!f?.liteCell)continue;
+    // The 1st wave's chefão (boss-fim-onda-1) draws × WAVE_BOSS.drawScale past his sheet (its own 384 px cell is under
+    // that): softer by choice, the lite copy keeps his download; the check stays on his role's height.
+    if(WAVE_BOSS_IDS.includes(id))setWaveBossDraw(1);
     const need=artTargetHeight(id)*HERO_MIN_SCREEN_PX/HERO_FIGURE_PX*ELITE_SCALE*.9;
+    setWaveBossDraw(WAVE_BOSS.drawScale);
     assert.ok(fig.drawn*f.liteCell[1]/fig.cell[1]>=need-1e-9,`${id}: ${fig.drawn} px × ${f.liteCell[1]}/${fig.cell[1]} < ${need.toFixed(1)}`);
   }
 });
@@ -126,7 +131,8 @@ test('pcCell is the cell only on a computer; the phone never keeps it; a malform
 test('the phone loads exactly what it loaded before the computer copies (same URLs and cells as an index without pcCell)',()=>{
   const strip=JSON.parse(JSON.stringify(index));
   for(const piece of Object.values<any>(strip.groups.inimigos.pieces))for(const f of Object.values<any>(piece.files))delete f.pcCell;
-  const ids=Object.keys(enemies.pieces);
+  // The 1st wave's chefão loads his own files on any screen (tests/tools/art-hd-chefao.test.ts).
+  const ids=Object.keys(enemies.pieces).filter(id=>!HD_ENEMIES.has(id));
   setArtIndex(parseArtIndex(strip));const before=ids.flatMap(id=>enemyPieceLoads(id));
   setArtIndex(parseArtIndex(index));const after=ids.flatMap(id=>enemyPieceLoads(id)),frames=ids.map(id=>critterSheetFrame(id));
   setArtIndex(parseArtIndex(index,true));const pcFrames=ids.map(id=>critterSheetFrame(id));
@@ -146,6 +152,8 @@ test('a computer loads every drawn file with pcCell from enemies-pc at that cell
   for(const {id,l} of loads){
     const f=Object.values<any>(enemies.pieces[id].files).find(x=>filesOf(x).some(p=>l.url.endsWith(`/${p}`)));
     assert.ok(existsSync(`public${l.url}`),l.url);
+    // The 1st wave's chefão (boss-fim-onda-1): his HD copy at its cell, the rest at the approved cell (tests/tools/art-hd-chefao).
+    if(HD_ENEMIES.has(id)){assert.ok(/^\/art\/(hd\/enemies|lite\/enemies-pc)\//.test(l.url),l.url);assert.ok(l.cell[0]>=384,l.url);continue;}
     if(f.pcCell){
       pc++;
       assert.ok(l.url.startsWith('/art/lite/enemies-pc/'),l.url);

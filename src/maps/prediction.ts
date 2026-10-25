@@ -30,6 +30,8 @@ type Input=PlayerInput;
 export const STEP = 1 / 20;
 /** D-036 effect state of a player (SimPlayer and PlayerRunView carry the same fields). */
 export interface MoveEffects {slowUntil?:number;slipUntil?:number;slip?:Point;
+  /** boss-fim-onda-1: thrown by a chefão's pancada and down on the ground while tick < downUntil: no step moves. */
+  downUntil?:number;
   /** D-047 Dona Cida's brigadeiro: walking × CIDA_FAST_MULT while tick < fastUntil (on top of a slow; not the slide). */
   fastUntil?:number;
   /** Veículos: the vehicle ridden while tick < rideUntil (contract vehicles.ts). */
@@ -52,6 +54,8 @@ export interface CarPlace {x:number;y:number;heading?:number}
 export type FloorPoint=Point&{andar?:1};
 const onto=(q:Point,floor:Floor):FloorPoint=>floor===1?{x:q.x,y:q.y,andar:1}:{x:q.x,y:q.y};
 /** The slide direction on `tick`, or undefined when the player is not slipping then (or the vector is unusable). */
+/** boss-fim-onda-1: thrown or down after a throw at `tick` (the room moves the body; the stick does nothing). */
+export const isDown=(effects:MoveEffects|undefined,tick:number)=>tick<(effects?.downUntil??-Infinity);
 export function slipping(effects:MoveEffects|undefined,tick:number):Point|undefined{
   const s=effects?.slip;
   if(!s||!(tick<(effects!.slipUntil??-Infinity)))return undefined;
@@ -85,6 +89,7 @@ const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
  * a direction (the attack or the skill held in place) stands, slipping or not. Collision-safe like moveDirection.
  */
 export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
+  if(isDown(effects,tick))return p;
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return p;
   const slide=slipping(effects,tick),floor=floorOf(p),ground=onFloor(terrain,floor);

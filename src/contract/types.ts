@@ -84,6 +84,12 @@ export interface SimPlayer extends Point {
    */
   slipUntil?:number; slip?:Point;
   /**
+   * boss-fim-onda-1 (the user, 24/10: "a gente é empurrado igual ao gigante do L4D2"): a chefão's pancada throws the hero.
+   * While tick < knockUntil the room moves them by `knock` (u per tick, server-only: the positions carry it); while
+   * tick < downUntil they are down on the ground for a moment (no walk, no attack), sent to the phone for its prediction.
+   */
+  knock?:Point; knockUntil?:number; downUntil?:number;
+  /**
    * D-047 Dona Cida's sweets (objective.ts CIDA_ITEMS), absolute ticks: walking × CIDA_FAST_MULT while tick < fastUntil
    * (shared with the client's prediction, like slowUntil), damage dealt × CIDA_MIGHT_MULT while tick < mightUntil,
    * damage taken × CIDA_GUARD_MULT while tick < guardUntil. Absent outside the chaveiro objective.
@@ -97,6 +103,11 @@ export interface SimPlayer extends Point {
   /** This player's wallet in R$ (contract wallet.ts; NEW-20261014-ORQ-carteira-e-pix). Absent = 0. */
   grana?:number;
   /**
+   * Fear (rules/fear.ts, sim/fear.ts): ticks of dark built up alone, 0..FEAR_TICKS; at FEAR_TICKS the hero falls.
+   * Absent = 0 (and in the runs without the fear system, so their digests stay).
+   */
+  fear?:number;
+  /**
    * D-051, manual combat only (server-side, never on the wire): the enemy whose hit last landed on this player and the
    * tick (core damagePlayer), for the auto aim's "who is hitting me" rule. Absent with the automatic weapons, so no
    * digest of the default game moves.
@@ -109,6 +120,8 @@ export interface SimPlayer extends Point {
 }
 /** D-036 player effects, shared by the server movement and the client prediction. */
 export const PLAYER_SLOW_MULT=.6,PLAYER_SLOW_SECONDS=1.5,PLAYER_SLIP_SPEED=4.2,PLAYER_SLIP_SECONDS=.5;
+/** boss-fim-onda-1: a throw (Telegraph.push) flies over KNOCK_SECONDS, then the hero is down KNOCK_DOWN_SECONDS more. */
+export const KNOCK_SECONDS=.35,KNOCK_DOWN_SECONDS=.45;
 /** D-036: what a telegraph is, so the client draws each hazard its own way. Absent = generic. */
 export type TelegraphKind='arroto'|'molotov'|'fogo'|'coco'|'explosao'|'pancada'|'investida'|'varredura'|'carimbo';
 export const TELEGRAPH_KINDS:readonly TelegraphKind[]=['arroto','molotov','fogo','coco','explosao','pancada','investida','varredura','carimbo'];
@@ -172,6 +185,8 @@ export interface Telegraph {
   dx?:number; dy?:number; width?:number; fireTick:number; damage:number; owner:string;
   /** D-036: hazard kind for the client's look (absent = generic). */
   kind?:TelegraphKind;
+  /** boss-fim-onda-1: it throws whoever it hits this far (u), away from its centre (a line: along it). Absent: no throw. */
+  push?:number;
   /** The floor it lands on (its owner's, maps city/viaduct.ts): it only hurts bodies on the same floor. Absent: the ground. */
   andar?:1;
 }
@@ -253,7 +268,9 @@ export type SimEvent=
    * Veículos (rules/veiculos.ts): `player` took a parked vehicle (pickup id `pickup`), the ride ran out ('acabou': the
    * time, the scooter's battery, the burpee done) or it ended early ('largou': moving the car, a fall).
    */
-  | {type:'vehicle';player:string;kind:VehicleKind;what:'pegou'|'acabou'|'largou';pickup?:string};
+  | {type:'vehicle';player:string;kind:VehicleKind;what:'pegou'|'acabou'|'largou';pickup?:string}
+  /** boss-fim-onda-1: a chefão's pancada threw `player`, down until untilTick (the Tank's punch). */
+  | {type:'knock';player:string;untilTick:number};
 export type HappeningKind='boletos'|'promo'|'apagao';
 /** An event with the run-wide id the room's broadcast cursor follows (core.ts stamps it). */
 export type StampedEvent=SimEvent&{eventId:number};

@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4293,
+  "sheets": 4347,
   "failing": 0,
   "frames": 0
  },
@@ -16613,6 +16613,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/aposentado.dance128.b2d18b849abb.webp": {
+   "sha": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/aposentado.dir4.webp": {
    "sha": "340a88465f120851d8e719d09aee71f3eaf190897c9491cd45a566967e0eb80a",
    "ilhas": 6,
@@ -16773,6 +16778,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/astrologa.dance128.7b131d77fb3f.webp": {
+   "sha": "3e7b4d1410d39d3b3ad88c214f5cd017ae1c087612551ffd0484a4e04fa7b92a",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/astrologa.dir4.webp": {
    "sha": "c67678663564ece06f7ea8410d4361557ce3874124f82537ebeec555b97038e7",
    "ilhas": 0,
@@ -16780,6 +16790,11 @@
   },
   "lite/sprites/astrologa.dir4c.webp": {
    "sha": "d0c6c9e81fbe37ec9da8287d508ecd57d9b229034aad93ad9e22e49f7b7ca710",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/cidadao-comum.dance128.11d721e0d626.webp": {
+   "sha": "db66fdab3cb1d643bdc95bf7abadce65bafa5d71d109967c461ec3f9e7da6dda",
    "ilhas": 0,
    "fails": []
   },
@@ -16830,6 +16845,11 @@
   },
   "lite/sprites/clt-cansado.attack128-w.c37f96f0c1b6.webp": {
    "sha": "0dae1093744ead27c416c87ec8b897b28db49f2ce31c23ddc92d0a58983d077a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
+   "sha": "b14197907d40324243daf0718c9ca5fc46d39f796c9442816d69ba5e34655352",
    "ilhas": 0,
    "fails": []
   },
@@ -17068,6 +17088,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/coach.dance128.b25bbf2b1dac.webp": {
+   "sha": "00c2790732900b5b02ea43beb715a463d5241f4717c9e8b0ad2fc8cae0e0a736",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/coach.dir4.webp": {
    "sha": "d96a92ab433553a5dd8521366c5eaad95a24534f91fd7267712eb284b8790e5e",
    "ilhas": 0,
@@ -17160,6 +17185,11 @@
   },
   "lite/sprites/concurseira.attack128-w.57fb7a174556.webp": {
    "sha": "a8a75eb04b09ae3fe48de32c0537901acf69e57529347e9e202ead613d584faf",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/concurseira.dance128.30322bc89af2.webp": {
+   "sha": "85fd9a46f46c6e722840298fbcb482bd1b7e52627374c99549525159c98b551f",
    "ilhas": 0,
    "fails": []
   },
@@ -17258,6 +17288,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/faxineira.dance128.a5741b8b0b33.webp": {
+   "sha": "0d0d468b0d305e77d9eabc95cfc99ef35dfe37384a9d1e9e48098f263a83cbe6",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/faxineira.dir4.webp": {
    "sha": "0ea0ed1ea024ae333759c093b67802625b1847d1ed73fe392155d005bc7214a8",
    "ilhas": 3,
@@ -17353,6 +17388,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/feirante.dance128.1e82816fd1cc.webp": {
+   "sha": "9abfef1cab93ab5445b08b9df559f84e4d59024ea96505ad879f317a748bd232",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/feirante.dir4.webp": {
    "sha": "e18facfebf7b9e13116d5afd8d1254367363a17567341d3b78a51340c4f39d70",
    "ilhas": 4,
@@ -17408,6 +17448,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gambiarreiro.dance128.02f53c8b7791.webp": {
+   "sha": "f6efad4de2c1bd7b0bff21d8591ade4f0a78434e627ea3b76c521338c683af8e",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/gambiarreiro.dir4.webp": {
    "sha": "7b38a8f14a0abcbac302c331d9ee2ff521d3ec997c1ed6aae397caa52f320f00",
    "ilhas": 0,
@@ -17440,6 +17485,11 @@
   },
   "lite/sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
    "sha": "562e047ae6dfa720783ab7241effc46892a05660c2aa056b230a96e43225be7f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
+   "sha": "38cc5feb40da9d8b36ea6f8e09862b1b60e64b07bcf5d744622124b1a8fcb170",
    "ilhas": 0,
    "fails": []
   },
@@ -17593,6 +17643,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/mae-pet.dance128.8f0b47e68a7d.webp": {
+   "sha": "d353fe0943fb3b00fb4f08f2f56d1dd43af7b795d8b1b29166092f9386169879",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/mae-pet.dir4.webp": {
    "sha": "2d2f4c2b808cef3c905a806655e5b4711d6f213acdb2dd9fade58fee222b6c83",
    "ilhas": 2,
@@ -17665,6 +17720,11 @@
   },
   "lite/sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "d1b9cc008ed3e29e07e5a5a2aabf8f259fc99084e89d09b0e728222c79edcf08",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.dance128.576e79362713.webp": {
+   "sha": "14d2e95cc14de918839d7f9d993b08384dd1096d42f0627e96d05c7f90f3e153",
    "ilhas": 0,
    "fails": []
   },
@@ -17913,6 +17973,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/mendigo.dance128.12335d584beb.webp": {
+   "sha": "c8de779b15a7786c25e4d88f770cd16b24e403ffdad8f2028a866dc7558c0a2a",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/mendigo.dir4.webp": {
    "sha": "807d51f79847f92ee8c693fb3d214331f5f97030114b9652a9f2128a02ba0c5b",
    "ilhas": 4,
@@ -17968,6 +18033,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/merendeira.dance128.02d33efdf5dd.webp": {
+   "sha": "3e22e9156ccca76bc96da0e4da5d1ef9f627fe5ff8c5344e61b5c163a20fb433",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/merendeira.dir4.webp": {
    "sha": "460dc14704a69b986de16209b5cc025a585b7c1b7329ea4aee9f16db65f346f6",
    "ilhas": 2,
@@ -17975,6 +18045,11 @@
   },
   "lite/sprites/merendeira.dir4c.webp": {
    "sha": "e455c223d92f388ff110c4480946830010316c899aa5f6c4523d48aca365974e",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/motogirl.dance128.ec6b9b91da79.webp": {
+   "sha": "7b2c250b0151a1625ee1b57678c2375e8ff876245d0eccf6c5121d148da7fb87",
    "ilhas": 0,
    "fails": []
   },
@@ -17986,6 +18061,11 @@
   "lite/sprites/motogirl.dir4c.webp": {
    "sha": "8aadc45554d0a2766be6c46659f2294874991a5832bf971108c8f55a70e2cda5",
    "ilhas": 8,
+   "fails": []
+  },
+  "lite/sprites/pagodeiro.dance128.3d629f0b7e96.webp": {
+   "sha": "a89dc1355741da6ae9be0300a23bc212079ae1095b6b8c745f737eb7b69dbd28",
+   "ilhas": 0,
    "fails": []
   },
   "lite/sprites/pagodeiro.dir4.webp": {
@@ -18035,6 +18115,11 @@
   },
   "lite/sprites/passageira.attack128-w.d96b6b983464.webp": {
    "sha": "18f84c54e2dbb31ec6c24868c09ec4bfbb4f974004b3b646b78758a6fa9d6be4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/passageira.dance128.e35ba50d81fa.webp": {
+   "sha": "0daaeded01ae1800db70fef95decb16bd77c1d385592bf9f954267e08d5e22bb",
    "ilhas": 0,
    "fails": []
   },
@@ -18133,6 +18218,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/pedreiro.dance128.d2c2ed7b8098.webp": {
+   "sha": "74230c623789bab8b40857b604753f6e0e9a35e5406c5e7bc203aeb04b11c38b",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/pedreiro.dir4.webp": {
    "sha": "3c42c8950d716c1f4c31a8e4e7a3afcb57a370b8836c2363a7f7562d28db7cbe",
    "ilhas": 40,
@@ -18188,6 +18278,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/porteiro.dance128.234e5c16cf6c.webp": {
+   "sha": "c3ecce94da2d5537dbe1446c4d9b8298817b0bdfb891d640e68fb4fa91145dce",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/porteiro.dir4.webp": {
    "sha": "5e6977ce94f0095ada50cfc9eb48d2ba6e9e66540823f79581e23e40e5b4c25d",
    "ilhas": 0,
@@ -18198,6 +18293,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/rei-arraia.dance128.8e37f6a9d1c7.webp": {
+   "sha": "a08368b71883f3cee1a16776005a8a39526235c0707bac6bc8a7ac40f59d3020",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/rei-arraia.dir4.webp": {
    "sha": "034e8251edca0783b21b1b5a508ace6d737f8231bb13bb5d47d8e2710eaa02b7",
    "ilhas": 0,
@@ -18205,6 +18305,11 @@
   },
   "lite/sprites/rei-arraia.dir4c.webp": {
    "sha": "278a3272e76c26085c9d9bcc5bb38fa49756c61b32877f3a2adeb686c6af2049",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/rei-pastel.dance128.d423ab31a80d.webp": {
+   "sha": "a92dbc7f7fb973c7782b37d775921b5e15ce45fc3f89cf53a5ad5b4304f112f5",
    "ilhas": 0,
    "fails": []
   },
@@ -18255,6 +18360,11 @@
   },
   "lite/sprites/streamer.attack128-w.e4a77d058730.webp": {
    "sha": "aa75b700f837963b0563e9519c14bdb2acbeefb3fee6631a1bf9d92b85e60bc4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/streamer.dance128.7701e50a59af.webp": {
+   "sha": "593e71e2b1f99ef029112b200a0682929f06bcfa566dc25b4ff79cccb826fc40",
    "ilhas": 0,
    "fails": []
   },
@@ -18313,6 +18423,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/tecnico-ti.dance128.4401986a6d09.webp": {
+   "sha": "1ad0f232f2e6363505d1dbbd3430e36040cebb7b460d48d25d0639af5b726566",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/tecnico-ti.dir4.webp": {
    "sha": "44c90f6df7ddb57abdba859ea0a12c912c3b90232f622dcd6bbad14a2a62f279",
    "ilhas": 48,
@@ -18360,6 +18475,11 @@
   },
   "lite/sprites/universitario.attack128-w.9b48fdc3702a.webp": {
    "sha": "4a04e4fdad9b58e002864ccab8ce51cfb9b452709ae1aabc2efecaad88a06a01",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/universitario.dance128.8e598f1f1c1f.webp": {
+   "sha": "802c67ce357e159787fc3192563224e60c74810b5aa1d8bb59860226d106fd32",
    "ilhas": 0,
    "fails": []
   },
@@ -18440,6 +18560,11 @@
   },
   "lite/sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
    "sha": "bb95e44cf18aad5fc1259742bec45ee2f162f46e55badbc24fc4379b4a77c9fe",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/vendedor-praia.dance128.932b5398d729.webp": {
+   "sha": "704c8541ed7162b3f0c057dc40b2c2b2182a13e8e2b53298ee65241632c35a0e",
    "ilhas": 0,
    "fails": []
   },
@@ -18665,6 +18790,11 @@
   },
   "lite/sprites/viciado-em-bet.attack16-w.cb017457bc71.webp": {
    "sha": "2d4df410fd351f60796c40ea0cfb6b4f905de8772b658ccbd824341db8e4b429",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
+   "sha": "e2b6696b93dcec65e0d8e3c8c0b30fea5e32c85ae0116ef02669f4e025fadcb6",
    "ilhas": 0,
    "fails": []
   },
@@ -18913,6 +19043,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/vizinha-fofoqueira.dance128.af9b1237c34c.webp": {
+   "sha": "b596fd7dd23a728a6dca0bfc6694930750f4705a6c53e0eabed190a90c90a2bd",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/vizinha-fofoqueira.dir4.webp": {
    "sha": "c0cc7c8e1061899f0696324a6890fa1ca2f6bbf3652d69a057393461e009b4e9",
    "ilhas": 0,
@@ -18995,6 +19130,11 @@
   },
   "sprites/aposentado.attack16-w.d8d3f9e066e6.webp": {
    "sha": "d8d3f9e066e6a297971628249a2ff7b9a4e4c017f6b184fbc62ec07198901b96",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/aposentado.dance128.b2d18b849abb.webp": {
+   "sha": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
    "ilhas": 0,
    "fails": []
   },
@@ -19163,6 +19303,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/astrologa.dance128.7b131d77fb3f.webp": {
+   "sha": "7b131d77fb3f189099214d6f63c4f36ef524d21bfa6ea692b7effc1fad791663",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/astrologa.dir4.webp": {
    "sha": "77d07f974741bc9215f889888ab44e7e43f7a3c2f2835ffbd4e1eeb28e013d13",
    "ilhas": 0,
@@ -19176,6 +19321,11 @@
   "sprites/astrologa.downed.webp": {
    "sha": "faafac66631c0ba2fcb88a376f92884f7715cb1890c2db7918d6e2e9ddb3991f",
    "ilhas": 9,
+   "fails": []
+  },
+  "sprites/cidadao-comum.dance128.11d721e0d626.webp": {
+   "sha": "11d721e0d626aa6be3c47920923e533b495c40aec0c62db39fc8695d0d223147",
+   "ilhas": 0,
    "fails": []
   },
   "sprites/cidadao-comum.dir4.webp": {
@@ -19230,6 +19380,11 @@
   },
   "sprites/clt-cansado.attack128-w.c37f96f0c1b6.webp": {
    "sha": "c37f96f0c1b68f604795b7f3207e71a6bde9c9a5ad76c681bedb26aacab2d46f",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/clt-cansado.dance128.b5f33e7db28e.webp": {
+   "sha": "b5f33e7db28e3f3e742fbf3f7e9e52c24b46fc8402cb9fe034fb620b284a7308",
    "ilhas": 0,
    "fails": []
   },
@@ -19473,6 +19628,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/coach.dance128.b25bbf2b1dac.webp": {
+   "sha": "b25bbf2b1dac9e5e44ae3291b7726e781786364d69b0d9f1191a0095c428f5c5",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/coach.dir4.webp": {
    "sha": "df0a2ab2c7e549f31f2b01ad6fb8c67daec773482f7e6764f627609cc2697c60",
    "ilhas": 0,
@@ -19570,6 +19730,11 @@
   },
   "sprites/concurseira.attack128-w.57fb7a174556.webp": {
    "sha": "57fb7a174556f90d5e61fa46f25cc8c1c7f0817d8f6b747588dd3b509a816413",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/concurseira.dance128.30322bc89af2.webp": {
+   "sha": "30322bc89af28e52287cd92ab0d3d8e3be6f77fb2fb9f33c2914f583b25ec4ac",
    "ilhas": 0,
    "fails": []
   },
@@ -19673,6 +19838,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/faxineira.dance128.a5741b8b0b33.webp": {
+   "sha": "a5741b8b0b338f8dba8dd526a4dd9ea837909ec116e7c7916b3cd3d04c99fe59",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/faxineira.dir4.webp": {
    "sha": "26e91e36b72e38015df3ea1b9f948663286f4f24a3e4f237df99604bd4d6fe84",
    "ilhas": 3,
@@ -19773,6 +19943,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/feirante.dance128.1e82816fd1cc.webp": {
+   "sha": "1e82816fd1ccaf02113261acd713e0bfbe5db35848ea44e122a62f70491e4664",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/feirante.dir4.webp": {
    "sha": "e1ee3d74d96e1389441f1363957aeed41d86ba0b410e3d38cf627038972fb5ad",
    "ilhas": 4,
@@ -19833,6 +20008,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gambiarreiro.dance128.02f53c8b7791.webp": {
+   "sha": "02f53c8b77917df77ef13de9b139b3bfd1125007c85d5aeb69116421dec742bc",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/gambiarreiro.dir4.webp": {
    "sha": "2ddbfd6d9e8486492375744cbc625efa94452ef0e32662cf786d540f7383ea17",
    "ilhas": 0,
@@ -19870,6 +20050,11 @@
   },
   "sprites/gato-nada-pra-comer.attack16-w.d257808b7163.webp": {
    "sha": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
+   "sha": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4",
    "ilhas": 0,
    "fails": []
   },
@@ -20023,6 +20208,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/mae-pet.dance128.8f0b47e68a7d.webp": {
+   "sha": "8f0b47e68a7d30144b341cabab0a44143dba571a8d059a1ecbcb6c77922f702f",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/mae-pet.dir4.webp": {
    "sha": "1579ac822b2f6a17bc010ca5d4553373d93aa91d90520248201bf0a941cd1a74",
    "ilhas": 2,
@@ -20100,6 +20290,11 @@
   },
   "sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.dance128.576e79362713.webp": {
+   "sha": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f",
    "ilhas": 0,
    "fails": []
   },
@@ -20353,6 +20548,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/mendigo.dance128.12335d584beb.webp": {
+   "sha": "12335d584beb64add08d3aef7e0e63959227b05b5fc3a8e08f98beb086a650f8",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/mendigo.dir4.webp": {
    "sha": "5b6db887f079d1f55c4448fe4eaf5eebcc8a17524812d12afb4202efa7f880e8",
    "ilhas": 4,
@@ -20413,6 +20613,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/merendeira.dance128.02d33efdf5dd.webp": {
+   "sha": "02d33efdf5ddf88fea80e32ad6ce06765f96a0025ffaef323c7f63fb112fce2b",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/merendeira.dir4.webp": {
    "sha": "7d8a78e5b6cc2b3cb357ee2a43810b90f1d0d519a5efa249cfd61badd3d917b4",
    "ilhas": 2,
@@ -20428,6 +20633,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/motogirl.dance128.ec6b9b91da79.webp": {
+   "sha": "ec6b9b91da7987f1392d5fa79717e0ad1928b05047ec5d311d075c55ef6d380e",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/motogirl.dir4.webp": {
    "sha": "ab213077c7418a2f6d58de79b5fc0039968e029ecb9ac72235f077f550e49efb",
    "ilhas": 8,
@@ -20440,6 +20650,11 @@
   },
   "sprites/motogirl.downed.webp": {
    "sha": "ca4d48b4c9494fb33e545bd8ae1148fb45f00580ee0da777f764c3ec33480d27",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/pagodeiro.dance128.3d629f0b7e96.webp": {
+   "sha": "3d629f0b7e96aa2397bb150ac2fc1c0be962d504c95b1317a2b330ae44a72599",
    "ilhas": 0,
    "fails": []
   },
@@ -20495,6 +20710,11 @@
   },
   "sprites/passageira.attack128-w.d96b6b983464.webp": {
    "sha": "d96b6b9834644a1feff27d14303f7654a91df0aceae823a869612ecd64df0265",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/passageira.dance128.e35ba50d81fa.webp": {
+   "sha": "e35ba50d81fa766925dc8460563d5df1e5e5289541b5aca503d131c583d7d721",
    "ilhas": 0,
    "fails": []
   },
@@ -20598,6 +20818,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/pedreiro.dance128.d2c2ed7b8098.webp": {
+   "sha": "d2c2ed7b8098b505d3293b8ccd1056ea147ab2a218274ecf2e6cb7c61c4dfb71",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/pedreiro.dir4.webp": {
    "sha": "1e7efdff45196e89ab2001a3412bc7cf868c6e382ee10e3e9fb0160d6b241f43",
    "ilhas": 40,
@@ -20658,6 +20883,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/porteiro.dance128.234e5c16cf6c.webp": {
+   "sha": "234e5c16cf6ccbece7cb8713a6c82b9058626af119bafb4f88b69af50f3915f6",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/porteiro.dir4.webp": {
    "sha": "3c084d8f1d34ddc3c5de5c5b8515e8b7e8cb6e26c7f2a023d0687f9415ba76a3",
    "ilhas": 0,
@@ -20670,6 +20900,11 @@
   },
   "sprites/porteiro.downed.webp": {
    "sha": "7f1b395a0fd700361dd9bdc7cb3a174b5b7b4106fcecb349befc72a65bbd6125",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/rei-arraia.dance128.8e37f6a9d1c7.webp": {
+   "sha": "8e37f6a9d1c74da97b98188c2a1ce5314456c8df5974dd5b5df7a9af056422d6",
    "ilhas": 0,
    "fails": []
   },
@@ -20686,6 +20921,11 @@
   "sprites/rei-arraia.downed.webp": {
    "sha": "87991a9ae7e5a2a04a70f05954aa7a00c87df894c05f367d9bf3feba61d49f11",
    "ilhas": 6,
+   "fails": []
+  },
+  "sprites/rei-pastel.dance128.d423ab31a80d.webp": {
+   "sha": "d423ab31a80d0d05eb5fb5f70b59a0274e00c91b0d19d4c12d100aaca7025e34",
+   "ilhas": 0,
    "fails": []
   },
   "sprites/rei-pastel.dir4.webp": {
@@ -20740,6 +20980,11 @@
   },
   "sprites/streamer.attack128-w.e4a77d058730.webp": {
    "sha": "e4a77d058730543f7f27588ddf79ac58bbb45b0cb43cdffbcadc2e6b0f7c2096",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/streamer.dance128.7701e50a59af.webp": {
+   "sha": "7701e50a59af09ad7ee950efa6134d5ca70a6cbd72a5bd0244fbc082a1e3b297",
    "ilhas": 0,
    "fails": []
   },
@@ -20803,6 +21048,11 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/tecnico-ti.dance128.4401986a6d09.webp": {
+   "sha": "4401986a6d0980585b7d3ea8847150615327091e90350893621243438ee3907e",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/tecnico-ti.dir4.webp": {
    "sha": "b16100b023ee6361905a5325f531076807f34accff43563f50bf3b25c855285e",
    "ilhas": 48,
@@ -20855,6 +21105,11 @@
   },
   "sprites/universitario.attack128-w.9b48fdc3702a.webp": {
    "sha": "9b48fdc3702a909103ae42c74eeafc06b09da7a7d5f971e9b3853ef76ba2c839",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/universitario.dance128.8e598f1f1c1f.webp": {
+   "sha": "8e598f1f1c1ffa15640e745fc72a6d65811349d18ea27c88e061214411e75398",
    "ilhas": 0,
    "fails": []
   },
@@ -20940,6 +21195,11 @@
   },
   "sprites/vendedor-praia.attack16-w.2c7a98219d03.webp": {
    "sha": "2c7a98219d03062f593a24d88f0cde2aa81cbd853a00bdb6d5af9852d4235301",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vendedor-praia.dance128.932b5398d729.webp": {
+   "sha": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",
    "ilhas": 0,
    "fails": []
   },
@@ -21170,6 +21430,11 @@
   },
   "sprites/viciado-em-bet.attack16-w.cb017457bc71.webp": {
    "sha": "cb017457bc71ea97c50e79115676c4638f811c4922a3b953f4e717d2efe67679",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/viciado-em-bet.dance128.30e5d49d3a7f.webp": {
+   "sha": "30e5d49d3a7f84e44f432f493186dc6552b3c2a0a5400cd29f48093711f8111d",
    "ilhas": 0,
    "fails": []
   },
@@ -21420,6 +21685,11 @@
   },
   "sprites/vizinha-fofoqueira.attack128-w.7b5875f88b87.webp": {
    "sha": "7b5875f88b8720f6ae19d4fa19629a90a2fca6d2bae5d99ec6c5de9af719d0c9",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/vizinha-fofoqueira.dance128.af9b1237c34c.webp": {
+   "sha": "af9b1237c34cbe6957b70896d8c9398be8cf64bf1d6c2be4c1dbe334a757085b",
    "ilhas": 0,
    "fails": []
   },

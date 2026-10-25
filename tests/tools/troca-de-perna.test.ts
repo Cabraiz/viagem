@@ -27,9 +27,10 @@ const KNOWN_SN=new Set([
   'pedreiro walk128-S','streamer walk128-N','streamer walk128-S',
   'universitario walk128-N','universitario walk128-S','viciado-em-bet walk128-N','viciado-em-bet walk128-S',
   'viciado-em-bet walk16-N','viciado-em-bet walk16-S','vizinha-fofoqueira walk128-N','vizinha-fofoqueira walk128-S',
-  // The push and pull joined the gate (card BUG-20261025-ORQ-auditoria-troca-perna); these S/N ones keep one leg in front
-  // (the aposentado's pull N by eye: the same foot ahead at poses 0/8 and 4/12). Their fix goes with the class's art card.
-  'aposentado pull16-N','aposentado pull16-S','aposentado push16-N','vendedor-praia pull16-S','vendedor-praia push16-N',
+  // The push and pull joined the gate (card BUG-20261025-ORQ-auditoria-troca-perna). The aposentado's three that kept
+  // one leg in front were remade by half a stride + mirror; the vendedor's cooler box hides part of a leg, so its two
+  // cannot be mirrored clean and wait for new drawings.
+  'vendedor-praia pull16-S','vendedor-praia push16-N',
 ]);
 
 /** Two legs (left 2 px wide, right 4 px wide) under a body, the front one longer: a 24 px cell, pivot at 12. */

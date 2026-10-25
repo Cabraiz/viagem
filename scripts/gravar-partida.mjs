@@ -8,7 +8,7 @@
 //      the middle and the end at the screen's real density; quadros.png, 8 frames of the GIF side by side with their
 //      second (what an executor reads: Read shows a GIF's first frame only); every pageerror and console error in erros.txt.
 //      The snow changes the whole frame, so the GIF runs ~0.5 MB/s even lossy (interFrameMaxError).
-// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|todos] [--tela celular|pc|ambas] [--segundos 20]
+// node scripts/gravar-partida.mjs <outDir> [--roteiro parado|andando|uno|empurra|todos] [--tela celular|pc|ambas] [--segundos 20]
 //      [--fps 5] [--modo normal|chaveiro] [--dist dist] [--url <site> [--build <sha12>] [--esperar-build 12]]
 //      [--sem-gif] [--zero-erros] [--com-dicas] [--sem-escolha]
 // Writes <outDir>/<roteiro>-<tela>/{partida.gif,quadros.png,inicio.png,meio.png,fim.png,erros.txt} and <outDir>/resumo.{md,json}
@@ -39,7 +39,10 @@ const D=Object.freeze({n:{x:0,y:-1},ne:{x:1,y:-1},l:{x:1,y:0},se:{x:1,y:1},s:{x:
  *  - parado: the hero still where the team spawns (beside the Uno, inicio-no-uno);
  *  - andando: a lap through the eight directions, the walk and its turns;
  *  - uno: short steps out and back around the spawn; when the Uno's edge arrow shows (the stick's steps do not cancel
- *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time.
+ *    out exactly), the next step walks toward it, so the hero stays beside the Uno the whole time;
+ *  - empurra (card heroi-empurra-inimigos): waits (out of the GIF, up to EMPURRA_WAIT_MS) for awake solid bodies near
+ *    the hero (the 1st wave), then walks into the nearest one, one second at a time, without attacking: the hero pushes
+ *    the crowd (solid bodies) and the GIF shows whether the phone's prediction shakes. Not in "todos" (it waits minutes).
  */
 export const ROTEIROS=Object.freeze({
   parado:s=>[{ms:s*1000}],
@@ -50,7 +53,12 @@ export const ROTEIROS=Object.freeze({
     for(let i=0;left>0;i++){const st=loop[i%loop.length],ms=Math.min(st.ms,left);out.push({...st,ms});left-=ms;}
     return out;
   },
+  empurra:s=>{const out=[];for(let left=s*1000;left>0;left-=1000)out.push({dir:D.l,ms:Math.min(1000,left)});return out;},
 });
+/** empurra: how long to wait for the 1st wave's bodies (the minuto de Minerva 120 s + the first wave's 30–60 s). */
+export const EMPURRA_WAIT_MS=300000;
+/** The roteiros "todos" records (empurra waits minutes for a wave: only by name). */
+export const TODOS=Object.freeze(['parado','andando','uno']);
 /** The keys of a direction (MOVE_KEYS in desktop-input.ts): any vector, snapped to the eight the keys can make. */
 export const keysOf=dir=>{
   if(!dir)return [];
@@ -71,7 +79,7 @@ export function parseOpts(argv){
     if(VALUE_FLAGS.has(name)){flags[name]=argv[++i];if(flags[name]===undefined)throw new Error(`--${name} sem valor`);}
     else flags[name]=true;
   }
-  const list=(v,all,what)=>{const out=v==='todos'||v==='ambas'?Object.keys(all):String(v).split(',');for(const x of out)if(!(x in all))throw new Error(`${what} desconhecido: ${x} (${Object.keys(all).join(', ')})`);return out;};
+  const list=(v,all,what)=>{const out=v==='todos'?[...TODOS]:v==='ambas'?Object.keys(all):String(v).split(',');for(const x of out)if(!(x in all))throw new Error(`${what} desconhecido: ${x} (${Object.keys(all).join(', ')})`);return out;};
   const num=(v,def,min,max,what)=>{const n=v===undefined?def:Number(v);if(!(Number.isFinite(n)&&n>=min&&n<=max))throw new Error(`--${what}: ${min} a ${max}, veio ${v}`);return n;};
   if(flags.modo!==undefined&&!(flags.modo in MODOS))throw new Error(`modo desconhecido: ${flags.modo}`);
   if(flags.url!==undefined&&!/^https?:\/\/[^/]+/.test(flags.url))throw new Error(`--url inválida: ${flags.url}`);
@@ -254,6 +262,14 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
     // seconds more on a phone; then the camera's first second out of the GIF.
     await p.waitForFunction(()=>{const l=document.querySelector('.explore-loading');return !l||l.closest('[hidden]')||!l.getBoundingClientRect().width;},null,{timeout:60000}).catch(()=>{});
     await sleep(1500);
+    // empurra: the 1st wave's solid bodies near the hero (the phone's copies, client.ts bodies), before the GIF starts.
+    const nearest=()=>p.evaluate(()=>{const s=window.__island?.scene,n=s?.hooks?.net,me=n?.predicted;if(!me)return null;let best=null,bd=Infinity,count=0;
+      for(const b of n.bodies??[]){const d=Math.hypot(b.x-me.x,b.y-me.y);if(d<10)count++;if(d<bd){bd=d;best=b;}}
+      if(!best)return null;const a=s.project(me),c=s.project(best);return {d:bd,count,dir:{x:c.x-a.x,y:c.y-a.y}};}).catch(()=>null);
+    if(roteiro==='empurra'){
+      const until=Date.now()+EMPURRA_WAIT_MS;
+      for(;;){if(o.escolher)await escolher(p,tela);const n=await nearest();if(n&&n.d<12&&n.count>=2)break;if(Date.now()>until){r.falha='nenhuma onda perto do herói';return r;}await sleep(2000);}
+    }
     await p.screenshot({path:join(dir,'inicio.png'),timeout:30000}).catch(()=>{});
     // The GIF's frames from the compositor's screencast (CDP), not page.screenshot: on CI's software GL a screenshot
     // reads the frame back and holds the page ~3 s (0.2 frames/s, and a 12 s roteiro took 65 s). Only kept --fps apart.
@@ -271,6 +287,7 @@ async function gravar(chromium,base,o,roteiro,tela,dir){
         const arrow=await p.evaluate(()=>{const a=document.querySelector('.rh-edge:not([hidden])[data-kind="uno"]')??document.querySelector('.rh-edge:not([hidden])[data-kind="base"]'),b=a?.getBoundingClientRect();return b&&b.width?{x:b.left+b.width/2,y:b.top+b.height/2}:null;}).catch(()=>null);
         if(arrow){go=toward({x:t.viewport.width/2,y:t.viewport.height/2},arrow);r.voltas++;}
       }
+      if(roteiro==='empurra'){const n=await nearest();if(n&&Math.hypot(n.dir.x,n.dir.y)>1){go=n.dir;r.voltas++;}}
       await mover(p,cdp,tela,go,st.ms);elapsed+=st.ms;
       if(!midShot&&elapsed>=o.segundos*500){midShot=true;await p.screenshot({path:join(dir,'meio.png'),timeout:30000}).catch(()=>{});}
     }

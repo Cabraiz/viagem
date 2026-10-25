@@ -3,7 +3,7 @@
  * GIF and prints of a solo match on GitHub Actions, from the PC with no vite, Worker or browser here
  * (NEW-20261025-ORQ-cicd-gif-prints). The recording is scripts/gravar-partida.mjs, run by .github/workflows/gif.yml.
  *
- *   node tools/gif-ci.mjs <branch|sha> [parado|andando|uno|todos] [--tela celular|pc|ambas] [--segundos 20]
+ *   node tools/gif-ci.mjs <branch|sha> [parado|andando|uno|empurra|todos] [--tela celular|pc|ambas] [--segundos 20]
  *        [--modo normal|chaveiro] [--saida <dir>] [--timeout 40] [--workflow-ref main]
  *       records what is ON GITHUB for that branch (push it first): dispatches gif.yml, waits, downloads the artifact to
  *       evidence/ci-gif/<branch>/<sha7>-<roteiro>-<stamp>/ (default) and prints the summary and the paths to Read
@@ -23,7 +23,7 @@ import {pathToFileURL} from 'node:url';
 
 export const REPO=process.env.CI_REPO??'Cabraiz/viagem';
 const API='https://api.github.com',WORKFLOW='gif.yml';
-export const ROTEIROS=['parado','andando','uno','todos'],TELAS=['celular','pc','ambas'],MODOS=['normal','chaveiro'];
+export const ROTEIROS=['parado','andando','uno','empurra','todos'],TELAS=['celular','pc','ambas'],MODOS=['normal','chaveiro'];
 export class InfraError extends Error {}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const say=m=>console.error(m);

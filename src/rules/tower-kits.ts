@@ -21,13 +21,19 @@ export const KIT_CHARGES:Readonly<Record<FreePiece,number>>=Object.freeze({muro:
 /** What a kit may build: every tower that stands on the grid (not the rail's Gustavão) and the wall pieces. */
 export type KitPiece=Exclude<DefenseId,'gustavao'>|FreePiece;
 const TOWER_KITS=DEFENSE_IDS.filter(id=>DEFENSES[id].size!==null) as Exclude<DefenseId,'gustavao'>[];
+/**
+ * Towers no crate gives (torre-limite-rebocar-sem-arma, the user, 25/10: "as torres são para defender"): the Posto de
+ * Radar fires nothing (it only lends range). Its kit id stays in KIT_IDS (the protocol's DICT, older checkpoints).
+ */
+export const KIT_NOT_IN_CRATES:readonly KitPiece[]=Object.freeze(['posto-de-radar']);
+const inPool=(tier:number)=>TOWER_KITS.filter(id=>DEFENSES[id].tier===tier&&!KIT_NOT_IN_CRATES.includes(id));
 /** The kits a crate of each rarity rolls, even odds (rarity 1..5 → tier; verde adds the wall pieces). */
 export const KIT_POOL:Readonly<Record<1|2|3|4|5,readonly KitPiece[]>>=Object.freeze({
-  1:Object.freeze([...TOWER_KITS.filter(id=>DEFENSES[id].tier===1),'muro','barricada'] as KitPiece[]),
-  2:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===2)),
-  3:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===3)),
-  4:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===4)),
-  5:Object.freeze(TOWER_KITS.filter(id=>DEFENSES[id].tier===5)),
+  1:Object.freeze([...inPool(1),'muro','barricada'] as KitPiece[]),
+  2:Object.freeze(inPool(2)),
+  3:Object.freeze(inPool(3)),
+  4:Object.freeze(inPool(4)),
+  5:Object.freeze(inPool(5)),
 });
 /** Every kit item id, in a fixed order (the protocol's DICT appends them). */
 export const KIT_IDS:readonly string[]=Object.freeze([...TOWER_KITS,'muro','barricada'].map(p=>`${KIT_PREFIX}${p}`));

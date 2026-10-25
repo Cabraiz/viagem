@@ -172,3 +172,12 @@ test('bots: a kit in a lull is built on the nearest cell around the hero that ta
   assert.ok(!(d.cell!.c===cell.c&&d.cell!.r===cell.r),'never on its own cell');
   assert.ok(!ana.build.weapons.some(i=>isKitId(i.id)));
 });
+
+test('torre-limite-rebocar-sem-arma: the Posto de Radar (fires nothing) never comes out of a crate; the Holofote still does; its kit id stays known',()=>{
+  const all=Object.values(KIT_POOL).flat();
+  assert.equal(all.includes('posto-de-radar'),false,'not in any rarity');
+  assert.ok(all.includes('holofote'),'the Holofote stays (it slows and dazzles)');
+  assert.ok(KIT_POOL[5].length>0,'the lendária still has kits');
+  for(let i=0;i<5000;i++)assert.notEqual(rollCrate(new Rng(i).fork('radar'),5).items[0].id,kitId('posto-de-radar'));
+  assert.ok(KIT_IDS.includes(kitId('posto-de-radar'))&&isKitId(kitId('posto-de-radar')),'the protocol DICT and old checkpoints keep it');
+});

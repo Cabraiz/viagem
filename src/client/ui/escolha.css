@@ -33,7 +33,9 @@
 #confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:4px;top:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:cover;object-position:50% 0;border-radius:var(--r-balao)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
 /* Amigos em busto (pedido do usuário): o grupo sai pela base, some por trás do texto como na ref. 7. */
-#confirmation.escolha-arte #enter-coop .escolha-img{margin-bottom:-4px;-webkit-mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%);mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%)}
+/* Busto grande enchendo o bloco (cabeças nos ~70 % de cima): um pouco maior que o bloco, as laterais cortadas no aro,
+   o corpo esmaece na base atrás do texto. */
+#confirmation.escolha-arte #enter-coop .escolha-img{width:124%;margin:0 -12% -10px;object-fit:cover;object-position:50% 0;clip-path:inset(0 9.5%);-webkit-mask-image:linear-gradient(var(--c-breu) 70%,transparent 96%);mask-image:linear-gradient(var(--c-breu) 70%,transparent 96%)}
 #confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
 /* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
 #confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}
@@ -43,12 +45,14 @@
 #confirmation.escolha-arte .solo-bots-value{min-width:34px;padding:3px 0;border-radius:var(--r-ficha);color:var(--c-papel-claro);background:color-mix(in srgb,var(--c-breu) 75%,var(--c-lilas))}
 #confirmation.escolha-arte{--escolha-img-h:clamp(90px,18dvh,150px);padding-left:20px;padding-right:20px}
 @media (max-height:520px){
-  /* Celular deitado: os dois blocos lado a lado, mais baixos; o popup pode usar quase a altura toda. */
-  #confirmation.escolha-arte{--escolha-img-h:clamp(60px,26dvh,130px);max-height:calc(100dvh - 12px);padding-top:26px}
+  /* O popup desce um pouco para o herói do topo sair por cima da moldura também deitado. */
+  #confirmation.escolha-arte{--escolha-img-h:clamp(50px,17dvh,80px);margin-top:max(40px,13dvh);margin-bottom:6px;max-height:calc(100dvh - max(40px,13dvh) - 8px);padding-top:22px}
   #confirmation.escolha-arte .chosen-actions{margin-top:8px}
-  /* Deitado o popup encosta no topo da tela: o herói fica dentro dele. */
-  #confirmation.escolha-arte .chosen-card .class-art{width:72px;height:72px;margin:-10px 0 -6px}
-  /* Bloco largo e baixo: a arte alta inteira, centrada (o fundo lavanda do bloco continua dos lados). */
-  #confirmation.escolha-arte #enter-island .escolha-img{left:50%;width:auto;aspect-ratio:400/620;transform:translateX(-50%);object-position:50% 0;-webkit-mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent);mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent)}
+  #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,38dvh,150px);height:clamp(110px,38dvh,150px);margin:calc(-.55 * clamp(110px,38dvh,150px)) 0 -8px -6px}
+  #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:4px 12px}
+  /* Bloco largo e baixo: a arte inteira, centrada, acima do texto e dos bots (o rosto nunca fica atrás do texto). */
+  #confirmation.escolha-arte #enter-island .escolha-img{left:50%;width:auto;height:calc(100% - 58px);aspect-ratio:1;transform:translateX(-50%);object-fit:cover;object-position:50% 0;-webkit-mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent);mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent)}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
+  /* Bloco amarelo largo: o grupo inteiro (ampliar cortaria metade dele). */
+  #confirmation.escolha-arte #enter-coop .escolha-img{width:100%;margin:0 0 -10px;object-fit:contain;object-position:50% 100%;clip-path:none}
 }

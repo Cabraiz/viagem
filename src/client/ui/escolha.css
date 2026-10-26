@@ -14,7 +14,9 @@
 /* Topo baixo como na ref. 7 (o usuário: "a parte de cima deve ser menor"): a altura vai para os blocos. */
 #confirmation.escolha-arte .chosen-card{gap:10px}
 #confirmation.escolha-arte .chosen-card{margin-top:14px}
-#confirmation.escolha-arte .chosen-card .class-art{width:clamp(72px,15dvh,124px);height:clamp(72px,15dvh,124px);margin:-26px 0 -6px}
+/* Herói do topo no mesmo canto, bem maior, saindo para fora do popup por cima da moldura (escala do gato da ref. 6). */
+#confirmation.escolha-arte{overflow:visible}
+#confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,24dvh,190px);height:clamp(110px,24dvh,190px);margin:calc(-.5 * clamp(110px,24dvh,190px)) 0 -6px -8px;position:relative;z-index:1}
 /* Chip da classe como na ref. 7: pílula roxa viva, texto claro, numa linha só; a descrição vai embaixo. */
 #confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:11px;white-space:nowrap}
 #confirmation.escolha-arte .chosen-role .suit{fill:currentColor}
@@ -44,5 +46,9 @@
   /* Celular deitado: os dois blocos lado a lado, mais baixos; o popup pode usar quase a altura toda. */
   #confirmation.escolha-arte{--escolha-img-h:clamp(60px,26dvh,130px);max-height:calc(100dvh - 12px);padding-top:26px}
   #confirmation.escolha-arte .chosen-actions{margin-top:8px}
+  /* Deitado o popup encosta no topo da tela: o herói fica dentro dele. */
+  #confirmation.escolha-arte .chosen-card .class-art{width:72px;height:72px;margin:-10px 0 -6px}
+  /* Bloco largo e baixo: a arte alta inteira, centrada (o fundo lavanda do bloco continua dos lados). */
+  #confirmation.escolha-arte #enter-island .escolha-img{left:50%;width:auto;aspect-ratio:400/620;transform:translateX(-50%);object-position:50% 0;-webkit-mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent);mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent)}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
 }

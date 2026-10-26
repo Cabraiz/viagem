@@ -174,10 +174,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]||files[`build16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('build16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -193,7 +193,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
     const band=Math.round(restH*.25),restTorso=torsoWidth(low,band);
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run','push','pull','hurt']){
+    for(const motion of ['idle','walk','run','push','pull','hurt','build']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -204,7 +204,9 @@ export async function measureClass(manifest,id,dir=SPRITES){
           torso:+(torsoWidth(sh,Math.round(band/k))*k/restTorso).toFixed(3),area:+(Math.sqrt(sh.area/restArea)*k).toFixed(3)};
       });
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
-      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
+      // A pose the head template cannot read (HEAD_UNREAD_FRAMES) stays out of the head's median too.
+      const unread=HEAD_UNREAD_FRAMES[`${id} ${motion}16-${d}`]??[],head=median(rows.filter(r=>!unread.includes(r.frame)).map(r=>r.head));
+      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+head.toFixed(3),height:+pick('height',true).toFixed(3),
         torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{}),
         ...(motion==='hurt'?{joins:joins(rest0,r0,frames,shapes)}:{})};
     }
@@ -231,6 +233,31 @@ export const PUSH_MIN_HEIGHT=.88;
  */
 export const PUSH_HEAD_UNREAD=['N'];
 /**
+ * Build16 poses (card animacao-construir-6) the head template cannot read: the tool hand raised beside the head (the
+ * template locks on the cap and the hammer together: viciado S pose 6 reads 1.40 on a head drawn its neighbours' size,
+ * SE 0.77), a paw over the face, or the head turned to stare at the camera (the gato's gag, a frontal face against a side view's template:
+ * W 8-13 read 1.17-1.28, IoU 0.72, on a head the rest's size). Those frames are left out of the head fit check and of
+ * the clip's head median.
+ */
+export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'viciado-em-bet build16-SE':[6],
+  // the gato licking a paw over its face (S 7-8, N 6-7), staring over its shoulder (N 8-12), paws up beside the ears (N 1-4, NW 4)
+  'gato-nada-pra-comer build16-W':[8,9,10,11,12,13],'gato-nada-pra-comer build16-S':[7,8],
+  'gato-nada-pra-comer build16-N':[1,2,3,4,6,7,8,9,10,11,12],'gato-nada-pra-comer build16-NW':[4],
+  // the maromba's beam pressed above the head (3, 5) and the biceps flexed and kissed beside the face (S 9-11)
+  'maromba build16-S':[3,5,9,10,11],'maromba build16-N':[3,5],'maromba build16-NW':[3,5],'maromba build16-SE':[5],
+  // the vendedor's popsicle or hammer raised beside the hat while it sits on its cooler
+  'vendedor-praia build16-S':[6],'vendedor-praia build16-W':[3,5,6,8,10,12,14],'vendedor-praia build16-NW':[3,6,14],
+  'vendedor-praia build16-SE':[3,4,7],
+  // the aposentado's hammer raised above the hat (7) and its back locked, bent forward (W 10-11, NW 11, SE 8-12)
+  'aposentado build16-S':[7],'aposentado build16-N':[7],'aposentado build16-W':[10,11],'aposentado build16-NW':[11],
+  'aposentado build16-SE':[7,8,9,10,12]});
+/**
+ * A class that builds SITTING (card animacao-construir-6: the vendedor on its cooler box, the joke the user approved):
+ * its build16 height may drop to this share of the rest's (0.86-0.95 measured), never above 1 + TOL.height; the head
+ * keeps ±TOL.head (its sheets are scaled by the head, remontar/montar-build.mjs ESCALA=cabeca).
+ */
+export const BUILD_SEATED_MIN_HEIGHT=Object.freeze({'vendedor-praia':.84});
+/**
  * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
  * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the
  * sheets read 0.80–1.02); the head keeps ±4 %.
@@ -255,7 +282,8 @@ export function verdict(m,keys=GATED){
       if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys){
-      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
+      const seated=motion==='build'?BUILD_SEATED_MIN_HEIGHT[m.id]:undefined;
+      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:key==='height'&&seated!==undefined?1-seated:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
     }
     if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);

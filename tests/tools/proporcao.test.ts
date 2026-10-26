@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 // @ts-expect-error plain ESM script without types
-import {GATED,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,SEAM_MAX_BY_CLIP,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
+import {GATED,HEAD_UNREAD_FRAMES,PUSH_MIN_HEIGHT,PULL_MIN_HEIGHT,RUN_HEIGHT_MIN,SEAM_MAX,SEAM_MAX_BY_CLIP,TOL,cells,headScale,measureClass,measuredClasses,poseDistance,seam,shape,verdict} from '../../scripts/proporcao.mjs';
 
 const manifest=JSON.parse(readFileSync('public/art/sprites/manifest.json','utf8'));
 const sharp=createRequire(import.meta.url)('sharp');
@@ -52,7 +52,7 @@ for(const id of classes)test(`${id}: every run pose at the rest pose's head (±$
   assert.deepEqual(walk,[...KNOWN_WALK[id]??[]],`${id} walk16 (KNOWN_WALK):\n${walk.join('\n')}`);
   for(const [d,e] of Object.entries(m.dirs) as [string,{clips:Record<string,{frames:{headIou:number}[]}>}][])
     for(const [motion,c] of Object.entries(e.clips))if(motion!=='idle')
-      assert.ok(c.frames.every(f=>f.headIou>.8),`${id} ${motion}16-${d}: the head fit holds (IoU > 0.8)`);
+      assert.ok(c.frames.every((f,i)=>f.headIou>.8||(HEAD_UNREAD_FRAMES as Record<string,number[]>)[`${id} ${motion}16-${d}`]?.includes(i)),`${id} ${motion}16-${d}: the head fit holds (IoU > 0.8)`);
   assert.deepEqual(GATED,['head','height']);
 });
 

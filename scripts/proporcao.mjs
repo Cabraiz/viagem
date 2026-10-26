@@ -174,10 +174,10 @@ const IDLE8=['S','SW','W','NW','N','NE','E','SE'];
  */
 export function restOf(files,d){
   if(files[`idle16-${d}`])return {clip:files[`idle16-${d}`],frames:Array.from({length:files[`idle16-${d}`].frames},(_,i)=>i)};
-  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
+  if(files.idle8&&(files[`run16-${d}`]||files[`push16-${d}`]||files[`pull16-${d}`]||files[`hurt16-${d}`]||files[`build16-${d}`]))return {clip:files.idle8,frames:[IDLE8.indexOf(d)]};
 }
 /** The classes the meter covers: every one with an M16 rest or a run. */
-export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')));
+export const measuredClasses=manifest=>Object.keys(manifest.pieces).filter(id=>Object.keys(clipsOf(manifest,id)).some(k=>k.startsWith('idle16-')||k.startsWith('run16-')||k.startsWith('push16-')||k.startsWith('pull16-')||k.startsWith('hurt16-')||k.startsWith('build16-')));
 
 /**
  * Measures class `id`, every drawn direction: rest × each walk and run pose. Sizes are compared at the game's scale
@@ -193,7 +193,7 @@ export async function measureClass(manifest,id,dir=SPRITES){
     const li=restShapes.reduce((m,s,i)=>s.H<restShapes[m].H?i:m,0),low=restShapes[li],r0=low,rest0=rest[li],restH=low.H,restArea=low.area;
     const band=Math.round(restH*.25),restTorso=torsoWidth(low,band);
     const entry={rest:{H:restH,head:r0.neck-r0.top+1,torso:restTorso,area:+restArea.toFixed(1)},restKey:files[`idle16-${d}`]?'idle16':'idle8',clips:{}};
-    for(const motion of ['idle','walk','run','push','pull','hurt']){
+    for(const motion of ['idle','walk','run','push','pull','hurt','build']){
       const clip=motion==='idle'?idle:files[`${motion}16-${d}`];if(!clip)continue;
       const k=idle.height/clip.height; // this clip's px in rest px at the game's scale
       const frames=motion==='idle'?rest:await cells(path.join(dir,clip.file),clip.frames),shapes=motion==='idle'?restShapes:frames.map(a=>shape(a));
@@ -230,6 +230,12 @@ export const PUSH_MIN_HEIGHT=.88;
  * remontar/n-cabeca-x-parado.png). There the size goes by the height alone, both ways: PUSH_MIN_HEIGHT .. 1 + TOL.height.
  */
 export const PUSH_HEAD_UNREAD=['N'];
+/**
+ * Build16 poses (card animacao-construir-6) whose tool hand is raised beside the head on the screen: the head template
+ * locks on the cap and the hammer together (viciado S pose 6 reads 1.40 on a head drawn its neighbours' size, SE 0.77).
+ * Those frames are left out of the head fit check; the clip's head is still the median of all its poses.
+ */
+export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'viciado-em-bet build16-SE':[6]});
 /**
  * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
  * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the

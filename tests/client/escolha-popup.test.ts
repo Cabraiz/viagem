@@ -11,7 +11,7 @@ test('cada herói com arte tem os 2 botões (amigos feliz, sozinho triste) em we
   for(const id of ESCOLHA_HEROIS){
     assert.ok(ids.has(id),`${id}: não é classe`);
     const arte=escolhaArte(id)!;
-    for(const url of [arte.amigos,arte.sozinho]){
+    for(const url of [arte.amigos,arte.sozinho,arte.sozinhoDeitado]){
       const file=`public${url}`;
       assert.ok(existsSync(file),`${file} falta`);
       assert.ok(statSync(file).size<120_000,`${file}: pesado demais para o popup`);

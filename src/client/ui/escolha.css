@@ -23,9 +23,10 @@
 #confirmation.escolha-arte #chosen-class{color:color-mix(in srgb,var(--c-papel-claro) 80%,var(--c-lilas))}
 #confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
 #confirmation.escolha-arte :is(#enter-coop,.solo-row){border:0;border-radius:0;box-shadow:none;background:none;border-image:var(--bloco) var(--bloco-corte) fill / var(--bloco-borda) stretch;min-width:0}
-#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:36;--bloco-borda:30px;border-image-outset:9px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
+#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:55;--bloco-borda:28px;border-image-outset:11px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
 #confirmation.escolha-arte .solo-row{--bloco:url('/art/menu/escolha/bloco-sozinho.webp');--bloco-corte:34 34 76 34;--bloco-borda:17px 17px 38px 17px;display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px}
 #confirmation.escolha-arte #enter-island{display:flex;flex:1;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0;border:0;background:none;white-space:normal;color:var(--c-papel-claro)}
+#confirmation.escolha-arte .escolha-foto{display:contents}
 #confirmation.escolha-arte .escolha-img{display:block;flex:1 1 var(--escolha-img-h);width:100%;min-height:0;height:var(--escolha-img-h);object-fit:contain;object-position:50% 100%}
 /* Sozinho (traço da ref. 7): a arte cobre o bloco todo; o chão lavanda vai até a base, atrás do texto e dos bots, sem esmaecer. */
 #confirmation.escolha-arte .solo-row{position:relative}
@@ -50,9 +51,11 @@
   #confirmation.escolha-arte .chosen-actions{margin-top:8px}
   #confirmation.escolha-arte .chosen-card .class-art{width:clamp(110px,38dvh,150px);height:clamp(110px,38dvh,150px);margin:calc(-.55 * clamp(110px,38dvh,150px)) 0 -8px -6px}
   #confirmation.escolha-arte #back-to-menu{min-height:30px;padding:4px 12px}
-  /* Bloco largo e baixo: a arte inteira, centrada, acima do texto e dos bots (o rosto nunca fica atrás do texto). */
-  #confirmation.escolha-arte #enter-island .escolha-img{left:50%;width:auto;height:calc(100% - 58px);aspect-ratio:1;transform:translateX(-50%);object-fit:cover;object-position:50% 0;-webkit-mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent);mask-image:linear-gradient(90deg,transparent,var(--c-breu) 20%,var(--c-breu) 80%,transparent)}
+  /* Bloco largo e baixo: a arte larga cobre o bloco (chão de lado a lado); o herói enche a altura acima do texto. */
+  #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
   /* Bloco amarelo largo: o grupo inteiro (ampliar cortaria metade dele). */
-  #confirmation.escolha-arte #enter-coop .escolha-img{width:100%;margin:0 0 -10px;object-fit:contain;object-position:50% 100%;clip-path:none}
+  #confirmation.escolha-arte #enter-coop .escolha-img{width:100%;margin:0 0 -10px;object-fit:contain;object-position:50% 100%;clip-path:none;
+    -webkit-mask-image:linear-gradient(90deg,transparent 22%,var(--c-breu) 34%,var(--c-breu) 66%,transparent 78%),linear-gradient(var(--c-breu) 70%,transparent 96%);-webkit-mask-composite:source-in;
+    mask-image:linear-gradient(90deg,transparent 22%,var(--c-breu) 34%,var(--c-breu) 66%,transparent 78%),linear-gradient(var(--c-breu) 70%,transparent 96%);mask-composite:intersect}
 }

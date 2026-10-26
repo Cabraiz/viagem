@@ -6,10 +6,13 @@
  */
 export const ESCOLHA_HEROIS:readonly string[]=['aposentado','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','viciado-em-bet'];
 
-export type EscolhaArte={amigos:string;sozinho:string};
+export type EscolhaArte={amigos:string;sozinho:string;sozinhoDeitado:string};
+
+/** Celular deitado (a mesma regra do escolha.css): o bloco do sozinho é largo e usa a arte larga. */
+export const DEITADO='(max-height:520px)';
 
 export const escolhaArte=(classId:string):EscolhaArte|null=>ESCOLHA_HEROIS.includes(classId)
-  ?{amigos:`/art/menu/escolha/${classId}-amigos.webp`,sozinho:`/art/menu/escolha/${classId}-sozinho.webp`}
+  ?{amigos:`/art/menu/escolha/${classId}-amigos.webp`,sozinho:`/art/menu/escolha/${classId}-sozinho.webp`,sozinhoDeitado:`/art/menu/escolha/${classId}-sozinho-deitado.webp`}
   :null;
 
 /** O texto do botão fica num <span>, por cima da imagem; trocar o texto não pode apagar a imagem. */
@@ -21,9 +24,20 @@ export function mostrarEscolha(dialog:HTMLElement,classId:string):void {
   dialog.classList.toggle('escolha-arte',!!arte);
   for(const [id,kind] of [['enter-coop','amigos'],['enter-island','sozinho']] as const){
     const button=dialog.querySelector<HTMLElement>(`#${id}`);if(!button)continue;
-    let img=button.querySelector<HTMLImageElement>('img.escolha-img');
-    if(!arte){img?.remove();continue;}
-    if(!img){img=document.createElement('img');img.className='escolha-img';img.alt='';img.decoding='async';button.prepend(img);}
+    let picture=button.querySelector<HTMLPictureElement>('picture.escolha-foto');
+    if(!arte){picture?.remove();continue;}
+    if(!picture){
+      picture=document.createElement('picture');picture.className='escolha-foto';
+      const img=document.createElement('img');img.className='escolha-img';img.alt='';img.decoding='async';
+      picture.append(img);button.prepend(picture);
+    }
+    // Deitado, o "Jogar sozinho" troca para a arte larga (o chão lavanda vai de lado a lado do bloco).
+    let source=picture.querySelector('source');
+    if(kind==='sozinho'){
+      if(!source){source=document.createElement('source');source.media=DEITADO;picture.prepend(source);}
+      if(source.getAttribute('srcset')!==arte.sozinhoDeitado)source.srcset=arte.sozinhoDeitado;
+    } else source?.remove();
+    const img=picture.querySelector('img')!;
     if(img.getAttribute('src')!==arte[kind])img.src=arte[kind];
   }
 }

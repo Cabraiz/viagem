@@ -37,7 +37,7 @@
    os corpos vão até a borda do bloco e o texto fica por cima, como na ref. 7. */
 #confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}
 #confirmation.escolha-arte #enter-coop .escolha-img{position:absolute;left:3px;top:3px;width:calc(100% - 6px);height:calc(100% - 6px);margin:0;object-fit:cover;object-position:50% 0;border-radius:var(--r-balao)}
-#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px;-webkit-text-stroke:4px var(--c-amarelo);paint-order:stroke fill;text-shadow:0 0 8px var(--c-amarelo),0 0 8px var(--c-amarelo)}
+#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px;-webkit-text-stroke:4px var(--c-amarelo);paint-order:stroke fill}
 #confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
 /* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
 #confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}

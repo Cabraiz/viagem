@@ -31,12 +31,12 @@
 /* Amigos em busto (pedido do usuário): o grupo sai pela base, some por trás do texto como na ref. 7. */
 #confirmation.escolha-arte #enter-coop .escolha-img{margin-bottom:-4px;-webkit-mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%);mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%)}
 #confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
-/* Controle de bots da ref. 7: pílula, − e + redondos e a caixinha do número são peças do ChatGPT. */
-#confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:0;background:none;border-image:url('/art/menu/escolha/bots-pilula.webp') 0 61 fill / 0 18px stretch}
-#confirmation.escolha-arte .solo-bots-title{color:var(--c-papel-claro)}
+/* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
+#confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}
+#confirmation.escolha-arte .solo-bots-title{color:color-mix(in srgb,var(--c-papel-claro) 80%,var(--c-violeta));font-weight:400;font-size:13px}
 #confirmation.escolha-arte .solo-bots-step{width:28px;height:28px;min-height:0;flex:none;color:transparent;background:url('/art/menu/escolha/bots-menos.webp') 50% 50% / contain no-repeat}
 #confirmation.escolha-arte .solo-bots-step[data-step="1"]{background-image:url('/art/menu/escolha/bots-mais.webp')}
-#confirmation.escolha-arte .solo-bots-value{min-width:34px;padding:3px 0;color:var(--c-papel-claro);background:url('/art/menu/escolha/bots-caixa.webp') 50% 50% / 100% 100% no-repeat}
+#confirmation.escolha-arte .solo-bots-value{min-width:34px;padding:3px 0;border-radius:var(--r-ficha);color:var(--c-papel-claro);background:color-mix(in srgb,var(--c-breu) 75%,var(--c-lilas))}
 #confirmation.escolha-arte{--escolha-img-h:clamp(90px,18dvh,150px);padding-left:20px;padding-right:20px}
 @media (max-height:520px){
   /* Celular deitado: os dois blocos lado a lado, mais baixos; o popup pode usar quase a altura toda. */

@@ -25,8 +25,10 @@
 #confirmation.escolha-arte .solo-row{--bloco:url('/art/menu/escolha/bloco-sozinho.webp');--bloco-corte:34 34 76 34;--bloco-borda:17px 17px 38px 17px;display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px}
 #confirmation.escolha-arte #enter-island{display:flex;flex:1;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0;border:0;background:none;white-space:normal;color:var(--c-papel-claro)}
 #confirmation.escolha-arte .escolha-img{display:block;flex:1 1 var(--escolha-img-h);width:100%;min-height:0;height:var(--escolha-img-h);object-fit:contain;object-position:50% 100%}
-/* Sozinho (traço da ref. 7): a arte enche o bloco; o chão lavanda dela é o fundo do texto e dos bots, como na ref. */
-#confirmation.escolha-arte #enter-island .escolha-img{flex:none;width:calc(100% + 6px);height:auto;aspect-ratio:1;margin:-3px -3px -12%;object-fit:cover;border-radius:var(--r-balao) var(--r-balao) 0 0;-webkit-mask-image:linear-gradient(var(--c-breu) 80%,transparent);mask-image:linear-gradient(var(--c-breu) 80%,transparent)}
+/* Sozinho (traço da ref. 7): a arte cobre o bloco todo; o chão lavanda vai até a base, atrás do texto e dos bots, sem esmaecer. */
+#confirmation.escolha-arte .solo-row{position:relative}
+#confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
+#confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:4px;top:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:cover;object-position:50% 0;border-radius:var(--r-balao)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
 /* Amigos em busto (pedido do usuário): o grupo sai pela base, some por trás do texto como na ref. 7. */
 #confirmation.escolha-arte #enter-coop .escolha-img{margin-bottom:-4px;-webkit-mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%);mask-image:linear-gradient(var(--c-breu) 62%,transparent 92%)}

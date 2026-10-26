@@ -10,8 +10,11 @@
 #confirmation .close-dialog:focus-visible{outline:3px solid var(--c-papel-claro);outline-offset:-2px}
 
 /* Herói com arte: dois blocos lado a lado; o seletor de bots fica DENTRO do bloco roxo, embaixo. */
-#confirmation.escolha-arte .chosen-card{margin:0;padding:8px 40px 8px 8px;border-radius:var(--r-janela);background:var(--c-sombra)}
-#confirmation.escolha-arte .chosen-card .class-art{width:clamp(64px,19dvh,150px);height:clamp(64px,19dvh,150px)}
+#confirmation.escolha-arte .chosen-card{margin:0;padding:4px 40px 4px 6px;border-radius:var(--r-janela);background:var(--c-sombra)}
+/* Topo baixo como na ref. 7 (o usuário: "a parte de cima deve ser menor"): a altura vai para os blocos. */
+#confirmation.escolha-arte .chosen-card{gap:10px}
+#confirmation.escolha-arte .chosen-card{margin-top:14px}
+#confirmation.escolha-arte .chosen-card .class-art{width:clamp(72px,15dvh,124px);height:clamp(72px,15dvh,124px);margin:-26px 0 -6px}
 /* Chip da classe como na ref. 7: pílula roxa viva, texto claro, numa linha só; a descrição vai embaixo. */
 #confirmation.escolha-arte .chosen-role{display:flex;width:fit-content;margin:0 0 6px;padding:4px 12px;background:var(--c-violeta);color:var(--c-papel-claro);border-color:transparent;box-shadow:none;border-radius:var(--r-pilula);font-size:11px;white-space:nowrap}
 #confirmation.escolha-arte .chosen-role .suit{fill:currentColor}
@@ -34,7 +37,7 @@
 #confirmation.escolha-arte .solo-bots-step{width:28px;height:28px;min-height:0;flex:none;color:transparent;background:url('/art/menu/escolha/bots-menos.webp') 50% 50% / contain no-repeat}
 #confirmation.escolha-arte .solo-bots-step[data-step="1"]{background-image:url('/art/menu/escolha/bots-mais.webp')}
 #confirmation.escolha-arte .solo-bots-value{min-width:34px;padding:3px 0;color:var(--c-papel-claro);background:url('/art/menu/escolha/bots-caixa.webp') 50% 50% / 100% 100% no-repeat}
-#confirmation.escolha-arte{--escolha-img-h:clamp(80px,13dvh,112px);padding-left:20px;padding-right:20px}
+#confirmation.escolha-arte{--escolha-img-h:clamp(90px,18dvh,150px);padding-left:20px;padding-right:20px}
 @media (max-height:520px){
   /* Celular deitado: os dois blocos lado a lado, mais baixos; o popup pode usar quase a altura toda. */
   #confirmation.escolha-arte{--escolha-img-h:clamp(60px,26dvh,130px);max-height:calc(100dvh - 12px);padding-top:26px}

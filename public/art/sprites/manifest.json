@@ -9284,6 +9284,235 @@
           ],
           "sha256": "d257808b716373763d7ce56e63d75f843781560bbf33c231589503394a4b83b4"
         },
+        "build16-N": {
+          "file": "gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.21,
+          "figure": {
+            "left": 23,
+            "top": 30,
+            "right": 75,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "e9552d5a0b9b650759a53bda63f172618d926708cff572d8655b1bb44417f27d"
+            }
+          ],
+          "sha256": "e9552d5a0b9b650759a53bda63f172618d926708cff572d8655b1bb44417f27d"
+        },
+        "build16-NW": {
+          "file": "gato-nada-pra-comer.build16-nw.45272cef3a9a.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.09,
+          "figure": {
+            "left": 19,
+            "top": 28,
+            "right": 72,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.build16-nw.45272cef3a9a.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "45272cef3a9a86672f97ae5febe20ec48fdc8c4bf8633fec56ed4592c985cbc5"
+            }
+          ],
+          "sha256": "45272cef3a9a86672f97ae5febe20ec48fdc8c4bf8633fec56ed4592c985cbc5"
+        },
+        "build16-S": {
+          "file": "gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.13,
+          "figure": {
+            "left": 25,
+            "top": 29,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a1f4cffd53bbd7a39532e9a10be294c82be8de7c6eb3233d2cb2de157343d1ed"
+            }
+          ],
+          "sha256": "a1f4cffd53bbd7a39532e9a10be294c82be8de7c6eb3233d2cb2de157343d1ed"
+        },
+        "build16-SE": {
+          "file": "gato-nada-pra-comer.build16-se.ecab793d5c0e.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 47.92,
+          "figure": {
+            "left": 23,
+            "top": 29,
+            "right": 73,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.build16-se.ecab793d5c0e.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "ecab793d5c0eef5203f19452c2c494cfd80792f4b4a8536000ae6948807fc12b"
+            }
+          ],
+          "sha256": "ecab793d5c0eef5203f19452c2c494cfd80792f4b4a8536000ae6948807fc12b"
+        },
+        "build16-W": {
+          "file": "gato-nada-pra-comer.build16-w.1f8decd29f41.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 52,
+          "pivotX": 48.22,
+          "figure": {
+            "left": 19,
+            "top": 28,
+            "right": 69,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.build16-w.1f8decd29f41.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "1f8decd29f41a1f477c95c7b4617ad45d8ec1b43d2f9dcd090f4d9464029d32e"
+            }
+          ],
+          "sha256": "1f8decd29f41a1f477c95c7b4617ad45d8ec1b43d2f9dcd090f4d9464029d32e"
+        },
+        "dance128": {
+          "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 63.89,
+          "figure": {
+            "left": 16,
+            "top": 17,
+            "right": 81,
+            "bottom": 84
+          },
+          "source": {
+            "input": "codex",
+            "pages": [
+              "gato-nada-pra-comer.png"
+            ],
+            "drawn": {
+              "A": "gato-A-t1",
+              "B": "gato-B-t1",
+              "ordem": "AABB",
+              "delta": 0.115,
+              "band": [
+                0.15,
+                0.55
+              ]
+            }
+          },
+          "pages": [
+            {
+              "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
+            }
+          ],
+          "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
+        },
         "hurt16-N": {
           "file": "gato-nada-pra-comer.hurt16-n.026b8fb2bea7.webp",
           "cell": [
@@ -11653,58 +11882,9 @@
             }
           ],
           "sha256": "0539b709da313d27eeafc4e0287818831c93a67c4b8ef58f2c7faaa5feedc0fc"
-        },
-        "dance128": {
-          "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 128,
-          "fps": 3.5555555555555554,
-          "durationMs": 36000,
-          "loop": true,
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 63.89,
-          "figure": {
-            "left": 16,
-            "top": 17,
-            "right": 81,
-            "bottom": 84
-          },
-          "source": {
-            "input": "codex",
-            "pages": [
-              "gato-nada-pra-comer.png"
-            ],
-            "drawn": {
-              "A": "gato-A-t1",
-              "B": "gato-B-t1",
-              "ordem": "AABB",
-              "delta": 0.115,
-              "band": [
-                0.15,
-                0.55
-              ]
-            }
-          },
-          "pages": [
-            {
-              "file": "gato-nada-pra-comer.dance128.52b7aabaf9f3.webp",
-              "columns": 16,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 128,
-              "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
-            }
-          ],
-          "sha256": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4"
         }
       },
-      "sha256": "d25e010fc432e942e51baca1532e5cb88e9c753fbd7e9bf5469a46334c61635c"
+      "sha256": "02a0c13634bf24d9554f3c871fd0045ed194c14f8629fb8c1d8829767df7b1a6"
     },
     "mae-pet": {
       "kind": "dir8",
@@ -12287,6 +12467,235 @@
             }
           ],
           "sha256": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a"
+        },
+        "build16-N": {
+          "file": "maromba.build16-n.b7f0316704ce.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.84,
+          "figure": {
+            "left": 21,
+            "top": 19,
+            "right": 79,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.build16-n.b7f0316704ce.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "b7f0316704ce4b94c23004f6d9a05a7bd4838caf2bce6db38ce69dc998059b15"
+            }
+          ],
+          "sha256": "b7f0316704ce4b94c23004f6d9a05a7bd4838caf2bce6db38ce69dc998059b15"
+        },
+        "build16-NW": {
+          "file": "maromba.build16-nw.bd0e1eea28d1.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.29,
+          "figure": {
+            "left": 19,
+            "top": 13,
+            "right": 78,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.build16-nw.bd0e1eea28d1.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "bd0e1eea28d1fa0b63d385f0e9367998db9e23811f5aa1fafaa9b4097e85c0a0"
+            }
+          ],
+          "sha256": "bd0e1eea28d1fa0b63d385f0e9367998db9e23811f5aa1fafaa9b4097e85c0a0"
+        },
+        "build16-S": {
+          "file": "maromba.build16-s.c2796a391240.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.22,
+          "figure": {
+            "left": 21,
+            "top": 18,
+            "right": 75,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.build16-s.c2796a391240.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "c2796a391240ae7826ce8dadab9e8eed2e73c71224b184350ab2f0e4ae953f73"
+            }
+          ],
+          "sha256": "c2796a391240ae7826ce8dadab9e8eed2e73c71224b184350ab2f0e4ae953f73"
+        },
+        "build16-SE": {
+          "file": "maromba.build16-se.8fd2fbb05152.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 47.72,
+          "figure": {
+            "left": 24,
+            "top": 18,
+            "right": 77,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.build16-se.8fd2fbb05152.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "8fd2fbb051521343af6822d4dfc3c294a90da6861fae0af1ca12ea729422fa2d"
+            }
+          ],
+          "sha256": "8fd2fbb051521343af6822d4dfc3c294a90da6861fae0af1ca12ea729422fa2d"
+        },
+        "build16-W": {
+          "file": "maromba.build16-w.a267a14232ca.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 16,
+          "durationMs": 2000,
+          "fps": 8,
+          "loop": true,
+          "revision": 16,
+          "movementHands": "empty",
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 56,
+          "pivotX": 48.2,
+          "figure": {
+            "left": 20,
+            "top": 17,
+            "right": 74,
+            "bottom": 87
+          },
+          "pages": [
+            {
+              "file": "maromba.build16-w.a267a14232ca.webp",
+              "columns": 4,
+              "rows": 4,
+              "firstFrame": 0,
+              "frameCount": 16,
+              "sha256": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6"
+            }
+          ],
+          "sha256": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6"
+        },
+        "dance128": {
+          "file": "maromba.dance128.576e79362713.webp",
+          "cell": [
+            96,
+            96
+          ],
+          "frames": 128,
+          "fps": 3.5555555555555554,
+          "durationMs": 36000,
+          "loop": true,
+          "anchor": [
+            0.5,
+            0.875
+          ],
+          "height": 57.71,
+          "figure": {
+            "left": 19,
+            "top": 19,
+            "right": 76,
+            "bottom": 84
+          },
+          "source": {
+            "input": "codex",
+            "pages": [
+              "maromba.png"
+            ],
+            "drawn": {
+              "A": "maromba-A-t1",
+              "B": "maromba-B-t1",
+              "ordem": "AABB",
+              "delta": 0.045,
+              "band": [
+                0.15,
+                0.55
+              ]
+            }
+          },
+          "pages": [
+            {
+              "file": "maromba.dance128.576e79362713.webp",
+              "columns": 16,
+              "rows": 8,
+              "firstFrame": 0,
+              "frameCount": 128,
+              "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
+            }
+          ],
+          "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
         },
         "dir4": {
           "file": "maromba.dir4.webp",
@@ -15042,58 +15451,9 @@
             }
           ],
           "sha256": "53580a84eda6252170cd5c62953a0b8752fd48c61a01579b27e564aa15b74a64"
-        },
-        "dance128": {
-          "file": "maromba.dance128.576e79362713.webp",
-          "cell": [
-            96,
-            96
-          ],
-          "frames": 128,
-          "fps": 3.5555555555555554,
-          "durationMs": 36000,
-          "loop": true,
-          "anchor": [
-            0.5,
-            0.875
-          ],
-          "height": 57.71,
-          "figure": {
-            "left": 19,
-            "top": 19,
-            "right": 76,
-            "bottom": 84
-          },
-          "source": {
-            "input": "codex",
-            "pages": [
-              "maromba.png"
-            ],
-            "drawn": {
-              "A": "maromba-A-t1",
-              "B": "maromba-B-t1",
-              "ordem": "AABB",
-              "delta": 0.045,
-              "band": [
-                0.15,
-                0.55
-              ]
-            }
-          },
-          "pages": [
-            {
-              "file": "maromba.dance128.576e79362713.webp",
-              "columns": 16,
-              "rows": 8,
-              "firstFrame": 0,
-              "frameCount": 128,
-              "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
-            }
-          ],
-          "sha256": "576e793627132e45a857faf873872bc76e7f57eb87dc78e6674b68c8aea80f7f"
         }
       },
-      "sha256": "9d3c4687e6e584319f29051ed7914addbb31a4c20b3ef0a4864ccb291d1ef5ef"
+      "sha256": "df38f8fe2219c7081311114ca3dcdf30f3fea8498014aefd020e1fc8ea582356"
     },
     "mendigo": {
       "kind": "dir8",

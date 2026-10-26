@@ -204,7 +204,9 @@ export async function measureClass(manifest,id,dir=SPRITES){
           torso:+(torsoWidth(sh,Math.round(band/k))*k/restTorso).toFixed(3),area:+(Math.sqrt(sh.area/restArea)*k).toFixed(3)};
       });
       const pick=(key,only)=>median(rows.filter(r=>!only||r.stance).map(r=>r[key]));
-      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+pick('head').toFixed(3),height:+pick('height',true).toFixed(3),
+      // A pose the head template cannot read (HEAD_UNREAD_FRAMES) stays out of the head's median too.
+      const unread=HEAD_UNREAD_FRAMES[`${id} ${motion}16-${d}`]??[],head=median(rows.filter(r=>!unread.includes(r.frame)).map(r=>r.head));
+      entry.clips[motion]={scale:+k.toFixed(3),frames:rows,head:+head.toFixed(3),height:+pick('height',true).toFixed(3),
         torso:+pick('torso').toFixed(3),area:+pick('area').toFixed(3),...(clip.loop&&frames.length>1?{loop:seam(frames,shapes)}:{}),
         ...(motion==='hurt'?{joins:joins(rest0,r0,frames,shapes)}:{})};
     }
@@ -231,11 +233,18 @@ export const PUSH_MIN_HEIGHT=.88;
  */
 export const PUSH_HEAD_UNREAD=['N'];
 /**
- * Build16 poses (card animacao-construir-6) whose tool hand is raised beside the head on the screen: the head template
- * locks on the cap and the hammer together (viciado S pose 6 reads 1.40 on a head drawn its neighbours' size, SE 0.77).
- * Those frames are left out of the head fit check; the clip's head is still the median of all its poses.
+ * Build16 poses (card animacao-construir-6) the head template cannot read: the tool hand raised beside the head (the
+ * template locks on the cap and the hammer together: viciado S pose 6 reads 1.40 on a head drawn its neighbours' size,
+ * SE 0.77), a paw over the face, or the head turned to stare at the camera (the gato's gag, a frontal face against a side view's template:
+ * W 8-13 read 1.17-1.28, IoU 0.72, on a head the rest's size). Those frames are left out of the head fit check and of
+ * the clip's head median.
  */
-export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'viciado-em-bet build16-SE':[6]});
+export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'viciado-em-bet build16-SE':[6],
+  // the gato licking a paw over its face (S 7-8, N 6-7), staring over its shoulder (N 8-12), paws up beside the ears (N 1-4, NW 4)
+  'gato-nada-pra-comer build16-W':[8,9,10,11,12,13],'gato-nada-pra-comer build16-S':[7,8],
+  'gato-nada-pra-comer build16-N':[1,2,3,4,6,7,8,9,10,11,12],'gato-nada-pra-comer build16-NW':[4],
+  // the maromba's beam pressed above the head (3, 5) and the biceps flexed and kissed beside the face (S 9-11)
+  'maromba build16-S':[3,5,9,10,11],'maromba build16-N':[3,5],'maromba build16-NW':[3,5],'maromba build16-SE':[5]});
 /**
  * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
  * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the

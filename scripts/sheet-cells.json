@@ -13,7 +13,7 @@
   "crumb": 60
  },
  "summary": {
-  "sheets": 4367,
+  "sheets": 4387,
   "failing": 0,
   "frames": 0
  },
@@ -17513,6 +17513,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "lite/sprites/gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp": {
+   "sha": "e12d5a62f1e9ca3bc8a96ecbf5ad837fd884ffb20303170e41a6179fa87080ae",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-nw.45272cef3a9a.webp": {
+   "sha": "08f4b8a59814f78aaff5b2ce2be60df0968fe955de7bcd8bf6c413227e0aeeea",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp": {
+   "sha": "973692d9c1f393e3e9e00316ef87feea7243211c6b8ea85c34d133c2af939feb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-se.ecab793d5c0e.webp": {
+   "sha": "7fe08af9524c2e2e287ee82e2b22d15b67a0f2916b4fb3de97c9b0fffe8556eb",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/gato-nada-pra-comer.build16-w.1f8decd29f41.webp": {
+   "sha": "725dc7fb62f5c954596fff001437608b3df16395ac5a9baf296fcae54ea0ebb7",
+   "ilhas": 0,
+   "fails": []
+  },
   "lite/sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
    "sha": "38cc5feb40da9d8b36ea6f8e09862b1b60e64b07bcf5d744622124b1a8fcb170",
    "ilhas": 0,
@@ -17745,6 +17770,31 @@
   },
   "lite/sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "d1b9cc008ed3e29e07e5a5a2aabf8f259fc99084e89d09b0e728222c79edcf08",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-n.b7f0316704ce.webp": {
+   "sha": "fa2bdc27b7d61034b48406e4d9b71bf9adffcc54b84faba183280ce6900b7124",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-nw.bd0e1eea28d1.webp": {
+   "sha": "f18d8a59be65277f7ddd7d7af73638fb5cf91db48c8e8ca36def4491a6cb94c4",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-s.c2796a391240.webp": {
+   "sha": "d949a2debb245ce90caa0e8865eeaf1eaded07cf15dc77547fed5ace31fe7f65",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-se.8fd2fbb05152.webp": {
+   "sha": "dfe0b2bee280789c0b1e4772b74704e7dc4100dea6c06b9033e1572ca6ebc0c2",
+   "ilhas": 0,
+   "fails": []
+  },
+  "lite/sprites/maromba.build16-w.a267a14232ca.webp": {
+   "sha": "c076697ff1752401eb3ab84c79e0830436ea408b6c886a43d09d24b5df14c5cf",
    "ilhas": 0,
    "fails": []
   },
@@ -20128,6 +20178,31 @@
    "ilhas": 0,
    "fails": []
   },
+  "sprites/gato-nada-pra-comer.build16-n.e9552d5a0b9b.webp": {
+   "sha": "e9552d5a0b9b650759a53bda63f172618d926708cff572d8655b1bb44417f27d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-nw.45272cef3a9a.webp": {
+   "sha": "45272cef3a9a86672f97ae5febe20ec48fdc8c4bf8633fec56ed4592c985cbc5",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-s.a1f4cffd53bb.webp": {
+   "sha": "a1f4cffd53bbd7a39532e9a10be294c82be8de7c6eb3233d2cb2de157343d1ed",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-se.ecab793d5c0e.webp": {
+   "sha": "ecab793d5c0eef5203f19452c2c494cfd80792f4b4a8536000ae6948807fc12b",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/gato-nada-pra-comer.build16-w.1f8decd29f41.webp": {
+   "sha": "1f8decd29f41a1f477c95c7b4617ad45d8ec1b43d2f9dcd090f4d9464029d32e",
+   "ilhas": 0,
+   "fails": []
+  },
   "sprites/gato-nada-pra-comer.dance128.52b7aabaf9f3.webp": {
    "sha": "52b7aabaf9f37080098f9ff535593886c1f34525450f98ebc500b6e5cddc69c4",
    "ilhas": 0,
@@ -20365,6 +20440,31 @@
   },
   "sprites/maromba.attack16-w.7207972c9673.webp": {
    "sha": "7207972c967309b9c4ab6e968f3547386fa07cb93b018ae48b715ff44edfb19a",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-n.b7f0316704ce.webp": {
+   "sha": "b7f0316704ce4b94c23004f6d9a05a7bd4838caf2bce6db38ce69dc998059b15",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-nw.bd0e1eea28d1.webp": {
+   "sha": "bd0e1eea28d1fa0b63d385f0e9367998db9e23811f5aa1fafaa9b4097e85c0a0",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-s.c2796a391240.webp": {
+   "sha": "c2796a391240ae7826ce8dadab9e8eed2e73c71224b184350ab2f0e4ae953f73",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-se.8fd2fbb05152.webp": {
+   "sha": "8fd2fbb051521343af6822d4dfc3c294a90da6861fae0af1ca12ea729422fa2d",
+   "ilhas": 0,
+   "fails": []
+  },
+  "sprites/maromba.build16-w.a267a14232ca.webp": {
+   "sha": "a267a14232ca64cd7ff9ba986d131ad9fb19d634a6d6692fbbd80073ee7995f6",
    "ilhas": 0,
    "fails": []
   },

@@ -1,23 +1,30 @@
-/* Popup de escolha (NEW-20261025-ORQ-popup-escolha-trico). A moldura de tricô com neve e o fundo roxo de patinhas são
-   uma imagem do ChatGPT em 9-slice; o X foi recortado da variação 6. Fundo de CSS só carrega com o popup aberto. */
-#confirmation{border:0;background:none;box-shadow:none;border-image:url('/art/menu/escolha/moldura-trico.webp') 88 64 80 64 fill / 40px 29px 36px 29px stretch;padding:30px 24px 10px}
-#confirmation .close-dialog{top:2px;right:2px;background:url('/art/menu/escolha/x-fechar.webp') 50% 50% / 40px 40px no-repeat}
+/* Popup de escolha (NEW-20261025-ORQ-popup-escolha-trico, ajustes em BUG-20261026-ORQ-popup-trico-ajustes). A moldura é
+   a da variação 6: borda lisa com PEDAÇOS de cachecol de tricô e neve só nos cantos (9-slice, os pedaços ficam nas
+   fatias dos cantos). Os dois botões são os blocos da variação 7 (amarelo e roxo, imagens do ChatGPT em 9-slice) com os
+   personagens recortados, sem cenário. Fundo de CSS só carrega com o popup aberto. */
+#confirmation{--moldura-corte:217 210 203 217;--moldura-borda:108px 105px 101px 108px;border:0;background:none;box-shadow:none;border-image:url('/art/menu/escolha/moldura-trico.webp') var(--moldura-corte) fill / var(--moldura-borda) stretch;padding:34px 26px 12px}
+#confirmation .close-dialog{top:4px;right:4px;border-radius:var(--r-circulo);background:url('/art/menu/escolha/x-fechar.webp') 50% 50% / 40px 40px no-repeat}
 #confirmation .close-dialog>svg{visibility:hidden}
+/* O foco ao abrir fica no próprio popup (main.ts); no X pelo teclado, o anel segue o círculo, nunca um quadrado escuro. */
+#confirmation:focus{outline:none}
+#confirmation .close-dialog:focus-visible{outline:3px solid var(--c-papel-claro);outline-offset:-2px}
 
-/* Herói com arte: os dois botões são imagens lado a lado; o seletor de bots fica embaixo do "Jogar sozinho". */
-#confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
-#confirmation.escolha-arte .solo-row{flex-direction:column;gap:8px}
-#confirmation.escolha-arte :is(#enter-coop,#enter-island){position:relative;display:block;width:100%;aspect-ratio:7/10;margin:0;padding:0;overflow:hidden;border:2px solid var(--c-breu);border-radius:var(--r-janela);background:var(--c-lilas)}
-#confirmation.escolha-arte .escolha-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 40%}
-#confirmation.escolha-arte .escolha-rotulo{position:absolute;left:6px;right:6px;bottom:6px;min-height:36px;display:grid;place-items:center;padding:6px 8px;border:2px solid var(--c-breu);border-radius:var(--r-janela);font-weight:800;font-size:var(--t-13);line-height:1.15;white-space:normal}
-#confirmation.escolha-arte #enter-coop .escolha-rotulo{background:var(--c-amarelo);color:var(--c-breu)}
-#confirmation.escolha-arte #enter-island .escolha-rotulo{background:var(--c-lilas);color:var(--c-papel-claro);border-color:var(--c-papel)}
-#confirmation.escolha-arte .solo-bots{justify-content:space-between;min-height:44px}
+/* Herói com arte: dois blocos lado a lado; o seletor de bots fica DENTRO do bloco roxo, embaixo. */
+#confirmation.escolha-arte .chosen-card{margin:0;padding:8px 40px 8px 8px;border-radius:var(--r-janela);background:var(--c-trilho)}
+#confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+#confirmation.escolha-arte :is(#enter-coop,.solo-row){border:0;border-radius:0;box-shadow:none;background:none;border-image:var(--bloco) var(--bloco-corte) fill / var(--bloco-borda) stretch;min-width:0}
+#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:34;--bloco-borda:17px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
+#confirmation.escolha-arte .solo-row{--bloco:url('/art/menu/escolha/bloco-sozinho.webp');--bloco-corte:34 34 76 34;--bloco-borda:17px 17px 38px 17px;display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px}
+#confirmation.escolha-arte #enter-island{display:flex;flex:1;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0;border:0;background:none;white-space:normal;color:var(--c-papel-claro)}
+#confirmation.escolha-arte .escolha-img{display:block;flex:1 1 var(--escolha-img-h);width:100%;min-height:0;height:var(--escolha-img-h);object-fit:contain;object-position:50% 100%}
+#confirmation.escolha-arte .escolha-rotulo{display:block;padding:4px 2px 0;font:400 var(--t-21)/1 var(--f-cartaz);text-align:center}
+#confirmation.escolha-arte #enter-island .escolha-rotulo{text-shadow:0 2px 0 var(--c-breu)}
+#confirmation.escolha-arte .solo-bots{justify-content:space-between;min-height:36px;padding:0 2px 0 10px;border-color:var(--c-papel-claro);background:var(--c-ficha);border-radius:var(--r-pilula)}
+#confirmation.escolha-arte .solo-bots-step{min-height:34px;width:30px}
+#confirmation.escolha-arte{--escolha-img-h:clamp(90px,15dvh,128px)}
 @media (max-height:520px){
-  /* Celular deitado: tudo numa linha (amigos, sozinho, bots), e o popup pode usar quase a altura toda. */
-  #confirmation.escolha-arte{max-height:calc(100dvh - 12px);padding-top:24px}
-  #confirmation.escolha-arte .chosen-actions{display:flex;flex-direction:row;justify-content:center;align-items:flex-end;gap:10px;margin-top:8px}
-  #confirmation.escolha-arte .solo-row{flex:none;flex-direction:row;align-items:flex-end}
-  #confirmation.escolha-arte :is(#enter-coop,#enter-island){flex:none;width:auto;height:46dvh}
-  #confirmation.escolha-arte .escolha-rotulo{left:4px;right:4px;bottom:4px;min-height:28px;padding:3px 4px;font-size:11px;white-space:nowrap}
+  /* Celular deitado: os dois blocos lado a lado, mais baixos; o popup pode usar quase a altura toda. */
+  #confirmation.escolha-arte{--escolha-img-h:clamp(60px,26dvh,130px);max-height:calc(100dvh - 12px);padding-top:26px}
+  #confirmation.escolha-arte .chosen-actions{margin-top:8px}
+  #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
 }

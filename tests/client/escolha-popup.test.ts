@@ -15,12 +15,12 @@ test('cada herói com arte tem os 2 botões (amigos feliz, sozinho triste) em we
       const file=`public${url}`;
       assert.ok(existsSync(file),`${file} falta`);
       assert.ok(statSync(file).size<120_000,`${file}: pesado demais para o popup`);
-      assert.ok(temAlfa(file),`${file}: tem que ser o recorte sem cenário (webp com transparência)`);
+      if(url===arte.amigos)assert.ok(temAlfa(file),`${file}: o grupo vai recortado, sem cenário (webp com transparência)`);
     }
   }
 });
 
-// BUG-20261026-ORQ-popup-trico-ajustes: os personagens vão recortados, sem o cenário, em cima do bloco colorido.
+// BUG-20261026-ORQ-popup-trico-ajustes: os amigos vão recortados em cima do bloco amarelo; o sozinho é arte cheia com o chão lavanda.
 function temAlfa(file:string):boolean {
   const b=readFileSync(file);
   if(b.toString('ascii',12,16)==='VP8X')return (b[20]&0x10)!==0;

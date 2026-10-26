@@ -11,11 +11,11 @@ test('cada herói com arte tem os 2 botões (amigos feliz, sozinho triste) em we
   for(const id of ESCOLHA_HEROIS){
     assert.ok(ids.has(id),`${id}: não é classe`);
     const arte=escolhaArte(id)!;
-    for(const url of [arte.amigos,arte.sozinho,arte.sozinhoDeitado]){
+    for(const url of [arte.amigos,arte.sozinho,arte.amigosDeitado,arte.sozinhoDeitado]){
       const file=`public${url}`;
       assert.ok(existsSync(file),`${file} falta`);
       assert.ok(statSync(file).size<120_000,`${file}: pesado demais para o popup`);
-      if(url===arte.amigos)assert.ok(temAlfa(file),`${file}: o grupo vai recortado, sem cenário (webp com transparência)`);
+      if(url===arte.amigos||url===arte.amigosDeitado)assert.ok(temAlfa(file),`${file}: o grupo vai recortado, sem cenário (webp com transparência)`);
     }
   }
 });

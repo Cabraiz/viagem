@@ -6,13 +6,13 @@
  */
 export const ESCOLHA_HEROIS:readonly string[]=['aposentado','clt-cansado','gato-nada-pra-comer','maromba','vendedor-praia','viciado-em-bet'];
 
-export type EscolhaArte={amigos:string;sozinho:string;sozinhoDeitado:string};
+export type EscolhaArte={amigos:string;sozinho:string;amigosDeitado:string;sozinhoDeitado:string};
 
 /** Celular deitado (a mesma regra do escolha.css): o bloco do sozinho é largo e usa a arte larga. */
 export const DEITADO='(max-height:520px)';
 
 export const escolhaArte=(classId:string):EscolhaArte|null=>ESCOLHA_HEROIS.includes(classId)
-  ?{amigos:`/art/menu/escolha/${classId}-amigos.webp`,sozinho:`/art/menu/escolha/${classId}-sozinho.webp`,sozinhoDeitado:`/art/menu/escolha/${classId}-sozinho-deitado.webp`}
+  ?{amigos:`/art/menu/escolha/${classId}-amigos.webp`,sozinho:`/art/menu/escolha/${classId}-sozinho.webp`,amigosDeitado:`/art/menu/escolha/${classId}-amigos-deitado.webp`,sozinhoDeitado:`/art/menu/escolha/${classId}-sozinho-deitado.webp`}
   :null;
 
 /** O texto do botão fica num <span>, por cima da imagem; trocar o texto não pode apagar a imagem. */
@@ -31,12 +31,11 @@ export function mostrarEscolha(dialog:HTMLElement,classId:string):void {
       const img=document.createElement('img');img.className='escolha-img';img.alt='';img.decoding='async';
       picture.append(img);button.prepend(picture);
     }
-    // Deitado, o "Jogar sozinho" troca para a arte larga (o chão lavanda vai de lado a lado do bloco).
+    // Deitado, os dois blocos são largos e trocam para a arte larga (grupo afastado; chão lavanda de lado a lado).
     let source=picture.querySelector('source');
-    if(kind==='sozinho'){
-      if(!source){source=document.createElement('source');source.media=DEITADO;picture.prepend(source);}
-      if(source.getAttribute('srcset')!==arte.sozinhoDeitado)source.srcset=arte.sozinhoDeitado;
-    } else source?.remove();
+    if(!source){source=document.createElement('source');source.media=DEITADO;picture.prepend(source);}
+    const larga=kind==='amigos'?arte.amigosDeitado:arte.sozinhoDeitado;
+    if(source.getAttribute('srcset')!==larga)source.srcset=larga;
     const img=picture.querySelector('img')!;
     if(img.getAttribute('src')!==arte[kind])img.src=arte[kind];
   }

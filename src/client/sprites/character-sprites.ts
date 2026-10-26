@@ -170,9 +170,10 @@ export class CharacterSprites {
    */
   queueOwnWalk(id:string){
     for(const plan of movementSheets(id,'walk'))this.queueDetailed(plan);
-    // The flinch (animacao-receber-dano): 5 small sheets, there for the first hit.
+    // The flinch (animacao-receber-dano) and the build (animacao-construir-6): 5 small sheets each, there for the first
+    // hit and the first obra (a build sheet still coming holds the last pose, facing the wrong way).
     const seen=new Set<string>();
-    for(const d of HERO_DIRECTIONS){const plan=hurtPlan(id,d);if(plan&&!seen.has(plan.key)){seen.add(plan.key);this.queueDetailed(plan);}}
+    for(const d of HERO_DIRECTIONS)for(const plan of [hurtPlan(id,d),buildPlan(id,d)])if(plan&&!seen.has(plan.key)){seen.add(plan.key);this.queueDetailed(plan);}
   }
   private queueDetailed(plan:Movement128Plan){
     const cache=this.detailed??=movement128Textures(this.scene,this.city);

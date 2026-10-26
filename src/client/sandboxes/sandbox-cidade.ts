@@ -340,6 +340,8 @@ class CitySandbox extends Phaser.Scene {
     this.art=buildCityArtPlan(artIndex(),{...cityArtOptions(location.search),...(real?{cell:SCALE_PROFILES['cidade-nevada'].cell}:{})});
     queueCityArt(this,this.art);
     this.sprites.queue(classId);
+    // As the game's hero (scene.ts): its walk, flinch and build sheets come with the preload (animacao-construir-6 proofs).
+    if(kitParam)this.sprites.queueOwnWalk(classId);
     if(mateClass)this.sprites.queue(mateClass);
     if(real)this.load.text('cidade-real','/maps/cidade-nevada.json');
     if(towersParam)queueTowerArt(this);

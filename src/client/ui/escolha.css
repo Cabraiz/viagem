@@ -33,10 +33,11 @@
 #confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
 #confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:4px;top:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:cover;object-position:50% 0;border-radius:var(--r-balao)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
-/* Amigos em busto (pedido do usuário): o grupo sai pela base, some por trás do texto como na ref. 7. */
-/* Busto grande enchendo o bloco (cabeças nos ~70 % de cima): um pouco maior que o bloco, as laterais cortadas no aro,
-   o corpo esmaece na base atrás do texto. */
-#confirmation.escolha-arte #enter-coop .escolha-img{width:124%;margin:0 -12% -10px;object-fit:cover;object-position:50% 0;clip-path:inset(0 9.5%);-webkit-mask-image:linear-gradient(var(--c-breu) 70%,transparent 96%);mask-image:linear-gradient(var(--c-breu) 70%,transparent 96%)}
+/* Amigos (pedido do usuário: sem sumiço à esquerda, embaixo nem à direita): a arte cobre o bloco todo, cabeças em cima,
+   os corpos vão até a borda do bloco e o texto fica por cima, como na ref. 7. */
+#confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}
+#confirmation.escolha-arte #enter-coop .escolha-img{position:absolute;left:3px;top:3px;width:calc(100% - 6px);height:calc(100% - 6px);margin:0;object-fit:cover;object-position:50% 0;border-radius:var(--r-balao)}
+#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px;-webkit-text-stroke:4px var(--c-amarelo);paint-order:stroke fill;text-shadow:0 0 8px var(--c-amarelo),0 0 8px var(--c-amarelo)}
 #confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
 /* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
 #confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}
@@ -54,8 +55,4 @@
   /* Bloco largo e baixo: a arte larga cobre o bloco (chão de lado a lado); o herói enche a altura acima do texto. */
   #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
-  /* Bloco amarelo largo: o grupo inteiro (ampliar cortaria metade dele). */
-  #confirmation.escolha-arte #enter-coop .escolha-img{width:100%;margin:0 0 -10px;object-fit:contain;object-position:50% 100%;clip-path:none;
-    -webkit-mask-image:linear-gradient(90deg,transparent 22%,var(--c-breu) 34%,var(--c-breu) 66%,transparent 78%),linear-gradient(var(--c-breu) 70%,transparent 96%);-webkit-mask-composite:source-in;
-    mask-image:linear-gradient(90deg,transparent 22%,var(--c-breu) 34%,var(--c-breu) 66%,transparent 78%),linear-gradient(var(--c-breu) 70%,transparent 96%);mask-composite:intersect}
 }

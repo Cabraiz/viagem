@@ -6,9 +6,9 @@
   "smartSubsample": true
  },
  "summary": {
-  "files": 3185,
-  "bytes": 2236996658,
-  "liteBytes": 782347200,
+  "files": 3195,
+  "bytes": 2237756408,
+  "liteBytes": 782766900,
   "worstPsnr": 31.3,
   "worstShownPsnr": 36
  },
@@ -28553,6 +28553,46 @@
    "psnr": 38.4,
    "shownPsnr": 41.6
   },
+  "sprites/aposentado.build16-n.7fa3ec9f0495.webp": {
+   "source": "7fa3ec9f0495b9c8c6a193df3ae5d71a5ab812fa49e56264d2f3bd9a73925039",
+   "lite": "6a1c814790058e6105d45f40674957ed0fb026d0d83da3bccc089e565ae14bc7",
+   "bytes": 75620,
+   "liteBytes": 40408,
+   "psnr": 39.4,
+   "shownPsnr": 42.2
+  },
+  "sprites/aposentado.build16-nw.e8284ba65be6.webp": {
+   "source": "e8284ba65be68c7f90780a8760f39b97feeaec5440c7280fd47065b06d3086ba",
+   "lite": "a0b699d2bb23493f1647ddc3f7562fb767ea3e9c7792eef8911652cb9b709b3c",
+   "bytes": 75526,
+   "liteBytes": 40620,
+   "psnr": 38.3,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-s.db781f0a4e5f.webp": {
+   "source": "db781f0a4e5f293187011ef70d88b63b63bb9b958bd34738b83722ebcc0b6634",
+   "lite": "74550d1c35ebd866c0ca4664590a3e8532e94c51adfe4e8907e355956f4d49ce",
+   "bytes": 77490,
+   "liteBytes": 40962,
+   "psnr": 37.5,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-se.32139291ea1b.webp": {
+   "source": "32139291ea1bca3f53baaa4c8a2443f70d6d6639907766d26c62ade7e06986d9",
+   "lite": "7b085f94f5dbcfdab6ca12ca8b9c858e5bed1073aa1817389f3fa211ccd58886",
+   "bytes": 76706,
+   "liteBytes": 40646,
+   "psnr": 37.6,
+   "shownPsnr": 41.6
+  },
+  "sprites/aposentado.build16-w.bf3f185c69c2.webp": {
+   "source": "bf3f185c69c24e0d021b0bc1b3cb295455399a209ce630950bfbd32a64a5852f",
+   "lite": "e75ca531c2792558f3e208cf054874794c0431df5a476d730de5655da54ca8d1",
+   "bytes": 64630,
+   "liteBytes": 35030,
+   "psnr": 39.3,
+   "shownPsnr": 42.9
+  },
   "sprites/aposentado.dance128.b2d18b849abb.webp": {
    "source": "b2d18b849abb601f42b025e6a7396c21426d0bcac0cc3daae55fad6a345135cc",
    "lite": "112925aad04046f9f58f9e3f2b5cf0b8e06fd7e4e08c1c0a6f86ff9e3b230a2b",
@@ -31992,6 +32032,46 @@
    "liteBytes": 37624,
    "psnr": 35.5,
    "shownPsnr": 38.8
+  },
+  "sprites/vendedor-praia.build16-n.313e1cacf530.webp": {
+   "source": "313e1cacf530d7381660be79024f5c5e331db7aeb7a928e30e097029e1c58791",
+   "lite": "10c420fa90dbaaaa5e8ef48c3e48d4ab718a565bdaa41a5a82f64c02e93dc5bf",
+   "bytes": 84680,
+   "liteBytes": 47474,
+   "psnr": 36.1,
+   "shownPsnr": 39.1
+  },
+  "sprites/vendedor-praia.build16-nw.9d436e295267.webp": {
+   "source": "9d436e295267ab8cadfee1e8b9a788e0b1466c1a3c7ae14f5364edd186c205c8",
+   "lite": "5d3e43cf9ff094d19f43f683aafc61ae0dcbfde149730af034ae83c9e85a9b86",
+   "bytes": 86638,
+   "liteBytes": 48732,
+   "psnr": 35.3,
+   "shownPsnr": 38.9
+  },
+  "sprites/vendedor-praia.build16-s.6acdee5e5c4c.webp": {
+   "source": "6acdee5e5c4ca7d3ae667d7f63d9cac59883cd8c1e6a14b53139a1058ec01712",
+   "lite": "e6aec51435a95d483bf9c666f724cc8cea6b7ec8c2526a3ccdeca5917bf4e432",
+   "bytes": 81240,
+   "liteBytes": 45582,
+   "psnr": 35,
+   "shownPsnr": 39.3
+  },
+  "sprites/vendedor-praia.build16-se.adb84091ab7f.webp": {
+   "source": "adb84091ab7f8399b9312773e4af9133993689952db509287a46ab99146567c7",
+   "lite": "d275faa1edff6a7c7c5fe6af62db475192c09b2bb77aa3ab6835ecad4974b251",
+   "bytes": 74978,
+   "liteBytes": 42776,
+   "psnr": 34.8,
+   "shownPsnr": 39.3
+  },
+  "sprites/vendedor-praia.build16-w.e75d2361973b.webp": {
+   "source": "e75d2361973bdd493c18e7e38f182fd564d870b724b0c40997ae7cbc32c8ca9a",
+   "lite": "818d9d07e980cd2c2d173e453ede8a1c3ff55a9d523b1b6b2cbf6018c00960fe",
+   "bytes": 62242,
+   "liteBytes": 37470,
+   "psnr": 36.1,
+   "shownPsnr": 40
   },
   "sprites/vendedor-praia.dance128.932b5398d729.webp": {
    "source": "932b5398d7292f9cb88c65191f1e12f7bdb211b3ade23585a759d28fd1da1149",

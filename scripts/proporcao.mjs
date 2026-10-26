@@ -244,7 +244,19 @@ export const HEAD_UNREAD_FRAMES=Object.freeze({'viciado-em-bet build16-S':[6],'v
   'gato-nada-pra-comer build16-W':[8,9,10,11,12,13],'gato-nada-pra-comer build16-S':[7,8],
   'gato-nada-pra-comer build16-N':[1,2,3,4,6,7,8,9,10,11,12],'gato-nada-pra-comer build16-NW':[4],
   // the maromba's beam pressed above the head (3, 5) and the biceps flexed and kissed beside the face (S 9-11)
-  'maromba build16-S':[3,5,9,10,11],'maromba build16-N':[3,5],'maromba build16-NW':[3,5],'maromba build16-SE':[5]});
+  'maromba build16-S':[3,5,9,10,11],'maromba build16-N':[3,5],'maromba build16-NW':[3,5],'maromba build16-SE':[5],
+  // the vendedor's popsicle or hammer raised beside the hat while it sits on its cooler
+  'vendedor-praia build16-S':[6],'vendedor-praia build16-W':[3,5,6,8,10,12,14],'vendedor-praia build16-NW':[3,6,14],
+  'vendedor-praia build16-SE':[3,4,7],
+  // the aposentado's hammer raised above the hat (7) and its back locked, bent forward (W 10-11, NW 11, SE 8-12)
+  'aposentado build16-S':[7],'aposentado build16-N':[7],'aposentado build16-W':[10,11],'aposentado build16-NW':[11],
+  'aposentado build16-SE':[7,8,9,10,12]});
+/**
+ * A class that builds SITTING (card animacao-construir-6: the vendedor on its cooler box, the joke the user approved):
+ * its build16 height may drop to this share of the rest's (0.86-0.95 measured), never above 1 + TOL.height; the head
+ * keeps ±TOL.head (its sheets are scaled by the head, remontar/montar-build.mjs ESCALA=cabeca).
+ */
+export const BUILD_SEATED_MIN_HEIGHT=Object.freeze({'vendedor-praia':.84});
 /**
  * The pull (puxar-uno-corda): leaning 24° into the rope (more than the push's 15°, it drags the car), the fists behind
  * the hips; facing the camera (S, SE) the lean folds the figure toward it. The height may drop to PULL_MIN_HEIGHT (the
@@ -270,7 +282,8 @@ export function verdict(m,keys=GATED){
       if(keys.includes('height')&&c.height<min-1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≥ ${min})`);
       if(unread&&c.height>1+TOL.height+1e-9)bad.push(`${m.id} ${motion}16-${d} height ${c.height} (≤ ${1+TOL.height}, the head unread)`);
     }else if(motion!=='idle')for(const key of keys){
-      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:TOL[key];
+      const seated=motion==='build'?BUILD_SEATED_MIN_HEIGHT[m.id]:undefined;
+      const lo=key==='height'&&motion==='run'?RUN_HEIGHT_MIN:key==='height'&&seated!==undefined?1-seated:TOL[key];
       if(c[key]<1-lo-1e-9||c[key]>1+TOL[key]+1e-9)bad.push(`${m.id} ${motion}16-${d} ${key} ${c[key]} (${lo===TOL[key]?`±${TOL[key]*100}`:`−${lo*100}/+${TOL[key]*100}`}%)`);
     }
     if(c.joins&&c.joins.ratio>SEAM_MAX&&Math.max(c.joins.in,c.joins.out)>SEAM_FLOOR)bad.push(`${m.id} ${motion}16-${d} rest join ${Math.max(c.joins.in,c.joins.out)} = ${c.joins.ratio}× the median step ${c.joins.median} (≤ ${SEAM_MAX}×)`);

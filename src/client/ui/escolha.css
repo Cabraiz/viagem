@@ -13,7 +13,7 @@
 #confirmation.escolha-arte .chosen-card{margin:0;padding:8px 40px 8px 8px;border-radius:var(--r-janela);background:var(--c-trilho)}
 #confirmation.escolha-arte .chosen-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
 #confirmation.escolha-arte :is(#enter-coop,.solo-row){border:0;border-radius:0;box-shadow:none;background:none;border-image:var(--bloco) var(--bloco-corte) fill / var(--bloco-borda) stretch;min-width:0}
-#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:34;--bloco-borda:17px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
+#confirmation.escolha-arte #enter-coop{--bloco:url('/art/menu/escolha/bloco-amigos.webp');--bloco-corte:36;--bloco-borda:30px;border-image-outset:9px;display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:8px 8px 10px;white-space:normal;color:var(--c-breu)}
 #confirmation.escolha-arte .solo-row{--bloco:url('/art/menu/escolha/bloco-sozinho.webp');--bloco-corte:34 34 76 34;--bloco-borda:17px 17px 38px 17px;display:flex;flex-direction:column;gap:6px;padding:8px 8px 10px}
 #confirmation.escolha-arte #enter-island{display:flex;flex:1;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0;border:0;background:none;white-space:normal;color:var(--c-papel-claro)}
 #confirmation.escolha-arte .escolha-img{display:block;flex:1 1 var(--escolha-img-h);width:100%;min-height:0;height:var(--escolha-img-h);object-fit:contain;object-position:50% 100%}

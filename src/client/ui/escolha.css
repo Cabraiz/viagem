@@ -33,11 +33,11 @@
 #confirmation.escolha-arte #enter-island{justify-content:flex-end;min-height:calc(var(--escolha-img-h) + 34px)}
 #confirmation.escolha-arte #enter-island .escolha-img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:50% 0;border-radius:var(--r-janela)}
 #confirmation.escolha-arte :is(#enter-island .escolha-rotulo,.solo-bots){position:relative}
-/* Amigos (pedido do usuário: sem sumiço, sem margem, grupo afastado): a arte vai de borda a borda e encosta na base,
-   os raios do bloco aparecem acima das cabeças e o texto fica por cima dos corpos, como na ref. 7. */
+/* Amigos como na ref. 7: a arte vai de borda a borda; os corpos terminam um pouco acima do rótulo, dissolvendo no
+   amarelo, e o texto fica numa faixa amarela limpa embaixo. */
 #confirmation.escolha-arte #enter-coop{position:relative;justify-content:flex-end}
-#confirmation.escolha-arte #enter-coop .escolha-img{position:absolute;left:0;top:auto;bottom:0;width:100%;height:var(--amigos-h,78%);margin:0;object-fit:cover;object-position:50% 0;border-radius:0 0 var(--r-janela) var(--r-janela)}
-#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px;-webkit-text-stroke:4px var(--c-amarelo);paint-order:stroke fill}
+#confirmation.escolha-arte #enter-coop .escolha-img{position:absolute;left:0;top:auto;bottom:30px;width:100%;height:68%;margin:0;object-fit:cover;object-position:50% 0;-webkit-mask-image:linear-gradient(var(--c-breu) 72%,transparent);mask-image:linear-gradient(var(--c-breu) 72%,transparent)}
+#confirmation.escolha-arte #enter-coop .escolha-rotulo{position:relative;padding-bottom:2px}
 #confirmation.escolha-arte .escolha-rotulo{position:relative;display:block;padding:4px 0 0;font:800 min(var(--t-16),4.1vw)/1.15 var(--f-sistema);white-space:nowrap;text-align:center;color:color-mix(in srgb,var(--c-lilas) 25%,var(--c-breu))}
 /* Controle de bots da ref. 7: barra e caixinha do número chapadas (o usuário: sem brilho, sem borda); − e + são do ChatGPT. */
 #confirmation.escolha-arte .solo-bots{justify-content:space-between;gap:2px;min-width:0;min-height:34px;padding:3px 3px 3px 10px;border:0;border-radius:var(--r-pilula);background:color-mix(in srgb,var(--c-lilas) 85%,var(--c-breu))}
@@ -56,5 +56,5 @@
   #confirmation.escolha-arte #enter-island .escolha-img{object-fit:cover;object-position:50% 0}
   #confirmation.escolha-arte .escolha-rotulo{font-size:var(--t-16)}
   /* Deitado a arte larga já vem afastada: inteira, encostada na base. */
-  #confirmation.escolha-arte #enter-coop .escolha-img{height:100%;object-fit:contain;object-position:50% 100%}
+  #confirmation.escolha-arte #enter-coop .escolha-img{bottom:30px;height:calc(100% - 34px);object-fit:contain;object-position:50% 100%}
 }

@@ -450,8 +450,28 @@ test('combat: C4 anti-air hits only the flyers; C5 radar gives the defenses arou
   assert.equal(radarBonus(r.sys.state,radar,r.ctx.tick),0,'not its own');
   r.ctx.enemies.set('e',enemy('e',guard.x,guard.y+7.5));
   defensesStep(r.ctx,r.sys.state);
-  assert.deepEqual(dmg(r.ctx).map(e=>e.target),['e'],'7.5 u: beyond 6, within 7.8');
-  assert.equal(dmg(r.ctx).filter(e=>e.weapon==='posto-de-radar').length,0,'the radar itself does not fire');
+  assert.deepEqual(dmg(r.ctx).filter(e=>e.weapon===guard.kind).map(e=>e.target),['e'],'7.5 u: beyond 6, within 7.8');
+});
+
+test('combat: C5 radar pulses the densest group, ground and air, 18 and a 1 s slow (torres-animacao-idle-tiro)',()=>{
+  const r=citySetup(3000);
+  const radar=grow(r.ctx,r.sys,'obra-02',['C',undefined,undefined,undefined]);
+  assert.equal(radar.kind,'posto-de-radar');
+  at(r.ctx,radar.readyTick,'wave');
+  const R=DEFENSES['posto-de-radar'];
+  assert.deepEqual([R.range,R.damage,R.area,R.target,R.hits,R.cooldown,R.slow],[8,18,1.6,'cluster','all',ticks(1.5),ticks(1)]);
+  assert.deepEqual(R.radar,{reach:9,bonus:.3},'keeps its bonus');
+  r.ctx.enemies.set('lone',enemy('lone',radar.x+3,radar.y,{hp:500}));
+  for(let i=0;i<3;i++)r.ctx.enemies.set(`g${i}`,enemy(`g${i}`,radar.x,radar.y+6+i*.5,{hp:500}));
+  r.ctx.enemies.set('bird',enemy('bird',radar.x+.4,radar.y+6.5,{kind:'pombos',hp:500,maxHp:500}));
+  r.ctx.enemies.set('far',enemy('far',radar.x,radar.y+9.5,{hp:500}));
+  defensesStep(r.ctx,r.sys.state);
+  const hits=dmg(r.ctx).filter(e=>e.weapon==='posto-de-radar');
+  assert.deepEqual(hits.map(e=>e.target).sort(),['bird','g0','g1','g2'],'the group (and the flyer in it), not the lone one nor the far one');
+  assert.ok(hits.every(e=>e.amount===18));
+  for(const id of ['g0','g1','g2'])assert.ok((r.ctx.enemies.get(id)!.slowUntil??-1)>r.ctx.tick,`${id} slowed`);
+  const d=r.sys.state.defenses!.list.find(x=>x.id===radar.id)!;
+  assert.equal(d.fireTick,r.ctx.tick+ticks(1.5),'its cadence');
 });
 
 test('combat: the Gustavão shells the densest crowd across the map, rarely',()=>{

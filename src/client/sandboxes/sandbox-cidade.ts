@@ -796,7 +796,7 @@ class CitySandbox extends Phaser.Scene {
     for(let i=0;i<n;i++){const w=this.horde[i];this.ex[i]=w.x;this.ey[i]=w.y;}
     for(const d of this.defenses){
       const l=TOWER_LOOK[d.kind];
-      if(d.ruined||tick<d.readyTick||tick<d.fireTick||l.calibre==='radar')continue;
+      if(d.ruined||tick<d.readyTick||tick<d.fireTick)continue;
       const i=aimIndex(l,d.x,d.y,n,this.ex,this.ey,this.air);
       if(i<0)continue;
       // Like the sim on the wire: the aim (turns from +x) of the volley, so the renderer turns to it and never scans

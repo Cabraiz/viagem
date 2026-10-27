@@ -78,7 +78,7 @@ export const TOWER_LOOK:Readonly<Record<TowerKind,TowerLook>>=Object.freeze({
   'holofote':look('C','holofote',[1,1],6,.5,1.2,{area:2}),
   'arame-e-sirene':look('C','arame',[1,2],4,.5,.6,{hits:'ground'}),
   'antiaerea-quadrupla':look('C','antiaerea',[2,2],9,.3,.8,{hits:'air',shots:4}),
-  'posto-de-radar':look('C','radar',[2,2],0,1,1.6),
+  'posto-de-radar':look('C','radar',[2,2],8,1.5,1.6,{area:1.6}),
 });
 export const TOWER_KINDS=Object.freeze(Object.keys(TOWER_LOOK) as TowerKind[]);
 export const isTowerKind=(k:string):k is TowerKind=>Object.prototype.hasOwnProperty.call(TOWER_LOOK,k);
@@ -268,7 +268,7 @@ export function firedNow(prevFireTick:number|undefined,d:Pick<TowerView,'fireTic
 }
 
 /** Shot drawing kinds: a fast streak, a lobbed shell, a rocket with smoke, a light beam, a spark ring, nothing. */
-export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'none';
+export type ShotStyle='tracer'|'shell'|'rocket'|'beam'|'aura'|'pulse'|'none';
 export type CraterSize='p'|'m'|'g'|'gustavao';
 export interface CalibreLook {
   /** Muzzle flash radius (CSS px at zoom 1 × actor scale) and life (ms); 0 = no flash. */
@@ -302,7 +302,8 @@ export const CALIBRE:Readonly<Record<Calibre,CalibreLook>>=Object.freeze({
   holofote:cal({shot:'beam',flash:0,flashMs:0,speed:0,blastMs:260,barrel:.3}),
   arame:cal({shot:'aura',blastMs:300,barrel:0}),
   antiaerea:cal({shot:'tracer',flash:7,flashMs:80,speed:48,arc:0,trail:1,blast:.3,blastMs:160,barrel:.5}),
-  radar:cal({shot:'none',barrel:.3}),
+  // The radar's pulse (torres-animacao-idle-tiro): a blue ring of its area on the group it hit.
+  radar:cal({shot:'pulse',flash:5,flashMs:120,blastMs:420,barrel:.3}),
 });
 /** Crater decal radius (u) and how long it stays on the snow (ms). */
 export const CRATER:Readonly<Record<CraterSize,{radius:number;ms:number}>>=Object.freeze({

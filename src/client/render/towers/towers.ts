@@ -110,12 +110,14 @@ interface Shot {on:boolean;cal:CalibreLook;x0:number;y0:number;z0:number;x1:numb
   cell:number;d0:number;dz:number;trail:Img;head:Img;puff:Img}
 /** A muzzle flash, or (`smoke`) the grey puff the heavy calibres leave at the muzzle (torres-animacao-idle-tiro). */
 interface Flash {on:boolean;x:number;y:number;r:number;born:number;ms:number;depth:number;img:Img;smoke:boolean}
-interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img}
+interface Blast {on:boolean;x:number;y:number;r:number;born:number;ms:number;ring:boolean;depth:number;img:Img;tint:number}
 interface Crater {on:boolean;x:number;y:number;r:number;born:number;ms:number}
 
 export const SHOT_POOL=192,FLASH_POOL=48,BLAST_POOL=64,CRATER_POOL=40;
 /** The muzzle smoke of the heavy calibres: its radius and life against the flash's, its grey. */
 const SMOKE_R=1.1,SMOKE_MS=6,SMOKE_TINT=0x9aa0a6;
+/** The radar's pulse ring (the wire's spark ring, tinted). */
+const PULSE_TINT=0x6ec6ff;
 /** Shots per volley drawn at most (a 6-shot volley reads as a burst, not 6 parallel lines). */
 const BURST_MAX=4,BURST_GAP_MS=45;
 const RECOIL_MS=90;
@@ -157,7 +159,7 @@ export class TowerRenderer {
   private readonly fxImages:Phaser.GameObjects.Image[]=[];
   private readonly shots=pool<Shot>(SHOT_POOL,()=>({on:false,cal:CALIBRE.pistola,x0:0,y0:0,z0:0,x1:0,y1:0,born:0,ms:0,mx:0,my:0,ox:0,oy:0,cell:-1,d0:0,dz:0,trail:undefined,head:undefined,puff:undefined}));
   private readonly flashes=pool<Flash>(FLASH_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,depth:0,img:undefined,smoke:false}));
-  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined}));
+  private readonly blasts=pool<Blast>(BLAST_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0,ring:false,depth:0,img:undefined,tint:0}));
   private readonly craters=pool<Crater>(CRATER_POOL,()=>({on:false,x:0,y:0,r:0,born:0,ms:0}));
   private cursor={shot:0,flash:0,blast:0,crater:0};
   private readonly fader=new CoverFader();
@@ -474,6 +476,7 @@ export class TowerRenderer {
     if(cal.shot==='aura'){this.addBlast(v.x,v.y,t.look.range,cal.blastMs,nowMs,true);return;}
     if(!has||cal.shot==='none')return;
     if(cal.shot==='beam'){this.addBeam(t,tx,ty,nowMs,mx,my);return;}
+    if(cal.shot==='pulse'){this.addBlast(tx,ty,t.look.area,cal.blastMs,nowMs,true,PULSE_TINT);return;}
     const n=Math.min(BURST_MAX,t.look.shots),h=t.height*PHASE_HEIGHT[t.phase];
     // The path starts over the defense's centre at its roof; the drawn shot leaves the barrel tip (the offset fades out).
     const start=this.o.world.project(v.x,v.y,h,this.p),ox=mx-start.x,oy=my-start.y;
@@ -515,8 +518,8 @@ export class TowerRenderer {
     const f=this.next(this.flashes,'flash');f.on=true;f.x=x;f.y=y;f.r=r;f.ms=ms;f.born=born;f.depth=depth;f.smoke=smoke;
     if(f.img)f.img.setDepth(depth);
   }
-  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false){
-    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;
+  private addBlast(x:number,y:number,r:number,ms:number,born:number,ring=false,tint=0){
+    const b=this.next(this.blasts,'blast');b.on=true;b.x=x;b.y=y;b.r=r;b.ms=ms;b.born=born;b.tint=tint;
     if(b.img&&b.ring!==ring){b.img.destroy();this.fxImages.splice(this.fxImages.indexOf(b.img),1);b.img=undefined;} // the ring lives on the ground
     b.ring=ring;b.depth=ring?0:this.fxDepth(x,y)+FX_DEPTH.blast;
     if(b.img&&!ring)b.img.setDepth(b.depth);
@@ -591,6 +594,7 @@ export class TowerRenderer {
       if(b.ring){ // the wire's spark ring lies on the snow: in the ground layer
         if(!b.img){const fr=this.atlas.get(FX.ring)!;b.img=this.scene.make.image({x:0,y:0,key:fr.key,frame:fr.frame},false);this.ground.add(b.img);}
         b.img.setVisible(true).setPosition(p.x,p.y).setScale(rw*2/(RING_W-8)).setAlpha(1-k);
+        if(b.tint)b.img.setTint(b.tint);else if(b.img.isTinted)b.img.clearTint();
         continue;
       }
       // The fireball rises as it fades (the baked one is drawn at half its rise).
@@ -902,7 +906,7 @@ export class TowerRenderer {
     let x0=-g.disc-g.line,x1=g.disc+g.line,y0=-g.disc/2-g.line,y1=g.post+g.disc/2+g.line;
     const add=(x:number,y:number,rx:number,ry:number)=>{x0=Math.min(x0,x-rx);x1=Math.max(x1,x+rx);y0=Math.min(y0,y-ry);y1=Math.max(y1,y+ry);};
     if(shot==='beam')add(g.x1,g.y1-g.disc*.6,g.disc*1.1,g.disc*1.1);
-    else if(shot==='none')add(g.x1,g.y1-g.disc*1.4,g.disc*1.4+g.line,g.disc*.9+g.line);
+    else if(shot==='none'||shot==='pulse')add(g.x1,g.y1-g.disc*1.4,g.disc*1.4+g.line,g.disc*.9+g.line);
     else{const r=(g.thick+3*g.s)/2;add(g.x0,g.y0,r,r);add(g.x1,g.y1,Math.max(r,g.thick*.75),Math.max(r,g.thick*.75));}
     return {x0:Math.floor(x0)-2,y0:Math.floor(y0)-2,x1:Math.ceil(x1)+2,y1:Math.ceil(y1)+2};
   }
@@ -923,7 +927,7 @@ export class TowerRenderer {
         .fillStyle(this.amarelo,1).fillCircle(x1+d.x*disc*.2,y1-disc*.6+d.y*disc*.1,disc*.45);
       return;
     }
-    if(cal.shot==='none'){ // radar dish
+    if(cal.shot==='none'||cal.shot==='pulse'){ // radar dish
       g.lineStyle(thick*.6+2*s,this.breu,1).lineBetween(mx,my,x1,y1-disc*1.4).fillStyle(this.breu,1).fillEllipse(x1,y1-disc*1.4,disc*2.8,disc*1.8)
         .fillStyle(this.papel,1).fillEllipse(x1,y1-disc*1.4,disc*2.3,disc*1.4);
       return;

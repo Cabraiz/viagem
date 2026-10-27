@@ -63,3 +63,16 @@ test('4. towerArt: the fire sheet with its idle; the real manifest has a lite fi
   assert.ok(fires>=14,`${fires} torres com fire`);
   setArtIndex(parseArtIndex({version:2,groups:{}}));
 });
+
+test('5. meta.muzzle: 8 cell fractions with the idle sheet, else none; the six that shoot from a barrel have it',()=>{
+  const piece=(muzzle:unknown)=>({kind:'views',meta:{muzzle},files:{base:{file:'b.webp',cell:[448,448],views:4,rows:6},idle:{file:'i.webp',cell:[160,160],frames:4,directions:8}}});
+  const eight=Array.from({length:8},(_,i)=>[i/10,.5]);
+  setArtIndex(parseArtIndex({version:2,groups:{torres:{output:'public/art/towers',pieces:{morteiro:piece(eight),obuseiro:piece(eight.slice(0,7)),holofote:piece([...eight.slice(0,7),[1.2,.5]])}}}}));
+  assert.deepEqual(towerArt('morteiro')?.muzzle?.[3],[.3,.5]);
+  assert.equal(towerArt('obuseiro')?.muzzle,undefined,'7 directions: refused');
+  assert.equal(towerArt('holofote')?.muzzle,undefined,'outside the cell: refused');
+  setArtIndex(parseArtIndex(JSON.parse(readFileSync('public/art/manifest.json','utf8'))));
+  for(const k of ['obuseiro','antiaerea-quadrupla','holofote','morteiro','rojao-de-festa','lanca-foguetes'] as TowerKind[])
+    assert.equal(towerArt(k)?.muzzle?.length,8,`${k}: boca nas 8 direções (evidence/…/bocas.mjs)`);
+  setArtIndex(parseArtIndex({version:2,groups:{}}));
+});

@@ -439,6 +439,8 @@ export class TowerRenderer {
    */
   /** Sandbox `contorno=0` (torres-animacao-idle-tiro): no gold outline, the art itself in the recordings. */
   outline=true;
+  /** Where a defense's weapon stands on screen (world px; its mount), once drawn: the sandbox's `foco=torre` camera. */
+  mountOf(id:string):Pt|undefined{const t=this.towers.get(id);return t&&t.drawnPhase?{x:t.mount.x,y:t.mount.y}:undefined;}
   /** Volleys drawn so far (sandbox checks: torre-contador-de-tiros). */
   volleysDrawn=0;
   private fire(t:Tower,nowMs:number){
@@ -479,6 +481,12 @@ export class TowerRenderer {
   }
   /** World px of the muzzle tip into this.v (mount + barrel along the weapon's direction). */
   private muzzle(t:Tower){
+    // The delivered weapon's own muzzle (meta.muzzle, per direction row) while its sheet is drawn.
+    const art=t.drawnPose>=0?towerArt(t.view.kind):undefined,m=art?.muzzle?.[t.dir],idle=art?.idle;
+    if(m&&idle){
+      const k=this.artScale,[cw,ch]=idle.cell,a=idle.anchor??[.5,.5];
+      this.v.x=t.mount.x+(m[0]-a[0])*cw*k;this.v.y=t.mount.y+(m[1]-a[1])*ch*k;return;
+    }
     const d=dirVector(t.dir,this.v),len=t.cal.barrel*this.unitPx;
     this.v.x=t.mount.x+d.x*len;this.v.y=t.mount.y+d.y*len*.5;
   }

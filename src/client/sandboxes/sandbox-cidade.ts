@@ -48,7 +48,7 @@
  *   `lista&tipos=a,b` (torres-entregues): only those kinds, ready and silent, 2.4 u from the hero (north first) — the art check;
  *     `&tiro=1` (torres-animacao-idle-tiro) they fire at the stand-in horde (idle between volleys, the fire sheet on each);
  *     `&lento=K` the defenses run K× slower (their sim clock and effects), so a 5 fps recording shows every animation frame;
- *     `&foco=torre` the camera on the first one (its mid height), not the hero; `&contorno=0` without the gold outline;
+ *     `&foco=torre` the camera on the first one's weapon (its mount), not the hero, and no fade; `&contorno=0` without the gold outline;
  *   `12` a ring of 12 firing defenses (the FPS check: `n=300&torres=12` vs `&desenho=0`, the same with nothing drawn).
  *   `fio=1` (torre-contador-de-tiros): the stand-in defenses go through the wire's path instead (StructureView with
  *   phase, aim and the volley counter `shots`, then the game's TowerFeed), `parado=1` freezes the stand-in enemies (a
@@ -815,7 +815,8 @@ class CitySandbox extends Phaser.Scene {
         ...(this.aims.has(d.id)?{aim:Math.round(this.aims.get(d.id)!*255)/255}:{}),...(this.shots.has(d.id)?{shots:this.shots.get(d.id)}:{})}));
       t.push(tick,this.feed.views(wire,tick,this.asset.cell,{enemies:{n,xs:this.ex,ys:this.ey,air:this.air}}),time);
     }else t.push(tick,this.defenses,time);
-    t.update(time,dt,[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
+    // foco=torre: no figure for the fade test (the defense under the camera stays opaque in the recording).
+    t.update(time,dt,towerFocus?[]:[{x:this.at.x,y:this.at.y,z:groundZ(this.asset,this.at.x,this.at.y)}]);
   }
   /** The destination mark of scene.ts goTo, a little ahead of the hero. */
   private markDestination(){
@@ -907,8 +908,8 @@ class CitySandbox extends Phaser.Scene {
     const s=this.pushShift,drawn=s.x||s.y?project(this.at.x+s.x,this.at.y+s.y,groundZ(this.asset,this.at.x,this.at.y),this.view):feet;
     this.hero.setPosition(drawn.x,drawn.y);
     const viewport={width:this.scale.width,height:this.scale.height};
-    const d0=towerFocus?this.defenses[0]:undefined;
-    const c=d0?project(d0.x,d0.y,groundZ(this.asset,d0.x,d0.y)+TOWER_LOOK[d0.kind].height*.5,this.view):this.camera.snap(feet,viewport,zoom);
+    const d0=towerFocus?this.defenses[0]:undefined,m=d0?this.towers?.mountOf(d0.id):undefined;
+    const c=m??this.camera.snap(feet,viewport,zoom);
     if(!cameraFixed)cam.centerOn(c.x,c.y);
     if(this.lab){this.lab.horde.refresh();this.markDestination();}
     if(ruler)this.drawRuler(feet,zoom);

@@ -349,15 +349,19 @@ export const textureRatio=(file:Pick<ArtFile,'cell'|'liteCell'>)=>file.liteCell?
  * Imported art of a defense (manifest group `torres`): the base sheet, the weapon's idle and fire sheets (8 rows ×
  * frames) and the mount (px, view 0°).
  */
-export interface TowerArt {base?:ArtFile;idle?:ArtFile;fire?:ArtFile;mount?:readonly [number,number]}
+export interface TowerArt {base?:ArtFile;idle?:ArtFile;fire?:ArtFile;mount?:readonly [number,number];
+  /** Where the shot leaves the weapon sheet per direction row (cell fractions; meta.muzzle, read on the idle's frame 0). */
+  muzzle?:readonly (readonly [number,number])[]}
 export function towerArt(kind:TowerKind):TowerArt|undefined{
   const piece=artPiece('torres',kind);
   if(!piece)return undefined;
   const m=piece.meta?.mount;
   const mount=Array.isArray(m)&&m.length===2&&m.every(n=>Number.isFinite(n))?[m[0] as number,m[1] as number] as const:undefined;
-  const base=piece.files.base,idle=piece.files.idle,fire=piece.files.fire;
+  const base=piece.files.base,idle=piece.files.idle,fire=piece.files.fire,mz=piece.meta?.muzzle;
   if(!base)return undefined;
-  return {base,...(idle?{idle}:{}),...(idle&&fire?{fire}:{}),...(mount?{mount}:{})};
+  const muzzle=Array.isArray(mz)&&mz.length===8&&mz.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isFinite(n)&&n>=0&&n<=1))
+    ?(mz as [number,number][]).map(p=>[p[0],p[1]] as const):undefined;
+  return {base,...(idle?{idle}:{}),...(idle&&fire?{fire}:{}),...(mount?{mount}:{}),...(idle&&muzzle?{muzzle}:{})};
 }
 /** Frames and pace of a weapon sheet (ArtFile frames/fps; idle 4 at 4 fps, fire at 12 when the manifest says nothing). */
 export interface WeaponClip {frames:number;fps:number}

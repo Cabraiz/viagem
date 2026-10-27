@@ -57,7 +57,7 @@
  * walks exactly as before. Without it (the automatic weapons) the decisions are the same as before, byte for byte.
  */
 import type {CombatMode,RunView,EnemyView,NodeView,StructureView,PlayerRunView} from '../contract/index.ts';
-import {BASE_STATS,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
+import {BASE_STATS,BOT_WALK_MULT,CAR_ID,CAR_PULL_REACH,CAR_PUSH_REACH,CAR_RADIUS,CAR_ROPE,DELIVERY_MARK_SECONDS,carNose,ropeTip} from '../contract/index.ts';
 import {equippedWeapon,manualReach} from './weapons/system.ts';
 import {resolveWeapon,weaponCatalog,weaponLevel} from './weapons/catalog.ts';
 import {telegraphHits} from './telegraphs.ts';
@@ -76,6 +76,12 @@ import {botRoute,botRouteDistance,straightClear} from './city/bot-routes.ts';
 import {CRATE_STAND,LOOT_RADIUS,LOOT_RADIUS_CALM,planLoot,vehicleGoal,type LootCommand} from './bot-loot.ts';
 
 export const HZ=20;
+/**
+ * Card bots-20-mais-lentos: the bot's own walk (u/s), what its trips are timed by (home before the wave, a crate, an
+ * obra, a fallen friend, the moto, an ATM): the room walks its bots at BOT_WALK_MULT of a person (maps heroSpeed). A
+ * protocol bot or the bench's person seat walks faster, so its trips only end with more spare.
+ */
+export const botSpeed=(terrain?:TerrainField)=>heroSpeed(terrain)*BOT_WALK_MULT;
 /** Combat: how far from the wall the bot is happy to roam (units). Farther, home pulls harder. */
 export const LEASH=6.5,BOSS_LEASH=9;
 /** Critters closer than this push the bot away. */
@@ -316,7 +322,7 @@ export function objectiveTask(view:RunView,selfId:string,bots:readonly string[],
   // In the intermission, only a trip that is back at the car before the wave (PUSH_TRIP_SECONDS).
   const round=view.round;
   if(pushers.length&&round?.phase==='prepare'){
-    const city=cityTerrainOf(terrain),car=homeOf(view,moto),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+    const city=cityTerrainOf(terrain),car=homeOf(view,moto),speed=botSpeed(terrain),left=round.phaseEndsTick-view.tick;
     const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
     const back=walk(moto,car);
     // A bot already at the moto owes only what is left of the push (o.moto.push, 0..1) plus the margin: the 10 s are the
@@ -411,7 +417,7 @@ export function bankTask(view:RunView,selfId:string,bots:readonly string[],forge
   if(grana>=bankTarget(view))return undefined;
   const open=view.banks.filter(b=>b.state!=='sem-cedulas'&&b.saldo>0);
   if(!open.length)return undefined;
-  const city=cityTerrainOf(terrain),speed=heroSpeed(terrain),left=round.phaseEndsTick-view.tick;
+  const city=cityTerrainOf(terrain),speed=botSpeed(terrain),left=round.phaseEndsTick-view.tick;
   const walk=(a:Point,b:Point)=>city?botRouteDistance(city,a,b):dist(a,b);
   const ready=bots.map(id=>view.players.find(p=>p.id===id)).filter((p):p is PlayerRunView=>!!p&&standing(p)&&!!positionOf(p))
     .filter(p=>!objectiveTask(view,p.id,bots,forger,terrain));
@@ -663,7 +669,7 @@ export function decide(input:BrainInput):Decision{
     // In the intermission only a trip that is back home before the wave (the streets ~LOOT_DETOUR × the straight line,
     // the opening and a margin: LOOT_SPARE_SECONDS).
     const late=prepare&&!!round&&!!loot.goal&&round.phaseEndsTick-tick<=
-      ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/heroSpeed(input.terrain)+LOOT_SPARE_SECONDS)*HZ;
+      ((dist(at,loot.goal.at)+dist(loot.goal.at,home))*LOOT_DETOUR/botSpeed(input.terrain)+LOOT_SPARE_SECONDS)*HZ;
     if(loot.goal&&!late){
       decision.mode='loot';
       const close=dist(at,loot.goal.at)<=(loot.goal.stand?CRATE_STAND:.25);
@@ -712,7 +718,7 @@ export function decide(input:BrainInput):Decision{
     const needed=recipe==='reparo'&&!!wall&&wall.hp<wall.maxHp*REPAIR_BELOW;
     let site:Point|undefined,building=false;
     if(towers&&!needed){
-      const speed=heroSpeed(input.terrain),end=round.phaseEndsTick,from=Math.max(tick,towers.orderFrom??tick);
+      const speed=botSpeed(input.terrain),end=round.phaseEndsTick,from=Math.max(tick,towers.orderFrom??tick);
       const back=(p:Point)=>returnTicks(city?botRouteDistance(city,p,home):dist(p,home),speed);
       // The estimate: the straight line × TOWER_DETOUR, or through the base (both from the cached field home), the shorter.
       const walk=(p:Point,exact:boolean)=>{
@@ -745,7 +751,7 @@ export function decide(input:BrainInput):Decision{
     // Home on the horn (island), or on its own walk back. City (BUG-20261013-E4-corneta-jogador-longe): the bot keeps
     // gathering until its own walk home (+4 s) is all the intermission has left; a horn sized by someone else's walk
     // (a far teammate) would call it home with the crates still out. A builder's trip ('build') goes first either way.
-    const goHome=(!city&&view.camp?.hornEndsTick!==undefined)||left<=returnTicks(walkHome,heroSpeed(input.terrain))+4*HZ||!view.nodes?.length;
+    const goHome=(!city&&view.camp?.hornEndsTick!==undefined)||left<=returnTicks(walkHome,botSpeed(input.terrain))+4*HZ||!view.nodes?.length;
     if(building){
       decision.mode='build';
       if(site)want=go(site);
@@ -930,7 +936,7 @@ function rescueOf(view:RunView,selfId:string,at:Point,terrain:TerrainField|undef
 /** A walk from `at` to a fallen friend (along the streets in the city) that leaves RESCUE_SPARE s of its `ticksLeft`. */
 export function rescueFits(at:Point,to:Point,ticksLeft:number,terrain:TerrainField|undefined){
   const city=cityTerrainOf(terrain),walk=city?botRouteDistance(city,at,to):dist(at,to);
-  return Number.isFinite(walk)&&walk/heroSpeed(terrain)+RESCUE_SPARE<=ticksLeft/HZ;
+  return Number.isFinite(walk)&&walk/botSpeed(terrain)+RESCUE_SPARE<=ticksLeft/HZ;
 }
 function positionOf(p:PlayerRunView):Point|undefined{const q=p as PlayerRunView&Partial<Point>;return Number.isFinite(q.x)&&Number.isFinite(q.y)?{x:q.x!,y:q.y!}:undefined;}
 function add(a:Point,b:Point):Point{return {x:a.x+b.x,y:a.y+b.y};}

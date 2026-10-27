@@ -72,6 +72,11 @@ export interface RunSystemsOptions {
   onBodyBlock?:(playerId:string)=>void;
   /** D-052: a room bot (with the autopiloted players: who moves the chaveiro's car only along with a person). */
   bot?:(playerId:string)=>boolean;
+  /**
+   * Card bots-20-mais-lentos: a player's share of the walk (the players system: maps moveStep walkScale); the room
+   * passes BOT_WALK_MULT for its bots. Absent: everyone walks at 1.
+   */
+  walkScale?:(playerId:string)=>number;
   /** Called when the run is decided; may fire more than once (the owner keeps the first, victory wins a same-tick tie). */
   onOutcome:(outcome:RunOutcomeKind)=>void;
   /** Ticks the defeat waits for the last player standing who dropped (revive.ts default if omitted; the Room passes its seat grace, VGM-047). */
@@ -543,7 +548,8 @@ export function createRunSystems(world:SimWorld,options:RunSystemsOptions):RunSy
       // D-052: a hero holds still while their free obra is under way, else walks at the car's pace while moving it.
       // Card uno-bloqueio-corpo: and nobody stands inside the car's body.
       // Card heroi-empurra-inimigos: and pushes the enemies it walks into, never walking through one.
-      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car,options.onBodyBlock??true)),
+      playersSystem(takeInput,options.autopilot,manual,id=>holdsObra(stonewards.state,id,world.tick)?0:chaveiro?.moverCap(id),()=>chaveiro?.state.car,options.onBodyBlock??true,
+        options.walkScale)),
     // D-051: the nests step in the director's slot (no new system id), right after it.
     // The sleepers right after (sono.step before the enemy-ai: re-index after the wakes, note the dead).
     // Card boss-fim-onda-1: the chefão stops the time; while he stands the nests hold their clock (no wave, no drip).

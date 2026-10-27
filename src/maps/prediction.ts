@@ -93,8 +93,10 @@ const COS_TURN=Math.cos(CART_TURN),SIN_TURN=Math.sin(CART_TURN);
  * One movement tick of a player at server tick `tick` (the room's players system and the phone's replay): a slide
  * while slipping (any direction that walks: the slide's own is taken), else a walk, slowed while slowed. A step without
  * a direction (the attack or the skill held in place) stands, slipping or not. Collision-safe like moveDirection.
+ * `walkScale` (card bots-20-mais-lentos, the room's bots: BOT_WALK_MULT) multiplies the walk, not the slide; the phone's
+ * replay (its own hero, a person) leaves it at 1.
  */
-export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain):FloorPoint{
+export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEffects|undefined,terrain:TerrainField=defaultTerrain,walkScale=1):FloorPoint{
   if(isDown(effects,tick))return p;
   const length=Math.hypot(direction.x,direction.y);
   if(!Number.isFinite(length)||length<.01)return p;
@@ -104,7 +106,7 @@ export function moveStep(p:FloorPoint,direction:Point,tick:number,effects:MoveEf
   let q:Point;
   if(slide)q=moveDirection(p,slide,STEP,ground,PLAYER_SLIP_SPEED*walk/SPEED);
   else{
-    const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects);
+    const speed=(slowed(effects,tick)?walk*PLAYER_SLOW_MULT:walk)*walkMult(effects,tick)*statMoveSpeed(effects)*walkScale;
     const turned=riding(effects,tick)==='carrinho'?{x:direction.x*COS_TURN-direction.y*SIN_TURN,y:direction.x*SIN_TURN+direction.y*COS_TURN}:direction;
     q=moveDirection(p,turned,STEP,ground,speed);
   }

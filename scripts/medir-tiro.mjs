@@ -10,7 +10,7 @@
 //      gets: ms to send, ms until the first frame where the hero's attackTick moved (the swing starts on the next
 //      animation frame, sprite-motion.ts), the first 'fire' event of the hero (shot FX and sound) and its first damage.
 // node scripts/medir-tiro.mjs <outDir> [--url https://viagem.cyou] [--tela celular|pc] [--toques 12] [--intervalo 1500]
-//      [--atraso 0] [--extra "combate=manual"] [--local] (the tap answer from the local build, see --url http://127.0.0.1:...)
+//      [--atraso 0] [--extra "combate=manual"] [--worker http://127.0.0.1:8808] (a local build and Worker)
 // Writes <outDir>/medida.json (every tap) and resumo.md (medians and maxima). Exit 0 ok, 1 no entry / no attack seen.
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
@@ -42,7 +42,7 @@ async function playwright(){
 
 /** Runs in the page before its scripts: the WebSocket log (and the optional delay), the taps. */
 function hook(atraso){
-  const log=window.__tiro={taps:[],out:[],in:[]};
+  const log=window.__tiro={taps:[],out:[],in:[],local:[]};
   const half=Math.max(0,atraso)/2;
   const Native=window.WebSocket;
   class Wrapped extends Native{
@@ -160,6 +160,7 @@ export function analyse(log){
       hit:v.events.some(e=>e.type==='damage'&&e.source===me)});
   }
   const sends=log.out.map(m=>{try{return {t:m.t,j:JSON.parse(m.s)};}catch{return undefined;}}).filter(Boolean);
+  const local=log.local??[];
   const taps=[];let lastAttack=frames[0]?.attackTick??0,fi=0;
   for(let i=0;i<log.taps.length;i++){
     const tap=log.taps[i].t,next=log.taps[i+1]?.t??Infinity;
@@ -167,7 +168,8 @@ export function analyse(log){
     const send=sends.find(s=>s.t>=tap&&s.t<next&&s.j.t==='input'&&s.j.steps?.some(w=>(w[3]&SEGMENT_ATTACK)!==0));
     const win=frames.filter(f=>f.t>=tap&&f.t<next);
     const swing=win.find(f=>f.attackTick>lastAttack),fire=win.find(f=>f.fire),hit=win.find(f=>f.hit);
-    taps.push({tap:r0(tap),envio:send?r0(send.t-tap):null,ataqueTick:swing?r0(swing.t-tap):null,tiro:fire?r0(fire.t-tap):null,dano:hit?r0(hit.t-tap):null,
+    const drawn=local.find(t=>t>=tap&&t<next);
+    taps.push({tap:r0(tap),golpeLocal:drawn!==undefined?r0(drawn-tap):null,envio:send?r0(send.t-tap):null,ataqueTick:swing?r0(swing.t-tap):null,tiro:fire?r0(fire.t-tap):null,dano:hit?r0(hit.t-tap):null,
       tickDoServidor:swing?.tick??null});
   }
   // The room's frame gaps (its send period and the link's jitter).
@@ -186,11 +188,13 @@ async function main(argv){
     await ctx.addInitScript(()=>{try{localStorage.setItem('viagem:tela-cheia:v1','off');localStorage.setItem('viagem:economia:v1',JSON.stringify({on:false,auto:false,declined:true}));localStorage.setItem('viagem:dicas',JSON.stringify(['rescue','walk','chip','xp','gather']));}catch{}});
     await ctx.addInitScript(hook,o.atraso);
     const p=await ctx.newPage(),cdp=tela.hasTouch?await ctx.newCDPSession(p):undefined;
+    // --worker http://127.0.0.1:8808: the local rooms Worker (wrangler dev) instead of the site's.
+    if(o.worker)await p.route('**/multiplayer.json',async r=>{const j=await (await r.fetch()).json();await r.fulfill({json:{...j,endpoint:o.worker}});});
     const entrou=await entrar(p,o.url.replace(/\/$/,''),o.extra);
     console.log(`entrou em ${Math.round(entrou/1000)} s`);
     await sleep(3000);
     if(!await armar(p,cdp))console.log('não conseguiu arma: mede assim mesmo');
-    await p.evaluate(()=>{window.__tiro.taps=[];});
+    await p.evaluate(()=>{window.__tiro.taps=[];window.__tiro.local=[];});
     const box=await p.evaluate(()=>{const r=document.querySelector('#coop-attack')?.getBoundingClientRect();return r&&r.width?{x:r.left+r.width/2,y:r.top+r.height/2,label:document.querySelector('#coop-attack').textContent.trim()}:null;});
     if(!box)throw new Error('sem #coop-attack na tela');
     console.log(`botão: "${box.label}"`);
@@ -211,7 +215,7 @@ async function main(argv){
     const linha=(nome,k)=>`| ${nome} | ${r0(median(col(k)))??'—'} | ${col(k).length?Math.max(...col(k)):'—'} | ${col(k).length}/${res.taps.length} |`;
     const md=[`# Tiro: ms do toque até… (${o.url}, build ${build}, ${o.tela}, atraso extra ${o.atraso} ms)`,'',
       '| etapa | mediana | máx | toques |','|---|---|---|---|',
-      linha('input com o ataque sai','envio'),linha('frame com attackTick novo (o golpe começa)','ataqueTick'),linha("frame com o 'fire' (tiro/clarão/som)",'tiro'),linha('frame com o dano','dano'),
+      linha('golpe previsto desenhado (quadro local)','golpeLocal'),linha('input com o ataque sai','envio'),linha('frame com attackTick novo (o golpe começa)','ataqueTick'),linha("frame com o 'fire' (tiro/clarão/som)",'tiro'),linha('frame com o dano','dano'),
       '',`Frames: ${res.frames}, intervalo mediano ${res.frameGap.mediana} ms (máx ${res.frameGap.max}).`].join('\n');
     writeFileSync(join(out,'resumo.md'),md+'\n');console.log(md);
     return col('ataqueTick').length?0:1;

@@ -928,6 +928,9 @@ export class IslandScene extends Phaser.Scene {
     this.horde.ownShot(weapon,hero.x,hero.y,at.x-hero.x,at.y-hero.y);
     const sound=weaponSound(weapon),audio=getAudio();
     if(sound&&audio.unlocked)audio.play(sound);
+    // scripts/medir-tiro.mjs: the frame that draws the predicted swing (only when the measuring page set __tiro).
+    const tiro=(window as {__tiro?:{local?:number[]}}).__tiro;
+    if(tiro?.local)requestAnimationFrame(()=>tiro.local!.push(performance.now()));
   }
   chooseTarget(id:string|undefined){if(this.paused)return;this.attackTarget=id;this.horde?.setTarget(id);}
   /** The chosen target (PlayerInput.target), for the attack button's reticle. */

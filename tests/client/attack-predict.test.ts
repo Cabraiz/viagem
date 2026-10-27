@@ -70,3 +70,36 @@ test('AttackPress.fresh: only a press that was not held is new (Space\'s repeats
   p.key('espaco',false);p.key('direito',false);
   p.press();assert.equal(p.fresh,true);
 });
+
+test('the base cooldown table is the sim\'s refire gap (cooldown, plus the duration of what lingers), every weapon and level',async()=>{
+  const {BASE_STATS}=await import('../../src/contract/types.ts');
+  const {WEAPON_CATALOG,resolveWeapon}=await import('../../src/sim/weapons/catalog.ts');
+  const {WEAPON_COOLDOWN_TICKS,WEAPON_REACH,heldCooldownMs}=await import('../../src/client/hud/weapon-reach.ts');
+  for(const def of WEAPON_CATALOG.values()){
+    if(!def.pattern)continue;
+    const lingers=def.pattern==='orbit'||def.pattern==='shield'||def.pattern==='zone';
+    for(let level=1;level<=def.maxLevel+1;level++){
+      const w=resolveWeapon(def,Math.min(level,def.maxLevel),{...BASE_STATS});
+      assert.equal(heldCooldownMs({id:def.id,level}),((lingers?w.durationTicks:0)+w.cooldownTicks)*50,`${def.id} level ${level}`);
+    }
+  }
+  assert.deepEqual(Object.keys(WEAPON_COOLDOWN_TICKS).sort(),Object.keys(WEAPON_REACH).sort(),'the same weapons as the reach table');
+  assert.equal(heldCooldownMs(undefined),0);
+});
+
+test('the base cooldown holds a press back before the room fired twice; a shorter learned gap (stats) wins',()=>{
+  const a=new AttackPredictor();a.swingTick(0,0);
+  assert.equal(a.press(1000,'figa',6500),true);
+  assert.equal(a.fire(1,'figa',20,1150),false);
+  assert.equal(a.press(2700,'figa',6500),false,'inside the orbit\'s 6.5 s: the room would not fire it');
+  assert.equal(a.press(7600,'figa',6500),true);
+  assert.equal(a.cooldownOf('figa',6500),6500);
+  a.fire(2,'figa',150,7700);a.fire(3,'figa',250,12700);
+  assert.equal(a.cooldownOf('figa',6500),5000,'the room fired it 100 ticks apart: a passive cut it');
+});
+
+test('a press the room never fired does not hold the next one back',()=>{
+  const a=new AttackPredictor();a.swingTick(0,0);
+  assert.equal(a.press(1000,'pistola',600),true);
+  assert.equal(a.press(1000+MATCH_MS+1,'pistola',600),true,'no fire came: the next press is drawn');
+});

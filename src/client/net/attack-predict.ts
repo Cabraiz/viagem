@@ -6,8 +6,9 @@
  * The room stays the authority: the damage, the kills and the hp come only from it. What the phone draws on its own
  * is the hero's swing, the shot's flash (render/arsenal-fx.ts) and its sound, marked as waiting for the room's copy;
  * when the room's swing (attackTick) or its 'fire' comes within MATCH_MS it is the same attack, so it is not drawn
- * again. A press the weapon's cooldown would refuse is not predicted: the cooldown per weapon is learned from the
- * room's own fires (the client has no weapon catalog, OWNERS.md), and a press within it waits for the room as before.
+ * again. A press the weapon's cooldown would refuse is not predicted: the cooldown is the base stats' one
+ * (hud/weapon-reach.ts WEAPON_COOLDOWN_TICKS, the client has no weapon catalog, OWNERS.md) or, shorter, the least gap
+ * seen between the room's own fires (stats that cut it); a press within it waits for the room as before.
  * Pure (no Phaser, no socket), so node tests it.
  */
 
@@ -35,17 +36,20 @@ export class AttackPredictor {
   private matched?:{weapon:string;tick:number};
   private decided=new Map<number,boolean>();
 
-  /** The weapon's cooldown learned so far (ms), 0 before the room fired it twice. */
-  cooldownOf(weapon:string){return this.cooldown.get(weapon)??0;}
+  /** The weapon's cooldown (ms): the learned one, or the base one (`base`, ms) when shorter or nothing is learned. */
+  cooldownOf(weapon:string,base=0){
+    const learned=this.cooldown.get(weapon);
+    return learned===undefined?base:base>0?Math.min(base,learned):learned;
+  }
 
   /**
-   * The attack pressed now (ms) with `weapon` in the hand: true when the phone draws the shot at once (and its sound).
-   * The swing also starts, unless one started less than SWING_GAP_MS ago.
+   * The attack pressed now (ms) with `weapon` in the hand (`base`: its cooldown at base stats, ms): true when the phone
+   * draws the shot at once (and its sound). The swing also starts, unless one started less than SWING_GAP_MS ago.
    */
-  press(now:number,weapon:string):boolean{
+  press(now:number,weapon:string,base=0):boolean{
     this.expire(now);
     // A tick of margin: the gaps are read from the frames' ticks, one tick off at most.
-    const cooldown=this.cooldownOf(weapon);
+    const cooldown=this.cooldownOf(weapon,base);
     if(cooldown>0&&now-(this.lastFireAt.get(weapon)??-Infinity)<cooldown+TICK_MS)return false;
     this.waitFire.push({at:now,weapon});this.lastFireAt.set(weapon,now);
     if(now-this.lastSwingAt>=SWING_GAP_MS){this.waitSwing.push(now);this.lastSwingAt=now;this.swings++;}
@@ -90,6 +94,10 @@ export class AttackPredictor {
 
   private expire(now:number){
     while(this.waitSwing.length&&now-this.waitSwing[0]>MATCH_MS)this.waitSwing.shift();
-    while(this.waitFire.length&&now-this.waitFire[0].at>MATCH_MS)this.waitFire.shift();
+    // A press the room never fired (nothing to shoot, a cooldown we did not know) does not hold the next one back.
+    while(this.waitFire.length&&now-this.waitFire[0].at>MATCH_MS){
+      const w=this.waitFire.shift()!;
+      if(this.lastFireAt.get(w.weapon)===w.at)this.lastFireAt.delete(w.weapon);
+    }
   }
 }

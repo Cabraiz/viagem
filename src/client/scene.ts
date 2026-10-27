@@ -77,7 +77,7 @@ import {CatchUp,CATCH_UP_GATE_MS} from './net/backlog.ts';
 import {HoldFollow,MARKER_MS,keyVector,mapButtonDown,markerVisible,rightAttackDown} from './desktop-input.ts';
 import {effectivePhase} from './calm-phase.ts';
 import type {CenaClock} from './render/chefao-cena.ts';
-import {heldWeapon} from './hud/weapon-reach.ts';
+import {heldWeapon,heldCooldownMs} from './hud/weapon-reach.ts';
 import {weaponSound} from './audio/events.ts';
 import {getAudio} from './audio/engine.ts';
 /** Client-side range for the prototype skill ring (scene.ts). */
@@ -920,8 +920,8 @@ export class IslandScene extends Phaser.Scene {
     if(!net||!this.horde||!this.hooks.manual?.()||this.paused||net.run?.phase!=='combat'||net.run.pause||net.run.cena||net.handsBusy||this.isOut())return;
     const me=net.feed.players.get(net.id),self=net.players.get(net.id);
     if(!me||!self?.hp||me.downed||me.eliminated)return;
-    const weapon=heldWeapon(me)?.id;
-    if(!weapon||!net.attackPredict.press(performance.now(),weapon))return;
+    const held=heldWeapon(me),weapon=held?.id;
+    if(!weapon||!net.attackPredict.press(performance.now(),weapon,heldCooldownMs(held)))return;
     const hero=net.predicted,mouse=this.mouseGround(),stick=this.hooks.aimStick?.();
     const chosen=this.attackTarget?net.feed.enemies.get(this.attackTarget):undefined;
     const at=mouse??(stick?{x:hero.x+stick.x,y:hero.y+stick.y}:undefined)??chosen??this.hooks.aimPick?.()??{x:hero.x+this.lastIntent.x,y:hero.y+this.lastIntent.y};

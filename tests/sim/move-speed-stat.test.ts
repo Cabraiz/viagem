@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {moveStep,reconcile,statMoveSpeed,STEP,type MoveEffects} from '../../src/maps/prediction.ts';
 import {heroSpeed,SPAWN,type Point} from '../../src/maps/world.ts';
 import {defaultTerrain} from '../../src/maps/terrain/field.ts';
-import {CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT} from '../../src/contract/index.ts';
+import {BOT_WALK_MULT,CIDA_FAST_MULT,PLAYER_SLIP_SPEED,PLAYER_SLOW_MULT} from '../../src/contract/index.ts';
 import {SPEED} from '../../src/maps/world.ts';
 import {computeStats} from '../../src/rules/stats.ts';
 import {Simulation,moveSpeedOf} from '../../multiplayer/simulation.ts';
@@ -39,7 +39,7 @@ test('the stat comes from the build: the tênis (+0.1 a level) and a class bonus
   close(dist(SPAWN,moveStep(SPAWN,{x:1,y:0},10,{stats:fast},T)),WALK*1.5*STEP,'tênis 3 + class 0.2');
 });
 
-test('the room: a person and a bot with the same moveSpeed walk the same, X % more than at 1; the wire carries it to the phone',()=>{
+test('the room: a person and a bot with the same moveSpeed walk the same share, X % more than at 1 (the bot at BOT_WALK_MULT); the wire carries it to the phone',()=>{
   const sim=new Simulation();
   const person=sim.add('p','Ana','cidadao-comum'),bot=sim.addBot('b','Robô','cidadao-comum');
   sim.resetRun();
@@ -57,7 +57,8 @@ test('the room: a person and a bot with the same moveSpeed walk the same, X % mo
   const base=walk('p',1),fast=walk('p',1.2),botFast=walk('b',1.2);
   assert.ok(base>0,'the person walked');
   close(fast/base,1.2,'person: +20 % walks 20 % more');
-  close(botFast,fast,'bot = person with the same stat');
+  // bots-20-mais-lentos: the bot walks BOT_WALK_MULT of the person, the stat on top of it all the same.
+  close(botFast,fast*BOT_WALK_MULT,'bot = 0.8 × person with the same stat');
   // What the phone gets (PlayerRunView.moveSpeed) is what the room walked with; at 1 nothing travels.
   assert.deepEqual(moveSpeedOf(sim.players.get('p')!),{moveSpeed:1.2});
   const p=sim.players.get('p')!;p.stats={...p.stats,moveSpeed:1};assert.deepEqual(moveSpeedOf(p),{});

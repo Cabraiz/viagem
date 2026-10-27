@@ -61,7 +61,7 @@ export interface ManualCombat {attacking:Set<string>}
  * `bodies` (card heroi-empurra-inimigos): every step a hero takes pushes the solid enemies it walks into and stops at
  * their edge (maps bodyBlock, as the phone's replay), before the car's block; a function is also told whose step a
  * body changed. `walkScale` (card bots-20-mais-lentos): a player's share of the walk (the room bots' BOT_WALK_MULT),
- * absent 1.
+ * absent 1; not while `stepCap` holds the player (the car's pace).
  */
 export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined,autopilot?:(playerId:string)=>boolean,manual?:ManualCombat,
   stepCap?:(playerId:string)=>number|undefined,car?:()=>CarPlace|undefined,bodies?:boolean|((playerId:string)=>void),
@@ -95,9 +95,12 @@ export function playersSystem(takeInput:(playerId:string)=>PlayerInput|undefined
       if(p.downed||p.eliminated||!(p.hp>0))continue;
       if(input){
         const from={x:p.x,y:p.y,...(p.andar===1?{andar:1 as const}:{})};
-        movePlayer(p,input,ctx.terrain,ctx.tick,walkScale?.(p.id)??1);
+        // bots-20-mais-lentos: a bot moving the car walks at the car's pace (its cap, carSpeed), not BOT_WALK_MULT's: the
+        // crew's speed is the car's table (empurrar-uno), and carSpeed(3) is more than a bot's 0.8 walk.
+        const cap=stepCap?.(p.id);
+        movePlayer(p,input,ctx.terrain,ctx.tick,cap===undefined?walkScale?.(p.id)??1:1);
         // D-052: the same cut as the phone's replay (maps/prediction capStep).
-        let q=capStep(from,p,stepCap?.(p.id),ctx.terrain);
+        let q=capStep(from,p,cap,ctx.terrain);
         if(shove){const free=q;q=bodyBlock(from,q,bodiesNear(ctx,q.x,q.y,near),ctx.terrain,shove);if(q!==free&&typeof bodies==='function')bodies(p.id);}
         q=carBlock(from,q,body,ctx.terrain);p.x=q.x;p.y=q.y;setFloor(p,floorOf(q));
         if(input.target)p.target=input.target;else delete p.target;

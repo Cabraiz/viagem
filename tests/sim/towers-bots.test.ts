@@ -25,6 +25,7 @@ import {RoomBots} from '../../multiplayer/room-bots.ts';
 import {cityTerrainFrom} from '../../src/maps/city/terrain.ts';
 import {ticks} from '../../src/contract/types.ts';
 import {HERO_SPEED_MULT as K} from '../../src/maps/world.ts';
+import {BOT_WALK_MULT} from '../../src/contract/index.ts';
 import {CAR_ID,type RunView} from '../../src/contract/index.ts';
 import {BOT_BRANCHES,BOT_TOWER_REPAIR_BELOW,CHAVEIRO_KEEP_SHARE,CHAVEIRO_SAVE_ETA,REPAIR_BELOW,TOWER_STAND,decide,granaReserve,newMemory,pickTowerOrder,towerBrainView,towerReserve,type TowerBrainView} from '../../src/sim/bot-brain.ts';
 import {DEFENSES,GUSTAVAO_COST,ROOT_DEFENSE,pickChild,type DefenseId} from '../../src/sim/towers/catalog.ts';
@@ -151,9 +152,11 @@ test('decide(): the builder walks to the obra (mode build), orders on arrival, a
   assert.equal(near.mode,'build');assert.deepEqual(near.build,{build:'s1'},'no person here: it orders as soon as it is there');
   assert.deepEqual(near.direction,{x:0,y:0},'stands there');
   // The way back counts: a site 30 u out fits (there, back into the camp, TOWER_MARGIN), one 40 u out does not. The
-  // distances at the base walk, × K (maps HERO_SPEED_MULT, velocidade-heroi-e-projetil): the bot times the real walk.
-  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30*K,y:1}]}).mode,'build');
-  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40*K,y:1}]}).mode,'build','the walk there fits, there and back does not');
+  // distances at the base walk, × K (maps HERO_SPEED_MULT, velocidade-heroi-e-projetil) × BOT_WALK_MULT (bots-20-mais-lentos):
+  // the bot times its real walk.
+  const W=K*BOT_WALK_MULT;
+  assert.equal(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:30*W,y:1}]}).mode,'build');
+  assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:40*W,y:1}]}).mode,'build','the walk there fits, there and back does not');
   assert.notEqual(run({x:0,y:1},{sites:[{id:'s1',maxSize:3,x:200*K,y:1}]}).mode,'build');
   // Standing at an obra whose way back no longer fits: no order, it heads home.
   const late=run({x:80*K,y:1},{sites:[{id:'s1',maxSize:3,x:80*K,y:1}]});

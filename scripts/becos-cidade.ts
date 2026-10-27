@@ -11,12 +11,13 @@
  */
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
+import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityDecor,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
 import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
 import {citySafePlaces} from '../src/maps/safe-places.ts';
 import {CAR_RADIUS} from '../src/contract/index.ts';
+import {BIG_ROCKS,LINK,bigCliffRocks,lineShape} from '../src/maps/city-decor.ts';
 
 /** A dead end: a skeleton branch at least this long (cells) from its end to a junction. */
 export const BECO_MIN=3;
@@ -280,12 +281,36 @@ export const PROP_REMOVED='removido';
 const removed=(p:CityProp):CityProp=>({...p,kind:PROP_REMOVED,solid:false});
 
 /**
+ * The corners of `cells` set to a ramp between the corners of the `ground` cells around them: each free corner the mean
+ * of its 4 neighbour corners that are free or ground corners, RAMP_PASSES times (a corner with none keeps its height).
+ */
+function rampCorners(data:CityAssetData,cells:readonly number[],ground:(t:number)=>boolean){
+  const m=data.cells.w,H=m+1,h=data.heights,free=new Set<number>(),fixed=new Set<number>();
+  const corners=(t:number)=>{const c=t%m,r=(t-c)/m;return [c+r*H,c+1+r*H,c+(r+1)*H,c+1+(r+1)*H];};
+  for(const t of cells)for(const k of corners(t))free.add(k);
+  for(const t of cells){const c=t%m,r=(t-c)/m;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=c+dx,Y=r+dy;if(X<0||Y<0||X>=m||Y>=m)continue;const n=X+Y*m;
+      if(ground(n))for(const k of corners(n))if(!free.has(k))fixed.add(k);}}
+  for(let pass=0;pass<RAMP_PASSES;pass++)for(const k of free){
+    const x=k%H,y=(k-x)/H;let sum=0,n=0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=H||Y>=H)continue;const q=X+Y*H;if(free.has(q)||fixed.has(q)){sum+=h[q];n++;}}
+    if(n)h[k]=Math.round(sum/n*100)/100;
+  }
+}
+const RAMP_PASSES=40;
+
+/**
  * Open `cells` in `data`: their samples walkable, their blocks' rects cut (a block left empty goes), the props and the
  * scenery pieces on them gone.
  */
 export function openCells(data:CityAssetData,cells:readonly number[]):void{
   const m=data.cells.w,u=data.unitsPerCell!,S=SAMPLES_PER_CELL,sw=m*S;
   const set=new Set(cells);
+  const was=(t:number)=>data.walkable[(Math.floor(t/m)*S+S/2)*sw+(t%m)*S+S/2]===1;
+  // A cliff cell keeps the shelf's height on its corners: open, it would stand as a pale rock slab. Its corners are
+  // relaxed (Jacobi) between the ground's on both sides: a ramp.
+  const cliff=[...set].filter(t=>{const c=t%m,r=(t-c)/m;return data.blocks.some(b=>b.kind==='cliff'&&b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));});
+  if(cliff.length)rampCorners(data,cliff,t=>!set.has(t)&&was(t));
   for(const t of set){const c=t%m,r=(t-c)/m;for(let j=0;j<S;j++)for(let i=0;i<S;i++)data.walkable[(r*S+j)*sw+c*S+i]=1;}
   const blocks:CityBlock[]=[];
   for(const b of data.blocks){
@@ -296,7 +321,25 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
   }
   data.blocks=blocks;
   data.props=data.props.map(p=>set.has(Math.floor(p.x/u)+Math.floor(p.y/u)*m)?removed(p):p);
-  if(data.decor)data.decor=data.decor.filter(d=>{for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(set.has(c+r*m))return false;return true;});
+  if(data.decor){
+    // A rock piece (2×2, 2×1) the hole went through: its cells left keep a 1×1 piece along the cliff (bare, a cliff
+    // cell is drawn as a pale box).
+    const isCliff=(c:number,r:number)=>c>=0&&r>=0&&c<m&&r<m&&!set.has(c+r*m)&&data.blocks.some(b=>b.kind==='cliff'&&b.rects.some(([x,y,w,h])=>(c+.5)*u>x&&(c+.5)*u<x+w&&(r+.5)*u>y&&(r+.5)*u<y+h));
+    const decor:CityDecor[]=[],loose:CityDecor[]=[];
+    for(const d of data.decor){
+      const cut:[number,number][]=[];let hit=false;
+      for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(set.has(c+r*m))hit=true;else cut.push([c,r]);
+      if(!hit){decor.push(d);continue;}
+      if(!d.id.startsWith('penhasco'))continue;
+      for(const [c,r] of cut){if(!isCliff(c,r))continue;
+        // As maps/city-decor.ts placeCityDecor draws a cliff cell.
+        const links=(isCliff(c,r-1)?LINK.N:0)|(isCliff(c+1,r)?LINK.E:0)|(isCliff(c,r+1)?LINK.S:0)|(isCliff(c-1,r)?LINK.W:0);
+        const {shape,rot}=lineShape(links);
+        loose.push({id:shape==='quina'?'penhasco2-quina-externa':shape==='ponta'?'penhasco-ponta':'penhasco2-reto',c,r,w:1,h:1,rot,links});}
+    }
+    // And regrouped into big pieces where they fit (rochas-grandes).
+    data.decor=[...decor,...bigCliffRocks(loose,BIG_ROCKS,cells.length)];
+  }
 }
 
 /** Ruin props this close to the plaza's base point (u) go: the heaps at its 4 mouths. */
@@ -375,7 +418,7 @@ export function rubbleForUno(data:CityAssetData):string[]{
 
 /** The asset with its dead ends opened (a new version). */
 export function abrirBecos(data:CityAssetData):{data:CityAssetData;passagens:Passagem[];rubble:string[];ruins:number;lootAdded:number;lootMoved:number}{
-  const out:CityAssetData={...data,walkable:data.walkable.slice()};
+  const out:CityAssetData={...data,walkable:data.walkable.slice(),heights:data.heights.slice()};
   // 1. The rubble the car hits.
   const rubble=rubbleForUno(out);
   // The heaps of ruin at the plaza's mouths, by the Uno where the run starts: they read as rubble across its way out.

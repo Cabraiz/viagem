@@ -1411,6 +1411,12 @@ export class IslandScene extends Phaser.Scene {
     if(this.downedMarks.length&&this.downedLayer){const d=this.downedLayer.depths();layers.push({name:'resgate (anel)',depth:d.ring},{name:'resgate (coluna)',depth:d.column});}
     return {dark:this.zueira?.last.dark??0,darkDepth:dark,layers,failures:(this.zueira?.last.dark??0)>0?auditBlackout(layers,dark):[]};
   }
+  /** R$ of the cédulas the hero caught on screen that the room has not paid yet (render/cedula-catch.ts; the top bar shows them). */
+  pendingGrana(){return this.horde?.pendingGrana()??0;}
+  /** Cédulas the hero caught on screen so far: hud/rescue.ts clinks on each new one. */
+  cedulasCaught(){return this.horde?.caughtCount??0;}
+  /** The room's 'pickup' event of a cédula whose clink already played at the catch (it plays nothing). */
+  cedulaHeard(event:{type:string;pickup?:string;kind?:string}){return !!this.horde?.cedulaHeard(event);}
   /** Zueira FX state (dev probe). */
   zueiraState(){return this.zueira?{...this.zueira.last}:undefined;}
   /** The hero's sprite on screen (CSS px), so HUD banners can stay out of its way. */

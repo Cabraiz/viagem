@@ -62,6 +62,11 @@ export interface CampOptions {
    * 'reparo' repairs ('barricada-N'), only for a city barricade; the wall's tags never send one.
    */
   onForge(recipe:RecipeId,target?:string):number|undefined;
+  /**
+   * BUG-20261025-ORQ-ima-dinheiro-demora: R$ of the cédulas the hero caught on screen that the room has not paid yet
+   * (render/cedula-catch.ts): the top bar's Grana shows them at once. Only shown: every price compares the room's wallet.
+   */
+  pendingGrana?():number;
 }
 /** Where the hero is (client prediction) and where the base lies on screen (degrees, 0 = right, clockwise). */
 export interface HeroSpot {x:number;y:number;bearing?:number}
@@ -353,7 +358,7 @@ export function createCamp(options:CampOptions):CampPart{
     if(!view||!camp){putHidden(forge,true);putHidden(notice,true);return;}
     const wall=wallOf(view.structures),fraction=wall&&wall.maxHp>0?Math.max(0,Math.min(1,wall.hp/wall.maxHp)):0;
     paintBaseBar(baseBar(view),!!camp.wallDown);paintClock(view,windows);
-    const money=granaReadout(camp.grana);
+    const money=granaReadout(camp.grana+(options.pendingGrana?.()||0));
     if(money.text!==lastGrana){lastGrana=money.text;granaValue.textContent=money.text;grana.setAttribute('aria-label',money.label);}
     if(camp.units!==lastUnits){lastUnits=camp.units;token.innerHTML=tokenMarkup(camp.units);token.setAttribute('aria-label',tokenReadout(camp.units).label);}
     // Index 1 is the opening countdown before round 1: nothing to forge yet, the window stays shut.

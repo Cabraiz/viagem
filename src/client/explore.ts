@@ -316,7 +316,9 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       wake:()=>pause(false),setHeld:held=>skill?.setHeld(held),
       // The aim stick (tiro-na-direcao-mobile): the arrow runs as far as the equipped weapon reaches; the ring is the left stick's size.
       reach:()=>{const me=net.feed.players.get(net.id);return me?heldReach(me):undefined;},
-      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2});
+      ringRadius:()=>$('.explore-stick').getBoundingClientRect().width/2,
+      // tiro-delay-1s-predicao: the press shows at once (swing, flash, sound); the room's copy is skipped.
+      pressed:()=>{if(sceneReady)controller?.scene.predictAttack();}});
     net.onCast=result=>skill?.answer(result,performance.now());
   }
   // Only controls overlay the map. All secondary information lives in a native
@@ -641,7 +643,7 @@ export async function openExploration(hero:HeroClass,name:string,net?:CoopClient
       classId:hero.id,direction:()=>direction,net,cena,
       // D-051 manual combat: the attack rides each input step; a tap or click on a critter chooses it and hits it once.
       attacking:()=>!!attackBtn?.take(),working:dir=>workLatch.step(dir),enemyPicked:()=>attackBtn?.once(),manual:()=>net?.combat==='manual',
-      aimStick:()=>attackBtn?.aim(),
+      aimStick:()=>attackBtn?.aim(),attackHeld:()=>!!attackBtn?.press.held,aimPick:()=>attackBtn?.autoPick(),
       // The right mouse button holds the attack like Space (direito-ataca-e-cone-no-ar), greyed button included.
       attackHold:down=>{if(down&&skill?.working){if(!$<HTMLButtonElement>('#coop-attack').disabled){pause(false);workLatch.tap(performance.now());}return;}if(down&&skill?.towing){if(!$<HTMLButtonElement>('#coop-attack').disabled)towTap();return;}if(!down)attackBtn?.key(false,'direito');else if(attackBtn?.active&&!$<HTMLButtonElement>('#coop-attack').disabled)attackBtn.key(true,'direito');},
       terrain:(seed,signature)=>{shell.dataset.terrainSeed=String(seed);shell.dataset.terrainSignature=signature;mapInfo??=settingsContent.appendChild(document.createElement('p'));mapInfoSeed=seed;showMapInfo();},

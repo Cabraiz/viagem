@@ -88,6 +88,8 @@ export interface HordeRendererOptions{
   locate?:(id:string)=>Pt|undefined;
   /** Id of the local player: only damage on them is a priority number (allies' hits are plain). Omitted = every player hit is. */
   selfId?:()=>string|undefined;
+  /** One of the local hero's 'fire' events (the view's tick): false when it was already drawn on the press (tiro-delay-1s-predicao). */
+  ownFire?:(event:Extract<SimEvent,{type:'fire'}>,eventId:number,tick:number)=>boolean;
   /** The ground point the local hero aims at (world u): the mouse on a PC, undefined on touch (melee aim cone, render/melee-cone.ts). */
   aim?:()=>Pt|undefined;
   /** Where a hero's weapon hand is on screen this frame, from the pose it shows (sprites/hand-points.ts HeldHand); undefined: the side sticker. */
@@ -516,6 +518,8 @@ export class HordeRenderer{
   }
   private shadowLook(shadow:Image){const key=hordeShadowKey(this.cityOn,FX.shadow);if(shadow.texture.key!==key)shadow.setTexture(key);}
   setTarget(enemyId?:string){this.targetId=enemyId;}
+  /** The local hero's shot on the press (tiro-delay-1s-predicao): `dx,dy` toward where it aims (world u). */
+  ownShot(weapon:string,x:number,y:number,dx:number,dy:number){this.arsenal.ownShot(weapon,x,y,dx,dy);}
   /** The local hero's melee cone at the hero as drawn, under his shadow (scene.ts, after place()). */
   selfCone(at:Pt,shadow:number){this.arsenal.drawSelfCone(at,shadow);}
   /** handsFromScene: the weapons in the heroes' hands, once the scene has placed and animated every hero this frame. */
@@ -655,6 +659,7 @@ export class HordeRenderer{
   private handle(event:SimEvent,eventId:number){
     // D-051: the crate opened (its actor is still here this push), a damage on a hero, an arsenal weapon's shot.
     if(event.type==='pickup'&&event.kind==='chest'){const c=this.pickups.get(event.pickup);this.arsenal.event(event,c?{x:c.nx,y:c.ny}:undefined);}
+    else if(event.type==='fire'&&event.player===this.options.selfId?.()&&this.options.ownFire?.(event,eventId,this.viewTick)===false){/* drawn on the press */}
     else if(event.type==='fire'||event.type==='damage')this.arsenal.event(event);
     // Art v2: the enemy this event makes act (hit, attack, throw, joke…); nothing without imported enemy art.
     if(enemyArtActive()){const cue=eventAction(event,this.actionWorld,this.actionCue);if(cue)this.playCue(cue);}

@@ -154,7 +154,9 @@ export class RescueBoard {
     if(this.dead)return;
     this.last=view;this.states=new Map(view.players.map(p=>[p.id,p]));
     // The match's sounds (audio/events.ts): the local hero's hits, shots, kills and pickups, and the team's moments.
-    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events,this.net.id);
+    // The local hero's shots already heard on the press are not played again (net/attack-predict.ts).
+    const own=(e:RunView['events'][number])=>e.type!=='fire'||e.player!==this.net.id||this.net.attackPredict.fire(e.eventId,e.weapon,view.tick,performance.now());
+    const audio=getAudio();if(audio.unlocked)playEvents(audio,view.events.filter(own),this.net.id);
     keepWarnings(this.warnings,view.events,view.tick);
     const asset=cityAssetOf(this.net.terrain);
     if(asset){

@@ -412,7 +412,8 @@ async function gravarTorres(p,cdp,base,o,t,dir,r){
     const v=await p.evaluate(()=>window.__cidade?.volleys?.()??null).catch(()=>null);
     const frames=pickFrames(all,o.fps);r.quadros+=frames.length;
     const sharp=createRequire(join(process.cwd(),'package.json'))('sharp'),cut=TORRES_CORTE[0],tall=TORRES_CORTE[1];
-    for(const f of frames){const m=await sharp(f.buf).metadata(),w=Math.round(m.width*cut),h=Math.min(m.height,Math.round(w*tall));
+    // The same shape on both screens: on the PC's wide one the height limits the cut.
+    for(const f of frames){const m=await sharp(f.buf).metadata(),w=Math.round(Math.min(m.width*cut,m.height/tall)),h=Math.min(m.height,Math.round(w*tall));
       f.buf=await sharp(f.buf).extract({left:Math.round((m.width-w)/2),top:Math.round((m.height-h)/2),width:w,height:h}).png().toBuffer();}
     const kb=o.gif&&frames.length?await escreverGif(frames,{...t,gifWidth:360,viewport:{width:360,height:Math.round(360*tall)}},sub,24):0;r.gifKB+=kb;
     r.torres.push({tipo,quadros:frames.length,disparos:v?.fired??0,desenhados:v?.drawn??0,gifKB:kb});

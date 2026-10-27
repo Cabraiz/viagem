@@ -19,7 +19,7 @@ const asset=decoded.asset;
 
 test('becos: almost every dead end left has a reason (a crate at its end, or it is a safe place)',()=>{
   const r=resumo(asset);
-  assert.ok(r.becosSemMotivo<=3,`${r.becosSemMotivo} dead ends with no crate and no shelter (v4: 32)`);
+  assert.ok(r.becosSemMotivo<=10,`${r.becosSemMotivo} dead ends with no crate and no shelter (v4: 32; a crate moves in only when it keeps 11 u from the others)`);
   assert.ok(r.becos<=40,`${r.becos} dead ends (v4: 54)`);
 });
 
@@ -38,7 +38,7 @@ test('the defence holds: the plaza is still entered by its 4 mouths only, the en
   for(const [k,v4] of [['spawnN',77],['spawnS',85],['spawnL',75],['spawnO',72]] as const){
     const now=d[cell(P[k])]*g.u;assert.ok(now>=v4-1,`${k}: ${now.toFixed(0)} u to the plaza (v4 ${v4})`);
   }
-  assert.ok(citySafePlaces(new CityTerrain(asset,'test')).length>=20,'safe places (v4: 23)');
+  assert.ok(citySafePlaces(new CityTerrain(asset,'test')).length>=23,'safe places (v4: 23)');
 });
 
 test('o Uno: no heap of rubble left in its way, none at the plaza mouths, it reaches every spawn',()=>{

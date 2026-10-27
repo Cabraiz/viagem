@@ -11,7 +11,7 @@
  */
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityPoint,type CityRect} from '../src/maps/city-asset.ts';
+import {SAMPLES_PER_CELL,cityAssetToData,decodeCityAsset,encodeCityAsset,type CityAsset,type CityAssetData,type CityBlock,type CityPoint,type CityProp,type CityRect} from '../src/maps/city-asset.ts';
 import {CITY_NEST_POOL,NEST_YARD_RADIUS} from '../src/maps/nests.ts';
 import {overDeck,onRamp} from '../src/maps/city/viaduct.ts';
 import {CityTerrain} from '../src/maps/city/terrain.ts';
@@ -105,9 +105,9 @@ export function becos(g:CityGraph,min=BECO_MIN):Beco[]{
       if(next.length!==1)break;
       const n=next[0];len+=(n%m!==cur%m&&Math.floor(n/m)!==Math.floor(cur/m))?Math.SQRT2:1;prev=cur;cur=n;cells.push(n);}
     if(len<min)continue;
-    // Loot near the end (3 cells) is a reason to walk in.
-    const x=t%m,y=(t-x)/m;let loot=false;
-    for(let dy=-3;dy<=3&&!loot;dy++)for(let dx=-3;dx<=3;dx++)if(lootCells.has(x+dx+(y+dy)*m)){loot=true;break;}
+    // Loot in it (within 2 cells of the branch) is a reason to walk in.
+    const x=t%m,y=(t-x)/m;
+    const loot=cells.some(c=>{const cx=c%m,cy=(c-cx)/m;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)if(lootCells.has(cx+dx+(cy+dy)*m))return true;return false;});
     out.push({end:{x:(x+.5)*u,y:(y+.5)*u},cells,length:len,loot,abrigo:g.safe.has(t)});
   }
   return out;
@@ -272,7 +272,17 @@ const bboxOf=(rects:readonly CityRect[]):CityRect=>{
   return [r3(x0),r3(y0),r3(x1-x0),r3(y1-y0)];
 };
 
-/** Open `cells` in `data`: their samples walkable, their blocks' rects cut (a block left empty goes), props on them gone. */
+/**
+ * A prop taken off the map stays in the list as PROP_REMOVED, not solid: the client picks each prop's art by its index
+ * (render/city/from-maps.ts `p${i}`), so dropping one would redraw every prop after it.
+ */
+export const PROP_REMOVED='removido';
+const removed=(p:CityProp):CityProp=>({...p,kind:PROP_REMOVED,solid:false});
+
+/**
+ * Open `cells` in `data`: their samples walkable, their blocks' rects cut (a block left empty goes), the props and the
+ * scenery pieces on them gone.
+ */
 export function openCells(data:CityAssetData,cells:readonly number[]):void{
   const m=data.cells.w,u=data.unitsPerCell!,S=SAMPLES_PER_CELL,sw=m*S;
   const set=new Set(cells);
@@ -285,13 +295,16 @@ export function openCells(data:CityAssetData,cells:readonly number[]):void{
     blocks.push(rects.length===b.rects.length&&rects.every((q,i)=>q===b.rects[i])?b:{...b,rects,bbox:bboxOf(rects)});
   }
   data.blocks=blocks;
-  data.props=data.props.filter(p=>!set.has(Math.floor(p.x/u)+Math.floor(p.y/u)*m));
+  data.props=data.props.map(p=>set.has(Math.floor(p.x/u)+Math.floor(p.y/u)*m)?removed(p):p);
+  if(data.decor)data.decor=data.decor.filter(d=>{for(let r=d.r;r<d.r+d.h;r++)for(let c=d.c;c<d.c+d.w;c++)if(set.has(c+r*m))return false;return true;});
 }
 
 /** Ruin props this close to the plaza's base point (u) go: the heaps at its 4 mouths. */
 export const PLAZA_RUIN=14;
-/** A crate put at a dead end's end keeps this far (u) from any other loot point. */
-export const LOOT_NEAR=5;
+/** Nor this close (u) to the start or a spawn (tests/maps/cidade-import.test.ts keeps loot 6 u off them). */
+export const KEY_KEEP=8;
+/** A crate put at a dead end's end keeps this far (u) from any other loot point (compactar-cidade.ts LOOT_SPACING). */
+export const LOOT_NEAR=11;
 
 // ——— The Uno ———
 
@@ -361,30 +374,40 @@ export function rubbleForUno(data:CityAssetData):string[]{
 }
 
 /** The asset with its dead ends opened (a new version). */
-export function abrirBecos(data:CityAssetData):{data:CityAssetData;passagens:Passagem[];rubble:string[];ruins:number;lootAdded:number}{
+export function abrirBecos(data:CityAssetData):{data:CityAssetData;passagens:Passagem[];rubble:string[];ruins:number;lootAdded:number;lootMoved:number}{
   const out:CityAssetData={...data,walkable:data.walkable.slice()};
   // 1. The rubble the car hits.
   const rubble=rubbleForUno(out);
   // The heaps of ruin at the plaza's mouths, by the Uno where the run starts: they read as rubble across its way out.
-  const P=out.points.praca,before=out.props.length;
-  out.props=out.props.filter(p=>!(p.kind==='ruin'&&Math.hypot(p.x-P.x,p.y-P.y)<PLAZA_RUIN));
-  const ruins=before-out.props.length;
+  const P=out.points.praca,atMouth=(p:CityProp)=>p.kind==='ruin'&&Math.hypot(p.x-P.x,p.y-P.y)<PLAZA_RUIN;
+  const ruins=out.props.filter(atMouth).length;
+  out.props=out.props.map(p=>atMouth(p)?removed(p):p);
   // 2. The holes.
   const first=decodeCityAsset(encodeCityAsset(out));if(!first.ok)throw new Error(first.error);
   const passagens=choosePassages(cityGraph(first.asset));
   openCells(out,passagens.flatMap(p=>p.cells));
   // The holes may put a heap in the Uno's way that was off it: once more.
   rubble.push(...rubbleForUno(out));
+  const m=out.cells.w,u=out.unitsPerCell!;
   // 3. A dead end left (no hole saves enough there, or it is by a nest or the plaza) gets a reason: a crate at its end.
   const second=decodeCityAsset(encodeCityAsset(out));if(!second.ok)throw new Error(second.error);
-  const loot=[...out.loot],r3=(v:number)=>Math.round(v*1000)/1000;
-  for(const b of becos(cityGraph(second.asset))){if(b.loot||b.abrigo)continue;
-    if(Math.hypot(b.end.x-out.points.praca.x,b.end.y-out.points.praca.y)<PLAZA_KEEP)continue;
-    if(loot.some(q=>Math.hypot(q.x-b.end.x,q.y-b.end.y)<LOOT_NEAR))continue;
-    loot.push({x:r3(b.end.x),y:r3(b.end.y)});}
-  const added=loot.length-out.loot.length;out.loot=loot;
+  const loot=[...out.loot],r3=(v:number)=>Math.round(v*1000)/1000;let added=0,moved=0;
+  const g2=cityGraph(second.asset),P2=out.points,keys=[P2.inicio,P2.spawnN,P2.spawnS,P2.spawnL,P2.spawnO];
+  const roomy=(t:number)=>[1,-1,m,-m].every(k=>g2.city[t+k]);
+  for(const b of becos(g2)){if(b.loot||b.abrigo)continue;
+    // The crate's body needs room (open ground on the 4 sides, else it pushes the opener off): the deepest such cell.
+    const spot=b.cells.find(roomy);if(spot===undefined)continue;
+    const end={x:r3((spot%m+.5)*u),y:r3((Math.floor(spot/m)+.5)*u)},d=(q:CityPoint)=>Math.hypot(q.x-end.x,q.y-end.y);
+    if(d(P2.praca)<PLAZA_KEEP||keys.some(k=>d(k)<KEY_KEEP))continue;
+    const near=loot.map((q,i)=>({q,i})).filter(({q})=>d(q)<LOOT_NEAR).sort((x,y)=>d(x.q)-d(y.q));
+    if(!near.length){loot.push(end);added++;continue;}
+    // A crate already near: it moves to the end when that keeps it as far from the others.
+    const {i}=near[0];
+    if(loot.every((q,j)=>j===i||d(q)>=LOOT_NEAR)){loot[i]=end;moved++;}
+  }
+  out.loot=loot;
   out.version=data.version+1;
-  return {data:out,passagens,rubble,ruins,lootAdded:added};
+  return {data:out,passagens,rubble,ruins,lootAdded:added,lootMoved:moved};
 }
 
 // ——— Picture ———
@@ -421,7 +444,7 @@ if(process.argv[1]?.replace(/\\/g,'/').endsWith('scripts/becos-cidade.ts')){
   console.log(`spawn → praça a pé: ${spawnWalk(d.asset)}`);
   if(args.includes('--propor')){
     const out=abrirBecos(cityAssetToData(d.asset));
-    console.log(`entulho tirado: ${out.rubble.length} blocos + ${out.ruins} ruínas nas bocas da praça; caixas novas no fim de beco: ${out.lootAdded}`);
+    console.log(`entulho tirado: ${out.rubble.length} blocos + ${out.ruins} ruínas nas bocas da praça; caixas no fim de beco: ${out.lootAdded} novas, ${out.lootMoved} trazidas de perto`);
     for(const p of out.passagens)console.log(`  buraco ${p.kinds.join('+')} ${p.cells.length} células em (${(p.from%d.asset.cells.w)},${Math.floor(p.from/d.asset.cells.w)}) poupa ${p.save.toFixed(0)} células`);
     const after=decodeCityAsset(encodeCityAsset(out.data));if(!after.ok)throw new Error(after.error);
     const r2=resumo(after.asset);
